@@ -6,6 +6,7 @@ import com.fluxa.app.core.apple.AppleDetailSeasonRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSnapshot
 import com.fluxa.app.core.apple.AppleDetailStreamSnapshot
 import com.fluxa.app.core.apple.AppleDetailStreamsRequestSnapshot
+import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
 import com.fluxa.app.core.apple.ApplePlaybackRequestSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
@@ -35,6 +36,7 @@ class AppleDetailDataSource(
     private var onDownloadEpisodeRequested: (AppleDetailStreamsRequestSnapshot) -> Unit = {}
     private var onDownloadSeasonRequested: (AppleDetailSeasonRequestSnapshot) -> Unit = {}
     private var subtitleUrlsByStreamUrl: Map<String, List<String>> = emptyMap()
+    private var recommendationItems: List<AppleCatalogItemSnapshot> = emptyList()
 
     override fun observeDetail(id: String, type: String): Flow<DetailUiState> = state.asStateFlow()
 
@@ -142,6 +144,7 @@ class AppleDetailDataSource(
     }
 
     fun update(snapshot: AppleDetailSnapshot) {
+        recommendationItems = snapshot.recommendationItems
         subtitleUrlsByStreamUrl = snapshot.streams.associate { it.playableUrl to it.subtitleUrls }
         state.value = DetailUiState(
             content = DetailUiModel(
@@ -190,6 +193,13 @@ class AppleDetailDataSource(
             contentId = content?.id.orEmpty(),
             contentType = content?.type ?: "movie",
             videoId = videoId ?: content?.selectedEpisodeId,
+            hasNextEpisode = content?.let { current ->
+                val episodes = current.seasonEpisodes
+                val currentIndex = videoId?.let { id -> episodes.indexOfFirst { it.id == id } } ?: -1
+                currentIndex >= 0 && currentIndex < episodes.lastIndex ||
+                    current.availableSeasons.any { it > current.selectedSeason }
+            } ?: false,
+            recommendationItems = recommendationItems,
         )
     }
 

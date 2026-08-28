@@ -30,6 +30,10 @@ gradlePlugin {
             id = "fluxa.android.hilt"
             implementationClass = "FluxaAndroidHiltPlugin"
         }
+        register("fluxaAndroidRust") {
+            id = "fluxa.android.rust"
+            implementationClass = "FluxaAndroidRustPlugin"
+        }
         register("fluxaKmpLibrary") {
             id = "fluxa.kmp.library"
             implementationClass = "FluxaKmpLibraryPlugin"

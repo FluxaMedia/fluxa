@@ -22,13 +22,15 @@ fn library_item_by_id(library: &Map<String, Value>, id: &str) -> Option<Value> {
         items.as_array()?.iter().find_map(|item| {
             (item.get("id").and_then(Value::as_str) == Some(id)
                 || item.get("_id").and_then(Value::as_str) == Some(id))
-                .then(|| item.clone())
+            .then(|| item.clone())
         })
     })
 }
 
 fn merge_library_item(local: Option<Value>, remote: Value) -> Value {
-    let mut merged = local.and_then(|value| value.as_object().cloned()).unwrap_or_default();
+    let mut merged = local
+        .and_then(|value| value.as_object().cloned())
+        .unwrap_or_default();
     if let Some(remote) = remote.as_object() {
         for (key, value) in remote {
             merged.insert(key.clone(), value.clone());
@@ -72,10 +74,7 @@ pub(crate) fn apply_pull_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let changes = args.get("changes")?.as_array()?;
     let local = args.get("local").cloned().unwrap_or(Value::Null);
-    let defaults = args
-        .get("settingsDefaults")
-        .cloned()
-        .unwrap_or(Value::Null);
+    let defaults = args.get("settingsDefaults").cloned().unwrap_or(Value::Null);
     let mut known = args
         .get("known")
         .and_then(Value::as_object)
@@ -144,7 +143,10 @@ pub(crate) fn apply_pull_json(args_json: &str) -> Option<String> {
                         .and_then(Value::as_str)
                         .unwrap_or("watchlist")
                         .to_string();
-                    let item = merge_library_item(local_item, payload.get("item").cloned().unwrap_or(Value::Null));
+                    let item = merge_library_item(
+                        local_item,
+                        payload.get("item").cloned().unwrap_or(Value::Null),
+                    );
                     let slot = library
                         .entry(status)
                         .or_insert_with(|| Value::Array(Vec::new()))
@@ -160,10 +162,26 @@ pub(crate) fn apply_pull_json(args_json: &str) -> Option<String> {
                     collections.push(payload.clone());
                 }
             }
-            "addons" => addons = if deleted { Value::Null } else { payload.clone() },
-            "plugins" => plugins = if deleted { Value::Null } else { payload.clone() },
+            "addons" => {
+                addons = if deleted {
+                    Value::Null
+                } else {
+                    payload.clone()
+                }
+            }
+            "plugins" => {
+                plugins = if deleted {
+                    Value::Null
+                } else {
+                    payload.clone()
+                }
+            }
             "settings" if key == "profile" => {
-                profile = if deleted { Value::Null } else { payload.clone() };
+                profile = if deleted {
+                    Value::Null
+                } else {
+                    payload.clone()
+                };
             }
             "settings" => {
                 settings = if deleted {

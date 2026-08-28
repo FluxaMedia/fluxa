@@ -41,6 +41,8 @@ mod content_identity;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod content_warnings;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod continue_watching;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod core_api;
 #[cfg(not(any(feature = "full-api", not(feature = "streaming-shared"))))]
 mod core_api;
@@ -85,11 +87,9 @@ pub mod log_sink;
 mod mdblist_plan;
 pub mod media_demux;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
-mod continue_watching;
+mod nuvio_pin;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod nuvio_sync;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
-mod nuvio_pin;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod oauth_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -115,6 +115,8 @@ mod profile_prefs;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod publicmetadb_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod recommendation_policy;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod repository_flow;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod search_plan;
@@ -128,9 +130,9 @@ mod tmdb_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod trailer_subtitles;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
-mod watchlist_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod watch_together;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod watchlist_plan;
 
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod env;

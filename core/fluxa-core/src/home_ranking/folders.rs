@@ -377,7 +377,9 @@ fn folder_tile(folder_id: &str, folder_title: &str, folder: &Map<String, Value>)
             .and_then(Value::as_str)
             .unwrap_or("poster"),
     });
-    if let Some(sources) = folder.get("catalogSources").or_else(|| folder.get("sources"))
+    if let Some(sources) = folder
+        .get("catalogSources")
+        .or_else(|| folder.get("sources"))
         && let Some(fields) = tile.as_object_mut()
     {
         fields.insert("collectionSources".to_string(), sources.clone());
@@ -405,11 +407,21 @@ fn folder_tile(folder_id: &str, folder_title: &str, folder: &Map<String, Value>)
     if let Some(fields) = tile.as_object_mut() {
         fields.insert(
             "hideTitle".to_string(),
-            Value::Bool(folder.get("hideTitle").and_then(Value::as_bool).unwrap_or(false)),
+            Value::Bool(
+                folder
+                    .get("hideTitle")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false),
+            ),
         );
         fields.insert(
             "focusGifEnabled".to_string(),
-            Value::Bool(folder.get("focusGifEnabled").and_then(Value::as_bool).unwrap_or(true)),
+            Value::Bool(
+                folder
+                    .get("focusGifEnabled")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(true),
+            ),
         );
     }
     tile
@@ -449,10 +461,17 @@ mod tests {
 
         let result: Value = serde_json::from_str(
             &build_home_collection_shelves_json(&profile.to_string(), &addons.to_string()).unwrap(),
-        ).unwrap();
+        )
+        .unwrap();
         let tile = &result["pinnedShelves"][0]["items"][0];
         assert_eq!(tile["id"], "collections.streaming.prime-video");
-        assert_eq!(tile["collectionSources"][0]["catalogId"], "tmdb.discover.movie.streaming.prime-video");
-        assert_eq!(result["hiddenFolderCategories"][0]["catalogSources"][0]["transportUrl"], "https://aiometadata.elfhosted.com/stremio/configured/manifest.json");
+        assert_eq!(
+            tile["collectionSources"][0]["catalogId"],
+            "tmdb.discover.movie.streaming.prime-video"
+        );
+        assert_eq!(
+            result["hiddenFolderCategories"][0]["catalogSources"][0]["transportUrl"],
+            "https://aiometadata.elfhosted.com/stremio/configured/manifest.json"
+        );
     }
 }

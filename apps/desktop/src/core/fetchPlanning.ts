@@ -1,6 +1,7 @@
 import { coreParseAndPlanAddonResource, coreResourceFetchExecutionPolicy } from './addonManifest';
-import { coreResourceKindToResource } from './engine';
-import { _appVersion, platformFetch } from './httpClient';
+import { coreResourceKindToResource, httpFetchText } from './engine';
+import { _appVersion } from './httpClient';
+import { platformFetch } from '../platform/http';
 import { loadPrefs } from './libraryOps';
 import { fetchBuiltinCatalog, fetchBuiltinMeta, fetchBuiltinSeasonEpisodes, isBuiltinTmdbAddon } from './tmdbAddon';
 import type { AddonDescriptor, Video } from './types';
@@ -86,6 +87,8 @@ async function fetchAddonResourceOutcome(
   season?: unknown,
   signal?: AbortSignal,
 ): Promise<AddonFetchOutcome> {
+  const startedAt = performance.now();
+  console.debug('[fluxa:streams:addon:start]', JSON.stringify({ addon: addonName, url, kind }));
   const canRetry = resource === 'stream' && !signal;
   const maxAttempts = canRetry ? streamRetry.maxAttempts : 1;
   let result: Awaited<ReturnType<typeof coreParseAndPlanAddonResource>> | undefined;
@@ -93,16 +96,28 @@ async function fetchAddonResourceOutcome(
     let statusCode = 0;
     let body: string | null = null;
     try {
-      const response = await platformFetch(url, {
-        headers: { 'User-Agent': `Fluxa/${_appVersion}` },
-        signal:
-          signal ??
-          (resource === 'stream'
-            ? AbortSignal.timeout(attempt === 0 ? streamRetry.fetchTimeoutMs : streamRetry.retryTimeoutMs)
-            : undefined),
-      });
-      statusCode = response.status;
-      body = await response.text();
+      if (resource === 'stream') {
+        const nativeResponse = await httpFetchText(url);
+        statusCode = nativeResponse.statusCode;
+        body = nativeResponse.body;
+        console.debug('[fluxa:http:timing]', JSON.stringify({
+          addon: addonName,
+          url,
+          headersMs: nativeResponse.headersMs,
+          bodyMs: nativeResponse.bodyMs,
+          totalMs: nativeResponse.totalMs,
+        }));
+      } else {
+        const response = await platformFetch(url, { headers: { 'User-Agent': `Fluxa/${_appVersion}` }, signal: signal ?? undefined });
+        statusCode = response.status;
+        body = await response.text();
+      }
+      console.debug('[fluxa:streams:addon:http]', JSON.stringify({
+        addon: addonName,
+        status: statusCode,
+        ms: Math.round(performance.now() - startedAt),
+        bytes: body?.length ?? 0,
+      }));
     } catch {
       statusCode = 0;
       body = null;
@@ -116,12 +131,21 @@ async function fetchAddonResourceOutcome(
       typeof addonName === 'string' ? addonName : null,
       typeof season === 'number' ? season : null,
     );
+    console.debug('[fluxa:streams:addon:parsed]', JSON.stringify({
+      addon: addonName,
+      result: result.kind,
+      ms: Math.round(performance.now() - startedAt),
+    }));
     // Only network_error (bad/missing HTTP response) and parse_error (malformed body,
     // e.g. truncated JSON) indicate a transport failure worth retrying. "empty" is a
     // legitimate 2xx response with no results and must not be treated as a failure.
     if (result.kind !== 'network_error' && result.kind !== 'parse_error') break;
   }
-  if (!result || result.kind === 'success') return { value: result?.kind === 'success' ? result.value : null, failed: false };
+  if (!result || result.kind === 'success') {
+    console.debug('[fluxa:streams:addon:end]', JSON.stringify({ addon: addonName, ms: Math.round(performance.now() - startedAt) }));
+    return { value: result?.kind === 'success' ? result.value : null, failed: false };
+  }
+  console.debug('[fluxa:streams:addon:end]', JSON.stringify({ addon: addonName, failed: true, ms: Math.round(performance.now() - startedAt) }));
   return { value: null, failed: result.kind === 'network_error' || result.kind === 'parse_error' };
 }
 
@@ -145,6 +169,8 @@ export async function fetchPlannedResources(
   signal?: AbortSignal,
   onAddonFailed?: (addonName: string) => void,
 ): Promise<unknown[]> {
+  const startedAt = performance.now();
+  console.debug('[fluxa:streams:plan:start]', JSON.stringify({ traceId: request.traceId, kind: request.kind, ids: request.requestIds, addonCount: (request.addons as unknown[] | undefined)?.length }));
   const policy = await coreResourceFetchExecutionPolicy(request);
   let requests = (policy?.requests ?? []) as FetchPlanRequest[];
   const streamRetry = policy?.streamRetry ?? DEFAULT_STREAM_RETRY;
@@ -159,6 +185,12 @@ export async function fetchPlannedResources(
   // (it's a local closure core can't see), so whether the merged list still qualifies
   // to race is re-checked here rather than trusting policy.mode as-is.
   const mode = requests.length > 1 && requests.every((r) => r.stopOnFirstResult) ? 'race' : 'fanout';
+  console.debug('[fluxa:streams:plan:ready]', JSON.stringify({
+    traceId: request.traceId,
+    requests: requests.map((item) => ({ addon: item.addonName, url: item.url })),
+    mode,
+    ms: Math.round(performance.now() - startedAt),
+  }));
 
   // Race mode (e.g. metaDetail, seasonEpisodes): fire all addon requests in parallel,
   // but pick the winner by the user's configured addon priority (request order), not
@@ -192,6 +224,7 @@ export async function fetchPlannedResources(
       }),
     );
     const winner = settled.find((outcome): outcome is PromiseFulfilledResult<Record<string, unknown>> => outcome.status === 'fulfilled');
+    console.debug('[fluxa:streams:plan:returned]', JSON.stringify({ traceId: request.traceId, kind: request.kind, values: winner ? 1 : 0, ms: Math.round(performance.now() - startedAt) }));
     return winner ? [winner.value] : [];
   }
 
@@ -235,6 +268,7 @@ export async function fetchPlannedResources(
       // tolerate individual addon failures, same as the previous Promise.allSettled behavior
     }
   });
+  console.debug('[fluxa:streams:plan:returned]', JSON.stringify({ traceId: request.traceId, kind: request.kind, values: values.length, ms: Math.round(performance.now() - startedAt) }));
   return values;
 }
 

@@ -5,22 +5,24 @@ import {
   coreTmdbBulkMetas,
   coreTmdbBulkVideosToTrailers,
   coreTmdbMergeEnrichment,
+  coreTerminalRecommendationPlan,
   coreMdblistMediaInfoUrl,
   coreMdblistMediaRatingsFromResponse,
   coreInvoke,
-  dispatchAction,
+  getSnapshot,
   storageRead,
   storageWrite,
 } from './engine';
-import { loadActiveProfile, loadEnabledAddons, loadPrefs } from './libraryOps';
+import { loadActiveProfile, loadEnabledAddons, loadLibrary, loadPrefs } from './libraryOps';
 import { fetchPlannedResources } from './fetchPlanning';
 import { fetchBuiltinMeta, fetchTmdbLogo } from './tmdbAddon';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
 import { fetchTraktSimilarItems, fetchSimklSimilarItems } from './similarTitles';
-import type { AppState, Video } from './types';
+import type { AppState, Meta, Video } from './types';
 import { DEFAULT_APP_PREFS, prefBool, prefString } from './appPrefs';
 import { stringValue } from './playerUtils';
+import { startPerfSpan } from './performance';
 
 interface TmdbRequest {
   contentType: string;
@@ -166,21 +168,56 @@ async function enrichMetaWithTmdb(meta: unknown, contentType: string, id: string
   return merged ?? meta;
 }
 
-export async function fetchMetaDetail(payload: Record<string, unknown>): Promise<unknown> {
+export function fetchMetaDetail(payload: Record<string, unknown>): Promise<unknown> {
+  return fetchMetaDetailUncached(payload);
+}
+
+const metaDetailInFlight = new Map<string, Promise<unknown>>();
+
+export function fetchMetaDetailDeduped(payload: Record<string, unknown>): Promise<unknown> {
+  const id = typeof payload.id === 'string' ? payload.id : '';
+  const contentType = typeof payload.contentType === 'string' ? payload.contentType : '';
+  const transportUrl = typeof payload.sourceAddonTransportUrl === 'string' ? payload.sourceAddonTransportUrl : '';
+  const key = `${contentType}:${id}:${transportUrl}`;
+  const existing = metaDetailInFlight.get(key);
+  if (existing) return existing;
+  const promise = fetchMetaDetailUncached(payload).finally(() => metaDetailInFlight.delete(key));
+  metaDetailInFlight.set(key, promise);
+  return promise;
+}
+
+async function fetchMetaDetailUncached(payload: Record<string, unknown>): Promise<unknown> {
+  const perf = startPerfSpan('detail.meta', { id: payload.id, contentType: payload.contentType, purpose: payload.purpose ?? 'unknown' });
+  const startedAt = performance.now();
   const id = payload.id as string;
   const contentType = payload.contentType as string;
+  const purpose = typeof payload.purpose === 'string' ? payload.purpose : 'unknown';
+  console.debug('[fluxa:detail:meta:start]', JSON.stringify({ id, contentType, purpose }));
   const transportUrl = typeof payload.sourceAddonTransportUrl === 'string' ? payload.sourceAddonTransportUrl : undefined;
   const addons = await loadEnabledAddons();
-  const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id, transportUrl });
+  console.debug('[fluxa:detail:meta:addons-ready]', JSON.stringify({ id, purpose, count: addons.length, ms: Math.round(performance.now() - startedAt) }));
+  const values = await fetchPlannedResources({ kind: 'metaDetail', addons, contentType, id, transportUrl, traceId: perf.traceId });
+  console.debug('[fluxa:detail:meta:resources-ready]', JSON.stringify({ id, purpose, values: values.length, ms: Math.round(performance.now() - startedAt) }));
   const winner = values.find((value) => (value as { meta?: unknown }).meta) as { meta?: unknown; __tmdbSourced?: boolean } | undefined;
-  if (!winner?.meta) return null;
-  if (winner.__tmdbSourced) return winner.meta;
-  return enrichMetaWithTmdb(winner.meta, contentType, id);
+  if (!winner?.meta) {
+    perf.end({ result: 'empty', values: values.length });
+    console.debug('[fluxa:detail:meta:end]', JSON.stringify({ id, purpose, meta: false, ms: Math.round(performance.now() - startedAt) }));
+    return null;
+  }
+  if (winner.__tmdbSourced) {
+    perf.end({ result: 'tmdb', values: values.length });
+    console.debug('[fluxa:detail:meta:end]', JSON.stringify({ id, purpose, meta: true, tmdb: true, ms: Math.round(performance.now() - startedAt) }));
+    return winner.meta;
+  }
+  const result = await enrichMetaWithTmdb(winner.meta, contentType, id);
+  perf.end({ result: 'success', values: values.length });
+  console.debug('[fluxa:detail:meta:end]', JSON.stringify({ id, purpose, meta: true, tmdb: false, ms: Math.round(performance.now() - startedAt) }));
+  return result;
 }
 
 export async function fetchMetaVideos(id: string, contentType: string): Promise<Video[]> {
   try {
-    const meta = (await fetchMetaDetail({ id, contentType })) as { videos?: Video[] } | null;
+    const meta = (await fetchMetaDetail({ id, contentType, purpose: 'player-videos' })) as { videos?: Video[] } | null;
     return meta?.videos ?? [];
   } catch {
     return [];
@@ -196,6 +233,14 @@ async function fetchPluginStreamsForDetail(
 ): Promise<Array<Record<string, unknown>>> {
   if (!id) return [];
   try {
+    // Do not perform the TMDB/id-resolution work until we know that at least
+    // one compatible scraper is installed. Addon stream discovery must stay
+    // on the critical path; plugin enrichment is optional and can arrive late.
+    const snapshot = (await getSnapshot()) as { plugins?: { scrapers?: Array<{ enabled?: boolean; supportedTypes?: string[] }> } } | null;
+    const installedScrapers = snapshot?.plugins?.scrapers ?? [];
+    if (!installedScrapers.some((scraper) => scraper.enabled !== false && (!scraper.supportedTypes || scraper.supportedTypes.includes(contentType)))) {
+      return [];
+    }
     const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };
     const apiKey = prefString(prefs, 'tmdbApiKey');
     const language = prefString(prefs, 'language', 'en');
@@ -222,69 +267,96 @@ export async function fetchDetailStreams(
   generation?: number,
   signal?: AbortSignal,
 ): Promise<unknown> {
+  const perf = startPerfSpan('detail.streams', { requestIds: payload.requestIds, contentType: payload.contentType });
+  const startedAt = performance.now();
   const requestIds = (payload.requestIds as string[] | undefined) ?? (typeof payload.id === 'string' ? [payload.id] : []);
   const idField = (typeof payload.id === 'string' ? payload.id : undefined) ?? requestIds[0];
+  console.debug('[fluxa:streams:effect:start]', JSON.stringify({ requestIds, contentType: payload.contentType }));
   const addons = await loadEnabledAddons();
+  console.debug('[fluxa:streams:addons:ready]', JSON.stringify({ requestIds, addons: addons.map((addon) => addon.name), ms: Math.round(performance.now() - startedAt) }));
   const contentType = payload.contentType as string;
 
-  const partialDispatches: Promise<void>[] = [];
+  let publishedStreams: unknown[] = [];
+  let publishedAddons: string[] = [];
   const failedAddonNames = new Set<string>();
 
   const append = (incoming: unknown[]) => {
     if (!onStateUpdate || incoming.length === 0) return;
-    const names = [...new Set((incoming as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean))] as string[];
-    partialDispatches.push(
-      dispatchAction(
-        JSON.stringify({
-          type: 'detailStreamsAppended',
-          streams: incoming,
-          availableAddons: names,
-          generation,
-        }),
-      )
-        .then((result) => {
-          if (result?.state) onStateUpdate(result.state);
-        })
-        .catch(() => {}),
-    );
+    publishedStreams = [...publishedStreams, ...incoming];
+    publishedAddons = [
+      ...new Set(
+        (publishedStreams as Array<{ addonName?: string }>)
+          .map((stream) => stream.addonName)
+          .filter((name): name is string => Boolean(name)),
+      ),
+    ];
+    console.debug('[fluxa:streams:partial]', JSON.stringify({
+      requestIds,
+      incoming: incoming.length,
+      total: publishedStreams.length,
+      ms: Math.round(performance.now() - startedAt),
+    }));
+    // The stream list is a high-frequency UI snapshot. Do not dispatch every
+    // addon response through the JSON core boundary; completion below still
+    // commits the authoritative list to FluxaCore.
+    onStateUpdate({
+      detail: {
+        streams: publishedStreams as AppState['detail']['streams'],
+        visibleStreams: publishedStreams as AppState['detail']['visibleStreams'],
+        availableAddons: publishedAddons,
+      },
+    });
   };
 
   const pluginStreamsPromise = fetchPluginStreamsForDetail(contentType, idField, payload.detail, signal, append);
-
-  const [values, pluginStreams] = await Promise.all([
-    fetchPlannedResources(
-      { kind: 'streams', addons, contentType, requestIds },
-      (partialValue) => append((partialValue as { streams?: unknown[] })?.streams ?? []),
-      signal,
-      (addonName) => failedAddonNames.add(addonName),
-    ),
-    pluginStreamsPromise,
-  ]);
-
-  // Ensure all partial dispatches complete before completeEffect runs
-  await Promise.allSettled(partialDispatches);
+  const values = await fetchPlannedResources(
+    { kind: 'streams', addons, contentType, requestIds, traceId: perf.traceId },
+    (partialValue) => append((partialValue as { streams?: unknown[] })?.streams ?? []),
+    signal,
+    (addonName) => failedAddonNames.add(addonName),
+  );
+  console.debug('[fluxa:streams:addons:complete]', JSON.stringify({ requestIds, values: values.length, ms: Math.round(performance.now() - startedAt) }));
 
   const streams = values.flatMap((value) => (value as { streams?: unknown[] })?.streams ?? []);
-  if (pluginStreams.length > 0) streams.push(...pluginStreams);
+  if (streams.length > 0) {
+    // Addon results are sufficient to finish the critical path. Plugin
+    // scrapers may append compatible streams later using the same generation.
+    void pluginStreamsPromise.then((pluginStreams) => {
+      if (pluginStreams.length > 0) append(pluginStreams);
+    }).catch(() => {});
+  } else {
+    // If addons returned nothing, give optional scrapers a chance before
+    // declaring the source panel empty.
+    const pluginStreams = await pluginStreamsPromise;
+    if (pluginStreams.length > 0) streams.push(...pluginStreams);
+  }
 
   const availableAddons = [...new Set((streams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean))] as string[];
 
   for (const addonName of availableAddons) failedAddonNames.delete(addonName);
 
+  console.debug('[fluxa:streams:effect:end]', JSON.stringify({ requestIds, streams: streams.length, ms: Math.round(performance.now() - startedAt) }));
+  perf.end({ streams: streams.length, providers: availableAddons.length });
   return {
     streams,
     availableAddons,
-    failedAddons: [...failedAddonNames],
+    // A healthy addon result is enough for playback. Do not surface unrelated
+    // optional-addon failures as a global error when the source panel already
+    // has usable streams.
+    failedAddons: streams.length > 0 ? [] : [...failedAddonNames],
     hasStreamProviders: streams.length > 0,
   };
 }
 
 export async function fetchSeasonEpisodes(payload: Record<string, unknown>): Promise<unknown> {
+  const perf = startPerfSpan('detail.episodes', { seriesId: payload.seriesId, season: payload.season });
   const addons = await loadEnabledAddons();
   const seriesId = await coreDetailSeriesLookupId(payload.seriesId as string);
   const season = payload.season as number;
-  const values = await fetchPlannedResources({ kind: 'seasonEpisodes', addons, id: seriesId, season });
-  return values.find((value) => (value as { episodes?: unknown[] })?.episodes?.length) ?? { episodes: [] };
+  const values = await fetchPlannedResources({ kind: 'seasonEpisodes', addons, id: seriesId, season, traceId: perf.traceId });
+  const result = values.find((value) => (value as { episodes?: unknown[] })?.episodes?.length) ?? { episodes: [] };
+  perf.end({ episodes: Array.isArray((result as { episodes?: unknown[] }).episodes) ? (result as { episodes: unknown[] }).episodes.length : 0 });
+  return result;
 }
 
 interface OmdbRatings {
@@ -442,7 +514,7 @@ async function fetchContentLogoUncached(
 
   let logo: string | undefined;
   try {
-    const meta = (await fetchMetaDetail({ id, contentType })) as Record<string, unknown> | null;
+    const meta = (await fetchMetaDetail({ id, contentType, purpose: 'content-logo' })) as Record<string, unknown> | null;
     const addonLogo = meta
       ? (stringValue(meta.logo) ?? stringValue(meta.logoUrl) ?? stringValue(meta.titleLogo) ?? stringValue(meta.titleLogoUrl))
       : undefined;
@@ -508,6 +580,49 @@ async function fetchSimilarItems({
   if (!racers.length) return tmdbFallback();
 
   return Promise.race(racers);
+}
+
+/**
+ * Fetches candidates for the terminal-player surface. The core owns the
+ * eligibility and watched filtering; this shell function only performs the
+ * provider I/O and supplies the local watched-id snapshot.
+ */
+export async function fetchTerminalRecommendations(payload: {
+  contentType: string;
+  id: string;
+  hasNextEpisode: boolean;
+  similarTitlesSource?: string;
+  limit?: number;
+}): Promise<Meta[]> {
+  if (payload.hasNextEpisode || !payload.id) return [];
+  const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };
+  const requestedSource = String(payload.similarTitlesSource ?? '');
+  const source = ['auto', 'trakt', 'simkl', 'tmdb'].includes(requestedSource)
+    ? requestedSource
+    : prefString(prefs, 'similarTitlesSource', 'auto');
+  const candidates = await fetchSimilarItems({
+    contentType: payload.contentType,
+    id: payload.id,
+    language: prefString(prefs, 'language', 'en'),
+    apiKey: prefString(prefs, 'tmdbApiKey'),
+    source,
+    recommendationsEnabled: prefBool(prefs, 'tmdbRecommendationsEnabled', true),
+    similarEnabled: prefBool(prefs, 'tmdbSimilarResultsEnabled', true),
+  });
+  if (!candidates.length) return [];
+
+  const library = await loadLibrary();
+  const watched = Object.entries((library.watched as Record<string, unknown> | undefined) ?? {})
+    .filter(([, value]) => value === true)
+    .map(([id]) => id);
+  const plan = await coreTerminalRecommendationPlan({
+    current: { id: payload.id, type: payload.contentType },
+    candidates,
+    hasNextEpisode: false,
+    watchedIds: watched,
+    limit: payload.limit,
+  });
+  return plan.showRecommendations ? (plan.items as Meta[]) : [];
 }
 
 export async function fetchDetailSecondary(payload: Record<string, unknown>): Promise<unknown> {

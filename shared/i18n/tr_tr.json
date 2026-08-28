@@ -1473,6 +1473,8 @@
   "player.skip_preview": "Önizlemeyi Geç",
   "player.playing_in_seconds": "%s saniye içinde oynatılacak",
   "player.dismiss": "Kapat",
+  "player.recommendations": "Bunları da beğenebilirsiniz",
+  "player.close": "Kapat",
   "player.watch_credits": "Kapanışı İzle",
   "player.mark_segment_title": "Segmentlere Katkıda Bulun",
   "content_warning.nudity": "Cinsellik ve Çıplaklık",

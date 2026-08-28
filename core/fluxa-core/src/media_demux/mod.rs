@@ -175,13 +175,7 @@ mod tests {
         write_ebml_element(&mut cluster, TIMECODE, &[0]);
         simple_block(&mut cluster, 1, 0, true, &[0xAA, 0xBB, 0xCC]);
         simple_block(&mut cluster, 2, 0, true, &[0x11, 0x22]);
-        simple_block(
-            &mut cluster,
-            1,
-            40,
-            second_video_keyframe,
-            &[0xDD, 0xEE],
-        );
+        simple_block(&mut cluster, 1, 40, second_video_keyframe, &[0xDD, 0xEE]);
         let _ = SIMPLE_BLOCK;
         let mut cluster_elem = Vec::new();
         write_ebml_element(&mut cluster_elem, CLUSTER, &cluster);

@@ -1473,6 +1473,8 @@
   "player.skip_preview": "Skip Preview",
   "player.playing_in_seconds": "Playing in %ss",
   "player.dismiss": "Dismiss",
+  "player.recommendations": "You may also like",
+  "player.close": "Close",
   "player.watch_credits": "Watch Credits",
   "player.mark_segment_title": "Contribute Segments",
   "content_warning.nudity": "Sex & Nudity",

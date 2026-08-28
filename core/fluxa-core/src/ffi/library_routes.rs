@@ -2,6 +2,9 @@ use super::*;
 
 pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
     match method {
+        "terminalRecommendationPlan" => {
+            opt_json(recommendation_policy::terminal_recommendation_plan_json(args_json))
+        }
         "playbackProgressItem" => {
             let args = object(args_json)?;
             let time_offset = field(&args, "timeOffset")?

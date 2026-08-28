@@ -88,7 +88,8 @@ data class AppleDetailSnapshot(
     val isLoadingStreams: Boolean = false,
     val availableAddons: List<String> = emptyList(),
     val loadingAddonNames: List<String> = emptyList(),
-    val selectedAddon: String? = null
+    val selectedAddon: String? = null,
+    val recommendationItems: List<AppleCatalogItemSnapshot> = emptyList()
 )
 
 data class ApplePlaybackRequestSnapshot(
@@ -100,6 +101,8 @@ data class ApplePlaybackRequestSnapshot(
     val contentId: String = "",
     val contentType: String = "movie",
     val videoId: String? = null,
+    val hasNextEpisode: Boolean = false,
+    val recommendationItems: List<AppleCatalogItemSnapshot> = emptyList(),
 )
 
 data class AppleDiscoverRequestSnapshot(

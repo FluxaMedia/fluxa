@@ -190,12 +190,17 @@ export default function App() {
     notifyFirstFrame,
     flushProgressOnQuit,
     skipSegmentCoverage,
+    playerRecommendations,
+    dismissPlayerRecommendations,
+    selectPlayerRecommendation,
+    handleTerminalPlayback,
   } = usePlayer({
     stateRef,
     activeProfile,
     updateState,
     onProfileUpdated: setActiveProfile,
     onEpisodePlaybackFailed: handleEpisodePlaybackFailed,
+    onTerminalRecommendationSelected: setDetailMeta,
   });
 
   const externalHandoff = useExternalHandoff({ stateRef, activeProfile, updateState, onProfileUpdated: setActiveProfile });
@@ -761,6 +766,14 @@ export default function App() {
         onFirstFrame={notifyFirstFrame}
         onPlaybackError={reportPlaybackError}
         onHandoff={handleExternalHandoff}
+        recommendations={playerRecommendations}
+        onTerminalPlayback={() => {
+          void handleTerminalPlayback();
+        }}
+        onPlayRecommendation={(meta) => {
+          void selectPlayerRecommendation(meta);
+        }}
+        onDismissRecommendations={dismissPlayerRecommendations}
       />
     ) : (
       <PlaybackHost
@@ -789,6 +802,11 @@ export default function App() {
         softwareVideoActive={softwareVideoActive}
         bannerOffset={bannerOffset}
         skipSegmentCoverage={skipSegmentCoverage}
+        recommendations={playerRecommendations}
+        onPlayRecommendation={(meta) => {
+          void selectPlayerRecommendation(meta);
+        }}
+        onDismissRecommendations={dismissPlayerRecommendations}
         dispatch={dispatch}
       />
     );

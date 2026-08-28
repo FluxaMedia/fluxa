@@ -1,6 +1,30 @@
 import { coreInvoke } from './engineCoreClient';
 import type { RequestPlan } from './httpClient';
 
+export interface TerminalRecommendationPlan {
+  showRecommendations: boolean;
+  items: unknown[];
+}
+
+/**
+ * Terminal playback is a sparse business operation, so it intentionally uses
+ * the JSON core boundary. High-frequency player state must not call this.
+ */
+export async function coreTerminalRecommendationPlan(args: {
+  current: unknown;
+  candidates: unknown[];
+  hasNextEpisode: boolean;
+  watchedIds?: string[];
+  limit?: number;
+}): Promise<TerminalRecommendationPlan> {
+  return (
+    (await coreInvoke<TerminalRecommendationPlan>('terminalRecommendationPlan', JSON.stringify(args))) ?? {
+      showRecommendations: false,
+      items: [],
+    }
+  );
+}
+
 export async function coreNormalizeLibraryDocument(json: string): Promise<Record<string, unknown>> {
   return (await coreInvoke<Record<string, unknown>>('normalizeLibraryDocument', json)) ?? {};
 }

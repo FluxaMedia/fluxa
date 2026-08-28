@@ -32,7 +32,7 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
         continue;
       }
       try {
-        const meta = (await fetchMetaDetail({ id, contentType })) as Record<string, unknown> | null;
+        const meta = (await fetchMetaDetail({ id, contentType, purpose: 'similar-title-enrichment' })) as Record<string, unknown> | null;
         let poster = meta && typeof meta.poster === 'string' ? meta.poster : undefined;
         let background = meta && typeof meta.background === 'string' ? meta.background : undefined;
         const logo = meta && typeof meta.logo === 'string' ? meta.logo : undefined;

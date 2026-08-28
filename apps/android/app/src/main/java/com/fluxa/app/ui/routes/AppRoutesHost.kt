@@ -48,12 +48,14 @@ internal fun AppRoutesHost(
     currentDestination: FluxaDestination,
     authStartOnNuvio: Boolean,
     playerRequest: PlayerLaunchRequest?,
+    terminalDetailRequest: com.fluxa.app.shared.feature.detail.DetailRequestUiModel?,
     deviceType: DeviceType,
     androidFluxaPlatformServices: com.fluxa.app.ui.AndroidFluxaPlatformServices,
     activeProfile: UserProfile?,
     onActiveProfileChanged: (UserProfile?) -> Unit,
     onNavigateToDestination: (FluxaDestination) -> Unit,
     onPlayerRequestChanged: (PlayerLaunchRequest?) -> Unit,
+    onOpenTerminalDetail: (com.fluxa.app.shared.feature.detail.DetailRequestUiModel) -> Unit,
     profileManager: ProfileManager,
     homeViewModel: HomeViewModel,
     mainPlayer: ExoPlayer,
@@ -79,7 +81,11 @@ internal fun AppRoutesHost(
             mainPlayer = mainPlayer,
             onUpdatePlayerRequest = onPlayerRequestChanged,
             onBack = navigateBackSafely,
-            onProfileChanged = onActiveProfileChanged
+            onProfileChanged = onActiveProfileChanged,
+            onRecommendationSelected = { request ->
+                onPlayerRequestChanged(null)
+                onOpenTerminalDetail(request)
+            }
         )
         return
     }
@@ -160,6 +166,7 @@ internal fun AppRoutesHost(
             isLowRamDevice = context.getSystemService(android.app.ActivityManager::class.java)?.isLowRamDevice == true,
             language = activeProfile?.language,
             destination = currentDestination,
+            detailRequest = terminalDetailRequest,
             showNavigationBar = true,
             authStartOnNuvio = authStartOnNuvio,
             biometricAvailable = BiometricLockHelper.isAvailable(context),

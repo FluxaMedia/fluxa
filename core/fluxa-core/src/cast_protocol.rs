@@ -375,7 +375,10 @@ pub(crate) fn fcast_playback_update(body_json: &str) -> Option<(u8, f64, f64, f6
     let value: serde_json::Value = serde_json::from_str(body_json).ok()?;
     let state = value.get("state")?.as_u64()? as u8;
     let time = value.get("time").and_then(|v| v.as_f64()).unwrap_or(0.0);
-    let duration = value.get("duration").and_then(|v| v.as_f64()).unwrap_or(0.0);
+    let duration = value
+        .get("duration")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
     let speed = value.get("speed").and_then(|v| v.as_f64()).unwrap_or(1.0);
     Some((state, time, duration, speed))
 }
@@ -458,7 +461,9 @@ mod tests {
 
     #[test]
     fn dash_urls_get_the_dash_container() {
-        assert_eq!(guess_cast_content_type("https://h/a.mpd"), "application/dash+xml");
+        assert_eq!(
+            guess_cast_content_type("https://h/a.mpd"),
+            "application/dash+xml"
+        );
     }
-
 }

@@ -134,7 +134,10 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
       return library.continueWatchingDelete(args?.profileKey as string, args?.mediaId as string) as T;
     case 'http_fetch_text': {
       const response = await fetch(args?.url as string);
-      return { status_code: response.status, body: await response.text() } as T;
+      const bodyStartedAt = performance.now();
+      const body = await response.text();
+      const totalMs = Math.round(performance.now() - bodyStartedAt);
+      return { status_code: response.status, body, headers_ms: 0, body_ms: totalMs, total_ms: totalMs } as T;
     }
     case 'http_execute_text': {
       const response = await fetch(args?.url as string, {

@@ -22,9 +22,11 @@ import { loadProviderLibraries, type LibraryProvider } from './providerLibraries
 import { nuvioPullCollections, nuvioPullLibrary, nuvioPullWatchProgress } from './nuvioApi';
 import { coreNuvioImportMergePlan, coreNuvioMapCollections } from './engineCoreLibrary';
 import { fetchMetaDetail } from './detailEffects';
-import type { AddonDescriptor } from './types';
+import type { AddonDescriptor, AppState } from './types';
+import { startPerfSpan } from './performance';
 
-const HOME_FEED_FETCH_CONCURRENCY = 6;
+const HOME_FEED_FETCH_CONCURRENCY = 8;
+const CONTINUE_WATCHING_METADATA_CONCURRENCY = 8;
 const HOME_BOOTSTRAP_CACHE_PREFIX = 'home_bootstrap_v1';
 
 interface MetadataFeedOption {
@@ -151,7 +153,10 @@ async function continueWatchingFromCompactProgress(
   if (watchProgress.length === 0) return [];
 
   const needs = (await coreNuvioProgressMetaNeeds(watchProgress, libraryItems)) ?? [];
-  const fetchedMetadata = await runWithConcurrency(needs, 3, async (need) => {
+  const uniqueNeeds = [...new Map(needs.map((need) => [`${need.contentType}:${need.contentId}`, need])).values()];
+  console.debug('[fluxa:home:continue-watching:metadata-needs]', JSON.stringify({ needs: needs.length, unique: uniqueNeeds.length }));
+  const metadataPerf = startPerfSpan('home.continue-watching.metadata', { needs: needs.length, uniqueNeeds: uniqueNeeds.length });
+  const fetchedMetadata = await runWithConcurrency(uniqueNeeds, CONTINUE_WATCHING_METADATA_CONCURRENCY, async (need) => {
     const values = await fetchPlannedResources({
       kind: 'metaDetail',
       addons,
@@ -162,7 +167,9 @@ async function continueWatchingFromCompactProgress(
       { meta?: Record<string, unknown> } | undefined;
     return [need.contentId, result?.meta ?? null] as const;
   });
+  metadataPerf.end({ fetched: fetchedMetadata.length });
   const addonMetas = Object.fromEntries(fetchedMetadata.filter(([, meta]) => meta));
+  const resolvePerf = startPerfSpan('home.continue-watching.resolve', { metadata: Object.keys(addonMetas).length });
   const resolved = await coreNuvioResolveContinueWatching(watchProgress, addonMetas);
   const mapped = await coreNuvioImportMergePlan({
     progress: progressMap,
@@ -173,7 +180,9 @@ async function continueWatchingFromCompactProgress(
     watchHistory: [],
     categories: ['continueWatching'],
   });
-  return (await buildContinueWatching(mapped?.progress ?? progressMap)) as Record<string, unknown>[];
+  const result = (await buildContinueWatching(mapped?.progress ?? progressMap)) as Record<string, unknown>[];
+  resolvePerf.end({ result: result.length });
+  return result;
 }
 
 export async function continueWatchingForSelectedSource(
@@ -197,7 +206,7 @@ export async function continueWatchingForSelectedSource(
       nuvioPullWatchProgress(profile.nuvioAccessToken, profileId),
     ]);
     const metadataNeeds = (await coreNuvioProgressMetaNeeds(progressItems, libraryItems)) ?? [];
-    const fetchedMetadata = await runWithConcurrency(metadataNeeds, 3, async (need) => {
+    const fetchedMetadata = await runWithConcurrency(metadataNeeds, CONTINUE_WATCHING_METADATA_CONCURRENCY, async (need) => {
       const values = await fetchPlannedResources({
         kind: 'metaDetail',
         addons,
@@ -239,23 +248,58 @@ export async function continueWatchingForSelectedSource(
   return continueWatchingFromCompactProgress(library, addons);
 }
 
-export async function readHomeBootstrap(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+export async function readHomeBootstrap(
+  payload: Record<string, unknown>,
+  signal?: AbortSignal,
+  onStateUpdate?: (state: Partial<AppState>) => void,
+): Promise<unknown> {
   const language = (payload.language as string | undefined) ?? 'en';
+  const perf = startPerfSpan('home.bootstrap', { language, force: payload.force === true });
+  const firstContentPerf = startPerfSpan('home.first-content', { parentTraceId: perf.traceId });
+  const setupPerf = startPerfSpan('home.setup', { parentTraceId: perf.traceId });
   console.debug('[fluxa:web:home:start]', { force: payload.force === true, language });
   const cacheKey = `${HOME_BOOTSTRAP_CACHE_PREFIX}_${await effectRunnerLibraryKey()}_${language}`;
   if (!payload.force) {
     const cached = await storageRead<HomeBootstrapCache>(cacheKey);
-    if (cached) return { ...cached, stale: true };
+    if (cached) {
+      perf.end({ cacheHit: true, categories: cached.categories.length, continueWatching: cached.continueWatching.length });
+      return { ...cached, stale: true };
+    }
   }
 
-  const profile = await loadActiveProfile();
-  const enabledAddons = await loadEnabledAddons();
-  const library = await loadLibrary();
-  const prefs = await loadPrefs();
+  const [profile, enabledAddons, library, prefs] = await Promise.all([
+    loadActiveProfile(),
+    loadEnabledAddons(),
+    loadLibrary(),
+    loadPrefs(),
+  ]);
   const addons = await withBuiltinTmdbAddon(enabledAddons, prefs);
+  setupPerf.end({ addons: addons.length });
 
-  const continueWatching = await continueWatchingForSelectedSource(library, prefs, addons);
+  const continueWatchingPerf = startPerfSpan('home.continue-watching', { parentTraceId: perf.traceId });
+  const continueWatchingPromise = continueWatchingForSelectedSource(library, prefs, addons).then((items) => {
+    continueWatchingPerf.end({ items: items.length });
+    return items;
+  });
 
+  const collectionsPerf = startPerfSpan('home.collections', { parentTraceId: perf.traceId });
+  const collectionsPromise = (async () => {
+    let collectionProfile = profile ?? {};
+    if (profile?.nuvioAccessToken) {
+      const remoteCollections = await nuvioPullCollections(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1).catch(() => []);
+      const rawCollections = (remoteCollections[0]?.collections_json ?? []) as unknown[];
+      const mappedCollections = await coreNuvioMapCollections(rawCollections);
+      collectionProfile = { ...profile, libraryCollections: mappedCollections ?? [] };
+    }
+    const collectionShelves = await coreBuildHomeCollectionShelves(JSON.stringify(collectionProfile), JSON.stringify(addons));
+    const pinnedCollections = collectionShelves?.pinnedShelves ?? [];
+    const regularCollections = collectionShelves?.regularShelves ?? [];
+    const hiddenFolderCategories = collectionShelves?.hiddenFolderCategories ?? [];
+    collectionsPerf.end({ pinned: pinnedCollections.length, regular: regularCollections.length, hidden: hiddenFolderCategories.length });
+    return { pinnedCollections, regularCollections, hiddenFolderCategories };
+  })();
+
+  const feedsPerf = startPerfSpan('home.feed-options', { parentTraceId: perf.traceId });
   const metadataFeeds = await metadataFeedOptions(addons);
   const selectedKeys = prefs.homeFeedToggles as string[] | undefined;
   const availableKeys = metadataFeeds.map((feed) => feed.key);
@@ -265,13 +309,16 @@ export async function readHomeBootstrap(payload: Record<string, unknown>, signal
     ? ((await coreEffectiveMetadataFeedSelection(selectedKeys, availableKeys)) ?? availableKeys)
     : availableKeys;
   const visibleFeeds = metadataFeeds.filter((feed) => effectiveKeys.includes(feed.key));
+  feedsPerf.end({ feeds: metadataFeeds.length, visibleFeeds: visibleFeeds.length });
   console.debug('[fluxa:web:home:feeds]', {
     addons: addons.length,
     metadataFeeds: metadataFeeds.length,
     visibleFeeds: visibleFeeds.length,
   });
 
+  const categoriesPerf = startPerfSpan('home.categories', { parentTraceId: perf.traceId, feeds: visibleFeeds.length });
   const categoryResults = await runWithConcurrency(visibleFeeds, HOME_FEED_FETCH_CONCURRENCY, async (feed) => {
+    const feedPerf = startPerfSpan(`home.feed:${feed.key}`, { parentTraceId: categoriesPerf.traceId });
     const extra = feed.genre ? { genre: feed.genre } : {};
     const url = isBuiltinTmdbAddon(feed.transportUrl)
       ? null
@@ -288,6 +335,7 @@ export async function readHomeBootstrap(payload: Record<string, unknown>, signal
       elapsedMs: Math.round(performance.now() - startedAt),
     });
     const metas = Array.isArray(data?.metas) ? data.metas : [];
+    feedPerf.end({ metas: metas.length });
     if (metas.length === 0) return null;
     const items = metas.map((m) =>
       m && typeof m === 'object'
@@ -306,26 +354,47 @@ export async function readHomeBootstrap(payload: Record<string, unknown>, signal
     };
   });
   const categories = categoryResults.filter((c): c is NonNullable<typeof c> => c !== null);
+  categoriesPerf.end({ categories: categories.length });
 
-  let collectionProfile = profile ?? {};
-  if (profile?.nuvioAccessToken) {
-    const remoteCollections = await nuvioPullCollections(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1).catch(() => []);
-    const rawCollections = (remoteCollections[0]?.collections_json ?? []) as unknown[];
-    const mappedCollections = await coreNuvioMapCollections(rawCollections);
-    collectionProfile = { ...profile, libraryCollections: mappedCollections ?? [] };
+  const categoryBillboard = categories.length > 0 ? ((categories[0] as { items: unknown[] }).items[0] ?? null) : null;
+
+  // Categories are usable before collections and Continue Watching finish.
+  // Publish this first snapshot as soon as the feed requests complete.
+  firstContentPerf.end({ categories: categories.length, feeds: visibleFeeds.length, aborted: Boolean(signal?.aborted) });
+  if (!signal?.aborted) {
+    onStateUpdate?.({
+      home: {
+        categories: categories as AppState['home']['categories'],
+        metadataFeeds,
+        billboard: categoryBillboard as AppState['home']['billboard'],
+        isLoading: false,
+      },
+    });
   }
-  const collectionShelves = await coreBuildHomeCollectionShelves(JSON.stringify(collectionProfile), JSON.stringify(addons));
-  const pinnedCollections = collectionShelves?.pinnedShelves ?? [];
-  const regularCollections = collectionShelves?.regularShelves ?? [];
-  const hiddenFolderCategories = collectionShelves?.hiddenFolderCategories ?? [];
+
+  void continueWatchingPromise.then((items) => {
+    if (signal?.aborted) return;
+    onStateUpdate?.({
+      home: {
+        categories: categories as AppState['home']['categories'],
+        continueWatching: items as unknown as AppState['home']['continueWatching'],
+        metadataFeeds,
+        billboard: categoryBillboard as AppState['home']['billboard'],
+        isLoading: false,
+      },
+    });
+  });
+
+  const { pinnedCollections, regularCollections, hiddenFolderCategories } = await collectionsPromise;
 
   const allCategories = [...pinnedCollections, ...categories, ...regularCollections, ...hiddenFolderCategories];
 
-  const billboard = categories.length > 0 ? ((categories[0] as { items: unknown[] }).items[0] ?? null) : null;
+  const billboard = categoryBillboard;
 
-  const bootstrap = { categories: allCategories, continueWatching, metadataFeeds, billboard };
-  console.debug('[fluxa:web:home:end]', { categories: allCategories.length, continueWatching: continueWatching.length });
-  void storageWrite(cacheKey, bootstrap);
+  const bootstrap = { categories: allCategories, metadataFeeds, billboard };
+  perf.end({ cacheHit: false, categories: allCategories.length, continueWatching: 'deferred', feeds: visibleFeeds.length });
+  console.debug('[fluxa:web:home:end]', { categories: allCategories.length, continueWatching: 'deferred' });
+  void continueWatchingPromise.then((continueWatching) => storageWrite(cacheKey, { ...bootstrap, continueWatching }));
   return bootstrap;
 }
 
@@ -356,6 +425,7 @@ export async function fetchHeroDescription(item: { id: string; type: string; sou
   const detail = (await fetchMetaDetail({
     id: item.id,
     contentType: item.type,
+    purpose: 'hero-description',
     sourceAddonTransportUrl: item.sourceAddonTransportUrl,
   }).catch(() => null)) as { description?: string } | null;
   const shortened = detail?.description

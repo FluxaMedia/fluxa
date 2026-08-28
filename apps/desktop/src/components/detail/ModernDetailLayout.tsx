@@ -163,6 +163,7 @@ export function ModernDetailLayout({
   }, []);
 
   const bgLayerKeyRef = useRef(0);
+  const bgStartedAtRef = useRef(new Map<number, number>());
   const [bgLayers, setBgLayers] = useState<{ url: string; key: number }[]>(() => (bgUrl ? [{ url: bgUrl, key: 0 }] : []));
   const [bgLoadedKeys, setBgLoadedKeys] = useState<Set<number>>(() => new Set());
   useEffect(() => {
@@ -171,10 +172,17 @@ export function ModernDetailLayout({
       if (top?.url === bgUrl) return layers;
       if (!bgUrl) return [];
       bgLayerKeyRef.current += 1;
-      return [...layers, { url: bgUrl, key: bgLayerKeyRef.current }];
+      const key = bgLayerKeyRef.current;
+      bgStartedAtRef.current.set(key, performance.now());
+      return [...layers, { url: bgUrl, key }];
     });
   }, [bgUrl]);
   const handleBgLayerLoad = useCallback((key: number) => {
+    const startedAt = bgStartedAtRef.current.get(key);
+    if (startedAt != null) {
+      console.debug('[fluxa:detail:bg-loaded]', JSON.stringify({ key, ms: Math.round(performance.now() - startedAt) }));
+      bgStartedAtRef.current.delete(key);
+    }
     setBgLoadedKeys((prev) => new Set(prev).add(key));
     setBgLayers((layers) => {
       const idx = layers.findIndex((layer) => layer.key === key);

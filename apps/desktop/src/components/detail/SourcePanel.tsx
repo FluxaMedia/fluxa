@@ -346,12 +346,6 @@ export function MovieSourcePanel({
         />
       )}
 
-      {isLoading && streamAddonCount > addonNames.length && (
-        <div style={{ padding: '0.5rem 1rem 0', color: color.textDim, fontSize: fontSize.sm, fontWeight: 600 }}>
-          {t('sources.searching_addons', streamAddonCount - addonNames.length)}
-        </div>
-      )}
-
       {!isLoading && !!failedAddons?.length && <FailedAddonsNotice count={failedAddons.length} onRetry={onRetryFailed} />}
       {playbackFailure && <PlaybackFailureNotice message={playbackFailure} />}
 
@@ -572,12 +566,6 @@ export function InlineSourceList({
           onSelect={selectAddon}
           style={{ padding: '0 1rem 0.625rem', borderTop: `1px solid ${color.line}`, paddingTop: '0.625rem', flexShrink: 0 }}
         />
-      )}
-
-      {isLoading && streamAddonCount > addonNames.length && (
-        <div style={{ padding: '0 1rem 0.5rem', color: color.textDim, fontSize: fontSize.sm, fontWeight: 600 }}>
-          {t('sources.searching_addons', streamAddonCount - addonNames.length)}
-        </div>
       )}
 
       {!isLoading && !!failedAddons?.length && <FailedAddonsNotice count={failedAddons.length} onRetry={onRetryFailed} />}

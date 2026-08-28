@@ -17,6 +17,7 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiModel
+import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
 import com.fluxa.app.shared.feature.detail.SourceSelectionScreen
 import com.fluxa.app.ui.PlayerLaunchRequest
 import com.fluxa.app.ui.catalog.HomeViewModel
@@ -36,7 +37,8 @@ internal fun PlayerRoute(
     mainPlayer: ExoPlayer,
     onUpdatePlayerRequest: (PlayerLaunchRequest) -> Unit,
     onBack: () -> Unit,
-    onProfileChanged: (UserProfile) -> Unit
+    onProfileChanged: (UserProfile) -> Unit,
+    onRecommendationSelected: (DetailRequestUiModel) -> Unit = {}
 ) {
     var externalLaunchFailed by remember(request) { mutableStateOf(false) }
     var externalLaunchStarted by remember(request) { mutableStateOf(false) }
@@ -204,6 +206,15 @@ internal fun PlayerRoute(
         lastStreamTitle = request.lastStreamTitle,
         initialBingeGroup = request.preferredBingeGroup,
         returnToSourcesOnError = request.returnToSourcesOnError,
+        onRecommendationSelected = { recommendation ->
+            onRecommendationSelected(
+                DetailRequestUiModel(
+                    id = recommendation.id,
+                    type = recommendation.type,
+                ),
+            )
+            onBack()
+        },
         onSelectSource = { sourceRequest ->
             onUpdatePlayerRequest(
                 PlayerLaunchRequest(

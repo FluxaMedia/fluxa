@@ -120,7 +120,9 @@ impl StreamBadgeRules {
             }
         }
         if normalized.is_empty() {
-            return Self { imports: Vec::new() };
+            return Self {
+                imports: Vec::new(),
+            };
         }
         let active_index = normalized
             .iter()
@@ -129,7 +131,9 @@ impl StreamBadgeRules {
         for (index, import) in normalized.iter_mut().enumerate() {
             import.is_active = index == active_index;
         }
-        Self { imports: normalized }
+        Self {
+            imports: normalized,
+        }
     }
 
     pub fn upsert(mut self, mut import: StreamBadgeImport, activate: bool) -> Self {
@@ -280,7 +284,11 @@ pub fn normalize_stream_badge_rules_json(rules_json: &str) -> String {
     rules_to_json(rules_from_json(rules_json).normalized())
 }
 
-pub fn upsert_stream_badge_import_json(rules_json: &str, import_json: &str, activate: bool) -> Option<String> {
+pub fn upsert_stream_badge_import_json(
+    rules_json: &str,
+    import_json: &str,
+    activate: bool,
+) -> Option<String> {
     let import: StreamBadgeImport = serde_json::from_str(import_json).ok()?;
     Some(rules_to_json(
         rules_from_json(rules_json).upsert(import, activate),
@@ -302,7 +310,9 @@ struct CompiledFilter {
 }
 
 fn extract_literal_hint(pattern: &str) -> Option<String> {
-    const META_CHARS: &[char] = &['\\', '[', ']', '(', ')', '{', '}', '*', '+', '?', '|', '^', '$', '.'];
+    const META_CHARS: &[char] = &[
+        '\\', '[', ']', '(', ')', '{', '}', '*', '+', '?', '|', '^', '$', '.',
+    ];
     if pattern.chars().count() >= 2 && !pattern.chars().any(|c| META_CHARS.contains(&c)) {
         return Some(pattern.to_ascii_lowercase());
     }
@@ -327,7 +337,9 @@ fn compile_active_filters(rules: &StreamBadgeRules) -> Vec<CompiledFilter> {
     import
         .filters
         .iter()
-        .filter(|filter| filter.is_enabled && !filter.name.trim().is_empty() && !filter.pattern.trim().is_empty())
+        .filter(|filter| {
+            filter.is_enabled && !filter.name.trim().is_empty() && !filter.pattern.trim().is_empty()
+        })
         .filter_map(|filter| {
             let regex = Regex::new(&format!("(?i){}", filter.pattern)).ok()?;
             Some(CompiledFilter {
@@ -502,7 +514,8 @@ mod tests {
     #[test]
     fn upsert_replaces_same_source_url_case_insensitively() {
         let rules = StreamBadgeRules::default();
-        let first = parse_stream_badge_import_json("https://EXAMPLE.com/a.json", sample_payload()).unwrap();
+        let first =
+            parse_stream_badge_import_json("https://EXAMPLE.com/a.json", sample_payload()).unwrap();
         let rules = serde_json::from_str::<StreamBadgeImport>(&first)
             .map(|import| rules.upsert(import, true))
             .unwrap();
@@ -552,7 +565,8 @@ mod tests {
 
     #[test]
     fn set_active_and_remove_source_manage_the_rule_set() {
-        let a = parse_stream_badge_import_json("https://a.example/badges.json", sample_payload()).unwrap();
+        let a = parse_stream_badge_import_json("https://a.example/badges.json", sample_payload())
+            .unwrap();
         let b = parse_stream_badge_import_json(
             "https://b.example/badges.json",
             r#"{"filters":[{"name":"Only","pattern":"only"}]}"#,
@@ -561,10 +575,24 @@ mod tests {
         let rules = StreamBadgeRules::default()
             .upsert(serde_json::from_str(&a).unwrap(), true)
             .upsert(serde_json::from_str(&b).unwrap(), false);
-        assert!(rules.imports.iter().find(|i| i.source_url.contains("a.example")).unwrap().is_active);
+        assert!(
+            rules
+                .imports
+                .iter()
+                .find(|i| i.source_url.contains("a.example"))
+                .unwrap()
+                .is_active
+        );
 
         let rules = rules.set_active_source("https://b.example/badges.json");
-        assert!(rules.imports.iter().find(|i| i.source_url.contains("b.example")).unwrap().is_active);
+        assert!(
+            rules
+                .imports
+                .iter()
+                .find(|i| i.source_url.contains("b.example"))
+                .unwrap()
+                .is_active
+        );
 
         let rules = rules.remove_source("https://a.example/badges.json");
         assert_eq!(rules.imports.len(), 1);
@@ -573,7 +601,10 @@ mod tests {
 
     #[test]
     fn malformed_input_falls_back_to_empty_results() {
-        assert_eq!(match_stream_badges_json("not json", r#"{"imports":[]}"#), "[]");
+        assert_eq!(
+            match_stream_badges_json("not json", r#"{"imports":[]}"#),
+            "[]"
+        );
         assert_eq!(match_stream_badges_json("{}", "not json"), "[]");
     }
 }

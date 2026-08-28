@@ -179,6 +179,7 @@ class MainActivity : FragmentActivity() {
                     var previousDestination by remember { mutableStateOf<FluxaDestination?>(null) }
                     var authStartOnNuvio by remember { mutableStateOf(false) }
                     var playerRequest by remember { mutableStateOf<PlayerLaunchRequest?>(null) }
+                    var terminalDetailRequest by remember { mutableStateOf<com.fluxa.app.shared.feature.detail.DetailRequestUiModel?>(null) }
                     val navigateToDestination = { destination: FluxaDestination, clearStack: Boolean ->
                         previousDestination = if (clearStack || destination == currentDestination) null else currentDestination
                         currentDestination = destination
@@ -444,6 +445,7 @@ class MainActivity : FragmentActivity() {
                             currentDestination = currentDestination,
                             authStartOnNuvio = authStartOnNuvio,
                             playerRequest = playerRequest,
+                            terminalDetailRequest = terminalDetailRequest,
                             deviceType = deviceType,
                             androidFluxaPlatformServices = androidFluxaPlatformServices,
                             activeProfile = activeProfile,
@@ -455,6 +457,7 @@ class MainActivity : FragmentActivity() {
                             onNavigateToDestination = { destination -> navigateToDestination(destination, false) },
                             onDestinationChanged = { destination -> currentDestination = destination },
                             onPlayerRequestChanged = { playerRequest = it },
+                            onOpenTerminalDetail = { request -> terminalDetailRequest = request },
                             profileManager = profileManager,
                             homeViewModel = homeViewModel,
                             mainPlayer = mainPlayer,

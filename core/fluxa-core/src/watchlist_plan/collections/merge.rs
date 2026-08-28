@@ -124,13 +124,21 @@ pub(crate) fn collection_folder_items_plan_json(args_json: &str) -> Option<Strin
 
 fn source_key(source: &Value) -> Option<String> {
     match source.get("provider").and_then(Value::as_str) {
-        Some("addon") => source.get("catalogId").and_then(Value::as_str).map(str::to_string),
+        Some("addon") => source
+            .get("catalogId")
+            .and_then(Value::as_str)
+            .map(str::to_string),
         Some("trakt") => source.get("traktListId").map(|v| v.to_string()),
-        Some("tmdb") => source
-            .get("tmdbId")
-            .map(|v| v.to_string())
-            .or_else(|| source.get("tmdbSourceType").and_then(Value::as_str).map(str::to_string)),
-        _ => source.get("catalogId").and_then(Value::as_str).map(str::to_string),
+        Some("tmdb") => source.get("tmdbId").map(|v| v.to_string()).or_else(|| {
+            source
+                .get("tmdbSourceType")
+                .and_then(Value::as_str)
+                .map(str::to_string)
+        }),
+        _ => source
+            .get("catalogId")
+            .and_then(Value::as_str)
+            .map(str::to_string),
     }
 }
 
@@ -150,7 +158,9 @@ fn round_robin_merge(lists: &[Vec<Value>]) -> Vec<Value> {
     for i in 0..max_len {
         for list in lists {
             let Some(item) = list.get(i) else { continue };
-            let Some(id) = item.get("id").and_then(Value::as_str) else { continue };
+            let Some(id) = item.get("id").and_then(Value::as_str) else {
+                continue;
+            };
             if seen.insert(id.to_string()) {
                 merged.push(item.clone());
             }
@@ -164,7 +174,10 @@ pub(crate) fn collection_folder_tabs_plan_json(args_json: &str) -> Option<String
     let folder = args.get("folder")?;
     let categories = args.get("categories")?.as_array()?;
     let remote_items = args.get("remoteItems").and_then(Value::as_object);
-    let show_all_tab = args.get("showAllTab").and_then(Value::as_bool).unwrap_or(false);
+    let show_all_tab = args
+        .get("showAllTab")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
 
     let sources: Vec<Value> = folder
         .get("sources")
@@ -176,8 +189,13 @@ pub(crate) fn collection_folder_tabs_plan_json(args_json: &str) -> Option<String
 
     let mut tabs: Vec<Value> = Vec::new();
     for source in &sources {
-        let provider = source.get("provider").and_then(Value::as_str).unwrap_or("addon");
-        let Some(key) = source_key(source) else { continue };
+        let provider = source
+            .get("provider")
+            .and_then(Value::as_str)
+            .unwrap_or("addon");
+        let Some(key) = source_key(source) else {
+            continue;
+        };
 
         let items: Vec<Value> = if provider == "addon" {
             let genre = source.get("genre").and_then(Value::as_str);
@@ -226,10 +244,18 @@ pub(crate) fn collection_folder_tabs_plan_json(args_json: &str) -> Option<String
     if show_all_tab && tabs.len() > 1 {
         let lists: Vec<Vec<Value>> = tabs
             .iter()
-            .map(|tab| tab.get("items").and_then(Value::as_array).cloned().unwrap_or_default())
+            .map(|tab| {
+                tab.get("items")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default()
+            })
             .collect();
         let all_items = round_robin_merge(&lists);
-        tabs.insert(0, json!({ "id": "all", "title": "All", "type": "mixed", "items": all_items }));
+        tabs.insert(
+            0,
+            json!({ "id": "all", "title": "All", "type": "mixed", "items": all_items }),
+        );
     }
 
     serde_json::to_string(&json!({ "tabs": tabs })).ok()
@@ -253,7 +279,9 @@ mod tests {
             "categories": [category("cat1", &["a", "b"])],
             "showAllTab": true,
         });
-        let result: Value = serde_json::from_str(&collection_folder_tabs_plan_json(&args.to_string()).unwrap()).unwrap();
+        let result: Value =
+            serde_json::from_str(&collection_folder_tabs_plan_json(&args.to_string()).unwrap())
+                .unwrap();
         let tabs = result["tabs"].as_array().unwrap();
         assert_eq!(tabs.len(), 1);
         assert_eq!(tabs[0]["id"], "cat1");
@@ -269,11 +297,18 @@ mod tests {
             "categories": [category("cat1", &["a", "b"]), category("cat2", &["b", "c"])],
             "showAllTab": true,
         });
-        let result: Value = serde_json::from_str(&collection_folder_tabs_plan_json(&args.to_string()).unwrap()).unwrap();
+        let result: Value =
+            serde_json::from_str(&collection_folder_tabs_plan_json(&args.to_string()).unwrap())
+                .unwrap();
         let tabs = result["tabs"].as_array().unwrap();
         assert_eq!(tabs.len(), 3);
         assert_eq!(tabs[0]["id"], "all");
-        let all_ids: Vec<&str> = tabs[0]["items"].as_array().unwrap().iter().map(|item| item["id"].as_str().unwrap()).collect();
+        let all_ids: Vec<&str> = tabs[0]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap())
+            .collect();
         assert_eq!(all_ids, vec!["a", "b", "c"]);
     }
 
@@ -287,7 +322,9 @@ mod tests {
             "categories": [category("cat1", &["a"]), category("cat2", &["b"])],
             "showAllTab": false,
         });
-        let result: Value = serde_json::from_str(&collection_folder_tabs_plan_json(&args.to_string()).unwrap()).unwrap();
+        let result: Value =
+            serde_json::from_str(&collection_folder_tabs_plan_json(&args.to_string()).unwrap())
+                .unwrap();
         let tabs = result["tabs"].as_array().unwrap();
         assert_eq!(tabs.len(), 2);
         assert!(tabs.iter().all(|tab| tab["id"] != "all"));

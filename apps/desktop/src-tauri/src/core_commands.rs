@@ -8,6 +8,9 @@ use tauri::State;
 pub struct HttpTextResponse {
     pub status_code: u16,
     pub body: String,
+    pub headers_ms: u128,
+    pub body_ms: u128,
+    pub total_ms: u128,
 }
 
 #[tauri::command]
@@ -34,6 +37,7 @@ pub fn engine_snapshot(state: State<DesktopState>) -> Option<String> {
 
 #[tauri::command]
 pub async fn http_fetch_text(url: String) -> Result<HttpTextResponse, String> {
+    let started_at = std::time::Instant::now();
     let response = crate::net_guard::vetted_client(&url, std::time::Duration::from_secs(10))
         .await?
         .get(&url)
@@ -41,9 +45,17 @@ pub async fn http_fetch_text(url: String) -> Result<HttpTextResponse, String> {
         .send()
         .await
         .map_err(|error| error.to_string())?;
+    let headers_ms = started_at.elapsed().as_millis();
     let status_code = response.status().as_u16();
     let body = response.text().await.map_err(|error| error.to_string())?;
-    Ok(HttpTextResponse { status_code, body })
+    let total_ms = started_at.elapsed().as_millis();
+    Ok(HttpTextResponse {
+        status_code,
+        body,
+        headers_ms,
+        body_ms: total_ms.saturating_sub(headers_ms),
+        total_ms,
+    })
 }
 
 #[tauri::command]
@@ -60,7 +72,13 @@ pub async fn http_execute_text(url: String, method: String, headers: HashMap<Str
     let response = request.send().await.map_err(|error| error.to_string())?;
     let status_code = response.status().as_u16();
     let body = response.text().await.map_err(|error| error.to_string())?;
-    Ok(HttpTextResponse { status_code, body })
+    Ok(HttpTextResponse {
+        status_code,
+        body,
+        headers_ms: 0,
+        body_ms: 0,
+        total_ms: 0,
+    })
 }
 
 #[tauri::command]

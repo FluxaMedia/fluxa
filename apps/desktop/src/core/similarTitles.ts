@@ -1,7 +1,6 @@
 import { platformInvoke } from '../platform/invoke';
 import { coreInvoke, httpExecuteText } from './engine';
 import { _appVersion, tryFetchJson } from './httpClient';
-import { enrichWithAddonMeta } from './externalSyncUtils';
 import type { Meta } from './types';
 
 type TraktLookupItem = {
@@ -13,6 +12,11 @@ type TraktRelatedItem = {
   ids?: { imdb?: string; tmdb?: number };
   title?: string;
   year?: number;
+  images?: {
+    poster?: string[];
+    fanart?: string[];
+    logo?: string[];
+  };
 };
 
 async function tryFetchJsonWithHeaders(url: string, headers: Record<string, string>): Promise<unknown | null> {
@@ -60,7 +64,10 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
   if (!slug) return [];
 
   const resource = wantType === 'show' ? 'shows' : 'movies';
-  const data = await tryFetchJsonWithHeaders(`https://api.trakt.tv/${resource}/${encodeURIComponent(slug)}/related?limit=20`, headers);
+  const data = await tryFetchJsonWithHeaders(
+    `https://api.trakt.tv/${resource}/${encodeURIComponent(slug)}/related?limit=20&extended=full,images`,
+    headers,
+  );
   const relatedItems = Array.isArray(data) ? (data as TraktRelatedItem[]) : [];
   const partialFromCore = await tryCoreMapper<Record<string, unknown>[]>(
     'traktRelatedItemsToMetas',
@@ -83,10 +90,10 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
   });
   const partial = partialFromCore?.length ? partialFromCore : fallbackPartial;
   if (!partial?.length) return [];
-  // Trakt's own images must not be hotlinked ("must be cached... direct linking
-  // will be blocked" per their docs), so posters/backgrounds still come from the
-  // addon/TMDB enrichment pipeline rather than Trakt's images field.
-  return (await enrichWithAddonMeta(partial)) as unknown as Meta[];
+  // Trakt already returns artwork for related items. Keep these lightweight
+  // candidates; fetching addon meta for every recommendation caused one extra
+  // meta request per item and delayed the detail screen.
+  return partial as unknown as Meta[];
 }
 
 // Simkl has no dedicated "similar" endpoint - related titles come embedded in the

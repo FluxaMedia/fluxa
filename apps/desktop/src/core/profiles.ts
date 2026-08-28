@@ -1,4 +1,5 @@
 import { coreInvoke, storageRead, storageWrite } from './engine';
+import { invalidateAddonSnapshot } from './libraryOps';
 import type { UserProfile } from './types';
 
 export const PROFILE_COLORS = ['#E85D3F', '#3F7CFF', '#54D17A', '#FF8A3D', '#C084FC', '#FFE45C', '#FF5D5D', '#38BDF8'];
@@ -9,6 +10,7 @@ export async function loadProfiles(): Promise<UserProfile[]> {
 
 export async function saveProfiles(profiles: UserProfile[]): Promise<void> {
   await storageWrite('profiles', profiles);
+  invalidateAddonSnapshot();
 }
 
 export async function getActiveProfileId(): Promise<string | null> {
@@ -17,6 +19,7 @@ export async function getActiveProfileId(): Promise<string | null> {
 
 export async function setActiveProfileId(id: string): Promise<void> {
   await storageWrite('active_profile_id', id);
+  invalidateAddonSnapshot();
 }
 
 export async function createProfileObject(name: string, color: string): Promise<UserProfile> {

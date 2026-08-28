@@ -37,7 +37,7 @@ import {
   stopTorrentStream,
 } from '../core/mpvPlayer';
 import { fetchPlaybackSkipSegments, fetchStreamsForEpisode, fetchMetaVideos, pumpEffects } from '../core/effectRunner';
-import { fetchContentLogo } from '../core/detailEffects';
+import { fetchContentLogo, fetchTerminalRecommendations } from '../core/detailEffects';
 import { loadAddons } from '../core/libraryOps';
 import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { getLanguage, t } from '../i18n';
@@ -92,6 +92,7 @@ interface UsePlayerOptions {
   updateState: (s: Partial<AppState>) => void;
   onProfileUpdated?: (profile: UserProfile) => void;
   onEpisodePlaybackFailed?: (meta: Meta, episode: Video, message: string) => Promise<void> | void;
+  onTerminalRecommendationSelected?: (meta: Meta) => void;
 }
 
 interface UsePlayerResult {
@@ -136,6 +137,10 @@ interface UsePlayerResult {
   notifyFirstFrame: () => void;
   flushProgressOnQuit: () => Promise<void>;
   skipSegmentCoverage: Record<string, string[]>;
+  playerRecommendations: Meta[];
+  dismissPlayerRecommendations: () => void;
+  selectPlayerRecommendation: (meta: Meta) => Promise<void>;
+  handleTerminalPlayback: () => Promise<boolean>;
 }
 
 function useDesktopPlayer({
@@ -144,6 +149,7 @@ function useDesktopPlayer({
   updateState,
   onProfileUpdated,
   onEpisodePlaybackFailed,
+  onTerminalRecommendationSelected,
 }: UsePlayerOptions): UsePlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const [playerTorrentTelemetryContext, setPlayerTorrentTelemetryContext] = useState<
@@ -164,6 +170,7 @@ function useDesktopPlayer({
   const [playerLoadingOverlay, setPlayerLoadingOverlay] = useState<PlayerLoadingOverlayState | null>(null);
   const [playerPlaybackError, setPlayerPlaybackError] = useState<string | null>(null);
   const [playerSubtitleWarning, setPlayerSubtitleWarning] = useState<string[] | null>(null);
+  const [playerRecommendations, setPlayerRecommendations] = useState<Meta[]>([]);
   const [externalPlayerSession, setExternalPlayerSession] = useState<ExternalPlayerSession | null>(null);
 
   const activeProfileRef = useRef<UserProfile | null>(null);
@@ -708,6 +715,25 @@ function useDesktopPlayer({
     });
   }, []);
 
+  const handleTerminalPlayback = useCallback(async () => {
+    const meta = playingMetaRef.current;
+    if (!meta || playingNextEpisodeRef.current) return false;
+    const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false }).catch(() => []);
+    if (recommendations.length === 0) return false;
+    setPlayerRecommendations(recommendations);
+    return true;
+  }, []);
+
+  const dismissPlayerRecommendations = useCallback(() => setPlayerRecommendations([]), []);
+  const selectPlayerRecommendation = useCallback(
+    async (meta: Meta) => {
+      dismissPlayerRecommendations();
+      await closePlayer();
+      onTerminalRecommendationSelected?.(meta);
+    },
+    [closePlayer, dismissPlayerRecommendations, onTerminalRecommendationSelected],
+  );
+
   usePlayerNativeEvents({
     stateRef,
     closingPlayerRef,
@@ -723,6 +749,7 @@ function useDesktopPlayer({
     showEpisodeTransitionLoading,
     scrobbleStartedRef,
     dispatchScrobbleLifecycle,
+    onTerminalPlayback: handleTerminalPlayback,
   });
 
   const notifyFirstFrame = useCallback(() => {
@@ -773,6 +800,10 @@ function useDesktopPlayer({
     notifyFirstFrame,
     flushProgressOnQuit: flushOnQuit,
     skipSegmentCoverage,
+    playerRecommendations,
+    dismissPlayerRecommendations,
+    selectPlayerRecommendation,
+    handleTerminalPlayback,
   };
 }
 

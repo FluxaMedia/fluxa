@@ -83,6 +83,7 @@ export function DetailScreen({
   const initialEpisodeRef = useRef(initialEpisode ?? null);
   const autoShowStreamsRef = useRef(autoShowStreams ?? false);
   const userChangedSeasonRef = useRef(false);
+  const episodePlanKeyRef = useRef<string | null>(null);
   const prevFilteredEpsRef = useRef<{ metaId: string; season: number; episodes: Video[] }>({ metaId: '', season: 0, episodes: [] });
 
   const [resumeDialog, setResumeDialog] = useState<{ episode: Video; timeOffset: number } | null>(null);
@@ -124,6 +125,7 @@ export function DetailScreen({
   const progressMap = (libRaw?.progress as Record<string, ProgressEntry> | undefined) ?? {};
 
   useEffect(() => {
+    console.debug('[fluxa:detail:ui:meta-effect]', JSON.stringify({ id: displayMeta.id, videos: displayMeta.videos?.length ?? 0, cast: displayMeta.cast?.length ?? 0 }));
     setBgError(false);
   }, [displayMeta.id, seasonHeroUrl, displayMeta.background, displayMeta.poster, meta.background, meta.poster]);
 
@@ -201,14 +203,11 @@ export function DetailScreen({
 
   const [streams, setStreams] = useState<Stream[]>([]);
   useEffect(() => {
-    let active = true;
-    void coreInvoke<Stream[]>('orderStreamsPlan', JSON.stringify({ streams: detail.streams ?? [], prefs })).then((plan) => {
-      if (active) setStreams(plan ?? ((detail.streams ?? []) as Stream[]));
-    });
-    return () => {
-      active = false;
-    };
-  }, [detail.streams, prefs]);
+    const snapshot = (detail.streams ?? []) as Stream[];
+    // Source rows must appear in the provider's returned order. Autoplay/source
+    // selection policy is applied only when choosing playback, not in this UI.
+    setStreams(snapshot);
+  }, [detail.streams]);
   const poster = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
 
   useEffect(() => {
@@ -278,7 +277,12 @@ export function DetailScreen({
       setEpisodePlan(null);
       return;
     }
+    const planKey = `${meta.id}|${selectedSeason}|${episodes.length}|${selectedEpisode?.id ?? ''}|${lastVideoId ?? ''}`;
+    if (episodePlanKeyRef.current === planKey) return;
+    episodePlanKeyRef.current = planKey;
     let cancelled = false;
+    const startedAt = performance.now();
+    console.debug('[fluxa:detail:episodes:start]', JSON.stringify({ id: meta.id, season: selectedSeason, sourceEpisodes: episodes.length }));
     coreDetailEpisodePlan({
       episodes,
       selectedSeason,
@@ -286,6 +290,7 @@ export function DetailScreen({
       metaId: meta.id,
     }).then((plan) => {
       if (cancelled) return;
+      console.debug('[fluxa:detail:episodes:end]', JSON.stringify({ id: meta.id, season: selectedSeason, ms: Math.round(performance.now() - startedAt) }));
       setEpisodePlan(plan as typeof episodePlan);
       const planSeason = (plan as { selectedSeason?: number } | null)?.selectedSeason;
       if (planSeason != null && !selectedEpisode && !userChangedSeasonRef.current) setSelectedSeason(planSeason);
@@ -297,6 +302,7 @@ export function DetailScreen({
 
   const openEpisodeSources = useCallback(
     (episode: Video) => {
+      console.debug('[fluxa:streams:episode-click]', { episodeId: episode.id, at: performance.now() });
       setSelectedEpisode(episode);
       setShowSources(true);
       onDispatch(
@@ -387,8 +393,13 @@ export function DetailScreen({
     if (signature === castSignatureRef.current) return;
     castSignatureRef.current = signature;
     let cancelled = false;
+    const startedAt = performance.now();
+    console.debug('[fluxa:detail:cast:start]', JSON.stringify({ id: displayMeta.id, cast: displayMeta.cast?.length ?? 0, links: displayMeta.links?.length ?? 0 }));
     buildCastMembers(displayMeta).then((members) => {
-      if (!cancelled) setCastMembers(members.slice(0, 12));
+      if (!cancelled) {
+        console.debug('[fluxa:detail:cast:end]', JSON.stringify({ id: displayMeta.id, members: members.length, ms: Math.round(performance.now() - startedAt) }));
+        setCastMembers(members.slice(0, 12));
+      }
     });
     coreInvoke<{ directors: MetaLink[] }>('classifyMetaLinks', JSON.stringify(displayMeta.links ?? [])).then((result) => {
       if (!cancelled) setDirectorLinks((result?.directors ?? []).slice(0, 2));
@@ -409,9 +420,14 @@ export function DetailScreen({
     setPeopleImages({});
     if (!enabled || !apiKey || peopleLinks.length === 0) return;
     let cancelled = false;
+    const startedAt = performance.now();
+    console.debug('[fluxa:detail:people-images:start]', JSON.stringify({ id: displayMeta.id, links: peopleLinks.length }));
     fetchTmdbPeopleImages({ meta: displayMeta, links: peopleLinks, apiKey, language: prefString(prefs, 'language', getLanguage()) }).then(
       (images) => {
-        if (!cancelled) setPeopleImages(images);
+        if (!cancelled) {
+          console.debug('[fluxa:detail:people-images:end]', JSON.stringify({ id: displayMeta.id, images: Object.keys(images).length, ms: Math.round(performance.now() - startedAt) }));
+          setPeopleImages(images);
+        }
       },
     );
     return () => {

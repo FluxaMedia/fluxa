@@ -1,7 +1,7 @@
 import React from 'react';
 import type { Meta } from '../core/types';
 import { continueWatchingCardFields } from '../core/continueWatchingUtils';
-import { ContinueCard } from './ContinueCard';
+import { ContinueCard, isRenderableMeta } from './ContinueCard';
 import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
 
@@ -75,7 +75,7 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
         </div>
       </div>
       <div ref={scrollRef} className="this-week-scroll" style={twStyles.scroll} {...dragScroll}>
-        {items.map((meta) => (
+        {items.filter(isRenderableMeta).map((meta) => (
           <ContinueCard
             key={meta.id}
             meta={meta}

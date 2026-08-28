@@ -9,7 +9,7 @@ import { coreInvoke } from '../core/engine';
 import { addSearchPartialHandler, type PartialSearchSource } from '../core/catalogEffects';
 import { styles } from './searchStyles';
 import { searchCacheKey, searchCacheGet, searchCacheSet, searchCacheDelete } from '../core/searchResultsCache';
-import { LoadingShelves, SearchCategoryRow, RecentSearchChip, formatCatalogTitle, TypeChip, GenreCard } from './SearchScreenParts';
+import { LoadingShelves, SearchCategoryRow, RecentSearchChip, formatCatalogTitle, GenreCard } from './SearchScreenParts';
 
 interface Props {
   state: Pick<AppState, 'search' | 'settings'>;
@@ -19,12 +19,6 @@ interface Props {
   onQueryChange: (query: string) => void;
   onBack: () => void;
 }
-
-const TYPE_FILTERS = [
-  { labelKey: 'auto.all', value: '' },
-  { labelKey: 'auto.movies', value: 'movie' },
-  { labelKey: 'auto.series', value: 'series' },
-];
 
 function groupCategoriesByAddon(categories: HomeCategory[]): HomeCategory[] {
   const groups = new Map<string, HomeCategory[]>();
@@ -54,10 +48,10 @@ const GENRE_CHIPS = [
 
 export const SearchScreen = React.memo(
   function SearchScreen({ state, onDispatch, onNavigateDetail, query, onQueryChange, onBack }: Props) {
-    const [typeFilter, setTypeFilter] = useState('');
+    const typeFilter = '';
     const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
     const search = state.search;
-    const posterPrefs = posterPrefsFromState(state, 0.85);
+    const posterPrefs = posterPrefsFromState(state, 1);
     const trimmedQuery = query.trim();
     const lastRecentQueryRef = useRef('');
     const [screenPlan, setScreenPlan] = useState<{
@@ -189,12 +183,6 @@ export const SearchScreen = React.memo(
             {query.trim().length >= 2 && !isLoading && (
               <p style={styles.subtitle}>{t('search.results_across_catalogs', resultCount, screenPlan.categoryCount)}</p>
             )}
-          </div>
-
-          <div style={styles.typeRow}>
-            {TYPE_FILTERS.map((f) => (
-              <TypeChip key={f.value} label={t(f.labelKey)} selected={typeFilter === f.value} onClick={() => setTypeFilter(f.value)} />
-            ))}
           </div>
 
           {!query && recentSearches.length > 0 && (

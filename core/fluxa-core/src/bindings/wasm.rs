@@ -58,7 +58,9 @@ pub struct IncrementalMkvRemuxer {
 impl IncrementalMkvRemuxer {
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self { inner: crate::media_demux::IncrementalRemuxSession::new() }
+        Self {
+            inner: crate::media_demux::IncrementalRemuxSession::new(),
+        }
     }
 
     pub fn push(&mut self, chunk: &[u8]) -> Vec<u8> {

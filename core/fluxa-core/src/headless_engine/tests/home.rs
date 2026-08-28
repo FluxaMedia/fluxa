@@ -157,7 +157,10 @@ fn a_cached_home_is_shown_and_then_refetched() {
     )
     .unwrap();
 
-    assert_eq!(completed["state"]["home"]["continueWatching"][0]["id"], "tt1");
+    assert_eq!(
+        completed["state"]["home"]["continueWatching"][0]["id"],
+        "tt1"
+    );
     assert_eq!(completed["effects"][0]["type"], "readHomeBootstrap");
     assert_eq!(completed["effects"][0]["payload"]["force"], true);
     assert_eq!(completed["effects"][0]["payload"]["language"], "tr");

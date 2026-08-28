@@ -173,12 +173,7 @@ export function RecentSearchChip({ value, onClick, onRemove }: { value: string; 
 }
 
 export function formatCatalogTitle(name: string, type: string): string {
-  let label: string;
-  if (type === 'movie') label = t('auto.movies');
-  else if (type === 'series') label = t('auto.series');
-  else if (type) label = type.charAt(0).toUpperCase() + type.slice(1);
-  else return name;
-  return `${name} - ${label}`;
+  return name || type;
 }
 
 export function TypeChip({ label, selected, onClick }: { label: string; selected: boolean; onClick: () => void }) {

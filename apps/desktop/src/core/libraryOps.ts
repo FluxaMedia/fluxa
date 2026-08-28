@@ -16,19 +16,42 @@ import {
 } from './engine';
 import { normalizeAddonDescriptor } from './addons';
 import { coreFilterEnabledAddons } from './engineCoreLibrary';
-import { nuvioPullAddons } from './nuvioApi';
-import { platformFetch } from '../platform/http';
 import type { AddonDescriptor, UserProfile } from './types';
 
 let _cachedLibraryKey: string | null = null;
+let _cachedAddonsOwnerId: string | null = null;
+let _cachedPrefsOwnerId: string | null = null;
+let _enabledAddonsSnapshot: Promise<AddonDescriptor[]> | null = null;
+let _profileContextPromise: Promise<{ activeId: string; profiles: UserProfile[] }> | null = null;
 
 export function invalidateLibraryKeyCache(): void {
   _cachedLibraryKey = null;
+  invalidateAddonSnapshot();
+}
+
+export function invalidateAddonSnapshot(): void {
+  _cachedAddonsOwnerId = null;
+  _cachedPrefsOwnerId = null;
+  _enabledAddonsSnapshot = null;
+  _profileContextPromise = null;
+}
+
+function profileContext(): Promise<{ activeId: string; profiles: UserProfile[] }> {
+  if (!_profileContextPromise) {
+    _profileContextPromise = Promise.all([
+      storageRead<string>('active_profile_id'),
+      storageRead<UserProfile[]>('profiles'),
+    ]).then(([activeId, profiles]) => ({
+      activeId: activeId?.trim() ?? '',
+      profiles: profiles ?? [],
+    }));
+  }
+  return _profileContextPromise;
 }
 
 async function activeProfileStorageSuffix(): Promise<string> {
-  const profileId = (await storageRead<string>('active_profile_id'))?.trim();
-  return profileId ? profileId.replace(/[^a-zA-Z0-9_-]/g, '_') : 'guest';
+  const { activeId } = await profileContext();
+  return activeId ? activeId.replace(/[^a-zA-Z0-9_-]/g, '_') : 'guest';
 }
 
 export function profileStorageKey(profile: UserProfile): string {
@@ -42,12 +65,13 @@ export async function effectRunnerLibraryKey(): Promise<string> {
 }
 
 export async function effectiveAddonsOwnerId(): Promise<string> {
-  const activeId = (await storageRead<string>('active_profile_id'))?.trim() ?? '';
-  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
+  if (_cachedAddonsOwnerId) return _cachedAddonsOwnerId;
+  const { activeId, profiles } = await profileContext();
   const ownerId = await coreInvoke<string>('effectiveAddonsOwnerId', JSON.stringify({ profiles, activeProfileId: activeId })).catch(
     () => null,
   );
-  return (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
+  _cachedAddonsOwnerId = (ownerId || activeId || 'guest').replace(/[^a-zA-Z0-9_-]/g, '_');
+  return _cachedAddonsOwnerId;
 }
 
 export async function addonsStorageKey(): Promise<string> {
@@ -55,11 +79,36 @@ export async function addonsStorageKey(): Promise<string> {
 }
 
 export async function loadAddons(): Promise<AddonDescriptor[]> {
-  return Promise.all(((await storageRead<AddonDescriptor[]>(await addonsStorageKey())) ?? []).map(normalizeAddonDescriptor));
+  const startedAt = performance.now();
+  const keyStartedAt = performance.now();
+  const key = await addonsStorageKey();
+  console.debug('[fluxa:addons:key-ready]', JSON.stringify({ ms: Math.round(performance.now() - keyStartedAt) }));
+  const stored = (await storageRead<unknown[]>(key)) ?? [];
+  console.debug('[fluxa:addons:storage-ready]', JSON.stringify({ count: stored.length, ms: Math.round(performance.now() - startedAt) }));
+  const result = await Promise.all(
+    stored.map((addon) => {
+      // Addons saved by the current schema are already core-normalized. Avoid
+      // a Rust IPC round-trip per addon on every detail/search request. Keep
+      // the normalizer for legacy records and older storage migrations.
+      if (
+        addon &&
+        typeof addon === 'object' &&
+        typeof (addon as { transportUrl?: unknown }).transportUrl === 'string' &&
+        (addon as { manifest?: unknown }).manifest &&
+        typeof (addon as { manifest: { id?: unknown } }).manifest.id === 'string'
+      ) {
+        return addon as AddonDescriptor;
+      }
+      return normalizeAddonDescriptor(addon as Parameters<typeof normalizeAddonDescriptor>[0]);
+    }),
+  );
+  console.debug('[fluxa:addons:normalized]', JSON.stringify({ count: result.length, ms: Math.round(performance.now() - startedAt) }));
+  return result;
 }
 
 export async function saveAddons(addons: AddonDescriptor[]): Promise<void> {
   await storageWrite(await addonsStorageKey(), addons);
+  invalidateAddonSnapshot();
 }
 
 export async function normalizeLibraryDoc(lib: Record<string, unknown>): Promise<Record<string, unknown>> {
@@ -106,12 +155,19 @@ export async function saveLibrary(lib: Record<string, unknown>, profileKey?: str
 }
 
 export async function prefsOwnerId(): Promise<string> {
-  const activeId = (await storageRead<string>('active_profile_id'))?.trim();
-  if (activeId) return activeId.replace(/[^a-zA-Z0-9_-]/g, '_');
-  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
-  if (profiles.length === 0) return 'guest';
+  if (_cachedPrefsOwnerId) return _cachedPrefsOwnerId;
+  const { activeId, profiles } = await profileContext();
+  if (activeId) {
+    _cachedPrefsOwnerId = activeId.replace(/[^a-zA-Z0-9_-]/g, '_');
+    return _cachedPrefsOwnerId;
+  }
+  if (profiles.length === 0) {
+    _cachedPrefsOwnerId = 'guest';
+    return _cachedPrefsOwnerId;
+  }
   const primaryId = await coreInvoke<string>('primaryProfileId', JSON.stringify(profiles)).catch(() => null);
-  return (primaryId || profiles[0].id).replace(/[^a-zA-Z0-9_-]/g, '_');
+  _cachedPrefsOwnerId = (primaryId || profiles[0].id).replace(/[^a-zA-Z0-9_-]/g, '_');
+  return _cachedPrefsOwnerId;
 }
 
 export async function prefsStorageKey(): Promise<string> {
@@ -127,33 +183,26 @@ export async function savePrefs(value: Record<string, unknown>): Promise<void> {
 }
 
 export async function loadActiveProfile(): Promise<UserProfile | null> {
-  const profileId = await storageRead<string>('active_profile_id');
-  if (!profileId) return null;
-  const profiles = (await storageRead<UserProfile[]>('profiles')) ?? [];
-  return profiles.find((profile) => profile.id === profileId) ?? null;
+  const { activeId, profiles } = await profileContext();
+  if (!activeId) return null;
+  return profiles.find((profile) => profile.id === activeId) ?? null;
 }
 
 export async function loadEnabledAddons(profileOverride?: UserProfile | null): Promise<AddonDescriptor[]> {
-  const addons = await loadAddons();
-  const profile = profileOverride === undefined ? await loadActiveProfile() : profileOverride;
-  if (profile?.nuvioAccessToken) {
-    const remoteAddons = await nuvioPullAddons(profile.nuvioAccessToken, profile.nuvioProfileIndex ?? 1).catch(() => []);
-    const remoteDescriptors = await Promise.all(
-      remoteAddons
-        .filter((addon) => addon.enabled)
-        .map(async (addon) => {
-          try {
-            const response = await platformFetch(addon.url);
-            if (!response.ok) return null;
-            const manifest = (await response.json()) as Record<string, unknown>;
-            return normalizeAddonDescriptor({ transportUrl: addon.url, manifest } as unknown as AddonDescriptor);
-          } catch {
-            return null;
-          }
-        }),
-    );
-    return remoteDescriptors.filter((descriptor): descriptor is AddonDescriptor => descriptor !== null);
+  if (profileOverride === undefined && _enabledAddonsSnapshot) return _enabledAddonsSnapshot;
+  if (profileOverride === undefined) {
+    _enabledAddonsSnapshot = loadEnabledAddonsUncached();
+    return _enabledAddonsSnapshot;
   }
+  return loadEnabledAddonsUncached(profileOverride);
+}
+
+async function loadEnabledAddonsUncached(profileOverride?: UserProfile | null): Promise<AddonDescriptor[]> {
+  const startedAt = performance.now();
+  const [addons, loadedProfile] =
+    profileOverride === undefined ? await Promise.all([loadAddons(), loadActiveProfile()]) : [await loadAddons(), profileOverride];
+  const profile = loadedProfile;
+  console.debug('[fluxa:addons:enabled-inputs]', JSON.stringify({ count: addons.length, hasProfile: Boolean(profile), ms: Math.round(performance.now() - startedAt) }));
   const disabledAddonKeys = profile?.addonSettings?.disabledLocalAddons ?? profile?.disabledLocalAddons ?? [];
   if (!disabledAddonKeys.length) return addons;
   return (await coreFilterEnabledAddons(addons, disabledAddonKeys)) ?? addons;

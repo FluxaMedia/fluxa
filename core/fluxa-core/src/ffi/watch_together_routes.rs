@@ -4,9 +4,10 @@ use crate::watch_together;
 pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
     let args = object(args_json)?;
     match method {
-        "watchTogetherCreate" => Ok(watch_together::WatchTogetherProtocol::create(
-            field_str(&args, "displayName")?,
-        )),
+        "watchTogetherCreate" => Ok(watch_together::WatchTogetherProtocol::create(field_str(
+            &args,
+            "displayName",
+        )?)),
         "watchTogetherJoin" => Ok(watch_together::WatchTogetherProtocol::join(
             field_str(&args, "roomCode")?,
             field_str(&args, "displayName")?,
@@ -60,10 +61,8 @@ pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                 Ok(value) => value,
                 Err(_) => serde_json::Value::Null,
             };
-            let decoded = watch_together::WatchTogetherProtocol::decode(
-                &value,
-                local_content.as_ref(),
-            );
+            let decoded =
+                watch_together::WatchTogetherProtocol::decode(&value, local_content.as_ref());
             serde_json::to_value(decoded)
                 .map_err(|_| fail(ErrorKind::Internal, "failed to encode decoded message"))
         }
@@ -72,9 +71,14 @@ pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                 field(&args, "localPositionMs")?.as_i64().ok_or_else(|| {
                     fail(ErrorKind::InvalidArgs, "localPositionMs must be a number")
                 })?,
-                field(&args, "expectedPositionMs")?.as_i64().ok_or_else(|| {
-                    fail(ErrorKind::InvalidArgs, "expectedPositionMs must be a number")
-                })?,
+                field(&args, "expectedPositionMs")?
+                    .as_i64()
+                    .ok_or_else(|| {
+                        fail(
+                            ErrorKind::InvalidArgs,
+                            "expectedPositionMs must be a number",
+                        )
+                    })?,
                 field(&args, "hostPlaying")?
                     .as_bool()
                     .ok_or_else(|| fail(ErrorKind::InvalidArgs, "hostPlaying must be a boolean"))?,

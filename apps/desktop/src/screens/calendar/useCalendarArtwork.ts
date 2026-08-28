@@ -31,7 +31,7 @@ export function useCalendarArtwork(items: CalendarItem[]) {
       [...itemsBySeries].map(async ([id, seriesItems]) => {
         let meta: { poster?: string; videos?: Video[] } | null = null;
         try {
-          meta = (await fetchMetaDetail({ id, contentType: seriesItems[0]?.metaType === 'movie' ? 'movie' : 'series' })) as {
+          meta = (await fetchMetaDetail({ id, contentType: seriesItems[0]?.metaType === 'movie' ? 'movie' : 'series', purpose: 'calendar-artwork' })) as {
             poster?: string;
             videos?: Video[];
           } | null;

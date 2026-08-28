@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search as SearchIcon, X, Clock } from 'lucide-react';
+import { Search as SearchIcon, X, Clock, Trash2 } from 'lucide-react';
 import { t, getLanguage } from '../i18n';
 import { addRecentSearch, loadRecentSearches, clearRecentSearches, removeRecentSearch, type RecentSearch } from '../core/searchHistory';
 import { addSearchPartialHandler } from '../core/catalogEffects';
@@ -273,7 +273,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
           height: '2.625rem',
           background: 'rgba(10,12,20,0.97)',
           border: '1px solid rgba(255,255,255,0.25)',
-          borderRadius: '62.4375rem',
+          borderRadius: showDropdown ? '1rem 1rem 0 0' : '62.4375rem',
           padding: '0 1rem',
           boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.4), 0 0 0 1px rgba(232,93,63,0.15)',
         }}
@@ -325,30 +325,31 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
         <div
           style={{
             position: 'absolute',
-            top: 'calc(100% + 0.5rem)',
+            top: 'calc(100% - 1px)',
             left: 0,
             right: 0,
-            background: 'rgba(10,12,20,0.98)',
-            border: '1px solid rgba(255,255,255,0.14)',
-            borderRadius: '1rem',
-            boxShadow: '0 0.75rem 2.5rem rgba(0,0,0,0.55)',
-            padding: '0.75rem',
+            background: 'rgba(10,12,20,0.97)',
+            border: '1px solid rgba(255,255,255,0.16)',
+            borderTop: 'none',
+            borderRadius: '0 0 1rem 1rem',
+            boxShadow: '0 0.75rem 2rem rgba(0,0,0,0.48)',
+            padding: '0.375rem',
             maxHeight: '26rem',
             overflowY: 'auto',
           }}
         >
           {!inputValue.trim() && recentSearches.length > 0 && (
             <>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.25rem 0.5rem 0.5rem' }}>
-                <span style={dropdownStyles.sectionLabel}>{t('search.recent_searches')}</span>
+              <div style={{ ...dropdownStyles.sectionHeader, padding: '0.45rem 0.625rem 0.7rem' }}>
                 <button
+                  title={t('search.clear_history')}
                   style={dropdownStyles.clearBtn}
                   onMouseDown={(e) => {
                     e.preventDefault();
                     handleClearHistory();
                   }}
                 >
-                  {t('search.clear_history')}
+                  <Trash2 size={14} />
                 </button>
               </div>
               {recentSearches.map((item, index) => (
@@ -356,7 +357,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
                   key={item.query}
                   style={{
                     ...dropdownStyles.row,
-                    padding: '0 0.25rem 0 0.5rem',
+                    padding: '0 0.35rem 0 0.625rem',
                     background: activeIndex === index ? 'rgba(255,255,255,0.06)' : 'transparent',
                   }}
                   onMouseEnter={(e) => {
@@ -374,7 +375,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
                       handleRecentClick(item);
                     }}
                   >
-                    <Clock size={15} color="rgba(255,255,255,0.4)" style={{ flexShrink: 0 }} />
+                    <Clock size={15} color="rgba(255,255,255,0.48)" style={{ flexShrink: 0 }} />
                     <span style={dropdownStyles.rowText}>{item.query}</span>
                   </button>
                   <button
@@ -395,9 +396,6 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
 
           {inputValue.trim().length >= 2 && suggestions.length > 0 && (
             <>
-              <div style={{ padding: '0.25rem 0.5rem 0.5rem' }}>
-                <span style={dropdownStyles.sectionLabel}>{t('search.suggestions')}</span>
-              </div>
               {suggestions.map((meta, index) => (
                 <button
                   key={meta.id}
@@ -427,30 +425,35 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
 }
 
 const dropdownStyles: Record<string, React.CSSProperties> = {
-  sectionLabel: {
-    color: 'rgba(255,255,255,0.5)',
-    fontSize: '0.75rem',
-    fontWeight: 700,
-    textTransform: 'uppercase',
-    letterSpacing: '0.0313rem',
+  sectionHeader: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: '0.75rem',
+    borderBottom: '1px solid rgba(255,255,255,0.09)',
+    marginBottom: '0.35rem',
   },
   clearBtn: {
     background: 'transparent',
     border: 'none',
+    borderRadius: 0,
     color: 'rgba(255,255,255,0.5)',
     fontSize: '0.75rem',
-    fontWeight: 700,
+    fontWeight: 600,
     cursor: 'pointer',
-    padding: 0,
+    padding: '0.25rem',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   row: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.625rem',
     width: '100%',
-    height: '2.375rem',
+    height: '2.75rem',
     padding: '0 0.5rem',
-    borderRadius: '0.625rem',
+    borderRadius: '0.75rem',
     border: 'none',
     background: 'transparent',
     cursor: 'pointer',
@@ -458,8 +461,8 @@ const dropdownStyles: Record<string, React.CSSProperties> = {
   },
   rowText: {
     color: '#FFFFFF',
-    fontSize: '0.875rem',
-    fontWeight: 600,
+    fontSize: '0.9375rem',
+    fontWeight: 650,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',
@@ -481,11 +484,11 @@ const dropdownStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
-    width: '1.625rem',
-    height: '1.625rem',
-    borderRadius: '0.375rem',
+    width: '2rem',
+    height: '2rem',
+    borderRadius: '50%',
     border: 'none',
-    background: 'transparent',
+    background: 'rgba(255,255,255,0.06)',
     color: 'rgba(255,255,255,0.4)',
     cursor: 'pointer',
     padding: 0,

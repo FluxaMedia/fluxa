@@ -43,6 +43,7 @@ import { ContentWarningOverlay } from './player/ContentWarningOverlay';
 import { PlayerSupplementalPanels } from './player/PlayerSupplementalPanels';
 import { PlayerTrackPanel } from './player/PlayerTrackPanel';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
+import { TerminalRecommendations } from './player/TerminalRecommendations';
 import { coreResolveNextEpisode } from '../core/engine';
 import { castSetVolume } from '../core/cast';
 import { loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from '../core/shortcuts';
@@ -76,6 +77,9 @@ interface Props {
   prefs?: Record<string, unknown>;
   onDispatch?: (actionJson: string) => Promise<void> | void;
   skipSegmentCoverage?: Record<string, string[]>;
+  recommendations?: Meta[];
+  onPlayRecommendation?: (meta: Meta) => void;
+  onDismissRecommendations?: () => void;
 }
 
 export function ReactPlayerOverlay({
@@ -104,6 +108,9 @@ export function ReactPlayerOverlay({
   prefs,
   onDispatch,
   skipSegmentCoverage,
+  recommendations = [],
+  onPlayRecommendation,
+  onDismissRecommendations,
 }: Props) {
   const playerTelemetry = usePlayerTelemetryState();
   const {
@@ -643,6 +650,9 @@ export function ReactPlayerOverlay({
         />
       )}
       <PlayerOverlayStyles />
+      {recommendations.length > 0 && onPlayRecommendation && onDismissRecommendations && (
+        <TerminalRecommendations items={recommendations} onPlay={onPlayRecommendation} onDismiss={onDismissRecommendations} />
+      )}
 
       {softwareVideoActive && <SoftwareVideoCanvas key={currentEpisode?.id} statusRef={liveStatusRef} onFirstFrame={onFirstFrame} />}
 

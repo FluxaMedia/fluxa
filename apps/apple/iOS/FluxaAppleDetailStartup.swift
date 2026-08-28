@@ -133,6 +133,7 @@ final class FluxaAppleDetailStartup {
         let type = text(meta["type"]) ?? request.type
         let addons = addonUrls(for: request)
         let videos = parseVideos(meta["videos"])
+        let recommendations = parseCatalogItems(detail["similarItems"])
         let seasonsCount = int32(meta["seasonsCount"])
         let seasons = availableSeasons(from: videos, seasonsCount: seasonsCount)
         let initialSeason = seasons.first.flatMap { Int32($0) } ?? 1
@@ -151,6 +152,7 @@ final class FluxaAppleDetailStartup {
             videos: videos,
             availableSeasons: seasons,
             addons: addons,
+            recommendationItems: recommendations,
             selectedSeason: initialSeason,
             selectedEpisodeId: nil
         )
@@ -204,7 +206,8 @@ final class FluxaAppleDetailStartup {
             isLoadingStreams: isLoadingStreams,
             availableAddons: entry.addons.map(addonDisplayName),
             loadingAddonNames: loadingAddonNames,
-            selectedAddon: selectedAddon
+            selectedAddon: selectedAddon,
+            recommendationItems: entry.recommendationItems
         ))
     }
 
@@ -366,8 +369,28 @@ final class FluxaAppleDetailStartup {
             isLoadingStreams: false,
             availableAddons: [],
             loadingAddonNames: [],
-            selectedAddon: nil
+            selectedAddon: nil,
+            recommendationItems: []
         ))
+    }
+
+    private func parseCatalogItems(_ value: FluxaAppleJsonValue?) -> [FluxaShared.AppleCatalogItemSnapshot] {
+        guard case .array(let values)? = value else { return [] }
+        return values.compactMap { value in
+            guard case .object(let item) = value,
+                  let id = text(item["id"]),
+                  let title = text(item["name"]) ?? text(item["title"]) else { return nil }
+            return FluxaShared.AppleCatalogItemSnapshot(
+                id: id,
+                type: text(item["type"]) ?? "movie",
+                title: title,
+                subtitle: text(item["releaseInfo"]) ?? "",
+                artworkUrl: text(item["poster"]),
+                logoUrl: text(item["logo"]),
+                addonTransportUrl: text(item["addonTransportUrl"]),
+                catalogType: text(item["catalogType"])
+            )
+        }
     }
 
     private func text(_ value: FluxaAppleJsonValue?) -> String? {
@@ -410,6 +433,7 @@ private final class FluxaAppleDetailCacheEntry {
     let videos: [FluxaAppleVideo]
     let availableSeasons: [String]
     let addons: [String]
+    let recommendationItems: [FluxaShared.AppleCatalogItemSnapshot]
     var selectedSeason: Int32
     var selectedEpisodeId: String?
 
@@ -427,6 +451,7 @@ private final class FluxaAppleDetailCacheEntry {
         videos: [FluxaAppleVideo],
         availableSeasons: [String],
         addons: [String],
+        recommendationItems: [FluxaShared.AppleCatalogItemSnapshot],
         selectedSeason: Int32,
         selectedEpisodeId: String?
     ) {
@@ -443,6 +468,7 @@ private final class FluxaAppleDetailCacheEntry {
         self.videos = videos
         self.availableSeasons = availableSeasons
         self.addons = addons
+        self.recommendationItems = recommendationItems
         self.selectedSeason = selectedSeason
         self.selectedEpisodeId = selectedEpisodeId
     }

@@ -34,6 +34,9 @@ interface Props {
   bannerOffset: number;
   skipSegmentCoverage: Record<string, string[]>;
   dispatch: (actionJson: string) => Promise<void>;
+  recommendations?: Meta[];
+  onPlayRecommendation?: (meta: Meta) => void;
+  onDismissRecommendations?: () => void;
 }
 
 export function PlaybackHost({
@@ -63,6 +66,9 @@ export function PlaybackHost({
   bannerOffset,
   skipSegmentCoverage,
   dispatch,
+  recommendations = [],
+  onPlayRecommendation,
+  onDismissRecommendations,
 }: Props) {
   if (!active && !loading) return null;
 
@@ -110,6 +116,9 @@ export function PlaybackHost({
               softwareVideoActive={softwareVideoActive}
               bannerOffset={bannerOffset}
               skipSegmentCoverage={skipSegmentCoverage}
+              recommendations={recommendations}
+              onPlayRecommendation={onPlayRecommendation}
+              onDismissRecommendations={onDismissRecommendations}
             />
           </React.Suspense>
         </ErrorBoundary>

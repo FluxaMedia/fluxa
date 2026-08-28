@@ -200,12 +200,18 @@ mod meta_item_tests {
     fn comma_joined_director_splits_into_entries() {
         assert_eq!(
             director_of(json!("Ryan Condal, Miguel Sapochnik")),
-            Some(vec!["Ryan Condal".to_string(), "Miguel Sapochnik".to_string()]),
+            Some(vec![
+                "Ryan Condal".to_string(),
+                "Miguel Sapochnik".to_string()
+            ]),
         );
     }
 
     #[test]
     fn list_director_is_preserved() {
-        assert_eq!(director_of(json!(["Ryan Condal"])), Some(vec!["Ryan Condal".to_string()]));
+        assert_eq!(
+            director_of(json!(["Ryan Condal"])),
+            Some(vec!["Ryan Condal".to_string()])
+        );
     }
 }

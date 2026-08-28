@@ -70,18 +70,16 @@ export const styles: Record<string, React.CSSProperties> = {
     marginBottom: '1.125rem',
   },
   eyebrow: {
-    color: 'var(--fluxa-text-faint)',
-    fontSize: '0.75rem',
-    fontWeight: 800,
-    margin: '0 0 0.375rem',
-    textTransform: 'uppercase',
-    letterSpacing: '0.05rem',
+    color: 'var(--fluxa-text-secondary)',
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    margin: '0 0 0.5rem',
   },
   title: {
     color: 'var(--fluxa-text-primary)',
     fontSize: '2.125rem',
     lineHeight: '2.4375rem',
-    fontWeight: 900,
+    fontWeight: 800,
     margin: 0,
   },
   subtitle: {

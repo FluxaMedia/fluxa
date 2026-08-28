@@ -16,6 +16,7 @@ import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.player.ExternalSubtitleTrack
 import com.fluxa.app.player.NativeAssTrack
 import com.google.gson.Gson
@@ -38,6 +39,10 @@ internal class PlayerScreenState(
     initialStreamIndex: Int,
     initialVolume: Int
 ) {
+    private companion object {
+        const val CORE_PROGRESS_CHECKPOINT_MS = 3_000L
+    }
+
     private val gson = Gson()
     private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
         mapOf(
@@ -136,8 +141,19 @@ internal class PlayerScreenState(
 
     var nextEpisodePending by mutableStateOf<Video?>(null)
     var previousEpisodePending by mutableStateOf<Video?>(null)
+    var terminalRecommendations by mutableStateOf<List<Meta>>(emptyList())
+    var terminalRecommendationsLoaded by mutableStateOf(false)
+
+    private var lastCorePositionMs: Long? = null
+    private var lastCoreStreamIndex: Long? = null
+    private var lastCoreBuffering: Boolean? = null
+    private var lastCorePlaybackEnded: Boolean? = null
+    private var lastCoreStarted: Boolean? = null
+    private var lastCoreRendered: Boolean? = null
 
     fun resetForEpisode(videoId: String) {
+        terminalRecommendations = emptyList()
+        terminalRecommendationsLoaded = false
         val snapshot = coreState.dispatch(
             CoreAction(
                 type = "playerResetForEpisode",
@@ -166,14 +182,35 @@ internal class PlayerScreenState(
     }
 
     private fun syncPlayerCoreState() {
+        val positionMs = engine.timeline.position
+        val streamIndex = currentStreamIndex.toLong()
+        val buffering = engine.playback.isBuffering
+        val playbackEnded = engine.playback.playbackEnded
+        val started = engine.playback.hasStartedPlaying
+        val rendered = engine.render.isVideoRendered
+        val positionChangedEnough = lastCorePositionMs == null ||
+            kotlin.math.abs(positionMs - (lastCorePositionMs ?: 0L)) >= CORE_PROGRESS_CHECKPOINT_MS
+        val stateChanged = streamIndex != lastCoreStreamIndex ||
+            buffering != lastCoreBuffering ||
+            playbackEnded != lastCorePlaybackEnded ||
+            started != lastCoreStarted ||
+            rendered != lastCoreRendered
+        if (!positionChangedEnough && !stateChanged) return
+
         coreState.updatePlayer(
-            positionMs = engine.timeline.position,
-            streamIndex = currentStreamIndex.toLong(),
-            buffering = engine.playback.isBuffering,
-            playbackEnded = engine.playback.playbackEnded,
-            started = engine.playback.hasStartedPlaying,
-            rendered = engine.render.isVideoRendered,
+            positionMs = positionMs,
+            streamIndex = streamIndex,
+            buffering = buffering,
+            playbackEnded = playbackEnded,
+            started = started,
+            rendered = rendered,
         )
+        lastCorePositionMs = positionMs
+        lastCoreStreamIndex = streamIndex
+        lastCoreBuffering = buffering
+        lastCorePlaybackEnded = playbackEnded
+        lastCoreStarted = started
+        lastCoreRendered = rendered
     }
 
     private data class CoreAction(

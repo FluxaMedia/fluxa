@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Fluxa · Terminal Recommendations</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #0a0a0b; --bg-elevated: #0e0e0e; --surface: #161617;
+      --text-primary: #f5f5f5; --text-body: #c2c2c5; --text-muted: #8e8e94; --text-dim: #696970;
+      --line: #2b2b2f; --line-strong: #414146; --fill: #252528; --accent: #e8752f;
+      font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    }
+    @font-face { font-family: 'Montserrat'; src: local('Montserrat'); }
+    @font-face { font-family: 'Archivo'; src: local('Archivo'); }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text-primary); overflow: hidden; }
+    .hero { min-height: 100vh; position: relative; isolation: isolate; display: flex; align-items: flex-end; padding: 7vh 6.5rem 8vh 6vw; overflow: hidden; }
+    .backdrop { position: absolute; inset: 0; z-index: -3; background: center/cover no-repeat; transition: background-image .3s ease; }
+    .shade { position: absolute; inset: 0; z-index: -2; background: linear-gradient(90deg, rgba(10,10,11,.98) 0%, rgba(10,10,11,.78) 34%, rgba(10,10,11,.18) 76%, rgba(10,10,11,.64) 100%), linear-gradient(0deg, rgba(10,10,11,.94) 0%, transparent 52%, rgba(10,10,11,.3) 100%); }
+    .top { position: absolute; top: 2rem; right: 2.5rem; display: flex; justify-content: flex-end; align-items: center; }
+    .close { border: 1px solid var(--line); background: transparent; color: var(--text-body); border-radius: 50%; width: 2.25rem; height: 2.25rem; font-size: 1.375rem; cursor: pointer; }
+    .content { max-width: 42rem; width: 42vw; min-width: 20rem; }
+    .eyebrow { color: var(--text-muted); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 1rem; }
+    h1 { font-family: 'Archivo', sans-serif; font-size: clamp(2.5rem, 5vw, 4.5rem); line-height: 1.05; margin: 0 0 1rem; letter-spacing: -.03em; }
+    .meta { display: flex; gap: .75rem; color: var(--text-body); font-size: .8125rem; margin-bottom: 1rem; }
+    .meta span:not(:last-child)::after { content: '·'; margin-left: .75rem; color: var(--text-dim); }
+    .synopsis { color: var(--text-body); font-size: .875rem; line-height: 1.6; max-width: 50rem; margin: 0 0 1.5rem; }
+    .actions { display: flex; align-items: center; gap: .75rem; flex-wrap: wrap; }
+    button { font: inherit; }
+    .primary, .secondary { border: 0; border-radius: .5rem; padding: 0 1.5rem; height: 2.75rem; display: inline-flex; align-items: center; gap: .5rem; font-size: .875rem; font-weight: 700; cursor: pointer; }
+    .primary { background: var(--text-primary); color: #000; }
+    .secondary { background: var(--fill); color: var(--text-primary); border: 1px solid var(--line); }
+    .carousel-wrap { margin-top: 2rem; }
+    .carousel-head { display: flex; align-items: center; gap: .75rem; }
+    .arrows { display: flex; gap: .5rem; }
+    .arrow { width: 2.25rem; height: 2.25rem; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--fill); color: var(--text-primary); cursor: pointer; }
+    .trailer { position: absolute; inset: 0; z-index: -1; opacity: 0; pointer-events: none; background: rgba(0,0,0,.08); transition: opacity .3s; }
+    .trailer.on { opacity: 1; }
+    .hint { display: none; }
+    @media (max-width: 800px) { body { overflow: auto; } .hero { min-height: 900px; padding: 44vh 2.5rem 8vh; align-items: flex-start; } .carousel-wrap { left: 2.5rem; right: 2.5rem; bottom: 3.75rem; width: auto; } .content { max-width: 100%; } .hint { display: none; } }
+  </style>
+</head>
+<body>
+  <main class="hero" id="hero">
+    <div class="backdrop" id="backdrop"></div><div class="trailer" id="trailer"></div><div class="shade"></div>
+    <div class="top"><button class="close" aria-label="Close">×</button></div>
+    <div class="hint">← → to browse recommendations</div>
+    <section class="content">
+      <div class="eyebrow">Recommended because you watched <span id="watched-title">The Matrix</span></div>
+      <h1 id="title"></h1><div class="meta" id="meta"></div><p class="synopsis" id="synopsis"></p>
+      <div class="actions"><button class="primary" id="play">▶ <span>Play now</span></button><button class="secondary" id="watchTrailer">▷ <span>Watch trailer</span></button></div>
+      <section class="carousel-wrap"><div class="carousel-head"><div class="arrows"><button class="arrow" id="prev" aria-label="Previous recommendation">←</button><button class="arrow" id="next" aria-label="Next recommendation">→</button></div></div></section>
+    </section>
+  </main>
+  <script>
+    const items = [
+      { title: 'The Walking Dead', type: 'Series', year: '2010', rating: '8.1', synopsis: 'Sheriff Rick Grimes wakes from a coma to find a world overrun by the walking dead and searches for his family among the survivors.', bg: 'https://image.tmdb.org/t/p/w1280/3WjbxaqYB4Vxs9wW9h7cJqV7Q5x.jpg', poster: 'https://image.tmdb.org/t/p/w500/reKs8y4m4g1b9hL9N3wJZ8xY5hE.jpg' },
+      { title: 'Inception', type: 'Movie', year: '2010', rating: '8.8', synopsis: 'A skilled thief who steals secrets through dream-sharing technology is offered a chance to erase his past by planting an idea in someone’s mind.', bg: 'https://image.tmdb.org/t/p/w1280/s3TBrRGB1iav7gFOCNx3H31MoES.jpg', poster: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg' },
+      { title: 'The Matrix', type: 'Movie', year: '1999', rating: '8.7', synopsis: 'A hacker discovers that the life he knows is a simulated reality and joins a rebellion against the machines that created it.', bg: 'https://image.tmdb.org/t/p/w1280/icmmSD4vTTDKOq2vvdulafOGw93.jpg', poster: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg' }
+    ];
+    let index = 0;
+    const $ = id => document.getElementById(id);
+    function render() { const item = items[index]; $('backdrop').style.backgroundImage = `url(${item.bg})`; $('title').textContent = item.title; $('synopsis').textContent = item.synopsis; $('meta').innerHTML = `<span>${item.type}</span><span>${item.year}</span><span>★ ${item.rating}</span>`; $('trailer').classList.add('on'); }
+    function move(step) { index = (index + step + items.length) % items.length; render(); }
+    $('prev').onclick = () => move(-1); $('next').onclick = () => move(1); $('watchTrailer').onclick = () => { $('trailer').classList.add('on'); }; $('play').onclick = () => alert(`Play: ${items[index].title}`); document.onkeydown = e => { if (e.key === 'ArrowLeft') move(-1); if (e.key === 'ArrowRight') move(1); if (e.key === 'Enter') $('play').click(); };
+    render();
+  </script>
+</body>
+</html>

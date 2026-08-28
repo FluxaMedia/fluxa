@@ -133,7 +133,15 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 )
             )
             self.observe(player)
-            let controller = FluxaAppleCustomPlayerViewController(player: player, title: title)
+            let controller = FluxaAppleCustomPlayerViewController(
+                player: player,
+                title: title,
+                recommendations: request.recommendationItems,
+                hasNextEpisode: request.hasNextEpisode
+            )
+            controller.onRecommendationSelected = { [weak self] item in
+                self?.dismissAndOpenRecommendation(item)
+            }
             controller.onWatchParty = { [weak self] in
                 if let state = self?.watchState, state.inRoom {
                     self?.presentWatchRoom(state)
@@ -156,6 +164,11 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 player.play()
             }
         }
+    }
+
+    private func dismissAndOpenRecommendation(_ item: FluxaShared.AppleCatalogItemSnapshot) {
+        activePlayerController?.dismiss(animated: true)
+        FluxaApple.shared.requestDetail(item: item)
     }
 
     private func presentInInfuse(request: ApplePlaybackRequestSnapshot) {

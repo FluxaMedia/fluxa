@@ -1,6 +1,7 @@
 import FluxaPlayerKit
 import SwiftUI
 import UIKit
+import FluxaShared
 
 #if os(iOS)
 import AVKit
@@ -16,8 +17,11 @@ final class FluxaAppleCustomPlayerChrome: ObservableObject {
 final class FluxaAppleCustomPlayerViewController: UIViewController {
     let player: FluxaPlayer
     let titleText: String
+    let recommendations: [AppleCatalogItemSnapshot]
+    let hasNextEpisode: Bool
     let chrome = FluxaAppleCustomPlayerChrome()
     var onWatchParty: (() -> Void)?
+    var onRecommendationSelected: ((AppleCatalogItemSnapshot) -> Void)?
 
     private let videoView = FluxaPlayerSurfaceView()
     private var host: UIHostingController<FluxaApplePlayerOverlay>?
@@ -30,9 +34,16 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
     }
     #endif
 
-    init(player: FluxaPlayer, title: String) {
+    init(
+        player: FluxaPlayer,
+        title: String,
+        recommendations: [AppleCatalogItemSnapshot] = [],
+        hasNextEpisode: Bool = false
+    ) {
         self.player = player
         self.titleText = title
+        self.recommendations = recommendations
+        self.hasNextEpisode = hasNextEpisode
         super.init(nibName: nil, bundle: nil)
         modalPresentationStyle = .fullScreen
     }
@@ -67,6 +78,9 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
             onClose: { [weak self] in self?.dismiss(animated: true) },
             onWatchParty: { [weak self] in self?.onWatchParty?() },
             onPictureInPicture: { [weak self] in self?.pictureInPictureController?.startPictureInPicture() },
+            recommendations: recommendations,
+            hasNextEpisode: hasNextEpisode,
+            onRecommendationSelected: { [weak self] item in self?.onRecommendationSelected?(item) },
             onInteraction: { [weak self] in self?.scheduleHide() }
         )
         let host = UIHostingController(rootView: overlay)
@@ -148,6 +162,9 @@ private struct FluxaApplePlayerOverlay: View {
     let onClose: () -> Void
     let onWatchParty: () -> Void
     let onPictureInPicture: () -> Void
+    let recommendations: [AppleCatalogItemSnapshot]
+    let hasNextEpisode: Bool
+    let onRecommendationSelected: (AppleCatalogItemSnapshot) -> Void
     let onInteraction: () -> Void
 
     var body: some View {
@@ -183,9 +200,43 @@ private struct FluxaApplePlayerOverlay: View {
                         .allowsHitTesting(false)
                 )
             }
+            if player.state.phase == .ended && !hasNextEpisode && !recommendations.isEmpty {
+                terminalRecommendations
+            }
         }
         .foregroundStyle(.white)
         .onAppear { onInteraction() }
+    }
+
+    private var terminalRecommendations: some View {
+        VStack(spacing: 16) {
+            Text(NSLocalizedString("player.recommendations", comment: "Terminal recommendations title"))
+                .font(.title2.bold())
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 14) {
+                    ForEach(recommendations, id: \.id) { item in
+                        Button { onRecommendationSelected(item) } label: {
+                            VStack(alignment: .leading, spacing: 6) {
+                                AsyncImage(url: item.artworkUrl.flatMap(URL.init)) { image in
+                                    image.resizable().scaledToFill()
+                                } placeholder: {
+                                    Color.white.opacity(0.12)
+                                }
+                                    .frame(width: 130, height: 190)
+                                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                                Text(item.title).lineLimit(2).frame(width: 130, alignment: .leading)
+                            }
+                        }.buttonStyle(.plain)
+                    }
+                }.padding(.horizontal, 28)
+            }
+            Button(NSLocalizedString("player.close", comment: "Close player"), action: onClose)
+                .buttonStyle(.bordered)
+        }
+        .padding(.vertical, 24)
+        .background(.black.opacity(0.9))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .padding(.horizontal, 20)
     }
 
     private var topBar: some View {

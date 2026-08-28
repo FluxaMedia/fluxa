@@ -190,5 +190,6 @@ fluxa-android-library     = { id = "fluxa.android.library" }
 fluxa-android-application = { id = "fluxa.android.application" }
 fluxa-android-compose     = { id = "fluxa.android.compose" }
 fluxa-android-hilt        = { id = "fluxa.android.hilt" }
+fluxa-android-rust        = { id = "fluxa.android.rust" }
 fluxa-kmp-library         = { id = "fluxa.kmp.library" }
 fluxa-kmp-compose         = { id = "fluxa.kmp.compose" }

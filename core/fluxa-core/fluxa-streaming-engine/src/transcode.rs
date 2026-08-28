@@ -251,8 +251,7 @@ pub async fn handle_transcode(Query(q): Query<TranscodeQuery>) -> Response {
     if let Some(start) = q.start.filter(|s| *s > 0.0) {
         cmd.args(["-ss", &start.to_string()]);
     }
-    cmd
-        .args(["-map", "0:v:0"])
+    cmd.args(["-map", "0:v:0"])
         .args(["-map", "0:a:0?"])
         .args(video_args)
         .args(audio_args)

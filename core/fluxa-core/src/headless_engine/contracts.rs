@@ -440,9 +440,11 @@ mod tests {
             }
         ));
 
-        assert!(serde_json::from_str::<AppAction>(
-            r#"{"type":"playerStreamsLoaded","streams":[],"sourceSelectionMode":"typo"}"#,
-        )
-        .is_err());
+        assert!(
+            serde_json::from_str::<AppAction>(
+                r#"{"type":"playerStreamsLoaded","streams":[],"sourceSelectionMode":"typo"}"#,
+            )
+            .is_err()
+        );
     }
 }

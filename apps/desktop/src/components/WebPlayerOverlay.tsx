@@ -17,6 +17,8 @@ import { transcodeUrl, type PlaybackUrlChoice } from '../platform/web/stream';
 import { attachMseRemuxSource } from '../platform/web/mseMkvSource';
 import { PlayerOverlayStyles } from './player/PlayerOverlayStyles';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
+import type { Meta } from '../core/types';
+import { TerminalRecommendations } from './player/TerminalRecommendations';
 import type { PlaybackSnapshot, ScrobbleEvent } from '../core/playbackSession';
 import type { IntroSegmentResult } from '../core/effectRunner';
 import { skipLabelForType } from './player/PlayerOverlayPrimitives';
@@ -68,6 +70,10 @@ interface Props {
   autoSkip?: boolean;
   autoPlayNext?: boolean;
   onHandoff?: (target: string, positionSeconds: number, durationSeconds: number) => void;
+  recommendations?: Meta[];
+  onTerminalPlayback?: () => void;
+  onPlayRecommendation?: (meta: Meta) => void;
+  onDismissRecommendations?: () => void;
 }
 
 function formatTime(value: number) {
@@ -134,6 +140,10 @@ export function WebPlayerOverlay({
   autoSkip = false,
   autoPlayNext = false,
   onHandoff,
+  recommendations = [],
+  onTerminalPlayback,
+  onPlayRecommendation,
+  onDismissRecommendations,
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const subtitleCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -534,7 +544,10 @@ export function WebPlayerOverlay({
           watchTogetherRef.current?.notifyLocalPlayback();
           onPlaybackEvent?.('pause');
         }}
-        onEnded={() => onPlaybackEvent?.('stop')}
+        onEnded={() => {
+          onPlaybackEvent?.('stop');
+          onTerminalPlayback?.();
+        }}
         onVolumeChange={(event) => {
           setMuted(event.currentTarget.muted);
           setVolume(event.currentTarget.volume);
@@ -554,6 +567,9 @@ export function WebPlayerOverlay({
         }}
         style={{ width: '100%', height: '100%', flex: 1, objectFit: 'contain', minHeight: 0 }}
       />
+      {recommendations.length > 0 && onPlayRecommendation && onDismissRecommendations && (
+        <TerminalRecommendations items={recommendations} onPlay={onPlayRecommendation} onDismiss={onDismissRecommendations} />
+      )}
       <canvas ref={subtitleCanvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }} />
       {seekFlash && (
         <div

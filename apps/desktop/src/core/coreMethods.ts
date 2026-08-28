@@ -462,6 +462,7 @@ export const CORE_METHODS = [
   'subtitleSyncApply',
   'subtitleSyncCapture',
   'supportsResource',
+  'terminalRecommendationPlan',
   'theIntroDbMediaPlan',
   'theIntroDbSubmitPlan',
   'tmdbBuiltinCatalogUrl',

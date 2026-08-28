@@ -2,7 +2,7 @@ import React from 'react';
 import { X } from 'lucide-react';
 import type { Meta } from '../core/types';
 import { markContinueWatchingItemWatched, dropContinueWatchingItem, continueWatchingCardFields } from '../core/continueWatchingUtils';
-import { ContinueCard } from './ContinueCard';
+import { ContinueCard, isRenderableMeta } from './ContinueCard';
 import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
 import { ConfirmDialog } from './ConfirmDialog';
@@ -127,7 +127,10 @@ export const ContinueWatchingRow = React.memo(
       }
     }, [items]);
 
-    const visibleItems = React.useMemo(() => items.filter((meta) => !dismissedIds.has(meta.id)), [items, dismissedIds]);
+    const visibleItems = React.useMemo(
+      () => items.filter(isRenderableMeta).filter((meta) => !dismissedIds.has(meta.id)),
+      [items, dismissedIds],
+    );
 
     const [cardFields, setCardFields] = React.useState(lastCardFields);
     const cardFieldsKey = React.useMemo(

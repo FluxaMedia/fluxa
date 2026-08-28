@@ -41,6 +41,8 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             return .object(["continueWatching": .array([])])
         case "fetchMetaDetail":
             return try await loadMeta(effect: effect)
+        case "fetchDetailSecondary":
+            return try await loadDetailSecondary(effect: effect)
         case "runSearch":
             return try await runSearch(effect: effect)
         case "runDiscover":
@@ -116,6 +118,50 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             contentType: contentType,
             id: id
         )
+    }
+
+    private func loadDetailSecondary(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
+        guard case .object(let payload) = effect.payload,
+              let contentType = string(payload["contentType"]),
+              let rawId = string(payload["id"]),
+              let apiKey = UserDefaults.standard.string(forKey: "fluxa.apple.settings.tmdb_api_key"),
+              !apiKey.isEmpty else {
+            return .object(["similarItems": .array([]), "watchedVideoIds": .array([])])
+        }
+        let id = rawId.split(separator: ":").last.map(String.init) ?? rawId
+        let mediaType = contentType == "series" || contentType == "tv" ? "tv" : "movie"
+        guard let numericId = Int(id),
+              var components = URLComponents(string: "https://api.themoviedb.org/3/\(mediaType)/\(numericId)/recommendations") else {
+            return .object(["similarItems": .array([]), "watchedVideoIds": .array([])])
+        }
+        components.queryItems = [
+            URLQueryItem(name: "api_key", value: apiKey),
+            URLQueryItem(name: "language", value: string(payload["language"]) ?? "en-US"),
+            URLQueryItem(name: "page", value: "1")
+        ]
+        let (data, response) = try await URLSession.shared.data(from: components.url!)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode),
+              let root = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let results = root["results"] as? [[String: Any]] else {
+            return .object(["similarItems": .array([]), "watchedVideoIds": .array([])])
+        }
+        let items = results.prefix(20).compactMap { result -> FluxaAppleJsonValue? in
+            guard let resultId = result["id"] as? NSNumber else { return nil }
+            let title = (result[mediaType == "tv" ? "name" : "title"] as? String) ?? ""
+            guard !title.isEmpty else { return nil }
+            let poster = (result["poster_path"] as? String).map { "https://image.tmdb.org/t/p/w500\($0)" }
+            let backdrop = (result["backdrop_path"] as? String).map { "https://image.tmdb.org/t/p/w1280\($0)" }
+            return .object([
+                "id": .string("tmdb:\(resultId.intValue)"),
+                "type": .string(contentType == "anime" ? "anime" : (mediaType == "tv" ? "series" : "movie")),
+                "name": .string(title),
+                "poster": poster.map(FluxaAppleJsonValue.string) ?? .null,
+                "background": backdrop.map(FluxaAppleJsonValue.string) ?? .null,
+                "releaseInfo": .string((result[mediaType == "tv" ? "first_air_date" : "release_date"] as? String) ?? "")
+            ])
+        }
+        return .object(["similarItems": .array(items), "watchedVideoIds": .array([])])
     }
 
     private func runSearch(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {

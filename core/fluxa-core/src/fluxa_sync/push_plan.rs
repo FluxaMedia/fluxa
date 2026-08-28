@@ -178,9 +178,8 @@ mod tests {
             "collections|abc": { "revision": 3, "hash": hash_payload(&payload) },
         });
 
-        let result =
-            push_plan_json(&json!({ "documents": documents, "known": known }).to_string())
-                .expect("plan");
+        let result = push_plan_json(&json!({ "documents": documents, "known": known }).to_string())
+            .expect("plan");
 
         assert!(changes_of(&result).is_empty());
     }

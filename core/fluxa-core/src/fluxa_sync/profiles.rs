@@ -75,12 +75,7 @@ fn local_from_remote(remote: &Value) -> Value {
         .get("localId")
         .and_then(Value::as_str)
         .map(str::to_string)
-        .or_else(|| {
-            remote
-                .get("id")
-                .and_then(Value::as_str)
-                .map(str::to_string)
-        })
+        .or_else(|| remote.get("id").and_then(Value::as_str).map(str::to_string))
         .unwrap_or_default();
     local.insert("id".into(), json!(local_id));
     local.insert(

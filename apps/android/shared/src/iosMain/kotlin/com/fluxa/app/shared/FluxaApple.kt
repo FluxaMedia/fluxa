@@ -1,6 +1,9 @@
 package com.fluxa.app.shared
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
 import com.fluxa.app.core.apple.AppleCatalogHomeSnapshot
 import com.fluxa.app.core.apple.AppleSearchSnapshot
@@ -16,6 +19,7 @@ import com.fluxa.app.core.apple.AppleDetailSeasonRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSnapshot
 import com.fluxa.app.core.apple.AppleDetailStreamsRequestSnapshot
 import com.fluxa.app.core.apple.ApplePlaybackRequestSnapshot
+import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreActionSnapshot
 import com.fluxa.app.shared.platform.AppleAddonStoreDataSource
 import com.fluxa.app.shared.platform.AppleAddonStoreSnapshot
@@ -32,6 +36,8 @@ import com.fluxa.app.shared.platform.AppleLibraryDataSource
 import com.fluxa.app.shared.platform.AppleProfileDataSource
 import com.fluxa.app.shared.platform.AppleSearchDataSource
 import com.fluxa.app.shared.platform.AppleSettingsDataSource
+import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
 import com.fluxa.app.data.local.AppleWatchlistStore
 import platform.UIKit.UIViewController
 
@@ -62,6 +68,9 @@ object FluxaApple {
         authDataSource
     )
     private var onPlaybackRequested: (ApplePlaybackRequestSnapshot) -> Unit = {}
+    private var onDetailRequested: (AppleDetailRequestSnapshot) -> Unit = {}
+    internal var pendingDetailRequest by mutableStateOf<AppleDetailRequestSnapshot?>(null)
+    private var onDetailRequested: (AppleDetailRequestSnapshot) -> Unit = {}
 
     fun rootViewController(): UIViewController = ComposeUIViewController {
         FluxaAppleApp()
@@ -159,6 +168,22 @@ object FluxaApple {
         onPlaybackRequested = handler
     }
 
+    fun setDetailHandler(handler: (AppleDetailRequestSnapshot) -> Unit) {
+        onDetailRequested = handler
+    }
+
+    internal fun requestDetail(item: AppleCatalogItemSnapshot) {
+        val request = AppleDetailRequestSnapshot(
+            id = item.id,
+            type = item.type,
+            addonTransportUrl = item.addonTransportUrl,
+            catalogType = item.catalogType,
+            title = item.title
+        )
+        pendingDetailRequest = request
+        onDetailRequested(request)
+    }
+
     internal fun requestPlayback(snapshot: ApplePlaybackRequestSnapshot) {
         onPlaybackRequested(snapshot)
     }
@@ -178,6 +203,15 @@ object FluxaApple {
 private fun FluxaAppleApp() {
     FluxaAppHost(
         platformServices = FluxaApple.platformServices,
+        config = com.fluxa.app.shared.FluxaAppHostConfig(
+            detailRequest = FluxaApple.pendingDetailRequest?.let { request ->
+                DetailRequestUiModel(
+                    id = request.id,
+                    type = request.type,
+                    source = CatalogSourceUiModel(request.addonTransportUrl, request.catalogType)
+                )
+            }
+        ),
         callbacks = com.fluxa.app.shared.FluxaAppHostCallbacks(
             navigation = com.fluxa.app.shared.FluxaAppNavigationCallbacks(
                 onDetailNavigationEvent = { event ->

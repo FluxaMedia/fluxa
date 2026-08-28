@@ -39,6 +39,7 @@ export function usePlayerNativeEvents({
   showEpisodeTransitionLoading,
   scrobbleStartedRef,
   dispatchScrobbleLifecycle,
+  onTerminalPlayback,
 }: {
   stateRef: React.MutableRefObject<AppState>;
   closingPlayerRef: React.MutableRefObject<boolean>;
@@ -62,6 +63,7 @@ export function usePlayerNativeEvents({
   showEpisodeTransitionLoading: (meta: Meta, episode: Video, stream: Stream) => void;
   scrobbleStartedRef: React.MutableRefObject<boolean>;
   dispatchScrobbleLifecycle: (event: 'start' | 'pause' | 'stop', status: EmbeddedMpvStatus) => Promise<void>;
+  onTerminalPlayback?: () => Promise<boolean>;
 }) {
   const episodeTransitionActiveRef = useRef(false);
 
@@ -77,7 +79,10 @@ export function usePlayerNativeEvents({
     let cancelled = false;
 
     listen('native-player-close-requested', () => {
-      void closePlayer();
+      void (async () => {
+        if (onTerminalPlayback && (await onTerminalPlayback())) return;
+        await closePlayer();
+      })();
     })
       .then((fn) => {
         if (cancelled) fn();
@@ -102,7 +107,7 @@ export function usePlayerNativeEvents({
       cancelled = true;
       unlisteners.forEach((fn) => fn());
     };
-  }, [closePlayer, onPlayerError]);
+  }, [closePlayer, onPlayerError, onTerminalPlayback]);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];

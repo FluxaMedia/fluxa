@@ -354,6 +354,9 @@ mod tests {
             json!("https://api.nuvio.tv/storage/v1/object/public/avatars/profiles/avatar-1.png")
         );
         assert_eq!(result[0]["nuvioPinEnabled"], json!(true));
-        assert_eq!(result[0]["nuvioProfileUpdatedAt"], json!("2026-08-18T00:00:00Z"));
+        assert_eq!(
+            result[0]["nuvioProfileUpdatedAt"],
+            json!("2026-08-18T00:00:00Z")
+        );
     }
 }

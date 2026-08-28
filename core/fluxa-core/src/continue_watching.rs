@@ -11,7 +11,11 @@ pub(crate) fn continue_watching_json(args_json: &str) -> Option<String> {
     match source {
         "nuvio" => nuvio::continue_watching_json(args_json),
         "local" => build_continue_watching_from_progress_json(
-            &args.get("progress").cloned().unwrap_or_else(|| json!({})).to_string(),
+            &args
+                .get("progress")
+                .cloned()
+                .unwrap_or_else(|| json!({}))
+                .to_string(),
         ),
         provider => provider_rows_json(&args, provider),
     }

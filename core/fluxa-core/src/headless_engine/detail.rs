@@ -350,7 +350,10 @@ pub(super) fn dispatch_streams_appended(
     available_addons: Vec<String>,
     generation: Option<u64>,
 ) -> Vec<EffectEnvelope> {
-    if !engine.state.detail.is_loading_streams {
+    // Late plugin results may arrive after the addon request has already
+    // completed. Generation still protects against stale episode results; an
+    // unscoped append is only accepted while the request is loading.
+    if !engine.state.detail.is_loading_streams && generation.is_none() {
         return vec![];
     }
     if let Some(generation) = generation

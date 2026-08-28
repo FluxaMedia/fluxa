@@ -86,7 +86,7 @@ export async function resolveLocalMedia(root: string): Promise<LocalMediaItem[]>
     const query = first.parsed.explicitId ?? first.parsed.title;
     const cacheKey = `${first.kind}|${query}`;
     const direct = first.parsed.explicitId
-      ? fetchMetaDetail({ id: first.parsed.explicitId, contentType: first.kind === 'movies' ? 'movie' : 'series' }).catch(() => null)
+      ? fetchMetaDetail({ id: first.parsed.explicitId, contentType: first.kind === 'movies' ? 'movie' : 'series', purpose: 'local-media-direct' }).catch(() => null)
       : Promise.resolve(null);
     const search = searchCache.get(cacheKey) ?? runSearch({ query, language: 'en' });
     searchCache.set(cacheKey, search);
@@ -108,6 +108,7 @@ export async function resolveLocalMedia(root: string): Promise<LocalMediaItem[]>
     const detailed = await fetchMetaDetail({
       id: winner.id,
       contentType: winner.type,
+      purpose: 'local-media-detail',
       sourceAddonTransportUrl: winner.sourceAddonTransportUrl,
     }).catch(() => null);
     const meta = toMeta(detailed) ?? winner;

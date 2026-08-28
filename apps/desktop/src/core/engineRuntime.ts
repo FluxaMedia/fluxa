@@ -38,9 +38,15 @@ export async function getSnapshot(): Promise<unknown | null> {
   return JSON.parse(raw);
 }
 
-export async function httpFetchText(url: string): Promise<{ statusCode: number; body: string }> {
-  const response = await platformInvoke<{ status_code: number; body: string }>('http_fetch_text', { url });
-  return { statusCode: response.status_code, body: response.body };
+export async function httpFetchText(url: string): Promise<{ statusCode: number; body: string; headersMs?: number; bodyMs?: number; totalMs?: number }> {
+  const response = await platformInvoke<{ status_code: number; body: string; headers_ms?: number; body_ms?: number; total_ms?: number }>('http_fetch_text', { url });
+  return {
+    statusCode: response.status_code,
+    body: response.body,
+    headersMs: response.headers_ms,
+    bodyMs: response.body_ms,
+    totalMs: response.total_ms,
+  };
 }
 
 export async function httpExecuteText(

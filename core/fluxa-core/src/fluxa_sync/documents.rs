@@ -53,7 +53,11 @@ pub(super) fn merged_with(sparse: &Value, defaults: &Value) -> Value {
 
 fn push_single(documents: &mut Vec<Value>, args: &Value, field: &str, entity: &str, key: &str) {
     if let Some(value) = args.get(field).filter(|value| !value.is_null()) {
-        let payload = if field == "addons" { compact_addons(value) } else { value.clone() };
+        let payload = if field == "addons" {
+            compact_addons(value)
+        } else {
+            value.clone()
+        };
         documents.push(document(entity, key, payload));
     }
 }
@@ -72,10 +76,22 @@ fn compact_addons(value: &Value) -> Value {
 }
 
 fn compact_library_item(value: &Value) -> Value {
-    let Some(object) = value.as_object() else { return value.clone(); };
+    let Some(object) = value.as_object() else {
+        return value.clone();
+    };
     let allowed = [
-        "id", "type", "name", "poster", "posterShape", "background", "description",
-        "releaseInfo", "imdbRating", "genres", "addonBaseUrl", "addedAt",
+        "id",
+        "type",
+        "name",
+        "poster",
+        "posterShape",
+        "background",
+        "description",
+        "releaseInfo",
+        "imdbRating",
+        "genres",
+        "addonBaseUrl",
+        "addedAt",
     ];
     let mut compact = serde_json::Map::new();
     for key in allowed {
@@ -89,7 +105,9 @@ fn compact_library_item(value: &Value) -> Value {
 fn compact_progress(key: &str, value: &Value) -> Value {
     let mut compact = serde_json::Map::new();
     let source = value.as_object();
-    let meta = source.and_then(|object| object.get("meta")).and_then(Value::as_object);
+    let meta = source
+        .and_then(|object| object.get("meta"))
+        .and_then(Value::as_object);
 
     compact.insert(
         "contentId".into(),
@@ -170,7 +188,11 @@ pub(crate) fn documents_json(args_json: &str) -> Option<String> {
     let mut documents: Vec<Value> = Vec::new();
 
     for (key, value) in entries(args.get("progress")) {
-        documents.push(document("watch_progress", &key, compact_progress(&key, &value)));
+        documents.push(document(
+            "watch_progress",
+            &key,
+            compact_progress(&key, &value),
+        ));
     }
 
     for (key, value) in entries(args.get("watched")) {
@@ -184,7 +206,11 @@ pub(crate) fn documents_json(args_json: &str) -> Option<String> {
     }
 
     for (key, value) in entries(args.get("lastWatched")) {
-        documents.push(document("watched_history", &format!("series:{key}"), compact_history(&value)));
+        documents.push(document(
+            "watched_history",
+            &format!("series:{key}"),
+            compact_history(&value),
+        ));
     }
 
     for (status, items) in entries(args.get("library")) {
@@ -259,7 +285,10 @@ mod tests {
         )
         .expect("plan");
 
-        assert_eq!(payload_for(&result, "settings", "app"), json!({ "volume": 40 }));
+        assert_eq!(
+            payload_for(&result, "settings", "app"),
+            json!({ "volume": 40 })
+        );
     }
 
     #[test]
@@ -332,8 +361,10 @@ mod tests {
                         "streamUrl":"https://private.example/stream"
                     }]
                 }
-            }).to_string(),
-        ).expect("plan");
+            })
+            .to_string(),
+        )
+        .expect("plan");
         let payload = payload_for(&result, "library", "tt123");
         assert_eq!(payload["item"]["id"], "tt123");
         assert_eq!(payload["item"]["poster"], "https://example/poster.jpg");
@@ -354,8 +385,10 @@ mod tests {
                         "poster":"https://example/poster.jpg"
                     }
                 }
-            }).to_string(),
-        ).expect("plan");
+            })
+            .to_string(),
+        )
+        .expect("plan");
         let payload = payload_for(&result, "watched_history", "series:tt123");
         assert_eq!(payload["contentType"], "series");
         assert_eq!(payload["videoId"], "tt123:1:4");

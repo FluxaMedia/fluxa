@@ -1,5 +1,7 @@
 use serde_json::{Value, json};
 
+use crate::external_sync::trakt::trakt_image_url;
+
 pub(crate) fn trakt_related_lookup_slug(lookup_json: &str, want_type: &str) -> Option<String> {
     let lookup: Vec<Value> = serde_json::from_str(lookup_json).ok()?;
     lookup
@@ -32,6 +34,18 @@ pub(crate) fn trakt_related_items_to_metas_json(
                 })?;
             let name = item.get("title").and_then(Value::as_str)?;
             let mut meta = json!({ "id": id, "type": content_type, "name": name });
+            if let Some(images) = item.get("images") {
+                let object = meta.as_object_mut()?;
+                if let Some(poster) = trakt_image_url(images, "poster") {
+                    object.insert("poster".to_string(), json!(poster));
+                }
+                if let Some(background) = trakt_image_url(images, "fanart") {
+                    object.insert("background".to_string(), json!(background));
+                }
+                if let Some(logo) = trakt_image_url(images, "logo") {
+                    object.insert("logo".to_string(), json!(logo));
+                }
+            }
             if let Some(year) = item.get("year").and_then(Value::as_i64) {
                 meta.as_object_mut()?
                     .insert("releaseInfo".to_string(), json!(year.to_string()));

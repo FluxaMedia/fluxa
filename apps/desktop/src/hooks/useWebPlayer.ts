@@ -9,6 +9,7 @@ import { appPrefs } from '../core/appPrefs';
 import { fetchPlaybackSkipSegments, type IntroSegmentResult } from '../core/effectRunner';
 import { corePlaybackIntroLookupContentId, coreResolveNextEpisode } from '../core/engine';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
+import { fetchTerminalRecommendations } from '../core/detailEffects';
 import {
   persistPlaybackProgress,
   runScrobbleLifecycle,
@@ -25,6 +26,7 @@ interface UsePlayerOptions {
   updateState: (s: Partial<AppState>) => void;
   onProfileUpdated?: (profile: UserProfile) => void;
   onEpisodePlaybackFailed?: (meta: Meta, episode: Video, message: string) => Promise<void> | void;
+  onTerminalRecommendationSelected?: (meta: Meta) => void;
 }
 
 export interface WebPlayerResult {
@@ -69,6 +71,10 @@ export interface WebPlayerResult {
   notifyFirstFrame: () => void;
   flushProgressOnQuit: () => Promise<void>;
   skipSegmentCoverage: Record<string, string[]>;
+  playerRecommendations: Meta[];
+  dismissPlayerRecommendations: () => void;
+  selectPlayerRecommendation: (meta: Meta) => Promise<void>;
+  handleTerminalPlayback: () => Promise<boolean>;
 }
 
 export function useWebPlayer({
@@ -77,6 +83,7 @@ export function useWebPlayer({
   updateState,
   onProfileUpdated,
   onEpisodePlaybackFailed: _onEpisodePlaybackFailed,
+  onTerminalRecommendationSelected,
 }: UsePlayerOptions): WebPlayerResult {
   const [playerUrl, setPlayerUrl] = useState<string | null>(null);
   const [playerMode, setPlayerMode] = useState<PlaybackUrlChoice['mode'] | null>(null);
@@ -95,6 +102,7 @@ export function useWebPlayer({
   const [playerResumeAt, setPlayerResumeAt] = useState<number>();
   const [playerSkipSegments, setPlayerSkipSegments] = useState<IntroSegmentResult[]>([]);
   const [playerNextEpisode, setPlayerNextEpisode] = useState<Video | null>(null);
+  const [playerRecommendations, setPlayerRecommendations] = useState<Meta[]>([]);
   const [skipSegmentCoverage, setSkipSegmentCoverage] = useState<Record<string, string[]>>({});
   const playingStreamRef = useRef<Stream | null>(null);
   const playingMetaRef = useRef<Meta | null>(null);
@@ -258,6 +266,7 @@ export function useWebPlayer({
       playingStreamRef.current = stream;
       playingMetaRef.current = meta ?? null;
       playingEpisodeRef.current = episode ?? null;
+      setPlayerRecommendations([]);
       playbackSnapshotRef.current = null;
       scrobbleStartedRef.current = false;
       scrobbleWasPausedRef.current = false;
@@ -286,6 +295,14 @@ export function useWebPlayer({
     }
   }, []);
 
+  const handleTerminalPlayback = useCallback(async () => {
+    const meta = playingMetaRef.current;
+    if (!meta || playerNextEpisode) return false;
+    const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false }).catch(() => []);
+    setPlayerRecommendations(recommendations);
+    return recommendations.length > 0;
+  }, [playerNextEpisode]);
+
   const playNextEpisode = useCallback(async () => {
     const meta = playingMetaRef.current;
     const stream = playingStreamRef.current;
@@ -308,7 +325,18 @@ export function useWebPlayer({
     playingMetaRef.current = null;
     playingEpisodeRef.current = null;
     playbackSnapshotRef.current = null;
+    setPlayerRecommendations([]);
   }, [playerUsesTorrent, reportPlaybackEvent, saveProgress]);
+
+  const dismissPlayerRecommendations = useCallback(() => setPlayerRecommendations([]), []);
+  const selectPlayerRecommendation = useCallback(
+    async (meta: Meta) => {
+      dismissPlayerRecommendations();
+      await closePlayer();
+      onTerminalRecommendationSelected?.(meta);
+    },
+    [closePlayer, dismissPlayerRecommendations, onTerminalRecommendationSelected],
+  );
 
   return {
     playerLoadingOverlay,
@@ -343,5 +371,9 @@ export function useWebPlayer({
     notifyFirstFrame: () => {},
     flushProgressOnQuit: saveProgress,
     skipSegmentCoverage,
+    playerRecommendations,
+    dismissPlayerRecommendations,
+    selectPlayerRecommendation,
+    handleTerminalPlayback,
   };
 }

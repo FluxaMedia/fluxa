@@ -205,7 +205,10 @@ mod tests {
             "selectedStreamUrl": "http://127.0.0.1:8080/stream/0"
         }));
 
-        assert_eq!(result[0]["headers"]["Referer"], "https://vidrame.pro/vr/397ac592");
+        assert_eq!(
+            result[0]["headers"]["Referer"],
+            "https://vidrame.pro/vr/397ac592"
+        );
         assert_eq!(result[0]["sourceName"], "HDFilmizle · Çift Dil");
     }
 

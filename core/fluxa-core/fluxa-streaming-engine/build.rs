@@ -21,6 +21,9 @@ fn main() {
         .warnings(true)
         .compile("fluxa_ffmpeg_remux");
 
-    println!("cargo:rustc-link-search=native={}", PathBuf::from(lib_dir).display());
+    println!(
+        "cargo:rustc-link-search=native={}",
+        PathBuf::from(lib_dir).display()
+    );
     println!("cargo:rustc-link-lib=static=CFFmpeg");
 }

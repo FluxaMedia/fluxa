@@ -138,7 +138,10 @@ impl Entry {
         if self.completed {
             return true;
         }
-        if self.percent.is_some_and(|percent| percent >= COMPLETION_PERCENT) {
+        if self
+            .percent
+            .is_some_and(|percent| percent >= COMPLETION_PERCENT)
+        {
             return true;
         }
         self.duration_ms > 0.0 && self.position_ms / self.duration_ms >= COMPLETION_FRACTION
@@ -332,7 +335,8 @@ fn should_surface_next_episode(
     show_unaired: bool,
 ) -> bool {
     let candidate_season = candidate.get("season").and_then(Value::as_i64);
-    let season_rollover = normalize_season(candidate_season) != normalize_season(Some(watched_season));
+    let season_rollover =
+        normalize_season(candidate_season) != normalize_season(Some(watched_season));
     let available = candidate
         .get("available")
         .and_then(Value::as_bool)
@@ -392,22 +396,20 @@ fn next_released_episode_after(
 ) -> Option<Value> {
     let sorted = sorted_episodes(videos);
     let watched_video_id = format!("{content_id}:{season}:{episode}");
-    let identity = |video: &Value| {
-        match (
-            video.get("season").and_then(Value::as_i64),
-            video
-                .get("episode")
-                .or_else(|| video.get("number"))
-                .and_then(Value::as_i64),
-        ) {
-            (Some(season), Some(episode)) => format!("{content_id}:{season}:{episode}"),
-            _ => video
-                .get("id")
-                .or_else(|| video.get("_id"))
-                .and_then(Value::as_str)
-                .unwrap_or(content_id)
-                .to_string(),
-        }
+    let identity = |video: &Value| match (
+        video.get("season").and_then(Value::as_i64),
+        video
+            .get("episode")
+            .or_else(|| video.get("number"))
+            .and_then(Value::as_i64),
+    ) {
+        (Some(season), Some(episode)) => format!("{content_id}:{season}:{episode}"),
+        _ => video
+            .get("id")
+            .or_else(|| video.get("_id"))
+            .and_then(Value::as_str)
+            .unwrap_or(content_id)
+            .to_string(),
     };
     let mut watched_index = sorted
         .iter()
@@ -417,9 +419,7 @@ fn next_released_episode_after(
         let main: Vec<usize> = sorted
             .iter()
             .enumerate()
-            .filter(|(_, video)| {
-                normalize_season(video.get("season").and_then(Value::as_i64)) > 0
-            })
+            .filter(|(_, video)| normalize_season(video.get("season").and_then(Value::as_i64)) > 0)
             .map(|(index, _)| index)
             .collect();
         let seasons: HashSet<i64> = main
@@ -567,7 +567,9 @@ pub(super) fn continue_watching_json(args_json: &str) -> Option<String> {
         .and_then(Value::as_bool)
         .unwrap_or(true);
     let days_cap = prefs.get("continueWatchingDaysCap").and_then(Value::as_i64);
-    let cutoff_ms = days_cap.filter(|days| *days > 0).map(|days| now_ms - days * DAY_MS);
+    let cutoff_ms = days_cap
+        .filter(|days| *days > 0)
+        .map(|days| now_ms - days * DAY_MS);
     let hidden: HashSet<String> = args
         .get("hiddenContentIds")
         .and_then(Value::as_array)
@@ -622,10 +624,12 @@ pub(super) fn continue_watching_json(args_json: &str) -> Option<String> {
     let suppressed: HashSet<&str> = visible
         .iter()
         .filter(|entry| is_series_for_continue_watching(&entry.content_type))
-        .filter(|entry| match latest_completed_at.get(entry.content_id.as_str()) {
-            Some(completed_at) => entry.last_updated_ms >= *completed_at,
-            None => true,
-        })
+        .filter(
+            |entry| match latest_completed_at.get(entry.content_id.as_str()) {
+                Some(completed_at) => entry.last_updated_ms >= *completed_at,
+                None => true,
+            },
+        )
         .map(|entry| entry.content_id.as_str())
         .collect();
 
@@ -697,7 +701,14 @@ pub(super) fn continue_watching_json(args_json: &str) -> Option<String> {
 mod tests {
     use super::*;
 
-    fn entry(video: &str, season: i64, episode: i64, position: f64, duration: f64, at: i64) -> Value {
+    fn entry(
+        video: &str,
+        season: i64,
+        episode: i64,
+        position: f64,
+        duration: f64,
+        at: i64,
+    ) -> Value {
         json!({
             "content_id": "tt1",
             "content_type": "series",
@@ -733,7 +744,14 @@ mod tests {
     #[test]
     fn a_half_watched_episode_stays_a_resume_row() {
         let items = run(
-            json!([entry("tt1:2:9", 2, 9, 600_000.0, 2_545_000.0, 1_600_000_000_000)]),
+            json!([entry(
+                "tt1:2:9",
+                2,
+                9,
+                600_000.0,
+                2_545_000.0,
+                1_600_000_000_000
+            )]),
             "2021-01-01T00:00:00Z",
         );
         assert_eq!(items.len(), 1);
@@ -744,7 +762,14 @@ mod tests {
 
     #[test]
     fn a_finished_episode_becomes_the_next_one_and_stays_there() {
-        let progress = json!([entry("tt1:2:9", 2, 9, 2_500_000.0, 2_545_000.0, 1_600_000_000_000)]);
+        let progress = json!([entry(
+            "tt1:2:9",
+            2,
+            9,
+            2_500_000.0,
+            2_545_000.0,
+            1_600_000_000_000
+        )]);
         let items = run(progress.clone(), "2021-01-01T00:00:00Z");
         assert_eq!(items.len(), 1);
         assert_eq!(items[0]["lastEpisodeNumber"], 10);
@@ -771,7 +796,14 @@ mod tests {
     #[test]
     fn a_series_with_no_episode_left_drops_out() {
         let items = run(
-            json!([entry("tt1:2:11", 2, 11, 2_500_000.0, 2_545_000.0, 1_600_000_000_000)]),
+            json!([entry(
+                "tt1:2:11",
+                2,
+                11,
+                2_500_000.0,
+                2_545_000.0,
+                1_600_000_000_000
+            )]),
             "2021-01-01T00:00:00Z",
         );
         assert!(items.is_empty());
@@ -780,7 +812,14 @@ mod tests {
     #[test]
     fn an_unaired_next_episode_still_surfaces_by_default() {
         let items = run(
-            json!([entry("tt1:2:9", 2, 9, 2_500_000.0, 2_545_000.0, 1_577_836_800_000)]),
+            json!([entry(
+                "tt1:2:9",
+                2,
+                9,
+                2_500_000.0,
+                2_545_000.0,
+                1_577_836_800_000
+            )]),
             "2020-01-05T00:00:00Z",
         );
         assert_eq!(items[0]["lastEpisodeNumber"], 10);
@@ -789,7 +828,14 @@ mod tests {
     #[test]
     fn the_remaining_minute_matches_a_millisecond_precise_countdown() {
         let items = run(
-            json!([entry("tt1:2:9", 2, 9, 1_400.0, 1_321_000.0, 1_600_000_000_000)]),
+            json!([entry(
+                "tt1:2:9",
+                2,
+                9,
+                1_400.0,
+                1_321_000.0,
+                1_600_000_000_000
+            )]),
             "2021-01-01T00:00:00Z",
         );
         let time_offset = items[0]["timeOffset"].as_i64().unwrap();
@@ -838,7 +884,14 @@ mod tests {
     #[test]
     fn a_barely_started_episode_is_not_stored_as_progress() {
         let items = run(
-            json!([entry("tt1:2:9", 2, 9, 500.0, 2_545_000.0, 1_600_000_000_000)]),
+            json!([entry(
+                "tt1:2:9",
+                2,
+                9,
+                500.0,
+                2_545_000.0,
+                1_600_000_000_000
+            )]),
             "2021-01-01T00:00:00Z",
         );
         assert!(items.is_empty());

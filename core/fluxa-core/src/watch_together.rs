@@ -362,9 +362,18 @@ mod tests {
 
     #[test]
     fn protocol_matches_existing_server_wire_shape() {
-        assert_eq!(WatchTogetherProtocol::create("Alice"), json!({"type": "create", "name": "Alice"}));
-        assert_eq!(WatchTogetherProtocol::join("ABC234", "Alice"), json!({"type": "join", "room": "ABC234", "name": "Alice"}));
-        assert_eq!(WatchTogetherProtocol::content(&content())["contentId"], "tt123");
+        assert_eq!(
+            WatchTogetherProtocol::create("Alice"),
+            json!({"type": "create", "name": "Alice"})
+        );
+        assert_eq!(
+            WatchTogetherProtocol::join("ABC234", "Alice"),
+            json!({"type": "join", "room": "ABC234", "name": "Alice"})
+        );
+        assert_eq!(
+            WatchTogetherProtocol::content(&content())["contentId"],
+            "tt123"
+        );
     }
 
     #[test]

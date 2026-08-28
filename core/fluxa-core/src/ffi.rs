@@ -27,8 +27,8 @@ mod search_plan_routes;
 mod stream_badge_routes;
 mod stream_policy_routes;
 mod tmdb_routes;
-mod watchlist_offline_routes;
 mod watch_together_routes;
+mod watchlist_offline_routes;
 use addon_protocol_routes::route_addon_protocol;
 use addon_resource_routes::route_addon_resource;
 use addon_support_routes::{route_addon_uptime, route_trailer_subtitles};
@@ -38,10 +38,10 @@ use content_identity_routes::route_content_identity;
 use content_warning_routes::route_content_warnings;
 use core_addon_store_routes::{route_addon_store, route_core_contract, route_profile_avatar_pack};
 use engine_routes::route_engine_lifecycle;
-use fluxa_sync_routes::route_fluxa_sync;
 use external_sync_routes::{
     route_external_sync_anilist, route_external_sync_simkl, route_external_sync_trakt,
 };
+use fluxa_sync_routes::route_fluxa_sync;
 use intro_plugins_routes::{route_intro_segments, route_plugins};
 use library_routes::route_library_state;
 use local_media_routes::route_local_media;
@@ -61,8 +61,8 @@ use search_plan_routes::route_search_plan;
 use stream_badge_routes::route_stream_badges;
 use stream_policy_routes::route_stream_policy;
 use tmdb_routes::route_tmdb;
-use watchlist_offline_routes::{route_offline, route_watchlist};
 use watch_together_routes::route_watch_together;
+use watchlist_offline_routes::{route_offline, route_watchlist};
 
 #[cfg(feature = "dv-codec")]
 use crate::dolby_vision_rpu;
@@ -72,12 +72,11 @@ use crate::{
     addon_protocol, addon_resource, addon_store, addon_uptime, anime_detection, app_state,
     calendar_plan, content_identity, content_warnings, core_contract, data_policy,
     desktop_playback, device_resource, discovery_plan, external_sync, fluxa_sync,
-    headless_adapter_plan,
-    headless_engine, home_ranking, integration_settings, intro_segments, library_persistence,
-    library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan, player_flow,
-    player_policy, player_scrobble, plugins, profile_avatar_pack, profile_contract, profile_prefs,
-    publicmetadb_plan, repository_flow, search_plan, stream_badges, stream_policy, tmdb_plan,
-    trailer_subtitles, subtitle_sync, watchlist_plan,
+    headless_adapter_plan, headless_engine, home_ranking, integration_settings, intro_segments,
+    library_persistence, library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan,
+    player_flow, player_policy, player_scrobble, plugins, profile_avatar_pack, profile_contract,
+    profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow, search_plan, stream_badges, stream_policy,
+    subtitle_sync, tmdb_plan, trailer_subtitles, watchlist_plan,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]

@@ -143,20 +143,48 @@ mod tests {
 
     #[test]
     fn cache_requires_online_when_missing_or_profile_changed() {
-        let missing = verify_cached_json(r#"{"profileIndex":1,"pin":"1234","pinEnabled":true}"#).unwrap();
-        assert_eq!(serde_json::from_str::<Value>(&missing).unwrap()["reason"], "requires_online");
+        let missing =
+            verify_cached_json(r#"{"profileIndex":1,"pin":"1234","pinEnabled":true}"#).unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&missing).unwrap()["reason"],
+            "requires_online"
+        );
 
-        let cache = cache_payload_json(r#"{"profileIndex":1,"salt":"s","pin":"1234","profileUpdatedAt":"a"}"#).unwrap();
-        let changed = verify_cached_json(&format!(r#"{{"profileIndex":1,"pin":"1234","profileUpdatedAt":"b","cache":{cache}}}"#)).unwrap();
-        assert_eq!(serde_json::from_str::<Value>(&changed).unwrap()["reason"], "profile_changed");
+        let cache = cache_payload_json(
+            r#"{"profileIndex":1,"salt":"s","pin":"1234","profileUpdatedAt":"a"}"#,
+        )
+        .unwrap();
+        let changed = verify_cached_json(&format!(
+            r#"{{"profileIndex":1,"pin":"1234","profileUpdatedAt":"b","cache":{cache}}}"#
+        ))
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&changed).unwrap()["reason"],
+            "profile_changed"
+        );
     }
 
     #[test]
     fn cached_pin_verifies_and_wrong_pin_fails() {
-        let cache = cache_payload_json(r#"{"profileIndex":1,"salt":"s","pin":"1234","profileUpdatedAt":"a"}"#).unwrap();
-        let ok = verify_cached_json(&format!(r#"{{"profileIndex":1,"pin":"1234","profileUpdatedAt":"a","cache":{cache}}}"#)).unwrap();
-        assert_eq!(serde_json::from_str::<Value>(&ok).unwrap()["unlocked"], true);
-        let bad = verify_cached_json(&format!(r#"{{"profileIndex":1,"pin":"0000","profileUpdatedAt":"a","cache":{cache}}}"#)).unwrap();
-        assert_eq!(serde_json::from_str::<Value>(&bad).unwrap()["reason"], "incorrect");
+        let cache = cache_payload_json(
+            r#"{"profileIndex":1,"salt":"s","pin":"1234","profileUpdatedAt":"a"}"#,
+        )
+        .unwrap();
+        let ok = verify_cached_json(&format!(
+            r#"{{"profileIndex":1,"pin":"1234","profileUpdatedAt":"a","cache":{cache}}}"#
+        ))
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&ok).unwrap()["unlocked"],
+            true
+        );
+        let bad = verify_cached_json(&format!(
+            r#"{{"profileIndex":1,"pin":"0000","profileUpdatedAt":"a","cache":{cache}}}"#
+        ))
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&bad).unwrap()["reason"],
+            "incorrect"
+        );
     }
 }

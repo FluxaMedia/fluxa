@@ -6,6 +6,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
+import com.fluxa.app.core.rust.NativeHeadlessEffect
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
@@ -1003,6 +1004,47 @@ class HomeViewModel @Inject constructor(
         videoId: String?,
         language: String,
     ): String? = headlessPlaybackCoordinator.resolvePlaybackIntroImdbId(meta, videoId, language)
+
+    suspend fun loadTerminalRecommendations(meta: Meta, hasNextEpisode: Boolean, language: String): List<Meta> {
+        if (hasNextEpisode) return emptyList()
+        val completion = headlessEnvironment.execute(
+            NativeHeadlessEffect(
+                id = "terminal-recommendations-${meta.id}",
+                type = "fetchDetailSecondary",
+                payload = mapOf(
+                    "contentType" to meta.type,
+                    "id" to meta.id,
+                    "language" to language,
+                    "profile" to currentActiveProfile,
+                ),
+            ),
+        )
+        if (completion.status != "ok") return emptyList()
+        val value = completion.value as? Map<*, *> ?: return emptyList()
+        val candidates = runCatching {
+            gson.fromJson<List<Meta>>(gson.toJson(value["similarItems"]), metaListType)
+        }.getOrDefault(emptyList())
+        val watchedIds = runCatching {
+            gson.fromJson<List<String>>(gson.toJson(value["watchedVideoIds"]), object : TypeToken<List<String>>() {}.type)
+        }.getOrDefault(emptyList())
+        if (candidates.isEmpty()) return emptyList()
+        val planJson = FluxaCoreUniFfi.coreInvokeValue(
+            "terminalRecommendationPlan",
+            gson.toJson(
+                mapOf(
+                    "current" to meta,
+                    "candidates" to candidates,
+                    "hasNextEpisode" to false,
+                    "watchedIds" to watchedIds,
+                ),
+            ),
+        )
+        val plan = runCatching { gson.fromJson(planJson, Map::class.java) }.getOrNull() ?: return emptyList()
+        if (plan["showRecommendations"] != true) return emptyList()
+        return runCatching {
+            gson.fromJson<List<Meta>>(gson.toJson(plan["items"]), metaListType)
+        }.getOrDefault(emptyList())
+    }
 
     private suspend fun getConfiguredMetaDetail(
         type: String,

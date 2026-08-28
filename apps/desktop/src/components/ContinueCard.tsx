@@ -7,6 +7,12 @@ import { usePosterSrc } from '../hooks/usePosterSrc';
 import { useLongPress } from '../hooks/useLongPress';
 import { t } from '../i18n';
 
+export function isRenderableMeta(value: unknown): value is Meta {
+  if (!value || typeof value !== 'object') return false;
+  const candidate = value as Partial<Meta>;
+  return typeof candidate.id === 'string' && candidate.id.length > 0 && typeof candidate.name === 'string' && candidate.name.length > 0;
+}
+
 function resolveBadge(
   badge: string | undefined,
   type: string,
@@ -46,7 +52,7 @@ export function ContinueCard({
   onDrop,
   onDismissAnimationEnd,
 }: {
-  meta: Meta;
+  meta: Meta | null | undefined;
   isHorizontal: boolean;
   artwork: string | null;
   episodeLine: string | null;
@@ -64,6 +70,7 @@ export function ContinueCard({
   onDrop: (m: Meta) => void;
   onDismissAnimationEnd: (m: Meta) => void;
 }) {
+  if (!isRenderableMeta(meta)) return null;
   const [hovered, setHovered] = React.useState(false);
   const [menuPoint, setMenuPoint] = React.useState<{ x: number; y: number } | null>(null);
   const longPress = useLongPress((point) => {

@@ -4,9 +4,11 @@ import { loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources, fetchParsedAddonResource, resourceForPlannedRequest } from './fetchPlanning';
 import { discoverCatalogOptions } from './homeEffects';
 import { fetchBuiltinCatalog, isBuiltinTmdbAddon } from './tmdbAddon';
+import { startPerfSpan } from './performance';
 
 export async function fetchCatalogPage(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
-  const values = await fetchPlannedResources({ ...payload, kind: 'catalogPage' }, undefined, signal);
+  const perf = startPerfSpan('catalog.page', { contentType: payload.contentType, catalogId: payload.catalogId });
+  const values = await fetchPlannedResources({ ...payload, kind: 'catalogPage', traceId: perf.traceId }, undefined, signal);
   const rawItems = values.flatMap((value) => (value as { items?: unknown[] })?.items ?? []);
   const transportUrl = typeof payload.transportUrl === 'string' ? payload.transportUrl : undefined;
   const catalogType = typeof payload.contentType === 'string' ? payload.contentType : undefined;
@@ -15,6 +17,7 @@ export async function fetchCatalogPage(payload: Record<string, unknown>, signal?
       ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: transportUrl, sourceAddonCatalogType: catalogType }
       : item,
   );
+  perf.end({ items: items.length });
   return { items };
 }
 
@@ -41,19 +44,26 @@ function notifySearchPartialHandlers(query: string, source: PartialSearchSource,
 }
 
 export async function runSearch(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  const perf = startPerfSpan('search', { query: payload.query });
+  const startedAt = performance.now();
   const query = payload.query as string;
   const language = payload.language as string | undefined;
   const cacheKey = `${language ?? ''}|${query}`;
+  console.debug('[fluxa:search:start]', JSON.stringify({ query }));
   const cached = searchResultsCache.get(cacheKey);
-  if (cached) return cached;
+  if (cached) {
+    console.debug('[fluxa:search:cache-hit]', JSON.stringify({ query, ms: Math.round(performance.now() - startedAt) }));
+    return cached;
+  }
 
   searchAbortController?.abort();
   const abortController = new AbortController();
   searchAbortController = abortController;
   const requestSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
-
   const addons = await loadEnabledAddons();
-  const plan = await coreResourceFetchPlan({ kind: 'search', query, addons });
+  console.debug('[fluxa:search:addons-ready]', JSON.stringify({ query, addons: addons.map((addon) => addon.name), ms: Math.round(performance.now() - startedAt) }));
+  const plan = await coreResourceFetchPlan({ kind: 'search', query, addons, traceId: perf.traceId });
+  console.debug('[fluxa:search:plan-ready]', JSON.stringify({ query, requests: (plan?.requests ?? []).map((request) => ({ addon: request.addonName, type: request.catalogType, url: request.url })), ms: Math.round(performance.now() - startedAt) }));
   const sources: Array<{
     id: string;
     name?: string;
@@ -76,6 +86,7 @@ export async function runSearch(payload: Record<string, unknown>, signal?: Abort
         undefined,
         requestSignal,
       );
+      console.debug('[fluxa:search:source-parsed]', JSON.stringify({ query, addon: request.addonName, type: request.catalogType, items: Array.isArray(parsed?.items) ? parsed.items.length : 0, ms: Math.round(performance.now() - startedAt) }));
       const rawItems = (parsed?.items as unknown[] | undefined) ?? [];
       if (!rawItems.length) return;
       const transportUrl = typeof request.transportUrl === 'string' ? request.transportUrl : undefined;
@@ -125,12 +136,15 @@ export async function runSearch(payload: Record<string, unknown>, signal?: Abort
   const grouping = await coreSearchResultGrouping({ query, results: merged.results });
   const value = { results: merged.results, categories: merged.categories, grouping };
   if (searchAbortController === abortController) searchResultsCache.set(cacheKey, value);
+  perf.end({ sources: sources.length, results: merged.results.length });
+  console.debug('[fluxa:search:end]', JSON.stringify({ query, sources: sources.length, results: merged.results.length, ms: Math.round(performance.now() - startedAt) }));
   return value;
 }
 
 let discoverAbortController: AbortController | null = null;
 
 export async function runDiscover(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
+  const perf = startPerfSpan('discover', { contentType: payload.contentType });
   discoverAbortController?.abort();
   const abortController = new AbortController();
   discoverAbortController = abortController;
@@ -150,12 +164,13 @@ export async function runDiscover(payload: Record<string, unknown>, signal?: Abo
       requestSignal,
     );
     if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
+    perf.end({ builtin: true, results: metas.length });
     return { results: metas };
   }
 
   const catalogKey = filters?.catalogKey;
   const addons = await loadEnabledAddons();
-  const values = await fetchPlannedResources({ kind: 'discover', contentType, catalogKey, extra, addons }, undefined, requestSignal);
+  const values = await fetchPlannedResources({ kind: 'discover', contentType, catalogKey, extra, addons, traceId: perf.traceId }, undefined, requestSignal);
   if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
 
   const rawResults = values.flatMap((value) => (value as { items?: unknown[] })?.items ?? []);
@@ -165,6 +180,7 @@ export async function runDiscover(payload: Record<string, unknown>, signal?: Abo
       ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: filters?.transportUrl, sourceAddonCatalogType: contentType }
       : item,
   );
+  perf.end({ builtin: false, results: results.length });
   return { results };
 }
 

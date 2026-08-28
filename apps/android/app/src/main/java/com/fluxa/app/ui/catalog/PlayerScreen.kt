@@ -54,7 +54,8 @@ fun PlayerScreen(
     lastStreamTitle: String? = null,
     initialBingeGroup: String? = null,
     returnToSourcesOnError: Boolean = false,
-    onSelectSource: (PlayerSourceSelectionRequest) -> Unit
+    onSelectSource: (PlayerSourceSelectionRequest) -> Unit,
+    onRecommendationSelected: (Meta) -> Unit = {}
 ) {
     val context = LocalContext.current
     val activity = context as? android.app.Activity
@@ -580,8 +581,21 @@ fun PlayerScreen(
 
 
 
-    LaunchedEffect(state.engine.playback.playbackEnded) {
-        playbackActions.autoPlayNextWhenEnded()
+    LaunchedEffect(state.engine.playback.playbackEnded, state.nextEpisodePending) {
+        if (!state.engine.playback.playbackEnded || !state.engine.playback.hasStartedPlaying) return@LaunchedEffect
+        delay(150)
+        val hasNextEpisode = state.nextEpisodePending != null
+        if (hasNextEpisode) {
+            playbackActions.autoPlayNextWhenEnded()
+        } else if (!state.terminalRecommendationsLoaded) {
+            state.terminalRecommendationsLoaded = true
+            state.terminalRecommendations = viewModel.loadTerminalRecommendations(
+                meta = meta,
+                hasNextEpisode = false,
+                language = lang,
+            )
+            if (state.terminalRecommendations.isEmpty()) playbackActions.closePlayer()
+        }
     }
 
     PlayerScreenContent(
@@ -629,6 +643,17 @@ fun PlayerScreen(
         },
         switchToStream = playbackActions::switchToStream
     )
+
+    if (state.terminalRecommendations.isNotEmpty()) {
+        PlayerTerminalRecommendations(
+            items = state.terminalRecommendations,
+            language = lang,
+            onSelected = { recommendation ->
+                onRecommendationSelected(recommendation)
+            },
+            onDismiss = { state.terminalRecommendations = emptyList() },
+        )
+    }
 
     if (showWatchParty) {
         WatchTogetherDialog(

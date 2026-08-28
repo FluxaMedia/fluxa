@@ -17,11 +17,11 @@ pub(crate) use cache_keys::{
 pub(crate) use discover_filters::filter_discover_results_json;
 // unused outside the `fuzzing`-feature build: fuzz_targets (lib.rs) is the only
 // consumer of this path, and default builds don't enable that feature.
-#[allow(unused_imports)]
-pub use episode_matching::{contains_compact_episode, contains_spaced_episode};
 pub(crate) use episode_matching::stream_matches_episode;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use episode_matching::text_matches_episode;
+#[allow(unused_imports)]
+pub use episode_matching::{contains_compact_episode, contains_spaced_episode};
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use feed_selection::{
     effective_metadata_feed_selection_json, move_metadata_feed_order_json,

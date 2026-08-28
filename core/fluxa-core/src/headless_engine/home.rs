@@ -262,7 +262,11 @@ fn revalidate(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
         ReadHomeBootstrapPayload {
             profile_id,
             profile: profile_value,
-            language: if language.is_empty() { "en".to_string() } else { language },
+            language: if language.is_empty() {
+                "en".to_string()
+            } else {
+                language
+            },
             force: true,
         },
     )]

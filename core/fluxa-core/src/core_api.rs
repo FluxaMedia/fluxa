@@ -145,12 +145,16 @@ impl FluxaCore {
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn subtitle_sync_capture_json(request_json: &str) -> Option<String> {
-        guard(None, || subtitle_sync::subtitle_sync_capture_json(request_json))
+        guard(None, || {
+            subtitle_sync::subtitle_sync_capture_json(request_json)
+        })
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn subtitle_sync_apply_json(request_json: &str) -> Option<String> {
-        guard(None, || subtitle_sync::subtitle_sync_apply_json(request_json))
+        guard(None, || {
+            subtitle_sync::subtitle_sync_apply_json(request_json)
+        })
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -271,7 +275,9 @@ impl FluxaCore {
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn fcast_encode_message(opcode: u8, body_json: &str) -> Option<Vec<u8>> {
-        guard(None, || cast_protocol::fcast_encode_message(opcode, body_json))
+        guard(None, || {
+            cast_protocol::fcast_encode_message(opcode, body_json)
+        })
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -288,12 +294,16 @@ impl FluxaCore {
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn fcast_seek_body(position_secs: f64) -> String {
-        guard(String::new(), || cast_protocol::fcast_seek_body(position_secs))
+        guard(String::new(), || {
+            cast_protocol::fcast_seek_body(position_secs)
+        })
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn fcast_set_volume_body(level: f64) -> String {
-        guard(String::new(), || cast_protocol::fcast_set_volume_body(level))
+        guard(String::new(), || {
+            cast_protocol::fcast_set_volume_body(level)
+        })
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]

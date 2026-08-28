@@ -97,11 +97,14 @@ pub(crate) fn subtitle_sync_apply_json(request_json: &str) -> Option<String> {
         return None;
     }
     let delay = (request.captured_time - request.cue_start).clamp(-10_000.0, 10_000.0);
-    Some(json!({
-        "delaySeconds": (delay * 10.0).round() / 10.0,
-        "capturedTime": request.captured_time,
-        "cueStart": request.cue_start,
-    }).to_string())
+    Some(
+        json!({
+            "delaySeconds": (delay * 10.0).round() / 10.0,
+            "capturedTime": request.captured_time,
+            "cueStart": request.cue_start,
+        })
+        .to_string(),
+    )
 }
 
 pub(crate) fn estimate_subtitle_delay_json(request_json: &str) -> Option<String> {
@@ -429,10 +432,9 @@ mod tests {
 
     #[test]
     fn cue_list_is_available_without_a_playback_time() {
-        let result = subtitle_cue_list_json(
-            r#"{"subtitleText":"00:00:01,000 --> 00:00:02,000\nHello"}"#,
-        )
-        .expect("cue list");
+        let result =
+            subtitle_cue_list_json(r#"{"subtitleText":"00:00:01,000 --> 00:00:02,000\nHello"}"#)
+                .expect("cue list");
         let value: Value = serde_json::from_str(&result).expect("valid cue list");
         assert_eq!(value["cues"][0]["start"], 1.0);
     }

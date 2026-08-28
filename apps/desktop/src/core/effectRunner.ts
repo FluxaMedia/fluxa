@@ -43,6 +43,7 @@ import {
   fetchDetailStreams,
   fetchMdblistRatingsForDetail,
   fetchMetaDetail,
+  fetchMetaDetailDeduped,
   fetchSeasonEpisodes,
   prefetchDetailStreams,
 } from './detailEffects';
@@ -152,7 +153,7 @@ async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppStat
 
   switch (effect.type) {
     case 'readHomeBootstrap':
-      value = await readHomeBootstrap(p, signal);
+      value = await readHomeBootstrap(p, signal, onStateUpdate);
       break;
 
     case 'refreshContinueWatching': {
@@ -289,12 +290,12 @@ async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppStat
       break;
 
     case 'fetchMetaDetail': {
-      const [meta, mdblistRatings] = await Promise.all([fetchMetaDetail(p), fetchMdblistRatingsForDetail(p)]);
+      const [meta, mdblistRatings] = await Promise.all([fetchMetaDetailDeduped({ ...p, purpose: 'detail-load' }), fetchMdblistRatingsForDetail(p)]);
       value = { meta, mdblistRatings };
       break;
     }
     case 'fetchMetaDetailLookup':
-      value = await fetchMetaDetail(p);
+      value = await fetchMetaDetailDeduped({ ...p, purpose: 'detail-lookup' });
       break;
     case 'fetchDetailSecondary':
       value = await fetchDetailSecondary(p);

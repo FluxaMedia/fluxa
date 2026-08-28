@@ -227,7 +227,6 @@ impl EffectEnvelope {
             timeout_ms,
         }
     }
-
 }
 
 fn payload_dedupe_key(
