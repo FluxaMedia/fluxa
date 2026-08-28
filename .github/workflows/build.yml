@@ -443,14 +443,7 @@ jobs:
           fetch-tags: true
       - name: Build release notes from commits
         run: |
-          PREV_TAG="$(git describe --tags --abbrev=0 "${{ github.ref_name }}^" 2>/dev/null || true)"
-          RANGE="${PREV_TAG:+$PREV_TAG..}${{ github.ref_name }}"
-          REPO_URL="https://github.com/${{ github.repository }}"
-          : > notes.md
-          git log "$RANGE" --pretty=format:"%h%x09%s" | while IFS=$'\t' read -r hash subject; do
-            clean="$(sed -E 's/^[a-zA-Z]+(\([^)]*\))?: //; s/^(.)/\U\1/' <<< "$subject")"
-            echo "- $clean ([$hash]($REPO_URL/commit/$hash))" >> notes.md
-          done
+          .github/scripts/build-release-notes.sh "${{ github.ref_name }}"
       - name: Update AppImage signature and changelog in latest.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
