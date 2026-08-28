@@ -143,6 +143,52 @@ struct CancellableReader<R> {
     cancellation: Pin<Box<WaitForCancellationFutureOwned>>,
 }
 
+struct TrackedReader<R> {
+    inner: R,
+    received: u64,
+    expected: u64,
+    torrent_id: usize,
+    file_id: usize,
+    range_start: u64,
+}
+
+impl<R> TrackedReader<R> {
+    fn new(inner: R, expected: u64, torrent_id: usize, file_id: usize, range_start: u64) -> Self {
+        Self { inner, received: 0, expected, torrent_id, file_id, range_start }
+    }
+}
+
+impl<R: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for TrackedReader<R> {
+    fn poll_read(
+        mut self: Pin<&mut Self>,
+        cx: &mut Context<'_>,
+        buf: &mut tokio::io::ReadBuf<'_>,
+    ) -> Poll<std::io::Result<()>> {
+        let before = buf.filled().len();
+        match Pin::new(&mut self.inner).poll_read(cx, buf) {
+            Poll::Ready(Ok(())) => {
+                let added = (buf.filled().len() - before) as u64;
+                self.received = self.received.saturating_add(added);
+                if added == 0 {
+                    debug_log(format!(
+                        "[TorrServer][stream] eof torrent={} file={} start={} received={} expected={}",
+                        self.torrent_id, self.file_id, self.range_start, self.received, self.expected
+                    ));
+                }
+                Poll::Ready(Ok(()))
+            }
+            Poll::Ready(Err(error)) => {
+                debug_log(format!(
+                    "[TorrServer][stream] read_error torrent={} file={} start={} received={} expected={} error={error}",
+                    self.torrent_id, self.file_id, self.range_start, self.received, self.expected
+                ));
+                Poll::Ready(Err(error))
+            }
+            Poll::Pending => Poll::Pending,
+        }
+    }
+}
+
 impl<R> CancellableReader<R> {
     fn new(inner: R, cancel: CancellationToken) -> Self {
         Self {
@@ -884,7 +930,8 @@ async fn stream_fname(
                 Ok(Some((start, end))) => {
                     let length = end.saturating_sub(start).saturating_add(1);
                     let probe = is_probe_range(&state, id, file_id, start, length);
-                    let cancellation = if probe {
+                    let auxiliary = query.role == FileRole::Auxiliary;
+                    let cancellation = if probe || auxiliary {
                         torrent_cancellation_token(&state, id).child_token()
                     } else {
                         let cancellation = playback_session_for(&state, id, file_id, start);
@@ -916,18 +963,23 @@ async fn stream_fname(
                         format!("bytes {start}-{end}/{total_len}"),
                     );
                     let body = Body::from_stream(ReaderStream::with_capacity(
-                        CancellableReader::new(stream.take(length), cancellation),
+                        TrackedReader::new(CancellableReader::new(stream.take(length), cancellation), length, id, file_id, start),
                         stream_buffer_size(&state),
                     ));
                     (status, output_headers, body).into_response()
                 }
                 Ok(None) => {
-                    let cancellation = playback_session_for(&state, id, file_id, 0);
-                    remember_playback_window(&state, id, file_id, 0, total_len, query.duration_ms);
-                    set_streaming_window(&state, id, file_id, 0);
+                    let cancellation = if query.role == FileRole::Auxiliary {
+                        torrent_cancellation_token(&state, id).child_token()
+                    } else {
+                        let cancellation = playback_session_for(&state, id, file_id, 0);
+                        remember_playback_window(&state, id, file_id, 0, total_len, query.duration_ms);
+                        set_streaming_window(&state, id, file_id, 0);
+                        cancellation
+                    };
                     insert_header(&mut output_headers, "Content-Length", total_len.to_string());
                     let body = Body::from_stream(ReaderStream::with_capacity(
-                        CancellableReader::new(stream, cancellation),
+                        TrackedReader::new(CancellableReader::new(stream, cancellation), total_len, id, file_id, 0),
                         stream_buffer_size(&state),
                     ));
                     (status, output_headers, body).into_response()

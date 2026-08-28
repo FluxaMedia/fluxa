@@ -71,14 +71,13 @@ fn activity_for<'a>(kind: &'a PresenceKind) -> activity::Activity<'a> {
                 .filter(|u| !u.is_empty())
                 .unwrap_or("logo");
             let mut act = activity::Activity::new()
+                .name(title)
                 .details(title)
                 .state("Viewing details")
                 .assets(
-                    activity::Assets::new()
+                activity::Assets::new()
                         .large_image(large_image)
-                        .large_text(title)
-                        .small_image("logo")
-                        .small_text("Fluxa"),
+                        .large_text(title),
                 );
             if let Some(b) = button {
                 act = act.buttons(vec![activity::Button::new(&b.label, &b.url)]);
@@ -94,26 +93,23 @@ fn activity_for<'a>(kind: &'a PresenceKind) -> activity::Activity<'a> {
             poster_url,
             button,
         } => {
-            let state_text = detail.clone().unwrap_or_else(|| {
-                if *paused {
-                    "Paused".to_string()
-                } else {
-                    "Watching".to_string()
-                }
-            });
+            let status_text = if *paused { "Paused" } else { "Watching" };
             let large_image = poster_url
                 .as_deref()
                 .filter(|u| !u.is_empty())
                 .unwrap_or("logo");
+            let state_text = detail.clone().unwrap_or_default();
+            let display_details = format!("{title} · {status_text}");
             let mut act = activity::Activity::new()
-                .details(title)
+                .name("on Fluxa")
+                .details(display_details)
                 .state(state_text)
+                .activity_type(activity::ActivityType::Watching)
+                .status_display_type(activity::StatusDisplayType::Details)
                 .assets(
                     activity::Assets::new()
                         .large_image(large_image)
-                        .large_text(title)
-                        .small_image("logo")
-                        .small_text("Fluxa"),
+                        .large_text(title),
                 );
             if start_unix_secs.is_some() || end_unix_secs.is_some() {
                 let mut ts = activity::Timestamps::new();
@@ -215,6 +211,12 @@ pub fn discord_presence_update(
     *state.last_activity.lock().unwrap() = kind.clone();
     let mut guard = state.client.lock().unwrap();
     if let Some(client) = guard.as_mut() {
+        if paused {
+            // Discord retains the previous timestamp when an activity update
+            // omits it. Clear first so a paused activity cannot start a timer.
+            let _ = client.clear_activity();
+            std::thread::sleep(Duration::from_millis(100));
+        }
         apply(client, &kind);
     }
 }

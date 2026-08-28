@@ -22,7 +22,7 @@ export function SeekPreview({
   const requestThumbnail = useCallback((requestedTime: number) => {
     if (thumbRequestInFlightRef.current || previewTimeRef.current !== requestedTime) return;
 
-    const remaining = Math.max(0, 300 - (Date.now() - thumbLastRequestedAtRef.current));
+    const remaining = Math.max(0, 75 - (Date.now() - thumbLastRequestedAtRef.current));
     if (remaining > 0) {
       if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current);
       thumbTimerRef.current = setTimeout(() => {
@@ -34,11 +34,24 @@ export function SeekPreview({
 
     thumbRequestInFlightRef.current = true;
     thumbLastRequestedAtRef.current = Date.now();
+    const startedAt = performance.now();
+    console.debug('[fluxa] seek thumbnail request start', { time: requestedTime });
     invoke<string>('player_get_seek_thumbnail', { timePos: requestedTime })
       .then((img) => {
-        if (img && thumbRequestTimeRef.current === requestedTime) setThumbImg(img);
+        console.debug('[fluxa] seek thumbnail request response', {
+          time: requestedTime,
+          ms: Math.round(performance.now() - startedAt),
+          bytes: img?.length ?? 0,
+        });
+        if (img && previewTimeRef.current !== null) setThumbImg(img);
       })
-      .catch(() => undefined)
+      .catch((error) => {
+        console.error('[fluxa] seek thumbnail failed', {
+          time: requestedTime,
+          ms: Math.round(performance.now() - startedAt),
+          error,
+        });
+      })
       .finally(() => {
         thumbRequestInFlightRef.current = false;
         const latestTime = previewTimeRef.current;
@@ -47,7 +60,7 @@ export function SeekPreview({
           thumbTimerRef.current = setTimeout(() => {
             thumbTimerRef.current = null;
             requestThumbnail(latestTime);
-          }, 180);
+          }, 100);
         }
       });
   }, []);
@@ -93,7 +106,7 @@ export function SeekPreview({
     thumbTimerRef.current = setTimeout(() => {
       thumbTimerRef.current = null;
       requestThumbnail(requestedTime);
-    }, 180);
+    }, 50);
     return () => {
       if (thumbTimerRef.current) clearTimeout(thumbTimerRef.current);
     };

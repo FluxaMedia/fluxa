@@ -60,6 +60,9 @@ impl MpvClientHandle {
             client.set_option("vd-lavc-fast", "yes")?;
             client.set_option("vd-lavc-threads", "2")?;
             client.set_option("sws-scaler", "fast-bilinear")?;
+            client.set_option("vf", "scale=240:135")?;
+            client.set_option("screenshot-format", "jpg")?;
+            client.set_option("screenshot-jpeg-quality", "65")?;
         } else {
             client.set_option("terminal", "no")?;
             client.set_option("config", "no")?;
@@ -351,8 +354,28 @@ impl MpvThumbnailRenderer {
         self.client.query_property(name)
     }
 
+    pub fn pump_events(&mut self) {
+        let _ = self.client.poll_events();
+    }
+
     pub fn seek_to(&self, time_pos: f64) -> Result<(), String> {
         self.client.seek_to(time_pos)
+    }
+
+    pub fn seek_thumbnail_to(&self, time_pos: f64) -> Result<(), String> {
+        self.client
+            .command_string(&format!("seek {time_pos:.3} absolute"))
+    }
+
+    pub fn set_paused(&self, paused: bool) -> Result<(), String> {
+        self.client
+            .command_string(if paused { "set pause yes" } else { "set pause no" })
+    }
+
+    pub fn screenshot_to_file(&self, path: &str) -> Result<(), String> {
+        let escaped = path.replace('\\', "\\\\").replace('"', "\\\"");
+        self.client
+            .command_string(&format!("screenshot-to-file \"{escaped}\" video"))
     }
 
     pub fn render_thumbnail(&mut self, width: i32, height: i32) -> Result<Vec<u8>, String> {

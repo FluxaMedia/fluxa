@@ -866,19 +866,25 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
     window
         .with_webview(move |platform_webview| {
             let webview_widget = platform_webview.inner().upcast::<gtk::Widget>();
-            let Some(parent_widget) = webview_widget.parent() else {
-                let _ = setup_tx.send(Err("WebView parent widget not found — cannot attach player surface".to_string()));
-                return;
-            };
-            let Ok(parent_box) = parent_widget.downcast::<gtk::Box>() else {
-                let mut chain = Vec::new();
-                let mut cursor = Some(webview_widget.clone());
-                while let Some(widget) = cursor {
-                    chain.push(widget.type_().name().to_string());
-                    cursor = widget.parent();
+            let mut chain = Vec::new();
+            let mut child_to_replace = webview_widget.clone();
+            let mut cursor = Some(webview_widget.clone());
+            let mut parent_box = None;
+            while let Some(widget) = cursor {
+                chain.push(widget.type_().name().to_string());
+                let Some(parent) = widget.parent() else {
+                    break;
+                };
+                if let Ok(box_widget) = parent.clone().downcast::<gtk::Box>() {
+                    parent_box = Some(box_widget);
+                    break;
                 }
+                child_to_replace = parent.clone();
+                cursor = Some(parent);
+            }
+            let Some(parent_box) = parent_box else {
                 let _ = setup_tx.send(Err(format!(
-                    "WebView parent is not a GTK Box; widget hierarchy may differ on this Tauri build (chain: {})",
+                    "WebView GTK ancestor was not a GTK Box; widget hierarchy may differ on this Tauri build (chain: {})",
                     chain.join(" < ")
                 )));
                 return;
@@ -905,8 +911,9 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
             webview_widget.set_hexpand(true);
             webview_widget.set_vexpand(true);
 
-            // Reparent: move the WebView from parent_box into the overlay (on top of GLArea).
-            parent_box.remove(&webview_widget);
+            // Reparent: remove the WebView or its immediate wrapper from the
+            // ancestor GtkBox, then put the WebView into the new overlay.
+            parent_box.remove(&child_to_replace);
             video_overlay.add(&gl_area);
             video_overlay.add_overlay(&webview_widget);
             webview_widget.set_halign(gtk::Align::Fill);

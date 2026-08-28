@@ -135,7 +135,7 @@ export function ReactPlayerOverlay({
   useEffect(() => {
     setPausedOverlayReady(false);
     if (!paused || isLoadingOverlayActive || playbackError) return;
-    const timer = window.setTimeout(() => setPausedOverlayReady(true), 5000);
+    const timer = window.setTimeout(() => setPausedOverlayReady(true), 3000);
     return () => window.clearTimeout(timer);
   }, [paused, isLoadingOverlayActive, playbackError]);
   const showPausedOverlay = pausedOverlayReady && !controlsVisible;
@@ -252,6 +252,15 @@ export function ReactPlayerOverlay({
   const chaptersRef = useRef<Chapter[]>([]);
 
   const posRef = useRef(0);
+  const currentChapter = chapters
+    .slice()
+    .reverse()
+    .find((chapter) => chapter.startMs <= posRef.current * 1000)?.title;
+  const currentEpisodeDetails = episodes.find(
+    (item) =>
+      (item.season ?? 1) === (currentEpisode?.season ?? 1) &&
+      (item.episode ?? item.number ?? 0) === (currentEpisode?.episode ?? currentEpisode?.number ?? 0),
+  );
   const durRef = useRef(0);
   const pausedRef = useRef(false);
   const lastActivityRef = useRef(Date.now());
@@ -364,6 +373,7 @@ export function ReactPlayerOverlay({
     title,
     episodeTitle,
     initialPosterUrl,
+    episodeArtworkUrl: currentEpisode?.thumbnail,
     metaId,
     autoSkipSegments,
     isTorrentStream,
@@ -646,7 +656,8 @@ export function ReactPlayerOverlay({
           title={title}
           episodeTitle={episodeTitle}
           logoUrl={initialLogoUrl}
-          description={metaRef?.current?.description ?? undefined}
+          description={currentEpisode?.overview ?? currentEpisodeDetails?.overview ?? metaRef?.current?.description ?? undefined}
+          chapterTitle={currentChapter || undefined}
         />
       )}
       <PlayerOverlayStyles />

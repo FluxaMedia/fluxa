@@ -301,7 +301,7 @@ export const DEFAULT_PREFS: Prefs = {
   timezoneConversionEnabled: true,
   reduceMotion: false,
   subtitleShadow: false,
-  seekThumbnailEnabled: false,
+  seekThumbnailEnabled: true,
   p2pEnabled: true,
   discordRichPresenceEnabled: true,
   diagnosticMode: false,

@@ -67,7 +67,7 @@ export function useAppInit(
         storedPrefsRef.current = prefs;
         const webTarget = isBrowserTarget();
         if (!webTarget) {
-          void invoke('player_set_seek_thumbnail_enabled', { enabled: prefBool(prefs, 'seekThumbnailEnabled', false) });
+          void invoke('player_set_seek_thumbnail_enabled', { enabled: prefBool(prefs, 'seekThumbnailEnabled', true) });
           void invoke('discord_presence_configure', { enabled: prefBool(prefs, 'discordRichPresenceEnabled', true) });
           void invoke('set_diagnostic_mode', { enabled: prefBool(prefs, 'diagnosticMode', false) });
         }

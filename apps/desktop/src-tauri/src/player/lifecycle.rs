@@ -150,8 +150,19 @@ pub async fn player_load(
     total_duration: Option<u64>,
 ) -> Result<(), String> {
     log::info!("player_load: url={url} start_at={start_at:?} total_duration={total_duration:?}");
+    log::info!(
+        "[playback-route] input scheme={} host={} local_torrent={} local_stream_proxy={}",
+        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        reqwest::Url::parse(&url)
+            .ok()
+            .and_then(|parsed| parsed.host_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+        url.contains("/stream/fname"),
+        url.contains("/stream-proxy/") || url.contains("/proxy/")
+    );
 
     let pending_headers = std::mem::take(&mut *state.pending_stream_headers.lock().unwrap());
+    let had_pending_headers = !pending_headers.is_empty();
     let engine = playback_engine::read_player_engine(&app);
     *state.active_player_engine.lock().unwrap() = engine;
 
@@ -207,7 +218,35 @@ pub async fn player_load(
         url
     };
 
-    state.thumbnail.lock().unwrap().url = Some(url.clone());
+    log::info!(
+        "[playback-route] resolved scheme={} host={} local_torrent={} local_stream_proxy={} headers={}",
+        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        reqwest::Url::parse(&url)
+            .ok()
+            .and_then(|parsed| parsed.host_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+        url.contains("/stream/fname"),
+        url.contains("/stream-proxy/") || url.contains("/proxy/"),
+        had_pending_headers
+    );
+
+    {
+        let mut thumbnail = state.thumbnail.lock().unwrap();
+        if thumbnail.url.as_deref() != Some(url.as_str()) {
+            thumbnail.cache.clear();
+        }
+        thumbnail.url = Some(url.clone());
+        if thumbnail.enabled {
+            if thumbnail.renderer.is_none() {
+                thumbnail.renderer = crate::thumbnail_helper::ThumbnailProcess::spawn().ok();
+            }
+            if let Some(renderer) = thumbnail.renderer.as_mut() {
+                if let Err(error) = renderer.prepare(&url) {
+                    log::debug!("player_load: seek thumbnail prewarm failed: {error}");
+                }
+            }
+        }
+    }
 
     #[cfg(any(target_os = "windows", target_os = "macos", target_os = "linux"))]
     if engine == PlayerEngine::Vlc {

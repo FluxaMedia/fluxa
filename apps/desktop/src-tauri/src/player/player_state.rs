@@ -332,6 +332,7 @@ pub fn player_get_seek_thumbnail(
     state: State<DesktopState>,
     time_pos: f64,
 ) -> Result<String, String> {
+    let started_at = std::time::Instant::now();
     if !time_pos.is_finite() || time_pos < 0.0 {
         return Err("invalid thumbnail time".to_string());
     }
@@ -340,26 +341,43 @@ pub fn player_get_seek_thumbnail(
     let cache_time = (time_pos * 2.0).round() as i64;
 
     let mut thumbnail = state.thumbnail.lock().unwrap();
-    if !thumbnail.enabled {
-        return Ok(String::new());
-    }
     let url = thumbnail.url.clone().ok_or_else(|| "no url".to_string())?;
+    let thumbnail_url = if url.contains("/stream/fname") {
+        format!("{url}&role=auxiliary")
+    } else {
+        url.clone()
+    };
+
+    log::warn!(
+        "[seek-thumbnail-route] scheme={} host={} local_torrent={} local_proxy={} time={time_pos:.3}",
+        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        reqwest::Url::parse(&url)
+            .ok()
+            .and_then(|parsed| parsed.host_str().map(str::to_string))
+            .unwrap_or_else(|| "unknown".to_string()),
+        url.contains("/stream/fname"),
+        url.contains("/stream-proxy/") || url.contains("/proxy/")
+    );
 
     if let Some((_, image)) = thumbnail.cache.iter().find(|(time, _)| *time == cache_time) {
+        log::debug!("seek_thumbnail cache_hit time={time_pos:.3} elapsed_ms={}", started_at.elapsed().as_millis());
         return Ok(image.clone());
     }
 
     if thumbnail.renderer.is_none() {
+        log::debug!("seek_thumbnail spawn time={time_pos:.3}");
         thumbnail.renderer = Some(crate::thumbnail_helper::ThumbnailProcess::spawn()?);
     }
+    log::debug!("seek_thumbnail request time={time_pos:.3} cache_time={cache_time}");
     let renderer = thumbnail.renderer.as_mut().unwrap();
-    let image = renderer.request(&url, cache_time as f64 / 2.0)?;
+    let image = renderer.request(&thumbnail_url, cache_time as f64 / 2.0)?;
+    log::debug!("seek_thumbnail helper_done time={time_pos:.3} bytes={} elapsed_ms={}", image.len(), started_at.elapsed().as_millis());
     drop(thumbnail);
 
     // Keep a small hot cache for back-and-forth pointer movement. The native
     // renderer remains protected by the mutex, but JPEG work happens outside it.
     let mut thumbnail = state.thumbnail.lock().unwrap();
-    if thumbnail.enabled && thumbnail.url.as_deref() == Some(url.as_str()) {
+    if thumbnail.url.as_deref() == Some(url.as_str()) {
         thumbnail.cache.push_back((cache_time, image.clone()));
         while thumbnail.cache.len() > 24 {
             thumbnail.cache.pop_front();

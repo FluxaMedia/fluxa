@@ -90,6 +90,11 @@ export function ContentWarningOverlay({ warnings, isVisible, onAnimationComplete
         opacity: containerOpacity,
         transition: `opacity ${containerOpacity ? 300 : 200}ms`,
         pointerEvents: 'none',
+        padding: '0.5rem 0.75rem 0.5rem 0.625rem',
+        borderRadius: '0.375rem',
+        background: 'rgba(0,0,0,0.68)',
+        boxShadow: '0 0.25rem 1rem rgba(0,0,0,0.28)',
+        backdropFilter: 'blur(0.25rem)',
       }}
     >
       <div
@@ -114,9 +119,9 @@ export function ContentWarningOverlay({ warnings, isVisible, onAnimationComplete
               transition: `opacity ${rowVisible[index] ? 200 : 150}ms`,
             }}
           >
-            <span style={{ color: 'rgba(255,255,255,0.85)', fontSize: '0.6875rem', fontWeight: 600 }}>{warning.label}</span>
-            <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.6875rem', margin: '0 0.25rem' }}>·</span>
-            <span style={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.6875rem' }}>{warning.severity}</span>
+            <span style={{ color: 'rgba(255,255,255,0.98)', fontSize: '0.6875rem', fontWeight: 600 }}>{warning.label}</span>
+            <span style={{ color: 'rgba(255,255,255,0.62)', fontSize: '0.6875rem', margin: '0 0.25rem' }}>·</span>
+            <span style={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.6875rem' }}>{warning.severity}</span>
           </div>
         ))}
       </div>

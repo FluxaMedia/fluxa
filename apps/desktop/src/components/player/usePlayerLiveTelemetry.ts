@@ -40,6 +40,7 @@ type Bindings = {
   title: string;
   episodeTitle: string;
   initialPosterUrl?: string;
+  episodeArtworkUrl?: string;
   metaId?: string;
   autoSkipSegments: boolean;
   isTorrentStream: boolean;
@@ -122,6 +123,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
         title,
         episodeTitle,
         initialPosterUrl,
+        episodeArtworkUrl,
         metaId,
         autoSkipSegments,
         isTorrentStream,
@@ -223,7 +225,7 @@ export function usePlayerLiveTelemetry(options: Bindings) {
           paused: isPaused,
           startUnixSecs: isPaused ? undefined : Math.floor(Date.now() / 1000 - pos),
           endUnixSecs: !isPaused && dur > 0 ? Math.floor(Date.now() / 1000 + (dur - pos)) : undefined,
-          posterUrl: initialPosterUrl,
+          posterUrl: episodeArtworkUrl ?? initialPosterUrl,
           ...imdbButtonFor(metaId),
         });
       }
@@ -275,7 +277,6 @@ export function usePlayerLiveTelemetry(options: Bindings) {
       const idle = now - lastActivityRef.current;
       if (
         idle > 3000 &&
-        !isPaused &&
         !episodePanelOpenRef.current &&
         trackPopover === null &&
         !isOverControlsRef.current &&

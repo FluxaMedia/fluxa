@@ -171,6 +171,14 @@ async fn handle_conn(
         };
 
         let status = response.status();
+        let expected_length = response.content_length();
+        log::debug!(
+            "[stream_proxy] upstream response url={} status={} range={:?} content_length={:?}",
+            target.url,
+            status,
+            range_header,
+            expected_length
+        );
         if !status.is_success() && status.as_u16() != 206 {
             let body = response
                 .text()
@@ -229,6 +237,18 @@ async fn handle_conn(
                     );
                     return;
                 }
+            }
+        }
+        if let Some(expected) = expected_length {
+            if sent != expected {
+                log::warn!(
+                    "[stream_proxy] upstream body truncated url={} status={} range={:?} received={} expected={}",
+                    target.url,
+                    status,
+                    range_header,
+                    sent,
+                    expected
+                );
             }
         }
     }

@@ -71,7 +71,8 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
         top: 0,
         right: 0,
         bottom: 0,
-        width: '23.75rem',
+        width: 'min(23rem, 28vw)',
+        minWidth: '20rem',
         background: 'rgba(10,12,18,0.97)',
         backdropFilter: 'blur(1.25rem)',
         borderLeft: '1px solid rgba(255,255,255,0.08)',
@@ -82,7 +83,7 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
       }}
       onClick={(e) => e.stopPropagation()}
     >
-      <div style={{ padding: '1rem 1rem 0.625rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+      <div style={{ padding: '1.125rem 1.125rem 0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.9375rem' }}>{t('player.episodes')}</span>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           {seasons.length > 1 && (
@@ -147,11 +148,11 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
         </div>
       </div>
       <div style={{ flex: 1, overflowY: 'auto', padding: '0.25rem 0 0.5rem' }}>
-        {(seasonGroups[activeSeason] ?? []).map((ep) => {
+        {(seasonGroups[activeSeason] ?? []).map((ep, index) => {
           const isCurrent = currentEpisodeKey === epKey(ep);
           return (
             <button
-              key={ep.id}
+              key={`${epKey(ep)}:${ep.id}:${index}`}
               onClick={() => {
                 void emit('native-player-play-episode', ep.id);
                 onClose();
@@ -166,7 +167,7 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
                 borderLeft: isCurrent ? '0.125rem solid #fff' : '0.125rem solid transparent',
                 borderBottom: '1px solid rgba(255,255,255,0.05)',
                 color: '#fff',
-                padding: '0.75rem 1rem',
+                padding: '0.6875rem 1rem',
                 cursor: 'pointer',
                 textAlign: 'left',
               }}
@@ -176,9 +177,9 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
               <div
                 style={{
                   flexShrink: 0,
-                  width: '8.875rem',
-                  height: '5rem',
-                  borderRadius: '0.375rem',
+                  width: '8rem',
+                  height: '4.5rem',
+                  borderRadius: '0.5rem',
                   overflow: 'hidden',
                   background: '#1a1e28',
                 }}
@@ -193,7 +194,7 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
                 <div
                   style={{
                     fontSize: '0.8125rem',
-                    fontWeight: 600,
+                    fontWeight: 700,
                     color: isCurrent ? '#fff' : 'rgba(255,255,255,0.92)',
                     lineHeight: 1.3,
                     marginBottom: '0.3125rem',
@@ -206,21 +207,6 @@ export function EpisodePanel({ episodes, currentEpisode, onClose }: EpisodePanel
                   {epLabel(ep)}
                   {isCurrent ? ` · ${t('player.now_playing')}` : ''}
                 </div>
-                {ep.overview && (
-                  <div
-                    style={{
-                      fontSize: '0.6875rem',
-                      color: 'rgba(255,255,255,0.42)',
-                      lineHeight: 1.5,
-                      display: '-webkit-box',
-                      WebkitLineClamp: 3,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    {ep.overview}
-                  </div>
-                )}
               </div>
             </button>
           );

@@ -5,9 +5,10 @@ interface Props {
   episodeTitle?: string;
   logoUrl?: string;
   description?: string;
+  chapterTitle?: string;
 }
 
-export function PlayerPauseMetadataOverlay({ title, episodeTitle, logoUrl, description }: Props) {
+export function PlayerPauseMetadataOverlay({ title, episodeTitle, logoUrl, description, chapterTitle }: Props) {
   return (
     <div
       style={{
@@ -49,6 +50,11 @@ export function PlayerPauseMetadataOverlay({ title, episodeTitle, logoUrl, descr
       )}
       {episodeTitle && (
         <p style={{ color: '#FFFFFF', fontSize: '1.375rem', fontWeight: 700, margin: '0.75rem 0 0' }}>{episodeTitle}</p>
+      )}
+      {chapterTitle && (
+        <p style={{ color: 'rgba(255,255,255,0.72)', fontSize: '0.9375rem', margin: '0.5rem 0 0' }}>
+          {t('player.chapter')}: {chapterTitle}
+        </p>
       )}
       {description && (
         <p
