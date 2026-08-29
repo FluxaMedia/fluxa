@@ -239,7 +239,8 @@ async function fetchPluginStreamsForDetail(
     // on the critical path; plugin enrichment is optional and can arrive late.
     const snapshot = (await getSnapshot()) as { plugins?: { scrapers?: Array<{ enabled?: boolean; supportedTypes?: string[] }> } } | null;
     const installedScrapers = snapshot?.plugins?.scrapers ?? [];
-    if (!installedScrapers.some((scraper) => scraper.enabled !== false && (!scraper.supportedTypes || scraper.supportedTypes.includes(contentType)))) {
+    const scraperMediaType = contentType === 'series' || contentType === 'show' ? 'tv' : contentType;
+    if (!installedScrapers.some((scraper) => scraper.enabled !== false && (!scraper.supportedTypes || scraper.supportedTypes.includes(scraperMediaType)))) {
       return [];
     }
     const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };

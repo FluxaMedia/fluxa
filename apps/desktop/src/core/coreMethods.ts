@@ -86,6 +86,7 @@ export const CORE_METHODS = [
   'deviceResourceBudget',
   'directPlaybackPlan',
   'directPlaybackPolicy',
+  'discordPresenceSnapshot',
   'discoverCatalogCacheKey',
   'discoverCatalogOptions',
   'discoverContentTypes',
