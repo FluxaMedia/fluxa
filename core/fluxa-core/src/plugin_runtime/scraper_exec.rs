@@ -185,6 +185,7 @@ pub(super) async fn run(
                                 var streams = await getStreams(tmdbId, mediaType, season, episode);
                                 return JSON.stringify(streams || []);
                             }} catch (e) {{
+                                console.error('[Fluxa] scraper execution failed: ' + String(e));
                                 return '[]';
                             }}
                         }};

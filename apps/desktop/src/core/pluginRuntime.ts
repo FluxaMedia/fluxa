@@ -15,6 +15,7 @@ interface PluginScraperState {
 const codeCache = new Map<string, string>();
 
 function pluginDebug(message: string) {
+  console.debug(`[fluxa:plugin] ${message}`);
   void invoke('debug_log', { msg: `plugin-runtime: ${message}` }).catch(() => undefined);
 }
 
@@ -29,7 +30,9 @@ async function loadScraperCode(scraper: PluginScraperState, signal?: AbortSignal
   if (cached) return cached;
   try {
     const url = new URL(scraper.filename, repoBaseUrl(scraper.repositoryUrl)).toString();
+    pluginDebug(`code fetch start scraper=${scraper.id} url=${url}`);
     const response = await platformFetch(url, { signal });
+    pluginDebug(`code fetch response scraper=${scraper.id} status=${response.status} ok=${response.ok}`);
     if (!response.ok) {
       pluginDebug(`code fetch failed scraper=${scraper.id} status=${response.status}`);
       return null;
@@ -76,6 +79,7 @@ export async function fetchPluginStreams(
       scrapers: snapshot?.plugins?.scrapers ?? [],
     }),
   );
+  pluginDebug(`plan input type=${contentType} id=${tmdbId} season=${season ?? 'null'} episode=${episode ?? 'null'} installed=${(snapshot?.plugins?.scrapers ?? []).map((scraper) => `${scraper.id}:${scraper.enabled !== false ? 'on' : 'off'}:${(scraper.supportedTypes ?? []).join('|') || '*'}`).join(',') || 'none'}`);
   if (!plan?.scrapers.length) {
     pluginDebug(`no compatible scraper type=${contentType} content=${tmdbId} installed=${snapshot?.plugins?.scrapers?.length ?? 0}`);
     return [];
@@ -98,6 +102,7 @@ export async function fetchPluginStreams(
           plan.season ?? null,
           plan.episode ?? null,
         );
+        pluginDebug(`scraper raw result scraper=${scraper.id} bytes=${raw.length} preview=${raw.slice(0, 240)}`);
         const streams = (await coreInvoke<Array<Record<string, unknown>>>('pluginStreamResultsToStreams', raw)) ?? [];
         pluginDebug(`completed scraper=${scraper.id} streams=${streams.length}`);
         const named = streams.map((stream) => ({ ...stream, addonName: scraper.name }));

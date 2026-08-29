@@ -99,6 +99,21 @@ async fn write_status_only(socket: &mut TcpStream, status_line: &[u8]) {
     let _ = socket.write_all(status_line).await;
 }
 
+fn resolve_proxy_target_url(target_url: &str, route: &str) -> String {
+    let Some((_, suffix)) = route.split_once('/') else {
+        return target_url.to_string();
+    };
+    let suffix = suffix.trim_start_matches('/');
+    if suffix.is_empty() {
+        return target_url.to_string();
+    }
+    reqwest::Url::parse(target_url)
+        .ok()
+        .and_then(|base| base.join(suffix).ok())
+        .map(|url| url.to_string())
+        .unwrap_or_else(|| target_url.to_string())
+}
+
 fn report_upstream_failure(
     last_failure: &Mutex<Option<(String, String)>>,
     url: &str,
@@ -127,19 +142,21 @@ async fn handle_conn(
             return;
         };
 
-        let Some(token) = path.strip_prefix("/stream/").map(str::to_string) else {
+        let Some(route) = path.strip_prefix("/stream/") else {
             write_status_only(&mut socket, b"HTTP/1.1 404 Not Found\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
             continue;
         };
-        let Some(target) = targets.lock().unwrap().get(&token).cloned() else {
+        let token = route.split('/').next().unwrap_or(route);
+        let Some(target) = targets.lock().unwrap().get(token).cloned() else {
             write_status_only(&mut socket, b"HTTP/1.1 404 Not Found\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
             continue;
         };
+        let upstream_url = resolve_proxy_target_url(&target.url, route);
 
-        let client = match crate::net_guard::vetted_client(&target.url, UPSTREAM_TIMEOUT).await {
+        let client = match crate::net_guard::vetted_client(&upstream_url, UPSTREAM_TIMEOUT).await {
             Ok(client) => client,
             Err(err) => {
-                report_upstream_failure(&last_failure, &target.url, None, &format!("vetted_client failed: {err}"), "");
+                report_upstream_failure(&last_failure, &upstream_url, None, &format!("vetted_client failed: {err}"), "");
                 write_status_only(&mut socket, b"HTTP/1.1 502 Bad Gateway\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
                 continue;
             }
@@ -150,7 +167,7 @@ async fn handle_conn(
         } else {
             reqwest::Method::GET
         };
-        let mut req = client.request(reqwest_method, &target.url);
+        let mut req = client.request(reqwest_method, &upstream_url);
         for (key, value) in &target.headers {
             if FORWARDED_HEADER_BLOCKLIST.contains(&key.to_ascii_lowercase().as_str()) {
                 continue;
@@ -164,7 +181,7 @@ async fn handle_conn(
         let response = match req.send().await {
             Ok(response) => response,
             Err(err) => {
-                report_upstream_failure(&last_failure, &target.url, None, &format!("request failed: {err}"), "");
+                report_upstream_failure(&last_failure, &upstream_url, None, &format!("request failed: {err}"), "");
                 write_status_only(&mut socket, b"HTTP/1.1 502 Bad Gateway\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
                 continue;
             }
@@ -174,7 +191,7 @@ async fn handle_conn(
         let expected_length = response.content_length();
         log::debug!(
             "[stream_proxy] upstream response url={} status={} range={:?} content_length={:?}",
-            target.url,
+            upstream_url,
             status,
             range_header,
             expected_length
@@ -187,7 +204,7 @@ async fn handle_conn(
                 .chars()
                 .take(DIAGNOSTIC_BODY_SNIPPET_LEN)
                 .collect::<String>();
-            report_upstream_failure(&last_failure, &target.url, Some(status.as_u16()), "non-success status", &body);
+            report_upstream_failure(&last_failure, &upstream_url, Some(status.as_u16()), "non-success status", &body);
             let status_line = format!(
                 "HTTP/1.1 {} {}\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n",
                 status.as_u16(),
@@ -230,7 +247,7 @@ async fn handle_conn(
                 Err(err) => {
                     report_upstream_failure(
                         &last_failure,
-                        &target.url,
+                        &upstream_url,
                         Some(status.as_u16()),
                         &format!("body read failed after {sent} bytes: {err}"),
                         "",
@@ -243,7 +260,7 @@ async fn handle_conn(
             if sent != expected {
                 log::warn!(
                     "[stream_proxy] upstream body truncated url={} status={} range={:?} received={} expected={}",
-                    target.url,
+                    upstream_url,
                     status,
                     range_header,
                     sent,
@@ -266,5 +283,23 @@ pub async fn register(
         .lock()
         .unwrap()
         .insert(token.clone(), ProxyTarget { url, headers });
-    Ok(format!("http://127.0.0.1:{port}/stream/{token}"))
+    Ok(format!("http://127.0.0.1:{port}/stream/{token}/"))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_proxy_target_url;
+
+    #[test]
+    fn resolves_hls_relative_playlist_against_original_master() {
+        let master = "https://cdn.example.test/video/master.m3u8";
+        assert_eq!(
+            resolve_proxy_target_url("https://cdn.example.test/video/master.m3u8", "token/audio.m3u8"),
+            "https://cdn.example.test/video/audio.m3u8"
+        );
+        assert_eq!(
+            resolve_proxy_target_url(master, "token/segments/0001.ts?x=1"),
+            "https://cdn.example.test/video/segments/0001.ts?x=1"
+        );
+    }
 }

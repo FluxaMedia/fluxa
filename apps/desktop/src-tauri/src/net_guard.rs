@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
 const CLIENT_CACHE_TTL: Duration = Duration::from_secs(60);
@@ -132,52 +132,27 @@ pub async fn vetted_client(
     Ok(client)
 }
 
-/// Like [`vetted_client`], but leaves redirect handling to the caller. This is
-/// required when the caller must resolve and pin every redirect target instead
-/// of letting reqwest follow a domain target without another DNS check.
-pub async fn vetted_client_without_redirects(
+/// Builds a no-redirect client for one plugin execution while sharing that
+/// execution's cookie jar. The client is intentionally not put in the global
+/// cache: cookies must never leak between plugins or users.
+pub async fn vetted_client_without_redirects_with_cookie_jar(
     url_str: &str,
     timeout: Duration,
+    cookie_jar: Arc<reqwest::cookie::Jar>,
 ) -> Result<reqwest::Client, String> {
     let url = reqwest::Url::parse(url_str).map_err(|_| "invalid url".to_string())?;
     let host = url
         .host_str()
         .ok_or_else(|| "url has no host".to_string())?
         .to_string();
-    let cache_key = format!(
-        "no-redirect:{}://{}:{}:{}",
-        url.scheme(),
-        host,
-        url.port_or_known_default().unwrap_or(80),
-        timeout.as_millis()
-    );
-    let cache = CLIENT_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    if let Some(entry) = cache
-        .lock()
-        .map_err(|_| "http client cache poisoned".to_string())?
-        .get(&cache_key)
-        .filter(|entry| entry.expires_at > Instant::now())
-    {
-        return Ok(entry.client.clone());
-    }
     let (_, addrs) = resolve_public_host(url_str).await?;
-    let client = reqwest::Client::builder()
+    reqwest::Client::builder()
         .timeout(timeout)
+        .cookie_provider(cookie_jar)
         .redirect(reqwest::redirect::Policy::none())
         .resolve_to_addrs(&host, &addrs)
         .build()
-        .map_err(|e| e.to_string())?;
-    cache
-        .lock()
-        .map_err(|_| "http client cache poisoned".to_string())?
-        .insert(
-            cache_key,
-            CachedClient {
-                client: client.clone(),
-                expires_at: Instant::now() + CLIENT_CACHE_TTL,
-            },
-        );
-    Ok(client)
+        .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]

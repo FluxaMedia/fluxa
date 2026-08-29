@@ -138,6 +138,7 @@ impl PluginHttpClient for NoopHttpClient {
     fn fetch(&self, _request: PluginHttpRequest) -> PluginHttpResponse {
         PluginHttpResponse {
             status: 0,
+            url: String::new(),
             headers: HashMap::new(),
             body: String::new(),
             ok: false,

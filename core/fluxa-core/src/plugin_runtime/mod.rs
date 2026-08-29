@@ -225,6 +225,7 @@ pub struct PluginHttpRequest {
 #[serde(rename_all = "camelCase")]
 pub struct PluginHttpResponse {
     pub status: u16,
+    pub url: String,
     pub headers: HashMap<String, String>,
     pub body: String,
     pub ok: bool,
@@ -333,6 +334,7 @@ mod tests {
         fn fetch(&self, _request: PluginHttpRequest) -> PluginHttpResponse {
             PluginHttpResponse {
                 status: 0,
+                url: String::new(),
                 headers: HashMap::new(),
                 body: String::new(),
                 ok: false,

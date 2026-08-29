@@ -15,8 +15,9 @@ pub fn execute_scraper(
     season: Option<i32>,
     episode: Option<i32>,
 ) -> Result<String, String> {
+    let cookie_jar = Arc::new(reqwest::cookie::Jar::default());
     fluxa_core::plugin_runtime::execute_scraper(
-        Arc::new(DesktopPluginHttpClient),
+        Arc::new(DesktopPluginHttpClient { cookie_jar }),
         code,
         repository_url,
         scraper_id,
@@ -28,7 +29,9 @@ pub fn execute_scraper(
     )
 }
 
-struct DesktopPluginHttpClient;
+struct DesktopPluginHttpClient {
+    cookie_jar: Arc<reqwest::cookie::Jar>,
+}
 
 static PLUGIN_HTTP_RUNTIME: OnceLock<tokio::runtime::Runtime> = OnceLock::new();
 
@@ -41,11 +44,17 @@ impl PluginHttpClient for DesktopPluginHttpClient {
                 .build()
                 .expect("plugin HTTP runtime must be available")
         });
-        runtime.block_on(fetch(request))
+        let cookie_jar = Arc::clone(&self.cookie_jar);
+        std::thread::spawn(move || runtime.block_on(fetch(request, cookie_jar)))
+            .join()
+            .unwrap_or_else(|_| failed_response("plugin HTTP worker panicked".to_string()))
     }
 }
 
-async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
+async fn fetch(
+    request: PluginHttpRequest,
+    cookie_jar: Arc<reqwest::cookie::Jar>,
+) -> PluginHttpResponse {
         let method = match reqwest::Method::from_bytes(request.method.as_bytes()) {
             Ok(method) => method,
             Err(error) => return failed_response(error.to_string()),
@@ -55,10 +64,13 @@ async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
             Err(error) => return failed_response(error.to_string()),
         };
         let mut redirects_left = request.follow_redirects.then_some(10).unwrap_or(0);
+        let mut method = method;
+        let mut body = request.body.clone();
         loop {
-            let client = match crate::net_guard::vetted_client_without_redirects(
+            let client = match crate::net_guard::vetted_client_without_redirects_with_cookie_jar(
                 url.as_str(),
                 Duration::from_secs(FETCH_TIMEOUT_SECS),
+                Arc::clone(&cookie_jar),
             )
             .await
             {
@@ -75,7 +87,7 @@ async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
                 };
                 outgoing = outgoing.header(name, value);
             }
-            if let Some(body) = &request.body {
+            if let Some(body) = &body {
                 outgoing = outgoing.body(body.clone());
             }
             let response = match outgoing.send().await {
@@ -94,6 +106,12 @@ async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
                     Ok(url) => url,
                     Err(error) => return failed_response(error.to_string()),
                 };
+                if matches!(response.status().as_u16(), 301 | 302 | 303)
+                    && !matches!(method, reqwest::Method::GET | reqwest::Method::HEAD)
+                {
+                    method = reqwest::Method::GET;
+                    body = None;
+                }
                 redirects_left -= 1;
                 continue;
             }
@@ -111,6 +129,7 @@ async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
             let body = response.text().await.unwrap_or_default();
             return PluginHttpResponse {
                 status,
+                url: url.to_string(),
                 headers,
                 body,
                 ok: (200..300).contains(&status),
@@ -122,6 +141,7 @@ async fn fetch(request: PluginHttpRequest) -> PluginHttpResponse {
 fn failed_response(error: String) -> PluginHttpResponse {
     PluginHttpResponse {
         status: 0,
+        url: String::new(),
         headers: HashMap::new(),
         body: String::new(),
         ok: false,

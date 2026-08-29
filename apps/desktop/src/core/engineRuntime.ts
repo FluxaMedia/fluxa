@@ -1,4 +1,5 @@
 import { platformInvoke } from '../platform/invoke';
+import { isBrowserTarget } from '../platform/browser';
 import { withSentrySpan } from './sentryRuntime';
 import type { DispatchResult, EffectResult } from './types';
 import type { CoreMethod } from './coreMethods';
@@ -73,7 +74,7 @@ export async function runPluginScraper(
   season: number | null,
   episode: number | null,
 ): Promise<string> {
-  if (typeof window !== 'undefined') {
+  if (isBrowserTarget()) {
     const { runWebPluginScraper } = await import('../platform/web/pluginRuntime');
     return runWebPluginScraper(code, scraperId, scraperSettingsJson, tmdbId, mediaType, season, episode);
   }

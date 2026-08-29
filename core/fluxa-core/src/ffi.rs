@@ -249,6 +249,15 @@ const ROUTERS: &[fn(&str, &str) -> Outcome] = &[
 static ROUTE_CACHE: OnceLock<Mutex<HashMap<String, Option<usize>>>> = OnceLock::new();
 
 fn route(method: &str, args_json: &str) -> Outcome {
+    if matches!(
+        method,
+        "pluginManifestParse"
+            | "pluginExecutionPlan"
+            | "pluginStreamResultsParse"
+            | "pluginStreamResultsToStreams"
+    ) {
+        return route_plugins(method, args_json);
+    }
     match method {
         "engine.dispatch"
         | "engine.completeEffect"
@@ -450,6 +459,13 @@ mod tests {
 
         let missing_field = parse(&core_invoke("identity", "{}"));
         assert_eq!(missing_field["error"]["kind"], json!("invalid_args"));
+    }
+
+    #[test]
+    fn plugin_stream_results_accept_a_top_level_array() {
+        let env = parse(&core_invoke("pluginStreamResultsToStreams", "[]"));
+        assert_eq!(env["ok"], json!(true));
+        assert_eq!(env["value"][0]["pluginUnavailable"], json!(true));
     }
 
     #[test]

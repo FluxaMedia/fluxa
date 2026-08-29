@@ -234,6 +234,7 @@ async function fetchPluginStreamsForDetail(
 ): Promise<Array<Record<string, unknown>>> {
   if (!id) return [];
   try {
+    console.debug('[fluxa:plugin] detail start', JSON.stringify({ contentType, id }));
     // Do not perform the TMDB/id-resolution work until we know that at least
     // one compatible scraper is installed. Addon stream discovery must stay
     // on the critical path; plugin enrichment is optional and can arrive late.
@@ -241,6 +242,7 @@ async function fetchPluginStreamsForDetail(
     const installedScrapers = snapshot?.plugins?.scrapers ?? [];
     const scraperMediaType = contentType === 'series' || contentType === 'show' ? 'tv' : contentType;
     if (!installedScrapers.some((scraper) => scraper.enabled !== false && (!scraper.supportedTypes || scraper.supportedTypes.includes(scraperMediaType)))) {
+      console.debug('[fluxa:plugin] no compatible installed scraper', JSON.stringify({ contentType, scraperMediaType, scrapers: installedScrapers }));
       return [];
     }
     const prefs = { ...DEFAULT_APP_PREFS, ...(await loadPrefs()) };
@@ -256,9 +258,11 @@ async function fetchPluginStreamsForDetail(
       tmdbDetailRequests({ contentType, id, language, apiKey }, [], signal),
     ]);
     const pluginContentId = embeddedTmdbId || tmdbPlan?.tmdbId || parsed.imdb;
+    console.debug('[fluxa:plugin] detail mapping', JSON.stringify({ contentType, id, parsed, tmdbId: tmdbPlan?.tmdbId, embeddedTmdbId, pluginContentId }));
     if (!pluginContentId) return [];
     return await fetchPluginStreams(contentType, pluginContentId, parsed.season, parsed.episode, signal, onScraperStreams);
-  } catch {
+  } catch (error) {
+    console.debug('[fluxa:plugin] detail failed', error instanceof Error ? error.message : String(error));
     return [];
   }
 }
@@ -333,18 +337,12 @@ export async function fetchDetailStreams(
   console.debug('[fluxa:streams:addons:complete]', JSON.stringify({ requestIds, values: values.length, ms: Math.round(performance.now() - startedAt) }));
 
   const streams = values.flatMap((value) => (value as { streams?: unknown[] })?.streams ?? []);
-  if (streams.length > 0) {
-    // Addon results are sufficient to finish the critical path. Plugin
-    // scrapers may append compatible streams later using the same generation.
-    void pluginStreamsPromise.then((pluginStreams) => {
-      if (pluginStreams.length > 0) append(pluginStreams);
-    }).catch(() => {});
-  } else {
-    // If addons returned nothing, give optional scrapers a chance before
-    // declaring the source panel empty.
-    const pluginStreams = await pluginStreamsPromise;
-    if (pluginStreams.length > 0) streams.push(...pluginStreams);
-  }
+  // Partial updates keep the panel responsive, but effect completion is
+  // authoritative. Include scraper results in that completion too, otherwise
+  // the core completion can replace the partial snapshot and lose the plugin
+  // streams that were already shown there.
+  const pluginStreams = await pluginStreamsPromise;
+  if (pluginStreams.length > 0) streams.push(...pluginStreams);
 
   const availableAddons = [...new Set((streams as Array<{ addonName?: string }>).map((s) => s.addonName).filter(Boolean))] as string[];
 
