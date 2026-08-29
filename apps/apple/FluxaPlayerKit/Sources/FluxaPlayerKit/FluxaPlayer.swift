@@ -11,6 +11,7 @@ public final class FluxaPlayer: ObservableObject {
     @Published public private(set) var tracks: [FluxaTrack] = []
     @Published public private(set) var subtitleText: String?
     public var onStateChange: ((FluxaPlaybackState) -> Void)?
+    public var onPresenceChange: ((FluxaDiscordPresenceSnapshot?) -> Void)?
     public var onTracksChange: (([FluxaTrack]) -> Void)?
 
     public private(set) var item: FluxaPlaybackItem?
@@ -61,6 +62,7 @@ public final class FluxaPlayer: ObservableObject {
         embeddedSubtitlesSuppressed = false
         shouldResumeAfterInterruption = false
         self.item = item
+        onPresenceChange?(presenceSnapshot(for: state))
         #if canImport(MediaPlayer)
         nowPlaying.begin(title: item.title)
         #endif
@@ -156,6 +158,7 @@ public final class FluxaPlayer: ObservableObject {
         engine?.tearDown()
         engine = nil
         item = nil
+        onPresenceChange?(nil)
         surface?.unhost()
         tracks = []
         state = FluxaPlaybackState()
@@ -189,11 +192,33 @@ extension FluxaPlayer: FluxaPlaybackEngineDelegate {
             embeddedSubtitlesSuppressed = true
         }
         self.state = state
+        onPresenceChange?(presenceSnapshot(for: state))
         updateSubtitleText(at: state.position)
         #if canImport(MediaPlayer)
         nowPlaying.update(state)
         #endif
         onStateChange?(state)
+    }
+
+    private func presenceSnapshot(for state: FluxaPlaybackState) -> FluxaDiscordPresenceSnapshot? {
+        guard let item, let title = item.presenceTitle?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty else {
+            return nil
+        }
+        let status: String
+        switch state.phase {
+        case .playing: status = "Watching"
+        case .paused: status = "Paused"
+        case .loading: status = "Buffering"
+        default: return nil
+        }
+        return FluxaDiscordPresenceSnapshot(
+            title: title,
+            episodeLine: item.presenceEpisodeLine ?? "",
+            status: status,
+            position: state.position,
+            duration: state.duration,
+            artworkURL: item.presenceArtworkURL
+        )
     }
 
     private func updateSubtitleText(at position: TimeInterval) {

@@ -18,6 +18,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     private var externalPlaybackRequest: ApplePlaybackRequestSnapshot?
     private weak var activePlayerController: FluxaAppleCustomPlayerViewController?
     private var watchState: AppleWatchTogetherStateSnapshot?
+    private let discordPresence = FluxaAppleDiscordPresence()
     private var pendingWatchRoomPresentation = false
     private lazy var stateBridge = NativePlayerStateBridge(
         callbacks: NativePlayerCommandCallbacks(
@@ -50,6 +51,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     )
 
     func present(request: ApplePlaybackRequestSnapshot) {
+        discordPresence.start()
         if shouldUseInfuse(), canLaunchInfuse() {
             presentInInfuse(request: request)
         } else {
@@ -158,7 +160,10 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                         title: title,
                         headers: requestHeaders,
                         startPosition: Double(resumePositionMs) / 1000,
-                        subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) }
+                        subtitleUrls: request.subtitleUrls.compactMap { URL(string: $0) },
+                        presenceTitle: request.presenceTitle,
+                        presenceEpisodeLine: request.presenceEpisodeLine,
+                        presenceArtworkURL: request.presenceArtworkUrl.flatMap(URL.init(string:))
                     )
                 )
                 player.play()
@@ -421,6 +426,10 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     }
 
     private func observe(_ player: FluxaPlayer) {
+        player.onPresenceChange = { [weak self] snapshot in
+            guard let self else { return }
+            if let snapshot { self.discordPresence.publish(snapshot) } else { self.discordPresence.clear() }
+        }
         player.onStateChange = { [weak self] state in
             self?.publish(state)
         }

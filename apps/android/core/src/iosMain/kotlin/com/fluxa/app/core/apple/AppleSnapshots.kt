@@ -102,6 +102,9 @@ data class ApplePlaybackRequestSnapshot(
     val contentType: String = "movie",
     val videoId: String? = null,
     val hasNextEpisode: Boolean = false,
+    val presenceTitle: String? = null,
+    val presenceEpisodeLine: String? = null,
+    val presenceArtworkUrl: String? = null,
     val recommendationItems: List<AppleCatalogItemSnapshot> = emptyList(),
 )
 

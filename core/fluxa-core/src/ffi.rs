@@ -10,6 +10,7 @@ mod calendar_routes;
 mod content_identity_routes;
 mod content_warning_routes;
 mod core_addon_store_routes;
+mod discord_presence_routes;
 mod engine_routes;
 mod external_sync_routes;
 mod fluxa_sync_routes;
@@ -37,6 +38,7 @@ use calendar_routes::route_calendar;
 use content_identity_routes::route_content_identity;
 use content_warning_routes::route_content_warnings;
 use core_addon_store_routes::{route_addon_store, route_core_contract, route_profile_avatar_pack};
+use discord_presence_routes::route_discord_presence;
 use engine_routes::route_engine_lifecycle;
 use external_sync_routes::{
     route_external_sync_anilist, route_external_sync_simkl, route_external_sync_trakt,
@@ -210,6 +212,7 @@ const ROUTERS: &[fn(&str, &str) -> Outcome] = &[
     route_watchlist,
     route_offline,
     route_content_identity,
+    route_discord_presence,
     route_content_warnings,
     route_calendar,
     route_external_sync_trakt,

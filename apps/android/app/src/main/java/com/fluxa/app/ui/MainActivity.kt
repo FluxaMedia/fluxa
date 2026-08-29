@@ -65,6 +65,7 @@ import androidx.compose.ui.layout.ContentScale
 import com.fluxa.app.ui.catalog.*
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.player.MediaPlayerController
+import com.fluxa.app.player.DiscordPresenceNative
 import com.fluxa.app.R
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.session.MediaSession
@@ -125,6 +126,7 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CommonActivity.activity = this
+        runCatching { DiscordPresenceNative.initialize(this) }
         WatchTogetherManager.installTransportFactory { JvmWatchTogetherTransport() }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (android.os.Build.VERSION.SDK_INT >= 33 &&

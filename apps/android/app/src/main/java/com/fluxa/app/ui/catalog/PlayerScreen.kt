@@ -23,6 +23,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.player.*
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.shared.feature.player.MediaTrack
@@ -34,8 +35,10 @@ import com.fluxa.app.shared.feature.watchtogether.WatchTogetherPlaybackSnapshot
 import com.fluxa.app.shared.feature.watchtogether.loadIntoManager
 import com.fluxa.app.shared.feature.watchtogether.saveAndConfigure
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
+import com.google.gson.JsonObject
 
 @Composable
 fun PlayerScreen(
@@ -135,6 +138,52 @@ fun PlayerScreen(
     val exoEngine = remember(fluxaPlayer, exoPlayer) { ExoPlayerEngine(fluxaPlayer, exoPlayer) }
     val activeEngine: PlayerEngine? = remember(useMpvBackend, mpvPlayer, exoEngine) {
         if (useMpvBackend) mpvPlayer?.let(::MpvPlayerEngine) else exoEngine
+    }
+
+    LaunchedEffect(activeEngine, meta.id, state.currentVideoId) {
+        try {
+            while (isActive) {
+                val positionMs = if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition
+                val durationMs = if (useMpvBackend) state.engine.timeline.duration else exoPlayer.duration
+                val episode = state.currentVideoId
+                    ?.let(::extractSeasonEpisode)
+                    ?: videoId?.let(::extractSeasonEpisode)
+                val episodeTitle = episode?.let { (season, number) ->
+                    meta.videos.orEmpty().firstOrNull { it.season == season && it.episode == number }?.name
+                }
+                val artworkUrl = episode?.let { (season, number) ->
+                    meta.videos.orEmpty().firstOrNull { it.season == season && it.episode == number }?.thumbnail
+                } ?: meta.poster
+                val playing = if (useMpvBackend) state.engine.playback.isPlaying else exoPlayer.isPlaying
+                val buffering = if (useMpvBackend) state.engine.playback.isBuffering else exoPlayer.isLoading
+                val request = JsonObject().apply {
+                    addProperty("title", meta.name)
+                    addProperty("episodeTitle", episodeTitle)
+                    addProperty("season", episode?.first)
+                    addProperty("episode", episode?.second)
+                    addProperty("positionMs", positionMs.coerceAtLeast(0L))
+                    addProperty("durationMs", durationMs.takeIf { it > 0L } ?: 0L)
+                    addProperty("isPlaying", playing)
+                    addProperty("isBuffering", buffering)
+                    addProperty("artworkUrl", artworkUrl)
+                }
+                runCatching {
+                    FluxaCoreNative.discordPresenceSnapshot(request.toString())?.let { snapshot ->
+                        DiscordPresenceNative.update(
+                            title = snapshot.title,
+                            episodeLine = snapshot.episodeLine,
+                            status = snapshot.status,
+                            positionMs = snapshot.positionMs,
+                            durationMs = snapshot.durationMs,
+                            artworkUrl = snapshot.artworkUrl
+                        )
+                    }
+                }
+                delay(1000)
+            }
+        } finally {
+            runCatching { DiscordPresenceNative.clear() }
+        }
     }
 
     var showWatchParty by remember { mutableStateOf(false) }

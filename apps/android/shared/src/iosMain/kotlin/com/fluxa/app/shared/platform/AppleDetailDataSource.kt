@@ -199,6 +199,15 @@ class AppleDetailDataSource(
                 currentIndex >= 0 && currentIndex < episodes.lastIndex ||
                     current.availableSeasons.any { it > current.selectedSeason }
             } ?: false,
+            presenceTitle = content?.title,
+            presenceEpisodeLine = content?.let { current ->
+                val episode = current.seasonEpisodes.firstOrNull { it.id == (videoId ?: current.selectedEpisodeId) }
+                episode?.let { "S${it.season}, E${it.number}: ${it.title}" }
+            },
+            presenceArtworkUrl = content?.let { current ->
+                current.seasonEpisodes.firstOrNull { it.id == (videoId ?: current.selectedEpisodeId) }?.thumbnailUrl
+                    ?: current.posterUrl
+            },
             recommendationItems = recommendationItems,
         )
     }

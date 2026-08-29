@@ -13,6 +13,7 @@ settings:
     OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_core-ios-simulator -lfluxa_streaming_engine-ios-simulator"
     OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos -lfluxa_streaming_engine-tvos"
     OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator -lfluxa_streaming_engine-tvos-simulator"
+    SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/iOS/FluxaAppleDiscordPresence.h"
 packages:
   FluxaPlayerKit:
     path: FluxaPlayerKit
@@ -25,10 +26,14 @@ targets:
       properties:
         LSApplicationQueriesSchemes:
           - infuse
+          - discord
         CFBundleURLTypes:
           - CFBundleURLName: FluxaApple
             CFBundleURLSchemes:
               - fluxaapple
+          - CFBundleURLName: DiscordSocialSDK
+            CFBundleURLSchemes:
+              - discord-1518004842860122174
     sources:
       - path: Shared
       - path: AppleCore
@@ -40,6 +45,7 @@ targets:
       - sdk: UIKit.framework
       - sdk: AVFoundation.framework
       - sdk: AVKit.framework
+      - framework: Frameworks/discord_partner_sdk.xcframework
       - package: FluxaPlayerKit
     preBuildScripts:
       - name: Build Fluxa Rust Core

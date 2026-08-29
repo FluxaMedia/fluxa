@@ -19,6 +19,7 @@ import com.fluxa.app.core.rust.models.NativeDetailSeasonLoadPlan
 import com.fluxa.app.core.rust.models.NativeDiscoverSelectionPlan
 import com.fluxa.app.core.rust.models.NativeDetailStreamResultPlan
 import com.fluxa.app.core.rust.models.NativeDeviceResourceBudget
+import com.fluxa.app.core.rust.models.NativeDiscordPresenceSnapshot
 import com.fluxa.app.core.rust.models.NativeDirectPlaybackPlan
 import com.fluxa.app.core.rust.models.NativeDirectPlaybackPolicy
 import com.fluxa.app.core.rust.models.NativeDolbyVisionRpuConvertResult
@@ -2141,6 +2142,12 @@ object FluxaCoreNative {
     fun detailSeasonLoadPlan(requestJson: String): NativeDetailSeasonLoadPlan {
         val value = FluxaCoreUniFfi.coreInvokeValue("detailSeasonLoadPlan", requestJson)
         return gson.fromJson(value, NativeDetailSeasonLoadPlan::class.java) ?: NativeDetailSeasonLoadPlan()
+    }
+
+    fun discordPresenceSnapshot(requestJson: String): NativeDiscordPresenceSnapshot? {
+        val value = FluxaCoreUniFfi.coreInvokeValue("discordPresenceSnapshot", requestJson)
+        if (value.isJsonNull) return null
+        return gson.fromJson(value, NativeDiscordPresenceSnapshot::class.java)
     }
 
     private inline fun <T> call(block: () -> T): T {

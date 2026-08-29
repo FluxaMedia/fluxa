@@ -113,6 +113,17 @@
             
         </activity>
 
+        <activity
+            android:name="com.discord.socialsdk.AuthenticationActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="discord-1518004842860122174" />
+            </intent-filter>
+        </activity>
+
         <!-- Disable WorkManager auto-init so HiltWorkerFactory can be injected first.
              WorkManager 2.7+ uses App Startup — remove the initializer from InitializationProvider. -->
         <provider

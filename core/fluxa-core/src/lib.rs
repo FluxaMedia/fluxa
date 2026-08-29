@@ -56,6 +56,8 @@ mod desktop_playback;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod device_resource;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod discord_presence;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod discovery_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod dolby_vision_plan;

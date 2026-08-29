@@ -9,6 +9,10 @@ plugins {
 android {
     namespace = "com.fluxa.app.player"
 
+    buildFeatures {
+        prefab = true
+    }
+
     externalNativeBuild {
         cmake {
             path = file("src/main/cpp/CMakeLists.txt")
@@ -41,6 +45,7 @@ kotlin {
         }
         androidMain {
             dependencies {
+                implementation(files("libs/discord_partner_sdk.aar"))
                 implementation(project(":core"))
                 implementation(project(":data"))
                 implementation(libs.androidx.core.ktx)
