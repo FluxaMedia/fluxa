@@ -41,6 +41,11 @@ src-tauri/gen/
 *.aab
 *.ipa
 
+# Local agent instructions
+**/AGENTS.md
+**/CLAUDE.md
+**/GEMINI.md
+
 # Legacy Desktop checkout paths left outside the monorepo layout
 /src/
 /src-tauri/
