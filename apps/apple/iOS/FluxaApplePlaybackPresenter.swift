@@ -2,6 +2,7 @@ import Foundation
 import FluxaPlayerKit
 import FluxaShared
 import UIKit
+import FluxaCore
 
 @MainActor
 final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControllerDelegate {
@@ -101,6 +102,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         let requestHeaders = decodeHeaders(requestHeadersJson)
         let title = request.title
         let resumePositionMs = request.resumePositionMs
+        let hasNextEpisode = resolveHasNextEpisode(request)
         Task {
             let playbackUrl = await Task.detached {
                 FluxaAppleStreamingEngine.shared.prepare(
@@ -139,7 +141,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 player: player,
                 title: title,
                 recommendations: request.recommendationItems,
-                hasNextEpisode: request.hasNextEpisode
+                hasNextEpisode: hasNextEpisode
             )
             controller.onRecommendationSelected = { [weak self] item in
                 self?.dismissAndOpenRecommendation(item)
@@ -169,6 +171,24 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 player.play()
             }
         }
+    }
+
+    private func resolveHasNextEpisode(_ request: ApplePlaybackRequestSnapshot) -> Bool {
+        guard request.contentType == "series", request.currentEpisodeNumber > 0 else { return false }
+        let videos = request.episodeCandidates.map { episode in
+            ["season": episode.season, "episode": episode.number, "number": episode.number, "id": episode.id]
+        }
+        guard let argsData = try? JSONSerialization.data(withJSONObject: [
+                  "videos": videos,
+                  "currentSeason": request.currentEpisodeSeason,
+                  "currentEpisode": request.currentEpisodeNumber,
+                  "nowMs": Int64(Date().timeIntervalSince1970 * 1000),
+                  "releasedOnly": true,
+              ]),
+              let argsJson = String(data: argsData, encoding: .utf8) else { return false }
+        let resolved = coreInvoke(method: "resolveNextEpisode", argsJson: argsJson)
+        return (resolved != "null" && !resolved.isEmpty)
+            || request.availableSeasons.contains { $0 > request.currentEpisodeSeason }
     }
 
     private func dismissAndOpenRecommendation(_ item: FluxaShared.AppleCatalogItemSnapshot) {

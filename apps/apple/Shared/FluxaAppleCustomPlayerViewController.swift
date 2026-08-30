@@ -2,6 +2,7 @@ import FluxaPlayerKit
 import SwiftUI
 import UIKit
 import FluxaShared
+import FluxaCore
 
 #if os(iOS)
 import AVKit
