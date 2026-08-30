@@ -729,6 +729,9 @@
     <string name="settings_dot_next_episode_threshold_desc">Oynatma bu noktaya ulaşınca sonraki bölüm kartını gösterir.</string>
     <string name="settings_dot_watched_threshold">İzlendi Eşiği</string>
     <string name="settings_dot_watched_threshold_desc">Oynatma bu noktaya ulaşınca içeriği izlenmiş sayar.</string>
+    <string name="settings_dot_movie_recommendation_outro_percent">Film Öneri Outrosu</string>
+    <string name="settings_dot_series_recommendation_outro_percent">Dizi Öneri Outrosu</string>
+    <string name="settings_dot_recommendation_outro_percent_desc">Oynatma bu yüzdeye ulaştığında önerileri açar ve playerı küçültür.</string>
     <string name="settings_dot_playback_speed_desc">Videolar için normal oynatma hızını belirler.</string>
     <string name="settings_dot_resume_playback_desc">Bir içeriği tekrar açtığında son kaydedilen yerden devam eder.</string>
     <string name="settings_dot_forward_rewind_desc">İleri ve geri sarma düğmelerinin kaç saniye atlayacağını belirler.</string>
@@ -1474,6 +1477,9 @@
     <string name="player_dot_skip_preview">Önizlemeyi Geç</string>
     <string name="player_dot_playing_in_seconds">%s saniye içinde oynatılacak</string>
     <string name="player_dot_dismiss">Kapat</string>
+    <string name="player_dot_recommendations">Bunları da beğenebilirsiniz</string>
+    <string name="player_dot_recommendations_based_on">Bunu izlediğiniz için</string>
+    <string name="player_dot_close">Kapat</string>
     <string name="player_dot_watch_credits">Kapanışı İzle</string>
     <string name="player_dot_mark_segment_title">Segmentlere Katkıda Bulun</string>
     <string name="content_warning_dot_nudity">Cinsellik ve Çıplaklık</string>
@@ -2261,7 +2267,7 @@
     <string name="settings_dot_render_backend">Görüntü İşleme Motoru</string>
     <string name="settings_dot_render_backend_desc">mpv\'nin görüntüleri işlerken kullandığı GPU API\'si. OpenGL kararlı varsayılan seçenektir; Vulkan/D3D11 deneyseldir ve etkili olması için uygulamanın yeniden başlatılması gerekir. D3D11 yalnızca Windows\'ta geçerlidir.</string>
     <string name="settings_dot_player_engine">Oynatıcı Motoru</string>
-    <string name="settings_dot_player_engine_desc">Videoyu işleyecek oynatma motorunu seçin. libVLC, çalışma zamanı dosyaları kurulduğunda Fluxa içinde görüntülenir.</string>
+    <string name="settings_dot_player_engine_desc">Videoyu oynatacak motoru seçin. AVPlayer macOS\'ta sistem medya altyapısını kullanır.</string>
     <string name="settings_dot_preferred_player">Oynatma hedefi</string>
     <string name="settings_dot_preferred_player_desc">Videoyu Fluxa içinde oynatın veya her akışı harici oynatıcıya gönderin.</string>
     <string name="settings_dot_player_internal">Fluxa oynatıcısı</string>

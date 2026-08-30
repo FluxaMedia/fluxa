@@ -390,7 +390,7 @@ class FluxaCorePlatformContractTest {
                 mapOf(
                     "effectId" to requested.effects[0].id,
                     "status" to "ok",
-                    "value" to mapOf("id" to "tt1", "name" to "Movie")
+                    "value" to mapOf("meta" to mapOf("id" to "tt1", "name" to "Movie"))
                 )
             )
 

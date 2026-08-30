@@ -47,6 +47,10 @@ object WatchTogetherManager {
     private var pausedForRemoteBuffering = false
     private var resumeAfterRemoteBuffering = false
 
+    fun installDriftPolicy(policy: (Long, Long, Boolean, Boolean) -> WatchTogetherCorrection) {
+        WatchTogetherDriftCorrector.installPolicy(policy)
+    }
+
     fun installTransportFactory(value: WatchTogetherTransportFactory) {
         factory = value
     }

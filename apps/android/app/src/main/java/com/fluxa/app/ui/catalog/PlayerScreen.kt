@@ -149,10 +149,10 @@ fun PlayerScreen(
                     ?.let(::extractSeasonEpisode)
                     ?: videoId?.let(::extractSeasonEpisode)
                 val episodeTitle = episode?.let { (season, number) ->
-                    meta.videos.orEmpty().firstOrNull { it.season == season && it.episode == number }?.name
+                    meta.videos.orEmpty().firstOrNull { it.season == season && it.number == number }?.name
                 }
                 val artworkUrl = episode?.let { (season, number) ->
-                    meta.videos.orEmpty().firstOrNull { it.season == season && it.episode == number }?.thumbnail
+                    meta.videos.orEmpty().firstOrNull { it.season == season && it.number == number }?.thumbnail
                 } ?: meta.poster
                 val playing = if (useMpvBackend) state.engine.playback.isPlaying else exoPlayer.isPlaying
                 val buffering = if (useMpvBackend) state.engine.playback.isBuffering else exoPlayer.isLoading

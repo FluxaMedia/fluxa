@@ -1129,6 +1129,71 @@ object FluxaCoreNative {
             ?: NativeDiscoverSelectionPlan()
     }
 
+    fun discoverCatalogCandidates(
+        request: Map<String, Any?>,
+        catalogs: List<DiscoverCatalogOption>
+    ): List<String> {
+        val args = gson.toJsonTree(request).asJsonObject.apply { add("catalogs", gson.toJsonTree(catalogs)) }
+        val value = FluxaCoreUniFfi.coreInvokeValue("discoverCatalogCandidates", args.toString())
+        return gson.fromJson(value, stringListType) ?: emptyList()
+    }
+
+    fun isUpNextContinueWatchingItem(
+        type: String?,
+        lastVideoId: String?,
+        timeOffset: Long?,
+        duration: Long?,
+        resumeProgressPercent: Float?,
+    ): Boolean {
+        if (lastVideoId.isNullOrBlank()) return false
+        val args = JsonObject().apply {
+            addProperty("type", type)
+            addProperty("lastVideoId", lastVideoId)
+            addProperty("timeOffset", timeOffset)
+            addProperty("duration", duration)
+            addProperty("resumeProgressPercent", resumeProgressPercent)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("isUpNextContinueWatchingItem", args.toString()).asBoolean
+    }
+
+    fun watchTogetherDriftCorrection(
+        localPositionMs: Long,
+        expectedPositionMs: Long,
+        hostPlaying: Boolean,
+        speedCorrectionActive: Boolean,
+    ): Map<String, Any?> {
+        val args = JsonObject().apply {
+            addProperty("localPositionMs", localPositionMs)
+            addProperty("expectedPositionMs", expectedPositionMs)
+            addProperty("hostPlaying", hostPlaying)
+            addProperty("speedCorrectionActive", speedCorrectionActive)
+        }
+        return gson.fromJson(
+            FluxaCoreUniFfi.coreInvokeValue("watchTogetherDriftCorrection", args.toString()),
+            headlessStateMapType,
+        ) ?: emptyMap()
+    }
+
+    fun formatEpisodeLine(lastEpisodeName: String?, lastEpisodeSeason: Int?, lastEpisodeNumber: Int?, lastVideoId: String?): String {
+        val args = JsonObject().apply {
+            addProperty("lastEpisodeName", lastEpisodeName)
+            addProperty("lastEpisodeSeason", lastEpisodeSeason)
+            addProperty("lastEpisodeNumber", lastEpisodeNumber)
+            addProperty("lastVideoId", lastVideoId)
+        }
+        return FluxaCoreUniFfi.coreInvokeValue("formatEpisodeLine", args.toString()).asString
+    }
+
+    fun continueWatchingProgressFields(meta: Meta): Map<String, Any?> {
+        val args = JsonObject().apply { addProperty("itemJson", gson.toJson(meta)) }
+        return gson.fromJson(
+            FluxaCoreUniFfi.coreInvokeValue("continueWatchingProgressFields", args.toString()),
+            headlessStateMapType,
+        ) ?: emptyMap()
+    }
+
+
+
     fun normalizeContentType(value: String): String? {
         val args = JsonObject().apply { addProperty("value", value) }
         val result = FluxaCoreUniFfi.coreInvokeValue("normalizeContentType", args.toString())

@@ -21,8 +21,8 @@ class TraktIntegrationTest {
 
     @Test
     fun tokenExpiresAtKeepsFiveMinuteRefreshBuffer() {
-        assertEquals(1_700_003_300_000L, TraktIntegration.tokenExpiresAt(1_700_000_000L, 3_600L))
-        assertEquals(1_700_000_000_000L, TraktIntegration.tokenExpiresAt(1_700_000_000L, 120L))
+        assertEquals(1_700_003_300L, TraktIntegration.tokenExpiresAt(1_700_000_000L, 3_600L))
+        assertEquals(1_700_000_000L, TraktIntegration.tokenExpiresAt(1_700_000_000L, 120L))
     }
 
     @Test

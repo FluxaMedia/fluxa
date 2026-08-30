@@ -2,7 +2,7 @@ package com.fluxa.app.shared.feature.watchtogether
 
 import kotlin.math.abs
 
-internal sealed interface WatchTogetherCorrection {
+sealed interface WatchTogetherCorrection {
     data object None : WatchTogetherCorrection
     data class Seek(val positionMs: Long) : WatchTogetherCorrection
     data class Speed(val value: Float) : WatchTogetherCorrection
@@ -16,6 +16,11 @@ internal object WatchTogetherDriftCorrector {
     private const val SLOW_DOWN_SPEED = 0.97f
     private const val SOFT_DRIFT_MS = 250L
     private const val HARD_SEEK_DRIFT_MS = 1_000L
+    private var installedPolicy: ((Long, Long, Boolean, Boolean) -> WatchTogetherCorrection)? = null
+
+    fun installPolicy(policy: (Long, Long, Boolean, Boolean) -> WatchTogetherCorrection) {
+        installedPolicy = policy
+    }
 
     fun correction(
         localPositionMs: Long,
@@ -23,6 +28,7 @@ internal object WatchTogetherDriftCorrector {
         hostPlaying: Boolean,
         speedCorrectionActive: Boolean,
     ): WatchTogetherCorrection {
+        installedPolicy?.invoke(localPositionMs, expectedPositionMs, hostPlaying, speedCorrectionActive)?.let { return it }
         val drift = expectedPositionMs - localPositionMs
         return when {
             abs(drift) > HARD_SEEK_DRIFT_MS -> WatchTogetherCorrection.Seek(expectedPositionMs.coerceAtLeast(0L))

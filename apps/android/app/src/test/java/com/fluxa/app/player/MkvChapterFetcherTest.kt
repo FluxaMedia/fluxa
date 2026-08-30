@@ -137,15 +137,13 @@ class MkvChapterFetcherTest {
     }
 
     private fun uint64Be(value: Long): ByteArray {
-        var v = value
-        val out = ArrayDeque<Byte>()
-        if (v == 0L) return byteArrayOf(0)
-        while (v > 0) {
-            out.addFirst((v and 0xFF).toByte())
-            v = v shr 8
-        }
-        return out.toByteArray()
+        return value.toULong().toLong().toBytes()
     }
+
+    private fun Long.toBytes(): ByteArray = byteArrayOf(
+        (this shr 56).toByte(), (this shr 48).toByte(), (this shr 40).toByte(), (this shr 32).toByte(),
+        (this shr 24).toByte(), (this shr 16).toByte(), (this shr 8).toByte(), toByte()
+    )
 
     private fun segmentWithChapters(chapters: List<Pair<Long, String>>): ByteArray {
         val atoms = chapters.fold(ByteArray(0)) { acc, (ms, title) -> acc + chapterAtom(ms, title) }

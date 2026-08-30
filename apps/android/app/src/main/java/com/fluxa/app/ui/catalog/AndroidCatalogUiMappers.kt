@@ -5,6 +5,8 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.repository.continueWatchingEpisodeLabelFromCore
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaDimensions
@@ -63,7 +65,9 @@ internal fun Meta.toCatalogCardUiModel(
     val horizontal = effectiveLayout == "horizontal" || episodeStyle
     val square = effectiveLayout == "square"
     val folder = type == "catalog_folder"
-    val progressCard = isUpNextContinueItem() || ((timeOffset ?: 0L) > 0L && (duration ?: 0L) > 0L) || resumeProgressPercent != null
+    val progressFields = FluxaCoreNative.continueWatchingProgressFields(this)
+    val progressPercent = (progressFields["progressPercent"] as? Number)?.toFloat() ?: 0f
+    val progressCard = (progressFields["isUpNext"] as? Boolean == true) || progressPercent > 0f
     val showTitleBar = !(isContinueWatchingCard && profile?.safeContinueWatchingHideTitles == true) &&
         !(profile?.safePosterHideTitles == true || hideTitle == true)
     val width = (when {
@@ -91,11 +95,7 @@ internal fun Meta.toCatalogCardUiModel(
     val requestHeight = if (episodeStyle) 288 else if (folder) {
         when { horizontal -> 216; square -> 224; else -> 336 }
     } else when { horizontal -> 288; square -> 288; else -> 432 }
-    val progress = if ((timeOffset ?: 0L) > 0L && (duration ?: 0L) > 0L) {
-        ((timeOffset ?: 0L).toFloat() / (duration ?: 1L).toFloat()).coerceIn(0f, 1f)
-    } else {
-        resumeProgressPercent?.let { (it / 100f).coerceIn(0f, 1f) } ?: 0f
-    }
+    val progress = (progressPercent / 100f).coerceIn(0f, 1f)
     val rankBase = if (horizontal) imageHeight else width
     val rankBoxWidth = topTenRank?.let {
         when { it >= 10 -> rankBase * 1.24f; it == 1 -> rankBase * 0.62f; else -> rankBase * 0.82f }
@@ -103,11 +103,20 @@ internal fun Meta.toCatalogCardUiModel(
     val rankOverlap = topTenRank?.let {
         when { it >= 10 -> rankBase * 0.16f; it == 1 -> rankBase * 0.13f; else -> rankBase * 0.24f }
     } ?: 0.dp
-    val upNext = isUpNextContinueItem()
-    val progressLabel = if (progressCard && !upNext) remainingLabel(language) else null
+    val upNext = progressFields["isUpNext"] as? Boolean == true
+    val remainingSeconds = (progressFields["remainingSeconds"] as? Number)?.toLong() ?: 0L
+    val progressLabel = if (progressCard && !upNext) {
+        val minutes = (remainingSeconds / 60L).toInt()
+        when {
+            minutes < 1 -> AppStrings.t(language, "format.remaining_almost_done")
+            minutes < 60 -> AppStrings.format(language, "format.remaining_minutes", minutes)
+            minutes % 60 == 0 -> AppStrings.format(language, "format.remaining_hours", minutes / 60)
+            else -> AppStrings.format(language, "format.remaining_hours_minutes", minutes / 60, minutes % 60)
+        }
+    } else null
     return CatalogCardUiModel(
         title = name,
-        subtitle = if (progressCard) continueWatchingEpisodeLabel(this).orEmpty() else releaseInfo?.take(4) ?: released?.take(4).orEmpty(),
+        subtitle = if (progressCard) continueWatchingEpisodeLabelFromCore() else releaseInfo?.take(4) ?: released?.take(4).orEmpty(),
         showTitleBar = showTitleBar,
         artworkUrl = artwork,
         artworkMemoryCacheKey = artwork?.takeIf { it.isNotBlank() }?.let { "home-artwork:${requestWidth}x$requestHeight:$it" },

@@ -81,6 +81,7 @@ class PluginHttpClientImpl @Inject constructor(
                         .mapValues { it.value.joinToString(",") }
                     return PluginHttpResponse(
                         status = httpResponse.code.toUShort(),
+                        url = currentUrl,
                         headers = headersMap,
                         body = text,
                         ok = httpResponse.isSuccessful,
@@ -92,6 +93,7 @@ class PluginHttpClientImpl @Inject constructor(
             PlatformLog.w("PluginHttpClient", "plugin fetch failed: $currentUrl", e)
             return PluginHttpResponse(
                 status = 0u,
+                url = currentUrl,
                 headers = emptyMap(),
                 body = "",
                 ok = false,
@@ -101,5 +103,5 @@ class PluginHttpClientImpl @Inject constructor(
     }
 
     private fun blockedResponse(reason: String): PluginHttpResponse =
-        PluginHttpResponse(status = 0u, headers = emptyMap(), body = "", ok = false, error = reason)
+        PluginHttpResponse(status = 0u, url = "", headers = emptyMap(), body = "", ok = false, error = reason)
 }

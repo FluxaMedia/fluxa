@@ -11,6 +11,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.TraktWatchedState
+import com.fluxa.app.data.repository.isUpNextContinueItemFromCore
 import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -46,9 +47,7 @@ internal class HomeContinueWatchingCoordinator(
         if (!usesLocalSource() || activeProfile()?.safeUpcomingRowEnabled != true) return
         val lang = activeProfile()?.safeLanguage ?: "en"
         val candidates = items.filter { meta ->
-            val isSeries = meta.type == "series" || meta.type == "tv" || meta.type == "anime"
-            val isUpNext = isSeries && !meta.lastVideoId.isNullOrBlank() &&
-                (meta.timeOffset ?: 0L) <= 0L && (meta.duration ?: 0L) <= 0L
+            val isUpNext = meta.isUpNextContinueItemFromCore()
             isUpNext && upcomingCacheKey(meta) !in upcomingCache
         }
         if (candidates.isEmpty()) return

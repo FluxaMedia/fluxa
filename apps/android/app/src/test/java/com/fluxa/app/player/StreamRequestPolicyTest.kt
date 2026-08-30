@@ -2,7 +2,6 @@ package com.fluxa.app.player
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -38,7 +37,7 @@ class StreamRequestPolicyTest {
     }
 
     @Test
-    fun refererPolicyIsDisabled() {
-        assertNull(StreamRequestPolicy.refererFor("https://vidmoly.me/video.mp4"))
+    fun refererPolicyUsesStreamHost() {
+        assertEquals("https://vidmoly.me/", StreamRequestPolicy.refererFor("https://vidmoly.me/video.mp4"))
     }
 }

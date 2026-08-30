@@ -6,6 +6,18 @@ import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 
 object NuvioCoreBridge {
+    fun progressPresentation(contentId: String, progressKey: String?, season: Int?, episode: Int?, position: Long?, duration: Long?): JsonObject = invoke(
+        "nuvioProgressPresentation",
+        JsonObject().apply {
+            addProperty("contentId", contentId)
+            addProperty("progressKey", progressKey)
+            addProperty("season", season)
+            addProperty("episode", episode)
+            addProperty("position", position ?: 0L)
+            addProperty("duration", duration ?: 0L)
+        }
+    ).asJsonObject
+
     fun pinHash(profileIndex: Int, salt: String, pin: String): String = invoke(
         "nuvioPinHash",
         JsonObject().apply {

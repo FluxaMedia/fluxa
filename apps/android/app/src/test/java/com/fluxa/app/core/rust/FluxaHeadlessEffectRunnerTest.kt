@@ -18,7 +18,7 @@ class FluxaHeadlessEffectRunnerTest {
                             "fetchMetaDetail" -> HeadlessEffectCompletion(
                                 effectId = effect.id,
                                 status = "ok",
-                                value = mapOf("id" to "tt1", "name" to "Movie")
+                                value = mapOf("meta" to mapOf("id" to "tt1", "name" to "Movie"))
                             )
                             "readPlaybackProgress" -> HeadlessEffectCompletion(
                                 effectId = effect.id,
@@ -63,7 +63,7 @@ class FluxaHeadlessEffectRunnerTest {
                             "fetchMetaDetail" -> HeadlessEffectCompletion(
                                 effectId = effect.id,
                                 status = "ok",
-                                value = mapOf("id" to "tt1", "name" to "Movie")
+                                value = mapOf("meta" to mapOf("id" to "tt1", "name" to "Movie"))
                             )
                             "readPlaybackProgress" -> HeadlessEffectCompletion(
                                 effectId = effect.id,

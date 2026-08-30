@@ -729,6 +729,9 @@
     <string name="settings_dot_next_episode_threshold_desc">Shows the next episode card after playback reaches this point.</string>
     <string name="settings_dot_watched_threshold">Watched Threshold</string>
     <string name="settings_dot_watched_threshold_desc">Marks the current item as watched after playback reaches this point.</string>
+    <string name="settings_dot_movie_recommendation_outro_percent">Movie Recommendation Outro</string>
+    <string name="settings_dot_series_recommendation_outro_percent">Series Recommendation Outro</string>
+    <string name="settings_dot_recommendation_outro_percent_desc">Opens recommendations and shrinks the player after this percentage.</string>
     <string name="settings_dot_playback_speed_desc">Sets the normal playback speed for videos.</string>
     <string name="settings_dot_resume_playback_desc">Continues from the last saved position when you reopen a title.</string>
     <string name="settings_dot_forward_rewind_desc">Sets how far the seek buttons jump forward or back.</string>
@@ -1474,6 +1477,9 @@
     <string name="player_dot_skip_preview">Skip Preview</string>
     <string name="player_dot_playing_in_seconds">Playing in %ss</string>
     <string name="player_dot_dismiss">Dismiss</string>
+    <string name="player_dot_recommendations">You may also like</string>
+    <string name="player_dot_recommendations_based_on">Because you watched</string>
+    <string name="player_dot_close">Close</string>
     <string name="player_dot_watch_credits">Watch Credits</string>
     <string name="player_dot_mark_segment_title">Contribute Segments</string>
     <string name="content_warning_dot_nudity">Sex &amp; Nudity</string>
@@ -2261,7 +2267,7 @@
     <string name="settings_dot_render_backend">Render Backend</string>
     <string name="settings_dot_render_backend_desc">GPU API mpv renders through. OpenGL is the stable default; Vulkan/D3D11 are experimental and need an app restart to take effect. D3D11 only applies on Windows.</string>
     <string name="settings_dot_player_engine">Player Engine</string>
-    <string name="settings_dot_player_engine_desc">Choose the engine that plays video. libVLC renders inside Fluxa when its runtime is installed.</string>
+    <string name="settings_dot_player_engine_desc">Choose the engine that plays video. AVPlayer is available on macOS and uses the system media stack.</string>
     <string name="settings_dot_preferred_player">Playback destination</string>
     <string name="settings_dot_preferred_player_desc">Play inside Fluxa or send every stream to an external player.</string>
     <string name="settings_dot_player_internal">Fluxa player</string>

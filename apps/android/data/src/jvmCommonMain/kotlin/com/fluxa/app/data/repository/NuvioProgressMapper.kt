@@ -11,13 +11,8 @@ import com.fluxa.app.data.remote.NuvioWatchProgressDto
  * `content_id + season + episode`, so older rows can be repaired client-side.
  */
 internal fun NuvioWatchProgressDto.canonicalProgressKey(): String {
-    progressKey?.trim()?.takeIf(String::isNotBlank)?.let { return it }
-    val content = contentId.trim()
-    return if (season != null && episode != null) {
-        "${content}_s${season}e${episode}"
-    } else {
-        content
-    }
+    return NuvioCoreBridge.progressPresentation(contentId, progressKey, season, episode, position, duration)
+        .get("progressKey").asString
 }
 
 private fun NuvioWatchProgressDto.buildContinueWatchingMeta(
@@ -93,14 +88,13 @@ internal fun NuvioWatchProgressDto.toContinueWatchingMeta(
     metadataDetail: MetaDetail? = null,
 ): Meta? {
     if (contentId.isBlank() || duration <= 0L || position < 0L) return null
+    val presentation = NuvioCoreBridge.progressPresentation(contentId, progressKey, season, episode, position, duration)
     return buildContinueWatchingMeta(
         libraryItem = libraryItem,
         metadataDetail = metadataDetail,
         timeOffset = position,
         duration = duration,
-        resumeProgressPercent = ((position.toDouble() / duration.toDouble()) * 100.0)
-            .toFloat()
-            .coerceIn(0f, 100f),
+        resumeProgressPercent = presentation.get("progressPercent").asFloat,
     )
 }
 
@@ -108,7 +102,7 @@ internal fun NuvioWatchProgressDto.toContinueWatchingMeta(
  * Maps a row that `NuvioCoreBridge.resolveContinueWatching` already rolled
  * past a finished episode: video/season/episode point at the next episode and
  * position/duration were reset to 0. Renders as a progress-less Up Next card
- * (`Meta.isUpNextContinueItem()`) instead of the finished episode's resume badge.
+ * (the shared core up-next policy) instead of the finished episode's resume badge.
  */
 internal fun NuvioWatchProgressDto.toUpNextContinueWatchingMeta(
     libraryItem: NuvioLibraryItemDto?,

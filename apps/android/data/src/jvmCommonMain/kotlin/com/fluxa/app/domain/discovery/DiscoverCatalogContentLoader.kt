@@ -37,18 +37,17 @@ class DiscoverCatalogContentLoader @Inject constructor(
             genre: String?
         ) -> List<Meta>
     ): List<Meta> = coroutineScope {
-        val selectedCatalog = catalogOptions.firstOrNull { it.key == request.catalogKey }
-        val candidateCatalogs = when {
-            selectedCatalog != null -> listOf(selectedCatalog)
-            catalogOptions.isEmpty() -> emptyList()
-            !request.genre.isNullOrBlank() -> catalogOptions
-                .filter { request.type == "all" || it.type == request.type }
-                .filter { it.genres.contains(request.genre) }
-                .take(DEFAULT_DISCOVER_CATALOG_LIMIT)
-            else -> catalogOptions
-                .filter { request.type == "all" || it.type == request.type || it.type == "all" }
-                .take(DEFAULT_DISCOVER_CATALOG_LIMIT)
-        }.filterByProvider(request.provider)
+        val candidateKeys = FluxaCoreNative.discoverCatalogCandidates(
+            request = mapOf(
+                "contentType" to request.type,
+                "catalogKey" to request.catalogKey,
+                "genre" to request.genre,
+                "provider" to request.provider,
+                "limit" to DEFAULT_DISCOVER_CATALOG_LIMIT,
+            ),
+            catalogs = catalogOptions,
+        )
+        val candidateCatalogs = candidateKeys.mapNotNull { key -> catalogOptions.firstOrNull { it.key == key } }
 
         if (candidateCatalogs.any { it.requiresGenre } && request.genre.isNullOrBlank()) {
             val optionalOnly = candidateCatalogs.filterNot { it.requiresGenre }
@@ -106,15 +105,6 @@ class DiscoverCatalogContentLoader @Inject constructor(
             .let { items -> DiscoverResultFilters.apply(items, request) }
     }
 
-    private fun List<DiscoverCatalogOption>.filterByProvider(provider: String?): List<DiscoverCatalogOption> {
-        val normalizedProvider = provider?.providerSearchTerms().orEmpty()
-        if (normalizedProvider.isEmpty()) return this
-        return filter { option ->
-            val haystack = "${option.label} ${option.transportUrl} ${option.id}".providerSearchTerms().joinToString(" ")
-            normalizedProvider.any { haystack.contains(it) }
-        }
-    }
-
     private fun interleave(primary: List<Meta>, secondary: List<Meta>): List<Meta> {
         val result = mutableListOf<Meta>()
         val maxSize = maxOf(primary.size, secondary.size)
@@ -167,8 +157,4 @@ object DiscoverResultFilters {
             region = request.region
         )
     }
-}
-
-private fun String.providerSearchTerms(): List<String> {
-    return FluxaCoreNative.providerSearchTerms(this)
 }

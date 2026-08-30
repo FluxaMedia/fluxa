@@ -193,12 +193,14 @@ class AppleDetailDataSource(
             contentId = content?.id.orEmpty(),
             contentType = content?.type ?: "movie",
             videoId = videoId ?: content?.selectedEpisodeId,
-            hasNextEpisode = content?.let { current ->
-                val episodes = current.seasonEpisodes
-                val currentIndex = videoId?.let { id -> episodes.indexOfFirst { it.id == id } } ?: -1
-                currentIndex >= 0 && currentIndex < episodes.lastIndex ||
-                    current.availableSeasons.any { it > current.selectedSeason }
-            } ?: false,
+            episodeCandidates = content?.seasonEpisodes.orEmpty(),
+            availableSeasons = content?.availableSeasons.orEmpty(),
+            currentEpisodeSeason = content?.seasonEpisodes
+                ?.firstOrNull { it.id == (videoId ?: content?.selectedEpisodeId) }
+                ?.season ?: content?.selectedSeason ?: 0,
+            currentEpisodeNumber = content?.seasonEpisodes
+                ?.firstOrNull { it.id == (videoId ?: content?.selectedEpisodeId) }
+                ?.number ?: 0,
             presenceTitle = content?.title,
             presenceEpisodeLine = content?.let { current ->
                 val episode = current.seasonEpisodes.firstOrNull { it.id == (videoId ?: current.selectedEpisodeId) }

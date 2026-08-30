@@ -66,7 +66,8 @@ object DolbyVisionFallbackPolicy {
             val token = match.value
             val profile = match.groupValues.getOrNull(1)?.toIntOrNull()
 
-            val action = decide(profile, compatId = null, capabilities)
+            val compatId = match.groupValues.getOrNull(2)?.toIntOrNull()
+            val action = decide(profile, compatId, capabilities)
 
             val replacement = when (action) {
                 DvCodecAction.Keep, DvCodecAction.Safety -> null
@@ -114,9 +115,9 @@ object DolbyVisionFallbackPolicy {
         profile == 4 ->
             if (caps.decoderAnyDv) DvCodecAction.Keep else DvCodecAction.Safety
 
-        profile == 5 && compatId != 1 ->
+        profile == 5 ->
             if (caps.decoderAnyDv) DvCodecAction.Keep
-            else DvCodecAction.StripToHevc(iptPqc2 = true)
+            else DvCodecAction.StripToHevc(iptPqc2 = compatId != 1)
 
         profile == 7 -> when {
             caps.decoderNativeP7 -> DvCodecAction.Keep
@@ -127,6 +128,9 @@ object DolbyVisionFallbackPolicy {
         // unknown compat must not be assumed HDR10-compatible
         profile == 10 && (compatId == null || compatId in setOf(0, 2, 3)) ->
             if (caps.decoderAnyDv) DvCodecAction.Keep else DvCodecAction.Safety
+
+        profile == 10 && compatId == 1 ->
+            if (caps.decoderAnyDv) DvCodecAction.Keep else DvCodecAction.StripToHevc()
 
         else ->
             if (caps.decoderAnyDv) DvCodecAction.Keep

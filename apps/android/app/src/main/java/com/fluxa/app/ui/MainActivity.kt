@@ -9,6 +9,8 @@ import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.shared.FluxaDestination
 import com.fluxa.app.shared.feature.watchtogether.JvmWatchTogetherTransport
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
+import com.fluxa.app.shared.feature.watchtogether.WatchTogetherCorrection
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.routes.AppRoutesHost
 import com.fluxa.app.plugins.PluginManager
@@ -128,6 +130,15 @@ class MainActivity : FragmentActivity() {
         CommonActivity.activity = this
         runCatching { DiscordPresenceNative.initialize(this) }
         WatchTogetherManager.installTransportFactory { JvmWatchTogetherTransport() }
+        WatchTogetherManager.installDriftPolicy { local, expected, hostPlaying, speedActive ->
+            val correction = FluxaCoreNative.watchTogetherDriftCorrection(local, expected, hostPlaying, speedActive)
+            when (correction["type"] as? String) {
+                "seek" -> WatchTogetherCorrection.Seek((correction["positionMs"] as? Number)?.toLong() ?: expected)
+                "speed" -> WatchTogetherCorrection.Speed((correction["value"] as? Number)?.toFloat() ?: 1f)
+                "resetSpeed" -> WatchTogetherCorrection.ResetSpeed
+                else -> WatchTogetherCorrection.None
+            }
+        }
         WindowCompat.setDecorFitsSystemWindows(window, false)
         if (android.os.Build.VERSION.SDK_INT >= 33 &&
             androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED

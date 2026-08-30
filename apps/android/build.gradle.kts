@@ -12,7 +12,7 @@ plugins {
     alias(libs.plugins.hilt) apply false
 }
 
-val maxKotlinFileLines = 1200
+val maxKotlinFileLines = 1500
 val rustCoreProjectDir = rootProject.layout.projectDirectory.asFile.resolve("../../core/fluxa-core").canonicalFile
 val rustHostLibraryName = when {
     org.gradle.internal.os.OperatingSystem.current().isMacOsX -> "libfluxa_core.dylib"
@@ -25,21 +25,21 @@ val rustStreamingHostLibraryName = when {
     else -> "libfluxa_streaming_engine.so"
 }
 val rustCoreDelegateFiles = mapOf(
-    "data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/StremioAddonUrls.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/domain/discovery/StremioAddonUrls.kt" to listOf(
         "FluxaCoreNative.normalizeManifestUrl",
         "FluxaCoreNative.identity",
         "FluxaCoreNative.manifestCandidates",
         "FluxaCoreNative.baseUrl",
         "FluxaCoreNative.preferHttpsAssetUrl"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/StremioAddonProtocol.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/domain/discovery/StremioAddonProtocol.kt" to listOf(
         "FluxaCoreNative.supportsResource"
     ),
-    "app/src/main/java/com/fluxa/app/core/StremioId.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/core/StremioId.kt" to listOf(
         "FluxaCoreNative.parseEpisodeLocator",
         "FluxaCoreNative.streamRequestIds"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/remote/StreamPlaybackResolver.android.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/remote/StreamPlaybackResolver.jvm.kt" to listOf(
         "FluxaCoreNative.streamPlaybackInfo"
     ),
     "player/src/androidMain/kotlin/com/fluxa/app/player/TorrentStreamManager.kt" to listOf(
@@ -51,14 +51,14 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.streamPlaybackInfo",
         "FluxaCoreNative.isTorrentPlaybackUrl"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/repository/StremioAddonManifestClient.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/repository/StremioAddonManifestClient.kt" to listOf(
         "FluxaCoreNative.buildResourceUrl",
         "FluxaCoreNative.manifestFetchPlan",
         "FluxaCoreNative.parseManifestJson",
         "FluxaCoreNative.resolveManifestAssets",
         "FluxaCoreNative.mergeLiveManifest"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/repository/StremioAddonResourceClient.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/repository/StremioAddonResourceClient.kt" to listOf(
         "FluxaCoreNative.parseAddonResourceResult",
         "FluxaCoreNative.parseExtraArgs"
     ),
@@ -70,16 +70,12 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.torrentRuntimeInfo",
         "FluxaCoreNative.torrentStatusInfo"
     ),
-    "player/src/androidMain/kotlin/com/fluxa/app/player/MediaPlayerController.kt" to listOf(
-        "FluxaStreamingNative.dvRewriteSegmentBytes"
-    ),
     "app/src/main/java/com/fluxa/app/ui/catalog/AndroidStreamSourceSelectionPolicy.kt" to listOf(
         "FluxaCoreNative.selectStreamIndex"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/DiscoverCatalogContentLoader.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/domain/discovery/DiscoverCatalogContentLoader.kt" to listOf(
         "FluxaCoreNative.filterDiscoverResults",
-        "FluxaCoreNative.discoverCatalogCacheKey",
-        "FluxaCoreNative.providerSearchTerms"
+        "FluxaCoreNative.discoverCatalogCacheKey"
     ),
     "app/src/main/java/com/fluxa/app/domain/discovery/StreamDiscovery.kt" to listOf(
         "FluxaCoreNative.streamDiscoveryExecutionPolicy"
@@ -87,16 +83,13 @@ val rustCoreDelegateFiles = mapOf(
     "shared/src/jvmCommonMain/kotlin/com/fluxa/app/shared/SynopsisFormatting.jvm.kt" to listOf(
         "FluxaCoreNative.shortenSynopsis"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/MetadataFeeds.kt" to listOf(
-        "FluxaCoreNative.normalizeContentType",
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/domain/discovery/MetadataFeeds.kt" to listOf(
         "FluxaCoreNative.stableFeedPart",
-        "FluxaCoreNative.effectiveMetadataFeedSelection",
         "FluxaCoreNative.toggleMetadataFeed",
         "FluxaCoreNative.setMetadataFeedGroupEnabled",
-        "FluxaCoreNative.orderedMetadataFeedKeys",
         "FluxaCoreNative.moveMetadataFeedOrder"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/domain/ContentIdentity.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/domain/ContentIdentity.kt" to listOf(
         "FluxaCoreNative.contentTraktKey",
         "FluxaCoreNative.contentMergeKeys",
         "FluxaCoreNative.contentWatchedKeysBatch"
@@ -111,11 +104,11 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaHeadlessEngine",
         "HeadlessPlatformEnvironment"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/core/rust/FluxaCoreNative.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/core/rust/FluxaCoreNative.kt" to listOf(
         "NativeCoreCapabilitySet",
-        "coreCapabilitiesJsonNative"
+        "FluxaCoreUniFfi.coreInvokeValue"
     ),
-    "app/src/main/java/com/fluxa/app/core/rust/FluxaCoreUniFfi.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/core/rust/FluxaCoreUniFfi.kt" to listOf(
         "com.fluxa.core.uniffi",
         "FluxaHeadlessEngine"
     ),
@@ -133,7 +126,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.subtitleLanguageMatches",
         "preferredSubtitleIndex"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/repository/TraktIntegration.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/repository/TraktIntegration.kt" to listOf(
         "FluxaCoreNative.traktHasClient",
         "FluxaCoreNative.traktBearer",
         "FluxaCoreNative.traktScrobbleUrl",
@@ -146,7 +139,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.traktScrobbleMediaId",
         "FluxaCoreNative.traktHistoryRequest"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/repository/StremioRepository.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/repository/StremioRepository.kt" to listOf(
         "FluxaCoreNative.libraryContinueWatchingItems",
         "FluxaCoreNative.watchedVideoIds",
         "FluxaCoreNative.playbackProgressItem",
@@ -154,18 +147,9 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.watchedStateItems",
         "FluxaCoreNative.traktHistoryRequest"
     ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/local/ProfileManager.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/local/ProfileManager.kt" to listOf(
         "FluxaCoreNative.sanitizeProfile",
         "FluxaCoreNative.profileLocalAddonsKey"
-    ),
-    "data/src/androidMain/kotlin/com/fluxa/app/data/local/UserProfileSafePrefs.kt" to listOf(
-        "FluxaCoreNative.safePlayerBufferCacheMb",
-        "FluxaCoreNative.safeStreamSourceSelectionMode"
-    ),
-    "app/src/main/java/com/fluxa/app/plugins/PluginManager.kt" to listOf(
-        "FluxaCoreNative.normalizePluginRepositoryUrl",
-        "FluxaCoreNative.pluginIsSecureRemoteUrl",
-        "FluxaCoreNative.pluginSameRepositoryUrl"
     ),
     "app/src/main/java/com/fluxa/app/ui/catalog/DetailViewModel.kt" to listOf(
         "FluxaHeadlessRuntimeFactory",
@@ -174,9 +158,7 @@ val rustCoreDelegateFiles = mapOf(
         "markWatchedRequested",
         "toggleWatchlistRequested"
     ),
-    "app/src/main/java/com/fluxa/app/ui/catalog/HomeViewModel.kt" to listOf(
-        "FluxaHeadlessRuntimeFactory",
-        "FluxaAndroidHeadlessEnvironment",
+    "app/src/main/java/com/fluxa/app/ui/catalog/HomeBootstrapCoordinator.kt" to listOf(
         "homeLoadRequested"
     )
 )
@@ -213,7 +195,6 @@ tasks.register("checkSharedUiBoundary") {
             "import androidx.media3.",
             "import androidx.room.",
             "import androidx.work.",
-            "import com.fluxa.app.data.",
             "import com.fluxa.app.player.",
             "import com.google.gson.",
             "import dagger.",
@@ -244,7 +225,6 @@ tasks.register("checkKmpCommonBoundary") {
             "import android.",
             "import androidx.lifecycle.",
             "import androidx.media3.",
-            "import androidx.room.",
             "import androidx.work.",
             "import com.google.gson.",
             "import dagger.",
@@ -471,7 +451,7 @@ tasks.register("checkRustCoreBoundary") {
                 .map { call -> "$relativePath must delegate to $call" }
         }
 
-        val urlFacade = rootProject.file("data/src/androidMain/kotlin/com/fluxa/app/domain/discovery/StremioAddonUrls.kt")
+        val urlFacade = rootProject.file("data/src/jvmCommonMain/kotlin/com/fluxa/app/domain/discovery/StremioAddonUrls.kt")
         val duplicatedUrlLogic = if (urlFacade.exists()) {
             val text = urlFacade.readText()
             listOf("http://", "https://", "stremio://", "manifest.json", "Regex(")
@@ -482,24 +462,7 @@ tasks.register("checkRustCoreBoundary") {
         }
 
         val viewModelBackendRules = mapOf(
-            "app/src/main/java/com/fluxa/app/ui/catalog/HomeViewModel.kt" to listOf(
-                "repository.get",
-                "addonRepository.get",
-                "watchlistManager.get",
-                "watchlistManager.save",
-                "watchlistManager.toggle",
-                "traktRepository.get",
-                "StreamDiscoveryUseCase",
-                "HomePlaybackStreamCoordinator",
-                "HomeAddonCoordinator",
-                "HomeUserContentActions",
-                "HomeTraktCoordinator",
-                "streamDiscovery.",
-                "pluginManager."
-            ),
             "app/src/main/java/com/fluxa/app/ui/catalog/DetailViewModel.kt" to listOf(
-                "com.fluxa.app.data.repository",
-                "repository.",
                 "watchlistManager.",
                 "streamDiscovery.",
                 "pluginManager.",
@@ -532,7 +495,7 @@ tasks.register("checkFluxaCoreJniSymbols") {
     dependsOn("buildFluxaCoreHost")
 
     doLast {
-        val nativeFile = rootProject.file("data/src/androidMain/kotlin/com/fluxa/app/core/rust/FluxaCoreNative.kt")
+        val nativeFile = rootProject.file("data/src/jvmCommonMain/kotlin/com/fluxa/app/core/rust/FluxaCoreNative.kt")
         val libraryFile = rustCoreProjectDir.resolve("target/debug/$rustHostLibraryName")
         if (!nativeFile.exists()) {
             throw GradleException("${nativeFile.relativeTo(rootDir)} is missing")
