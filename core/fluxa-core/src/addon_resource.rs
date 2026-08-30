@@ -219,6 +219,28 @@ pub(crate) fn normalize_addon_subtitles_json(subtitles_json: &str, resource_url:
     Value::Array(subtitles).to_string()
 }
 
+pub(crate) fn subtitle_tracks_json(input: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(input).ok()?;
+    let subtitles = args.get("subtitles")?.as_array()?;
+    let mut seen = std::collections::HashSet::new();
+    let tracks = subtitles.iter().filter_map(|subtitle| {
+        let object = subtitle.as_object()?;
+        let attributes = object.get("attributes").and_then(Value::as_object);
+        let url = object.get("url").and_then(Value::as_str)
+            .or_else(|| attributes.and_then(|a| a.get("url")).and_then(Value::as_str))?.trim();
+        if url.is_empty() || !seen.insert(url.to_string()) { return None; }
+        let lang = object.get("lang").and_then(Value::as_str)
+            .or_else(|| attributes.and_then(|a| a.get("language")).and_then(Value::as_str))
+            .or_else(|| attributes.and_then(|a| a.get("lang")).and_then(Value::as_str));
+        let label = object.get("label").and_then(Value::as_str)
+            .or_else(|| object.get("name").and_then(Value::as_str))
+            .or_else(|| attributes.and_then(|a| a.get("name")).and_then(Value::as_str))
+            .or(lang).unwrap_or("Subtitle");
+        Some(json!({"url": url, "lang": lang, "label": label, "addonName": object.get("addonName").and_then(Value::as_str)}))
+    }).collect::<Vec<_>>();
+    Some(Value::Array(tracks).to_string())
+}
+
 pub(crate) fn parse_catalog_items_json(body: &str, fallback_type: &str) -> Option<String> {
     let root: Value = serde_json::from_str(body).ok()?;
     let metas = root.get("metas")?.as_array()?;

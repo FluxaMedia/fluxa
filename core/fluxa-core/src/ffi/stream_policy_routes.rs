@@ -7,11 +7,12 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
         "torrentRuntimeInfo" => opt_json(stream_policy::torrent_runtime_info_json(args_json)),
         "torrentStatusInfo" => opt_json(stream_policy::torrent_status_info_json(args_json)),
         "torrentReadyBudget" => into_json(stream_policy::torrent_ready_budget_json()),
+        "torrentRetryPlan" => opt_json(stream_policy::torrent_retry_plan_json(args_json)),
         "streamRequestHeaders" => opt_json(stream_policy::stream_request_headers_json(&arg_str(
             args_json,
             "headersJson",
         )?)),
-        "streamRequestReferer" => opt_json(stream_policy::stream_request_referer(&arg_str(
+        "streamRequestReferer" => opt_str(stream_policy::stream_request_referer(&arg_str(
             args_json, "url",
         )?)),
         "selectStreamIndex" => {

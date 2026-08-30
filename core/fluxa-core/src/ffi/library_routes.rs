@@ -2,8 +2,14 @@ use super::*;
 
 pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
     match method {
-        "terminalRecommendationPlan" => {
-            opt_json(recommendation_policy::terminal_recommendation_plan_json(args_json))
+        "terminalRecommendationPlan" => opt_json(
+            recommendation_policy::terminal_recommendation_plan_json(args_json),
+        ),
+        "terminalRecommendationEligibility" => {
+            opt_json(recommendation_policy::terminal_recommendation_eligibility_json(args_json))
+        }
+        "recommendationOutroPlan" => {
+            opt_json(recommendation_policy::recommendation_outro_plan_json(args_json))
         }
         "playbackProgressItem" => {
             let args = object(args_json)?;
@@ -180,6 +186,9 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
         "resolveNextAfterWatched" => {
             opt_json(library_state::resolve_next_after_watched_json(args_json))
         }
+        "continueWatchingResumePlan" => opt_json(
+            library_state::continue_watching_resume_plan_json(args_json),
+        ),
         "nextProgressInfoPlan" => opt_json(library_state::next_progress_info_plan_json(args_json)),
         "formatEpisodeLine" => {
             let args = object(args_json)?;
@@ -210,6 +219,11 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
                     .ok_or_else(|| fail(ErrorKind::InvalidArgs, "isHorizontal must be bool"))?,
             ))
         }
+        "continueWatchingProgressFields" => opt_json(
+            library_state::continue_watching_progress_fields_json(
+                field_str(&object(args_json)?, "itemJson")?,
+            ),
+        ),
         "buildHomeCollectionShelves" => {
             let args = object(args_json)?;
             opt_json(home_ranking::build_home_collection_shelves_json(

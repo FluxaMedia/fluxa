@@ -124,6 +124,45 @@ pub(crate) fn discover_selection_plan_json(request_json: &str) -> Option<String>
     serde_json::to_string(&json!({"catalogs": catalogs, "selectedCatalogKey": selected_key, "selectedCatalog": catalog, "selectedExtra": extra, "extraValue": extra_value, "key": key})).ok()
 }
 
+pub(crate) fn discover_catalog_candidates_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let content_type = request.get("contentType").and_then(Value::as_str).unwrap_or("all");
+    let genre = request.get("genre").and_then(Value::as_str).filter(|v| !v.is_empty());
+    let provider_terms = request
+        .get("provider")
+        .and_then(Value::as_str)
+        .map(crate::content_identity::provider_search_terms)
+        .unwrap_or_default();
+    let limit = request.get("limit").and_then(Value::as_u64).unwrap_or(5).clamp(1, 20) as usize;
+    let requested_key = request.get("catalogKey").and_then(Value::as_str);
+    let catalogs = request.get("catalogs")?.as_array()?;
+    let matches = |catalog: &&Value| {
+        let kind = catalog.get("type").and_then(Value::as_str).unwrap_or("");
+        let type_ok = content_type == "all" || kind == content_type || kind == "all";
+        let genre_ok = genre.is_none_or(|wanted| {
+            catalog.get("genres").and_then(Value::as_array).is_some_and(|genres| {
+                genres.iter().any(|value| value.as_str().is_some_and(|value| value.eq_ignore_ascii_case(wanted)))
+            })
+        });
+        let provider_ok = provider_terms.is_empty() || {
+            let haystack = format!("{} {} {}",
+                catalog.get("label").and_then(Value::as_str).unwrap_or(""),
+                catalog.get("transportUrl").and_then(Value::as_str).unwrap_or(""),
+                catalog.get("id").and_then(Value::as_str).unwrap_or("")).to_lowercase();
+            provider_terms.iter().any(|term| haystack.contains(term))
+        };
+        type_ok && genre_ok && provider_ok
+    };
+    let selected = requested_key.and_then(|key| catalogs.iter().find(|catalog| catalog.get("key").and_then(Value::as_str) == Some(key) && matches(&catalog)));
+    let selected_or_candidates = selected.into_iter().chain(catalogs.iter().filter(matches));
+    let keys = selected_or_candidates
+        .filter_map(|catalog| catalog.get("key").and_then(Value::as_str))
+        .take(limit)
+        .map(str::to_string)
+        .collect::<Vec<_>>();
+    Some(json!(keys).to_string())
+}
+
 pub(crate) fn discover_sort_plan_json(request_json: &str) -> Option<String> {
     let request = serde_json::from_str::<DiscoverSortRequest>(request_json).ok()?;
     let content_type = request.content_type_filter.as_deref().unwrap_or("");

@@ -1,6 +1,19 @@
 use crate::subtitle_sync::parse_subtitle_cues_with_text;
 use serde_json::{Value, json};
 
+pub(crate) fn trailer_playback_policy_json(input: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(input).unwrap_or_default();
+    let is_autoplay = value
+        .get("autoplay")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    Some(json!({
+        "stallTimeoutMs": if is_autoplay { 7_000 } else { 10_000 },
+        "maxRetries": 1,
+        "retryDelayMs": 250,
+    }).to_string())
+}
+
 fn language(value: Option<&str>) -> Option<String> {
     let value = value?.trim().to_lowercase();
     if value.is_empty() || value == "none" {

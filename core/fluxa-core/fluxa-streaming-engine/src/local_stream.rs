@@ -400,11 +400,8 @@ async fn handle_ffmpeg_remux(
         .filter(|seconds| *seconds > 0.0)
         .map(|seconds| (seconds * 1_000_000.0) as i64)
         .unwrap_or(0);
-    let mut output = crate::apple_ffmpeg::start_remux(
-        config.target_url.clone(),
-        headers,
-        start_microseconds,
-    );
+    let mut output =
+        crate::apple_ffmpeg::start_remux(config.target_url.clone(), headers, start_microseconds);
     let Some(crate::apple_ffmpeg::RemuxMessage::Chunk(first_chunk)) = output.recv().await else {
         let _ = stream
             .write_all(
@@ -528,7 +525,9 @@ async fn handle_ffmpeg_remux(
         Err(_) => {
             let _ = child.kill().await;
             let _ = stream
-                .write_all(b"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\nffmpeg output failed")
+                .write_all(
+                    b"HTTP/1.1 502 Bad Gateway\r\nConnection: close\r\n\r\nffmpeg output failed",
+                )
                 .await;
             return;
         }

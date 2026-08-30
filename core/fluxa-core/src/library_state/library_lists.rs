@@ -203,5 +203,10 @@ pub(crate) fn normalize_library_document_json(json: &str) -> String {
 
 pub(crate) fn is_up_next_continue_watching_item_json(item_json: &str) -> bool {
     let item: Value = serde_json::from_str(item_json).unwrap_or(Value::Null);
+    if let Some(content_type) = item.get("type").and_then(Value::as_str)
+        && !matches!(content_type, "series" | "tv" | "anime")
+    {
+        return false;
+    }
     is_up_next_item(&item)
 }

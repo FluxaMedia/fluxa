@@ -20,7 +20,7 @@ pub(crate) use export_push::{
 pub(crate) use profiles::build_local_profiles_json;
 pub(crate) use progress_sync::{
     import_merge_plan_json, library_to_watchlist_json, progress_meta_needs_json,
-    resolve_continue_watching_json,
+    progress_presentation_json, resolve_continue_watching_json,
 };
 pub(crate) use reconciliation::{addon_reconciliation_plan_json, library_mutation_plan_json};
 #[cfg(test)]

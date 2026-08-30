@@ -573,6 +573,54 @@ pub(crate) fn resolve_next_after_watched_json(request_json: &str) -> Option<Stri
     )
 }
 
+pub(crate) fn continue_watching_resume_plan_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let item = request.get("item")?;
+    let last_video_id = item.get("lastVideoId").and_then(Value::as_str).filter(|id| !id.is_empty());
+    let videos = request.get("videos").and_then(Value::as_array).cloned().unwrap_or_default();
+    let matched = last_video_id.and_then(|id| videos.iter().find(|video| video.get("id").and_then(Value::as_str) == Some(id)));
+    let episode = last_video_id.map(|id| {
+        let mut result = matched.cloned().unwrap_or_else(|| json!({"id": id}));
+        if let Some(object) = result.as_object_mut() {
+            if !object.contains_key("name") || object.get("name").is_some_and(Value::is_null) {
+                if let Some(name) = item.get("lastEpisodeName") { object.insert("name".to_string(), name.clone()); }
+            }
+            if !object.contains_key("season") || object.get("season").is_some_and(Value::is_null) {
+                if let Some(season) = item.get("lastEpisodeSeason") { object.insert("season".to_string(), season.clone()); }
+            }
+            if !object.contains_key("episode") || object.get("episode").is_some_and(Value::is_null) {
+                if let Some(number) = item.get("lastEpisodeNumber") { object.insert("episode".to_string(), number.clone()); }
+            }
+            if !object.contains_key("number") || object.get("number").is_some_and(Value::is_null) {
+                if let Some(number) = item.get("lastEpisodeNumber") { object.insert("number".to_string(), number.clone()); }
+            }
+            if !object.contains_key("thumbnail") || object.get("thumbnail").is_some_and(Value::is_null) {
+                if let Some(thumbnail) = item.get("lastEpisodeThumbnail") { object.insert("thumbnail".to_string(), thumbnail.clone()); }
+            }
+        }
+        result
+    });
+    let override_value = request.get("resumeAtOverride");
+    let has_override = override_value.is_some() && !override_value.is_some_and(Value::is_null);
+    let resume_percent = if has_override { None } else {
+        item.get("resumeProgressPercent").and_then(Value::as_f64).filter(|value| value.is_finite())
+            .or_else(|| {
+                let offset = item.get("timeOffset").and_then(Value::as_f64)?;
+                let duration = item.get("duration").and_then(Value::as_f64)?;
+                (duration > 0.0).then_some(offset / duration * 100.0)
+            })
+    };
+    let resume_at = if has_override { override_value.and_then(Value::as_f64) } else if resume_percent.is_none() {
+        item.get("timeOffset").and_then(Value::as_f64)
+    } else { None };
+    serde_json::to_string(&json!({
+        "episode": episode,
+        "resumeAt": resume_at,
+        "resumePercent": resume_percent,
+        "duration": item.get("duration").and_then(Value::as_f64),
+    })).ok()
+}
+
 pub(crate) fn next_progress_info_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     let next: Value = serde_json::from_str(&resolve_next_after_watched_json(request_json)?).ok()?;

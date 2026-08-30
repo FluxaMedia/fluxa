@@ -154,7 +154,14 @@ struct TrackedReader<R> {
 
 impl<R> TrackedReader<R> {
     fn new(inner: R, expected: u64, torrent_id: usize, file_id: usize, range_start: u64) -> Self {
-        Self { inner, received: 0, expected, torrent_id, file_id, range_start }
+        Self {
+            inner,
+            received: 0,
+            expected,
+            torrent_id,
+            file_id,
+            range_start,
+        }
     }
 }
 
@@ -172,7 +179,11 @@ impl<R: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for TrackedReader<R> 
                 if added == 0 {
                     debug_log(format!(
                         "[TorrServer][stream] eof torrent={} file={} start={} received={} expected={}",
-                        self.torrent_id, self.file_id, self.range_start, self.received, self.expected
+                        self.torrent_id,
+                        self.file_id,
+                        self.range_start,
+                        self.received,
+                        self.expected
                     ));
                 }
                 Poll::Ready(Ok(()))
@@ -963,7 +974,13 @@ async fn stream_fname(
                         format!("bytes {start}-{end}/{total_len}"),
                     );
                     let body = Body::from_stream(ReaderStream::with_capacity(
-                        TrackedReader::new(CancellableReader::new(stream.take(length), cancellation), length, id, file_id, start),
+                        TrackedReader::new(
+                            CancellableReader::new(stream.take(length), cancellation),
+                            length,
+                            id,
+                            file_id,
+                            start,
+                        ),
                         stream_buffer_size(&state),
                     ));
                     (status, output_headers, body).into_response()
@@ -973,13 +990,26 @@ async fn stream_fname(
                         torrent_cancellation_token(&state, id).child_token()
                     } else {
                         let cancellation = playback_session_for(&state, id, file_id, 0);
-                        remember_playback_window(&state, id, file_id, 0, total_len, query.duration_ms);
+                        remember_playback_window(
+                            &state,
+                            id,
+                            file_id,
+                            0,
+                            total_len,
+                            query.duration_ms,
+                        );
                         set_streaming_window(&state, id, file_id, 0);
                         cancellation
                     };
                     insert_header(&mut output_headers, "Content-Length", total_len.to_string());
                     let body = Body::from_stream(ReaderStream::with_capacity(
-                        TrackedReader::new(CancellableReader::new(stream, cancellation), total_len, id, file_id, 0),
+                        TrackedReader::new(
+                            CancellableReader::new(stream, cancellation),
+                            total_len,
+                            id,
+                            file_id,
+                            0,
+                        ),
                         stream_buffer_size(&state),
                     ));
                     (status, output_headers, body).into_response()

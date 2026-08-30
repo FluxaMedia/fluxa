@@ -37,6 +37,7 @@ pub(super) fn route_addon_resource(method: &str, args_json: &str) -> Outcome {
                 field_str(&args, "resourceUrl")?,
             ))
         }
+        "subtitleTracks" => opt_json(addon_resource::subtitle_tracks_json(args_json)),
         "parseCatalogItems" => opt_json(addon_resource::parse_catalog_items_json(
             &arg_str(args_json, "body")?,
             &arg_str(args_json, "fallbackType")?,

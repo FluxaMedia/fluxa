@@ -114,6 +114,19 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 last_saved_at_ms,
             )))
         }
+        "playerShouldSaveEventProgress" => {
+            let args = object(args_json)?;
+            let now_ms = field(&args, "nowMs")?
+                .as_i64()
+                .ok_or_else(|| fail(ErrorKind::InvalidArgs, "nowMs must be a number"))?;
+            let last_saved_at_ms = field(&args, "lastSavedAtMs")?
+                .as_i64()
+                .ok_or_else(|| fail(ErrorKind::InvalidArgs, "lastSavedAtMs must be a number"))?;
+            Ok(json!(player_scrobble::should_save_event_progress(
+                now_ms,
+                last_saved_at_ms,
+            )))
+        }
         "playerShouldSaveOnDispose" => {
             let args = object(args_json)?;
             let position_ms = field(&args, "positionMs")?

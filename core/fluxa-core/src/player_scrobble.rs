@@ -86,6 +86,10 @@ pub(crate) fn should_save_periodic_progress(
     is_playing && now_ms - last_saved_at_ms > PERIODIC_PROGRESS_SAVE_MS
 }
 
+pub(crate) fn should_save_event_progress(now_ms: i64, last_saved_at_ms: i64) -> bool {
+    now_ms - last_saved_at_ms >= PERIODIC_PROGRESS_SAVE_MS / 2
+}
+
 pub(crate) fn should_save_on_dispose(position_ms: i64) -> bool {
     position_ms > DISPOSAL_PROGRESS_SAVE_MIN_MS
 }

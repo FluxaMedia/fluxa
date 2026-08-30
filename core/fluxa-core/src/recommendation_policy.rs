@@ -1,4 +1,4 @@
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashSet;
 
 fn candidate_id(value: &Value) -> Option<&str> {
@@ -6,6 +6,40 @@ fn candidate_id(value: &Value) -> Option<&str> {
         .get("id")
         .or_else(|| value.get("imdbId"))
         .and_then(Value::as_str)
+}
+
+pub(crate) fn terminal_recommendation_eligibility_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    if args.get("contentType").and_then(Value::as_str) != Some("series") {
+        return Some(json!({"eligible": true, "hasNextEpisode": false}).to_string());
+    }
+    let videos = args.get("videos")?.as_array()?;
+    let current_season = args.get("currentSeason")?.as_i64()?;
+    let current_episode = args.get("currentEpisode")?.as_i64()?;
+    let now_ms = args.get("nowMs")?.as_i64()?;
+    let next = crate::library_state::resolve_next_episode_json(
+        &Value::Array(videos.clone()).to_string(),
+        current_season,
+        current_episode,
+        now_ms,
+        true,
+    )
+    .is_some();
+    Some(json!({"eligible": !next, "hasNextEpisode": next}).to_string())
+}
+
+pub(crate) fn recommendation_outro_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let position = args.get("positionSeconds")?.as_f64()?;
+    let duration = args.get("durationSeconds")?.as_f64()?;
+    let threshold = args
+        .get("thresholdPercent")
+        .and_then(Value::as_f64)
+        .unwrap_or(85.0)
+        .clamp(0.0, 100.0);
+    let valid = position.is_finite() && duration.is_finite() && duration > 0.0;
+    let reached = valid && position / duration * 100.0 >= threshold;
+    Some(json!({"shouldShow": reached && !args.get("alreadyShown").and_then(Value::as_bool).unwrap_or(false)}).to_string())
 }
 
 /// Curates recommendations only after terminal playback. The network provider
@@ -59,12 +93,47 @@ pub(crate) fn terminal_recommendation_plan_json(args_json: &str) -> Option<Strin
 
 #[cfg(test)]
 mod tests {
-    use super::terminal_recommendation_plan_json;
+    use super::{recommendation_outro_plan_json, terminal_recommendation_eligibility_json, terminal_recommendation_plan_json};
     use serde_json::Value;
 
     fn plan(input: Value) -> Value {
         serde_json::from_str(&terminal_recommendation_plan_json(&input.to_string()).unwrap())
             .unwrap()
+    }
+
+    #[test]
+    fn eligibility_requires_terminal_series_episode() {
+        let result: Value = serde_json::from_str(
+            &terminal_recommendation_eligibility_json(
+                &serde_json::json!({
+                    "contentType": "series",
+                    "videos": [
+                        {"id": "s1e1", "season": 1, "episode": 1},
+                        {"id": "s1e2", "season": 1, "episode": 2}
+                    ],
+                    "currentSeason": 1,
+                    "currentEpisode": 1,
+                    "nowMs": 1_800_000_000_000_i64
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result["eligible"], false);
+        assert_eq!(result["hasNextEpisode"], true);
+    }
+
+    #[test]
+    fn outro_plan_clamps_threshold_and_deduplicates_display() {
+        let value: Value = serde_json::from_str(&recommendation_outro_plan_json(
+            r#"{"positionSeconds":90,"durationSeconds":100,"thresholdPercent":85,"alreadyShown":false}"#,
+        ).unwrap()).unwrap();
+        assert_eq!(value["shouldShow"], true);
+        let value: Value = serde_json::from_str(&recommendation_outro_plan_json(
+            r#"{"positionSeconds":90,"durationSeconds":100,"thresholdPercent":85,"alreadyShown":true}"#,
+        ).unwrap()).unwrap();
+        assert_eq!(value["shouldShow"], false);
     }
 
     #[test]

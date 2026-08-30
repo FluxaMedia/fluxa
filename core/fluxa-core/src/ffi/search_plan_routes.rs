@@ -22,6 +22,7 @@ pub(super) fn route_search_plan(method: &str, args_json: &str) -> Outcome {
         }
         "discoverContentTypes" => opt_json(search_plan::discover_content_types_json(args_json)),
         "discoverSelectionPlan" => opt_json(search_plan::discover_selection_plan_json(args_json)),
+        "discoverCatalogCandidates" => opt_json(search_plan::discover_catalog_candidates_json(args_json)),
         "librarySortPlan" => opt_json(search_plan::library_sort_plan_json(args_json)),
         "discoverSortPlan" => opt_json(search_plan::discover_sort_plan_json(args_json)),
         "detailSeriesLookupId" => Ok(Value::String(search_plan::detail_series_lookup_id(

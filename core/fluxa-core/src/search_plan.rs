@@ -8,6 +8,7 @@ pub(crate) use addon_catalog::{
     build_metadata_feed_options_json, discover_catalog_options_json, discover_content_types_json,
     resolve_feed_option_genre_json, resolve_transport_url_json,
 };
+pub(crate) use discover::discover_catalog_candidates_json;
 pub(crate) use detail_nav::{detail_season_load_plan_json, detail_series_lookup_id};
 pub(crate) use discover::{
     discover_selection_plan_json, discover_sort_plan_json, merge_discover_pages_json,

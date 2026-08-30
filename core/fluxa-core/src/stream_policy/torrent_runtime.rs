@@ -158,6 +158,31 @@ pub(crate) fn torrent_ready_budget_json() -> String {
     .to_string()
 }
 
+pub(crate) fn torrent_retry_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let alternatives = args
+        .get("hasAlternatives")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let budget: Value = serde_json::from_str(&torrent_ready_budget_json()).ok()?;
+    let max_retries = budget
+        .get(if alternatives {
+            "maxPeerRetriesWithAlternatives"
+        } else {
+            "maxPeerRetriesSingleSource"
+        })
+        .and_then(Value::as_u64)?;
+    let retry_budget = budget.get("retryBudgetMs").and_then(Value::as_u64)?;
+    Some(json!({
+        "maxPeerRetries": max_retries,
+        "firstAttemptMs": budget.get("firstAttemptMs")?,
+        "retryBudgetMs": retry_budget,
+        "hardLimitMs": budget.get("hardLimitMs")?,
+        "stallExtensionMs": budget.get("stallExtensionMs")?,
+        "perRetryMs": if max_retries > 0 { retry_budget / max_retries } else { 0 },
+    }).to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::build_torrent_stream_url;

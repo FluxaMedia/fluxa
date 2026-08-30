@@ -4,6 +4,25 @@ use std::collections::HashSet;
 
 const RESOLVED_HIGH_RATIO: f64 = 0.995;
 const RESOLVED_MAX_POSITION_MS: f64 = 1000.0;
+
+pub(crate) fn progress_presentation_json(args_json: &str) -> Option<String> {
+    let args = parse(args_json)?;
+    let content_id = str_field(&args, "contentId")?.trim();
+    if content_id.is_empty() { return None; }
+    let season = args.get("season").and_then(Value::as_i64);
+    let episode = args.get("episode").and_then(Value::as_i64);
+    let position = args.get("position").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
+    let duration = args.get("duration").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
+    let key = args.get("progressKey").and_then(Value::as_str).map(str::trim).filter(|v| !v.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| match (season, episode) {
+            (Some(season), Some(episode)) => format!("{content_id}_s{season}e{episode}"),
+            _ => content_id.to_string(),
+        });
+    let up_next = is_resolved_up_next(position, duration);
+    let percent = if duration > 0.0 { (position / duration * 100.0).clamp(0.0, 100.0) } else { 0.0 };
+    Some(json!({"progressKey": key, "progressPercent": percent, "isUpNext": up_next}).to_string())
+}
 pub(crate) fn library_to_watchlist_json(args_json: &str) -> Option<String> {
     let args = parse(args_json)?;
     let library = args.get("library")?.as_array()?.clone();

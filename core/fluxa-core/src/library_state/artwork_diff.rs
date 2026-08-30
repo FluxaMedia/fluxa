@@ -84,10 +84,49 @@ pub(crate) fn continue_watching_card_fields_json(
                 item.get("lastEpisodeNumber").and_then(Value::as_i64),
                 item.get("lastVideoId").and_then(Value::as_str),
             );
-            json!({ "id": id, "artwork": artwork, "episodeLine": episode_line })
+            let offset = item.get("timeOffset").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
+            let duration = item.get("duration").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
+            let progress_percent = item.get("resumeProgressPercent").and_then(Value::as_f64)
+                .filter(|value| value.is_finite())
+                .or_else(|| (duration > 0.0).then_some(offset / duration * 100.0))
+                .map(|value| value.clamp(0.0, 100.0));
+            let content_type = item.get("type").and_then(Value::as_str).unwrap_or("");
+            let is_up_next = matches!(content_type, "series" | "tv" | "anime")
+                && (item.get("continueWatchingBadge").and_then(Value::as_str) == Some("upNext")
+                    || progress_percent.is_some_and(|value| value <= 0.0 || value >= 99.5));
+            json!({
+                "id": id,
+                "artwork": artwork,
+                "episodeLine": episode_line,
+                "progressPercent": progress_percent,
+                "isUpNext": is_up_next,
+                "watchedSeconds": offset,
+                "remainingSeconds": (duration - offset).max(0.0),
+            })
         })
         .collect();
     serde_json::to_string(&fields).ok()
+}
+
+pub(crate) fn continue_watching_progress_fields_json(item_json: &str) -> Option<String> {
+    let item: Value = serde_json::from_str(item_json).ok()?;
+    let offset = item.get("timeOffset").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
+    let duration = item.get("duration").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
+    let percent = item.get("resumeProgressPercent").and_then(Value::as_f64)
+        .filter(|value| value.is_finite())
+        .or_else(|| (duration > 0.0).then_some(offset / duration * 100.0))
+        .map(|value| value.clamp(0.0, 100.0))
+        .unwrap_or(0.0);
+    let content_type = item.get("type").and_then(Value::as_str).unwrap_or("");
+    let is_up_next = matches!(content_type, "series" | "tv" | "anime")
+        && (item.get("continueWatchingBadge").and_then(Value::as_str) == Some("upNext")
+            || percent <= 0.0 || percent >= 99.5);
+    Some(json!({
+        "progressPercent": percent,
+        "isUpNext": is_up_next,
+        "watchedSeconds": offset,
+        "remainingSeconds": (duration - offset).max(0.0),
+    }).to_string())
 }
 
 /// Decides which entries of a bool map (e.g. watched) actually changed and need

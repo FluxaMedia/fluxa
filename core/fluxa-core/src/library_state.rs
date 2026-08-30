@@ -5,13 +5,15 @@ mod library_lists;
 mod playback_progress;
 
 pub(crate) use artwork_diff::{
-    continue_watching_card_fields_json, item_list_diff_json, item_list_new_entries_json,
+    continue_watching_card_fields_json, continue_watching_progress_fields_json,
+    item_list_diff_json, item_list_new_entries_json,
     select_continue_watching_artwork_json, value_map_diff_json, watched_map_diff_json,
 };
 pub(crate) use continue_watching::{
     UP_NEXT_DURATION_SECONDS, UP_NEXT_POSITION_SECONDS, build_continue_watching_from_progress_json,
     compute_continue_watching_badges_json, continue_watching_source_plan_json,
     format_episode_line_json, is_episode_released, next_progress_info_plan_json,
+    continue_watching_resume_plan_json,
     normalized_continue_watching_source, remember_last_watched_episodes_json,
     resolve_next_after_watched_json, resolve_next_episode_json,
 };
@@ -309,5 +311,35 @@ mod tests {
         assert_eq!(result[0]["lastVideoId"], "s1:1:3");
         assert_eq!(result[0]["unwatchedAhead"], 1);
         assert_eq!(result[0]["reason"], "simkl");
+    }
+
+    #[test]
+    fn continue_watching_resume_plan_resolves_episode_and_percent() {
+        let result = continue_watching_resume_plan_json(
+            r#"{
+                "item":{"lastVideoId":"show:1:3","lastEpisodeName":"The Krakken","lastEpisodeSeason":1,"lastEpisodeNumber":3,"timeOffset":120,"duration":1200},
+                "videos":[{"id":"show:1:3","season":1,"episode":3,"name":"The Krakken"}]
+            }"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("resume plan");
+
+        assert_eq!(result["episode"]["id"], "show:1:3");
+        assert_eq!(result["resumePercent"], 10.0);
+        assert_eq!(result["resumeAt"], Value::Null);
+    }
+
+    #[test]
+    fn continue_watching_progress_fields_clamp_and_classify() {
+        let result = continue_watching_progress_fields_json(
+            r#"{"type":"series","lastVideoId":"show:1:3","timeOffset":120,"duration":1200}"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("progress fields");
+
+        assert_eq!(result["progressPercent"], 10.0);
+        assert_eq!(result["watchedSeconds"], 120.0);
+        assert_eq!(result["remainingSeconds"], 1080.0);
+        assert_eq!(result["isUpNext"], false);
     }
 }

@@ -46,6 +46,18 @@ pub(crate) fn trakt_related_items_to_metas_json(
                     object.insert("logo".to_string(), json!(logo));
                 }
             }
+            if let Some(overview) = item.get("overview").and_then(Value::as_str) {
+                meta.as_object_mut()?
+                    .insert("description".to_string(), json!(overview));
+            }
+            if let Some(genres) = item.get("genres").and_then(Value::as_array) {
+                meta.as_object_mut()?
+                    .insert("genres".to_string(), json!(genres));
+            }
+            if let Some(rating) = item.get("rating").and_then(Value::as_f64) {
+                meta.as_object_mut()?
+                    .insert("imdbRating".to_string(), json!(rating));
+            }
             if let Some(year) = item.get("year").and_then(Value::as_i64) {
                 meta.as_object_mut()?
                     .insert("releaseInfo".to_string(), json!(year.to_string()));
@@ -90,6 +102,27 @@ pub(crate) fn simkl_recommendation_to_meta_json(
     if let Some(poster) = rec.get("poster").and_then(Value::as_str) {
         meta.as_object_mut()?
             .insert("poster".to_string(), json!(simkl_poster_url(poster)));
+    }
+    if let Some(fanart) = rec.get("fanart").and_then(Value::as_str) {
+        meta.as_object_mut()?.insert(
+            "background".to_string(),
+            json!(format!("https://simkl.in/fanart/{fanart}_b.jpg")),
+        );
+    }
+    for (source, target) in [("overview", "description"), ("description", "description")] {
+        if let Some(value) = rec.get(source).and_then(Value::as_str) {
+            meta.as_object_mut()?
+                .insert(target.to_string(), json!(value));
+            break;
+        }
+    }
+    if let Some(genres) = rec.get("genres").and_then(Value::as_array) {
+        meta.as_object_mut()?
+            .insert("genres".to_string(), json!(genres));
+    }
+    if let Some(rating) = rec.get("rating").and_then(Value::as_f64) {
+        meta.as_object_mut()?
+            .insert("imdbRating".to_string(), json!(rating));
     }
     if let Some(year) = rec.get("year").and_then(Value::as_i64) {
         meta.as_object_mut()?

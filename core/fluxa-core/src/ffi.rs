@@ -77,8 +77,8 @@ use crate::{
     headless_adapter_plan, headless_engine, home_ranking, integration_settings, intro_segments,
     library_persistence, library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan,
     player_flow, player_policy, player_scrobble, plugins, profile_avatar_pack, profile_contract,
-    profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow, search_plan, stream_badges, stream_policy,
-    subtitle_sync, tmdb_plan, trailer_subtitles, watchlist_plan,
+    profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow, search_plan,
+    stream_badges, stream_policy, subtitle_sync, tmdb_plan, trailer_subtitles, watchlist_plan,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
