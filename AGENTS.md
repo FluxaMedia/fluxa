@@ -18,6 +18,10 @@ The Desktop shell owns Tauri commands, native windows, OS integration, and React
 
 Every user-facing string must be localized. Update both language files in `shared/i18n`; platform-native system labels may remain in the platform resource files.
 
+## Comments
+
+Keep comments minimal. Add one only when the code is not self-explanatory; keep necessary comments to 1–2 short lines and omit obvious explanations.
+
 ## Commit messages
 
 Use Conventional Commit prefixes for every commit:
