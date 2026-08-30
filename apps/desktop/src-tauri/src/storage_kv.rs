@@ -1,7 +1,7 @@
-use super::super::{decrypt_or_legacy, encrypt, open_database, sanitize_key};
 use super::super::library_storage_migrations::read_legacy_file;
+use super::super::{decrypt_or_legacy, encrypt, open_database, sanitize_key};
 use crate::DesktopState;
-use rusqlite::{params, OptionalExtension};
+use rusqlite::{OptionalExtension, params};
 use serde_json::Value;
 use std::fs;
 use tauri::State;

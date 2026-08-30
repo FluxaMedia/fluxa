@@ -4,9 +4,11 @@ import { embeddedMpvRenderFrame, type EmbeddedMpvStatus } from '../../core/mpvPl
 export function SoftwareVideoCanvas({
   statusRef,
   onFirstFrame,
+  mini = false,
 }: {
   statusRef: RefObject<EmbeddedMpvStatus | null>;
   onFirstFrame?: () => void;
+  mini?: boolean;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const firstFrameFiredRef = useRef(false);
@@ -70,12 +72,16 @@ export function SoftwareVideoCanvas({
       ref={canvasRef}
       style={{
         position: 'absolute',
-        inset: 0,
-        width: '100%',
-        height: '100%',
+        top: mini ? '1.5rem' : 0,
+        left: mini ? '1.5rem' : 0,
+        width: mini ? '28rem' : '100%',
+        height: mini ? '15.75rem' : '100%',
         objectFit: 'contain',
         background: '#000',
-        zIndex: 0,
+        zIndex: mini ? 12 : 0,
+        borderRadius: mini ? '.5rem' : 0,
+        boxShadow: mini ? '0 .5rem 2rem rgba(0,0,0,.55)' : undefined,
+        transition: 'top .45s ease, left .45s ease, width .45s ease, height .45s ease, border-radius .45s ease',
         pointerEvents: 'none',
       }}
     />

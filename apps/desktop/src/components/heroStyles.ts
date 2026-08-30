@@ -174,7 +174,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     fontSize: '0.9rem',
     fontWeight: 700,
     lineHeight: 1,
-    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.8)',
+    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.95), 0 0 0.25rem rgba(0,0,0,0.8)',
   },
   certBadge: {
     display: 'inline-flex',
@@ -194,7 +194,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     fontWeight: 500,
     lineHeight: 1,
-    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.8)',
+    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.95), 0 0 0.25rem rgba(0,0,0,0.8)',
   },
   description: {
     color: '#FFFFFF',
@@ -202,7 +202,7 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     lineHeight: 1.6,
     margin: '0 0 1rem 0',
     maxWidth: '30rem',
-    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.8)',
+    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.98), 0 0 0.3rem rgba(0,0,0,0.9)',
   },
   awards: {
     color: 'rgba(255,255,255,0.65)',

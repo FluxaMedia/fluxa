@@ -4,6 +4,10 @@ export async function corePlaybackPreparePlan(request: unknown): Promise<Record<
   return coreInvoke('playbackPreparePlan', JSON.stringify(request));
 }
 
+export async function coreShortenSynopsis(text: string): Promise<string> {
+  return (await coreInvoke<string>('shortenSynopsis', JSON.stringify({ text }))) ?? text;
+}
+
 export async function coreLibraryLocalStatePlan(request: unknown): Promise<Record<string, unknown> | null> {
   return coreInvoke('libraryLocalStatePlan', JSON.stringify(request));
 }
@@ -24,6 +28,10 @@ export async function coreNormalizeAddonSubtitles(subtitles: unknown[], resource
   return (
     (await coreInvoke<unknown[]>('normalizeAddonSubtitles', JSON.stringify({ subtitles: JSON.stringify(subtitles), resourceUrl }))) ?? []
   );
+}
+
+export async function coreSubtitleTracks(subtitles: unknown[]): Promise<unknown[]> {
+  return (await coreInvoke<unknown[]>('subtitleTracks', JSON.stringify({ subtitles }))) ?? [];
 }
 
 export async function streamPlaybackInfo(streamJson: string): Promise<unknown | null> {

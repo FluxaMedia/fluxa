@@ -1,5 +1,5 @@
-use super::super::{decrypt_or_legacy, encrypt, open_database, sanitize_key};
 use super::super::library_storage_migrations::{ensure_items_migrated, ensure_watched_migrated};
+use super::super::{decrypt_or_legacy, encrypt, open_database, sanitize_key};
 use crate::DesktopState;
 use rusqlite::params;
 use serde_json::Value;

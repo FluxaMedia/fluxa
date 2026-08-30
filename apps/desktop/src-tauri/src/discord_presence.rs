@@ -1,6 +1,6 @@
-use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
-use std::sync::atomic::{AtomicBool, Ordering};
+use discord_rich_presence::{DiscordIpc, DiscordIpcClient, activity};
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
 
@@ -75,7 +75,7 @@ fn activity_for<'a>(kind: &'a PresenceKind) -> activity::Activity<'a> {
                 .details(title)
                 .state("Viewing details")
                 .assets(
-                activity::Assets::new()
+                    activity::Assets::new()
                         .large_image(large_image)
                         .large_text(title),
                 );
@@ -139,21 +139,23 @@ pub fn spawn_reconnect_loop(app: &AppHandle) {
         return;
     }
     let app = app.clone();
-    std::thread::spawn(move || loop {
-        std::thread::sleep(RECONNECT_INTERVAL);
-        let state = app.state::<DiscordPresenceState>();
-        if !state.enabled.load(Ordering::SeqCst) {
-            continue;
-        }
-        let mut guard = state.client.lock().unwrap();
-        if guard.is_some() {
-            continue;
-        }
-        let mut client = DiscordIpcClient::new(FLUXA_DISCORD_APP_ID);
-        if client.connect().is_ok() {
-            let kind = state.last_activity.lock().unwrap().clone();
-            apply(&mut client, &kind);
-            *guard = Some(client);
+    std::thread::spawn(move || {
+        loop {
+            std::thread::sleep(RECONNECT_INTERVAL);
+            let state = app.state::<DiscordPresenceState>();
+            if !state.enabled.load(Ordering::SeqCst) {
+                continue;
+            }
+            let mut guard = state.client.lock().unwrap();
+            if guard.is_some() {
+                continue;
+            }
+            let mut client = DiscordIpcClient::new(FLUXA_DISCORD_APP_ID);
+            if client.connect().is_ok() {
+                let kind = state.last_activity.lock().unwrap().clone();
+                apply(&mut client, &kind);
+                *guard = Some(client);
+            }
         }
     });
 }

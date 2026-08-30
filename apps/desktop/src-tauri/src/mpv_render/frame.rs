@@ -111,7 +111,9 @@ impl MpvRenderState {
         }
 
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frames_rendered
+                .fetch_add(1, Ordering::Relaxed);
             self.frame_state
                 .frame_ready_to_restore_audio
                 .store(true, Ordering::Release);
@@ -162,7 +164,9 @@ impl MpvRenderState {
             ));
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frames_rendered
+                .fetch_add(1, Ordering::Relaxed);
             self.frame_state
                 .frame_ready_to_restore_audio
                 .store(true, Ordering::Release);
@@ -200,7 +204,9 @@ impl MpvRenderState {
             ));
         }
         if update_flags & MPV_RENDER_UPDATE_FRAME != 0 {
-            self.frame_state.frames_rendered.fetch_add(1, Ordering::Relaxed);
+            self.frame_state
+                .frames_rendered
+                .fetch_add(1, Ordering::Relaxed);
             self.frame_state
                 .frame_ready_to_restore_audio
                 .store(true, Ordering::Release);
@@ -215,9 +221,15 @@ impl MpvRenderState {
         unsafe {
             (self.api.mpv_render_context_report_swap)(self.render_context);
         }
-        if self.frame_state.frame_ready_to_restore_audio.load(Ordering::Acquire)
+        if self
+            .frame_state
+            .frame_ready_to_restore_audio
+            .load(Ordering::Acquire)
             && !self.frame_state.pending_seek_active.load(Ordering::Acquire)
-            && !self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
+            && !self
+                .frame_state
+                .waiting_for_seek_restart
+                .load(Ordering::Acquire)
         {
             self.frame_state
                 .first_frame_presented
@@ -249,9 +261,15 @@ impl MpvRenderState {
     fn restore_audio_after_first_presented_frame(&mut self) {
         #[cfg(target_os = "windows")]
         {
-            if !self.frame_state.frame_ready_to_restore_audio.load(Ordering::Acquire)
+            if !self
+                .frame_state
+                .frame_ready_to_restore_audio
+                .load(Ordering::Acquire)
                 || self.frame_state.pending_seek_active.load(Ordering::Acquire)
-                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
+                || self
+                    .frame_state
+                    .waiting_for_seek_restart
+                    .load(Ordering::Acquire)
             {
                 return;
             }

@@ -38,6 +38,10 @@ export function ContinueCard({
   isHorizontal,
   artwork: artworkProp,
   episodeLine,
+  progressPercent: cardProgressPercent,
+  isUpNext: cardIsUpNext,
+  watchedSeconds: cardWatchedSeconds,
+  remainingSeconds: cardRemainingSeconds,
   remainingFormat,
   progressDirection,
   dismissing,
@@ -56,6 +60,10 @@ export function ContinueCard({
   isHorizontal: boolean;
   artwork: string | null;
   episodeLine: string | null;
+  progressPercent?: number | null;
+  isUpNext?: boolean;
+  watchedSeconds?: number;
+  remainingSeconds?: number;
   remainingFormat: string;
   progressDirection: string;
   dismissing: boolean;
@@ -133,19 +141,21 @@ export function ContinueCard({
   const hasProgress = timeOffset !== null && duration !== null;
   const resumePercent =
     typeof lib.resumeProgressPercent === 'number' && Number.isFinite(lib.resumeProgressPercent) ? lib.resumeProgressPercent / 100 : null;
-  const percentOnly = !hasProgress && resumePercent !== null;
-  const progress = hasProgress ? timeOffset / duration : resumePercent;
-  const isUpNext =
-    meta.type === 'series' && (lib.continueWatchingBadge === 'upNext' || (progress !== null && (progress <= 0 || progress >= 0.995)));
+  const percentOnly = !hasProgress && (cardProgressPercent != null || resumePercent !== null);
+  const progress = cardProgressPercent != null ? cardProgressPercent / 100 : hasProgress ? timeOffset! / duration! : resumePercent;
+  const isUpNext = cardIsUpNext ?? (meta.type === 'series' && (lib.continueWatchingBadge === 'upNext' || (progress !== null && (progress <= 0 || progress >= 0.995))));
   const remainingText =
     !isUpNext && progress !== null
       ? progressDirection === 'watched'
         ? remainingFormat === 'percent' || percentOnly
           ? t('format.watched_percent', Math.round(progress * 100))
-          : formatWatched(timeOffset ?? 0)
+          : formatWatched(cardWatchedSeconds ?? timeOffset ?? 0)
         : remainingFormat === 'percent' || percentOnly
           ? t('format.remaining_percent', Math.round((1 - progress) * 100))
-          : formatRemaining(timeOffset ?? 0, duration ?? 0)
+          : formatRemaining(
+              (duration ?? 0) - (cardRemainingSeconds ?? Math.max(0, (duration ?? 0) - (timeOffset ?? 0))),
+              duration ?? 0,
+            )
       : null;
   const scheduledText = lib.continueWatchingBadge === 'scheduledEpisode' ? formatReleaseCountdown(lib.newEpisodeReleasedAt) : null;
   const badge = resolveBadge(lib.continueWatchingBadge, meta.type, isUpNext, remainingText, scheduledText);

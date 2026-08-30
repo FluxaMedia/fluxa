@@ -6,7 +6,15 @@ export type PlayerSubtitleSource = {
   label?: string;
   lang?: string;
   addonName?: string;
+  loaded?: boolean;
 };
+
+export function subtitleDisplayLabel(subtitle: PlayerSubtitleSource): string {
+  const language = subtitle.label || subtitle.lang;
+  const addon = subtitle.addonName;
+  if (language && addon && !language.toLowerCase().includes(addon.toLowerCase())) return `${language} · ${addon}`;
+  return language || addon || 'Subtitle';
+}
 
 export type PlayerDisplayTitle = {
   contentTitle: string;

@@ -16,7 +16,7 @@ import { ModernDetailLayout } from '../components/detail/ModernDetailLayout';
 import { TraktCommentsDialog } from '../components/detail/TraktCommentsDialog';
 import { useSeasonWatched } from '../hooks/useSeasonWatched';
 import { imdbButtonFor, setViewingDiscordPresence } from '../core/discordPresence';
-import { formatRemaining } from '../core/continueWatchingUtils';
+import { coreContinueWatchingCardFields } from '../core/engineCoreLibrary';
 import { resolveTheme } from '../theme/adapter';
 
 void NAV_RAIL_WIDTH;
@@ -353,12 +353,49 @@ export function DetailScreen({
     }
   }, [isSeries, selectedEpisode, openEpisodeSources, onDispatch, meta.type, meta.id]);
 
-  const heroProgress = useMemo(() => {
+  const [heroProgress, setHeroProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [progressPresentation, setProgressPresentation] = useState<{
+    videoId: string;
+    progressPercent: number;
+    remainingSeconds: number;
+  } | null>(null);
+
+  useEffect(() => {
     const entry = progressMap[meta.id] ?? continueWatchingEntry;
-    const duration = entry?.duration ?? 0;
-    const offset = entry?.timeOffset ?? 0;
-    if (duration <= 0 || offset <= 30) return null;
-    return { percent: Math.min(99, Math.round((offset / duration) * 100)), label: formatRemaining(offset, duration) };
+    if (!entry) {
+      setHeroProgress(null);
+      setProgressPresentation(null);
+      return;
+    }
+    let cancelled = false;
+    void coreContinueWatchingCardFields([entry], 'background', true).then((fields) => {
+      if (cancelled) return;
+      const field = fields?.[0];
+      const watched = field?.watchedSeconds ?? 0;
+      if (!field || watched <= 30 || field.isUpNext) {
+        setHeroProgress(null);
+        setProgressPresentation(null);
+        return;
+      }
+      const remaining = Math.max(0, field.remainingSeconds);
+      const minutes = Math.max(1, Math.floor(remaining / 60));
+      const label = minutes < 60
+        ? t('format.remaining_minutes', minutes)
+        : minutes % 60 === 0
+          ? t('format.remaining_hours', minutes / 60)
+          : t('format.remaining_hours_minutes', Math.floor(minutes / 60), minutes % 60);
+      setHeroProgress({ percent: Math.min(99, Math.round(field.progressPercent ?? 0)), label });
+      if (entry.lastVideoId) {
+        setProgressPresentation({
+          videoId: entry.lastVideoId,
+          progressPercent: field.progressPercent ?? 0,
+          remainingSeconds: field.remainingSeconds,
+        });
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [progressMap, meta.id, continueWatchingEntry]);
 
   const selectedEpisodeEnriched = useMemo(() => {
@@ -481,6 +518,7 @@ export function DetailScreen({
         peopleImages={peopleImages}
         watchedMap={watchedMap}
         progressMap={progressMap}
+        progressPresentation={progressPresentation}
         continueWatchingEntry={continueWatchingEntry}
         isInWatchlist={isInWatchlist}
         isDropped={isDropped}

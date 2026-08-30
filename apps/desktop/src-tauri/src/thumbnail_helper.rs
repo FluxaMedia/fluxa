@@ -69,13 +69,18 @@ impl ThumbnailProcess {
         }
         let response: ThumbnailResponse =
             serde_json::from_str(&line).map_err(|error| error.to_string())?;
-        eprintln!("thumbnail_helper request time={time_pos:.3} elapsed_ms={}", started_at.elapsed().as_millis());
+        eprintln!(
+            "thumbnail_helper request time={time_pos:.3} elapsed_ms={}",
+            started_at.elapsed().as_millis()
+        );
         if response.ok {
             response
                 .image
                 .ok_or_else(|| "thumbnail helper returned no image".to_string())
         } else {
-            Err(response.error.unwrap_or_else(|| "thumbnail failed".to_string()))
+            Err(response
+                .error
+                .unwrap_or_else(|| "thumbnail failed".to_string()))
         }
     }
 
@@ -94,7 +99,6 @@ impl ThumbnailProcess {
             .map_err(|error| error.to_string())?;
         Ok(())
     }
-
 }
 
 impl Drop for ThumbnailProcess {
@@ -117,7 +121,12 @@ pub fn run() -> Result<(), String> {
                 Ok(request) => match if request.prepare {
                     prepare_request(&mut renderer, &mut loaded_url, &request.url)
                 } else {
-                    render_request(&mut renderer, &mut loaded_url, &request.url, request.time_pos)
+                    render_request(
+                        &mut renderer,
+                        &mut loaded_url,
+                        &request.url,
+                        request.time_pos,
+                    )
                 } {
                     Ok(image) => ThumbnailResponse {
                         ok: true,
@@ -153,7 +162,9 @@ fn prepare_request(
 ) -> Result<String, String> {
     eprintln!(
         "thumbnail_helper source scheme={} host={} local_torrent={} local_proxy={}",
-        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        url.split_once("://")
+            .map(|(scheme, _)| scheme)
+            .unwrap_or("unknown"),
         reqwest::Url::parse(url)
             .ok()
             .and_then(|parsed| parsed.host_str().map(str::to_string))
@@ -170,7 +181,10 @@ fn prepare_request(
         let load_started = std::time::Instant::now();
         renderer.load_thumbnail(url)?;
         *loaded_url = Some(url.to_string());
-        eprintln!("thumbnail_helper load_done elapsed_ms={}", load_started.elapsed().as_millis());
+        eprintln!(
+            "thumbnail_helper load_done elapsed_ms={}",
+            load_started.elapsed().as_millis()
+        );
     }
     Ok(String::new())
 }
@@ -200,7 +214,10 @@ fn render_request(
     renderer.set_paused(true)?;
     renderer.pump_events();
     std::thread::sleep(std::time::Duration::from_millis(20));
-    eprintln!("thumbnail_helper seek_done elapsed_ms={}", seek_started.elapsed().as_millis());
+    eprintln!(
+        "thumbnail_helper seek_done elapsed_ms={}",
+        seek_started.elapsed().as_millis()
+    );
     if let Ok((image, has_content)) = encode_frame(renderer) {
         if has_content {
             return Ok(image);
@@ -210,7 +227,7 @@ fn render_request(
 }
 
 fn screenshot_frame(renderer: &mut MpvThumbnailRenderer) -> Result<String, String> {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     use std::time::{SystemTime, UNIX_EPOCH};
 
     let nonce = SystemTime::now()
@@ -250,16 +267,15 @@ fn screenshot_frame(renderer: &mut MpvThumbnailRenderer) -> Result<String, Strin
 }
 
 fn encode_frame(renderer: &mut MpvThumbnailRenderer) -> Result<(String, bool), String> {
-    use base64::{engine::general_purpose, Engine as _};
+    use base64::{Engine as _, engine::general_purpose};
     let pixels = renderer.render_thumbnail(320, 180)?;
     let mut min = u8::MAX;
     let mut max = u8::MIN;
     let mut non_black = 0usize;
     for pixel in pixels.chunks_exact(4) {
-        let luminance = ((u32::from(pixel[0]) * 299
-            + u32::from(pixel[1]) * 587
-            + u32::from(pixel[2]) * 114)
-            / 1000) as u8;
+        let luminance =
+            ((u32::from(pixel[0]) * 299 + u32::from(pixel[1]) * 587 + u32::from(pixel[2]) * 114)
+                / 1000) as u8;
         min = min.min(luminance);
         max = max.max(luminance);
         if luminance > 8 {

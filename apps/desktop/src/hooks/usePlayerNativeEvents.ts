@@ -6,6 +6,7 @@ import { appPrefs } from '../core/appPrefs';
 import {
   embeddedMpvSetTitle,
   embeddedMpvSetLoadingArtwork,
+  embeddedMpvShowLoading,
   embeddedMpvStatus,
   embeddedMpvStop,
   playerLastStreamError,
@@ -39,7 +40,9 @@ export function usePlayerNativeEvents({
   showEpisodeTransitionLoading,
   scrobbleStartedRef,
   dispatchScrobbleLifecycle,
+  saveProgressOnEvent,
   onTerminalPlayback,
+  debugLog,
 }: {
   stateRef: React.MutableRefObject<AppState>;
   closingPlayerRef: React.MutableRefObject<boolean>;
@@ -63,7 +66,9 @@ export function usePlayerNativeEvents({
   showEpisodeTransitionLoading: (meta: Meta, episode: Video, stream: Stream) => void;
   scrobbleStartedRef: React.MutableRefObject<boolean>;
   dispatchScrobbleLifecycle: (event: 'start' | 'pause' | 'stop', status: EmbeddedMpvStatus) => Promise<void>;
+  saveProgressOnEvent?: () => Promise<void>;
   onTerminalPlayback?: () => Promise<boolean>;
+  debugLog: (message: string) => void;
 }) {
   const episodeTransitionActiveRef = useRef(false);
 
@@ -92,6 +97,7 @@ export function usePlayerNativeEvents({
 
     listen<string>('native-player-error', (event) => {
       void (async () => {
+        await saveProgressOnEvent?.();
         const proxyDetail = await playerLastStreamError();
         const message = proxyDetail ? t('player.source_error_detail', proxyDetail) : presentNativePlayerError(event.payload);
         await onPlayerError(message);
@@ -107,7 +113,7 @@ export function usePlayerNativeEvents({
       cancelled = true;
       unlisteners.forEach((fn) => fn());
     };
-  }, [closePlayer, onPlayerError, onTerminalPlayback]);
+  }, [closePlayer, onPlayerError, onTerminalPlayback, saveProgressOnEvent]);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];
@@ -133,19 +139,21 @@ export function usePlayerNativeEvents({
             )) as typeof nextEp;
           }
           if (!nextEp || !meta || !currentStream) return;
+          debugLog(`player-debug:nextEpisode:start from=${currentEp?.id ?? 'none'} to=${nextEp.id}`);
 
           showEpisodeTransitionLoading(meta, nextEp, currentStream);
           await stopScrobbleForOutgoingEpisode();
           await embeddedMpvStop().catch(() => undefined);
           const nextTitle = playerDisplayTitle(meta, nextEp, currentStream);
           const nextArtwork = playerArtwork(meta, nextEp);
-          void embeddedMpvSetTitle(nextTitle.contentTitle, nextTitle.episodeLine).catch(() => undefined);
-          void embeddedMpvSetLoadingArtwork(
+          await embeddedMpvSetTitle(nextTitle.contentTitle, nextTitle.episodeLine).catch(() => undefined);
+          await embeddedMpvSetLoadingArtwork(
             nextTitle.contentTitle ?? 'Fluxa',
             nextTitle.episodeLine,
             nextArtwork.background,
             nextArtwork.logo,
           ).catch(() => undefined);
+          await embeddedMpvShowLoading(nextTitle.contentTitle, nextTitle.episodeLine).catch(() => undefined);
 
           const prefs = appPrefs(stateRef.current);
           let chosenStream: Stream | null = null;
@@ -162,6 +170,7 @@ export function usePlayerNativeEvents({
               const streams = result.streams as Stream[];
               if (streams.length > 0) {
                 sourceCandidates = streams;
+                debugLog(`player-debug:nextEpisode:streams episode=${nextEp.id} count=${streams.length}`);
                 chosenStream = (await coreSelectNextEpisodeStream(
                   JSON.stringify(streams),
                   JSON.stringify(currentStream),
@@ -178,6 +187,7 @@ export function usePlayerNativeEvents({
             return;
           }
           try {
+            debugLog(`player-debug:nextEpisode:play episode=${nextEp.id} stream=${chosenStream.url?.slice(0, 100) ?? 'none'} candidates=${sourceCandidates?.length ?? 0}`);
             await handlePlay(chosenStream, meta, nextEp, undefined, undefined, sourceCandidates, true);
           } catch {}
         } finally {
@@ -206,6 +216,7 @@ export function usePlayerNativeEvents({
         episodeTransitionActiveRef.current = false;
         return;
       }
+      debugLog(`player-debug:episodeSwitch:start from=${playingEpisodeRef.current?.id ?? 'none'} to=${ep.id}`);
 
       void (async () => {
         try {
@@ -214,13 +225,14 @@ export function usePlayerNativeEvents({
           await embeddedMpvStop().catch(() => undefined);
           const nextTitle = playerDisplayTitle(meta, ep, currentStream);
           const nextArtwork = playerArtwork(meta, ep);
-          void embeddedMpvSetTitle(nextTitle.contentTitle, nextTitle.episodeLine).catch(() => undefined);
-          void embeddedMpvSetLoadingArtwork(
+          await embeddedMpvSetTitle(nextTitle.contentTitle, nextTitle.episodeLine).catch(() => undefined);
+          await embeddedMpvSetLoadingArtwork(
             nextTitle.contentTitle ?? 'Fluxa',
             nextTitle.episodeLine,
             nextArtwork.background,
             nextArtwork.logo,
           ).catch(() => undefined);
+          await embeddedMpvShowLoading(nextTitle.contentTitle, nextTitle.episodeLine).catch(() => undefined);
 
           const prefs = appPrefs(stateRef.current);
           let chosenStream: Stream | null = null;
@@ -230,6 +242,7 @@ export function usePlayerNativeEvents({
             const streams = result.streams as Stream[];
             if (streams.length > 0) {
               sourceCandidates = streams;
+              debugLog(`player-debug:episodeSwitch:streams episode=${ep.id} count=${streams.length}`);
               chosenStream = (await coreSelectNextEpisodeStream(
                 JSON.stringify(streams),
                 JSON.stringify(currentStream),
@@ -244,6 +257,7 @@ export function usePlayerNativeEvents({
             return;
           }
           try {
+            debugLog(`player-debug:episodeSwitch:play episode=${ep.id} stream=${chosenStream.url?.slice(0, 100) ?? 'none'} candidates=${sourceCandidates?.length ?? 0}`);
             await handlePlay(chosenStream, meta, ep, undefined, undefined, sourceCandidates, true);
           } catch {}
         } finally {

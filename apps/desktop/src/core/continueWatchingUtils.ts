@@ -4,13 +4,22 @@ import { t, getLanguage } from '../i18n';
 
 // Batched for a whole Continue Watching row — one IPC round trip for the whole list
 // instead of each card fetching its own artwork + episode line independently.
+export type ContinueWatchingCardFields = {
+  artwork: string | null;
+  episodeLine: string;
+  progressPercent?: number | null;
+  isUpNext?: boolean;
+  watchedSeconds?: number;
+  remainingSeconds?: number;
+};
+
 export async function continueWatchingCardFields(
   items: Meta[],
   artworkPreference: string,
   isHorizontal: boolean,
-): Promise<Map<string, { artwork: string | null; episodeLine: string }>> {
+): Promise<Map<string, ContinueWatchingCardFields>> {
   const fields = await coreContinueWatchingCardFields(items, artworkPreference, isHorizontal);
-  return new Map((fields ?? []).map((f) => [f.id, { artwork: f.artwork, episodeLine: f.episodeLine }]));
+  return new Map((fields ?? []).map((f) => [f.id, { artwork: f.artwork, episodeLine: f.episodeLine, progressPercent: f.progressPercent, isUpNext: f.isUpNext, watchedSeconds: f.watchedSeconds, remainingSeconds: f.remainingSeconds }]));
 }
 
 export function formatWatched(offset: number): string {

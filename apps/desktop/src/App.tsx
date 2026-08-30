@@ -189,6 +189,7 @@ export default function App() {
     closePlayer,
     notifyFirstFrame,
     flushProgressOnQuit,
+    saveProgressOnEvent,
     skipSegmentCoverage,
     playerRecommendations,
     dismissPlayerRecommendations,
@@ -780,6 +781,7 @@ export default function App() {
         active={nativePlayerActive}
         loading={playerLoadingOverlay}
         closePlayer={closePlayer}
+        onSeekPersist={saveProgressOnEvent}
         notifyFirstFrame={notifyFirstFrame}
         title={playerTitle}
         episodeTitle={playerEpisodeTitle}

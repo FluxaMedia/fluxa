@@ -3,11 +3,11 @@ use aes_gcm::{Aes256Gcm, Key, Nonce};
 use rusqlite::Connection;
 use rusqlite::params;
 use serde_json::{Map, Value};
-use std::fs;
-use std::path::{Path, PathBuf};
 use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
+use std::fs;
 use std::ops::{Deref, DerefMut};
+use std::path::{Path, PathBuf};
+use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
 #[cfg(target_os = "windows")]
@@ -23,9 +23,8 @@ pub use library_storage::{
     library_continue_watching_upsert, library_last_watched_delete, library_last_watched_list,
     library_last_watched_upsert, library_progress_delete, library_progress_list,
     library_progress_read, library_progress_upsert, library_progress_upsert_many,
-    library_status_list, library_status_set,
-    library_watched_list, library_watched_set, read_pref_field, read_pref_flag, storage_delete,
-    storage_read, storage_write,
+    library_status_list, library_status_set, library_watched_list, library_watched_set,
+    read_pref_field, read_pref_flag, storage_delete, storage_read, storage_write,
 };
 use library_storage_migrations::migrate_legacy_json_files;
 fn decrypt_json(dir: &Path, bytes: Vec<u8>) -> Result<Value, String> {
@@ -47,7 +46,8 @@ pub fn library_snapshot(
     library_storage_migrations::ensure_items_migrated(&database, &dir, &profile_key).ok()?;
     library_storage_migrations::ensure_watched_migrated(&database, &dir, &profile_key).ok()?;
     library_storage_migrations::ensure_last_watched_migrated(&database, &dir, &profile_key).ok()?;
-    library_storage_migrations::ensure_continue_watching_migrated(&database, &dir, &profile_key).ok()?;
+    library_storage_migrations::ensure_continue_watching_migrated(&database, &dir, &profile_key)
+        .ok()?;
     let transaction = database.transaction().ok()?;
 
     let mut progress = Map::new();
@@ -207,10 +207,7 @@ impl DerefMut for StorageDatabaseGuard {
 }
 
 #[cfg(target_os = "windows")]
-pub(crate) fn read_pref_bool(
-    state: tauri::State<DesktopState>,
-    field: &str,
-) -> Option<bool> {
+pub(crate) fn read_pref_bool(state: tauri::State<DesktopState>, field: &str) -> Option<bool> {
     library_storage::read_pref_bool(state, field)
 }
 
@@ -234,8 +231,7 @@ fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
             let Ok(key) = Key::<Aes256Gcm>::try_from(&bytes[..]) else {
                 return Err("stored key is not a valid AES-256 key".to_string());
             };
-            keys
-                .lock()
+            keys.lock()
                 .map_err(|_| "storage key cache poisoned".to_string())?
                 .insert(dir.to_path_buf(), key);
             return Ok(key);
@@ -253,8 +249,7 @@ fn load_or_create_key(dir: &Path) -> Result<Key<Aes256Gcm>, String> {
     use std::io::Write;
     let mut file = options.open(&path).map_err(|e| e.to_string())?;
     file.write_all(key.as_slice()).map_err(|e| e.to_string())?;
-    keys
-        .lock()
+    keys.lock()
         .map_err(|_| "storage key cache poisoned".to_string())?
         .insert(dir.to_path_buf(), key);
     Ok(key)
@@ -394,16 +389,22 @@ pub fn initialize_storage(dir: &Path) -> Result<(), String> {
                     .unwrap_or(0);
                 let quarantine = dir.join(format!("{DATABASE_FILE}.corrupt.{stamp}"));
                 fs::rename(&database, &quarantine).map_err(|rename_error| {
-                    format!("storage initialization failed: {error}; quarantine failed: {rename_error}")
+                    format!(
+                        "storage initialization failed: {error}; quarantine failed: {rename_error}"
+                    )
                 })?;
                 for suffix in ["-wal", "-shm"] {
                     let sidecar = PathBuf::from(format!("{}{suffix}", database.display()));
                     if sidecar.exists() {
-                        let sidecar_quarantine = PathBuf::from(format!("{}{suffix}", quarantine.display()));
+                        let sidecar_quarantine =
+                            PathBuf::from(format!("{}{suffix}", quarantine.display()));
                         let _ = fs::rename(sidecar, sidecar_quarantine);
                     }
                 }
-                log::error!("storage database quarantined at {} after initialization failure: {error}", quarantine.display());
+                log::error!(
+                    "storage database quarantined at {} after initialization failure: {error}",
+                    quarantine.display()
+                );
             }
             let _database = open_database(dir).map_err(|retry_error| {
                 format!("storage recovery failed after initialization error: {error}; retry failed: {retry_error}")

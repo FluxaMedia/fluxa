@@ -1,8 +1,8 @@
 use crate::mpv_render::{PlayerStatus, PlayerTrackOption};
 use crate::player_surface::{Artwork, PlayerSurface};
 use std::ffi::{CStr, CString, c_char, c_void};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter, Manager};
 
 #[link(name = "FluxaDesktopPlayer", kind = "static")]

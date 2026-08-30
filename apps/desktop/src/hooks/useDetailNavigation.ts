@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react';
 import { prefetchPlayerArtwork } from '../core/mpvPlayer';
 import { playerArtwork } from '../core/playerUtils';
 import { readStoredPlaybackSource } from '../core/libraryStorage';
+import { coreContinueWatchingResumePlan } from '../core/engineCoreLibrary';
 import type { LibraryItem, Meta, Stream, Video } from '../core/types';
 
 type GuardedPlay = (
@@ -13,16 +14,6 @@ type GuardedPlay = (
   sourceCandidates?: Stream[],
   resumePercent?: number,
 ) => Promise<void>;
-
-function resolveResumePercent(item: LibraryItem): number | undefined {
-  if (typeof item.resumeProgressPercent === 'number' && Number.isFinite(item.resumeProgressPercent)) {
-    return item.resumeProgressPercent;
-  }
-  if (typeof item.timeOffset === 'number' && typeof item.duration === 'number' && item.duration > 0) {
-    return (item.timeOffset / item.duration) * 100;
-  }
-  return undefined;
-}
 
 export function useDetailNavigation() {
   const [detailMeta, setDetailMeta] = useState<Meta | null>(null);
@@ -55,28 +46,14 @@ export function useDetailNavigation() {
     prefetchArtworkFor(meta, null);
   }, []);
 
-  const handleResumeFromContinueWatching = useCallback((meta: Meta, resumeAtOverride?: number) => {
+  const handleResumeFromContinueWatching = useCallback(async (meta: Meta, resumeAtOverride?: number) => {
     const item = meta as LibraryItem;
-    const matchedVideo = item.lastVideoId ? meta.videos?.find((v) => v.id === item.lastVideoId) : undefined;
-    const episode: Video | null = item.lastVideoId
-      ? {
-          id: item.lastVideoId,
-          name: matchedVideo?.name ?? matchedVideo?.title ?? item.lastEpisodeName,
-          season: matchedVideo?.season ?? item.lastEpisodeSeason,
-          episode: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
-          number: matchedVideo?.episode ?? matchedVideo?.number ?? item.lastEpisodeNumber,
-          thumbnail: matchedVideo?.thumbnail ?? item.lastEpisodeThumbnail,
-        }
-      : null;
-    const resumePercent = resumeAtOverride === undefined ? resolveResumePercent(item) : undefined;
-    const resumeAt = resumeAtOverride ?? (resumePercent === undefined ? item.timeOffset : undefined);
+    const resumePlan = await coreContinueWatchingResumePlan({ item, videos: meta.videos ?? [], resumeAtOverride });
+    const episode = (resumePlan.episode as Video | null) ?? null;
+    const resumePercent = resumePlan.resumePercent ?? undefined;
+    const resumeAt = resumePlan.resumeAt ?? undefined;
 
     prefetchArtworkFor(meta, episode);
-    setDetailInitialEpisode(episode);
-    setDetailAutoShowStreams(true);
-    setDetailResumeAt(resumeAt ?? undefined);
-    setDetailResumePercent(resumePercent);
-    setDetailMeta(meta);
 
     void (async () => {
       try {
@@ -85,8 +62,18 @@ export function useDetailNavigation() {
         const resumeStream: Stream | null = stream ?? (url ? { url, title: item.lastStreamTitle, name: item.lastStreamTitle } : null);
         if (resumeStream) {
           await guardedPlayRef.current(resumeStream, meta, episode, resumeAt, item.duration, undefined, resumePercent);
+        } else {
+          setDetailInitialEpisode(episode);
+          setDetailAutoShowStreams(true);
+          setDetailResumeAt(resumeAt ?? undefined);
+          setDetailResumePercent(resumePercent);
+          setDetailMeta(meta);
         }
       } catch {
+        setDetailInitialEpisode(episode);
+        setDetailAutoShowStreams(true);
+        setDetailResumeAt(resumeAt ?? undefined);
+        setDetailResumePercent(resumePercent);
         setDetailMeta(meta);
       }
     })();
@@ -99,22 +86,14 @@ export function useDetailNavigation() {
     [handleResumeFromContinueWatching],
   );
 
-  const handlePlayManually = useCallback((meta: Meta) => {
+  const handlePlayManually = useCallback(async (meta: Meta) => {
     const item = meta as LibraryItem;
-    const episode: Video | null = item.lastVideoId
-      ? {
-          id: item.lastVideoId,
-          name: item.lastEpisodeName,
-          season: item.lastEpisodeSeason,
-          episode: item.lastEpisodeNumber,
-          number: item.lastEpisodeNumber,
-          thumbnail: item.lastEpisodeThumbnail,
-        }
-      : null;
-    const resumePercent = resolveResumePercent(item);
+    const resumePlan = await coreContinueWatchingResumePlan({ item, videos: meta.videos ?? [] });
+    const episode = (resumePlan.episode as Video | null) ?? null;
+    const resumePercent = resumePlan.resumePercent ?? undefined;
     setDetailInitialEpisode(episode);
     setDetailAutoShowStreams(true);
-    setDetailResumeAt(resumePercent === undefined ? (item.timeOffset ?? undefined) : undefined);
+    setDetailResumeAt(resumePlan.resumeAt ?? undefined);
     setDetailResumePercent(resumePercent);
     setDetailMeta(meta);
   }, []);

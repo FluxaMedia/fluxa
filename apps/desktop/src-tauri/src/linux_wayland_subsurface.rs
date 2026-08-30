@@ -1,4 +1,4 @@
-use std::ffi::{c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_void};
 use std::ptr;
 
 fn dlopen_first(names: &[&str]) -> Option<isize> {
@@ -26,12 +26,14 @@ const WL_DISPLAY_GET_REGISTRY: u32 = 1;
 const WL_REGISTRY_BIND: u32 = 0;
 const WL_COMPOSITOR_CREATE_SURFACE: u32 = 0;
 const WL_SUBCOMPOSITOR_GET_SUBSURFACE: u32 = 1;
+const WL_SUBSURFACE_PLACE_ABOVE: u32 = 2;
 const WL_SUBSURFACE_PLACE_BELOW: u32 = 3;
 const WL_SUBSURFACE_SET_DESYNC: u32 = 5;
 const WL_SURFACE_ATTACH: u32 = 1;
 const WL_SURFACE_COMMIT: u32 = 6;
 const WL_SURFACE_DESTROY: u32 = 0;
 const WL_SUBSURFACE_DESTROY: u32 = 0;
+const WL_SUBSURFACE_SET_POSITION: u32 = 1;
 
 type PfnMarshalNewNoArgs =
     unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32, *const c_void) -> *mut c_void;
@@ -58,6 +60,8 @@ type PfnMarshalBind = unsafe extern "C" fn(
 ) -> *mut c_void;
 type PfnMarshalNoArgs =
     unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32) -> *mut c_void;
+type PfnMarshalTwoInts =
+    unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32, i32, i32) -> *mut c_void;
 type PfnMarshalOneObjArg =
     unsafe extern "C" fn(*mut c_void, u32, *const c_void, u32, u32, *mut c_void) -> *mut c_void;
 type PfnMarshalAttach = unsafe extern "C" fn(
@@ -113,6 +117,7 @@ struct WaylandFns {
     marshal_new_two_obj_args: PfnMarshalNewTwoObjArgs,
     marshal_bind: PfnMarshalBind,
     marshal_no_args: PfnMarshalNoArgs,
+    marshal_two_ints: PfnMarshalTwoInts,
     marshal_one_obj_arg: PfnMarshalOneObjArg,
     marshal_attach: PfnMarshalAttach,
     proxy_add_listener: PfnProxyAddListener,
@@ -138,6 +143,7 @@ impl WaylandFns {
             marshal_new_two_obj_args: sym!("wl_proxy_marshal_flags"),
             marshal_bind: sym!("wl_proxy_marshal_flags"),
             marshal_no_args: sym!("wl_proxy_marshal_flags"),
+            marshal_two_ints: sym!("wl_proxy_marshal_flags"),
             marshal_one_obj_arg: sym!("wl_proxy_marshal_flags"),
             marshal_attach: sym!("wl_proxy_marshal_flags"),
             proxy_add_listener: sym!("wl_proxy_add_listener"),
@@ -159,6 +165,7 @@ impl WaylandFns {
 
 pub struct VideoSubsurface {
     fns: WaylandFns,
+    parent_surface: *mut c_void,
     surface: *mut c_void,
     subsurface: *mut c_void,
     subcompositor: *mut c_void,
@@ -319,6 +326,7 @@ impl VideoSubsurface {
 
         Ok(Self {
             fns,
+            parent_surface: parent_wl_surface,
             surface,
             subsurface,
             subcompositor,
@@ -347,6 +355,50 @@ impl VideoSubsurface {
                 WL_SURFACE_COMMIT,
                 ptr::null(),
                 (self.fns.proxy_get_version)(self.surface),
+                0,
+            );
+        }
+    }
+    pub fn set_position(&self, x: i32, y: i32) {
+        unsafe {
+            (self.fns.marshal_two_ints)(
+                self.subsurface,
+                WL_SUBSURFACE_SET_POSITION,
+                ptr::null(),
+                (self.fns.proxy_get_version)(self.subsurface),
+                0,
+                x,
+                y,
+            );
+            (self.fns.marshal_no_args)(
+                self.parent_surface,
+                WL_SURFACE_COMMIT,
+                ptr::null(),
+                (self.fns.proxy_get_version)(self.parent_surface),
+                0,
+            );
+        }
+    }
+
+    pub fn set_above(&self, above: bool) {
+        unsafe {
+            (self.fns.marshal_one_obj_arg)(
+                self.subsurface,
+                if above {
+                    WL_SUBSURFACE_PLACE_ABOVE
+                } else {
+                    WL_SUBSURFACE_PLACE_BELOW
+                },
+                ptr::null(),
+                (self.fns.proxy_get_version)(self.subsurface),
+                0,
+                self.parent_surface,
+            );
+            (self.fns.marshal_no_args)(
+                self.parent_surface,
+                WL_SURFACE_COMMIT,
+                ptr::null(),
+                (self.fns.proxy_get_version)(self.parent_surface),
                 0,
             );
         }

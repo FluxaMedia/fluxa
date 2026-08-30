@@ -1,5 +1,5 @@
-use std::net::IpAddr;
 use std::collections::HashMap;
+use std::net::IpAddr;
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::{Duration, Instant};
 
@@ -87,10 +87,7 @@ fn block_private_redirects() -> reqwest::redirect::Policy {
 /// Builds a client whose connection to `url`'s host is pinned to the addresses
 /// vetted here, so a rebinding DNS entry can't swap in a private IP between the
 /// check and the request.
-pub async fn vetted_client(
-    url_str: &str,
-    timeout: Duration,
-) -> Result<reqwest::Client, String> {
+pub async fn vetted_client(url_str: &str, timeout: Duration) -> Result<reqwest::Client, String> {
     let url = reqwest::Url::parse(url_str).map_err(|_| "invalid url".to_string())?;
     let host = url
         .host_str()

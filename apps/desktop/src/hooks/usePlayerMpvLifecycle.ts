@@ -12,7 +12,7 @@ import {
   playerTorrentSiblingSubtitles,
 } from '../core/mpvPlayer';
 import { runWithConcurrency } from '../core/fetchPlanning';
-import type { PlayerArtwork, PlayerDisplayTitle, PlayerSubtitleSource } from '../core/playerUtils';
+import { subtitleDisplayLabel, type PlayerArtwork, type PlayerDisplayTitle, type PlayerSubtitleSource } from '../core/playerUtils';
 import type { ResolvedSubtitles } from '../core/subtitles';
 import type { AppState } from '../core/types';
 
@@ -135,14 +135,15 @@ export function usePlayerMpvLifecycle(options: Options) {
       }
       if (isCancelled(generation)) return;
       const addedSubtitles = eagerSubtitles(subtitles);
-      setPlayerSubtitles(subtitles);
+      const addedUrls = new Set(addedSubtitles.map((subtitle) => subtitle.url));
+      setPlayerSubtitles(subtitles.map((subtitle) => ({ ...subtitle, loaded: addedUrls.has(subtitle.url) })));
       debugLog(
         `subtitles: resolved=${subtitles.length}, added=${addedSubtitles.length}, failedAddons=${failedAddons.join(',') || 'none'}`,
       );
       setPlayerSubtitleUrl(subtitles.find((subtitle) => /^https?:\/\//i.test(subtitle.url))?.url);
       const failedTrackAddons: string[] = [];
       await runWithConcurrency(addedSubtitles, SUBTITLE_ADD_CONCURRENCY, (subtitle) =>
-        embeddedMpvAddSubtitle(subtitle.url, subtitle.addonName ?? subtitle.label, subtitle.lang).catch(() => {
+        embeddedMpvAddSubtitle(subtitle.url, subtitleDisplayLabel(subtitle), subtitle.lang).catch(() => {
           if (subtitle.addonName) failedTrackAddons.push(subtitle.addonName);
         }),
       );

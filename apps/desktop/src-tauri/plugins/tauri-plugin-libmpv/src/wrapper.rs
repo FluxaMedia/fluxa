@@ -9,8 +9,8 @@ pub struct MpvHandle {
 }
 /** Callback function type for mpv events.
 
- @param event A JSON string representing the event.
- @param userdata The user-supplied pointer passed to `mpv_wrapper_create`.*/
+@param event A JSON string representing the event.
+@param userdata The user-supplied pointer passed to `mpv_wrapper_create`.*/
 pub type EventCallback = ::std::option::Option<
     unsafe extern "C" fn(
         event: *const ::std::os::raw::c_char,
@@ -56,22 +56,17 @@ impl LibmpvWrapper {
         L: Into<::libloading::Library>,
     {
         let __library = library.into();
-        let mpv_wrapper_create = unsafe { __library.get(b"mpv_wrapper_create\0") }
-            .map(|sym| *sym)?;
-        let mpv_wrapper_destroy = unsafe { __library.get(b"mpv_wrapper_destroy\0") }
-            .map(|sym| *sym)?;
-        let mpv_wrapper_command = unsafe { __library.get(b"mpv_wrapper_command\0") }
-            .map(|sym| *sym)?;
-        let mpv_wrapper_set_property = unsafe {
-            __library.get(b"mpv_wrapper_set_property\0")
-        }
-            .map(|sym| *sym)?;
-        let mpv_wrapper_get_property = unsafe {
-            __library.get(b"mpv_wrapper_get_property\0")
-        }
-            .map(|sym| *sym)?;
-        let mpv_wrapper_free = unsafe { __library.get(b"mpv_wrapper_free\0") }
-            .map(|sym| *sym)?;
+        let mpv_wrapper_create =
+            unsafe { __library.get(b"mpv_wrapper_create\0") }.map(|sym| *sym)?;
+        let mpv_wrapper_destroy =
+            unsafe { __library.get(b"mpv_wrapper_destroy\0") }.map(|sym| *sym)?;
+        let mpv_wrapper_command =
+            unsafe { __library.get(b"mpv_wrapper_command\0") }.map(|sym| *sym)?;
+        let mpv_wrapper_set_property =
+            unsafe { __library.get(b"mpv_wrapper_set_property\0") }.map(|sym| *sym)?;
+        let mpv_wrapper_get_property =
+            unsafe { __library.get(b"mpv_wrapper_get_property\0") }.map(|sym| *sym)?;
+        let mpv_wrapper_free = unsafe { __library.get(b"mpv_wrapper_free\0") }.map(|sym| *sym)?;
         Ok(LibmpvWrapper {
             __library,
             mpv_wrapper_create,
@@ -84,12 +79,12 @@ impl LibmpvWrapper {
     }
     /** Creates a new mpv handle.
 
- @param initial_options A JSON string of initial mpv options (e.g., `{"idle": "yes"}`).
- @param observed_properties A JSON string mapping property names to their formats (e.g., `{"pause": "flag"}`).
-                            The format can be "string", "flag", "int64", "double", or "node".
- @param event_callback A function pointer that will be called for mpv events.
- @param event_userdata A user-supplied pointer that will be passed to the event_callback.
- @return A pointer to the opaque mpv handle, or NULL on failure.*/
+    @param initial_options A JSON string of initial mpv options (e.g., `{"idle": "yes"}`).
+    @param observed_properties A JSON string mapping property names to their formats (e.g., `{"pause": "flag"}`).
+                               The format can be "string", "flag", "int64", "double", or "node".
+    @param event_callback A function pointer that will be called for mpv events.
+    @param event_userdata A user-supplied pointer that will be passed to the event_callback.
+    @return A pointer to the opaque mpv handle, or NULL on failure.*/
     pub unsafe fn mpv_wrapper_create(
         &self,
         initial_options: *const ::std::os::raw::c_char,
@@ -98,8 +93,7 @@ impl LibmpvWrapper {
         event_userdata: *mut ::std::os::raw::c_void,
     ) -> *mut MpvHandle {
         unsafe {
-            (self
-                .mpv_wrapper_create)(
+            (self.mpv_wrapper_create)(
                 initial_options,
                 observed_properties,
                 event_callback,
@@ -109,18 +103,18 @@ impl LibmpvWrapper {
     }
     /** Destroys the mpv handle and terminates the mpv core.
 
- @param handle A valid pointer to the mpv handle (obtained from `mpv_wrapper_create`).*/
+    @param handle A valid pointer to the mpv handle (obtained from `mpv_wrapper_create`).*/
     pub unsafe fn mpv_wrapper_destroy(&self, handle: *mut MpvHandle) {
         unsafe { (self.mpv_wrapper_destroy)(handle) }
     }
     /** Executes an mpv command.
 
- @param handle A valid pointer to the mpv handle.
- @param name The name of the command (e.g., "set", "loadfile").
- @param args A JSON string representing an array of arguments (e.g., `["volume", "50"]`, `["path/to/video.mp4"]`).
-             Pass an empty string "[]" or NULL for no arguments.
- @return A JSON string representing the command result (e.g., `{"data": null}` or `{"error": "..."}`).
-         The caller MUST free this string using `mpv_wrapper_free_string`.*/
+    @param handle A valid pointer to the mpv handle.
+    @param name The name of the command (e.g., "set", "loadfile").
+    @param args A JSON string representing an array of arguments (e.g., `["volume", "50"]`, `["path/to/video.mp4"]`).
+                Pass an empty string "[]" or NULL for no arguments.
+    @return A JSON string representing the command result (e.g., `{"data": null}` or `{"error": "..."}`).
+            The caller MUST free this string using `mpv_wrapper_free_string`.*/
     pub unsafe fn mpv_wrapper_command(
         &self,
         handle: *mut MpvHandle,
@@ -131,11 +125,11 @@ impl LibmpvWrapper {
     }
     /** Sets an mpv property.
 
- @param handle A valid pointer to the mpv handle.
- @param name The name of the property to set (e.g., "pause").
- @param value A JSON string representing the value (e.g., "true").
- @return A JSON string indicating success or failure.
-         The caller MUST free this string using `mpv_wrapper_free_string`.*/
+    @param handle A valid pointer to the mpv handle.
+    @param name The name of the property to set (e.g., "pause").
+    @param value A JSON string representing the value (e.g., "true").
+    @return A JSON string indicating success or failure.
+            The caller MUST free this string using `mpv_wrapper_free_string`.*/
     pub unsafe fn mpv_wrapper_set_property(
         &self,
         handle: *mut MpvHandle,
@@ -146,11 +140,11 @@ impl LibmpvWrapper {
     }
     /** Gets an mpv property.
 
- @param handle A valid pointer to the mpv handle.
- @param name The name of the property to get.
- @param format The format can be "string", "flag", "int64", "double", or "node".
- @return A JSON string containing the property value (e.g., `{"data": true}`) or an error.
-         The caller MUST free this string using `mpv_wrapper_free_string`.*/
+    @param handle A valid pointer to the mpv handle.
+    @param name The name of the property to get.
+    @param format The format can be "string", "flag", "int64", "double", or "node".
+    @return A JSON string containing the property value (e.g., `{"data": true}`) or an error.
+            The caller MUST free this string using `mpv_wrapper_free_string`.*/
     pub unsafe fn mpv_wrapper_get_property(
         &self,
         handle: *mut MpvHandle,
@@ -161,7 +155,7 @@ impl LibmpvWrapper {
     }
     /** Frees a C string that was returned by one of the `mpv_wrapper_*` functions.
 
- @param s A pointer to the C string to be freed.*/
+    @param s A pointer to the C string to be freed.*/
     pub unsafe fn mpv_wrapper_free(&self, s: *mut ::std::os::raw::c_char) {
         unsafe { (self.mpv_wrapper_free)(s) }
     }

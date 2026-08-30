@@ -9,7 +9,7 @@ import {
   coreResolveNextEpisode,
   coreSelectNextEpisodeStream,
   coreStreamShellPlan,
-  coreTorrentReadyBudget,
+  coreTorrentRetryPlan,
   coreTorrentStatusInfo,
 } from '../core/engine';
 import { fetchMetaVideos, fetchPlaybackSkipSegments, fetchStreamsForEpisode } from '../core/effectRunner';
@@ -170,6 +170,9 @@ export function usePlayerPlaybackStart(options: any) {
         lastResumeAtSecondsRef.current = resumeAtSeconds;
         lastTotalDurationSecondsRef.current = totalDurationSeconds;
         setPlayerEpisode(episode ?? null);
+        debugLog(
+          `handlePlay:state meta=${meta?.id ?? 'none'} episode=${episode?.id ?? 'none'} s${episode?.season ?? '?'}e${episode?.episode ?? episode?.number ?? '?'} candidates=${playingSourceCandidatesRef.current.length} explicitCandidates=${sourceCandidates?.length ?? 0} resume=${resumeAtSeconds ?? 'none'}`,
+        );
 
         const earlyTitle = playerDisplayTitle(meta, episode, stream);
         const earlyArtwork = playerArtwork(meta ? (playingMetaRef.current ?? meta) : undefined, episode);
@@ -390,14 +393,13 @@ export function usePlayerPlaybackStart(options: any) {
         };
 
         if (playbackPlan?.mode === 'torrent') {
-          const budget = await coreTorrentReadyBudget();
           const retryCandidatePlans = await Promise.all(playingSourceCandidatesRef.current.map(coreStreamShellPlan));
-          const MAX_PEER_RETRIES = retryCandidatePlans.some((candidate) => candidate?.identityKey !== currentStreamKey)
-            ? budget.maxPeerRetriesWithAlternatives
-            : budget.maxPeerRetriesSingleSource;
-          const TORRENT_READY_FIRST_ATTEMPT_MS = budget.firstAttemptMs;
-          const TORRENT_READY_RETRY_BUDGET_MS = budget.retryBudgetMs;
-          const TORRENT_READY_PER_RETRY_MS = MAX_PEER_RETRIES > 0 ? Math.floor(TORRENT_READY_RETRY_BUDGET_MS / MAX_PEER_RETRIES) : 0;
+          const retryPlan = await coreTorrentRetryPlan(
+            retryCandidatePlans.some((candidate) => candidate?.identityKey !== currentStreamKey),
+          );
+          const MAX_PEER_RETRIES = retryPlan.maxPeerRetries;
+          const TORRENT_READY_FIRST_ATTEMPT_MS = retryPlan.firstAttemptMs;
+          const TORRENT_READY_PER_RETRY_MS = retryPlan.perRetryMs;
           let statusPollActive = true;
           const retrySuffix = (retryIndex: number) =>
             retryIndex > 0 ? ` ${t('player.status_retry_attempt', retryIndex, MAX_PEER_RETRIES)}` : '';
@@ -414,7 +416,7 @@ export function usePlayerPlaybackStart(options: any) {
               await new Promise((r) => setTimeout(r, 700));
             }
           };
-          const TORRENT_READY_HARD_LIMIT_MS = budget.hardLimitMs;
+          const TORRENT_READY_HARD_LIMIT_MS = retryPlan.hardLimitMs;
           const waitForTorrentReady = async (budgetMs: number) => {
             const startedAt = Date.now();
             let deadline = startedAt + budgetMs;
@@ -432,7 +434,7 @@ export function usePlayerPlaybackStart(options: any) {
                   lastLoaded = ts.loaded_size;
                   deadline = Date.now() + budgetMs;
                 } else if (ts.active_peers > 0 || ts.resolving) {
-                  deadline = Math.max(deadline, Date.now() + budget.stallExtensionMs);
+                  deadline = Math.max(deadline, Date.now() + retryPlan.stallExtensionMs);
                 }
               }
               await new Promise((r) => setTimeout(r, 700));

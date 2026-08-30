@@ -1,6 +1,6 @@
-use super::{decrypt_or_legacy, encrypt, sanitize_key, LEGACY_MIGRATION_KEY};
+use super::{LEGACY_MIGRATION_KEY, decrypt_or_legacy, encrypt, sanitize_key};
 use fluxa_core::FluxaCore;
-use rusqlite::{params, Connection, OptionalExtension};
+use rusqlite::{Connection, OptionalExtension, params};
 use serde::Deserialize;
 use serde_json::Value;
 use std::fs;

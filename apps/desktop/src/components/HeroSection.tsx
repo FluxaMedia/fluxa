@@ -21,6 +21,12 @@ interface Props {
   isActive?: boolean;
   autoplayTrailer?: boolean;
   autoplayTrailerDelaySecs?: number;
+  autoSlide?: boolean;
+  showLeftGradient?: boolean;
+  panelBottom?: string;
+  panelStyle?: React.CSSProperties;
+  bottomGradientHeight?: string;
+  nativeMiniCutout?: boolean;
   preferredSubtitleLanguage?: string;
   secondarySubtitleLanguage?: string;
   pendingLogoIds?: Set<string>;
@@ -40,6 +46,12 @@ export const HeroSection = React.memo(function HeroSection({
   isActive = true,
   autoplayTrailer = false,
   autoplayTrailerDelaySecs = 2,
+  autoSlide = true,
+  showLeftGradient = true,
+  panelBottom,
+  panelStyle,
+  bottomGradientHeight,
+  nativeMiniCutout = false,
   preferredSubtitleLanguage,
   secondarySubtitleLanguage,
   pendingLogoIds,
@@ -146,12 +158,12 @@ export const HeroSection = React.memo(function HeroSection({
   }
 
   useEffect(() => {
-    if (!canSlide || !isActive || trailerPending) return;
+    if (!autoSlide || !canSlide || !isActive || trailerPending) return;
     const id = window.setInterval(() => {
       slideToIndex(activeIndexRef.current + 1);
     }, slideIntervalMs);
     return () => window.clearInterval(id);
-  }, [canSlide, items.length, isActive, trailerPending, slideIntervalMs]);
+  }, [autoSlide, canSlide, items.length, isActive, trailerPending, slideIntervalMs]);
 
   useEffect(() => {
     if (!canSlide) return;
@@ -210,7 +222,24 @@ export const HeroSection = React.memo(function HeroSection({
 
   return (
     <div
-      style={{ ...styles.hero, cursor: canSlide ? 'grab' : undefined }}
+      style={{
+        ...styles.hero,
+        cursor: canSlide ? 'grab' : undefined,
+        ...(nativeMiniCutout
+          ? {
+              maskImage: 'linear-gradient(#000 0 0), linear-gradient(#000 0 0)',
+              maskSize: '100% 100%, 448px 252px',
+              maskPosition: '0 0, 24px 24px',
+              maskRepeat: 'no-repeat',
+              maskComposite: 'exclude',
+              WebkitMaskImage: 'linear-gradient(#000 0 0), linear-gradient(#000 0 0)',
+              WebkitMaskSize: '100% 100%, 448px 252px',
+              WebkitMaskPosition: '0 0, 24px 24px',
+              WebkitMaskRepeat: 'no-repeat',
+              WebkitMaskComposite: 'xor',
+            }
+          : null),
+      }}
       tabIndex={canSlide ? 0 : -1}
       onKeyDown={handleKeyDown}
       onPointerDown={handlePointerDown}
@@ -278,10 +307,10 @@ export const HeroSection = React.memo(function HeroSection({
       </div>
 
       <div style={styles.gradientTop} />
-      <div style={{ ...styles.gradientLeft, opacity: trailerActive ? 0.45 : 1, transition: 'opacity 0.6s ease' }} />
-      <div style={styles.gradientBottom} />
+      {showLeftGradient && <div style={{ ...styles.gradientLeft, opacity: trailerActive ? 0.45 : 1, transition: 'opacity 0.6s ease' }} />}
+      <div style={{ ...styles.gradientBottom, ...(bottomGradientHeight ? { height: bottomGradientHeight } : null) }} />
 
-      <div className="hero-panel" style={{ ...styles.panel, ...contentStyle }}>
+      <div className="hero-panel" style={{ ...styles.panel, ...(panelBottom ? { bottom: panelBottom } : null), ...panelStyle, ...contentStyle }}>
         {logoUrl ? (
           <img
             className="hero-logo"

@@ -82,7 +82,12 @@ export function SeekPreview({
         }
         chapterName = found || null;
       }
-      setPreview({ x: e.clientX - rect.left, time: previewTime, chapter: chapterName });
+      const previewHalfWidth = 80;
+      setPreview({
+        x: Math.max(previewHalfWidth, Math.min(rect.width - previewHalfWidth, e.clientX - rect.left)),
+        time: previewTime,
+        chapter: chapterName,
+      });
     };
     const onLeave = () => setPreview(null);
     bar.addEventListener('mousemove', onMove);

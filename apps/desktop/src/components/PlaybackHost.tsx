@@ -11,6 +11,7 @@ interface Props {
   active: boolean;
   loading: PlayerLoadingOverlayState | null;
   closePlayer: () => Promise<void>;
+  onSeekPersist?: () => Promise<void>;
   notifyFirstFrame: () => void;
   title?: string;
   episodeTitle?: string;
@@ -43,6 +44,7 @@ export function PlaybackHost({
   active,
   loading,
   closePlayer,
+  onSeekPersist,
   notifyFirstFrame,
   title,
   episodeTitle,
@@ -71,10 +73,9 @@ export function PlaybackHost({
   onDismissRecommendations,
 }: Props) {
   if (!active && !loading) return null;
-
   return (
     <>
-      {loading && !active && (
+      {loading && (
         <PlayerLoadingOverlay
           background={loading.background}
           logo={loading.logo}
@@ -92,6 +93,7 @@ export function PlaybackHost({
           <React.Suspense fallback={null}>
             <ReactPlayerOverlay
               closePlayer={closePlayer}
+              onSeekPersist={onSeekPersist}
               onFirstFrame={notifyFirstFrame}
               isLoadingOverlayActive={!!loading}
               initialTitle={title}

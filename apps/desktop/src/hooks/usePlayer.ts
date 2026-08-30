@@ -6,7 +6,8 @@ import {
   coreInvoke,
   corePlaybackIntroLookupContentId,
   corePlaybackPreparePlan,
-  coreResolveNextEpisode,
+  coreTerminalRecommendationEligibility,
+  coreRecommendationOutroPlan,
   coreCanPrefetchNextEpisode,
   coreSelectNextEpisodeStream,
   coreStreamShellPlan,
@@ -136,6 +137,7 @@ interface UsePlayerResult {
   closePlayer: () => Promise<void>;
   notifyFirstFrame: () => void;
   flushProgressOnQuit: () => Promise<void>;
+  saveProgressOnEvent: () => Promise<void>;
   skipSegmentCoverage: Record<string, string[]>;
   playerRecommendations: Meta[];
   dismissPlayerRecommendations: () => void;
@@ -199,6 +201,7 @@ function useDesktopPlayer({
   const scrobbleWasPausedRef = useRef(false);
   const externalPlaybackFinalizedRef = useRef(false);
   const lastExternalProgressWriteRef = useRef(0);
+  const recommendationOutroShownRef = useRef<string | null>(null);
 
   const playerLoadingOverlayRef = useRef<PlayerLoadingOverlayState | null>(null);
 
@@ -215,6 +218,41 @@ function useDesktopPlayer({
   useEffect(() => {
     if (!playerUrl) return;
     const unsubscribe = subscribePlayerStatus((status) => {
+      const meta = playingMetaRef.current;
+      const episodeKey = playingEpisodeRef.current?.id ?? meta?.id;
+      const recommendationDuration = Number.parseFloat(status.duration ?? '');
+      const recommendationTimePos = Number.parseFloat(status.timePos ?? '');
+      if (meta && episodeKey && Number.isFinite(recommendationDuration) && recommendationDuration > 0 && Number.isFinite(recommendationTimePos)) {
+        const prefs = appPrefs(stateRef.current);
+        const key = meta.type === 'series' ? 'seriesRecommendationOutroPercent' : 'movieRecommendationOutroPercent';
+        const thresholdPercent = Number(prefString(prefs, key, '85'));
+        void coreRecommendationOutroPlan({
+          positionSeconds: recommendationTimePos,
+          durationSeconds: recommendationDuration,
+          thresholdPercent,
+          alreadyShown: recommendationOutroShownRef.current === episodeKey,
+        }).then((outroPlan) => {
+        if (outroPlan.shouldShow) {
+          recommendationOutroShownRef.current = episodeKey;
+          void (async () => {
+            if (meta.type === 'series') {
+              const episode = playingEpisodeRef.current;
+              if (!episode || !meta.videos?.length) return;
+              const eligibility = await coreTerminalRecommendationEligibility({
+                contentType: meta.type,
+                videos: meta.videos,
+                currentSeason: episode.season ?? 0,
+                currentEpisode: episode.episode ?? episode.number ?? 0,
+                nowMs: Date.now(),
+              });
+              if (!eligibility.eligible) return;
+            }
+            const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false });
+            setPlayerRecommendations(recommendations);
+          })().catch(() => undefined);
+        }
+        }).catch(() => undefined);
+      }
       const percent = pendingResumePercentRef.current;
       if (percent === null) return;
       const duration = Number.parseFloat(status.duration ?? '');
@@ -330,6 +368,17 @@ function useDesktopPlayer({
     [],
   );
 
+  const { saveProgressTick, saveProgressOnEvent } = usePlayerProgressPersistence({
+    playerUrl,
+    stateRef,
+    closingPlayerRef,
+    inNativePlayerRef,
+    playingMetaRef,
+    playingEpisodeRef,
+    playingStreamRef,
+    lastPlaybackStatusRef,
+    updateState,
+  });
   const dispatchScrobbleLifecycle = usePlayerScrobbling({
     playerUrl,
     activeProfileRef,
@@ -342,6 +391,7 @@ function useDesktopPlayer({
     scrobbleStoppedRef,
     scrobbleWasPausedRef,
     onProfileUpdated,
+    saveProgressOnEvent,
   });
   const finalizeExternalPlayback = useCallback(
     async (status: EmbeddedMpvStatus | null) => {
@@ -500,6 +550,9 @@ function useDesktopPlayer({
     const captureMeta = playingMetaRef.current;
     const captureEpisode = playingEpisodeRef.current;
     const captureStream = playingStreamRef.current;
+    debugLog(
+      `player-debug:closePlayer:capture meta=${captureMeta?.id ?? 'none'} episode=${captureEpisode?.id ?? 'none'} s${captureEpisode?.season ?? '?'}e${captureEpisode?.episode ?? captureEpisode?.number ?? '?'} stream=${captureStream?.url?.slice(0, 100) ?? 'none'}`,
+    );
     const shouldStopTorrent = playerUsesTorrentRef.current;
     setPlayerUrl(null);
     setPlayerTorrentTelemetryContext(null);
@@ -520,6 +573,9 @@ function useDesktopPlayer({
     void playerClearEpisodes();
     try {
       const status = (await withCloseTimeout(embeddedMpvStatus(), 700).catch(() => null)) ?? lastPlaybackStatusRef.current;
+      debugLog(
+        `player-debug:closePlayer:status episode=${captureEpisode?.id ?? 'none'} timePos=${status?.timePos ?? 'none'} duration=${status?.duration ?? 'none'} loaded=${status?.loaded ?? 'none'} firstFrame=${status?.firstFramePresented ?? 'none'} path=${status?.path ?? 'none'}`,
+      );
       if (!status && captureMeta) {
         debugLog('closePlayer: embeddedMpvStatus timed out and no cached playback status is available');
       }
@@ -558,6 +614,9 @@ function useDesktopPlayer({
             prefs: closePrefs,
           }),
         );
+        debugLog(
+          `player-debug:closePlayer:plan episode=${captureEpisode?.id ?? 'none'} progress=${JSON.stringify(closePlan?.progressAction ?? null)} markWatched=${JSON.stringify(closePlan?.markWatchedAction ?? null)} upNext=${JSON.stringify(closePlan?.upNextAction ?? null)}`,
+        );
         if (scrobbleStartedRef.current) await dispatchScrobbleLifecycle('stop', status);
         await applyPlayerCloseActions([closePlan?.progressAction, closePlan?.markWatchedAction, closePlan?.upNextAction], updateState);
         if (closePlan?.reloadHome) {
@@ -590,17 +649,6 @@ function useDesktopPlayer({
     }
   }, [stateRef, updateState, dispatchScrobbleLifecycle]);
 
-  const saveProgressTick = usePlayerProgressPersistence({
-    playerUrl,
-    stateRef,
-    closingPlayerRef,
-    inNativePlayerRef,
-    playingMetaRef,
-    playingEpisodeRef,
-    playingStreamRef,
-    lastPlaybackStatusRef,
-    updateState,
-  });
   const flushOnQuit = useCallback(async () => {
     await saveProgressTick();
     if (externalPlayerSession) {
@@ -718,6 +766,18 @@ function useDesktopPlayer({
   const handleTerminalPlayback = useCallback(async () => {
     const meta = playingMetaRef.current;
     if (!meta || playingNextEpisodeRef.current) return false;
+    if (meta.type === 'series') {
+      const episode = playingEpisodeRef.current;
+      if (!episode || !meta.videos?.length) return false;
+      const eligibility = await coreTerminalRecommendationEligibility({
+        contentType: meta.type,
+        videos: meta.videos,
+        currentSeason: episode.season ?? 0,
+        currentEpisode: episode.episode ?? episode.number ?? 0,
+        nowMs: Date.now(),
+      });
+      if (!eligibility.eligible) return false;
+    }
     const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false }).catch(() => []);
     if (recommendations.length === 0) return false;
     setPlayerRecommendations(recommendations);
@@ -749,7 +809,9 @@ function useDesktopPlayer({
     showEpisodeTransitionLoading,
     scrobbleStartedRef,
     dispatchScrobbleLifecycle,
+    saveProgressOnEvent,
     onTerminalPlayback: handleTerminalPlayback,
+    debugLog,
   });
 
   const notifyFirstFrame = useCallback(() => {
@@ -799,6 +861,7 @@ function useDesktopPlayer({
     closePlayer,
     notifyFirstFrame,
     flushProgressOnQuit: flushOnQuit,
+    saveProgressOnEvent,
     skipSegmentCoverage,
     playerRecommendations,
     dismissPlayerRecommendations,

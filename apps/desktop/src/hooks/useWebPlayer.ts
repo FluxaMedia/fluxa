@@ -7,7 +7,7 @@ import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { corePlaybackPreparePlan } from '../core/engine';
 import { appPrefs } from '../core/appPrefs';
 import { fetchPlaybackSkipSegments, type IntroSegmentResult } from '../core/effectRunner';
-import { corePlaybackIntroLookupContentId, coreResolveNextEpisode } from '../core/engine';
+import { corePlaybackIntroLookupContentId, coreResolveNextEpisode, coreTerminalRecommendationEligibility } from '../core/engine';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
 import { fetchTerminalRecommendations } from '../core/detailEffects';
 import {
@@ -70,6 +70,7 @@ export interface WebPlayerResult {
   closePlayer: () => Promise<void>;
   notifyFirstFrame: () => void;
   flushProgressOnQuit: () => Promise<void>;
+  saveProgressOnEvent: () => Promise<void>;
   skipSegmentCoverage: Record<string, string[]>;
   playerRecommendations: Meta[];
   dismissPlayerRecommendations: () => void;
@@ -298,6 +299,18 @@ export function useWebPlayer({
   const handleTerminalPlayback = useCallback(async () => {
     const meta = playingMetaRef.current;
     if (!meta || playerNextEpisode) return false;
+    if (meta.type === 'series') {
+      const episode = playingEpisodeRef.current;
+      if (!episode) return false;
+      const eligibility = await coreTerminalRecommendationEligibility({
+        contentType: meta.type,
+        videos: meta.videos ?? [],
+        currentSeason: episode.season ?? 0,
+        currentEpisode: episode.episode ?? episode.number ?? 0,
+        nowMs: Date.now(),
+      });
+      if (!eligibility.eligible) return false;
+    }
     const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false }).catch(() => []);
     setPlayerRecommendations(recommendations);
     return recommendations.length > 0;
@@ -370,6 +383,7 @@ export function useWebPlayer({
     closePlayer,
     notifyFirstFrame: () => {},
     flushProgressOnQuit: saveProgress,
+    saveProgressOnEvent: saveProgress,
     skipSegmentCoverage,
     playerRecommendations,
     dismissPlayerRecommendations,

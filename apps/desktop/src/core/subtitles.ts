@@ -1,4 +1,4 @@
-import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex } from './engine';
+import { coreNormalizeAddonSubtitles, coreFindPreferredSubtitleIndex, coreSubtitleTracks } from './engine';
 import { platformInvoke as invoke } from '../platform/invoke';
 import { coreResourceFetchPlan, coreResourceParsePlan, coreParseAddonResourceResult } from './addonManifest';
 import { loadPrefs } from './libraryOps';
@@ -76,6 +76,8 @@ export async function resolvePlaybackSubtitles(
     }),
   );
 
+  const canonicalTracks = await coreSubtitleTracks(subtitles);
+  subtitles.splice(0, subtitles.length, ...(canonicalTracks as PlayerSubtitleSource[]));
   const prefs = await loadPrefs();
   const preferredIndex = await coreFindPreferredSubtitleIndex(
     subtitles.map((subtitle, index) => ({

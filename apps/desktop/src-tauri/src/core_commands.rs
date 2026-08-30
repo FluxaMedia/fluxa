@@ -27,7 +27,10 @@ pub fn engine_dispatch(state: State<DesktopState>, action_json: String) -> Optio
 
 #[tauri::command]
 pub fn engine_complete_effect(state: State<DesktopState>, result_json: String) -> Option<String> {
-    FluxaCore::headless_engine_complete_effect_json((*state.engine_handle.lock().unwrap())?, &result_json)
+    FluxaCore::headless_engine_complete_effect_json(
+        (*state.engine_handle.lock().unwrap())?,
+        &result_json,
+    )
 }
 
 #[tauri::command]
@@ -59,10 +62,18 @@ pub async fn http_fetch_text(url: String) -> Result<HttpTextResponse, String> {
 }
 
 #[tauri::command]
-pub async fn http_execute_text(url: String, method: String, headers: HashMap<String, String>, body: Option<Value>) -> Result<HttpTextResponse, String> {
+pub async fn http_execute_text(
+    url: String,
+    method: String,
+    headers: HashMap<String, String>,
+    body: Option<Value>,
+) -> Result<HttpTextResponse, String> {
     let client = crate::net_guard::vetted_client(&url, std::time::Duration::from_secs(10)).await?;
-    let method = reqwest::Method::from_bytes(method.as_bytes()).map_err(|error| error.to_string())?;
-    let mut request = client.request(method, &url).header("User-Agent", "Fluxa/1.0");
+    let method =
+        reqwest::Method::from_bytes(method.as_bytes()).map_err(|error| error.to_string())?;
+    let mut request = client
+        .request(method, &url)
+        .header("User-Agent", "Fluxa/1.0");
     for (name, value) in headers {
         request = request.header(name, value);
     }
@@ -82,13 +93,35 @@ pub async fn http_execute_text(url: String, method: String, headers: HashMap<Str
 }
 
 #[tauri::command]
-pub async fn run_plugin_scraper(code: String, repository_url: String, scraper_id: String, scraper_settings_json: String, tmdb_id: String, media_type: String, season: Option<i32>, episode: Option<i32>) -> Result<String, String> {
-    tokio::task::spawn_blocking(move || crate::plugin_executor::execute_scraper(code, repository_url, scraper_id, scraper_settings_json, tmdb_id, media_type, season, episode))
-        .await
-        .map_err(|error| error.to_string())?
+pub async fn run_plugin_scraper(
+    code: String,
+    repository_url: String,
+    scraper_id: String,
+    scraper_settings_json: String,
+    tmdb_id: String,
+    media_type: String,
+    season: Option<i32>,
+    episode: Option<i32>,
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        crate::plugin_executor::execute_scraper(
+            code,
+            repository_url,
+            scraper_id,
+            scraper_settings_json,
+            tmdb_id,
+            media_type,
+            season,
+            episode,
+        )
+    })
+    .await
+    .map_err(|error| error.to_string())?
 }
 
 #[tauri::command]
 pub async fn core_invoke(method: String, args_json: String) -> String {
-    tauri::async_runtime::spawn_blocking(move || fluxa_core::ffi::core_invoke(&method, &args_json)).await.unwrap_or_default()
+    tauri::async_runtime::spawn_blocking(move || fluxa_core::ffi::core_invoke(&method, &args_json))
+        .await
+        .unwrap_or_default()
 }

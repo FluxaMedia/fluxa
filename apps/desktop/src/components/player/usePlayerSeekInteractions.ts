@@ -17,6 +17,8 @@ export function usePlayerSeekInteractions({
   dragPosRef,
   startSeekOverlay,
   resetActivity,
+  onSeekToTime,
+  onSeekPersist,
 }: {
   durRef: MutableRefObject<number>;
   lastSeekAtRef: MutableRefObject<number>;
@@ -32,6 +34,8 @@ export function usePlayerSeekInteractions({
   dragPosRef: MutableRefObject<number>;
   startSeekOverlay: () => void;
   resetActivity: () => void;
+  onSeekToTime?: (time: number) => void;
+  onSeekPersist?: () => Promise<void>;
 }) {
   const applyFills = useCallback((fraction: number, bufferFraction?: number) => {
     const segments = chapterSegmentsRef.current;
@@ -69,10 +73,12 @@ export function usePlayerSeekInteractions({
       const time = fraction * durRef.current;
       lastSeekAtRef.current = Date.now();
       startSeekOverlay();
+      onSeekToTime?.(time);
       if (activeCastDeviceIdRef.current) castSeek(time);
       else sendCmd(`set time-pos ${Math.floor(time)}`);
+      if (onSeekPersist) window.setTimeout(() => void onSeekPersist(), 250);
     },
-    [startSeekOverlay],
+    [onSeekPersist, onSeekToTime, startSeekOverlay],
   );
 
   const onSeekPointerDown = useCallback(

@@ -8,11 +8,13 @@ mod custom_fonts;
 mod diagnostics;
 mod discord_presence;
 mod downloads;
+#[cfg(target_os = "linux")]
+mod experimental_native_video_host;
 mod external_player;
 mod fcast;
 mod libvlc_render;
 #[cfg(target_os = "linux")]
-mod linux_player_surface;
+mod linux_native_render;
 #[cfg(target_os = "linux")]
 mod linux_vulkan;
 #[cfg(target_os = "linux")]
@@ -250,7 +252,7 @@ fn debug_log(msg: String) {
     if std::env::var_os("FLUXA_DEBUG_LOGS").is_some() {
         println!("[perf] {msg}");
     }
-    if msg.starts_with("subtitles:") {
+    if msg.starts_with("subtitles:") || msg.starts_with("player-debug:") {
         log::warn!("[app] {msg}");
     } else {
         log::debug!("[app] {msg}");
@@ -530,6 +532,7 @@ pub fn run() {
             });
 
             if let Some(main_window) = app.get_webview_window("main") {
+                let _ = main_window.set_decorations(false);
                 let close_handle = app.handle().clone();
                 main_window.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
@@ -625,6 +628,7 @@ pub fn run() {
             player_apply_preferences,
             player_set_http_headers,
             player_load,
+            player_set_native_video_geometry,
             player_render_frame,
             player_command,
             player_auto_sync_subtitles,

@@ -150,7 +150,9 @@ impl VulkanPlatform for MacosPlatform {
                     }
                     log::warn!("macOS Vulkan: {} could not be loaded", loader.display());
                 }
-                Err(e) => log::warn!("macOS Vulkan: could not write the MoltenVK ICD manifest: {e}"),
+                Err(e) => {
+                    log::warn!("macOS Vulkan: could not write the MoltenVK ICD manifest: {e}")
+                }
             }
         }
         log::info!("macOS Vulkan: loading MoltenVK from {}", icd.display());

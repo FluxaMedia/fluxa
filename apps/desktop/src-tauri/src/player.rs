@@ -19,7 +19,7 @@ use tauri::path::BaseDirectory;
 use tauri::{AppHandle, Emitter, Manager, State};
 
 #[cfg(target_os = "linux")]
-use crate::linux_player_surface;
+use crate::experimental_native_video_host;
 #[cfg(target_os = "macos")]
 use crate::macos_avplayer;
 #[cfg(target_os = "macos")]
@@ -152,7 +152,15 @@ pub fn ensure_native_player_surface(
     app_handle: &AppHandle,
     state: &DesktopState,
 ) -> Option<std::sync::Arc<dyn crate::player_surface::PlayerSurface>> {
-    cache_native_player_surface(state, || linux_player_surface::install(app_handle.clone()))
+    cache_native_player_surface(state, || {
+        experimental_native_video_host::install(app_handle.clone())
+    })
+}
+
+#[tauri::command]
+pub fn player_set_native_video_geometry(mini: bool) {
+    #[cfg(target_os = "linux")]
+    experimental_native_video_host::set_mini_mode(mini);
 }
 
 #[cfg(target_os = "windows")]

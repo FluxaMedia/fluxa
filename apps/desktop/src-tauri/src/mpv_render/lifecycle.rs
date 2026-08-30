@@ -105,7 +105,10 @@ impl MpvClientHandle {
 
             for script in scripts {
                 if let Err(error) = client.set_option("script", &script.to_string_lossy()) {
-                    log::warn!("mpv custom script could not be loaded {:?}: {error}", script);
+                    log::warn!(
+                        "mpv custom script could not be loaded {:?}: {error}",
+                        script
+                    );
                 }
             }
         }
@@ -368,8 +371,11 @@ impl MpvThumbnailRenderer {
     }
 
     pub fn set_paused(&self, paused: bool) -> Result<(), String> {
-        self.client
-            .command_string(if paused { "set pause yes" } else { "set pause no" })
+        self.client.command_string(if paused {
+            "set pause yes"
+        } else {
+            "set pause no"
+        })
     }
 
     pub fn screenshot_to_file(&self, path: &str) -> Result<(), String> {

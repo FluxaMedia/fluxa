@@ -1,6 +1,6 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { embeddedMpvAddSubtitle, playerGetTrackOptions, type PlayerTrackOption } from '../../core/mpvPlayer';
-import type { PlayerSubtitleSource } from '../../core/playerUtils';
+import { subtitleDisplayLabel, type PlayerSubtitleSource } from '../../core/playerUtils';
 import { sendCmd } from './PlayerOverlayPrimitives';
 
 export type PlayerTrackPopover = 'audio' | 'sub' | 'speed' | null;
@@ -8,16 +8,19 @@ export type PlayerTrackPopover = 'audio' | 'sub' | 'speed' | null;
 const PENDING_PREFIX = 'pending:';
 
 function subtitleLabel(subtitle: PlayerSubtitleSource): string {
-  return subtitle.addonName || subtitle.label || subtitle.lang || 'Subtitle';
+  return subtitleDisplayLabel(subtitle);
 }
 
 // mpv only knows the tracks that were already sub-added. Everything the addons
 // resolved but we did not download yet is listed alongside them as a pending
 // row, and downloaded the moment the viewer picks it.
-function withPendingSubtitles(tracks: PlayerTrackOption[], subtitles: PlayerSubtitleSource[]): PlayerTrackOption[] {
-  const loaded = new Set(tracks.map((track) => track.source).filter(Boolean));
+function withPendingSubtitles(
+  tracks: PlayerTrackOption[],
+  subtitles: PlayerSubtitleSource[],
+  loadedUrls: Set<string>,
+): PlayerTrackOption[] {
   const pending = subtitles
-    .filter((subtitle) => !loaded.has(subtitle.url) && !loaded.has(subtitleLabel(subtitle)))
+    .filter((subtitle) => subtitle.loaded !== true && !loadedUrls.has(subtitle.url))
     .map((subtitle) => ({
       id: `${PENDING_PREFIX}${subtitle.url}`,
       label: subtitleLabel(subtitle),
@@ -37,6 +40,12 @@ export function usePlayerTrackControls(resetActivity: () => void, subtitles: Pla
   const [subTracks, setSubTracks] = useState<PlayerTrackOption[]>([]);
   const [loadingTrackId, setLoadingTrackId] = useState<string | null>(null);
   const [failedTrackId, setFailedTrackId] = useState<string | null>(null);
+  const [loadedSubtitleUrls, setLoadedSubtitleUrls] = useState<Set<string>>(new Set());
+  const subtitleIdentity = subtitles.map((subtitle) => subtitle.url).join('\u0000');
+
+  useEffect(() => {
+    setLoadedSubtitleUrls(new Set(subtitles.filter((subtitle) => subtitle.loaded).map((subtitle) => subtitle.url)));
+  }, [subtitleIdentity]);
 
   const openTrackPopover = useCallback(
     async (type: Exclude<PlayerTrackPopover, null>) => {
@@ -52,9 +61,9 @@ export function usePlayerTrackControls(resetActivity: () => void, subtitles: Pla
       } else if (type === 'sub') {
         setFailedTrackId(null);
         try {
-          setSubTracks(withPendingSubtitles(await playerGetTrackOptions('sub'), subtitles));
+          setSubTracks(withPendingSubtitles(await playerGetTrackOptions('sub'), subtitles, loadedSubtitleUrls));
         } catch {
-          setSubTracks(withPendingSubtitles([], subtitles));
+          setSubTracks(withPendingSubtitles([], subtitles, loadedSubtitleUrls));
         }
       }
       setTrackPopover(type);
@@ -96,14 +105,20 @@ export function usePlayerTrackControls(resetActivity: () => void, subtitles: Pla
       setLoadingTrackId(null);
       if (!added) {
         setFailedTrackId(pendingId);
-        setSubTracks(withPendingSubtitles(after, subtitles));
+        setSubTracks(withPendingSubtitles(after, subtitles, loadedSubtitleUrls));
         return;
       }
-      setSubTracks(withPendingSubtitles(after, subtitles).map((track) => ({ ...track, selected: track.id === added.id })));
-      sendCmd(`set sid ${added.id}`);
+      setLoadedSubtitleUrls((current) => new Set(current).add(url));
+      setSubTracks(
+        withPendingSubtitles(after, subtitles, new Set(loadedSubtitleUrls).add(url)).map((track) => ({
+          ...track,
+          selected: track.id === added.id,
+        })),
+      );
       setTrackPopover(null);
+      sendCmd(`set sid ${added.id}`);
     },
-    [subtitles],
+    [loadedSubtitleUrls, subtitles],
   );
 
   const selectTrack = useCallback(

@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Meta } from '../core/types';
-import { continueWatchingCardFields } from '../core/continueWatchingUtils';
+import { continueWatchingCardFields, type ContinueWatchingCardFields } from '../core/continueWatchingUtils';
 import { ContinueCard, isRenderableMeta } from './ContinueCard';
 import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
@@ -20,7 +20,7 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
   const dragScroll = useDragScroll(scrollRef);
   const [canScrollLeft, setCanScrollLeft] = React.useState(false);
   const [canScrollRight, setCanScrollRight] = React.useState(false);
-  const [cardFields, setCardFields] = React.useState<Map<string, { artwork: string | null; episodeLine: string }>>(new Map());
+  const [cardFields, setCardFields] = React.useState<Map<string, ContinueWatchingCardFields>>(new Map());
 
   React.useEffect(() => {
     let cancelled = false;
@@ -80,8 +80,12 @@ export const ThisWeekRow = React.memo(function ThisWeekRow({
             key={meta.id}
             meta={meta}
             isHorizontal
-            artwork={cardFields.get(meta.id)?.artwork ?? null}
-            episodeLine={cardFields.get(meta.id)?.episodeLine ?? null}
+              artwork={cardFields.get(meta.id)?.artwork ?? null}
+              episodeLine={cardFields.get(meta.id)?.episodeLine ?? null}
+              progressPercent={cardFields.get(meta.id)?.progressPercent}
+              isUpNext={cardFields.get(meta.id)?.isUpNext}
+              watchedSeconds={cardFields.get(meta.id)?.watchedSeconds}
+              remainingSeconds={cardFields.get(meta.id)?.remainingSeconds}
             remainingFormat="time"
             progressDirection="remaining"
             dismissing={false}

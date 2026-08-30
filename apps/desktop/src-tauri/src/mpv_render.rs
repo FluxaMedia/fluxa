@@ -1,8 +1,8 @@
-use base64::{engine::general_purpose, Engine as _};
+use base64::{Engine as _, engine::general_purpose};
 use libloading::Library;
 use serde::{Deserialize, Serialize};
-use std::ffi::{c_char, c_int, c_void, CStr, CString};
 use std::collections::HashMap;
+use std::ffi::{CStr, CString, c_char, c_int, c_void};
 use std::path::PathBuf;
 use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
@@ -10,7 +10,6 @@ use std::sync::{Arc, Mutex};
 
 mod api;
 use api::MpvApi;
-
 
 type MpvHandle = c_void;
 type MpvRenderContext = c_void;
@@ -220,8 +219,7 @@ type MpvRenderContextSetParameter =
 type MpvRenderContextFree = unsafe extern "C" fn(*mut MpvRenderContext);
 type MpvWaitEvent = unsafe extern "C" fn(*mut MpvHandle, f64) -> *mut MpvEvent;
 type MpvRequestLogMessages = unsafe extern "C" fn(*mut MpvHandle, *const c_char) -> c_int;
-type MpvObserveProperty =
-    unsafe extern "C" fn(*mut MpvHandle, u64, *const c_char, c_int) -> c_int;
+type MpvObserveProperty = unsafe extern "C" fn(*mut MpvHandle, u64, *const c_char, c_int) -> c_int;
 
 pub struct MpvFrameState {
     loaded: AtomicBool,

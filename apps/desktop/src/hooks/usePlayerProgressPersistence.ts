@@ -1,5 +1,6 @@
-import { useCallback, useEffect, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react';
 import { persistPlaybackProgress } from '../core/playbackSession';
+import { coreInvoke } from '../core/engine';
 import { appPrefs } from '../core/appPrefs';
 import { embeddedMpvStatus, type EmbeddedMpvStatus } from '../core/mpvPlayer';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
@@ -29,6 +30,8 @@ export function usePlayerProgressPersistence(options: Options) {
     lastPlaybackStatusRef,
     updateState,
   } = options;
+  const lastEventSaveAtRef = useRef(0);
+  const eventSaveInFlightRef = useRef<Promise<void> | null>(null);
   const saveProgressTick = useCallback(async () => {
     if (closingPlayerRef.current || !inNativePlayerRef.current || !playingMetaRef.current) return;
     await persistLastPlaybackSource(playingMetaRef.current, playingStreamRef.current).catch(() => undefined);
@@ -60,6 +63,21 @@ export function usePlayerProgressPersistence(options: Options) {
     stateRef,
     updateState,
   ]);
+  const saveProgressOnEvent = useCallback(async () => {
+    const now = Date.now();
+    const allowed = await coreInvoke<boolean>(
+      'playerShouldSaveEventProgress',
+      JSON.stringify({ nowMs: now, lastSavedAtMs: lastEventSaveAtRef.current }),
+    ).catch(() => false);
+    if (!allowed) return;
+    if (eventSaveInFlightRef.current) return eventSaveInFlightRef.current;
+    lastEventSaveAtRef.current = now;
+    const pending = saveProgressTick().finally(() => {
+      eventSaveInFlightRef.current = null;
+    });
+    eventSaveInFlightRef.current = pending;
+    return pending;
+  }, [saveProgressTick]);
   useEffect(() => {
     if (!playerUrl) return;
     const interval = setInterval(() => {
@@ -67,5 +85,5 @@ export function usePlayerProgressPersistence(options: Options) {
     }, 30000);
     return () => clearInterval(interval);
   }, [playerUrl, saveProgressTick]);
-  return saveProgressTick;
+  return { saveProgressTick, saveProgressOnEvent };
 }

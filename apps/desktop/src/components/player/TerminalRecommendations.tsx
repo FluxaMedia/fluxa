@@ -1,14 +1,22 @@
-import { Play, X } from 'lucide-react';
+import { Maximize2, Pause, Play, X } from 'lucide-react';
 import { t } from '../../i18n';
 import type { Meta } from '../../core/types';
+import { HeroSection } from '../HeroSection';
+import { prefBool, prefString } from '../../core/appPrefs';
 
 interface Props {
   items: Meta[];
   onPlay: (item: Meta) => void;
   onDismiss: () => void;
+  paused?: boolean;
+  onTogglePause?: () => void;
+  onRestore?: () => void;
+  onClose?: () => void;
+  onActivity?: () => void;
+  prefs?: Record<string, unknown>;
 }
 
-export function TerminalRecommendations({ items, onPlay, onDismiss }: Props) {
+export function TerminalRecommendations({ items, onPlay, onDismiss, paused, onTogglePause, onRestore, onClose, onActivity, prefs = {} }: Props) {
   if (items.length === 0) return null;
   return (
     <section
@@ -17,12 +25,11 @@ export function TerminalRecommendations({ items, onPlay, onDismiss }: Props) {
         position: 'absolute',
         inset: 0,
         zIndex: 8,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'center',
-        gap: '1rem',
-        padding: '2rem 4vw',
-        background: 'linear-gradient(90deg, rgba(5,7,12,.98), rgba(5,7,12,.82) 55%, rgba(5,7,12,.94))',
+        display: 'block',
+        width: '100%',
+        height: '100vh',
+        ['--hero-height' as string]: '100vh',
+        background: 'transparent',
         color: '#fff',
       }}
     >
@@ -34,25 +41,67 @@ export function TerminalRecommendations({ items, onPlay, onDismiss }: Props) {
       >
         <X size={24} />
       </button>
-      <div style={{ fontSize: '1.5rem', fontWeight: 700 }}>{t('player.recommendations')}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(10rem, 1fr))', gap: '1rem', maxWidth: '75rem' }}>
-        {items.slice(0, 10).map((item) => (
-          <button
-            type="button"
-            key={item.id}
-            onClick={() => onPlay(item)}
-            style={{ padding: 0, border: '1px solid rgba(255,255,255,.18)', borderRadius: '.45rem', overflow: 'hidden', background: '#151923', color: '#fff', textAlign: 'left', cursor: 'pointer' }}
-          >
-            <div style={{ aspectRatio: '2 / 3', background: '#222938' }}>
-              {item.poster && <img src={item.poster} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />}
-            </div>
-            <div style={{ padding: '.65rem', display: 'flex', alignItems: 'center', gap: '.4rem', minHeight: '3.2rem' }}>
-              <Play size={14} fill="currentColor" />
-              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '.85rem' }}>{item.name}</span>
-            </div>
+      <HeroSection
+        meta={items[0]}
+        slides={items.slice(1)}
+        onPlay={onPlay}
+        autoplayTrailer={prefBool(prefs, 'detailHeroAutoplayTrailer', false)}
+        autoplayTrailerDelaySecs={Number(prefString(prefs, 'detailHeroAutoplayTrailerDelaySecs', '2'))}
+        autoSlide={false}
+        showLeftGradient={false}
+        panelBottom="3.5rem"
+        panelStyle={{ left: 'auto', right: '7.5rem', maxWidth: '31rem' }}
+        bottomGradientHeight="32rem"
+        nativeMiniCutout
+        preferredSubtitleLanguage={prefString(prefs, 'preferredSubtitleLanguage', 'none')}
+        secondarySubtitleLanguage={prefString(prefs, 'secondarySubtitleLanguage', 'none')}
+      />
+      <div
+        onMouseEnter={onActivity}
+        onMouseMove={onActivity}
+        style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', width: '28rem', height: '15.75rem', zIndex: 12 }}
+      >
+        {onTogglePause && onRestore && onClose && <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            gap: '0.25rem',
+            padding: '0.35rem',
+            borderRadius: '0 0 0.45rem 0.45rem',
+            background: 'linear-gradient(to top, rgba(0,0,0,0.85), transparent)',
+            opacity: 0,
+            transition: 'opacity 0.2s ease',
+          }}
+          className="recommendation-mini-controls"
+        >
+          <button type="button" onClick={onTogglePause} aria-label={paused ? t('player.play') : t('player.pause')} style={miniButton}>
+            {paused ? <Play size={15} fill="currentColor" /> : <Pause size={15} fill="currentColor" />}
           </button>
-        ))}
+          <button type="button" onClick={onRestore} aria-label={t('player.restore_window')} style={miniButton}>
+            <Maximize2 size={15} />
+          </button>
+          <button type="button" onClick={onClose} aria-label={t('common.close')} style={miniButton}>
+            <X size={15} />
+          </button>
+        </div>}
       </div>
+      <style>{`.recommendation-mini-controls:hover, div:hover > .recommendation-mini-controls { opacity: 1 !important; }`}</style>
     </section>
   );
 }
+
+const miniButton = {
+  width: '2rem',
+  height: '2rem',
+  display: 'grid',
+  placeItems: 'center',
+  border: 0,
+  borderRadius: '50%',
+  color: '#fff',
+  background: 'rgba(0,0,0,0.62)',
+  cursor: 'pointer',
+};

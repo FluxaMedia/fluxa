@@ -41,6 +41,7 @@ export type ModernDetailProps = {
   peopleImages: Record<string, string>;
   watchedMap: Record<string, boolean>;
   progressMap: Record<string, ProgressEntry>;
+  progressPresentation?: { videoId: string; progressPercent: number; remainingSeconds: number } | null;
   continueWatchingEntry?: LibraryItem | null;
   trailerOnHero: boolean;
   detailHeroAutoplayTrailer: boolean;
@@ -106,6 +107,7 @@ export function ModernDetailLayout({
   peopleImages,
   watchedMap,
   progressMap,
+  progressPresentation,
   continueWatchingEntry,
   isInWatchlist,
   isDropped,
@@ -385,6 +387,7 @@ export function ModernDetailLayout({
                 filteredEps={filteredEps}
                 watchedMap={watchedMap}
                 progressMap={progressMap}
+                progressPresentation={progressPresentation}
                 metaId={meta.id}
                 continueWatchingEntry={continueWatchingEntry}
                 episodeGridStyle={episodeGridStyle}

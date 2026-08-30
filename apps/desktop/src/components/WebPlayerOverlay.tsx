@@ -565,7 +565,20 @@ export function WebPlayerOverlay({
           video.load();
           void video.play().catch(() => setPaused(true));
         }}
-        style={{ width: '100%', height: '100%', flex: 1, objectFit: 'contain', minHeight: 0 }}
+        style={{
+          width: recommendations.length > 0 ? '28rem' : '100%',
+          height: recommendations.length > 0 ? '15.75rem' : '100%',
+          flex: recommendations.length > 0 ? 'none' : 1,
+          objectFit: 'contain',
+          minHeight: 0,
+          position: recommendations.length > 0 ? 'absolute' : undefined,
+          top: recommendations.length > 0 ? '1.5rem' : undefined,
+          left: recommendations.length > 0 ? '1.5rem' : undefined,
+          zIndex: recommendations.length > 0 ? 12 : undefined,
+          borderRadius: recommendations.length > 0 ? '.5rem' : undefined,
+          boxShadow: recommendations.length > 0 ? '0 .5rem 2rem rgba(0,0,0,.55)' : undefined,
+          transition: 'top .45s ease, left .45s ease, width .45s ease, height .45s ease',
+        }}
       />
       {recommendations.length > 0 && onPlayRecommendation && onDismissRecommendations && (
         <TerminalRecommendations items={recommendations} onPlay={onPlayRecommendation} onDismiss={onDismissRecommendations} />

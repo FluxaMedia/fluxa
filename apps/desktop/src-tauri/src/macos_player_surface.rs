@@ -55,19 +55,22 @@ unsafe fn msg1_bool(obj: Id, sel_name: &str, b: i8) -> Id {
 }
 unsafe fn msg1_usize(obj: Id, sel_name: &str, v: usize) {
     type Fn = unsafe extern "C" fn(Id, Id, usize);
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name), v) }
 }
 
 unsafe fn msg1_usize_ret(obj: Id, sel_name: &str, v: usize) -> Id {
     type Fn = unsafe extern "C" fn(Id, Id, usize) -> Id;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name), v) }
 }
 
 unsafe fn msg0_usize(obj: Id, sel_name: &str) -> usize {
     type Fn = unsafe extern "C" fn(Id, Id) -> usize;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name)) }
 }
 
@@ -851,7 +854,10 @@ unsafe fn create_render_subview(
 
     let host = host_view_for(parent.0);
     match host {
-        HostView::Sibling { content_view, below } => {
+        HostView::Sibling {
+            content_view,
+            below,
+        } => {
             msg3_positioned(content_view, view, -1, below);
         }
         HostView::Container(container) => {
@@ -869,13 +875,15 @@ unsafe fn create_render_subview(
 
 unsafe fn msg0_rect(obj: Id, sel_name: &str) -> NSRect {
     type Fn = unsafe extern "C" fn(Id, Id) -> NSRect;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name)) }
 }
 
 unsafe fn msg0_bool(obj: Id, sel_name: &str) -> bool {
     type Fn = unsafe extern "C" fn(Id, Id) -> i8;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name)) != 0 }
 }
 
@@ -905,7 +913,8 @@ pub(crate) unsafe fn log_surface_geometry(tag: &str, view: Id, layer: Id) {
 
 unsafe fn msg0_size(obj: Id, sel_name: &str) -> NSSize {
     type Fn = unsafe extern "C" fn(Id, Id) -> NSSize;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel(sel_name)) }
 }
 
@@ -923,7 +932,9 @@ unsafe fn class_name(obj: Id) -> String {
         if name.is_null() {
             "?".to_string()
         } else {
-            std::ffi::CStr::from_ptr(name).to_string_lossy().into_owned()
+            std::ffi::CStr::from_ptr(name)
+                .to_string_lossy()
+                .into_owned()
         }
     }
 }
@@ -1010,7 +1021,12 @@ unsafe fn set_draws_background_off(view: Id) {
         let no = num(number_cls, sel("numberWithBool:"), 0);
         type SetFn = unsafe extern "C" fn(Id, Id, Id, Id) -> Id;
         let set: SetFn = std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _);
-        set(view, sel("setValue:forKey:"), no, nsstring("drawsBackground"));
+        set(
+            view,
+            sel("setValue:forKey:"),
+            no,
+            nsstring("drawsBackground"),
+        );
     }
 }
 
@@ -1092,7 +1108,8 @@ unsafe fn msg0_bool_pub(obj: Id, sel_name: &str) -> bool {
 
 unsafe fn msg_init_window(obj: Id, rect: NSRect, style: usize, backing: usize, defer: i8) -> Id {
     type Fn = unsafe extern "C" fn(Id, Id, NSRect, usize, usize, i8) -> Id;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe {
         f(
             obj,
@@ -1107,7 +1124,8 @@ unsafe fn msg_init_window(obj: Id, rect: NSRect, style: usize, backing: usize, d
 
 unsafe fn msg_init_webview(obj: Id, rect: NSRect, config: Id) -> Id {
     type Fn = unsafe extern "C" fn(Id, Id, NSRect, Id) -> Id;
-    let f: Fn = unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
+    let f: Fn =
+        unsafe { std::mem::transmute(objc_msgSend as unsafe extern "C" fn(_, _, ...) -> _) };
     unsafe { f(obj, sel("initWithFrame:configuration:"), rect, config) }
 }
 
@@ -1142,7 +1160,8 @@ pub fn smoke_check_placement() -> Result<String, String> {
         }
         msg1_id(content_view, "addSubview:", webview);
 
-        let (view, layer) = create_render_subview(SendId(content_view), 800.0, 600.0, Some((2.0, 1600, 1200)))?;
+        let (view, layer) =
+            create_render_subview(SendId(content_view), 800.0, 600.0, Some((2.0, 1600, 1200)))?;
         msg1_bool(view.0, "setHidden:", 0);
 
         let superview = msg0(view.0, "superview");

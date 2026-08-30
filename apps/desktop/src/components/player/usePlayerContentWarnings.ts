@@ -47,5 +47,12 @@ export function usePlayerContentWarnings(
     setWarningsDone(true);
   }, []);
 
-  return { warnings, isVisible, onAnimationComplete, warningsDone };
+  const replayAtStart = useCallback(() => {
+    if (warnings.length === 0) return;
+    hasShownRef.current = true;
+    setWarningsDone(false);
+    setIsVisible(true);
+  }, [warnings.length]);
+
+  return { warnings, isVisible, onAnimationComplete, replayAtStart, warningsDone };
 }

@@ -1,7 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import type { Meta } from '../core/types';
-import { markContinueWatchingItemWatched, dropContinueWatchingItem, continueWatchingCardFields } from '../core/continueWatchingUtils';
+import { markContinueWatchingItemWatched, dropContinueWatchingItem, continueWatchingCardFields, type ContinueWatchingCardFields } from '../core/continueWatchingUtils';
 import { ContinueCard, isRenderableMeta } from './ContinueCard';
 import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
@@ -10,7 +10,7 @@ import { ConfirmDialog } from './ConfirmDialog';
 const ROW_PADDING_LEFT = '2rem';
 
 let lastCardFieldsKey: string | null = null;
-let lastCardFields: Map<string, { artwork: string | null; episodeLine: string }> = new Map();
+let lastCardFields: Map<string, ContinueWatchingCardFields> = new Map();
 
 function externalSourceLabel(meta: Meta): string {
   const item = meta as unknown as Record<string, unknown>;
@@ -18,39 +18,6 @@ function externalSourceLabel(meta: Meta): string {
   if (rawSource === 'trakt') return t('brand.trakt');
   if (rawSource === 'simkl') return t('brand.simkl');
   return rawSource;
-}
-
-function liveEpisodeLine(meta: Meta): string | null {
-  const item = meta as unknown as {
-    lastEpisodeName?: string;
-    lastEpisodeSeason?: number;
-    lastEpisodeNumber?: number;
-    lastVideoId?: string;
-  };
-  const matchedVideo = item.lastVideoId ? meta.videos?.find((v) => v.id === item.lastVideoId) : undefined;
-
-  let season = matchedVideo?.season;
-  let number = matchedVideo?.episode ?? matchedVideo?.number;
-  let name = matchedVideo?.name ?? matchedVideo?.title;
-
-  if ((season == null || number == null) && item.lastVideoId) {
-    const parts = item.lastVideoId.split(':');
-    if (parts.length >= 3) {
-      const s = Number(parts[parts.length - 2]);
-      const e = Number(parts[parts.length - 1]);
-      if (s > 0 && e > 0) {
-        if (season == null) season = s;
-        if (number == null) number = e;
-      }
-    }
-  }
-  if (season == null) season = item.lastEpisodeSeason;
-  if (number == null) number = item.lastEpisodeNumber;
-  if (name == null) name = item.lastEpisodeName;
-
-  if (season == null || number == null) return null;
-  const code = `${t('format.season_abbrev')}${season}:${t('format.episode_abbrev')}${number}`;
-  return name?.trim() ? `${code} ${name.trim()}` : code;
 }
 
 export const ContinueWatchingRow = React.memo(
@@ -211,7 +178,11 @@ export const ContinueWatchingRow = React.memo(
               meta={meta}
               isHorizontal={isHorizontal}
               artwork={cardFields.get(meta.id)?.artwork ?? null}
-              episodeLine={cardFields.get(meta.id)?.episodeLine ?? liveEpisodeLine(meta)}
+              episodeLine={cardFields.get(meta.id)?.episodeLine ?? null}
+              progressPercent={cardFields.get(meta.id)?.progressPercent}
+              isUpNext={cardFields.get(meta.id)?.isUpNext}
+              watchedSeconds={cardFields.get(meta.id)?.watchedSeconds}
+              remainingSeconds={cardFields.get(meta.id)?.remainingSeconds}
               remainingFormat={remainingFormat}
               progressDirection={progressDirection}
               dismissing={dismissingIds.has(meta.id)}

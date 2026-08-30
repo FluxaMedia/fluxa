@@ -48,11 +48,13 @@ import { coreResolveNextEpisode } from '../core/engine';
 import { castSetVolume } from '../core/cast';
 import { loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from '../core/shortcuts';
 import { loadGamepadBindingOverrides, onGamepadBindingsChanged, type GamepadBindingOverrides } from '../core/gamepadBindings';
+import { platformInvoke as invoke } from '../platform/invoke';
 
 import { sendCmd, type Chapter, type FeedbackFlash } from './player/PlayerOverlayPrimitives';
 
 interface Props {
   closePlayer: () => Promise<void>;
+  onSeekPersist?: () => Promise<void>;
   onFirstFrame?: () => void;
   isLoadingOverlayActive?: boolean;
   initialTitle?: string;
@@ -84,6 +86,7 @@ interface Props {
 
 export function ReactPlayerOverlay({
   closePlayer,
+  onSeekPersist,
   onFirstFrame,
   isLoadingOverlayActive = false,
   initialTitle,
@@ -315,6 +318,9 @@ export function ReactPlayerOverlay({
   } = usePlayerTrackControls(resetActivity, subtitles);
 
   const { miniPlayerActive, isFullscreenRef, setPlayerFullscreen, toggleFullscreen, toggleMiniPlayer } = usePlayerWindowMode(resetActivity);
+  useEffect(() => {
+    void invoke('player_set_native_video_geometry', { mini: recommendations.length > 0 || miniPlayerActive }).catch(() => undefined);
+  }, [miniPlayerActive, recommendations.length]);
   const {
     activeCastDeviceId,
     activeCastDeviceIdRef,
@@ -362,6 +368,10 @@ export function ReactPlayerOverlay({
     dragPosRef,
     startSeekOverlay,
     resetActivity,
+    onSeekToTime: (time) => {
+      if (time <= 1.5) contentWarnings.replayAtStart();
+    },
+    onSeekPersist,
   });
 
   usePlayerLiveTelemetry({
@@ -457,9 +467,10 @@ export function ReactPlayerOverlay({
   const triggerActiveSkip = useCallback(() => {
     if (!activeSkip) return false;
     sendCmd(`set time-pos ${Math.floor(activeSkip.endMs / 1000)}`);
+    window.setTimeout(() => void onSeekPersist?.(), 250);
     flashFeedback('seekFwd', activeSkip.label);
     return true;
-  }, [activeSkip, flashFeedback]);
+  }, [activeSkip, flashFeedback, onSeekPersist]);
 
   usePlayerKeyboardShortcuts({
     closePlayer,
@@ -641,7 +652,7 @@ export function ReactPlayerOverlay({
         zIndex: 9998,
         display: 'flex',
         flexDirection: 'column',
-        background: softwareVideoActive ? '#000' : 'transparent',
+        background: softwareVideoActive && recommendations.length === 0 ? '#000' : 'transparent',
       }}
       onWheel={onOverlayWheel}
       onContextMenu={(e) => {
@@ -662,10 +673,23 @@ export function ReactPlayerOverlay({
       )}
       <PlayerOverlayStyles />
       {recommendations.length > 0 && onPlayRecommendation && onDismissRecommendations && (
-        <TerminalRecommendations items={recommendations} onPlay={onPlayRecommendation} onDismiss={onDismissRecommendations} />
+        <TerminalRecommendations
+          items={recommendations}
+          onPlay={onPlayRecommendation}
+          onDismiss={onDismissRecommendations}
+          paused={paused}
+          onTogglePause={() => {
+            resetActivity();
+            sendCmd('cycle pause');
+          }}
+          onRestore={() => onDismissRecommendations()}
+          onClose={() => void closePlayer()}
+          onActivity={resetActivity}
+          prefs={prefs}
+        />
       )}
 
-      {softwareVideoActive && <SoftwareVideoCanvas key={currentEpisode?.id} statusRef={liveStatusRef} onFirstFrame={onFirstFrame} />}
+      {softwareVideoActive && <SoftwareVideoCanvas key={currentEpisode?.id} statusRef={liveStatusRef} onFirstFrame={onFirstFrame} mini={recommendations.length > 0} />}
 
       <PlayerOverlayDecorations
         controlsVisible={controlsVisible}
@@ -695,6 +719,8 @@ export function ReactPlayerOverlay({
       <ContentWarningOverlay
         warnings={contentWarnings.warnings}
         isVisible={contentWarnings.isVisible}
+        controlsVisible={controlsVisible}
+        isPaused={paused}
         onAnimationComplete={contentWarnings.onAnimationComplete}
       />
 
@@ -901,8 +927,10 @@ export function ReactPlayerOverlay({
         onSeek={(seconds) => {
           resetActivity();
           startSeekOverlay();
+          if (Math.max(0, posRef.current + seconds) <= 1.5) contentWarnings.replayAtStart();
           flashFeedback(seconds < 0 ? 'seekBack' : 'seekFwd', `${seconds > 0 ? '+' : ''}${seconds}s`);
           sendCmd(`seek ${seconds} relative`);
+          window.setTimeout(() => void onSeekPersist?.(), 250);
         }}
         onToggleMute={() => {
           resetActivity();

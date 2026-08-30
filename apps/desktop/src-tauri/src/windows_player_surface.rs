@@ -9,21 +9,21 @@
 //     the frontend can act identically to the Linux code path.
 //   • Player controls live in the WebView overlay (transparent background CSS).
 
+use crate::DesktopState;
 use crate::mpv_render::VulkanTargetImage;
 use crate::playback_engine::{PlaybackEngine, PlayerEngine};
-use crate::render_backend::{read_render_backend, RenderBackend};
+use crate::render_backend::{RenderBackend, read_render_backend};
 use crate::windows_d3d11::D3d11Context;
 use crate::windows_vulkan::VulkanContext;
-use crate::DesktopState;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::RecvTimeoutError;
-use std::sync::{mpsc, Mutex, OnceLock};
+use std::sync::{Mutex, OnceLock, mpsc};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use windows::core::Interface;
 use windows_sys::Win32::Foundation::{FALSE, HWND, LPARAM, LRESULT, RECT, WPARAM};
 use windows_sys::Win32::Graphics::Dwm::{
-    DwmEnableBlurBehindWindow, DWM_BB_BLURREGION, DWM_BB_ENABLE, DWM_BLURBEHIND,
+    DWM_BB_BLURREGION, DWM_BB_ENABLE, DWM_BLURBEHIND, DwmEnableBlurBehindWindow,
 };
 use windows_sys::Win32::Graphics::Gdi::HDC;
 use windows_sys::Win32::Graphics::Gdi::{
@@ -32,10 +32,10 @@ use windows_sys::Win32::Graphics::Gdi::{
 use windows_sys::Win32::System::LibraryLoader::GetModuleHandleW;
 use windows_sys::Win32::UI::ColorSystem::GetICMProfileW;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    CreateWindowExW, DefWindowProcW, DestroyWindow, DispatchMessageW, GetClientRect, LoadCursorW,
-    PeekMessageW, RegisterClassExW, SetCursor, SetWindowPos, ShowWindow, TranslateMessage,
-    CS_HREDRAW, CS_OWNDC, CS_VREDRAW, HWND_BOTTOM, IDC_ARROW, MSG, PM_REMOVE, SWP_NOACTIVATE,
-    SW_HIDE, SW_SHOW, WM_SETCURSOR, WNDCLASSEXW, WS_CHILD, WS_CLIPCHILDREN,
+    CS_HREDRAW, CS_OWNDC, CS_VREDRAW, CreateWindowExW, DefWindowProcW, DestroyWindow,
+    DispatchMessageW, GetClientRect, HWND_BOTTOM, IDC_ARROW, LoadCursorW, MSG, PM_REMOVE,
+    PeekMessageW, RegisterClassExW, SW_HIDE, SW_SHOW, SWP_NOACTIVATE, SetCursor, SetWindowPos,
+    ShowWindow, TranslateMessage, WM_SETCURSOR, WNDCLASSEXW, WS_CHILD, WS_CLIPCHILDREN,
 };
 
 static CURSOR_HIDDEN: AtomicBool = AtomicBool::new(false);
@@ -201,11 +201,10 @@ fn ensure_renderer_for_surface(
     let mut client_guard = state.player_mpv_client.lock().unwrap();
     if client_guard.is_none() {
         log::warn!("player surface: renderer missing, recreating before load");
-        let (client, mut render) =
-            crate::mpv_render::MpvClientHandle::new_with_scripts(
-                crate::player::mpv_script_paths(app),
-            )
-            .map_err(|e| format!("mpv init failed: {e}"))?;
+        let (client, mut render) = crate::mpv_render::MpvClientHandle::new_with_scripts(
+            crate::player::mpv_script_paths(app),
+        )
+        .map_err(|e| format!("mpv init failed: {e}"))?;
         match backend {
             RenderBackend::Vulkan => {
                 client
@@ -316,9 +315,11 @@ impl crate::player_surface::PlayerSurface for NativePlayerSurface {
     }
     fn command_args(&self, commands: Vec<Vec<String>>) -> Result<(), String> {
         let (sender, receiver) = mpsc::channel();
-        self.sender.send(SurfaceCommand::CommandArgs { commands, sender })
+        self.sender
+            .send(SurfaceCommand::CommandArgs { commands, sender })
             .map_err(|e| format!("surface unavailable: {e}"))?;
-        receiver.recv_timeout(Duration::from_secs(5))
+        receiver
+            .recv_timeout(Duration::from_secs(5))
             .map_err(|e| format!("player command unavailable: {e}"))?
     }
     fn status(&self) -> Result<crate::mpv_render::PlayerStatus, String> {
@@ -655,9 +656,7 @@ fn spawn_install_thread(
                                 &state,
                                 &url,
                                 start_at,
-                                |player| {
-                                    player.attach_hwnd(child_hwnd as *mut std::ffi::c_void)
-                                },
+                                |player| player.attach_hwnd(child_hwnd as *mut std::ffi::c_void),
                             );
                             if let Err(error) = result {
                                 log::error!("player surface: libVLC load failed: {error}");
@@ -707,11 +706,13 @@ fn spawn_install_thread(
                     SurfaceCommand::CommandArgs { commands, sender } => {
                         let state = app.state::<DesktopState>();
                         let renderer = state.player_mpv_client.lock().unwrap();
-                        let result = renderer.as_ref()
+                        let result = renderer
+                            .as_ref()
                             .ok_or_else(|| "player renderer is not initialized".to_string())
                             .and_then(|r| {
                                 for command in &commands {
-                                    let args = command.iter().map(String::as_str).collect::<Vec<_>>();
+                                    let args =
+                                        command.iter().map(String::as_str).collect::<Vec<_>>();
                                     r.command_args(&args)?;
                                 }
                                 Ok(())
@@ -841,10 +842,14 @@ fn spawn_install_thread(
                                 last_render_error = Some(e.clone());
                             }
                             if consecutive_render_errors >= 30 {
-                                log::error!("player surface: too many render failures; switching to software video rendering");
+                                log::error!(
+                                    "player surface: too many render failures; switching to software video rendering"
+                                );
                                 crate::diagnostics::report(
                                     &app,
-                                    format!("player surface: too many render failures ({e}); switching to software video rendering"),
+                                    format!(
+                                        "player surface: too many render failures ({e}); switching to software video rendering"
+                                    ),
                                     sentry::Level::Error,
                                 );
                                 unsafe { ShowWindow(child_hwnd, SW_HIDE) };

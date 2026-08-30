@@ -4,7 +4,7 @@ use std::os::unix::process::CommandExt;
 use std::process::{Child, Command, Stdio};
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::System::Power::{
-    SetThreadExecutionState, ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED,
+    ES_CONTINUOUS, ES_DISPLAY_REQUIRED, ES_SYSTEM_REQUIRED, SetThreadExecutionState,
 };
 
 pub struct SleepInhibitor {
@@ -50,10 +50,15 @@ impl SleepInhibitor {
                     });
                 }
                 self.process = Some(command.spawn().map_err(|error| error.to_string())?);
-            } else { match self.process.take() { Some(mut process) => {
-                let _ = process.kill();
-                let _ = process.wait();
-            } _ => {}}}
+            } else {
+                match self.process.take() {
+                    Some(mut process) => {
+                        let _ = process.kill();
+                        let _ = process.wait();
+                    }
+                    _ => {}
+                }
+            }
         }
 
         #[cfg(target_os = "macos")]

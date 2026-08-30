@@ -86,7 +86,11 @@ pub(super) fn mpv_options_from_preferences(
     if let Some(app) = app {
         let custom_shaders = crate::player::mpv_shader_paths(app);
         if !custom_shaders.is_empty() {
-            let separator = if cfg!(target_os = "windows") { ";" } else { ":" };
+            let separator = if cfg!(target_os = "windows") {
+                ";"
+            } else {
+                ":"
+            };
             options.push((
                 "glsl-shaders".to_string(),
                 custom_shaders
@@ -553,7 +557,10 @@ pub(super) fn is_safe_mpv_option_name(value: &str) -> bool {
 /// Allowing a later custom option to replace them can re-enable passthrough
 /// during DSP or disable the route-selected channel layout.
 fn is_route_owned_audio_option(value: &str) -> bool {
-    matches!(value.trim().to_ascii_lowercase().as_str(), "audio-spdif" | "audio-channels" | "af")
+    matches!(
+        value.trim().to_ascii_lowercase().as_str(),
+        "audio-spdif" | "audio-channels" | "af"
+    )
 }
 
 pub(super) fn language_list(values: &[Option<&str>]) -> String {
@@ -594,10 +601,8 @@ mod tests {
 
     #[test]
     fn reference_keeps_passthrough_when_software_audio_is_not_forced() {
-        let (options, _) = mpv_options_from_preferences(
-            None,
-            &json!({ "audioProcessingMode": "reference" }),
-        );
+        let (options, _) =
+            mpv_options_from_preferences(None, &json!({ "audioProcessingMode": "reference" }));
 
         assert_eq!(
             option_value(&options, "audio-spdif"),
@@ -632,17 +637,22 @@ mod tests {
         );
 
         assert_eq!(
-            options.iter().filter(|(key, _)| key == "audio-spdif").count(),
+            options
+                .iter()
+                .filter(|(key, _)| key == "audio-spdif")
+                .count(),
             1
         );
+        assert_eq!(option_value(&options, "audio-spdif"), Some(String::new()));
         assert_eq!(
-            option_value(&options, "audio-spdif"),
-            Some(String::new())
+            option_value(&options, "audio-channels"),
+            Some("auto-safe".to_string())
         );
-        assert_eq!(option_value(&options, "audio-channels"), Some("auto-safe".to_string()));
         assert_eq!(option_value(&options, "af"), Some("lavfi=[acompressor=threshold=0.55:ratio=3:attack=20:release=250:link=maximum,alimiter=limit=0.98]".to_string()));
-        assert!(options.iter().any(|(key, value)| {
-            key == "video-sync" && value == "display-resample"
-        }));
+        assert!(
+            options
+                .iter()
+                .any(|(key, value)| { key == "video-sync" && value == "display-resample" })
+        );
     }
 }

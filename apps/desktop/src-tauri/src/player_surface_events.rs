@@ -32,9 +32,7 @@ pub(crate) fn engine_command_args(
     Ok(())
 }
 
-pub(crate) fn engine_status(
-    app: &AppHandle,
-) -> Result<crate::mpv_render::PlayerStatus, String> {
+pub(crate) fn engine_status(app: &AppHandle) -> Result<crate::mpv_render::PlayerStatus, String> {
     let state = app.state::<DesktopState>();
     match crate::player::with_renderer_retry(&state, 80, |renderer| Ok(renderer.status())) {
         Ok(Some(status)) => Ok(status),

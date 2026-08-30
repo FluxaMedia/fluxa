@@ -2,7 +2,7 @@ use crate::mpv_render::{PlayerEvent, PlayerStatus, PlayerTrackOption};
 use crate::playback_engine::PlaybackEngine;
 use libloading::Library;
 use std::collections::VecDeque;
-use std::ffi::{c_char, c_int, c_void, CStr, CString};
+use std::ffi::{CStr, CString, c_char, c_int, c_void};
 #[cfg(target_os = "windows")]
 use std::os::windows::ffi::OsStrExt;
 use std::path::{Path, PathBuf};
@@ -1041,7 +1041,7 @@ impl PlaybackEngine for LibvlcPlayer {
 
 #[cfg(test)]
 mod tests {
-    use super::{audio_policy_state_from_options, AudioPolicyState};
+    use super::{AudioPolicyState, audio_policy_state_from_options};
 
     fn options(items: &[(&str, &str)]) -> Vec<(String, String)> {
         items

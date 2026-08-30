@@ -6,6 +6,30 @@ export interface TerminalRecommendationPlan {
   items: unknown[];
 }
 
+export async function coreTerminalRecommendationEligibility(args: {
+  contentType: string;
+  videos: unknown[];
+  currentSeason: number;
+  currentEpisode: number;
+  nowMs: number;
+}): Promise<{ eligible: boolean; hasNextEpisode: boolean }> {
+  return (
+    (await coreInvoke('terminalRecommendationEligibility', JSON.stringify(args))) ?? {
+      eligible: false,
+      hasNextEpisode: true,
+    }
+  );
+}
+
+export async function coreRecommendationOutroPlan(args: {
+  positionSeconds: number;
+  durationSeconds: number;
+  thresholdPercent: number;
+  alreadyShown: boolean;
+}): Promise<{ shouldShow: boolean }> {
+  return (await coreInvoke('recommendationOutroPlan', JSON.stringify(args))) ?? { shouldShow: false };
+}
+
 /**
  * Terminal playback is a sparse business operation, so it intentionally uses
  * the JSON core boundary. High-frequency player state must not call this.
@@ -31,6 +55,19 @@ export async function coreNormalizeLibraryDocument(json: string): Promise<Record
 
 export async function coreIsUpNextContinueWatchingItem(itemJson: string): Promise<boolean> {
   return (await coreInvoke<boolean>('isUpNextContinueWatchingItem', itemJson)) ?? false;
+}
+
+export async function coreContinueWatchingResumePlan(args: {
+  item: unknown;
+  videos: unknown[];
+  resumeAtOverride?: number;
+}): Promise<{ episode: unknown | null; resumeAt: number | null; resumePercent: number | null; duration: number | null }> {
+  return (await coreInvoke('continueWatchingResumePlan', JSON.stringify(args))) ?? {
+    episode: null,
+    resumeAt: null,
+    resumePercent: null,
+    duration: null,
+  };
 }
 
 export async function coreRememberLastWatchedEpisodes(libJson: string, watchedIdsJson: string): Promise<Record<string, unknown>> {
@@ -246,7 +283,15 @@ export async function coreContinueWatchingCardFields(
   items: unknown[],
   artworkPreference: string,
   isHorizontal: boolean,
-): Promise<Array<{ id: string; artwork: string | null; episodeLine: string }> | null> {
+): Promise<Array<{
+  id: string;
+  artwork: string | null;
+  episodeLine: string;
+  progressPercent: number | null;
+  isUpNext: boolean;
+  watchedSeconds: number;
+  remainingSeconds: number;
+}> | null> {
   return coreInvoke('continueWatchingCardFields', JSON.stringify({ items, artworkPreference, isHorizontal }));
 }
 
@@ -457,4 +502,34 @@ export async function coreTorrentReadyBudget(): Promise<{
       maxPeerRetriesSingleSource: 2,
     }
   );
+}
+
+export async function coreTorrentRetryPlan(hasAlternatives: boolean): Promise<{
+  maxPeerRetries: number;
+  firstAttemptMs: number;
+  retryBudgetMs: number;
+  hardLimitMs: number;
+  stallExtensionMs: number;
+  perRetryMs: number;
+}> {
+  return (await coreInvoke('torrentRetryPlan', JSON.stringify({ hasAlternatives }))) ?? {
+    maxPeerRetries: hasAlternatives ? 1 : 2,
+    firstAttemptMs: 15_000,
+    retryBudgetMs: 45_000,
+    hardLimitMs: 120_000,
+    stallExtensionMs: 20_000,
+    perRetryMs: hasAlternatives ? 45_000 : 22_500,
+  };
+}
+
+export async function coreTrailerPlaybackPolicy(autoplay: boolean): Promise<{
+  stallTimeoutMs: number;
+  maxRetries: number;
+  retryDelayMs: number;
+}> {
+  return (await coreInvoke('trailerPlaybackPolicy', JSON.stringify({ autoplay }))) ?? {
+    stallTimeoutMs: autoplay ? 7_000 : 10_000,
+    maxRetries: 1,
+    retryDelayMs: 250,
+  };
 }

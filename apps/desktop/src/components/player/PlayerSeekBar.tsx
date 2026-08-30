@@ -38,7 +38,8 @@ export function PlayerSeekBar({
       className="fluxa-seekbar"
       style={{
         position: 'relative',
-        width: '100%',
+        width: 'calc(100% - 2rem)',
+        margin: '0 1rem',
         height: '2.25rem',
         cursor: 'pointer',
         overflow: 'visible',

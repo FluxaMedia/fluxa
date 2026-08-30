@@ -24,7 +24,8 @@ fn audio_passthrough_failure_text(details: &[String], message: &str) -> bool {
             || line.contains("unavailable")
             || line.contains("refused")
     };
-    text.iter().any(|line| output_mentioned(line) && failure_mentioned(line))
+    text.iter()
+        .any(|line| output_mentioned(line) && failure_mentioned(line))
 }
 
 impl MpvClientHandle {
@@ -140,8 +141,13 @@ impl MpvClientHandle {
                     let text = unsafe { CStr::from_ptr(msg.text) }.to_string_lossy();
                     let text = text.trim_end();
                     if !text.is_empty() {
+                        let truehd_decode_noise =
+                            text.contains("truehd: Stream parameters not seen; skipping frame");
                         match msg.log_level {
                             10 | 20 => log::error!("mpv [{prefix}] [{level}]: {text}"),
+                            30 if truehd_decode_noise => {
+                                log::debug!("mpv [{prefix}] [{level}]: {text}")
+                            }
                             30 => log::warn!("mpv [{prefix}] [{level}]: {text}"),
                             _ => log::info!("mpv [{prefix}] [{level}]: {text}"),
                         }
@@ -225,17 +231,22 @@ impl MpvClientHandle {
                     if event.reply_userdata == TRACK_LIST_OBSERVE_ID {
                         *self.track_list_cache.lock().unwrap() = None;
                     }
-                    if (STATIC_OBSERVE_BASE..STATIC_OBSERVE_BASE + STATIC_OBSERVE_PROPERTIES.len() as u64)
+                    if (STATIC_OBSERVE_BASE
+                        ..STATIC_OBSERVE_BASE + STATIC_OBSERVE_PROPERTIES.len() as u64)
                         .contains(&event.reply_userdata)
                     {
                         let index = (event.reply_userdata - STATIC_OBSERVE_BASE) as usize;
-                        let value = if property.format == MPV_FORMAT_STRING && !property.data.is_null() {
-                            let value = unsafe { *(property.data as *const *const c_char) };
-                            (!value.is_null()).then(|| unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() })
-                        } else {
-                            None
-                        };
-                        self.static_properties.insert(STATIC_OBSERVE_PROPERTIES[index].to_string(), value);
+                        let value =
+                            if property.format == MPV_FORMAT_STRING && !property.data.is_null() {
+                                let value = unsafe { *(property.data as *const *const c_char) };
+                                (!value.is_null()).then(|| unsafe {
+                                    CStr::from_ptr(value).to_string_lossy().into_owned()
+                                })
+                            } else {
+                                None
+                            };
+                        self.static_properties
+                            .insert(STATIC_OBSERVE_PROPERTIES[index].to_string(), value);
                     }
                 }
                 MPV_EVENT_COMMAND_REPLY if event.error < 0 => {
@@ -255,7 +266,8 @@ impl MpvClientHandle {
                         self.frame_state
                             .frame_ready_to_restore_audio
                             .store(false, Ordering::Release);
-                        let _ = self.command_args(&["seek", &format!("{secs:.3}"), "absolute+exact"]);
+                        let _ =
+                            self.command_args(&["seek", &format!("{secs:.3}"), "absolute+exact"]);
                     } else if self
                         .frame_state
                         .waiting_for_seek_restart
@@ -269,7 +281,10 @@ impl MpvClientHandle {
                             .store(false, Ordering::Release);
                     }
                     if self.pending_unpause
-                        && !self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
+                        && !self
+                            .frame_state
+                            .waiting_for_seek_restart
+                            .load(Ordering::Acquire)
                     {
                         self.pending_unpause = false;
                         let _ = self.command_args(&["set", "pause", "no"]);
@@ -286,8 +301,14 @@ impl MpvClientHandle {
         #[cfg(target_os = "windows")]
         {
             if self.pending_seek_seconds.is_some()
-                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire)
-                || !self.frame_state.muted_until_first_frame.load(Ordering::Acquire)
+                || self
+                    .frame_state
+                    .waiting_for_seek_restart
+                    .load(Ordering::Acquire)
+                || !self
+                    .frame_state
+                    .muted_until_first_frame
+                    .load(Ordering::Acquire)
             {
                 return;
             }
@@ -388,11 +409,17 @@ impl MpvClientHandle {
             seeking: self.get_string_property("seeking"),
             file_format: self.get_string_property("file-format"),
             frames_rendered: self.frame_state.frames_rendered.load(Ordering::Relaxed),
-            first_frame_presented: self.frame_state.first_frame_presented.load(Ordering::Acquire),
+            first_frame_presented: self
+                .frame_state
+                .first_frame_presented
+                .load(Ordering::Acquire),
             has_video_track,
             track_list_ready,
             resuming: self.pending_seek_seconds.is_some()
-                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire),
+                || self
+                    .frame_state
+                    .waiting_for_seek_restart
+                    .load(Ordering::Acquire),
         }
     }
 
@@ -463,11 +490,17 @@ impl MpvClientHandle {
             container_fps: property("container-fps"),
             display_fps: property("display-fps"),
             file_format: property("file-format"),
-            first_frame_presented: self.frame_state.first_frame_presented.load(Ordering::Acquire),
+            first_frame_presented: self
+                .frame_state
+                .first_frame_presented
+                .load(Ordering::Acquire),
             has_video_track,
             track_list_ready,
             resuming: self.pending_seek_seconds.is_some()
-                || self.frame_state.waiting_for_seek_restart.load(Ordering::Acquire),
+                || self
+                    .frame_state
+                    .waiting_for_seek_restart
+                    .load(Ordering::Acquire),
         }
     }
 
@@ -642,7 +675,8 @@ mod tests {
             vec![
                 "audio output is ready".to_string(),
                 "video decoder failed".to_string(),
-            ].as_slice(),
+            ]
+            .as_slice(),
             "decoder error"
         ));
     }

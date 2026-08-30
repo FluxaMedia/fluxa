@@ -1,5 +1,5 @@
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Manager};
 use tauri_plugin_dialog::{DialogExt, MessageDialogButtons, MessageDialogKind};
 
@@ -53,14 +53,18 @@ pub(crate) fn report_with_scope(
     let (title, body, send_label, dont_send_label) = if turkish {
         (
             "Bir sorun oluştu",
-            format!("Fluxa'da teknik bir sorun oluştu. Anonim bir hata raporu gönderilsin mi?\n\n{message}"),
+            format!(
+                "Fluxa'da teknik bir sorun oluştu. Anonim bir hata raporu gönderilsin mi?\n\n{message}"
+            ),
             "Rapor gönder",
             "Gönderme",
         )
     } else {
         (
             "Something went wrong",
-            format!("Fluxa ran into a technical problem. Send an anonymous error report?\n\n{message}"),
+            format!(
+                "Fluxa ran into a technical problem. Send an anonymous error report?\n\n{message}"
+            ),
             "Send report",
             "Don't send",
         )

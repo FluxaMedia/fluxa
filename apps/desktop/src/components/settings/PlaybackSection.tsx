@@ -350,6 +350,24 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           step={5}
           onChange={(v) => setPref('watchedThresholdPercent', String(v))}
         />
+        <SliderTile
+          title={t('settings.movie_recommendation_outro_percent')}
+          subtitle={t('settings.recommendation_outro_percent_desc')}
+          value={Number(prefs.movieRecommendationOutroPercent)}
+          min={50}
+          max={98}
+          step={1}
+          onChange={(v) => setPref('movieRecommendationOutroPercent', String(v))}
+        />
+        <SliderTile
+          title={t('settings.series_recommendation_outro_percent')}
+          subtitle={t('settings.recommendation_outro_percent_desc')}
+          value={Number(prefs.seriesRecommendationOutroPercent)}
+          min={50}
+          max={98}
+          step={1}
+          onChange={(v) => setPref('seriesRecommendationOutroPercent', String(v))}
+        />
       </SettingsSection>
       <StreamBadgesSection />
       <SettingsSection title={t('settings.advanced')} subtitle={t('settings.buffer_cache_desc')}>

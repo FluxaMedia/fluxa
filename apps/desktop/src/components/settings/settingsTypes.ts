@@ -81,6 +81,8 @@ export interface Prefs {
   tryBingeGroup: boolean;
   nextEpisodeThresholdPercent: string;
   watchedThresholdPercent: string;
+  movieRecommendationOutroPercent: string;
+  seriesRecommendationOutroPercent: string;
   playbackSpeed: string;
   seekSeconds: string;
   holdToSpeedEnabled: boolean;
@@ -246,6 +248,8 @@ export const DEFAULT_PREFS: Prefs = {
   tryBingeGroup: false,
   nextEpisodeThresholdPercent: '85',
   watchedThresholdPercent: '90',
+  movieRecommendationOutroPercent: '85',
+  seriesRecommendationOutroPercent: '85',
   playbackSpeed: '1.0',
   seekSeconds: '10',
   holdToSpeedEnabled: true,

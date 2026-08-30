@@ -239,9 +239,18 @@ pub fn player_destroy(state: State<DesktopState>) -> bool {
     state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
     let had_vlc = state.player_renderer_vlc.lock().unwrap().take().is_some();
-    let native_surface = state.native_player_surface.lock().unwrap().take();
-    if let Some(surface) = native_surface {
-        let _ = surface.shutdown();
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(surface) = state.native_player_surface.lock().unwrap().as_ref() {
+            let _ = surface.shutdown();
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let native_surface = state.native_player_surface.lock().unwrap().take();
+        if let Some(surface) = native_surface {
+            let _ = surface.shutdown();
+        }
     }
 
     let had_render = state.player_render_state.lock().unwrap().take().is_some();
@@ -350,7 +359,9 @@ pub fn player_get_seek_thumbnail(
 
     log::warn!(
         "[seek-thumbnail-route] scheme={} host={} local_torrent={} local_proxy={} time={time_pos:.3}",
-        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        url.split_once("://")
+            .map(|(scheme, _)| scheme)
+            .unwrap_or("unknown"),
         reqwest::Url::parse(&url)
             .ok()
             .and_then(|parsed| parsed.host_str().map(str::to_string))
@@ -360,7 +371,10 @@ pub fn player_get_seek_thumbnail(
     );
 
     if let Some((_, image)) = thumbnail.cache.iter().find(|(time, _)| *time == cache_time) {
-        log::debug!("seek_thumbnail cache_hit time={time_pos:.3} elapsed_ms={}", started_at.elapsed().as_millis());
+        log::debug!(
+            "seek_thumbnail cache_hit time={time_pos:.3} elapsed_ms={}",
+            started_at.elapsed().as_millis()
+        );
         return Ok(image.clone());
     }
 
@@ -371,7 +385,11 @@ pub fn player_get_seek_thumbnail(
     log::debug!("seek_thumbnail request time={time_pos:.3} cache_time={cache_time}");
     let renderer = thumbnail.renderer.as_mut().unwrap();
     let image = renderer.request(&thumbnail_url, cache_time as f64 / 2.0)?;
-    log::debug!("seek_thumbnail helper_done time={time_pos:.3} bytes={} elapsed_ms={}", image.len(), started_at.elapsed().as_millis());
+    log::debug!(
+        "seek_thumbnail helper_done time={time_pos:.3} bytes={} elapsed_ms={}",
+        image.len(),
+        started_at.elapsed().as_millis()
+    );
     drop(thumbnail);
 
     // Keep a small hot cache for back-and-forth pointer movement. The native

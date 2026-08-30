@@ -90,7 +90,8 @@ async fn execute_oauth_request(
         _ => return Err("unsupported OAuth service".to_string()),
     };
     if client_id.is_empty()
-        || ((operation == "refresh" || (service != "simkl" && operation == "exchange")) && client_secret.is_empty())
+        || ((operation == "refresh" || (service != "simkl" && operation == "exchange"))
+            && client_secret.is_empty())
     {
         return Err(format!("{service} OAuth client is not configured"));
     }
@@ -146,7 +147,8 @@ pub async fn trakt_device_poll(device_code: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn trakt_oauth_exchange(code: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("trakt", "exchange", Some(&code), None, None).await?;
+    let (status, text) =
+        execute_oauth_request("trakt", "exchange", Some(&code), None, None).await?;
     (FluxaCore::oauth_response_outcome("trakt", "exchange", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("Trakt token exchange failed: HTTP {status}: {text}"))
@@ -163,7 +165,8 @@ pub async fn trakt_oauth_refresh(refresh_token: String) -> Result<String, String
 
 #[tauri::command]
 pub async fn anilist_oauth_exchange(code: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("anilist", "exchange", Some(&code), None, None).await?;
+    let (status, text) =
+        execute_oauth_request("anilist", "exchange", Some(&code), None, None).await?;
     (FluxaCore::oauth_response_outcome("anilist", "exchange", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("AniList token exchange failed: HTTP {status}: {text}"))
@@ -171,7 +174,8 @@ pub async fn anilist_oauth_exchange(code: String) -> Result<String, String> {
 
 #[tauri::command]
 pub async fn simkl_oauth_exchange(code: String, code_verifier: String) -> Result<String, String> {
-    let (status, text) = execute_oauth_request("simkl", "exchange", Some(&code), None, Some(&code_verifier)).await?;
+    let (status, text) =
+        execute_oauth_request("simkl", "exchange", Some(&code), None, Some(&code_verifier)).await?;
     (FluxaCore::oauth_response_outcome("simkl", "exchange", status) == "success")
         .then_some(text.clone())
         .ok_or_else(|| format!("SIMKL token exchange failed: HTTP {status}: {text}"))

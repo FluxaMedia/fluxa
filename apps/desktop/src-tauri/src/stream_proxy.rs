@@ -1,5 +1,5 @@
-use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
+use std::collections::hash_map::RandomState;
 use std::hash::{BuildHasher, Hasher};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -121,7 +121,9 @@ fn report_upstream_failure(
     detail: &str,
     body_snippet: &str,
 ) {
-    log::warn!("[stream_proxy] upstream failure url={url} status={status:?} detail={detail} body={body_snippet}");
+    log::warn!(
+        "[stream_proxy] upstream failure url={url} status={status:?} detail={detail} body={body_snippet}"
+    );
     let shown = match status {
         Some(status) if !body_snippet.trim().is_empty() => {
             format!("HTTP {status}: {}", body_snippet.trim())
@@ -143,12 +145,20 @@ async fn handle_conn(
         };
 
         let Some(route) = path.strip_prefix("/stream/") else {
-            write_status_only(&mut socket, b"HTTP/1.1 404 Not Found\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
+            write_status_only(
+                &mut socket,
+                b"HTTP/1.1 404 Not Found\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n",
+            )
+            .await;
             continue;
         };
         let token = route.split('/').next().unwrap_or(route);
         let Some(target) = targets.lock().unwrap().get(token).cloned() else {
-            write_status_only(&mut socket, b"HTTP/1.1 404 Not Found\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
+            write_status_only(
+                &mut socket,
+                b"HTTP/1.1 404 Not Found\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n",
+            )
+            .await;
             continue;
         };
         let upstream_url = resolve_proxy_target_url(&target.url, route);
@@ -156,7 +166,13 @@ async fn handle_conn(
         let client = match crate::net_guard::vetted_client(&upstream_url, UPSTREAM_TIMEOUT).await {
             Ok(client) => client,
             Err(err) => {
-                report_upstream_failure(&last_failure, &upstream_url, None, &format!("vetted_client failed: {err}"), "");
+                report_upstream_failure(
+                    &last_failure,
+                    &upstream_url,
+                    None,
+                    &format!("vetted_client failed: {err}"),
+                    "",
+                );
                 write_status_only(&mut socket, b"HTTP/1.1 502 Bad Gateway\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
                 continue;
             }
@@ -181,7 +197,13 @@ async fn handle_conn(
         let response = match req.send().await {
             Ok(response) => response,
             Err(err) => {
-                report_upstream_failure(&last_failure, &upstream_url, None, &format!("request failed: {err}"), "");
+                report_upstream_failure(
+                    &last_failure,
+                    &upstream_url,
+                    None,
+                    &format!("request failed: {err}"),
+                    "",
+                );
                 write_status_only(&mut socket, b"HTTP/1.1 502 Bad Gateway\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n").await;
                 continue;
             }
@@ -204,7 +226,13 @@ async fn handle_conn(
                 .chars()
                 .take(DIAGNOSTIC_BODY_SNIPPET_LEN)
                 .collect::<String>();
-            report_upstream_failure(&last_failure, &upstream_url, Some(status.as_u16()), "non-success status", &body);
+            report_upstream_failure(
+                &last_failure,
+                &upstream_url,
+                Some(status.as_u16()),
+                "non-success status",
+                &body,
+            );
             let status_line = format!(
                 "HTTP/1.1 {} {}\r\nConnection: keep-alive\r\nContent-Length: 0\r\n\r\n",
                 status.as_u16(),
@@ -294,7 +322,10 @@ mod tests {
     fn resolves_hls_relative_playlist_against_original_master() {
         let master = "https://cdn.example.test/video/master.m3u8";
         assert_eq!(
-            resolve_proxy_target_url("https://cdn.example.test/video/master.m3u8", "token/audio.m3u8"),
+            resolve_proxy_target_url(
+                "https://cdn.example.test/video/master.m3u8",
+                "token/audio.m3u8"
+            ),
             "https://cdn.example.test/video/audio.m3u8"
         );
         assert_eq!(

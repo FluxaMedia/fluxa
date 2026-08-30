@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { httpFetchText } from '../core/engine';
+import { coreTrailerPlaybackPolicy, httpFetchText } from '../core/engine';
 import { resolveYoutubeTrailer, type YoutubeTrailerSubtitleTrack } from '../core/effectRunner';
 import { normalizeTrailerSubtitleUrl, parseTrailerSubtitleCues, selectTrailerSubtitle, type TrailerCue } from '../core/trailerSubtitles';
-
-const STALL_TIMEOUT_MS = 7000;
 
 export function useTrailerPlayback({
   metaId,
@@ -41,7 +39,17 @@ export function useTrailerPlayback({
   const trailerPending = trailerResolving || trailerLoading || !!trailerStreamUrl;
   const [selectedTrailerSubtitle, setSelectedTrailerSubtitle] = useState<YoutubeTrailerSubtitleTrack | null>(null);
   const [manualStart, setManualStart] = useState(false);
+  const [stallTimeoutMs, setStallTimeoutMs] = useState(7000);
+  const [trailerRetryAttempt, setTrailerRetryAttempt] = useState(0);
+  const trailerRetryPolicyRef = useRef({ maxRetries: 1, retryDelayMs: 250 });
   const canPlayTrailer = trailerVideoIds.length > 0;
+
+  useEffect(() => {
+    void coreTrailerPlaybackPolicy(autoplay).then((policy) => {
+      setStallTimeoutMs(policy.stallTimeoutMs);
+      trailerRetryPolicyRef.current = { maxRetries: policy.maxRetries, retryDelayMs: policy.retryDelayMs };
+    });
+  }, [autoplay]);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +74,7 @@ export function useTrailerPlayback({
     setTrailerLoading(false);
     setTrailerMuted(true);
     setManualStart(false);
+    setTrailerRetryAttempt(0);
   }, [metaId]);
 
   useEffect(() => {
@@ -119,7 +128,7 @@ export function useTrailerPlayback({
       setTrailerResolving(false);
       window.clearTimeout(delayId);
     };
-  }, [trailerVideoIds, autoplay, autoplayDelaySecs, isActive, manualStart]);
+  }, [trailerVideoIds, autoplay, autoplayDelaySecs, isActive, manualStart, trailerRetryAttempt]);
 
   useEffect(() => {
     if (isActive) return;
@@ -181,13 +190,17 @@ export function useTrailerPlayback({
     if (!trailerStreamUrl) return;
     lastTrailerProgressAtRef.current = Date.now();
     const id = window.setInterval(() => {
-      if (Date.now() - lastTrailerProgressAtRef.current > STALL_TIMEOUT_MS) {
+      if (Date.now() - lastTrailerProgressAtRef.current > stallTimeoutMs) {
+        const { maxRetries, retryDelayMs } = trailerRetryPolicyRef.current;
         setTrailerStreamUrl(null);
         setTrailerLoading(false);
+        if (trailerRetryAttempt < maxRetries) {
+          window.setTimeout(() => setTrailerRetryAttempt((attempt) => attempt + 1), retryDelayMs);
+        }
       }
     }, 2000);
     return () => window.clearInterval(id);
-  }, [trailerStreamUrl]);
+  }, [stallTimeoutMs, trailerStreamUrl, trailerRetryAttempt]);
 
   useEffect(() => {
     if (!trailerStreamUrl) return;
@@ -282,6 +295,7 @@ export function useTrailerPlayback({
   function startTrailer() {
     if (!canPlayTrailer) return;
     setTrailerMuted(false);
+    setTrailerRetryAttempt(0);
     setManualStart(true);
   }
 

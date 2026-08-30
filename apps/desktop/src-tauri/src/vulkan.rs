@@ -352,10 +352,8 @@ pub type PfnDestroyInstance = unsafe extern "system" fn(VkInstance, *const c_voi
 pub type PfnEnumeratePhysicalDevices =
     unsafe extern "system" fn(VkInstance, *mut u32, *mut VkPhysicalDevice) -> VkResult;
 pub type PfnGetPhysicalDeviceProperties = unsafe extern "system" fn(VkPhysicalDevice, *mut c_void);
-pub type PfnGetPhysicalDeviceFeatures2 = unsafe extern "system" fn(
-    VkPhysicalDevice,
-    *mut VkPhysicalDeviceFeatures2,
-);
+pub type PfnGetPhysicalDeviceFeatures2 =
+    unsafe extern "system" fn(VkPhysicalDevice, *mut VkPhysicalDeviceFeatures2);
 pub type PfnEnumerateDeviceExtensionProperties = unsafe extern "system" fn(
     VkPhysicalDevice,
     *const i8,
@@ -810,7 +808,9 @@ impl VulkanContext {
 
         {
             let mut props = [0u8; 1024];
-            unsafe { get_physical_device_properties(phys_device, props.as_mut_ptr() as *mut c_void) };
+            unsafe {
+                get_physical_device_properties(phys_device, props.as_mut_ptr() as *mut c_void)
+            };
             let device_api = u32::from_ne_bytes(props[0..4].try_into().unwrap());
             let end = props[20..276].iter().position(|&c| c == 0).unwrap_or(0);
             let name = String::from_utf8_lossy(&props[20..20 + end]).to_string();
@@ -850,7 +850,10 @@ impl VulkanContext {
             ("synchronization2", supported_sync2.synchronization2),
             ("hostQueryReset", supported_vulkan12.host_query_reset),
             ("timelineSemaphore", supported_vulkan12.timeline_semaphore),
-            ("bufferDeviceAddress", supported_vulkan12.buffer_device_address),
+            (
+                "bufferDeviceAddress",
+                supported_vulkan12.buffer_device_address,
+            ),
         ]
         .into_iter()
         .filter_map(|(name, supported)| (supported == 0).then_some(name))

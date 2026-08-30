@@ -8,16 +8,20 @@ const EASE = 'cubic-bezier(0.4, 0, 0.2, 1)';
 interface Props {
   warnings: ContentWarning[];
   isVisible: boolean;
+  controlsVisible: boolean;
+  isPaused: boolean;
   onAnimationComplete: () => void;
 }
 
-export function ContentWarningOverlay({ warnings, isVisible, onAnimationComplete }: Props) {
+export function ContentWarningOverlay({ warnings, isVisible, controlsVisible, isPaused, onAnimationComplete }: Props) {
   const count = warnings.length;
   const [containerOpacity, setContainerOpacity] = useState(0);
   const [barGrown, setBarGrown] = useState(false);
   const [rowVisible, setRowVisible] = useState<boolean[]>(() => warnings.map(() => false));
   const animatingRef = useRef(false);
+  const isPausedRef = useRef(isPaused);
   const timeoutsRef = useRef<ReturnType<typeof setTimeout>[]>([]);
+  isPausedRef.current = isPaused;
 
   useEffect(() => {
     timeoutsRef.current.forEach(clearTimeout);
@@ -25,7 +29,14 @@ export function ContentWarningOverlay({ warnings, isVisible, onAnimationComplete
     if (count === 0) return;
 
     const schedule = (ms: number, fn: () => void) => {
-      timeoutsRef.current.push(setTimeout(fn, ms));
+      const run = () => {
+        if (isPausedRef.current) {
+          timeoutsRef.current.push(setTimeout(run, 100));
+          return;
+        }
+        fn();
+      };
+      timeoutsRef.current.push(setTimeout(run, ms));
     };
 
     if (isVisible && !animatingRef.current) {
@@ -82,8 +93,8 @@ export function ContentWarningOverlay({ warnings, isVisible, onAnimationComplete
     <div
       style={{
         position: 'fixed',
-        top: '4.5rem',
-        left: '1.25rem',
+        top: controlsVisible ? '4.5rem' : '1.5rem',
+        left: '2.75rem',
         zIndex: 20,
         display: 'flex',
         alignItems: 'flex-start',
@@ -119,9 +130,9 @@ export function ContentWarningOverlay({ warnings, isVisible, onAnimationComplete
               transition: `opacity ${rowVisible[index] ? 200 : 150}ms`,
             }}
           >
-            <span style={{ color: 'rgba(255,255,255,0.98)', fontSize: '0.6875rem', fontWeight: 600 }}>{warning.label}</span>
-            <span style={{ color: 'rgba(255,255,255,0.62)', fontSize: '0.6875rem', margin: '0 0.25rem' }}>·</span>
-            <span style={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.6875rem' }}>{warning.severity}</span>
+            <span style={{ color: 'rgba(255,255,255,0.98)', fontSize: '0.75rem', fontWeight: 600 }}>{warning.label}</span>
+            <span style={{ color: 'rgba(255,255,255,0.62)', fontSize: '0.75rem', margin: '0 0.25rem' }}>·</span>
+            <span style={{ color: 'rgba(255,255,255,0.78)', fontSize: '0.75rem' }}>{warning.severity}</span>
           </div>
         ))}
       </div>

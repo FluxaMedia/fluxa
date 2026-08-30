@@ -145,14 +145,16 @@ pub async fn player_load(
     app: AppHandle,
     state: State<'_, DesktopState>,
     stream_proxy_state: State<'_, crate::stream_proxy::StreamProxyState>,
-    mut url: String,
+    url: String,
     start_at: Option<u64>,
     total_duration: Option<u64>,
 ) -> Result<(), String> {
     log::info!("player_load: url={url} start_at={start_at:?} total_duration={total_duration:?}");
     log::info!(
         "[playback-route] input scheme={} host={} local_torrent={} local_stream_proxy={}",
-        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        url.split_once("://")
+            .map(|(scheme, _)| scheme)
+            .unwrap_or("unknown"),
         reqwest::Url::parse(&url)
             .ok()
             .and_then(|parsed| parsed.host_str().map(str::to_string))
@@ -171,20 +173,28 @@ pub async fn player_load(
 
     #[cfg(target_os = "macos")]
     if engine == PlayerEngine::AvPlayer {
-        let headers = pending_headers.iter().cloned().collect::<std::collections::HashMap<_, _>>();
+        let headers = pending_headers
+            .iter()
+            .cloned()
+            .collect::<std::collections::HashMap<_, _>>();
         let needs_adapter = !headers.is_empty() || avplayer_needs_remux(&url);
         if needs_adapter && (url.starts_with("http://") || url.starts_with("https://")) {
             if let Some(previous_id) = state.avplayer_local_stream_id.lock().unwrap().take() {
                 let _ = fluxa_streaming_engine::stop_local_stream_server(&previous_id);
             }
             let headers_json = serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string());
-            let local = fluxa_streaming_engine::start_local_stream_server(&url, &headers_json, 0)
-                .ok_or_else(|| "could not start AVPlayer local stream adapter".to_string())?;
+            let local =
+                fluxa_streaming_engine::start_local_stream_server(&url, &headers_json, 0)
+                    .ok_or_else(|| "could not start AVPlayer local stream adapter".to_string())?;
             let payload: serde_json::Value = serde_json::from_str(&local)
                 .map_err(|error| format!("invalid AVPlayer local stream response: {error}"))?;
-            let id = payload.get("id").and_then(serde_json::Value::as_str)
+            let id = payload
+                .get("id")
+                .and_then(serde_json::Value::as_str)
                 .ok_or_else(|| "AVPlayer local stream response has no id".to_string())?;
-            let base_url = payload.get("url").and_then(serde_json::Value::as_str)
+            let base_url = payload
+                .get("url")
+                .and_then(serde_json::Value::as_str)
                 .ok_or_else(|| "AVPlayer local stream response has no url".to_string())?;
             *state.avplayer_local_stream_id.lock().unwrap() = Some(id.to_string());
             url = if avplayer_needs_remux(&url) {
@@ -201,7 +211,8 @@ pub async fn player_load(
     let adapter_applied = avplayer_adapter_applied;
     #[cfg(not(target_os = "macos"))]
     let adapter_applied = false;
-    let url = if !adapter_applied && !pending_headers.is_empty()
+    let url = if !adapter_applied
+        && !pending_headers.is_empty()
         && (url.starts_with("http://") || url.starts_with("https://"))
     {
         match crate::stream_proxy::register(&stream_proxy_state, url.clone(), pending_headers).await
@@ -220,7 +231,9 @@ pub async fn player_load(
 
     log::info!(
         "[playback-route] resolved scheme={} host={} local_torrent={} local_stream_proxy={} headers={}",
-        url.split_once("://").map(|(scheme, _)| scheme).unwrap_or("unknown"),
+        url.split_once("://")
+            .map(|(scheme, _)| scheme)
+            .unwrap_or("unknown"),
         reqwest::Url::parse(&url)
             .ok()
             .and_then(|parsed| parsed.host_str().map(str::to_string))
@@ -350,7 +363,11 @@ pub async fn player_load(
 
 #[cfg(target_os = "macos")]
 fn avplayer_needs_remux(url: &str) -> bool {
-    let path = url.split(['?', '#']).next().unwrap_or(url).to_ascii_lowercase();
+    let path = url
+        .split(['?', '#'])
+        .next()
+        .unwrap_or(url)
+        .to_ascii_lowercase();
     path.ends_with(".mkv") || path.ends_with(".matroska")
 }
 

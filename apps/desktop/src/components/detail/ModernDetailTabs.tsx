@@ -61,6 +61,7 @@ export function EpisodesTabContent({
   filteredEps,
   watchedMap,
   progressMap,
+  progressPresentation,
   metaId,
   continueWatchingEntry,
   episodeGridStyle,
@@ -74,6 +75,7 @@ export function EpisodesTabContent({
   filteredEps: Video[];
   watchedMap: Record<string, boolean>;
   progressMap: Record<string, ProgressEntry>;
+  progressPresentation?: { videoId: string; progressPercent: number; remainingSeconds: number } | null;
   metaId: string;
   continueWatchingEntry?: LibraryItem | null;
   episodeGridStyle: React.CSSProperties;
@@ -100,13 +102,13 @@ export function EpisodesTabContent({
             {filteredEps.map((ep, i) => {
               const isWatched = watchedMap[ep.id] === true;
               const metaProgress = progressMap[metaId];
-              const showProg = !isWatched && metaProgress?.lastVideoId === ep.id && (metaProgress.duration ?? 0) > 0;
+              const showProg = !isWatched && progressPresentation?.videoId === ep.id;
               const progressPct = isWatched
                 ? 100
                 : showProg
-                  ? Math.min(99, Math.round((metaProgress!.timeOffset / metaProgress!.duration) * 100))
+                  ? Math.min(99, Math.round(progressPresentation?.progressPercent ?? 0))
                   : 0;
-              const minutesRemaining = showProg ? Math.max(0, Math.round((metaProgress!.duration - metaProgress!.timeOffset) / 60)) : 0;
+              const minutesRemaining = showProg ? Math.max(0, Math.round((progressPresentation?.remainingSeconds ?? 0) / 60)) : 0;
               const isCwEp = continueWatchingEntry?.lastVideoId === ep.id;
               const cwBadge = isCwEp ? (continueWatchingEntry?.continueWatchingBadge ?? null) : null;
               const cwScheduledDate =

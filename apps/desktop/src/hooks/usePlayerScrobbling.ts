@@ -17,6 +17,7 @@ type Options = {
   scrobbleStoppedRef: MutableRefObject<boolean>;
   scrobbleWasPausedRef: MutableRefObject<boolean>;
   onProfileUpdated?: (profile: UserProfile) => void;
+  saveProgressOnEvent?: () => Promise<void>;
 };
 
 export function usePlayerScrobbling(options: Options) {
@@ -32,6 +33,7 @@ export function usePlayerScrobbling(options: Options) {
     scrobbleStoppedRef,
     scrobbleWasPausedRef,
     onProfileUpdated,
+    saveProgressOnEvent,
   } = options;
   const dispatchScrobbleLifecycle = useCallback(
     async (event: 'start' | 'pause' | 'stop', status: EmbeddedMpvStatus) => {
@@ -79,6 +81,7 @@ export function usePlayerScrobbling(options: Options) {
       if (!scrobbleWasPausedRef.current) {
         scrobbleWasPausedRef.current = true;
         await dispatchScrobbleLifecycle('pause', status);
+        await saveProgressOnEvent?.();
       }
     };
     let unlisten: (() => void) | null = null;
@@ -99,7 +102,7 @@ export function usePlayerScrobbling(options: Options) {
       cancelled = true;
       unlisten?.();
     };
-  }, [closingPlayerRef, dispatchScrobbleLifecycle, inNativePlayerRef, lastPlaybackStatusRef, playerUrl, scrobbleWasPausedRef]);
+  }, [closingPlayerRef, dispatchScrobbleLifecycle, inNativePlayerRef, lastPlaybackStatusRef, playerUrl, saveProgressOnEvent, scrobbleWasPausedRef]);
 
   return dispatchScrobbleLifecycle;
 }
