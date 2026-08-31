@@ -331,3 +331,5 @@ watchTogetherPing
 watchTogetherPlaybackState
 watchTogetherRoomCodeSpec
 watchlistTogglePlan
+deviceAuthStart
+deviceAuthTransition

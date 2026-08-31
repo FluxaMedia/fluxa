@@ -5,14 +5,12 @@ import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.NativeAddonFetchResult
 import com.fluxa.app.core.rust.models.NativeAddonResourceParseResult
 import com.fluxa.app.data.remote.AddonDescriptor
-import com.fluxa.app.data.remote.AuthRequest
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.MetaDetailResponse
 import com.fluxa.app.data.remote.decodeMetaDetailPayload
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.StreamResponse
-import com.fluxa.app.data.remote.StremioService
 import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.data.remote.SubtitleResponse
 import com.fluxa.app.domain.discovery.StremioAddonUrls
@@ -40,7 +38,6 @@ import javax.inject.Inject
 import javax.inject.Named
 
 class StremioAddonResourceClient @Inject constructor(
-    private val authService: StremioService,
     private val cache: RepositoryMemoryCache,
     private val persistentCache: AddonPersistentCache,
     private val addonManifestClient: StremioAddonManifestClient,
@@ -79,21 +76,6 @@ class StremioAddonResourceClient @Inject constructor(
                 val normalized = addonManifestClient.normalizeAddonTransportUrl(addon.transportUrl)
                 if (allAddons.none { StremioAddonUrls.identity(it.transportUrl) == StremioAddonUrls.identity(normalized) }) {
                     allAddons.add(addon.copy(transportUrl = normalized))
-                }
-            }
-            if (authKey.isNotEmpty()) {
-                try {
-                    val response = authService.getAddons(AuthRequest(authKey))
-                    response.body()?.result?.addons.orEmpty().map { addon ->
-                        async {
-                            val liveManifest = withTimeoutOrNull(3000) {
-                                addonManifestClient.getAddonManifest(addon.transportUrl, forceRefresh)
-                            }
-                            with(addonManifestClient) { addon.mergeLiveManifest(liveManifest) }
-                        }
-                    }.awaitAll().forEach(::addAddon)
-                } catch (e: Exception) {
-                    PlatformLog.w("StremioRepository", "Failed to load user addons", e)
                 }
             }
             normalizedLocalAddons.map { url ->

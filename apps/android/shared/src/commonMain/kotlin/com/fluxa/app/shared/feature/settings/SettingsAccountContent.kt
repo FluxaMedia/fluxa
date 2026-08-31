@@ -111,14 +111,6 @@ internal fun SettingsAccountContent(
     SettingsGroupCard {
         val syncFailedLabel = AppStrings.t(lang, "integration.sync_failed")
         SettingsConnectionRow(
-            AppStrings.t(lang, "brand.stremio"),
-            connected = model.hasStremio,
-            connectedLabel = if (model.email.isNotBlank()) AppStrings.format(lang, "settings.connected_as", model.email) else AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.stremio,
-            hasSyncFailure = "stremio" in model.syncFailedProviders,
-            syncFailedLabel = syncFailedLabel
-        ) { onNavigate(SettingsCategory.AccountStremio) }
-        SettingsConnectionRow(
             AppStrings.t(lang, "brand.nuvio"),
             connected = model.hasNuvio,
             connectedLabel = model.nuvioEmail?.takeIf { it.isNotBlank() }?.let { AppStrings.format(lang, "settings.connected_as", it) } ?: AppStrings.t(lang, "auto.connected"),
@@ -155,7 +147,6 @@ internal fun SettingsAccountContent(
     SettingsGroupCard {
         val connectedSourceOptions = buildList {
             add(SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")))
-            if (model.hasStremio) add(SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio")))
             if (model.hasNuvio) add(SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")))
             if (model.hasTrakt) add(SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")))
             if (model.hasSimkl) add(SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")))
@@ -163,7 +154,6 @@ internal fun SettingsAccountContent(
         }
         val connectedLibraryOptions = buildList {
             add(SettingsChoiceOption("local", AppStrings.t(lang, "settings.cw_source_of_truth_local")))
-            if (model.hasStremio) add(SettingsChoiceOption("stremio", AppStrings.t(lang, "settings.cw_source_of_truth_stremio")))
             if (model.hasNuvio) add(SettingsChoiceOption("nuvio", AppStrings.t(lang, "settings.cw_source_of_truth_nuvio")))
             if (model.hasTrakt) add(SettingsChoiceOption("trakt", AppStrings.t(lang, "settings.cw_source_of_truth_trakt")))
             if (model.hasSimkl) add(SettingsChoiceOption("simkl", AppStrings.t(lang, "settings.cw_source_of_truth_simkl")))
@@ -254,7 +244,7 @@ internal fun SettingsAccountDetailContent(
     }
     val hasSyncFailure = providerKey in model.syncFailedProviders
     val isSyncing = providerKey in model.syncingProviders
-    val isCredentialProvider = provider == SettingsAccountProvider.Stremio || provider == SettingsAccountProvider.Nuvio
+    val isCredentialProvider = provider == SettingsAccountProvider.Nuvio
     var justSynced by remember(provider) { mutableStateOf(false) }
     var observedSyncStart by remember(provider) { mutableStateOf(false) }
     var confirmingDisconnect by remember(provider) { mutableStateOf(false) }
@@ -330,18 +320,13 @@ internal fun SettingsAccountDetailContent(
             busy = isSyncing,
             errorMessage = model.connectErrors[providerKey]?.let { code ->
                 when {
-                    code == "invalid_credentials" && provider == SettingsAccountProvider.Stremio -> AppStrings.t(lang, "login.stremio_failed")
                     code == "invalid_credentials" -> AppStrings.t(lang, "auth.error.invalid_credentials")
                     else -> AppStrings.format(lang, "login.connection_error", code)
                 }
             },
             onSubmit = { email, password ->
                 onAction(
-                    if (provider == SettingsAccountProvider.Stremio) {
-                        SettingsAction.ConnectStremioWithCredentials(email, password)
-                    } else {
-                        SettingsAction.ConnectNuvioWithCredentials(email, password)
-                    }
+                    SettingsAction.ConnectNuvioWithCredentials(email, password)
                 )
             },
             onCancel = { showCredentialForm = false }

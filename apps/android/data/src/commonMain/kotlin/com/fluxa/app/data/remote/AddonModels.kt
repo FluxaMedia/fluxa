@@ -35,7 +35,3 @@ data class CatalogExtra(
     val optionsLimit: Int? = null,
     val default: String? = null
 )
-
-data class AddonCollectionResponse(val result: AddonCollectionResult)
-
-data class AddonCollectionResult(val addons: List<AddonDescriptor>)

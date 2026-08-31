@@ -59,10 +59,6 @@ export function AccountIntegrationDetail({
     setStremioError,
     stremioSyncMeta,
     stremioConnected,
-    stremioFormOpen,
-    setStremioFormOpen,
-    stremioAuthKeyMode,
-    setStremioAuthKeyMode,
     confirmDisconnect,
     setConfirmDisconnect,
     renderOAuthFallback,
@@ -78,8 +74,6 @@ export function AccountIntegrationDetail({
     handleNuvioConnect,
     handleNuvioDisconnect,
     handleNuvioSyncNow,
-    handleStremioConnect,
-    handleStremioConnectWithAuthKey,
     handleStremioDisconnect,
     handleStremioSyncNow,
   } = accounts;
@@ -141,7 +135,7 @@ export function AccountIntegrationDetail({
                 busy: stremioBusy,
                 meta: stremioSyncMeta,
                 error: stremioError,
-                connect: () => setStremioFormOpen(true),
+                connect: () => undefined,
                 sync: () => void handleStremioSyncNow(),
                 disconnect: () => void handleStremioDisconnect(),
               };
@@ -194,20 +188,6 @@ export function AccountIntegrationDetail({
             busy={nuvioBusy}
             onSubmit={(email, password) => void handleNuvioConnect(email, password)}
             onCancel={() => setNuvioFormOpen(false)}
-          />
-        )}
-        {!page.connected && selectedIntegration === 'stremio' && stremioFormOpen && !stremioAuthKeyMode && (
-          <CredentialLoginForm
-            busy={stremioBusy}
-            onSubmit={(email, password) => void handleStremioConnect(email, password)}
-            onCancel={() => setStremioFormOpen(false)}
-          />
-        )}
-        {!page.connected && selectedIntegration === 'stremio' && stremioFormOpen && stremioAuthKeyMode && (
-          <AuthKeyLoginForm
-            busy={stremioBusy}
-            onSubmit={(authKey) => void handleStremioConnectWithAuthKey(authKey)}
-            onCancel={() => setStremioFormOpen(false)}
           />
         )}
         {page.error && (

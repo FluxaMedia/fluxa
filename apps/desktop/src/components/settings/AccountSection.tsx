@@ -82,10 +82,6 @@ export function AccountSection({
     stremioRowRef,
     stremioSyncMeta,
     stremioConnected,
-    stremioFormOpen,
-    setStremioFormOpen,
-    stremioAuthKeyMode,
-    setStremioAuthKeyMode,
     confirmDisconnect,
     setConfirmDisconnect,
     renderOAuthFallback,
@@ -101,8 +97,6 @@ export function AccountSection({
     handleNuvioConnect,
     handleNuvioDisconnect,
     handleNuvioSyncNow,
-    handleStremioConnect,
-    handleStremioConnectWithAuthKey,
     handleStremioDisconnect,
     handleStremioSyncNow,
   } = accounts;
@@ -238,79 +232,6 @@ export function AccountSection({
             </div>
           )}
 
-          {/* Stremio */}
-          {!stremioConnected && !nuvioConnected && (
-            <SyncServiceRow
-              icon={providerRowIcon('stremio')}
-              title="Stremio"
-              value={stremioBusy ? t('auth.signing_in') : t('settings.connect_stremio_account')}
-              onClick={() => setSelectedIntegration('stremio')}
-              busy={stremioBusy}
-              expanded={stremioFormOpen}
-            />
-          )}
-          {!stremioConnected && stremioFormOpen && !stremioAuthKeyMode && (
-            <CredentialLoginForm
-              busy={stremioBusy}
-              onSubmit={(email, password) => void handleStremioConnect(email, password)}
-              onCancel={() => {
-                setStremioFormOpen(false);
-                setStremioError(null);
-              }}
-            />
-          )}
-          {!stremioConnected && stremioFormOpen && (
-            <div
-              style={{
-                padding: stremioAuthKeyMode ? '0 1.125rem' : '0.5rem 1.125rem 0',
-                borderBottom: stremioAuthKeyMode ? undefined : '1px solid rgba(255,255,255,0.055)',
-              }}
-            >
-              <button
-                onClick={() => {
-                  setStremioAuthKeyMode((m) => !m);
-                  setStremioError(null);
-                }}
-                disabled={stremioBusy}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'rgba(255,255,255,0.5)',
-                  fontSize: '0.6875rem',
-                  cursor: 'pointer',
-                  padding: 0,
-                  marginBottom: stremioAuthKeyMode ? 0 : '0.5rem',
-                }}
-              >
-                {stremioAuthKeyMode ? t('auth.stremio.use_password_instead') : t('auth.stremio.use_authkey_instead')}
-              </button>
-            </div>
-          )}
-          {!stremioConnected && stremioFormOpen && stremioAuthKeyMode && (
-            <AuthKeyLoginForm
-              busy={stremioBusy}
-              onSubmit={(authKey) => void handleStremioConnectWithAuthKey(authKey)}
-              onCancel={() => {
-                setStremioFormOpen(false);
-                setStremioAuthKeyMode(false);
-                setStremioError(null);
-              }}
-            />
-          )}
-          {stremioError && (
-            <div style={{ padding: '0 1.125rem 0.625rem', borderBottom: '1px solid rgba(255,255,255,0.055)' }}>
-              <p
-                style={{
-                  color: '#FF5D5D',
-                  fontSize: '0.75rem',
-                  margin: 0,
-                  fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Ubuntu", "Noto Sans", sans-serif',
-                }}
-              >
-                {t('common.error')}: {stremioError}
-              </p>
-            </div>
-          )}
           {stremioConnected && (
             <div ref={stremioRowRef} style={{ position: 'relative' }}>
               <SyncServiceRow

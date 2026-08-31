@@ -41,7 +41,6 @@ rusqlite = { version = "0.40", features = ["bundled"] }
 log = "0.4"
 sentry = { version = "0.49", default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls"] }
 fluxa_core = { path = "../../../core/fluxa-core", default-features = false, features = ["desktop"] }
-fluxa_streaming_engine = { path = "../../../core/fluxa-core/fluxa-streaming-engine" }
 tauri-plugin-deep-link = "2.4.9"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 tauri-plugin-updater = "2"
@@ -68,6 +67,7 @@ p256 = "0.14.0"
 signature = "3.0.0"
 
 [target.'cfg(target_os = "linux")'.dependencies]
+fluxa_streaming_engine = { path = "../../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["native"] }
 gtk = "0.18"
 gdk = "0.18"
 gdkx11 = "0.18"
@@ -79,6 +79,7 @@ webkit2gtk = "2.0"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 
 [target.'cfg(target_os = "windows")'.dependencies]
+fluxa_streaming_engine = { path = "../../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["native"] }
 windows-sys = { version = "0.52", features = [
     "Win32_Foundation",
     "Win32_Graphics_Dwm",
@@ -97,6 +98,9 @@ windows = { version = "0.58", features = [
 ] }
 raw-window-handle = "0.6"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+fluxa_streaming_engine = { path = "../../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["apple"] }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 raw-window-handle = "0.6"

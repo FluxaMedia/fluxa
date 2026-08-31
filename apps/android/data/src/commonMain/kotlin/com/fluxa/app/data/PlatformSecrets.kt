@@ -7,4 +7,5 @@ expect object PlatformSecrets {
     val anilistClientId: String
     val nuvioSupabaseUrl: String
     val nuvioSupabaseKey: String
+    val fluxaSyncBaseUrl: String
 }

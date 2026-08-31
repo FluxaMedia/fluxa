@@ -357,23 +357,6 @@ internal fun AppRoutesHost(
                         )
                     }
                 },
-                onConnectStremioWithCredentials = { email, password ->
-                    val profile = activeProfile
-                    if (profile != null) {
-                        homeViewModel.connectStremioWithCredentials(
-                            email = email,
-                            password = password,
-                            profile = profile,
-                            onProfileUpdated = { updated ->
-                                onActiveProfileChanged(updated)
-                                profileManager.saveProfile(updated)
-                                profileManager.setLastActiveProfile(updated)
-                                homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
-                            },
-                            onComplete = { homeViewModel.setProviderSyncing("stremio", false) }
-                        )
-                    }
-                },
                 onConnectNuvioWithCredentials = { email, password ->
                     val profile = activeProfile
                     if (profile != null) {
@@ -490,6 +473,13 @@ internal fun AppRoutesHost(
             stremioIcon = {
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_stremio),
+                    contentDescription = null,
+                    modifier = Modifier.size(34.dp)
+                )
+            },
+            fluxaIcon = {
+                androidx.compose.foundation.Image(
+                    painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.fluxa_logo),
                     contentDescription = null,
                     modifier = Modifier.size(34.dp)
                 )

@@ -118,6 +118,7 @@ pub(crate) fn build_local_profiles_json(args_json: &str) -> Option<String> {
             out.insert("color".into(), color.clone());
         }
         for (dst, src) in [
+            ("authKey", "authKey"),
             ("email", "email"),
             ("nuvioAccessToken", "nuvioAccessToken"),
             ("nuvioRefreshToken", "nuvioRefreshToken"),

@@ -54,8 +54,6 @@ class StremioRepository @Inject constructor(
         return introRepository.submitSegment(apiKey, segmentType, imdbId, season, episode, startSec, endSec)
     }
 
-    suspend fun login(request: LoginRequest) = withContext(Dispatchers.IO) { authService.login(request) }
-
     suspend fun getUserAddons(
         authKey: String,
         localAddons: List<String>? = emptyList(),

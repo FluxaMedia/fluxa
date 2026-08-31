@@ -6,10 +6,9 @@ class ProviderAdapters @Inject constructor(
     val trakt: TraktProviderAdapter,
     val simkl: SimklProviderAdapter,
     val anilist: AnilistProviderAdapter,
-    val nuvio: NuvioProviderAdapter,
-    val stremio: StremioProviderAdapter
+    val nuvio: NuvioProviderAdapter
 ) {
-    val all: List<ProviderAdapter> = listOf(trakt, simkl, anilist, nuvio, stremio)
+    val all: List<ProviderAdapter> = listOf(trakt, simkl, anilist, nuvio)
 
     fun byId(id: String?): ProviderAdapter? = all.firstOrNull { it.id == id }
 }

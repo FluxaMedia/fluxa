@@ -7,4 +7,5 @@ actual object PlatformSecrets {
     actual val anilistClientId: String = BuildConfig.ANILIST_CLIENT_ID
     actual val nuvioSupabaseUrl: String = BuildConfig.NUVIO_SUPABASE_URL
     actual val nuvioSupabaseKey: String = BuildConfig.NUVIO_SUPABASE_KEY
+    actual val fluxaSyncBaseUrl: String = BuildConfig.FLUXA_SYNC_BASE_URL
 }

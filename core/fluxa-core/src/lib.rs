@@ -52,6 +52,8 @@ mod core_error;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod data_policy;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod device_auth;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod desktop_playback;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod device_resource;

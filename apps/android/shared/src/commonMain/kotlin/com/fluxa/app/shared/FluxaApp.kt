@@ -111,6 +111,7 @@ internal fun FluxaApp(
     val settingsBrandIcons = presentation.settingsBrandIcons
     val nuvioIcon = presentation.nuvioIcon
     val stremioIcon = presentation.stremioIcon
+    val fluxaIcon = presentation.fluxaIcon
     val authBackdrop = presentation.authBackdrop
     val biometricAvailable = presentation.biometricAvailable
     val showNavigationBar = presentation.showNavigationBar
@@ -488,7 +489,7 @@ internal fun FluxaApp(
                     language = state.language,
                     onAction = onAuthAction,
                     nuvioIcon = nuvioIcon,
-                    stremioIcon = stremioIcon,
+                    fluxaIcon = fluxaIcon,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Auth && authState != null -> AuthScreen(
@@ -496,7 +497,6 @@ internal fun FluxaApp(
                     language = state.language,
                     onAction = onAuthAction,
                     nuvioIcon = nuvioIcon,
-                    stremioIcon = stremioIcon,
                     backdrop = authBackdrop,
                     modifier = Modifier.fillMaxSize()
                 )

@@ -53,6 +53,7 @@ data class FluxaAppHostConfig(
 data class FluxaAppHostVisuals(
     val nuvioIcon: @Composable () -> Unit = {},
     val stremioIcon: @Composable () -> Unit = {},
+    val fluxaIcon: @Composable () -> Unit = {},
     val authBackdrop: (@Composable () -> Unit)? = null,
     val traktIcon: @Composable () -> Unit = {},
     val simklIcon: @Composable () -> Unit = {},
@@ -76,7 +77,6 @@ data class FluxaAppAuthCallbacks(
     val onAuthCompleted: () -> Unit = {},
     val onConnectStremioRequested: () -> Unit = {},
     val onConnectNuvioRequested: () -> Unit = {},
-    val onConnectStremioWithCredentials: (String, String) -> Unit = { _, _ -> },
     val onConnectNuvioWithCredentials: (String, String) -> Unit = { _, _ -> },
     val onConnectTraktRequested: () -> Unit = {},
     val onConnectSimklRequested: () -> Unit = {},

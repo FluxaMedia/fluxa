@@ -150,6 +150,29 @@ class NuvioAccountImportCoordinator(
         nuvioService.signUp(NuvioCredentials(email, password))
     }
 
+    suspend fun connect(baseProfile: UserProfile, session: NuvioSession): UserProfile {
+        val connectedProfile = baseProfile.copy(
+            email = session.user?.email ?: baseProfile.email,
+            nuvioAccessToken = session.accessToken,
+            nuvioRefreshToken = session.refreshToken,
+            nuvioTokenExpiresAt = session.expiresIn?.let { System.currentTimeMillis() + it * 1000L },
+            nuvioUserId = session.user?.id,
+            nuvioEmail = session.user?.email ?: baseProfile.email,
+        )
+        val authorization = "Bearer ${session.accessToken}"
+        val remoteProfiles = nuvioService.pullProfiles(authorization).requireBody()
+        val avatars = runCatching { nuvioService.listAvatars().requireBody() }.getOrDefault(emptyList())
+        val requestedProfileIndex = connectedProfile.nuvioProfileIndex
+        val primaryIndex = when {
+            requestedProfileIndex != null && remoteProfiles.isEmpty() -> requestedProfileIndex
+            requestedProfileIndex != null && remoteProfiles.any { it.profileIndex == requestedProfileIndex } -> requestedProfileIndex
+            else -> remoteProfiles.minByOrNull { it.profileIndex }?.profileIndex ?: requestedProfileIndex ?: 1
+        }
+        return mergeProfiles(baseProfile, connectedProfile, remoteProfiles, avatars, primaryIndex).also {
+            profileManager.setLastActiveProfile(it)
+        }
+    }
+
     suspend fun sync(
         profile: UserProfile,
         onStep: (NuvioImportStep) -> Unit,
@@ -386,6 +409,9 @@ class NuvioAccountImportCoordinator(
     ): UserProfile {
         val remoteProfilesJson = gson.toJsonTree(remoteProfiles.map { it.withResolvedAvatarUrl(avatars, supabaseUrl) }).asJsonArray
         val existingById = profileManager.getProfiles().associateBy { it.id }.toMutableMap()
+        if (existingById.values.none { it.nuvioUserId == connectedProfile.nuvioUserId }) {
+            existingById[baseProfile.id] = connectedProfile
+        }
 
         remoteProfiles.forEach { remote ->
             val alreadyLinked = existingById.values.any {
@@ -411,6 +437,7 @@ class NuvioAccountImportCoordinator(
         }
 
         val sessionProfileJson = JsonObject().apply {
+            addProperty("authKey", connectedProfile.authKey)
             addProperty("nuvioUserId", connectedProfile.nuvioUserId)
             addProperty("nuvioEmail", connectedProfile.nuvioEmail)
             addProperty("email", connectedProfile.email)
@@ -423,6 +450,9 @@ class NuvioAccountImportCoordinator(
         val merged = NuvioCoreBridge.buildLocalProfiles(sessionProfileJson, remoteProfilesJson, gson.toJsonTree(avatars), existingProfilesJson)
         val mergedProfiles = merged.map { element ->
             val obj = element.asJsonObject
+            if (!obj.has("authKey") || obj.get("authKey").isJsonNull) {
+                obj.addProperty("authKey", "")
+            }
             val importedName = obj.remove("name")?.takeUnless { it.isJsonNull }?.asString
             if (importedName != null) obj.addProperty("profileName", importedName)
             gson.fromJson(obj, UserProfile::class.java)

@@ -7,7 +7,7 @@
     </item>
     <item android:gravity="center">
         <item
-            android:drawable="@drawable/mobilelogo"
+            android:drawable="@drawable/fluxa_logo"
             android:bottom="30dp"
             android:left="110dp"
             android:right="110dp"

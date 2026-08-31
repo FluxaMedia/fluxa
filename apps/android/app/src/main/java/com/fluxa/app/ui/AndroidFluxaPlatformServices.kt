@@ -23,6 +23,10 @@ import com.fluxa.app.ui.profile.AndroidProfileDataSource
 import com.fluxa.app.ui.settings.AndroidPluginsDataSource
 import com.fluxa.app.ui.settings.AndroidStreamBadgesDataSource
 import com.fluxa.app.data.remote.StremioService
+import com.fluxa.app.data.remote.NuvioService
+import com.fluxa.app.data.remote.FluxaSyncService
+import com.fluxa.app.data.remote.NuvioDeviceAuthAdapter
+import com.fluxa.app.data.remote.FluxaDeviceAuthAdapter
 import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.platform.PlatformSecureStore
@@ -51,7 +55,8 @@ class AndroidFluxaPlatformServices(
     secureStore: PlatformSecureStore,
     pluginRepositoryManager: PluginRepositoryManager,
     pluginManager: PluginManager,
-    authService: StremioService,
+    nuvioService: NuvioService,
+    fluxaSyncService: FluxaSyncService,
     nuvioImportCoordinator: NuvioAccountImportCoordinator,
     thirdPartyProviderRepository: ThirdPartyProviderRepository,
     appVersionLabel: String,
@@ -104,12 +109,15 @@ class AndroidFluxaPlatformServices(
     )
     override val streamBadgesDataSource = AndroidStreamBadgesDataSource(context.applicationContext)
     override val authDataSource = AndroidAuthDataSource(
-        authService = authService,
         nuvioCoordinator = nuvioImportCoordinator,
-        pluginRepositoryManager = pluginRepositoryManager,
         profileManager = profileManager,
         language = { activeProfile()?.language ?: "en" },
-        onAuthenticated = onActiveProfileChanged
+        onAuthenticated = onActiveProfileChanged,
+        deviceAuthAdapters = mapOf(
+            "nuvio" to NuvioDeviceAuthAdapter(nuvioService, "https://nuvio.tv/tv-login"),
+            "fluxa" to FluxaDeviceAuthAdapter(fluxaSyncService),
+        ),
+        deviceAuthEnabled = deviceType == DeviceType.TV,
     )
     override val settingsDataSource = AndroidSettingsDataSource(
         context = context.applicationContext,

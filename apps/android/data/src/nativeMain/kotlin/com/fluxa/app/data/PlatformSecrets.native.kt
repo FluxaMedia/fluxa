@@ -7,4 +7,5 @@ actual object PlatformSecrets {
     actual val anilistClientId: String = ""
     actual val nuvioSupabaseUrl: String = ""
     actual val nuvioSupabaseKey: String = ""
+    actual val fluxaSyncBaseUrl: String = ""
 }

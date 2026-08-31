@@ -13,7 +13,6 @@ import { platformFetch } from '../../core/httpClient';
 import { traktHeaders } from '../../core/traktSync';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
 import { nuvioSignIn } from '../../core/nuvioApi';
-import { stremioLogin, stremioLoginWithAuthKey, stremioLogout } from '../../core/stremioApi';
 import {
   codeChallenge,
   credentialAuthErrorMessage,
@@ -101,8 +100,6 @@ export function useIntegrationAccounts({
   const [stremioPopoverOpen, setStremioPopoverOpen] = useState(false);
   const stremioRowRef = useRef<HTMLDivElement>(null);
   const [stremioSyncMeta, setStremioSyncMeta] = useState<SyncMeta | null>(null);
-  const [stremioFormOpen, setStremioFormOpen] = useState(false);
-  const [stremioAuthKeyMode, setStremioAuthKeyMode] = useState(false);
   const [authUrls, setAuthUrls] = useState<Partial<Record<OAuthService, string>>>({});
   const [confirmDisconnect, setConfirmDisconnect] = useState<{ title: string; onConfirm: () => void } | null>(null);
 
@@ -586,7 +583,6 @@ export function useIntegrationAccounts({
     setNuvioError(null);
     try {
       const session = await nuvioSignIn(email, password);
-      if (activeProfile.stremioAuthKey) void stremioLogout(activeProfile.stremioAuthKey);
       const updated: UserProfile = {
         ...activeProfile,
         stremioAuthKey: undefined,
@@ -623,63 +619,9 @@ export function useIntegrationAccounts({
     onProfileUpdated(updated);
   };
 
-  const handleStremioConnect = async (email: string, password: string) => {
-    if (!activeProfile || stremioBusy) return;
-    setStremioBusy(true);
-    setStremioError(null);
-    try {
-      const auth = await stremioLogin(email, password);
-      const updated: UserProfile = {
-        ...activeProfile,
-        nuvioAccessToken: undefined,
-        nuvioRefreshToken: undefined,
-        nuvioTokenExpiresAt: undefined,
-        nuvioUserId: undefined,
-        nuvioEmail: undefined,
-        stremioAuthKey: auth.authKey,
-        stremioEmail: auth.user.email ?? email,
-      };
-      await saveProfile(updated);
-      onProfileUpdated(updated);
-      setStremioFormOpen(false);
-    } catch (err) {
-      setStremioError(credentialAuthErrorMessage(err));
-    } finally {
-      setStremioBusy(false);
-    }
-  };
-
-  const handleStremioConnectWithAuthKey = async (authKey: string) => {
-    if (!activeProfile || stremioBusy) return;
-    setStremioBusy(true);
-    setStremioError(null);
-    try {
-      const auth = await stremioLoginWithAuthKey(authKey);
-      const updated: UserProfile = {
-        ...activeProfile,
-        nuvioAccessToken: undefined,
-        nuvioRefreshToken: undefined,
-        nuvioTokenExpiresAt: undefined,
-        nuvioUserId: undefined,
-        nuvioEmail: undefined,
-        stremioAuthKey: auth.authKey,
-        stremioEmail: auth.user.email,
-      };
-      await saveProfile(updated);
-      onProfileUpdated(updated);
-      setStremioFormOpen(false);
-      setStremioAuthKeyMode(false);
-    } catch (err) {
-      setStremioError(credentialAuthErrorMessage(err));
-    } finally {
-      setStremioBusy(false);
-    }
-  };
-
   const handleStremioDisconnect = async () => {
     if (!activeProfile) return;
     setStremioPopoverOpen(false);
-    if (activeProfile.stremioAuthKey) void stremioLogout(activeProfile.stremioAuthKey);
     const updated: UserProfile = { ...activeProfile, stremioAuthKey: undefined, stremioEmail: undefined };
     await saveProfile(updated);
     onProfileUpdated(updated);
@@ -903,10 +845,6 @@ export function useIntegrationAccounts({
     stremioRowRef,
     stremioSyncMeta,
     stremioConnected,
-    stremioFormOpen,
-    setStremioFormOpen,
-    stremioAuthKeyMode,
-    setStremioAuthKeyMode,
     confirmDisconnect,
     setConfirmDisconnect,
     renderOAuthFallback,
@@ -922,8 +860,6 @@ export function useIntegrationAccounts({
     handleNuvioConnect,
     handleNuvioDisconnect,
     handleNuvioSyncNow,
-    handleStremioConnect,
-    handleStremioConnectWithAuthKey,
     handleStremioDisconnect,
     handleStremioSyncNow,
   };

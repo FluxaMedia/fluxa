@@ -2,6 +2,7 @@ package com.fluxa.app.di
 
 import com.fluxa.app.BuildConfig
 import android.net.http.X509TrustManagerExtensions
+import android.util.Log
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.HttpRequestSecurity
 import com.google.gson.Gson
@@ -11,8 +12,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import okhttp3.Cookie
 import okhttp3.CookieJar
-import okhttp3.HttpUrl
 import okhttp3.OkHttpClient
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -30,6 +31,38 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
+
+    private const val NUVIO_TAG = "NuvioNetwork"
+    private const val DISABLED_NUVIO_BASE_URL = "https://offline.invalid/"
+    private const val DISABLED_FLUXA_SYNC_BASE_URL = "https://offline.invalid/"
+
+    private fun nuvioBaseUrl(): String {
+        val configuredUrl = BuildConfig.NUVIO_SUPABASE_URL.trim()
+        val normalizedUrl = configuredUrl.trimEnd('/') + "/"
+        val parsedUrl = normalizedUrl.toHttpUrlOrNull()
+
+        if (configuredUrl.isBlank() || parsedUrl == null || parsedUrl.scheme !in setOf("http", "https")) {
+            Log.w(NUVIO_TAG, "Nuvio Supabase URL is not configured; Nuvio integration is disabled")
+            return DISABLED_NUVIO_BASE_URL
+        }
+
+        if (BuildConfig.NUVIO_SUPABASE_KEY.isBlank()) {
+            Log.w(NUVIO_TAG, "Nuvio Supabase key is not configured; Nuvio requests will fail")
+        }
+
+        return normalizedUrl
+    }
+
+    private fun fluxaSyncBaseUrl(): String {
+        val configuredUrl = BuildConfig.FLUXA_SYNC_BASE_URL.trim()
+        val normalizedUrl = configuredUrl.trimEnd('/') + "/"
+        val parsedUrl = normalizedUrl.toHttpUrlOrNull()
+        if (configuredUrl.isBlank() || parsedUrl == null || parsedUrl.scheme !in setOf("http", "https")) {
+            Log.w("FluxaSyncNetwork", "Fluxa Sync URL is not configured; device login is disabled")
+            return DISABLED_FLUXA_SYNC_BASE_URL
+        }
+        return normalizedUrl
+    }
 
     @Provides
     @Singleton
@@ -245,6 +278,17 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    fun provideFluxaSyncService(@Named("GenericClient") client: OkHttpClient): FluxaSyncService {
+        return Retrofit.Builder()
+            .baseUrl(fluxaSyncBaseUrl())
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(FluxaSyncService::class.java)
+    }
+
+    @Provides
+    @Singleton
     fun provideExternalSyncApi(@Named("GenericClient") client: OkHttpClient): ExternalSyncApi {
         return Retrofit.Builder()
             .baseUrl("https://api.trakt.tv/")
@@ -320,9 +364,17 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideNuvioService(@Named("NuvioClient") client: OkHttpClient): NuvioService {
+    @Named("NuvioBaseUrl")
+    fun provideNuvioBaseUrl(): String = nuvioBaseUrl()
+
+    @Provides
+    @Singleton
+    fun provideNuvioService(
+        @Named("NuvioClient") client: OkHttpClient,
+        @Named("NuvioBaseUrl") baseUrl: String
+    ): NuvioService {
         return Retrofit.Builder()
-            .baseUrl(BuildConfig.NUVIO_SUPABASE_URL)
+            .baseUrl(baseUrl)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -337,7 +389,8 @@ object NetworkModule {
         watchlistManager: com.fluxa.app.data.local.WatchlistManager,
         providerDataStore: com.fluxa.app.data.repository.library.ProviderDataStore,
         deltaSyncEngine: com.fluxa.app.data.repository.NuvioDeltaSyncEngine,
-        gson: com.google.gson.Gson
+        gson: com.google.gson.Gson,
+        @Named("NuvioBaseUrl") baseUrl: String
     ): com.fluxa.app.data.repository.NuvioAccountImportCoordinator {
         return com.fluxa.app.data.repository.NuvioAccountImportCoordinator(
             nuvioService = nuvioService,
@@ -345,7 +398,7 @@ object NetworkModule {
             watchlistManager = watchlistManager,
             providerDataStore = providerDataStore,
             deltaSyncEngine = deltaSyncEngine,
-            supabaseUrl = BuildConfig.NUVIO_SUPABASE_URL,
+            supabaseUrl = baseUrl,
             gson = gson
         )
     }

@@ -1259,20 +1259,6 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun connectStremioWithCredentials(
-        email: String,
-        password: String,
-        profile: UserProfile,
-        onProfileUpdated: (UserProfile) -> Unit,
-        onComplete: (Boolean) -> Unit,
-    ) = accountConnectionCoordinator.connectStremio(
-        email,
-        password,
-        profile,
-        onProfileUpdated,
-        onComplete,
-    )
-
     fun connectNuvioWithCredentials(
         email: String,
         password: String,

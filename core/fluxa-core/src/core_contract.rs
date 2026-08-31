@@ -148,7 +148,7 @@ pub fn core_capabilities_json(portable: bool) -> String {
 pub fn core_contract_manifest_json() -> String {
     serde_json::json!({
         "version": env!("CARGO_PKG_VERSION"),
-        "methods": ["engine.create", "engine.snapshot", "engine.dispatch", "engine.completeEffect", "engine.destroy", "app.create", "app.state", "app.dispatch", "app.destroy"],
+        "methods": ["engine.create", "engine.snapshot", "engine.dispatch", "engine.completeEffect", "engine.destroy", "app.create", "app.state", "app.dispatch", "app.destroy", "deviceAuthStart", "deviceAuthTransition"],
         "effectEnvelope": {"required": ["id", "type", "generation", "payload"], "optional": ["groupId", "priority", "dedupeKey", "cachePolicy", "timeoutMs"]},
         "effectTypes": EffectKind::ALL.iter().map(|kind| kind.as_str()).collect::<Vec<_>>(),
         "capabilities": {"native": CoreCapabilitySet::android_default(), "portable": CoreCapabilitySet::portable_minimum()},

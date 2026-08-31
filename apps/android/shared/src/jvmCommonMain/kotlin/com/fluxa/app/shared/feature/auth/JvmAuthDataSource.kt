@@ -3,56 +3,101 @@ package com.fluxa.app.shared.feature.auth
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
-import com.fluxa.app.data.remote.LoginRequest
-import com.fluxa.app.data.remote.NuvioPluginDto
 import com.fluxa.app.data.remote.NuvioSession
-import com.fluxa.app.data.remote.StremioService
+import com.fluxa.app.data.remote.NuvioUser
+import com.fluxa.app.data.remote.DeviceAuthAdapter
+import com.fluxa.app.data.remote.DeviceAuthResult
 import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
-import com.fluxa.app.data.repository.NuvioImportStep
+import com.fluxa.app.common.PlatformLog
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-
-private val NUVIO_STEP_MAP = mapOf(
-    NuvioImportStep.PROFILE to AuthImportStep.PROFILE,
-    NuvioImportStep.ADDONS to AuthImportStep.ADDONS,
-    NuvioImportStep.LIBRARY to AuthImportStep.LIBRARY,
-    NuvioImportStep.PROGRESS to AuthImportStep.PROGRESS,
-    NuvioImportStep.HISTORY to AuthImportStep.HISTORY,
-    NuvioImportStep.COLLECTIONS to AuthImportStep.COLLECTIONS,
-)
+import kotlinx.coroutines.delay
 
 /**
  * Shared JVM authentication state machine used by Android and desktop.
  * Platform wrappers only provide ID/email validation and optional import hooks.
  */
 class JvmAuthDataSource(
-    private val authService: StremioService,
     private val nuvioCoordinator: NuvioAccountImportCoordinator,
     private val profileManager: ProfileManager,
     private val language: () -> String,
     private val idGenerator: () -> String,
     private val emailValidator: (String) -> Boolean,
-    private val onPluginsImported: suspend (List<NuvioPluginDto>) -> Unit = {},
     private val onAuthenticated: (UserProfile) -> Unit,
+    private val deviceAuthAdapters: Map<String, DeviceAuthAdapter> = emptyMap(),
+    private val deviceAuthEnabled: Boolean = false,
 ) : AuthDataSource {
     private val state = MutableStateFlow(AuthUiState())
     private var pendingNuvioEmail: String = ""
-    private var pendingImportedProfile: UserProfile? = null
 
     override fun observeAuth(): Flow<AuthUiState> = state.asStateFlow()
 
     override suspend fun continueWithNuvio() {
+        if (deviceAuthEnabled && deviceAuthAdapters.containsKey("nuvio")) {
+            startDeviceAuth("nuvio")
+            return
+        }
         state.value = AuthUiState(stage = AuthStage.Nuvio)
     }
 
-    override suspend fun continueWithStremio() {
-        state.value = AuthUiState(
-            stage = AuthStage.Credentials,
-            showProviderActions = false,
-            allowSignup = false,
+    override suspend fun continueWithFluxa() {
+        if (deviceAuthEnabled && deviceAuthAdapters.containsKey("fluxa")) startDeviceAuth("fluxa")
+    }
+
+    private suspend fun startDeviceAuth(provider: String) {
+        val adapter = deviceAuthAdapters[provider] ?: return
+        state.value = AuthUiState(stage = AuthStage.DeviceQr, showProviderActions = false, allowSignup = false, qrProvider = provider, qrStatus = "starting")
+        try {
+            val session = adapter.start("Fluxa TV")
+            state.value = AuthUiState(
+                stage = AuthStage.DeviceQr,
+                showProviderActions = false,
+                allowSignup = false,
+                qrProvider = provider,
+                qrCode = session.userCode,
+                qrUrl = session.verificationUri,
+                qrExpiresAtMillis = System.currentTimeMillis() + session.expiresInSeconds * 1000,
+                qrStatus = "pending",
+            )
+            while (System.currentTimeMillis() < (state.value.qrExpiresAtMillis ?: 0L)) {
+                delay(session.pollIntervalSeconds.coerceAtLeast(1) * 1000)
+                if (adapter.poll(session)) {
+                    val result = adapter.exchange(session)
+                    if (provider == "nuvio") {
+                        val accessToken = result.accessToken ?: error("Nuvio device login returned no access token")
+                        pendingNuvioEmail = result.email.orEmpty()
+                        connectNuvio(
+                            NuvioSession(
+                                accessToken = accessToken,
+                                refreshToken = result.refreshToken.orEmpty(),
+                                expiresIn = 3600L,
+                                user = result.userId?.let { NuvioUser(it, result.email.orEmpty()) },
+                            )
+                        )
+                    } else {
+                        persistDeviceResult(provider, result)
+                        state.update { it.copy(isAuthenticated = true, qrStatus = "authorized") }
+                    }
+                    return
+                }
+            }
+            state.update { it.copy(qrStatus = "expired", globalError = AppStrings.t(language(), "auth.device_code_expired")) }
+        } catch (error: Exception) {
+            state.update { it.copy(qrStatus = "error", globalError = error.localizedMessage ?: AppStrings.t(language(), "auth.device_login_failed")) }
+        }
+    }
+
+    private suspend fun persistDeviceResult(provider: String, result: DeviceAuthResult) {
+        val profile = UserProfile(
+            id = result.userId ?: idGenerator(),
+            email = result.email ?: "$provider TV",
+            authKey = result.authKey ?: result.accessToken.orEmpty(),
+            nuvioAccessToken = result.accessToken.takeIf { provider == "nuvio" },
+            nuvioRefreshToken = result.refreshToken.takeIf { provider == "nuvio" },
         )
+        persistAndAuthenticate(profile)
     }
 
     override suspend fun continueWithoutAccount() {
@@ -99,13 +144,12 @@ class JvmAuthDataSource(
             AuthStage.Credentials -> submitCredentials()
             AuthStage.Nuvio -> submitNuvio()
             AuthStage.NuvioImporting -> Unit
+            AuthStage.DeviceQr -> Unit
         }
     }
 
     override suspend fun confirmImport() {
-        val profile = pendingImportedProfile ?: return
-        onAuthenticated(profile)
-        state.update { it.copy(isAuthenticated = true) }
+        Unit
     }
 
     private fun validateCredentials(): Boolean {
@@ -146,43 +190,7 @@ class JvmAuthDataSource(
         val lang = language()
         state.update { it.copy(isSubmitting = true, globalError = null) }
         try {
-            val current = state.value
-            val request = LoginRequest(current.email.trim(), current.password)
-            val response = if (current.allowSignup && current.isSignupTab) {
-                authService.register(request)
-            } else {
-                authService.login(request)
-            }
-            val result = response.body()?.result
-            if (response.isSuccessful && result != null) {
-                val existing = profileManager.getProfiles().firstOrNull { profile ->
-                    profile.id == result.user.id ||
-                        profile.stremioUserId == result.user.id ||
-                        profile.stremioEmail.equals(result.user.email, ignoreCase = true)
-                }
-                val profile = existing?.copy(
-                    id = result.user.id,
-                    email = result.user.email,
-                    authKey = result.user.authKey,
-                    stremioUserId = result.user.id,
-                    stremioEmail = result.user.email,
-                ) ?: UserProfile(
-                    id = result.user.id,
-                    email = result.user.email,
-                    authKey = result.user.authKey,
-                    stremioUserId = result.user.id,
-                    stremioEmail = result.user.email,
-                )
-                persistAndAuthenticate(profile)
-                state.update { it.copy(isSubmitting = false, isAuthenticated = true) }
-            } else {
-                state.update {
-                    it.copy(
-                        isSubmitting = false,
-                        globalError = AppStrings.t(lang, "login.stremio_failed"),
-                    )
-                }
-            }
+            error("Credential login is not available in the app")
         } catch (error: Exception) {
             state.update {
                 it.copy(
@@ -208,15 +216,7 @@ class JvmAuthDataSource(
         nuvioCoordinator.signIn(current.email.trim(), current.password).fold(
             onSuccess = { session ->
                 pendingNuvioEmail = current.email
-                state.update {
-                    it.copy(
-                        stage = AuthStage.NuvioImporting,
-                        isSubmitting = false,
-                        importSteps = emptySet(),
-                        importDone = false,
-                    )
-                }
-                runImport(session)
+                connectNuvio(session)
             },
             onFailure = {
                 state.update {
@@ -229,7 +229,7 @@ class JvmAuthDataSource(
         )
     }
 
-    private suspend fun runImport(session: NuvioSession) {
+    private suspend fun connectNuvio(session: NuvioSession) {
         val lang = language()
         try {
             val baseProfile = UserProfile(
@@ -237,40 +237,23 @@ class JvmAuthDataSource(
                 email = session.user?.email ?: pendingNuvioEmail,
                 authKey = "",
             )
-            val imported = nuvioCoordinator.import(
-                baseProfile,
-                session,
-                onStep = { step ->
-                    NUVIO_STEP_MAP[step]?.let { mapped ->
-                        state.update { it.copy(importSteps = it.importSteps + mapped) }
-                    }
-                },
-                onItemProgress = { index, total, title ->
-                    state.update {
-                        it.copy(
-                            importItemIndex = index,
-                            importItemTotal = total,
-                            importItemTitle = title,
-                        )
-                    }
-                },
-            )
-            onPluginsImported(imported.plugins)
-            pendingImportedProfile = imported.profile
+            val profile = nuvioCoordinator.connect(baseProfile, session)
+            onAuthenticated(profile)
             state.update {
                 it.copy(
-                    importDone = true,
-                    importItemIndex = null,
-                    importItemTotal = null,
-                    importItemTitle = null,
+                    isSubmitting = false,
+                    isAuthenticated = true,
+                    qrStatus = "authorized",
                 )
             }
-        } catch (_: Exception) {
+        } catch (error: Exception) {
+            PlatformLog.w("NuvioAuth", "Nuvio account connection failed after authentication", error)
             state.update {
                 it.copy(
-                    stage = AuthStage.Nuvio,
+                    stage = if (it.qrProvider == "nuvio") AuthStage.DeviceQr else AuthStage.Nuvio,
                     isSubmitting = false,
                     globalError = AppStrings.t(lang, "auth.error.network"),
+                    qrStatus = if (it.qrProvider == "nuvio") "error" else it.qrStatus,
                 )
             }
         }

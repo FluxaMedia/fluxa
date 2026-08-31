@@ -91,6 +91,8 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var addonRepository: AddonRepository
     @Inject lateinit var platformSecureStore: com.fluxa.app.data.platform.PlatformSecureStore
     @Inject lateinit var authService: StremioService
+    @Inject lateinit var nuvioService: com.fluxa.app.data.remote.NuvioService
+    @Inject lateinit var fluxaSyncService: com.fluxa.app.data.remote.FluxaSyncService
     @Inject lateinit var nuvioImportCoordinator: com.fluxa.app.data.repository.NuvioAccountImportCoordinator
     @Inject lateinit var nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator
     @Inject lateinit var watchlistStore: com.fluxa.app.data.local.WatchlistStore
@@ -327,7 +329,8 @@ class MainActivity : FragmentActivity() {
                             secureStore = platformSecureStore,
                             pluginRepositoryManager = pluginRepositoryManager,
                             pluginManager = pluginManager,
-                            authService = authService,
+                            nuvioService = nuvioService,
+                            fluxaSyncService = fluxaSyncService,
                             nuvioImportCoordinator = nuvioImportCoordinator,
                             thirdPartyProviderRepository = thirdPartyProviderRepository,
                             appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}",

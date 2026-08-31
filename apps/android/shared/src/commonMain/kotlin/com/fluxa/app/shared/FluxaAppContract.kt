@@ -101,6 +101,7 @@ internal data class FluxaAppPresentation(
     val settingsBrandIcons: SettingsBrandIcons = SettingsBrandIcons(),
     val nuvioIcon: @Composable () -> Unit = {},
     val stremioIcon: @Composable () -> Unit = {},
+    val fluxaIcon: @Composable () -> Unit = {},
     val authBackdrop: (@Composable () -> Unit)? = null,
     val biometricAvailable: Boolean = false,
     val showNavigationBar: Boolean = true,

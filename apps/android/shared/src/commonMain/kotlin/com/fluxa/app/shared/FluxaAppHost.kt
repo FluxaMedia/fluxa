@@ -153,7 +153,6 @@ private fun FluxaAppHostContent(
     val onAuthCompleted = authCallbacks.onAuthCompleted
     val onConnectStremioRequested = authCallbacks.onConnectStremioRequested
     val onConnectNuvioRequested = authCallbacks.onConnectNuvioRequested
-    val onConnectStremioWithCredentials = authCallbacks.onConnectStremioWithCredentials
     val onConnectNuvioWithCredentials = authCallbacks.onConnectNuvioWithCredentials
     val onConnectTraktRequested = authCallbacks.onConnectTraktRequested
     val onConnectSimklRequested = authCallbacks.onConnectSimklRequested
@@ -619,7 +618,6 @@ private fun FluxaAppHostContent(
                     SettingsAction.ManageStreamBadgesRequested -> onManageStreamBadgesRequested()
                     SettingsAction.ConnectStremioRequested -> onConnectStremioRequested()
                     SettingsAction.ConnectNuvioRequested -> onConnectNuvioRequested()
-                    is SettingsAction.ConnectStremioWithCredentials -> onConnectStremioWithCredentials(action.email, action.password)
                     is SettingsAction.ConnectNuvioWithCredentials -> onConnectNuvioWithCredentials(action.email, action.password)
                     SettingsAction.ConnectTraktRequested -> onConnectTraktRequested()
                     SettingsAction.ConnectSimklRequested -> onConnectSimklRequested()
@@ -728,6 +726,7 @@ private fun FluxaAppHostContent(
             ),
             nuvioIcon = nuvioIcon,
             stremioIcon = stremioIcon,
+            fluxaIcon = visuals.fluxaIcon,
             authBackdrop = authBackdrop,
             biometricAvailable = biometricAvailable,
             showNavigationBar = showNavigationBar,

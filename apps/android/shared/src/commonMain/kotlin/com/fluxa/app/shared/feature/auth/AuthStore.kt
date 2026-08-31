@@ -15,7 +15,7 @@ class AuthStore(
     suspend fun dispatch(action: AuthAction) {
         when (action) {
             AuthAction.ContinueWithNuvio -> dataSource.continueWithNuvio()
-            AuthAction.ContinueWithStremio -> dataSource.continueWithStremio()
+            AuthAction.ContinueWithFluxa -> dataSource.continueWithFluxa()
             AuthAction.ContinueWithoutAccount -> dataSource.continueWithoutAccount()
             AuthAction.BackToRoot -> dataSource.backToRoot()
             AuthAction.BackRequested -> Unit

@@ -78,6 +78,10 @@ pub fn player_show_loading(
 pub fn player_hide(app: AppHandle, state: State<DesktopState>) {
     state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
+    #[cfg(target_os = "macos")]
+    if let Some(id) = state.avplayer_local_stream_id.lock().unwrap().take() {
+        let _ = fluxa_streaming_engine::stop_local_stream_server(&id);
+    }
     if *state.active_player_engine.lock().unwrap() == PlayerEngine::Vlc {
         if let Ok(guard) = state.player_renderer_vlc.try_lock() {
             if let Some(player) = guard.as_ref() {
@@ -238,6 +242,10 @@ pub fn player_track_options(
 pub fn player_destroy(state: State<DesktopState>) -> bool {
     state.pending_hide.store(true, Ordering::Release);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
+    #[cfg(target_os = "macos")]
+    if let Some(id) = state.avplayer_local_stream_id.lock().unwrap().take() {
+        let _ = fluxa_streaming_engine::stop_local_stream_server(&id);
+    }
     let had_vlc = state.player_renderer_vlc.lock().unwrap().take().is_some();
     #[cfg(target_os = "linux")]
     {

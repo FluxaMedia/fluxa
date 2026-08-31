@@ -2,7 +2,7 @@ package com.fluxa.app.shared.feature.auth
 
 import kotlinx.coroutines.flow.Flow
 
-enum class AuthStage { Credentials, Nuvio, NuvioImporting }
+enum class AuthStage { Credentials, Nuvio, NuvioImporting, DeviceQr }
 
 enum class AuthImportStep { PROFILE, ADDONS, LIBRARY, PROGRESS, HISTORY, COLLECTIONS }
 
@@ -24,12 +24,17 @@ data class AuthUiState(
     val importItemIndex: Int? = null,
     val importItemTotal: Int? = null,
     val importItemTitle: String? = null,
-    val isAuthenticated: Boolean = false
+    val isAuthenticated: Boolean = false,
+    val qrProvider: String? = null,
+    val qrCode: String? = null,
+    val qrUrl: String? = null,
+    val qrExpiresAtMillis: Long? = null,
+    val qrStatus: String? = null,
 )
 
 sealed interface AuthAction {
     data object ContinueWithNuvio : AuthAction
-    data object ContinueWithStremio : AuthAction
+    data object ContinueWithFluxa : AuthAction
     data object ContinueWithoutAccount : AuthAction
     data object BackToRoot : AuthAction
     data object BackRequested : AuthAction
@@ -45,7 +50,7 @@ sealed interface AuthAction {
 interface AuthDataSource {
     fun observeAuth(): Flow<AuthUiState>
     suspend fun continueWithNuvio()
-    suspend fun continueWithStremio()
+    suspend fun continueWithFluxa()
     suspend fun continueWithoutAccount()
     suspend fun backToRoot()
     suspend fun updateEmail(value: String)

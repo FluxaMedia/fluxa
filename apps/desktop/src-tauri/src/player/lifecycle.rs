@@ -172,39 +172,35 @@ pub async fn player_load(
     let mut avplayer_adapter_applied = false;
 
     #[cfg(target_os = "macos")]
-    if engine == PlayerEngine::AvPlayer {
+    {
+        if let Some(previous_id) = state.avplayer_local_stream_id.lock().unwrap().take() {
+            let _ = fluxa_streaming_engine::stop_local_stream_server(&previous_id);
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    if engine == PlayerEngine::AvPlayer && avplayer_can_adapt(&url) {
         let headers = pending_headers
             .iter()
             .cloned()
             .collect::<std::collections::HashMap<_, _>>();
-        let needs_adapter = !headers.is_empty() || avplayer_needs_remux(&url);
-        if needs_adapter && (url.starts_with("http://") || url.starts_with("https://")) {
-            if let Some(previous_id) = state.avplayer_local_stream_id.lock().unwrap().take() {
-                let _ = fluxa_streaming_engine::stop_local_stream_server(&previous_id);
-            }
-            let headers_json = serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string());
-            let local =
-                fluxa_streaming_engine::start_local_stream_server(&url, &headers_json, 0)
-                    .ok_or_else(|| "could not start AVPlayer local stream adapter".to_string())?;
-            let payload: serde_json::Value = serde_json::from_str(&local)
-                .map_err(|error| format!("invalid AVPlayer local stream response: {error}"))?;
-            let id = payload
-                .get("id")
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| "AVPlayer local stream response has no id".to_string())?;
-            let base_url = payload
-                .get("url")
-                .and_then(serde_json::Value::as_str)
-                .ok_or_else(|| "AVPlayer local stream response has no url".to_string())?;
-            *state.avplayer_local_stream_id.lock().unwrap() = Some(id.to_string());
-            url = if avplayer_needs_remux(&url) {
-                format!("{base_url}/remux")
-            } else {
-                base_url.to_string()
-            };
-            avplayer_adapter_applied = true;
-            log::info!("player_load: AVPlayer adapter url={url}");
-        }
+        let headers_json = serde_json::to_string(&headers).unwrap_or_else(|_| "{}".to_string());
+        let local = fluxa_streaming_engine::start_local_stream_server(&url, &headers_json, 0)
+            .ok_or_else(|| "could not start AVPlayer local stream adapter".to_string())?;
+        let payload: serde_json::Value = serde_json::from_str(&local)
+            .map_err(|error| format!("invalid AVPlayer local stream response: {error}"))?;
+        let id = payload
+            .get("id")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| "AVPlayer local stream response has no id".to_string())?;
+        let base_url = payload
+            .get("url")
+            .and_then(serde_json::Value::as_str)
+            .ok_or_else(|| "AVPlayer local stream response has no url".to_string())?;
+        *state.avplayer_local_stream_id.lock().unwrap() = Some(id.to_string());
+        url = format!("{base_url}/remux");
+        avplayer_adapter_applied = true;
+        log::info!("player_load: AVPlayer adapter url={url}");
     }
 
     #[cfg(target_os = "macos")]
@@ -362,13 +358,11 @@ pub async fn player_load(
 }
 
 #[cfg(target_os = "macos")]
-fn avplayer_needs_remux(url: &str) -> bool {
-    let path = url
-        .split(['?', '#'])
-        .next()
-        .unwrap_or(url)
-        .to_ascii_lowercase();
-    path.ends_with(".mkv") || path.ends_with(".matroska")
+fn avplayer_can_adapt(url: &str) -> bool {
+    let normalized = url.to_ascii_lowercase();
+    normalized.starts_with("http://")
+        || normalized.starts_with("https://")
+        || normalized.starts_with("file://")
 }
 
 #[tauri::command]

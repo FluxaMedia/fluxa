@@ -12,19 +12,11 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
+import retrofit2.http.Query
 import retrofit2.http.Url
 import java.util.concurrent.TimeUnit
 
 interface StremioService {
-    @POST("api/login")
-    suspend fun login(@Body request: LoginRequest): Response<AuthResponse>
-
-    @POST("api/register")
-    suspend fun register(@Body request: LoginRequest): Response<AuthResponse>
-
-    @POST("api/addonCollectionGet")
-    suspend fun getAddons(@Body request: AuthRequest): Response<AddonCollectionResponse>
-
     @POST("api/datastorePut")
     suspend fun datastorePut(@Body request: DatastorePutRequest): Response<Any>
 
@@ -125,3 +117,6 @@ interface StremioService {
         }
     }
 }
+
+data class StremioApiResult<T>(val result: T? = null, val error: StremioApiError? = null)
+data class StremioApiError(val message: String? = null, val code: Int? = null)

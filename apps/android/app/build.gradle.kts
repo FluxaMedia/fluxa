@@ -41,6 +41,7 @@ android {
         buildConfigField("String", "ANILIST_CLIENT_ID", "\"${secret("ANILIST_CLIENT_ID")}\"")
         buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL")}\"")
         buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
+        buildConfigField("String", "FLUXA_SYNC_BASE_URL", "\"${secret("FLUXA_SYNC_BASE_URL")}\"")
 
     }
 

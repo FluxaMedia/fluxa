@@ -14,6 +14,7 @@ unsafe extern "C" {
         url: *const c_char,
         title: *const c_char,
         start: f64,
+        duration: f64,
     ) -> *mut c_char;
     fn fluxa_desktop_avplayer_command(handle: *mut c_void, command: *const c_char) -> *mut c_char;
     fn fluxa_desktop_avplayer_add_subtitle(handle: *mut c_void, url: *const c_char) -> *mut c_char;
@@ -21,6 +22,7 @@ unsafe extern "C" {
     fn fluxa_desktop_avplayer_position(handle: *mut c_void) -> f64;
     fn fluxa_desktop_avplayer_duration(handle: *mut c_void) -> f64;
     fn fluxa_desktop_avplayer_phase(handle: *mut c_void) -> i32;
+    fn fluxa_desktop_avplayer_error(handle: *mut c_void) -> *mut c_char;
     fn fluxa_desktop_avplayer_tracks_json(handle: *mut c_void) -> *mut c_char;
     fn fluxa_desktop_avplayer_free_string(value: *mut c_char);
 }
@@ -30,6 +32,7 @@ pub struct NativePlayerSurface {
     handle: usize,
     app: AppHandle,
     shown: Arc<AtomicBool>,
+    failure_reported: Arc<AtomicBool>,
 }
 
 unsafe impl Send for NativePlayerSurface {}
@@ -65,9 +68,10 @@ impl PlayerSurface for NativePlayerSurface {
         &self,
         url: String,
         start_at: Option<u64>,
-        _total_duration: Option<u64>,
+        total_duration: Option<u64>,
     ) -> Result<(), String> {
         self.shown.store(false, Ordering::Release);
+        self.failure_reported.store(false, Ordering::Release);
         let url = CString::new(url).map_err(|_| "AVPlayer URL contains NUL".to_string())?;
         let title = CString::new("Fluxa").expect("static title");
         let result = self.call_string(unsafe {
@@ -76,6 +80,7 @@ impl PlayerSurface for NativePlayerSurface {
                 url.as_ptr(),
                 title.as_ptr(),
                 start_at.unwrap_or(0) as f64,
+                total_duration.unwrap_or(0) as f64,
             )
         });
         result
@@ -113,6 +118,17 @@ impl PlayerSurface for NativePlayerSurface {
 
     fn status(&self) -> Result<PlayerStatus, String> {
         let phase = unsafe { fluxa_desktop_avplayer_phase(self.handle()) };
+        if phase == 5 && !self.failure_reported.swap(true, Ordering::AcqRel) {
+            let value = unsafe { fluxa_desktop_avplayer_error(self.handle()) };
+            let message = if value.is_null() {
+                "AVPlayer could not play this source".to_string()
+            } else {
+                let message = unsafe { CStr::from_ptr(value).to_string_lossy().into_owned() };
+                unsafe { fluxa_desktop_avplayer_free_string(value) };
+                message
+            };
+            let _ = self.app.emit("native-player-error", message);
+        }
         if phase == 2 && !self.shown.swap(true, Ordering::AcqRel) {
             let _ = self.app.emit("native-player-show", ());
         }
@@ -233,5 +249,6 @@ pub fn install(app_handle: AppHandle) -> Result<NativePlayerSurface, String> {
         handle: handle as usize,
         app: app_handle,
         shown: Arc::new(AtomicBool::new(false)),
+        failure_reported: Arc::new(AtomicBool::new(false)),
     })
 }

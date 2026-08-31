@@ -10,6 +10,15 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface NuvioService {
+    @POST("rest/v1/rpc/start_tv_login_session")
+    suspend fun startTvLogin(@Body body: Map<String, String?>): Response<List<NuvioTvLoginStartDto>>
+
+    @POST("rest/v1/rpc/poll_tv_login_session")
+    suspend fun pollTvLogin(@Body body: Map<String, String>): Response<List<NuvioTvLoginPollDto>>
+
+    @POST("functions/v1/tv-logins-exchange")
+    suspend fun exchangeTvLogin(@Body body: Map<String, String>): Response<NuvioSessionDto>
+
     @GET("functions/v1/health-check")
     suspend fun healthCheck(): Response<NuvioHealth>
 

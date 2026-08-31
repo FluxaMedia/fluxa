@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -53,7 +55,7 @@ fun TvAuthScreen(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    stremioIcon: @Composable () -> Unit,
+    fluxaIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(state.isAuthenticated) {
@@ -61,14 +63,18 @@ fun TvAuthScreen(
     }
 
     Box(
-        modifier = modifier.fillMaxSize().background(FluxaColors.backgroundNearBlack),
+        modifier = modifier
+            .fillMaxSize()
+            .background(FluxaColors.backgroundNearBlack)
+            .padding(horizontal = 48.dp, vertical = 24.dp),
         contentAlignment = Alignment.Center
     ) {
-        Box(modifier = Modifier.widthIn(max = 480.dp).fillMaxWidth()) {
+        Box(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
             when (state.stage) {
-                AuthStage.Credentials -> TvCredentialsStage(state, language, onAction, nuvioIcon, stremioIcon)
+                AuthStage.Credentials -> TvCredentialsStage(state, language, onAction, nuvioIcon, fluxaIcon)
                 AuthStage.Nuvio -> TvNuvioCredentialsStage(state, language, onAction, nuvioIcon)
                 AuthStage.NuvioImporting -> TvNuvioImportingStage(state, language, onAction)
+                AuthStage.DeviceQr -> DeviceQrStage(state, language, onAction)
             }
         }
     }
@@ -84,7 +90,7 @@ private fun TvFocusRing(
     Box(
         modifier = modifier
             .clip(shape)
-            .border(width = if (focused) 3.dp else 0.dp, color = Color.White, shape = shape)
+            .border(width = 0.dp, color = Color.Transparent, shape = shape)
     ) {
         content()
     }
@@ -106,15 +112,21 @@ private fun TvAuthProviderButton(
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
                 .onFocusChanged { focused = it.isFocused }
                 .fillMaxWidth()
-                .height(56.dp)
-                .background(containerColor)
+                .height(72.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .background(if (focused) Color.White else FluxaColors.surfaceRaised)
                 .clickable(onClick = onClick)
-                .padding(horizontal = 20.dp),
+                .padding(horizontal = 24.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             icon()
             Spacer(Modifier.width(12.dp))
-            Text(label, color = contentColor, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text(
+                label,
+                color = if (focused) Color.Black else contentColor,
+                fontWeight = FontWeight.SemiBold,
+                fontSize = 18.sp,
+            )
         }
     }
 }
@@ -133,15 +145,15 @@ private fun TvAuthSubmitButton(
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
                 .onFocusChanged { focused = it.isFocused }
                 .fillMaxWidth()
-                .height(52.dp)
-                .background(if (isSubmitting) Color.White.copy(alpha = 0.6f) else Color.White)
+                .height(56.dp)
+                .background(if (focused) FluxaColors.accent else FluxaColors.surfaceRaised)
                 .clickable(enabled = !isSubmitting, onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
             if (isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
-                Text(label, color = Color.Black, fontWeight = FontWeight.SemiBold)
+                Text(label, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
             }
         }
     }
@@ -155,7 +167,7 @@ private fun TvAuthBackButton(onClick: () -> Unit) {
             modifier = Modifier
                 .size(40.dp)
                 .onFocusChanged { focused = it.isFocused }
-                .background(Color.White.copy(alpha = 0.05f))
+                .background(if (focused) Color.White else Color.White.copy(alpha = 0.05f), CircleShape)
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
@@ -170,41 +182,73 @@ private fun TvCredentialsStage(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    stremioIcon: @Composable () -> Unit
+    fluxaIcon: @Composable () -> Unit,
 ) {
     val primaryFocusRequester = remember { FocusRequester() }
     LaunchedEffect(state.showProviderActions) {
         primaryFocusRequester.requestFocus()
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 4.dp, vertical = 28.dp)
+    ) {
         TvAuthBackButton(onClick = { onAction(if (state.showProviderActions) AuthAction.BackRequested else AuthAction.BackToRoot) })
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(32.dp))
 
         if (state.showProviderActions) {
+            Text(
+                text = AppStrings.t(language, "auth.welcome_back"),
+                color = Color.White,
+                fontSize = 30.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                text = AppStrings.t(language, "auth.choose_login_method"),
+                color = Color.White.copy(alpha = 0.58f),
+                fontSize = 15.sp,
+            )
+            Spacer(Modifier.height(24.dp))
             TvAuthProviderButton(
                 label = AppStrings.t(language, "auth.continue_with_nuvio"),
                 icon = nuvioIcon,
-                containerColor = Color.White,
-                contentColor = Color.Black,
+                containerColor = FluxaColors.surfaceCard,
+                contentColor = Color.White,
                 onClick = { onAction(AuthAction.ContinueWithNuvio) },
                 focusRequester = primaryFocusRequester
             )
             Spacer(Modifier.height(12.dp))
             TvAuthProviderButton(
-                label = AppStrings.t(language, "auth.continue_with_stremio"),
-                icon = stremioIcon,
+                label = AppStrings.t(language, "auth.continue_with_fluxa"),
+                icon = fluxaIcon,
                 containerColor = Color.White.copy(alpha = 0.08f),
                 contentColor = Color.White,
-                onClick = {}
+                onClick = { onAction(AuthAction.ContinueWithFluxa) }
             )
             Spacer(Modifier.height(24.dp))
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                stremioIcon()
-                Text(AppStrings.t(language, "auth.login_with_stremio"), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
             Spacer(Modifier.height(24.dp))
+        }
+
+        if (state.showProviderActions) {
+            Spacer(Modifier.height(12.dp))
+            var skipFocused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(10.dp))
+                    .border(width = if (skipFocused) 2.dp else 0.dp, color = Color.White, shape = RoundedCornerShape(10.dp))
+                    .onFocusChanged { skipFocused = it.isFocused }
+                    .clickable { onAction(AuthAction.ContinueWithoutAccount) }
+                    .padding(vertical = 12.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f))
+            }
+            return@Column
         }
 
         if (state.allowSignup) {
@@ -292,22 +336,6 @@ private fun TvCredentialsStage(
             onClick = { onAction(AuthAction.Submit) }
         )
 
-        if (state.showProviderActions) {
-            Spacer(Modifier.height(12.dp))
-            var skipFocused by remember { mutableStateOf(false) }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(width = if (skipFocused) 2.dp else 0.dp, color = Color.White, shape = RoundedCornerShape(10.dp))
-                    .onFocusChanged { skipFocused = it.isFocused }
-                    .clickable { onAction(AuthAction.ContinueWithoutAccount) }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f))
-            }
-        }
     }
 }
 

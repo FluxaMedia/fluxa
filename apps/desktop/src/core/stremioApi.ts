@@ -3,11 +3,6 @@ import type { AddonDescriptor } from './types';
 
 const STREMIO_API = 'https://api.strem.io';
 
-export interface StremioAuth {
-  authKey: string;
-  user: { _id?: string; email?: string };
-}
-
 export class StremioApiError extends Error {
   code?: number;
 
@@ -35,26 +30,6 @@ async function stremioPost<T>(path: string, body: Record<string, unknown>): Prom
     throw new StremioApiError('Stremio request returned no result');
   }
   return data.result;
-}
-
-export async function stremioLogin(email: string, password: string): Promise<StremioAuth> {
-  const result = await stremioPost<{ authKey?: string; user?: { _id?: string; email?: string; authKey?: string } }>('/api/login', {
-    email,
-    password,
-  });
-  const authKey = result.authKey ?? result.user?.authKey;
-  if (!authKey) throw new StremioApiError('Stremio login returned no auth key');
-  return { authKey, user: { _id: result.user?._id, email: result.user?.email ?? email } };
-}
-
-export async function stremioLoginWithAuthKey(authKey: string): Promise<StremioAuth> {
-  const user = await stremioPost<{ _id?: string; email?: string }>('/api/getUser', { authKey });
-  if (!user._id) throw new StremioApiError('Stremio auth key is invalid or expired');
-  return { authKey, user: { _id: user._id, email: user.email } };
-}
-
-export async function stremioLogout(authKey: string): Promise<void> {
-  await stremioPost('/api/logout', { authKey }).catch(() => undefined);
 }
 
 export async function stremioPullLibrary(authKey: string): Promise<Record<string, unknown>[]> {

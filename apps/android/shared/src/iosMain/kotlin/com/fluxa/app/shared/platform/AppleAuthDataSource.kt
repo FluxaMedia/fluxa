@@ -29,7 +29,7 @@ class AppleAuthDataSource : AuthDataSource {
         state.value = AuthUiState(stage = AuthStage.Nuvio)
     }
 
-    override suspend fun continueWithStremio() {
+    override suspend fun continueWithFluxa() {
         state.value = AuthUiState(stage = AuthStage.Credentials, showProviderActions = false, allowSignup = false)
     }
 

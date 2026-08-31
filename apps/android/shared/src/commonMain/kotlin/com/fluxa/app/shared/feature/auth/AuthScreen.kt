@@ -54,7 +54,6 @@ fun AuthScreen(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    stremioIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier,
     backdrop: (@Composable () -> Unit)? = null
 ) {
@@ -79,19 +78,54 @@ fun AuthScreen(
                         .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(28.dp))
                 ) {
                     when (state.stage) {
-                        AuthStage.Credentials -> DesktopCredentialsCard(state, language, onAction, nuvioIcon, stremioIcon)
+                        AuthStage.Credentials -> DesktopCredentialsCard(state, language, onAction, nuvioIcon)
                         AuthStage.Nuvio -> DesktopNuvioCard(state, language, onAction, nuvioIcon)
                         AuthStage.NuvioImporting -> DesktopNuvioImportingCard(state, language, onAction)
+                        AuthStage.DeviceQr -> DeviceQrStage(state, language, onAction)
                     }
                 }
             }
         } else {
             when (state.stage) {
-                AuthStage.Credentials -> CredentialsStage(state, language, onAction, nuvioIcon, stremioIcon)
+                AuthStage.Credentials -> CredentialsStage(state, language, onAction, nuvioIcon)
                 AuthStage.Nuvio -> NuvioCredentialsStage(state, language, onAction, nuvioIcon)
                 AuthStage.NuvioImporting -> NuvioImportingStage(state, language, onAction)
+                AuthStage.DeviceQr -> DeviceQrStage(state, language, onAction)
             }
         }
+    }
+}
+
+@Composable
+internal fun DeviceQrStage(state: AuthUiState, language: String?, onAction: (AuthAction) -> Unit) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+        Text(AppStrings.t(language, "auth.scan_to_connect"), color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
+        Spacer(Modifier.height(20.dp))
+        if (!state.qrUrl.isNullOrBlank()) {
+            DeviceQrCode(state.qrUrl, Modifier.size(220.dp))
+        } else {
+            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(48.dp))
+        }
+        Spacer(Modifier.height(20.dp))
+        Text(
+            text = state.qrCode.orEmpty(),
+            color = Color.White,
+            fontSize = 28.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 3.sp,
+            maxLines = 1,
+            softWrap = false,
+        )
+        Spacer(Modifier.height(12.dp))
+        Text(state.qrUrl.orEmpty(), color = Color.White.copy(alpha = .75f), fontSize = 13.sp)
+        Spacer(Modifier.height(16.dp))
+        Text(if (state.qrStatus == "pending") AppStrings.t(language, "auth.login_pending") else state.qrStatus.orEmpty(), color = Color.White.copy(alpha = .6f))
+        state.globalError?.let { error ->
+            Spacer(Modifier.height(8.dp))
+            Text(error, color = Color(0xFFFF8A80), fontSize = 14.sp)
+        }
+        Spacer(Modifier.height(20.dp))
+        TextButton(onClick = { onAction(AuthAction.BackToRoot) }) { Text(AppStrings.t(language, "common.back"), color = Color.White) }
     }
 }
 
@@ -101,7 +135,6 @@ private fun DesktopCredentialsCard(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    stremioIcon: @Composable () -> Unit
 ) {
     val isRoot = state.showProviderActions
     Column(
@@ -109,7 +142,7 @@ private fun DesktopCredentialsCard(
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = AppStrings.t(language, if (isRoot) "auth.welcome_back" else "auth.login_with_stremio"),
+            text = AppStrings.t(language, if (isRoot) "auth.welcome_back" else "auth.log_in"),
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 24.sp
@@ -117,12 +150,6 @@ private fun DesktopCredentialsCard(
 
         if (isRoot) {
             Spacer(Modifier.height(28.dp))
-            DesktopProviderRow(
-                label = AppStrings.t(language, "auth.continue_with_stremio"),
-                icon = stremioIcon,
-                onClick = { onAction(AuthAction.ContinueWithStremio) }
-            )
-            Spacer(Modifier.height(12.dp))
             DesktopProviderRow(
                 label = AppStrings.t(language, "auth.continue_with_nuvio"),
                 icon = nuvioIcon,
@@ -322,7 +349,6 @@ private fun CredentialsStage(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    stremioIcon: @Composable () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -343,19 +369,8 @@ private fun CredentialsStage(
                 onClick = { onAction(AuthAction.ContinueWithNuvio) }
             )
             Spacer(Modifier.height(12.dp))
-            AuthProviderButton(
-                label = AppStrings.t(language, "auth.continue_with_stremio"),
-                icon = stremioIcon,
-                containerColor = Color.White.copy(alpha = 0.08f),
-                contentColor = Color.White,
-                onClick = {}
-            )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(12.dp))
         } else {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                stremioIcon()
-                Text(AppStrings.t(language, "auth.login_with_stremio"), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-            }
             Spacer(Modifier.height(24.dp))
         }
 
