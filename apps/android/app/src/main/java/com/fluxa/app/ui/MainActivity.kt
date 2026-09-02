@@ -70,7 +70,6 @@ import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.player.DiscordPresenceNative
 import com.fluxa.app.R
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -253,7 +252,7 @@ class MainActivity : FragmentActivity() {
                                 activeProfile = profiles.firstOrNull()
                             }
                             if (activeProfile != null) {
-                                navigateToDestination(FluxaDestination.Search, false)
+                                navigateToDestination(FluxaDestination.Discover, false)
                                 homeViewModel.search(query)
                             }
                         }
@@ -306,13 +305,6 @@ class MainActivity : FragmentActivity() {
                     DisposableEffect(mainPlayer) {
                         onDispose { MediaPlayerController.releaseExoPlayer(mainPlayer) }
                     }
-                    val mediaSession = remember(mainPlayer) {
-                        MediaSession.Builder(context, mainPlayer).build()
-                    }
-                    DisposableEffect(mediaSession) {
-                        onDispose { mediaSession.release() }
-                    }
-
                     val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager, profilePickerSettingsStore) {
                         AndroidFluxaPlatformServices(
                             context = context,

@@ -222,7 +222,10 @@ private fun FluxaAppHostContent(
     val discoverStore = discoverDataSource?.let { source ->
         remember(source) { DiscoverStore(source, scope) }
     }
-    val discoverState = if (!routeContentObscured && currentAppState.destination == FluxaDestination.Discover) {
+    val discoverState = if (!routeContentObscured && (
+            currentAppState.destination == FluxaDestination.Discover ||
+                currentAppState.destination == FluxaDestination.Search
+            )) {
         discoverStore?.state?.collectAsState()?.value
     } else null
 
@@ -386,7 +389,7 @@ private fun FluxaAppHostContent(
         }
     }
     LaunchedEffect(appState.uiState.destination, discoverStore) {
-        if (appState.uiState.destination == FluxaDestination.Discover) {
+        if (appState.uiState.destination == FluxaDestination.Discover || appState.uiState.destination == FluxaDestination.Search) {
             discoverStore?.dispatch(DiscoverAction.FiltersChanged(discoverState?.filters ?: DiscoverFiltersUiModel()))
         }
     }
