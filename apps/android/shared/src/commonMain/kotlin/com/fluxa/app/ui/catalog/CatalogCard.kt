@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -8,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -54,6 +56,7 @@ fun CatalogCard(
     val deviceType = LocalDeviceType.current
     val interactionSource = remember { MutableInteractionSource() }
     val hovered by interactionSource.collectIsHoveredAsState()
+    val pressed by interactionSource.collectIsPressedAsState()
     var focused by remember { mutableStateOf(false) }
     var animatedArtworkFailed by remember(model.animatedArtworkUrl) { mutableStateOf(false) }
     var artworkFailed by remember(model.artworkUrl) { mutableStateOf(model.artworkUrl.isNullOrBlank()) }
@@ -98,6 +101,7 @@ fun CatalogCard(
     }
 
     val targetScale = when {
+        pressed -> 0.98f
         focused && deviceType == DeviceType.TV -> 1.10f
         focused -> 1.04f
         hovered && deviceType == DeviceType.Desktop -> 1.025f
@@ -105,8 +109,13 @@ fun CatalogCard(
     }
     val cardScale = animateFloatAsState(
         targetValue = targetScale,
-        animationSpec = tween(durationMillis = 140),
+        animationSpec = tween(durationMillis = 180),
         label = "catalog-card-scale"
+    )
+    val cardBorderWidth by animateDpAsState(
+        targetValue = if (focused) 3.dp else 0.dp,
+        animationSpec = tween(durationMillis = 160),
+        label = "catalog-card-focus-border"
     )
 
     val rankFontSize = remember(model.topTenRank, model.imageHeight, model.rankFontSizeRatio, density) {
@@ -144,11 +153,6 @@ fun CatalogCard(
                 scaleX = cardScale.value
                 scaleY = cardScale.value
             }
-            .border(
-                3.dp,
-                if (focused) Color.White else Color.Transparent,
-                RoundedCornerShape(model.cornerRadius)
-            )
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -186,6 +190,17 @@ fun CatalogCard(
                             FluxaColors.surfaceCard
                         } else {
                             Color.White.copy(alpha = FluxaDimensions.Alpha.emptyCardBackground)
+                        }
+                    )
+                    .then(
+                        if (cardBorderWidth.value > 0f) {
+                            Modifier.border(
+                                cardBorderWidth,
+                                Color.White,
+                                RoundedCornerShape(model.cornerRadius)
+                            )
+                        } else {
+                            Modifier
                         }
                     ),
                 contentAlignment = Alignment.Center

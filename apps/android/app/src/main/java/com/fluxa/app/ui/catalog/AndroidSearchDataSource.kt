@@ -85,7 +85,7 @@ internal fun List<Meta>.toCatalogItems(
             cardLayout = cardLayout,
             artworkPreference = null,
             profile = profile,
-            cardScale = 1f,
+            cardScale = if (deviceType == DeviceType.TV) 1.45f else 1f,
             showHorizontalLogo = true,
             topTenRank = null,
             isContinueWatchingCard = false,

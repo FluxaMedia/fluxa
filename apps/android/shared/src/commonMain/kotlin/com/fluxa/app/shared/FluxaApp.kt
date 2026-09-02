@@ -11,6 +11,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.focus.focusRestorer
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.size
@@ -232,20 +233,22 @@ internal fun FluxaApp(
             val navRailWidthDp = with(density) { navRailWidthPx.toDp() }
             val topNavHeightDp = with(density) { topNavHeightPx.toDp() }
             val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
+            val tvFirstCatalogFocus = remember { FocusRequester() }
+            val tvHeroFocus = remember { FocusRequester() }
             AnimatedContent(
                 targetState = screenKey,
                 transitionSpec = {
                     when {
                         isTv && isLowRamDevice -> EnterTransition.None togetherWith ExitTransition.None
-                        isTv -> fadeIn(tween(100)).togetherWith(fadeOut(tween(80)))
+                        isTv -> fadeIn(tween(180)).togetherWith(fadeOut(tween(140)))
                         isDesktop -> {
                             // Desktop windows can contain several bitmap-heavy rows at once. Keep
                             // route overlap short so Skia does not render two full scenes for long.
-                            fadeIn(tween(90)).togetherWith(fadeOut(tween(70)))
+                            fadeIn(tween(180)).togetherWith(fadeOut(tween(130)))
                         }
                         else -> {
                             // Avoid scaling two full bitmap-heavy routes at once on mobile.
-                            fadeIn(tween(140)).togetherWith(fadeOut(tween(100)))
+                            fadeIn(tween(220)).togetherWith(fadeOut(tween(160)))
                         }
                     }
                 },
@@ -256,7 +259,8 @@ internal fun FluxaApp(
                     } else if (useTopNav) {
                         Modifier.fillMaxSize().padding(top = topNavHeightDp)
                     } else if (isTv) {
-                        Modifier.fillMaxSize().padding(start = tvSidebarWidthDp)
+                        // TV navigation floats above the route so hero artwork can use the full width.
+                        Modifier.fillMaxSize()
                     } else if (useRail) {
                         Modifier.fillMaxSize().padding(start = navRailWidthDp)
                     } else if (isHomeActive) {
@@ -367,25 +371,7 @@ internal fun FluxaApp(
                     deviceType = deviceType,
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
-                state.destination == FluxaDestination.Search && searchState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.search.TvSearchScreen(
-                    state = searchState,
-                    language = state.language,
-                    onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
-                    onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
-                    onAddToLibrary = { item -> onCatalogAction(CatalogAction.AddToLibraryRequested(item)) },
-                    onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
-                    modifier = Modifier.fillMaxSize()
-                )
-                state.destination == FluxaDestination.Search && searchState != null -> SearchScreen(
-                    state = searchState,
-                    language = state.language,
-                    onQueryChanged = { value -> onSearchAction(SearchAction.QueryChanged(value)) },
-                    onItemSelected = { item -> onSearchAction(SearchAction.ItemSelected(item)) },
-                    onAddToLibrary = { item -> onCatalogAction(CatalogAction.AddToLibraryRequested(item)) },
-                    onClearHistory = { onSearchAction(SearchAction.ClearHistory) },
-                    modifier = Modifier.fillMaxSize()
-                )
-                state.destination == FluxaDestination.Discover && discoverState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.discover.TvDiscoverScreen(
+                state.destination in setOf(FluxaDestination.Search, FluxaDestination.Discover) && discoverState != null && deviceType == com.fluxa.app.ui.catalog.DeviceType.TV -> com.fluxa.app.shared.feature.discover.TvDiscoverScreen(
                     state = discoverState,
                     language = state.language,
                     onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
@@ -398,7 +384,7 @@ internal fun FluxaApp(
                     isSearching = searchState?.isLoading == true,
                     modifier = Modifier.fillMaxSize()
                 )
-                state.destination == FluxaDestination.Discover && discoverState != null -> DiscoverScreen(
+                state.destination in setOf(FluxaDestination.Search, FluxaDestination.Discover) && discoverState != null -> DiscoverScreen(
                     state = discoverState,
                     language = state.language,
                     onFiltersChanged = { filters -> onDiscoverAction(DiscoverAction.FiltersChanged(filters)) },
@@ -460,7 +446,9 @@ internal fun FluxaApp(
                     onImportThemeRequested = onImportThemeRequested,
                     deviceType = deviceType,
                     brandIcons = settingsBrandIcons,
-                    modifier = Modifier.fillMaxSize().then(tvRouteModifier)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(if (isTv) Modifier.focusRestorer() else tvRouteModifier)
                 )
                 state.destination == FluxaDestination.AddonStore && addonStoreState != null -> AddonStoreScreen(
                     state = addonStoreState,
@@ -503,6 +491,7 @@ internal fun FluxaApp(
                 state.destination == FluxaDestination.ProfileList && profileState != null -> ProfileListScreen(
                     state = profileState,
                     language = state.language,
+                    deviceType = deviceType,
                     biometricAvailable = biometricAvailable,
                     onAction = onProfileListAction,
                     onBiometricRequested = onProfileBiometricRequested,
@@ -517,6 +506,8 @@ internal fun FluxaApp(
                     continueWatchingCornerPreset = settingsState?.appearanceHome?.continueWatchingCardCornerPreset ?: "medium",
                     continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
                     continueWatchingLandscapeMode = settingsState?.appearanceHome?.continueWatchingHorizontal ?: true,
+                    externalFirstCatalogFocus = tvFirstCatalogFocus,
+                    externalHeroFocus = tvHeroFocus,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
@@ -558,10 +549,16 @@ internal fun FluxaApp(
                     TvSidebarNav(
                         destination = state.destination,
                         language = state.language,
+                        profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                         onDestinationSelected = onDestinationSelected,
                         modifier = Modifier
                             .align(Alignment.CenterStart)
-                            .onGloballyPositioned { tvSidebarWidthPx = it.size.width }
+                            .onGloballyPositioned { tvSidebarWidthPx = it.size.width },
+                        onRightPressed = {
+                            if (state.destination == FluxaDestination.Home) {
+                                tvHeroFocus.requestFocus()
+                            }
+                        }
                     )
                 } else if (useRail) {
                     FluxaNavigationRail(

@@ -24,7 +24,9 @@ fun WindowWidthClass.gridColumns(): Int = when (this) {
 
 @Composable
 fun rememberCatalogGridCells(): GridCells {
-    return if (LocalDeviceType.current == DeviceType.Desktop) {
+    return if (LocalDeviceType.current == DeviceType.TV) {
+        GridCells.Fixed(5)
+    } else if (LocalDeviceType.current == DeviceType.Desktop) {
         GridCells.Adaptive(minSize = FluxaDimensions.PosterPresets.medium)
     } else {
         GridCells.Fixed(LocalWindowWidthClass.current.gridColumns())

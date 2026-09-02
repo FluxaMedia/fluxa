@@ -67,7 +67,8 @@ internal fun Meta.toCatalogCardUiModel(
     val folder = type == "catalog_folder"
     val progressFields = FluxaCoreNative.continueWatchingProgressFields(this)
     val progressPercent = (progressFields["progressPercent"] as? Number)?.toFloat() ?: 0f
-    val progressCard = (progressFields["isUpNext"] as? Boolean == true) || progressPercent > 0f
+    val progressCard = isContinueWatchingCard &&
+        ((progressFields["isUpNext"] as? Boolean == true) || progressPercent > 0f)
     val showTitleBar = !(isContinueWatchingCard && profile?.safeContinueWatchingHideTitles == true) &&
         !(profile?.safePosterHideTitles == true || hideTitle == true)
     val width = (when {
