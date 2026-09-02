@@ -233,10 +233,13 @@ class JvmAuthDataSource(
         val lang = language()
         try {
             val baseProfile = UserProfile(
-                id = idGenerator(),
-                email = session.user?.email ?: pendingNuvioEmail,
-                authKey = "",
-            )
+            id = idGenerator(),
+            email = session.user?.email ?: pendingNuvioEmail,
+            authKey = "",
+            continueWatchingSource = "nuvio",
+            syncCwSourceOfTruth = "nuvio",
+            integrationLibrarySource = "nuvio",
+        )
             val profile = nuvioCoordinator.connect(baseProfile, session)
             onAuthenticated(profile)
             state.update {

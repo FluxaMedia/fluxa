@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.withContext
 
 private data class AndroidLibrarySources(
@@ -53,12 +54,18 @@ class AndroidLibraryDataSource(
     private val deviceType: DeviceType = DeviceType.Mobile,
 ) : LibraryDataSource {
 
+    private val librarySourceOverrides = MutableStateFlow<Map<String, String>>(emptyMap())
+
     private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
         val listener: () -> Unit = { trySend(activeProfile()) }
         trySend(activeProfile())
         profileManager.addChangeListener(listener)
         awaitClose { profileManager.removeChangeListener(listener) }
     }.distinctUntilChanged()
+
+    private val profileAndSourceOverride = combine(profileFlow(), librarySourceOverrides) { profile, overrides ->
+        profile to overrides
+    }
 
     private val librarySources = combine(
         watchlistStore.observeWatchlist(),
@@ -73,16 +80,19 @@ class AndroidLibraryDataSource(
         librarySources,
         homeViewModel.isLoading,
         offlineDownloadManager.items,
-        profileFlow(),
+        profileAndSourceOverride,
         localMediaLibrary.state,
-    ) { sources, isLoading, downloads, profile, localMedia ->
+    ) { sources, isLoading, downloads, profileState, localMedia ->
+        val profile = profileState.first
+        val sourceOverrides = profileState.second
         val lang = language()
         withContext(Dispatchers.Default) {
             val watchlist = sources.watchlist
             val likedItems = sources.likedItems
             val libraryUiState = sources.remoteLibrary
 
-            val source = profile?.integrationLibrarySource
+            val source = sourceOverrides[profile?.id]
+                ?: profile?.integrationLibrarySource
                 ?.trim()
                 ?.lowercase()
                 ?.takeIf { it == "local" || ThirdPartyProviderId.from(it) != null }
@@ -256,8 +266,10 @@ class AndroidLibraryDataSource(
 
     override suspend fun setLibrarySource(source: String) {
         val profile = activeProfile() ?: return
+        val normalizedSource = source.trim().lowercase()
+        librarySourceOverrides.value = librarySourceOverrides.value + (profile.id to normalizedSource)
         val updated = profileManager.updateProfile(profile.id) {
-            it.copy(integrationLibrarySource = source)
+            it.copy(integrationLibrarySource = normalizedSource)
         } ?: return
         onProfileChanged(updated)
     }

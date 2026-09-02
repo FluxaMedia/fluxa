@@ -54,14 +54,20 @@ internal fun SettingsAccountContent(
     onContinueWatchingSourceChanged: (String) -> Unit
 ) {
     profileState?.takeIf { it.profiles.isNotEmpty() }?.let { profilesState ->
-        SettingsSectionHeader(AppStrings.t(lang, "auto.profile"))
+        SettingsSectionHeader(AppStrings.t(lang, "settings.account_profiles"))
         SettingsGroupCard {
-            profilesState.profiles.forEach { profile ->
-                val active = profile.id == profilesState.activeProfile?.id
+            SettingsConnectionRow(
+                AppStrings.t(lang, "brand.nuvio"),
+                connected = model.hasNuvio,
+                connectedLabel = model.nuvioEmail?.takeIf { it.isNotBlank() }?.let {
+                    AppStrings.format(lang, "settings.connected_as", it)
+                } ?: AppStrings.t(lang, "auto.connected"),
+                icon = brandIcons.nuvio
+            ) { onNavigate(SettingsCategory.AccountNuvio) }
+            profilesState.activeProfile?.let { profile ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clickable(enabled = !active) { onProfileAction(ProfileAction.Selected(profile)) }
                         .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -71,10 +77,7 @@ internal fun SettingsAccountContent(
                             .size(40.dp)
                             .clip(CircleShape)
                             .background(FluxaColors.surfaceRaised)
-                            .then(
-                                if (active) Modifier.border(2.dp, LocalSettingsAccentColor.current, CircleShape)
-                                else Modifier
-                            ),
+                            .border(2.dp, LocalSettingsAccentColor.current, CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         if (!profile.avatarUrl.isNullOrBlank()) {
@@ -93,31 +96,18 @@ internal fun SettingsAccountContent(
                         text = profile.name,
                         color = Color.White,
                         modifier = Modifier.weight(1f),
-                        fontWeight = if (active) androidx.compose.ui.text.font.FontWeight.SemiBold else androidx.compose.ui.text.font.FontWeight.Normal
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                     )
-                    if (active) {
-                        Text("✓", color = LocalSettingsAccentColor.current, fontSize = 16.sp)
-                    }
+                    Text("✓", color = LocalSettingsAccentColor.current, fontSize = 16.sp)
                 }
             }
-            SettingsNavRow(AppStrings.t(lang, "profiles.add_profile")) {
-                onProfileAction(ProfileAction.AddRequested)
-            }
-            SettingsNavRow(AppStrings.t(lang, "profiles.manage")) { onSwitchProfiles() }
+            SettingsNavRow(AppStrings.t(lang, "settings.switch_profiles")) { onSwitchProfiles() }
         }
     }
 
-    SettingsSectionHeader(AppStrings.t(lang, "auto.account_sync"))
+    SettingsSectionHeader(AppStrings.t(lang, "settings.sync"))
     SettingsGroupCard {
         val syncFailedLabel = AppStrings.t(lang, "integration.sync_failed")
-        SettingsConnectionRow(
-            AppStrings.t(lang, "brand.nuvio"),
-            connected = model.hasNuvio,
-            connectedLabel = model.nuvioEmail?.takeIf { it.isNotBlank() }?.let { AppStrings.format(lang, "settings.connected_as", it) } ?: AppStrings.t(lang, "auto.connected"),
-            icon = brandIcons.nuvio,
-            hasSyncFailure = "nuvio" in model.syncFailedProviders,
-            syncFailedLabel = syncFailedLabel
-        ) { onNavigate(SettingsCategory.AccountNuvio) }
         SettingsConnectionRow(
             AppStrings.t(lang, "brand.trakt"),
             connected = model.hasTrakt,

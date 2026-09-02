@@ -347,6 +347,8 @@
   "auto.refresh_the_app_after_playback_or_network_ch": "Player veya ağ değişikliklerinden sonra hızlı tazele.",
   "auto.sign_out_from_the_active_profile_on_this_dev": "Bu cihazdaki aktif profilden çık.",
   "auto.account_sync": "Hesap & Senkronizasyon",
+  "settings.account_profiles": "Hesap & Profiller",
+  "settings.sync": "Senkronizasyon",
   "auto.account_devices_and_sync": "Hesap, cihazlar ve senkronizasyon",
   "auto.general": "Genel",
   "auto.language_theme_startup": "Uygulama dili, tema, başlangıç",
