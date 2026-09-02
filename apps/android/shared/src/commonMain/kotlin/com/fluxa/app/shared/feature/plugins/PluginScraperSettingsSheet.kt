@@ -27,7 +27,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -50,6 +49,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.ui.AdaptiveModalSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -74,10 +74,9 @@ fun PluginScraperSettingsSheet(
         map
     }
 
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF111318),
-        contentColor = Color.White
+        containerColor = Color(0xFF111318)
     ) {
         Column(
             modifier = Modifier

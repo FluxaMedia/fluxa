@@ -5,6 +5,7 @@ import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.shared.ui.AdaptiveModalSheet
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -21,7 +22,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
@@ -328,10 +328,9 @@ fun MobilePlayerSettingsSheet(
     onSelectSettings: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
-        containerColor = FluxaColors.surfaceRaised,
-        contentColor = Color.White
+        containerColor = FluxaColors.surfaceRaised
     ) {
         Column(
             modifier = Modifier

@@ -25,7 +25,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -50,6 +49,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fluxa.app.shared.ui.AdaptiveModalSheet
 import kotlinx.coroutines.launch
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.settings.SettingsGroupCard
@@ -281,7 +281,10 @@ fun ProfileEditScreen(
     }
 
     if (showAvatarSheet) {
-        ModalBottomSheet(onDismissRequest = { showAvatarSheet = false }) {
+        AdaptiveModalSheet(
+            onDismissRequest = { showAvatarSheet = false },
+            containerColor = FluxaColors.surfaceRaised
+        ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()

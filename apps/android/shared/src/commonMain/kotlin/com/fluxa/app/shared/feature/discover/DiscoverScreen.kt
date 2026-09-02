@@ -27,12 +27,14 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.focusGroup
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +45,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.foundation.border
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
@@ -53,6 +56,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
@@ -61,7 +65,9 @@ import com.fluxa.app.shared.skeletonShimmer
 import com.fluxa.app.shared.feature.search.SearchResultRows
 import com.fluxa.app.shared.feature.search.SearchResults
 import com.fluxa.app.ui.catalog.CatalogCard
+import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.LocalDeviceType
 
 @Composable
 fun DiscoverScreen(
@@ -77,6 +83,7 @@ fun DiscoverScreen(
     isSearching: Boolean = false,
     modifier: Modifier = Modifier
 ) {
+    val isTv = LocalDeviceType.current == DeviceType.TV
     LaunchedEffect(state.catalogOptions, state.filters.contentType) {
         if (state.filters.catalogKey == null && state.catalogOptions.isNotEmpty()) {
             onFiltersChanged(state.filters.copy(catalogKey = state.catalogOptions.first().id))
@@ -120,7 +127,8 @@ fun DiscoverScreen(
                 catalogOptions = state.catalogOptions,
                 genreOptions = state.genreOptions,
                 language = language,
-                onFiltersChanged = onFiltersChanged
+                onFiltersChanged = onFiltersChanged,
+                isTv = isTv
             )
             when {
                 state.isLoading && state.results.isEmpty() -> DiscoverSkeletonGrid(modifier = Modifier.weight(1f))
@@ -146,7 +154,7 @@ fun DiscoverScreen(
                         state = gridState,
                         columns = com.fluxa.app.ui.catalog.rememberCatalogGridCells(),
                         modifier = Modifier.weight(1f).fillMaxWidth().focusRestorer(),
-                        contentPadding = PaddingValues(bottom = 120.dp),
+                        contentPadding = PaddingValues(top = 12.dp, bottom = 120.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -228,7 +236,8 @@ private fun DiscoverFilters(
     catalogOptions: List<DiscoverFilterOptionUiModel>,
     genreOptions: List<DiscoverFilterOptionUiModel>,
     language: String?,
-    onFiltersChanged: (DiscoverFiltersUiModel) -> Unit
+    onFiltersChanged: (DiscoverFiltersUiModel) -> Unit,
+    isTv: Boolean
 ) {
     val effectiveTypeOptions = typeOptions.ifEmpty {
         listOf(
@@ -244,6 +253,7 @@ private fun DiscoverFilters(
             label = AppStrings.t(language, "auto.type"),
             options = effectiveTypeOptions,
             selectedId = filters.contentType,
+            isTv = isTv,
             onSelected = { value ->
                 onFiltersChanged(DiscoverFiltersUiModel(contentType = value.orEmpty()))
             }
@@ -253,6 +263,7 @@ private fun DiscoverFilters(
                 label = AppStrings.t(language, "auto.catalog"),
                 options = catalogOptions,
                 selectedId = filters.catalogKey,
+                isTv = isTv,
                 onSelected = { value ->
                     onFiltersChanged(filters.copy(catalogKey = value, genre = null))
                 }
@@ -263,6 +274,7 @@ private fun DiscoverFilters(
                 label = AppStrings.t(language, "auto.genre"),
                 options = genreOptions,
                 selectedId = filters.genre,
+                isTv = isTv,
                 onSelected = { value ->
                     onFiltersChanged(filters.copy(genre = value))
                 }
@@ -277,11 +289,13 @@ internal fun DiscoverDropdownFilter(
     label: String,
     options: List<DiscoverFilterOptionUiModel>,
     selectedId: String?,
-    onSelected: (String?) -> Unit
+    onSelected: (String?) -> Unit,
+    isTv: Boolean = false
 ) {
     var showSheet by remember { mutableStateOf(false) }
     var triggerFocused by remember { mutableStateOf(false) }
-    val selectedLabel = options.firstOrNull { it.id == selectedId }?.label ?: label
+    val normalizedSelectedId = selectedId?.trim()?.lowercase()
+    val selectedLabel = options.firstOrNull { it.id?.trim()?.lowercase() == normalizedSelectedId }?.label ?: label
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(999.dp))
@@ -309,7 +323,70 @@ internal fun DiscoverDropdownFilter(
         )
     }
 
-    if (showSheet) {
+    if (showSheet && isTv) {
+        val selectedRowFocusRequester = remember { FocusRequester() }
+        Dialog(
+            onDismissRequest = { showSheet = false },
+        ) {
+            Column(
+                modifier = Modifier
+                    .widthIn(min = 360.dp, max = 560.dp)
+                    .focusGroup()
+                    .clip(RoundedCornerShape(22.dp))
+                    .background(FluxaColors.surfaceRaised)
+                    .padding(horizontal = 24.dp, vertical = 20.dp)
+            ) {
+                LaunchedEffect(Unit) {
+                    runCatching { selectedRowFocusRequester.requestFocus() }
+                }
+                Text(
+                    text = label,
+                    color = Color.White,
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 24.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+                options.forEach { option ->
+                    val selected = option.id?.trim()?.lowercase() == normalizedSelectedId
+                    val optionId = option.id?.trim()?.lowercase()
+                    var rowFocused by remember { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (selected) Modifier.focusRequester(selectedRowFocusRequester) else Modifier)
+                            .onFocusChanged { rowFocused = it.isFocused }
+                            .clip(RoundedCornerShape(10.dp))
+                            .background(
+                                when {
+                                    rowFocused -> Color.White.copy(alpha = 0.16f)
+                                    else -> Color.Transparent
+                                }
+                            )
+                            .then(
+                                if (rowFocused) Modifier.border(2.dp, Color.White, RoundedCornerShape(10.dp))
+                                else Modifier
+                            )
+                            .clickable {
+                                optionId?.let(onSelected)
+                                showSheet = false
+                            }
+                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = option.label,
+                            color = Color.White,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                        )
+                        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showSheet && !isTv) {
         val sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true)
         val selectedRowFocusRequester = remember { FocusRequester() }
         LaunchedEffect(showSheet) {
@@ -333,7 +410,7 @@ internal fun DiscoverDropdownFilter(
                 contentPadding = PaddingValues(bottom = 24.dp)
             ) {
                 columnItems(options, key = { it.id ?: it.label }) { option ->
-                    val selected = option.id == selectedId
+                    val selected = option.id?.trim()?.lowercase() == normalizedSelectedId
                     var rowFocused by remember { mutableStateOf(false) }
                     Row(
                         modifier = Modifier

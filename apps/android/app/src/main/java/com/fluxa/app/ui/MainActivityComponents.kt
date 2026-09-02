@@ -8,6 +8,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.shared.ui.AdaptiveModalSheet
 
 import android.content.pm.ActivityInfo
 import android.os.Bundle
@@ -29,7 +30,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.Icon
@@ -99,10 +99,9 @@ internal fun TraktIntegrationSheet(
     onDisconnect: () -> Unit
 ) {
     val lang = profile.safeLanguage
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF111318),
-        contentColor = Color.White
     ) {
         Column(
             modifier = Modifier
@@ -193,10 +192,9 @@ internal fun SimpleIntegrationSheet(
     onDismiss: () -> Unit,
     onDisconnect: () -> Unit
 ) {
-    ModalBottomSheet(
+    AdaptiveModalSheet(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF111318),
-        contentColor = Color.White
     ) {
         Column(
             modifier = Modifier

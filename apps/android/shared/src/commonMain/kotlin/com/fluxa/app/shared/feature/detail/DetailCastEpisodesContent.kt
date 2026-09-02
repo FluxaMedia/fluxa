@@ -51,6 +51,7 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.stableLazyKey
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import com.fluxa.app.shared.ui.AdaptiveModalSheet
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.LocalDeviceType
@@ -281,7 +282,7 @@ private fun DropdownSeasonSelector(
         LaunchedEffect(sheetOpen) {
             if (sheetOpen) runCatching { selectedRowFocusRequester.requestFocus() }
         }
-        androidx.compose.material3.ModalBottomSheet(
+        AdaptiveModalSheet(
             onDismissRequest = { sheetOpen = false },
             containerColor = FluxaColors.surfaceRaised
         ) {
