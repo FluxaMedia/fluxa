@@ -72,6 +72,7 @@ fun LibraryScreen(
     onAction: (LibraryAction) -> Unit,
     onItemSelected: (com.fluxa.app.shared.feature.catalog.CatalogItemUiModel) -> Unit,
     initialSection: LibrarySection = LibrarySection.Planned,
+    isTv: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     var section by remember(initialSection) { mutableStateOf(initialSection) }
@@ -178,7 +179,7 @@ fun LibraryScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     LibraryTypeDropdown(typeFilter, language) { typeFilter = it }
                                     if (state.availableLibrarySources.size > 1) {
-                                        LibrarySourceDropdown(state.librarySource, state.availableLibrarySources, language) {
+                                    LibrarySourceDropdown(state.librarySource, state.availableLibrarySources, language, isTv) {
                                             onAction(LibraryAction.SourceChanged(it))
                                         }
                                     }
@@ -301,7 +302,7 @@ private fun LibraryTypeDropdown(current: LibraryTypeFilter, language: String?, o
 }
 
 @Composable
-private fun LibrarySourceDropdown(current: String, available: List<String>, language: String?, onSelected: (String) -> Unit) {
+private fun LibrarySourceDropdown(current: String, available: List<String>, language: String?, isTv: Boolean, onSelected: (String) -> Unit) {
     val options = available.map { source ->
         DiscoverFilterOptionUiModel(
             id = source,
@@ -313,6 +314,7 @@ private fun LibrarySourceDropdown(current: String, available: List<String>, lang
             label = AppStrings.t(language, "settings.library_source_of_truth"),
             options = options,
             selectedId = current,
+            isTv = isTv,
             onSelected = { selected -> selected?.let(onSelected) }
         )
     }

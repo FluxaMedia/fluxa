@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.itemsIndexed
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed as lazyItemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -60,11 +62,13 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.DeviceType
 
 @Composable
 fun ProfileListScreen(
     state: ProfileUiState,
     language: String?,
+    deviceType: DeviceType,
     biometricAvailable: Boolean,
     onAction: (ProfileAction) -> Unit,
     onBiometricRequested: (ProfileUiModel) -> Unit,
@@ -121,27 +125,59 @@ fun ProfileListScreen(
                 fontWeight = FontWeight.Bold
             )
             Spacer(Modifier.height(32.dp))
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                modifier = Modifier.fillMaxWidth().weight(1f),
-                contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                itemsIndexed(state.profiles, key = { _, profile -> profile.id }) { index, profile ->
-                    ProfileGridItem(
-                        profile = profile,
-                        isManaging = isManaging,
-                        onClick = { onAction(ProfileAction.Selected(profile)) },
-                        onEditClick = { onAction(ProfileAction.EditRequested(profile)) },
-                        focusRequester = if (index == 0) firstItemFocusRequester else null
-                    )
+            if (deviceType == DeviceType.TV) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    LazyRow(
+                    modifier = Modifier.wrapContentWidth(),
+                    contentPadding = PaddingValues(horizontal = 40.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(48.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                    ) {
+                    lazyItemsIndexed(state.profiles, key = { _, profile -> profile.id }) { index, profile ->
+                        ProfileGridItem(
+                            profile = profile,
+                            isManaging = isManaging,
+                            onClick = { onAction(ProfileAction.Selected(profile)) },
+                            onEditClick = { onAction(ProfileAction.EditRequested(profile)) },
+                            focusRequester = if (index == 0) firstItemFocusRequester else null,
+                            modifier = Modifier.width(160.dp)
+                        )
+                    }
+                    item {
+                        AddProfileGridItem(
+                            language = language,
+                            onClick = { onAction(ProfileAction.AddRequested) },
+                            modifier = Modifier.width(160.dp)
+                        )
+                    }
                 }
-                item {
-                    AddProfileGridItem(
-                        language = language,
-                        onClick = { onAction(ProfileAction.AddRequested) }
-                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(2),
+                    modifier = Modifier.fillMaxWidth().weight(1f),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
+                ) {
+                    itemsIndexed(state.profiles, key = { _, profile -> profile.id }) { index, profile ->
+                        ProfileGridItem(
+                            profile = profile,
+                            isManaging = isManaging,
+                            onClick = { onAction(ProfileAction.Selected(profile)) },
+                            onEditClick = { onAction(ProfileAction.EditRequested(profile)) },
+                            focusRequester = if (index == 0) firstItemFocusRequester else null
+                        )
+                    }
+                    item {
+                        AddProfileGridItem(
+                            language = language,
+                            onClick = { onAction(ProfileAction.AddRequested) }
+                        )
+                    }
                 }
             }
             TextButton(onClick = { isManaging = true }, enabled = !isManaging) {
@@ -171,10 +207,11 @@ private fun ProfileGridItem(
     isManaging: Boolean,
     onClick: () -> Unit,
     onEditClick: () -> Unit,
-    focusRequester: FocusRequester? = null
+    focusRequester: FocusRequester? = null,
+    modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally),
+        modifier = Modifier.fillMaxWidth().then(modifier).wrapContentWidth(Alignment.CenterHorizontally),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         var focused by remember { mutableStateOf(false) }
@@ -227,11 +264,11 @@ private fun ProfileGridItem(
 }
 
 @Composable
-private fun AddProfileGridItem(language: String?, onClick: () -> Unit) {
+private fun AddProfileGridItem(language: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     var focused by remember { mutableStateOf(false) }
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.fillMaxWidth().wrapContentWidth(Alignment.CenterHorizontally).onFocusChanged { focused = it.isFocused }.clickable(onClick = onClick)
+        modifier = Modifier.fillMaxWidth().then(modifier).wrapContentWidth(Alignment.CenterHorizontally).onFocusChanged { focused = it.isFocused }.clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier

@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 
@@ -69,11 +70,28 @@ fun Modifier.settingsHighlight(highlighted: Boolean): Modifier = composed {
 
 fun Modifier.settingsFocusRing(shape: Shape = RoundedCornerShape(FluxaDimensions.CornerPresets.highlight)): Modifier = composed {
     var focused by remember { mutableStateOf(false) }
+    val focusColor = LocalSettingsAccentColor.current
     this
-        .clip(shape)
         .onFocusChanged { focused = it.isFocused }
-        .background(if (focused) LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.mediumBorder) else Color.Transparent)
-        .then(if (focused) Modifier.border(1.dp, LocalSettingsAccentColor.current.copy(alpha = FluxaDimensions.Alpha.secondaryText), shape) else Modifier)
+        .drawBehind {
+            if (focused) {
+                val inset = 16.dp.toPx()
+                val expandedSize = Size(size.width + inset * 2f, size.height)
+                drawRoundRect(
+                    color = focusColor.copy(alpha = FluxaDimensions.Alpha.mediumBorder),
+                    topLeft = Offset(-inset, 0f),
+                    size = expandedSize,
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(FluxaDimensions.CornerPresets.highlight.toPx())
+                )
+                drawRoundRect(
+                    color = focusColor.copy(alpha = FluxaDimensions.Alpha.secondaryText),
+                    topLeft = Offset(-inset, 0f),
+                    size = expandedSize,
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(1.dp.toPx()),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(FluxaDimensions.CornerPresets.highlight.toPx())
+                )
+            }
+        }
 }
 
 fun Modifier.settingsRowDivider(): Modifier = composed {

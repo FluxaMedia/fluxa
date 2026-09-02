@@ -172,11 +172,12 @@ private fun CalendarTopBar(
     onBack: () -> Unit,
     onJumpToToday: () -> Unit
 ) {
+    val isTv = LocalDeviceType.current == DeviceType.TV
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 44.dp, bottom = 16.dp, start = 12.dp, end = 20.dp)
+            .padding(top = if (isTv) 12.dp else 44.dp, bottom = 16.dp, start = 12.dp, end = 20.dp)
     ) {
         Icon(
             imageVector = Icons.AutoMirrored.Filled.ArrowBack,

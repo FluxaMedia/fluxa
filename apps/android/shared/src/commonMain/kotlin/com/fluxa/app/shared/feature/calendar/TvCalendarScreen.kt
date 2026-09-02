@@ -16,6 +16,6 @@ fun TvCalendarScreen(
         state = state,
         language = language,
         onAction = onAction,
-        modifier = modifier.padding(start = 38.dp, top = 56.dp, end = 38.dp, bottom = 24.dp)
+        modifier = modifier.padding(start = 38.dp, top = 0.dp, end = 38.dp, bottom = 24.dp)
     )
 }
