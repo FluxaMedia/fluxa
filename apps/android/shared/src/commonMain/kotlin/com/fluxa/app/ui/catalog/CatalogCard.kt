@@ -102,7 +102,7 @@ fun CatalogCard(
 
     val targetScale = when {
         pressed -> 0.98f
-        focused && deviceType == DeviceType.TV -> 1.10f
+        focused && deviceType == DeviceType.TV -> 1f
         focused -> 1.04f
         hovered && deviceType == DeviceType.Desktop -> 1.025f
         else -> 1f
@@ -149,10 +149,6 @@ fun CatalogCard(
                 }
             )
             .zIndex(if (focused || (hovered && deviceType == DeviceType.Desktop)) 1f else 0f)
-            .graphicsLayer {
-                scaleX = cardScale.value
-                scaleY = cardScale.value
-            }
             .combinedClickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -160,6 +156,14 @@ fun CatalogCard(
                 onLongClick = onLongClick
             )
     ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer {
+                    scaleX = cardScale.value
+                    scaleY = cardScale.value
+                }
+        ) {
         model.topTenRank?.let { rank ->
             Box(
                 modifier = Modifier
@@ -353,6 +357,7 @@ fun CatalogCard(
                     }
                 }
             }
+        }
         }
     }
 }

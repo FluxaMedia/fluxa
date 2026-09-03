@@ -6,6 +6,8 @@ import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalDeviceType
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.StreamSourceUiModel
 
 import coil3.compose.AsyncImage
@@ -123,7 +125,7 @@ fun PlayerSidebarShell(
             onClose?.invoke()
         }
     }
-    val isMobile = deviceType == DeviceType.Mobile
+    val layout = rememberPlayerSidebarLayoutSpec()
 
     BoxWithConstraints(
         modifier = Modifier
@@ -134,8 +136,9 @@ fun PlayerSidebarShell(
             }
     ) {
         val isLandscape = maxWidth > maxHeight
-        val isDrawer = isMobile && mobileDrawer
-        val isCard = (!isMobile || isLandscape || anchorTop) && !isDrawer
+        val isCompact = LocalWindowWidthClass.current == WindowWidthClass.Compact
+        val isDrawer = isCompact && mobileDrawer
+        val isCard = (!isCompact || isLandscape || anchorTop) && !isDrawer
 
         Box(
             modifier = Modifier
@@ -160,7 +163,7 @@ fun PlayerSidebarShell(
                 .widthIn(max = 300.dp)
             isCard -> Modifier
                 .padding(top = if (anchorTop) 16.dp else 0.dp, end = if (anchorTop) 16.dp else 0.dp)
-                .width(minOf(cardWidth ?: if (isMobile) 340.dp else 360.dp, maxWidth - 48.dp))
+                .width(minOf(cardWidth ?: layout.cardWidth, maxWidth - 48.dp))
                 .wrapContentHeight()
                 .heightIn(max = maxHeight - 48.dp)
             else -> Modifier
@@ -250,7 +253,7 @@ fun PlayerSidebarShell(
                         var backFocused by remember { mutableStateOf(false) }
                         Box(
                             modifier = Modifier
-                                .size(if (deviceType == DeviceType.TV) 34.dp else 30.dp)
+                                .size(layout.backButtonSize)
                                 .clip(CircleShape)
                                 .then(if (deviceType == DeviceType.TV) Modifier.onFocusChanged { backFocused = it.isFocused } else Modifier)
                                 .background(if (backFocused) Color.White else Color.White.copy(alpha = 0.06f))
@@ -261,7 +264,7 @@ fun PlayerSidebarShell(
                                 FluxaIcons.ChevronLeft,
                                 null,
                                 tint = if (backFocused) Color.Black else Color.White,
-                                modifier = Modifier.size(if (deviceType == DeviceType.TV) 20.dp else 16.dp)
+                                modifier = Modifier.size(layout.backIconSize)
                             )
                         }
                         Spacer(modifier = Modifier.width(10.dp))
@@ -269,7 +272,7 @@ fun PlayerSidebarShell(
                     Text(
                         text = title,
                         color = Color.White,
-                        fontSize = if (deviceType == DeviceType.TV) 16.sp else FluxaDimensions.PlayerChrome.sidebarTitleTextSize,
+                        fontSize = layout.titleSize,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
@@ -295,6 +298,7 @@ fun TrackItem(
     trailingIcon: ImageVector? = null
 ) {
     val resolvedDeviceType = deviceType ?: LocalDeviceType.current
+    val layout = rememberPlayerSidebarLayoutSpec()
     var focused by remember { mutableStateOf(false) }
     val contentAlpha = if (isSelected || focused) 1f else 0.7f
     val secondaryLine = listOfNotNull(subtitle?.takeIf { it.isNotBlank() }, badge?.takeIf { it.isNotBlank() })
@@ -303,7 +307,7 @@ fun TrackItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = if (resolvedDeviceType == DeviceType.TV) 52.dp else 46.dp)
+            .heightIn(min = layout.rowMinHeight)
             .clip(RoundedCornerShape(12.dp))
             .then(if (resolvedDeviceType == DeviceType.TV) Modifier.onFocusChanged { focused = it.isFocused } else Modifier)
             .background(if (focused) Color.White.copy(alpha = 0.16f) else if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
@@ -332,7 +336,7 @@ fun TrackItem(
                 text = title,
                 color = Color.White.copy(alpha = contentAlpha),
                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal,
-                fontSize = if (resolvedDeviceType == DeviceType.TV) 15.sp else FluxaDimensions.PlayerChrome.sidebarRowTextSize,
+                fontSize = layout.rowTextSize,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )

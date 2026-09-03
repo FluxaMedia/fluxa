@@ -42,9 +42,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -140,15 +137,15 @@ import com.fluxa.app.ui.catalog.PosterActionSheet
 
 private data class FluxaBottomNavItem(
     val destination: FluxaDestination,
-    val selectedIcon: ImageVector,
-    val icon: ImageVector
+    val selectedIcon: @Composable () -> ImageVector,
+    val icon: @Composable () -> ImageVector
 )
 
 private val FluxaBottomNavItems = listOf(
-    FluxaBottomNavItem(FluxaDestination.Home, FluxaIcons.BottomHome, FluxaIcons.BottomHomeOutline),
-    FluxaBottomNavItem(FluxaDestination.Discover, FluxaIcons.BottomDiscover, FluxaIcons.BottomDiscoverOutline),
-    FluxaBottomNavItem(FluxaDestination.Calendar, FluxaIcons.BottomCalendar, FluxaIcons.BottomCalendarOutline),
-    FluxaBottomNavItem(FluxaDestination.Library, FluxaIcons.BottomLibrary, FluxaIcons.BottomLibraryOutline)
+    FluxaBottomNavItem(FluxaDestination.Home, { FluxaIcons.BottomHome }, { FluxaIcons.BottomHomeOutline }),
+    FluxaBottomNavItem(FluxaDestination.Discover, { FluxaIcons.BottomDiscover }, { FluxaIcons.BottomDiscoverOutline }),
+    FluxaBottomNavItem(FluxaDestination.Calendar, { FluxaIcons.BottomCalendar }, { FluxaIcons.BottomCalendarOutline }),
+    FluxaBottomNavItem(FluxaDestination.Library, { FluxaIcons.BottomLibrary }, { FluxaIcons.BottomLibraryOutline })
 )
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -207,7 +204,7 @@ internal fun FluxaNavigationRail(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Icon(
-                        if (isSelected) item.selectedIcon else item.icon,
+                        if (isSelected) item.selectedIcon() else item.icon(),
                         contentDescription = null,
                         tint = tint,
                         modifier = Modifier.size(28.dp)
@@ -357,10 +354,11 @@ internal fun FluxaTopNavBar(
     onDestinationSelected: (FluxaDestination) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val layout = com.fluxa.app.ui.catalog.rememberTopNavigationLayoutSpec()
     val selectedColor = accentColorArgb?.let { Color(it) } ?: Color.White
     val inactiveColor = Color(0xFFA0A5AD)
     val items = if (showProfile) {
-        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
+        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, { FluxaIcons.BottomSettings }, { FluxaIcons.BottomSettingsOutline })
     } else {
         FluxaBottomNavItems
     }
@@ -369,9 +367,9 @@ internal fun FluxaTopNavBar(
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
             .background(Color(0xFF101012))
-            .padding(horizontal = if (isTv) 48.dp else 20.dp, vertical = if (isTv) 16.dp else 10.dp)
+            .padding(horizontal = layout.horizontalPadding, vertical = layout.verticalPadding)
             .then(if (isTv) Modifier.focusRestorer() else Modifier),
-        horizontalArrangement = Arrangement.spacedBy(if (isTv) 12.dp else 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(layout.itemSpacing),
         verticalAlignment = Alignment.CenterVertically
     ) {
         items.forEach { item ->
@@ -386,21 +384,21 @@ internal fun FluxaTopNavBar(
                     .clip(RoundedCornerShape(18.dp))
                     .clickable { onDestinationSelected(item.destination) }
                     .background(if (isSelected) Color.White.copy(alpha = 0.08f) else Color.Transparent)
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = layout.itemHorizontalPadding, vertical = layout.itemVerticalPadding),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(
-                    if (isSelected) item.selectedIcon else item.icon,
+                    if (isSelected) item.selectedIcon() else item.icon(),
                     contentDescription = if (showLabels || isTv) null else label,
                     tint = tint,
-                    modifier = Modifier.size(if (isTv) 28.dp else 24.dp)
+                    modifier = Modifier.size(layout.iconSize)
                 )
                 if (showLabels || isTv) {
                     Text(
                         text = label,
                         color = tint,
-                        fontSize = if (isTv) 15.sp else 13.sp,
+                        fontSize = layout.labelSize,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -428,7 +426,7 @@ internal fun FluxaNavigationBar(
     val inactiveColor = if (liquidGlass) Color.White.copy(alpha = 0.78f) else Color(0xFFA0A5AD)
     val barShape = RoundedCornerShape(if (floating) 28.dp else 0.dp)
     val items = if (showProfile) {
-        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, FluxaIcons.BottomSettings, FluxaIcons.BottomSettingsOutline)
+        FluxaBottomNavItems + FluxaBottomNavItem(FluxaDestination.Settings, { FluxaIcons.BottomSettings }, { FluxaIcons.BottomSettingsOutline })
     } else {
         FluxaBottomNavItems
     }
@@ -555,7 +553,7 @@ internal fun FluxaNavigationBar(
                             )
                         } else {
                             Icon(
-                                if (isSelected) item.selectedIcon else item.icon,
+                                if (isSelected) item.selectedIcon() else item.icon(),
                                 contentDescription = null,
                                 tint = tint,
                                 modifier = Modifier.size(29.dp)

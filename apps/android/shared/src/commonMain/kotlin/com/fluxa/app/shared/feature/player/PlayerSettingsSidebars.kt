@@ -5,6 +5,8 @@ import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.shared.ui.AdaptiveModalSheet
 
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -80,7 +82,7 @@ private fun SubtitleSyncCueList(
     }
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(2.dp),
-        modifier = Modifier.fillMaxWidth().heightIn(max = if (deviceType == DeviceType.TV) 400.dp else 440.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(max = rememberPlayerSidebarLayoutSpec().listMaxHeight),
     ) {
         items(cues, key = { "${it.startSeconds}:${it.text}" }) { cue ->
             TrackItem(
@@ -129,14 +131,15 @@ fun UniversalSettingsSidebar(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val twoColumn = deviceType != DeviceType.Mobile || maxWidth > maxHeight
+        val layout = rememberPlayerSidebarLayoutSpec()
+        val twoColumn = LocalWindowWidthClass.current != WindowWidthClass.Compact || maxWidth > maxHeight
         var tab by remember(activeTab) { mutableStateOf(activeTab.coerceIn(0, 1)) }
         var adjustTarget by remember(activeTab) { mutableStateOf<Int?>(null) }
         var liveTextOpacity by remember(subtitleTextOpacity) { mutableStateOf(subtitleTextOpacity) }
         var liveBackgroundOpacity by remember(subtitleBackgroundOpacity) { mutableStateOf(subtitleBackgroundOpacity) }
         var liveOutlineOpacity by remember(subtitleOutlineOpacity) { mutableStateOf(subtitleOutlineOpacity) }
         var showSubtitleSync by remember(activeTab) { mutableStateOf(false) }
-        val listMaxHeight = if (deviceType == DeviceType.TV) 400.dp else 440.dp
+        val listMaxHeight = layout.listMaxHeight
 
         val audioList: @Composable () -> Unit = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth().heightIn(max = listMaxHeight)) {
@@ -475,6 +478,7 @@ private fun DelayAdjustmentItem(
     deviceType: DeviceType,
     onChange: (Long) -> Unit
 ) {
+    val layout = rememberPlayerSidebarLayoutSpec()
     var liveValueMs by remember(valueMs) { mutableStateOf(valueMs.toFloat()) }
     Row(
         modifier = Modifier
@@ -488,7 +492,7 @@ private fun DelayAdjustmentItem(
         Text(
             text = title,
             color = Color.White.copy(alpha = 0.82f),
-            fontSize = if (deviceType == DeviceType.TV) 14.sp else 13.sp,
+            fontSize = layout.rowTextSize,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -634,6 +638,7 @@ private fun OpacityAdjustmentItem(
     onChange: (Float) -> Unit,
     onCommit: () -> Unit = {}
 ) {
+    val layout = rememberPlayerSidebarLayoutSpec()
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -646,7 +651,7 @@ private fun OpacityAdjustmentItem(
         Text(
             text = title,
             color = Color.White.copy(alpha = 0.82f),
-            fontSize = if (deviceType == DeviceType.TV) 14.sp else 13.sp,
+            fontSize = layout.rowTextSize,
             fontWeight = FontWeight.Medium,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

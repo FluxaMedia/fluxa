@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.detail
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,11 +20,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -271,7 +268,7 @@ private fun DropdownSeasonSelector(
             fontSize = if (headerStyle) 17.sp else 15.sp
         )
         Icon(
-            imageVector = Icons.Filled.ArrowDropDown,
+            imageVector = FluxaIcons.Filled.ArrowDropDown,
             contentDescription = null,
             tint = if (triggerFocused && !headerStyle) Color.Black else Color.White,
             modifier = Modifier.padding(start = 3.dp).size(if (headerStyle) 17.dp else 20.dp)
@@ -357,7 +354,7 @@ internal fun EpisodeRow(
                         modifier = Modifier.fillMaxSize().background(Color.Black.copy(alpha = 0.35f)),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
+                        Icon(FluxaIcons.Filled.PlayArrow, contentDescription = null, tint = Color.White)
                     }
                 }
             }
@@ -387,7 +384,7 @@ internal fun EpisodeRow(
             }
             if (!episode.isUpcoming) {
                 Icon(
-                    imageVector = Icons.Filled.Download,
+                    imageVector = FluxaIcons.Filled.Download,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.7f),
                     modifier = Modifier

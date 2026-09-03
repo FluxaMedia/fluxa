@@ -82,6 +82,7 @@ fun TvPlayerUIContent(
     onShowSettings: (Int) -> Unit,
     onClose: () -> Unit
 ) {
+    val layout = rememberPlayerLayoutSpec()
     val panelColor = Color(0x8010141A)
     Box(modifier = Modifier.fillMaxSize()) {
         Box(modifier = Modifier.fillMaxWidth().height(FluxaDimensions.PlayerChrome.topScrimHeight).background(Brush.verticalGradient(listOf(Color.Black.copy(alpha = FluxaDimensions.PlayerChrome.topScrimAlpha), Color.Transparent))))
@@ -90,13 +91,13 @@ fun TvPlayerUIContent(
             modifier = Modifier
                 .fillMaxSize()
                 .windowInsetsPadding(WindowInsets.safeDrawing)
-                .padding(if (deviceType == DeviceType.TV) 28.dp else 16.dp)
+                .padding(layout.edgePadding)
         ) {
             Row(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .fillMaxWidth()
-                    .padding(horizontal = if (deviceType == DeviceType.TV) 4.dp else 0.dp, vertical = 4.dp),
+                    .padding(horizontal = 4.dp, vertical = 4.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -104,7 +105,7 @@ fun TvPlayerUIContent(
                     Text(
                         text = title,
                         color = Color.White,
-                        fontSize = if (deviceType == DeviceType.TV) 24.sp else 18.sp,
+                        fontSize = layout.titleSize,
                         fontWeight = FontWeight.Black,
                         maxLines = 1
                     )
@@ -150,9 +151,9 @@ fun TvPlayerUIContent(
                     .align(Alignment.Center)
                     .clip(RoundedCornerShape(999.dp))
                     .background(Color.Black.copy(alpha = 0.22f))
-                    .padding(horizontal = if (deviceType == DeviceType.TV) 18.dp else 12.dp, vertical = if (deviceType == DeviceType.TV) 14.dp else 10.dp),
+                    .padding(horizontal = layout.centerHorizontalPadding, vertical = layout.centerVerticalPadding),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(if (deviceType == DeviceType.TV) 20.dp else 14.dp)
+                horizontalArrangement = Arrangement.spacedBy(layout.centerSpacing)
             ) {
                 SeekIconButton(FluxaIcons.SkipPrevious, deviceType) {
                     if (hasPreviousEpisode) onPlayPrevious()
@@ -160,7 +161,7 @@ fun TvPlayerUIContent(
                 var playPauseFocused by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
-                        .size(if (deviceType == DeviceType.TV) 78.dp else 60.dp)
+                        .size(layout.playButtonSize)
                         .clip(CircleShape)
                         .then(if (deviceType == DeviceType.TV) Modifier.onFocusChanged { playPauseFocused = it.isFocused } else Modifier)
                         .background(if (playPauseFocused) Color.White else Color.Black.copy(alpha = 0.46f))
@@ -173,7 +174,7 @@ fun TvPlayerUIContent(
                         if (isPlaying) FluxaIcons.Pause else FluxaIcons.PlayArrow,
                         null,
                         tint = if (playPauseFocused) Color.Black else Color.White,
-                        modifier = Modifier.size(if (deviceType == DeviceType.TV) 38.dp else 28.dp)
+                        modifier = Modifier.size(layout.playIconSize)
                     )
                 }
                 SeekIconButton(FluxaIcons.SkipNext, deviceType) {
@@ -188,7 +189,7 @@ fun TvPlayerUIContent(
                     .padding(horizontal = if (deviceType == DeviceType.TV) 4.dp else 0.dp)
                     .clip(RoundedCornerShape(18.dp))
                     .background(panelColor)
-                    .padding(horizontal = if (deviceType == DeviceType.TV) 18.dp else 14.dp, vertical = if (deviceType == DeviceType.TV) 14.dp else 12.dp)
+                    .padding(horizontal = layout.panelHorizontalPadding, vertical = layout.panelVerticalPadding)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                     Text(

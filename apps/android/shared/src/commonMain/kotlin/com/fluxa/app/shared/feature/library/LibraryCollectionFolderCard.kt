@@ -2,6 +2,7 @@ package com.fluxa.app.shared.feature.library
 
 import com.fluxa.app.ui.catalog.CatalogCardUiModel
 import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.horizontalCardHeight
 import com.fluxa.app.ui.catalog.horizontalCardWidth
@@ -23,17 +24,18 @@ fun LibraryFolderUiModel.effectiveCoverUrl(): String? =
 fun LibraryFolderUiModel.toCatalogCardUiModel(
     widthPreset: String = "medium",
     deviceType: DeviceType = DeviceType.Mobile,
+    widthClass: WindowWidthClass? = null,
 ): CatalogCardUiModel {
     val staticArtwork = effectiveCoverUrl()
     val animatedArtwork = focusGifUrl?.takeIf { it.isNotBlank() && focusGifEnabled }
     val artwork = staticArtwork ?: animatedArtwork
     val shape = tileShape()
     val width = when (shape) {
-        FolderTileShape.Landscape -> horizontalCardWidth(widthPreset, deviceType)
+        FolderTileShape.Landscape -> widthClass?.let { horizontalCardWidth(widthPreset, it) } ?: horizontalCardWidth(widthPreset, deviceType)
         else -> posterCardWidth(widthPreset)
     }
     val imageHeight = when (shape) {
-        FolderTileShape.Landscape -> horizontalCardHeight(widthPreset, deviceType)
+        FolderTileShape.Landscape -> widthClass?.let { horizontalCardHeight(widthPreset, it) } ?: horizontalCardHeight(widthPreset, deviceType)
         FolderTileShape.Square -> posterCardWidth(widthPreset)
         FolderTileShape.Poster -> posterCardHeight(widthPreset)
     }

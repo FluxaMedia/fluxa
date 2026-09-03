@@ -1,6 +1,6 @@
 package com.fluxa.app.shared.feature.catalog
 
-import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.cardCornerRadius
 import com.fluxa.app.ui.catalog.horizontalCardHeight
 import com.fluxa.app.ui.catalog.horizontalCardWidth
@@ -8,15 +8,15 @@ import com.fluxa.app.ui.catalog.posterCardHeight
 import com.fluxa.app.ui.catalog.posterCardWidth
 
 internal fun CatalogItemUiModel.withProminentContinueWatchingCard(
-    deviceType: DeviceType,
+    widthClass: WindowWidthClass,
     isDesktop: Boolean = false,
     hideLabels: Boolean = false,
     widthPreset: String = "medium",
     cornerPreset: String = "medium",
     landscapeMode: Boolean = true
 ): CatalogItemUiModel {
-    val width = if (landscapeMode) horizontalCardWidth(widthPreset, deviceType) else posterCardWidth(widthPreset)
-    val height = if (landscapeMode) horizontalCardHeight(widthPreset, deviceType) else posterCardHeight(widthPreset)
+    val width = if (landscapeMode) horizontalCardWidth(widthPreset, widthClass) else posterCardWidth(widthPreset)
+    val height = if (landscapeMode) horizontalCardHeight(widthPreset, widthClass) else posterCardHeight(widthPreset)
     return copy(
         card = card.copy(
             requestWidthPx = if (!landscapeMode) 288 else if (isDesktop) 860 else 640,

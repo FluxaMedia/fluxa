@@ -45,10 +45,6 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -274,7 +270,7 @@ internal fun FluxaHomeContent(
                                     )
                                 }
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    imageVector = FluxaIcons.AutoMirrored.Filled.ArrowForward,
                                     contentDescription = AppStrings.t(state.language, "common.view_all"),
                                     tint = Color.White.copy(alpha = 0.7f),
                                     modifier = Modifier.size(if (isDesktop) 18.dp else 20.dp)
@@ -296,6 +292,7 @@ internal fun FluxaHomeContent(
                     }
                     val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
                     val deviceType = LocalDeviceType.current
+                    val widthClass = com.fluxa.app.ui.catalog.LocalWindowWidthClass.current
                     LazyRow(
                         state = rowState,
                         modifier = rowModifier,
@@ -308,7 +305,7 @@ internal fun FluxaHomeContent(
                             val cardItem = remember(item, row.id, isDesktop, hideContinueWatchingLabels, continueWatchingWidthPreset, continueWatchingCornerPreset, continueWatchingLandscapeMode) {
                                 if (isContinueWatchingRow) {
                                     item.withProminentContinueWatchingCard(
-                                        deviceType = deviceType,
+                                        widthClass = widthClass,
                                         isDesktop = isDesktop,
                                         hideLabels = hideContinueWatchingLabels,
                                         widthPreset = continueWatchingWidthPreset,
@@ -498,12 +495,12 @@ private fun FluxaHomeHero(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 HeroPagerButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowBack,
+                    icon = FluxaIcons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = "Previous hero item",
                     onClick = { coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage - 1) } }
                 )
                 HeroPagerButton(
-                    icon = Icons.AutoMirrored.Filled.ArrowForward,
+                    icon = FluxaIcons.AutoMirrored.Filled.ArrowForward,
                     contentDescription = "Next hero item",
                     onClick = { coroutineScope.launch { pagerState.animateScrollToPage(pagerState.currentPage + 1) } }
                 )
@@ -797,7 +794,7 @@ private fun FluxaHomeHeroSlide(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.PlayArrow,
+                                imageVector = FluxaIcons.Rounded.PlayArrow,
                                 contentDescription = null,
                                 tint = Color.Black,
                                 modifier = Modifier.size(28.dp)
@@ -891,7 +888,7 @@ private fun FluxaHomeHeroSlide(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Rounded.PlayArrow,
+                            imageVector = FluxaIcons.Rounded.PlayArrow,
                             contentDescription = null,
                             tint = Color.Black,
                             modifier = Modifier.size(26.dp)

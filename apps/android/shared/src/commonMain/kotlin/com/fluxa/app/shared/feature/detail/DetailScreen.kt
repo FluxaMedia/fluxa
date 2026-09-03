@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.detail
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,11 +25,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.foundation.shape.CircleShape
@@ -110,7 +107,7 @@ fun DetailScreen(
     modifier: Modifier = Modifier
 ) {
     val content = state.content
-    val isMobile = LocalDeviceType.current == DeviceType.Mobile
+    val isCompactLayout = LocalWindowWidthClass.current == WindowWidthClass.Compact
     var showStickyContext by remember(content?.id) { mutableStateOf(false) }
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
         when {
@@ -127,7 +124,7 @@ fun DetailScreen(
         TopBar(
             content = content,
             language = language,
-            showStickyContext = isMobile && showStickyContext,
+            showStickyContext = isCompactLayout && showStickyContext,
             preferClearlogo = presentation.preferClearlogo,
             screenStyle = presentation.screenStyle,
             onAction = onAction,
@@ -148,7 +145,7 @@ internal fun TopBar(
     onBack: () -> Unit,
     onShareRequested: () -> Unit
 ) {
-    if (LocalDeviceType.current == DeviceType.Mobile && screenStyle == DetailScreenStyle.Cinematic && !showStickyContext) {
+    if (LocalWindowWidthClass.current == WindowWidthClass.Compact && screenStyle == DetailScreenStyle.Cinematic && !showStickyContext) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -165,7 +162,7 @@ internal fun TopBar(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    imageVector = FluxaIcons.AutoMirrored.Filled.ArrowBack,
                     contentDescription = AppStrings.t(language, "common.back"),
                     tint = Color.White,
                     modifier = Modifier.size(23.dp)
@@ -195,7 +192,7 @@ internal fun TopBar(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            imageVector = FluxaIcons.AutoMirrored.Filled.ArrowBack,
             contentDescription = AppStrings.t(language, "common.back"),
             tint = Color.White,
             modifier = Modifier.size(22.dp).clickable(onClick = onBack)
@@ -210,14 +207,14 @@ internal fun TopBar(
         Box(modifier = Modifier.weight(1f))
         if (content != null && content.supportsWatchlist) {
             Icon(
-                imageVector = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
+                imageVector = if (content.isInWatchlist) FluxaIcons.Filled.Check else FluxaIcons.Filled.Add,
                 contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
                 tint = Color.White,
                 modifier = Modifier.size(22.dp).clickable { onAction(DetailAction.ToggleWatchlist) }
             )
         }
         Icon(
-            imageVector = Icons.Filled.Share,
+            imageVector = FluxaIcons.Filled.Share,
             contentDescription = AppStrings.t(language, "common.share"),
             tint = Color.White,
             modifier = Modifier.padding(start = 16.dp).size(22.dp).clickable(onClick = onShareRequested)
@@ -261,7 +258,7 @@ internal fun DetailContent(
     presentation: DetailPresentationOptions,
     onStickyContextVisibilityChanged: (Boolean) -> Unit
 ) {
-    if (LocalDeviceType.current == DeviceType.Mobile) {
+    if (LocalWindowWidthClass.current == WindowWidthClass.Compact) {
         when (presentation.screenStyle) {
             DetailScreenStyle.Cinematic -> CinematicMobileDetailContent(
                 content = content,
@@ -310,9 +307,7 @@ internal fun ClassicDetailContent(
 ) {
     val isSeries = content.type == "series" && content.availableSeasons.isNotEmpty()
     val hasSecondary = isSeries || (presentation.showRecommendations && content.relatedItems.isNotEmpty())
-    val twoPane = LocalWindowWidthClass.current == WindowWidthClass.Expanded &&
-        LocalDeviceType.current != DeviceType.TV &&
-        LocalDeviceType.current != DeviceType.Desktop
+    val twoPane = rememberDetailLayoutSpec().usesTwoPane && hasSecondary
     if (twoPane && hasSecondary) {
         val listState = rememberLazyListState()
         ObserveStickyContextVisibility(listState, onStickyContextVisibilityChanged)
@@ -332,8 +327,7 @@ internal fun ClassicDetailContent(
             )
         }
     } else {
-        val isExpanded = LocalWindowWidthClass.current == WindowWidthClass.Expanded &&
-            LocalDeviceType.current != DeviceType.TV
+        val isExpanded = rememberDetailLayoutSpec().usesTwoPane
         var activeTab by remember(content.id) { mutableStateOf(DetailTab.Episodes) }
         val listState = rememberLazyListState()
         ObserveStickyContextVisibility(listState, onStickyContextVisibilityChanged)
@@ -478,11 +472,11 @@ internal fun DetailBody(
     onAction: (DetailAction) -> Unit,
     presentation: DetailPresentationOptions
 ) {
-    val isExpanded = LocalWindowWidthClass.current == WindowWidthClass.Expanded
+    val layout = rememberDetailLayoutSpec()
     Column(
         modifier = Modifier
-            .then(if (isExpanded) Modifier.widthIn(max = 640.dp) else Modifier)
-            .padding(horizontal = 20.dp)
+            .then(layout.contentMaxWidth?.let { Modifier.widthIn(max = it) } ?: Modifier)
+            .padding(start = layout.contentStartInset, end = 20.dp)
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.padding(top = 8.dp)) {
             ResumeButton(content = content, language = language, onAction = onAction)

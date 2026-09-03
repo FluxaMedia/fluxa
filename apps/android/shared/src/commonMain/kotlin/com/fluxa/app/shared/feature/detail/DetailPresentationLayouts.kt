@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.detail
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,12 +27,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.Shuffle
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateDpAsState
@@ -423,7 +419,7 @@ private fun CinematicActions(
                 compact = embeddedInHero
             ) {
                 Icon(
-                    imageVector = if (content.isInWatchlist) Icons.Filled.Check else Icons.Outlined.BookmarkBorder,
+                    imageVector = if (content.isInWatchlist) FluxaIcons.Filled.Check else FluxaIcons.Outlined.BookmarkBorder,
                     contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
                     tint = Color(0xFF1B1C1D),
                     modifier = Modifier.size(20.dp)
@@ -437,7 +433,7 @@ private fun CinematicActions(
                 compact = embeddedInHero
             ) {
                 Icon(
-                    imageVector = Icons.Outlined.Shuffle,
+                    imageVector = FluxaIcons.Outlined.Shuffle,
                     contentDescription = AppStrings.t(language, "common.shuffle"),
                     tint = Color(0xFF1B1C1D),
                     modifier = Modifier.size(19.dp)
@@ -486,7 +482,7 @@ private fun CinematicPlayButton(
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(19.dp))
+        Icon(FluxaIcons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(19.dp))
         Text(
             text = label,
             color = Color.Black,
@@ -659,7 +655,7 @@ private fun CinematicTrailerRail(trailers: List<DetailTrailerUiModel>, language:
                 fontWeight = FontWeight.Bold
             )
             Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
+                imageVector = FluxaIcons.Filled.ArrowDropDown,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.65f),
                 modifier = Modifier.size(21.dp)
@@ -757,7 +753,7 @@ private fun CinematicEpisodeCard(
                         .border(1.dp, Color.White.copy(alpha = 0.84f), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
+                    Icon(FluxaIcons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
                 }
             }
         }

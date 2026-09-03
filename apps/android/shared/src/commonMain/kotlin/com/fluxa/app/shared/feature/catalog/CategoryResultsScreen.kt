@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.rememberCatalogGridLayoutSpec
 
 @Composable
 fun CategoryResultsScreen(
@@ -32,12 +33,12 @@ fun CategoryResultsScreen(
     deviceType: DeviceType = DeviceType.Mobile,
     modifier: Modifier = Modifier
 ) {
-    val isTv = deviceType == DeviceType.TV
+    val layout = rememberCatalogGridLayoutSpec()
     Column(modifier = modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = if (isTv) 48.dp else 16.dp, vertical = if (isTv) 28.dp else 12.dp),
+                .padding(horizontal = layout.pageHorizontalPadding, vertical = layout.headerVerticalPadding),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -47,16 +48,16 @@ fun CategoryResultsScreen(
             Text(
                 text = title,
                 color = Color.White,
-                fontSize = if (isTv) 28.sp else 24.sp,
+                fontSize = layout.titleSize,
                 fontWeight = FontWeight.Bold
             )
         }
         LazyVerticalGrid(
-            columns = GridCells.Adaptive(if (isTv) 170.dp else 150.dp),
+            columns = GridCells.Adaptive(layout.minimumCardWidth),
             modifier = Modifier.fillMaxSize(),
-            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = if (isTv) 48.dp else 16.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (isTv) 20.dp else 12.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isTv) 24.dp else 16.dp)
+            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = layout.pageHorizontalPadding, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(layout.horizontalSpacing),
+            verticalArrangement = Arrangement.spacedBy(layout.verticalSpacing)
         ) {
             items(items, key = { it.stableLazyKey() }, contentType = { "catalog-card" }) { item ->
                 CatalogCard(model = item.card, onClick = { onItemSelected(item) })

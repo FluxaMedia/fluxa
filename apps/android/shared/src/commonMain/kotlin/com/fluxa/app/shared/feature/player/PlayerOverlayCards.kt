@@ -7,6 +7,8 @@ import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalAccentColor
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import com.fluxa.app.ui.catalog.NextEpisodePreviewUiModel
 import com.fluxa.app.ui.catalog.PlaybackSnapshot
 
@@ -88,6 +90,7 @@ fun SkipSegmentCard(
         "recap" -> playerText(lang, "skip_recap")
         else -> playerText(lang, "skip")
     }
+    val layout = rememberPlayerLayoutSpec()
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
     LaunchedEffect(deviceType) {
@@ -95,7 +98,7 @@ fun SkipSegmentCard(
     }
     Box(
         modifier = Modifier
-            .widthIn(min = if (deviceType == DeviceType.Mobile) 108.dp else 160.dp)
+            .widthIn(min = layout.skipMinWidth)
             .clip(RoundedCornerShape(10.dp))
             .background(Color.White)
             .then(
@@ -109,14 +112,14 @@ fun SkipSegmentCard(
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
             .clickable { onSkip() }
-            .padding(horizontal = if (deviceType == DeviceType.Mobile) 16.dp else 28.dp, vertical = if (deviceType == DeviceType.Mobile) 8.dp else 13.dp),
+            .padding(horizontal = layout.skipHorizontalPadding, vertical = layout.skipVerticalPadding),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = label,
             color = Color.Black,
             fontWeight = FontWeight.SemiBold,
-            fontSize = if (deviceType == DeviceType.Mobile) 13.sp else 16.sp,
+            fontSize = layout.skipFontSize,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
@@ -131,6 +134,7 @@ private fun NextEpisodeSkipCard(
     autoAdvanceSeconds: Int? = null,
     onSkip: () -> Unit
 ) {
+    val layout = rememberPlayerLayoutSpec()
     var remainingSeconds by remember(episode.id, autoAdvanceSeconds) { mutableStateOf(autoAdvanceSeconds) }
     LaunchedEffect(episode.id, autoAdvanceSeconds) {
         var remaining = autoAdvanceSeconds ?: return@LaunchedEffect
@@ -141,8 +145,8 @@ private fun NextEpisodeSkipCard(
         }
         onSkip()
     }
-    val thumbnailSize = if (deviceType == DeviceType.Mobile) 46.dp else 74.dp
-    val cardWidth = if (deviceType == DeviceType.Mobile) 240.dp else 364.dp
+    val thumbnailSize = layout.nextThumbnailSize
+    val cardWidth = layout.nextCardWidth
     val focusRequester = remember { FocusRequester() }
     var isFocused by remember { mutableStateOf(false) }
     LaunchedEffect(deviceType) {
@@ -152,27 +156,27 @@ private fun NextEpisodeSkipCard(
     Row(
         modifier = Modifier
             .width(cardWidth)
-            .clip(RoundedCornerShape(if (deviceType == DeviceType.Mobile) mobileCardRadius else 14.dp))
-            .background(if (deviceType == DeviceType.Mobile) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.82f))
+            .clip(RoundedCornerShape(layout.nextCardRadius))
+            .background(if (LocalWindowWidthClass.current == WindowWidthClass.Compact) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.82f))
             .border(
                 1.dp,
                 if (deviceType == DeviceType.TV && isFocused) LocalAccentColor.current else Color.White.copy(alpha = 0.16f),
-                RoundedCornerShape(if (deviceType == DeviceType.Mobile) mobileCardRadius else 14.dp)
+                RoundedCornerShape(layout.nextCardRadius)
             )
             .focusRequester(focusRequester)
             .onFocusChanged { isFocused = it.isFocused }
             .focusable()
             .clickable { onSkip() }
-            .padding(if (deviceType == DeviceType.Mobile) 7.dp else 8.dp),
+            .padding(8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(if (deviceType == DeviceType.Mobile) 10.dp else 12.dp)
+        horizontalArrangement = Arrangement.spacedBy(layout.nextSpacing)
     ) {
         AsyncImage(
             model = episode.thumbnail,
             contentDescription = null,
             modifier = Modifier
                 .size(thumbnailSize)
-                .clip(RoundedCornerShape(if (deviceType == DeviceType.Mobile) 8.dp else 10.dp))
+                .clip(RoundedCornerShape(layout.nextCardRadius / 1.4f))
                 .background(Color.White.copy(alpha = 0.08f)),
             contentScale = ContentScale.Crop
         )
@@ -182,7 +186,7 @@ private fun NextEpisodeSkipCard(
                     ?: AppStrings.t(lang, "auto.next_episode").uppercase(),
                 color = Color.White,
                 fontWeight = FontWeight.Black,
-                fontSize = if (deviceType == DeviceType.Mobile) 10.sp else 14.sp,
+                fontSize = layout.nextTitleSize,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -190,7 +194,7 @@ private fun NextEpisodeSkipCard(
                 text = nextEpisodeSubtitle(lang, episode),
                 color = Color.White.copy(alpha = 0.68f),
                 fontWeight = FontWeight.Bold,
-                fontSize = if (deviceType == DeviceType.Mobile) 10.sp else 13.sp,
+                fontSize = layout.nextSubtitleSize,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -199,7 +203,7 @@ private fun NextEpisodeSkipCard(
             FluxaIcons.KeyboardArrowRight,
             null,
             tint = Color.White.copy(alpha = 0.92f),
-            modifier = Modifier.size(if (deviceType == DeviceType.Mobile) 20.dp else 28.dp)
+            modifier = Modifier.size(layout.nextIconSize)
         )
     }
 }
@@ -260,7 +264,8 @@ fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, status: Torr
         modifier = Modifier
             .fillMaxSize()
             .background(if (startupLoading) Color.Black else Color.Transparent)
-    ) {
+) {
+    val layout = rememberPlayerLayoutSpec()
         if (startupLoading && bg.isNotEmpty()) {
             AsyncImage(
                 bg,
@@ -320,7 +325,7 @@ fun ArtisticLoadingOverlay(bg: String, logo: String, title: String, status: Torr
             ),
             label = "loadingLogoAlpha"
         )
-        val containerWidth = if (deviceType == DeviceType.TV) 500.dp else 280.dp
+        val containerWidth = layout.loadingContainerWidth
         Column(modifier = Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
             Box(
                 modifier = Modifier

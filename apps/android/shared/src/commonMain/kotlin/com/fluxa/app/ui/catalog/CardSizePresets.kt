@@ -16,7 +16,18 @@ fun posterCardWidth(value: String): Dp = with(FluxaDimensions.PosterPresets) {
 fun posterCardHeight(value: String): Dp = posterCardWidth(value) * FluxaDimensions.PosterPresets.heightRatio
 
 fun horizontalCardWidth(value: String, deviceType: DeviceType): Dp {
-    val base = if (deviceType == DeviceType.TV) FluxaDimensions.HorizontalCard.tvBase else FluxaDimensions.HorizontalCard.mobileBase
+    return horizontalCardWidth(
+        value = value,
+        widthClass = if (deviceType == DeviceType.TV) WindowWidthClass.Expanded else WindowWidthClass.Compact
+    )
+}
+
+fun horizontalCardWidth(value: String, widthClass: WindowWidthClass): Dp {
+    val base = when (widthClass) {
+        WindowWidthClass.Compact -> FluxaDimensions.HorizontalCard.mobileBase
+        WindowWidthClass.Medium -> 210.dp
+        WindowWidthClass.Expanded -> FluxaDimensions.HorizontalCard.tvBase
+    }
     val delta = with(FluxaDimensions.HorizontalCard) {
         when (value) {
             "xsmall" -> deltaXsmall
@@ -30,6 +41,8 @@ fun horizontalCardWidth(value: String, deviceType: DeviceType): Dp {
 }
 
 fun horizontalCardHeight(value: String, deviceType: DeviceType): Dp = horizontalCardWidth(value, deviceType) * FluxaDimensions.HorizontalCard.heightRatio
+
+fun horizontalCardHeight(value: String, widthClass: WindowWidthClass): Dp = horizontalCardWidth(value, widthClass) * FluxaDimensions.HorizontalCard.heightRatio
 
 fun cardCornerRadius(preset: String): Dp = when (preset) {
     "sharp" -> 0.dp

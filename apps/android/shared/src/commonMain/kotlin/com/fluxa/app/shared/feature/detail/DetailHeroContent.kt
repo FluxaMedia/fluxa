@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.detail
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,14 +20,6 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.animation.core.animateFloatAsState
@@ -81,8 +75,9 @@ internal fun DiscussionSection(title: String, comments: List<DetailDiscussionCom
 
 @Composable
 internal fun Hero(content: DetailUiModel, language: String?, preferClearlogo: Boolean = true) {
+    val layout = rememberDetailLayoutSpec()
     val isExpanded = LocalWindowWidthClass.current == WindowWidthClass.Expanded
-    val heroHeight = if (isExpanded) 420.dp else 560.dp
+    val heroHeight = layout.heroHeight
     Box(modifier = Modifier.fillMaxWidth().height(heroHeight).clip(RoundedCornerShape(0.dp))) {
         FluxaRemoteImage(
             imageUrl = content.backgroundUrl ?: content.posterUrl,
@@ -129,8 +124,8 @@ internal fun Hero(content: DetailUiModel, language: String?, preferClearlogo: Bo
         Column(
             modifier = Modifier
                 .align(Alignment.BottomStart)
-                .then(if (isExpanded) Modifier.widthIn(max = 640.dp) else Modifier)
-                .padding(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 8.dp)
+                .then(layout.contentMaxWidth?.let { Modifier.widthIn(max = it) } ?: Modifier)
+                .padding(start = layout.contentStartInset, end = 20.dp, top = 16.dp, bottom = 8.dp)
         ) {
             Text(
                 text = if (content.type == "series") AppStrings.t(language, "auto.series") else AppStrings.t(language, "auto.movie"),
@@ -324,7 +319,7 @@ internal fun ExpandedDetailIdentityBlock(
             CompactPlayButton(content = content, language = language, onAction = onAction)
             if (content.supportsWatchlist) {
                 DetailCircleIconButton(
-                    icon = if (content.isInWatchlist) Icons.Filled.Check else Icons.Filled.Add,
+                    icon = if (content.isInWatchlist) FluxaIcons.Filled.Check else FluxaIcons.Filled.Add,
                     contentDescription = AppStrings.t(language, if (content.isInWatchlist) "auto.in_list" else "auto.my_list"),
                     selected = content.isInWatchlist,
                     onClick = { onAction(DetailAction.ToggleWatchlist) }
@@ -332,14 +327,14 @@ internal fun ExpandedDetailIdentityBlock(
             }
             if (content.supportsLike) {
                 DetailCircleIconButton(
-                    icon = Icons.Filled.ThumbUp,
+                    icon = FluxaIcons.Filled.ThumbUp,
                     contentDescription = AppStrings.t(language, "common.like"),
                     selected = content.isLiked,
                     onClick = { onAction(DetailAction.ToggleLike) }
                 )
             }
             DetailCircleIconButton(
-                icon = Icons.Filled.Download,
+                icon = FluxaIcons.Filled.Download,
                 contentDescription = AppStrings.t(language, "auto.download"),
                 selected = false,
                 onClick = {
@@ -391,7 +386,7 @@ internal fun CompactPlayButton(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(imageVector = Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(22.dp))
+        Icon(imageVector = FluxaIcons.Rounded.PlayArrow, contentDescription = null, tint = Color.Black, modifier = Modifier.size(22.dp))
         Text(text = label, color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 15.sp)
     }
 }
@@ -447,7 +442,7 @@ internal fun ResumeButton(content: DetailUiModel, language: String?, onAction: (
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
-                Icons.Rounded.PlayArrow,
+                FluxaIcons.Rounded.PlayArrow,
                 contentDescription = null,
                 tint = Color.Black,
                 modifier = Modifier.size(27.dp)
@@ -479,7 +474,7 @@ internal fun RestartButton(language: String?, onClick: () -> Unit) {
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Refresh, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
+        Icon(FluxaIcons.Filled.Refresh, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
         Text(
             text = AppStrings.t(language, "auto.restart"),
             color = if (isTv && focused) Color.Black else Color.White,
@@ -510,7 +505,7 @@ internal fun DownloadButton(content: DetailUiModel, language: String?, onAction:
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Filled.Download, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
+        Icon(FluxaIcons.Filled.Download, contentDescription = null, tint = if (isTv && focused) Color.Black else Color.White, modifier = Modifier.size(18.dp))
         Text(
             text = AppStrings.t(language, "auto.download"),
             color = if (isTv && focused) Color.Black else Color.White,

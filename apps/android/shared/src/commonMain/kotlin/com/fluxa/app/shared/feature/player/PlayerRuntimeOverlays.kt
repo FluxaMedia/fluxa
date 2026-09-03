@@ -5,6 +5,8 @@ import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.NextEpisodePreviewUiModel
 import com.fluxa.app.ui.catalog.SkipSegmentUiModel
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -67,6 +69,7 @@ fun PlayerSkipSegmentOverlay(
     onNextEpisodeCardShown: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    val layout = rememberPlayerLayoutSpec()
     val activeSkipSegment = remember(currentPosition, skipSegments, dismissedSkipSegments, hasStartedPlaying, autoSkipSegments) {
         if (!hasStartedPlaying || autoSkipSegments) null
         else skipSegments.find { segment ->
@@ -88,11 +91,8 @@ fun PlayerSkipSegmentOverlay(
             .padding(
                 start = 18.dp,
                 end = 14.dp,
-                bottom = if (deviceType == DeviceType.Mobile) {
-                    if (showControls) 132.dp else 76.dp
-                } else {
-                    92.dp
-                }
+                bottom = layout.skipBottomInset +
+                    if (showControls && LocalWindowWidthClass.current == WindowWidthClass.Compact) 56.dp else 0.dp
             )
             .zIndex(280f)
     ) {
@@ -124,10 +124,11 @@ enum class ZoomOverlayMode { Original, Fit, Zoom }
 
 @Composable
 private fun PlayerToastPill(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String, deviceType: DeviceType) {
+    val layout = rememberPlayerLayoutSpec()
     Row(
         modifier = Modifier
             .clip(RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
-            .background(if (deviceType == DeviceType.Mobile) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.74f))
+            .background(if (LocalWindowWidthClass.current == WindowWidthClass.Compact) FluxaDimensions.PlayerChrome.deckBackground else Color.Black.copy(alpha = 0.74f))
             .border(1.dp, Color.White.copy(alpha = 0.14f), RoundedCornerShape(FluxaDimensions.PlayerChrome.pillCornerRadius))
             .padding(horizontal = 14.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -137,7 +138,7 @@ private fun PlayerToastPill(icon: androidx.compose.ui.graphics.vector.ImageVecto
         Text(
             text = text,
             color = Color.White,
-            fontSize = if (deviceType == DeviceType.Mobile) 15.sp else 18.sp,
+            fontSize = layout.titleSize,
             fontWeight = FontWeight.SemiBold
         )
     }
@@ -187,6 +188,7 @@ fun BoxScope.PlayerTransientOverlays(
     zoomOverlayMode: ZoomOverlayMode = ZoomOverlayMode.Original,
     zoomLabelText: String = ""
 ) {
+    val layout = rememberPlayerLayoutSpec()
     AnimatedVisibility(
         visible = showSegmentSkipFeedback,
         enter = fadeIn(animationSpec = tween(FluxaDimensions.AnimDuration.blink)) + scaleIn(animationSpec = tween(FluxaDimensions.AnimDuration.quick), initialScale = 0.82f),
@@ -206,7 +208,7 @@ fun BoxScope.PlayerTransientOverlays(
         exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.contentExpand), targetScale = 1.06f),
         modifier = Modifier
             .align(Alignment.TopCenter)
-            .padding(top = if (deviceType == DeviceType.Mobile) 34.dp else 54.dp)
+            .padding(top = layout.toastTopInset)
             .zIndex(295f)
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -225,7 +227,7 @@ fun BoxScope.PlayerTransientOverlays(
         exit = fadeOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick)) + scaleOut(animationSpec = tween(FluxaDimensions.AnimDuration.quick), targetScale = 0.92f),
         modifier = Modifier
             .align(Alignment.TopCenter)
-            .padding(top = if (deviceType == DeviceType.Mobile) 34.dp else 54.dp)
+            .padding(top = layout.toastTopInset)
             .zIndex(310f)
     ) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
@@ -291,7 +293,7 @@ fun BoxScope.PlayerTransientOverlays(
         modifier = Modifier
             .align(if (seekDirection > 0) Alignment.CenterEnd else Alignment.CenterStart)
             .fillMaxHeight()
-            .width(if (deviceType == DeviceType.TV) 300.dp else 180.dp)
+            .width(layout.seekFeedbackWidth)
             .background(
                 brush = Brush.horizontalGradient(
                     colors = if (seekDirection > 0)
