@@ -502,11 +502,7 @@ private fun FluxaAppHostContent(
     }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val widthClass = if (deviceType == com.fluxa.app.ui.catalog.DeviceType.TV) {
-            com.fluxa.app.ui.catalog.WindowWidthClass.Expanded
-        } else {
-            com.fluxa.app.ui.catalog.widthClassFor(maxWidth)
-        }
+        val widthClass = com.fluxa.app.ui.catalog.widthClassFor(maxWidth)
         CompositionLocalProvider(com.fluxa.app.ui.catalog.LocalWindowWidthClass provides widthClass) {
     FluxaApp(
         state = appState.uiState,

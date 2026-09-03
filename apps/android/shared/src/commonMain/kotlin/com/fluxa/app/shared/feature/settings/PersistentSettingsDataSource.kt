@@ -68,6 +68,7 @@ abstract class PersistentSettingsDataSource(
         preferences.putString(SettingsPreferenceKeys.CONTINUE_WATCHING_WIDTH_PRESET, value.continueWatchingWidthPreset)
         preferences.putBoolean(SettingsPreferenceKeys.POSTER_LANDSCAPE_MODE, value.posterLandscapeMode)
         preferences.putBoolean(SettingsPreferenceKeys.POSTER_HIDE_TITLES, value.posterHideTitles)
+        preferences.putBoolean(SettingsPreferenceKeys.HERO_FOLLOWS_FOCUSED_ITEM, value.heroFollowsFocusedItem)
         preferences.putBoolean(SettingsPreferenceKeys.HOME_SEASON_POSTERS_ON_HERO, value.homeSeasonPostersOnHero)
         preferences.putBoolean(SettingsPreferenceKeys.TRAILER_ON_HOME_HERO_ENABLED, value.trailerOnHomeHeroEnabled)
         preferences.putInt(SettingsPreferenceKeys.TRAILER_ON_HOME_HERO_DELAY_SECONDS, value.trailerOnHomeHeroDelaySeconds)
@@ -271,6 +272,7 @@ abstract class PersistentSettingsDataSource(
                 posterWidthPreset = preferences.getString(SettingsPreferenceKeys.POSTER_WIDTH_PRESET, defaults.appearanceHome.posterWidthPreset) ?: defaults.appearanceHome.posterWidthPreset,
                 posterLandscapeMode = preferences.getBoolean(SettingsPreferenceKeys.POSTER_LANDSCAPE_MODE, defaults.appearanceHome.posterLandscapeMode),
                 posterHideTitles = preferences.getBoolean(SettingsPreferenceKeys.POSTER_HIDE_TITLES, defaults.appearanceHome.posterHideTitles),
+                heroFollowsFocusedItem = preferences.getBoolean(SettingsPreferenceKeys.HERO_FOLLOWS_FOCUSED_ITEM, defaults.appearanceHome.heroFollowsFocusedItem),
                 homeSeasonPostersOnHero = preferences.getBoolean(SettingsPreferenceKeys.HOME_SEASON_POSTERS_ON_HERO, defaults.appearanceHome.homeSeasonPostersOnHero),
                 trailerOnHomeHeroEnabled = preferences.getBoolean(SettingsPreferenceKeys.TRAILER_ON_HOME_HERO_ENABLED, defaults.appearanceHome.trailerOnHomeHeroEnabled),
                 trailerOnHomeHeroDelaySeconds = preferences.getInt(SettingsPreferenceKeys.TRAILER_ON_HOME_HERO_DELAY_SECONDS, defaults.appearanceHome.trailerOnHomeHeroDelaySeconds),
@@ -396,6 +398,7 @@ object SettingsPreferenceKeys {
     const val CONTINUE_WATCHING_WIDTH_PRESET = "continueWatchingWidthPreset"
     const val POSTER_LANDSCAPE_MODE = "posterLandscapeMode"
     const val POSTER_HIDE_TITLES = "posterHideTitles"
+    const val HERO_FOLLOWS_FOCUSED_ITEM = "heroFollowsFocusedItem"
     const val HOME_SEASON_POSTERS_ON_HERO = "homeSeasonPostersOnHero"
     const val TRAILER_ON_HOME_HERO_ENABLED = "trailerOnHomeHeroEnabled"
     const val TRAILER_ON_HOME_HERO_DELAY_SECONDS = "trailerOnHomeHeroDelaySeconds"

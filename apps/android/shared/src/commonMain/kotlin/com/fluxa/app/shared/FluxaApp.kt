@@ -10,6 +10,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.foundation.layout.padding
@@ -21,12 +22,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -206,7 +210,7 @@ internal fun FluxaApp(
             }
             val tvRouteModifier = if (isTv) {
                 Modifier
-                    .padding(horizontal = 40.dp, vertical = 28.dp)
+                    .padding(start = 104.dp, end = 40.dp)
                     .focusRestorer()
             } else {
                 Modifier
@@ -235,6 +239,8 @@ internal fun FluxaApp(
             val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
             val tvFirstCatalogFocus = remember { FocusRequester() }
             val tvHeroFocus = remember { FocusRequester() }
+            var tvHeroFocused by remember { mutableStateOf(false) }
+            var tvSidebarCatalogFocusRequest by remember { mutableIntStateOf(0) }
             AnimatedContent(
                 targetState = screenKey,
                 transitionSpec = {
@@ -448,7 +454,7 @@ internal fun FluxaApp(
                     brandIcons = settingsBrandIcons,
                     modifier = Modifier
                         .fillMaxSize()
-                        .then(if (isTv) Modifier.focusRestorer() else tvRouteModifier)
+                        .then(tvRouteModifier)
                 )
                 state.destination == FluxaDestination.AddonStore && addonStoreState != null -> AddonStoreScreen(
                     state = addonStoreState,
@@ -506,9 +512,12 @@ internal fun FluxaApp(
                     continueWatchingCornerPreset = settingsState?.appearanceHome?.continueWatchingCardCornerPreset ?: "medium",
                     continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
                     continueWatchingLandscapeMode = settingsState?.appearanceHome?.continueWatchingHorizontal ?: true,
+                    heroFollowsFocusedItem = settingsState?.appearanceHome?.heroFollowsFocusedItem ?: true,
+                    sidebarCatalogFocusRequest = tvSidebarCatalogFocusRequest,
                     externalFirstCatalogFocus = tvFirstCatalogFocus,
                     externalHeroFocus = tvHeroFocus,
-                    modifier = Modifier.fillMaxSize()
+                    onHeroFocusChanged = { tvHeroFocused = it },
+                    modifier = Modifier.fillMaxSize().focusRestorer()
                 )
                 state.destination == FluxaDestination.Home -> FluxaHomeContent(
                     state = state,
@@ -531,6 +540,23 @@ internal fun FluxaApp(
             }
             }
             }
+            if (navChromeVisible && isTv &&
+                (state.destination != FluxaDestination.Home || !tvHeroFocused)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .fillMaxHeight()
+                        .width(180.dp)
+                        .background(
+                            Brush.horizontalGradient(
+                                0f to FluxaColors.background.copy(alpha = 0.86f),
+                                0.48f to FluxaColors.background.copy(alpha = 0.58f),
+                                1f to Color.Transparent
+                            )
+                        )
+                )
+            }
             if (navChromeVisible) {
                 if (useTopNav) {
                     FluxaTopNavBar(
@@ -551,14 +577,15 @@ internal fun FluxaApp(
                         language = state.language,
                         profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                         onDestinationSelected = onDestinationSelected,
+                        rightFocusRequester = null,
+                        onHomeRightPressed = if (state.destination == FluxaDestination.Home) {
+                            { tvSidebarCatalogFocusRequest++ }
+                        } else {
+                            null
+                        },
                         modifier = Modifier
                             .align(Alignment.CenterStart)
                             .onGloballyPositioned { tvSidebarWidthPx = it.size.width },
-                        onRightPressed = {
-                            if (state.destination == FluxaDestination.Home) {
-                                tvHeroFocus.requestFocus()
-                            }
-                        }
                     )
                 } else if (useRail) {
                     FluxaNavigationRail(

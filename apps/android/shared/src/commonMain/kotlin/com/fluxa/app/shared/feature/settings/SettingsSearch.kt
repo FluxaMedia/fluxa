@@ -27,6 +27,7 @@ private val SETTINGS_SEARCH_KEYS: List<Pair<String, SettingsCategory>> = listOf(
     "auto.card_corners" to SettingsCategory.AppearanceHome,
     "auto.interface_density" to SettingsCategory.AppearanceHome,
     "auto.poster_width" to SettingsCategory.AppearanceHome,
+    "settings.hero_follows_focus" to SettingsCategory.AppearanceHome,
     "settings.season_posters_on_hero" to SettingsCategory.AppearanceHome,
     "settings.trailer_on_home_hero" to SettingsCategory.AppearanceHome,
     "auto.continue_watching" to SettingsCategory.AppearanceHome,

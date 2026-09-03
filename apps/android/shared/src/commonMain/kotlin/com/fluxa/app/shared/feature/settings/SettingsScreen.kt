@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -31,10 +33,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -122,11 +120,19 @@ fun SettingsScreen(
         CompositionLocalProvider(LocalSettingsAccentColor provides accentColor) {
         Row(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
             Column(
-                modifier = Modifier.width(300.dp).fillMaxSize().padding(24.dp)
+                modifier = Modifier
+                    .width(300.dp)
+                    .fillMaxSize()
+                    .padding(start = 24.dp, top = 24.dp, end = 24.dp)
             ) {
                 Text(AppStrings.t(lang, "nav.settings"), style = MaterialTheme.typography.titleLarge, color = Color.White)
                 Spacer(Modifier.height(16.dp))
-                Column(modifier = Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .padding(bottom = 24.dp)
+                ) {
                     SETTINGS_TV_RAIL_CATEGORIES.forEach { railCategory ->
                         SettingsTvRailRow(
                             label = settingsCategoryTitle(railCategory, lang),
@@ -154,7 +160,10 @@ fun SettingsScreen(
                 modifier = Modifier.weight(1f).fillMaxSize()
             ) { animatedCategory ->
                 Column(
-                    modifier = Modifier.fillMaxSize().padding(24.dp).verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(scrollStates.getOrPut(animatedCategory) { ScrollState(0) })
+                        .padding(24.dp)
                 ) {
                     Text(settingsCategoryTitle(animatedCategory, lang), style = MaterialTheme.typography.titleLarge, color = Color.White)
                     Spacer(Modifier.height(16.dp))
@@ -302,7 +311,7 @@ internal fun SettingsHubContent(
             .padding(horizontal = 14.dp, vertical = 10.dp)
     ) {
         Icon(
-            imageVector = Icons.Filled.Search,
+            imageVector = FluxaIcons.Filled.Search,
             contentDescription = null,
             tint = Color.White.copy(alpha = 0.4f),
             modifier = Modifier.size(18.dp)
@@ -329,7 +338,7 @@ internal fun SettingsHubContent(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Clear,
+                    imageVector = FluxaIcons.Filled.Clear,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = 0.4f),
                     modifier = Modifier.size(16.dp)
@@ -396,7 +405,7 @@ internal fun SettingsHubContent(
                 Text(AppStrings.t(lang, "auto.account"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.35f),
                 modifier = Modifier.size(20.dp)

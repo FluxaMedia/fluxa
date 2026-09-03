@@ -25,6 +25,7 @@ fun UserProfile.withAppearanceHomeSettings(value: SettingsAppearanceHomeUiModel)
     posterWidthPreset = value.posterWidthPreset,
     posterLandscapeMode = value.posterLandscapeMode,
     posterHideTitles = value.posterHideTitles,
+    heroFollowsFocusedItem = value.heroFollowsFocusedItem,
     homeSeasonPostersOnHero = value.homeSeasonPostersOnHero,
     trailerOnHomeHeroEnabled = value.trailerOnHomeHeroEnabled,
     trailerOnHomeHeroDelaySeconds = value.trailerOnHomeHeroDelaySeconds,

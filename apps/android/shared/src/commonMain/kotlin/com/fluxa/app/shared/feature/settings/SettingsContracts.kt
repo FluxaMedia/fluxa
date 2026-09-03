@@ -102,6 +102,7 @@ data class SettingsAppearanceHomeUiModel(
     val posterWidthPreset: String = "medium",
     val posterLandscapeMode: Boolean = false,
     val posterHideTitles: Boolean = false,
+    val heroFollowsFocusedItem: Boolean = true,
     val homeSeasonPostersOnHero: Boolean = false,
     val trailerOnHomeHeroEnabled: Boolean = false,
     val trailerOnHomeHeroDelaySeconds: Int = 3,

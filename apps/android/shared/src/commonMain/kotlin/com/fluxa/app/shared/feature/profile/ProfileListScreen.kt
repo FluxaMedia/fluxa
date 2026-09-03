@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.profile
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -29,9 +31,6 @@ import androidx.compose.foundation.lazy.itemsIndexed as lazyItemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -108,14 +107,21 @@ fun ProfileListScreen(
                 .clickable { onAction(ProfileAction.PickerSettingsRequested) },
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Filled.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
+            Icon(FluxaIcons.Filled.Settings, contentDescription = null, tint = Color.White.copy(alpha = 0.8f), modifier = Modifier.size(20.dp))
         }
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = 48.dp)
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
-                .padding(bottom = 24.dp),
+            modifier = if (deviceType == DeviceType.TV) {
+                Modifier
+                    .align(Alignment.Center)
+                    .fillMaxWidth()
+                    .padding(horizontal = 40.dp)
+            } else {
+                Modifier
+                    .fillMaxSize()
+                    .padding(top = 48.dp)
+                    .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Bottom))
+                    .padding(bottom = 24.dp)
+            },
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
@@ -132,7 +138,7 @@ fun ProfileListScreen(
                 ) {
                     LazyRow(
                     modifier = Modifier.wrapContentWidth(),
-                    contentPadding = PaddingValues(horizontal = 40.dp, vertical = 8.dp),
+                    contentPadding = PaddingValues(vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(48.dp),
                     verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -253,7 +259,7 @@ private fun ProfileGridItem(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Filled.Edit,
+                    FluxaIcons.Filled.Edit,
                     contentDescription = null,
                     tint = if (editFocused) Color.Black else Color.White.copy(alpha = 0.82f),
                     modifier = Modifier.size(15.dp)

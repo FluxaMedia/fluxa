@@ -178,6 +178,7 @@ fun UserProfile.toSettingsAppearanceHomeUiModel(): SettingsAppearanceHomeUiModel
     posterWidthPreset = safePosterWidthPreset,
     posterLandscapeMode = safePosterLandscapeMode,
     posterHideTitles = safePosterHideTitles,
+    heroFollowsFocusedItem = safeHeroFollowsFocusedItem,
     homeSeasonPostersOnHero = safeHomeSeasonPostersOnHero,
     trailerOnHomeHeroEnabled = safeTrailerOnHomeHeroEnabled,
     trailerOnHomeHeroDelaySeconds = safeTrailerOnHomeHeroDelaySeconds,

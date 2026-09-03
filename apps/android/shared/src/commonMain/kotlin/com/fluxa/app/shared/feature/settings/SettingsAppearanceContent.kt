@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,10 +20,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.Movie
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -108,7 +106,7 @@ internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: S
                         if (selected) {
                             val isLight = Color(swatch.toInt()).luminance() > 0.5f
                             Icon(
-                                Icons.Filled.CheckCircle,
+                                FluxaIcons.Filled.CheckCircle,
                                 contentDescription = null,
                                 tint = if (isLight) Color.Black else Color.White,
                                 modifier = Modifier.size(14.dp)
@@ -185,6 +183,11 @@ internal fun SettingsAppearanceHomeContent(model: SettingsAppearanceHomeUiModel,
     }
     SettingsSectionHeader(AppStrings.t(lang, "settings.hero_banner"))
     SettingsGroupCard {
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.hero_follows_focus"),
+            description = AppStrings.t(lang, "settings.hero_follows_focus_desc"),
+            value = model.heroFollowsFocusedItem
+        ) { onAction(SettingsAction.AppearanceHomeChanged(model.copy(heroFollowsFocusedItem = it))) }
         SettingsToggleRow(
             AppStrings.t(lang, "settings.season_posters_on_hero"),
             description = AppStrings.t(lang, "settings.home_season_posters_on_hero_desc"),
@@ -275,7 +278,7 @@ internal fun SettingsPosterPreview(model: SettingsAppearanceHomeUiModel) {
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Movie,
+                        imageVector = FluxaIcons.Filled.Movie,
                         contentDescription = null,
                         tint = Color.White.copy(alpha = 0.25f),
                         modifier = Modifier.size(width / 3)
@@ -405,7 +408,7 @@ internal fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel
                                         .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
+                                    Icon(FluxaIcons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
                                 }
                                 Box(
                                     modifier = Modifier
@@ -432,7 +435,7 @@ internal fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel
                                 .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(20.dp))
+                            Icon(FluxaIcons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(20.dp))
                         }
                         Box(
                             modifier = Modifier
@@ -457,7 +460,7 @@ internal fun SettingsEpisodeLayoutPreview(model: SettingsAppearanceDetailUiModel
                                 .background(Color.White.copy(alpha = thumbAlpha * 0.14f)),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
+                            Icon(FluxaIcons.Rounded.PlayArrow, contentDescription = null, tint = Color.White.copy(alpha = thumbAlpha), modifier = Modifier.size(18.dp))
                         }
                         Spacer(Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {

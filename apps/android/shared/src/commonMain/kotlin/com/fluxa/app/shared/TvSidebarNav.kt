@@ -2,6 +2,8 @@
 
 package com.fluxa.app.shared
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
@@ -14,13 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.LibraryBooks
-import androidx.compose.material.icons.outlined.Explore
-import androidx.compose.material.icons.outlined.Home
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Today
-import androidx.compose.material.icons.outlined.LibraryBooks
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,33 +27,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.focus.focusRestorer
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
-import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar
 import com.fluxa.app.ui.catalog.LocalAccentColor
+import com.fluxa.app.ui.catalog.FluxaTvIcons
 
 private data class TvSidebarItem(
     val destination: FluxaDestination,
-    val icon: ImageVector,
+    val icon: @Composable () -> ImageVector,
     val labelKey: String
 )
 
 private val TvSidebarItems = listOf(
-    TvSidebarItem(FluxaDestination.Home, Icons.Outlined.Home, "nav.home"),
-    TvSidebarItem(FluxaDestination.Discover, Icons.Outlined.Explore, "nav.discover"),
-    TvSidebarItem(FluxaDestination.Calendar, Icons.Outlined.Today, "nav.calendar"),
-    TvSidebarItem(FluxaDestination.Library, Icons.Outlined.LibraryBooks, "nav.library"),
-    TvSidebarItem(FluxaDestination.Settings, Icons.Outlined.Settings, "nav.settings")
+    TvSidebarItem(FluxaDestination.Home, { FluxaIcons.Outlined.Home }, "nav.home"),
+    TvSidebarItem(FluxaDestination.Discover, { FluxaIcons.Outlined.Explore }, "nav.discover"),
+    TvSidebarItem(FluxaDestination.Calendar, { FluxaTvIcons.ReleaseTimeline }, "nav.calendar"),
+    TvSidebarItem(FluxaDestination.Library, { FluxaIcons.Rounded.AnimatedImages }, "nav.library"),
+    TvSidebarItem(FluxaDestination.Settings, { FluxaIcons.Outlined.Settings }, "nav.settings")
 )
 
 @Composable
@@ -67,7 +65,8 @@ fun TvSidebarNav(
     language: String?,
     profileAvatarUrl: String?,
     onDestinationSelected: (FluxaDestination) -> Unit,
-    onRightPressed: () -> Unit = {},
+    rightFocusRequester: FocusRequester? = null,
+    onHomeRightPressed: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -75,24 +74,18 @@ fun TvSidebarNav(
             .fillMaxHeight()
             .width(80.dp)
             .padding(top = 48.dp, bottom = 20.dp)
-            .focusRestorer()
-            .onPreviewKeyEvent { event ->
-                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight) {
-                    onRightPressed()
-                    true
-                } else {
-                    false
-                }
-            },
+            .focusRestorer(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         TvSidebarItems.forEach { item ->
             TvSidebarButton(
-                icon = item.icon,
+                icon = item.icon(),
                 contentDescription = AppStrings.t(language, item.labelKey),
                 selected = destination == item.destination,
                 showAvatar = item.destination == FluxaDestination.Settings,
                 avatarUrl = profileAvatarUrl,
+                rightFocusRequester = rightFocusRequester,
+                onRightPressed = onHomeRightPressed,
                 onClick = { onDestinationSelected(item.destination) }
             )
         }
@@ -106,6 +99,8 @@ private fun TvSidebarButton(
     selected: Boolean,
     showAvatar: Boolean,
     avatarUrl: String?,
+    rightFocusRequester: FocusRequester?,
+    onRightPressed: (() -> Unit)?,
     onClick: () -> Unit
 ) {
     var focused by remember { mutableStateOf(false) }
@@ -113,6 +108,17 @@ private fun TvSidebarButton(
         modifier = Modifier
             .padding(horizontal = 16.dp)
             .size(56.dp)
+            .focusProperties {
+                rightFocusRequester?.let { right = it }
+            }
+            .onPreviewKeyEvent { event ->
+                if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionRight && onRightPressed != null) {
+                    onRightPressed()
+                    true
+                } else {
+                    false
+                }
+            }
             .onFocusChanged { focused = it.isFocused }
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center

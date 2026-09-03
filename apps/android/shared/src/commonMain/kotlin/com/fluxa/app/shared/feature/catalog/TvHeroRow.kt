@@ -10,12 +10,17 @@ expect fun TvHeroRow(
     items: List<CatalogItemUiModel>,
     language: String?,
     onItemClick: (CatalogItemUiModel) -> Unit,
+    onPlayClick: (CatalogItemUiModel) -> Unit = {},
     modifier: Modifier = Modifier,
     trailerItemId: String? = null,
     trailerUrl: String? = null,
     trailerSubtitleCues: List<TrailerCue> = emptyList(),
+    focusedItemOverride: CatalogItemUiModel? = null,
+    posterFocused: Boolean = false,
+    onActiveItemChanged: (CatalogItemUiModel) -> Unit = {},
     onFocusChanged: (Boolean) -> Unit = {},
     focusRequester: FocusRequester? = null,
     downFocusRequester: FocusRequester? = null,
-    onDownPressed: () -> Unit = {}
+    onDownPressed: () -> Unit = {},
+    leftFocusRequester: FocusRequester? = null
 )

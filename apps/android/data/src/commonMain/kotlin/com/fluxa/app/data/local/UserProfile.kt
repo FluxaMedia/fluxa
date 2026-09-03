@@ -90,7 +90,7 @@ data class UserProfile(
     val continueWatchingEnabled: Boolean? = true,
     val upcomingRowEnabled: Boolean? = false,
     val continueWatchingHideTitles: Boolean? = false,
-    val heroFollowsFocusedItem: Boolean? = false,
+    val heroFollowsFocusedItem: Boolean? = true,
     val blurUnwatchedEpisodes: Boolean? = false,
     val detailScreenStyle: String? = "cinematic",
     val detailPreferClearlogo: Boolean? = true,
@@ -209,7 +209,7 @@ data class UserProfile(
         return if (mode == "balanced" || mode == "night") mode else "reference"
     }
     val safeContinueWatchingHideTitles: Boolean get() = continueWatchingHideTitles ?: appearanceSettings?.continueWatchingHideTitles ?: false
-    val safeHeroFollowsFocusedItem: Boolean get() = heroFollowsFocusedItem ?: false
+    val safeHeroFollowsFocusedItem: Boolean get() = heroFollowsFocusedItem ?: true
     val safeBlurUnwatchedEpisodes: Boolean get() = blurUnwatchedEpisodes ?: false
     val safeDetailScreenStyle: String get() = when (val style = detailScreenStyle ?: appearanceSettings?.detailScreenStyle) {
         "classic", "compact" -> style
