@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.search
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -19,8 +21,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items as gridItems
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -279,7 +279,7 @@ private fun SearchResultCard(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Filled.Add,
+                    FluxaIcons.Filled.Add,
                     contentDescription = null,
                     tint = if (focused) Color.Black else Color.White,
                     modifier = Modifier.size(16.dp)

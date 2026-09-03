@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.plugins
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,8 +21,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -200,7 +200,7 @@ private fun PluginSettingsField(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(selectedLabel, color = Color.White)
-                            Icon(Icons.Rounded.ArrowDropDown, contentDescription = null, tint = Color.White.copy(alpha = 0.6f))
+                            Icon(FluxaIcons.Rounded.ArrowDropDown, contentDescription = null, tint = Color.White.copy(alpha = 0.6f))
                         }
                     }
                     DropdownMenu(

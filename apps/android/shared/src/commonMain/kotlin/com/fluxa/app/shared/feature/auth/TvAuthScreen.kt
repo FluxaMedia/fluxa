@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.auth
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,9 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -171,7 +170,7 @@ private fun TvAuthBackButton(onClick: () -> Unit) {
                 .clickable(onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+            Icon(FluxaIcons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
         }
     }
 }
@@ -419,7 +418,7 @@ private fun TvNuvioImportingStage(
                         ) {
                             if (complete) {
                                 Icon(
-                                    imageVector = Icons.Filled.Check,
+                                    imageVector = FluxaIcons.Filled.Check,
                                     contentDescription = null,
                                     tint = Color.Black,
                                     modifier = Modifier.size(12.dp)

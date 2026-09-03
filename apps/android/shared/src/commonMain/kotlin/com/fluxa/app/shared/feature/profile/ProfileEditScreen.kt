@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.profile
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,9 +20,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -93,7 +92,7 @@ fun ProfileEditScreen(
                 modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f)).clickable(onClick = onCancel),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(FluxaIcons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(12.dp))
             Text(
@@ -156,7 +155,7 @@ fun ProfileEditScreen(
                         .clickable { showAvatarSheet = true },
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+                    Icon(FluxaIcons.Filled.Edit, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
                 }
             }
             Spacer(Modifier.height(10.dp))

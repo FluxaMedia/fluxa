@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.library
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.FluxaColors
 
@@ -18,8 +20,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -63,7 +63,7 @@ fun LibraryFolderEditorScreen(
                                 .clickable(onClick = onBack),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
+                            Icon(FluxaIcons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
                         }
                         Text(
                             text = AppStrings.t(

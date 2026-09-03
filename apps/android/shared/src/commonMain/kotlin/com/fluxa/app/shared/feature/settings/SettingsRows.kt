@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -18,9 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -218,7 +217,7 @@ fun SettingsChoiceRow(
         ) {
             Text(label, color = Color.White, style = MaterialTheme.typography.bodyMedium)
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(18.dp)
@@ -275,7 +274,7 @@ fun SettingsInlineChoiceCards(
                     }
                 }
                 if (isSelected) {
-                    Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(FluxaIcons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
                 }
             }
         }
@@ -324,7 +323,7 @@ fun SettingsChoiceDialog(
                             fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                         )
                         if (isSelected) {
-                            Icon(Icons.Filled.Check, contentDescription = null, tint = LocalSettingsAccentColor.current, modifier = Modifier.size(18.dp))
+                            Icon(FluxaIcons.Filled.Check, contentDescription = null, tint = LocalSettingsAccentColor.current, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -371,7 +370,7 @@ fun SettingsStepperRow(
             )
             Spacer(Modifier.width(4.dp))
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(18.dp)

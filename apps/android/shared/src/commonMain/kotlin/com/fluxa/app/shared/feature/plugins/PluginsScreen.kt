@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.plugins
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,13 +24,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -91,7 +86,7 @@ fun PluginsScreen(
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
+                                FluxaIcons.AutoMirrored.Filled.ArrowBack,
                                 contentDescription = null,
                                 tint = if (backFocused) Color.Black else Color.White,
                                 modifier = Modifier.size(20.dp)
@@ -369,7 +364,7 @@ private fun PluginRepositoryInput(
             shape = RoundedCornerShape(12.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
         ) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(FluxaIcons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(AppStrings.t(language, "settings.plugins.add_repository"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
@@ -431,7 +426,7 @@ private fun CloudstreamRepositoryInput(
             shape = RoundedCornerShape(12.dp),
             colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
         ) {
-            Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Icon(FluxaIcons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
             Spacer(Modifier.width(6.dp))
             Text(AppStrings.t(language, "settings.plugins.add_repository"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
         }
@@ -490,9 +485,9 @@ private fun PluginRepositoryGroup(
                     CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                 }
             } else {
-                PluginsIconButton(icon = Icons.Filled.Refresh, onClick = onRefresh)
+                PluginsIconButton(icon = FluxaIcons.Filled.Refresh, onClick = onRefresh)
             }
-            PluginsIconButton(icon = Icons.Filled.Close, tint = Color.White.copy(alpha = 0.5f), onClick = onRemove)
+            PluginsIconButton(icon = FluxaIcons.Filled.Close, tint = Color.White.copy(alpha = 0.5f), onClick = onRemove)
         }
 
         if (scrapers.isNotEmpty()) {
@@ -542,7 +537,7 @@ private fun PluginScraperRow(
         }
         if (scraper.hasSettings) {
             PluginsIconButton(
-                icon = Icons.Filled.Settings,
+                icon = FluxaIcons.Filled.Settings,
                 contentDescription = AppStrings.t(language, "settings.plugins.settings"),
                 onClick = onOpenSettings
             )
@@ -599,7 +594,7 @@ private fun CloudstreamRepoItem(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-            PluginsIconButton(icon = Icons.Filled.Close, tint = Color.White.copy(alpha = 0.5f), onClick = onRemove)
+            PluginsIconButton(icon = FluxaIcons.Filled.Close, tint = Color.White.copy(alpha = 0.5f), onClick = onRemove)
         }
     }
 }
@@ -715,7 +710,7 @@ private fun CloudstreamPluginItem(
             CircularProgressIndicator(color = accentColor, strokeWidth = 2.dp, modifier = Modifier.size(20.dp))
         } else {
             Icon(
-                imageVector = if (plugin.isInstalled) Icons.Filled.Close else Icons.Filled.Download,
+                imageVector = if (plugin.isInstalled) FluxaIcons.Filled.Close else FluxaIcons.Filled.Download,
                 contentDescription = null,
                 tint = if (plugin.isInstalled) FluxaColors.errorRed else Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.size(20.dp)

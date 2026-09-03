@@ -2,6 +2,8 @@
 
 package com.fluxa.app.shared.feature.discover
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -28,10 +30,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.focusGroup
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
@@ -186,7 +184,7 @@ private fun DiscoverSearchField(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Filled.Search,
+                imageVector = FluxaIcons.Filled.Search,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.5f),
                 modifier = Modifier.width(20.dp)
@@ -316,7 +314,7 @@ internal fun DiscoverDropdownFilter(
         )
         Spacer(modifier = Modifier.width(2.dp))
         Icon(
-            imageVector = Icons.Filled.KeyboardArrowDown,
+            imageVector = FluxaIcons.Filled.KeyboardArrowDown,
             contentDescription = null,
             tint = if (triggerFocused) Color.Black else Color.White.copy(alpha = 0.6f),
             modifier = Modifier.width(18.dp)
@@ -379,7 +377,7 @@ internal fun DiscoverDropdownFilter(
                             color = Color.White,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                         )
-                        if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White)
+                        if (selected) Icon(FluxaIcons.Filled.Check, contentDescription = null, tint = Color.White)
                     }
                 }
             }
@@ -433,7 +431,7 @@ internal fun DiscoverDropdownFilter(
                         )
                         if (selected) {
                             Icon(
-                                imageVector = Icons.Filled.Check,
+                                imageVector = FluxaIcons.Filled.Check,
                                 contentDescription = null,
                                 tint = FluxaColors.accent
                             )

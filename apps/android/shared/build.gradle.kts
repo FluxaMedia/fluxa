@@ -51,7 +51,6 @@ kotlin {
             dependsOn(jvmCommonMain)
             dependencies {
                 implementation(libs.coil3.network.okhttp)
-                implementation(libs.androidx.tv.foundation)
                 implementation(libs.androidx.tv.material)
                 implementation(libs.zxing)
             }

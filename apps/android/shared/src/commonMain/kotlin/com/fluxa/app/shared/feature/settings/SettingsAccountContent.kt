@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +19,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -98,7 +101,12 @@ internal fun SettingsAccountContent(
                         modifier = Modifier.weight(1f),
                         fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
                     )
-                    Text("✓", color = LocalSettingsAccentColor.current, fontSize = 16.sp)
+                    Icon(
+                        imageVector = FluxaIcons.Filled.Check,
+                        contentDescription = null,
+                        tint = LocalSettingsAccentColor.current,
+                        modifier = Modifier.size(20.dp)
+                    )
                 }
             }
             SettingsNavRow(AppStrings.t(lang, "settings.switch_profiles")) { onSwitchProfiles() }

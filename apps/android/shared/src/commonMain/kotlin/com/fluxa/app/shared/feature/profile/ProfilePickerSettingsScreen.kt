@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.profile
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,10 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -61,7 +59,7 @@ fun ProfilePickerSettingsScreen(
                 modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.05f)).clickable(onClick = onBack),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+                Icon(FluxaIcons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
             }
             Spacer(Modifier.width(12.dp))
             Text(
@@ -212,14 +210,14 @@ private fun AvatarPackRow(pack: ProfileAvatarPackUiModel, language: String?, onR
                 modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onRefresh),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
+                Icon(FluxaIcons.Filled.Refresh, contentDescription = null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(14.dp))
             }
             Spacer(Modifier.width(8.dp))
             Box(
                 modifier = Modifier.size(28.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.06f)).clickable(onClick = onRemove),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(Icons.Filled.Close, contentDescription = null, tint = FluxaColors.errorRed, modifier = Modifier.size(14.dp))
+                Icon(FluxaIcons.Filled.Close, contentDescription = null, tint = FluxaColors.errorRed, modifier = Modifier.size(14.dp))
             }
         }
     }

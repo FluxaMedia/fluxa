@@ -30,7 +30,7 @@ android {
     defaultConfig {
         applicationId = "com.fluxa.app"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 700
         versionName = "2.1.7"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -170,7 +170,7 @@ dependencies {
     implementation(libs.bundles.coroutines)
     implementation(libs.bundles.lifecycle)
     implementation(libs.androidx.work.runtime)
-    implementation(libs.androidx.hilt.navigation.compose)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
     implementation(libs.androidx.hilt.work)
     ksp(libs.androidx.hilt.compiler)
 
@@ -179,14 +179,12 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.material.icons)
     implementation(libs.androidx.compose.foundation)
     debugImplementation(libs.androidx.compose.ui.tooling)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.runtime.tracing)
 
     // TV
-    implementation(libs.androidx.tv.foundation)
     implementation(libs.androidx.tv.material)
 
     // Image loading

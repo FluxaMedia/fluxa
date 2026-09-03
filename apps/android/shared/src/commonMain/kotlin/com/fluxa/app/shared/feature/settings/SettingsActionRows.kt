@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -17,10 +19,6 @@ import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -143,7 +141,7 @@ fun SettingsConnectionRow(
                 )
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(18.dp)
@@ -220,7 +218,7 @@ fun SettingsSecretFieldRow(
             )
             Spacer(Modifier.width(4.dp))
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(18.dp)
@@ -289,7 +287,7 @@ private fun IconButtonToggle(revealed: Boolean, onClick: () -> Unit) {
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            imageVector = if (revealed) Icons.Filled.VisibilityOff else Icons.Filled.Visibility,
+            imageVector = if (revealed) FluxaIcons.Filled.VisibilityOff else FluxaIcons.Filled.Visibility,
             contentDescription = null,
             tint = Color.White.copy(alpha = FluxaDimensions.Alpha.iconMuted),
             modifier = Modifier.size(20.dp)
@@ -405,7 +403,7 @@ fun SettingsNavRow(
                 Spacer(Modifier.width(8.dp))
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(20.dp)
@@ -443,7 +441,7 @@ fun SettingsTextFieldRow(
             )
             Spacer(Modifier.width(4.dp))
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = FluxaDimensions.Alpha.placeholderText),
                 modifier = Modifier.size(18.dp)

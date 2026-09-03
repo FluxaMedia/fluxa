@@ -19,12 +19,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -52,6 +46,8 @@ import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalDeviceType
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
@@ -172,15 +168,19 @@ private fun CalendarTopBar(
     onBack: () -> Unit,
     onJumpToToday: () -> Unit
 ) {
-    val isTv = LocalDeviceType.current == DeviceType.TV
+    val topPadding = when (LocalWindowWidthClass.current) {
+        WindowWidthClass.Compact -> 44.dp
+        WindowWidthClass.Medium -> 24.dp
+        WindowWidthClass.Expanded -> 12.dp
+    }
     Row(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = if (isTv) 12.dp else 44.dp, bottom = 16.dp, start = 12.dp, end = 20.dp)
+            .padding(top = topPadding, bottom = 16.dp, start = 12.dp, end = 20.dp)
     ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+            imageVector = FluxaIcons.AutoMirrored.Filled.ArrowBack,
             contentDescription = AppStrings.t(language, "common.back"),
             tint = Color.White,
             modifier = Modifier.size(28.dp).clickable(onClick = onBack)
@@ -214,7 +214,7 @@ private fun CalendarMonthHeader(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+            imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier
@@ -232,14 +232,14 @@ private fun CalendarMonthHeader(
                 fontSize = 17.sp
             )
             Icon(
-                imageVector = Icons.Filled.ArrowDropDown,
+                imageVector = FluxaIcons.Filled.ArrowDropDown,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.8f),
                 modifier = Modifier.padding(start = 2.dp).size(20.dp)
             )
         }
         Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            imageVector = FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
             tint = Color.White,
             modifier = Modifier
@@ -525,7 +525,7 @@ private fun CalendarReleaseRow(
                 }
             }
             Icon(
-                imageVector = Icons.Filled.ChevronRight,
+                imageVector = FluxaIcons.Filled.ChevronRight,
                 contentDescription = null,
                 tint = Color.White.copy(alpha = 0.35f),
                 modifier = Modifier.padding(start = 4.dp).size(20.dp)

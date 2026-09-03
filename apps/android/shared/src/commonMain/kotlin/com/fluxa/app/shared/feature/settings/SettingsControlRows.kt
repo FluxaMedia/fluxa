@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.settings
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,11 +19,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -72,12 +69,12 @@ internal fun SettingsStepperDialog(
             Text(title, style = MaterialTheme.typography.titleMedium, color = Color.White)
             Spacer(Modifier.height(20.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SettingsIconButton(Icons.Filled.Remove) {
+                SettingsIconButton(FluxaIcons.Filled.Remove) {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     onValueChanged((value - step).coerceIn(min, max))
                 }
                 Text(formatValue(value), color = Color.White, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.width(64.dp), textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                SettingsIconButton(Icons.Filled.Add) {
+                SettingsIconButton(FluxaIcons.Filled.Add) {
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     onValueChanged((value + step).coerceIn(min, max))
                 }
@@ -181,7 +178,7 @@ fun SettingsColorOpacityRow(
                         if (selected) {
                             val isLight = Color(swatch.toInt()).luminance() > 0.5f
                             Icon(
-                                Icons.Filled.Check,
+                                FluxaIcons.Filled.Check,
                                 contentDescription = null,
                                 tint = if (isLight) Color.Black else Color.White,
                                 modifier = Modifier.size(12.dp)
@@ -241,7 +238,7 @@ fun SettingsOrderedToggleRow(
                 .clickable(onClick = onToggle),
             contentAlignment = Alignment.Center
         ) {
-            if (selected) Icon(Icons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
+            if (selected) Icon(FluxaIcons.Filled.Check, contentDescription = null, tint = Color.White, modifier = Modifier.size(14.dp))
         }
         Spacer(Modifier.width(12.dp))
         Column(modifier = Modifier.weight(1f)) {
@@ -277,7 +274,7 @@ fun SettingsOrderedToggleRow(
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
-                    Icons.Filled.DragHandle,
+                    FluxaIcons.Filled.DragHandle,
                     contentDescription = null,
                     tint = Color.White.copy(alpha = FluxaDimensions.Alpha.faintText),
                     modifier = Modifier.size(20.dp)

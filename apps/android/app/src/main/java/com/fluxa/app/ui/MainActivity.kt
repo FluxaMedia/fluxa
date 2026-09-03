@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -212,9 +213,9 @@ class MainActivity : FragmentActivity() {
                     var downloadProgress by remember { mutableFloatStateOf(0f) }
                     var isDownloading by remember { mutableStateOf(false) }
 
-                    val homeViewModel: HomeViewModel = androidx.hilt.navigation.compose.hiltViewModel()
+                    val homeViewModel: HomeViewModel = hiltViewModel()
                     val sharedDetailViewModel: com.fluxa.app.ui.catalog.DetailViewModel =
-                        androidx.hilt.navigation.compose.hiltViewModel(key = "SharedMobileDetailViewModel")
+                        hiltViewModel(key = "SharedMobileDetailViewModel")
                     val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
 
                     NuvioHealthSyncEffect(

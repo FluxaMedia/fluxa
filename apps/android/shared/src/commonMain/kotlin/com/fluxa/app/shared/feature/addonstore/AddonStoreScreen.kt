@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.addonstore
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,14 +21,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -83,7 +77,7 @@ fun AddonStoreScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
+                            FluxaIcons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = null,
                             tint = if (backFocused) Color.Black else Color.White,
                             modifier = Modifier.size(20.dp)
@@ -215,7 +209,7 @@ private fun AddonSmartInput(
                 shape = RoundedCornerShape(12.dp),
                 colors = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
             ) {
-                Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Icon(FluxaIcons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
                 Text(AppStrings.t(language, "addons.add"), fontWeight = FontWeight.Bold, fontSize = 14.sp)
             }
@@ -261,28 +255,28 @@ private fun InstalledAddonItem(
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (onConfigure != null) {
-                            AddonIconButton(icon = Icons.Filled.Settings, onClick = onConfigure)
+                            AddonIconButton(icon = FluxaIcons.Filled.Settings, onClick = onConfigure)
                         }
                         if (addon.isRefreshing) {
                             Box(modifier = Modifier.size(36.dp), contentAlignment = Alignment.Center) {
                                 CircularProgressIndicator(color = Color.White.copy(alpha = 0.68f), strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                             }
                         } else {
-                            AddonIconButton(icon = Icons.Filled.Refresh, onClick = onRefresh)
+                            AddonIconButton(icon = FluxaIcons.Filled.Refresh, onClick = onRefresh)
                         }
                         AddonIconButton(
-                            icon = Icons.Filled.KeyboardArrowUp,
+                            icon = FluxaIcons.Filled.KeyboardArrowUp,
                             enabled = addon.canMoveUp,
                             tint = Color.White.copy(alpha = if (addon.canMoveUp) 0.68f else 0.22f),
                             onClick = onMoveUp
                         )
                         AddonIconButton(
-                            icon = Icons.Filled.KeyboardArrowDown,
+                            icon = FluxaIcons.Filled.KeyboardArrowDown,
                             enabled = addon.canMoveDown,
                             tint = Color.White.copy(alpha = if (addon.canMoveDown) 0.68f else 0.22f),
                             onClick = onMoveDown
                         )
-                        AddonIconButton(icon = Icons.Filled.Close, tint = Color.White.copy(alpha = 0.62f), onClick = onRemove)
+                        AddonIconButton(icon = FluxaIcons.Filled.Close, tint = Color.White.copy(alpha = 0.62f), onClick = onRemove)
                     }
                 }
                 Spacer(Modifier.height(8.dp))

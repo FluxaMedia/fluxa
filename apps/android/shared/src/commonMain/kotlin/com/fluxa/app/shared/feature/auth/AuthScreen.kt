@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.auth
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,12 +21,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -167,7 +163,7 @@ private fun DesktopCredentialsCard(
             value = state.email,
             onValueChange = { onAction(AuthAction.EmailChanged(it)) },
             placeholder = { Text(AppStrings.t(language, "auth.field.email"), color = Color.White.copy(alpha = 0.3f)) },
-            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(FluxaIcons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp)) },
             isError = state.emailError != null,
             supportingText = state.emailError?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
@@ -181,7 +177,7 @@ private fun DesktopCredentialsCard(
             value = state.password,
             onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
             placeholder = { Text(AppStrings.t(language, "auth.field.password"), color = Color.White.copy(alpha = 0.3f)) },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
             isError = state.passwordError != null,
             supportingText = state.passwordError?.let { { Text(it) } },
             visualTransformation = PasswordVisualTransformation(),
@@ -236,7 +232,7 @@ private fun DesktopProviderRow(
         icon()
         Spacer(Modifier.width(12.dp))
         Text(label, color = Color.White, fontWeight = FontWeight.Medium, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
+        Icon(FluxaIcons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = Color.White.copy(alpha = 0.4f), modifier = Modifier.size(20.dp))
     }
 }
 
@@ -264,7 +260,7 @@ private fun DesktopNuvioCard(
             value = state.email,
             onValueChange = { onAction(AuthAction.EmailChanged(it)) },
             placeholder = { Text(AppStrings.t(language, "auth.field.email"), color = Color.White.copy(alpha = 0.3f)) },
-            leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(FluxaIcons.Filled.Email, contentDescription = null, modifier = Modifier.size(18.dp)) },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
             shape = RoundedCornerShape(14.dp),
@@ -276,7 +272,7 @@ private fun DesktopNuvioCard(
             value = state.password,
             onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
             placeholder = { Text(AppStrings.t(language, "auth.field.password"), color = Color.White.copy(alpha = 0.3f)) },
-            leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
+            leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
             visualTransformation = PasswordVisualTransformation(),
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
@@ -339,7 +335,7 @@ private fun AuthBackButton(onClick: () -> Unit) {
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Icon(FluxaIcons.AutoMirrored.Filled.ArrowBack, contentDescription = null, tint = Color.White, modifier = Modifier.size(20.dp))
     }
 }
 
@@ -574,7 +570,7 @@ private fun NuvioImportingStage(
                         ) {
                             if (complete) {
                                 Icon(
-                                    imageVector = Icons.Filled.Check,
+                                    imageVector = FluxaIcons.Filled.Check,
                                     contentDescription = null,
                                     tint = Color.Black,
                                     modifier = Modifier.size(12.dp)
@@ -651,7 +647,7 @@ private fun DesktopNuvioImportingCard(
                         ) {
                             if (complete) {
                                 Icon(
-                                    imageVector = Icons.Filled.Check,
+                                    imageVector = FluxaIcons.Filled.Check,
                                     contentDescription = null,
                                     tint = Color.Black,
                                     modifier = Modifier.size(12.dp)

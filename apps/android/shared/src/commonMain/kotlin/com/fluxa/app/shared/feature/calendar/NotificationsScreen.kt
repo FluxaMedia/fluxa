@@ -1,5 +1,7 @@
 package com.fluxa.app.shared.feature.calendar
 
+import com.fluxa.app.ui.catalog.FluxaIcons
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,8 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -58,7 +58,7 @@ fun NotificationsScreen(
                 .padding(top = 44.dp, bottom = 16.dp, start = 12.dp, end = 20.dp)
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                imageVector = FluxaIcons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = AppStrings.t(language, "common.close"),
                 tint = Color.White,
                 modifier = Modifier.size(28.dp).clickable(onClick = onBack)
