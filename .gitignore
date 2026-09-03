@@ -26,6 +26,7 @@ src-tauri/gen/
 **/build/
 **/.gradle/
 **/.kotlin/
+/.idea/
 **/src-tauri/gen/
 **/src-tauri/lib/
 **/node_modules/
