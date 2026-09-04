@@ -2,18 +2,21 @@ package com.fluxa.app.plugins
 
 import android.util.Log
 import com.fluxa.app.BuildConfig
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.plugins.cloudstream.ExternalRepoParser
 import com.fluxa.app.plugins.cloudstream.InstalledPlugin
 import com.fluxa.app.plugins.cloudstream.PluginInfo
 import com.fluxa.app.plugins.cloudstream.PluginRepositoryEntry
 import com.fluxa.app.plugins.cloudstream.RepositoryResult
+import com.google.gson.Gson
 
 private const val TAG = "PluginAutoUpdater"
 
 internal class PluginAutoUpdater(
     private val repositories: () -> List<PluginRepositoryEntry>,
     private val installedPlugins: () -> List<InstalledPlugin>,
-    private val updatePlugin: suspend (InstalledPlugin, PluginInfo) -> Result<InstalledPlugin>
+    private val updatePlugin: suspend (InstalledPlugin, PluginInfo) -> Result<InstalledPlugin>,
+    private val gson: Gson = Gson()
 ) {
     data class UpdateReport(
         val updatedPlugins: List<String>,
@@ -50,13 +53,19 @@ internal class PluginAutoUpdater(
                 }
 
                 val remotePlugins = repoData.plugins.associateBy { it.internalName }
+                val updateNames = FluxaCoreNative.pluginUpdatePlan(
+                    gson.toJson(
+                        mapOf(
+                            "installed" to plugins.map { mapOf("internalName" to it.internalName, "version" to it.version) },
+                            "available" to repoData.plugins.map { mapOf("internalName" to it.internalName, "version" to it.version) }
+                        )
+                    )
+                ).updates.associateBy { it.internalName }
                 plugins.forEach { localPlugin ->
-                    val remotePlugin = remotePlugins[localPlugin.internalName] ?: run {
+                    val remotePlugin = remotePlugins[localPlugin.internalName]
+                    if (remotePlugin == null) {
                         logDebug { "[AutoUpdate] Plugin ${localPlugin.internalName} not found in repo" }
-                        return@forEach
-                    }
-
-                    if (remotePlugin.version > localPlugin.version) {
+                    } else if (updateNames.containsKey(localPlugin.internalName)) {
                         updateSinglePlugin(localPlugin, remotePlugin, updatedPlugins, failedPlugins)
                     } else {
                         logDebug { "[AutoUpdate] ${localPlugin.name} is up to date (v${localPlugin.version})" }

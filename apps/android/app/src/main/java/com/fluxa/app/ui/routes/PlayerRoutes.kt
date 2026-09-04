@@ -1,5 +1,8 @@
 package com.fluxa.app.ui.routes
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import android.content.Intent
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -183,6 +186,7 @@ internal fun PlayerRoute(
                     )
                 )
             },
+            onAddonSelected = {},
             onRetry = {}
         )
         return

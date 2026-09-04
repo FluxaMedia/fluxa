@@ -25,6 +25,21 @@ defaults:
     working-directory: apps/desktop
 
 jobs:
+  monorepo-contracts:
+    name: monorepo structure and generated contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Check repository structure
+        working-directory: .
+        run: node scripts/check-monorepo.mjs
+      - name: Check Android i18n output
+        working-directory: .
+        run: node scripts/generate-android-i18n.mjs --check
+      - name: Check generated headless contracts
+        working-directory: .
+        run: node scripts/generate-headless-contracts.mjs --check
+
   check:
     name: cargo check (${{ matrix.name }})
     runs-on: ${{ matrix.os }}

@@ -1,64 +1,54 @@
-# Fluxa Desktop — Tasarım Dili
+# Fluxa Desktop Design System
 
-Her ekran aynı sözlükten konuşur. Yeni bir değer uydurmak yerine buradaki basamaklardan birini seç; hiçbiri uymuyorsa önce `src/design/tokens.ts`'i tartış, sonra ekranı yaz.
+Every screen uses the same vocabulary. Reuse the existing tokens and primitives before adding a new visual value.
 
-## Kaynak
+## Sources
 
-- `src/design/tokens.ts` — renk, ölçek, boşluk, tipografi, hareket, katman
-- `src/design/primitives.tsx` — `Button`, `IconButton`, `Chip`, `SectionLabel`, `Divider`, `MetaText`
-- `src/index.css` — `@font-face` tanımları ve primitiflerin hover durumları
+- `src/design/tokens.ts` — colors, scale, spacing, typography, motion, and layers
+- `src/design/primitives.tsx` — `Button`, `IconButton`, `Chip`, `SectionLabel`, `Divider`, and `MetaText`
+- `src/index.css` — font faces and primitive interaction states
 
-İsimlendirme, Android tarafındaki `FluxaColors` / `FluxaDimensions` yapısını yansıtır. İki repo kodu paylaşmıyor, sözlüğü paylaşıyor.
+The naming mirrors Android's `FluxaColors` and `FluxaDimensions`. The platforms share the vocabulary, not the implementation.
 
-## Kurallar
+## Rules
 
-**Ham renk yazma.** JSX veya stil nesnelerinde `#RRGGBB` / `rgba()` geçmez. `color.textMuted` yaz, `rgba(255,255,255,0.55)` yazma. Tek istisna `src/design/` ve `src/index.css`.
+- Use semantic tokens instead of raw `#RRGGBB` or `rgba()` values. Exceptions are `src/design/` and `src/index.css`.
+- Use `radius`, `fontSize`, and `space`; an isolated value such as `0.8438rem` needs a documented design reason.
+- Use `heading()` for Archivo headings and `font.body` for Montserrat body text.
+- Use semantic layer roles such as `z.overlay` and `z.dialog`; never invent large `zIndex` numbers.
+- Extend a primitive instead of drawing a new styled `<button>`. Use `IconButton` for icon controls and `Chip` for selectable labels.
 
-**Ölçek dışına çıkma.** `borderRadius`, `fontSize` ve boşluk değerleri `radius`, `fontSize`, `space`'ten gelir. `0.8438rem` gibi bir değer yazıyorsan bu bir karar değil, kazadır.
+## Color roles
 
-**Başlıklar Archivo, gövde Montserrat.** Başlık için `heading('h1')` yardımcısını kullan — ağırlık, genişlik ekseni ve harf aralığı birlikte gelir. Gövde metni `font.body` kalır.
-
-**Katman numarası uydurma.** `z.overlay`, `z.dialog` gibi rollerden seç. `zIndex: 99999` yazmak, bir sonraki kişinin `999999` yazmasına davetiye.
-
-**Yeni buton çizme.** Bir yerde daire içinde ikon lazımsa `IconButton`, seçilebilir etiket lazımsa `Chip`. Kendi `<button style={{...}}>`'unu yazıyorsan primitif eksik demektir — primitifi genişlet.
-
-## Renk rolleri
-
-| Rol | Kullanım |
+| Role | Use |
 |---|---|
-| `bg` | Uygulama zemini |
-| `bgElevated` | Detay/hero zemini, backdrop'un oturduğu kat |
-| `surface` / `surfaceRaised` | Kart ve panel yüzeyleri |
-| `textPrimary` → `textFaint` | Metin hiyerarşisi; dördünden fazlası yok |
-| `line` / `lineStrong` | Ayırıcılar ve kenarlıklar |
-| `fill` / `fillHover` / `fillActive` | Etkileşimli yüzeylerin üç durumu |
-| `accent` | Marka turuncusu — ilerleme, seçim işareti, vurgu. Zemin veya buton dolgusu değil |
+| `bg` | Application background |
+| `bgElevated` | Detail/hero background and backdrop layer |
+| `surface` / `surfaceRaised` | Cards and panels |
+| `textPrimary` → `textFaint` | Text hierarchy |
+| `line` / `lineStrong` | Dividers and borders |
+| `fill` / `fillHover` / `fillActive` | Interactive surfaces |
+| `accent` | Progress, selection, and state; not a background or button fill |
 
-Birincil aksiyon **beyaz** düğmedir, accent değil. Accent bir durumu işaretler, bir şeyi süslemez.
+Primary actions use white buttons. Accent communicates state rather than decoration.
 
-## Tipografi ölçeği
+## Typography scale
 
-`micro` 0.625 · `xs` 0.6875 · `sm` 0.75 · `base` 0.8125 · `md` 0.875 · `lg` 1 · `xl` 1.125 · `xxl` 1.375 · `h1` 2 · `hero` 3.125 (rem)
+`micro` 0.625 · `xs` 0.6875 · `sm` 0.75 · `base` 0.8125 · `md` 0.875 · `lg` 1 · `xl` 1.125 · `xxl` 1.375 · `h1` 2 · `hero` 3.125 rem
 
-Arayüz metninin varsayılanı `base`. `lg` ve üzeri başlık demektir.
+Use `base` for interface text. `lg` and above are headings.
 
-## Kontrol
+## Check
 
-```
+```bash
 npm run lint:design
 ```
 
-`src/design/` dışında ham renk, ölçek dışı `borderRadius`/`fontSize` ve serbest `zIndex` arar. Kontrol, göç etmiş dosyalar için çalışır — liste `scripts/check-design.mjs` içindeki `MIGRATED`'dır. Bir ekranı token'lara taşıdıkça listeye ekle; liste büyüdükçe kontrol sıkılaşır.
+The check detects raw colors, out-of-scale radius/font sizes, and arbitrary z-index values outside the design layer. Migrated files are listed in `scripts/check-design.mjs`.
 
-## Göç durumu
+## Migration targets
 
 - [ ] `src/components/detail/**`
-- [ ] `src/screens/HomeScreen.tsx`
-- [ ] `src/screens/LibraryScreen.tsx`
-- [ ] `src/screens/SearchScreen.tsx`
-- [ ] `src/screens/DiscoverScreen.tsx`
-- [ ] `src/screens/CategoryGridScreen.tsx`
-- [ ] `src/screens/SettingsScreen.tsx` + `src/components/settings/**`
-- [ ] `src/screens/CalendarScreen.tsx`
+- [ ] `src/screens/{Home,Library,Search,Discover,CategoryGrid,Settings,Calendar}Screen.tsx`
 - [ ] `src/screens/welcome/**`, `src/screens/Profile*`
 - [ ] `src/components/player/**`

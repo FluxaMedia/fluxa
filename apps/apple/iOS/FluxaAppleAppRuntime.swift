@@ -7,8 +7,7 @@ final class FluxaAppleAppRuntime {
     init(runtime: FluxaAppleHeadlessRuntime) {
         let configurationStore = FluxaAppleAddonConfigurationStore()
         let handler = FluxaAppleHomeEffectHandler(
-            configurationStore: configurationStore,
-            catalogBootstrap: FluxaAppleCatalogBootstrap()
+            configurationStore: configurationStore
         )
         coordinator = FluxaAppleHeadlessCoordinator(
             runtime: runtime,

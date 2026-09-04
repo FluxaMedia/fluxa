@@ -4,58 +4,58 @@ package com.fluxa.app.core.rust
 internal suspend fun FluxaAndroidHeadlessEnvironment.dispatchEffect(
     effect: NativeHeadlessEffect,
 ): HeadlessEffectCompletion = when (effect.type) {
-    "fetchMetaDetail", "fetchMetaDetailLookup" -> fetchMetaDetail(effect)
-    "readPlaybackProgress" -> readPlaybackProgress(effect)
-    "readDetailLocalState" -> readDetailLocalState(effect)
-    "fetchDetailSecondary" -> fetchDetailSecondary(effect)
-    "prefetchDetailStreams" -> prefetchDetailStreams(effect)
-    "fetchDetailStreams" -> fetchDetailStreams(effect)
-    "prepareDirectPlayback" -> prepareDirectPlayback(effect)
-    "fetchIntroSegments" -> fetchIntroSegments(effect)
-    "resolveIntroImdbId" -> resolveIntroImdbId(effect)
+    FluxaHeadlessEffectType.FetchMetaDetail, FluxaHeadlessEffectType.FetchMetaDetailLookup -> fetchMetaDetail(effect)
+    FluxaHeadlessEffectType.ReadPlaybackProgress -> readPlaybackProgress(effect)
+    FluxaHeadlessEffectType.ReadDetailLocalState -> readDetailLocalState(effect)
+    FluxaHeadlessEffectType.FetchDetailSecondary -> fetchDetailSecondary(effect)
+    FluxaHeadlessEffectType.PrefetchDetailStreams -> prefetchDetailStreams(effect)
+    FluxaHeadlessEffectType.FetchDetailStreams -> fetchDetailStreams(effect)
+    FluxaHeadlessEffectType.PrepareDirectPlayback -> prepareDirectPlayback(effect)
+    FluxaHeadlessEffectType.FetchIntroSegments -> fetchIntroSegments(effect)
+    FluxaHeadlessEffectType.ResolveIntroImdbId -> resolveIntroImdbId(effect)
 
-    "loadStreams" -> loadStreams(effect)
-    "enqueueTraktScrobble" -> enqueueTraktScrobble(effect)
-    "startTorrentStream" -> startTorrentStream(effect)
-    "stopTorrent" -> stopTorrent(effect)
-    "clearPlaybackProgress" -> clearPlaybackProgress(effect)
-    "syncWatchedState" -> syncWatchedState(effect)
-    "writePlaybackProgress" -> writePlaybackProgress(effect)
+    FluxaHeadlessEffectType.LoadStreams -> loadStreams(effect)
+    FluxaHeadlessEffectType.EnqueueTraktScrobble -> enqueueTraktScrobble(effect)
+    FluxaHeadlessEffectType.StartTorrentStream -> startTorrentStream(effect)
+    FluxaHeadlessEffectType.StopTorrent -> stopTorrent(effect)
+    FluxaHeadlessEffectType.ClearPlaybackProgress -> clearPlaybackProgress(effect)
+    FluxaHeadlessEffectType.SyncWatchedState -> syncWatchedState(effect)
+    FluxaHeadlessEffectType.WritePlaybackProgress -> writePlaybackProgress(effect)
 
-    "fetchAddonManifest" -> fetchAddonManifest(effect)
-    "fetchPluginManifest" -> fetchPluginManifest(effect)
-    "refreshInstalledAddons" -> refreshInstalledAddons(effect)
-    "fetchAddonResource" -> fetchAddonResource(effect)
+    FluxaHeadlessEffectType.FetchAddonManifest -> fetchAddonManifest(effect)
+    FluxaHeadlessEffectType.FetchPluginManifest -> fetchPluginManifest(effect)
+    FluxaHeadlessEffectType.RefreshInstalledAddons -> refreshInstalledAddons(effect)
+    FluxaHeadlessEffectType.FetchAddonResource -> fetchAddonResource(effect)
 
-    "readHomeBootstrap" -> readHomeBootstrap(effect)
-    "readLibraryState" -> readLibraryState(effect)
-    "writeLibraryCommand" -> writeLibraryCommand(effect)
-    "writeFeedback" -> writeFeedback(effect)
+    FluxaHeadlessEffectType.ReadHomeBootstrap -> readHomeBootstrap(effect)
+    FluxaHeadlessEffectType.ReadLibraryState -> readLibraryState(effect)
+    FluxaHeadlessEffectType.WriteLibraryCommand -> writeLibraryCommand(effect)
+    FluxaHeadlessEffectType.WriteFeedback -> writeFeedback(effect)
 
-    "runSearch" -> runSearch(effect)
-    "runDiscover" -> runDiscover(effect)
-    "readDiscoverCatalogFilters" -> readDiscoverCatalogFilters(effect)
-    "fetchCatalogPage", "fetchDiscoverPage" -> fetchCatalogPage(effect)
-    "fetchSeasonEpisodes" -> fetchSeasonEpisodes(effect)
-    "fetchSubtitles" -> fetchSubtitles(effect)
+    FluxaHeadlessEffectType.RunSearch -> runSearch(effect)
+    FluxaHeadlessEffectType.RunDiscover -> runDiscover(effect)
+    FluxaHeadlessEffectType.ReadDiscoverCatalogFilters -> readDiscoverCatalogFilters(effect)
+    FluxaHeadlessEffectType.FetchCatalogPage, FluxaHeadlessEffectType.FetchDiscoverPage -> fetchCatalogPage(effect)
+    FluxaHeadlessEffectType.FetchSeasonEpisodes -> fetchSeasonEpisodes(effect)
+    FluxaHeadlessEffectType.FetchSubtitles -> fetchSubtitles(effect)
 
-    "runExternalSync",
-    "runAuthFlow",
-    "exchangeAuthCode",
-    "refreshAuthToken",
-    "syncExternalIntegration" -> authEffectHandler.execute(effect)
+    FluxaHeadlessEffectType.RunExternalSync,
+    FluxaHeadlessEffectType.RunAuthFlow,
+    FluxaHeadlessEffectType.ExchangeAuthCode,
+    FluxaHeadlessEffectType.RefreshAuthToken,
+    FluxaHeadlessEffectType.SyncExternalIntegration -> authEffectHandler.execute(effect)
 
-    "readCalendarMonth",
-    "replaceExternalContinueWatching",
-    "updateCalendarWidget",
-    "notifyReleasedEpisodes" -> calendarEffectHandler.execute(effect)
+    FluxaHeadlessEffectType.ReadCalendarMonth,
+    FluxaHeadlessEffectType.ReplaceExternalContinueWatching,
+    FluxaHeadlessEffectType.UpdateCalendarWidget,
+    FluxaHeadlessEffectType.NotifyReleasedEpisodes -> calendarEffectHandler.execute(effect)
 
-    "enqueueOfflineDownload" -> offlineEffectHandler.enqueue(effect)
-    "writeSettings" -> writeSettings(effect)
+    FluxaHeadlessEffectType.EnqueueOfflineDownload -> offlineEffectHandler.enqueue(effect)
+    FluxaHeadlessEffectType.WriteSettings -> writeSettings(effect)
 
-    "fetchYoutubeTrailerWatchConfig",
-    "fetchYoutubeTrailerPlayer",
-    "fetchYoutubeTrailerPlayerScript" -> executeTrailerHttpEffect(effect)
+    FluxaHeadlessEffectType.FetchYoutubeTrailerWatchConfig,
+    FluxaHeadlessEffectType.FetchYoutubeTrailerPlayer,
+    FluxaHeadlessEffectType.FetchYoutubeTrailerPlayerScript -> executeTrailerHttpEffect(effect)
 
     else -> error(effect, "unsupported_effect")
 }

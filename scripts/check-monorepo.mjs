@@ -9,6 +9,8 @@ const requiredPaths = [
   "apps/desktop/package.json",
   "apps/desktop/src-tauri/Cargo.toml",
   "core/fluxa-core/Cargo.toml",
+  "shared/contracts/headless-effects.json",
+  "shared/contracts/headless-actions.json",
   "shared/i18n/english_us.json",
   "shared/i18n/tr_tr.json",
   ".github/workflows",

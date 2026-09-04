@@ -1,5 +1,8 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import android.content.Context
 import android.content.Intent
 import android.net.Uri

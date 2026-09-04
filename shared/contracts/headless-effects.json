@@ -1,0 +1,200 @@
+{
+  "effects": [
+    {
+      "variant": "ClearPlaybackProgress",
+      "value": "clearPlaybackProgress"
+    },
+    {
+      "variant": "EnqueueOfflineDownload",
+      "value": "enqueueOfflineDownload"
+    },
+    {
+      "variant": "EnqueueTraktScrobble",
+      "value": "enqueueTraktScrobble"
+    },
+    {
+      "variant": "ExchangeAuthCode",
+      "value": "exchangeAuthCode"
+    },
+    {
+      "variant": "ExecutePlugin",
+      "value": "executePlugin"
+    },
+    {
+      "variant": "FetchAddonManifest",
+      "value": "fetchAddonManifest"
+    },
+    {
+      "variant": "FetchAddonResource",
+      "value": "fetchAddonResource"
+    },
+    {
+      "variant": "FetchCatalogPage",
+      "value": "fetchCatalogPage"
+    },
+    {
+      "variant": "FetchDiscoverPage",
+      "value": "fetchDiscoverPage"
+    },
+    {
+      "variant": "FetchDetailSecondary",
+      "value": "fetchDetailSecondary"
+    },
+    {
+      "variant": "FetchDetailStreams",
+      "value": "fetchDetailStreams"
+    },
+    {
+      "variant": "FetchIntroSegments",
+      "value": "fetchIntroSegments"
+    },
+    {
+      "variant": "FetchMetaDetail",
+      "value": "fetchMetaDetail"
+    },
+    {
+      "variant": "FetchMetaDetailLookup",
+      "value": "fetchMetaDetailLookup"
+    },
+    {
+      "variant": "FetchPluginManifest",
+      "value": "fetchPluginManifest"
+    },
+    {
+      "variant": "FetchSeasonEpisodes",
+      "value": "fetchSeasonEpisodes"
+    },
+    {
+      "variant": "FetchSubtitles",
+      "value": "fetchSubtitles"
+    },
+    {
+      "variant": "FetchYoutubeTrailerPlayer",
+      "value": "fetchYoutubeTrailerPlayer"
+    },
+    {
+      "variant": "FetchYoutubeTrailerPlayerScript",
+      "value": "fetchYoutubeTrailerPlayerScript"
+    },
+    {
+      "variant": "FetchYoutubeTrailerWatchConfig",
+      "value": "fetchYoutubeTrailerWatchConfig"
+    },
+    {
+      "variant": "LoadStreams",
+      "value": "loadStreams"
+    },
+    {
+      "variant": "NotifyReleasedEpisodes",
+      "value": "notifyReleasedEpisodes"
+    },
+    {
+      "variant": "PrefetchDetailStreams",
+      "value": "prefetchDetailStreams"
+    },
+    {
+      "variant": "PrefetchNextEpisodeStreams",
+      "value": "prefetchNextEpisodeStreams"
+    },
+    {
+      "variant": "PrepareDirectPlayback",
+      "value": "prepareDirectPlayback"
+    },
+    {
+      "variant": "ReadCalendarMonth",
+      "value": "readCalendarMonth"
+    },
+    {
+      "variant": "ReadDetailLocalState",
+      "value": "readDetailLocalState"
+    },
+    {
+      "variant": "ReadDiscoverCatalogFilters",
+      "value": "readDiscoverCatalogFilters"
+    },
+    {
+      "variant": "ReadHomeBootstrap",
+      "value": "readHomeBootstrap"
+    },
+    {
+      "variant": "RefreshContinueWatching",
+      "value": "refreshContinueWatching"
+    },
+    {
+      "variant": "ReadLibraryState",
+      "value": "readLibraryState"
+    },
+    {
+      "variant": "ReadPlaybackProgress",
+      "value": "readPlaybackProgress"
+    },
+    {
+      "variant": "RefreshAuthToken",
+      "value": "refreshAuthToken"
+    },
+    {
+      "variant": "RefreshInstalledAddons",
+      "value": "refreshInstalledAddons"
+    },
+    {
+      "variant": "ReplaceExternalContinueWatching",
+      "value": "replaceExternalContinueWatching"
+    },
+    {
+      "variant": "ResolveIntroImdbId",
+      "value": "resolveIntroImdbId"
+    },
+    {
+      "variant": "RunAuthFlow",
+      "value": "runAuthFlow"
+    },
+    {
+      "variant": "RunDiscover",
+      "value": "runDiscover"
+    },
+    {
+      "variant": "RunExternalSync",
+      "value": "runExternalSync"
+    },
+    {
+      "variant": "RunSearch",
+      "value": "runSearch"
+    },
+    {
+      "variant": "StartTorrentStream",
+      "value": "startTorrentStream"
+    },
+    {
+      "variant": "StopTorrent",
+      "value": "stopTorrent"
+    },
+    {
+      "variant": "SyncExternalIntegration",
+      "value": "syncExternalIntegration"
+    },
+    {
+      "variant": "SyncWatchedState",
+      "value": "syncWatchedState"
+    },
+    {
+      "variant": "UpdateCalendarWidget",
+      "value": "updateCalendarWidget"
+    },
+    {
+      "variant": "WriteFeedback",
+      "value": "writeFeedback"
+    },
+    {
+      "variant": "WriteLibraryCommand",
+      "value": "writeLibraryCommand"
+    },
+    {
+      "variant": "WritePlaybackProgress",
+      "value": "writePlaybackProgress"
+    },
+    {
+      "variant": "WriteSettings",
+      "value": "writeSettings"
+    }
+  ]
+}

@@ -86,8 +86,7 @@ class AndroidPluginsDataSource(
         }
 
     override suspend fun refresh() {
-        val activeId = profileManager.getLastActiveProfileId()
-        val profile = profileManager.getProfiles().firstOrNull { it.id == activeId }
+        val profile = profileManager.getActiveProfile()
         syncNuvioPluginsForProfile(profile, nuvioCoordinator, pluginRepositoryManager::syncNuvioPlugins)
         nuvio.refresh()
     }

@@ -53,7 +53,7 @@ private class AndroidProfileStore(
 
     private fun snapshot(): ProfileStoreSnapshot {
         val profiles = profileManager.getProfiles()
-        val activeId = profileManager.getLastActiveProfileId()
+        val activeId = profileManager.getActiveProfile()?.id
         val pickerSettings = pickerSettingsStore.get()
         return ProfileStoreSnapshot(
             activeProfile = profiles.firstOrNull { it.id == activeId }?.toProfileUiModel(),

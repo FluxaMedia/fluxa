@@ -9,7 +9,7 @@ final class FluxaApplePluginsEffectHandler: FluxaApplePlatformEffectHandler {
 
     func execute(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
         switch effect.type {
-        case "fetchPluginManifest":
+        case FluxaHeadlessEffectType.fetchPluginManifest:
             return try await fetchPluginManifest(effect: effect)
         default:
             throw NSError(domain: "FluxaAppleUnsupportedEffect", code: 1)

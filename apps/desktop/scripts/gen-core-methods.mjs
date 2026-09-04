@@ -6,6 +6,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const ffiPath = path.resolve(here, '../../../core/fluxa-core/src/ffi.rs');
 const outPath = path.resolve(here, '../src/core/coreMethods.ts');
 const routesPath = path.join(path.dirname(ffiPath), 'ffi');
+const checkOnly = process.argv.includes('--check');
 
 if (!existsSync(ffiPath)) {
   console.error(`gen-core-methods: ${ffiPath} not found (core/fluxa-core must exist in the monorepo)`);
@@ -43,6 +44,10 @@ const next = header + body;
 
 const current = existsSync(outPath) ? readFileSync(outPath, 'utf8') : '';
 if (current !== next) {
+  if (checkOnly) {
+    console.error('gen-core-methods: generated core method list is out of date; run npm run generate:core-methods');
+    process.exit(1);
+  }
   writeFileSync(outPath, next);
   console.log(`gen-core-methods: wrote ${unique.length} methods to src/core/coreMethods.ts`);
 }

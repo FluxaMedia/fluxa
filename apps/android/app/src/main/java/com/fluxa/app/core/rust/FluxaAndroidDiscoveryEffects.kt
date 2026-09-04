@@ -7,6 +7,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.distinctByTypeAndId
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.TmdbMeta
 import com.fluxa.app.data.remote.TmdbService
@@ -144,7 +145,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchRemoteCollectionSource
                 else -> emptyList()
             }
         }
-    }.awaitAll().flatten().distinctBy { "${it.type}:${it.id}" }
+    }.awaitAll().flatten().distinctByTypeAndId()
 }
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.fetchTraktCollectionSource(source: LibraryRemoteSource, skip: Int): List<Meta> {

@@ -5,6 +5,7 @@ pub(super) fn route_profile_contract(method: &str, args_json: &str) -> Outcome {
         // args_json IS the request object for all of these
         "activeProfilePlan" => opt_json(profile_contract::active_profile_plan_json(args_json)),
         "tokenMergePlan" => opt_json(profile_contract::token_merge_plan_json(args_json)),
+        "profileSyncMergePlan" => opt_json(profile_contract::profile_sync_merge_plan_json(args_json)),
         "profileDefaultSeed" => opt_json(profile_contract::profile_default_seed_json(args_json)),
         "profileSettingsMigrationPlan" => opt_json(
             profile_contract::profile_settings_migration_plan_json(args_json),

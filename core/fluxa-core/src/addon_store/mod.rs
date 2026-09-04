@@ -142,6 +142,38 @@ mod tests {
     }
 
     #[test]
+    fn addon_profile_mutation_plan_owns_install_disable_remove_and_order() {
+        let profile = r#"{
+            "id":"p1",
+            "localAddons":["https://a.example/manifest.json","https://b.example/manifest.json"],
+            "disabledLocalAddons":[]
+        }"#;
+        let disabled = addon_profile_mutation_plan_json(&format!(
+            r#"{{"profile":{profile},"command":"disable","addonKey":"http://a.example"}}"#
+        ))
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("disabled profile");
+        assert_eq!(disabled["disabledLocalAddons"][0], "https://a.example/manifest.json");
+
+        let moved = addon_profile_mutation_plan_json(&format!(
+            r#"{{"profile":{},"command":"move","addonKey":"https://b.example","direction":-1}}"#,
+            disabled
+        ))
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("moved profile");
+        assert_eq!(moved["localAddons"][0], "https://b.example/manifest.json");
+
+        let removed = addon_profile_mutation_plan_json(&format!(
+            r#"{{"profile":{},"command":"remove","addonKey":"https://a.example"}}"#,
+            moved
+        ))
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("removed profile");
+        assert_eq!(removed["localAddons"].as_array().map(Vec::len), Some(1));
+        assert!(removed["disabledLocalAddons"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
     fn sanitize_profile_syncs_home_feed_settings_from_top_level_fields() {
         let sanitized = sanitize_profile_json(
             r#"{"id":"p1","email":"u@example.com","localAddons":["https://a.example/manifest.json"],"libraryCollections":[{"id":"new","title":"New"}],"homeFeedSettings":{"libraryCollections":[{"id":"old","title":"Old"}],"homeFeedToggles":["old"]},"homeFeedToggles":[]}"#,

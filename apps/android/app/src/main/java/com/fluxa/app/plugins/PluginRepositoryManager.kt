@@ -46,11 +46,7 @@ class PluginRepositoryManager @Inject constructor(
         scraperCodeClient = scraperCodeClient,
         gson = gson,
         pluginTmdbIdResolver = { contentId, mediaType ->
-            val activeProfileId = profileManager.getLastActiveProfileId()
-            val apiKey = profileManager.getProfiles()
-                .firstOrNull { it.id == activeProfileId }
-                ?.safeTmdbApiKey
-                .orEmpty()
+            val apiKey = profileManager.getActiveProfile()?.safeTmdbApiKey.orEmpty()
             resolveNuvioPluginTmdbId(tmdbService, contentId, mediaType, apiKey)
         },
         logTag = "PluginRepositoryManager",

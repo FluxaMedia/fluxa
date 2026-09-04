@@ -6,6 +6,8 @@ import com.fluxa.app.data.plugins.normalizeNuvioPluginType
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
+import com.fluxa.app.core.rust.models.NativeCloudstreamRequest
+import com.fluxa.app.core.rust.models.NativeStreamAddonRequest
 import com.fluxa.app.core.rust.models.NativeStreamDiscoveryExecutionPolicy
 import com.fluxa.app.plugins.PluginRepositoryManager
 import com.fluxa.app.plugins.PluginScraperUiModel
@@ -145,58 +147,14 @@ class StreamDiscoveryUseCase @Inject constructor(
         val addonRequestSemaphore = Semaphore(policy.maxConcurrentAddonRequests.toInt().coerceAtLeast(1))
 
         val remoteDeferred = policy.addonRequests.map { addonRequest ->
-            async {
-                addonRequestSemaphore.withPermit {
-                    try {
-                        val streams = withTimeoutOrNull(addonRequest.timeoutMs) {
-                            repository.getStreamsFromAddon(
-                                addonRequest.transportUrl,
-                                addonRequest.addonName,
-                                addonRequest.type,
-                                addonRequest.id
-                            )
-                        } ?: emptyList()
-                        logDebug("StreamDiscovery") {
-                            "addon id=${addonRequest.id} addon=${addonRequest.addonName} streams=${streams.size} timeout=${addonRequest.timeoutMs}"
-                        }
-                        streams
-                    } catch (e: Exception) {
-                        Log.w(
-                            "StreamDiscovery",
-                            "addon id=${addonRequest.id} addon=${addonRequest.addonName} failed=${e::class.java.simpleName}"
-                        )
-                        emptyList()
-                    }
-                }
-            }
+            async { loadAddonStreams(addonRequest, addonRequestSemaphore) }
         }
 
         val cs3Deferred = async {
-            val cloudstream = policy.cloudstreamRequest
-            if (cloudstream != null) {
-                try {
-                    withTimeoutOrNull(cloudstream.timeoutMs) {
-                        cloudStreamDiscoveryClient.getStreams(
-                            pluginApis = request.cs3PluginApis,
-                            id = cloudstream.id,
-                            title = cloudstream.title,
-                            year = cloudstream.year?.toInt(),
-                            type = cloudstream.type,
-                            season = cloudstream.season,
-                            episode = cloudstream.episode,
-                            originalName = cloudstream.originalName
-                        )
-                    } ?: emptyList()
-                } catch (e: Exception) {
-                    Log.e("StreamDiscovery", "CS3 Plugin discovery failed", e)
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
+            loadCloudStreamStreams(policy.cloudstreamRequest, request)
         }
 
-        val pluginDeferred = async { runPluginScrapers(pluginPlan, Constants.Timeouts.PLUGIN_SEARCH) }
+        val pluginDeferred = async { loadPluginStreams(pluginPlan) }
 
         val allStreams = mutableListOf<Stream>()
 
@@ -274,58 +232,14 @@ class StreamDiscoveryUseCase @Inject constructor(
         }
 
         val remoteDeferred = policy.addonRequests.map { addonRequest ->
-            addonRequest to async {
-                addonRequestSemaphore.withPermit {
-                    try {
-                        val streams = withTimeoutOrNull(addonRequest.timeoutMs) {
-                            repository.getStreamsFromAddon(
-                                addonRequest.transportUrl,
-                                addonRequest.addonName,
-                                addonRequest.type,
-                                addonRequest.id
-                            )
-                        } ?: emptyList()
-                        logDebug("StreamDiscovery") {
-                            "addon id=${addonRequest.id} addon=${addonRequest.addonName} streams=${streams.size} timeout=${addonRequest.timeoutMs}"
-                        }
-                        streams
-                    } catch (e: Exception) {
-                        Log.w(
-                            "StreamDiscovery",
-                            "addon id=${addonRequest.id} addon=${addonRequest.addonName} failed=${e::class.java.simpleName}"
-                        )
-                        emptyList()
-                    }
-                }
-            }
+            addonRequest to async { loadAddonStreams(addonRequest, addonRequestSemaphore) }
         }
 
         val cs3Deferred = async {
-            val cloudstream = policy.cloudstreamRequest
-            if (cloudstream != null) {
-                try {
-                    withTimeoutOrNull(cloudstream.timeoutMs) {
-                        cloudStreamDiscoveryClient.getStreams(
-                            pluginApis = request.cs3PluginApis,
-                            id = cloudstream.id,
-                            title = cloudstream.title,
-                            year = cloudstream.year?.toInt(),
-                            type = cloudstream.type,
-                            season = cloudstream.season,
-                            episode = cloudstream.episode,
-                            originalName = cloudstream.originalName
-                        )
-                    } ?: emptyList()
-                } catch (e: Exception) {
-                    Log.e("StreamDiscovery", "CS3 Plugin discovery failed", e)
-                    emptyList()
-                }
-            } else {
-                emptyList()
-            }
+            loadCloudStreamStreams(policy.cloudstreamRequest, request)
         }
 
-        val pluginDeferred = async { runPluginScrapers(pluginPlan, Constants.Timeouts.PLUGIN_SEARCH) }
+        val pluginDeferred = async { loadPluginStreams(pluginPlan) }
 
         val progressJobs = buildList {
             remoteDeferred.forEach { (addonRequest, deferred) ->
@@ -387,4 +301,57 @@ class StreamDiscoveryUseCase @Inject constructor(
             request = request
         )
     }
+
+    private suspend fun loadAddonStreams(
+        addonRequest: NativeStreamAddonRequest,
+        semaphore: Semaphore
+    ): List<Stream> = semaphore.withPermit {
+        try {
+            val streams = withTimeoutOrNull(addonRequest.timeoutMs) {
+                repository.getStreamsFromAddon(
+                    addonRequest.transportUrl,
+                    addonRequest.addonName,
+                    addonRequest.type,
+                    addonRequest.id
+                )
+            } ?: emptyList()
+            logDebug("StreamDiscovery") {
+                "addon id=${addonRequest.id} addon=${addonRequest.addonName} streams=${streams.size} timeout=${addonRequest.timeoutMs}"
+            }
+            streams
+        } catch (e: Exception) {
+            Log.w(
+                "StreamDiscovery",
+                "addon id=${addonRequest.id} addon=${addonRequest.addonName} failed=${e::class.java.simpleName}"
+            )
+            emptyList()
+        }
+    }
+
+    private suspend fun loadCloudStreamStreams(
+        cloudstream: NativeCloudstreamRequest?,
+        request: StreamDiscoveryRequest
+    ): List<Stream> {
+        if (cloudstream == null) return emptyList()
+        return try {
+            withTimeoutOrNull(cloudstream.timeoutMs) {
+                cloudStreamDiscoveryClient.getStreams(
+                    pluginApis = request.cs3PluginApis,
+                    id = cloudstream.id,
+                    title = cloudstream.title,
+                    year = cloudstream.year?.toInt(),
+                    type = cloudstream.type,
+                    season = cloudstream.season,
+                    episode = cloudstream.episode,
+                    originalName = cloudstream.originalName
+                )
+            } ?: emptyList()
+        } catch (e: Exception) {
+            Log.e("StreamDiscovery", "CS3 Plugin discovery failed", e)
+            emptyList()
+        }
+    }
+
+    private suspend fun loadPluginStreams(plan: PluginExecutionPlan?): List<Stream> =
+        runPluginScrapers(plan, Constants.Timeouts.PLUGIN_SEARCH)
 }

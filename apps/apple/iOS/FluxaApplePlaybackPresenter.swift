@@ -20,6 +20,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     private weak var activePlayerController: FluxaAppleCustomPlayerViewController?
     private var watchState: AppleWatchTogetherStateSnapshot?
     private let discordPresence = FluxaAppleDiscordPresence()
+    private let streamingAdapter = FluxaAppleAVPlayerStreamAdapter()
     private var pendingWatchRoomPresentation = false
     private lazy var stateBridge = NativePlayerStateBridge(
         callbacks: NativePlayerCommandCallbacks(
@@ -67,7 +68,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
             externalPlaybackRequest = nil
             externalPlaybackContext = nil
             stateBridge.setContent(content: nil)
-            FluxaAppleStreamingEngine.shared.stop()
+            streamingAdapter.stop()
             if let fallback { presentInApp(request: fallback) }
             return
         }
@@ -90,7 +91,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         stateBridge.setContent(content: nil)
         externalPlaybackContext = nil
         externalPlaybackRequest = nil
-        FluxaAppleStreamingEngine.shared.stop()
+        streamingAdapter.stop()
     }
 
     private func presentInApp(request: ApplePlaybackRequestSnapshot) {
@@ -103,13 +104,11 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         let title = request.title
         let resumePositionMs = request.resumePositionMs
         let hasNextEpisode = resolveHasNextEpisode(request)
+        let streamingAdapter = self.streamingAdapter
         Task {
             let playbackUrl = await Task.detached {
-                FluxaAppleStreamingEngine.shared.prepare(
-                    url: originalUrl,
-                    requestHeadersJson: requestHeadersJson,
-                    title: title
-                ) ?? URL(string: originalUrl)
+                guard let originalURL = URL(string: originalUrl) else { return nil }
+                return streamingAdapter.prepare(url: originalURL, headers: requestHeaders, title: title)
             }.value
             guard let playbackUrl else {
                 return
@@ -200,16 +199,14 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         watchBridge.leaveRoom()
         watchBridge.detachPlayback()
         let originalUrl = request.playableUrl
-        let requestHeadersJson = request.requestHeadersJson
+        let requestHeaders = decodeHeaders(request.requestHeadersJson)
         let title = request.title
         let resumePositionMs = request.resumePositionMs
+        let streamingAdapter = self.streamingAdapter
         Task {
             let playbackUrl = await Task.detached {
-                FluxaAppleStreamingEngine.shared.prepare(
-                    url: originalUrl,
-                    requestHeadersJson: requestHeadersJson,
-                    title: title
-                ) ?? URL(string: originalUrl)
+                guard let originalURL = URL(string: originalUrl) else { return nil }
+                return streamingAdapter.prepare(url: originalURL, headers: requestHeaders, title: title)
             }.value
             guard let playbackUrl,
                   let infuseUrl = self.buildInfuseUrl(
@@ -442,7 +439,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         stateBridge.stop()
         stateBridge.setContent(content: nil)
         activePlayer = nil
-        FluxaAppleStreamingEngine.shared.stop()
+        streamingAdapter.stop()
     }
 
     private func observe(_ player: FluxaPlayer) {

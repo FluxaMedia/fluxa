@@ -4,6 +4,7 @@ import com.fluxa.app.core.rust.NativeHeadlessEngineResult
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.distinctByTypeAndId
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
 import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
@@ -97,7 +98,7 @@ internal class HomeHeadlessBrowseCoordinator(
                     )
                 )
                 val state = result.state["discover"] as? Map<*, *>
-                results.value = decodeList<Meta>(state?.get("results"), metaListType).distinctBy { "${it.type}:${it.id}" }
+                results.value = decodeList<Meta>(state?.get("results"), metaListType).distinctByTypeAndId()
                 resultSources.value = decodeObject(state?.get("resultSources"), sourceMapType) ?: emptyMap()
             } finally {
                 loading.value = false
@@ -121,7 +122,7 @@ internal class HomeHeadlessBrowseCoordinator(
                     )
                 )
                 val state = result.state["discover"] as? Map<*, *>
-                val updated = decodeList<Meta>(state?.get("results"), metaListType).distinctBy { "${it.type}:${it.id}" }
+                val updated = decodeList<Meta>(state?.get("results"), metaListType).distinctByTypeAndId()
                 val source = HomeCatalogSource(transportUrl, catalogId, contentType, genre)
                 val sources = resultSources.value.toMutableMap()
                 updated.forEach { item ->

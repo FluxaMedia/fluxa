@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -75,11 +76,10 @@ class TraktScrobbleWorker @AssistedInject constructor(
                         onSyncSuccess(profileId)
                         Result.success()
                     }
-                    response.code() == 429 || response.code() >= 500 -> {
+                    FluxaCoreNative.externalSyncWorkerRetryAction(response.code(), runAttemptCount) == "retry" -> {
                         onSyncFailure(profileId)
                         Result.retry()
                     }
-                    response.code() == 401 && runAttemptCount == 0 -> Result.retry()
                     else -> {
                         val body = runCatching { response.errorBody()?.string()?.take(1000) }.getOrNull()
                         Log.w("TraktScrobbleWorker", "Scrobble response action=$action media_id=$mediaId success=false http=${response.code()} error_body=${body.orEmpty()}")
@@ -91,7 +91,11 @@ class TraktScrobbleWorker @AssistedInject constructor(
             onFailure = { error ->
                 Log.w("TraktScrobbleWorker", "Scrobble $action failed for $mediaId", error)
                 onSyncFailure(profileId)
-                Result.retry()
+                if (FluxaCoreNative.externalSyncWorkerRetryAction(null, runAttemptCount) == "retry") {
+                    Result.retry()
+                } else {
+                    Result.failure()
+                }
             }
         )
     }

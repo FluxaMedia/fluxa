@@ -2,6 +2,9 @@
 
 package com.fluxa.app.player
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import com.fluxa.app.shared.feature.player.Chapter
 import com.fluxa.app.shared.feature.player.MediaTrack
 

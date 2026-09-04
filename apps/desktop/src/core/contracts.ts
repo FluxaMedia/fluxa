@@ -1,30 +1,8 @@
-export type AppActionType =
-  | 'addonsRefreshRequested'
-  | 'calendarMonthRequested'
-  | 'catalogPageRequested'
-  | 'clearPlaybackProgressRequested'
-  | 'detailLoadRequested'
-  | 'detailSeasonRequested'
-  | 'detailStreamsRequested'
-  | 'discoverCatalogFiltersRequested'
-  | 'discoverPageRequested'
-  | 'discoverRequested'
-  | 'enginePing'
-  | 'homeLoadRequested'
-  | 'refreshContinueWatchingRequested'
-  | 'libraryAddRequested'
-  | 'libraryHydrateRequested'
-  | 'markWatchedRequested'
-  | 'profileActivated'
-  | 'savePlaybackProgressRequested'
-  | 'searchRequested'
-  | 'setFeedbackRequested'
-  | 'settingsChanged'
-  | 'syncExternalIntegration'
-  | 'toggleLibraryStatusRequested'
-  | 'toggleWatchlistRequested'
-  | 'trailerPrewarmRequested'
-  | 'trailerResolveRequested';
+import type { EffectType } from './generated/effectTypes';
+import type { AppActionType } from './generated/actionTypes';
+
+export type { EffectType } from './generated/effectTypes';
+export type { AppActionType } from './generated/actionTypes';
 
 export interface AppAction<TPayload extends Record<string, unknown> = Record<string, unknown>> {
   type: AppActionType;
@@ -32,52 +10,21 @@ export interface AppAction<TPayload extends Record<string, unknown> = Record<str
   payload?: TPayload;
 }
 
-export type EffectType =
-  | 'clearPlaybackProgress'
-  | 'enqueueOfflineDownload'
-  | 'enqueueTraktScrobble'
-  | 'exchangeAuthCode'
-  | 'executePlugin'
-  | 'fetchAddonManifest'
-  | 'fetchAddonResource'
-  | 'fetchCatalogPage'
-  | 'fetchDiscoverPage'
-  | 'fetchDetailSecondary'
-  | 'fetchDetailStreams'
-  | 'fetchIntroSegments'
-  | 'fetchMetaDetail'
-  | 'fetchMetaDetailLookup'
-  | 'fetchPluginManifest'
-  | 'fetchSeasonEpisodes'
-  | 'fetchSubtitles'
-  | 'fetchYoutubeTrailerPlayer'
-  | 'fetchYoutubeTrailerPlayerScript'
-  | 'fetchYoutubeTrailerWatchConfig'
-  | 'loadStreams'
-  | 'notifyReleasedEpisodes'
-  | 'prefetchDetailStreams'
-  | 'prepareDirectPlayback'
-  | 'readCalendarMonth'
-  | 'readDetailLocalState'
-  | 'readDiscoverCatalogFilters'
-  | 'readHomeBootstrap'
-  | 'refreshContinueWatching'
-  | 'readLibraryState'
-  | 'readPlaybackProgress'
-  | 'refreshAuthToken'
-  | 'refreshInstalledAddons'
-  | 'replaceExternalContinueWatching'
-  | 'resolveIntroImdbId'
-  | 'runAuthFlow'
-  | 'runDiscover'
-  | 'runExternalSync'
-  | 'runSearch'
-  | 'startTorrentStream'
-  | 'stopTorrent'
-  | 'syncExternalIntegration'
-  | 'syncWatchedState'
-  | 'updateCalendarWidget'
-  | 'writeFeedback'
-  | 'writeLibraryCommand'
-  | 'writePlaybackProgress'
-  | 'writeSettings';
+export interface Effect {
+  id: string;
+  type: EffectType;
+  generation: number;
+  payload: Record<string, unknown>;
+  groupId?: string;
+  priority?: number;
+  dedupeKey?: string;
+  cachePolicy?: string;
+  timeoutMs?: number;
+}
+
+export interface EffectResult {
+  effectId: string;
+  status: 'ok' | 'error' | 'cancelled';
+  value?: unknown;
+  error?: unknown;
+}

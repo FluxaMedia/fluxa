@@ -1,5 +1,8 @@
 package com.fluxa.app.shared.feature.detail
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,8 +37,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -61,10 +64,11 @@ fun SourceSelectionScreen(
     language: String?,
     onBack: () -> Unit,
     onStreamSelected: (DetailStreamUiModel) -> Unit,
+    onAddonSelected: (String?) -> Unit,
     onRetry: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var addonFilter by remember(content.id) { mutableStateOf<String?>(null) }
+    val addonFilter = content.selectedAddon
     val isDesktop = LocalDeviceType.current == DeviceType.Desktop
     fun addonPriority(name: String): Int = content.addonPriorityOrder.indexOf(name).let { if (it < 0) Int.MAX_VALUE else it }
     val addons = remember(content.streams, content.addonPriorityOrder) {
@@ -104,7 +108,7 @@ fun SourceSelectionScreen(
                         loadingAddonNames = content.loadingAddonNames,
                         selected = addonFilter,
                         language = language,
-                        onSelected = { addonFilter = it },
+                        onSelected = onAddonSelected,
                         onRetry = onRetry
                     )
                 }

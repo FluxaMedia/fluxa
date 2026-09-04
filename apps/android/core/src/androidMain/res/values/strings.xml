@@ -58,11 +58,17 @@
     <string name="auth_dot_log_in">Log In</string>
     <string name="auth_dot_sign_up">Sign Up</string>
     <string name="auth_dot_welcome_back">Welcome back</string>
+    <string name="auth_dot_choose_login_method">Choose how you want to connect</string>
     <string name="auth_dot_other_ways_to_continue">Other ways to continue</string>
     <string name="auth_dot_or">OR</string>
     <string name="auth_dot_continue_with_nuvio">Continue with Nuvio</string>
     <string name="auth_dot_continue_with_stremio">Continue with Stremio</string>
+    <string name="auth_dot_continue_with_fluxa">Continue with Fluxa</string>
     <string name="auth_dot_login_with_stremio">Login with Stremio</string>
+    <string name="auth_dot_scan_to_connect">Scan this code to connect</string>
+    <string name="auth_dot_login_pending">Waiting for approval…</string>
+    <string name="auth_dot_device_code_expired">This login code expired.</string>
+    <string name="auth_dot_device_login_failed">Device login failed.</string>
     <string name="auth_dot_continue_without_account">Continue without an account</string>
     <string name="auth_dot_guest_name">Guest</string>
     <string name="auth_dot_primary_profile_name">Me</string>
@@ -342,6 +348,8 @@
     <string name="auto_dot_refresh_the_app_after_playback_or_network_ch">Refresh the app after playback or network changes.</string>
     <string name="auto_dot_sign_out_from_the_active_profile_on_this_dev">Sign out from the active profile on this device.</string>
     <string name="auto_dot_account_sync">Account &amp; Sync</string>
+    <string name="settings_dot_account_profiles">Account &amp; Profiles</string>
+    <string name="settings_dot_sync">Sync</string>
     <string name="auto_dot_account_devices_and_sync">Account, devices and sync</string>
     <string name="auto_dot_general">General</string>
     <string name="auto_dot_language_theme_startup">Language, theme, startup</string>

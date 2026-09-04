@@ -73,6 +73,7 @@ pub(super) fn route_plugins(method: &str, args_json: &str) -> Outcome {
             into_json(normalized)
         }
         "pluginExecutionPlan" => opt_json(plugins::plugin_execution_plan_json(args_json)),
+        "pluginUpdatePlan" => opt_json(plugins::plugin_update_plan_json(args_json)),
         "pluginStreamResultsParse" => {
             into_json(plugins::parse_plugin_stream_results_json(args_json))
         }

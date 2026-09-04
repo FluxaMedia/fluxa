@@ -2,6 +2,9 @@
 
 package com.fluxa.app.core.rust
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import android.util.Log
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.data.local.*

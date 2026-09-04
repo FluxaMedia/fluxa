@@ -1,5 +1,8 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue

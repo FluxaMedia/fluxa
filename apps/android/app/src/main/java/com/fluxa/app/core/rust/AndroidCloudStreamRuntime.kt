@@ -8,16 +8,15 @@ import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.MetaLink
 import com.fluxa.app.data.remote.MetaRating
 import com.fluxa.app.data.remote.Stream
-import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.CloudStreamCatalogClient
+import com.fluxa.app.data.repository.toFluxaStreams
 import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
 import com.fluxa.app.plugins.cloudstream.ScraperActor
 import com.fluxa.app.plugins.cloudstream.ScraperLoadResult
 import com.fluxa.app.plugins.cloudstream.ScraperSearchResult
-import com.fluxa.app.plugins.cloudstream.ScraperSubtitle
 import com.fluxa.app.plugins.cloudstream.ScraperTrailer
 import kotlinx.coroutines.withTimeoutOrNull
 
@@ -80,48 +79,16 @@ internal class AndroidCloudStreamRuntime(private val pluginManager: PluginManage
         } catch (_: Throwable) {
             null
         }
-        if (direct != null && direct.links.isNotEmpty()) return direct.links.toStreams(apiName, direct.subtitles)
+        if (direct != null && direct.links.isNotEmpty()) {
+            return direct.links.toFluxaStreams(apiName, direct.subtitles, sortByQuality = true)
+        }
         val streamData = try {
             withTimeoutOrNull(15_000L) { runner.loadContent(api, data)?.data }
         } catch (_: Exception) {
             null
         } ?: data
         val result = withTimeoutOrNull(30_000L) { runner.loadStreams(api, streamData) } ?: return emptyList()
-        return result.links.toStreams(apiName, result.subtitles)
-    }
-
-    fun qualityScore(quality: String): Int {
-        val value = quality.lowercase()
-        return when {
-            value.contains("4k") || value.contains("2160") -> 2160
-            value.contains("1440") -> 1440
-            value.contains("1080") -> 1080
-            value.contains("720") -> 720
-            value.contains("480") -> 480
-            value.contains("360") -> 360
-            value.contains("240") -> 240
-            else -> 0
-        }
-    }
-
-    private fun List<com.fluxa.app.plugins.cloudstream.ScraperStreamLink>.toStreams(
-        apiName: String,
-        subtitles: List<ScraperSubtitle>
-    ): List<Stream> = sortedByDescending { qualityScore(it.quality) }.map { link ->
-        Stream(
-            name = " $apiName\n${link.quality}",
-            title = link.name,
-            url = link.url,
-            subtitles = subtitles.map { it.toSubtitleData() },
-            behaviorHints = buildMap {
-                put("proxyHeaders", buildMap { put("request", link.headers) })
-                link.referer?.let { put("referer", it) }
-                put("cs3Type", link.type)
-                put("isM3u8", link.isM3u8)
-                put("isDash", link.isDash)
-            },
-            addonName = " $apiName"
-        )
+        return result.links.toFluxaStreams(apiName, result.subtitles, sortByQuality = true)
     }
 
     private fun Long.toIsoDate(): String {
@@ -168,5 +135,4 @@ internal class AndroidCloudStreamRuntime(private val pluginManager: PluginManage
         return links.takeIf { it.isNotEmpty() }
     }
 
-    private fun ScraperSubtitle.toSubtitleData() = SubtitleData(url = url, lang = lang)
 }

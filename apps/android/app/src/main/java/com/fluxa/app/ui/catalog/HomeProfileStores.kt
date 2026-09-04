@@ -4,6 +4,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
+import com.fluxa.app.core.rust.FluxaCoreNative
 
 import android.content.Context
 import com.google.gson.Gson
@@ -57,14 +58,9 @@ class ForgottenContinueWatchingStore @Inject constructor(@ApplicationContext con
 
 internal fun mergeSyncedProfile(gson: Gson, base: UserProfile, updated: UserProfile, current: UserProfile?): UserProfile {
     if (current == null || current.id != base.id || updated.id != base.id) return updated
-    val baseJson = gson.toJsonTree(base).asJsonObject
-    val updatedJson = gson.toJsonTree(updated).asJsonObject
-    val mergedJson = gson.toJsonTree(current).asJsonObject
-    for ((key, updatedValue) in updatedJson.entrySet()) {
-        if (updatedValue != baseJson.get(key)) {
-            mergedJson.add(key, updatedValue)
-        }
-    }
+    val mergedJson = FluxaCoreNative.profileSyncMergePlanJson(
+        gson.toJson(mapOf("base" to base, "updated" to updated, "current" to current))
+    )
     return runCatching { gson.fromJson(mergedJson, UserProfile::class.java) }.getOrDefault(updated)
 }
 

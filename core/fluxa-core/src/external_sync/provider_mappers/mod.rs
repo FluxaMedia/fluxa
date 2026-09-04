@@ -10,8 +10,9 @@ pub(crate) use continue_watching::{
 };
 pub(crate) use delta_merge::simkl_merge_delta_json;
 pub(crate) use items::{
-    simkl_merge_playback_progress_json, simkl_watched_to_ids_json, simkl_watching_to_items_json,
-    simkl_watchlist_to_items_json, trakt_up_next_to_items_json, trakt_watched_shows_to_items_json,
+    simkl_library_to_items_json, simkl_merge_playback_progress_json, simkl_watched_to_ids_json,
+    simkl_watching_to_items_json, simkl_watchlist_to_items_json, trakt_up_next_to_items_json,
+    trakt_watched_shows_to_items_json,
 };
 pub(crate) use mark_watched::{
     simkl_mark_watched_body_json, simkl_match_episode_json, simkl_watchlist_body_json,

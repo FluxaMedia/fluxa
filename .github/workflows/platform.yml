@@ -6,12 +6,16 @@ on:
       - ".github/workflows/platform.yml"
       - "apps/android/**"
       - "core/fluxa-core/**"
+      - "shared/contracts/**"
+      - "scripts/generate-headless-contracts.mjs"
   push:
     branches: [master]
     paths:
       - ".github/workflows/platform.yml"
       - "apps/android/**"
       - "core/fluxa-core/**"
+      - "shared/contracts/**"
+      - "scripts/generate-headless-contracts.mjs"
   workflow_dispatch:
 
 permissions:
@@ -53,6 +57,11 @@ jobs:
           checkKotlinFileSize
           checkSharedUiBoundary
           checkKmpCommonBoundary
+          checkSharedTransportModels
+          checkLegacySourceSets
+          checkAppleTypedCatalogBridge
+          checkAppleTvosKmpBoundary
+          checkRustCoreBoundary
           checkSharedPlayerBoundary
           testDebugUnitTest
           lint

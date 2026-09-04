@@ -14,6 +14,7 @@ import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
 import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
+import com.fluxa.app.core.rust.FluxaCoreNative
 
 @HiltWorker
 class EpisodeReleaseWorker @AssistedInject constructor(
@@ -56,7 +57,13 @@ class EpisodeReleaseWorker @AssistedInject constructor(
             Result.success()
         } catch (e: Exception) {
             Log.w(TAG, "Episode release check failed", e)
-            Result.retry()
+            val policy = FluxaCoreNative.dataFailurePolicy(
+                operation = "episode_release_worker",
+                kind = "NetworkError",
+                message = e.message,
+                throwableClass = e::class.java.simpleName
+            )
+            if (policy.retryable) Result.retry() else Result.failure()
         }
     }
 

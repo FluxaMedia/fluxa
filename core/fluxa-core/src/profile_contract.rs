@@ -198,6 +198,19 @@ pub(crate) fn token_merge_plan_json(request_json: &str) -> Option<String> {
     .ok()
 }
 
+pub(crate) fn profile_sync_merge_plan_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let base = request.get("base")?.as_object()?;
+    let updated = request.get("updated")?.as_object()?;
+    let mut current = request.get("current")?.as_object()?.clone();
+    for (key, value) in updated {
+        if base.get(key) != Some(value) {
+            current.insert(key.clone(), value.clone());
+        }
+    }
+    serde_json::to_string(&Value::Object(current)).ok()
+}
+
 pub(crate) fn profile_default_seed_json(request_json: &str) -> Option<String> {
     let request = serde_json::from_str::<DefaultProfileRequest>(request_json).ok()?;
     let id = request
@@ -525,6 +538,19 @@ mod tests {
         assert_eq!(result["mergedProfile"]["traktAccessToken"], "tok");
         assert_eq!(result["mergedProfile"]["traktRefreshToken"], "ref");
         assert_eq!(result["mergedProfile"]["traktTokenExpiresAt"], 999);
+    }
+
+    #[test]
+    fn profile_sync_merge_plan_keeps_local_edits_and_applies_remote_changes() {
+        let result: Value = serde_json::from_str(
+            &profile_sync_merge_plan_json(
+                r#"{"base":{"id":"p1","language":"en","cardLayout":"vertical"},"updated":{"id":"p1","language":"tr","cardLayout":"vertical"},"current":{"id":"p1","language":"en","cardLayout":"horizontal"}}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result["language"], "tr");
+        assert_eq!(result["cardLayout"], "horizontal");
     }
 
     #[test]

@@ -1,4 +1,5 @@
 import { withSentrySpan } from './sentryRuntime';
+import { EFFECT_TYPE } from './generated/effectTypes';
 import { platformInvoke as invoke } from '../platform/invoke';
 import {
   completeEffect,
@@ -152,11 +153,11 @@ async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppStat
   let value: unknown;
 
   switch (effect.type) {
-    case 'readHomeBootstrap':
+    case EFFECT_TYPE.readHomeBootstrap:
       value = await readHomeBootstrap(p, signal, onStateUpdate);
       break;
 
-    case 'refreshContinueWatching': {
+    case EFFECT_TYPE.refreshContinueWatching: {
       const lib = await loadLibrary();
       const addons = await loadEnabledAddons();
       const prefs = await loadPrefs();
@@ -170,32 +171,32 @@ async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppStat
       break;
     }
 
-    case 'readLibraryState':
+    case EFFECT_TYPE.readLibraryState:
       value = await readLibraryState();
       break;
-    case 'readPlaybackProgress':
+    case EFFECT_TYPE.readPlaybackProgress:
       value = await readPlaybackProgress(p);
       break;
-    case 'readDetailLocalState':
+    case EFFECT_TYPE.readDetailLocalState:
       value = await readDetailLocalState(p);
       break;
-    case 'readDiscoverCatalogFilters':
+    case EFFECT_TYPE.readDiscoverCatalogFilters:
       value = await readDiscoverCatalogFilters(p);
       break;
-    case 'readCalendarMonth':
+    case EFFECT_TYPE.readCalendarMonth:
       value = await readCalendarMonth(p);
       break;
 
-    case 'writeLibraryCommand':
+    case EFFECT_TYPE.writeLibraryCommand:
       value = await applyLibraryCommand(p);
       break;
-    case 'writePlaybackProgress':
+    case EFFECT_TYPE.writePlaybackProgress:
       value = await writePlaybackProgress(p);
       break;
-    case 'writeFeedback':
+    case EFFECT_TYPE.writeFeedback:
       value = await writeFeedback(p);
       break;
-    case 'clearPlaybackProgress': {
+    case EFFECT_TYPE.clearPlaybackProgress: {
       const lib = await loadLibrary();
       const metaObj = (p.meta as Record<string, unknown>) ?? {};
       const preserveLastWatched = Boolean(metaObj._preserveLastWatched);
@@ -250,123 +251,123 @@ async function runEffect(effect: Effect, onStateUpdate?: (state: Partial<AppStat
       value = plan && !preserveLastWatched ? { droppedId: plan.contentId } : {};
       break;
     }
-    case 'writeSettings':
+    case EFFECT_TYPE.writeSettings:
       value = await writeSettings(p);
       break;
-    case 'syncWatchedState':
+    case EFFECT_TYPE.syncWatchedState:
       value = {};
       break;
 
-    case 'fetchAddonManifest':
+    case EFFECT_TYPE.fetchAddonManifest:
       value = await fetchAddonManifest(p, signal);
       break;
-    case 'refreshInstalledAddons':
+    case EFFECT_TYPE.refreshInstalledAddons:
       value = await refreshInstalledAddons(p, signal);
       break;
-    case 'fetchAddonResource':
+    case EFFECT_TYPE.fetchAddonResource:
       value = await fetchAddonResource(p, signal);
       break;
-    case 'fetchPluginManifest':
+    case EFFECT_TYPE.fetchPluginManifest:
       value = await fetchPluginManifestEffect(p, signal);
       break;
 
-    case 'fetchYoutubeTrailerWatchConfig':
-    case 'fetchYoutubeTrailerPlayer':
-    case 'fetchYoutubeTrailerPlayerScript':
+    case EFFECT_TYPE.fetchYoutubeTrailerWatchConfig:
+    case EFFECT_TYPE.fetchYoutubeTrailerPlayer:
+    case EFFECT_TYPE.fetchYoutubeTrailerPlayerScript:
       value = await executeYoutubeTrailerRequest(p);
       break;
 
-    case 'fetchCatalogPage':
+    case EFFECT_TYPE.fetchCatalogPage:
       value = await fetchCatalogPage(p, signal);
       break;
-    case 'fetchDiscoverPage':
+    case EFFECT_TYPE.fetchDiscoverPage:
       value = await fetchCatalogPage(p, signal);
       break;
-    case 'runSearch':
+    case EFFECT_TYPE.runSearch:
       value = await runSearch(p, signal);
       break;
-    case 'runDiscover':
+    case EFFECT_TYPE.runDiscover:
       value = await runDiscover(p, signal);
       break;
 
-    case 'fetchMetaDetail': {
+    case EFFECT_TYPE.fetchMetaDetail: {
       const [meta, mdblistRatings] = await Promise.all([fetchMetaDetailDeduped({ ...p, purpose: 'detail-load' }), fetchMdblistRatingsForDetail(p)]);
       value = { meta, mdblistRatings };
       break;
     }
-    case 'fetchMetaDetailLookup':
+    case EFFECT_TYPE.fetchMetaDetailLookup:
       value = await fetchMetaDetailDeduped({ ...p, purpose: 'detail-lookup' });
       break;
-    case 'fetchDetailSecondary':
+    case EFFECT_TYPE.fetchDetailSecondary:
       value = await fetchDetailSecondary(p);
       break;
-    case 'prefetchDetailStreams':
+    case EFFECT_TYPE.prefetchDetailStreams:
       value = await prefetchDetailStreams(p, signal);
       break;
-    case 'fetchDetailStreams':
+    case EFFECT_TYPE.fetchDetailStreams:
       value = await fetchDetailStreams(p, onStateUpdate, effect.generation, signal);
       break;
-    case 'fetchSeasonEpisodes':
+    case EFFECT_TYPE.fetchSeasonEpisodes:
       value = await fetchSeasonEpisodes(p);
       break;
-    case 'loadStreams':
+    case EFFECT_TYPE.loadStreams:
       value = await fetchDetailStreams(p, undefined, undefined, signal);
       break;
 
-    case 'fetchSubtitles':
+    case EFFECT_TYPE.fetchSubtitles:
       value = await fetchSubtitles(p);
       break;
 
-    case 'resolveIntroImdbId':
+    case EFFECT_TYPE.resolveIntroImdbId:
       value = await resolveIntroImdbId(p);
       break;
-    case 'fetchIntroSegments':
+    case EFFECT_TYPE.fetchIntroSegments:
       value = await fetchIntroSegments(p);
       break;
 
-    case 'runAuthFlow':
+    case EFFECT_TYPE.runAuthFlow:
       value = await runAuthFlow(p);
       break;
-    case 'exchangeAuthCode':
+    case EFFECT_TYPE.exchangeAuthCode:
       value = await exchangeAuthCode(p);
       break;
-    case 'refreshAuthToken':
+    case EFFECT_TYPE.refreshAuthToken:
       value = await refreshAuthToken(p);
       break;
 
-    case 'runExternalSync':
+    case EFFECT_TYPE.runExternalSync:
       value = await syncExternalIntegrationNow(p);
       break;
-    case 'syncExternalIntegration':
+    case EFFECT_TYPE.syncExternalIntegration:
       value = { synced: false };
       break;
-    case 'enqueueTraktScrobble':
+    case EFFECT_TYPE.enqueueTraktScrobble:
       value = await enqueueTraktScrobble(p);
       break;
 
-    case 'startTorrentStream':
+    case EFFECT_TYPE.startTorrentStream:
       value = await startTorrentFromEffect(p);
       break;
-    case 'stopTorrent':
+    case EFFECT_TYPE.stopTorrent:
       value = { stopped: await stopTorrentStream() };
       break;
 
-    case 'enqueueOfflineDownload':
+    case EFFECT_TYPE.enqueueOfflineDownload:
       value = await enqueueOfflineDownload(p);
       break;
 
-    case 'notifyReleasedEpisodes':
+    case EFFECT_TYPE.notifyReleasedEpisodes:
       void notifyReleasedEpisodes(p);
       value = {};
       break;
-    case 'updateCalendarWidget':
+    case EFFECT_TYPE.updateCalendarWidget:
       value = {};
       break;
-    case 'replaceExternalContinueWatching':
+    case EFFECT_TYPE.replaceExternalContinueWatching:
       value = await replaceExternalContinueWatching(p);
       break;
 
-    case 'prepareDirectPlayback':
+    case EFFECT_TYPE.prepareDirectPlayback:
       value = await fetchDetailStreams(p, undefined, undefined, signal);
       break;
 
@@ -414,7 +415,7 @@ async function executeEffectUnbounded(
     }
     return {
       effectId: effect.id,
-      status: 'err',
+      status: 'error',
       error: message,
     };
   }
@@ -450,7 +451,7 @@ export async function executeEffect(
     release();
     return {
       effectId: effect.id,
-      status: 'err',
+      status: 'cancelled',
       error: 'aborted before execution',
     };
   }

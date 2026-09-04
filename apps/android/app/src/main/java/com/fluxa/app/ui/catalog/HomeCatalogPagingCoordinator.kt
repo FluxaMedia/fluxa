@@ -3,6 +3,7 @@ package com.fluxa.app.ui.catalog
 import com.fluxa.app.core.rust.NativeHeadlessEngineResult
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.distinctByTypeAndId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.Channel
@@ -76,7 +77,7 @@ internal class HomeCatalogPagingCoordinator(
                 val sourceMap = items.flatMap { listOf("${it.type}:${it.id}" to source, it.id to source) }.toMap()
                 update(category.id) { existing ->
                     existing.copy(
-                        items = (existing.items + items).distinctBy { "${it.type}:${it.id}" },
+                        items = (existing.items + items).distinctByTypeAndId(),
                         resultSources = existing.resultSources + sourceMap
                     )
                 }
@@ -90,7 +91,7 @@ internal class HomeCatalogPagingCoordinator(
         )
         update(category.id) { existing ->
             existing.copy(
-                items = if (remoteItems.isEmpty()) existing.items else (existing.items + remoteItems).distinctBy { "${it.type}:${it.id}" },
+                items = if (remoteItems.isEmpty()) existing.items else (existing.items + remoteItems).distinctByTypeAndId(),
                 skip = nextSkip,
                 canLoadMore = existing.items.isNotEmpty() || remoteItems.isNotEmpty()
             )
@@ -106,7 +107,7 @@ internal class HomeCatalogPagingCoordinator(
         )
         update(category.id) { existing ->
             existing.copy(
-                items = if (items.isEmpty()) existing.items else (existing.items + items).distinctBy { "${it.type}:${it.id}" },
+                items = if (items.isEmpty()) existing.items else (existing.items + items).distinctByTypeAndId(),
                 canLoadMore = items.isNotEmpty()
             )
         }

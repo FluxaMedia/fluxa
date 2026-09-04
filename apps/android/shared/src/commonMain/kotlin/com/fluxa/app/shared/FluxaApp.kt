@@ -322,6 +322,7 @@ internal fun FluxaApp(
                     onStreamSelected = { stream ->
                         onDetailAction(DetailAction.StreamSelected(stream, detailState.content.selectedEpisodeId))
                     },
+                    onAddonSelected = { addon -> onDetailAction(DetailAction.AddonFilterSelected(addon)) },
                     onRetry = { onDetailAction(DetailAction.RetrySourcesRequested) },
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )

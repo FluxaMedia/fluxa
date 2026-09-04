@@ -97,6 +97,45 @@ pub(crate) fn plugin_execution_plan_json(payload: &str) -> Option<String> {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct PluginUpdatePlanRequest {
+    #[serde(default)]
+    installed: Vec<Value>,
+    #[serde(default)]
+    available: Vec<Value>,
+}
+
+pub(crate) fn plugin_update_plan_json(payload: &str) -> Option<String> {
+    let request: PluginUpdatePlanRequest = serde_json::from_str(payload).ok()?;
+    let installed_versions: HashMap<String, i64> = request
+        .installed
+        .iter()
+        .filter_map(|plugin| {
+            Some((
+                plugin.get("internalName")?.as_str()?.to_string(),
+                plugin.get("version")?.as_i64()?,
+            ))
+        })
+        .collect();
+    let updates: Vec<Value> = request
+        .available
+        .iter()
+        .filter_map(|plugin| {
+            let internal_name = plugin.get("internalName")?.as_str()?.trim();
+            let version = plugin.get("version")?.as_i64()?;
+            let installed_version = installed_versions.get(internal_name)?;
+            (version > *installed_version).then(|| {
+                serde_json::json!({
+                    "internalName": internal_name,
+                    "version": version
+                })
+            })
+        })
+        .collect();
+    serde_json::to_string(&serde_json::json!({ "updates": updates })).ok()
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RawPluginStreamResult {
     title: Option<String>,
     name: Option<String>,
@@ -361,6 +400,18 @@ mod tests {
         assert_eq!(value["season"], 2);
         assert_eq!(value["episode"], 3);
         assert_eq!(value["scrapers"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn update_plan_returns_only_newer_installed_plugins() {
+        let plan = plugin_update_plan_json(
+            r#"{"installed":[{"internalName":"one","version":2},{"internalName":"two","version":4}],"available":[{"internalName":"one","version":3},{"internalName":"two","version":4},{"internalName":"missing","version":9}]}"#,
+        )
+        .unwrap();
+        let value: Value = serde_json::from_str(&plan).unwrap();
+        assert_eq!(value["updates"][0]["internalName"], "one");
+        assert_eq!(value["updates"][0]["version"], 3);
+        assert_eq!(value["updates"].as_array().unwrap().len(), 1);
     }
 
     #[test]

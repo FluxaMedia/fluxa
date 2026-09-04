@@ -7,8 +7,10 @@
     "dev": "vite",
     "test": "vitest run",
     "format": "prettier --write \"src/**/*.{ts,tsx}\"",
-    "typecheck": "node scripts/gen-core-methods.mjs && node scripts/verify-core-consumers.mjs && tsc --noEmit",
+    "typecheck": "node scripts/gen-core-methods.mjs --check && node scripts/verify-core-consumers.mjs && tsc --noEmit",
     "build": "node scripts/gen-core-methods.mjs && tsc && vite build",
+    "generate:core-methods": "node scripts/gen-core-methods.mjs",
+    "verify:core-methods": "node scripts/gen-core-methods.mjs --check",
     "check": "npm run build && cd src-tauri && cargo check",
     "preview": "vite preview",
     "build:web": "node scripts/gen-core-methods.mjs && tsc && vite build --mode web",
@@ -20,7 +22,7 @@
     "lint:design": "node scripts/check-design.mjs",
     "theme:sync": "node scripts/generate-theme-consumers.mjs",
     "theme:verify": "node scripts/verify-theme-consumers.mjs",
-    "core:verify": "node scripts/gen-core-methods.mjs && node scripts/verify-core-consumers.mjs"
+    "core:verify": "node scripts/gen-core-methods.mjs --check && node scripts/verify-core-consumers.mjs"
   },
   "dependencies": {
     "@sentry/react": "^10.64.0",

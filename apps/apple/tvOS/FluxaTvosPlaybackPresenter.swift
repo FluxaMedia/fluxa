@@ -2,127 +2,6 @@ import FluxaPlayerKit
 import Foundation
 import UIKit
 
-@_silgen_name("fluxa_streaming_start_local_stream_server")
-private func fluxaStreamingStartLocalStreamServer(
-    _ targetUrl: UnsafePointer<CChar>,
-    _ headersJson: UnsafePointer<CChar>,
-    _ preferredPort: Int32
-) -> UnsafeMutablePointer<CChar>?
-
-@_silgen_name("fluxa_streaming_stop_local_stream_server")
-private func fluxaStreamingStopLocalStreamServer(_ serverId: UnsafePointer<CChar>) -> Bool
-
-@_silgen_name("fluxa_streaming_start_torrent_server")
-private func fluxaStreamingStartTorrentServer(
-    _ cacheDirectory: UnsafePointer<CChar>,
-    _ preferredPort: Int32,
-    _ accessToken: UnsafePointer<CChar>
-) -> UnsafeMutablePointer<CChar>?
-
-@_silgen_name("fluxa_streaming_stop_torrent_server")
-private func fluxaStreamingStopTorrentServer() -> Bool
-
-@_silgen_name("fluxa_streaming_string_free")
-private func fluxaStreamingStringFree(_ value: UnsafeMutablePointer<CChar>)
-
-private final class FluxaTvosStreamingAdapter {
-    private var serverId: String?
-    private var torrentServerRunning = false
-
-    func prepare(_ url: URL, headers: [String: String]) -> URL? {
-        if isTorrent(url) {
-            return prepareTorrent(url, headers: headers)
-        }
-        let path = url.path.lowercased()
-        guard path.hasSuffix(".mkv") || path.hasSuffix(".matroska") else { return url }
-        return prepareRemux(url, headers: headers)
-    }
-
-    private func prepareRemux(_ url: URL, headers: [String: String]) -> URL? {
-        stopLocal()
-        let raw = url.absoluteString
-        let headersJson = (try? JSONSerialization.data(withJSONObject: headers))
-            .flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
-        guard let response = raw.withCString({ target in
-            headersJson.withCString { headers in
-                fluxaStreamingStartLocalStreamServer(target, headers, 0)
-            }
-        }) else { return nil }
-        defer { fluxaStreamingStringFree(response) }
-        guard let data = String(cString: response).data(using: .utf8),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let id = payload["id"] as? String,
-              !id.isEmpty else {
-            return nil
-        }
-        serverId = id
-        guard let proxy = payload["url"] as? String,
-              let proxyUrl = URL(string: proxy) else {
-            stopLocal()
-            return nil
-        }
-        return proxyUrl.appendingPathComponent("remux")
-    }
-
-    private func prepareTorrent(_ url: URL, headers: [String: String]) -> URL? {
-        stop()
-        let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
-            .first?.appendingPathComponent("fluxa_torrent_cache", isDirectory: true).path ?? ""
-        guard let response = cacheDirectory.withCString({ cache in
-            "".withCString { token in
-                fluxaStreamingStartTorrentServer(cache, 0, token)
-            }
-        }), !String(cString: response).isEmpty else { return nil }
-        torrentServerRunning = true
-        defer { fluxaStreamingStringFree(response) }
-        guard let data = String(cString: response).data(using: .utf8),
-              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let base = payload["url"] as? String,
-              var components = URLComponents(string: base) else {
-            stop()
-            return nil
-        }
-        components.path = components.path.appending("/stream/fname")
-        components.queryItems = [
-            URLQueryItem(name: "link", value: url.absoluteString),
-            URLQueryItem(name: "title", value: url.lastPathComponent)
-        ]
-        guard let torrentURL = components.url else {
-            stop()
-            return nil
-        }
-        // Keep the torrent service alive while the local proxy is replaced;
-        // prepareRemux() stops only the previous local proxy.
-        guard let prepared = prepareRemux(torrentURL, headers: headers) else {
-            stop()
-            return nil
-        }
-        torrentServerRunning = true
-        return prepared
-    }
-
-    func stop() {
-        stopLocal()
-        if torrentServerRunning {
-            _ = fluxaStreamingStopTorrentServer()
-            torrentServerRunning = false
-        }
-    }
-
-    private func stopLocal() {
-        guard let serverId else { return }
-        _ = serverId.withCString { fluxaStreamingStopLocalStreamServer($0) }
-        self.serverId = nil
-    }
-
-    private func isTorrent(_ url: URL) -> Bool {
-        let value = url.absoluteString.lowercased()
-        return value.hasPrefix("magnet:") ||
-            value.hasPrefix("stremio://torrent/") ||
-            value.hasSuffix(".torrent")
-    }
-}
-
 /// tvOS entry point for the same custom transport surface used by iOS.
 /// The catalog/detail layer can hand this presenter a resolved stream without
 /// ever falling back to AVPlayerViewController's native controls.
@@ -132,7 +11,7 @@ final class FluxaTvosPlaybackPresenter: NSObject, UIAdaptivePresentationControll
 
     private var activePlayer: FluxaPlayer?
     private weak var activeController: FluxaAppleCustomPlayerViewController?
-    private let streamingAdapter = FluxaTvosStreamingAdapter()
+    private let streamingAdapter = FluxaAppleAVPlayerStreamAdapter()
 
     func present(options: [FluxaTvosHomeModel.Playback], title: String) {
         guard let presenter = topViewController() else { return }
@@ -160,7 +39,7 @@ final class FluxaTvosPlaybackPresenter: NSObject, UIAdaptivePresentationControll
         resumePosition: Double = 0
     ) {
         guard let presenter = topViewController() else { return }
-        guard let playbackURL = streamingAdapter.prepare(url, headers: headers) else { return }
+        guard let playbackURL = streamingAdapter.prepare(url: url, headers: headers, title: title) else { return }
         let player = FluxaPlayer()
         let controller = FluxaAppleCustomPlayerViewController(player: player, title: title)
         activePlayer = player

@@ -76,6 +76,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import com.google.gson.JsonObject
 
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -275,14 +276,29 @@ class MainActivity : FragmentActivity() {
                         onDismiss = { traktDeviceAuth = null }
                     )
 
+                    val playerBufferTargets = remember(
+                        activeProfile?.safePlayerBufferCacheMb,
+                        activeProfile?.safePlayerForwardBufferSeconds,
+                        activeProfile?.safePlayerBackBufferSeconds,
+                        activeProfile?.safeMobileDataUsage
+                    ) {
+                        FluxaCoreNative.playerBufferTargets(
+                            JsonObject().apply {
+                                addProperty("cacheSizeMb", activeProfile?.safePlayerBufferCacheMb ?: 100)
+                                addProperty("forwardBufferSeconds", activeProfile?.safePlayerForwardBufferSeconds ?: 30)
+                                addProperty("backBufferSeconds", activeProfile?.safePlayerBackBufferSeconds ?: 30)
+                                addProperty("mobileDataUsage", activeProfile?.safeMobileDataUsage ?: "medium")
+                            }.toString()
+                        )
+                    }
                     val mainPlayer = remember(
                         activeProfile?.id,
                         activeProfile?.safeAudioDecoderMode,
                         activeProfile?.safeAudioProcessingMode,
                         activeProfile?.preferredAudioLanguage,
-                        activeProfile?.playerBufferCacheMb,
-                        activeProfile?.playerForwardBufferSeconds,
-                        activeProfile?.playerBackBufferSeconds,
+                        playerBufferTargets.cacheSizeBytes,
+                        playerBufferTargets.forwardBufferMs,
+                        playerBufferTargets.backBufferMs,
                         activeProfile?.tunneledPlayback,
                         activeProfile?.playerMinBufferSeconds,
                         activeProfile?.playerPlaybackBufferMs,
@@ -292,9 +308,9 @@ class MainActivity : FragmentActivity() {
                             context,
                             activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
                             activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: "",
-                            activeProfile?.safePlayerBufferCacheMb ?: 100,
-                            activeProfile?.safePlayerForwardBufferSeconds ?: 30,
-                            activeProfile?.safePlayerBackBufferSeconds ?: 30,
+                            (playerBufferTargets.cacheSizeBytes / 1_000_000L).toInt(),
+                            (playerBufferTargets.forwardBufferMs / 1_000L).toInt(),
+                            (playerBufferTargets.backBufferMs / 1_000L).toInt(),
                             activeProfile?.safeTunneledPlayback == true,
                             activeProfile?.safePlayerMinBufferSeconds ?: 8,
                             activeProfile?.safePlayerPlaybackBufferMs ?: 1500,

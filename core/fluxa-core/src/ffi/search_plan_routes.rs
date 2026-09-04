@@ -29,6 +29,8 @@ pub(super) fn route_search_plan(method: &str, args_json: &str) -> Outcome {
             &arg_str(args_json, "id")?,
         ))),
         "detailSeasonLoadPlan" => opt_json(search_plan::detail_season_load_plan_json(args_json)),
+        "detailLoadPlan" => opt_json(search_plan::detail_load_plan_json(args_json)),
+        "detailSeasonVideos" => opt_json(search_plan::detail_season_videos_json(args_json)),
         "resolveTransportUrl" => {
             let args = object(args_json)?;
             opt_json(search_plan::resolve_transport_url_json(

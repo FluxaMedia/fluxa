@@ -53,7 +53,8 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
         .or_else(|| profile.get("disabledLocalAddons").and_then(Value::as_array))
         .cloned()
         .unwrap_or_default();
-    let target = crate::addon_protocol::identity(addon_key);
+    let normalized_key = crate::addon_protocol::normalize_manifest_url(addon_key);
+    let target = crate::addon_protocol::identity(&normalized_key);
     match command {
         "install" => {
             if !local.iter().any(|value| {
@@ -61,8 +62,13 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
                     .as_str()
                     .is_some_and(|url| crate::addon_protocol::identity(url) == target)
             }) {
-                local.push(Value::String(addon_key.to_string()));
+                local.push(Value::String(normalized_key.clone()));
             }
+            disabled.retain(|value| {
+                value
+                    .as_str()
+                    .is_none_or(|url| crate::addon_protocol::identity(url) != target)
+            });
         }
         "remove" => {
             local.retain(|value| {
@@ -88,13 +94,46 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
                         .is_none_or(|url| crate::addon_protocol::identity(url) != target)
                 });
             } else {
-                disabled.push(Value::String(addon_key.to_string()));
+                disabled.push(Value::String(normalized_key.clone()));
+            }
+        }
+        "enable" => {
+            disabled.retain(|value| {
+                value
+                    .as_str()
+                    .is_none_or(|url| crate::addon_protocol::identity(url) != target)
+            });
+        }
+        "disable" => {
+            if !disabled.iter().any(|value| {
+                value
+                    .as_str()
+                    .is_some_and(|url| crate::addon_protocol::identity(url) == target)
+            }) {
+                disabled.push(Value::String(normalized_key.clone()));
+            }
+        }
+        "move" => {
+            let direction = args.get("direction").and_then(Value::as_i64).unwrap_or(0);
+            let Some(from) = local.iter().position(|value| {
+                value
+                    .as_str()
+                    .is_some_and(|url| crate::addon_protocol::identity(url) == target)
+            }) else {
+                return serde_json::to_string(&profile).ok();
+            };
+            let to = (from as i64 + direction)
+                .clamp(0, local.len().saturating_sub(1) as i64) as usize;
+            if from != to {
+                let item = local.remove(from);
+                local.insert(to, item);
             }
         }
         _ => return None,
     }
     let object = profile.as_object_mut()?;
     object.insert("localAddons".to_string(), Value::Array(local.clone()));
+    object.insert("disabledLocalAddons".to_string(), Value::Array(disabled.clone()));
     let settings = object
         .entry("addonSettings")
         .or_insert_with(|| json!({}))

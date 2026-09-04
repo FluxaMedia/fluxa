@@ -52,6 +52,34 @@ data class NativeWatchlistTogglePlan(
     val profileId: String? = null
 )
 
+data class NativePlaybackProgressMerge(
+    val lastVideoId: String? = null,
+    val timeOffset: Long? = null,
+    val duration: Long? = null,
+    val lastStreamIndex: Int? = null,
+    val lastEpisodeName: String? = null,
+    val lastEpisodeSeason: Int? = null,
+    val lastEpisodeNumber: Int? = null,
+    val lastEpisodeThumbnail: String? = null,
+    val lastStreamUrl: String? = null,
+    val lastStreamTitle: String? = null,
+    val lastBingeGroup: String? = null,
+    val continueWatchingPoster: String? = null,
+    val continueWatchingBackground: String? = null,
+    val lastAudioLanguage: String? = null,
+    val lastSubtitleLanguage: String? = null,
+    val videoChanged: Boolean = false
+)
+
+data class NativePluginUpdate(
+    val internalName: String = "",
+    val version: Int = 0
+)
+
+data class NativePluginUpdatePlan(
+    val updates: List<NativePluginUpdate> = emptyList()
+)
+
 data class NativeLibraryCollectionImportValidation(
     val isValid: Boolean = false,
     val validCollections: List<Map<String, Any?>> = emptyList(),

@@ -11,10 +11,9 @@ import { appPrefs, prefBool, prefString } from '../core/appPrefs';
 import { coreInvoke, coreResolveTransportUrl } from '../core/engine';
 import { initFolderSourceState, loadFolderSourcePage, type FolderSource, type FolderSourceState } from '../core/folderPagination';
 
-import { prewarmYoutubeTrailerConfig } from '../core/effectRunner';
-import { fetchContentLogo, fetchTmdbTrailers } from '../core/detailEffects';
-import { fetchHeroDescription } from '../core/homeEffects';
-import type { AppState, HomeCategory, Meta, Trailer } from '../core/types';
+import { useHomeHeroData } from '../hooks/useHomeHeroData';
+import { APP_ACTION_TYPE } from '../core/generated/actionTypes';
+import type { AppState, HomeCategory, Meta } from '../core/types';
 import { getLanguage, t } from '../i18n';
 import { useInViewport } from '../hooks/useInViewport';
 import { resolveTheme } from '../theme/adapter';
@@ -283,55 +282,14 @@ export const HomeScreen = React.memo(
     const prefs = useMemo(() => appPrefs(state), [state.settings?.values]);
     const skin = useMemo(() => resolveTheme(String(prefs.themeId ?? 'fluxa-dark'), String(prefs.skinConfig ?? '')).skin, [prefs.themeId, prefs.skinConfig]);
     const hiddenHomeSections = useMemo(() => new Set(skin.home.hiddenSections), [skin.home.hiddenSections]);
-    const [heroTrailers, setHeroTrailers] = useState<Record<string, Trailer[]>>({});
-    const [fetchedHeroTrailerIds, setFetchedHeroTrailerIds] = useState<string[]>([]);
-    const [heroLogos, setHeroLogos] = useState<Record<string, string>>({});
-    const [fetchedHeroLogoIds, setFetchedHeroLogoIds] = useState<string[]>([]);
-    const [heroDescriptions, setHeroDescriptions] = useState<Record<string, string>>({});
-    const [homePlan, setHomePlan] = useState<{
-      categories: HomeCategory[];
-      billboard: Meta | null;
-      slides: Meta[];
-      trailerTargets: Meta[];
-      logoTargets: Meta[];
-      showHero: boolean;
-      autoplayTrailer: boolean;
-    }>({ categories: [], billboard: null, slides: [], trailerTargets: [], logoTargets: [], showHero: true, autoplayTrailer: false });
-    useEffect(() => {
-      let active = true;
-      void coreInvoke<typeof homePlan>(
-        'homeHeroPlan',
-        JSON.stringify({
-          categories: home.categories ?? [],
-          billboard: home.billboard ?? null,
-          prefs,
-          fetchedTrailers: heroTrailers,
-          fetchedIds: fetchedHeroTrailerIds,
-          fetchedLogos: heroLogos,
-          fetchedLogoIds: fetchedHeroLogoIds,
-        }),
-      ).then((plan) => {
-        if (!active || !plan) return;
-        setHomePlan(plan);
-      });
-      return () => {
-        active = false;
-      };
-    }, [home.categories, home.billboard, prefs]);
-    const resolvedHomePlan = useMemo(() => {
-      const resolve = (item: Meta | null): Meta | null => {
-        if (!item) return null;
-        const trailers = heroTrailers[item.id];
-        const logo = heroLogos[item.id];
-        return trailers || logo ? { ...item, ...(trailers ? { trailers } : {}), ...(logo ? { logo } : {}) } : item;
-      };
-      return {
-        ...homePlan,
-        billboard: resolve(homePlan.billboard),
-        slides: homePlan.slides.map((item) => resolve(item) ?? item),
-      };
-    }, [heroLogos, heroTrailers, homePlan]);
-    const categories = resolvedHomePlan.categories;
+    const {
+      categories,
+      billboard,
+      heroSlides,
+      heroPendingLogoIds,
+      showHero,
+      autoplayTrailerEnabled,
+    } = useHomeHeroData({ home, prefs });
     const categoryItems = useMemo(
       () => new Map(categories.map((cat) => [cat.id, catalogExtra[cat.id]?.length ? [...cat.items, ...catalogExtra[cat.id]] : cat.items])),
       [categories, catalogExtra],
@@ -341,119 +299,8 @@ export const HomeScreen = React.memo(
       for (const cat of categories) map.set(cat.id, () => handleLoadMoreCategory(cat));
       return map;
     }, [categories, handleLoadMoreCategory]);
-    const billboard = resolvedHomePlan.billboard;
-    const heroSlides = resolvedHomePlan.slides;
-    const autoplayTrailerEnabled = resolvedHomePlan.autoplayTrailer;
-
-    useEffect(() => {
-      if (!autoplayTrailerEnabled) return;
-      prewarmYoutubeTrailerConfig().catch((err) => console.error('prewarmYoutubeTrailerConfig failed', err));
-    }, [autoplayTrailerEnabled]);
-
-    useEffect(() => {
-      const apiKey = prefString(prefs, 'tmdbApiKey');
-      const targets = resolvedHomePlan.trailerTargets;
-      if (!targets.length) return;
-      let cancelled = false;
-      const language = getLanguage();
-      Promise.all(
-        targets.map(async (item) => {
-          const trailers = (await fetchTmdbTrailers({ contentType: item.type, id: item.id, language, apiKey })) as Trailer[];
-          return [item.id, trailers] as const;
-        }),
-      )
-        .then((results) => {
-          if (cancelled) return;
-          setFetchedHeroTrailerIds((current) => Array.from(new Set([...current, ...targets.map((item) => item.id)])));
-          const found = results.filter(([, trailers]) => trailers.length);
-          if (!found.length) return;
-          setHeroTrailers((prev) => ({ ...prev, ...Object.fromEntries(found) }));
-        })
-        .catch((err) => console.error('hero trailer fetch failed', err));
-      return () => {
-        cancelled = true;
-      };
-    }, [resolvedHomePlan.trailerTargets, prefs]);
-
-    useEffect(() => {
-      const apiKey = prefString(prefs, 'tmdbApiKey');
-      const fanartApiKey = prefString(prefs, 'fanartApiKey');
-      const targets = resolvedHomePlan.logoTargets;
-      if (!targets.length) return;
-      let cancelled = false;
-      const language = getLanguage();
-      Promise.all(
-        targets.map(async (item) => {
-          const logo = await fetchContentLogo(item.id, item.type, language, apiKey, fanartApiKey).catch(() => undefined);
-          return [item.id, logo ?? null] as const;
-        }),
-      )
-        .then((results) => {
-          if (cancelled) return;
-          setFetchedHeroLogoIds((current) => Array.from(new Set([...current, ...targets.map((item) => item.id)])));
-          const found = results.filter((entry): entry is [string, string] => !!entry[1]);
-          if (!found.length) return;
-          setHeroLogos((prev) => ({ ...prev, ...Object.fromEntries(found) }));
-        })
-        .catch((err) => console.error('hero logo fetch failed', err));
-      return () => {
-        cancelled = true;
-      };
-    }, [resolvedHomePlan.logoTargets, prefs]);
-
-    const heroDescriptionRequestedRef = useRef<Set<string>>(new Set());
-    const heroItemsSignature = `${billboard?.id ?? ''}|${heroSlides.map((s) => s.id).join(',')}`;
-    const heroDescriptionTargets = useMemo(() => {
-      const seen = new Set<string>();
-      const targets: Meta[] = [];
-      for (const item of [billboard, ...heroSlides]) {
-        if (!item || seen.has(item.id) || item.description) continue;
-        seen.add(item.id);
-        if (!heroDescriptionRequestedRef.current.has(item.id)) targets.push(item);
-      }
-      return targets;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [heroItemsSignature]);
-
-    useEffect(() => {
-      const targets = heroDescriptionTargets;
-      if (!targets.length) return;
-      for (const item of targets) heroDescriptionRequestedRef.current.add(item.id);
-      let cancelled = false;
-      Promise.all(
-        targets.map(async (item) => {
-          const description = await fetchHeroDescription(item).catch(() => null);
-          return [item.id, description] as const;
-        }),
-      )
-        .then((results) => {
-          if (cancelled) return;
-          const found = results.filter((entry): entry is [string, string] => !!entry[1]);
-          if (!found.length) return;
-          setHeroDescriptions((prev) => ({ ...prev, ...Object.fromEntries(found) }));
-        })
-        .catch((err) => console.error('hero description fetch failed', err));
-      return () => {
-        cancelled = true;
-      };
-    }, [heroDescriptionTargets]);
-
-    const billboardWithTrailer =
-      billboard && !billboard.description && heroDescriptions[billboard.id]
-        ? { ...billboard, description: heroDescriptions[billboard.id] }
-        : billboard;
-    const heroSlidesWithTrailers = useMemo(
-      () =>
-        heroSlides.map((item) =>
-          !item.description && heroDescriptions[item.id] ? { ...item, description: heroDescriptions[item.id] } : item,
-        ),
-      [heroSlides, heroDescriptions],
-    );
-
-    const heroPendingLogoIds = useMemo(
-      () => new Set(resolvedHomePlan.logoTargets.map((item) => item.id).filter((id) => !fetchedHeroLogoIds.includes(id))),
-      [resolvedHomePlan.logoTargets, fetchedHeroLogoIds],
-    );
+    const billboardWithTrailer = billboard;
+    const heroSlidesWithTrailers = heroSlides;
 
     const addonIconByName = useMemo(() => {
       const map = new Map<string, string>();
@@ -462,7 +309,6 @@ export const HomeScreen = React.memo(
       }
       return map;
     }, [state.addons.installed]);
-    const showHero = resolvedHomePlan.showHero;
     const heroSlotVisible = showHero && !hiddenHomeSections.has('hero') && (!!billboardWithTrailer || !!home.billboard);
     const showContinueWatching = prefBool(prefs, 'continueWatchingEnabled', true) && !hiddenHomeSections.has('continueWatching');
     const showCatalogs = !hiddenHomeSections.has('catalogs');
@@ -481,7 +327,7 @@ export const HomeScreen = React.memo(
     }, []);
 
     const handleAddToWatchlist = useCallback(
-      (meta: Meta) => onDispatch(JSON.stringify({ type: 'libraryAddRequested', meta })),
+      (meta: Meta) => onDispatch(JSON.stringify({ type: APP_ACTION_TYPE.toggleWatchlistRequested, item: meta })),
       [onDispatch],
     );
 

@@ -3,6 +3,7 @@ package com.fluxa.app.shared.platform
 import com.fluxa.app.core.apple.AppleCatalogItemSnapshot
 import com.fluxa.app.core.apple.AppleSearchSnapshot
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.distinctByTypeAndId
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.search.SearchUiState
 import kotlinx.coroutines.flow.Flow
@@ -29,7 +30,7 @@ class AppleSearchDataSource : SearchDataSource {
     override suspend fun recordSelection(item: CatalogItemUiModel) {
         val current = state.value
         val history = (listOf(item) + current.recentItems)
-            .distinctBy { "${it.type}:${it.id}" }
+            .distinctByTypeAndId()
             .take(MaxRecentItems)
         state.value = current.copy(
             recentItems = history

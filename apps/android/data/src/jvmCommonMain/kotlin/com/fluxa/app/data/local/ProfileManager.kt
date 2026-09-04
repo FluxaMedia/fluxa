@@ -4,6 +4,7 @@ import com.fluxa.app.common.epochMillisNow
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.platform.PlatformKeyValueStore
 import com.google.gson.Gson
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.runBlocking
 import java.util.concurrent.CopyOnWriteArrayList
@@ -53,6 +54,47 @@ class ProfileManager @Inject constructor(
         transform(current).also(::saveProfile)
     }
 
+    fun mergeOAuthUpdate(provider: String, updated: UserProfile): UserProfile {
+        return updateProfile(updated.id) { current ->
+            val authResult = when (provider) {
+                "trakt" -> mapOf(
+                    "accessToken" to updated.traktAccessToken,
+                    "refreshToken" to updated.traktRefreshToken,
+                    "expiresAt" to updated.traktTokenExpiresAt
+                )
+                "simkl" -> mapOf("accessToken" to updated.simklAccessToken)
+                "anilist" -> mapOf(
+                    "accessToken" to updated.anilistAccessToken,
+                    "refreshToken" to updated.anilistRefreshToken,
+                    "expiresAt" to updated.anilistTokenExpiresAt
+                )
+                else -> emptyMap()
+            }
+            val merged = runCatching {
+                val result = FluxaCoreNative.tokenMergePlanJson(
+                    gson.toJson(mapOf("profile" to current, "authResult" to authResult, "provider" to provider))
+                )
+                val profileJson = JsonParser.parseString(result).asJsonObject["mergedProfile"]
+                gson.fromJson(profileJson, UserProfile::class.java)
+            }.getOrNull() ?: current
+            when (provider) {
+                "trakt" -> merged.copy(
+                    traktUsername = updated.traktUsername,
+                    traktLastSyncAt = updated.traktLastSyncAt,
+                    traktLastSyncedItems = updated.traktLastSyncedItems,
+                    traktLastContinueWatchingCount = updated.traktLastContinueWatchingCount,
+                    traktLastWatchlistCount = updated.traktLastWatchlistCount
+                )
+                "simkl" -> merged.copy(
+                    simklUsername = updated.simklUsername,
+                    simklLastSyncAt = updated.simklLastSyncAt
+                )
+                "anilist" -> merged.copy(anilistUsername = updated.anilistUsername)
+                else -> merged
+            }
+        } ?: updated
+    }
+
     private fun saveProfileInternal(profile: UserProfile, mergeMirroredAddons: Boolean) {
         val sanitizedProfile = sanitizeProfile(profile, mergeMirroredAddons)
         synchronized(profilesLock) {
@@ -99,15 +141,29 @@ class ProfileManager @Inject constructor(
 
     private fun loadProfiles(): List<UserProfile> {
         val json = prefsGet("profiles_list") ?: return emptyList()
-        val type = object : TypeToken<List<UserProfile>>() {}.type
-        val list: List<UserProfile> = gson.fromJson(json, type)
+        val rawProfiles = JsonParser.parseString(json).asJsonArray
+        var appliedSettingsMigration = false
+        val list = rawProfiles.map { rawProfile ->
+            val rawObject = rawProfile.asJsonObject
+            val schemaVersion = rawObject.get("schemaVersion")?.asInt ?: 0
+            val migration = FluxaCoreNative.profileSettingsMigrationPlan(
+                gson.toJson(
+                    mapOf(
+                        "raw" to rawObject,
+                        "schemaVersion" to schemaVersion
+                    )
+                )
+            )
+            appliedSettingsMigration = appliedSettingsMigration || migration.appliedMigrations.isNotEmpty()
+            gson.fromJson(gson.toJson(migration.migratedProfile), UserProfile::class.java)
+        }
         val hasLegacyCredentials = list.any(credentialStore::hasLegacyCredentials)
         val hydrated = list.map { profile ->
             val sanitized = sanitizeProfile(profile, mergeMirroredAddons = true)
             if (credentialStore.hasLegacyCredentials(sanitized)) credentialStore.store(sanitized)
             credentialStore.hydrate(credentialStore.redact(sanitized))
         }
-        if (hasLegacyCredentials) {
+        if (hasLegacyCredentials || appliedSettingsMigration) {
             prefsPut("profiles_list", gson.toJson(hydrated.map(credentialStore::redact)))
         }
         return hydrated
@@ -162,6 +218,17 @@ class ProfileManager @Inject constructor(
 
     fun getLastActiveProfileId(): String? {
         return prefsGet("last_active_profile_id")
+    }
+
+    fun getActiveProfile(): UserProfile? {
+        val profiles = getProfiles()
+        if (profiles.isEmpty()) return null
+        val request = mapOf(
+            "profiles" to profiles.map { mapOf("id" to it.id) },
+            "storedActiveId" to getLastActiveProfileId()
+        )
+        val plan = FluxaCoreNative.activeProfilePlanJson(gson.toJson(request))
+        return profiles.firstOrNull { it.id == plan.activeId }
     }
 
     fun isRememberLastProfileEnabled(): Boolean {

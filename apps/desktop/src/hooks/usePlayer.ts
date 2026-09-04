@@ -2,19 +2,8 @@ import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
 import { platformInvoke as invoke } from '../platform/invoke';
 import {
   dispatchAction,
-  coreDetectAnimePlayback,
   coreInvoke,
-  corePlaybackIntroLookupContentId,
-  corePlaybackPreparePlan,
-  coreTerminalRecommendationEligibility,
-  coreRecommendationOutroPlan,
-  coreCanPrefetchNextEpisode,
-  coreSelectNextEpisodeStream,
-  coreStreamShellPlan,
-  coreTorrentStatusInfo,
-  coreTorrentReadyBudget,
 } from '../core/engine';
-import { subscribePlayerStatus } from '../core/playerStatusStore';
 
 function debugLog(msg: string) {
   void invoke('debug_log', { msg }).catch(() => {});
@@ -37,17 +26,15 @@ import {
   startTorrentStream,
   stopTorrentStream,
 } from '../core/mpvPlayer';
-import { fetchPlaybackSkipSegments, fetchStreamsForEpisode, fetchMetaVideos, pumpEffects } from '../core/effectRunner';
-import { fetchContentLogo, fetchTerminalRecommendations } from '../core/detailEffects';
+import { pumpEffects } from '../core/effectRunner';
+import { fetchContentLogo } from '../core/detailEffects';
 import { loadAddons } from '../core/libraryOps';
-import { appPrefs, prefBool, prefString } from '../core/appPrefs';
+import { appPrefs } from '../core/appPrefs';
 import { getLanguage, t } from '../i18n';
-import { playerDisplayTitle, playerArtwork, formatNextEpisodeSubtitle, withCloseTimeout } from '../core/playerUtils';
+import { playerDisplayTitle, playerArtwork, withCloseTimeout } from '../core/playerUtils';
 import type { PlayerDisplayTitle, PlayerArtwork, PlaybackPreparePlan } from '../core/playerUtils';
-import { resolvePlaybackSubtitles } from '../core/subtitles';
-import type { ResolvedSubtitles } from '../core/subtitles';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
-import type { AppState, Meta, Video, Stream, AddonDescriptor, UserProfile } from '../core/types';
+import type { AppState, Meta, Video, Stream, UserProfile } from '../core/types';
 import { usePlayerNativeEvents } from './usePlayerNativeEvents';
 import { usePlayerMpvLifecycle } from './usePlayerMpvLifecycle';
 import { usePlayerScrobbling } from './usePlayerScrobbling';
@@ -60,6 +47,7 @@ import { AsyncScope } from '../core/asyncScope';
 import { useWebPlayer, type WebPlayerResult } from './useWebPlayer';
 import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { isBrowserTarget } from '../platform/browser';
+import { usePlayerRecommendations } from './usePlayerRecommendations';
 
 function playbackErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message.trim()) return error.message.trim();
@@ -215,54 +203,16 @@ function useDesktopPlayer({
     playerLoadingOverlayRef.current = playerLoadingOverlay;
   }, [playerLoadingOverlay]);
 
-  useEffect(() => {
-    if (!playerUrl) return;
-    const unsubscribe = subscribePlayerStatus((status) => {
-      const meta = playingMetaRef.current;
-      const episodeKey = playingEpisodeRef.current?.id ?? meta?.id;
-      const recommendationDuration = Number.parseFloat(status.duration ?? '');
-      const recommendationTimePos = Number.parseFloat(status.timePos ?? '');
-      if (meta && episodeKey && Number.isFinite(recommendationDuration) && recommendationDuration > 0 && Number.isFinite(recommendationTimePos)) {
-        const prefs = appPrefs(stateRef.current);
-        const key = meta.type === 'series' ? 'seriesRecommendationOutroPercent' : 'movieRecommendationOutroPercent';
-        const thresholdPercent = Number(prefString(prefs, key, '85'));
-        void coreRecommendationOutroPlan({
-          positionSeconds: recommendationTimePos,
-          durationSeconds: recommendationDuration,
-          thresholdPercent,
-          alreadyShown: recommendationOutroShownRef.current === episodeKey,
-        }).then((outroPlan) => {
-        if (outroPlan.shouldShow) {
-          recommendationOutroShownRef.current = episodeKey;
-          void (async () => {
-            if (meta.type === 'series') {
-              const episode = playingEpisodeRef.current;
-              if (!episode || !meta.videos?.length) return;
-              const eligibility = await coreTerminalRecommendationEligibility({
-                contentType: meta.type,
-                videos: meta.videos,
-                currentSeason: episode.season ?? 0,
-                currentEpisode: episode.episode ?? episode.number ?? 0,
-                nowMs: Date.now(),
-              });
-              if (!eligibility.eligible) return;
-            }
-            const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false });
-            setPlayerRecommendations(recommendations);
-          })().catch(() => undefined);
-        }
-        }).catch(() => undefined);
-      }
-      const percent = pendingResumePercentRef.current;
-      if (percent === null) return;
-      const duration = Number.parseFloat(status.duration ?? '');
-      if (!Number.isFinite(duration) || duration <= 0) return;
-      pendingResumePercentRef.current = null;
-      const seconds = (percent / 100) * duration;
-      void invoke('player_command', { command: `set time-pos ${seconds.toFixed(3)}` }).catch(() => undefined);
-    });
-    return unsubscribe;
-  }, [playerUrl]);
+  const { handleTerminalPlayback } = usePlayerRecommendations({
+    playerUrl,
+    stateRef,
+    playingMetaRef,
+    playingEpisodeRef,
+    playingNextEpisodeRef,
+    recommendationOutroShownRef,
+    pendingResumePercentRef,
+    setRecommendations: setPlayerRecommendations,
+  });
 
   const setLoadingStatus = useCallback((status: string) => {
     setPlayerLoadingOverlay((prev) => (prev ? { ...prev, status } : prev));
@@ -761,27 +711,6 @@ function useDesktopPlayer({
         sources: stream.sources,
       },
     });
-  }, []);
-
-  const handleTerminalPlayback = useCallback(async () => {
-    const meta = playingMetaRef.current;
-    if (!meta || playingNextEpisodeRef.current) return false;
-    if (meta.type === 'series') {
-      const episode = playingEpisodeRef.current;
-      if (!episode || !meta.videos?.length) return false;
-      const eligibility = await coreTerminalRecommendationEligibility({
-        contentType: meta.type,
-        videos: meta.videos,
-        currentSeason: episode.season ?? 0,
-        currentEpisode: episode.episode ?? episode.number ?? 0,
-        nowMs: Date.now(),
-      });
-      if (!eligibility.eligible) return false;
-    }
-    const recommendations = await fetchTerminalRecommendations({ contentType: meta.type, id: meta.id, hasNextEpisode: false }).catch(() => []);
-    if (recommendations.length === 0) return false;
-    setPlayerRecommendations(recommendations);
-    return true;
   }, []);
 
   const dismissPlayerRecommendations = useCallback(() => setPlayerRecommendations([]), []);

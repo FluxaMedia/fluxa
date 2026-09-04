@@ -36,16 +36,11 @@ import { P2PDialog } from './components/P2PDialog';
 import { useNuvioConnectivity } from './hooks/useNuvioConnectivity';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setActiveProfileId, loadProfiles } from './core/profiles';
-import { invalidateLibraryKeyCache, loadPrefs } from './core/libraryOps';
-import { clearSearchResultsCache } from './core/searchResultsCache';
+import { invalidateLibraryKeyCache } from './core/libraryOps';
 import { storageWrite, storageRead } from './core/engine';
-import { getLanguage, setLanguage } from './i18n';
-import { dispatchAction } from './core/engine';
-import { pumpEffects } from './core/effectRunner';
+import { getLanguage } from './i18n';
 import { appPrefs, prefBool, prefString } from './core/appPrefs';
-import { setRpdbApiKey } from './core/rpdb';
 import { AppStateStore, appStateSliceEqual, useAppStateSelector } from './core/appStateStore';
-import { mergeAppState } from './core/mergeState';
 import { AsyncScope } from './core/asyncScope';
 import { usePlayer } from './hooks/usePlayer';
 import { useAppInit } from './hooks/useAppInit';
@@ -53,6 +48,7 @@ import type { AppState, Meta, Stream, Video, UserProfile } from './core/types';
 import { WebPlayerOverlay } from './components/WebPlayerOverlay';
 import { ExternalHandoffPrompt } from './components/ExternalHandoffPrompt';
 import { useExternalHandoff } from './hooks/useExternalHandoff';
+import { useAppStateActions } from './hooks/useAppStateActions';
 
 const settingsStateEqual = appStateSliceEqual('settings');
 const profileStateEqual = appStateSliceEqual('plugins');
@@ -73,6 +69,7 @@ export default function App() {
   const profileAbortControllerRef = useRef(new AbortController());
   const settingsState = useAppStateSelector(store, (appState) => appState, settingsStateEqual);
   const profileState = useAppStateSelector(store, (appState) => appState, profileStateEqual);
+  const isWebTarget = isBrowserTarget();
   const lastNonSettingsRouteRef = useRef<NavRoute>('home');
   const lastNonSearchRouteRef = useRef<NavRoute>('home');
   const episodePlaybackFailureRef = useRef<(meta: Meta, episode: Video, message: string) => Promise<void>>(async () => {});
@@ -104,44 +101,21 @@ export default function App() {
     resetDetail,
   } = detailNav;
 
-  const overlayPrefs = useCallback((merged: AppState): AppState => {
-    const prefs = storedPrefsRef.current;
-    if (Object.keys(prefs).length === 0 || merged.settings.values === prefs) return merged;
-    return { ...merged, settings: { ...merged.settings, values: prefs } };
-  }, []);
-
-  const updateState = useCallback(
-    (s: Partial<AppState>) => {
-      const overlaid = overlayPrefs(mergeAppState(stateRef.current, s));
-      stateRef.current = overlaid;
-      store.replace(overlaid);
-    },
-    [overlayPrefs, store],
-  );
-
-  const updateStateDeferred = useCallback(
-    (s: Partial<AppState>) => {
-      const overlaid = overlayPrefs(mergeAppState(stateRef.current, s));
-      stateRef.current = overlaid;
-      React.startTransition(() => store.replace(overlaid));
-    },
-    [overlayPrefs, store],
-  );
-
-  const replaceState = useCallback(
-    (next: AppState) => {
-      stateRef.current = next;
-      store.replace(next);
-    },
-    [store],
-  );
-
-  const invalidateProfileWork = useCallback(() => {
-    profileScopeRef.current.invalidate();
-    profileAbortControllerRef.current.abort();
-    profileAbortControllerRef.current = new AbortController();
-    clearSearchResultsCache();
-  }, []);
+  const {
+    updateState,
+    updateStateDeferred,
+    replaceState,
+    invalidateProfileWork,
+    dispatch,
+    applyStoredPrefs,
+  } = useAppStateActions({
+    store,
+    stateRef,
+    storedPrefsRef,
+    profileScopeRef,
+    profileAbortControllerRef,
+    isWebTarget,
+  });
 
   const {
     ready,
@@ -249,7 +223,6 @@ export default function App() {
   }, []);
 
   const nativeEvents = useNativePlayerEvents(flushProgressOnQuit);
-  const isWebTarget = isBrowserTarget();
   const isMobile = useIsMobile();
   const nativePlayerActive = isWebTarget ? Boolean(playerUrl) : nativeEvents.nativePlayerActive;
   const softwareVideoActive = isWebTarget ? false : nativeEvents.softwareVideoActive;
@@ -371,45 +344,6 @@ export default function App() {
   }, [detailMeta, activeRoute, goBack, navigateRoute]);
 
   useEdgeSwipeBack(isMobile && !nativePlayerActive && (detailMeta !== null || activeRoute !== 'home'), swipeBack);
-
-  const dispatch = useCallback(
-    async (actionJson: string) => {
-      const profileRevision = profileScopeRef.current.capture();
-      const profileSignal = profileAbortControllerRef.current.signal;
-      const result = await dispatchAction(actionJson);
-      if (!result || !profileScopeRef.current.isCurrent(profileRevision)) return;
-      try {
-        const action = JSON.parse(actionJson) as { type?: string };
-        if (action.type === 'settingsChanged') {
-          const freshPrefs = await loadPrefs();
-          storedPrefsRef.current = freshPrefs;
-        }
-      } catch {}
-      updateState(result.state);
-      if (result.effects.length > 0) {
-        await pumpEffects(
-          result.effects,
-          (patch) => {
-            if (profileScopeRef.current.isCurrent(profileRevision)) updateStateDeferred(patch);
-          },
-          profileSignal,
-        ).catch(() => undefined);
-      }
-    },
-    [updateState, updateStateDeferred],
-  );
-
-  const applyStoredPrefs = useCallback(async () => {
-    const freshPrefs = await loadPrefs();
-    storedPrefsRef.current = freshPrefs;
-    setLanguage(typeof freshPrefs.language === 'string' ? freshPrefs.language : null);
-    setRpdbApiKey(prefString(freshPrefs, 'rpdbApiKey', ''));
-    if (!isWebTarget) {
-      void invoke('discord_presence_configure', { enabled: prefBool(freshPrefs, 'discordRichPresenceEnabled', true) });
-      void invoke('set_diagnostic_mode', { enabled: prefBool(freshPrefs, 'diagnosticMode', false) });
-    }
-    updateState({ settings: { values: freshPrefs } });
-  }, [isWebTarget, updateState]);
 
   const switchToNoProfile = useCallback(async () => {
     invalidateProfileWork();

@@ -39,7 +39,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.parseEpisodeLocator",
         "FluxaCoreNative.streamRequestIds"
     ),
-    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/remote/StreamPlaybackResolver.jvm.kt" to listOf(
+    "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/stream/StreamPlaybackResolver.jvm.kt" to listOf(
         "FluxaCoreNative.streamPlaybackInfo"
     ),
     "player/src/androidMain/kotlin/com/fluxa/app/player/TorrentStreamManager.kt" to listOf(
@@ -311,9 +311,12 @@ tasks.register("checkAppleTypedCatalogBridge") {
                 "fun update(snapshot: AppleCatalogHomeSnapshot)"
             ),
             "../apple/iOS/FluxaAppleCatalogStartup.swift" to listOf(
-                "AppleCatalogHomeSnapshot",
-                "AppleCatalogRowSnapshot",
-                "AppleCatalogItemSnapshot"
+                "FluxaHeadlessActionType.homeLoadRequested",
+                "FluxaAppleSnapshotMapper.catalogRow"
+            ),
+            "../apple/iOS/FluxaAppleSnapshotMapper.swift" to listOf(
+                "enum FluxaAppleSnapshotMapper",
+                "static func catalogItem"
             ),
             "../apple/iOS/FluxaIosApp.swift" to listOf("setCatalogHomeRefreshHandler"),
             "../apple/AppleCore/FluxaAppleAddonCatalogResolver.swift" to listOf(
@@ -385,22 +388,30 @@ tasks.register("checkAppleTvosKmpBoundary") {
     doLast {
         val projectText = rootProject.file("../apple/project.yml").readText()
         val handlerText = rootProject.file("../apple/tvOS/FluxaTvosEffectHandler.swift").readText()
+        val catalogServiceText = rootProject.file("../apple/AppleCore/FluxaAppleCatalogService.swift").readText()
         val requiredProjectTokens = listOf(
             ":core:embedAndSignAppleFrameworkForXcode",
             ":data:embedAndSignAppleFrameworkForXcode",
             ":player:embedAndSignAppleFrameworkForXcode"
         )
         val requiredHandlerTokens = listOf(
-            "import FluxaData",
-            "FluxaCoreStremio.parseManifest",
-            "FluxaCoreStremio.parseCatalogItems",
-            "FluxaCoreStremio.resourceUrl"
+            "import FluxaCore",
+            "FluxaAppleCatalogService",
+            "loadHomeRows"
+        )
+        val requiredCatalogServiceTokens = listOf(
+            "FluxaAppleAddonCatalogResolver",
+            "FluxaAppleCatalogLoader",
+            "resolveRequests",
+            "loadRows"
         )
         val violations = requiredProjectTokens.filterNot(projectText::contains).map { token ->
             "../apple/project.yml must contain $token"
         } + requiredHandlerTokens.filterNot(handlerText::contains).map { token ->
             "../apple/tvOS/FluxaTvosEffectHandler.swift must contain $token"
-        } + listOf("import FluxaShared", "JSONDecoder()", "struct Stremio").filter(handlerText::contains).map { token ->
+        } + requiredCatalogServiceTokens.filterNot(catalogServiceText::contains).map { token ->
+            "../apple/AppleCore/FluxaAppleCatalogService.swift must contain $token"
+        } + listOf("import FluxaShared", "JSONDecoder()", "struct Stremio", "FluxaCoreStremio").filter(handlerText::contains).map { token ->
             "../apple/tvOS/FluxaTvosEffectHandler.swift must not contain $token"
         }
         if (violations.isNotEmpty()) {

@@ -3,11 +3,8 @@ package com.fluxa.app.data.repository
 import android.util.Log
 import com.fluxa.app.BuildConfig
 import com.fluxa.app.data.remote.Stream
-import com.fluxa.app.data.remote.SubtitleData
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
 import com.fluxa.app.plugins.cloudstream.ScraperSearchResult
-import com.fluxa.app.plugins.cloudstream.ScraperSubtitle
-import com.fluxa.app.plugins.cloudstream.ScraperStreamLink
 import com.lagradost.cloudstream3.metaproviders.TmdbProvider
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -85,7 +82,7 @@ class CloudStreamDiscoveryClient @Inject constructor() {
             return emptyList()
         }
         val streamResult = runner.loadStreams(api, streamData)
-        return streamResult.links.map { it.toStream(api.name, streamResult.subtitles) }
+        return streamResult.links.toFluxaStreams(api.name, streamResult.subtitles)
     }
 
     private suspend fun loadSearchProviderStreams(
@@ -138,28 +135,8 @@ class CloudStreamDiscoveryClient @Inject constructor() {
             return emptyList()
         }
         val streamResult = runner.loadStreams(api, streamData)
-        return streamResult.links.map { it.toStream(api.name, streamResult.subtitles) }
+        return streamResult.links.toFluxaStreams(api.name, streamResult.subtitles)
     }
-
-    private fun ScraperStreamLink.toStream(addonName: String, subtitles: List<ScraperSubtitle>) = Stream(
-        name = " $addonName\n$quality",
-        title = name,
-        url = url,
-        subtitles = subtitles.map { it.toSubtitleData() },
-        behaviorHints = buildMap {
-            put("proxyHeaders", buildMap { put("request", headers) })
-            if (referer != null) put("referer", referer)
-            put("cs3Type", type)
-            put("isM3u8", isM3u8)
-            put("isDash", isDash)
-        },
-        addonName = " $addonName"
-    )
-
-    private fun ScraperSubtitle.toSubtitleData() = SubtitleData(
-        url = url,
-        lang = lang
-    )
 
     private inline fun logDebug(tag: String, message: () -> String) {
         if (BuildConfig.DEBUG) Log.d(tag, message())

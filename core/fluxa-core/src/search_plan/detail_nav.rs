@@ -60,3 +60,103 @@ pub(crate) fn detail_season_load_plan_json(request_json: &str) -> Option<String>
     }))
     .ok()
 }
+
+pub(crate) fn detail_load_plan_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let requested_type = request
+        .get("requestedType")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let requested_id = request
+        .get("requestedId")
+        .and_then(Value::as_str)
+        .unwrap_or("");
+    let detail = request.get("detail").filter(|value| value.is_object());
+    let resolved_id = detail
+        .and_then(|value| value.get("id"))
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty())
+        .unwrap_or(requested_id);
+    let detail_type = detail
+        .and_then(|value| value.get("type"))
+        .and_then(Value::as_str)
+        .filter(|value| !value.trim().is_empty());
+    let effective_type = if requested_id.starts_with("cs3:") {
+        detail_type.unwrap_or(requested_type)
+    } else {
+        requested_type
+    };
+    let series_lookup_id = detail_series_lookup_id(resolved_id);
+    let videos = detail
+        .and_then(|value| value.get("videos"))
+        .and_then(Value::as_array);
+    let has_detail_videos = videos.map(|items| !items.is_empty()).unwrap_or(false);
+    let season = request
+        .get("season")
+        .and_then(Value::as_i64)
+        .unwrap_or(1)
+        .max(1);
+    let stream_lookup_id = if effective_type == "series" {
+        series_lookup_id.clone()
+    } else {
+        resolved_id.to_string()
+    };
+
+    serde_json::to_string(&serde_json::json!({
+        "effectiveType": effective_type,
+        "resolvedId": resolved_id,
+        "seriesLookupId": series_lookup_id,
+        "streamLookupId": stream_lookup_id,
+        "season": season,
+        "shouldReadSeasonFromDetail": effective_type == "series" && has_detail_videos,
+        "shouldFetchSeason": effective_type == "series" && !has_detail_videos,
+        "title": detail.and_then(|value| value.get("name")).cloned().unwrap_or(Value::Null),
+        "originalName": detail.and_then(|value| value.get("originalName")).cloned().unwrap_or(Value::Null),
+        "year": detail
+            .and_then(|value| value.get("releaseInfo"))
+            .and_then(Value::as_str)
+            .and_then(|value| value.parse::<i32>().ok())
+            .map(Value::from)
+            .unwrap_or(Value::Null)
+    }))
+    .ok()
+}
+
+pub(crate) fn detail_season_videos_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let videos = request.get("videos").and_then(Value::as_array)?;
+    let season = request
+        .get("season")
+        .and_then(Value::as_i64)
+        .unwrap_or(1) as i32;
+    let has_season_data = videos.iter().any(|video| {
+        video
+            .get("season")
+            .and_then(Value::as_i64)
+            .map(|value| value > 0)
+            .unwrap_or(false)
+    });
+    if !has_season_data {
+        return serde_json::to_string(&serde_json::json!({ "episodes": videos })).ok();
+    }
+    let selected: Vec<&Value> = videos
+        .iter()
+        .filter(|video| video.get("season").and_then(Value::as_i64) == Some(season as i64))
+        .collect();
+    if !selected.is_empty() {
+        return serde_json::to_string(&serde_json::json!({ "episodes": selected })).ok();
+    }
+    let first_available = videos
+        .iter()
+        .filter_map(|video| video.get("season").and_then(Value::as_i64))
+        .filter(|value| *value > 0)
+        .min();
+    let fallback: Vec<&Value> = match first_available {
+        Some(first) => videos
+            .iter()
+            .filter(|video| video.get("season").and_then(Value::as_i64) == Some(first))
+            .collect(),
+        None => videos.iter().collect(),
+    };
+    serde_json::to_string(&serde_json::json!({ "episodes": fallback })).ok()
+}

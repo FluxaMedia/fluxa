@@ -12,7 +12,7 @@ pub(crate) use merge::{
 };
 pub(crate) use plan::{
     external_provider_action_plan_json, external_sync_refresh_retry_action,
-    external_sync_response_action, import_apply_plan_json, promote_external_progress_plan_json,
+    external_sync_response_action, external_sync_worker_retry_action, import_apply_plan_json, promote_external_progress_plan_json,
     provider_pagination_plan_json, push_plan_json,
 };
 pub(crate) use simkl::{
@@ -36,7 +36,7 @@ pub(crate) use trakt::{
 mod provider_mappers;
 
 pub(crate) use provider_mappers::{
-    replace_external_continue_watching_json, simkl_lookup_id_for_type,
+    replace_external_continue_watching_json, simkl_library_to_items_json, simkl_lookup_id_for_type,
     simkl_mark_watched_body_json, simkl_match_episode_json, simkl_merge_delta_json,
     simkl_merge_playback_progress_json, simkl_recommendation_candidates_json,
     simkl_recommendation_to_meta_json, simkl_resource_sync_plan_json, simkl_watched_to_ids_json,

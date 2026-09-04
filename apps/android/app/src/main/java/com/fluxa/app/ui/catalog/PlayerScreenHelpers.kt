@@ -4,6 +4,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.domain.discovery.*

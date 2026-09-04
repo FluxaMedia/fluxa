@@ -17,6 +17,30 @@ fn simkl_numeric_id(source: &Value) -> Option<i64> {
     source.get("ids")?.get("simkl").and_then(Value::as_i64)
 }
 
+fn simkl_content_id(source: &Value) -> Option<String> {
+    let ids = source.get("ids")?;
+    ids.get("imdb")
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
+        .map(str::to_string)
+        .or_else(|| {
+            ids.get("tmdb").and_then(|value| {
+                value
+                    .as_str()
+                    .filter(|value| !value.is_empty())
+                    .map(|value| format!("tmdb:{value}"))
+                    .or_else(|| value.as_i64().map(|value| format!("tmdb:{value}")))
+            })
+        })
+        .or_else(|| {
+            ids.get("slug")
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(|value| format!("simkl:{value}"))
+        })
+        .or_else(|| ids.get("simkl").and_then(Value::as_i64).map(|value| format!("simkl:{value}")))
+}
+
 fn simkl_fanart_url(source: &Value) -> Option<String> {
     source
         .get("fanart")
@@ -69,7 +93,7 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
         let Some(show) = entry.get("show") else {
             continue;
         };
-        let Some(id) = trakt_id_from_source(show) else {
+        let Some(id) = simkl_content_id(show) else {
             continue;
         };
         let title = show.get("title").and_then(Value::as_str).unwrap_or("");
@@ -103,7 +127,7 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
         let Some(movie) = entry.get("movie") else {
             continue;
         };
-        let Some(id) = trakt_id_from_source(movie) else {
+        let Some(id) = simkl_content_id(movie) else {
             continue;
         };
         let title = movie.get("title").and_then(Value::as_str).unwrap_or("");
@@ -361,7 +385,7 @@ pub(crate) fn trakt_up_next_to_items_json(items_json: &str) -> Option<String> {
     serde_json::to_string(&items).ok()
 }
 
-pub(crate) fn simkl_watchlist_to_items_json(shows_json: &str, movies_json: &str) -> Option<String> {
+pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -> Option<String> {
     let shows = simkl_entries(shows_json, "shows");
     let movies = simkl_entries(movies_json, "movies");
     let mut items: Vec<Value> = Vec::new();
@@ -369,7 +393,7 @@ pub(crate) fn simkl_watchlist_to_items_json(shows_json: &str, movies_json: &str)
         let Some(show) = entry.get("show") else {
             continue;
         };
-        let Some(id) = trakt_id_from_source(show) else {
+        let Some(id) = simkl_content_id(show) else {
             continue;
         };
         let title = show.get("title").and_then(Value::as_str).unwrap_or("");
@@ -384,7 +408,7 @@ pub(crate) fn simkl_watchlist_to_items_json(shows_json: &str, movies_json: &str)
         let Some(movie) = entry.get("movie") else {
             continue;
         };
-        let Some(id) = trakt_id_from_source(movie) else {
+        let Some(id) = simkl_content_id(movie) else {
             continue;
         };
         let title = movie.get("title").and_then(Value::as_str).unwrap_or("");
@@ -396,6 +420,10 @@ pub(crate) fn simkl_watchlist_to_items_json(shows_json: &str, movies_json: &str)
         items.push(json!({ "id": id, "name": title, "type": "movie", "source": "simkl", "poster": poster, "background": background }));
     }
     serde_json::to_string(&items).ok()
+}
+
+pub(crate) fn simkl_watchlist_to_items_json(shows_json: &str, movies_json: &str) -> Option<String> {
+    simkl_library_to_items_json(shows_json, movies_json)
 }
 
 pub(crate) fn simkl_watched_to_ids_json(shows_json: &str, movies_json: &str) -> Option<String> {

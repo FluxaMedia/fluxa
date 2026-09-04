@@ -375,22 +375,7 @@ final class FluxaAppleDetailStartup {
     }
 
     private func parseCatalogItems(_ value: FluxaAppleJsonValue?) -> [FluxaShared.AppleCatalogItemSnapshot] {
-        guard case .array(let values)? = value else { return [] }
-        return values.compactMap { value in
-            guard case .object(let item) = value,
-                  let id = text(item["id"]),
-                  let title = text(item["name"]) ?? text(item["title"]) else { return nil }
-            return FluxaShared.AppleCatalogItemSnapshot(
-                id: id,
-                type: text(item["type"]) ?? "movie",
-                title: title,
-                subtitle: text(item["releaseInfo"]) ?? "",
-                artworkUrl: text(item["poster"]),
-                logoUrl: text(item["logo"]),
-                addonTransportUrl: text(item["addonTransportUrl"]),
-                catalogType: text(item["catalogType"])
-            )
-        }
+        FluxaAppleSnapshotMapper.catalogItems(value)
     }
 
     private func text(_ value: FluxaAppleJsonValue?) -> String? {

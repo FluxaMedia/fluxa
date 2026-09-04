@@ -1,10 +1,11 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import com.fluxa.app.shared.feature.player.Chapter
 import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.shared.feature.player.AudioChannelLayoutPolicy
-import com.fluxa.app.shared.feature.player.AudioPassthroughPolicy
-import com.fluxa.app.shared.feature.player.AudioTrackQualityPolicy
 
 import android.content.Context
 import android.graphics.Color
@@ -114,6 +115,7 @@ class MpvEmbeddedPlayer(
     private val mpv: MPVLib = requireNotNull(MPVLib.create(appContext)) { "libmpv could not be created" }
     private var pollJob: Job? = null
     private var initialized = false
+    private val trackController = MpvTrackController(appContext, mpv, { initialized }, audioProcessingMode)
     private var currentSubtitles: List<ExternalSubtitleTrack> = emptyList()
     @Volatile private var hasLoadedCurrentFile = false
     @Volatile private var lastErrorLog: String? = null
@@ -130,11 +132,7 @@ class MpvEmbeddedPlayer(
     @Volatile private var audioPassthroughConfigured = false
     @Volatile private var audioPassthroughFallbackUsed = false
     @Volatile private var audioRouteSignature: String? = null
-    @Volatile private var lastTrackListKey = ""
     @Volatile private var pendingPlaybackStateUpdate = false
-    private var preferredAudioLanguageCode = ""
-    private var manualAudioSelection = false
-    private var applyingAudioPreference = false
     private var audioRouteCallback: android.media.AudioDeviceCallback? = null
     private var audioSpatializer: android.media.Spatializer? = null
     private var audioSpatializerListener: android.media.Spatializer.OnSpatializerStateChangedListener? = null
@@ -143,17 +141,10 @@ class MpvEmbeddedPlayer(
     private val _state = MutableStateFlow(MpvPlaybackState())
     val state: StateFlow<MpvPlaybackState> = _state
 
-    private val _availableAudios = MutableStateFlow<List<MediaTrack>>(emptyList())
-    val availableAudios: StateFlow<List<MediaTrack>> = _availableAudios
-
-    private val _availableSubtitles = MutableStateFlow<List<MediaTrack>>(emptyList())
-    val availableSubtitles: StateFlow<List<MediaTrack>> = _availableSubtitles
-
-    private val _currentAudio = MutableStateFlow<MediaTrack?>(null)
-    val currentAudio: StateFlow<MediaTrack?> = _currentAudio
-
-    private val _currentSubtitle = MutableStateFlow<MediaTrack?>(null)
-    val currentSubtitle: StateFlow<MediaTrack?> = _currentSubtitle
+    val availableAudios: StateFlow<List<MediaTrack>> = trackController.availableAudios
+    val availableSubtitles: StateFlow<List<MediaTrack>> = trackController.availableSubtitles
+    val currentAudio: StateFlow<MediaTrack?> = trackController.currentAudio
+    val currentSubtitle: StateFlow<MediaTrack?> = trackController.currentSubtitle
 
     private val _technicalInfo = MutableStateFlow<String?>(null)
     val technicalInfo: StateFlow<String?> = _technicalInfo
@@ -300,8 +291,7 @@ class MpvEmbeddedPlayer(
     ) {
         initialize()
         // Do not carry a manual track override into a different media item.
-        manualAudioSelection = false
-        lastTrackListKey = ""
+        trackController.resetForNewMedia()
         hardwareFallbackUsed = false
         audioPassthroughFallbackUsed = false
         _state.value = MpvPlaybackState(isBuffering = true)
@@ -330,7 +320,7 @@ class MpvEmbeddedPlayer(
         PlayerDelayController.setExternalAudioActive(deduped.isNotEmpty())
         if (hasLoadedCurrentFile) {
             added.forEach(::addExternalAudioTrack)
-            updateTracksFromProperties()
+            trackController.updateTracksFromProperties()
         }
     }
 
@@ -368,7 +358,7 @@ class MpvEmbeddedPlayer(
                     )
                 }
             }
-            updateTracksFromProperties()
+            trackController.updateTracksFromProperties()
         }
     }
 
@@ -388,7 +378,7 @@ class MpvEmbeddedPlayer(
         currentExternalAudio = emptyList()
         PlayerDelayController.setExternalAudioActive(false)
         lastErrorLog = null
-        lastTrackListKey = ""
+        trackController.resetForNewMedia()
         _state.value = MpvPlaybackState(isBuffering = true)
         if (surfaceAttached) {
             runCatching { mpv.setOptionString("force-window", "yes") }
@@ -439,31 +429,20 @@ class MpvEmbeddedPlayer(
 
     fun selectAudio(track: MediaTrack) {
         if (track.type != C.TRACK_TYPE_AUDIO || !initialized) return
-        manualAudioSelection = true
-        mpv.setPropertyString("aid", track.mpvTrackId())
-        updateTracksFromProperties()
+        trackController.selectAudio(track)
     }
 
     fun enableSubtitle(track: MediaTrack) {
         if (track.type != C.TRACK_TYPE_TEXT || !initialized) return
-        mpv.setPropertyString("sid", track.mpvTrackId())
-        updateTracksFromProperties()
+        trackController.enableSubtitle(track)
     }
 
     fun disableSubtitles() {
-        if (!initialized) return
-        mpv.setPropertyString("sid", "no")
-        _currentSubtitle.value = null
-        updateTracksFromProperties()
+        trackController.disableSubtitles()
     }
 
     fun applyPreferredAudioLanguage(languageCode: String) {
-        if (languageCode.isBlank() || languageCode == "none" || !initialized) return
-        // A new explicit language preference supersedes an older per-item manual choice.
-        manualAudioSelection = false
-        preferredAudioLanguageCode = languageCode
-        mpv.setOptionString("alang", languageCode)
-        selectBestAudioTrack()
+        trackController.applyPreferredAudioLanguage(languageCode)
     }
 
     fun applySubtitleStyle(profile: UserProfile?) {
@@ -891,7 +870,7 @@ class MpvEmbeddedPlayer(
             durationMs = duration
         )
         if (next != _state.value) _state.value = next
-        updateTracksFromProperties()
+        trackController.updateTracksFromProperties()
     }
 
     private fun updatePositionOnly() {
@@ -914,7 +893,7 @@ class MpvEmbeddedPlayer(
             durationMs = duration
         )
         if (next != _state.value) _state.value = next
-        updateTracksFromProperties()
+        trackController.updateTracksFromProperties()
     }
 
     private fun updateTechnicalInfo() {
@@ -1100,117 +1079,6 @@ class MpvEmbeddedPlayer(
             else -> null
         }
         return if (gamma != null || primaries != null) ProbeValue.verified(hdr) else ProbeValue.inferred(hdr)
-    }
-
-    private fun updateTracksFromProperties() {
-        val count = mpv.getPropertyInt("track-list/count") ?: 0
-        val aid = mpv.getPropertyString("aid").orEmpty()
-        val sid = mpv.getPropertyString("sid").orEmpty()
-        val key = "$count:$aid:$sid"
-        if (key == lastTrackListKey) return
-        lastTrackListKey = key
-        val audios = mutableListOf<MediaTrack>()
-        val subtitles = mutableListOf<MediaTrack>()
-        for (index in 0 until count) {
-            val type = mpv.getPropertyString("track-list/$index/type").orEmpty()
-            val mpvId = mpv.getPropertyInt("track-list/$index/id") ?: continue
-            val selected = mpv.getPropertyBoolean("track-list/$index/selected") ?: false
-            val language = mpv.getPropertyString("track-list/$index/lang")?.takeIf { it.isNotBlank() }
-            val title = mpv.getPropertyString("track-list/$index/title")?.takeIf { it.isNotBlank() }
-            val codec = mpv.getPropertyString("track-list/$index/codec")?.takeIf { it.isNotBlank() }
-            val channelCount = mpv.getPropertyInt("track-list/$index/demux-channel-count")
-                ?: mpv.getPropertyInt("audio-params/channel-count")
-            val bitrate = mpv.getPropertyInt("track-list/$index/demux-bitrate")
-                ?.takeIf { it > 0 }
-                ?.toLong()
-            val sampleRate = mpv.getPropertyInt("track-list/$index/demux-samplerate")
-                ?.takeIf { it > 0 }
-            when (type) {
-                "audio" -> audios.add(
-                    MediaTrack(
-                        id = "mpv_audio_$mpvId",
-                        label = title ?: language ?: "Audio ${audios.size + 1}",
-                        language = language,
-                        type = C.TRACK_TYPE_AUDIO,
-                        groupIndex = mpvId,
-                        trackIndex = index,
-                        isSelected = selected,
-                        channelCount = channelCount,
-                        sampleMimeType = codec,
-                        bitrate = bitrate,
-                        sampleRate = sampleRate,
-                    )
-                )
-                "sub" -> subtitles.add(
-                    MediaTrack(
-                        id = "mpv_sub_$mpvId",
-                        label = title ?: language ?: "Subtitle ${subtitles.size + 1}",
-                        language = language,
-                        type = C.TRACK_TYPE_TEXT,
-                        groupIndex = mpvId,
-                        trackIndex = index,
-                        isSelected = selected,
-                        sampleMimeType = codec
-                    )
-                )
-            }
-        }
-        _availableAudios.value = audios
-        _availableSubtitles.value = subtitles
-        _currentAudio.value = audios.firstOrNull { it.isSelected }
-        _currentSubtitle.value = subtitles.firstOrNull { it.isSelected }
-        if (!manualAudioSelection && !applyingAudioPreference) {
-            selectBestAudioTrack()
-        }
-    }
-
-    private fun selectBestAudioTrack() {
-        if (!initialized || manualAudioSelection || applyingAudioPreference) return
-        val tracks = _availableAudios.value
-        val capabilities = AudioCapabilityResolver.resolve(
-            appContext,
-            AudioCapabilityResolver.mediaAudioAttributes()
-        )
-        val passthroughTrackIds = if (audioProcessingMode == "reference") {
-            tracks.filter {
-                // The route resolver describes Android's capabilities, but
-                // MPV's Android audiotrack backend only emits the formats
-                // represented by its audio-spdif option. Keep engine support
-                // in the decision so Dolby MAT/MPEG-H/DTS-UHD are decoded
-                // instead of being falsely marked as passthrough.
-                mpvCanPassthroughMime(it.sampleMimeType) &&
-                capabilities.supportsPassthroughMime(
-                    sampleMimeType = it.sampleMimeType,
-                    channelCount = it.channelCount ?: 2,
-                    sampleRate = it.sampleRate ?: 48_000,
-                )
-            }
-                .mapTo(mutableSetOf()) { it.id }
-        } else {
-            emptySet()
-        }
-        val best = AudioTrackQualityPolicy.choose(
-            tracks = tracks,
-            preferredLanguage = preferredAudioLanguageCode,
-            passthroughTrackIds = passthroughTrackIds,
-            supportedSampleRates = capabilities.pcmSampleRates,
-            maxPcmChannels = capabilities.maxPcmChannels,
-        ) ?: return
-        if (best.isSelected) return
-        applyingAudioPreference = true
-        try {
-            mpv.setPropertyString("aid", best.mpvTrackId())
-        } finally {
-            applyingAudioPreference = false
-        }
-    }
-
-    private fun MediaTrack.mpvTrackId(): String {
-        return id.substringAfterLast('_').takeIf { it.toIntOrNull() != null } ?: groupIndex.toString()
-    }
-
-    private fun mpvCanPassthroughMime(sampleMimeType: String?): Boolean {
-        return AudioPassthroughPolicy.isMpvCandidate(sampleMimeType)
     }
 
     private fun Int.toMpvColor(opacity: Float = 1f): String {

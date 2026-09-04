@@ -9,7 +9,10 @@ pub(crate) use addon_catalog::{
     resolve_feed_option_genre_json, resolve_transport_url_json,
 };
 pub(crate) use discover::discover_catalog_candidates_json;
-pub(crate) use detail_nav::{detail_season_load_plan_json, detail_series_lookup_id};
+pub(crate) use detail_nav::{
+    detail_load_plan_json, detail_season_load_plan_json, detail_season_videos_json,
+    detail_series_lookup_id,
+};
 pub(crate) use discover::{
     discover_selection_plan_json, discover_sort_plan_json, merge_discover_pages_json,
 };
@@ -64,6 +67,37 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result["items"].as_array().unwrap().len(), 1);
+    }
+
+    #[test]
+    fn detail_load_plan_centralizes_effective_ids_and_season_decision() {
+        let result: Value = serde_json::from_str(
+            &detail_load_plan_json(
+                r#"{"requestedType":"movie","requestedId":"cs3:show","season":2,"detail":{"id":"cs3:show","type":"series","name":"Show","releaseInfo":"2026","videos":[{"id":"cs3:show:1:1","season":1}]}}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(result["effectiveType"], "series");
+        assert_eq!(result["seriesLookupId"], "cs3:show");
+        assert_eq!(result["streamLookupId"], "cs3:show");
+        assert_eq!(result["shouldReadSeasonFromDetail"], true);
+        assert_eq!(result["shouldFetchSeason"], false);
+        assert_eq!(result["year"], 2026);
+    }
+
+    #[test]
+    fn detail_season_videos_preserve_fallback_selection_policy() {
+        let result: Value = serde_json::from_str(
+            &detail_season_videos_json(
+                r#"{"season":9,"videos":[{"id":"a","season":1},{"id":"b","season":2},{"id":"c","season":2}]}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let episodes = result["episodes"].as_array().unwrap();
+        assert_eq!(episodes.len(), 1);
+        assert_eq!(episodes[0]["id"], "a");
     }
 
     #[test]

@@ -58,11 +58,17 @@
     <string name="auth_dot_log_in">Giriş Yap</string>
     <string name="auth_dot_sign_up">Kayıt Ol</string>
     <string name="auth_dot_welcome_back">Tekrar hoş geldin</string>
+    <string name="auth_dot_choose_login_method">Nasıl bağlanmak istediğini seç</string>
     <string name="auth_dot_other_ways_to_continue">Diğer devam etme yöntemleri</string>
     <string name="auth_dot_or">VEYA</string>
     <string name="auth_dot_continue_with_nuvio">Nuvio ile devam et</string>
     <string name="auth_dot_continue_with_stremio">Stremio ile devam et</string>
+    <string name="auth_dot_continue_with_fluxa">Fluxa ile devam et</string>
     <string name="auth_dot_login_with_stremio">Stremio ile giriş yap</string>
+    <string name="auth_dot_scan_to_connect">Bağlanmak için bu kodu okut</string>
+    <string name="auth_dot_login_pending">Onay bekleniyor…</string>
+    <string name="auth_dot_device_code_expired">Bu giriş kodunun süresi doldu.</string>
+    <string name="auth_dot_device_login_failed">Cihaz girişi başarısız oldu.</string>
     <string name="auth_dot_continue_without_account">Hesap olmadan devam et</string>
     <string name="auth_dot_guest_name">Misafir</string>
     <string name="auth_dot_primary_profile_name">Ben</string>
@@ -342,6 +348,8 @@
     <string name="auto_dot_refresh_the_app_after_playback_or_network_ch">Player veya ağ değişikliklerinden sonra hızlı tazele.</string>
     <string name="auto_dot_sign_out_from_the_active_profile_on_this_dev">Bu cihazdaki aktif profilden çık.</string>
     <string name="auto_dot_account_sync">Hesap &amp; Senkronizasyon</string>
+    <string name="settings_dot_account_profiles">Hesap &amp; Profiller</string>
+    <string name="settings_dot_sync">Senkronizasyon</string>
     <string name="auto_dot_account_devices_and_sync">Hesap, cihazlar ve senkronizasyon</string>
     <string name="auto_dot_general">Genel</string>
     <string name="auto_dot_language_theme_startup">Uygulama dili, tema, başlangıç</string>

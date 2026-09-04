@@ -2,6 +2,7 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.core.rust.models.NativeStreamBadge
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.stream.*
 
 data class StreamSourceUiModel(
     val playableUrl: String?,

@@ -4,6 +4,18 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the stream/request JSON
         "streamPlaybackInfo" => opt_json(stream_policy::stream_playback_info_json(args_json)),
+        "cloudstreamQualityScore" => {
+            let args = object(args_json)?;
+            Ok(json!(stream_policy::cloudstream_quality_score(
+                field_str(&args, "quality")?
+            )))
+        }
+        "cloudstreamMatchScore" => {
+            opt_json(stream_policy::cloudstream_match_score_json(args_json))
+        }
+        "cloudstreamStreamOrder" => {
+            opt_json(stream_policy::cloudstream_stream_order_json(args_json))
+        }
         "torrentRuntimeInfo" => opt_json(stream_policy::torrent_runtime_info_json(args_json)),
         "torrentStatusInfo" => opt_json(stream_policy::torrent_status_info_json(args_json)),
         "torrentReadyBudget" => into_json(stream_policy::torrent_ready_budget_json()),

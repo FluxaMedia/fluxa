@@ -14,6 +14,18 @@ shared/i18n    Shared English and Turkish application strings
 
 Put decisions, policies, state transitions, and cross-platform contracts in `core/fluxa-core`. Keep UI, storage, networking, lifecycle, players, and OS integrations in the relevant platform shell. Do not duplicate a business rule in a platform just because calling the core is inconvenient.
 
+## Boundary questions
+
+Before adding code to a shell, ask:
+
+- Is this a policy, state transition, normalization, ranking, or wire contract? If so, it belongs in `core/fluxa-core`.
+- Is this only URLSession/OkHttp/fetch, storage, player, lifecycle, or OS code? If so, keep it in the platform shell.
+- Is the same effect/action name or payload declared in more than one platform? Update the Rust contract and run `npm run generate:contracts`; do not hand-edit generated contract files.
+- Is an existing typed resolver, loader, or adapter already responsible for this data? Extend that boundary instead of creating a second parser or network flow.
+- Does a model contain both transport fields and derived playback/UI behavior? Keep the transport model small and move derived behavior into a policy or adapter.
+
+The generated headless contract snapshots live in `shared/contracts`. Platform-specific models may still differ when their UI or SDK needs differ, but their wire names and core-owned decisions must not drift.
+
 ## Local checks
 
 For Desktop checks, install the already-declared dependencies from the app lockfile:
@@ -26,6 +38,7 @@ Do this only when you have a suitable connection; the checks themselves are offl
 
 ```bash
 npm run check:structure
+npm run check:contracts
 npm run check:i18n
 npm run check:desktop
 npm run test:desktop

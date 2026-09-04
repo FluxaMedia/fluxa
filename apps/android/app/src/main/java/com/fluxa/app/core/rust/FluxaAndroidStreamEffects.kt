@@ -2,6 +2,9 @@
 
 package com.fluxa.app.core.rust
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
@@ -71,8 +74,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.startTorrentStream(effect: 
     val payload = effect.payload
     val url = payload.string("url")
     val stream = payload.objectValue("stream")?.let { gson.fromJson(gson.toJsonTree(it), Stream::class.java) }
-    val activeProfile = profileManager.getLastActiveProfileId()
-        ?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
+    val activeProfile = profileManager.getActiveProfile()
     val result = suspendCancellableCoroutine<TorrentStreamResult> { continuation ->
         TorrentStreamManager.getInstance(context).startStream(
             link = url,

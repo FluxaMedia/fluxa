@@ -25,6 +25,12 @@ data class CatalogItemUiModel(
     val runtimeLabel: String? = null
 )
 
+val CatalogItemUiModel.typeAndIdKey: String
+    get() = "$type:$id"
+
+fun Iterable<CatalogItemUiModel>.distinctByTypeAndId(): List<CatalogItemUiModel> =
+    distinctBy(CatalogItemUiModel::typeAndIdKey)
+
 fun CatalogItemUiModel.stableLazyKey(): String = lazyKey
 
 private fun catalogLazyKey(id: String, type: String, source: CatalogSourceUiModel): String = buildString {

@@ -19,5 +19,3 @@ internal fun FluxaAndroidHeadlessEnvironment.isTmdbContentId(id: String): Boolea
 internal suspend fun FluxaAndroidHeadlessEnvironment.loadCsNativeMetaDetail(id: String): MetaDetail? = cloudStreamRuntime.loadMetaDetail(id)
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.loadCsNativeStreams(id: String, directTimeoutMs: Long = 30_000L): List<Stream> = cloudStreamRuntime.loadStreams(id, directTimeoutMs)
-
-internal fun FluxaAndroidHeadlessEnvironment.csQualityScore(quality: String): Int = cloudStreamRuntime.qualityScore(quality)

@@ -23,100 +23,60 @@ private func fluxaStreamingStopTorrentServer() -> Bool
 @_silgen_name("fluxa_streaming_string_free")
 private func fluxaStreamingStringFree(_ value: UnsafeMutablePointer<CChar>)
 
-final class FluxaAppleStreamingEngine: @unchecked Sendable {
-    static let shared = FluxaAppleStreamingEngine()
-
+/// Owns the Apple AVPlayer source policy and the lifetime of its local transport.
+final class FluxaAppleAVPlayerStreamAdapter: @unchecked Sendable {
     private let lock = NSLock()
     private var localServerId: String?
     private var torrentServerRunning = false
 
-    func prepare(url: String, requestHeadersJson: String, title: String) -> URL? {
+    func prepare(url: URL, headers: [String: String], title: String) -> URL? {
         lock.withLock {
             stopLocked()
             if isTorrent(url) {
-                return startTorrentLocked(
-                    link: url,
-                    title: title,
-                    requestHeadersJson: requestHeadersJson
-                )
+                return startTorrentLocked(link: url.absoluteString, headers: headers, title: title)
             }
-            // AVPlayer can consume ordinary HTTP(S) media directly and the
-            // playback item carries its request headers. Only sources that
-            // need the local transport adapter should be proxied.
-            if !shouldRemuxToFmp4(url) {
-                return URL(string: url)
-            }
-            return startLocalProxyLocked(url: url, requestHeadersJson: requestHeadersJson)
+            guard requiresRemux(url) else { return url }
+            return startLocalProxyLocked(url: url.absoluteString, headers: headers)
+                .map { $0.appendingPathComponent("remux") }
         }
     }
 
     func stop() {
-        lock.withLock {
-            stopLocked()
-        }
+        lock.withLock { stopLocked() }
     }
 
-    private func startLocalProxyLocked(url: String, requestHeadersJson: String) -> URL? {
-        guard let response = withCStrings(url, requestHeadersJson, operation: fluxaStreamingStartLocalStreamServer),
+    private func startLocalProxyLocked(url: String, headers: [String: String]) -> URL? {
+        guard let response = withCStrings(url, headersJSON(headers), operation: fluxaStreamingStartLocalStreamServer),
               let server = try? JSONDecoder().decode(LocalServerResponse.self, from: Data(response.utf8)),
               !server.id.isEmpty else {
             return nil
         }
         localServerId = server.id
-        guard let proxyUrl = URL(string: server.url) else {
+        guard let proxyURL = URL(string: server.url) else {
             stopLocked()
             return nil
         }
-        if shouldRemuxToFmp4(url) {
-            return proxyUrl.appendingPathComponent("remux")
-        }
-        return proxyUrl
+        return proxyURL
     }
 
-    private func startTorrentLocked(
-        link: String,
-        title: String,
-        requestHeadersJson: String
-    ) -> URL? {
+    private func startTorrentLocked(link: String, headers: [String: String], title: String) -> URL? {
         let cacheDirectory = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)
             .first?
             .appendingPathComponent("fluxa_torrent_cache", isDirectory: true)
             .path ?? ""
         guard let response = withCStrings(cacheDirectory, "", operation: fluxaStreamingStartTorrentServer),
-              !response.isEmpty else {
+              let server = try? JSONDecoder().decode(TorrentServerResponse.self, from: Data(response.utf8)),
+              var components = URLComponents(string: server.url) else {
             return nil
         }
         torrentServerRunning = true
-        guard let server = try? JSONDecoder().decode(TorrentServerResponse.self, from: Data(response.utf8)),
-              var components = URLComponents(string: server.url) else {
-            stopLocked()
-            return nil
-        }
         components.path = components.path.appending("/stream/fname")
         components.queryItems = [
             URLQueryItem(name: "link", value: link),
             URLQueryItem(name: "title", value: title)
         ]
-        guard let torrentURL = components.url else {
-            stopLocked()
-            return nil
-        }
-
-        // The torrent endpoint is a local HTTP source, so route it through the
-        // same proxy/remux implementation used for direct Matroska streams.
-        // This also gives FFmpeg a usable HTTP fallback instead of a magnet URI.
-        guard let response = withCStrings(
-            torrentURL.absoluteString,
-            requestHeadersJson,
-            operation: fluxaStreamingStartLocalStreamServer
-        ),
-        let local = try? JSONDecoder().decode(LocalServerResponse.self, from: Data(response.utf8)),
-        !local.id.isEmpty else {
-            stopLocked()
-            return nil
-        }
-        localServerId = local.id
-        guard let proxyURL = URL(string: local.url) else {
+        guard let torrentURL = components.url,
+              let proxyURL = startLocalProxyLocked(url: torrentURL.absoluteString, headers: headers) else {
             stopLocked()
             return nil
         }
@@ -134,19 +94,21 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
         }
     }
 
-    private func isTorrent(_ url: String) -> Bool {
-        let normalized = url.lowercased()
-        return normalized.hasPrefix("magnet:") ||
-            normalized.hasPrefix("stremio://torrent/") ||
-            normalized.hasSuffix(".torrent")
+    private func requiresRemux(_ url: URL) -> Bool {
+        ["mkv", "matroska"].contains(url.pathExtension.lowercased())
     }
 
-    private func shouldRemuxToFmp4(_ rawUrl: String) -> Bool {
-        guard let components = URLComponents(string: rawUrl),
-              let path = components.url?.path.lowercased() else {
-            return false
-        }
-        return path.hasSuffix(".mkv") || path.hasSuffix(".matroska")
+    private func isTorrent(_ url: URL) -> Bool {
+        let value = url.absoluteString.lowercased()
+        return value.hasPrefix("magnet:") ||
+            value.hasPrefix("stremio://torrent/") ||
+            value.hasSuffix(".torrent")
+    }
+
+    private func headersJSON(_ headers: [String: String]) -> String {
+        guard let data = try? JSONSerialization.data(withJSONObject: headers),
+              let value = String(data: data, encoding: .utf8) else { return "{}" }
+        return value
     }
 
     private func withCStrings(
@@ -156,9 +118,7 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
     ) -> String? {
         first.withCString { firstPointer in
             second.withCString { secondPointer in
-                guard let result = operation(firstPointer, secondPointer, 0) else {
-                    return nil
-                }
+                guard let result = operation(firstPointer, secondPointer, 0) else { return nil }
                 defer { fluxaStreamingStringFree(result) }
                 return String(cString: result)
             }
@@ -172,9 +132,7 @@ final class FluxaAppleStreamingEngine: @unchecked Sendable {
     ) -> String? {
         first.withCString { firstPointer in
             second.withCString { secondPointer in
-                guard let result = operation(firstPointer, 0, secondPointer) else {
-                    return nil
-                }
+                guard let result = operation(firstPointer, 0, secondPointer) else { return nil }
                 defer { fluxaStreamingStringFree(result) }
                 return String(cString: result)
             }

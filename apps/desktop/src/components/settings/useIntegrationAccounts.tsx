@@ -2,13 +2,10 @@ import React, { useEffect, useRef, useState } from 'react';
 import { platformInvoke } from '../../platform/invoke';
 import { isBrowserTarget, platformListen as listen } from '../../platform/browser';
 import { platformOpenExternal } from '../../platform/browser';
-import { storageRead, storageWrite } from '../../core/engine';
+import { storageRead } from '../../core/engine';
 import type { UserProfile } from '../../core/types';
 import { t } from '../../i18n';
-import type { ImportCategory } from '../../core/importCategories';
 import { profileConnectionState, saveProfile } from '../../core/profiles';
-import { syncExternalIntegrationNow } from '../../core/effectRunner';
-import { refreshAnimeTrackingProfile } from '../../core/animeExternalSync';
 import { platformFetch } from '../../core/httpClient';
 import { traktHeaders } from '../../core/traktSync';
 import type { Prefs, SyncMeta, TraktTokenResponse } from './settingsTypes';
@@ -20,6 +17,7 @@ import {
   type OAuthCodePayload,
   type OAuthService,
 } from './accountPresentation';
+import { useIntegrationSyncActions } from './useIntegrationSyncActions';
 
 async function fetchTraktUsername(token: string, clientId: string): Promise<string | undefined> {
   try {
@@ -627,180 +625,34 @@ export function useIntegrationAccounts({
     onProfileUpdated(updated);
   };
 
-  const handleTraktSyncNow = async (categories?: ImportCategory[]) => {
-    if (!activeProfile?.traktAccessToken) return;
-    setTraktBusy(true);
-    setTraktError(null);
-    try {
-      const traktClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'trakt' });
-      const result = (await syncExternalIntegrationNow({
-        provider: 'trakt',
-        profile: activeProfile,
-        token: activeProfile.traktAccessToken,
-        clientId: traktClientId,
-        ...(categories ? { categories } : {}),
-      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
-      if (!result.synced) {
-        setTraktError(result.error ?? t('toast.trakt_sync_failed'));
-      } else {
-        const meta: SyncMeta = {
-          lastSyncAt: Date.now(),
-          continueWatchingCount: result.continueWatchingCount ?? 0,
-          watchlistCount: result.watchlistCount ?? 0,
-          watchedCount: result.watchedCount ?? 0,
-        };
-        setTraktSyncMeta(meta);
-        await storageWrite('trakt_sync_meta', meta);
-      }
-    } catch (error) {
-      setTraktError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setTraktBusy(false);
-    }
-    onDispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
-    onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
-  };
-
-  const handleSimklSyncNow = async (categories?: ImportCategory[]) => {
-    if (!activeProfile?.simklAccessToken) return;
-    setSimklBusy(true);
-    setSimklError(null);
-    try {
-      const simklClientId = await platformInvoke<string>('get_oauth_client_id', { service: 'simkl' });
-      const result = (await syncExternalIntegrationNow({
-        provider: 'simkl',
-        profile: activeProfile,
-        token: activeProfile.simklAccessToken,
-        clientId: simklClientId,
-        ...(categories ? { categories } : {}),
-      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number; watchedCount?: number };
-      if (!result.synced) {
-        setSimklError(result.error ?? 'Simkl sync failed');
-      } else {
-        const meta: SyncMeta = {
-          lastSyncAt: Date.now(),
-          continueWatchingCount: result.continueWatchingCount ?? 0,
-          watchlistCount: result.watchlistCount ?? 0,
-          watchedCount: result.watchedCount ?? 0,
-        };
-        setSimklSyncMeta(meta);
-        await storageWrite('simkl_sync_meta', meta);
-      }
-    } catch (error) {
-      setSimklError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setSimklBusy(false);
-    }
-    onDispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
-    onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
-  };
-
-  const handleNuvioSyncNow = async (categories?: ImportCategory[]) => {
-    if (!activeProfile?.nuvioAccessToken && !activeProfile?.nuvioRefreshToken) return;
-    setNuvioBusy(true);
-    setNuvioError(null);
-    try {
-      const result = (await syncExternalIntegrationNow({
-        provider: 'nuvio',
-        profile: activeProfile,
-        token: activeProfile.nuvioAccessToken,
-        ...(categories ? { categories } : {}),
-      })) as {
-        synced?: boolean;
-        error?: string;
-        continueWatchingCount?: number;
-        watchlistCount?: number;
-        profile?: UserProfile;
-      };
-      if (!result.synced) {
-        setNuvioError(result.error ?? 'Nuvio sync failed');
-      } else {
-        if (result.profile) onProfileUpdated(result.profile);
-        const meta: SyncMeta = {
-          lastSyncAt: Date.now(),
-          continueWatchingCount: result.continueWatchingCount ?? 0,
-          watchlistCount: result.watchlistCount ?? 0,
-        };
-        setNuvioSyncMeta(meta);
-        await storageWrite('nuvio_sync_meta', meta);
-        await onNuvioSyncComplete?.();
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      setNuvioError(message);
-      const meta: SyncMeta = { lastSyncAt: Date.now(), continueWatchingCount: 0, watchlistCount: 0, error: message };
-      setNuvioSyncMeta(meta);
-      await storageWrite('nuvio_sync_meta', meta);
-    } finally {
-      setNuvioBusy(false);
-    }
-    await onDispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
-    await onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
-  };
-
-  const handleStremioSyncNow = async (categories?: ImportCategory[]) => {
-    if (!activeProfile?.stremioAuthKey) return;
-    setStremioBusy(true);
-    setStremioError(null);
-    try {
-      const result = (await syncExternalIntegrationNow({
-        provider: 'stremio',
-        profile: activeProfile,
-        token: activeProfile.stremioAuthKey,
-        ...(categories ? { categories } : {}),
-      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
-      if (!result.synced) {
-        setStremioError(result.error ?? 'Stremio sync failed');
-      } else {
-        const meta: SyncMeta = {
-          lastSyncAt: Date.now(),
-          continueWatchingCount: result.continueWatchingCount ?? 0,
-          watchlistCount: result.watchlistCount ?? 0,
-        };
-        setStremioSyncMeta(meta);
-        await storageWrite('stremio_sync_meta', meta);
-      }
-    } catch (error) {
-      setStremioError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setStremioBusy(false);
-    }
-    onDispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
-    onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
-  };
-
-  const handleAnilistSyncNow = async (categories?: ImportCategory[]) => {
-    if (!activeProfile?.anilistAccessToken) return;
-    setAnilistBusy(true);
-    setAnilistError(null);
-    try {
-      const updated = await refreshAnimeTrackingProfile(activeProfile);
-      if (updated !== activeProfile) onProfileUpdated(updated);
-      const result = (await syncExternalIntegrationNow({
-        provider: 'anilist',
-        profile: updated,
-        token: updated.anilistAccessToken,
-        ...(categories ? { categories } : {}),
-      })) as { synced?: boolean; error?: string; continueWatchingCount?: number; watchlistCount?: number };
-      if (!result.synced) {
-        setAnilistError(result.error ?? 'AniList sync failed');
-        return;
-      }
-      const meta: SyncMeta = {
-        lastSyncAt: Date.now(),
-        continueWatchingCount: result.continueWatchingCount ?? 0,
-        watchlistCount: result.watchlistCount ?? 0,
-      };
-      setAnilistSyncMeta(meta);
-      await storageWrite('anilist_sync_meta', meta);
-    } catch (error) {
-      setAnilistError(error instanceof Error ? error.message : String(error));
-    } finally {
-      setAnilistBusy(false);
-    }
-    onDispatch(JSON.stringify({ type: 'libraryHydrateRequested' }));
-    onDispatch(JSON.stringify({ type: 'homeLoadRequested', force: true, language: prefs.language }));
-  };
+  const {
+    handleTraktSyncNow,
+    handleSimklSyncNow,
+    handleNuvioSyncNow,
+    handleStremioSyncNow,
+    handleAnilistSyncNow,
+  } = useIntegrationSyncActions({
+    prefs,
+    activeProfile,
+    onProfileUpdated,
+    onDispatch,
+    onNuvioSyncComplete,
+    setTraktBusy,
+    setTraktError,
+    setTraktSyncMeta,
+    setAnilistBusy,
+    setAnilistError,
+    setAnilistSyncMeta,
+    setSimklBusy,
+    setSimklError,
+    setSimklSyncMeta,
+    setNuvioBusy,
+    setNuvioError,
+    setNuvioSyncMeta,
+    setStremioBusy,
+    setStremioError,
+    setStremioSyncMeta,
+  });
 
   return {
     traktBusy,

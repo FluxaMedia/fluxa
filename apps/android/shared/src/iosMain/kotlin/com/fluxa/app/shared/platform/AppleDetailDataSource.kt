@@ -1,5 +1,8 @@
 package com.fluxa.app.shared.platform
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import com.fluxa.app.core.apple.AppleDetailEpisodeSnapshot
 import com.fluxa.app.core.apple.AppleDetailRequestSnapshot
 import com.fluxa.app.core.apple.AppleDetailSeasonRequestSnapshot

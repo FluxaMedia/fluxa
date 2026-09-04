@@ -171,6 +171,7 @@ pub(crate) fn playback_progress_merge_plan_json(request_json: &str) -> Option<St
         "lastEpisodeThumbnail": resolve_field("lastEpisodeThumbnail"),
         "lastStreamUrl": resolve_field("lastStreamUrl"),
         "lastStreamTitle": resolve_field("lastStreamTitle"),
+        "lastBingeGroup": resolve_field("lastBingeGroup"),
         "continueWatchingPoster": resolve_field("continueWatchingPoster"),
         "continueWatchingBackground": resolve_field("continueWatchingBackground"),
         "lastAudioLanguage": resolve_field("lastAudioLanguage"),

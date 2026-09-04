@@ -24,6 +24,15 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
                 .to_string(),
             ))
         }
+        "externalSyncWorkerRetryAction" => {
+            let args = object(args_json)?;
+            let status_code = args.get("statusCode").and_then(Value::as_i64);
+            let attempt = args.get("attempt").and_then(Value::as_i64).unwrap_or(0);
+            Ok(Value::String(
+                external_sync::external_sync_worker_retry_action(status_code, attempt)
+                    .to_string(),
+            ))
+        }
         "providerCalendarItems" => opt_json(external_sync::provider_calendar_items_json(args_json)),
         "providerPaginationPlan" => {
             opt_json(external_sync::provider_pagination_plan_json(args_json))
@@ -253,6 +262,13 @@ pub(super) fn route_external_sync_simkl(method: &str, args_json: &str) -> Outcom
         "simklWatchlistToItems" => {
             let args = object(args_json)?;
             opt_json(external_sync::simkl_watchlist_to_items_json(
+                field_str(&args, "showsJson")?,
+                field_str(&args, "moviesJson")?,
+            ))
+        }
+        "simklLibraryToItems" => {
+            let args = object(args_json)?;
+            opt_json(external_sync::simkl_library_to_items_json(
                 field_str(&args, "showsJson")?,
                 field_str(&args, "moviesJson")?,
             ))

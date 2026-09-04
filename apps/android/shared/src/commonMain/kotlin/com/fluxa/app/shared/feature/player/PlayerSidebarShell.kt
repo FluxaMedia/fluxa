@@ -1,5 +1,8 @@
 package com.fluxa.app.shared.feature.player
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.core.rust.models.NativeStreamBadge
 import com.fluxa.app.ui.catalog.DeviceType

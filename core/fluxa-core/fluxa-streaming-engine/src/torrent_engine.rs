@@ -13,14 +13,11 @@ use librqbit::{
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
-use std::future::Future;
 use std::io::SeekFrom;
 use std::net::SocketAddr;
 use std::path::PathBuf;
-use std::pin::Pin;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
-use std::task::{Context, Poll};
 use std::thread;
 use std::time::{Duration, Instant};
 use tokio::io::{AsyncReadExt, AsyncSeekExt};
@@ -28,61 +25,16 @@ use tokio::net::TcpListener;
 use tokio::sync::Mutex as AsyncMutex;
 use tokio::sync::oneshot;
 use tokio_util::io::ReaderStream;
-use tokio_util::sync::{CancellationToken, WaitForCancellationFutureOwned};
+use tokio_util::sync::CancellationToken;
 
-#[derive(Deserialize)]
-struct TorrRequest {
-    action: String,
-    link: Option<String>,
-    hash: Option<String>,
-    title: Option<String>,
-    #[serde(default)]
-    save_to_db: bool,
-    // Optional file index to focus on right after add — prevents rqbit
-    // from spreading peer slots across every file in the torrent.
-    file_id: Option<usize>,
-    #[serde(default)]
-    role: FileRole,
-    /// Metadata/peer discovery requested before playback. Prewarmed torrents
-    /// are paused after their idle TTL; their on-disk fast-resume data stays.
-    #[serde(default)]
-    prewarm: bool,
-}
+mod lifecycle;
+mod protocol;
+mod stream_reader;
+mod telemetry;
 
-#[derive(Deserialize)]
-struct TorrSettings {
-    #[serde(rename = "PreloadSize")]
-    preload_size: Option<u64>,
-    /// Zero means unlimited. A positive value enables LRU eviction of
-    /// inactive torrents only; active playback is never an eviction target.
-    #[serde(rename = "CacheLimitMb")]
-    cache_limit_mb: Option<u64>,
-    #[serde(rename = "StreamBufferBytes")]
-    stream_buffer_bytes: Option<u64>,
-    #[serde(alias = "deviceBudget", alias = "DeviceBudget")]
-    device_budget: Option<DeviceBudgetSettings>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct DeviceBudgetSettings {
-    torrent_preload_mb: Option<u64>,
-    torrent_cache_mb: Option<u64>,
-    stream_reader_buffer_bytes: Option<u64>,
-}
-
-#[derive(Deserialize)]
-struct StreamQuery {
-    link: String,
-    title: Option<String>,
-    index: Option<usize>,
-    stat: Option<String>,
-    access_token: Option<String>,
-    #[serde(default)]
-    role: FileRole,
-    #[serde(alias = "durationMs")]
-    duration_ms: Option<u64>,
-}
+use lifecycle::*;
+use protocol::*;
+use stream_reader::{CancellableReader, TrackedReader};
 
 #[derive(Clone, Copy)]
 struct PlaybackWindow {
@@ -136,129 +88,6 @@ struct TelemetryEvent {
     elapsed_ms: Option<u64>,
 }
 
-struct CancellableReader<R> {
-    inner: R,
-    // Keep the cancellation future alive while the underlying rqbit reader is
-    // pending so cancelling its token wakes this reader immediately.
-    cancellation: Pin<Box<WaitForCancellationFutureOwned>>,
-}
-
-struct TrackedReader<R> {
-    inner: R,
-    received: u64,
-    expected: u64,
-    torrent_id: usize,
-    file_id: usize,
-    range_start: u64,
-}
-
-impl<R> TrackedReader<R> {
-    fn new(inner: R, expected: u64, torrent_id: usize, file_id: usize, range_start: u64) -> Self {
-        Self {
-            inner,
-            received: 0,
-            expected,
-            torrent_id,
-            file_id,
-            range_start,
-        }
-    }
-}
-
-impl<R: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for TrackedReader<R> {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
-        let before = buf.filled().len();
-        match Pin::new(&mut self.inner).poll_read(cx, buf) {
-            Poll::Ready(Ok(())) => {
-                let added = (buf.filled().len() - before) as u64;
-                self.received = self.received.saturating_add(added);
-                if added == 0 {
-                    debug_log(format!(
-                        "[TorrServer][stream] eof torrent={} file={} start={} received={} expected={}",
-                        self.torrent_id,
-                        self.file_id,
-                        self.range_start,
-                        self.received,
-                        self.expected
-                    ));
-                }
-                Poll::Ready(Ok(()))
-            }
-            Poll::Ready(Err(error)) => {
-                debug_log(format!(
-                    "[TorrServer][stream] read_error torrent={} file={} start={} received={} expected={} error={error}",
-                    self.torrent_id, self.file_id, self.range_start, self.received, self.expected
-                ));
-                Poll::Ready(Err(error))
-            }
-            Poll::Pending => Poll::Pending,
-        }
-    }
-}
-
-impl<R> CancellableReader<R> {
-    fn new(inner: R, cancel: CancellationToken) -> Self {
-        Self {
-            inner,
-            cancellation: Box::pin(cancel.cancelled_owned()),
-        }
-    }
-}
-
-impl<R: tokio::io::AsyncRead + Unpin> tokio::io::AsyncRead for CancellableReader<R> {
-    fn poll_read(
-        mut self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> Poll<std::io::Result<()>> {
-        if self.cancellation.as_mut().poll(cx).is_ready() {
-            return Poll::Ready(Err(std::io::Error::new(
-                std::io::ErrorKind::Interrupted,
-                "playback session cancelled",
-            )));
-        }
-        Pin::new(&mut self.inner).poll_read(cx, buf)
-    }
-}
-
-#[derive(Clone, Copy, Default, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-enum FileRole {
-    #[default]
-    Video,
-    Subtitle,
-    Auxiliary,
-}
-
-#[derive(Default)]
-struct TorrentFileFocus {
-    primary_video: Option<usize>,
-    auxiliary_files: HashSet<usize>,
-}
-
-#[derive(Clone, Copy)]
-struct TorrentLifecycle {
-    last_accessed: Instant,
-    prewarmed: bool,
-    active: bool,
-    estimated_cache_bytes: u64,
-}
-
-#[derive(Default)]
-struct TorrentRuntimeState {
-    known_links: HashMap<String, usize>,
-    prioritized_files: HashMap<usize, TorrentFileFocus>,
-    playback_windows: HashMap<(usize, usize), PlaybackWindow>,
-    playback_sessions: HashMap<(usize, usize), PlaybackSession>,
-    torrent_cancellations: HashMap<usize, CancellationToken>,
-    lifecycle: HashMap<usize, TorrentLifecycle>,
-    active_torrent: Option<usize>,
-}
-
 #[derive(Clone)]
 struct EngineState {
     api: Api,
@@ -266,13 +95,8 @@ struct EngineState {
     preload_size: Arc<Mutex<u64>>,
     stream_buffer_bytes: Arc<Mutex<usize>>,
     runtime: Arc<Mutex<TorrentRuntimeState>>,
-    // Session ownership and its measurements must be changed atomically. Keeping
-    // them together also prevents lock-order inversions between telemetry writes
-    // and torrent teardown.
     telemetry: Arc<Mutex<TelemetryState>>,
     cache_limit_bytes: Arc<Mutex<Option<u64>>>,
-    // A per-link lock serializes retries for one magnet while allowing
-    // unrelated metadata lookups to progress independently.
     in_flight_adds: Arc<AsyncMutex<HashMap<String, Arc<AsyncMutex<()>>>>>,
     pending_adds: Arc<Mutex<HashSet<String>>>,
     access_token: Arc<String>,
@@ -431,14 +255,14 @@ pub fn start_torrent_server(
                 pending_adds: Arc::new(Mutex::new(HashSet::new())),
                 access_token: Arc::new(thread_access_token),
             };
-            tokio::spawn(peer_stats_logger(state.clone()));
+            tokio::spawn(telemetry::peer_stats_logger(state.clone()));
             tokio::spawn(prewarm_reaper(state.clone()));
             let app = Router::new()
                 .route("/", get(root))
                 .route("/health", get(health))
                 .route("/settings", post(update_settings))
                 .route("/torrents", post(torrents))
-                .route("/telemetry", post(record_telemetry))
+                .route("/telemetry", post(telemetry::record_telemetry))
                 .route("/stream/fname", get(stream_fname))
                 .with_state(state);
 
@@ -518,50 +342,6 @@ pub fn stop_torrent_server(expected_generation: Option<u64>) -> bool {
         join_with_timeout(thread, Duration::from_secs(5));
     }
     true
-}
-
-// Independent of UI stat polling, so the timeline is complete even if the
-// frontend isn't actively hitting /stream/fname?stat. One line per known
-// torrent every 2s, gated behind FLUXA_TORRENT_DEBUG like everything else
-// here — meant to be diffed against Stremio/TorrServer runs to see whether
-// peer discovery plateaus (queued/live flat) or throughput per peer is the
-// bottleneck (live steady, download_speed low).
-async fn peer_stats_logger(state: EngineState) {
-    if std::env::var_os("FLUXA_TORRENT_DEBUG").is_none() {
-        return;
-    }
-    loop {
-        tokio::time::sleep(Duration::from_secs(2)).await;
-        let ids: HashSet<usize> = state
-            .runtime
-            .lock()
-            .map(|runtime| runtime.known_links.values().copied().collect())
-            .unwrap_or_default();
-        for id in ids {
-            let Ok(stats) = state.api.api_stats_v1(TorrentIdOrHash::Id(id)) else {
-                continue;
-            };
-            let peers = stats.live.as_ref().map(|live| &live.snapshot.peer_stats);
-            let download_bps = stats
-                .live
-                .as_ref()
-                .map(|live| live.download_speed.mbps * 1024.0 * 1024.0)
-                .unwrap_or(0.0);
-            debug_log(format!(
-                "[TorrServer][peers] torrent={id} state={:?} queued={} connecting={} live={} seen={} dead={} steals={} down={download_bps:.0}B/s progress={}/{} uploaded={}",
-                stats.state,
-                peers.map(|p| p.queued).unwrap_or(0),
-                peers.map(|p| p.connecting).unwrap_or(0),
-                peers.map(|p| p.live).unwrap_or(0),
-                peers.map(|p| p.seen).unwrap_or(0),
-                peers.map(|p| p.dead).unwrap_or(0),
-                peers.map(|p| p.steals).unwrap_or(0),
-                stats.progress_bytes,
-                stats.total_bytes,
-                stats.uploaded_bytes,
-            ));
-        }
-    }
 }
 
 async fn root() -> impl IntoResponse {
@@ -749,102 +529,6 @@ async fn torrents(
         }
         _ => error_response(StatusCode::BAD_REQUEST, "unsupported torrent action"),
     }
-}
-
-async fn record_telemetry(
-    State(state): State<EngineState>,
-    ConnectInfo(remote_addr): ConnectInfo<SocketAddr>,
-    Json(event): Json<TelemetryEvent>,
-) -> Response {
-    if !request_authorized(&state, remote_addr, None) {
-        return error_response(StatusCode::UNAUTHORIZED, "unauthorized");
-    }
-    let Some(id) = lookup_known_link(&state, Some(&event.link)) else {
-        return error_response(StatusCode::NOT_FOUND, "torrent not found");
-    };
-    if event.session_id.is_empty() || event.session_id.len() > 128 {
-        return error_response(StatusCode::BAD_REQUEST, "invalid telemetry session");
-    }
-    if !telemetry_event_is_supported(&event.event) {
-        return error_response(StatusCode::BAD_REQUEST, "unsupported telemetry event");
-    }
-    let mut telemetry = match state.telemetry.lock() {
-        Ok(telemetry) => telemetry,
-        Err(_) => {
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, "telemetry unavailable");
-        }
-    };
-    if let Err(error) = apply_telemetry_event(&mut telemetry, id, &event) {
-        let status = match error {
-            "stale telemetry session" | "telemetry session mismatch" => StatusCode::CONFLICT,
-            _ => StatusCode::BAD_REQUEST,
-        };
-        return error_response(status, error);
-    }
-    (StatusCode::OK, Json(json!({}))).into_response()
-}
-
-fn telemetry_event_is_supported(event: &str) -> bool {
-    matches!(event, "firstFrame" | "stallStarted" | "stallEnded")
-}
-
-fn apply_telemetry_event(
-    telemetry: &mut TelemetryState,
-    torrent_id: usize,
-    event: &TelemetryEvent,
-) -> Result<(), &'static str> {
-    // This guard deliberately lives before all session mutations as well as in
-    // the HTTP handler, so callers cannot accidentally promote an invalid event.
-    if !telemetry_event_is_supported(&event.event) {
-        return Err("unsupported telemetry event");
-    }
-    match telemetry.active_sessions.get(&torrent_id) {
-        Some(active) if event.session_generation < active.generation => {
-            return Err("stale telemetry session");
-        }
-        Some(active)
-            if event.session_generation == active.generation && event.session_id != active.id =>
-        {
-            return Err("telemetry session mismatch");
-        }
-        Some(active) if event.session_generation > active.generation => {
-            telemetry.active_sessions.insert(
-                torrent_id,
-                ActiveTelemetrySession {
-                    id: event.session_id.clone(),
-                    generation: event.session_generation,
-                },
-            );
-            telemetry
-                .records
-                .retain(|(stored_id, _), _| *stored_id != torrent_id);
-        }
-        None => {
-            telemetry.active_sessions.insert(
-                torrent_id,
-                ActiveTelemetrySession {
-                    id: event.session_id.clone(),
-                    generation: event.session_generation,
-                },
-            );
-        }
-        _ => {}
-    }
-    let entry = telemetry
-        .records
-        .entry((torrent_id, event.session_id.clone()))
-        .or_default();
-    match event.event.as_str() {
-        "firstFrame" => entry.first_frame_ms = event.elapsed_ms.or(entry.first_frame_ms),
-        "stallStarted" => entry.stall_count = entry.stall_count.saturating_add(1),
-        "stallEnded" => {
-            entry.stall_duration_ms = entry
-                .stall_duration_ms
-                .saturating_add(event.elapsed_ms.unwrap_or_default())
-        }
-        _ => unreachable!("unsupported event was rejected before mutating telemetry"),
-    }
-    Ok(())
 }
 
 async fn stream_fname(
@@ -1433,432 +1117,16 @@ fn playback_buffer_targets(file_len: u64, duration_ms: Option<u64>) -> (u64, u64
     (bitrate, urgent, warm)
 }
 
-fn touch_torrent_lifecycle(state: &EngineState, torrent_id: usize, active: bool) {
-    if let Ok(mut runtime) = state.runtime.lock() {
-        let entry = runtime
-            .lifecycle
-            .entry(torrent_id)
-            .or_insert(TorrentLifecycle {
-                last_accessed: Instant::now(),
-                prewarmed: !active,
-                active,
-                estimated_cache_bytes: 0,
-            });
-        entry.last_accessed = Instant::now();
-        entry.active |= active;
-        if active {
-            entry.prewarmed = false;
-        }
-    }
-}
-
-fn should_deactivate_prewarm(
-    lifecycle: &HashMap<usize, TorrentLifecycle>,
-    torrent_id: usize,
-) -> bool {
-    lifecycle
-        .get(&torrent_id)
-        .is_some_and(|entry| entry.prewarmed && !entry.active)
-}
-
-async fn activate_torrent(state: &EngineState, torrent_id: usize) {
-    let previous = state
-        .runtime
-        .lock()
-        .map(|mut runtime| runtime.active_torrent.replace(torrent_id))
-        .ok()
-        .flatten();
-    if let Some(previous) = previous.filter(|previous| *previous != torrent_id) {
-        deactivate_torrent(state, previous).await;
-    }
-    if let Ok(mut runtime) = state.runtime.lock() {
-        let entry = runtime
-            .lifecycle
-            .entry(torrent_id)
-            .or_insert(TorrentLifecycle {
-                last_accessed: Instant::now(),
-                prewarmed: false,
-                active: true,
-                estimated_cache_bytes: 0,
-            });
-        entry.active = true;
-        entry.prewarmed = false;
-        entry.last_accessed = Instant::now();
-    }
-}
-
-async fn deactivate_torrent(state: &EngineState, torrent_id: usize) {
-    cancel_torrent_root(state, torrent_id);
-    clear_playback_telemetry(state, torrent_id);
-    let files = state
-        .runtime
-        .lock()
-        .map(|mut runtime| {
-            // The focus cache short-circuits a repeat request for the same
-            // file, so leaving it behind means the next play never re-applies
-            // the file selection or the streaming window this call clears.
-            runtime.prioritized_files.remove(&torrent_id);
-            let windows = &mut runtime.playback_windows;
-            let files = windows
-                .keys()
-                .filter(|(id, _)| *id == torrent_id)
-                .map(|(_, file_id)| *file_id)
-                .collect::<Vec<_>>();
-            windows.retain(|(id, _), _| *id != torrent_id);
-            files
-        })
-        .unwrap_or_default();
-    for file_id in files {
-        let _ = state
-            .api
-            .api_clear_streaming_window(TorrentIdOrHash::Id(torrent_id), file_id);
-    }
-    if let Ok(mut runtime) = state.runtime.lock() {
-        for session in runtime
-            .playback_sessions
-            .extract_if(|(id, _), _| *id == torrent_id)
-            .map(|(_, session)| session)
-        {
-            session.cancel.cancel();
-        }
-    }
-    if let Ok(mut runtime) = state.runtime.lock()
-        && let Some(entry) = runtime.lifecycle.get_mut(&torrent_id)
-    {
-        entry.active = false;
-        entry.last_accessed = Instant::now();
-    }
-    if let Ok(mut runtime) = state.runtime.lock()
-        && runtime.active_torrent == Some(torrent_id)
-    {
-        runtime.active_torrent = None;
-    }
-    let _ = state
-        .api
-        .api_torrent_action_pause(TorrentIdOrHash::Id(torrent_id))
-        .await;
-}
-
-fn clear_playback_telemetry(state: &EngineState, torrent_id: usize) {
-    if let Ok(mut telemetry) = state.telemetry.lock() {
-        clear_telemetry_for_torrent(&mut telemetry, torrent_id);
-    }
-}
-
-fn clear_telemetry_for_torrent(telemetry: &mut TelemetryState, torrent_id: usize) {
-    telemetry.records.retain(|(id, _), _| *id != torrent_id);
-    telemetry.active_sessions.remove(&torrent_id);
-}
-
-fn torrent_worker_threads() -> usize {
-    let available = std::thread::available_parallelism()
-        .map(|value| value.get())
-        .unwrap_or(2);
-    let platform_default = if cfg!(target_os = "android") {
-        available.clamp(2, 4)
-    } else {
-        available.clamp(2, 16)
-    };
-    std::env::var("FLUXA_TORRENT_WORKERS")
-        .ok()
-        .and_then(|value| value.parse::<usize>().ok())
-        .filter(|value| (1..=32).contains(value))
-        .unwrap_or(platform_default)
-}
-
-/// Prewarming resolves metadata and discovers peers but must not keep an idle
-/// torrent transferring indefinitely. Pausing retains the files and
-/// fast-resume/session records; a real stream request resumes it above.
-async fn prewarm_reaper(state: EngineState) {
-    const PREWARM_IDLE_TTL: Duration = Duration::from_secs(15 * 60);
-    let mut interval = tokio::time::interval(Duration::from_secs(60));
-    loop {
-        interval.tick().await;
-        let expired = state
-            .runtime
-            .lock()
-            .map(|mut runtime| {
-                runtime
-                    .lifecycle
-                    .iter_mut()
-                    .filter_map(|(&torrent_id, entry)| {
-                        if entry.prewarmed
-                            && !entry.active
-                            && entry.last_accessed.elapsed() >= PREWARM_IDLE_TTL
-                        {
-                            entry.prewarmed = false;
-                            Some(torrent_id)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        for torrent_id in expired {
-            let _ = state
-                .api
-                .api_torrent_action_pause(TorrentIdOrHash::Id(torrent_id))
-                .await;
-            debug_log(format!(
-                "[TorrServer] paused idle prewarm torrent={torrent_id}"
-            ));
-        }
-        enforce_cache_limit(&state).await;
-    }
-}
-
-async fn enforce_cache_limit(state: &EngineState) {
-    let Some(limit) = state.cache_limit_bytes.lock().ok().and_then(|limit| *limit) else {
-        return;
-    };
-    let snapshots = state
-        .api
-        .api_torrent_list_ext(ApiTorrentListOpts { with_stats: true });
-    let mut entries = state
-        .runtime
-        .lock()
-        .map(|runtime| {
-            snapshots
-                .torrents
-                .iter()
-                .filter_map(|torrent| {
-                    let id = torrent.id?;
-                    let lifecycle = runtime.lifecycle.get(&id)?;
-                    Some((
-                        id,
-                        lifecycle.active,
-                        lifecycle.last_accessed,
-                        torrent
-                            .stats
-                            .as_ref()
-                            .map(|stats| stats.progress_bytes)
-                            .unwrap_or(0),
-                    ))
-                })
-                .collect::<Vec<_>>()
-        })
-        .unwrap_or_default();
-    let mut used = entries.iter().map(|entry| entry.3).sum::<u64>();
-    if used <= limit {
-        return;
-    }
-    entries.sort_by_key(|entry| entry.2);
-    for (torrent_id, active, _, bytes) in entries {
-        if active || used <= limit {
-            continue;
-        }
-        if state
-            .api
-            .api_torrent_action_delete(TorrentIdOrHash::Id(torrent_id))
-            .await
-            .is_ok()
-        {
-            used = used.saturating_sub(bytes);
-            if let Ok(mut runtime) = state.runtime.lock() {
-                runtime
-                    .known_links
-                    .retain(|_, known_id| *known_id != torrent_id);
-                runtime.lifecycle.remove(&torrent_id);
-                runtime.prioritized_files.remove(&torrent_id);
-                runtime
-                    .playback_windows
-                    .retain(|(id, _), _| *id != torrent_id);
-                for session in runtime
-                    .playback_sessions
-                    .extract_if(|(id, _), _| *id == torrent_id)
-                    .map(|(_, session)| session)
-                {
-                    session.cancel.cancel();
-                }
-            }
-            cancel_torrent_root(state, torrent_id);
-            clear_playback_telemetry(state, torrent_id);
-            debug_log(format!(
-                "[TorrServer] evicted inactive torrent={torrent_id} for cache limit"
-            ));
-        }
-    }
-}
-
-fn playback_window_for(
-    state: &EngineState,
-    torrent_id: usize,
-    file_id: usize,
-) -> Option<PlaybackWindow> {
-    state
-        .runtime
-        .lock()
-        .ok()?
-        .playback_windows
-        .get(&(torrent_id, file_id))
-        .copied()
-}
-
-fn playback_session_for(
-    state: &EngineState,
-    torrent_id: usize,
-    file_id: usize,
-    offset: u64,
-) -> CancellationToken {
-    let key = (torrent_id, file_id);
-    let seek_threshold = playback_window_for(state, torrent_id, file_id)
-        .map(|window| (window.warm_ahead_bytes / 4).max(1))
-        .unwrap_or(1);
-    let previous_offset = state.runtime.lock().ok().and_then(|runtime| {
-        runtime
-            .playback_windows
-            .get(&key)
-            .map(|window| window.playback_offset)
-    });
-    // Resolved before the lock: torrent_cancellation_token takes the same
-    // non-reentrant runtime mutex, and reaching for it while holding the guard
-    // deadlocks the thread against itself and wedges the whole HTTP server.
-    let parent = torrent_cancellation_token(state, torrent_id);
-    if let Ok(mut runtime) = state.runtime.lock() {
-        let sessions = &mut runtime.playback_sessions;
-        let seek =
-            previous_offset.is_some_and(|previous| offset.abs_diff(previous) > seek_threshold);
-        if seek && let Some(previous) = sessions.get(&key) {
-            previous.cancel.cancel();
-        }
-        let generation = sessions
-            .get(&key)
-            .map(|session| session.generation)
-            .unwrap_or(0)
-            + u64::from(seek || !sessions.contains_key(&key));
-        let session = sessions.entry(key).or_insert_with(|| PlaybackSession {
-            generation,
-            cancel: parent.child_token(),
-        });
-        if seek {
-            *session = PlaybackSession {
-                generation,
-                cancel: parent.child_token(),
-            };
-        }
-        return session.cancel.clone();
-    }
-    parent.child_token()
-}
-
-fn torrent_cancellation_token(state: &EngineState, torrent_id: usize) -> CancellationToken {
-    state
-        .runtime
-        .lock()
-        .map(|mut runtime| {
-            runtime
-                .torrent_cancellations
-                .entry(torrent_id)
-                .or_insert_with(CancellationToken::new)
-                .clone()
-        })
-        // A poisoned bookkeeping lock must not break media serving. The
-        // standalone token still keeps the reader's local cancellation valid.
-        .unwrap_or_else(|_| CancellationToken::new())
-}
-
-fn cancel_torrent_root(state: &EngineState, torrent_id: usize) {
-    if let Ok(mut runtime) = state.runtime.lock()
-        && let Some(token) = runtime.torrent_cancellations.remove(&torrent_id)
-    {
-        token.cancel();
-    }
-}
-
-/// MPV/FFmpeg may issue a tiny distant cue/index read without seeking the
-/// primary playback stream. Keep the live scheduler window in that case.
-fn is_probe_range(
-    state: &EngineState,
-    torrent_id: usize,
-    file_id: usize,
-    offset: u64,
-    length: u64,
-) -> bool {
-    const MAX_PROBE_BYTES: u64 = 2 * 1024 * 1024;
-    let Some(window) = playback_window_for(state, torrent_id, file_id) else {
-        return false;
-    };
-    is_probe_for_window(window, offset, length, MAX_PROBE_BYTES)
-}
-
-fn is_probe_for_window(
-    window: PlaybackWindow,
-    offset: u64,
-    length: u64,
-    max_probe_bytes: u64,
-) -> bool {
-    length <= max_probe_bytes
-        && offset.abs_diff(window.playback_offset)
-            > (window.warm_ahead_bytes / 4).max(max_probe_bytes)
-}
-
-fn store_playback_window(state: &EngineState, window: PlaybackWindow) {
-    if let Ok(mut runtime) = state.runtime.lock() {
-        runtime
-            .playback_windows
-            .insert((window.torrent_id, window.file_id), window);
-    }
-}
-
-fn playback_phase(
-    stats: Option<&librqbit::TorrentStats>,
-    buffered: u64,
-    target: u64,
-    window: Option<PlaybackWindow>,
-) -> &'static str {
-    match stats.map(|stats| stats.state) {
-        None | Some(TorrentStatsState::Initializing) => "resolving_metadata",
-        Some(TorrentStatsState::Error) => "error",
-        Some(TorrentStatsState::Paused) => "stalled",
-        Some(TorrentStatsState::Live)
-            if window.is_some_and(|window| {
-                window
-                    .seek_started_at
-                    .is_some_and(|started| started.elapsed() < Duration::from_secs(2))
-            }) =>
-        {
-            "seeking"
-        }
-        Some(TorrentStatsState::Live) if buffered >= target && target > 0 => "streaming",
-        Some(TorrentStatsState::Live) if window.is_some_and(|window| window.was_ready) => {
-            "rebuffering"
-        }
-        Some(TorrentStatsState::Live) if buffered > 0 => "buffering_startup",
-        Some(TorrentStatsState::Live) => "connecting_peers",
-    }
-}
-
-fn set_streaming_window(state: &EngineState, torrent_id: usize, file_id: usize, offset: u64) {
-    // The forked picker serves urgent pieces first, then the warm window, then
-    // normal selected-file ordering. A new offset replaces the old window.
-    let (urgent, warm) = playback_window_for(state, torrent_id, file_id)
-        .map(|window| (window.urgent_ahead_bytes, window.warm_ahead_bytes))
-        .unwrap_or_else(|| {
-            state
-                .preload_size
-                .lock()
-                .map(|value| (*value, value.saturating_mul(2).max(32 * 1024 * 1024)))
-                .unwrap_or((10 * 1024 * 1024, 32 * 1024 * 1024))
-        });
-    let _ = state.api.api_set_streaming_window_with_priority(
-        TorrentIdOrHash::Id(torrent_id),
-        file_id,
-        offset,
-        urgent,
-        warm,
-    );
-}
-
 mod http;
 
 use http::*;
 #[cfg(test)]
 mod tests {
     use super::http::update_file_focus;
+    use super::telemetry::apply_telemetry_event;
     use super::{
         ActiveTelemetrySession, CancellableReader, FileRole, PlaybackTelemetry, PlaybackWindow,
-        TelemetryEvent, TelemetryState, TorrentFileFocus, TorrentLifecycle, apply_telemetry_event,
+        TelemetryEvent, TelemetryState, TorrentFileFocus, TorrentLifecycle,
         clear_telemetry_for_torrent, is_probe_for_window, magnet_info_hash, parse_range,
         playback_buffer_targets, should_deactivate_prewarm,
     };

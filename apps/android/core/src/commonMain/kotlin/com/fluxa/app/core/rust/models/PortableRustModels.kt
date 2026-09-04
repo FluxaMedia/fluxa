@@ -75,6 +75,19 @@ data class NativeDetailSeasonLoadPlan(
     val savedSeason: Int? = null
 )
 
+data class NativeDetailLoadPlan(
+    val effectiveType: String = "",
+    val resolvedId: String = "",
+    val seriesLookupId: String = "",
+    val streamLookupId: String = "",
+    val season: Int = 1,
+    val shouldReadSeasonFromDetail: Boolean = false,
+    val shouldFetchSeason: Boolean = false,
+    val title: String? = null,
+    val originalName: String? = null,
+    val year: Int? = null
+)
+
 data class NativePlayerFlowEffect(
     val type: String = "",
     val contentType: String = "",

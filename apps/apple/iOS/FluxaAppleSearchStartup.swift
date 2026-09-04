@@ -18,7 +18,7 @@ final class FluxaAppleSearchStartup {
         }
         do {
             let action = FluxaAppleSearchAction(
-                type: "searchRequested",
+                type: FluxaHeadlessActionType.searchRequested,
                 query: normalizedQuery,
                 language: "en",
                 profile: FluxaAppleSearchProfile(id: "apple-default")
@@ -35,29 +35,13 @@ final class FluxaAppleSearchStartup {
         let results: [AppleCatalogItemSnapshot]
         if case .object(let search)? = result.state["search"],
            case .array(let values)? = search["results"] {
-            results = values.compactMap(sharedItem)
+            results = values.compactMap(FluxaAppleSnapshotMapper.catalogItem)
         } else {
             results = []
         }
         FluxaApple.shared.updateSearch(snapshot: AppleSearchSnapshot(query: query, results: results, isLoading: false))
     }
 
-    private func sharedItem(_ value: FluxaAppleJsonValue) -> AppleCatalogItemSnapshot? {
-        guard case .object(let item) = value,
-              let id = text(item["id"]),
-              let type = text(item["type"]),
-              let title = text(item["name"]) else {
-            return nil
-        }
-        return AppleCatalogItemSnapshot(id: id, type: type, title: title, subtitle: text(item["releaseInfo"]) ?? "", artworkUrl: text(item["poster"]), logoUrl: text(item["logo"]), addonTransportUrl: text(item["addonTransportUrl"]), catalogType: text(item["catalogType"]), progress: nil, topTenRank: nil)
-    }
-
-    private func text(_ value: FluxaAppleJsonValue?) -> String? {
-        guard case .string(let text)? = value else {
-            return nil
-        }
-        return text
-    }
 }
 
 private struct FluxaAppleSearchAction: Encodable {

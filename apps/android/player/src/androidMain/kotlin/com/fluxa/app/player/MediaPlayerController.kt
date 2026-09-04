@@ -1,7 +1,10 @@
 package com.fluxa.app.player
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
 import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.shared.feature.player.AudioTrackQualityPolicy
+
 
 import android.content.Context
 import androidx.media3.common.*
@@ -18,19 +21,15 @@ import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.exoplayer.source.MediaSource
 import androidx.media3.exoplayer.source.MergingMediaSource
 import com.fluxa.app.core.rust.models.NativeDvProxyPlan
-import java.util.Locale
 
 @UnstableApi
 class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPlayer) {
-    private var preferredAudioLanguageCode: String = ""
-    private var manualAudioSelection = false
-    private var automaticAudioFallbackSelection = false
-    private var applyingAudioPreference = false
     var audioDecoderMode: String = "hw_prefer"
     private var currentUrl: String? = null
     private var currentStream: com.fluxa.app.data.remote.Stream? = null
     private var currentExternalSubtitles: List<ExternalSubtitleTrack> = emptyList()
     private var currentExternalAudio: List<ExternalAudioTrack> = emptyList()
+    private val trackController = MediaPlayerTrackController(context, exoPlayer) { currentExternalAudio }
     @Volatile private var audioDecoderName: String? = null
     @Volatile private var failedAudioCodecName: String? = null
     @Volatile private var failedAudioMimeType: String? = null
@@ -38,17 +37,10 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
     @Volatile private var audioFallbackAttempted = false
     @Volatile private var alternateAudioFallbackAttempted = false
 
-    private val _availableAudios = MutableStateFlow<List<MediaTrack>>(emptyList())
-    val availableAudios: StateFlow<List<MediaTrack>> = _availableAudios
-
-    private val _availableSubtitles = MutableStateFlow<List<MediaTrack>>(emptyList())
-    val availableSubtitles: StateFlow<List<MediaTrack>> = _availableSubtitles
-
-    private val _currentAudio = MutableStateFlow<MediaTrack?>(null)
-    val currentAudio: StateFlow<MediaTrack?> = _currentAudio
-
-    private val _currentSubtitle = MutableStateFlow<MediaTrack?>(null)
-    val currentSubtitle: StateFlow<MediaTrack?> = _currentSubtitle
+    val availableAudios: StateFlow<List<com.fluxa.app.shared.feature.player.MediaTrack>> = trackController.availableAudios
+    val availableSubtitles: StateFlow<List<com.fluxa.app.shared.feature.player.MediaTrack>> = trackController.availableSubtitles
+    val currentAudio: StateFlow<com.fluxa.app.shared.feature.player.MediaTrack?> = trackController.currentAudio
+    val currentSubtitle: StateFlow<com.fluxa.app.shared.feature.player.MediaTrack?> = trackController.currentSubtitle
 
     private val _technicalInfo = MutableStateFlow<String?>(null)
     val technicalInfo: StateFlow<String?> = _technicalInfo
@@ -106,9 +98,9 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         MediaPlayerControllerFactory.setAudioRouteListener(exoPlayer) {
             // A fallback track selected by the app is only valid for the
             // route that caused it. A user-selected track remains explicit.
-            if (automaticAudioFallbackSelection) {
-                automaticAudioFallbackSelection = false
-                manualAudioSelection = false
+            if (trackController.automaticAudioFallbackSelection) {
+                trackController.automaticAudioFallbackSelection = false
+                trackController.manualAudioSelection = false
             }
             audioFallbackAttempted = false
             alternateAudioFallbackAttempted = false
@@ -121,8 +113,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         exoPlayer.addListener(object : Player.Listener {
             override fun onTracksChanged(tracks: Tracks) {
                 updateTracks(tracks)
-                if (!manualAudioSelection && !applyingAudioPreference) {
-                    selectBestAudioTrack()
+                if (!trackController.manualAudioSelection && !trackController.applyingAudioPreference) {
+                    trackController.selectBestAudioTrack()
                 }
                 updateTechnicalInfo()
             }
@@ -293,88 +285,12 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         )
     }
 
-    private fun externalAudioFor(trackGroupId: String?): ExternalAudioTrack? {
-        val childIndex = trackGroupId?.substringBefore(':', "")?.toIntOrNull() ?: return null
-        return currentExternalAudio.getOrNull(childIndex - 1)
-    }
-
     private fun updateTracks(tracks: Tracks) {
-        val audios = mutableListOf<MediaTrack>()
-        val subtitles = mutableListOf<MediaTrack>()
-
-        tracks.groups.forEachIndexed { groupIndex, group ->
-            if (group.type == C.TRACK_TYPE_AUDIO) {
-                val external = externalAudioFor(group.mediaTrackGroup.id)
-                for (i in 0 until group.length) {
-                    val format = group.getTrackFormat(i)
-                    audios.add(MediaTrack(
-                        id = "audio_$groupIndex-$i",
-                        label = external?.label ?: format.label ?: format.language ?: "Ses ${audios.size + 1}",
-                        language = external?.language ?: format.language,
-                        sourceName = external?.sourceName,
-                        type = C.TRACK_TYPE_AUDIO,
-                        groupIndex = groupIndex,
-                        trackIndex = i,
-                        isSelected = group.isTrackSelected(i),
-                        isSupported = group.isTrackSupported(i),
-                        channelCount = format.channelCount,
-                        sampleMimeType = format.sampleMimeType,
-                        bitrate = format.bitrate.takeIf { it > 0 }?.toLong(),
-                        sampleRate = format.sampleRate.takeIf { it > 0 },
-                    ))
-                }
-            } else if (group.type == C.TRACK_TYPE_TEXT) {
-                for (i in 0 until group.length) {
-                    val format = group.getTrackFormat(i)
-                    LibassDebugLog.d(
-                        "track discovered group=$groupIndex track=$i selected=${group.isTrackSelected(i)} supported=${group.isTrackSupported(i)} ${LibassDebugLog.formatSummary(format)}"
-                    )
-                    subtitles.add(MediaTrack(
-                        id = "sub_$groupIndex-$i",
-                        label = format.label ?: format.language ?: "Subtitle ${subtitles.size + 1}",
-                        language = format.language,
-                        type = C.TRACK_TYPE_TEXT,
-                        groupIndex = groupIndex,
-                        trackIndex = i,
-                        isSelected = group.isTrackSelected(i),
-                        isSupported = group.isTrackSupported(i),
-                        sampleMimeType = format.sampleMimeType,
-                        containerTrackId = format.id
-                    ))
-                }
-            }
-        }
-        _availableAudios.value = audios
-        _availableSubtitles.value = subtitles
-        _currentAudio.value = audios.find { it.isSelected }
-        val selectedSub = subtitles.find { it.isSelected }
-        _currentSubtitle.value = selectedSub
-        LibassDebugLog.d(
-            "tracks updated subtitles=${subtitles.size} selected=${
-                selectedSub?.let { "${it.id} mime=${it.sampleMimeType} label=${it.label} lang=${it.language}" } ?: "<none>"
-            }"
-        )
-        val relay = MediaPlayerControllerFactory.getLibassRelay(exoPlayer)
-        if (relay != null) {
-            val selectedFormat = if (selectedSub != null) {
-                tracks.groups.getOrNull(selectedSub.groupIndex)?.getTrackFormat(selectedSub.trackIndex)
-            } else null
-            relay.setSelectedTrackId(selectedFormat?.id?.toIntOrNull())
-        }
+        trackController.updateTracks(tracks)
     }
 
     fun selectTrack(track: MediaTrack) {
-        LibassDebugLog.d("select track id=${track.id} type=${track.type} group=${track.groupIndex} track=${track.trackIndex} mime=${track.sampleMimeType} label=${track.label} lang=${track.language}")
-        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
-            .buildUpon()
-            .setOverrideForType(TrackSelectionOverride(exoPlayer.currentTracks.groups[track.groupIndex].mediaTrackGroup, track.trackIndex))
-            .build()
-        if (track.type == C.TRACK_TYPE_AUDIO) {
-            manualAudioSelection = true
-            automaticAudioFallbackSelection = false
-            _currentAudio.value = track
-        }
-        else _currentSubtitle.value = track
+        trackController.selectTrack(track)
     }
 
     fun prepareAndPlay(
@@ -392,8 +308,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         MediaPlayerControllerFactory.resetAudioCodecFailures(exoPlayer)
         // A manual choice belongs to the current media item. The next item must
         // be resolved again from language preference and output quality.
-        manualAudioSelection = false
-        automaticAudioFallbackSelection = false
+        trackController.manualAudioSelection = false
+        trackController.automaticAudioFallbackSelection = false
         audioDecoderName = null
         failedAudioCodecName = null
         failedAudioMimeType = null
@@ -632,7 +548,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             }
             .toSet()
         val failedMime = failedAudioMimeType?.trim()?.lowercase()
-        val tracks = _availableAudios.value
+        val tracks = trackController.availableAudios.value
             .filter {
                     it.isSupported &&
                     it.id !in selectedAudioIds &&
@@ -645,8 +561,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
         )
         val best = AudioTrackQualityPolicy.choose(
             tracks = tracks,
-            preferredLanguage = preferredAudioLanguageCode,
-            passthroughTrackIds = passthroughTrackIds(tracks, capabilities),
+            preferredLanguage = trackController.preferredAudioLanguageCode,
+            passthroughTrackIds = trackController.passthroughTrackIds(tracks, capabilities),
             supportedSampleRates = capabilities.pcmSampleRates,
             maxPcmChannels = capabilities.maxPcmChannels,
         ) ?: return
@@ -665,8 +581,8 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
             // just failed (especially when the failed track has a higher
             // lossless codec rank). A new item or an explicit user choice
             // clears manualAudioSelection below.
-            manualAudioSelection = true
-            automaticAudioFallbackSelection = true
+            trackController.manualAudioSelection = true
+            trackController.automaticAudioFallbackSelection = true
             exoPlayer.stop()
             exoPlayer.seekTo(positionMs)
             exoPlayer.prepare()
@@ -772,12 +688,7 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
      * Disable subtitles by clearing text track override
      */
     fun disableSubtitles() {
-        LibassDebugLog.d("disable subtitles")
-        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
-            .buildUpon()
-            .clearOverridesOfType(C.TRACK_TYPE_TEXT)
-            .build()
-        _currentSubtitle.value = null
+        trackController.disableSubtitles()
     }
 
     /**
@@ -802,63 +713,18 @@ class MediaPlayerController(internal val context: Context, val exoPlayer: ExoPla
      * Apply preferred audio language
      */
     fun applyPreferredAudioLanguage(languageCode: String) {
-        if (languageCode.isBlank() || languageCode == "none") return
-        // A new explicit language preference supersedes an older per-item manual choice.
-        manualAudioSelection = false
-        automaticAudioFallbackSelection = false
-        preferredAudioLanguageCode = languageCode
-        exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
-            .buildUpon()
-            .setPreferredAudioLanguage(languageCode)
-            .build()
-        selectBestAudioTrack()
+        trackController.applyPreferredAudioLanguage(languageCode)
     }
 
     private fun selectBestAudioTrack() {
-        if (manualAudioSelection || applyingAudioPreference) return
-        val audioTracks = _availableAudios.value.filter { it.isSupported }
-        if (audioTracks.isEmpty()) return
-        val outputCapabilities = AudioCapabilityResolver.resolve(
-            context,
-            AudioCapabilityResolver.mediaAudioAttributes()
-        )
-        val passthroughTrackIds = passthroughTrackIds(audioTracks, outputCapabilities)
-        val best = AudioTrackQualityPolicy.choose(
-            tracks = audioTracks,
-            preferredLanguage = preferredAudioLanguageCode,
-            passthroughTrackIds = passthroughTrackIds,
-            supportedSampleRates = outputCapabilities.pcmSampleRates,
-            maxPcmChannels = outputCapabilities.maxPcmChannels,
-        ) ?: return
-        if (best.isSelected) return
-        val group = exoPlayer.currentTracks.groups.getOrNull(best.groupIndex) ?: return
-        applyingAudioPreference = true
-        try {
-            exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
-                .buildUpon()
-                .setOverrideForType(TrackSelectionOverride(group.mediaTrackGroup, best.trackIndex))
-                .build()
-        } finally {
-            applyingAudioPreference = false
-        }
+        trackController.selectBestAudioTrack()
     }
 
     private fun passthroughTrackIds(
         tracks: List<MediaTrack>,
         capabilities: AudioOutputCapabilities,
     ): Set<String> {
-        if (MediaPlayerControllerFactory.audioProcessingMode(exoPlayer) != "reference") {
-            return emptySet()
-        }
-        val attributes = AudioCapabilityResolver.mediaAudioAttributes()
-        return tracks.mapNotNull { track ->
-            val format = exoPlayer.currentTracks.groups
-                .getOrNull(track.groupIndex)
-                ?.takeIf { it.type == C.TRACK_TYPE_AUDIO }
-                ?.getTrackFormat(track.trackIndex)
-                ?: return@mapNotNull null
-            track.id.takeIf { capabilities.supportsPassthrough(format, attributes) }
-        }.toSet()
+        return trackController.passthroughTrackIds(tracks, capabilities)
     }
 
 }

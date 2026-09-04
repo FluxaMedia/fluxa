@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -91,7 +92,7 @@ class SimklScrobbleWorker @AssistedInject constructor(
                         profileManager.updateProfile(profile.id) { it.copy(simklAccessToken = null) }
                         Result.failure()
                     }
-                    response.code() == 429 || response.code() >= 500 -> {
+                    FluxaCoreNative.externalSyncWorkerRetryAction(response.code(), runAttemptCount) == "retry" -> {
                         onSyncFailure(profileId)
                         Result.retry()
                     }
@@ -105,7 +106,11 @@ class SimklScrobbleWorker @AssistedInject constructor(
             onFailure = { error ->
                 Log.w("SimklScrobbleWorker", "Scrobble $action failed for $mediaId", error)
                 onSyncFailure(profileId)
-                Result.retry()
+                if (FluxaCoreNative.externalSyncWorkerRetryAction(null, runAttemptCount) == "retry") {
+                    Result.retry()
+                } else {
+                    Result.failure()
+                }
             }
         )
     }

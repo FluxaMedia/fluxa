@@ -195,34 +195,8 @@ internal fun OAuthRedirectEffect(
     }
 }
 
-private fun ProfileManager.persistOAuthUpdate(provider: String, updated: UserProfile): UserProfile {
-    return updateProfile(updated.id) { current ->
-        when (provider) {
-            "trakt" -> current.copy(
-                traktAccessToken = updated.traktAccessToken,
-                traktRefreshToken = updated.traktRefreshToken,
-                traktTokenExpiresAt = updated.traktTokenExpiresAt,
-                traktUsername = updated.traktUsername,
-                traktLastSyncAt = updated.traktLastSyncAt,
-                traktLastSyncedItems = updated.traktLastSyncedItems,
-                traktLastContinueWatchingCount = updated.traktLastContinueWatchingCount,
-                traktLastWatchlistCount = updated.traktLastWatchlistCount
-            )
-            "simkl" -> current.copy(
-                simklAccessToken = updated.simklAccessToken,
-                simklUsername = updated.simklUsername,
-                simklLastSyncAt = updated.simklLastSyncAt
-            )
-            "anilist" -> current.copy(
-                anilistAccessToken = updated.anilistAccessToken,
-                anilistRefreshToken = updated.anilistRefreshToken,
-                anilistTokenExpiresAt = updated.anilistTokenExpiresAt,
-                anilistUsername = updated.anilistUsername
-            )
-            else -> current
-        }
-    } ?: updated
-}
+private fun ProfileManager.persistOAuthUpdate(provider: String, updated: UserProfile): UserProfile =
+    mergeOAuthUpdate(provider, updated)
 
 @Composable
 internal fun TraktDeviceAuthDialog(

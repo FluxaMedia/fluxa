@@ -59,8 +59,6 @@ class HomeViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val appContext = context.applicationContext
-    private var externalPlaybackTrackingJob: Job? = null
-    private var externalPlaybackTrackingSession: ExternalPlaybackTrackingSession? = null
     private val metaListType = object : TypeToken<List<Meta>>() {}.type
     private val categoryListType = object : TypeToken<List<HomeCategory>>() {}.type
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
@@ -91,6 +89,34 @@ class HomeViewModel @Inject constructor(
             "library" to mapOf("uiState" to LibraryUiState())
         )
     )
+
+    private data class CoreAction(val type: String, val value: Any?)
+
+    private data class CoreStateSnapshot(val home: CoreHomeSnapshot = CoreHomeSnapshot())
+
+    private data class CoreHomeSnapshot(
+        val categories: List<HomeCategory> = emptyList(),
+        val isLoading: Boolean = false,
+        val currentFilter: String = "all",
+        val isDirectLoading: Boolean = false,
+        val traktContinueWatchingLastUpdatedAt: Long = 0L,
+        val userAddons: List<AddonDescriptor> = emptyList(),
+        val watchlist: List<Meta> = emptyList(),
+        val likedItems: List<Meta> = emptyList(),
+        val activeProfile: UserProfile? = null,
+        val currentWatchlist: List<Meta> = emptyList(),
+        val externalContinueWatching: List<Meta> = emptyList(),
+        val traktWatchedState: TraktWatchedState = TraktWatchedState()
+    )
+
+    private fun dispatchHomeState(type: String, value: Any?): CoreHomeSnapshot? =
+        runCatching {
+            gson.fromJson(
+                coreState.dispatch(CoreAction(type, value)),
+                CoreStateSnapshot::class.java
+            )?.home
+        }.getOrNull()
+
     private val categoryState = HomeCategoryStateStore()
     val categories: StateFlow<List<HomeCategory>> = categoryState.categories
     val collectionFolderCategories: StateFlow<Map<String, HomeCategory>> = categoryState.folderCategories
@@ -324,6 +350,36 @@ class HomeViewModel @Inject constructor(
             refreshDynamicRows = ::refreshDynamicRows,
             billboardMovie = { billboardState.movieValue },
             setBillboardWatchlist = { billboardState.watchlistValue = it },
+        )
+    }
+
+    private val externalPlaybackCoordinator by lazy {
+        HomeExternalPlaybackCoordinator(
+            scope = viewModelScope,
+            context = appContext,
+            activeProfile = { currentActiveProfile },
+            playbackSyncCoordinator = playbackSyncCoordinator,
+            saveProgress = { meta, position, duration, videoId, streamIndex, episodeName, streamUrl, streamTitle ->
+                headlessPlaybackCoordinator.savePlaybackProgress(
+                    meta = meta,
+                    timeOffset = position,
+                    duration = duration,
+                    videoId = videoId,
+                    streamIndex = streamIndex,
+                    episodeName = episodeName,
+                    lastStreamUrl = streamUrl,
+                    lastStreamTitle = streamTitle,
+                    scrobbleTraktPause = false
+                )
+            },
+            markWatched = { meta, videoId, episodeName, duration ->
+                headlessPlaybackCoordinator.markWatchedFromPlayback(
+                    meta = meta,
+                    videoId = videoId,
+                    episodeName = episodeName,
+                    watchedDuration = duration
+                )
+            }
         )
     }
 
@@ -675,142 +731,25 @@ class HomeViewModel @Inject constructor(
         streamUrl: String?,
         streamTitle: String?,
         targetPackage: String?,
-    ) {
-        val profile = currentActiveProfile ?: return
-        externalPlaybackTrackingJob?.cancel()
-        val session = ExternalPlaybackTrackingSession(
-            profile = profile,
-            meta = meta,
-            videoId = videoId,
-            streamIndex = streamIndex,
-            episodeName = episodeName,
-            streamUrl = streamUrl,
-            streamTitle = streamTitle,
-            lastPositionMs = initialPositionMs.coerceAtLeast(0L),
-            lastDurationMs = initialDurationMs.coerceAtLeast(0L),
-        )
-        externalPlaybackTrackingSession = session
-        externalPlaybackTrackingJob = viewModelScope.launch {
-            AndroidExternalPlaybackTracker.monitor(
-                context = appContext,
-                targetPackage = targetPackage,
-                expectedTitle = episodeName ?: meta.name,
-            ) { sample ->
-                handleExternalPlaybackSample(session, sample)
-            }
-        }
-    }
+    ) = externalPlaybackCoordinator.start(
+        meta = meta,
+        videoId = videoId,
+        initialPositionMs = initialPositionMs,
+        initialDurationMs = initialDurationMs,
+        streamIndex = streamIndex,
+        episodeName = episodeName,
+        streamUrl = streamUrl,
+        streamTitle = streamTitle,
+        targetPackage = targetPackage,
+    )
 
     fun finishExternalPlaybackTracking(
         returnedPositionMs: Long? = null,
         returnedDurationMs: Long? = null,
-    ) {
-        val session = externalPlaybackTrackingSession ?: return
-        externalPlaybackTrackingJob?.cancel()
-        externalPlaybackTrackingJob = null
-        returnedPositionMs?.takeIf { it >= 0L }?.let { session.lastPositionMs = it }
-        returnedDurationMs?.takeIf { it > 0L }?.let { session.lastDurationMs = it }
-        viewModelScope.launch { finishExternalPlaybackSession(session) }
-    }
+    ) = externalPlaybackCoordinator.finish(returnedPositionMs, returnedDurationMs)
 
     fun externalPlaybackMediaSessionAccessAvailable(): Boolean =
-        AndroidExternalPlaybackTracker.hasMediaSessionAccess(appContext)
-
-    private suspend fun handleExternalPlaybackSample(
-        session: ExternalPlaybackTrackingSession,
-        sample: ExternalPlaybackSample,
-    ) {
-        if (session.finished || externalPlaybackTrackingSession !== session) return
-        session.lastPositionMs = sample.positionMs.coerceAtLeast(0L)
-        if (sample.durationMs > 0L) session.lastDurationMs = sample.durationMs
-        val duration = session.lastDurationMs
-        val position = session.lastPositionMs
-
-        when (sample.state) {
-            ExternalPlaybackState.PLAYING -> {
-                if (duration > 0L) {
-                    if (!session.traktStarted || session.wasPaused) {
-                        session.traktStarted = playbackSyncCoordinator.scheduleTraktScrobble(
-                            session.profile, session.meta, session.videoId, position, duration, "start"
-                        ) || session.traktStarted
-                    }
-                    if (!session.simklStarted || session.wasPaused) {
-                        session.simklStarted = playbackSyncCoordinator.scheduleSimklScrobble(
-                            session.profile, session.meta, session.videoId, position, duration, "start"
-                        ) || session.simklStarted
-                    }
-                }
-                session.wasPaused = false
-                val now = System.currentTimeMillis()
-                if (now - session.lastProgressSavedAt >= 10_000L) {
-                    saveExternalPlaybackProgress(session)
-                    session.lastProgressSavedAt = now
-                }
-            }
-            ExternalPlaybackState.PAUSED -> {
-                session.wasPaused = true
-                saveExternalPlaybackProgress(session)
-                if (duration > 0L) {
-                    if (session.traktStarted) {
-                        playbackSyncCoordinator.scheduleTraktScrobble(
-                            session.profile, session.meta, session.videoId, position, duration, "pause"
-                        )
-                    }
-                    if (session.simklStarted) {
-                        playbackSyncCoordinator.scheduleSimklScrobble(
-                            session.profile, session.meta, session.videoId, position, duration, "pause"
-                        )
-                    }
-                }
-            }
-            ExternalPlaybackState.STOPPED -> finishExternalPlaybackSession(session)
-        }
-    }
-
-    private fun saveExternalPlaybackProgress(session: ExternalPlaybackTrackingSession) {
-        savePlaybackProgress(
-            meta = session.meta,
-            timeOffset = session.lastPositionMs,
-            duration = session.lastDurationMs,
-            videoId = session.videoId,
-            streamIndex = session.streamIndex,
-            episodeName = session.episodeName,
-            lastStreamUrl = session.streamUrl,
-            lastStreamTitle = session.streamTitle,
-            scrobbleTraktPause = false,
-        )
-    }
-
-    private suspend fun finishExternalPlaybackSession(session: ExternalPlaybackTrackingSession) {
-        if (session.finished || externalPlaybackTrackingSession !== session) return
-        session.finished = true
-        externalPlaybackTrackingSession = null
-        saveExternalPlaybackProgress(session)
-
-        val duration = session.lastDurationMs
-        val position = session.lastPositionMs
-        if (duration > 0L) {
-            if (session.traktStarted) {
-                playbackSyncCoordinator.scheduleTraktScrobble(
-                    session.profile, session.meta, session.videoId, position, duration, "stop"
-                )
-            }
-            if (session.simklStarted) {
-                playbackSyncCoordinator.scheduleSimklScrobble(
-                    session.profile, session.meta, session.videoId, position, duration, "stop"
-                )
-            }
-            val progress = (position.toDouble() / duration.toDouble() * 100.0).coerceIn(0.0, 100.0)
-            if (progress >= session.profile.safeWatchedThresholdPercent.toDouble()) {
-                markWatchedFromPlayback(
-                    meta = session.meta,
-                    videoId = session.videoId,
-                    episodeName = session.episodeName,
-                    watchedDuration = duration,
-                )
-            }
-        }
-    }
+        externalPlaybackCoordinator.hasMediaSessionAccess()
 
     fun savePlaybackProgress(
         meta: Meta,
@@ -1314,54 +1253,60 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun setCategoriesState(categories: List<HomeCategory>) {
-        categoryState.setCategories(categories)
+        categoryState.setCategories(dispatchHomeState("setHomeCategories", categories)?.categories ?: categories)
     }
 
     private fun setLoadingState(isLoading: Boolean) {
-        _isLoading.value = isLoading
+        _isLoading.value = dispatchHomeState("setHomeLoading", isLoading)?.isLoading ?: isLoading
     }
 
     private fun setCurrentFilterState(filter: String) {
-        _currentFilter.value = filter.takeIf { it.isNotEmpty() } ?: "all"
+        val normalized = filter.takeIf { it.isNotEmpty() } ?: "all"
+        _currentFilter.value = dispatchHomeState("setHomeCurrentFilter", normalized)?.currentFilter ?: normalized
     }
 
     private fun setDirectLoadingState(isLoading: Boolean) {
-        _isDirectLoading.value = isLoading
+        _isDirectLoading.value = dispatchHomeState("setHomeDirectLoading", isLoading)?.isDirectLoading ?: isLoading
     }
 
     private fun setTraktUpdatedAtState(updatedAt: Long) {
-        _traktContinueWatchingLastUpdatedAt.value = updatedAt
+        _traktContinueWatchingLastUpdatedAt.value = dispatchHomeState(
+            "setTraktContinueWatchingLastUpdatedAt",
+            updatedAt
+        )?.traktContinueWatchingLastUpdatedAt ?: updatedAt
     }
 
     private fun setUserAddonsState(addons: List<AddonDescriptor>) {
-        _userAddons.value = addons
+        _userAddons.value = dispatchHomeState("setUserAddons", addons)?.userAddons ?: addons
     }
 
     private fun setWatchlistState(items: List<Meta>) {
-        _watchlist.value = items
+        _watchlist.value = dispatchHomeState("setWatchlist", items)?.watchlist ?: items
     }
 
     private fun setLikedItemsState(items: List<Meta>) {
-        _likedItems.value = items
+        _likedItems.value = dispatchHomeState("setLikedItems", items)?.likedItems ?: items
     }
 
     private fun setActiveProfileState(profile: UserProfile?) {
         if (profile == null && currentActiveProfile != null) return
-        currentActiveProfile = profile
+        val home = dispatchHomeState("setActiveProfile", profile)
+        currentActiveProfile = home?.activeProfile ?: profile
         watchlistManager.setActiveProfile(profile?.id.orEmpty())
     }
 
     private fun setCurrentWatchlistState(items: List<Meta>) {
-        currentWatchlist = items
-        _currentContinueWatchingCount.value = items.size
+        val projected = dispatchHomeState("setCurrentWatchlist", items)?.currentWatchlist ?: items
+        currentWatchlist = projected
+        _currentContinueWatchingCount.value = projected.size
     }
 
     private fun setExternalContinueWatchingState(items: List<Meta>) {
-        externalContinueWatching = items
+        externalContinueWatching = dispatchHomeState("setExternalContinueWatching", items)?.externalContinueWatching ?: items
     }
 
     private fun setTraktWatchedState(state: TraktWatchedState) {
-        traktWatchedState = state
+        traktWatchedState = dispatchHomeState("setTraktWatchedState", state)?.traktWatchedState ?: state
     }
 
     private fun prefetchDirectPlayback(meta: Meta, detail: MetaDetail?) {
@@ -1386,20 +1331,3 @@ class HomeViewModel @Inject constructor(
     }
 
 }
-
-private data class ExternalPlaybackTrackingSession(
-    val profile: UserProfile,
-    val meta: Meta,
-    val videoId: String?,
-    val streamIndex: Int,
-    val episodeName: String?,
-    val streamUrl: String?,
-    val streamTitle: String?,
-    var lastPositionMs: Long,
-    var lastDurationMs: Long = 0L,
-    var lastProgressSavedAt: Long = 0L,
-    var traktStarted: Boolean = false,
-    var simklStarted: Boolean = false,
-    var wasPaused: Boolean = false,
-    var finished: Boolean = false,
-)

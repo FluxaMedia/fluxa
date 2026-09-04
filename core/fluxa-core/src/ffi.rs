@@ -256,6 +256,7 @@ fn route(method: &str, args_json: &str) -> Outcome {
         method,
         "pluginManifestParse"
             | "pluginExecutionPlan"
+            | "pluginUpdatePlan"
             | "pluginStreamResultsParse"
             | "pluginStreamResultsToStreams"
     ) {

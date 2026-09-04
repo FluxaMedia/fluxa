@@ -1,9 +1,7 @@
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.player.STREAM_SOURCE_MODE_FIRST
-import com.fluxa.app.player.STREAM_SOURCE_MODE_MANUAL
-
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.ui.toMeta
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 
@@ -12,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.fluxa.app.core.fromState
 import com.fluxa.app.core.fromStateList
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.StreamProgressUpdate
 import com.fluxa.app.core.StremioId
 import com.fluxa.app.data.repository.CommunityDiscussionRepository
@@ -29,7 +28,6 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -53,6 +51,13 @@ private data class DetailSecondaryDecoded(
     val similarItems: List<Meta>,
     val trailers: List<DetailTrailer>,
     val ratings: List<MetaRating>
+)
+
+private data class DetailStreamsDecoded(
+    val streams: List<Stream>,
+    val availableAddons: List<String>,
+    val loadingAddonNames: List<String>,
+    val visibleStreams: List<Stream>
 )
 
 @HiltViewModel
@@ -81,6 +86,18 @@ class DetailViewModel @Inject constructor(
 
     private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
     private val libraryCommandRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
+    private val downloadCoordinator by lazy {
+        DetailDownloadCoordinator(
+            runtime = headlessRuntime,
+            gson = gson,
+            currentDetail = { _uiState.value.detail },
+            seasonEpisodes = { _uiState.value.seasonEpisodes },
+            userAddons = { _uiState.value.userAddons },
+            currentProfile = { currentProfile },
+            buildRequestIds = ::buildStreamRequestIds,
+            fetchSubtitles = ::getSubtitlesFromAddon
+        )
+    }
 
     init {
         viewModelScope.launch {
@@ -171,7 +188,11 @@ class DetailViewModel @Inject constructor(
                     )
                     if (generation != detailLoadGeneration) return@launch
                     val episodes = if (type == "series") {
-                        seasonVideosForSelection(initialDetail.videos.orEmpty(), 1)
+                        withContext(Dispatchers.Default) {
+                            FluxaCoreNative.detailSeasonVideos(
+                                gson.toJson(mapOf("season" to 1, "videos" to initialDetail.videos.orEmpty()))
+                            )
+                        }
                     } else emptyList()
                     val userAddons = withContext(Dispatchers.Default) {
                         gson.fromStateList<AddonDescriptor>(localState?.get("userAddons"))
@@ -231,19 +252,26 @@ class DetailViewModel @Inject constructor(
                     )
                 }
 
-                val effectiveType = if (id.startsWith("cs3:") && result?.type != null) result.type else type
-                if (effectiveType == "series") {
-                    currentSeriesLookupId = normalizeSeriesLookupId(result?.id ?: id)
-                }
-
-                val resolvedId = result?.id ?: id
+                val loadPlan = FluxaCoreNative.detailLoadPlan(
+                    gson.toJson(
+                        mapOf(
+                            "requestedType" to type,
+                            "requestedId" to id,
+                            "season" to 1,
+                            "detail" to (result ?: initialDetail)
+                        )
+                    )
+                )
+                val effectiveType = loadPlan.effectiveType.ifBlank { type }
+                currentSeriesLookupId = loadPlan.seriesLookupId.takeIf { effectiveType == "series" }
+                val resolvedId = loadPlan.resolvedId.ifBlank { result?.id ?: id }
                 android.util.Log.d("CS3Detail", "loadDetail: type=$type effectiveType=$effectiveType resolvedId=${resolvedId.take(30)} resultVideos=${result?.videos?.size ?: "null"}")
                 val localState = headlessRuntime.dispatch(
                     mapOf(
                         "type" to "detailLocalStateRequested",
                         "primaryId" to resolvedId,
                         "fallbackId" to id,
-                        "contentType" to type,
+                        "contentType" to effectiveType,
                         "profile" to profile
                     )
                 ).state["detail"] as? Map<*, *>
@@ -280,7 +308,7 @@ class DetailViewModel @Inject constructor(
                 }
 
                 launch {
-                    if (effectiveType == "series") loadSeason(resolvedId, 1)
+                    if (effectiveType == "series") loadSeason(resolvedId, loadPlan.season)
                     val secondary = headlessRuntime.dispatch(
                         mapOf(
                             "type" to "detailSecondaryRequested",
@@ -315,20 +343,15 @@ class DetailViewModel @Inject constructor(
                 }
 
                 launch {
-                    val streamLookupId = if (effectiveType == "series") {
-                        currentSeriesLookupId ?: normalizeSeriesLookupId(resolvedId)
-                    } else {
-                        resolvedId
-                    }
                     headlessRuntime.dispatch(
                         mapOf(
                             "type" to "detailPrefetchRequested",
                             "contentType" to effectiveType,
                             "id" to id,
-                            "streamLookupId" to streamLookupId,
-                            "title" to result?.name,
-                            "originalName" to result?.originalName,
-                            "year" to result?.releaseInfo?.toIntOrNull(),
+                            "streamLookupId" to loadPlan.streamLookupId,
+                            "title" to loadPlan.title,
+                            "originalName" to loadPlan.originalName,
+                            "year" to loadPlan.year,
                             "language" to lang,
                             "profile" to profile
                         )
@@ -453,7 +476,12 @@ class DetailViewModel @Inject constructor(
             val allVideos = _uiState.value.detail?.videos.orEmpty()
             if (allVideos.isNotEmpty()) {
                 android.util.Log.d("CS3Detail", "loadSeason from detail: detail=${_uiState.value.detail?.name}, videosInDetail=${allVideos.size}")
-                _uiState.update { it.copy(seasonEpisodes = seasonVideosForSelection(allVideos, seasonNumber)) }
+                val episodes = withContext(Dispatchers.Default) {
+                    FluxaCoreNative.detailSeasonVideos(
+                        gson.toJson(mapOf("season" to seasonNumber, "videos" to allVideos))
+                    )
+                }
+                _uiState.update { it.copy(seasonEpisodes = episodes) }
                 return@launch
             }
             if (currentStrictProviderData) return@launch
@@ -477,14 +505,6 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    private fun seasonVideosForSelection(videos: List<Video>, seasonNumber: Int): List<Video> {
-        val hasSeasonData = videos.any { it.season != null && it.season!! > 0 }
-        if (!hasSeasonData) return videos
-        val filtered = videos.filter { it.season == seasonNumber }
-        if (filtered.isNotEmpty()) return filtered
-        val firstAvailable = videos.mapNotNull { it.season }.filter { it > 0 }.minOrNull()
-        return if (firstAvailable != null) videos.filter { it.season == firstAvailable } else videos
-    }
 
     fun markEpisodeWatched(seriesId: String, episode: Video, watched: Boolean = true) {
         val videoId = episode.id
@@ -588,7 +608,7 @@ class DetailViewModel @Inject constructor(
             }
 
     private fun normalizeSeriesLookupId(rawId: String): String {
-        return StremioId.normalizeSeriesLookupId(rawId)
+        return FluxaCoreNative.detailSeriesLookupId(rawId)
     }
 
     fun abandonShow(profile: UserProfile) {
@@ -686,20 +706,27 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    private fun MetaDetail.toMeta() = Meta(
-        id = id, name = name, type = type, poster = poster, background = background,
-        logo = logo, description = description, imdbRating = imdbRating, releaseInfo = releaseInfo,
-        released = released, originalLanguage = originalLanguage, originalName = originalName, videos = videos, trailers = trailers
-    )
-
     fun setSelectedAddon(addon: String?) {
-        val currentStreams = _uiState.value.streams
-        _uiState.update {
-            it.copy(
-                selectedAddon = addon,
-                filteredStreams = if (addon == null) currentStreams
-                                 else currentStreams.filter { s -> s.addonName == addon }
-            )
+        viewModelScope.launch {
+            val result = withContext(Dispatchers.Default) {
+                headlessRuntime.dispatch(
+                    mapOf(
+                        "type" to "detailSelectedAddonChanged",
+                        "addon" to addon
+                    )
+                )
+            }
+            val detail = result.state["detail"] as? Map<*, *>
+            val selectedAddon = detail?.get("selectedAddon") as? String
+            val visibleStreams = withContext(Dispatchers.Default) {
+                gson.fromStateList<Stream>(detail?.get("visibleStreams"))
+            }
+            _uiState.update {
+                it.copy(
+                    selectedAddon = selectedAddon,
+                    filteredStreams = visibleStreams
+                )
+            }
         }
     }
 
@@ -766,20 +793,20 @@ class DetailViewModel @Inject constructor(
 
     private suspend fun applyDetailStreamState(detail: Map<*, *>?) {
         val decoded = withContext(Dispatchers.Default) {
-            Triple(
-                gson.fromStateList<Stream>(detail?.get("streams")),
-                gson.fromStateList<String>(detail?.get("availableAddons")),
-                gson.fromStateList<String>(detail?.get("loadingAddonNames"))
+            DetailStreamsDecoded(
+                streams = gson.fromStateList(detail?.get("streams")),
+                availableAddons = gson.fromStateList(detail?.get("availableAddons")),
+                loadingAddonNames = gson.fromStateList(detail?.get("loadingAddonNames")),
+                visibleStreams = gson.fromStateList(detail?.get("visibleStreams"))
             )
         }
-        val allStreams = decoded.first
-        val sel = _uiState.value.selectedAddon
         _uiState.update {
             it.copy(
-                streams = allStreams,
-                filteredStreams = if (sel == null) allStreams else allStreams.filter { s -> s.addonName == sel },
-                availableAddons = decoded.second,
-                loadingAddonNames = decoded.third,
+                streams = decoded.streams,
+                filteredStreams = decoded.visibleStreams,
+                selectedAddon = detail?.get("selectedAddon") as? String,
+                availableAddons = decoded.availableAddons,
+                loadingAddonNames = decoded.loadingAddonNames,
                 hasStreamProviders = detail?.get("hasStreamProviders") as? Boolean ?: it.hasStreamProviders
             )
         }
@@ -823,127 +850,12 @@ class DetailViewModel @Inject constructor(
     }
 
     fun downloadEpisodes(episodes: List<Video?>, context: android.content.Context? = null) {
-        val detail = _uiState.value.detail ?: return
         val profile = currentProfile
-        val targets = episodes.filterNotNull().filter { !detailIsUpcoming(it.released) }
-        if (targets.isEmpty()) return
         viewModelScope.launch {
-            var queued = 0
-            targets.forEach { episode ->
-                if (enqueueEpisodeDownload(detail, episode, profile)) queued += 1
-            }
+            val queued = downloadCoordinator.queueEpisodes(episodes)
             val key = if (queued > 0) "downloads.queued" else "downloads.failed"
             showToast(context, AppStrings.t(profile?.safeLanguage, key), android.widget.Toast.LENGTH_SHORT)
         }
-    }
-
-    private suspend fun enqueueEpisodeDownload(detail: MetaDetail, episode: Video, profile: UserProfile?): Boolean {
-        val requestId = episode.id.takeIf { it.isNotBlank() } ?: return false
-        val language = profile?.safeLanguage ?: "en"
-        val streams = fetchStreamsForDownload(detail.type, requestId, language)
-        if (streams.isEmpty()) return false
-        val mode = profile?.safeDownloadSourceSelectionMode ?: STREAM_SOURCE_MODE_FIRST
-        val effectiveMode = if (mode == STREAM_SOURCE_MODE_MANUAL) STREAM_SOURCE_MODE_FIRST else mode
-        val selectedIndex = selectStreamIndex(
-            streams = streams,
-            currentVideoId = requestId,
-            initialStreamIndex = 0,
-            savedUrl = null,
-            savedTitle = null,
-            sourceSelectionMode = effectiveMode,
-            regexPattern = profile?.safeDownloadSourceRegexPattern,
-            preferredBingeGroup = null
-        ).takeIf { it in streams.indices } ?: 0
-        val stream = streams.getOrNull(selectedIndex) ?: return false
-        val subtitle = selectDownloadSubtitle(profile, detail.type, requestId, stream)
-        val result = headlessRuntime.dispatch(
-            mapOf(
-                "type" to "offlineDownloadRequested",
-                "meta" to detail.toMeta(),
-                "video" to episode,
-                "videoId" to requestId,
-                "stream" to stream,
-                "subtitle" to subtitle,
-                "profileId" to profile?.id,
-                "language" to language
-            )
-        )
-        val offline = result.state["offline"] as? Map<*, *>
-        return offline?.get("error") == null
-    }
-
-    private suspend fun fetchStreamsForDownload(type: String, id: String, language: String): List<Stream> {
-        val result = headlessRuntime.dispatch(
-            mapOf(
-                "type" to "detailStreamsRequested",
-                "contentType" to type,
-                "requestIds" to buildStreamRequestIds(type, id, language),
-                "detail" to _uiState.value.detail,
-                "seasonEpisodes" to _uiState.value.seasonEpisodes,
-                "language" to language,
-                "profile" to currentProfile
-            )
-        )
-        val detail = result.state["detail"] as? Map<*, *>
-        return withContext(Dispatchers.Default) {
-            gson.fromStateList(detail?.get("streams"))
-        }
-    }
-
-    private suspend fun selectDownloadSubtitle(
-        profile: UserProfile?,
-        type: String,
-        id: String,
-        stream: Stream
-    ): OfflineSubtitleOption? {
-        val setting = profile?.safeDownloadSubtitleLanguage ?: "preferred"
-        if (setting == "off") return null
-        val preferred = if (setting == "preferred") {
-            profile?.safePreferredSubtitleLanguage
-        } else {
-            setting
-        }?.substringBefore('-')?.substringBefore('_')?.lowercase(java.util.Locale.ROOT)
-        val options = downloadSubtitleOptionsForStream(type, id, stream)
-        return if (preferred.isNullOrBlank()) {
-            options.firstOrNull()
-        } else {
-            options.firstOrNull { it.language?.substringBefore('-')?.substringBefore('_')?.lowercase(java.util.Locale.ROOT) == preferred }
-                ?: options.firstOrNull()
-        }
-    }
-
-    private suspend fun downloadSubtitleOptionsForStream(type: String, id: String, stream: Stream): List<OfflineSubtitleOption> {
-        val inline = stream.subtitles.orEmpty().mapNotNull { subtitle ->
-            val url = subtitle.subtitleUrl() ?: return@mapNotNull null
-            val language = subtitle.subtitleLanguages().firstOrNull()?.lowercase(java.util.Locale.ROOT)
-            OfflineSubtitleOption(
-                label = listOfNotNull(language, stream.addonName).joinToString(" - ").ifBlank { url },
-                language = language,
-                url = url
-            )
-        }
-        val remote = withContext(Dispatchers.IO) {
-            supervisorScope {
-                _uiState.value.userAddons
-                    .filter { it.supportsStremioResource("subtitles", type, id) }
-                    .map { addon ->
-                        async {
-                            getSubtitlesFromAddon(addon.transportUrl, type, id, stream.subtitleExtraArgs()).mapNotNull { subtitle ->
-                                val url = subtitle.subtitleUrl() ?: return@mapNotNull null
-                                val language = subtitle.subtitleLanguages().firstOrNull()?.lowercase(java.util.Locale.ROOT)
-                                OfflineSubtitleOption(
-                                    label = listOfNotNull(language, addon.manifest.name).joinToString(" - ").ifBlank { url },
-                                    language = language,
-                                    url = url
-                                )
-                            }
-                        }
-                    }
-                    .map { it.await() }
-                    .flatten()
-            }
-        }
-        return inline + remote
     }
 
     private fun showToast(context: android.content.Context?, message: String, length: Int = android.widget.Toast.LENGTH_LONG) {

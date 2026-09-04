@@ -66,8 +66,19 @@ fun PlayerScreen(
     val deviceType = LocalDeviceType.current
     val lang = activeProfile?.safeLanguage ?: "en"
     val isAnimeMeta = meta.genres?.any { g -> g.lowercase().contains("anime") } == true
-    val useMpvBackend = activeProfile?.safePreferredPlayer == "mpv" ||
-        (activeProfile?.safeAnimeUseMpv == true && isAnimeMeta)
+    val configuredPlayer = activeProfile?.safePreferredPlayer.orEmpty()
+    val backendPlan = remember(configuredPlayer, activeProfile?.safeAnimeUseMpv, isAnimeMeta) {
+        val preferredPlayer = when {
+            configuredPlayer == "mpv" -> "mpv"
+            configuredPlayer == "exoplayer" -> "exoplayer"
+            activeProfile?.safeAnimeUseMpv == true && isAnimeMeta -> "mpv"
+            else -> "internal"
+        }
+        FluxaCoreNative.playerBackendSelection(
+            JsonObject().apply { addProperty("preferredPlayer", preferredPlayer) }.toString()
+        )
+    }
+    val useMpvBackend = backendPlan.backend == "mpv"
     val mpvCustomOptions = activeProfile?.safeMpvCustomOptions.orEmpty()
     val audioProcessingMode = activeProfile?.safeAudioProcessingMode ?: "reference"
     // ExoPlayer and MPV each own their route callback and reconfiguration.

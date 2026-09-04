@@ -62,10 +62,10 @@ targets:
     platform: tvOS
     sources:
       - path: Shared/FluxaAppleCustomPlayerViewController.swift
+      - path: Shared/FluxaAppleAVPlayerStreamAdapter.swift
       - path: AppleCore
         excludes:
           - FluxaAppleAddonStoreManager.swift
-          - FluxaAppleCatalogBootstrap.swift
           - FluxaAppleDownloadManager.swift
           - FluxaApplePluginRepositoryManager.swift
       - path: tvOS

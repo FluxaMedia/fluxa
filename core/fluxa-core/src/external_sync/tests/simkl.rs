@@ -27,6 +27,33 @@ fn simkl_watching_items_are_kept_for_continue_watching() {
 }
 
 #[test]
+fn simkl_library_items_share_watchlist_metadata_mapping() {
+    let items = simkl_library_to_items_json(
+        r#"[{"show":{"title":"Example","poster":"poster","fanart":"fanart","ids":{"imdb":"tt42"}}}]"#,
+        r#"[{"movie":{"title":"Film","ids":{"tmdb":7}}}]"#,
+    )
+    .expect("items");
+    let items: Value = serde_json::from_str(&items).unwrap();
+    assert_eq!(items[0]["id"], "tt42");
+    assert_eq!(items[0]["type"], "series");
+    assert_eq!(items[0]["poster"], "https://simkl.in/posters/poster_m.jpg");
+    assert_eq!(items[1]["id"], "tmdb:7");
+    assert_eq!(items[1]["type"], "movie");
+}
+
+#[test]
+fn simkl_library_items_preserve_string_and_fallback_ids() {
+    let items = simkl_library_to_items_json(
+        r#"[{"show":{"title":"Slug show","ids":{"slug":"slug-show"}}}]"#,
+        r#"[{"movie":{"title":"String movie","ids":{"tmdb":"7"}}}]"#,
+    )
+    .expect("items");
+    let items: Value = serde_json::from_str(&items).unwrap();
+    assert_eq!(items[0]["id"], "simkl:slug-show");
+    assert_eq!(items[1]["id"], "tmdb:7");
+}
+
+#[test]
 fn simkl_request_policy_builds_series_history_and_watchlist_removal() {
     let history = simkl_history_request_json(
         &json!({

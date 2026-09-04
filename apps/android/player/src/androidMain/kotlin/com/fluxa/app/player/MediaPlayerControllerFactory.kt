@@ -10,20 +10,9 @@ import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.extractor.DefaultExtractorsFactory
 import androidx.media3.extractor.mkv.MatroskaExtractor
-import androidx.media3.datasource.DataSource
-import androidx.media3.datasource.DataSpec
 import androidx.media3.datasource.DefaultDataSource
-import androidx.media3.datasource.TransferListener
-import androidx.media3.datasource.cache.CacheDataSource
-import androidx.media3.datasource.cache.CacheDataSink
-import androidx.media3.datasource.cache.CacheWriter
-import androidx.media3.datasource.cache.LeastRecentlyUsedCacheEvictor
-import androidx.media3.datasource.cache.SimpleCache
-import androidx.media3.database.StandaloneDatabaseProvider
 import androidx.media3.datasource.okhttp.OkHttpDataSource
-import android.net.Uri
 import kotlinx.coroutines.cancel
-import okhttp3.OkHttpClient
 import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import okio.Buffer
@@ -247,30 +236,11 @@ internal object MediaPlayerControllerFactory {
     }
 
     private const val BYTES_PER_MB = 1024 * 1024
-    private const val PLAYER_CACHE_FRAGMENT_BYTES = 8L * 1024L * 1024L
-    private const val PREFS_PLAYER = "fluxa_player"
-    private const val PREF_BW_ESTIMATE_BPS = "bw_estimate_bps"
-    @Volatile private var playerDiskCache: SimpleCache? = null
     @Volatile private var preferredVideoMimeTypeReady = false
     @Volatile private var preferredVideoMimeTypeCached: String? = null
-    @Volatile private var lastPersistedBandwidthAtMs: Long = 0L
-    @Volatile private var lastPersistedBandwidthBps: Long = 0L
 
-    private fun savedBandwidthEstimate(context: Context): Long =
-        context.getSharedPreferences(PREFS_PLAYER, Context.MODE_PRIVATE)
-            .getLong(PREF_BW_ESTIMATE_BPS, 0L)
-
-    internal fun saveBandwidthEstimate(context: Context, bps: Long) {
-        if (bps <= 0L) return
-        val now = android.os.SystemClock.elapsedRealtime()
-        val previous = lastPersistedBandwidthBps
-        val relativeChange = if (previous > 0L) kotlin.math.abs(bps - previous).toDouble() / previous.toDouble() else 1.0
-        if (now - lastPersistedBandwidthAtMs < 30_000L && relativeChange < 0.25) return
-        lastPersistedBandwidthAtMs = now
-        lastPersistedBandwidthBps = bps
-        context.applicationContext.getSharedPreferences(PREFS_PLAYER, Context.MODE_PRIVATE)
-            .edit().putLong(PREF_BW_ESTIMATE_BPS, bps).apply()
-    }
+    internal fun saveBandwidthEstimate(context: Context, bps: Long) =
+        MediaPlayerCache.saveBandwidthEstimate(context, bps)
 
     internal fun deviceResourceBudget(context: Context): com.fluxa.app.core.rust.models.NativeDeviceResourceBudget {
         val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
@@ -292,14 +262,6 @@ internal object MediaPlayerControllerFactory {
         return requestedBytes.coerceAtMost(budget.playerTargetBufferBytes).toInt()
     }
 
-    private fun playerDiskCacheBytes(context: Context): Long {
-        val activityManager = context.getSystemService(android.app.ActivityManager::class.java)
-        return when {
-            activityManager?.isLowRamDevice == true -> 128L * 1024L * 1024L
-            context.packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_LEANBACK) -> 256L * 1024L * 1024L
-            else -> 512L * 1024L * 1024L
-        }
-    }
 
     internal fun shouldScanEmbeddedAssFonts(url: String, title: String?): Boolean {
         fun String.looksMatroska(): Boolean {
@@ -312,90 +274,12 @@ internal object MediaPlayerControllerFactory {
         return url.looksMatroska() || title?.looksMatroska() == true
     }
 
-    internal fun playerCache(context: Context): SimpleCache {
-        return playerDiskCache ?: synchronized(this) {
-            playerDiskCache ?: SimpleCache(
-                context.applicationContext.cacheDir.resolve("player_http_cache"),
-                LeastRecentlyUsedCacheEvictor(playerDiskCacheBytes(context)),
-                StandaloneDatabaseProvider(context.applicationContext)
-            ).also { playerDiskCache = it }
-        }
-    }
-
-    private fun shouldUsePlayerDiskCache(uri: Uri): Boolean {
-        val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return false
-        if (scheme != "http" && scheme != "https") return false
-        val host = uri.host?.lowercase(Locale.ROOT) ?: return false
-        if (host == "localhost" || host == "127.0.0.1" || host == "::1") return false
-        return true
-    }
-
-    private class SelectiveCacheDataSource(
-        private val cachedFactory: DataSource.Factory,
-        private val uncachedFactory: DataSource.Factory,
-        private val shouldUseCache: () -> Boolean
-    ) : DataSource {
-        private var active: DataSource? = null
-        private val transferListeners = mutableListOf<TransferListener>()
-
-        override fun addTransferListener(transferListener: TransferListener) {
-            transferListeners += transferListener
-            active?.addTransferListener(transferListener)
-        }
-
-        override fun open(dataSpec: DataSpec): Long {
-            val selected = if (shouldUseCache() && shouldUsePlayerDiskCache(dataSpec.uri)) {
-                cachedFactory.createDataSource()
-            } else {
-                uncachedFactory.createDataSource()
-            }
-            transferListeners.forEach(selected::addTransferListener)
-            active = selected
-            return selected.open(dataSpec)
-        }
-
-        override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-            return active?.read(buffer, offset, length) ?: C.RESULT_END_OF_INPUT
-        }
-
-        override fun getUri(): Uri? = active?.uri
-
-        override fun getResponseHeaders(): Map<String, List<String>> {
-            return active?.responseHeaders ?: emptyMap()
-        }
-
-        override fun close() {
-            active?.close()
-            active = null
-        }
-    }
-
-    // Pre-warm ExoPlayer's disk cache with the first bytes of an HTTP stream URL so
-    // the next-episode transition starts from cache rather than a cold network open.
-    // Must be called from a background thread; failures are silently ignored.
     fun primeHttpStream(
         context: Context,
         url: String,
         headers: Map<String, String>,
         primeBytes: Long = 2L * 1024L * 1024L
-    ) {
-        val uri = Uri.parse(url)
-        if (!shouldUsePlayerDiskCache(uri)) return
-        val okHttp = PlayerHttpResources.newBuilder()
-            .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-            .apply { cronetTransportInterceptor(context)?.let { addInterceptor(it) } }
-            .build()
-        val upstream = OkHttpDataSource.Factory(okHttp)
-            .setUserAgent(StreamRequestPolicy.DEFAULT_USER_AGENT)
-            .apply { if (headers.isNotEmpty()) setDefaultRequestProperties(headers) }
-        val cacheDataSource = CacheDataSource.Factory()
-            .setCache(playerCache(context))
-            .setUpstreamDataSourceFactory(upstream)
-            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-            .createDataSource()
-        val dataSpec = DataSpec(uri, 0L, primeBytes)
-        runCatching { CacheWriter(cacheDataSource, dataSpec, null, null).cache() }
-    }
+    ) = MediaPlayerCache.primeHttpStream(context, url, headers, primeBytes)
 
     fun createExoPlayer(
         context: Context,
@@ -412,7 +296,7 @@ internal object MediaPlayerControllerFactory {
         audioProcessingMode: String = "reference"
     ): ExoPlayer {
         val requestContext = ExoRequestContext()
-        val savedBps = savedBandwidthEstimate(context)
+        val savedBps = MediaPlayerCache.savedBandwidthEstimate(context)
         val bandwidthMeter = DefaultBandwidthMeter.Builder(context)
             .apply { if (savedBps > 0L) setInitialBitrateEstimate(savedBps) }
             .build()
@@ -484,22 +368,11 @@ internal object MediaPlayerControllerFactory {
         val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)
             .setUserAgent(StreamRequestPolicy.DEFAULT_USER_AGENT)
         val uncachedDataSourceFactory = DefaultDataSource.Factory(context, httpDataSourceFactory)
-        val cachedDataSourceFactory = CacheDataSource.Factory()
-            .setCache(playerCache(context))
-            .setUpstreamDataSourceFactory(uncachedDataSourceFactory)
-            .setCacheWriteDataSinkFactory(
-                CacheDataSink.Factory()
-                    .setCache(playerCache(context))
-                    .setFragmentSize(PLAYER_CACHE_FRAGMENT_BYTES)
-            )
-            .setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
-        val dataSourceFactory = DataSource.Factory {
-            SelectiveCacheDataSource(
-                cachedFactory = cachedDataSourceFactory,
-                uncachedFactory = uncachedDataSourceFactory,
-                shouldUseCache = { !requestContext.disableDiskCache }
-            )
-        }
+        val dataSourceFactory = MediaPlayerCache.dataSourceFactory(
+            context = context,
+            upstream = uncachedDataSourceFactory,
+            shouldUseCache = { !requestContext.disableDiskCache }
+        )
 
         // Always probe MKV cues for seekability. rqbit/TorrentServer supports range requests
         // and will download the tail pieces on demand. Previously this was disabled for

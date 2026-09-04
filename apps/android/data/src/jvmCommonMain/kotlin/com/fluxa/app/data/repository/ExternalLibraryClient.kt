@@ -1,16 +1,16 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.data.PlatformSecrets
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.remote.AnilistGraphQlRequest
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.data.remote.SimklEpisode
+import com.fluxa.app.data.remote.SimklAllItemsResponse
 import com.fluxa.app.data.remote.SimklItem
 import com.fluxa.app.data.remote.ExternalSyncApi
-import com.fluxa.app.data.remote.TraktEpisode
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.domain.ContentIdentity
 import com.google.gson.JsonParser
@@ -23,8 +23,6 @@ import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
 import javax.inject.Singleton
-
-private const val EPISODE_PROGRESS_UNIT_MS = 45 * 60_000L
 
 data class AnilistLibrarySnapshot(
     val watchlist: List<Pair<Meta, Long>> = emptyList(),
@@ -92,26 +90,24 @@ class ExternalLibraryClient @Inject constructor(
 
     suspend fun getSimklLibraryItems(token: String?, status: String): List<Meta> = withContext(Dispatchers.IO) {
         if (token.isNullOrBlank() || PlatformSecrets.simklClientId.isBlank()) return@withContext emptyList()
-        val types = listOf("movies" to "movie", "shows" to "series", "anime" to "series")
+        val types = listOf("movies", "shows", "anime")
         supervisorScope {
-            types.map { (apiType, metaType) ->
+            val responses = types.map { apiType ->
                 async {
                     runCatching {
-                        val response = externalSyncApi.getSimklAllItems(
+                        externalSyncApi.getSimklAllItems(
                             type = apiType,
                             status = status,
                             token = "Bearer $token",
                             apiKey = PlatformSecrets.simklClientId
                         )
-                        val items = when (apiType) {
-                            "movies" -> response.movies
-                            "anime" -> response.anime
-                            else -> response.shows
-                        }
-                        items.mapNotNull { it.toLibraryMeta(metaType, "Simkl") }
-                    }.getOrDefault(emptyList())
+                    }.getOrDefault(SimklAllItemsResponse())
                 }
-            }.awaitAll().flatten().let(::distinctByIdentityKey)
+            }.awaitAll()
+            simklLibraryItems(
+                shows = responses.drop(1).flatMap { it.shows + it.anime },
+                movies = responses.firstOrNull()?.movies.orEmpty()
+            )
         }
     }
 
@@ -123,15 +119,11 @@ class ExternalLibraryClient @Inject constructor(
             "completed" -> listOf("moviesCompleted" to "movie", "showsCompleted" to "series", "animeCompleted" to "anime")
             else -> emptyList()
         }
-        keys.flatMap { (key, type) ->
-            val response = snapshot.resources[key] ?: return@flatMap emptyList()
-            val items = when (type) {
-                "movie" -> response.movies
-                "anime" -> response.anime
-                else -> response.shows
-            }
-            items.mapNotNull { it.toLibraryMeta(if (type == "anime") "series" else type, "Simkl") }
-        }.let(::distinctByIdentityKey)
+        val responses = keys.mapNotNull { (key, _) -> snapshot.resources[key] }
+        simklLibraryItems(
+            shows = responses.flatMap { it.shows + it.anime },
+            movies = responses.flatMap { it.movies }
+        )
     }
 
     suspend fun getSimklWatchedEpisodesWithTimestamps(token: String?): Map<String, Long> = withContext(Dispatchers.IO) {
@@ -387,18 +379,15 @@ class ExternalLibraryClient @Inject constructor(
 
     private fun SimklItem.simklPosterUrl(): String? = effectivePoster?.let { "https://simkl.in/posters/${it}_m.jpg" }
 
-    private fun SimklItem.toLibraryMeta(type: String, source: String): Meta? {
-        val id = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
-        return Meta(
-            id = id,
-            name = effectiveTitle ?: unknownName(null),
-            type = type,
-            poster = simklPosterUrl(),
-            releaseInfo = effectiveYear?.toString(),
-            released = effectiveYear?.let { "$it-01-01" },
-            reason = source
-        )
-    }
+    private fun simklLibraryItems(shows: List<SimklItem>, movies: List<SimklItem>): List<Meta> =
+        FluxaCoreNative.simklLibraryToItems(gson.toJson(shows), gson.toJson(movies))
+            .map { item ->
+                item.copy(
+                    name = item.name.ifBlank { unknownName(null) },
+                    reason = "Simkl"
+                )
+            }
+            .let(::distinctByIdentityKey)
 
     private fun SimklItem.toContinueMeta(type: String): Meta? {
         val id = effectiveIds?.imdb ?: effectiveIds?.tmdb ?: effectiveIds?.slug?.let { "simkl:$it" } ?: effectiveIds?.simkl?.let { "simkl:$it" } ?: return null

@@ -19,6 +19,18 @@ pub(crate) fn external_sync_refresh_retry_action(status_code: Option<i64>) -> &'
     }
 }
 
+pub(crate) fn external_sync_worker_retry_action(
+    status_code: Option<i64>,
+    attempt: i64,
+) -> &'static str {
+    match status_code {
+        Some(code) if (200..300).contains(&code) || code == 409 => "success",
+        Some(401) if attempt == 0 => "retry",
+        Some(429) | Some(500..=599) | None => "retry",
+        _ => "failure",
+    }
+}
+
 pub(crate) fn provider_pagination_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let base_url = args.get("baseUrl")?.as_str()?;

@@ -3,6 +3,8 @@ package com.fluxa.app.data.local
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.isUpNextContinueItemFromCore
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.google.gson.Gson
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -15,7 +17,8 @@ import javax.inject.Singleton
 @OptIn(ExperimentalCoroutinesApi::class)
 @Singleton
 class WatchlistManager @Inject constructor(
-    private val dao: WatchlistDao
+    private val dao: WatchlistDao,
+    private val gson: Gson
 ) {
     private val _activeProfileId = MutableStateFlow("")
 
@@ -90,7 +93,16 @@ class WatchlistManager @Inject constructor(
     suspend fun toggleWatchlist(item: Meta) {
         val profileId = pid()
         dao.upsertContent(item.toContentItemEntity(profileId))
-        if (dao.isInWatchlist(profileId, item.id)) {
+        val plan = FluxaCoreNative.watchlistTogglePlan(
+            gson.toJson(
+                mapOf(
+                    "item" to item,
+                    "isCurrentlyInWatchlist" to dao.isInWatchlist(profileId, item.id),
+                    "profileId" to profileId
+                )
+            )
+        )
+        if (plan.command == "remove") {
             dao.deleteWatchlistEntry(profileId, item.id)
             dao.upsertWatchlistRemoval(WatchlistRemovalEntity(profileId, item.id))
         } else {
@@ -143,34 +155,53 @@ class WatchlistManager @Inject constructor(
     ) {
         val profileId = pid()
         val existing = dao.getContentState(profileId, meta.id)
-        val resolvedVideoId = lastVideoId ?: existing?.lastVideoId
-        val videoChanged = lastVideoId != null && lastVideoId != existing?.lastVideoId
+        val merge = FluxaCoreNative.playbackProgressMergePlan(
+            gson.toJson(
+                mapOf(
+                    "existing" to existing.toPlaybackProgressMap(),
+                    "incoming" to mapOf(
+                        "lastVideoId" to lastVideoId,
+                        "timeOffset" to timeOffset,
+                        "duration" to duration,
+                        "lastStreamIndex" to lastStreamIndex,
+                        "lastEpisodeName" to lastEpisodeName,
+                        "lastStreamUrl" to lastStreamUrl,
+                        "lastStreamTitle" to lastStreamTitle,
+                        "lastBingeGroup" to lastBingeGroup,
+                        "continueWatchingPoster" to meta.continueWatchingPoster,
+                        "continueWatchingBackground" to meta.continueWatchingBackground,
+                        "lastAudioLanguage" to lastAudioLanguage,
+                        "lastSubtitleLanguage" to lastSubtitleLanguage
+                    )
+                )
+            )
+        )
 
         dao.upsertContent(meta.toContentItemEntity(profileId))
         dao.upsertPlaybackProgress(
             PlaybackProgressEntity(
                 profileId = profileId,
                 contentId = meta.id,
-                videoId = resolvedVideoId,
-                timeOffset = timeOffset,
-                duration = duration,
-                lastStreamIndex = lastStreamIndex ?: existing?.lastStreamIndex,
-                lastEpisodeName = if (videoChanged) lastEpisodeName else lastEpisodeName ?: existing?.lastEpisodeName,
-                lastStreamUrl = lastStreamUrl ?: existing?.lastStreamUrl,
-                lastStreamTitle = lastStreamTitle ?: existing?.lastStreamTitle,
-                lastBingeGroup = lastBingeGroup ?: existing?.lastBingeGroup,
-                continueWatchingPoster = meta.continueWatchingPoster ?: existing?.continueWatchingPoster,
-                continueWatchingBackground = meta.continueWatchingBackground ?: existing?.continueWatchingBackground,
+                videoId = merge.lastVideoId,
+                timeOffset = merge.timeOffset ?: timeOffset,
+                duration = merge.duration ?: duration,
+                lastStreamIndex = merge.lastStreamIndex,
+                lastEpisodeName = merge.lastEpisodeName,
+                lastStreamUrl = merge.lastStreamUrl,
+                lastStreamTitle = merge.lastStreamTitle,
+                lastBingeGroup = merge.lastBingeGroup,
+                continueWatchingPoster = merge.continueWatchingPoster,
+                continueWatchingBackground = merge.continueWatchingBackground,
                 updatedAt = updatedAt
             )
         )
-        if (lastAudioLanguage != null || lastSubtitleLanguage != null || existing?.lastAudioLanguage != null || existing?.lastSubtitleLanguage != null) {
+        if (merge.lastAudioLanguage != null || merge.lastSubtitleLanguage != null) {
             dao.upsertTrackPreference(
                 TrackPreferenceEntity(
                     profileId = profileId,
                     contentId = meta.id,
-                    lastAudioLanguage = lastAudioLanguage ?: existing?.lastAudioLanguage,
-                    lastSubtitleLanguage = lastSubtitleLanguage ?: existing?.lastSubtitleLanguage
+                    lastAudioLanguage = merge.lastAudioLanguage,
+                    lastSubtitleLanguage = merge.lastSubtitleLanguage
                 )
             )
         }
@@ -409,6 +440,21 @@ class WatchlistManager @Inject constructor(
         lastWatchedAt = sortAt,
         continueWatchingPoster = continueWatchingPoster,
         continueWatchingBackground = continueWatchingBackground
+    )
+
+    private fun ContentStateRow?.toPlaybackProgressMap(): Map<String, Any?> = mapOf(
+        "lastVideoId" to this?.lastVideoId,
+        "timeOffset" to this?.timeOffset,
+        "duration" to this?.duration,
+        "lastStreamIndex" to this?.lastStreamIndex,
+        "lastEpisodeName" to this?.lastEpisodeName,
+        "lastStreamUrl" to this?.lastStreamUrl,
+        "lastStreamTitle" to this?.lastStreamTitle,
+        "lastBingeGroup" to this?.lastBingeGroup,
+        "continueWatchingPoster" to this?.continueWatchingPoster,
+        "continueWatchingBackground" to this?.continueWatchingBackground,
+        "lastAudioLanguage" to this?.lastAudioLanguage,
+        "lastSubtitleLanguage" to this?.lastSubtitleLanguage
     )
 
     private fun Meta.toContentItemEntity(profileId: String) = ContentItemEntity(

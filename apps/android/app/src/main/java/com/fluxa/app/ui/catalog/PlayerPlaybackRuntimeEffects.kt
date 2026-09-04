@@ -2,7 +2,11 @@
 
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.data.remote.*
+import com.fluxa.app.data.stream.*
+
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreNative
 import android.app.Activity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -30,6 +34,39 @@ import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.shared.feature.player.TorrentStreamStatus
 import kotlinx.coroutines.delay
 import java.util.UUID
+import com.google.gson.JsonObject
+
+private fun media3PlayerPolicyErrorCode(error: androidx.media3.common.PlaybackException): String = when {
+    error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED -> "connection_error"
+    error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_TIMEOUT -> "timeout"
+    error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS -> "io_error"
+    error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_PARSING_CONTAINER_UNSUPPORTED -> "format_unsupported"
+    error.errorCodeName.contains("DECODER", ignoreCase = true) -> "decode_error"
+    error.errorCodeName.contains("RENDERER", ignoreCase = true) -> "renderer_error"
+    else -> "io_error"
+}
+
+private fun shouldUsePlayerFallback(
+    errorCode: String,
+    retryCount: Int,
+    isTorrent: Boolean,
+    autoFallback: Boolean,
+    hasNextStream: Boolean
+): Boolean {
+    if (!autoFallback || !hasNextStream) return false
+    val policy = FluxaCoreNative.playerRetryPolicy(
+        JsonObject().apply {
+            addProperty("errorCode", errorCode)
+            addProperty("retryCount", retryCount)
+            addProperty("isTorrent", isTorrent)
+        }.toString()
+    )
+    return policy.shouldRetry && policy.fallbackAction in setOf(
+        "retry_stream",
+        "try_fallback_file",
+        "retry_with_sw_decoder"
+    )
+}
 
 private data class PlaybackTelemetrySession(
     val id: String?,
@@ -79,6 +116,7 @@ internal fun ExoPlayerListenerEffect(
         var firstFrameReported = false
         var stallStartedAt: Long? = null
         var listenerSessionId: String? = null
+        var playerRetryCount = 0
         val listener = object : Player.Listener {
             override fun onMetadata(metadata: androidx.media3.common.Metadata) {
                 if (useMpvBackend) return
@@ -189,10 +227,16 @@ internal fun ExoPlayerListenerEffect(
                     return
                 }
                 if (
-                    latestAutoFallbackOnStreamError &&
-                    latestCurrentStreamIndex + 1 < latestCurrentStreamsSize &&
+                    shouldUsePlayerFallback(
+                        errorCode = media3PlayerPolicyErrorCode(error),
+                        retryCount = playerRetryCount,
+                        isTorrent = currentUrl.isTorrentPlaybackUrl(),
+                        autoFallback = latestAutoFallbackOnStreamError,
+                        hasNextStream = latestCurrentStreamIndex + 1 < latestCurrentStreamsSize
+                    ) &&
                     latestFallbackToNextStream.value()
                 ) {
+                    playerRetryCount++
                     android.util.Log.w("PlayerScreen", "Playback failed; trying next Cloudstream link")
                     return
                 }
@@ -270,8 +314,13 @@ internal fun PlayerStallWatchdogEffect(
                 return@LaunchedEffect
             }
             if (
-                latestAutoFallbackOnStreamError &&
-                currentStreamIndex + 1 < currentStreamsSize &&
+                shouldUsePlayerFallback(
+                    errorCode = "buffer_timeout",
+                    retryCount = 0,
+                    isTorrent = isTorrentSource,
+                    autoFallback = latestAutoFallbackOnStreamError,
+                    hasNextStream = currentStreamIndex + 1 < currentStreamsSize
+                ) &&
                 latestFallbackToNextStream.value()
             ) {
                 android.util.Log.w("PlayerScreen", "Playback stalled; trying next Cloudstream link")

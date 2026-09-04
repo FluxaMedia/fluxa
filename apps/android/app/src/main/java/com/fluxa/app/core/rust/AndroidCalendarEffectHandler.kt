@@ -57,8 +57,7 @@ internal class AndroidCalendarEffectHandler(
         val items = effect.payload.list("items").mapNotNull { raw ->
             runCatching { gson.fromJson(gson.toJsonTree(raw), Meta::class.java) }.getOrNull()
         }
-        val profile = profileManager.getLastActiveProfileId()
-            ?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
+        val profile = profileManager.getActiveProfile()
             ?: return success(effect, mapOf("count" to 0))
         val providerId = ThirdPartyProviderId.from(profile.safeContinueWatchingSource)
             ?: return success(effect, mapOf("count" to 0))

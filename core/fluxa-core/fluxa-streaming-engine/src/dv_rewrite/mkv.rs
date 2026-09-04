@@ -10,7 +10,9 @@ pub(crate) use fluxa_core::media_demux::ebml::{
     write_ebml_id as write_id, write_ebml_vint,
 };
 #[cfg(test)]
-pub(crate) use fluxa_core::media_demux::ebml::{encode_ebml_element, encode_ebml_vint};
+pub(crate) use fluxa_core::media_demux::ebml::{
+    encode_ebml_element, encode_ebml_vint, parse_ebml_id,
+};
 
 // BlockGroup processor
 /// Process a complete buffered BlockGroup payload.
