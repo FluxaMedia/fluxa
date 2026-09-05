@@ -2,6 +2,7 @@ mod airplay;
 mod artwork;
 mod cast;
 mod cast_proxy;
+mod cec;
 mod chromecast;
 mod core_commands;
 mod custom_fonts;
@@ -146,6 +147,7 @@ pub struct TorrentRuntimeState {
 }
 
 pub struct DesktopState {
+    pub cec: Mutex<cec::CecController>,
     pub engine_handle: Mutex<Option<u64>>,
     pub data_dir: Mutex<Option<PathBuf>>,
     /// Serializes storage migration and key creation. SQLite coordinates processes,
@@ -178,6 +180,7 @@ pub struct DesktopState {
 impl Default for DesktopState {
     fn default() -> Self {
         Self {
+            cec: Mutex::new(cec::CecController::default()),
             engine_handle: Mutex::new(None),
             data_dir: Mutex::new(None),
             storage_lock: Mutex::new(()),
@@ -625,6 +628,8 @@ pub fn run() {
             register_trailer_proxy_url,
             player_last_stream_error,
             player_init,
+            cec::cec_status,
+            cec::cec_standby,
             player_apply_preferences,
             player_set_http_headers,
             player_load,

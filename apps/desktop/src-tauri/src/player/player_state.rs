@@ -241,6 +241,7 @@ pub fn player_track_options(
 #[tauri::command]
 pub fn player_destroy(state: State<DesktopState>) -> bool {
     state.pending_hide.store(true, Ordering::Release);
+    crate::cec::stop_monitor(&state.cec);
     let _ = state.sleep_inhibitor.lock().unwrap().set_enabled(false);
     #[cfg(target_os = "macos")]
     if let Some(id) = state.avplayer_local_stream_id.lock().unwrap().take() {

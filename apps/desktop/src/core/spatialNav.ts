@@ -1,10 +1,25 @@
-const NAV_SELECTOR = '[role="button"][tabindex]';
+const NAV_SELECTOR = [
+  'button:not([disabled]):not([tabindex="-1"])',
+  '[role="button"][tabindex]:not([tabindex="-1"]):not([aria-disabled="true"])',
+  'a[href]:not([tabindex="-1"])',
+  'input:not([disabled]):not([type="hidden"]):not([tabindex="-1"])',
+  'select:not([disabled]):not([tabindex="-1"])',
+  'textarea:not([disabled]):not([tabindex="-1"])',
+  '[tabindex]:not([tabindex="-1"]):not([aria-hidden="true"])',
+].join(',');
 
 type Direction = 'up' | 'down' | 'left' | 'right';
 
 function isVisible(el: HTMLElement): boolean {
   const rect = el.getBoundingClientRect();
-  return rect.width > 0 && rect.height > 0;
+  const style = window.getComputedStyle(el);
+  return (
+    rect.width > 0 &&
+    rect.height > 0 &&
+    style.display !== 'none' &&
+    style.visibility !== 'hidden' &&
+    !el.closest('[aria-hidden="true"], [inert]')
+  );
 }
 
 export function focusNearestCard(current: HTMLElement, direction: Direction): boolean {
@@ -58,4 +73,13 @@ export function focusNearestCard(current: HTMLElement, direction: Direction): bo
 
 export function isNavCard(el: Element | null): el is HTMLElement {
   return !!el && el instanceof HTMLElement && el.matches(NAV_SELECTOR);
+}
+
+export function focusFirstSpatialTarget(): boolean {
+  const content = document.querySelector<HTMLElement>('.app-content');
+  const candidates = Array.from((content ?? document).querySelectorAll<HTMLElement>(NAV_SELECTOR)).filter(isVisible);
+  const target = candidates[0] ?? (content ? undefined : Array.from(document.querySelectorAll<HTMLElement>(NAV_SELECTOR)).find(isVisible));
+  if (!target) return false;
+  target.focus();
+  return true;
 }

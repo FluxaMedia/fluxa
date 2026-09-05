@@ -2,19 +2,21 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { NavRoute } from '../components/NavSidebar';
 import { toggleWindowFullscreen, watchWindowGeometry } from '../core/windowGeometry';
 import { comboFromEvent, findActionForCombo, loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } from '../core/shortcuts';
-import { focusNearestCard, isNavCard } from '../core/spatialNav';
+import { focusFirstSpatialTarget, focusNearestCard, isNavCard } from '../core/spatialNav';
 import { isBrowserTarget } from '../platform/browser';
 import { IS_WEBOS } from '../platform/webos';
-import { tvActionFor } from '../platform/webos/keys';
+import { isTextEntryTarget, tvActionFor } from '../platform/webos/keys';
 
 export function useGlobalShortcuts({
   nativePlayerActive,
   navigateRoute,
   goBack,
+  focusKey,
 }: {
   nativePlayerActive: boolean;
   navigateRoute: (route: NavRoute) => void;
   goBack: () => void;
+  focusKey: string;
 }) {
   const isWebTarget = isBrowserTarget();
   const [searchFocusSignal, setSearchFocusSignal] = useState(0);
@@ -71,13 +73,50 @@ export function useGlobalShortcuts({
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (nativePlayerActive) return;
+      if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey || isTextEntryTarget(e.target)) return;
       const direction = directions[e.key];
-      if (!direction || !isNavCard(document.activeElement)) return;
-      if (focusNearestCard(document.activeElement, direction)) e.preventDefault();
+      if (!direction) return;
+      const current = isNavCard(document.activeElement) ? document.activeElement : null;
+      const moved = current ? focusNearestCard(current, direction) : focusFirstSpatialTarget();
+      if (moved) e.preventDefault();
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [nativePlayerActive]);
+
+  useEffect(() => {
+    if (nativePlayerActive) return undefined;
+    let cancelled = false;
+    let retryTimer: number | undefined;
+    let expiryTimer: number | undefined;
+    let observer: MutationObserver | undefined;
+
+    const focusEntry = () => {
+      if (cancelled || isTextEntryTarget(document.activeElement)) return true;
+      return focusFirstSpatialTarget();
+    };
+    const attempt = () => {
+      if (focusEntry()) {
+        observer?.disconnect();
+        return;
+      }
+      retryTimer = window.setTimeout(attempt, 120);
+    };
+
+    attempt();
+    const root = document.querySelector('.app-content') ?? document.body;
+    observer = new MutationObserver(() => {
+      if (focusEntry()) observer?.disconnect();
+    });
+    observer.observe(root, { childList: true, subtree: true });
+    expiryTimer = window.setTimeout(() => observer?.disconnect(), 3000);
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      if (expiryTimer !== undefined) window.clearTimeout(expiryTimer);
+    };
+  }, [focusKey, nativePlayerActive]);
 
   useEffect(() => {
     const navRoutes: Record<string, NavRoute> = {
@@ -118,6 +157,11 @@ export function useGlobalShortcuts({
       }
       const target = e.target as HTMLElement | null;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) return;
+      if (e.key === 'Enter' && !e.defaultPrevented && isNavCard(document.activeElement)) {
+        e.preventDefault();
+        document.activeElement.click();
+        return;
+      }
       const globalAction = findActionForCombo(combo, 'global', shortcutOverrides);
       if (globalAction === 'focus_search') {
         e.preventDefault();

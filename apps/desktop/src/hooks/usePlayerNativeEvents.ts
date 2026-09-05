@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { platformListen as listen } from '../platform/browser';
+import { platformInvoke as invoke } from '../platform/invoke';
 import { t } from '../i18n';
 import type { Meta, Stream, Video } from '../core/types';
 import { appPrefs } from '../core/appPrefs';
@@ -114,6 +115,34 @@ export function usePlayerNativeEvents({
       unlisteners.forEach((fn) => fn());
     };
   }, [closePlayer, onPlayerError, onTerminalPlayback, saveProgressOnEvent]);
+
+  useEffect(() => {
+    const commands: Record<string, string> = {
+      play: 'set pause no',
+      pause: 'set pause yes',
+      stop: 'stop',
+      'volume-up': 'add volume 5',
+      'volume-down': 'add volume -5',
+      mute: 'cycle mute',
+      'skip-forward': 'seek 60 relative',
+      'skip-backward': 'seek -60 relative',
+    };
+    let cancelled = false;
+    let unlisten: (() => void) | null = null;
+    listen<string>('native-cec-command', (event) => {
+      const command = commands[event.payload];
+      if (command) void invoke('player_command', { command }).catch(() => undefined);
+    })
+      .then((fn) => {
+        if (cancelled) fn();
+        else unlisten = fn;
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+      unlisten?.();
+    };
+  }, []);
 
   useEffect(() => {
     const unlisteners: Array<() => void> = [];

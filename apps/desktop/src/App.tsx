@@ -332,7 +332,12 @@ export default function App() {
     if (IS_WEBOS) webosExitApp();
   }, [detailMeta, activeRoute, navigateRoute, closePlayer, resetDetail]);
 
-  const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({ nativePlayerActive, navigateRoute, goBack });
+  const { searchFocusSignal, setSearchFocusSignal } = useGlobalShortcuts({
+    nativePlayerActive,
+    navigateRoute,
+    goBack,
+    focusKey: `${activeRoute}:${detailMeta?.id ?? ''}`,
+  });
   useGamepadNav({ nativePlayerActive, navigateRoute, goBack });
 
   const swipeBack = useCallback(() => {

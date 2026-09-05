@@ -18,6 +18,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaSession
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
@@ -39,6 +40,27 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.google.gson.JsonObject
+
+@Composable
+private fun rememberFluxaMediaSession(
+    context: Context,
+    exoPlayer: ExoPlayer,
+    enabled: Boolean,
+): MediaSession? {
+    val mediaSession = remember(context, exoPlayer, enabled) {
+        if (enabled) {
+            MediaSession.Builder(context, exoPlayer)
+                .setId("fluxa-player")
+                .build()
+        } else {
+            null
+        }
+    }
+    DisposableEffect(mediaSession) {
+        onDispose { mediaSession?.release() }
+    }
+    return mediaSession
+}
 
 @Composable
 fun PlayerScreen(
@@ -150,6 +172,7 @@ fun PlayerScreen(
     val activeEngine: PlayerEngine? = remember(useMpvBackend, mpvPlayer, exoEngine) {
         if (useMpvBackend) mpvPlayer?.let(::MpvPlayerEngine) else exoEngine
     }
+    rememberFluxaMediaSession(context, exoPlayer, enabled = !useMpvBackend)
 
     LaunchedEffect(activeEngine, meta.id, state.currentVideoId) {
         try {

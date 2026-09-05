@@ -150,6 +150,8 @@ pub async fn player_load(
     total_duration: Option<u64>,
 ) -> Result<(), String> {
     log::info!("player_load: url={url} start_at={start_at:?} total_duration={total_duration:?}");
+    crate::cec::activate_source(&state.cec);
+    crate::cec::start_monitor(&state.cec, app.clone());
     log::info!(
         "[playback-route] input scheme={} host={} local_torrent={} local_stream_proxy={}",
         url.split_once("://")

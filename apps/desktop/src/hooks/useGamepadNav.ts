@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { NavRoute } from '../components/NavSidebar';
 import { onGamepadAction } from '../platform/gamepadInput';
-import { focusNearestCard, isNavCard } from '../core/spatialNav';
+import { focusFirstSpatialTarget, focusNearestCard, isNavCard } from '../core/spatialNav';
 import { isTextEntryTarget } from '../platform/webos/keys';
 
 export function useGamepadNav({
@@ -30,6 +30,7 @@ export function useGamepadNav({
       if (!direction) return;
       const current = isNavCard(document.activeElement) ? document.activeElement : null;
       if (current) focusNearestCard(current, direction);
+      else focusFirstSpatialTarget();
     });
   }, [nativePlayerActive, goBack]);
 }

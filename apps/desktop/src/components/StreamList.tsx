@@ -84,6 +84,9 @@ function StreamRow({
 
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={title}
       style={{
         ...styles.row,
         background: hovered ? 'var(--fluxa-fill-strong)' : 'var(--fluxa-background-elevated)',
