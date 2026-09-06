@@ -7,6 +7,12 @@ import AVKit
 
 @MainActor
 public final class FluxaPlayer: ObservableObject {
+    private enum SubtitleSelection {
+        case none
+        case embedded
+        case external(Int)
+    }
+
     @Published public private(set) var state = FluxaPlaybackState()
     @Published public private(set) var tracks: [FluxaTrack] = []
     @Published public private(set) var subtitleText: String?
@@ -22,6 +28,7 @@ public final class FluxaPlayer: ObservableObject {
     private var subtitleLoadGeneration = 0
     private var externalSubtitleURLs: [URL] = []
     private var subtitleHeaders: [String: String] = [:]
+    private var subtitleSelection: SubtitleSelection = .none
     private var embeddedSubtitlesSuppressed = false
     private var shouldResumeAfterInterruption = false
     private weak var surface: FluxaPlayerSurfaceView?
@@ -59,6 +66,7 @@ public final class FluxaPlayer: ObservableObject {
         subtitleText = nil
         externalSubtitleURLs = item.subtitleUrls
         subtitleHeaders = item.headers
+        subtitleSelection = externalSubtitleURLs.isEmpty ? .none : .external(0)
         embeddedSubtitlesSuppressed = false
         shouldResumeAfterInterruption = false
         self.item = item
@@ -111,12 +119,25 @@ public final class FluxaPlayer: ObservableObject {
             // Do not let an embedded legible track render beneath the custom
             // external-subtitle overlay.
             engine?.selectTrack(nil, kind: .subtitle)
-            embeddedSubtitlesSuppressed = true
+            subtitleSelection = .external(index)
+            embeddedSubtitlesSuppressed = false
             loadExternalSubtitle(at: index)
             return
         }
-        if kind == .subtitle {
+        if kind == .subtitle, track != nil {
+            subtitleSelection = .embedded
             embeddedSubtitlesSuppressed = false
+            subtitleTask?.cancel()
+            subtitleTask = nil
+            subtitleLoadGeneration += 1
+            subtitleCues = []
+            subtitleText = nil
+            engine?.selectTrack(track, kind: kind)
+            return
+        }
+        if kind == .subtitle {
+            subtitleSelection = .none
+            embeddedSubtitlesSuppressed = true
             subtitleTask?.cancel()
             subtitleTask = nil
             subtitleLoadGeneration += 1
@@ -140,7 +161,8 @@ public final class FluxaPlayer: ObservableObject {
         guard !externalSubtitleURLs.contains(url) else { return }
         externalSubtitleURLs.append(url)
         tracks = tracks.filter { !$0.id.hasPrefix("external.subtitle.") } + externalSubtitleTracks()
-        embeddedSubtitlesSuppressed = true
+        subtitleSelection = .external(externalSubtitleURLs.count - 1)
+        embeddedSubtitlesSuppressed = false
         engine?.selectTrack(nil, kind: .subtitle)
         loadExternalSubtitle(at: externalSubtitleURLs.count - 1)
     }
@@ -153,6 +175,7 @@ public final class FluxaPlayer: ObservableObject {
         subtitleText = nil
         externalSubtitleURLs = []
         subtitleHeaders = [:]
+        subtitleSelection = .none
         embeddedSubtitlesSuppressed = false
         shouldResumeAfterInterruption = false
         engine?.tearDown()
@@ -185,7 +208,7 @@ public final class FluxaPlayer: ObservableObject {
 extension FluxaPlayer: FluxaPlaybackEngineDelegate {
     func engine(_ engine: FluxaPlaybackEngine, didUpdate state: FluxaPlaybackState) {
         guard engine === self.engine else { return }
-        if !externalSubtitleURLs.isEmpty,
+        if case .external = subtitleSelection,
            !embeddedSubtitlesSuppressed,
            state.phase != .loading {
             engine.selectTrack(nil, kind: .subtitle)

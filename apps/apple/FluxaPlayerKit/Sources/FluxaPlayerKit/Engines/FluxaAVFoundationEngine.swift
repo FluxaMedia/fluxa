@@ -20,6 +20,11 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     private var timelineOffset: TimeInterval = 0
     private var loadedItem: FluxaPlaybackItem?
     private var startupTimeoutTask: Task<Void, Never>?
+    private var pendingSeekPosition: TimeInterval?
+    private var seekGeneration = 0
+    private var itemGeneration = 0
+    private var selectedAudioTrackID: String?
+    private var selectedSubtitleTrackID: String?
 
     private static let startupTimeoutNanoseconds: UInt64 = 10_000_000_000
 
@@ -39,8 +44,18 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
     }
 
     func load(_ item: FluxaPlaybackItem) {
+        load(item, preservingTrackSelection: false)
+    }
+
+    private func load(_ item: FluxaPlaybackItem, preservingTrackSelection: Bool) {
         detachItemObservers()
         startupTimeoutTask?.cancel()
+        if !preservingTrackSelection {
+            selectedAudioTrackID = nil
+            selectedSubtitleTrackID = nil
+        }
+        itemGeneration += 1
+        let generation = itemGeneration
         var effectiveItem = item
         if isRemuxURL(item.url), item.startPosition > 0 {
             var components = URLComponents(url: item.url, resolvingAgainstBaseURL: false)
@@ -54,6 +69,8 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         }
         loadedItem = effectiveItem
         timelineOffset = remuxStart(from: effectiveItem.url)
+        pendingSeekPosition = nil
+        seekGeneration += 1
         var options: [String: Any] = [:]
         if !effectiveItem.headers.isEmpty {
             options["AVURLAssetHTTPHeaderFieldsKey"] = effectiveItem.headers
@@ -70,14 +87,17 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         publishTracks()
         player.replaceCurrentItem(with: playerItem)
         attachItemObservers(playerItem)
-        attachTimeObserver()
+        attachTimeObserver(for: generation)
         startupTimeoutTask = Task { @MainActor [weak self] in
             do {
                 try await Task.sleep(nanoseconds: Self.startupTimeoutNanoseconds)
             } catch {
                 return
             }
-            guard let self, !Task.isCancelled, self.state.phase == .loading else { return }
+            guard let self,
+                  !Task.isCancelled,
+                  self.itemGeneration == generation,
+                  self.state.phase == .loading else { return }
             self.state.phase = .failed(
                 FluxaPlaybackFailure(
                     reason: "Playback did not become ready in time",
@@ -103,6 +123,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         guard player.currentItem != nil else { return }
         if let item = loadedItem, isRemuxURL(item.url) {
             let wasPlaying = player.timeControlStatus != .paused
+            let playbackRate = state.rate
             var components = URLComponents(url: item.url, resolvingAgainstBaseURL: false)
             var queryItems = components?.queryItems ?? []
             queryItems.removeAll { $0.name == "start" }
@@ -115,16 +136,19 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
                 var restarted = item
                 restarted.url = url
                 restarted.startPosition = max(0, position)
-                load(restarted)
+                load(restarted, preservingTrackSelection: true)
+                state.rate = playbackRate
                 if wasPlaying {
                     play()
+                } else {
+                    publishState()
                 }
             }
             return
         }
-        let time = CMTime(seconds: max(0, position), preferredTimescale: 600)
-        player.seek(to: time, toleranceBefore: .zero, toleranceAfter: .zero)
-        state.position = max(0, position)
+        let target = max(0, position)
+        seekPlayer(to: target)
+        state.position = target
         publishState()
     }
 
@@ -144,10 +168,21 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         guard let item = player.currentItem,
               let group = mediaSelectionGroup(for: kind, in: item.asset) else { return }
         guard let track else {
+            if kind == .audio {
+                selectedAudioTrackID = nil
+            } else {
+                selectedSubtitleTrackID = nil
+            }
             item.select(nil, in: group)
             return
         }
-        item.select(trackOptions[track.id], in: group)
+        guard let option = trackOptions[track.id] else { return }
+        if kind == .audio {
+            selectedAudioTrackID = track.id
+        } else {
+            selectedSubtitleTrackID = track.id
+        }
+        item.select(option, in: group)
     }
 
     #if os(iOS)
@@ -163,41 +198,54 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         startupTimeoutTask = nil
         loadedItem = nil
         timelineOffset = 0
+        pendingSeekPosition = nil
+        seekGeneration += 1
+        itemGeneration += 1
         player.pause()
         player.replaceCurrentItem(with: nil)
         playerLayer.player = nil
         playerLayer.removeFromSuperlayer()
     }
 
-    private func attachTimeObserver() {
+    private func attachTimeObserver(for generation: Int) {
         guard timeObserver == nil else { return }
         timeObserver = player.addPeriodicTimeObserver(
             forInterval: CMTime(seconds: 0.25, preferredTimescale: 600),
             queue: .main
         ) { [weak self] time in
-            MainActor.assumeIsolated {
-                self?.handleTick(time)
+            Task { @MainActor [weak self] in
+                guard let self, self.itemGeneration == generation else { return }
+                self.handleTick(time)
             }
         }
     }
 
     private func attachItemObservers(_ item: AVPlayerItem) {
         observations.append(item.observe(\.status, options: [.initial, .new]) { [weak self] item, _ in
-            MainActor.assumeIsolated { self?.handleStatus(item) }
+            Task { @MainActor [weak self] in
+                guard let self, self.player.currentItem === item else { return }
+                self.handleStatus(item)
+            }
         })
         observations.append(player.observe(\.timeControlStatus, options: [.initial, .new]) { [weak self] _, _ in
-            MainActor.assumeIsolated { self?.handleTransportChange() }
+            Task { @MainActor [weak self] in
+                guard let self, self.player.currentItem === item else { return }
+                self.handleTransportChange()
+            }
         })
         observations.append(item.observe(\.isPlaybackLikelyToKeepUp, options: [.new]) { [weak self] _, _ in
-            MainActor.assumeIsolated { self?.handleTransportChange() }
+            Task { @MainActor [weak self] in
+                guard let self, self.player.currentItem === item else { return }
+                self.handleTransportChange()
+            }
         })
         endObserver = NotificationCenter.default.addObserver(
             forName: .AVPlayerItemDidPlayToEndTime,
             object: item,
             queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated {
-                guard let self else { return }
+            Task { @MainActor [weak self] in
+                guard let self, self.player.currentItem === item else { return }
                 self.state.phase = .ended
                 self.state.isBuffering = false
                 self.publishState()
@@ -225,7 +273,7 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
             if pendingStartPosition > 0 {
                 let target = pendingStartPosition
                 pendingStartPosition = 0
-                player.seek(to: CMTime(seconds: target, preferredTimescale: 600))
+                seekPlayer(to: target)
                 initialPosition = target
             } else {
                 initialPosition = timelineOffset
@@ -277,7 +325,11 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
 
     private func handleTick(_ time: CMTime) {
         guard let item = player.currentItem else { return }
-        state.position = timelineOffset + finiteSeconds(time)
+        if let pendingSeekPosition {
+            state.position = pendingSeekPosition
+        } else {
+            state.position = timelineOffset + finiteSeconds(time)
+        }
         state.duration = timelineOffset + finiteSeconds(item.duration)
         state.buffered = timelineOffset + finiteSeconds(item.loadedTimeRanges.last?.timeRangeValue.end ?? .zero)
         publishState()
@@ -319,12 +371,39 @@ final class FluxaAVFoundationEngine: NSObject, FluxaPlaybackEngine {
         }
         tracks = collected
         trackOptions = options
+        if let selectedAudioTrackID, let option = options[selectedAudioTrackID],
+           let group = mediaSelectionGroup(for: .audio, in: asset) {
+            item.select(option, in: group)
+        }
+        if let selectedSubtitleTrackID, let option = options[selectedSubtitleTrackID],
+           let group = mediaSelectionGroup(for: .subtitle, in: asset) {
+            item.select(option, in: group)
+        }
         publishTracks()
     }
 
     private func mediaSelectionGroup(for kind: FluxaTrackKind, in asset: AVAsset) -> AVMediaSelectionGroup? {
         let characteristic: AVMediaCharacteristic = kind == .audio ? .audible : .legible
         return asset.mediaSelectionGroup(forMediaCharacteristic: characteristic)
+    }
+
+    private func seekPlayer(to target: TimeInterval) {
+        seekGeneration += 1
+        let generation = seekGeneration
+        pendingSeekPosition = target
+        player.cancelPendingSeeks()
+        player.seek(
+            to: CMTime(seconds: target, preferredTimescale: 600),
+            toleranceBefore: .zero,
+            toleranceAfter: .zero
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                guard let self, self.seekGeneration == generation else { return }
+                self.pendingSeekPosition = nil
+                self.state.position = self.timelineOffset + self.finiteSeconds(self.player.currentTime())
+                self.publishState()
+            }
+        }
     }
 
     private func finiteSeconds(_ time: CMTime) -> TimeInterval {

@@ -28,9 +28,25 @@ final class FluxaAppleAVPlayerStreamAdapter: @unchecked Sendable {
     private let lock = NSLock()
     private var localServerId: String?
     private var torrentServerRunning = false
+    private var preparationGeneration = 0
 
-    func prepare(url: URL, headers: [String: String], title: String) -> URL? {
+    func beginPreparation() -> Int {
         lock.withLock {
+            preparationGeneration += 1
+            return preparationGeneration
+        }
+    }
+
+    func invalidate() {
+        lock.withLock {
+            preparationGeneration += 1
+            stopLocked()
+        }
+    }
+
+    func prepare(url: URL, headers: [String: String], title: String, generation: Int? = nil) -> URL? {
+        lock.withLock {
+            if let generation, generation != preparationGeneration { return nil }
             stopLocked()
             if isTorrent(url) {
                 return startTorrentLocked(link: url.absoluteString, headers: headers, title: title)
@@ -42,7 +58,7 @@ final class FluxaAppleAVPlayerStreamAdapter: @unchecked Sendable {
     }
 
     func stop() {
-        lock.withLock { stopLocked() }
+        invalidate()
     }
 
     private func startLocalProxyLocked(url: String, headers: [String: String]) -> URL? {
@@ -95,7 +111,37 @@ final class FluxaAppleAVPlayerStreamAdapter: @unchecked Sendable {
     }
 
     private func requiresRemux(_ url: URL) -> Bool {
-        ["mkv", "matroska"].contains(url.pathExtension.lowercased())
+        let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        let queryValues = components?.queryItems?.compactMap(\.value) ?? []
+        if queryValues.contains(where: {
+            let value = $0.lowercased()
+            return value.contains(".m3u8") || value.contains("hls")
+        }) {
+            return false
+        }
+        let queryCandidates = components?.queryItems?
+            .filter { ["filename", "file", "name", "path"].contains($0.name.lowercased()) }
+            .compactMap(\.value) ?? []
+        let candidates = [url.path] + queryCandidates
+        let remuxExtensions = Set(["mkv", "matroska", "webm", "avi", "flv", "wmv", "ogv"])
+        if candidates.contains(where: { candidate in
+            let pathExtension = URL(string: candidate)?.pathExtension
+                ?? URL(fileURLWithPath: candidate).pathExtension
+            return remuxExtensions.contains(pathExtension.lowercased())
+        }) {
+            return true
+        }
+        let nativeExtensions = Set(["mp4", "m4v", "mov", "m3u8", "m3u", "ts", "mp3", "aac", "ac3", "eac3"])
+        if candidates.contains(where: { candidate in
+            let pathExtension = URL(string: candidate)?.pathExtension
+                ?? URL(fileURLWithPath: candidate).pathExtension
+            return nativeExtensions.contains(pathExtension.lowercased())
+        }) {
+            return false
+        }
+        // Addon URLs frequently omit the media extension. Adapt unknown HTTP
+        // sources so Matroska streams do not bypass the AVPlayer remux path.
+        return ["http", "https"].contains(url.scheme?.lowercased())
     }
 
     private func isTorrent(_ url: URL) -> Bool {
