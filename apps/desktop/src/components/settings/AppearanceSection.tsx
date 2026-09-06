@@ -493,6 +493,7 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
             { value: 'standard', label: t('settings.episode_cards_standard') || 'Standart' },
             { value: 'wide', label: t('settings.episode_cards_wide') || 'Geniş' },
             { value: 'compact', label: t('settings.episode_cards_compact') || 'Kompakt' },
+            { value: 'horizontal', label: t('settings.episode_layout_horizontal') || 'Yatay' },
           ]}
           selected={prefs.episodeCardsLayout}
           onSelect={(v) => setPref('episodeCardsLayout', v)}

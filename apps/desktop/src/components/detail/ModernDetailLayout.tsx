@@ -297,7 +297,21 @@ export function ModernDetailLayout({
   const createdBy = nameList(displayMeta.createdBy);
   const creators = createdBy.length ? createdBy : nameList(displayMeta.director);
 
-  const episodeGridStyle = episodeCardsLayout === 'list' ? { ...MS.episodeGrid, gridTemplateColumns: '1fr' } : MS.episodeGrid;
+  const episodeGridStyle: React.CSSProperties =
+    episodeCardsLayout === 'horizontal'
+      ? {
+          ...MS.episodeGrid,
+          gridTemplateColumns: 'none',
+          gridAutoFlow: 'column',
+          gridAutoColumns: 'minmax(min(18rem, 80vw), 21rem)',
+          gridTemplateRows: 'auto',
+          overflowX: 'auto',
+          overflowY: 'hidden',
+          paddingBottom: '0.5rem',
+        }
+      : episodeCardsLayout === 'list'
+        ? { ...MS.episodeGrid, gridTemplateColumns: '1fr' }
+        : MS.episodeGrid;
 
   return (
     <div className="detail-screen" style={MS.screen} ref={screenRef}>
