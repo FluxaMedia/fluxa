@@ -1,0 +1,1356 @@
+{
+  "version": 1,
+  "settings": [
+    {
+      "key": "accentColorArgb",
+      "type": "string",
+      "default": "#FFFFFF",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "alertNewEpisodes",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "amoledMode",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "animationsEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "animePreferJapaneseAudio",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "animeSkipClientId",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "animeUpscalingMode",
+      "type": "string",
+      "default": "off",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "animeUpscalingModePreset",
+      "type": "string",
+      "default": "a",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "animeUpscalingQuality",
+      "type": "string",
+      "default": "anime4k_m",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "animeUseMpv",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "audioDecoderMode",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "audioProcessingMode",
+      "type": "string",
+      "default": "reference",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "autoEnableSubtitles",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "automaticUpdates",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "autoPlayCountdownSecs",
+      "type": "string",
+      "default": "7",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "autoplayMode",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "autoPlayNextEpisode",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "autoRetryNextSource",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "autoSkipIntro",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "backgroundPlayback",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "blurUnwatchedEpisodes",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "bottomBarLabels",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "cardCornerPreset",
+      "type": "string",
+      "default": "soft",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "cardLayout",
+      "type": "string",
+      "default": "vertical",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "catalogTypeSuffixEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "contentWarningsEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "continueWatchingArtwork",
+      "type": "string",
+      "default": "episode",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingCardCornerPreset",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingDays",
+      "type": "string",
+      "default": "0",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingHideTitles",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingHorizontal",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingInterfaceDensity",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingKeepScheduled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingLayout",
+      "type": "string",
+      "default": "horizontal",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingProgressDirection",
+      "type": "string",
+      "default": "remaining",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingRemainingFormat",
+      "type": "string",
+      "default": "time",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingShowThisWeek",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingSource",
+      "type": "string",
+      "default": "local",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "continueWatchingWidthPreset",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "customThemes",
+      "type": "string",
+      "default": "[]",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "detailCollapsingHero",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailHeroAutoplayTrailer",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "detailHeroAutoplayTrailerDelaySecs",
+      "type": "string",
+      "default": "2",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "detailPreferClearlogo",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailScreenStyle",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailSeasonPostersOnHero",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "detailSeasonSelectorMode",
+      "type": "string",
+      "default": "tabs",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "detailShowCast",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailShowEpisodeDescriptions",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailShowRecommendations",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "diagnosticMode",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "discordRichPresenceEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "downloadDir",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "downloads"
+    },
+    {
+      "key": "downloadSourceRegexPattern",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "downloads"
+    },
+    {
+      "key": "downloadSourceSelectionMode",
+      "type": "string",
+      "default": "first",
+      "scope": "profile",
+      "category": "downloads"
+    },
+    {
+      "key": "downloadSubtitleLanguage",
+      "type": "string",
+      "default": "preferred",
+      "scope": "profile",
+      "category": "downloads"
+    },
+    {
+      "key": "episodeCardsLayout",
+      "type": "string",
+      "default": "standard",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "externalPlayerTarget",
+      "type": "string",
+      "default": "mpv",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "fanartApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "floatingBottomBar",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "frameInterpolationMode",
+      "type": "string",
+      "default": "off",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "gifAutoplayEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "hdrDetectionCompleted",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "hdrEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "heroFeedOrder",
+      "type": "string[]",
+      "default": [],
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "heroFeedToggles",
+      "type": "string[]",
+      "default": [],
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "heroFollowsFocusedItem",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "holdSpeed",
+      "type": "string",
+      "default": "2.0",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "holdToSpeedEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "homeFeedOrder",
+      "type": "string[]",
+      "default": [],
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "homeFeedToggles",
+      "type": "string[]",
+      "default": [],
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "homeHeroAutoplayTrailer",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "homeHeroAutoplayTrailerDelaySecs",
+      "type": "string",
+      "default": "2",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "homeSeasonPostersOnHero",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "integrationLibrarySource",
+      "type": "string",
+      "default": "local",
+      "scope": "profile",
+      "category": "library"
+    },
+    {
+      "key": "interfaceDensity",
+      "type": "string",
+      "default": "medium",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "introDbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "introDbSubmitEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "language",
+      "type": "string",
+      "default": "en",
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "liquidGlassMode",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "mdblistApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "movieRecommendationOutroPercent",
+      "type": "string",
+      "default": "85",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "mpvCustomOptions",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "navBarPosition",
+      "type": "string",
+      "default": "left",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "navItemsAlign",
+      "type": "string",
+      "default": "center",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "navLayout",
+      "type": "string",
+      "default": "sidebar",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "navSidebarMode",
+      "type": "string",
+      "default": "hover",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "nextEpisodeThresholdPercent",
+      "type": "string",
+      "default": "85",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "notificationsEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "omdbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "p2pEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "pictureInPicture",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "playbackSpeed",
+      "type": "string",
+      "default": "1.0",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "playerBackBufferSeconds",
+      "type": "string",
+      "default": "15",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "playerBufferCacheMb",
+      "type": "string",
+      "default": "100",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "playerEngine",
+      "type": "string",
+      "default": "mpv",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "playerForwardBufferSeconds",
+      "type": "string",
+      "default": "60",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "posterHideTitles",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "posterHoverPreview",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "posterLandscapeMode",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "posterWidthPreset",
+      "type": "string",
+      "default": "medium",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "preferredAudioLanguage",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "preferredPlayer",
+      "type": "string",
+      "default": "mpv",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "preferredSubtitleLanguage",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "reducedEffects",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "reduceMotion",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "rememberLastProfile",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "renderBackend",
+      "type": "string",
+      "default": "vulkan",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "rpdbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "searchSuggestionsOpenDetail",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "secondaryAudioLanguage",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "secondarySubtitleLanguage",
+      "type": "string",
+      "default": "none",
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "seekBackwardSeconds",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "seekForwardSeconds",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "seekSeconds",
+      "type": "string",
+      "default": "10",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "seekThumbnailEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "seriesRecommendationOutroPercent",
+      "type": "string",
+      "default": "85",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "showHeroSection",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "similarTitlesSource",
+      "type": "string",
+      "default": "auto",
+      "scope": "profile",
+      "category": "library"
+    },
+    {
+      "key": "skinConfig",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "skipDbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "skipDbSubmitEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "spoilerHideEpisodeInfo",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "stableVolume",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "startPage",
+      "type": "string",
+      "default": "home",
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "streamSourceRegexPattern",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamSourceSelectionMode",
+      "type": "string",
+      "default": "manual",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "subtitleBackgroundColor",
+      "type": "string",
+      "default": "#000000",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleBackgroundColorArgb",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleBackgroundOpacity",
+      "type": "string",
+      "default": "0.5",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleBold",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleCharacterEdge",
+      "type": "string",
+      "default": "uniform",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleColor",
+      "type": "string",
+      "default": "#FFFFFF",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleColorArgb",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleFont",
+      "type": "string",
+      "default": "default",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleForceStyle",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleOutlineColor",
+      "type": "string",
+      "default": "#000000",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleOutlineColorArgb",
+      "type": "number",
+      "default": null,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleOutlineOpacity",
+      "type": "string",
+      "default": "1.0",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleOutlineSize",
+      "type": "string",
+      "default": "3",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitlePosition",
+      "type": "string",
+      "default": "100",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleShadow",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleSize",
+      "type": "string",
+      "default": "100",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "subtitleTextOpacity",
+      "type": "string",
+      "default": "1.0",
+      "scope": "profile",
+      "category": "subtitles"
+    },
+    {
+      "key": "syncCwRanking",
+      "type": "string",
+      "default": "last_watched",
+      "scope": "profile",
+      "category": "library"
+    },
+    {
+      "key": "syncCwSourceOfTruth",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "library"
+    },
+    {
+      "key": "theIntroDbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "theIntroDbSubmitEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "themeId",
+      "type": "string",
+      "default": "fluxa-dark",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "themeJson",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "timezoneConversionEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
+      "key": "tmdbApiKey",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbBasicInfoEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbCastImagesEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbCollectionInfoEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbDetailsEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichArtworkEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichCastCrewEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichDescriptionEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichGenresKeywordsEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichNetworkEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichOriginTitlesEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichStatusScheduleEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEnrichWatchProvidersEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbEpisodeImagesEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbLogosBackdropsEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbNetworksEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbPreferOverAddons",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbProductionsEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbRatingsEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbRecommendationsEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbSimilarResultsEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "tmdbTrailersEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "account"
+    },
+    {
+      "key": "topNavigationBar",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "topTenFeedToggles",
+      "type": "string[]",
+      "default": [],
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "torrentSpeedPreset",
+      "type": "string",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "torrentWifiOnly",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "trailerOnDetailHeroDelaySeconds",
+      "type": "number",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "trailerOnDetailHeroEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "trailerOnHero",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "trailerOnHomeHeroDelaySeconds",
+      "type": "number",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "trailerOnHomeHeroEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "traktCommentsEnabled",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "library"
+    },
+    {
+      "key": "tryBingeGroup",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "tunneledPlayback",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "uiScale",
+      "type": "string",
+      "default": "100",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "upcomingRowEnabled",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "useAnimeSkip",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "useChapterSkip",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "useSkipSegments",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "watchedThresholdPercent",
+      "type": "string",
+      "default": "90",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "watchProgressSource",
+      "type": "string",
+      "default": "all",
+      "scope": "profile",
+      "category": "library"
+    }
+  ]
+}

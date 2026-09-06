@@ -246,7 +246,7 @@ internal fun TraktDeviceAuthDialog(
 internal fun PlayerLifecycleEffect(
     isPlayerActive: Boolean,
     activeProfile: UserProfile?,
-    mainPlayer: ExoPlayer,
+    mainPlayer: ExoPlayer?,
     homeViewModel: HomeViewModel,
     enterPictureInPicture: () -> Unit
 ) {
@@ -273,7 +273,7 @@ internal fun PlayerLifecycleEffect(
                 }
 
                 if (!isPlayerScreen || (!latestBackgroundPlayback && !shouldEnterPip)) {
-                    mainPlayer.pause()
+                    mainPlayer?.pause()
                 }
             }
         }

@@ -70,7 +70,6 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.player.DiscordPresenceNative
 import com.fluxa.app.R
-import androidx.media3.exoplayer.ExoPlayer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -292,6 +291,7 @@ class MainActivity : FragmentActivity() {
                         )
                     }
                     val mainPlayer = remember(
+                        playerRequest != null,
                         activeProfile?.id,
                         activeProfile?.safeAudioDecoderMode,
                         activeProfile?.safeAudioProcessingMode,
@@ -304,23 +304,27 @@ class MainActivity : FragmentActivity() {
                         activeProfile?.playerPlaybackBufferMs,
                         activeProfile?.playerRebufferBufferMs
                     ) {
-                        MediaPlayerController.createExoPlayer(
-                            context,
-                            activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
-                            activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: "",
-                            (playerBufferTargets.cacheSizeBytes / 1_000_000L).toInt(),
-                            (playerBufferTargets.forwardBufferMs / 1_000L).toInt(),
-                            (playerBufferTargets.backBufferMs / 1_000L).toInt(),
-                            activeProfile?.safeTunneledPlayback == true,
-                            activeProfile?.safePlayerMinBufferSeconds ?: 8,
-                            activeProfile?.safePlayerPlaybackBufferMs ?: 1500,
-                            activeProfile?.safePlayerRebufferBufferMs ?: 2500,
-                            true,
-                            activeProfile?.safeAudioProcessingMode ?: "reference"
-                        )
+                        if (playerRequest == null) {
+                            null
+                        } else {
+                            MediaPlayerController.createExoPlayer(
+                                context,
+                                activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
+                                activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: "",
+                                (playerBufferTargets.cacheSizeBytes / 1_000_000L).toInt(),
+                                (playerBufferTargets.forwardBufferMs / 1_000L).toInt(),
+                                (playerBufferTargets.backBufferMs / 1_000L).toInt(),
+                                activeProfile?.safeTunneledPlayback == true,
+                                activeProfile?.safePlayerMinBufferSeconds ?: 8,
+                                activeProfile?.safePlayerPlaybackBufferMs ?: 1500,
+                                activeProfile?.safePlayerRebufferBufferMs ?: 2500,
+                                true,
+                                activeProfile?.safeAudioProcessingMode ?: "reference"
+                            )
+                        }
                     }
                     DisposableEffect(mainPlayer) {
-                        onDispose { MediaPlayerController.releaseExoPlayer(mainPlayer) }
+                        onDispose { mainPlayer?.let(MediaPlayerController::releaseExoPlayer) }
                     }
                     val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager, profilePickerSettingsStore) {
                         AndroidFluxaPlatformServices(

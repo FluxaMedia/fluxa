@@ -45,13 +45,15 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.loadStreams(effect: NativeH
     // startStream → stream_fname.
     val torrentManager = TorrentStreamManager.getInstance(context)
     val contentId = id
-    streams
-        .firstOrNull { it.infoHash != null || FluxaCoreNative.isTorrentPlaybackUrl(it.playableUrl) }
-        ?.let { topStream ->
-            topStream.playableUrl?.takeIf(String::isNotBlank)?.let { url ->
-                torrentManager.preWarm(url, contentId, topStream.fileIdx)
+    if (profile?.safeP2pEnabled != false) {
+        streams
+            .firstOrNull { it.infoHash != null || FluxaCoreNative.isTorrentPlaybackUrl(it.playableUrl) }
+            ?.let { topStream ->
+                topStream.playableUrl?.takeIf(String::isNotBlank)?.let { url ->
+                    torrentManager.preWarm(url, contentId, topStream.fileIdx)
+                }
             }
-        }
+    }
     return ok(effect, streams)
 }
 
@@ -75,6 +77,9 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.startTorrentStream(effect: 
     val url = payload.string("url")
     val stream = payload.objectValue("stream")?.let { gson.fromJson(gson.toJsonTree(it), Stream::class.java) }
     val activeProfile = profileManager.getActiveProfile()
+    if (activeProfile?.safeP2pEnabled == false) {
+        return error(effect, "p2p_disabled")
+    }
     val result = suspendCancellableCoroutine<TorrentStreamResult> { continuation ->
         TorrentStreamManager.getInstance(context).startStream(
             link = url,

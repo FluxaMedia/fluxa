@@ -116,6 +116,7 @@ abstract class PersistentSettingsDataSource(
         preferences.putBoolean(SettingsPreferenceKeys.AUTO_PLAY_NEXT_EPISODE, value.autoPlayNextEpisode)
         preferences.putInt(SettingsPreferenceKeys.AUTO_PLAY_COUNTDOWN_SECONDS, value.autoPlayCountdownSecs)
         preferences.putBoolean(SettingsPreferenceKeys.AUTO_RETRY_NEXT_SOURCE, value.autoRetryNextSource)
+        preferences.putBoolean(GeneratedSettingsPreferenceKeys.P2P_ENABLED, value.p2pEnabled)
         preferences.putBoolean(SettingsPreferenceKeys.TRY_BINGE_GROUP, value.tryBingeGroup)
         preferences.putFloat(SettingsPreferenceKeys.NEXT_EPISODE_THRESHOLD_PERCENT, value.nextEpisodeThresholdPercent)
         preferences.putFloat(SettingsPreferenceKeys.WATCHED_THRESHOLD_PERCENT, value.watchedThresholdPercent)
@@ -324,6 +325,7 @@ abstract class PersistentSettingsDataSource(
                 autoPlayNextEpisode = preferences.getBoolean(SettingsPreferenceKeys.AUTO_PLAY_NEXT_EPISODE, defaults.playback.autoPlayNextEpisode),
                 autoPlayCountdownSecs = preferences.getInt(SettingsPreferenceKeys.AUTO_PLAY_COUNTDOWN_SECONDS, defaults.playback.autoPlayCountdownSecs),
                 autoRetryNextSource = preferences.getBoolean(SettingsPreferenceKeys.AUTO_RETRY_NEXT_SOURCE, defaults.playback.autoRetryNextSource),
+                p2pEnabled = preferences.getBoolean(GeneratedSettingsPreferenceKeys.P2P_ENABLED, defaults.playback.p2pEnabled),
                 tryBingeGroup = preferences.getBoolean(SettingsPreferenceKeys.TRY_BINGE_GROUP, defaults.playback.tryBingeGroup),
                 nextEpisodeThresholdPercent = preferences.getFloat(SettingsPreferenceKeys.NEXT_EPISODE_THRESHOLD_PERCENT, defaults.playback.nextEpisodeThresholdPercent),
                 watchedThresholdPercent = preferences.getFloat(SettingsPreferenceKeys.WATCHED_THRESHOLD_PERCENT, defaults.playback.watchedThresholdPercent),

@@ -56,8 +56,12 @@ class AppApplication : Application(), SingletonImageLoader.Factory, Configuratio
         AppStrings.initialize(this)
         TrailerResolver.init(cacheDir)
         backgroundTaskScheduler.scheduleEpisodeReleaseChecks()
-        com.fluxa.app.player.TorrentStreamManager.getInstance(this).startEngineEarly(this)
-        appScope.launch { profileManager.getProfiles() }
+        appScope.launch {
+            profileManager.getProfiles()
+            if (profileManager.getActiveProfile()?.safeP2pEnabled == true) {
+                com.fluxa.app.player.TorrentStreamManager.getInstance(this@AppApplication).startEngineEarly(this@AppApplication)
+            }
+        }
     }
 
     override fun onTerminate() {

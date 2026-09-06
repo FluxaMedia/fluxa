@@ -159,6 +159,7 @@ internal fun SettingsPlaybackStreamContent(
             }
         }
         SettingsToggleRow(AppStrings.t(lang, "settings.auto_retry_next_source"), value = model.autoRetryNextSource) { onAction(SettingsAction.PlaybackChanged(model.copy(autoRetryNextSource = it))) }
+        SettingsToggleRow(AppStrings.t(lang, "settings.p2p_enabled"), value = model.p2pEnabled) { onAction(SettingsAction.PlaybackChanged(model.copy(p2pEnabled = it))) }
         SettingsToggleRow(AppStrings.t(lang, "settings.try_binge_group"), value = model.tryBingeGroup) { onAction(SettingsAction.PlaybackChanged(model.copy(tryBingeGroup = it))) }
     }
 

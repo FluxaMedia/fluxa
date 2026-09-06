@@ -21,6 +21,7 @@ val UserProfile.safeSubtitleShadow: Boolean get() = subtitleShadow ?: false
 val UserProfile.safeAutoEnableSubtitles: Boolean get() = autoEnableSubtitles ?: true
 val UserProfile.safeAutoSkipIntro: Boolean get() = autoSkipIntro ?: false
 val UserProfile.safeAutoPlayNextEpisode: Boolean get() = autoPlayNextEpisode ?: true
+val UserProfile.safeP2pEnabled: Boolean get() = p2pEnabled ?: true
 val UserProfile.safeNextEpisodeThresholdPercent: Float get() = (nextEpisodeThresholdPercent ?: 90f).coerceIn(0f, 100f)
 val UserProfile.safeWatchedThresholdPercent: Float get() = (watchedThresholdPercent ?: 80f).coerceIn(0f, 100f)
 val UserProfile.safeSeekForwardSeconds: Int get() = (seekForwardSeconds ?: 10).coerceIn(1, 300)

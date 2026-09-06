@@ -20,6 +20,7 @@ import { color, fontSize, radius } from '../../design/tokens';
 import type { Prefs } from './settingsTypes';
 import { listCustomFonts, pickAndAddCustomFont, removeCustomFont, type CustomFont } from '../../core/customFonts';
 import { StreamBadgesSection } from './StreamBadgesSection';
+import { SETTINGS_KEYS } from '../../core/generated/settingsContract';
 
 const isWindows = navigator.userAgent.includes('Windows');
 
@@ -106,7 +107,7 @@ export function PlaybackSection({ prefs, setPref }: { prefs: Prefs; setPref: <K 
           title={t('settings.p2p_enabled')}
           subtitle={t('settings.p2p_enabled_desc')}
           checked={prefs.p2pEnabled}
-          onToggle={(v) => setPref('p2pEnabled', v)}
+          onToggle={(v) => setPref(SETTINGS_KEYS.p2pEnabled, v)}
         />
         {!browserTarget && (
           <ChoiceTile

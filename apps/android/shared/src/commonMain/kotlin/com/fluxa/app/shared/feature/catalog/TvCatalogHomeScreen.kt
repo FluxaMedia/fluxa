@@ -17,11 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -135,26 +130,16 @@ fun TvCatalogHomeScreen(
                     posterFocusTarget.requestFocus()
                 }
             }
-            AnimatedContent(
-                targetState = if (heroFocused) activeHeroItem else null,
-                transitionSpec = {
-                    fadeIn(animationSpec = tween(240)) togetherWith
-                        fadeOut(animationSpec = tween(260))
-                },
-                modifier = Modifier.fillMaxSize(),
-                label = "tv-page-backdrop"
-            ) { backdropItem ->
-                if (backdropItem != null) {
-                    FluxaRemoteImage(
-                        imageUrl = backdropItem.backdropUrl ?: backdropItem.card.artworkUrl,
-                        cacheKey = "tv-page-hero:${backdropItem.id}",
-                        contentDescription = null,
-                        modifier = Modifier.fillMaxSize(),
-                        contentScale = ContentScale.Crop
-                    )
-                } else if (focusedPoster != null) {
-                    Box(Modifier.fillMaxSize().background(Color.Black))
-                }
+            if (heroFocused && activeHeroItem != null) {
+                FluxaRemoteImage(
+                    imageUrl = activeHeroItem?.backdropUrl ?: activeHeroItem?.card?.artworkUrl,
+                    cacheKey = "tv-page-hero:${activeHeroItem?.id}",
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+            } else if (focusedPoster != null) {
+                Box(Modifier.fillMaxSize().background(Color.Black))
             }
             LazyColumn(
                 modifier = Modifier

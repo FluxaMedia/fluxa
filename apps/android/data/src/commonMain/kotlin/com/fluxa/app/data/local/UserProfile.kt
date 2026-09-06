@@ -114,6 +114,7 @@ data class UserProfile(
     val autoPlayNextEpisode: Boolean? = true,
     val autoPlayCountdownSecs: Int? = 10,
     val autoRetryNextSource: Boolean? = false,
+    val p2pEnabled: Boolean? = true,
     val nextEpisodeThresholdPercent: Float? = 90f,
     val watchedThresholdPercent: Float? = 80f,
     val seekForwardSeconds: Int? = 10,

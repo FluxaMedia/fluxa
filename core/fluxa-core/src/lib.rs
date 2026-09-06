@@ -125,6 +125,8 @@ mod repository_flow;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod search_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod settings_contract;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod stream_badges;
 mod stream_policy;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]

@@ -1,7 +1,7 @@
 import type { AppState } from './types';
-import { DEFAULT_PREFS } from '../components/settings/settingsTypes';
+import { SETTINGS_DEFAULTS } from './generated/settingsContract';
 
-export const DEFAULT_APP_PREFS: Record<string, unknown> = DEFAULT_PREFS as unknown as Record<string, unknown>;
+export const DEFAULT_APP_PREFS: Record<string, unknown> = SETTINGS_DEFAULTS as Record<string, unknown>;
 
 export function appPrefs(state: Pick<AppState, 'settings'>): Record<string, unknown> {
   return {

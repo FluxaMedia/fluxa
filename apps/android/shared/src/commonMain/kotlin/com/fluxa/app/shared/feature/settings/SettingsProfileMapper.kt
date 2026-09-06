@@ -253,6 +253,7 @@ fun UserProfile.toSettingsUiState(
         autoPlayNextEpisode = safeAutoPlayNextEpisode,
         autoPlayCountdownSecs = safeAutoPlayCountdownSecs,
         autoRetryNextSource = safeAutoRetryNextSource,
+        p2pEnabled = safeP2pEnabled,
         tryBingeGroup = safeTryBingeGroup,
         nextEpisodeThresholdPercent = safeNextEpisodeThresholdPercent,
         watchedThresholdPercent = safeWatchedThresholdPercent,

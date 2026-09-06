@@ -153,6 +153,7 @@ data class SettingsPlaybackUiModel(
     val autoPlayNextEpisode: Boolean = true,
     val autoPlayCountdownSecs: Int = 10,
     val autoRetryNextSource: Boolean = false,
+    val p2pEnabled: Boolean = true,
     val tryBingeGroup: Boolean = true,
     val nextEpisodeThresholdPercent: Float = 90f,
     val watchedThresholdPercent: Float = 90f,

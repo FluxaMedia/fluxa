@@ -61,7 +61,7 @@ internal fun AppRoutesHost(
     onOpenTerminalDetail: (com.fluxa.app.shared.feature.detail.DetailRequestUiModel) -> Unit,
     profileManager: ProfileManager,
     homeViewModel: HomeViewModel,
-    mainPlayer: ExoPlayer,
+    mainPlayer: ExoPlayer?,
     coroutineScope: CoroutineScope,
     offlineDownloadManager: OfflineDownloadManager,
     onShowTraktSheet: () -> Unit,
@@ -76,12 +76,13 @@ internal fun AppRoutesHost(
     onDestinationChanged: (FluxaDestination) -> Unit = {}
 ) {
     if (playerRequest != null) {
+        val player = mainPlayer ?: return
         PlayerRoute(
             request = playerRequest,
             activeProfile = activeProfile,
             profileManager = profileManager,
             homeViewModel = homeViewModel,
-            mainPlayer = mainPlayer,
+            mainPlayer = player,
             onUpdatePlayerRequest = onPlayerRequestChanged,
             onBack = navigateBackSafely,
             onProfileChanged = onActiveProfileChanged,

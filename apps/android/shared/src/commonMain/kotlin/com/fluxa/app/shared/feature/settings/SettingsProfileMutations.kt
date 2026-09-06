@@ -71,6 +71,7 @@ fun UserProfile.withPlaybackSettings(value: SettingsPlaybackUiModel): UserProfil
     autoPlayNextEpisode = value.autoPlayNextEpisode,
     autoPlayCountdownSecs = value.autoPlayCountdownSecs,
     autoRetryNextSource = value.autoRetryNextSource,
+    p2pEnabled = value.p2pEnabled,
     tryBingeGroup = value.tryBingeGroup,
     nextEpisodeThresholdPercent = value.nextEpisodeThresholdPercent,
     watchedThresholdPercent = value.watchedThresholdPercent,

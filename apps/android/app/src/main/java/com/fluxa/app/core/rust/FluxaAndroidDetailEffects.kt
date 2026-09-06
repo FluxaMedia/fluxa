@@ -156,7 +156,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.prefetchDetailStreams(effec
     )
     val plan = FluxaCoreNative.headlessPrefetchDetailStreams(preFetched)
     val prewarmUrl = plan.prewarmUrl
-    if (plan.shouldPrewarmTorrent && prewarmUrl != null) {
+    if (profile?.safeP2pEnabled != false && plan.shouldPrewarmTorrent && prewarmUrl != null) {
         TorrentStreamManager.getInstance(context).preWarm(prewarmUrl, payload.string("id"))
     }
     // For HTTP streams, prime the first 2 MB into ExoPlayer's disk cache so the
