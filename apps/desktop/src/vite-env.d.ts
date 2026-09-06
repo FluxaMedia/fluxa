@@ -1,6 +1,8 @@
 /// <reference types="vite/client" />
 
 interface ImportMetaEnv {
+  readonly VITE_FLUXA_BENCHMARK?: string;
+  readonly VITE_FLUXA_BENCHMARK_REPORT_URL?: string;
   readonly VITE_TRAKT_CLIENT_ID?: string;
   readonly VITE_SIMKL_CLIENT_ID?: string;
   readonly VITE_ANILIST_CLIENT_ID?: string;

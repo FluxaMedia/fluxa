@@ -49,6 +49,8 @@ import { WebPlayerOverlay } from './components/WebPlayerOverlay';
 import { ExternalHandoffPrompt } from './components/ExternalHandoffPrompt';
 import { useExternalHandoff } from './hooks/useExternalHandoff';
 import { useAppStateActions } from './hooks/useAppStateActions';
+import { benchmarkMark } from './core/performanceBenchmark';
+import { SETTINGS_KEYS } from './core/generated/settingsContract';
 
 const settingsStateEqual = appStateSliceEqual('settings');
 const profileStateEqual = appStateSliceEqual('plugins');
@@ -73,6 +75,14 @@ export default function App() {
   const lastNonSettingsRouteRef = useRef<NavRoute>('home');
   const lastNonSearchRouteRef = useRef<NavRoute>('home');
   const episodePlaybackFailureRef = useRef<(meta: Meta, episode: Video, message: string) => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    benchmarkMark('app:mounted');
+  }, []);
+
+  useEffect(() => {
+    benchmarkMark(`route:${activeRoute}:committed`);
+  }, [activeRoute]);
   const handleEpisodePlaybackFailed = useCallback(
     (meta: Meta, episode: Video, message: string) => episodePlaybackFailureRef.current(meta, episode, message),
     [],
@@ -252,7 +262,7 @@ export default function App() {
       }
 
       const prefs = appPrefs(stateRef.current);
-      const p2pEnabled = prefBool(prefs, 'p2pEnabled', true);
+      const p2pEnabled = prefBool(prefs, SETTINGS_KEYS.p2pEnabled, true);
       const proceed = () => void handlePlay(stream, meta, episode, resumeAt, totalDuration, sourceCandidates, undefined, resumePercent);
 
       if (!p2pEnabled) {
@@ -673,7 +683,7 @@ export default function App() {
             p2pDialog.pendingPlay();
           }}
           onEnableP2P={() => {
-            void dispatch(JSON.stringify({ type: 'settingsChanged', key: 'p2pEnabled', value: true }));
+            void dispatch(JSON.stringify({ type: 'settingsChanged', key: SETTINGS_KEYS.p2pEnabled, value: true }));
           }}
         />
       )}

@@ -15,6 +15,7 @@ import { startUpdateCheck, type UpdateState } from '../components/UpdateModal';
 import type { AppState, UserProfile } from '../core/types';
 import type { NavRoute } from '../components/NavSidebar';
 import { isBrowserTarget } from '../platform/browser';
+import { benchmarkMark, benchmarkMeasure } from '../core/performanceBenchmark';
 
 interface AppInitResult {
   ready: boolean;
@@ -60,7 +61,10 @@ export function useAppInit(
     (async () => {
       try {
         void restoreWindowGeometry();
+        benchmarkMark('engine:init:start');
         await initEngine('{}');
+        benchmarkMark('engine:init:end');
+        benchmarkMeasure('engine:init', 'engine:init:start', 'engine:init:end');
         void refreshAllAvatarPacks();
         const snap = await getSnapshot();
         const prefs = await loadPrefs();
@@ -92,6 +96,7 @@ export function useAppInit(
       } catch (err) {
         console.error('app boot sequence failed', err);
       } finally {
+        benchmarkMark('app:init:ready');
         setReady(true);
       }
 
@@ -123,7 +128,11 @@ export function useAppInit(
         setProfilesChecked(true);
       }
 
-      void loadHomeOnStartup();
+      benchmarkMark('home:load:start');
+      void loadHomeOnStartup().finally(() => {
+        benchmarkMark('home:load:end');
+        benchmarkMeasure('home:load', 'home:load:start', 'home:load:end');
+      });
 
       if (prefBool(storedPrefsRef.current, 'automaticUpdates', true)) {
         void invoke<boolean>('in_app_updates_supported')

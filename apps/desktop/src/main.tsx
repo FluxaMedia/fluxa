@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { Profiler } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
@@ -8,6 +8,7 @@ import { prefBool } from './core/appPrefs';
 import { t } from './i18n';
 import { startViewportFlags } from './platform/viewport';
 import { startInputMethodTracking } from './core/inputMethod';
+import { benchmarkMark, benchmarkReactCommit, initPerformanceBenchmark, performanceBenchmarkEnabled } from './core/performanceBenchmark';
 import { startPwa } from './platform/browser/pwa';
 import './index.css';
 import './mobile.css';
@@ -21,9 +22,12 @@ window.addEventListener('unhandledrejection', (event) => {
 });
 
 async function bootstrap() {
+  initPerformanceBenchmark();
+  benchmarkMark('bootstrap:start');
   startViewportFlags();
   startInputMethodTracking();
   startPwa();
+  benchmarkMark('bootstrap:platform-ready');
 
   if (import.meta.env.PROD) {
     try {
@@ -35,11 +39,21 @@ async function bootstrap() {
   }
 
   try {
-    ReactDOM.createRoot(document.getElementById('root')!).render(
+    const app = (
       <ErrorBoundary>
         <App />
-      </ErrorBoundary>,
+      </ErrorBoundary>
     );
+    ReactDOM.createRoot(document.getElementById('root')!).render(
+      performanceBenchmarkEnabled() ? (
+        <Profiler id="FluxaApp" onRender={benchmarkReactCommit}>
+          {app}
+        </Profiler>
+      ) : (
+        app
+      ),
+    );
+    benchmarkMark('bootstrap:render-scheduled');
   } catch (err) {
     const root = document.getElementById('root')!;
     void err;

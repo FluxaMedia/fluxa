@@ -1,10 +1,15 @@
+import { benchmarkMark, benchmarkMeasure } from '../../core/performanceBenchmark';
+
 let corePromise: Promise<typeof import('fluxa_core')> | null = null;
 let engineHandle: number | null = null;
 
 function loadCore() {
   if (!corePromise) {
+    benchmarkMark('wasm:core:load:start');
     corePromise = import('fluxa_core').then(async (core) => {
       await core.default();
+      benchmarkMark('wasm:core:load:end');
+      benchmarkMeasure('wasm:core:load', 'wasm:core:load:start', 'wasm:core:load:end');
       return core;
     });
   }
