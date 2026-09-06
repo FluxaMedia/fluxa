@@ -39,7 +39,20 @@ final class FluxaTvosPlaybackPresenter: NSObject, UIAdaptivePresentationControll
         resumePosition: Double = 0
     ) {
         guard let presenter = topViewController() else { return }
-        guard let playbackURL = streamingAdapter.prepare(url: url, headers: headers, title: title) else { return }
+        if activePlayer != nil || activeController != nil {
+            activePlayer?.stop()
+            activeController?.dismiss(animated: false)
+            activePlayer = nil
+            activeController = nil
+            streamingAdapter.stop()
+        }
+        let generation = streamingAdapter.beginPreparation()
+        guard let playbackURL = streamingAdapter.prepare(
+            url: url,
+            headers: headers,
+            title: title,
+            generation: generation
+        ) else { return }
         let player = FluxaPlayer()
         let controller = FluxaAppleCustomPlayerViewController(player: player, title: title)
         activePlayer = player

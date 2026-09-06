@@ -23,6 +23,9 @@ final class FluxaAppleCustomPlayerViewController: UIViewController {
     let chrome = FluxaAppleCustomPlayerChrome()
     var onWatchParty: (() -> Void)?
     var onRecommendationSelected: ((AppleCatalogItemSnapshot) -> Void)?
+    #if os(iOS)
+    var onPictureInPictureFinished: (() -> Void)?
+    #endif
 
     private let videoView = FluxaPlayerSurfaceView()
     private var host: UIHostingController<FluxaApplePlayerOverlay>?
@@ -149,6 +152,7 @@ extension FluxaAppleCustomPlayerViewController: AVPictureInPictureControllerDele
         // the playback surface.
         guard presentingViewController == nil, viewIfLoaded?.window == nil else { return }
         player.stop()
+        onPictureInPictureFinished?()
     }
 }
 #endif
@@ -167,6 +171,7 @@ private struct FluxaApplePlayerOverlay: View {
     let hasNextEpisode: Bool
     let onRecommendationSelected: (AppleCatalogItemSnapshot) -> Void
     let onInteraction: () -> Void
+    @State private var scrubbingPosition: Double?
 
     var body: some View {
         ZStack {
@@ -315,8 +320,19 @@ private struct FluxaApplePlayerOverlay: View {
                         .tint(.white)
                     #else
                     Slider(
-                        value: Binding(get: { player.state.position }, set: onSeek),
-                        in: 0...max(player.state.duration, 1)
+                        value: Binding(
+                            get: { scrubbingPosition ?? player.state.position },
+                            set: { scrubbingPosition = $0 }
+                        ),
+                        in: 0...max(player.state.duration, 1),
+                        onEditingChanged: { editing in
+                            if editing {
+                                scrubbingPosition = player.state.position
+                            } else if let scrubbingPosition {
+                                onSeek(scrubbingPosition)
+                                self.scrubbingPosition = nil
+                            }
+                        }
                     )
                     .tint(.white)
                     .disabled(!chrome.controlsEnabled)

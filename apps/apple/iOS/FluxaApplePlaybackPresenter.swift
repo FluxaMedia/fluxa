@@ -22,6 +22,8 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     private let discordPresence = FluxaAppleDiscordPresence()
     private let streamingAdapter = FluxaAppleAVPlayerStreamAdapter()
     private var pendingWatchRoomPresentation = false
+    private var preparationTask: Task<Void, Never>?
+    private var playbackRequestGeneration = 0
     private lazy var stateBridge = NativePlayerStateBridge(
         callbacks: NativePlayerCommandCallbacks(
             setPlaying: { [weak self] playing in
@@ -53,6 +55,10 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     )
 
     func present(request: ApplePlaybackRequestSnapshot) {
+        preparationTask?.cancel()
+        preparationTask = nil
+        playbackRequestGeneration &+= 1
+        streamingAdapter.invalidate()
         discordPresence.start()
         if shouldUseInfuse(), canLaunchInfuse() {
             presentInInfuse(request: request)
@@ -105,12 +111,22 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         let resumePositionMs = request.resumePositionMs
         let hasNextEpisode = resolveHasNextEpisode(request)
         let streamingAdapter = self.streamingAdapter
-        Task {
+        let adapterGeneration = streamingAdapter.beginPreparation()
+        let generation = playbackRequestGeneration
+        preparationTask = Task { @MainActor [weak self] in
             let playbackUrl = await Task.detached {
                 guard let originalURL = URL(string: originalUrl) else { return nil }
-                return streamingAdapter.prepare(url: originalURL, headers: requestHeaders, title: title)
+                return streamingAdapter.prepare(
+                    url: originalURL,
+                    headers: requestHeaders,
+                    title: title,
+                    generation: adapterGeneration
+                )
             }.value
-            guard let playbackUrl else {
+            guard !Task.isCancelled,
+                  let self,
+                  self.playbackRequestGeneration == generation,
+                  let playbackUrl else {
                 return
             }
             let player = FluxaPlayer()
@@ -152,6 +168,10 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                     self?.presentWatchStartMenu()
                 }
             }
+            controller.onPictureInPictureFinished = { [weak self, weak controller] in
+                guard let self, self.activePlayerController === controller else { return }
+                self.finishPlayback(stopPlayer: false)
+            }
             self.activePlayerController = controller
             presenter.present(controller, animated: true) {
                 controller.presentationController?.delegate = self
@@ -169,6 +189,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 )
                 player.play()
             }
+            self.preparationTask = nil
         }
     }
 
@@ -203,11 +224,20 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         let title = request.title
         let resumePositionMs = request.resumePositionMs
         let streamingAdapter = self.streamingAdapter
-        Task {
+        let adapterGeneration = streamingAdapter.beginPreparation()
+        let generation = playbackRequestGeneration
+        preparationTask = Task { @MainActor [weak self] in
             let playbackUrl = await Task.detached {
                 guard let originalURL = URL(string: originalUrl) else { return nil }
-                return streamingAdapter.prepare(url: originalURL, headers: requestHeaders, title: title)
+                return streamingAdapter.prepare(
+                    url: originalURL,
+                    headers: requestHeaders,
+                    title: title,
+                    generation: adapterGeneration
+                )
             }.value
+            guard !Task.isCancelled, let self else { return }
+            guard self.playbackRequestGeneration == generation else { return }
             guard let playbackUrl,
                   let infuseUrl = self.buildInfuseUrl(
                       playbackUrl: playbackUrl,
@@ -246,12 +276,15 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
                 bufferedPositionMs: Int64(resumePositionMs),
                 errorKey: nil
             )
-            UIApplication.shared.open(infuseUrl, options: [:]) { success in
-                if !success {
-                    self.externalPlaybackContext = nil
-                    self.externalPlaybackRequest = nil
-                    self.stateBridge.setContent(content: nil)
-                    self.presentInApp(request: request)
+            UIApplication.shared.open(infuseUrl, options: [:]) { [weak self] success in
+                Task { @MainActor [weak self] in
+                    guard let self, self.playbackRequestGeneration == generation else { return }
+                    if !success {
+                        self.externalPlaybackContext = nil
+                        self.externalPlaybackRequest = nil
+                        self.stateBridge.setContent(content: nil)
+                        self.presentInApp(request: request)
+                    }
                 }
             }
         }
@@ -432,7 +465,16 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
         if activePlayerController?.isPictureInPictureActive == true {
             return
         }
-        activePlayer?.stop()
+        finishPlayback(stopPlayer: true)
+    }
+
+    private func finishPlayback(stopPlayer: Bool) {
+        preparationTask?.cancel()
+        preparationTask = nil
+        playbackRequestGeneration &+= 1
+        if stopPlayer {
+            activePlayer?.stop()
+        }
         watchBridge.leaveRoom()
         watchBridge.detachPlayback()
         activePlayerController = nil
