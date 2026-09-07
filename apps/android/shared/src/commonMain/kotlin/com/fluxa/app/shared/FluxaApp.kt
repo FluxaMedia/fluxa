@@ -239,8 +239,8 @@ internal fun FluxaApp(
             val saveableStateHolder = androidx.compose.runtime.saveable.rememberSaveableStateHolder()
             val tvFirstCatalogFocus = remember { FocusRequester() }
             val tvHeroFocus = remember { FocusRequester() }
+            var tvLastCatalogFocusRequester by remember { mutableStateOf<FocusRequester?>(null) }
             var tvHeroFocused by remember { mutableStateOf(false) }
-            var tvSidebarCatalogFocusRequest by remember { mutableIntStateOf(0) }
             AnimatedContent(
                 targetState = screenKey,
                 transitionSpec = {
@@ -514,9 +514,9 @@ internal fun FluxaApp(
                     continueWatchingDensity = settingsState?.appearanceHome?.continueWatchingInterfaceDensity ?: "medium",
                     continueWatchingLandscapeMode = settingsState?.appearanceHome?.continueWatchingHorizontal ?: true,
                     heroFollowsFocusedItem = settingsState?.appearanceHome?.heroFollowsFocusedItem ?: true,
-                    sidebarCatalogFocusRequest = tvSidebarCatalogFocusRequest,
                     externalFirstCatalogFocus = tvFirstCatalogFocus,
                     externalHeroFocus = tvHeroFocus,
+                    onPosterFocusChanged = { tvLastCatalogFocusRequester = it },
                     onHeroFocusChanged = { tvHeroFocused = it },
                     modifier = Modifier.fillMaxSize().focusRestorer()
                 )
@@ -578,9 +578,8 @@ internal fun FluxaApp(
                         language = state.language,
                         profileAvatarUrl = profileState?.activeProfile?.avatarUrl,
                         onDestinationSelected = onDestinationSelected,
-                        rightFocusRequester = null,
-                        onHomeRightPressed = if (state.destination == FluxaDestination.Home) {
-                            { tvSidebarCatalogFocusRequest++ }
+                        rightFocusRequester = if (state.destination == FluxaDestination.Home) {
+                            tvLastCatalogFocusRequester ?: tvFirstCatalogFocus
                         } else {
                             null
                         },

@@ -29,6 +29,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -70,7 +71,6 @@ fun TvCatalogHomeScreen(
     continueWatchingDensity: String = "medium",
     continueWatchingLandscapeMode: Boolean = true,
     heroFollowsFocusedItem: Boolean = true,
-    sidebarCatalogFocusRequest: Int = 0,
     externalFirstCatalogFocus: FocusRequester? = null,
     externalHeroFocus: FocusRequester? = null,
     leftFocusRequester: FocusRequester? = null,
@@ -119,15 +119,6 @@ fun TvCatalogHomeScreen(
                 runCatching {
                     if (showStickyHero) heroFocus.requestFocus()
                     else firstCatalogFocus.requestFocus()
-                }
-            }
-            LaunchedEffect(sidebarCatalogFocusRequest) {
-                if (sidebarCatalogFocusRequest > 0) {
-                    listState.scrollToItem(0, heroRailFocusScrollOffset)
-                    withFrameNanos { }
-                    posterFocusTarget.requestFocus()
-                    withFrameNanos { }
-                    posterFocusTarget.requestFocus()
                 }
             }
             if (heroFocused && activeHeroItem != null) {
@@ -200,7 +191,17 @@ fun TvCatalogHomeScreen(
                             modifier = Modifier.padding(start = 76.dp, end = 24.dp)
                         )
                         val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
+                        val rowState = rememberLazyListState()
+                        val rowFocusScrollOffset = with(LocalDensity.current) { 64.dp.roundToPx() }
+                        var focusedIndex by remember { mutableIntStateOf(0) }
+                        LaunchedEffect(focusedIndex) {
+                            if (focusedIndex > 0) {
+                                withFrameNanos { }
+                                rowState.animateScrollToItem(focusedIndex - 1, rowFocusScrollOffset)
+                            }
+                        }
                         LazyRow(
+                            state = rowState,
                             modifier = Modifier.focusGroup(),
                             contentPadding = PaddingValues(start = 72.dp, end = 24.dp),
                             horizontalArrangement = Arrangement.spacedBy(
@@ -238,6 +239,7 @@ fun TvCatalogHomeScreen(
                                         }
                                         .onFocusChanged {
                                             if (it.isFocused) {
+                                                focusedIndex = index
                                                 lastPosterFocusRequester = itemFocus
                                                 onPosterFocusChanged(itemFocus)
                                                 focusedPoster = cardItem

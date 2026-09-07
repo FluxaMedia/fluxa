@@ -8,6 +8,7 @@ import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.register
 import org.gradle.kotlin.dsl.withType
 import java.io.File
+import java.util.concurrent.TimeUnit
 
 class FluxaAndroidRustPlugin : Plugin<Project> {
     override fun apply(target: Project) {
@@ -28,12 +29,17 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
         val profile = if (releaseBuild) "release" else "debug"
         val cargoProfileArgs = if (releaseBuild) listOf("--release") else emptyList()
         val allAbis = targets.map { it.abi }
-        val selectedAbis = providers.gradleProperty("fluxaRustAbis").orNull
-            ?.split(',')
-            ?.map(String::trim)
-            ?.filter(String::isNotEmpty)
-            ?.distinct()
-            ?: if (releaseBuild) allAbis else listOf("arm64-v8a")
+        val requestedAbis = providers.gradleProperty("fluxaRustAbis").orNull?.trim()
+        val selectedAbis = when {
+            requestedAbis.isNullOrEmpty() && releaseBuild -> allAbis
+            requestedAbis.isNullOrEmpty() || requestedAbis.equals("auto", ignoreCase = true) -> listOf(
+                detectConnectedAbi(allAbis.toSet()) ?: "arm64-v8a"
+            )
+            else -> requestedAbis.split(',')
+                .map(String::trim)
+                .filter(String::isNotEmpty)
+                .distinct()
+        }
         val unknownAbis = selectedAbis - allAbis.toSet()
         if (unknownAbis.isNotEmpty()) {
             throw GradleException(
@@ -154,7 +160,15 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             description = "Builds the Fluxa streaming engine for selected Android ABIs."
             dependsOn(streamingTasks)
         }
+        val cleanUnselectedRustJniLibs = tasks.register("cleanUnselectedFluxaRustJniLibs") {
+            doLast {
+                outputDir.get().asFile.listFiles()
+                    ?.filter { it.isDirectory && it.name !in selectedAbis }
+                    ?.forEach(File::deleteRecursively)
+            }
+        }
         tasks.matching { it.name == "preBuild" }.configureEach {
+            dependsOn(cleanUnselectedRustJniLibs)
             dependsOn("buildFluxaCore", "buildFluxaStreamingEngine")
         }
         tasks.withType<Test>().configureEach {
@@ -165,6 +179,46 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             systemProperty("fluxa.core.library.path", rustCoreDir.resolve("target/debug/libfluxa_core.so").absolutePath)
         }
         }
+    }
+
+    private fun Project.detectConnectedAbi(supportedAbis: Set<String>): String? {
+        val localSdkDir = rootProject.file("local.properties")
+            .takeIf(File::exists)
+            ?.readLines()
+            ?.firstOrNull { it.startsWith("sdk.dir=") }
+            ?.substringAfter("sdk.dir=")
+        val adbCommand = listOfNotNull(
+            localSdkDir?.let { File(it, "platform-tools/adb") },
+            System.getenv("ANDROID_HOME")?.let { File(it, "platform-tools/adb") },
+            System.getenv("ANDROID_SDK_ROOT")?.let { File(it, "platform-tools/adb") },
+        ).firstOrNull { it.exists() }?.absolutePath ?: "adb"
+
+        fun runAdb(vararg args: String): String? = runCatching {
+            val process = ProcessBuilder(listOf(adbCommand) + args)
+                .redirectErrorStream(true)
+                .start()
+            if (!process.waitFor(2, TimeUnit.SECONDS) || process.exitValue() != 0) {
+                process.destroyForcibly()
+                return@runCatching null
+            }
+            process.inputStream.bufferedReader().use { it.readText().trim() }
+        }.getOrNull()
+
+        val serial = System.getenv("ANDROID_SERIAL")?.takeIf(String::isNotBlank)
+            ?: runAdb("devices")
+                ?.lineSequence()
+                ?.drop(1)
+                ?.mapNotNull { line ->
+                    val fields = line.trim().split(Regex("\\s+"))
+                    fields.firstOrNull()?.takeIf { fields.getOrNull(1) == "device" }
+                }
+                ?.singleOrNull()
+            ?: return null
+
+        return runAdb("-s", serial, "shell", "getprop", "ro.product.cpu.abilist")
+            ?.split(',')
+            ?.map(String::trim)
+            ?.firstOrNull { it in supportedAbis }
     }
 
     private data class RustTarget(val abi: String, val triple: String, val envName: String) {
