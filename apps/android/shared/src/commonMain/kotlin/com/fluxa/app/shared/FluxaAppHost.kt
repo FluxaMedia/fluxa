@@ -367,7 +367,10 @@ private fun FluxaAppHostContent(
         }
     }
     LaunchedEffect(detailRequest) {
-        detailRequest?.let(appState::selectDetail)
+        detailRequest?.let { request ->
+            appState.selectDetail(request)
+            if (request.autoPlay) pendingAutoPlayId = request.id
+        }
     }
     LaunchedEffect(needsCatalogHome, catalogHomeStore) {
         if (needsCatalogHome) {

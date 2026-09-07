@@ -75,6 +75,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
 import com.google.gson.JsonObject
 
 import dagger.hilt.android.AndroidEntryPoint
@@ -99,6 +100,8 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var thirdPartyProviderRepository: com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 
     private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
+    private val playbackDeepLinkFlow = MutableStateFlow<PlaybackDeepLink?>(null)
+    private var playbackDeepLinkRevision = 0
     private val oauthRedirectHandler = OAuthRedirectHandler()
 
     override fun onNewIntent(intent: android.content.Intent) {
@@ -119,6 +122,27 @@ class MainActivity : FragmentActivity() {
         }
 
         oauthRedirectHandler.handle(intent)
+
+        val data = intent.data
+        if (intent.action == android.content.Intent.ACTION_VIEW &&
+            data?.scheme == "app" &&
+            data.host == "play"
+        ) {
+            val id = data.getQueryParameter("id")?.takeIf(String::isNotBlank)
+            val type = data.getQueryParameter("type")?.takeIf(String::isNotBlank)
+            if (id != null && type != null) {
+                playbackDeepLinkRevision += 1
+                playbackDeepLinkFlow.value = PlaybackDeepLink(
+                    revision = playbackDeepLinkRevision,
+                    id = id,
+                    type = type,
+                    videoId = data.getQueryParameter("videoId"),
+                    positionMs = data.getQueryParameter("positionMs")?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L,
+                    streamUrl = data.getQueryParameter("streamUrl"),
+                    streamTitle = data.getQueryParameter("streamTitle"),
+                )
+            }
+        }
     }
 
     override fun onDestroy() {
@@ -142,7 +166,7 @@ class MainActivity : FragmentActivity() {
             }
         }
         WindowCompat.setDecorFitsSystemWindows(window, false)
-        if (android.os.Build.VERSION.SDK_INT >= 33 &&
+        if (!com.fluxa.app.BuildConfig.IS_TV && android.os.Build.VERSION.SDK_INT >= 33 &&
             androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
             androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1007)
@@ -217,6 +241,10 @@ class MainActivity : FragmentActivity() {
                     val sharedDetailViewModel: com.fluxa.app.ui.catalog.DetailViewModel =
                         hiltViewModel(key = "SharedMobileDetailViewModel")
                     val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
+                    val tvLauncherPublisher = remember(context) { AndroidTvLauncherPublisher(context) }
+                    val tvLauncherCategories by homeViewModel.categories.collectAsStateWithLifecycle()
+                    val tvLauncherBillboardItems by homeViewModel.billboardPool.collectAsStateWithLifecycle()
+                    val tvLauncherWatchlist by homeViewModel.watchlist.collectAsStateWithLifecycle()
 
                     NuvioHealthSyncEffect(
                         profile = activeProfile,
@@ -239,6 +267,24 @@ class MainActivity : FragmentActivity() {
                         initialProfile?.let { profileManager.setLastActiveProfile(it) }
                     }
 
+                    LaunchedEffect(
+                        tvLauncherCategories,
+                        tvLauncherBillboardItems,
+                        tvLauncherWatchlist,
+                        activeProfile?.safeLanguage,
+                    ) {
+                        if (com.fluxa.app.BuildConfig.IS_TV) {
+                            withContext(Dispatchers.IO) {
+                                tvLauncherPublisher.publish(
+                                    categories = tvLauncherCategories,
+                                    billboardItems = tvLauncherBillboardItems,
+                                    watchlist = tvLauncherWatchlist,
+                                    language = activeProfile?.safeLanguage,
+                                )
+                            }
+                        }
+                    }
+
                     DisposableEffect(Unit) {
                         val listener = { profiles = profileManager.getProfiles() }
                         profileManager.addChangeListener(listener)
@@ -256,6 +302,21 @@ class MainActivity : FragmentActivity() {
                                 navigateToDestination(FluxaDestination.Discover, false)
                                 homeViewModel.search(query)
                             }
+                        }
+                    }
+
+                    LaunchedEffect(Unit) {
+                        playbackDeepLinkFlow.collect { link ->
+                            if (link == null) return@collect
+                            terminalDetailRequest = com.fluxa.app.shared.feature.detail.DetailRequestUiModel(
+                                id = link.id,
+                                type = link.type,
+                                initialProgress = link.positionMs,
+                                lastVideoId = link.videoId,
+                                autoPlay = true,
+                                lastStreamUrl = link.streamUrl,
+                                lastStreamTitle = link.streamTitle,
+                            )
                         }
                     }
 
@@ -528,3 +589,13 @@ class MainActivity : FragmentActivity() {
         }
     }
 }
+
+private data class PlaybackDeepLink(
+    val revision: Int,
+    val id: String,
+    val type: String,
+    val videoId: String?,
+    val positionMs: Long,
+    val streamUrl: String?,
+    val streamTitle: String?,
+)

@@ -885,6 +885,7 @@
     <string name="player_dot_audio_track">Audio track</string>
     <string name="player_dot_off">Off</string>
     <string name="player_dot_play">Play</string>
+    <string name="player_dot_playback_channel">Fluxa playback</string>
     <string name="player_dot_pause">Pause</string>
     <string name="player_dot_source">Source</string>
     <string name="player_dot_lock">Lock</string>

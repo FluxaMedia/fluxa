@@ -99,7 +99,10 @@ class DetailStore(
                         contentResumeProgressPercent = content?.resumeProgressPercent,
                         episodeId = episodeId,
                         firstStreamIfCs3 = content?.streams?.firstOrNull(),
-                        fromStart = action.fromStart
+                        fromStart = action.fromStart,
+                        preferredStream = request.lastStreamUrl?.let { url ->
+                            content?.streams?.firstOrNull { it.playableUrl == url }
+                        }
                     )
                 )
             }

@@ -885,6 +885,7 @@
     <string name="player_dot_audio_track">Ses parçası</string>
     <string name="player_dot_off">Kapalı</string>
     <string name="player_dot_play">Oynat</string>
+    <string name="player_dot_playback_channel">Fluxa oynatımı</string>
     <string name="player_dot_pause">Duraklat</string>
     <string name="player_dot_source">Kaynak</string>
     <string name="player_dot_lock">Kilitle</string>

@@ -18,15 +18,16 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.session.MediaSession
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
+import com.fluxa.app.data.stream.playableUrl
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.player.*
 import com.fluxa.app.player.MediaPlayerController
+import com.fluxa.app.ui.playback.FluxaPlaybackSessionController
 import com.fluxa.app.shared.feature.player.MediaTrack
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherContent
 import com.fluxa.app.shared.feature.watchtogether.LambdaWatchTogetherPlaybackEndpoint
@@ -40,27 +41,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.google.gson.JsonObject
-
-@Composable
-private fun rememberFluxaMediaSession(
-    context: Context,
-    exoPlayer: ExoPlayer,
-    enabled: Boolean,
-): MediaSession? {
-    val mediaSession = remember(context, exoPlayer, enabled) {
-        if (enabled) {
-            MediaSession.Builder(context, exoPlayer)
-                .setId("fluxa-player")
-                .build()
-        } else {
-            null
-        }
-    }
-    DisposableEffect(mediaSession) {
-        onDispose { mediaSession?.release() }
-    }
-    return mediaSession
-}
 
 @Composable
 fun PlayerScreen(
@@ -172,7 +152,33 @@ fun PlayerScreen(
     val activeEngine: PlayerEngine? = remember(useMpvBackend, mpvPlayer, exoEngine) {
         if (useMpvBackend) mpvPlayer?.let(::MpvPlayerEngine) else exoEngine
     }
-    rememberFluxaMediaSession(context, exoPlayer, enabled = !useMpvBackend)
+    val watchNextPublisher = remember(context) { AndroidTvWatchNextPublisher(context) }
+    DisposableEffect(exoPlayer, mpvPlayer, useMpvBackend) {
+        FluxaPlaybackSessionController.attach(
+            context = context,
+            exoPlayer = exoPlayer.takeUnless { useMpvBackend },
+            mpvPlayer = mpvPlayer.takeIf { useMpvBackend },
+            title = meta.name,
+            subtitle = state.currentEpisodeMetaLine,
+            artworkUri = state.currentEpisodeArtwork ?: meta.poster,
+            language = lang,
+        )
+        onDispose {
+            FluxaPlaybackSessionController.detach(
+                context = context,
+                exoPlayer = exoPlayer.takeUnless { useMpvBackend },
+                mpvPlayer = mpvPlayer.takeIf { useMpvBackend },
+            )
+        }
+    }
+    LaunchedEffect(meta.id, state.currentVideoId, state.currentEpisodeMetaLine, state.currentEpisodeArtwork) {
+        FluxaPlaybackSessionController.updateMetadata(
+            title = meta.name,
+            subtitle = state.currentEpisodeMetaLine,
+            artworkUri = state.currentEpisodeArtwork ?: meta.poster,
+            language = lang,
+        )
+    }
 
     LaunchedEffect(activeEngine, meta.id, state.currentVideoId) {
         try {
@@ -645,6 +651,23 @@ fun PlayerScreen(
         setNextEpisode = { state.nextEpisodePending = it }
     )
 
+    LaunchedEffect(meta.id, state.currentVideoId, useMpvBackend) {
+        if (!com.fluxa.app.BuildConfig.IS_TV) return@LaunchedEffect
+        while (isActive) {
+            if (state.engine.playback.hasStartedPlaying) {
+                watchNextPublisher.publish(
+                    meta = meta,
+                    videoId = state.currentVideoId ?: videoId,
+                    positionMs = state.engine.timeline.position,
+                    durationMs = state.engine.timeline.duration,
+                    streamUrl = state.currentStreams.getOrNull(state.currentStreamIndex)?.playableUrl,
+                    streamTitle = state.currentStreams.getOrNull(state.currentStreamIndex)?.title,
+                )
+            }
+            delay(15_000)
+        }
+    }
+
     val latestIsScrubbing by rememberUpdatedState(state.isScrubbing)
     val latestActiveEngine by rememberUpdatedState(activeEngine)
     LaunchedEffect(state.scrubPosition) {
@@ -666,6 +689,9 @@ fun PlayerScreen(
 
     LaunchedEffect(state.engine.playback.playbackEnded, state.nextEpisodePending) {
         if (!state.engine.playback.playbackEnded || !state.engine.playback.hasStartedPlaying) return@LaunchedEffect
+        if (com.fluxa.app.BuildConfig.IS_TV) {
+            watchNextPublisher.remove(meta, state.currentVideoId ?: videoId)
+        }
         delay(150)
         val hasNextEpisode = state.nextEpisodePending != null
         if (hasNextEpisode) {

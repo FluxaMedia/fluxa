@@ -884,6 +884,7 @@
   "player.audio_track": "Ses parçası",
   "player.off": "Kapalı",
   "player.play": "Oynat",
+  "player.playback_channel": "Fluxa oynatımı",
   "player.pause": "Duraklat",
   "player.source": "Kaynak",
   "player.lock": "Kilitle",

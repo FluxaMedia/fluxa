@@ -68,7 +68,8 @@ android {
     productFlavors {
         create("mobile") {
             dimension = "device"
-            minSdk = 30
+            // libmpv is the lowest common native playback floor for mobile and TV.
+            minSdk = 26
             applicationId = "com.fluxa.app.mobile"
             buildConfigField("String", "DEVICE_FLAVOR", "\"mobile\"")
             buildConfigField("Boolean", "IS_TV", "false")

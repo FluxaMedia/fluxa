@@ -191,14 +191,16 @@ object DetailNavigationLogic {
         contentResumeProgressPercent: Float? = null,
         episodeId: String?,
         firstStreamIfCs3: DetailStreamUiModel?,
-        fromStart: Boolean = false
+        fromStart: Boolean = false,
+        preferredStream: DetailStreamUiModel? = null,
     ): DetailNavigationEvent {
         val targetVideoId = episodeId ?: contentResumeVideoId
         val progress = if (fromStart) 0L else resumeProgressFor(contentResumeVideoId, contentResumeProgress, targetVideoId)
         val progressPercent = if (fromStart) null else resumeProgressPercentFor(contentResumeVideoId, contentResumeProgressPercent, targetVideoId)
         val isCs3 = contentId?.startsWith("cs3:") == true || targetVideoId?.startsWith("cs3:") == true
-        return if (isCs3 && firstStreamIfCs3 != null) {
-            DetailNavigationEvent.PlayStream(firstStreamIfCs3, episodeId, progress, progressPercent)
+        val stream = preferredStream ?: firstStreamIfCs3
+        return if (stream != null && (preferredStream != null || isCs3)) {
+            DetailNavigationEvent.PlayStream(stream, episodeId, progress, progressPercent)
         } else {
             DetailNavigationEvent.SelectSources(episodeId, progress, progressPercent)
         }
