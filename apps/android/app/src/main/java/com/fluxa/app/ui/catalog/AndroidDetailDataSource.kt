@@ -218,6 +218,17 @@ class AndroidDetailDataSource(
         detailViewModel.downloadEpisodes(episodes)
     }
 
+    fun downloadStream(stream: DetailStreamUiModel, episodeId: String?) {
+        val resolved = resolveStream(stream.playableUrl) ?: com.fluxa.app.data.remote.Stream(
+            name = stream.name.ifBlank { stream.title },
+            title = stream.title,
+            description = stream.description,
+            url = stream.playableUrl,
+            addonName = stream.addonName,
+        )
+        detailViewModel.downloadStream(resolved, episodeId)
+    }
+
     fun resolveStream(playableUrl: String): com.fluxa.app.data.remote.Stream? {
         detailViewModel.uiState.value.streams.firstOrNull { it.playableUrl == playableUrl }?.let { return it }
         val detail = detailViewModel.uiState.value.detail ?: return null

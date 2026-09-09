@@ -33,6 +33,27 @@ internal class DetailDownloadCoordinator(
             .count { episode -> enqueueEpisodeDownload(detail, episode, profile) }
     }
 
+    suspend fun queueStream(stream: Stream, episodeId: String?): Boolean {
+        val detail = currentDetail() ?: return false
+        val profile = currentProfile()
+        val episode = episodeId?.let { id -> seasonEpisodes().firstOrNull { it.id == id } }
+        val subtitle = selectDownloadSubtitle(profile, detail.type, episodeId ?: detail.id, stream)
+        val result = runtime.dispatch(
+            mapOf(
+                "type" to "offlineDownloadRequested",
+                "meta" to detail.toMeta(),
+                "video" to episode,
+                "videoId" to episodeId,
+                "stream" to stream,
+                "subtitle" to subtitle,
+                "profileId" to profile?.id,
+                "language" to (profile?.safeLanguage ?: "en")
+            )
+        )
+        val offline = result.state["offline"] as? Map<*, *>
+        return offline?.get("error") == null
+    }
+
     private suspend fun enqueueEpisodeDownload(
         detail: MetaDetail,
         episode: Video,

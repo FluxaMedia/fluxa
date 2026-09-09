@@ -853,6 +853,12 @@ class DetailViewModel @Inject constructor(
         }
     }
 
+    fun downloadStream(stream: Stream, episodeId: String?) {
+        viewModelScope.launch {
+            downloadCoordinator.queueStream(stream, episodeId)
+        }
+    }
+
     private fun showToast(context: android.content.Context?, message: String, length: Int = android.widget.Toast.LENGTH_LONG) {
         context?.let { android.widget.Toast.makeText(it, message, length).show() }
     }

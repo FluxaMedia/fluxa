@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
+import com.fluxa.app.shared.ui.AdaptiveModalSheet
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
@@ -64,6 +66,8 @@ fun SourceSelectionScreen(
     onStreamSelected: (DetailStreamUiModel) -> Unit,
     onAddonSelected: (String?) -> Unit,
     onRetry: () -> Unit,
+    onStreamLinkCopyRequested: (String) -> Unit = {},
+    onStreamDownloadRequested: (DetailStreamUiModel, String?) -> Unit = { _, _ -> },
     modifier: Modifier = Modifier
 ) {
     val addonFilter = content.selectedAddon
@@ -93,6 +97,7 @@ fun SourceSelectionScreen(
         if (filter == null) streams.sortedBy { addonPriority(it.addonName) } else streams
     }
     val episode = content.selectedEpisodeId?.let { id -> content.seasonEpisodes.firstOrNull { it.id == id } }
+    var contextStream by remember { mutableStateOf<DetailStreamUiModel?>(null) }
 
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
         Backdrop(content = content, episode = episode, compact = isExpanded)
@@ -162,7 +167,11 @@ fun SourceSelectionScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(visibleStreams, key = { "${it.addonName}:${it.playableUrl}" }) { stream ->
-                            StreamCard(stream = stream, onClick = { onStreamSelected(stream) })
+                            StreamCard(
+                                stream = stream,
+                                onClick = { onStreamSelected(stream) },
+                                onLongClick = { contextStream = stream }
+                            )
                         }
                         if (content.isLoadingStreams) {
                             item(key = "loading-more") {
@@ -170,6 +179,39 @@ fun SourceSelectionScreen(
                             }
                         }
                     }
+                }
+            }
+        }
+        contextStream?.let { stream ->
+            AdaptiveModalSheet(
+                onDismissRequest = { contextStream = null },
+                containerColor = Color(0xFF171717)
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                ) {
+                    StreamSummary(
+                        stream = stream,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+                    StreamActionRow(
+                        icon = FluxaIcons.Filled.ContentCopy,
+                        label = AppStrings.t(language, "sources.copy_stream_link"),
+                        onClick = {
+                            onStreamLinkCopyRequested(stream.playableUrl)
+                            contextStream = null
+                        }
+                    )
+                    StreamActionRow(
+                        icon = FluxaIcons.Filled.Download,
+                        label = AppStrings.t(language, "sources.download_this_video"),
+                        onClick = {
+                            onStreamDownloadRequested(stream, content.selectedEpisodeId)
+                            contextStream = null
+                        }
+                    )
                 }
             }
         }
@@ -421,7 +463,11 @@ private fun LoadingAddonsRow(addonNames: List<String>, language: String?) {
 }
 
 @Composable
-private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
+private fun StreamCard(
+    stream: DetailStreamUiModel,
+    onClick: () -> Unit,
+    onLongClick: () -> Unit
+) {
     var focused by remember { mutableStateOf(false) }
     val bg by animateColorAsState(
         targetValue = if (focused) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.045f),
@@ -442,33 +488,80 @@ private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
             }
             .clip(RoundedCornerShape(12.dp))
             .background(bg)
-            .clickable(onClick = onClick)
+            .combinedClickable(
+                interactionSource = null,
+                indication = null,
+                onClick = onClick,
+                onLongClick = onLongClick
+            )
             .onFocusChanged { focused = it.isFocused }
             .focusable()
             .padding(horizontal = 14.dp, vertical = 16.dp),
         verticalAlignment = Alignment.Top
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            if (stream.name.isNotBlank()) {
-                Text(
-                    text = stream.name,
-                    color = Color.White,
-                    fontSize = 15.sp,
-                    lineHeight = 20.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    softWrap = true,
-                )
-            }
-            if (stream.description.isNotBlank()) {
-                Text(
-                    text = stream.description,
-                    color = Color.White.copy(alpha = 0.52f),
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    softWrap = true,
-                    modifier = Modifier.padding(top = 5.dp)
-                )
-            }
+        StreamSummary(stream = stream, modifier = Modifier.weight(1f))
+    }
+}
+
+@Composable
+private fun StreamSummary(
+    stream: DetailStreamUiModel,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        if (stream.name.isNotBlank()) {
+            Text(
+                text = stream.name,
+                color = Color.White,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                softWrap = true,
+            )
         }
+        if (stream.description.isNotBlank()) {
+            Text(
+                text = stream.description,
+                color = Color.White.copy(alpha = 0.52f),
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                softWrap = true,
+                modifier = Modifier.padding(top = 5.dp)
+            )
+        }
+        if (stream.name.isBlank() && stream.description.isBlank()) {
+            Text(
+                text = stream.title.ifBlank { stream.addonName },
+                color = Color.White,
+                fontSize = 15.sp,
+                lineHeight = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                softWrap = true,
+            )
+        }
+    }
+}
+
+@Composable
+private fun StreamActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(icon, contentDescription = null, tint = Color.White, modifier = Modifier.size(22.dp))
+        Text(
+            text = label,
+            color = Color.White,
+            fontSize = 15.sp,
+            modifier = Modifier.padding(start = 14.dp)
+        )
     }
 }

@@ -147,6 +147,8 @@ private fun FluxaAppHostContent(
     val onPluginsBackRequested = navigationCallbacks.onPluginsBackRequested
     val onStreamBadgesBackRequested = navigationCallbacks.onStreamBadgesBackRequested
     val onDownloadOpened = navigationCallbacks.onDownloadOpened
+    val onStreamLinkCopyRequested = navigationCallbacks.onStreamLinkCopyRequested
+    val onStreamDownloadRequested = navigationCallbacks.onStreamDownloadRequested
     val onDestinationChanged = navigationCallbacks.onDestinationChanged
 
     val onAuthBackRequested = authCallbacks.onAuthBackRequested
@@ -536,6 +538,8 @@ private fun FluxaAppHostContent(
                     detailStore?.dispatch(action)
                 }
             },
+            onStreamLinkCopyRequested = onStreamLinkCopyRequested,
+            onStreamDownloadRequested = onStreamDownloadRequested,
             onDetailBackRequested = {
                 appState.clearDetail()
                 onDetailBackRequested()

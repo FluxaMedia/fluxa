@@ -49,7 +49,8 @@ class OfflineDownloadManager private constructor(private val context: Context) {
         videoId: String?,
         stream: Stream,
         subtitle: OfflineSubtitleOption?,
-        profileLanguage: String? = null
+        profileLanguage: String? = null,
+        playbackUrlOverride: String? = null
     ): Result<OfflineDownloadItem> = withContext(Dispatchers.IO) {
         val id = UUID.randomUUID().toString()
         val plan = FluxaCoreNative.offlineDownloadPlan(
@@ -63,7 +64,10 @@ class OfflineDownloadManager private constructor(private val context: Context) {
         if (!plan.supported) {
             return@withContext Result.failure(IllegalArgumentException(plan.reason ?: "unsupported_source"))
         }
-        val playbackUrl = plan.playbackUrl
+        val playbackUrl = playbackUrlOverride?.takeIf { it.isNotBlank() } ?: plan.playbackUrl
+        if (!playbackUrl.startsWith("http://") && !playbackUrl.startsWith("https://")) {
+            return@withContext Result.failure(IllegalArgumentException(plan.reason ?: "unsupported_source"))
+        }
         val folder = File(appContext.getExternalFilesDir(Environment.DIRECTORY_MOVIES), "offline").apply { mkdirs() }
         val videoFile = File(folder, plan.videoFileName)
         val subtitleFile = plan.subtitleFileName?.let { File(folder, it) }

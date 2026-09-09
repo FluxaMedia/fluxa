@@ -386,6 +386,13 @@ internal fun AppRoutesHost(
                         }
                     }
                 },
+                onStreamLinkCopyRequested = { url ->
+                    val clipboard = context.getSystemService(android.content.ClipboardManager::class.java)
+                    clipboard?.setPrimaryClip(android.content.ClipData.newPlainText("Fluxa stream link", url))
+                },
+                onStreamDownloadRequested = { stream, episodeId ->
+                    androidFluxaPlatformServices.detailDataSource.downloadStream(stream, episodeId)
+                },
                 onDestinationChanged = onDestinationChanged,
             ),
             auth = com.fluxa.app.shared.FluxaAppAuthCallbacks(

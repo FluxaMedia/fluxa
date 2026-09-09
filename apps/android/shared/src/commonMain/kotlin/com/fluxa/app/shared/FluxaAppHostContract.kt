@@ -17,6 +17,7 @@ import com.fluxa.app.shared.feature.streambadges.StreamBadgesDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.detail.DetailNavigationEvent
 import com.fluxa.app.shared.feature.detail.DetailRequestUiModel
+import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.profile.ProfileUiModel
 import com.fluxa.app.shared.feature.localmedia.LocalMediaKind
 import com.fluxa.app.shared.feature.localmedia.LocalMediaPickedFolder
@@ -71,6 +72,8 @@ data class FluxaAppNavigationCallbacks(
     val onPluginsBackRequested: () -> Unit = {},
     val onStreamBadgesBackRequested: () -> Unit = {},
     val onDownloadOpened: (String) -> Unit = {},
+    val onStreamLinkCopyRequested: (String) -> Unit = {},
+    val onStreamDownloadRequested: (DetailStreamUiModel, String?) -> Unit = { _, _ -> },
     val onDestinationChanged: (FluxaDestination) -> Unit = {},
 )
 

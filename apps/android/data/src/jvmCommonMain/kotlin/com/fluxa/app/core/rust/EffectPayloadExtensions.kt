@@ -33,6 +33,14 @@ fun <T> Map<String, T>.mapKeysNotNullToInt(): Map<Int, T> =
     mapNotNull { (key, value) -> key.toIntOrNull()?.let { it to value } }.toMap()
 
 fun Map<String, Any?>.parseProfile(gson: Gson): UserProfile? {
-    val raw = objectValue("profile")?.takeIf { it.isNotEmpty() } ?: return null
-    return runCatching { gson.fromJson(gson.toJsonTree(raw), UserProfile::class.java) }.getOrNull()
+    return when (val raw = this["profile"]) {
+        is UserProfile -> raw
+        is Map<*, *> -> {
+            @Suppress("UNCHECKED_CAST")
+            val profileMap = raw as? Map<String, Any?> ?: return null
+            profileMap.takeIf { it.isNotEmpty() }
+                ?.let { runCatching { gson.fromJson(gson.toJsonTree(it), UserProfile::class.java) }.getOrNull() }
+        }
+        else -> null
+    }
 }

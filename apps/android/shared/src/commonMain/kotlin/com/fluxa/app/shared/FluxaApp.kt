@@ -169,6 +169,8 @@ internal fun FluxaApp(
     val onProfileListAction = actions.onProfileListAction
     val onProfileBiometricRequested = actions.onProfileBiometricRequested
     val onPlayerAction = actions.onPlayerAction
+    val onStreamLinkCopyRequested = actions.onStreamLinkCopyRequested
+    val onStreamDownloadRequested = actions.onStreamDownloadRequested
 
     val profileEditAvatarUrl = profileEditor.avatarUrl
     val onPickAvatarClick = profileEditor.onPickAvatarClick
@@ -331,6 +333,8 @@ internal fun FluxaApp(
                     },
                     onAddonSelected = { addon -> onDetailAction(DetailAction.AddonFilterSelected(addon)) },
                     onRetry = { onDetailAction(DetailAction.RetrySourcesRequested) },
+                    onStreamLinkCopyRequested = onStreamLinkCopyRequested,
+                    onStreamDownloadRequested = onStreamDownloadRequested,
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
                 state.selectedDetail != null && detailState != null -> DetailScreen(

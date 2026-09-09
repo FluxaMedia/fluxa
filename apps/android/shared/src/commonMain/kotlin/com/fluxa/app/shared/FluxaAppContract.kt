@@ -10,6 +10,7 @@ import com.fluxa.app.shared.feature.calendar.CalendarUiState
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.detail.DetailAction
+import com.fluxa.app.shared.feature.detail.DetailStreamUiModel
 import com.fluxa.app.shared.feature.detail.DetailUiState
 import com.fluxa.app.shared.feature.discover.DiscoverAction
 import com.fluxa.app.shared.feature.discover.DiscoverUiState
@@ -83,6 +84,8 @@ internal data class FluxaAppActions(
     val onProfileListAction: (ProfileAction) -> Unit = {},
     val onProfileBiometricRequested: (ProfileUiModel) -> Unit = {},
     val onPlayerAction: (PlayerRenderAction) -> Unit = {},
+    val onStreamLinkCopyRequested: (String) -> Unit = {},
+    val onStreamDownloadRequested: (DetailStreamUiModel, String?) -> Unit = { _, _ -> },
 )
 
 internal data class FluxaProfileEditorBindings(
