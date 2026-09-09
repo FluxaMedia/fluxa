@@ -12,7 +12,7 @@ final class FluxaAppleAddonConfigurationStore {
 
     func localAddonUrls() -> [String] {
         let stored = defaults.stringArray(forKey: Self.localAddonUrlsKey)
-        let values = stored ?? ["https://v3-cinemeta.strem.io/manifest.json"]
+        let values = stored ?? []
         return values.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 
