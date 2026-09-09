@@ -279,7 +279,7 @@ class ExternalLibraryClient @Inject constructor(
         consumedSessionIds: MutableSet<Int>
     ): Meta? {
         val id = item.effectiveIds?.imdb ?: item.effectiveIds?.tmdb ?: item.effectiveIds?.slug?.let { "simkl:$it" } ?: item.effectiveIds?.simkl?.let { "simkl:$it" } ?: return null
-        val locator = if (type == "series") item.nextEpisodeLocator() else null
+        val locator = if (FluxaCoreNative.isSeriesContentType(type)) item.nextEpisodeLocator() else null
         val session = playbackSessions.firstOrNull { session ->
             val source = session.playbackSource()
             val simklId = source?.getAsJsonObject("ids")?.get("simkl")?.takeUnless { it.isJsonNull }?.asInt
@@ -326,7 +326,7 @@ class ExternalLibraryClient @Inject constructor(
             lastEpisodeName = entry.get("lastEpisodeName")?.takeUnless { it.isJsonNull }?.asString,
             reason = "Simkl"
         )
-        return if (type == "series") {
+        return if (FluxaCoreNative.isSeriesContentType(type)) {
             val simklId = source.getAsJsonObject("ids")?.get("simkl")?.takeUnless { it.isJsonNull }?.asInt
             if (simklId != null) attachEpisodeDetailsBySimklId(simklId, meta) else meta
         } else {
@@ -351,9 +351,8 @@ class ExternalLibraryClient @Inject constructor(
     }
 
     private suspend fun attachEpisodeDetailsBySimklId(simklId: Int, meta: Meta): Meta {
-        val locator = meta.lastVideoId?.split(":")?.takeLast(2)?.let { (season, episode) ->
-            season.toIntOrNull()?.let { s -> episode.toIntOrNull()?.let { e -> s to e } }
-        } ?: return meta
+        val locator = meta.lastVideoId?.let(FluxaCoreNative::parseEpisodeLocator)
+            ?.let { it.season to it.episode } ?: return meta
         return attachEpisodeDetailsBySimklId(simklId, locator, meta)
     }
 

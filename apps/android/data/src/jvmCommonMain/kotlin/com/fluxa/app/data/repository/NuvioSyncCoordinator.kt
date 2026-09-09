@@ -1,5 +1,6 @@
 package com.fluxa.app.data.repository
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
@@ -29,6 +30,7 @@ class NuvioSyncCoordinator @Inject constructor(
     private val nuvioService: NuvioService,
     private val profileManager: ProfileManager,
     private val addonRepository: AddonRepository,
+    private val addonPersistentCache: AddonPersistentCache,
     private val deltaSyncEngine: NuvioDeltaSyncEngine,
     private val gson: com.google.gson.Gson,
 ) {
@@ -43,6 +45,111 @@ class NuvioSyncCoordinator @Inject constructor(
             authorization = context.authorization,
             profileId = "eq.${effective.addons}",
         ).bodyOrNull().orEmpty().size
+    }
+
+    suspend fun fetchAddons(profile: UserProfile): List<AddonDescriptor> = coroutineScope {
+        val context = syncContext(profile) ?: return@coroutineScope emptyList()
+        val effective = nuvioService.resolveEffectiveProfileScopes(
+            context.authorization,
+            context.profileIndex,
+        )
+        val cacheKey = "nuvio_managed_addons_v1_${profile.id}_${effective.addons}"
+        val cached = addonPersistentCache.getUserAddons(cacheKey)
+        val response = nuvioService.pullAddons(
+            authorization = context.authorization,
+            profileId = "eq.${effective.addons}",
+        )
+        if (!response.isSuccessful) return@coroutineScope cached
+        val addons = response.body().orEmpty()
+            .sortedBy { it.sortOrder }
+
+        val resolved = addons.map { addon ->
+            async {
+                val cachedAddon = cached.firstOrNull { sameAddonTransport(it.transportUrl, addon.url) }
+                (addonRepository.getAddonManifest(addon.url, forceRefresh = false) ?: cachedAddon)?.copy(
+                    installationId = addon.id,
+                    isEnabled = addon.enabled,
+                    sortOrder = addon.sortOrder,
+                    isManaged = true,
+                )
+            }
+        }.awaitAll().filterNotNull()
+        if (resolved.isNotEmpty()) addonPersistentCache.putUserAddons(cacheKey, resolved)
+        if (resolved.isNotEmpty()) {
+            resolved
+        } else {
+            cached.filter { cachedAddon ->
+                addons.any { addon -> sameAddonTransport(cachedAddon.transportUrl, addon.url) }
+            }
+        }
+    }
+
+    suspend fun setAddonEnabled(profile: UserProfile, addon: AddonDescriptor, enabled: Boolean): Boolean {
+        return updateAddon(profile, addon, mapOf("enabled" to enabled))
+    }
+
+    suspend fun removeAddon(profile: UserProfile, addon: AddonDescriptor): Boolean {
+        val context = syncContext(profile) ?: return false
+        val addonId = addon.installationId ?: return false
+        val effective = nuvioService.resolveEffectiveProfileScopes(context.authorization, context.profileIndex)
+        nuvioService.deleteAddon(
+            authorization = context.authorization,
+            id = "eq.$addonId",
+            profileId = "eq.${effective.addons}",
+        ).requireSuccess()
+        stampSync(context.profile)
+        return true
+    }
+
+    suspend fun moveAddon(profile: UserProfile, addon: AddonDescriptor, direction: Int): Boolean {
+        if (direction == 0) return false
+        val context = syncContext(profile) ?: return false
+        val addonId = addon.installationId ?: return false
+        val effective = nuvioService.resolveEffectiveProfileScopes(context.authorization, context.profileIndex)
+        val addons = nuvioService.pullAddons(
+            authorization = context.authorization,
+            profileId = "eq.${effective.addons}",
+        ).bodyOrNull().orEmpty().sortedBy { it.sortOrder }
+        val currentIndex = addons.indexOfFirst { it.id == addonId }
+        val adjacentIndex = currentIndex + direction.coerceIn(-1, 1)
+        if (currentIndex < 0 || adjacentIndex !in addons.indices) return false
+
+        val current = addons[currentIndex]
+        val adjacent = addons[adjacentIndex]
+        val currentId = current.id ?: return false
+        val adjacentId = adjacent.id ?: return false
+        nuvioService.updateAddon(
+            authorization = context.authorization,
+            id = "eq.$currentId",
+            profileId = "eq.${effective.addons}",
+            body = mapOf("sort_order" to adjacent.sortOrder),
+        ).requireSuccess()
+        nuvioService.updateAddon(
+            authorization = context.authorization,
+            id = "eq.$adjacentId",
+            profileId = "eq.${effective.addons}",
+            body = mapOf("sort_order" to current.sortOrder),
+        ).requireSuccess()
+        stampSync(context.profile)
+        return true
+    }
+
+    private suspend fun updateAddon(
+        profile: UserProfile,
+        addon: AddonDescriptor,
+        fields: Map<String, Any?>,
+    ): Boolean {
+        val context = syncContext(profile) ?: return false
+        val addonId = addon.installationId ?: return false
+        val effective = nuvioService.resolveEffectiveProfileScopes(context.authorization, context.profileIndex)
+        nuvioService.updateAddon(
+            authorization = context.authorization,
+            id = "eq.$addonId",
+            profileId = "eq.${effective.addons}",
+            body = fields,
+        ).requireSuccess()
+        stampSync(context.profile)
+        return true
     }
 
     suspend fun fetchLibrary(profile: UserProfile): List<Meta> {
@@ -77,8 +184,19 @@ class NuvioSyncCoordinator @Inject constructor(
             )
         }
 
-        val library = libraryRequest.await().associateBy { it.nuvioLibraryIdentity() }
-        val progress = progressRequest.await().continueWatching
+        val library = libraryRequest.await()
+        val progressSync = progressRequest.await()
+        resolveContinueWatching(profile, progressSync, library)
+    }
+
+    suspend fun resolveContinueWatching(
+        profile: UserProfile,
+        progressSync: NuvioProgressSyncResult,
+        libraryItems: List<NuvioLibraryItemDto>,
+    ): List<Meta> = coroutineScope {
+        val context = syncContext(profile) ?: return@coroutineScope emptyList()
+        val library = libraryItems.associateBy { it.nuvioLibraryIdentity() }
+        val progress = progressSync.continueWatching
         if (progress.isEmpty()) return@coroutineScope emptyList()
 
         val needsMetadata = NuvioCoreBridge.progressMetaNeeds(
@@ -157,18 +275,20 @@ class NuvioSyncCoordinator @Inject constructor(
         )
         val latestByContent = LinkedHashMap<String, NuvioWatchedItemDto>()
         history.sortedByDescending { it.watchedAt ?: Long.MIN_VALUE }.forEach { item ->
-            val key = "${item.contentType.trim().lowercase()}:${item.contentId.trim()}"
+            val key = "${FluxaCoreNative.nuvioCanonicalContentType(item.contentType)}:${item.contentId.trim()}"
             latestByContent.putIfAbsent(key, item)
         }
         return latestByContent.values.map { item ->
-            val episodeCode = if (item.season != null && item.episode != null) {
-                "S${item.season} E${item.episode}"
-            } else null
             Meta(
                 id = item.contentId,
                 name = item.title?.takeIf(String::isNotBlank) ?: item.contentId,
                 type = item.contentType,
-                lastEpisodeName = episodeCode,
+                lastEpisodeName = FluxaCoreNative.formatEpisodeLine(
+                    null,
+                    item.season,
+                    item.episode,
+                    null,
+                ).takeIf(String::isNotBlank),
                 lastWatchedAt = item.watchedAt,
                 reason = ThirdPartyProviderId.NUVIO.reasonLabel,
             )
@@ -489,30 +609,16 @@ private fun NuvioLibraryItemDto.toLibraryMeta(): Meta {
 }
 
 private fun NuvioWatchProgressDto.candidateMetaTypes(): List<String> {
-    val alternateTypes = when (contentType.trim().lowercase()) {
-        "series", "show", "tv", "anime" -> listOf("series", "show", "tv", "anime")
-        "movie", "film" -> listOf("movie")
-        else -> emptyList()
-    }
-    return (listOf(contentType) + alternateTypes)
-        .map(String::trim)
-        .filter(String::isNotBlank)
-        .distinct()
+    return FluxaCoreNative.nuvioCandidateContentTypes(contentType)
 }
 
 private fun sameAddonTransport(first: String, second: String): Boolean =
     normalizedAddonIdentity(first) == normalizedAddonIdentity(second)
 
-private fun normalizedAddonIdentity(value: String): String = value.trim()
-    .trimEnd('/')
-    .removeSuffix("/manifest.json")
-    .trimEnd('/')
-    .lowercase()
+private fun normalizedAddonIdentity(value: String): String = FluxaCoreNative.identity(value)
 
-private fun canonicalNuvioContentType(type: String): String = when (type.trim().lowercase()) {
-    "series", "show", "tv", "anime" -> "series"
-    else -> "movie"
-}
+private fun canonicalNuvioContentType(type: String): String =
+    FluxaCoreNative.nuvioCanonicalContentType(type)
 
 private fun NuvioLibraryItemDto.nuvioLibraryIdentity(): String =
     "${canonicalNuvioContentType(contentType)}:${contentId.trim()}"
@@ -521,19 +627,9 @@ private fun NuvioWatchProgressDto.nuvioLibraryIdentity(): String =
     "${canonicalNuvioContentType(contentType)}:${contentId.trim()}"
 
 private fun Meta.episodeLocator(videoId: String?): Pair<Int, Int>? {
-    val fromId = videoId?.split(':')?.let { parts ->
-        if (parts.size < 3) null else {
-            val season = parts[parts.lastIndex - 1].toIntOrNull()
-            val episode = parts.last().toIntOrNull()
-            if (season != null && episode != null) season to episode else null
-        }
-    }
-    if (fromId != null) return fromId
-    val label = lastEpisodeName ?: return null
-    val match = Regex("(?i)\\bS(\\d+)\\s*E(\\d+)\\b").find(label) ?: return null
-    return match.groupValues[1].toIntOrNull()?.let { season ->
-        match.groupValues[2].toIntOrNull()?.let { episode -> season to episode }
-    }
+    val locator = videoId?.let(FluxaCoreNative::parseEpisodeLocator)
+        ?: lastEpisodeName?.let(FluxaCoreNative::parseEpisodeLocator)
+    return locator?.let { it.season to it.episode }
 }
 
 private fun Meta.nuvioProgressKey(): String {

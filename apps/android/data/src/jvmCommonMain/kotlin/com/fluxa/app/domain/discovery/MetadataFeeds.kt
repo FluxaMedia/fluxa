@@ -19,22 +19,13 @@ fun buildDiscoverCatalogOptions(addons: List<AddonDescriptor>, selectedType: Str
 }
 
 fun cs3PluginFeedKey(apiName: String): String =
-    "cs3_plugin_${apiName.replace(Regex("[^a-zA-Z0-9]"), "_").lowercase()}"
+    FluxaCoreNative.cs3PluginFeedKey(apiName)
 
 fun cs3CatalogFeedKey(pluginName: String, catalogName: String, catalogIndex: Int): String =
-    "cs3_catalog_${FluxaCoreNative.stableFeedPart(pluginName)}:${catalogIndex}:${FluxaCoreNative.stableFeedPart(catalogName)}"
+    FluxaCoreNative.cs3CatalogFeedKey(pluginName, catalogName, catalogIndex)
 
 fun buildCs3MetadataFeedOptions(catalogs: List<Cs3CatalogFeedDescriptor>): List<MetadataFeedOption> =
-    catalogs.map { catalog ->
-        val key = cs3CatalogFeedKey(catalog.pluginName, catalog.catalogName, catalog.catalogIndex)
-        MetadataFeedOption(
-            key = key,
-            label = "${catalog.catalogName} - ${catalog.pluginName}",
-            transportUrl = "cs3://$key",
-            type = "all",
-            id = key
-        )
-    }
+    FluxaCoreNative.cs3MetadataFeedOptions(catalogs)
 
 fun toggleMetadataFeed(selectedKeys: List<String>?, availableKeys: List<String>, key: String): List<String> {
     return FluxaCoreNative.toggleMetadataFeed(selectedKeys, availableKeys, key)

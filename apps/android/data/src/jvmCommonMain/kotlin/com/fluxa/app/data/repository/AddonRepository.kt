@@ -1,7 +1,9 @@
 package com.fluxa.app.data.repository
 
 import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.remote.*
+import com.fluxa.app.domain.discovery.StremioAddonUrls
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -130,7 +132,7 @@ class AddonRepository @Inject constructor(
             PlatformLog.d("MetaFetch", "getMetaDetailFromSpecificAddon: url=$transportUrl type=$candidateType id=${id.take(30)}")
             when (val result = getSpecificMetaDetailResult(transportUrl, candidateType, id)) {
                 is AddonResourceResult.Success -> {
-                    val episodeSuffix = if (candidateType.equals("series", ignoreCase = true) || candidateType.equals("tv", ignoreCase = true)) {
+                    val episodeSuffix = if (FluxaCoreNative.isSeriesContentType(candidateType)) {
                         " episodes=${result.value.videos?.size ?: 0}"
                     } else {
                         ""
@@ -152,7 +154,7 @@ class AddonRepository @Inject constructor(
         type: String,
         id: String,
     ): AddonResourceResult<MetaDetail> {
-        val cacheKey = "${transportUrl.trimEnd('/')}:$type:$id"
+        val cacheKey = "${StremioAddonUrls.identity(transportUrl)}:$type:$id"
         specificMetaDetailCache[cacheKey]?.let { (cachedAt, detail) ->
             if (System.currentTimeMillis() - cachedAt < META_DETAIL_CACHE_TTL_MS) {
                 PlatformLog.d("MetaFetch", "specific meta cache hit type=$type id=${id.take(30)}")

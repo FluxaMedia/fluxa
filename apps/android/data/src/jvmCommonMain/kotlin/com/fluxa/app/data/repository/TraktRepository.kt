@@ -119,7 +119,7 @@ class TraktRepository @Inject constructor(
             val playbackId = externalSyncApi.getPlayback(auth, TRAKT_KEY)
                 .firstOrNull { item ->
                     val summary = item.movie ?: item.show ?: return@firstOrNull false
-                    val type = if (item.movie != null) "movie" else "series"
+                    val type = FluxaCoreNative.traktPlaybackItemContentType(item) ?: return@firstOrNull false
                     val id = TraktIntegration.contentIdFrom(summary.ids) ?: return@firstOrNull false
                     TraktIntegration.contentIdentityKey(
                         Meta(

@@ -4,6 +4,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.TmdbMeta
 import com.fluxa.app.data.remote.TmdbService
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreNative
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -12,9 +13,9 @@ internal class TmdbCatalogClient(
 ) {
     suspend fun getRecommendations(type: String, id: String, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         try {
-            val tmdbId = if (id.startsWith("tt")) findTmdbId(type, id) else id
+            val tmdbId = if (FluxaCoreNative.contentImdbId(id) != null) findTmdbId(type, id) else id
             if (tmdbId == null) return@withContext emptyList()
-            tmdbService.getRecommendations(if (type == "series") "tv" else type, tmdbId, getTmdbLang(language)).results
+            tmdbService.getRecommendations(FluxaCoreNative.tmdbContentType(type), tmdbId, getTmdbLang(language)).results
                 .map { it.toMeta(language).copy(type = type) }
         } catch (e: Exception) {
             emptyList()
@@ -23,9 +24,9 @@ internal class TmdbCatalogClient(
 
     suspend fun getSimilar(type: String, id: String, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
         try {
-            val tmdbId = if (id.startsWith("tt")) findTmdbId(type, id) else id
+            val tmdbId = if (FluxaCoreNative.contentImdbId(id) != null) findTmdbId(type, id) else id
             if (tmdbId == null) return@withContext emptyList()
-            val tmdbType = if (type == "series") "tv" else type
+            val tmdbType = FluxaCoreNative.tmdbContentType(type)
             val recommendations = tmdbService.getRecommendations(tmdbType, tmdbId, getTmdbLang(language)).results
             (if (recommendations.isNotEmpty()) recommendations else tmdbService.getSimilar(tmdbType, tmdbId, getTmdbLang(language)).results)
                 .map { it.toMeta(language).copy(type = type) }
@@ -37,7 +38,11 @@ internal class TmdbCatalogClient(
     suspend fun findTmdbId(type: String, imdbId: String): String? = withContext(Dispatchers.IO) {
         try {
             val result = tmdbService.findById(imdbId)
-            if (type == "movie") result.movieResults.firstOrNull()?.id?.toString() else result.tvResults.firstOrNull()?.id?.toString()
+            if (FluxaCoreNative.tmdbContentType(type) == "movie") {
+                result.movieResults.firstOrNull()?.id?.toString()
+            } else {
+                result.tvResults.firstOrNull()?.id?.toString()
+            }
         } catch (e: Exception) {
             null
         }
@@ -46,7 +51,7 @@ internal class TmdbCatalogClient(
     private fun getTmdbLang(lang: String?): String = TmdbLanguageResolver.languageTag(lang)
 
     private fun TmdbMeta.toMeta(language: String, englishFallback: TmdbMeta? = null): Meta {
-        val resolvedType = if (media_type == "tv" || first_air_date != null) "series" else "movie"
+        val resolvedType = FluxaCoreNative.tmdbItemContentType(media_type, first_air_date != null)
         val localizedName = localizedTitleWithEnglishFallback(
             localized = title ?: name,
             original = original_name,

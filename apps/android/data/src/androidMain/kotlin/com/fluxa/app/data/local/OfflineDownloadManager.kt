@@ -209,10 +209,8 @@ class OfflineDownloadManager private constructor(private val context: Context) {
 
     private fun OfflineDownloadItem.continueWatchingEpisodeName(): String? {
         val title = episodeTitle?.trim()?.takeIf { it.isNotBlank() }
-        val parts = videoId?.split(":").orEmpty()
-        val season = parts.getOrNull(parts.size - 2)?.toIntOrNull()
-        val episode = parts.getOrNull(parts.size - 1)?.toIntOrNull()
-        val code = if (season != null && episode != null) "S$season:E$episode" else null
+        val locator = videoId?.let(FluxaCoreNative::parseEpisodeLocator)
+        val code = locator?.let { "S${it.season}:E${it.episode}" }
         return listOfNotNull(code, title).joinToString(" ").takeIf { it.isNotBlank() }
     }
 

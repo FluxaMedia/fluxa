@@ -2,9 +2,8 @@ package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.remote.AddonCatalog
 import com.fluxa.app.data.remote.Meta
-import com.fluxa.app.domain.discovery.hasRequiredCatalogExtraExcept
-import com.fluxa.app.domain.discovery.supportsCatalogExtra
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreNative
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.supervisorScope
@@ -31,10 +30,7 @@ internal class AddonCatalogSearch(
                 ?: AppStrings.t(language, "auto.metadata")
             addon.manifest.catalogs.orEmpty()
                 .filter { catalog ->
-                    val type = catalog.type
-                    (type == "movie" || type == "series") &&
-                        catalog.supportsCatalogExtra("search") &&
-                        !catalog.hasRequiredCatalogExtraExcept(setOf("search"))
+                    FluxaCoreNative.catalogSearchEligible(catalog)
                 }
                 .map { catalog ->
                     async {

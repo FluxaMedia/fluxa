@@ -1,5 +1,6 @@
 package com.fluxa.app.data.repository
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.NuvioLibraryItemDto
@@ -43,7 +44,12 @@ private fun NuvioWatchProgressDto.buildContinueWatchingMeta(
         }
     val episodeStill = episodeVideo?.thumbnail?.takeIf(String::isNotBlank)
     val episodeTitle = episodeVideo?.name?.trim()?.takeIf(String::isNotBlank)
-    val episodeCode = if (season != null && episode != null) "S$season E$episode" else null
+    val episodeLine = FluxaCoreNative.formatEpisodeLine(
+        episodeTitle,
+        season,
+        episode,
+        videoId,
+    ).takeIf(String::isNotBlank)
 
     return Meta(
         id = contentId,
@@ -64,13 +70,7 @@ private fun NuvioWatchProgressDto.buildContinueWatchingMeta(
         duration = duration,
         resumeProgressPercent = resumeProgressPercent,
         lastVideoId = videoId,
-        // Preserve the season/episode code in provider data as well as the real title. Some
-        // Nuvio video ids do not encode S/E, so the UI cannot always recover the code from id alone.
-        lastEpisodeName = when {
-            episodeCode != null && episodeTitle != null -> "$episodeCode · $episodeTitle"
-            episodeTitle != null -> episodeTitle
-            else -> episodeCode
-        },
+        lastEpisodeName = episodeLine,
         lastWatchedAt = lastWatched,
         reason = "Nuvio",
         continueWatchingPoster = resolvedPoster,

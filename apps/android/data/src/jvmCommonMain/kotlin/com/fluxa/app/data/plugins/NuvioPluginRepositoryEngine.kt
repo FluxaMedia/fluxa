@@ -1,6 +1,7 @@
 package com.fluxa.app.data.plugins
 
 import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.core.rust.FluxaHeadlessAppRuntime
 import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
@@ -332,7 +333,7 @@ class NuvioPluginRepositoryEngine(
         val code = fetchScraperCode(scraper) ?: return@withContext emptyList()
         try {
             val normalizedMediaType = normalizeMediaType(mediaType)
-            val baseContentId = nuvioPluginContentId(tmdbId, season, episode)
+            val baseContentId = FluxaCoreNative.nuvioPluginContentId(tmdbId, season, episode)
             val resolvedContentId = pluginTmdbIdResolver(baseContentId, normalizedMediaType)
                 ?.takeIf(String::isNotBlank)
                 ?: baseContentId
@@ -514,7 +515,7 @@ class NuvioPluginRepositoryEngine(
         return manifestUrl.resolve(filename)?.toString()
     }
 
-    private fun normalizeMediaType(mediaType: String): String = normalizeNuvioPluginType(mediaType)
+    private fun normalizeMediaType(mediaType: String): String = FluxaCoreNative.nuvioPluginContentType(mediaType)
 
     private fun parseNuvioCompatibleStreams(rawJson: String, scraperName: String): List<Stream> {
         val root = runCatching { JsonParser.parseString(rawJson) }.getOrNull() ?: return emptyList()

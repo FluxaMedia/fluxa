@@ -1,6 +1,7 @@
 package com.fluxa.app.data.repository
 
-import com.fluxa.app.common.Constants
+import com.fluxa.app.core.rust.FluxaCoreNative
+
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.CastMember
 import com.fluxa.app.data.remote.DetailTrailer
@@ -31,14 +32,18 @@ class TmdbRepository @Inject constructor(
 
     suspend fun findTmdbId(type: String, imdbId: String): String? = withContext(Dispatchers.IO) {
         val response = tmdbService.findById(imdbId)
-        val result = if (type == "movie") response.movieResults.firstOrNull() else response.tvResults.firstOrNull()
+        val result = if (FluxaCoreNative.tmdbContentType(type) == "movie") {
+            response.movieResults.firstOrNull()
+        } else {
+            response.tvResults.firstOrNull()
+        }
         result?.id?.toString()
     }
 
     suspend fun getTrailers(type: String, id: String, language: String = "en", apiKey: String): List<DetailTrailer> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) return@withContext emptyList()
         try {
-            val tmdbType = if (type == "series") "tv" else type
+            val tmdbType = FluxaCoreNative.tmdbContentType(type)
             val tmdbId = resolveTmdbId(type, id, language, apiKey) ?: return@withContext emptyList()
             tmdbService.getVideos(tmdbType, tmdbId, language, apiKey).results
                 .mapNotNull { it.toTrailer() }
@@ -56,7 +61,7 @@ class TmdbRepository @Inject constructor(
         if (apiKey.isBlank()) return@withContext detail
         try {
             val tmdbId = resolveTmdbId(detail.type, detail.id, language, apiKey) ?: return@withContext detail
-            val tmdbType = if (detail.type == "series") "tv" else "movie"
+            val tmdbType = FluxaCoreNative.tmdbContentType(detail.type)
             coroutineScope {
                 val needsDetail = profile.safeTmdbBasicInfoEnabled ||
                     profile.safeTmdbDetailsEnabled ||
@@ -109,7 +114,12 @@ class TmdbRepository @Inject constructor(
                 val seasonPosters: Map<String, String>? = if (tmdbType == "tv") {
                     tmdbDetail?.seasons
                         ?.filter { it.seasonNumber > 0 && !it.posterPath.isNullOrBlank() }
-                        ?.associate { it.seasonNumber.toString() to tmdbImageUrl(it.posterPath!!, "w342") }
+                        ?.mapNotNull { season ->
+                            FluxaCoreNative.tmdbImageUrl(season.posterPath, "w342")?.let {
+                                season.seasonNumber.toString() to it
+                            }
+                        }
+                        ?.toMap()
                         ?.takeIf { it.isNotEmpty() }
                 } else null
 
@@ -127,7 +137,7 @@ class TmdbRepository @Inject constructor(
                 if (profile.safeTmdbDetailsEnabled && tmdbDetail != null) {
                     val runtimeMin = tmdbDetail.runtime ?: tmdbDetail.episodeRunTime?.firstOrNull()
                     if (runtimeMin != null && runtimeMin > 0)
-                        result = result.copy(runtime = "$runtimeMin min")
+                        result = result.copy(runtime = FluxaCoreNative.formatRuntimeLabel("$runtimeMin min"))
                     if (!tmdbDetail.status.isNullOrBlank())
                         result = result.copy(status = tmdbDetail.status)
                     tmdbDetail.originCountry?.firstOrNull()?.takeIf { it.isNotBlank() }
@@ -151,7 +161,7 @@ class TmdbRepository @Inject constructor(
                         CastMember(
                             name = member.name,
                             character = member.character,
-                            profilePath = member.profilePath?.let { tmdbImageUrl(it, "w185") }
+                            profilePath = member.profilePath?.let { FluxaCoreNative.tmdbImageUrl(it, "w185") }
                         )
                     }
                     if (!castList.isNullOrEmpty()) {
@@ -179,9 +189,9 @@ class TmdbRepository @Inject constructor(
                         ?.filter { it.language == "en" || it.language.isNullOrBlank() }
                         ?.maxByOrNull { it.voteAverage ?: 0.0 }
                         ?: images.logos?.maxByOrNull { it.voteAverage ?: 0.0 }
-                    logo?.let { result = result.copy(logo = tmdbImageUrl(it.filePath, "w500")) }
+                    logo?.let { result = result.copy(logo = FluxaCoreNative.tmdbImageUrl(it.filePath, "w500")) }
                     images.backdrops?.maxByOrNull { it.voteAverage ?: 0.0 }
-                        ?.let { result = result.copy(background = tmdbImageUrl(it.filePath, "w1280")) }
+                        ?.let { result = result.copy(background = FluxaCoreNative.tmdbImageUrl(it.filePath, "w1280")) }
                 }
 
                 if (profile.safeTmdbRatingsEnabled) {
@@ -227,7 +237,7 @@ class TmdbRepository @Inject constructor(
                 val episodeNum = video.number ?: return@map video
                 val tmdb = tmdbEpisodes.firstOrNull { it.episodeNumber == episodeNum } ?: return@map video
                 video.copy(
-                    thumbnail = video.thumbnail ?: tmdb.stillPath?.let { tmdbImageUrl(it, "w300") },
+                    thumbnail = video.thumbnail ?: tmdb.stillPath?.let { FluxaCoreNative.tmdbImageUrl(it, "w300") },
                     overview = video.overview ?: tmdb.overview?.takeIf { it.isNotBlank() },
                     episodeRuntime = video.episodeRuntime ?: tmdb.runtime
                 )
@@ -238,15 +248,15 @@ class TmdbRepository @Inject constructor(
     }
 
     private suspend fun resolveTmdbId(type: String, id: String, language: String, apiKey: String): String? {
-        val baseId = if (id.startsWith("tmdb:", ignoreCase = true)) {
-            id.removePrefix("tmdb:").substringBefore(":")
-        } else {
-            id.substringBefore(":")
-        }
-        if (baseId.toIntOrNull() != null) return baseId
-        val imdbId = id.substringBefore(":").takeIf { it.startsWith("tt") } ?: return null
+        val baseId = FluxaCoreNative.tmdbNumericId(id)
+        if (baseId != null) return baseId
+        val imdbId = FluxaCoreNative.contentImdbId(id) ?: return null
         val response = tmdbService.findById(imdbId, lang = language, apiKey = apiKey)
-        return if (type == "movie") response.movieResults.firstOrNull()?.id?.toString() else response.tvResults.firstOrNull()?.id?.toString()
+        return if (FluxaCoreNative.tmdbContentType(type) == "movie") {
+            response.movieResults.firstOrNull()?.id?.toString()
+        } else {
+            response.tvResults.firstOrNull()?.id?.toString()
+        }
     }
 
     private fun TmdbVideo.toTrailer(): DetailTrailer? {
@@ -274,6 +284,4 @@ class TmdbRepository @Inject constructor(
         )
     }
 
-    private fun tmdbImageUrl(path: String, size: String): String =
-        "${Constants.Images.TMDB_BASE_URL}$size$path"
 }

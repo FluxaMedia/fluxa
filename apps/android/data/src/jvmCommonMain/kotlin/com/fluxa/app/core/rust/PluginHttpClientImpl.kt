@@ -45,8 +45,8 @@ class PluginHttpClientImpl @Inject constructor(
                 } catch (_: Exception) {
                     return blockedResponse("invalid url")
                 }
-                if (!PluginNetGuard.isSchemeAllowed(uri.scheme)) {
-                    return blockedResponse("unsupported scheme: ${uri.scheme}")
+                if (!FluxaCoreNative.pluginUrlAllowed(uri.toString())) {
+                    return blockedResponse("unsupported or blocked plugin URL")
                 }
                 val httpRequest = Request.Builder().url(currentUrl)
                 request.headers.forEach { (key, value) -> httpRequest.header(key, value) }

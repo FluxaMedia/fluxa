@@ -1,10 +1,9 @@
 package com.fluxa.app.data.repository
 
+import com.fluxa.app.core.rust.FluxaCoreNative
+
 import com.fluxa.app.common.PlatformLog
-import com.fluxa.app.data.local.LibraryCatalogSource
-import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.LibraryUserCollection
-import com.fluxa.app.data.local.LibraryUserCollectionFolder
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ProviderDataOwner
 import com.fluxa.app.data.local.ThirdPartyProviderId
@@ -15,9 +14,6 @@ import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.repository.library.ProviderDataStore
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.NuvioAvatarDto
-import com.fluxa.app.data.remote.NuvioCollection
-import com.fluxa.app.data.remote.NuvioCollectionFolder
-import com.fluxa.app.data.remote.NuvioCollectionFolderSource
 import com.fluxa.app.data.remote.NuvioCredentials
 import com.fluxa.app.data.remote.NuvioProfileDto
 import com.fluxa.app.data.remote.NuvioProfileLockDto
@@ -39,6 +35,7 @@ class NuvioAccountImportCoordinator(
     private val watchlistManager: WatchlistManager,
     private val providerDataStore: ProviderDataStore,
     private val deltaSyncEngine: NuvioDeltaSyncEngine,
+    private val nuvioSyncCoordinator: NuvioSyncCoordinator,
     private val supabaseUrl: String,
     private val gson: Gson
 ) {
@@ -310,7 +307,6 @@ class NuvioAccountImportCoordinator(
 
         if (progressSync != null) {
             val watchProgressJson = gson.toJsonTree(progressSync.progress).asJsonArray
-            // Nuvio is authoritative here. Never enrich its progress with metadata add-ons.
             val addonMetas = JsonObject()
             val mergePlan = NuvioCoreBridge.importMergePlan(
                 libraryJson,
@@ -321,8 +317,17 @@ class NuvioAccountImportCoordinator(
             val libraryByContentId = libraryItems.orEmpty().associateBy { it.contentId }
             val progressItems = progressSync.continueWatching
                 .mapNotNull { dto -> dto.toContinueWatchingMeta(libraryByContentId[dto.contentId]) }
+            val resolvedProgressItems = runCatching {
+                nuvioSyncCoordinator.resolveContinueWatching(
+                    profile = profile,
+                    progressSync = progressSync,
+                    libraryItems = libraryItems.orEmpty(),
+                )
+            }.onFailure { error ->
+                PlatformLog.w("NuvioImport", "Continue Watching metadata resolution failed; keeping progress IDs", error)
+            }.getOrElse { progressItems }
             ensureNuvioOwnerStillConnected(profile.id, providerOwner)
-            check(providerDataStore.replaceContinueWatching(providerWriteLease, progressItems)) {
+            check(providerDataStore.replaceContinueWatching(providerWriteLease, resolvedProgressItems)) {
                 "Nuvio account changed or disconnected while progress was syncing"
             }
 
@@ -343,12 +348,14 @@ class NuvioAccountImportCoordinator(
         val collectionRows = importOrDefault(NuvioImportStep.COLLECTIONS, emptyList()) {
             nuvioService.pullCollections(token, mapOf("p_profile_id" to primaryIndex)).requireBody()
         }
-        val flatCollections = collectionRows.flatMap { row ->
-            row.collectionsJson.orEmpty().map { it.toDomain() }
-        }
-        val importedCollections = flatCollections.mapIndexed { index, collection ->
-            collection.toLibraryUserCollection(primaryIndex, index)
-        }
+        val flatCollections = collectionRows.flatMap { row -> row.collectionsJson.orEmpty() }
+        val importedCollections = NuvioCoreBridge.mapCollections(
+            gson.toJsonTree(flatCollections),
+            profileIndex = primaryIndex,
+        )
+            .mapNotNull { element ->
+                runCatching { gson.fromJson(element, LibraryUserCollection::class.java) }.getOrNull()
+            }
         onStep(NuvioImportStep.COLLECTIONS)
 
         val syncedAt = System.currentTimeMillis()
@@ -361,10 +368,12 @@ class NuvioAccountImportCoordinator(
         // Collections are profile-owned data. Nuvio collections are imported into the
         // same profile collection store and merged with collections created locally in
         // Fluxa, so selecting Simkl/Trakt/etc. as the library source cannot hide them.
-        val mergedCollections = mergeProfileCollections(
-            existing = latestProfile.safeLibraryCollections,
-            imported = importedCollections,
-        )
+        val mergedCollections = NuvioCoreBridge.mergeCollections(
+            existing = gson.toJsonTree(latestProfile.safeLibraryCollections),
+            incoming = gson.toJsonTree(importedCollections),
+        ).mapNotNull { element ->
+            runCatching { gson.fromJson(element, LibraryUserCollection::class.java) }.getOrNull()
+        }
         val finalProfile = latestProfile.copy(
             email = profile.email,
             nuvioAccessToken = profile.nuvioAccessToken,
@@ -484,104 +493,6 @@ private fun retrofit2.Response<*>.requirePinSuccess() {
 }
 
 
-private fun mergeProfileCollections(
-    existing: List<LibraryUserCollection>,
-    imported: List<LibraryUserCollection>,
-): List<LibraryUserCollection> {
-    if (imported.isEmpty()) return existing
-    val merged = LinkedHashMap<String, LibraryUserCollection>(existing.size + imported.size)
-    existing.forEach { collection -> merged[collection.id] = collection }
-    imported.forEach { collection -> merged[collection.id] = collection }
-    return merged.values.toList()
-}
-
-private fun NuvioCollection.toLibraryUserCollection(profileIndex: Int, index: Int): LibraryUserCollection {
-    val resolvedTitle = title?.trim().takeUnless { it.isNullOrBlank() } ?: "Collection ${index + 1}"
-    val resolvedId = id?.trim().takeUnless { it.isNullOrBlank() }
-        ?: "nuvio_${profileIndex}_${resolvedTitle.lowercase().replace(Regex("[^a-z0-9]+"), "_").trim('_').ifBlank { index.toString() }}"
-    return LibraryUserCollection(
-        id = resolvedId,
-        title = resolvedTitle,
-        imageUrl = backdropImageUrl,
-        showOnHome = showOnHome ?: false,
-        folders = folders.orEmpty().mapIndexed { folderIndex, folder ->
-            folder.toLibraryUserCollectionFolder(resolvedId, folderIndex)
-        },
-        showAllTab = showAllTab ?: true,
-        viewMode = viewMode ?: "FOLLOW_LAYOUT",
-        pinToTop = pinToTop ?: false,
-        focusGlowEnabled = focusGlowEnabled ?: true,
-        community = community,
-    )
-}
-
-private fun NuvioCollectionFolder.toLibraryUserCollectionFolder(
-    collectionId: String,
-    index: Int,
-): LibraryUserCollectionFolder {
-    val resolvedTitle = title?.trim().takeUnless { it.isNullOrBlank() } ?: "Folder ${index + 1}"
-    val resolvedId = id?.trim().takeUnless { it.isNullOrBlank() }
-        ?: "${collectionId}_folder_$index"
-    val sourceRows = catalogSources.orEmpty()
-    val addonSources = sourceRows.mapNotNull(NuvioCollectionFolderSource::toLibraryCatalogSourceOrNull)
-    val remoteSources = sourceRows.mapNotNull(NuvioCollectionFolderSource::toLibraryRemoteSourceOrNull)
-    return LibraryUserCollectionFolder(
-        id = resolvedId,
-        title = resolvedTitle,
-        imageUrl = coverImageUrl,
-        shape = tileShape ?: "poster",
-        hideTitle = hideTitle ?: false,
-        focusGifEnabled = focusGifEnabled ?: true,
-        catalogSources = addonSources,
-        sources = remoteSources,
-        coverEmoji = coverEmoji,
-        coverImageUrl = coverImageUrl,
-        focusGifUrl = focusGifUrl,
-        titleLogoUrl = titleLogoUrl,
-        heroBackdropUrl = heroBackdropUrl,
-        heroVideoUrl = heroVideoUrl,
-    )
-}
-
-private fun NuvioCollectionFolderSource.toLibraryCatalogSourceOrNull(): LibraryCatalogSource? {
-    val resolvedCatalogId = catalogId?.trim().takeUnless { it.isNullOrBlank() } ?: return null
-    val resolvedType = type?.trim().takeUnless { it.isNullOrBlank() } ?: return null
-    return LibraryCatalogSource(
-        addonId = addonId?.takeIf(String::isNotBlank),
-        catalogId = resolvedCatalogId,
-        type = resolvedType,
-        genre = genre?.takeIf(String::isNotBlank),
-        displayName = title?.takeIf(String::isNotBlank),
-    )
-}
-
-private fun NuvioCollectionFolderSource.toLibraryRemoteSourceOrNull(): LibraryRemoteSource? {
-    val resolvedProvider = provider
-        ?.trim()
-        ?.lowercase()
-        ?.takeIf { it == "trakt" || it == "tmdb" }
-        ?: when {
-            traktListId != null -> "trakt"
-            tmdbId != null -> "tmdb"
-            else -> return null
-        }
-    return LibraryRemoteSource(
-        provider = resolvedProvider,
-        title = title,
-        mediaType = mediaType,
-        traktListId = traktListId,
-        tmdbSourceType = tmdbSourceType,
-        tmdbId = tmdbId,
-        sortBy = sortBy,
-        sortHow = sortHow,
-        filters = filters,
-        addonId = addonId,
-        catalogId = catalogId,
-        type = type,
-        genre = genre,
-    )
-}
-
 data class NuvioImportResult(
     val profile: UserProfile,
     val externalContinueWatching: List<Meta>,
@@ -601,10 +512,7 @@ private fun <T> Response<T>.requireBody(): T {
 
 
 private fun providerEpisodeSeriesId(videoId: String): Pair<String, String>? {
-    val parts = videoId.split(':')
-    if (parts.size < 3) return null
-    val season = parts[parts.lastIndex - 1].toIntOrNull() ?: return null
-    val episode = parts.last().toIntOrNull() ?: return null
-    val seriesId = parts.dropLast(2).joinToString(":").takeIf(String::isNotBlank) ?: return null
-    return seriesId to "$seriesId:$season:$episode"
+    val locator = FluxaCoreNative.parseEpisodeLocator(videoId) ?: return null
+    val seriesId = locator.baseId.takeIf(String::isNotBlank) ?: return null
+    return seriesId to "$seriesId:${locator.season}:${locator.episode}"
 }

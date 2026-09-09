@@ -1,6 +1,7 @@
 package com.fluxa.app.data.plugins
 
 import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.remote.TmdbService
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.sync.Mutex
@@ -20,26 +21,19 @@ suspend fun resolveNuvioPluginTmdbId(
     mediaType: String,
     apiKey: String,
 ): String? {
-    val normalized = contentId
-        .removePrefix("tmdb:")
-        .removePrefix("movie:")
-        .removePrefix("series:")
-        .substringBefore(':')
-        .substringBefore('/')
-        .trim()
-    if (normalized.isBlank()) return null
-    if (normalized.all(Char::isDigit)) return normalized
-    if (!normalized.startsWith("tt", ignoreCase = true)) return null
+    val normalized = FluxaCoreNative.tmdbNumericId(contentId)
+    if (normalized != null) return normalized
+    val imdbId = FluxaCoreNative.contentImdbId(contentId) ?: return null
     if (apiKey.isBlank()) return null
 
-    val normalizedType = normalizeNuvioPluginType(mediaType)
-    val cacheKey = "$normalized:$normalizedType"
+    val normalizedType = FluxaCoreNative.nuvioPluginContentType(mediaType)
+    val cacheKey = "$imdbId:$normalizedType"
     imdbToTmdbCache[cacheKey]?.let { return it }
 
     return imdbToTmdbMutex.withLock {
         imdbToTmdbCache[cacheKey]?.let { return@withLock it }
         runCatching {
-            val response = tmdbService.findById(normalized, apiKey = apiKey)
+            val response = tmdbService.findById(imdbId, apiKey = apiKey)
             val id = when (normalizedType) {
                 "tv" -> response.tvResults.firstOrNull()?.id
                 "movie" -> response.movieResults.firstOrNull()?.id
@@ -48,7 +42,7 @@ suspend fun resolveNuvioPluginTmdbId(
             if (id != null) imdbToTmdbCache[cacheKey] = id
             id
         }.onFailure { error ->
-            PlatformLog.w("PluginTmdbResolver", "TMDB lookup failed for $normalized ($normalizedType)", error)
+            PlatformLog.w("PluginTmdbResolver", "TMDB lookup failed for $imdbId ($normalizedType)", error)
         }.getOrNull()
     }
 }

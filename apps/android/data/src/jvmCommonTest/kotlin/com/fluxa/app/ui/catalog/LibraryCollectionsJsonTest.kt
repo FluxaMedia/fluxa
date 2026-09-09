@@ -5,9 +5,9 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-class CommonContentTransformationsTest {
+class LibraryCollectionsJsonTest {
     @Test
-    fun collectionArtworkNormalizesGithubAndProtocolRelativeUrls() {
+    fun collectionArtworkUsesCorePresentationPolicy() {
         val github = LibraryUserCollectionFolder(
             id = "one",
             title = "One",

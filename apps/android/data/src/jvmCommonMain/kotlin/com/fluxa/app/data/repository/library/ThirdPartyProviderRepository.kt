@@ -1,6 +1,7 @@
 package com.fluxa.app.data.repository.library
 
 import com.fluxa.app.common.PlatformLog
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ProviderDataOwner
 import com.fluxa.app.data.local.ThirdPartyProviderId
@@ -475,11 +476,8 @@ private fun providerDistinct(items: List<Meta>): List<Meta> {
 
 private fun Map<String, Long>.toWatchedIdsBySeries(): Map<String, Set<String>> =
     keys.mapNotNull { videoId ->
-        val parts = videoId.split(':')
-        if (parts.size < 3) return@mapNotNull null
-        val season = parts[parts.lastIndex - 1].toIntOrNull() ?: return@mapNotNull null
-        val episode = parts.last().toIntOrNull() ?: return@mapNotNull null
-        val seriesId = parts.dropLast(2).joinToString(":").takeIf(String::isNotBlank) ?: return@mapNotNull null
-        seriesId to "$seriesId:$season:$episode"
+        val locator = FluxaCoreNative.parseEpisodeLocator(videoId) ?: return@mapNotNull null
+        val seriesId = locator.baseId.takeIf(String::isNotBlank) ?: return@mapNotNull null
+        seriesId to "$seriesId:${locator.season}:${locator.episode}"
     }.groupBy({ it.first }, { it.second })
         .mapValues { (_, ids) -> ids.toSet() }

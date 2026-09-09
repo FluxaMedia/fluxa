@@ -2,12 +2,10 @@ package com.fluxa.app.data.repository
 
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.domain.discovery.StremioAddonUrls
 import com.fluxa.app.common.AppStrings
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
-import java.net.URLEncoder
 
 import javax.inject.Inject
 import javax.inject.Named
@@ -23,11 +21,7 @@ class StremioAddonManifestClient @Inject constructor(
     private fun putCache(key: String, value: Any) = cache.put(key, value)
 
     internal fun normalizeAddonTransportUrl(rawUrl: String): String {
-        return StremioAddonUrls.normalizeManifestUrl(rawUrl)
-    }
-
-    internal fun addonBaseUrl(transportUrl: String): String {
-        return StremioAddonUrls.baseUrl(transportUrl)
+        return FluxaCoreNative.normalizeManifestUrl(rawUrl)
     }
 
     internal fun buildAddonResourceUrl(
@@ -38,10 +32,6 @@ class StremioAddonManifestClient @Inject constructor(
         extraArgs: Map<String, String?> = emptyMap()
     ): String {
         return FluxaCoreNative.buildResourceUrl(transportUrl, resource, type, id, extraArgs)
-    }
-
-    internal fun encodePathSegment(value: String): String {
-        return URLEncoder.encode(value, Charsets.UTF_8.name()).replace("+", "%20")
     }
 
     internal fun resolveAddonAssetUrl(assetUrl: String?, manifestUrl: String): String? {

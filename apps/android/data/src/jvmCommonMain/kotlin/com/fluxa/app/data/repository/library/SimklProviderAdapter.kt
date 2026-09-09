@@ -13,6 +13,7 @@ import com.fluxa.app.data.repository.ExternalSyncPolicy
 import com.fluxa.app.data.repository.ExternalSyncProvider
 import com.fluxa.app.data.repository.SimklIntegration
 import com.fluxa.app.data.repository.TraktIntegration
+import com.fluxa.app.core.rust.FluxaCoreNative
 import javax.inject.Inject
 import retrofit2.Response
 import okhttp3.MediaType.Companion.toMediaType
@@ -62,10 +63,10 @@ class SimklProviderAdapter @Inject constructor(
             val clientId = PlatformSecrets.simklClientId
             val imdbId = SimklIntegration.imdbIdFrom(item.id) ?: return@withTokenHandling null
             if (add) {
-                val body = SimklIntegration.watchlistBody(imdbId, item.type == "series")
+                val body = SimklIntegration.watchlistBody(imdbId, FluxaCoreNative.isSeriesContentType(item.type))
                 api.simklAddToList(clientId, "Bearer $token", body)
             } else {
-                val body = SimklIntegration.watchlistRemovalBody(imdbId, item.type == "series")
+                val body = SimklIntegration.watchlistRemovalBody(imdbId, FluxaCoreNative.isSeriesContentType(item.type))
                 api.simklRemoveFromList(clientId, "Bearer $token", body)
             }
         }
@@ -78,7 +79,7 @@ class SimklProviderAdapter @Inject constructor(
     ): Boolean = withTokenHandling(profile) { token ->
             val clientId = PlatformSecrets.simklClientId
             val imdbId = SimklIntegration.imdbIdFrom(item.id) ?: return@withTokenHandling null
-            val isSeries = item.type == "series"
+            val isSeries = FluxaCoreNative.isSeriesContentType(item.type)
             val episodesBySeason = if (isSeries) {
                 episodes.mapNotNull { TraktIntegration.episodeLocator(it.id) }
                     .groupBy({ it.season }, { it.episode })
@@ -105,7 +106,7 @@ class SimklProviderAdapter @Inject constructor(
             if (durationMs <= 0L) return@withTokenHandling null
             val mediaId = TraktIntegration.scrobbleMediaId(item.id, videoId, item.type)
             val imdbId = SimklIntegration.imdbIdFrom(mediaId) ?: return@withTokenHandling null
-            val isEpisode = item.type == "series"
+            val isEpisode = FluxaCoreNative.isSeriesContentType(item.type)
             val episode = if (isEpisode) TraktIntegration.episodeLocator(mediaId) else null
             if (isEpisode && episode == null) return@withTokenHandling null
             val clientId = PlatformSecrets.simklClientId

@@ -1,6 +1,7 @@
 package com.fluxa.app.data.repository.library
 
 import com.fluxa.app.data.PlatformSecrets
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
@@ -98,8 +99,8 @@ class TraktProviderAdapter @Inject constructor(
         if (durationMs <= 0L) return false
         val mediaId = TraktIntegration.scrobbleMediaId(item.id, videoId, item.type)
         val ids = TraktIntegration.idsFromContentId(mediaId) ?: return false
-        val progress = (positionMs.toDouble() / durationMs.toDouble() * 100.0).toFloat().coerceIn(0f, 100f)
-        val request = if (item.type == "movie") {
+        val progress = FluxaCoreNative.playerProgressPercent(positionMs, durationMs)
+        val request = if (!FluxaCoreNative.isSeriesContentType(item.type)) {
             TraktScrobbleRequest(movie = TraktSummary(null, null, ids), progress = progress)
         } else {
             val episode = TraktIntegration.episodeLocator(mediaId) ?: return false

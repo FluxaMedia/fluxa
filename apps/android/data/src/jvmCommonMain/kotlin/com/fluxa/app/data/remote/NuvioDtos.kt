@@ -182,12 +182,7 @@ data class NuvioCollectionFolderSourceDto(
     @SerializedName("sortBy") val sortBy: String? = null,
     @SerializedName("sortHow") val sortHow: String? = null,
     val filters: Map<String, Any?>? = null
-) {
-    fun toDomain(): NuvioCollectionFolderSource = NuvioCollectionFolderSource(
-        provider, addonId, catalogId, type, genre, title, mediaType, traktListId,
-        tmdbSourceType, tmdbId, sortBy, sortHow, filters
-    )
-}
+)
 
 data class NuvioCollectionFolderDto(
     val id: String?,
@@ -202,12 +197,7 @@ data class NuvioCollectionFolderDto(
     @SerializedName("tileShape") val tileShape: String?,
     @SerializedName("hideTitle") val hideTitle: Boolean?,
     @SerializedName(value = "catalogSources", alternate = ["sources"]) val catalogSources: List<NuvioCollectionFolderSourceDto>?
-) {
-    fun toDomain(): NuvioCollectionFolder = NuvioCollectionFolder(
-        id, title, coverImageUrl, coverEmoji, focusGifUrl, focusGifEnabled, titleLogoUrl,
-        heroBackdropUrl, heroVideoUrl, tileShape, hideTitle, catalogSources?.map { it.toDomain() }
-    )
-}
+)
 
 data class NuvioCollectionDto(
     val id: String?,
@@ -220,24 +210,15 @@ data class NuvioCollectionDto(
     @SerializedName("focusGlowEnabled") val focusGlowEnabled: Boolean? = null,
     val folders: List<NuvioCollectionFolderDto>?,
     val community: Map<String, Any?>? = null
-) {
-    fun toDomain(): NuvioCollection = NuvioCollection(
-        id, title, backdropImageUrl, pinToTop, showOnHome, viewMode, showAllTab,
-        focusGlowEnabled, folders?.map { it.toDomain() }, community
-    )
-}
+)
 
 data class NuvioCollectionRowDto(
     @SerializedName("collections_json") val collectionsJson: List<NuvioCollectionDto>?
-) {
-    fun toDomain(): NuvioCollectionRow = NuvioCollectionRow(collectionsJson?.map { it.toDomain() })
-}
+)
 
 data class NuvioProfileSettingsRowDto(
     @SerializedName("settings_json") val settingsJson: Map<String, Any?>?
-) {
-    fun toDomain(): NuvioProfileSettingsRow = NuvioProfileSettingsRow(settingsJson)
-}
+)
 
 data class NuvioAvatarDto(
     val id: String,

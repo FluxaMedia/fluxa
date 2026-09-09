@@ -128,8 +128,7 @@ class StremioAddonResourceClient @Inject constructor(
         val success = parsed as? AddonResourceResult.Success ?: return@withContext parsed.toTypedEmpty()
         decodeResourceList(
             result = success,
-            type = subtitleListType,
-            transformJson = { valueJson, url -> FluxaCoreNative.normalizeAddonSubtitles(valueJson, url) }
+            type = subtitleListType
         )
     }
 
@@ -389,11 +388,12 @@ class StremioAddonResourceClient @Inject constructor(
         response.error?.let { error ->
             return AddonResourceResult.NetworkError(url, IOException(error), response.statusCode)
         }
-        val parsed = FluxaCoreNative.parseAddonResourceResult(
+        val parsed = FluxaCoreNative.parseAndPlanAddonResource(
             resource = resource,
             url = url,
             statusCode = response.statusCode ?: 0,
-            body = response.body
+            body = response.body,
+            kind = resourceKind(resource)
         )
         return parsed.toAddonResourceResult(url)
     }
@@ -429,13 +429,23 @@ class StremioAddonResourceClient @Inject constructor(
         response.error?.let { error ->
             return AddonResourceResult.NetworkError(url, IOException(error), response.statusCode)
         }
-        val parsed = FluxaCoreNative.parseAddonStreamResult(
+        val parsed = FluxaCoreNative.parseAndPlanAddonResource(
+            resource = "stream",
             url = url,
             statusCode = response.statusCode ?: 0,
             body = response.body,
+            kind = "streams",
             addonName = addonName
         )
         return parsed.toAddonResourceResult(url)
+    }
+
+    private fun resourceKind(resource: String): String = when (resource) {
+        "catalog", "metas" -> "catalogPage"
+        "meta" -> "metaDetail"
+        "stream", "streams" -> "streams"
+        "subtitle", "subtitles" -> "subtitles"
+        else -> resource
     }
 
     private fun NativeAddonResourceParseResult.toAddonResourceResult(

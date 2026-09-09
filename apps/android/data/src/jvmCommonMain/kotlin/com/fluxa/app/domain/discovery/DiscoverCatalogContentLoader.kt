@@ -79,7 +79,7 @@ class DiscoverCatalogContentLoader @Inject constructor(
         val requestSemaphore = Semaphore(MAX_CONCURRENT_DISCOVER_CATALOG_REQUESTS)
         catalogs
             .map { catalog ->
-                val selectedTypes = if (catalog.type == "all") listOf("movie", "series") else listOf(catalog.type)
+                val selectedTypes = FluxaCoreNative.discoverCatalogRequestTypes(catalog.type)
                 async {
                     selectedTypes
                         .map { type ->

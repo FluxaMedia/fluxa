@@ -22,7 +22,7 @@ class HomeCategoryStateStore {
 
     fun setCategories(categories: List<HomeCategory>) {
         val hiddenFolders = categories.filter { it.type == "collection_folder" }
-        val visible = categories.filterNot { it.type == "collection_folder" || it.type == "collection" }
+        val visible = categories.filterNot { it.type == "collection_folder" }
         when {
             categories.isEmpty() -> folderCategoriesState.value = emptyMap()
             hiddenFolders.isNotEmpty() || categories.any { it.type == "collection" } -> {

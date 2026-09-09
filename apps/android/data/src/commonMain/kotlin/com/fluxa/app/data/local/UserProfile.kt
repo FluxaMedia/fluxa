@@ -156,6 +156,7 @@ data class UserProfile(
     val notificationsEnabled: Boolean? = true,
     val alertNewEpisodes: Boolean? = true,
     val automaticUpdates: Boolean? = true,
+    val discordRichPresenceEnabled: Boolean? = true,
     val backgroundPlayback: Boolean? = false,
     val pictureInPicture: Boolean? = true,
     val playbackSpeed: Float? = 1f,

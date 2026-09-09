@@ -142,9 +142,21 @@ object NuvioCoreBridge {
         }
     ).asJsonObject
 
-    fun mapCollections(collections: JsonElement): JsonArray = invoke(
+    fun mapCollections(collections: JsonElement, profileIndex: Int? = null): JsonArray = invoke(
         "nuvioMapCollections",
-        JsonObject().apply { add("collections", collections) }
+        JsonObject().apply {
+            add("collections", collections)
+            profileIndex?.let { addProperty("profileIndex", it) }
+        }
+    ).asJsonArray
+
+    fun mergeCollections(existing: JsonElement, incoming: JsonElement): JsonArray = invoke(
+        "collectionMergePlan",
+        JsonObject().apply {
+            add("existing", existing)
+            add("incoming", incoming)
+            addProperty("incomingWins", true)
+        }
     ).asJsonArray
 
     fun libraryMutationPlan(remote: JsonElement, item: JsonElement, command: String, nowMs: Long): JsonElement? {

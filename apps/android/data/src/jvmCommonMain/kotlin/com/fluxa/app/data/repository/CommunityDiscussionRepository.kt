@@ -29,8 +29,8 @@ class CommunityDiscussionRepository @Inject constructor(private val gson: Gson) 
 
     suspend fun mdblistDiscussion(contentId: String, contentType: String, apiKey: String): List<CommunityComment> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) return@withContext emptyList()
-        val tmdbId = contentId.removePrefix("tmdb:").substringBefore(':').toLongOrNull() ?: return@withContext emptyList()
-        val url = FluxaCoreNative.mdblistDiscussionUrl("tmdb", if (contentType == "series") "show" else "movie", tmdbId)
+        val tmdbId = FluxaCoreNative.tmdbNumericId(contentId)?.toLongOrNull() ?: return@withContext emptyList()
+        val url = FluxaCoreNative.mdblistDiscussionUrl("tmdb", FluxaCoreNative.mdblistContentType(contentType), tmdbId)
         val root = getJson("$url?apikey=$apiKey") ?: return@withContext emptyList()
         val comments = when {
             root.isJsonArray -> root.asJsonArray

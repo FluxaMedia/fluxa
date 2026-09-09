@@ -13,17 +13,17 @@ import javax.inject.Singleton
 class MdblistRatingsClient @Inject constructor() {
     suspend fun fetch(contentType: String, contentId: String, apiKey: String): List<MetaRating> = withContext(Dispatchers.IO) {
         if (apiKey.isBlank()) return@withContext emptyList()
-        val tmdbId = contentId.removePrefix("tmdb:").substringBefore(':')
-        val imdbId = contentId.substringBefore(':')
+        val tmdbId = FluxaCoreNative.tmdbNumericId(contentId).orEmpty()
+        val imdbId = FluxaCoreNative.contentImdbId(contentId).orEmpty()
         val providerAndId = when {
             tmdbId.all(Char::isDigit) && tmdbId.isNotBlank() -> "tmdb" to tmdbId
-            imdbId.matches(Regex("(?i)tt\\d+")) -> "imdb" to imdbId
+            imdbId.isNotBlank() -> "imdb" to imdbId
             else -> return@withContext emptyList()
         }
         runCatching {
             val url = FluxaCoreNative.mdblistMediaInfoUrl(
                 provider = providerAndId.first,
-                mediaType = if (contentType == "series") "show" else "movie",
+                mediaType = FluxaCoreNative.mdblistContentType(contentType),
                 mediaId = providerAndId.second
             )
             val request = Request.Builder().url("$url&apikey=$apiKey").get().build()

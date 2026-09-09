@@ -2,7 +2,11 @@ package com.fluxa.app.data.remote
 
 data class AddonDescriptor(
     val manifest: AddonManifest,
-    val transportUrl: String
+    val transportUrl: String,
+    val installationId: String? = null,
+    val isEnabled: Boolean = true,
+    val sortOrder: Int = Int.MAX_VALUE,
+    val isManaged: Boolean = false,
 )
 
 data class AddonManifest(

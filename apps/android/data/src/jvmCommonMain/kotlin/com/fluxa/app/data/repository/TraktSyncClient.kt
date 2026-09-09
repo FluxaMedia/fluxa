@@ -6,6 +6,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.domain.ContentIdentity
+import com.fluxa.app.core.rust.FluxaCoreNative
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.withContext
@@ -29,7 +30,7 @@ class TraktSyncClient @Inject constructor(
             val auth = TraktIntegration.bearer(token)
             DataResult.Success(fetchTraktSyncPages { page, limit -> externalSyncApi.getWatchlist(auth, traktKey, page, limit) }
                 .mapNotNull { item ->
-                    val type = if (item.movie != null) "movie" else "series"
+                    val type = FluxaCoreNative.traktSyncItemContentType(item) ?: return@mapNotNull null
                     item.toMeta(type) { AppStrings.t(null, "auto.unknown") }
                 })
         } catch (e: Exception) {
@@ -45,7 +46,7 @@ class TraktSyncClient @Inject constructor(
                 .mapNotNull { item ->
                     val listedAtMs = item.listedAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
                         ?: return@mapNotNull null
-                    val type = if (item.movie != null) "movie" else "series"
+                    val type = FluxaCoreNative.traktSyncItemContentType(item) ?: return@mapNotNull null
                     val meta = item.toMeta(type) { AppStrings.t(null, "auto.unknown") } ?: return@mapNotNull null
                     meta to listedAtMs
                 }
