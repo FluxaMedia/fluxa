@@ -11,6 +11,8 @@ pub(super) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
             opt_json(player_policy::player_backend_selection_json(args_json))
         }
         "playerBufferTargets" => opt_json(player_policy::player_buffer_targets_json(args_json)),
+        "audioPcmChannelCount" => opt_json(player_policy::audio_pcm_channel_count_json(args_json)),
+        "selectAudioTrack" => opt_json(player_policy::select_audio_track_json(args_json)),
         "playerRetryPolicy" => opt_json(player_policy::player_retry_policy_json(args_json)),
         "nextRetrySourcePlan" => opt_json(player_policy::next_retry_source_plan_json(args_json)),
         "playbackClosePlan" => opt_json(player_policy::playback_close_plan_json(args_json)),

@@ -342,4 +342,16 @@ mod tests {
         assert_eq!(result["remainingSeconds"], 1080.0);
         assert_eq!(result["isUpNext"], false);
     }
+
+    #[test]
+    fn continue_watching_progress_fields_converts_milliseconds_for_display() {
+        let result = continue_watching_progress_fields_json(
+            r#"{"type":"movie","timeOffset":120000,"duration":1200000}"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("progress fields");
+
+        assert_eq!(result["watchedSeconds"], 120.0);
+        assert_eq!(result["remainingSeconds"], 1080.0);
+    }
 }

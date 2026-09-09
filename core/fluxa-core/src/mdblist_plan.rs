@@ -24,7 +24,7 @@ pub(crate) use lists::{
     mdblist_lists_search_url, mdblist_lists_top_url, mdblist_lists_user_url,
 };
 pub(crate) use media_ratings::{
-    mdblist_catalog_url, mdblist_genres_url, mdblist_media_info_batch_plan, mdblist_media_info_url,
+    mdblist_catalog_url, mdblist_content_type, mdblist_genres_url, mdblist_media_info_batch_plan, mdblist_media_info_url,
     mdblist_media_ratings_from_response_json, mdblist_ratings_batch_plan, mdblist_search_url,
     mdblist_watchprovider_links_url,
 };

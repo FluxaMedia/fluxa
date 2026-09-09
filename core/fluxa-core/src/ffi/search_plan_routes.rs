@@ -21,6 +21,9 @@ pub(super) fn route_search_plan(method: &str, args_json: &str) -> Outcome {
             ))
         }
         "discoverContentTypes" => opt_json(search_plan::discover_content_types_json(args_json)),
+        "discoverCatalogRequestTypes" => opt_json(
+            search_plan::discover_catalog_request_types_json(&arg_str(args_json, "catalogType")?),
+        ),
         "discoverSelectionPlan" => opt_json(search_plan::discover_selection_plan_json(args_json)),
         "discoverCatalogCandidates" => opt_json(search_plan::discover_catalog_candidates_json(args_json)),
         "librarySortPlan" => opt_json(search_plan::library_sort_plan_json(args_json)),
@@ -29,6 +32,7 @@ pub(super) fn route_search_plan(method: &str, args_json: &str) -> Outcome {
             &arg_str(args_json, "id")?,
         ))),
         "detailSeasonLoadPlan" => opt_json(search_plan::detail_season_load_plan_json(args_json)),
+        "detailAvailableSeasons" => opt_json(search_plan::detail_available_seasons_json(args_json)),
         "detailLoadPlan" => opt_json(search_plan::detail_load_plan_json(args_json)),
         "detailSeasonVideos" => opt_json(search_plan::detail_season_videos_json(args_json)),
         "resolveTransportUrl" => {

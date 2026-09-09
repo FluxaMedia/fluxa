@@ -250,7 +250,7 @@ pub fn start_torrent_server(
                 stream_buffer_bytes: Arc::new(Mutex::new(64 * 1024)),
                 runtime: Arc::new(Mutex::new(TorrentRuntimeState::default())),
                 telemetry: Arc::new(Mutex::new(TelemetryState::default())),
-                cache_limit_bytes: Arc::new(Mutex::new(None)),
+                cache_limit_bytes: Arc::new(Mutex::new(Some(default_cache_limit_bytes()))),
                 in_flight_adds: Arc::new(AsyncMutex::new(HashMap::new())),
                 pending_adds: Arc::new(Mutex::new(HashSet::new())),
                 access_token: Arc::new(thread_access_token),
@@ -376,6 +376,7 @@ async fn update_settings(
     {
         *cache_limit = (limit_mb > 0).then(|| limit_mb.saturating_mul(1024 * 1024));
     }
+    enforce_cache_limit(&state).await;
     let buffer_bytes = settings
         .stream_buffer_bytes
         .or_else(|| settings.device_budget.as_ref()?.stream_reader_buffer_bytes);
@@ -385,6 +386,15 @@ async fn update_settings(
         *buffer = buffer_bytes.clamp(32 * 1024, 1024 * 1024) as usize;
     }
     (StatusCode::OK, Json(json!({}))).into_response()
+}
+
+fn default_cache_limit_bytes() -> u64 {
+    let megabytes = if cfg!(target_os = "android") {
+        256
+    } else {
+        5 * 1024
+    };
+    megabytes * 1024 * 1024
 }
 
 fn stream_buffer_size(state: &EngineState) -> usize {

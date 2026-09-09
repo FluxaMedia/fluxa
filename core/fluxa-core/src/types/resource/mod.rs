@@ -10,12 +10,25 @@ where
     #[serde(untagged)]
     enum StringOrVec {
         Text(String),
-        List(Vec<String>),
+        List(Vec<Value>),
     }
 
     Ok(match Option::<StringOrVec>::deserialize(deserializer)? {
         None => None,
-        Some(StringOrVec::List(items)) => Some(items),
+        Some(StringOrVec::List(items)) => Some(
+            items
+                .into_iter()
+                .filter_map(|item| match item {
+                    Value::String(value) => Some(value),
+                    Value::Object(object) => object
+                        .get("name")
+                        .or_else(|| object.get("character"))
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
+                    _ => None,
+                })
+                .collect(),
+        ),
         Some(StringOrVec::Text(text)) => Some(
             text.split(',')
                 .map(str::trim)
@@ -212,6 +225,22 @@ mod meta_item_tests {
         assert_eq!(
             director_of(json!(["Ryan Condal"])),
             Some(vec!["Ryan Condal".to_string()])
+        );
+    }
+
+    #[test]
+    fn cast_accepts_stremio_string_and_object_entries() {
+        let meta = serde_json::from_value::<MetaItem>(json!({
+            "id": "tt11198330",
+            "type": "series",
+            "name": "House of the Dragon",
+            "cast": ["Paddy Considine", {"name": "Matt Smith", "character": "Daemon"}],
+        }))
+        .expect("meta with mixed cast entries must decode");
+
+        assert_eq!(
+            meta.cast,
+            Some(vec!["Paddy Considine".to_string(), "Matt Smith".to_string()])
         );
     }
 }

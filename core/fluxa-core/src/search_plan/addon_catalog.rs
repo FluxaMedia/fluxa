@@ -336,6 +336,18 @@ pub(crate) fn discover_content_types_json(addons_json: &str) -> Option<String> {
     serde_json::to_string(&types).ok()
 }
 
+pub(crate) fn discover_catalog_request_types_json(catalog_type: &str) -> Option<String> {
+    let normalized = catalog_type.trim().to_ascii_lowercase();
+    let types = if normalized == "all" {
+        vec!["movie", "series"]
+    } else if normalized.is_empty() {
+        Vec::new()
+    } else {
+        vec![catalog_type.trim()]
+    };
+    serde_json::to_string(&types).ok()
+}
+
 /// Given a catalog source `{catalogId, type, addonId?}` and an array of addon
 /// descriptors, returns the first matching `transportUrl`, or `null`.
 pub(crate) fn resolve_transport_url_json(source_json: &str, addons_json: &str) -> Option<String> {
@@ -467,4 +479,28 @@ pub(crate) fn resolve_feed_option_genre_json(
 
     let resolved = default_genre.or(if is_required { first_option } else { None })?;
     serde_json::to_string(resolved).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::discover_catalog_request_types_json;
+    use serde_json::Value;
+
+    #[test]
+    fn expands_mixed_catalog_to_supported_request_types() {
+        let value: Value = serde_json::from_str(
+            &discover_catalog_request_types_json(" all ").unwrap(),
+        )
+        .unwrap();
+        assert_eq!(value, serde_json::json!(["movie", "series"]));
+    }
+
+    #[test]
+    fn preserves_specific_catalog_type() {
+        let value: Value = serde_json::from_str(
+            &discover_catalog_request_types_json("anime").unwrap(),
+        )
+        .unwrap();
+        assert_eq!(value, serde_json::json!(["anime"]));
+    }
 }

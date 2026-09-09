@@ -24,8 +24,9 @@ pub(crate) use episode_matching::text_matches_episode;
 pub use episode_matching::{contains_compact_episode, contains_spaced_episode};
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use feed_selection::{
-    effective_metadata_feed_selection_json, move_metadata_feed_order_json,
-    ordered_metadata_feed_keys, set_metadata_feed_group_enabled_json, toggle_metadata_feed_json,
+    cs3_metadata_feed_options_json, effective_metadata_feed_selection_json,
+    move_metadata_feed_order_json, ordered_metadata_feed_keys,
+    set_metadata_feed_group_enabled_json, toggle_metadata_feed_json,
     toggle_metadata_feed_limited_json,
 };
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -53,12 +54,78 @@ pub(crate) use playback_plan::{
 pub use text::percent_decode_component;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use text::{
-    normalize_content_type, provider_search_terms, shorten_synopsis, stable_feed_part,
+    content_matches_filter, cs3_catalog_feed_key, cs3_plugin_feed_key, is_series_content_type,
+    normalize_catalog_type, normalize_content_type, provider_search_terms, shorten_synopsis,
+    stable_feed_part,
 };
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::Value;
+
+    #[test]
+    fn content_filter_matches_shared_movie_and_series_types() {
+        assert!(content_matches_filter("movie", "movie"));
+        assert!(content_matches_filter("anime", "series"));
+        assert!(!content_matches_filter("movie", "series"));
+        assert!(content_matches_filter("custom", "all"));
+    }
+
+    #[test]
+    fn series_content_type_policy_accepts_shared_aliases() {
+        assert!(is_series_content_type("series"));
+        assert!(is_series_content_type("show"));
+        assert!(is_series_content_type("anime"));
+        assert!(!is_series_content_type("movie"));
+    }
+
+    #[test]
+    fn catalog_type_normalization_keeps_custom_types_lowercase() {
+        assert_eq!(normalize_catalog_type(" TV "), "series");
+        assert_eq!(normalize_catalog_type("Anime.Movie"), "anime.movie");
+        assert_eq!(normalize_catalog_type("  Custom.Type  "), "custom.type");
+    }
+
+    #[test]
+    fn tmdb_numeric_id_accepts_movie_and_tv_urls() {
+        assert_eq!(
+            tmdb_numeric_id("https://www.themoviedb.org/movie/12345"),
+            Some("12345".into())
+        );
+        assert_eq!(
+            tmdb_numeric_id("https://themoviedb.org/tv/67890?language=en"),
+            Some("67890".into())
+        );
+    }
+
+    #[test]
+    fn cs3_feed_keys_are_stable_and_platform_neutral() {
+        assert_eq!(
+            cs3_plugin_feed_key("My Plugin/API"),
+            "cs3_plugin_my_plugin_api"
+        );
+        assert_eq!(
+            cs3_catalog_feed_key("My Plugin", "Trending Now", 2),
+            "cs3_catalog_my_plugin:2:trending_now"
+        );
+    }
+
+    #[test]
+    fn cs3_metadata_feed_options_share_the_feed_contract() {
+        let options = cs3_metadata_feed_options_json(
+            r#"[{"pluginName":"My Plugin","catalogName":"Trending Now","catalogIndex":2}]"#,
+        )
+        .unwrap();
+        let value: Value = serde_json::from_str(&options).unwrap();
+        assert_eq!(value[0]["key"], "cs3_catalog_my_plugin:2:trending_now");
+        assert_eq!(value[0]["label"], "Trending Now - My Plugin");
+        assert_eq!(
+            value[0]["transportUrl"],
+            "cs3://cs3_catalog_my_plugin:2:trending_now"
+        );
+        assert_eq!(value[0]["type"], "all");
+        assert_eq!(value[0]["id"], value[0]["key"]);
+    }
 
     #[test]
     fn shorten_synopsis_joins_paired_em_dash_aside_with_commas() {

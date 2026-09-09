@@ -6,13 +6,23 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
         "streamPlaybackInfo" => opt_json(stream_policy::stream_playback_info_json(args_json)),
         "cloudstreamQualityScore" => {
             let args = object(args_json)?;
-            Ok(json!(stream_policy::cloudstream_quality_score(
-                field_str(&args, "quality")?
-            )))
+            Ok(json!(stream_policy::cloudstream_quality_score(field_str(
+                &args, "quality"
+            )?)))
         }
-        "cloudstreamMatchScore" => {
-            opt_json(stream_policy::cloudstream_match_score_json(args_json))
+        "cloudstreamQualityLabel" => {
+            let args = object(args_json)?;
+            opt_str(stream_policy::cloudstream_quality_label(field_str(
+                &args, "quality",
+            )?))
         }
+        "cloudstreamContentType" => {
+            let args = object(args_json)?;
+            Ok(Value::String(
+                stream_policy::cloudstream_content_type(field_str(&args, "type")?).to_string(),
+            ))
+        }
+        "cloudstreamMatchScore" => opt_json(stream_policy::cloudstream_match_score_json(args_json)),
         "cloudstreamStreamOrder" => {
             opt_json(stream_policy::cloudstream_stream_order_json(args_json))
         }

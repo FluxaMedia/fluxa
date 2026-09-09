@@ -7,19 +7,40 @@ pub(crate) use genres_catalog::{tmdb_builtin_catalog_url, tmdb_builtin_manifest_
 pub(crate) use helpers::{tmdb_content_type, tmdb_image_url, tmdb_language, tmdb_resolve_id_hint};
 pub(crate) use meta_conversion::{
     merge_tmdb_enrichment_json, tmdb_bulk_metas_to_metas_json, tmdb_bulk_videos_to_trailers_json,
-    tmdb_episodes_to_videos_json, tmdb_full_meta_to_meta_json, tmdb_meta_to_meta_json,
-    tmdb_pick_logo_json, tmdb_video_to_trailer_json,
+    tmdb_episodes_to_videos_json, tmdb_full_meta_to_meta_json, tmdb_item_content_type,
+    tmdb_meta_to_meta_json, tmdb_pick_logo_json, tmdb_video_to_trailer_json,
 };
 pub(crate) use request_plans::{
     tmdb_builtin_meta_request_plan_json, tmdb_builtin_meta_urls_from_find_json,
     tmdb_builtin_meta_urls_json, tmdb_credits_url_from_find, tmdb_detail_request_plan_json,
     tmdb_detail_request_urls_from_find_json, tmdb_people_images_from_credits,
-    tmdb_people_request_plan, tmdb_season_request_url,
+    tmdb_people_request_plan, tmdb_season_request_url, tmdb_collection_source_url_json,
+    tmdb_recommendations_url_json,
 };
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::{Value, json};
+
+    #[test]
+    fn image_url_preserves_absolute_and_protocol_relative_urls() {
+        assert_eq!(
+            tmdb_image_url(Some("https://cdn.example/nf.jpg"), "w92").as_deref(),
+            Some("https://cdn.example/nf.jpg")
+        );
+        assert_eq!(
+            tmdb_image_url(Some("//cdn.example/nf.jpg"), "w92").as_deref(),
+            Some("https://cdn.example/nf.jpg")
+        );
+    }
+
+    #[test]
+    fn item_content_type_uses_tmdb_media_shape_and_requested_type() {
+        assert_eq!(tmdb_item_content_type("tv", false, ""), "series");
+        assert_eq!(tmdb_item_content_type("", true, ""), "series");
+        assert_eq!(tmdb_item_content_type("", false, "series"), "series");
+        assert_eq!(tmdb_item_content_type("movie", false, ""), "movie");
+    }
 
     #[test]
     fn builtin_manifest_declares_no_stream_resource() {

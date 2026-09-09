@@ -1,4 +1,26 @@
 use super::text::{json_string_list, parse_string_list};
+use serde_json::Value;
+
+pub(crate) fn cs3_metadata_feed_options_json(descriptors_json: &str) -> Option<String> {
+    let descriptors = serde_json::from_str::<Vec<Value>>(descriptors_json).ok()?;
+    let options = descriptors
+        .into_iter()
+        .filter_map(|descriptor| {
+            let plugin_name = descriptor.get("pluginName")?.as_str()?;
+            let catalog_name = descriptor.get("catalogName")?.as_str()?;
+            let catalog_index = descriptor.get("catalogIndex")?.as_i64()? as i32;
+            let key = super::text::cs3_catalog_feed_key(plugin_name, catalog_name, catalog_index);
+            Some(serde_json::json!({
+                "key": key,
+                "label": format!("{catalog_name} - {plugin_name}"),
+                "transportUrl": format!("cs3://{key}"),
+                "type": "all",
+                "id": key,
+            }))
+        })
+        .collect::<Vec<_>>();
+    serde_json::to_string(&options).ok()
+}
 
 pub(crate) fn effective_metadata_feed_selection_json(
     selected_keys_json: &str,

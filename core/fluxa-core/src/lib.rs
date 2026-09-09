@@ -36,6 +36,8 @@ mod calendar_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod cast_protocol;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod checksum_policy;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod constants;
 mod content_identity;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -121,6 +123,10 @@ mod publicmetadb_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod recommendation_policy;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod release_date;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod runtime_label;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod repository_flow;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod search_plan;
@@ -135,6 +141,8 @@ mod subtitle_sync;
 mod tmdb_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod trailer_subtitles;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod version_policy;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod watch_together;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]

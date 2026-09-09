@@ -20,6 +20,14 @@ pub(crate) const LIST_ITEMS_QUERY_KEYS: &[&str] = &[
     "unified",
 ];
 
+pub(crate) fn mdblist_content_type(content_type: &str) -> &'static str {
+    if matches!(content_type.trim().to_ascii_lowercase().as_str(), "series" | "show" | "tv" | "anime") {
+        "show"
+    } else {
+        "movie"
+    }
+}
+
 pub(crate) fn mdblist_media_info_url(
     provider: &str,
     media_type: &str,

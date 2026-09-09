@@ -61,6 +61,25 @@ pub(super) fn route_nuvio_sync(method: &str, args_json: &str) -> Outcome {
             opt_json(nuvio_sync::playback_progress_request_json(args_json))
         }
         "nuvioCollectionRequest" => opt_json(nuvio_sync::collection_request_json(args_json)),
+        "nuvioCanonicalContentType" => Ok(Value::String(
+            nuvio_sync::canonical_content_type(&arg_str(args_json, "value")?).to_string(),
+        )),
+        "nuvioPluginContentId" => {
+            let args = object(args_json)?;
+            let season = args.get("season").and_then(Value::as_i64);
+            let episode = args.get("episode").and_then(Value::as_i64);
+            Ok(Value::String(nuvio_sync::plugin_content_id(
+                &arg_str(args_json, "videoId")?,
+                season,
+                episode,
+            )))
+        }
+        "nuvioPluginContentType" => Ok(Value::String(nuvio_sync::plugin_content_type(&arg_str(
+            args_json, "value",
+        )?))),
+        "nuvioCandidateContentTypes" => Ok(json!(nuvio_sync::candidate_content_types(
+            &arg_str(args_json, "value")?
+        ))),
 
         _ => Err(unknown_method()),
     }

@@ -135,6 +135,19 @@ pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
             Value::String(addon_name.to_string()),
         );
     }
+    let description_is_blank = stream_object
+        .get("description")
+        .map(|value| value.is_null() || value.as_str().map(str::trim).unwrap_or_default().is_empty())
+        .unwrap_or(true);
+    if description_is_blank {
+        if let Some(title) = stream_object
+            .get("title")
+            .filter(|value| value.as_str().map(str::trim).is_some_and(|title| !title.is_empty()))
+            .cloned()
+        {
+            stream_object.insert("description".to_string(), title);
+        }
+    }
     let Some(behavior_hints) = stream_object
         .get("behaviorHints")
         .and_then(Value::as_object)
@@ -276,5 +289,17 @@ mod tests {
             Some("1")
         );
         assert_eq!(value[1]["title"].as_str(), Some("B"));
+    }
+
+    #[test]
+    fn stream_provider_normalization_uses_legacy_title_as_description() {
+        let streams = addon_streams_with_provider_json(
+            r#"[{"name":"4k DV","title":"Torrentio details"},{"name":"1080p","title":"Legacy","description":"Original description"}]"#,
+            "Torrentio",
+        );
+        let value: Value = serde_json::from_str(&streams).unwrap();
+        assert_eq!(value[0]["title"].as_str(), Some("Torrentio details"));
+        assert_eq!(value[0]["description"].as_str(), Some("Torrentio details"));
+        assert_eq!(value[1]["description"].as_str(), Some("Original description"));
     }
 }

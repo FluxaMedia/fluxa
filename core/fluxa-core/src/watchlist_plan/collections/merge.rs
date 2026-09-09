@@ -4,21 +4,54 @@ pub(crate) fn collection_merge_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let existing = args.get("existing")?.as_array()?;
     let incoming = args.get("incoming")?.as_array()?;
-    let mut merged = existing.clone();
-    let mut ids: std::collections::HashSet<&str> = existing
-        .iter()
-        .filter_map(|item| item.get("id").and_then(Value::as_str))
-        .collect();
-    merged.extend(
-        incoming
+    let incoming_wins = args
+        .get("incomingWins")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    if !incoming_wins {
+        let mut merged = existing.clone();
+        let mut ids: std::collections::HashSet<&str> = existing
             .iter()
-            .filter(|item| {
-                item.get("id")
-                    .and_then(Value::as_str)
-                    .is_some_and(|id| ids.insert(id))
-            })
-            .cloned(),
-    );
+            .filter_map(|item| item.get("id").and_then(Value::as_str))
+            .collect();
+        merged.extend(
+            incoming
+                .iter()
+                .filter(|item| {
+                    item.get("id")
+                        .and_then(Value::as_str)
+                        .is_some_and(|id| ids.insert(id))
+                })
+                .cloned(),
+        );
+        return serde_json::to_string(&merged).ok();
+    }
+
+    let mut merged = Vec::with_capacity(existing.len() + incoming.len());
+    let mut positions = std::collections::HashMap::new();
+    for item in existing {
+        let Some(id) = item.get("id").and_then(Value::as_str) else {
+            merged.push(item.clone());
+            continue;
+        };
+        positions.entry(id.to_string()).or_insert_with(|| {
+            let index = merged.len();
+            merged.push(item.clone());
+            index
+        });
+    }
+    for item in incoming {
+        let Some(id) = item.get("id").and_then(Value::as_str) else {
+            merged.push(item.clone());
+            continue;
+        };
+        if let Some(index) = positions.get(id).copied() {
+            merged[index] = item.clone();
+        } else {
+            positions.insert(id.to_string(), merged.len());
+            merged.push(item.clone());
+        }
+    }
     serde_json::to_string(&merged).ok()
 }
 
@@ -328,5 +361,20 @@ mod tests {
         let tabs = result["tabs"].as_array().unwrap();
         assert_eq!(tabs.len(), 2);
         assert!(tabs.iter().all(|tab| tab["id"] != "all"));
+    }
+
+    #[test]
+    fn collection_merge_can_replace_matching_ids() {
+        let args = json!({
+            "existing": [{"id": "local", "title": "Local"}, {"id": "same", "title": "Old"}],
+            "incoming": [{"id": "same", "title": "Remote"}, {"id": "new", "title": "New"}],
+            "incomingWins": true,
+        });
+        let result: Value = serde_json::from_str(&collection_merge_plan_json(&args.to_string()).unwrap()).unwrap();
+        assert_eq!(result, json!([
+            {"id": "local", "title": "Local"},
+            {"id": "same", "title": "Remote"},
+            {"id": "new", "title": "New"},
+        ]));
     }
 }

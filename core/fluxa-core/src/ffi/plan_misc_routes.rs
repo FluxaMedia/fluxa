@@ -71,6 +71,17 @@ pub(super) fn route_device_resource(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object
         "deviceResourceBudget" => opt_json(device_resource::device_resource_budget_json(args_json)),
+        "torrentCacheLimitMb" => {
+            let args = object(args_json)?;
+            let preset = args.get("preset").and_then(Value::as_str);
+            let platform = args
+                .get("platform")
+                .and_then(Value::as_str)
+                .unwrap_or("desktop");
+            Ok(Value::from(device_resource::torrent_cache_limit_mb(
+                preset, platform,
+            )))
+        }
 
         _ => Err(unknown_method()),
     }

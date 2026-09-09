@@ -108,7 +108,19 @@ pub(crate) fn is_tmdb_like_content_id(id: &str) -> bool {
 
 pub(crate) fn tmdb_numeric_id(id: &str) -> Option<String> {
     let base = base_content_id(id);
-    let numeric = base.strip_prefix(TMDB_ID_PREFIX).unwrap_or(&base);
+    if let Some((_, path)) = base.split_once("themoviedb.org/") {
+        let mut parts = path.split('/');
+        let kind = parts.next().unwrap_or_default();
+        let candidate = parts.next().unwrap_or_default().split(['?', '#']).next()?;
+        if matches!(kind, "movie" | "tv") {
+            return candidate.parse::<i32>().ok().map(|_| candidate.to_string());
+        }
+    }
+    let numeric = base
+        .strip_prefix(TMDB_ID_PREFIX)
+        .or_else(|| base.strip_prefix("movie:"))
+        .or_else(|| base.strip_prefix("series:"))
+        .unwrap_or(&base);
     numeric.parse::<i32>().ok().map(|_| numeric.to_string())
 }
 

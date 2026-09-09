@@ -16,11 +16,24 @@ pub(super) fn route_core_contract(method: &str, args_json: &str) -> Outcome {
 
 pub(super) fn route_addon_store(method: &str, args_json: &str) -> Outcome {
     match method {
+        "sha256VerificationStatus" => {
+            let args = object(args_json)?;
+            Ok(Value::String(
+                crate::checksum_policy::sha256_verification_status(
+                    args.get("expected").and_then(Value::as_str),
+                    field_str(&args, "actual")?,
+                )
+                .to_string(),
+            ))
+        }
         "addonStoreInputType" => Ok(Value::String(
             addon_store::addon_store_input_type(&arg_str(args_json, "input")?).to_string(),
         )),
         "normalizeCloudstreamRepoUrl" => Ok(Value::String(
             addon_store::normalize_cloudstream_repo_url(&arg_str(args_json, "url")?),
+        )),
+        "normalizeCloudstreamRepoInput" => Ok(Value::String(
+            addon_store::normalize_cloudstream_repo_input(&arg_str(args_json, "url")?),
         )),
         "normalizePluginRepositoryUrl" => Ok(Value::String(
             addon_store::normalize_plugin_repository_url(&arg_str(args_json, "url")?),
@@ -59,6 +72,7 @@ pub(super) fn route_addon_store(method: &str, args_json: &str) -> Outcome {
             args_json, "text",
         )?)),
         "filterEnabledAddons" => opt_json(addon_store::filter_enabled_addons_json(args_json)),
+        "addonStoreEntriesPlan" => opt_json(addon_store::addon_store_entries_plan_json(args_json)),
         // args_json IS the { profiles, activeProfileId } request object
         "effectiveAddonsOwnerId" => opt_str(addon_store::effective_addons_owner_id_json(args_json)),
         "effectivePluginsOwnerId" => {

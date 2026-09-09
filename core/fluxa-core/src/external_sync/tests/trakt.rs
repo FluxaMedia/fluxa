@@ -20,6 +20,21 @@ fn trakt_ids_support_stremio_episode_ids() {
 }
 
 #[test]
+fn trakt_collection_body_uses_provider_resource_for_content_type() {
+    let movie = trakt_collection_body_json(r#"{"idsJson":"{\"imdb\":\"tt1\"}","contentType":"movie"}"#)
+        .and_then(|body| serde_json::from_str::<Value>(&body).ok())
+        .unwrap();
+    assert!(movie.get("movies").is_some());
+    assert!(movie.get("shows").is_none());
+
+    let series = trakt_collection_body_json(r#"{"idsJson":"{\"tmdb\":42}","contentType":"show"}"#)
+        .and_then(|body| serde_json::from_str::<Value>(&body).ok())
+        .unwrap();
+    assert!(series.get("shows").is_some());
+    assert!(series.get("movies").is_none());
+}
+
+#[test]
 fn trakt_token_expiry_stays_in_epoch_seconds() {
     assert_eq!(trakt_token_expires_at(1_700_000_000, 3_600), 1_700_003_300);
 }
@@ -36,6 +51,24 @@ fn trakt_urls_accept_only_supported_routes() {
         Some("https://api.trakt.tv/sync/playback/episodes")
     );
     assert_eq!(trakt_playback_url(Some("unknown")), None);
+}
+
+#[test]
+fn trakt_list_references_accept_ids_and_supported_urls() {
+    assert_eq!(trakt_list_reference("42").as_deref(), Some("42"));
+    assert_eq!(
+        trakt_list_reference("https://trakt.tv/lists/my-list?foo=bar").as_deref(),
+        Some("my-list")
+    );
+    assert_eq!(
+        trakt_list_reference("https://trakt.tv/users/user/lists/7").as_deref(),
+        Some("7")
+    );
+    assert_eq!(
+        trakt_list_reference("?id=custom_list").as_deref(),
+        Some("custom_list")
+    );
+    assert_eq!(trakt_list_reference("https://example.com/list/7"), None);
 }
 
 #[test]

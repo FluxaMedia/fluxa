@@ -130,12 +130,64 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         "stableFeedPart" => Ok(Value::String(content_identity::stable_feed_part(&arg_str(
             args_json, "value",
         )?))),
+        "cs3PluginFeedKey" => Ok(Value::String(content_identity::cs3_plugin_feed_key(
+            &arg_str(args_json, "apiName")?,
+        ))),
+        "cs3CatalogFeedKey" => {
+            let args = object(args_json)?;
+            let catalog_index = field(&args, "catalogIndex")?
+                .as_i64()
+                .ok_or_else(|| fail(ErrorKind::InvalidArgs, "catalogIndex must be a number"))?;
+            Ok(Value::String(content_identity::cs3_catalog_feed_key(
+                field_str(&args, "pluginName")?,
+                field_str(&args, "catalogName")?,
+                catalog_index as i32,
+            )))
+        }
+        "cs3MetadataFeedOptions" => {
+            opt_json(content_identity::cs3_metadata_feed_options_json(args_json))
+        }
         "shortenSynopsis" => Ok(Value::String(content_identity::shorten_synopsis(&arg_str(
             args_json, "text",
         )?))),
         "normalizeContentType" => Ok(json!(content_identity::normalize_content_type(&arg_str(
             args_json, "value",
         )?))),
+        "isSeriesContentType" => Ok(json!(content_identity::is_series_content_type(
+            &arg_str(args_json, "value")?,
+        ))),
+        "normalizeCatalogType" => Ok(Value::String(content_identity::normalize_catalog_type(
+            &arg_str(args_json, "value")?,
+        ))),
+        "contentMatchesFilter" => Ok(json!(content_identity::content_matches_filter(
+            &arg_str(args_json, "contentType")?,
+            &arg_str(args_json, "filter")?,
+        ))),
+        "releaseDateUpcoming" => {
+            let args = object(args_json)?;
+            Ok(json!(crate::release_date::is_upcoming(
+                field_str(&args, "released")?,
+                field_str(&args, "todayIso")?,
+            )))
+        }
+        "releaseDateIsReleased" => {
+            let args = object(args_json)?;
+            Ok(json!(crate::release_date::is_released(
+                field_str(&args, "released")?,
+                field_str(&args, "todayIso")?,
+            )))
+        }
+        "releaseDateRecentlyReleased" => {
+            let args = object(args_json)?;
+            let window_days = field(&args, "windowDays")?
+                .as_i64()
+                .ok_or_else(|| fail(ErrorKind::InvalidArgs, "windowDays must be a number"))?;
+            Ok(json!(crate::release_date::is_recently_released(
+                field_str(&args, "released")?,
+                field_str(&args, "todayIso")?,
+                window_days,
+            )))
+        }
         "parseExtraArgs" => opt_json(content_identity::parse_extra_args_json(&arg_str(
             args_json, "extra",
         )?)),

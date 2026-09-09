@@ -1,6 +1,10 @@
 use super::continue_watching::format_episode_line_json;
 use serde_json::{Value, json};
 
+fn progress_seconds(value: f64, duration: f64) -> f64 {
+    if duration >= 100_000.0 { value / 1_000.0 } else { value }
+}
+
 /// Selects the best artwork URL for a continue-watching card.
 /// `artwork_preference` is "poster", "background", or "episode" (default).
 /// `is_horizontal` controls whether the card layout is wide/horizontal.
@@ -94,14 +98,16 @@ pub(crate) fn continue_watching_card_fields_json(
             let is_up_next = matches!(content_type, "series" | "tv" | "anime")
                 && (item.get("continueWatchingBadge").and_then(Value::as_str) == Some("upNext")
                     || progress_percent.is_some_and(|value| value <= 0.0 || value >= 99.5));
+            let watched_seconds = progress_seconds(offset, duration);
+            let remaining_seconds = progress_seconds((duration - offset).max(0.0), duration);
             json!({
                 "id": id,
                 "artwork": artwork,
                 "episodeLine": episode_line,
                 "progressPercent": progress_percent,
                 "isUpNext": is_up_next,
-                "watchedSeconds": offset,
-                "remainingSeconds": (duration - offset).max(0.0),
+                "watchedSeconds": watched_seconds,
+                "remainingSeconds": remaining_seconds,
             })
         })
         .collect();
@@ -121,11 +127,13 @@ pub(crate) fn continue_watching_progress_fields_json(item_json: &str) -> Option<
     let is_up_next = matches!(content_type, "series" | "tv" | "anime")
         && (item.get("continueWatchingBadge").and_then(Value::as_str) == Some("upNext")
             || percent <= 0.0 || percent >= 99.5);
+    let watched_seconds = progress_seconds(offset, duration);
+    let remaining_seconds = progress_seconds((duration - offset).max(0.0), duration);
     Some(json!({
         "progressPercent": percent,
         "isUpNext": is_up_next,
-        "watchedSeconds": offset,
-        "remainingSeconds": (duration - offset).max(0.0),
+        "watchedSeconds": watched_seconds,
+        "remainingSeconds": remaining_seconds,
     }).to_string())
 }
 

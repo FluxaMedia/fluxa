@@ -1,8 +1,8 @@
 use crate::stream_policy;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 use crate::{
-    cast_protocol, desktop_playback, headless_engine, library_persistence, oauth_plan,
-    offline_download, player_policy, subtitle_sync,
+    cast_protocol, desktop_playback, device_resource, headless_engine, library_persistence,
+    oauth_plan, offline_download, player_policy, subtitle_sync,
 };
 
 pub struct FluxaCore;
@@ -65,6 +65,13 @@ impl FluxaCore {
 
     pub fn stream_magnet_link_json(stream_json: &str) -> Option<String> {
         guard(None, || stream_policy::stream_magnet_link_json(stream_json))
+    }
+
+    #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+    pub fn torrent_cache_limit_mb(preset: Option<&str>, platform: &str) -> u64 {
+        guard(5 * 1024, || {
+            device_resource::torrent_cache_limit_mb(preset, platform)
+        })
     }
 
     pub fn torrent_sibling_subtitle_matches_json(request_json: &str) -> Option<String> {

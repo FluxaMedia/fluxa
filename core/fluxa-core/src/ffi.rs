@@ -29,6 +29,7 @@ mod search_plan_routes;
 mod stream_badge_routes;
 mod stream_policy_routes;
 mod tmdb_routes;
+mod version_policy_routes;
 mod watch_together_routes;
 mod watchlist_offline_routes;
 use addon_protocol_routes::route_addon_protocol;
@@ -65,6 +66,7 @@ use search_plan_routes::route_search_plan;
 use stream_badge_routes::route_stream_badges;
 use stream_policy_routes::route_stream_policy;
 use tmdb_routes::route_tmdb;
+use version_policy_routes::route_version_policy;
 use watch_together_routes::route_watch_together;
 use watchlist_offline_routes::{route_offline, route_watchlist};
 
@@ -78,8 +80,8 @@ use crate::{
     desktop_playback, device_resource, discovery_plan, external_sync, fluxa_sync,
     headless_adapter_plan, headless_engine, home_ranking, integration_settings, intro_segments,
     library_persistence, library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan,
-    player_flow, player_policy, player_scrobble, plugins, profile_avatar_pack, profile_contract,
-    profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow, search_plan,
+    player_flow, player_policy, player_scrobble, plugin_runtime, plugins, profile_avatar_pack, profile_contract,
+    profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow, runtime_label, search_plan,
     stream_badges, stream_policy, subtitle_sync, tmdb_plan, trailer_subtitles, watchlist_plan,
 };
 
@@ -245,6 +247,7 @@ const ROUTERS: &[fn(&str, &str) -> Outcome] = &[
     route_player_flow,
     route_player_scrobble,
     route_trailer_subtitles,
+    route_version_policy,
     route_watch_together,
     route_fluxa_sync,
 ];
@@ -521,6 +524,37 @@ mod tests {
             images["value"]["jane  doe"],
             json!("https://image.tmdb.org/t/p/w185/x.jpg")
         );
+
+        let upcoming = parse(&core_invoke(
+            "releaseDateUpcoming",
+            r#"{"released":"2026-09-09T00:00:00Z","todayIso":"2026-09-08"}"#,
+        ));
+        assert_eq!(upcoming["ok"], json!(true));
+        assert_eq!(upcoming["value"], json!(true));
+
+        let recent = parse(&core_invoke(
+            "releaseDateRecentlyReleased",
+            r#"{"released":"2026-09-01","todayIso":"2026-09-08","windowDays":7}"#,
+        ));
+        assert_eq!(recent["ok"], json!(true));
+        assert_eq!(recent["value"], json!(true));
+    }
+
+    #[test]
+    fn trailer_selection_methods_are_routed() {
+        let video_ids = parse(&core_invoke(
+            "trailerYoutubeVideoIds",
+            r#"{"urls":["https://youtu.be/abcdefghijk","https://youtube.com/watch?v=abcdefghijk"]}"#,
+        ));
+        assert_eq!(video_ids["ok"], json!(true));
+        assert_eq!(video_ids["value"], json!(["abcdefghijk"]));
+
+        let direct = parse(&core_invoke(
+            "trailerDirectSelection",
+            r#"{"maxHeight":1080,"trailers":[{"title":"4K","url":"https://video.example/4k.m3u8"},{"title":"1080p","url":"https://video.example/1080.mp4"}]}"#,
+        ));
+        assert_eq!(direct["ok"], json!(true));
+        assert_eq!(direct["value"]["url"], json!("https://video.example/1080.mp4"));
     }
 
     #[test]

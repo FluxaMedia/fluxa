@@ -30,6 +30,28 @@ pub(crate) fn normalize_cloudstream_repo_url(raw: &str) -> String {
     )
 }
 
+pub(crate) fn normalize_cloudstream_repo_input(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.contains("://") {
+        return normalize_cloudstream_repo_url(trimmed);
+    }
+    if trimmed
+        .strip_prefix("github.com/")
+        .or_else(|| trimmed.strip_prefix("www.github.com/"))
+        .is_some()
+    {
+        return format!("https://{trimmed}");
+    }
+    let valid_shortcode = trimmed.matches('/').count() == 1
+        && trimmed
+            .split('/')
+            .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.')));
+    if valid_shortcode {
+        return format!("https://raw.githubusercontent.com/{trimmed}/builds");
+    }
+    normalize_cloudstream_repo_url(trimmed)
+}
+
 pub(crate) fn normalize_plugin_repository_url(raw: &str) -> String {
     let trimmed = raw.trim();
     let Some(scheme_end) = trimmed.find("://") else {

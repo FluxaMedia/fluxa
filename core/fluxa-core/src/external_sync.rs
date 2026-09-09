@@ -12,8 +12,8 @@ pub(crate) use merge::{
 };
 pub(crate) use plan::{
     external_provider_action_plan_json, external_sync_refresh_retry_action,
-    external_sync_response_action, external_sync_worker_retry_action, import_apply_plan_json, promote_external_progress_plan_json,
-    provider_pagination_plan_json, push_plan_json,
+    external_sync_response_action, external_sync_worker_retry_action, import_apply_plan_json,
+    promote_external_progress_plan_json, provider_pagination_plan_json, push_plan_json,
 };
 pub(crate) use simkl::{
     simkl_history_request_json, simkl_playback_delete_ids_json,
@@ -24,12 +24,14 @@ pub(crate) use stremio::{
     stremio_watchlist_to_items_json,
 };
 pub(crate) use trakt::{
-    trakt_artwork, trakt_bearer, trakt_comments_request_json, trakt_content_id_from_ids_json,
+    trakt_artwork, trakt_bearer, trakt_collection_body_json, trakt_comments_request_json,
+    trakt_content_id_from_ids_json,
     trakt_episode_locator_json, trakt_has_client, trakt_history_request_json, trakt_id_from_source,
-    trakt_ids_from_content_id_json, trakt_image_url, trakt_oauth_error_code,
+    trakt_ids_from_content_id_json, trakt_image_url, trakt_list_reference, trakt_oauth_error_code,
     trakt_playback_delete_ids_json, trakt_playback_items_to_library_json, trakt_playback_url,
     trakt_scrobble_media_id, trakt_scrobble_url, trakt_show_id_from_episode_id,
-    trakt_sync_item_to_meta_json, trakt_token_expires_at, trakt_watched_to_ids_json,
+    trakt_sync_item_content_type_json, trakt_sync_item_to_meta_json, trakt_token_expires_at,
+    trakt_watched_to_ids_json,
     trakt_watchlist_to_items_json,
 };
 

@@ -29,8 +29,7 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
             let status_code = args.get("statusCode").and_then(Value::as_i64);
             let attempt = args.get("attempt").and_then(Value::as_i64).unwrap_or(0);
             Ok(Value::String(
-                external_sync::external_sync_worker_retry_action(status_code, attempt)
-                    .to_string(),
+                external_sync::external_sync_worker_retry_action(status_code, attempt).to_string(),
             ))
         }
         "providerCalendarItems" => opt_json(external_sync::provider_calendar_items_json(args_json)),
@@ -54,6 +53,9 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
             let content_type = args.get("contentType").and_then(Value::as_str);
             opt_str(external_sync::trakt_playback_url(content_type))
         }
+        "traktListReference" => opt_str(external_sync::trakt_list_reference(&arg_str(
+            args_json, "input",
+        )?)),
         "traktTokenExpiresAt" => {
             let args = object(args_json)?;
             let created_at_seconds = field(&args, "createdAtSeconds")?
@@ -71,6 +73,9 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
             &arg_str(args_json, "idsJson")?,
         )),
         "traktSyncItemToMeta" => opt_json(external_sync::trakt_sync_item_to_meta_json(args_json)),
+        "traktSyncItemContentType" => opt_str(external_sync::trakt_sync_item_content_type_json(
+            args_json,
+        )),
         "traktPlaybackDeleteIds" => {
             opt_json(external_sync::trakt_playback_delete_ids_json(args_json))
         }
@@ -102,6 +107,7 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
                 field_str(&args, "episodesJson")?,
             ))
         }
+        "traktCollectionBody" => opt_json(external_sync::trakt_collection_body_json(args_json)),
         // args_json IS the items array for single-array-arg methods
         "traktPlaybackItemsToLibrary" => opt_json(
             external_sync::trakt_playback_items_to_library_json(args_json),

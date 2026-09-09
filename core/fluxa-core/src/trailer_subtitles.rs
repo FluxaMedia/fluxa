@@ -1,5 +1,140 @@
 use crate::subtitle_sync::parse_subtitle_cues_with_text;
+use regex::Regex;
 use serde_json::{Value, json};
+use std::sync::OnceLock;
+use url::Url;
+
+pub(crate) fn trailer_youtube_video_ids_json(input: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(input).ok()?;
+    let urls = value.get("urls")?.as_array()?;
+    let mut ids = Vec::new();
+    for url in urls.iter().filter_map(Value::as_str) {
+        if let Some(id) = youtube_video_id(url) && !ids.contains(&id) {
+            ids.push(id);
+        }
+    }
+    serde_json::to_string(&ids).ok()
+}
+
+pub(crate) fn trailer_direct_selection_json(input: &str) -> Option<String> {
+    let value: Value = serde_json::from_str(input).ok()?;
+    let trailers = value.get("trailers")?.as_array()?;
+    let max_height = value
+        .get("maxHeight")
+        .and_then(Value::as_i64)
+        .filter(|height| *height > 0)
+        .unwrap_or(i64::MAX);
+    let mut best_declared: Option<(String, &'static str, i64)> = None;
+    let mut first_unknown: Option<(String, &'static str)> = None;
+
+    for trailer in trailers {
+        let Some(url) = trailer.get("url").and_then(Value::as_str) else {
+            continue;
+        };
+        let Some(mime_type) = direct_trailer_mime_type(url) else {
+            continue;
+        };
+        let quality = direct_trailer_quality(trailer, url);
+        if quality <= 0 {
+            if first_unknown.is_none() {
+                first_unknown = Some((url.to_string(), mime_type));
+            }
+            continue;
+        }
+        if quality > max_height {
+            continue;
+        }
+        if best_declared
+            .as_ref()
+            .is_none_or(|(_, _, best_quality)| quality > *best_quality)
+        {
+            best_declared = Some((url.to_string(), mime_type, quality));
+        }
+    }
+
+    let selected = best_declared
+        .map(|(url, mime_type, _)| (url, mime_type))
+        .or(first_unknown);
+    serde_json::to_string(&selected.map(|(url, mime_type)| {
+        json!({ "url": url, "mimeType": mime_type })
+    }))
+    .ok()
+}
+
+fn youtube_video_id(raw: &str) -> Option<String> {
+    let parsed = Url::parse(raw.trim()).ok()?;
+    let host = parsed.host_str()?.trim_end_matches('.').to_ascii_lowercase();
+    let candidate = if host == "youtu.be" || host.ends_with(".youtu.be") {
+        parsed.path_segments()?.find(|segment| !segment.is_empty())?.to_string()
+    } else if host == "youtube.com" || host.ends_with(".youtube.com") {
+        parsed
+            .query_pairs()
+            .find_map(|(key, value)| (key == "v").then_some(value.into_owned()))
+            .or_else(|| {
+                parsed
+                    .path_segments()?
+                    .filter(|segment| !segment.is_empty())
+                    .next_back()
+                    .map(str::to_string)
+            })?
+    } else {
+        return None;
+    };
+    is_youtube_video_id(&candidate).then_some(candidate)
+}
+
+fn is_youtube_video_id(value: &str) -> bool {
+    value.len() == 11
+        && value
+            .bytes()
+            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'_' | b'-'))
+}
+
+fn direct_trailer_mime_type(raw: &str) -> Option<&'static str> {
+    let parsed = Url::parse(raw.trim()).ok()?;
+    if !matches!(parsed.scheme(), "http" | "https") {
+        return None;
+    }
+    match parsed.path().rsplit('.').next()?.to_ascii_lowercase().as_str() {
+        "m3u8" => Some("application/x-mpegURL"),
+        "mpd" => Some("application/dash+xml"),
+        "webm" => Some("video/webm"),
+        "mp4" | "m4v" => Some("video/mp4"),
+        "mkv" => Some("video/x-matroska"),
+        "mov" => Some("video/quicktime"),
+        "ogv" => Some("video/ogg"),
+        _ => None,
+    }
+}
+
+fn direct_trailer_quality(trailer: &Value, url: &str) -> i64 {
+    let description = format!(
+        "{} {} {url}",
+        trailer.get("title").and_then(Value::as_str).unwrap_or(""),
+        trailer.get("source").and_then(Value::as_str).unwrap_or(""),
+    );
+    if ultra_high_definition_pattern().is_match(&description) {
+        return 2160;
+    }
+    resolution_pattern()
+        .captures(&description)
+        .and_then(|captures| captures.get(1))
+        .and_then(|capture| capture.as_str().parse().ok())
+        .unwrap_or_default()
+}
+
+fn ultra_high_definition_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| Regex::new(r"(?i)\b(?:4k|uhd)\b").expect("valid UHD regex"))
+}
+
+fn resolution_pattern() -> &'static Regex {
+    static PATTERN: OnceLock<Regex> = OnceLock::new();
+    PATTERN.get_or_init(|| {
+        Regex::new(r"(?i)\b(2160|1440|1080|720|576|540|480|360)\s*p\b")
+            .expect("valid resolution regex")
+    })
+}
 
 pub(crate) fn trailer_playback_policy_json(input: &str) -> Option<String> {
     let value: Value = serde_json::from_str(input).unwrap_or_default();
@@ -132,6 +267,29 @@ pub(crate) fn parse_trailer_subtitle_cues_json(input: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn resolves_youtube_ids_in_order_without_duplicates() {
+        let result = trailer_youtube_video_ids_json(
+            r#"{"urls":["https://youtu.be/abcdefghijk","https://youtube.com/watch?v=abcdefghijk","https://www.youtube.com/embed/zyxwvutsrqp","https://example.com/watch?v=abcdefghijk"]}"#,
+        )
+        .unwrap();
+        assert_eq!(
+            serde_json::from_str::<Value>(&result).unwrap(),
+            json!(["abcdefghijk", "zyxwvutsrqp"])
+        );
+    }
+
+    #[test]
+    fn selects_best_direct_trailer_with_quality_cap_and_mime_type() {
+        let result = trailer_direct_selection_json(
+            r#"{"maxHeight":1080,"trailers":[{"title":"IMDb 4K","url":"https://video.example/imdb.m3u8"},{"title":"Trailerio 1080p","url":"https://video.example/trailerio-1080.mp4"},{"title":"Trailerio 1080p","url":"https://video.example/second-1080.mp4"}]}"#,
+        )
+        .unwrap();
+        let selected: Value = serde_json::from_str(&result).unwrap();
+        assert_eq!(selected["url"], "https://video.example/trailerio-1080.mp4");
+        assert_eq!(selected["mimeType"], "video/mp4");
+    }
 
     #[test]
     fn selects_preferred_human_subtitle() {

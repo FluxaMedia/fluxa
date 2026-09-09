@@ -11,6 +11,94 @@ fn tmdb_content_ratings_path(tmdb_type: &str, tmdb_id: &str) -> String {
         format!("3/movie/{tmdb_id}/release_dates")
     }
 }
+
+pub(crate) fn tmdb_collection_source_url_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let source_id = args.get("sourceId")?.as_str()?;
+    let source_type = args
+        .get("sourceType")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .to_uppercase();
+    let media_type = tmdb_content_type(args.get("mediaType").and_then(Value::as_str).unwrap_or("movie"));
+    let api_key = args.get("apiKey")?.as_str()?;
+    let language = args.get("language")?.as_str()?;
+    let path = match source_type.as_str() {
+        "LIST" => format!("3/list/{source_id}"),
+        "COLLECTION" => format!("3/collection/{source_id}"),
+        "PERSON" | "DIRECTOR" => format!("3/person/{source_id}/combined_credits"),
+        "COMPANY" => format!("3/discover/{media_type}"),
+        "NETWORK" => "3/discover/tv".to_string(),
+        _ => format!("3/discover/{media_type}"),
+    };
+    let mut extra = Vec::new();
+    let paginated = !matches!(source_type.as_str(), "COLLECTION" | "PERSON" | "DIRECTOR");
+    if paginated {
+        let skip = args.get("skip").and_then(Value::as_u64).unwrap_or(0);
+        extra.push(("page".to_string(), (skip / 20 + 1).to_string()));
+    }
+    match source_type.as_str() {
+        "COMPANY" => extra.push(("with_companies".to_string(), source_id.to_string())),
+        "NETWORK" => extra.push(("with_networks".to_string(), source_id.to_string())),
+        _ => {}
+    }
+    if !matches!(source_type.as_str(), "LIST" | "COLLECTION" | "PERSON" | "DIRECTOR") {
+        extra.push((
+            "sort_by".to_string(),
+            args.get("sortBy")
+                .and_then(Value::as_str)
+                .unwrap_or("popularity.desc")
+                .to_string(),
+        ));
+    }
+    let filters = args.get("filters").and_then(Value::as_object);
+    let filter_keys = [
+        ("year", if media_type == "tv" { "first_air_date_year" } else { "year" }),
+        ("withGenres", "with_genres"),
+        ("watchRegion", "watch_region"),
+        ("voteCountGte", "vote_count.gte"),
+        ("withKeywords", "with_keywords"),
+        ("withNetworks", "with_networks"),
+        ("withCompanies", "with_companies"),
+        ("releaseDateGte", if media_type == "tv" { "first_air_date.gte" } else { "primary_release_date.gte" }),
+        ("releaseDateLte", if media_type == "tv" { "first_air_date.lte" } else { "primary_release_date.lte" }),
+        ("voteAverageGte", "vote_average.gte"),
+        ("voteAverageLte", "vote_average.lte"),
+        ("withOriginCountry", "with_origin_country"),
+        ("withWatchProviders", "with_watch_providers"),
+        ("withOriginalLanguage", "with_original_language"),
+    ];
+    for (input, output) in filter_keys {
+        if let Some(value) = filters.and_then(|values| values.get(input)) {
+            let value = match value {
+                Value::String(value) => value.clone(),
+                _ => value.to_string(),
+            };
+            extra.push((output.to_string(), value));
+        }
+    }
+    let extra_refs: Vec<(&str, &str)> = extra
+        .iter()
+        .map(|(key, value)| (key.as_str(), value.as_str()))
+        .collect();
+    serde_json::to_string(&tmdb_api_url(&path, api_key, language, &extra_refs)).ok()
+}
+
+pub(crate) fn tmdb_recommendations_url_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let content_type = args.get("contentType")?.as_str()?;
+    let tmdb_id = args.get("tmdbId")?.as_str()?;
+    let api_key = args.get("apiKey")?.as_str()?;
+    let language = args.get("language")?.as_str()?;
+    let tmdb_type = tmdb_content_type(content_type);
+    serde_json::to_string(&tmdb_api_url(
+        &format!("3/{tmdb_type}/{tmdb_id}/recommendations"),
+        api_key,
+        language,
+        &[("page", "1")],
+    ))
+    .ok()
+}
 pub(crate) fn tmdb_builtin_meta_request_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let content_type = args.get("contentType")?.as_str()?;

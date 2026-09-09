@@ -77,6 +77,27 @@ mod tests {
     }
 
     #[test]
+    fn parse_and_plan_addon_resource_returns_canonical_stream_payload() {
+        let combined = parse_and_plan_addon_resource_json(
+            "stream",
+            "https://addon.example/stream/movie/tt1.json",
+            200,
+            Some(r#"{"streams":[{"name":"4K DV","title":"Legacy details","url":"https://video.example/4k"}]}"#),
+            "streams",
+            Some("Torrentio"),
+            None,
+        );
+        let combined: Value = serde_json::from_str(&combined).expect("combined result");
+        let streams: Value = serde_json::from_str(combined["valueJson"].as_str().unwrap())
+            .expect("canonical stream payload");
+
+        assert_eq!(streams[0]["name"], "4K DV");
+        assert_eq!(streams[0]["title"], "Legacy details");
+        assert_eq!(streams[0]["description"], "Legacy details");
+        assert_eq!(streams[0]["addonName"], "Torrentio");
+    }
+
+    #[test]
     fn detail_episode_plan_picks_selected_episode_season_over_default() {
         let request = json!({
             "episodes": [
@@ -202,5 +223,29 @@ mod tests {
                 .unwrap()
                 .contains("search=batman")
         );
+    }
+
+    #[test]
+    fn resource_fetch_plan_home_excludes_catalogs_with_required_extras() {
+        let request = json!({
+            "kind": "home",
+            "addons": [{
+                "transportUrl": "https://addon.example/manifest.json",
+                "manifest": {
+                    "catalogs": [
+                        { "id": "top", "type": "movie", "name": "Top Movies" },
+                        { "id": "genre", "type": "movie", "extra": [{ "name": "genre", "isRequired": true }] }
+                    ]
+                }
+            }]
+        });
+        let plan = resource_fetch_plan_json(&request.to_string())
+            .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+            .expect("plan");
+        let requests = plan["requests"].as_array().unwrap();
+
+        assert_eq!(requests.len(), 1);
+        assert_eq!(requests[0]["catalogId"], "top");
+        assert_eq!(requests[0]["categoryName"], "Top Movies");
     }
 }

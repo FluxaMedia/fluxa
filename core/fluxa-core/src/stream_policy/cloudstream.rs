@@ -1,5 +1,8 @@
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::collections::HashSet;
+use std::sync::OnceLock;
+
+use regex::Regex;
 
 pub(crate) fn cloudstream_quality_score(value: &str) -> i64 {
     let value = value.to_ascii_lowercase();
@@ -22,6 +25,26 @@ pub(crate) fn cloudstream_quality_score(value: &str) -> i64 {
     }
 }
 
+pub(crate) fn cloudstream_quality_label(value: &str) -> Option<String> {
+    static DIMENSIONS: OnceLock<Regex> = OnceLock::new();
+    static PROGRESSIVE: OnceLock<Regex> = OnceLock::new();
+    let dimensions = DIMENSIONS.get_or_init(|| Regex::new(r"\b\d{3,5}\s*x\s*\d{3,5}\b").unwrap());
+    if let Some(value) = dimensions.find(value) {
+        return Some(value.as_str().replace(char::is_whitespace, ""));
+    }
+    let progressive = PROGRESSIVE.get_or_init(|| Regex::new(r"(?i)\b\d{3,4}p\b").unwrap());
+    progressive
+        .find(value)
+        .map(|value| value.as_str().to_ascii_lowercase())
+}
+
+pub(crate) fn cloudstream_content_type(value: &str) -> &'static str {
+    match value.to_ascii_lowercase().as_str() {
+        "tvseries" | "anime" | "ova" | "cartoon" | "asiandrama" => "series",
+        _ => "movie",
+    }
+}
+
 pub(crate) fn cloudstream_stream_order_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let links = args.get("links")?.as_array()?;
@@ -39,7 +62,12 @@ pub(crate) fn cloudstream_stream_order_json(args_json: &str) -> Option<String> {
             if !key.is_empty() && !seen.insert(key) {
                 return None;
             }
-            Some((index, cloudstream_quality_score(link.get("quality").and_then(Value::as_str).unwrap_or(""))))
+            Some((
+                index,
+                cloudstream_quality_score(
+                    link.get("quality").and_then(Value::as_str).unwrap_or(""),
+                ),
+            ))
         })
         .collect::<Vec<_>>();
     if sort_by_quality {
@@ -56,7 +84,10 @@ pub(crate) fn cloudstream_stream_order_json(args_json: &str) -> Option<String> {
 
 pub(crate) fn cloudstream_match_score_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let mode = args.get("mode").and_then(Value::as_str).unwrap_or("scraper");
+    let mode = args
+        .get("mode")
+        .and_then(Value::as_str)
+        .unwrap_or("scraper");
     let target_title = args.get("targetTitle").and_then(Value::as_str)?;
     let candidate_title = args.get("candidateTitle").and_then(Value::as_str)?;
     let original_title = args.get("originalTitle").and_then(Value::as_str);
@@ -80,19 +111,31 @@ pub(crate) fn cloudstream_match_score_json(args_json: &str) -> Option<String> {
         ("search", true)
             if ["movie", "animemovie", "documentary"]
                 .iter()
-                .any(|kind| candidate_type.contains(kind)) => 0.1,
+                .any(|kind| candidate_type.contains(kind)) =>
+        {
+            0.1
+        }
         ("search", false)
             if ["tvseries", "anime", "ova", "cartoon"]
                 .iter()
-                .any(|kind| candidate_type.contains(kind)) => 0.1,
+                .any(|kind| candidate_type.contains(kind)) =>
+        {
+            0.1
+        }
         (_, true)
             if ["movie", "animemovie"]
                 .iter()
-                .any(|kind| candidate_type.contains(kind)) => 0.15,
+                .any(|kind| candidate_type.contains(kind)) =>
+        {
+            0.15
+        }
         (_, false)
             if ["tvseries", "anime", "asiandrama"]
                 .iter()
-                .any(|kind| candidate_type.contains(kind)) => 0.15,
+                .any(|kind| candidate_type.contains(kind)) =>
+        {
+            0.15
+        }
         ("search", _) if !candidate_type.is_empty() => -0.1,
         _ => 0.0,
     };
@@ -154,13 +197,34 @@ fn levenshtein(left: &str, right: &str) -> usize {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json::{Value, json};
+    use serde_json::{json, Value};
 
     #[test]
     fn quality_score_prefers_the_highest_known_resolution() {
         assert_eq!(cloudstream_quality_score("WEB-DL 4K"), 2160);
         assert_eq!(cloudstream_quality_score("1080p"), 1080);
         assert_eq!(cloudstream_quality_score("unknown"), 0);
+    }
+
+    #[test]
+    fn quality_label_extracts_dimensions_and_progressive_resolution() {
+        assert_eq!(
+            cloudstream_quality_label("WEB 1920 x 1080"),
+            Some("1920x1080".into())
+        );
+        assert_eq!(
+            cloudstream_quality_label("release 1080P"),
+            Some("1080p".into())
+        );
+        assert_eq!(cloudstream_quality_label("unknown"), None);
+    }
+
+    #[test]
+    fn content_type_mapping_keeps_cloudstream_series_as_series() {
+        assert_eq!(cloudstream_content_type("TvSeries"), "series");
+        assert_eq!(cloudstream_content_type("Anime"), "series");
+        assert_eq!(cloudstream_content_type("AnimeMovie"), "movie");
+        assert_eq!(cloudstream_content_type("Documentary"), "movie");
     }
 
     #[test]

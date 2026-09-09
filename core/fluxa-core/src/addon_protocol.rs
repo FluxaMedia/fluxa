@@ -6,8 +6,8 @@ mod url;
 
 pub(crate) use assets::{merge_live_manifest_json, resolve_manifest_assets_json};
 pub(crate) use catalogs::{
-    catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra,
-    supports_resource,
+    catalog_has_required_extra_except, catalog_requires_extra, catalog_search_eligible,
+    catalog_supports_extra, supports_resource,
 };
 pub(crate) use manifest_parse::normalize_addon_descriptor_json;
 pub use manifest_parse::parse_manifest;
@@ -19,8 +19,9 @@ pub(crate) use url::{
 #[cfg(test)]
 mod tests {
     use super::{
-        build_resource_url, merge_live_manifest_json, normalize_addon_descriptor_json,
-        parse_manifest, resolve_manifest_assets_json, supports_resource,
+        build_resource_url, catalog_search_eligible, merge_live_manifest_json,
+        normalize_addon_descriptor_json, parse_manifest, resolve_manifest_assets_json,
+        supports_resource,
     };
     use serde_json::{Value, json};
 
@@ -67,6 +68,18 @@ mod tests {
                 .and_then(Value::as_str),
             Some("https://addon.example/bg.jpg")
         );
+    }
+
+    #[test]
+    fn catalog_search_policy_requires_supported_type_and_search_extra() {
+        assert!(catalog_search_eligible(
+            r#"{"type":"movie","extraSupported":["search"]}"#
+        ));
+        assert!(!catalog_search_eligible(r#"{"type":"anime","extraSupported":["search"]}"#));
+        assert!(!catalog_search_eligible(r#"{"type":"movie"}"#));
+        assert!(!catalog_search_eligible(
+            r#"{"type":"movie","extraSupported":["search"],"extra":[{"name":"genre","isRequired":true}]}"#
+        ));
     }
 
     #[test]

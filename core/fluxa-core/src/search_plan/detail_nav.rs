@@ -61,6 +61,32 @@ pub(crate) fn detail_season_load_plan_json(request_json: &str) -> Option<String>
     .ok()
 }
 
+pub(crate) fn detail_available_seasons_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let seasons_count = request
+        .get("seasonsCount")
+        .and_then(Value::as_i64)
+        .unwrap_or(0)
+        .max(0) as i32;
+    let mut seasons: Vec<i32> = (1..=seasons_count).collect();
+    let mut has_special_season = false;
+    if let Some(values) = request.get("seasons").and_then(Value::as_array) {
+        seasons.extend(values.iter().filter_map(Value::as_i64).filter_map(|value| {
+            (value > 0 && value <= i32::MAX as i64).then_some(value as i32)
+        }));
+        has_special_season = values.iter().any(|value| value.as_i64() == Some(0));
+    }
+    seasons.sort_unstable();
+    seasons.dedup();
+    if has_special_season {
+        seasons.push(0);
+    }
+    if seasons.is_empty() {
+        seasons.push(1);
+    }
+    serde_json::to_string(&seasons).ok()
+}
+
 pub(crate) fn detail_load_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     let requested_type = request
@@ -159,4 +185,25 @@ pub(crate) fn detail_season_videos_json(request_json: &str) -> Option<String> {
         None => videos.iter().collect(),
     };
     serde_json::to_string(&serde_json::json!({ "episodes": fallback })).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::detail_available_seasons_json;
+
+    #[test]
+    fn available_seasons_merges_count_video_seasons_and_special_season_last() {
+        assert_eq!(
+            detail_available_seasons_json(
+                r#"{"seasonsCount":2,"seasons":[3,0,2,3]}"#
+            )
+            .as_deref(),
+            Some("[1,2,3,0]")
+        );
+        assert_eq!(
+            detail_available_seasons_json(r#"{"seasonsCount":0,"seasons":[]}"#)
+                .as_deref(),
+            Some("[1]")
+        );
+    }
 }

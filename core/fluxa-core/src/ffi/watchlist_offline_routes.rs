@@ -44,8 +44,14 @@ pub(super) fn route_watchlist(method: &str, args_json: &str) -> Outcome {
         "collectionFolderTabsPlan" => {
             opt_json(watchlist_plan::collection_folder_tabs_plan_json(args_json))
         }
+        "collectionMutationPlan" => {
+            opt_json(watchlist_plan::collection_mutation_plan_json(args_json))
+        }
         "importCollections" => opt_json(watchlist_plan::import_collections_json(args_json)),
         "exportCollections" => opt_json(watchlist_plan::export_collections_json(args_json)),
+        "collectionFolderPresentation" => opt_json(
+            watchlist_plan::collection_folder_presentation_json(args_json),
+        ),
         "libraryExternalMergePlan" => {
             opt_json(watchlist_plan::library_external_merge_plan_json(args_json))
         }

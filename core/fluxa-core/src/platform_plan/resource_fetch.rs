@@ -53,6 +53,39 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
                 "kind": "catalogPage"
             }));
         }
+        "home" => {
+            for addon in &request.addons {
+                let Some(transport_url) = addon_transport_url(addon) else {
+                    continue;
+                };
+                for catalog in addon_catalogs(addon) {
+                    if !catalog_supports_initial_load(&catalog) {
+                        continue;
+                    }
+                    let Some(content_type) = catalog.get("type").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let Some(id) = catalog.get("id").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let catalog_name = catalog
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .filter(|value| !value.trim().is_empty())
+                        .unwrap_or(id);
+                    requests.push(json!({
+                        "url": build_resource_url(transport_url, "catalog", content_type, id, None),
+                        "kind": "home",
+                        "addonName": addon_display_name(addon),
+                        "transportUrl": transport_url,
+                        "catalogId": id,
+                        "catalogType": content_type,
+                        "categoryId": format!("{}:{}:{}", transport_url, content_type, id),
+                        "categoryName": catalog_name
+                    }));
+                }
+            }
+        }
         "search" => {
             let query = request.query.as_deref().unwrap_or("");
             for addon in &request.addons {
@@ -335,6 +368,19 @@ fn catalog_supports_extra(catalog: &Value, name: &str) -> bool {
 }
 fn catalog_supports_search(catalog: &Value) -> bool {
     catalog_supports_extra(catalog, "search")
+}
+fn catalog_supports_initial_load(catalog: &Value) -> bool {
+    !catalog
+        .get("extra")
+        .and_then(Value::as_array)
+        .is_some_and(|extras| {
+            extras.iter().any(|extra| {
+                extra
+                    .get("isRequired")
+                    .and_then(Value::as_bool)
+                    .unwrap_or(false)
+            })
+        })
 }
 fn search_category_name(addon: &Value, catalog: &Value, content_type: &str) -> String {
     let addon_name = addon_display_name(addon);

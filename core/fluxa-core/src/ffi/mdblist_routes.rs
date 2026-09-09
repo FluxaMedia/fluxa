@@ -2,6 +2,9 @@ use super::*;
 
 pub(super) fn route_mdblist(method: &str, args_json: &str) -> Outcome {
     match method {
+        "mdblistContentType" => Ok(Value::String(
+            mdblist_plan::mdblist_content_type(&arg_str(args_json, "contentType")?).to_string(),
+        )),
         "mdblistBearer" => Ok(Value::String(mdblist_plan::mdblist_bearer(&arg_str(
             args_json, "token",
         )?))),

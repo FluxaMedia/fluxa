@@ -3,6 +3,57 @@ use serde_json::{Map, Value, json};
 
 const TRAKT_API_BASE_URL: &str = "https://api.trakt.tv";
 
+pub(crate) fn trakt_list_reference(input: &str) -> Option<String> {
+    let trimmed = input.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if trimmed.chars().all(|character| character.is_ascii_digit()) {
+        return Some(trimmed.to_string());
+    }
+
+    let query = trimmed
+        .split_once('?')
+        .map(|(_, query)| query)
+        .unwrap_or("");
+    for parameter in query.split('&') {
+        let Some((key, value)) = parameter.split_once('=') else {
+            continue;
+        };
+        if key.eq_ignore_ascii_case("id") && !value.is_empty() {
+            return value
+                .split('#')
+                .next()
+                .filter(|value| !value.is_empty())
+                .map(str::to_string);
+        }
+    }
+
+    let without_query = trimmed.split(['?', '#']).next().unwrap_or(trimmed);
+    let parts = without_query
+        .split('/')
+        .filter(|part| !part.is_empty())
+        .collect::<Vec<_>>();
+    if parts
+        .iter()
+        .any(|part| part.eq_ignore_ascii_case("trakt.tv"))
+    {
+        if let Some(index) = parts
+            .iter()
+            .position(|part| part.eq_ignore_ascii_case("lists"))
+        {
+            if let Some(value) = parts.get(index + 1).filter(|value| !value.is_empty()) {
+                return Some((*value).to_string());
+            }
+        }
+    }
+
+    trimmed
+        .chars()
+        .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
+        .then(|| trimmed.to_string())
+}
+
 pub(crate) fn trakt_image_url(images: &Value, kind: &str) -> Option<String> {
     images
         .get(kind)?
@@ -40,6 +91,17 @@ pub(crate) fn trakt_sync_item_to_meta_json(args_json: &str) -> Option<String> {
     let id = trakt_content_id_from_ids_json(&summary.get("ids")?.to_string())?;
     let year = summary.get("year").and_then(Value::as_i64);
     serde_json::to_string(&json!({"id":id,"name":summary.get("title").and_then(Value::as_str).filter(|name| !name.trim().is_empty()).unwrap_or_else(|| args.get("unknownName").and_then(Value::as_str).unwrap_or("Unknown")),"type":args.get("type")?.as_str()?,"poster":Value::Null,"releaseInfo":year.map(|year| year.to_string()),"released":year.map(|year| format!("{year}-01-01"))})).ok()
+}
+
+pub(crate) fn trakt_sync_item_content_type_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let item = args.get("item")?;
+    if item.get("movie").is_some_and(|value| !value.is_null()) {
+        return Some("movie".to_string());
+    }
+    item.get("show")
+        .filter(|value| !value.is_null())
+        .map(|_| "series".to_string())
 }
 
 pub(crate) fn trakt_has_client(api_key: &str) -> bool {
@@ -305,6 +367,19 @@ pub(crate) fn trakt_history_request_json(meta_json: &str, episodes_json: &str) -
         }]
     }))
     .ok()
+}
+
+pub(crate) fn trakt_collection_body_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let ids_json = args.get("idsJson")?.as_str()?;
+    let ids: Value = serde_json::from_str(ids_json).ok()?;
+    let content_type = args.get("contentType")?.as_str()?;
+    let collection = if matches!(content_type, "series" | "show" | "anime") {
+        "shows"
+    } else {
+        "movies"
+    };
+    serde_json::to_string(&json!({ collection: [{ "ids": ids }] })).ok()
 }
 
 pub(crate) fn trakt_id_from_source(source: &Value) -> Option<String> {

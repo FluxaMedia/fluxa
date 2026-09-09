@@ -46,12 +46,58 @@ pub(crate) fn stable_feed_part(value: &str) -> String {
     output.trim_matches('_').to_string()
 }
 
+pub(crate) fn cs3_plugin_feed_key(api_name: &str) -> String {
+    let normalized = api_name
+        .chars()
+        .map(|ch| {
+            if ch.is_ascii_alphanumeric() {
+                ch.to_ascii_lowercase()
+            } else {
+                '_'
+            }
+        })
+        .collect::<String>();
+    format!("cs3_plugin_{normalized}")
+}
+
+pub(crate) fn cs3_catalog_feed_key(
+    plugin_name: &str,
+    catalog_name: &str,
+    catalog_index: i32,
+) -> String {
+    format!(
+        "cs3_catalog_{}:{}:{}",
+        stable_feed_part(plugin_name),
+        catalog_index,
+        stable_feed_part(catalog_name)
+    )
+}
+
 pub(crate) fn normalize_content_type(value: &str) -> Option<&'static str> {
     match value.to_lowercase().as_str() {
         "movie" | "movies" => Some("movie"),
         "series" | "tv" | "show" | "shows" => Some("series"),
         "anime" => Some("anime"),
         _ => None,
+    }
+}
+
+pub(crate) fn is_series_content_type(value: &str) -> bool {
+    matches!(normalize_content_type(value), Some("series" | "anime"))
+}
+
+pub(crate) fn normalize_catalog_type(value: &str) -> String {
+    let trimmed = value.trim();
+    normalize_content_type(trimmed)
+        .map(str::to_string)
+        .unwrap_or_else(|| trimmed.to_lowercase())
+}
+
+pub(crate) fn content_matches_filter(content_type: &str, filter: &str) -> bool {
+    match filter {
+        "movie" => content_type == "movie",
+        "series" => matches!(content_type, "series" | "tv" | "anime"),
+        _ => true,
     }
 }
 

@@ -22,6 +22,7 @@ pub(crate) fn resource_parse_plan_json(request_json: &str) -> Option<String> {
         request.response,
         request.addon_name.as_deref(),
         request.season,
+        None,
     );
     serde_json::to_string(&value).ok()
 }
@@ -54,6 +55,7 @@ fn resource_parse_plan_value(
     response: Value,
     addon_name: Option<&str>,
     season: Option<i64>,
+    resource_url: Option<&str>,
 ) -> Value {
     match kind {
         "catalogPage" | "discover" | "search" => {
@@ -87,7 +89,21 @@ fn resource_parse_plan_value(
             json!({ "episodes": videos })
         }
         "subtitles" => {
-            json!({ "subtitles": response.get("subtitles").and_then(Value::as_array).cloned().unwrap_or_default() })
+            let subtitles = response
+                .get("subtitles")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let subtitles = resource_url
+                .map(|url| {
+                    crate::addon_resource::normalize_addon_subtitles_json(
+                        &Value::Array(subtitles.clone()).to_string(),
+                        url,
+                    )
+                })
+                .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+                .unwrap_or(Value::Array(subtitles));
+            json!({ "subtitles": subtitles })
         }
         _ => response,
     }
@@ -106,8 +122,25 @@ pub(crate) fn parse_and_plan_addon_resource_json(
         crate::addon_resource::ParsedAddonBody::Success { payload, .. } => {
             let wrapped =
                 crate::addon_resource::wrap_addon_resource_response_value(resource, payload);
-            let value = resource_parse_plan_value(kind, wrapped, addon_name, season);
-            json!({ "kind": "success", "value": value }).to_string()
+            let value = resource_parse_plan_value(kind, wrapped, addon_name, season, Some(url));
+            let value_json = match kind {
+                "catalogPage" | "discover" | "search" => value.get("items"),
+                "metaDetail" => value.get("meta"),
+                "streams" => value.get("streams"),
+                "seasonEpisodes" => value.get("episodes"),
+                "subtitles" => value.get("subtitles"),
+                _ => Some(&value),
+            }
+            .cloned()
+            .unwrap_or(Value::Null);
+            json!({
+                "kind": "success",
+                "url": url,
+                "statusCode": status_code,
+                "value": value,
+                "valueJson": value_json.to_string()
+            })
+            .to_string()
         }
     }
 }

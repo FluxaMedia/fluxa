@@ -60,6 +60,48 @@ fn normalize_shape(value: Option<&str>) -> &'static str {
     }
 }
 
+pub(crate) fn collection_folder_presentation_json(folder_json: &str) -> Option<String> {
+    let folder = serde_json::from_str::<Value>(folder_json).ok()?;
+    let object = folder.as_object()?;
+    let source = object
+        .get("sources")
+        .and_then(Value::as_array)
+        .and_then(|sources| {
+            sources.iter().find(|source| {
+                source
+                    .get("provider")
+                    .and_then(Value::as_str)
+                    .is_some_and(|provider| provider.eq_ignore_ascii_case("addon"))
+            })
+        })
+        .or_else(|| object.get("catalogSources").and_then(Value::as_array)?.first());
+    let catalog_id = source
+        .and_then(|value| value.get("catalogId"))
+        .and_then(Value::as_str)
+        .or_else(|| object.get("catalogId").and_then(Value::as_str));
+    let catalog_type = source
+        .and_then(|value| value.get("type"))
+        .and_then(Value::as_str);
+    let image_url = cleaned_artwork_url(pick_str(
+        object,
+        &["coverImageUrl", "coverUrl", "coverImage", "cover", "poster", "thumbnail", "thumb"],
+    ))
+    .or_else(|| {
+        cleaned_artwork_url(pick_str(
+            object,
+            &["imageUrl", "image", "image_url", "posterUrl", "poster_url"],
+        ))
+    });
+
+    serde_json::to_string(&json!({
+        "imageUrl": image_url,
+        "shape": normalize_shape(object.get("tileShape").or_else(|| object.get("shape")).and_then(Value::as_str)),
+        "catalogId": catalog_id,
+        "catalogType": catalog_type,
+    }))
+    .ok()
+}
+
 fn export_shape(value: Option<&str>) -> &'static str {
     match value.map(str::to_lowercase).as_deref() {
         Some("wide") | Some("landscape") => "LANDSCAPE",

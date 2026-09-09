@@ -1,4 +1,5 @@
 mod ownership;
+mod entries;
 mod profile_sanitize;
 mod repo_url;
 mod search_policy;
@@ -7,9 +8,11 @@ pub(crate) use ownership::{
     effective_addons_owner_id_json, effective_plugins_owner_id_json, plugin_storage_fallback_json,
     profile_local_addons_key_json,
 };
+pub(crate) use entries::addon_store_entries_plan_json;
 pub(crate) use profile_sanitize::{addon_profile_mutation_plan_json, sanitize_profile_json};
 pub(crate) use repo_url::{
-    addon_store_input_type, is_secure_remote_url, normalize_cloudstream_repo_url,
+    addon_store_input_type, is_secure_remote_url, normalize_cloudstream_repo_input,
+    normalize_cloudstream_repo_url,
     normalize_plugin_repository_url, same_plugin_repository_url,
 };
 pub(crate) use search_policy::{
@@ -74,6 +77,22 @@ mod tests {
             "http://example.com/repo.json/",
             "https://EXAMPLE.com/repo.json"
         ));
+    }
+
+    #[test]
+    fn cloudstream_repository_input_expands_github_shortcuts() {
+        assert_eq!(
+            normalize_cloudstream_repo_input("owner/repository"),
+            "https://raw.githubusercontent.com/owner/repository/builds"
+        );
+        assert_eq!(
+            normalize_cloudstream_repo_input("github.com/owner/repository"),
+            "https://github.com/owner/repository"
+        );
+        assert_eq!(
+            normalize_cloudstream_repo_input("cloudstream://example.test/repo.json"),
+            "https://example.test/repo.json"
+        );
     }
 
     #[test]
@@ -193,5 +212,21 @@ mod tests {
                 .map(Vec::len),
             Some(0)
         );
+    }
+
+    #[test]
+    fn addon_entries_plan_merges_repository_and_local_state() {
+        let result = addon_store_entries_plan_json(
+            r#"{"repositoryAddons":[{"transportUrl":"https://a.example/manifest.json","manifest":{"name":"A","description":"Desc","configurable":true},"isManaged":true,"isEnabled":true}],"localUrls":["https://a.example","https://b.example/manifest.json"],"disabledKeys":["https://a.example"],"isNuvioProfile":false,"localLoaded":true,"refreshingUrl":"https://b.example"}"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("entries");
+
+        assert_eq!(result.as_array().map(Vec::len), Some(2));
+        assert_eq!(result[0]["name"], "A");
+        assert_eq!(result[0]["isEnabled"], false);
+        assert_eq!(result[0]["canRemove"], true);
+        assert_eq!(result[1]["isRefreshing"], true);
+        assert_eq!(result[1]["name"], "B");
     }
 }

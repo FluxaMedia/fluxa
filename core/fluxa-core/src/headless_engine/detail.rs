@@ -44,8 +44,6 @@ pub(super) struct DetailState {
     failed_addons: Value,
     error: Value,
     generation: u64,
-    #[serde(skip)]
-    streams_request_key: String,
 }
 
 impl Default for DetailState {
@@ -84,7 +82,6 @@ impl Default for DetailState {
             failed_addons: serde_json::json!([]),
             error: Value::Null,
             generation: 0,
-            streams_request_key: String::new(),
         }
     }
 }
@@ -313,15 +310,6 @@ pub(super) fn dispatch_streams(
     language: Option<String>,
     profile: Option<Value>,
 ) -> Vec<EffectEnvelope> {
-    let request_key = format!("{content_type}:{}", request_ids.join(","));
-    if engine.state.detail.is_loading_streams
-        && engine.state.detail.streams_request_key == request_key
-    {
-        // Same episode already in flight — ignore the redundant request instead of
-        // bumping the generation, which would orphan any addon results still on the way.
-        return vec![];
-    }
-    engine.state.detail.streams_request_key = request_key;
     let generation = engine.bump_generation(GenerationKey::DetailStreams);
     engine.state.detail.is_loading_streams = true;
     engine.state.detail.streams = serde_json::json!([]);

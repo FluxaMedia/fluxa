@@ -1,6 +1,18 @@
 use super::helpers::{tmdb_image_url, tmdb_language, tmdb_region_from_language};
 use serde_json::{Value, json};
 
+pub(crate) fn tmdb_item_content_type(
+    media_type: &str,
+    has_first_air_date: bool,
+    requested_type: &str,
+) -> &'static str {
+    if requested_type == "series" || media_type == "tv" || has_first_air_date {
+        "series"
+    } else {
+        "movie"
+    }
+}
+
 pub(crate) fn tmdb_meta_to_meta_json(
     item_json: &str,
     requested_type: &str,
@@ -9,12 +21,11 @@ pub(crate) fn tmdb_meta_to_meta_json(
     let item: Value = serde_json::from_str(item_json).ok()?;
     let id = item.get("id").and_then(Value::as_i64)?;
     let media_type = item.get("media_type").and_then(Value::as_str).unwrap_or("");
-    let has_tv = media_type == "tv" || item.get("first_air_date").is_some();
-    let content_type = if requested_type == "series" || has_tv {
-        "series"
-    } else {
-        "movie"
-    };
+    let content_type = tmdb_item_content_type(
+        media_type,
+        item.get("first_air_date").is_some(),
+        requested_type,
+    );
     let name = item
         .get("title")
         .or_else(|| item.get("name"))

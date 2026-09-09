@@ -4,9 +4,11 @@ mod delta_state;
 mod export_push;
 mod helpers;
 mod profiles;
+mod plugin_content;
 mod progress_sync;
 mod reconciliation;
 
+pub(crate) use helpers::canonical_content_type;
 pub(crate) use addon_priority::{addon_state_json, sort_addons_by_priority_json};
 pub(crate) use collections::map_collections_json;
 pub(crate) use delta_state::{
@@ -18,6 +20,7 @@ pub(crate) use export_push::{
     playback_progress_request_json, watched_items_request_json,
 };
 pub(crate) use profiles::build_local_profiles_json;
+pub(crate) use plugin_content::{candidate_content_types, plugin_content_id, plugin_content_type};
 pub(crate) use progress_sync::{
     import_merge_plan_json, library_to_watchlist_json, progress_meta_needs_json,
     progress_presentation_json, resolve_continue_watching_json,
@@ -25,9 +28,18 @@ pub(crate) use progress_sync::{
 pub(crate) use reconciliation::{addon_reconciliation_plan_json, library_mutation_plan_json};
 #[cfg(test)]
 mod tests {
-    use super::helpers::iso_from_ms;
+    use super::helpers::{canonical_content_type, iso_from_ms};
     use super::*;
     use serde_json::{Value, json};
+
+    #[test]
+    fn canonical_content_type_maps_nuvio_aliases_to_server_types() {
+        for value in ["series", " show ", "TV", "anime"] {
+            assert_eq!(canonical_content_type(value), "series");
+        }
+        assert_eq!(canonical_content_type("movie"), "movie");
+        assert_eq!(canonical_content_type(""), "movie");
+    }
 
     fn merge(args: Value) -> Value {
         serde_json::from_str(&import_merge_plan_json(&args.to_string()).unwrap()).unwrap()

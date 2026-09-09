@@ -60,6 +60,17 @@ fn lerp_mb(
     (lo_val + t * (hi_val - lo_val)).clamp(floor, ceil) as i64
 }
 
+pub(crate) fn torrent_cache_limit_mb(preset: Option<&str>, platform: &str) -> u64 {
+    let auto_limit_mb = if platform == "android" { 256 } else { 5 * 1024 };
+    match preset {
+        Some("2gb") => 2 * 1024,
+        Some("5gb") => 5 * 1024,
+        Some("10gb") => 10 * 1024,
+        Some("unlimited") => 0,
+        _ => auto_limit_mb,
+    }
+}
+
 pub(crate) fn device_resource_budget_json(request_json: &str) -> Option<String> {
     let request = serde_json::from_str::<DeviceResourceBudgetRequest>(request_json)
         .map_err(|e| CoreError::BadInput {
@@ -214,5 +225,14 @@ mod tests {
         let b = budget(r#"{"totalRamMb":3000}"#);
         assert_eq!(b["tier"], "mid");
         assert_eq!(b["imageCrossfadeEnabled"], true);
+    }
+
+    #[test]
+    fn torrent_cache_presets_have_one_shared_policy() {
+        assert_eq!(torrent_cache_limit_mb(Some("2gb"), "desktop"), 2_048);
+        assert_eq!(torrent_cache_limit_mb(Some("10gb"), "android"), 10_240);
+        assert_eq!(torrent_cache_limit_mb(Some("unlimited"), "desktop"), 0);
+        assert_eq!(torrent_cache_limit_mb(None, "android"), 256);
+        assert_eq!(torrent_cache_limit_mb(None, "desktop"), 5 * 1024);
     }
 }

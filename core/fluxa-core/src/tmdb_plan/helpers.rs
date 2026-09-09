@@ -27,6 +27,12 @@ pub(crate) fn tmdb_image_url(path: Option<&str>, size: &str) -> Option<String> {
     if path.is_empty() {
         return None;
     }
+    if path.starts_with("https://") || path.starts_with("http://") {
+        return Some(path.to_string());
+    }
+    if path.starts_with("//") {
+        return Some(format!("https:{path}"));
+    }
     Some(format!("https://image.tmdb.org/t/p/{size}{path}"))
 }
 /// Returns (numeric_tmdb_id, already_resolved) — if already_resolved is true

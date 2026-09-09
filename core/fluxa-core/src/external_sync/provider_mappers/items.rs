@@ -38,7 +38,11 @@ fn simkl_content_id(source: &Value) -> Option<String> {
                 .filter(|value| !value.is_empty())
                 .map(|value| format!("simkl:{value}"))
         })
-        .or_else(|| ids.get("simkl").and_then(Value::as_i64).map(|value| format!("simkl:{value}")))
+        .or_else(|| {
+            ids.get("simkl")
+                .and_then(Value::as_i64)
+                .map(|value| format!("simkl:{value}"))
+        })
 }
 
 fn simkl_fanart_url(source: &Value) -> Option<String> {

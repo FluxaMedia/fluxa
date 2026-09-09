@@ -2,6 +2,12 @@ use super::*;
 
 pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
     match method {
+        "formatRuntimeLabel" => Ok(match runtime_label::format_runtime_label(
+            object(args_json)?.get("value").and_then(Value::as_str),
+        ) {
+            Some(value) => Value::String(value),
+            None => Value::Null,
+        }),
         "terminalRecommendationPlan" => opt_json(
             recommendation_policy::terminal_recommendation_plan_json(args_json),
         ),
@@ -85,6 +91,13 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
             args_json,
             "categoryJson",
         )?)),
+        "filterHomeCategories" => {
+            let args = object(args_json)?;
+            opt_json(home_ranking::filter_home_categories_json(
+                field_str(&args, "categoriesJson")?,
+                field_str(&args, "filter")?,
+            ))
+        }
         "homeOverlapRatio" => {
             let args = object(args_json)?;
             Ok(json!(home_ranking::home_overlap_ratio_json(

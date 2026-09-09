@@ -8,12 +8,33 @@ pub(super) fn route_tmdb(method: &str, args_json: &str) -> Outcome {
         "tmdbLanguage" => Ok(Value::String(tmdb_plan::tmdb_language(&arg_str(
             args_json, "language",
         )?))),
+        "tmdbItemContentType" => {
+            let args = object(args_json)?;
+            Ok(Value::String(
+                tmdb_plan::tmdb_item_content_type(
+                    args.get("mediaType").and_then(Value::as_str).unwrap_or(""),
+                    args.get("hasFirstAirDate")
+                        .and_then(Value::as_bool)
+                        .unwrap_or(false),
+                    args.get("requestedType")
+                        .and_then(Value::as_str)
+                        .unwrap_or(""),
+                )
+                .to_string(),
+            ))
+        }
         "tmdbImageUrl" => {
             let args = object(args_json)?;
             Ok(json!(tmdb_plan::tmdb_image_url(
                 args.get("path").and_then(Value::as_str),
                 field_str(&args, "size")?,
             )))
+        }
+        "tmdbCollectionSourceUrl" => {
+            opt_json(tmdb_plan::tmdb_collection_source_url_json(args_json))
+        }
+        "tmdbRecommendationsUrl" => {
+            opt_json(tmdb_plan::tmdb_recommendations_url_json(args_json))
         }
         "tmdbMetaToMeta" => {
             let args = object(args_json)?;

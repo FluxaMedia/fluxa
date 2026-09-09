@@ -21,6 +21,28 @@ mod tests {
     use serde_json::{Value, json};
 
     #[test]
+    fn collection_folder_presentation_centralizes_artwork_shape_and_catalog_fallbacks() {
+        let result: Value = serde_json::from_str(
+            &collection_folder_presentation_json(
+                r#"{
+                    "coverImageUrl": "https://github.com/owner/repo/blob/main/poster image.jpg",
+                    "shape": "LANDSCAPE",
+                    "sources": [{"provider":"addon","catalogId":"top","type":"series"}]
+                }"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(
+            result["imageUrl"],
+            "https://raw.githubusercontent.com/owner/repo/main/poster%20image.jpg"
+        );
+        assert_eq!(result["shape"], "wide");
+        assert_eq!(result["catalogId"], "top");
+        assert_eq!(result["catalogType"], "series");
+    }
+
+    #[test]
     fn toggle_plan_adds_when_not_in_watchlist() {
         let result: Value = serde_json::from_str(
             &watchlist_toggle_plan_json(

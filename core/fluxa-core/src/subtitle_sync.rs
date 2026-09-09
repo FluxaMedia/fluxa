@@ -205,6 +205,13 @@ fn timed_text_attribute_regex() -> &'static Regex {
     })
 }
 
+fn timed_text_boundary_regex() -> &'static Regex {
+    static VALUE: OnceLock<Regex> = OnceLock::new();
+    VALUE.get_or_init(|| {
+        Regex::new(r#"\b(begin|end)=['\"]([^'\"]+)['\"]"#).expect("valid timed text boundary regex")
+    })
+}
+
 fn decode_subtitle_text(value: &str) -> String {
     subtitle_tag_regex()
         .replace_all(value, "")
@@ -236,16 +243,37 @@ fn parse_timed_text_cues(text: &str) -> Vec<SubtitleCue> {
                             .flatten()
                     })
             };
-            let start = attribute("t")? / 1000.0;
-            let duration = attribute("d")? / 1000.0;
+            let boundary = |name: &str| {
+                timed_text_boundary_regex()
+                    .captures_iter(attributes)
+                    .find_map(|item| {
+                        (item.get(1)?.as_str() == name)
+                            .then(|| parse_timed_text_time(item.get(2)?.as_str()))
+                            .flatten()
+                    })
+            };
+            let start = attribute("t")
+                .map(|value| value / 1000.0)
+                .or_else(|| boundary("begin"))?;
+            let end = attribute("d")
+                .map(|value| start + value / 1000.0)
+                .or_else(|| boundary("end"))?;
             let cue_text = decode_subtitle_text(capture.get(2)?.as_str());
             (!cue_text.is_empty()).then_some(SubtitleCue {
                 start,
-                end: start + duration,
+                end,
                 text: cue_text,
             })
         })
         .collect()
+}
+
+fn parse_timed_text_time(value: &str) -> Option<f64> {
+    let trimmed = value.trim();
+    if let Some(seconds) = trimmed.strip_suffix('s') {
+        return seconds.parse::<f64>().ok();
+    }
+    parse_timestamp(trimmed)
 }
 
 #[expect(
@@ -409,6 +437,11 @@ mod tests {
         let timed =
             parse_subtitle_cues_with_text("<timedtext><p d='500' t='1000'>Hi</p></timedtext>");
         assert_eq!(timed[0].end, 1.5);
+        let ttml = parse_subtitle_cues_with_text(
+            "<?xml version='1.0'?><tt><body><p begin='00:00:02.000' end='2.75s'>Hi</p></body></tt>",
+        );
+        assert_eq!(ttml[0].start, 2.0);
+        assert_eq!(ttml[0].end, 2.75);
     }
 
     #[test]

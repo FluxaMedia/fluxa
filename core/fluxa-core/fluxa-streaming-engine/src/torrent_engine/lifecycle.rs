@@ -207,6 +207,10 @@ pub(super) async fn enforce_cache_limit(state: &EngineState) {
     let snapshots = state
         .api
         .api_torrent_list_ext(ApiTorrentListOpts { with_stats: true });
+    let now = Instant::now();
+    let stale_access = now
+        .checked_sub(Duration::from_secs(365 * 24 * 60 * 60))
+        .unwrap_or(now);
     let mut entries = state
         .runtime
         .lock()
@@ -216,11 +220,17 @@ pub(super) async fn enforce_cache_limit(state: &EngineState) {
                 .iter()
                 .filter_map(|torrent| {
                     let id = torrent.id?;
-                    let lifecycle = runtime.lifecycle.get(&id)?;
+                    let lifecycle = runtime.lifecycle.get(&id);
                     Some((
                         id,
-                        lifecycle.active,
-                        lifecycle.last_accessed,
+                        runtime.active_torrent == Some(id)
+                            || lifecycle.is_some_and(|entry| entry.active)
+                            || torrent.stats.as_ref().is_some_and(|stats| {
+                                matches!(&stats.state, TorrentStatsState::Live)
+                            }),
+                        lifecycle
+                            .map(|entry| entry.last_accessed)
+                            .unwrap_or(stale_access),
                         torrent
                             .stats
                             .as_ref()

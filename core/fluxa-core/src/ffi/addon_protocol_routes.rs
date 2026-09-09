@@ -80,6 +80,9 @@ pub(super) fn route_addon_protocol(method: &str, args_json: &str) -> Outcome {
                 field_str(&args, "extraName")?,
             )))
         }
+        "catalogSearchEligible" => Ok(json!(addon_protocol::catalog_search_eligible(
+            field_str(&object(args_json)?, "catalog")?,
+        ))),
         "normalizeAddonDescriptor" => opt_json(addon_protocol::normalize_addon_descriptor_json(
             &arg_str(args_json, "addonJson")?,
         )),

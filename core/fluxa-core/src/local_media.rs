@@ -5,7 +5,7 @@
 //! candidates, and mapping a parsed episode to a metadata video.
 
 use regex::Regex;
-use serde_json::{Value, json};
+use serde_json::{json, Value};
 use std::sync::OnceLock;
 
 fn video_extensions() -> &'static [&'static str] {
@@ -69,6 +69,42 @@ fn is_video_file(name: &str) -> bool {
         .unwrap_or("")
         .to_ascii_lowercase();
     video_extensions().contains(&extension.as_str())
+}
+
+fn content_type(name: &str) -> &'static str {
+    match name
+        .rsplit_once('.')
+        .map(|(_, extension)| extension)
+        .unwrap_or("")
+        .to_ascii_lowercase()
+        .as_str()
+    {
+        "mp4" | "m4v" => "video/mp4",
+        "webm" => "video/webm",
+        "ts" | "m2ts" => "video/mp2t",
+        "mov" => "video/quicktime",
+        "avi" => "video/x-msvideo",
+        "mkv" => "video/x-matroska",
+        "wmv" => "video/x-ms-wmv",
+        "flv" => "video/x-flv",
+        _ => "application/octet-stream",
+    }
+}
+
+fn requested_content_type(kind: &str) -> &'static str {
+    if kind.eq_ignore_ascii_case("movies") {
+        "movie"
+    } else {
+        "series"
+    }
+}
+
+fn accepts_content_type(kind: &str, content_type: &str) -> bool {
+    if kind.eq_ignore_ascii_case("movies") {
+        content_type.eq_ignore_ascii_case("movie")
+    } else {
+        matches!(content_type.to_ascii_lowercase().as_str(), "series" | "tv" | "anime")
+    }
 }
 
 fn string_array(value: Option<&Value>) -> Vec<&str> {
@@ -345,11 +381,18 @@ fn resolve_video(args: &Value) -> Option<Value> {
 
 pub(crate) fn route(method: &str, args: &Value) -> Option<Value> {
     match method {
-        "localMediaIsVideoFile" => Some(json!(
-            args.get("name")
-                .and_then(Value::as_str)
-                .is_some_and(is_video_file)
-        )),
+        "localMediaIsVideoFile" => Some(json!(args
+            .get("name")
+            .and_then(Value::as_str)
+            .is_some_and(is_video_file))),
+        "localMediaContentType" => Some(json!(content_type(args.get("name")?.as_str()?))),
+        "localMediaRequestedContentType" => Some(json!(requested_content_type(
+            args.get("kind")?.as_str()?
+        ))),
+        "localMediaAcceptsContentType" => Some(json!(accepts_content_type(
+            args.get("kind")?.as_str()?,
+            args.get("contentType")?.as_str()?
+        ))),
         "localMediaNormalizedTitle" => Some(json!(normalized_title(args.get("value")?.as_str()?))),
         "localMediaParseFilename" => Some(parse_filename(args).unwrap_or(Value::Null)),
         "localMediaTitleSimilarity" => Some(json!(title_similarity(
@@ -397,5 +440,43 @@ mod tests {
         .as_f64()
         .unwrap();
         assert!(score >= 0.99);
+    }
+
+    #[test]
+    fn maps_video_extensions_to_shared_content_types() {
+        assert_eq!(
+            route("localMediaContentType", &json!({"name": "movie.MKV"})),
+            Some(json!("video/x-matroska"))
+        );
+        assert_eq!(
+            route("localMediaContentType", &json!({"name": "clip.m2ts"})),
+            Some(json!("video/mp2t"))
+        );
+        assert_eq!(
+            route("localMediaContentType", &json!({"name": "notes.txt"})),
+            Some(json!("application/octet-stream"))
+        );
+    }
+
+    #[test]
+    fn maps_local_media_kinds_to_content_policies() {
+        assert_eq!(
+            route("localMediaRequestedContentType", &json!({"kind": "movies"})),
+            Some(json!("movie"))
+        );
+        assert_eq!(
+            route(
+                "localMediaAcceptsContentType",
+                &json!({"kind": "tvShows", "contentType": "tv"})
+            ),
+            Some(json!(true))
+        );
+        assert_eq!(
+            route(
+                "localMediaAcceptsContentType",
+                &json!({"kind": "movies", "contentType": "series"})
+            ),
+            Some(json!(false))
+        );
     }
 }
