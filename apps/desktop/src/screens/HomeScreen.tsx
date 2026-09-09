@@ -20,23 +20,22 @@ import { resolveTheme } from '../theme/adapter';
 
 const ROW_PLACEHOLDER_HEIGHT = 340;
 
-function LazyRow({ children }: { children: React.ReactNode }) {
+function LazyRow({ children, eager = false }: { children: React.ReactNode; eager?: boolean }) {
   const ref = useRef<HTMLDivElement>(null);
   const inViewport = useInViewport(ref, '1000px');
   const shownRef = useRef(false);
   if (inViewport) shownRef.current = true;
+  const shouldRender = eager || shownRef.current;
   return (
     <div
       ref={ref}
-      style={
-        {
-          contentVisibility: 'auto',
-          containIntrinsicSize: `100% ${ROW_PLACEHOLDER_HEIGHT}px`,
-          minHeight: shownRef.current ? undefined : ROW_PLACEHOLDER_HEIGHT,
-        } as React.CSSProperties
-      }
+      style={eager ? undefined : {
+        contentVisibility: 'auto',
+        containIntrinsicSize: `100% ${ROW_PLACEHOLDER_HEIGHT}px`,
+        minHeight: shouldRender ? undefined : ROW_PLACEHOLDER_HEIGHT,
+      } as React.CSSProperties}
     >
-      {shownRef.current ? children : null}
+      {shouldRender ? children : null}
     </div>
   );
 }
@@ -454,8 +453,8 @@ export const HomeScreen = React.memo(
               );
             }
             if (section === 'catalogs' && showCatalogs) {
-              return categories.map((cat) => (
-                <LazyRow key={cat.id}>
+              return categories.map((cat, index) => (
+                <LazyRow key={cat.id} eager={index === 0}>
                   {cat.type === 'collection' ? (
                     <CollectionShelfRow
                       title={cat.name}
