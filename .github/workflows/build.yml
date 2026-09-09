@@ -12,6 +12,7 @@ env:
 
 permissions:
   contents: write
+  pull-requests: read
 
 concurrency:
   group: build-${{ github.ref }}
@@ -442,8 +443,10 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
       - name: Build release notes from commits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          .github/scripts/build-release-notes.sh "${{ github.ref_name }}"
+          ../../.github/scripts/build-release-notes.sh "${{ github.ref_name }}"
       - name: Update AppImage signature and changelog in latest.json
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -613,7 +616,7 @@ jobs:
         uses: KSXGitHub/github-actions-deploy-aur@v3
         with:
           pkgname: fluxa-desktop-bin
-          pkgbuild: ./packaging/aur/PKGBUILD
+          pkgbuild: ./apps/desktop/packaging/aur/PKGBUILD
           commit_username: KhooLy
           commit_email: seslikitapicinkhooly@gmail.com
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}

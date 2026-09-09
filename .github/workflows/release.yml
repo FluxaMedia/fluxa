@@ -11,6 +11,7 @@ env:
 
 permissions:
   contents: write
+  pull-requests: read
 
 defaults:
   run:
@@ -71,31 +72,10 @@ jobs:
         run: rm -f release.keystore.jks
 
       - name: Build release notes from commits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          .github/scripts/build-release-notes.sh "${{ github.ref_name }}"
-          {
-            echo ""
-            echo "## Build inputs"
-            echo ""
-            echo "- Fluxa core: $(git -C ../../core/fluxa-core rev-parse HEAD)"
-            echo "- Rust: $RUST_VERSION"
-            echo "- Android NDK: $NDK_VERSION"
-          } >> notes.md
-
-      - name: Append stable download links (Downloader app friendly)
-        run: |
-          REPO_URL="https://github.com/${{ github.repository }}"
-          {
-            echo ""
-            echo "## Downloads"
-            echo ""
-            echo "These links always point at the latest release, so a Downloader code created once for them keeps working forever:"
-            echo ""
-            for apk in app/build/outputs/apk/mobile/release/*.apk app/build/outputs/apk/tv/release/*.apk; do
-              name="$(basename "$apk")"
-              echo "- [$name]($REPO_URL/releases/latest/download/$name)"
-            done
-          } >> notes.md
+          ../../.github/scripts/build-release-notes.sh "${{ github.ref_name }}"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
