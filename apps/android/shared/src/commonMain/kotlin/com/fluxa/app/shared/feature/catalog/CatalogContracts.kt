@@ -22,7 +22,16 @@ data class CatalogItemUiModel(
     val ageRating: String? = null,
     val genres: List<String> = emptyList(),
     val seasonsCount: Int? = null,
-    val runtimeLabel: String? = null
+    val runtimeLabel: String? = null,
+    val heroEpisode: CatalogHeroEpisodeUiModel? = null,
+)
+
+@Immutable
+data class CatalogHeroEpisodeUiModel(
+    val season: Int,
+    val number: Int,
+    val title: String? = null,
+    val isContinue: Boolean = false,
 )
 
 val CatalogItemUiModel.typeAndIdKey: String

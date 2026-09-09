@@ -246,6 +246,7 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
         }
         "folderPageState" => opt_json(home_ranking::folder_page_state_json(args_json)),
         "folderSourcePagePlan" => opt_json(home_ranking::folder_source_page_plan_json(args_json)),
+        "homeHeroEpisodePlan" => opt_json(home_ranking::home_hero_episode_plan_json(args_json)),
         "homeHeroPlan" => opt_json(home_ranking::home_hero_plan_json(args_json)),
         "homeBillboardCandidateScore" => Ok(json!(home_ranking::billboard_candidate_score_json(
             args_json

@@ -6,6 +6,18 @@ data class NativeEpisodeLocator(
     val episode: Int = 0
 )
 
+data class NativeHomeHeroEpisode(
+    val id: String = "",
+    val name: String? = null,
+    val season: Int = 0,
+    val number: Int = 0,
+)
+
+data class NativeHomeHeroEpisodePlan(
+    val episode: NativeHomeHeroEpisode? = null,
+    val isContinue: Boolean = false,
+)
+
 data class NativeAddonFetchResult(
     val url: String = "",
     val statusCode: Int? = null,

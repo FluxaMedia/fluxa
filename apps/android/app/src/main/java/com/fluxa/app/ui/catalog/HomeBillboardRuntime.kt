@@ -42,10 +42,9 @@ internal class HomeBillboardRuntime(
     private val setWatchlist: (Boolean) -> Unit,
     private val setTrailerUrl: (String?) -> Unit,
     private val setTrailerSubtitleCues: (List<TrailerCue>) -> Unit,
-    private val setNextEpisode: (String?) -> Unit,
+    private val setNextEpisode: (HomeBillboardEpisode?) -> Unit,
     private val setSeasonPosterUrl: (String?) -> Unit,
     private val getMetaDetail: suspend (String, String) -> MetaDetail?,
-    private val parseSeasonEpisode: (String, String) -> String?,
     private val prefetchDirectPlayback: (Meta, MetaDetail?) -> Unit,
     private val activeProfile: () -> UserProfile? = { null },
     private val getTrailers: suspend (String, String, String) -> List<DetailTrailer> = { _, _, _ -> emptyList() },
@@ -55,11 +54,13 @@ internal class HomeBillboardRuntime(
     private var prefetchJob: Job? = null
     private var trailerJob: Job? = null
     private val enrichedCache = LruCache<String, Meta>(50)
+    private val nextEpisodeCache = mutableMapOf<String, HomeBillboardEpisode>()
 
     fun reset() {
         rotationJob?.cancel()
         prefetchJob?.cancel()
         trailerJob?.cancel()
+        synchronized(nextEpisodeCache) { nextEpisodeCache.clear() }
         setPool(emptyList())
         setIndex(0)
         setMovie(null)
@@ -190,6 +191,9 @@ internal class HomeBillboardRuntime(
             )
             val cacheKey = FluxaCoreNative.homeBillboardIdentityKey(item)
             enrichedCache.put(cacheKey, enriched)
+            nextEpisodeFor(item, detail.videos)?.let { episode ->
+                synchronized(nextEpisodeCache) { nextEpisodeCache[cacheKey] = episode }
+            }
             updatePoolItem(cacheKey, enriched)
             return enriched
         } catch (e: Exception) {
@@ -207,12 +211,13 @@ internal class HomeBillboardRuntime(
             setMovie(cached)
             setLogo(cached.logo)
             setWatchlist(watchlistManager.isInWatchlist(item.id))
-            setNextEpisode(null)
+            setNextEpisode(cachedNextEpisode(cacheKey))
             setSeasonPosterUrl(null)
         } else {
             setMovie(item)
             setLogo(item.logo)
             setWatchlist(watchlistManager.isInWatchlist(item.id))
+            setNextEpisode(cachedNextEpisode(cacheKey))
             scope.launch(Dispatchers.IO) { enrichAndPublish(item) }
         }
         maybeAutoPlayTrailer(item)
@@ -240,7 +245,6 @@ internal class HomeBillboardRuntime(
     }
 
     private suspend fun enrichAndPublish(item: Meta) {
-        val lang = language()
         val cacheKey = FluxaCoreNative.homeBillboardIdentityKey(item)
         try {
             val detail = withTimeoutOrNull(4000) { getMetaDetail(item.type, item.id) } ?: return
@@ -279,16 +283,9 @@ internal class HomeBillboardRuntime(
             if (currentItem != null && FluxaCoreNative.homeBillboardIdentityKey(currentItem) == cacheKey) {
                 setMovie(enrichedMeta)
                 setLogo(enrichedMeta.logo)
-                if (isSeries && !videos.isNullOrEmpty()) {
-                    val libCategory = categories().find { it.id == "library" }
-                    val lastWatchedId = libCategory?.items?.find { it.id == item.id }?.lastVideoId
-                    val nextVideo = if (lastWatchedId != null) {
-                        val videoIndex = videos.indexOfFirst { it.id == lastWatchedId }
-                        if (videoIndex != -1 && videoIndex < videos.size - 1) videos[videoIndex + 1] else videos[0]
-                    } else {
-                        videos[0]
-                    }
-                    setNextEpisode(parseSeasonEpisode(nextVideo.id, lang))
+                nextEpisodeFor(item, videos)?.let { episode ->
+                    synchronized(nextEpisodeCache) { nextEpisodeCache[cacheKey] = episode }
+                    setNextEpisode(episode)
                 }
                 setSeasonPosterUrl(seasonBackground)
             }
@@ -304,6 +301,29 @@ internal class HomeBillboardRuntime(
             currentPool[idx] = item
             setPool(normalizePool(currentPool))
         }
+    }
+
+    private fun cachedNextEpisode(cacheKey: String): HomeBillboardEpisode? =
+        synchronized(nextEpisodeCache) { nextEpisodeCache[cacheKey] }
+
+    private fun nextEpisodeFor(item: Meta, videos: List<com.fluxa.app.data.remote.Video>?): HomeBillboardEpisode? {
+        if (videos.isNullOrEmpty()) return null
+        val lastWatchedId = categories()
+            .find { it.id == "library" }
+            ?.items
+            ?.find { it.id == item.id }
+            ?.lastVideoId
+        val plan = FluxaCoreNative.homeHeroEpisodePlan(item.type, videos, lastWatchedId) ?: return null
+        val episode = plan.episode ?: return null
+        return HomeBillboardEpisode(
+            com.fluxa.app.data.remote.Video(
+                id = episode.id,
+                name = episode.name,
+                season = episode.season,
+                number = episode.number,
+            ),
+            plan.isContinue,
+        )
     }
 
     fun normalizePool(items: List<Meta>): List<Meta> {

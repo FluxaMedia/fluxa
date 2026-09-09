@@ -36,6 +36,15 @@ const DEFAULT_SLIDE_INTERVAL_MS = 6500;
 
 const prefersReducedMotion = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
+function heroPlayLabel(meta: Meta): string {
+  if (meta.type !== 'series') return t('common.play');
+  const episode = meta.heroEpisode;
+  if (episode?.season == null) return t('common.play');
+  const number = episode.number;
+  if (number == null) return t('common.play');
+  return t('format.hero_play_episode', t('format.hero_episode_code', episode.season, number));
+}
+
 export const HeroSection = React.memo(function HeroSection({
   meta,
   slides,
@@ -357,7 +366,7 @@ export const HeroSection = React.memo(function HeroSection({
         <div className="hero-actions" style={styles.actions}>
           <button style={styles.watchBtn} onClick={() => onPlay?.(activeMeta)}>
             <Play size={13} fill="currentColor" />
-            {t('common.play')}
+            {heroPlayLabel(activeMeta)}
           </button>
           <button style={styles.moreInfoBtn} onClick={() => onDetails?.(activeMeta)}>
             <Info size={16} />

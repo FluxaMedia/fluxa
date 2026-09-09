@@ -2,6 +2,52 @@ use super::folders::build_home_collection_shelves_json;
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
+fn hero_episode_plan_value(request: &Value) -> Option<Value> {
+    let content_type = request.get("type").and_then(Value::as_str).unwrap_or("");
+    if !matches!(content_type, "series" | "tv" | "show") {
+        return None;
+    }
+    let videos = request.get("videos").and_then(Value::as_array)?;
+    let regular_episodes = videos
+        .iter()
+        .filter(|video| {
+            video.get("season").and_then(Value::as_i64).is_some_and(|season| season > 0)
+                && video
+                    .get("number")
+                    .or_else(|| video.get("episode"))
+                    .and_then(Value::as_i64)
+                    .is_some_and(|number| number > 0)
+        })
+        .collect::<Vec<_>>();
+    if regular_episodes.is_empty() {
+        return None;
+    }
+    let last_video_id = request.get("lastVideoId").and_then(Value::as_str).filter(|id| !id.is_empty());
+    let selected = last_video_id
+        .and_then(|id| regular_episodes.iter().position(|video| video.get("id").and_then(Value::as_str) == Some(id)))
+        .map(|index| regular_episodes.get(index + 1).copied().unwrap_or(regular_episodes[0]))
+        .unwrap_or(regular_episodes[0]);
+    let season = selected.get("season").and_then(Value::as_i64)?;
+    let number = selected
+        .get("number")
+        .or_else(|| selected.get("episode"))
+        .and_then(Value::as_i64)?;
+    Some(json!({
+        "episode": {
+            "id": selected.get("id").cloned().unwrap_or(Value::Null),
+            "name": selected.get("name").or_else(|| selected.get("title")).cloned().unwrap_or(Value::Null),
+            "season": season,
+            "number": number,
+        },
+        "isContinue": last_video_id.is_some(),
+    }))
+}
+
+pub(crate) fn home_hero_episode_plan_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    serde_json::to_string(&hero_episode_plan_value(&request)?).ok()
+}
+
 pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     let prefs = request.get("prefs").cloned().unwrap_or_else(|| json!({}));
@@ -174,15 +220,29 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
         }
         item
     };
+    let merge_hero_episode = |mut item: Value| {
+        if item.get("heroEpisode").is_none()
+            && let Some(plan) = hero_episode_plan_value(&json!({
+                "type": item.get("type"),
+                "videos": item.get("videos"),
+            }))
+            && let Some(fields) = item.as_object_mut()
+        {
+            fields.insert("heroEpisode".to_string(), plan["episode"].clone());
+        }
+        item
+    };
     let billboard = billboard
         .map(&merge_trailers)
         .map(&merge_logos)
-        .map(&shorten_description);
+        .map(&shorten_description)
+        .map(&merge_hero_episode);
     slides = slides
         .into_iter()
         .map(&merge_trailers)
         .map(&merge_logos)
         .map(&shorten_description)
+        .map(&merge_hero_episode)
         .collect();
     let autoplay = prefs
         .get("homeHeroAutoplayTrailer")

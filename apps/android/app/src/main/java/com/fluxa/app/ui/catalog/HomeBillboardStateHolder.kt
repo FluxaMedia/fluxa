@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.data.remote.Video
 import com.fluxa.app.shared.feature.player.TrailerCue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -19,8 +20,8 @@ class HomeBillboardStateHolder {
     val logo: StateFlow<String?> = _logo.asStateFlow()
     private val _watchlist = MutableStateFlow(false)
     val watchlist: StateFlow<Boolean> = _watchlist.asStateFlow()
-    private val _nextEpisode = MutableStateFlow<String?>(null)
-    val nextEpisode: StateFlow<String?> = _nextEpisode.asStateFlow()
+    private val _nextEpisode = MutableStateFlow<HomeBillboardEpisode?>(null)
+    val nextEpisode: StateFlow<HomeBillboardEpisode?> = _nextEpisode.asStateFlow()
     private val _trailerUrl = MutableStateFlow<String?>(null)
     val trailerUrl: StateFlow<String?> = _trailerUrl.asStateFlow()
     private val _trailerSubtitleCues = MutableStateFlow<List<TrailerCue>>(emptyList())
@@ -46,7 +47,7 @@ class HomeBillboardStateHolder {
     var watchlistValue: Boolean
         get() = _watchlist.value
         set(value) { _watchlist.value = value }
-    var nextEpisodeValue: String?
+    var nextEpisodeValue: HomeBillboardEpisode?
         get() = _nextEpisode.value
         set(value) { _nextEpisode.value = value }
     var trailerUrlValue: String?
@@ -59,3 +60,8 @@ class HomeBillboardStateHolder {
         get() = _seasonPosterUrl.value
         set(value) { _seasonPosterUrl.value = value }
 }
+
+data class HomeBillboardEpisode(
+    val video: Video,
+    val isContinue: Boolean,
+)

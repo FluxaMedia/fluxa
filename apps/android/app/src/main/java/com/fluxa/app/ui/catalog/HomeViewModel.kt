@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import android.util.Log
 import com.fluxa.app.common.ReleaseDateUtils
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
@@ -181,7 +182,7 @@ class HomeViewModel @Inject constructor(
     val billboardMovie: StateFlow<Meta?> = billboardState.movie
     val billboardLogo: StateFlow<String?> = billboardState.logo
     val billboardWatchlist: StateFlow<Boolean> = billboardState.watchlist
-    val billboardNextEpisode: StateFlow<String?> = billboardState.nextEpisode
+    val billboardNextEpisode: StateFlow<HomeBillboardEpisode?> = billboardState.nextEpisode
     val billboardTrailerUrl: StateFlow<String?> = billboardState.trailerUrl
     val billboardTrailerSubtitleCues: StateFlow<List<com.fluxa.app.shared.feature.player.TrailerCue>> = billboardState.trailerSubtitleCues
     val billboardSeasonPosterUrl: StateFlow<String?> = billboardState.seasonPosterUrl
@@ -438,7 +439,6 @@ class HomeViewModel @Inject constructor(
                 val profile = currentActiveProfile
                 platformContentGateway.addonMetaDetail(type, id, profile?.authKey ?: "", profile?.safeLocalAddons.orEmpty())
             },
-            parseSeasonEpisode = ::formatSeasonEpisode,
             prefetchDirectPlayback = ::prefetchDirectPlayback,
             activeProfile = { currentActiveProfile },
             getTrailers = { type, id, lang -> getConfiguredMetaDetailResult(type, id, lang).trailers },
@@ -960,7 +960,12 @@ class HomeViewModel @Inject constructor(
         language: String,
     ): String? = headlessPlaybackCoordinator.resolvePlaybackIntroImdbId(meta, videoId, language)
 
-    suspend fun loadTerminalRecommendations(meta: Meta, hasNextEpisode: Boolean, language: String): List<Meta> {
+    suspend fun loadTerminalRecommendations(
+        meta: Meta,
+        hasNextEpisode: Boolean,
+        language: String,
+        profile: UserProfile?,
+    ): List<Meta> {
         if (hasNextEpisode) return emptyList()
         val completion = headlessEnvironment.execute(
             NativeHeadlessEffect(
@@ -970,10 +975,11 @@ class HomeViewModel @Inject constructor(
                     "contentType" to meta.type,
                     "id" to meta.id,
                     "language" to language,
-                    "profile" to currentActiveProfile,
+                    "profile" to profile,
                 ),
             ),
         )
+        Log.d("TerminalRec", "secondary status=${completion.status} id=${meta.id}")
         if (completion.status != "ok") return emptyList()
         val value = completion.value as? Map<*, *> ?: return emptyList()
         val candidates = runCatching {
@@ -982,6 +988,7 @@ class HomeViewModel @Inject constructor(
         val watchedIds = runCatching {
             gson.fromJson<List<String>>(gson.toJson(value["watchedVideoIds"]), object : TypeToken<List<String>>() {}.type)
         }.getOrDefault(emptyList())
+        Log.d("TerminalRec", "secondary candidates=${candidates.size} watched=${watchedIds.size} id=${meta.id}")
         if (candidates.isEmpty()) return emptyList()
         val planJson = FluxaCoreUniFfi.coreInvokeValue(
             "terminalRecommendationPlan",
@@ -995,6 +1002,7 @@ class HomeViewModel @Inject constructor(
             ),
         )
         val plan = runCatching { gson.fromJson(planJson, Map::class.java) }.getOrNull() ?: return emptyList()
+        Log.d("TerminalRec", "plan show=${plan["showRecommendations"]} id=${meta.id}")
         if (plan["showRecommendations"] != true) return emptyList()
         return runCatching {
             gson.fromJson<List<Meta>>(gson.toJson(plan["items"]), metaListType)
@@ -1102,8 +1110,10 @@ class HomeViewModel @Inject constructor(
         }
     }
 
-    fun loadInitialData(activeProfile: UserProfile?, force: Boolean = false) =
+    fun loadInitialData(activeProfile: UserProfile?, force: Boolean = false) {
+        _hasLoadedHome.value = false
         bootstrapCoordinator.load(activeProfile, force)
+    }
 
     private fun resetHomeScrollState() {
         savedHomeScrollIndex = 0

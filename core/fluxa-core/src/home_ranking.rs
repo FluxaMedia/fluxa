@@ -10,7 +10,7 @@ pub(crate) use billboard::{
     billboard_has_backdrop_json, billboard_identity_key_json, billboard_normalized_title,
     billboard_visual_score_json, build_billboard_pool_json, normalize_home_catalog_items_json,
 };
-pub(crate) use bootstrap::home_hero_plan_json;
+pub(crate) use bootstrap::{home_hero_episode_plan_json, home_hero_plan_json};
 pub(crate) use folders::{
     build_home_collection_shelves_json, folder_page_state_json, folder_source_page_plan_json,
     merge_folder_sources_json,
@@ -25,6 +25,30 @@ mod tests {
     use super::folders::resolve_folder_catalog_sources;
     use super::*;
     use serde_json::{Value, json};
+
+    #[test]
+    fn hero_episode_plan_skips_specials_and_advances_from_progress() {
+        let result: Value = serde_json::from_str(
+            &home_hero_episode_plan_json(
+                &json!({
+                    "type": "series",
+                    "lastVideoId": "show:1:1",
+                    "videos": [
+                        {"id": "show:0:1", "season": 0, "number": 1, "name": "Special"},
+                        {"id": "show:1:1", "season": 1, "number": 1, "name": "Pilot"},
+                        {"id": "show:1:2", "season": 1, "number": 2, "name": "Next"}
+                    ]
+                })
+                .to_string(),
+            )
+            .expect("hero episode plan")
+            .as_str(),
+        )
+        .expect("valid hero episode JSON");
+        assert_eq!(result["episode"]["season"], 1);
+        assert_eq!(result["episode"]["number"], 2);
+        assert_eq!(result["isContinue"], true);
+    }
 
     #[test]
     fn billboard_policy_scores_match_the_shared_rules() {

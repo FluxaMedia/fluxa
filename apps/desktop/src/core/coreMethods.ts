@@ -159,6 +159,7 @@ export const CORE_METHODS = [
   'homeBillboardIdentityKey',
   'homeBillboardNormalizedTitle',
   'homeBillboardVisualScore',
+  'homeHeroEpisodePlan',
   'homeHeroPlan',
   'homeOverlapRatio',
   'homePersonalizationScore',

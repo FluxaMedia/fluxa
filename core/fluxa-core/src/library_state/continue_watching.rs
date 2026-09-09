@@ -676,7 +676,12 @@ pub(crate) fn format_episode_line_json(
         (Some(s), Some(e)) => format!("S{s}:E{e}"),
         _ => String::new(),
     };
-    let name = last_episode_name.map(str::trim).unwrap_or("").to_string();
+    let mut name = last_episode_name.map(str::trim).unwrap_or("").to_string();
+    if !code.is_empty() {
+        while let Some(rest) = name.strip_prefix(&format!("{code} ")) {
+            name = rest.trim_start().to_string();
+        }
+    }
     [code, name]
         .into_iter()
         .filter(|s| !s.is_empty())

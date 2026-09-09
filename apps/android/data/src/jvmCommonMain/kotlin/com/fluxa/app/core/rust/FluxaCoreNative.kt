@@ -27,6 +27,7 @@ import com.fluxa.app.core.rust.models.NativeDolbyVisionRpuConvertResult
 import com.fluxa.app.core.rust.models.NativeDolbyVisionRpuInfo
 import com.fluxa.app.core.rust.models.NativeDvProxyPlan
 import com.fluxa.app.core.rust.models.NativeEpisodeLocator
+import com.fluxa.app.core.rust.models.NativeHomeHeroEpisodePlan
 import com.fluxa.app.core.rust.models.NativeLibraryCollectionImportValidation
 import com.fluxa.app.core.rust.models.NativeLibraryOfflineGrouping
 import com.fluxa.app.core.rust.models.NativeManifestFetchDecision
@@ -639,6 +640,16 @@ object FluxaCoreNative {
         val args = JsonObject().apply { addProperty("input", raw.orEmpty()) }
         val value = FluxaCoreUniFfi.coreInvokeValue("parseEpisodeLocator", args.toString())
         return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeEpisodeLocator::class.java) }
+    }
+
+    fun homeHeroEpisodePlan(type: String, videos: List<Video>, lastVideoId: String?): NativeHomeHeroEpisodePlan? {
+        val args = JsonObject().apply {
+            addProperty("type", type)
+            add("videos", gson.toJsonTree(videos))
+            lastVideoId?.let { addProperty("lastVideoId", it) }
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("homeHeroEpisodePlan", args.toString())
+        return value.takeUnless { it.isJsonNull }?.let { gson.fromJson(it, NativeHomeHeroEpisodePlan::class.java) }
     }
 
     fun contentImdbId(id: String): String? {

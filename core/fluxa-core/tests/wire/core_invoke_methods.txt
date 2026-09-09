@@ -111,6 +111,7 @@ findPreferredSubtitleIndex
 formatEpisodeLine
 homeOverlapRatio
 homeHeroPlan
+homeHeroEpisodePlan
 homeBillboardCandidateScore
 homeBillboardEditorialMatchScore
 homeBillboardHasBackdrop

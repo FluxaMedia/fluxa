@@ -23,6 +23,19 @@ class ContinueWatchingCoreContractTest {
     }
 
     @Test
+    fun episodePresentationDoesNotRepeatSourceEpisodePrefix() {
+        val meta = Meta(
+            id = "tt123",
+            type = "series",
+            name = "Example",
+            lastVideoId = "tt123:1:3",
+            lastEpisodeName = "S1:E3 S1:E3 The Krakken",
+        )
+
+        assertEquals("S1 E3 · The Krakken", meta.continueWatchingEpisodeLabelFromCore())
+    }
+
+    @Test
     fun upNextClassificationUsesCoreProgressPolicy() {
         val meta = Meta(
             id = "tt123",

@@ -240,6 +240,7 @@ private fun FluxaHomeHeroSlide(
     onCatalogAction: (CatalogAction) -> Unit
 ) {
     val isDesktop = LocalDeviceType.current == DeviceType.Desktop
+    val heroActionText = heroActionText(item, language)
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -464,13 +465,13 @@ private fun FluxaHomeHeroSlide(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Icon(
-                                imageVector = FluxaIcons.Rounded.PlayArrow,
+                                imageVector = FluxaIcons.Filled.PlayArrow,
                                 contentDescription = null,
                                 tint = Color.Black,
                                 modifier = Modifier.size(28.dp)
                             )
                             Text(
-                                text = AppStrings.t(language, "common.play"),
+                                text = heroActionText,
                                 color = Color.Black,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 16.sp,
@@ -557,13 +558,13 @@ private fun FluxaHomeHeroSlide(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = FluxaIcons.Rounded.PlayArrow,
+                            imageVector = FluxaIcons.Filled.PlayArrow,
                             contentDescription = null,
                             tint = Color.Black,
                             modifier = Modifier.size(26.dp)
                         )
                         Text(
-                            text = AppStrings.t(language, "common.play"),
+                            text = heroActionText,
                             color = Color.Black,
                             fontWeight = FontWeight.ExtraBold,
                             fontSize = 15.sp,
@@ -581,6 +582,16 @@ private fun FluxaHomeHeroSlide(
             )
         }
     }
+}
+
+private fun heroActionText(item: CatalogItemUiModel, language: String?): String {
+    val episode = item.heroEpisode ?: return AppStrings.t(language, "common.play")
+    val episodeLabel = AppStrings.format(language, "format.hero_episode_code", episode.season, episode.number)
+    return AppStrings.format(
+        language,
+        if (episode.isContinue) "format.hero_continue_episode" else "format.hero_play_episode",
+        episodeLabel,
+    )
 }
 
 @Composable

@@ -9,6 +9,7 @@ import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
+import com.fluxa.app.shared.feature.catalog.CatalogHeroEpisodeUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogResumeUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
@@ -79,6 +80,7 @@ class AndroidCatalogHomeDataSource(
                             item = movie.toCatalogItemUiModel(
                                 category = input.rows.categoriesByItem[movie.catalogLookupKey()],
                                 profile = input.rows.profile,
+                                heroEpisode = input.billboard.nextEpisode,
                             ),
                             logoUrl = input.billboard.logoUrl,
                             trailerUrl = input.billboard.trailerUrl,
@@ -89,6 +91,11 @@ class AndroidCatalogHomeDataSource(
                         movie.toCatalogItemUiModel(
                             category = input.rows.categoriesByItem[movie.catalogLookupKey()],
                             profile = input.rows.profile,
+                            heroEpisode = input.billboard.nextEpisode.takeIf {
+                                effectiveMovie?.let { current ->
+                                    movie.id == current.id && movie.type == current.type
+                                } == true
+                            },
                         )
                     },
                     showHeroSection = input.rows.profile?.safeShowHeroSection != false,
@@ -135,6 +142,7 @@ class AndroidCatalogHomeDataSource(
         val items: List<Meta>,
         val logoUrl: String?,
         val trailerUrl: String?,
+        val nextEpisode: HomeBillboardEpisode?,
         val trailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>,
     )
 
@@ -146,9 +154,11 @@ class AndroidCatalogHomeDataSource(
         homeViewModel.billboardTrailerUrl,
         homeViewModel.currentFilter,
     ) { billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter ->
-        BillboardBase(billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, filter)
+        BillboardBase(billboardMovie, billboardPool, billboardLogo, billboardTrailerUrl, null, filter)
+    }.combine(homeViewModel.billboardNextEpisode) { base, nextEpisode ->
+        base.copy(nextEpisode = nextEpisode)
     }.combine(homeViewModel.billboardTrailerSubtitleCues) { base, cues ->
-        resolveBillboardResolution(base.movie, base.pool, base.logo, base.trailerUrl, cues, base.filter)
+        resolveBillboardResolution(base.movie, base.pool, base.logo, base.trailerUrl, base.nextEpisode, cues, base.filter)
     }
         // Movie/logo/trailer/cues are published through separate StateFlows. Coalesce the
         // back-to-back updates into a single UI emission instead of recomposing 3-4 times.
@@ -160,6 +170,7 @@ class AndroidCatalogHomeDataSource(
         val pool: List<Meta>,
         val logo: String?,
         val trailerUrl: String?,
+        val nextEpisode: HomeBillboardEpisode?,
         val filter: String,
     )
 
@@ -168,6 +179,7 @@ class AndroidCatalogHomeDataSource(
         billboardPool: List<Meta>,
         billboardLogo: String?,
         billboardTrailerUrl: String?,
+        nextEpisode: HomeBillboardEpisode?,
         billboardTrailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>,
         filter: String,
     ): BillboardResolution {
@@ -188,6 +200,7 @@ class AndroidCatalogHomeDataSource(
             items = heroItems.take(10),
             logoUrl = billboardLogo,
             trailerUrl = billboardTrailerUrl,
+            nextEpisode = nextEpisode,
             trailerSubtitleCues = billboardTrailerSubtitleCues,
         )
     }
@@ -232,7 +245,11 @@ class AndroidCatalogHomeDataSource(
         items = items.map { meta -> meta.toCatalogItemUiModel(category = this, profile = profile) },
     )
 
-    private fun Meta.toCatalogItemUiModel(category: HomeCategory?, profile: UserProfile?): CatalogItemUiModel {
+    private fun Meta.toCatalogItemUiModel(
+        category: HomeCategory?,
+        profile: UserProfile?,
+        heroEpisode: HomeBillboardEpisode? = null,
+    ): CatalogItemUiModel {
         val card = toCatalogCardUiModel(
             cardLayout = category?.let { resolveHomeCardLayout(it, profile) } ?: "poster",
             artworkPreference = null,
@@ -275,6 +292,18 @@ class AndroidCatalogHomeDataSource(
             genres = genres.orEmpty(),
             seasonsCount = seasonsCount,
             runtimeLabel = formatRuntimeLabel(runtime),
+            heroEpisode = heroEpisode?.video?.let { video ->
+                val season = video.season
+                val number = video.number
+                if (season != null && number != null) {
+                    CatalogHeroEpisodeUiModel(
+                        season = season,
+                        number = number,
+                        title = video.name,
+                        isContinue = heroEpisode.isContinue,
+                    )
+                } else null
+            },
         )
     }
 }
