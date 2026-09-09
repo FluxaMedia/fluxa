@@ -18,11 +18,6 @@ class AppStrings private constructor(
 
     companion object {
         private val cache = createStringsCache()
-        private val RUNTIME_UNIT_REGEX = Regex("""\b(min|m|dk)\.?\b""", RegexOption.IGNORE_CASE)
-        private val WHITESPACE_REGEX = Regex("""\s+""")
-        private val ISO_DURATION_REGEX = Regex("""^PT(?:(\d+)H)?(?:(\d+)M)?$""", RegexOption.IGNORE_CASE)
-        private val HOURS_REGEX = Regex("""(\d+)\s*(?:h|hr|hour|hours|sa|saat)""", RegexOption.IGNORE_CASE)
-        private val MINUTES_REGEX = Regex("""(\d+)\s*(?:m|min|minute|minutes|dk)""", RegexOption.IGNORE_CASE)
 
         fun t(language: String?, key: String): String {
             return load(language).get(key)
@@ -48,49 +43,12 @@ class AppStrings private constructor(
             }
         }
 
-        fun runtimeLabel(language: String?, value: String): String {
-            parseRuntimeMinutes(value)?.let { return runtimeMinutes(language, it) }
-            return value
-                .replace(RUNTIME_UNIT_REGEX, t(language, "unit.minute_short"))
-                .replace(WHITESPACE_REGEX, " ")
-                .trim()
-        }
-
         fun englishArtworkFallback(language: String?, fallbackUrl: String?): String? {
             return fallbackUrl
         }
 
         fun allowsEnglishImageFallback(language: String?): Boolean {
             return true
-        }
-
-        private fun parseRuntimeMinutes(value: String): Int? {
-            val normalized = value.trim()
-            if (normalized.isEmpty()) return null
-
-            ISO_DURATION_REGEX.matchEntire(normalized)?.let { match ->
-                val hours = match.groupValues.getOrNull(1)?.toIntOrNull() ?: 0
-                val minutes = match.groupValues.getOrNull(2)?.toIntOrNull() ?: 0
-                return (hours * 60 + minutes).takeIf { it > 0 }
-            }
-
-            val hours = HOURS_REGEX
-                .find(normalized)
-                ?.groupValues
-                ?.getOrNull(1)
-                ?.toIntOrNull()
-                ?: 0
-            val minutes = MINUTES_REGEX
-                .find(normalized)
-                ?.groupValues
-                ?.getOrNull(1)
-                ?.toIntOrNull()
-
-            if (hours > 0 || minutes != null) {
-                return (hours * 60 + (minutes ?: 0)).takeIf { it > 0 }
-            }
-
-            return normalized.toIntOrNull()?.takeIf { it > 0 }
         }
 
         private fun load(language: String?): AppStrings {
