@@ -249,7 +249,11 @@ export function useWebPlayer({
             preferences: null,
           })
         : source;
-      const headers = stream.behaviorHints?.proxyHeaders as Record<string, string> | undefined;
+      const headers = {
+        ...(stream.headers ?? {}),
+        ...(stream.behaviorHints?.requestHeaders ?? {}),
+        ...(stream.behaviorHints?.proxyHeaders?.request ?? {}),
+      };
       const subtitlePromise = Promise.all([loadEnabledAddons(), corePlaybackPreparePlan({ stream, meta, episode, preferredPlayer: 'web' })])
         .then(([addons, plan]) =>
           resolvePlaybackSubtitles(
@@ -261,9 +265,15 @@ export function useWebPlayer({
           ),
         )
         .catch(() => ({ subtitles: [], failedAddons: [] }));
-      const probe = isTorrent ? null : await probeStream(url, headers);
+      const probe = isTorrent ? null : await probeStream(url, Object.keys(headers).length > 0 ? headers : undefined);
       const resolvedSubtitles = await subtitlePromise;
-      const playback = choosePlaybackUrl(url, source, probe, headers, resumeAtSeconds);
+      const playback = choosePlaybackUrl(
+        url,
+        source,
+        probe,
+        Object.keys(headers).length > 0 ? headers : undefined,
+        resumeAtSeconds,
+      );
       const playbackUrl = playback.url;
       playingStreamRef.current = stream;
       playingMetaRef.current = meta ?? null;

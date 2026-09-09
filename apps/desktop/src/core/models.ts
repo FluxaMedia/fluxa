@@ -36,6 +36,12 @@ export interface Meta {
   videos?: Video[];
   sourceAddonTransportUrl?: string;
   sourceAddonCatalogType?: string;
+  heroEpisode?: {
+    season: number;
+    number: number;
+    name?: string;
+    isContinue?: boolean;
+  };
 }
 export interface MetaCollection {
   name: string;
@@ -107,6 +113,7 @@ export interface Video {
 
 export interface Stream {
   url?: string;
+  headers?: Record<string, string>;
   externalUrl?: string;
   playerFrameUrl?: string;
   infoHash?: string;

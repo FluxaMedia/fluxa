@@ -167,8 +167,34 @@ pub async fn player_load(
 
     let pending_headers = std::mem::take(&mut *state.pending_stream_headers.lock().unwrap());
     let had_pending_headers = !pending_headers.is_empty();
+    let pending_header_names = pending_headers
+        .iter()
+        .map(|(name, _)| name.to_ascii_lowercase())
+        .collect::<Vec<_>>();
+    log::warn!(
+        "[playback-headers] pending count={} names={:?}",
+        pending_header_names.len(),
+        pending_header_names
+    );
     let engine = playback_engine::read_player_engine(&app);
     *state.active_player_engine.lock().unwrap() = engine;
+    let engine_name = match engine {
+        PlayerEngine::Mpv => "mpv",
+        PlayerEngine::Vlc => "vlc",
+        PlayerEngine::AvPlayer => "avplayer",
+    };
+    let attach_headers_in_mpv = cfg!(target_os = "linux") && engine == PlayerEngine::Mpv;
+
+    // MPV can attach these headers to every HLS request. Keeping the original
+    // URL lets MPV resolve playlist-relative and absolute segment URLs itself.
+    #[cfg(target_os = "linux")]
+    if attach_headers_in_mpv {
+        if let Some(renderer) = state.player_mpv_client.lock().unwrap().as_ref() {
+            if let Err(error) = renderer.set_http_headers(&pending_headers) {
+                log::warn!("player_load: MPV header update failed: {error}");
+            }
+        }
+    }
 
     #[cfg(target_os = "macos")]
     let mut avplayer_adapter_applied = false;
@@ -209,11 +235,17 @@ pub async fn player_load(
     let adapter_applied = avplayer_adapter_applied;
     #[cfg(not(target_os = "macos"))]
     let adapter_applied = false;
-    let url = if !adapter_applied
+    let url = if !attach_headers_in_mpv
+        && !adapter_applied
         && !pending_headers.is_empty()
         && (url.starts_with("http://") || url.starts_with("https://"))
     {
-        match crate::stream_proxy::register(&stream_proxy_state, url.clone(), pending_headers).await
+        match crate::stream_proxy::register(
+            &stream_proxy_state,
+            url.clone(),
+            pending_headers.clone(),
+        )
+        .await
         {
             Ok(proxied_url) => proxied_url,
             Err(error) => {
@@ -239,6 +271,11 @@ pub async fn player_load(
         url.contains("/stream/fname"),
         url.contains("/stream-proxy/") || url.contains("/proxy/"),
         had_pending_headers
+    );
+    log::warn!(
+        "[playback-route] final url_is_local_proxy={} headers_attached={} engine={engine_name}",
+        url.contains("/stream/") && url.contains("127.0.0.1"),
+        had_pending_headers,
     );
 
     {
@@ -349,6 +386,9 @@ pub async fn player_load(
     if state.player_mpv_client.lock().unwrap().is_none() {
         let (client, render) =
             mpv_render::MpvClientHandle::new_with_scripts(crate::player::mpv_script_paths(&app))?;
+        if attach_headers_in_mpv {
+            client.set_http_headers(&pending_headers)?;
+        }
         *state.player_render_state.lock().unwrap() = Some(render);
         *state.player_mpv_client.lock().unwrap() = Some(client);
     }

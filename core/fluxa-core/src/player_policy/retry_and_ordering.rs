@@ -166,11 +166,22 @@ fn with_referer_fallback(
 pub(crate) fn stream_shell_plan_json(input: &str) -> Option<String> {
     let stream: Value = serde_json::from_str(input).ok()?;
     let hints = stream.get("behaviorHints");
-    let headers = hints
-        .and_then(|value| value.get("requestHeaders"))
-        .or_else(|| hints.and_then(|value| value.pointer("/proxyHeaders/request")))
-        .filter(|value| value.as_object().is_some_and(|map| !map.is_empty()))
-        .cloned();
+    let mut header_map = serde_json::Map::new();
+    for source in [
+        stream.get("headers"),
+        hints.and_then(|value| value.get("requestHeaders")),
+        hints.and_then(|value| value.pointer("/proxyHeaders/request")),
+    ] {
+        let Some(source) = source.and_then(Value::as_object) else {
+            continue;
+        };
+        for (key, value) in source {
+            if !key.trim().is_empty() && !value.is_null() {
+                header_map.insert(key.clone(), value.clone());
+            }
+        }
+    }
+    let headers = (!header_map.is_empty()).then_some(Value::Object(header_map));
     let source_link = stream
         .get("url")
         .or_else(|| stream.get("infoHash"))

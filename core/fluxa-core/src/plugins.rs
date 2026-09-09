@@ -496,6 +496,37 @@ mod tests {
     }
 
     #[test]
+    fn hdfilmizle_style_headers_survive_the_full_desktop_stream_pipeline() {
+        let raw = r#"[{
+            "name":"HDFilmizle",
+            "title":"1080p",
+            "url":"https://cdn.example/master.m3u8",
+            "type":"hls",
+            "headers":{
+                "Referer":"https://vidrame.example/embed/abc",
+                "Origin":"https://vidrame.example",
+                "User-Agent":"Mozilla/5.0"
+            }
+        }]"#;
+        let streams = plugin_stream_results_to_streams_json(raw);
+        let stream = serde_json::from_str::<Vec<Stream>>(&streams)
+            .unwrap()
+            .pop()
+            .unwrap();
+        let plan = crate::player_policy::stream_shell_plan_json(&stream_to_json(&stream))
+            .unwrap();
+        let plan: Value = serde_json::from_str(&plan).unwrap();
+
+        assert_eq!(plan["requestHeaders"]["Referer"], "https://vidrame.example/embed/abc");
+        assert_eq!(plan["requestHeaders"]["Origin"], "https://vidrame.example");
+        assert_eq!(plan["requestHeaders"]["User-Agent"], "Mozilla/5.0");
+    }
+
+    fn stream_to_json(stream: &Stream) -> String {
+        serde_json::to_string(stream).unwrap()
+    }
+
+    #[test]
     fn stream_results_tolerate_malformed_input() {
         assert_eq!(parse_plugin_stream_results_json("not json"), "[]");
         assert_eq!(parse_plugin_stream_results_json("{}"), "[]");

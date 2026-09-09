@@ -148,15 +148,18 @@ pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
             stream_object.insert("description".to_string(), title);
         }
     }
-    let Some(behavior_hints) = stream_object
+    let had_behavior_hints = stream_object
+        .get("behaviorHints")
+        .and_then(Value::as_object)
+        .is_some();
+    let behavior_hints = stream_object
         .get("behaviorHints")
         .and_then(Value::as_object)
         .cloned()
-    else {
-        return stream;
-    };
+        .unwrap_or_default();
 
     let mut headers = Map::new();
+    collect_headers(stream_object.get("headers"), &mut headers);
     collect_headers(behavior_hints.get("requestHeaders"), &mut headers);
     let proxy_request = behavior_hints
         .get("proxyHeaders")
@@ -170,7 +173,9 @@ pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
     fill_from_hint(stream_object, &final_hints, "videoHash");
     fill_from_hint(stream_object, &final_hints, "videoSize");
     fill_from_hint(stream_object, &final_hints, "filename");
-    stream_object.insert("behaviorHints".to_string(), Value::Object(final_hints));
+    if had_behavior_hints || !final_hints.is_empty() {
+        stream_object.insert("behaviorHints".to_string(), Value::Object(final_hints));
+    }
     stream
 }
 
@@ -276,7 +281,7 @@ mod tests {
     #[test]
     fn stream_provider_normalization_merges_headers_and_hints_without_reordering() {
         let streams = addon_streams_with_provider_json(
-            r#"[{"title":"A","behaviorHints":{"videoHash":"abc","videoSize":12,"proxyHeaders":{"request":{"X-Proxy":"1"}}}},{"title":"B"}]"#,
+            r#"[{"title":"A","headers":{"Referer":"https://hdfilmizle.example/"},"behaviorHints":{"videoHash":"abc","videoSize":12,"proxyHeaders":{"request":{"X-Proxy":"1"}}}},{"title":"B"}]"#,
             "Addon",
         );
         let value: Value = serde_json::from_str(&streams).unwrap();
@@ -287,6 +292,10 @@ mod tests {
         assert_eq!(
             value[0]["behaviorHints"]["requestHeaders"]["X-Proxy"].as_str(),
             Some("1")
+        );
+        assert_eq!(
+            value[0]["behaviorHints"]["requestHeaders"]["Referer"].as_str(),
+            Some("https://hdfilmizle.example/")
         );
         assert_eq!(value[1]["title"].as_str(), Some("B"));
     }

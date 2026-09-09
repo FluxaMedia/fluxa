@@ -51,6 +51,31 @@ mod tests {
     }
 
     #[test]
+    fn stream_shell_plan_preserves_top_level_plugin_headers() {
+        let result: Value = serde_json::from_str(
+            &stream_shell_plan_json(
+                r#"{
+                    "url":"https://cdn.example/video.m3u8",
+                    "headers":{"Referer":"https://hdfilmizle.example/","X-Test":"1"},
+                    "behaviorHints":{"requestHeaders":{"Authorization":"Bearer token"}}
+                }"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            result["requestHeaders"]["Referer"].as_str(),
+            Some("https://hdfilmizle.example/")
+        );
+        assert_eq!(result["requestHeaders"]["X-Test"].as_str(), Some("1"));
+        assert_eq!(
+            result["requestHeaders"]["Authorization"].as_str(),
+            Some("Bearer token")
+        );
+    }
+
+    #[test]
     fn torrent_fallback_excludes_rejected_index_and_sorts_by_size() {
         let result: Value = serde_json::from_str(
             &torrent_fallback_file_policy_json(
