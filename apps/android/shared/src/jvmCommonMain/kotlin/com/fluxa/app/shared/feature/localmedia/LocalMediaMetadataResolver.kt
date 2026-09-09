@@ -4,6 +4,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.AddonRepository
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.ui.catalog.formatRuntimeLabel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -24,7 +25,7 @@ internal class LocalMediaMetadataResolver(
         parsed: LocalMediaParsedName,
         kind: LocalMediaKind,
     ): LocalMediaMetadataMatch? = withContext(Dispatchers.IO) {
-        val requestedType = if (kind == LocalMediaKind.Movies) "movie" else "series"
+        val requestedType = JvmLocalMediaCorePort.requestedContentType(kind)
 
         if (parsed.explicitMetadataProvider in setOf("imdb", "tmdb") && !parsed.explicitMetadataId.isNullOrBlank()) {
             val detail = runCatching {
@@ -58,7 +59,7 @@ internal class LocalMediaMetadataResolver(
             .flatMap { row -> row.items.asSequence().map { Candidate(it, row.sourceAddonTransportUrl, score(parsed, it, kind)) } }
             .filter { candidate ->
                 val type = candidate.meta.type.lowercase()
-                if (kind == LocalMediaKind.Movies) type == "movie" else type in setOf("series", "tv", "anime")
+                JvmLocalMediaCorePort.acceptsContentType(kind, type)
             }
             .maxByOrNull { it.score }
             ?.takeIf { it.score >= 0.62f }
@@ -70,7 +71,11 @@ internal class LocalMediaMetadataResolver(
                     transportUrl = url,
                     type = best.meta.type.ifBlank { requestedType },
                     id = best.meta.id,
-                    alternateTypes = if (requestedType == "series") listOf("series", "tv", "anime") else emptyList(),
+                    alternateTypes = if (FluxaCoreNative.isSeriesContentType(requestedType)) {
+                        listOf("series", "tv", "anime")
+                    } else {
+                        emptyList()
+                    },
                 )
             }.getOrNull()
         }
@@ -104,7 +109,7 @@ internal class LocalMediaMetadataResolver(
 
     private fun Meta.toCatalogEntry(kind: LocalMediaKind, metadataAddonUrl: String?, fileCount: Int) = LocalMediaCatalogEntry(
         contentId = id,
-        contentType = if (kind == LocalMediaKind.Movies) "movie" else "series",
+        contentType = JvmLocalMediaCorePort.requestedContentType(kind),
         kind = kind,
         title = name,
         year = releaseInfo?.take(4)?.toIntOrNull() ?: released?.take(4)?.toIntOrNull(),
@@ -124,7 +129,7 @@ internal class LocalMediaMetadataResolver(
 
     private fun MetaDetail.toCatalogEntry(kind: LocalMediaKind, metadataAddonUrl: String?, fileCount: Int) = LocalMediaCatalogEntry(
         contentId = id,
-        contentType = if (kind == LocalMediaKind.Movies) "movie" else "series",
+        contentType = JvmLocalMediaCorePort.requestedContentType(kind),
         kind = kind,
         title = name,
         year = releaseInfo?.take(4)?.toIntOrNull() ?: released?.take(4)?.toIntOrNull(),

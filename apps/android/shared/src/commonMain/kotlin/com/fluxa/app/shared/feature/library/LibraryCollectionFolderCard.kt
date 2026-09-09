@@ -74,6 +74,7 @@ fun LibraryFolderUiModel.toCatalogCardUiModel(
         rankOffsetX = 0.dp,
         rankOffsetY = 0.dp,
         rankFontSizeRatio = 0f,
-        loadArtwork = true
+        loadArtwork = true,
+        preferAnimatedArtwork = animatedArtwork != null
     )
 }

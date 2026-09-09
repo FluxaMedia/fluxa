@@ -59,6 +59,7 @@ internal fun settingsCategoryTitle(category: SettingsCategory, lang: String?): S
     SettingsCategory.MdblistApi -> AppStrings.t(lang, "settings.mdblist_api")
     SettingsCategory.Notifications -> AppStrings.t(lang, "settings.notifications_title")
     SettingsCategory.General -> AppStrings.t(lang, "auto.general")
+    SettingsCategory.Updates -> AppStrings.t(lang, "settings.updates")
     SettingsCategory.Appearance -> AppStrings.t(lang, "auto.appearance")
     SettingsCategory.AppearanceHome -> AppStrings.t(lang, "settings.appearance_home_screen")
     SettingsCategory.AppearanceDetail -> AppStrings.t(lang, "settings.appearance_detail_screen")

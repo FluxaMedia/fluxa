@@ -171,6 +171,7 @@ abstract class PersistentSettingsDataSource(
     override suspend fun updateSystem(value: SettingsSystemUiModel) {
         preferences.putBoolean(SettingsPreferenceKeys.AUTOMATIC_UPDATES, value.automaticUpdates)
         preferences.putBoolean(SettingsPreferenceKeys.REMEMBER_LAST_PROFILE, value.rememberLastProfile)
+        preferences.putBoolean(GeneratedSettingsPreferenceKeys.DISCORD_RICH_PRESENCE_ENABLED, value.discordRichPresenceEnabled)
         storedState.value = storedState.value.copy(system = value.copy(appVersionLabel = appVersionLabel))
     }
 
@@ -373,6 +374,7 @@ abstract class PersistentSettingsDataSource(
             system = defaults.system.copy(
                 automaticUpdates = preferences.getBoolean(SettingsPreferenceKeys.AUTOMATIC_UPDATES, defaults.system.automaticUpdates),
                 rememberLastProfile = preferences.getBoolean(SettingsPreferenceKeys.REMEMBER_LAST_PROFILE, defaults.system.rememberLastProfile),
+                discordRichPresenceEnabled = preferences.getBoolean(GeneratedSettingsPreferenceKeys.DISCORD_RICH_PRESENCE_ENABLED, defaults.system.discordRichPresenceEnabled),
                 appVersionLabel = appVersionLabel,
             ),
         )

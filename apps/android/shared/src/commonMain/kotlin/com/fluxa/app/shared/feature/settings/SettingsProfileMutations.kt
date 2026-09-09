@@ -121,6 +121,7 @@ fun UserProfile.withDownloadSettings(value: SettingsDownloadsUiModel): UserProfi
 
 fun UserProfile.withSystemSettings(value: SettingsSystemUiModel): UserProfile = copy(
     automaticUpdates = value.automaticUpdates,
+    discordRichPresenceEnabled = value.discordRichPresenceEnabled,
 )
 
 fun UserProfile.withAccountSettings(value: SettingsAccountUiModel): UserProfile = copy(

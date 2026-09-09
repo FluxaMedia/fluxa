@@ -6,6 +6,12 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 
 internal object JvmLocalMediaCorePort : LocalMediaCorePort {
+    fun requestedContentType(kind: LocalMediaKind): String =
+        FluxaCoreNative.localMediaRequestedContentType(kind.wireName())
+
+    fun acceptsContentType(kind: LocalMediaKind, contentType: String): Boolean =
+        FluxaCoreNative.localMediaAcceptsContentType(kind.wireName(), contentType)
+
     override fun parseFilename(fileName: String, parentHints: List<String>, kind: LocalMediaKind): LocalMediaParsedName? {
         val value = FluxaCoreNative.localMediaParseFilename(fileName, parentHints, kind.wireName()) ?: return null
         return value.toLocalMediaParsedName()

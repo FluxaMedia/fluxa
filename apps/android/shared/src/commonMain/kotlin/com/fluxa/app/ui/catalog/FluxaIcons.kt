@@ -219,6 +219,19 @@ object FluxaIcons {
         @Composable get() = vectorResource(Res.drawable.symbol_rounded_play_arrow)
     }
 
+    object Navigation {
+        val Home: ImageVector
+            @Composable get() = Outlined.Home
+        val Discover: ImageVector
+            @Composable get() = Outlined.Explore
+        val Calendar: ImageVector
+            @Composable get() = FluxaTvIcons.ReleaseTimeline
+        val Library: ImageVector
+            @Composable get() = Rounded.AnimatedImages
+        val Settings: ImageVector
+            @Composable get() = Outlined.Settings
+    }
+
     object AutoMirrored {
         object Filled {
             val ArrowBack: ImageVector
@@ -269,25 +282,25 @@ object FluxaIcons {
     val BookmarkBorder: ImageVector
         @Composable get() = Filled.Bookmark
     val BottomCalendar: ImageVector
-        @Composable get() = Filled.CalendarMonth
+        @Composable get() = Navigation.Calendar
     val BottomCalendarOutline: ImageVector
-        @Composable get() = Outlined.CalendarMonth
+        @Composable get() = Navigation.Calendar
     val BottomDiscover: ImageVector
-        @Composable get() = Filled.Search
+        @Composable get() = Navigation.Discover
     val BottomDiscoverOutline: ImageVector
-        @Composable get() = Outlined.Search
+        @Composable get() = Navigation.Discover
     val BottomHome: ImageVector
-        @Composable get() = Filled.Home
+        @Composable get() = Navigation.Home
     val BottomHomeOutline: ImageVector
-        @Composable get() = Outlined.Home
+        @Composable get() = Navigation.Home
     val BottomLibrary: ImageVector
-        @Composable get() = Filled.Bookmark
+        @Composable get() = Navigation.Library
     val BottomLibraryOutline: ImageVector
-        @Composable get() = Outlined.BookmarkBorder
+        @Composable get() = Navigation.Library
     val BottomSettings: ImageVector
-        @Composable get() = Filled.Settings
+        @Composable get() = Navigation.Settings
     val BottomSettingsOutline: ImageVector
-        @Composable get() = Outlined.Settings
+        @Composable get() = Navigation.Settings
     val Cast: ImageVector
         @Composable get() = Filled.Cast
     val Check: ImageVector

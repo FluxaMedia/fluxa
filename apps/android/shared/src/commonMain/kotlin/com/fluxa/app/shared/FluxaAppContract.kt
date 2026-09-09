@@ -29,6 +29,7 @@ import com.fluxa.app.shared.feature.settings.SettingsAction
 import com.fluxa.app.shared.feature.settings.SettingsBrandIcons
 import com.fluxa.app.shared.feature.settings.SettingsCategory
 import com.fluxa.app.shared.feature.settings.SettingsUiState
+import com.fluxa.app.shared.feature.settings.SettingsUpdatesUiModel
 import com.fluxa.app.shared.feature.streambadges.StreamBadgesAction
 import com.fluxa.app.shared.feature.streambadges.StreamBadgesUiState
 import com.fluxa.app.ui.catalog.DeviceType
@@ -105,4 +106,5 @@ internal data class FluxaAppPresentation(
     val authBackdrop: (@Composable () -> Unit)? = null,
     val biometricAvailable: Boolean = false,
     val showNavigationBar: Boolean = true,
+    val settingsUpdates: SettingsUpdatesUiModel = SettingsUpdatesUiModel(),
 )

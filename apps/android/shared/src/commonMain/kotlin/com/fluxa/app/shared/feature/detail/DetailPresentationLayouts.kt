@@ -195,7 +195,7 @@ internal fun CompactMobileDetailContent(
             item(key = "compact-season") {
                 SeasonSelector(content, language, onAction, presentation.seasonSelectorMode)
             }
-            items(content.seasonEpisodes, key = { it.id }) { episode ->
+            itemsIndexed(content.seasonEpisodes, key = { index, _ -> "compact-episode:$index" }) { _, episode ->
                 EpisodeRow(
                     episode = episode,
                     content = content,
@@ -568,7 +568,7 @@ internal fun LazyListScope.detailEpisodeItems(
     onAction: (DetailAction) -> Unit
 ) {
     when (presentation.episodeCardsLayout) {
-        "list" -> items(content.seasonEpisodes, key = { "cinematic-list:${it.id}" }) { episode ->
+        "list" -> itemsIndexed(content.seasonEpisodes, key = { index, _ -> "cinematic-list:$index" }) { _, episode ->
             EpisodeRow(
                 episode = episode,
                 content = content,
@@ -582,7 +582,7 @@ internal fun LazyListScope.detailEpisodeItems(
                 contentPadding = PaddingValues(horizontal = 18.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(13.dp)
             ) {
-                items(content.seasonEpisodes, key = { it.id }) { episode ->
+                itemsIndexed(content.seasonEpisodes, key = { index, _ -> "cinematic-episode:$index" }) { _, episode ->
                     CinematicEpisodeCard(
                         episode = episode,
                         language = language,
@@ -596,7 +596,7 @@ internal fun LazyListScope.detailEpisodeItems(
         }
         "desktop_grid" -> {
             val rows = content.seasonEpisodes.chunked(3)
-            items(rows, key = { row -> "desktop:${row.joinToString("|") { it.id }}" }) { rowEpisodes ->
+            itemsIndexed(rows, key = { index, _ -> "desktop-episode-row:$index" }) { _, rowEpisodes ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -619,7 +619,7 @@ internal fun LazyListScope.detailEpisodeItems(
         }
         else -> {
             val rows = content.seasonEpisodes.chunked(2)
-            items(rows, key = { row -> row.joinToString("|") { it.id } }) { rowEpisodes ->
+            itemsIndexed(rows, key = { index, _ -> "episode-row:$index" }) { _, rowEpisodes ->
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)

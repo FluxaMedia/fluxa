@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -66,6 +67,7 @@ import com.fluxa.app.ui.catalog.CatalogCard
 import com.fluxa.app.ui.catalog.DeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.LocalDeviceType
+import com.fluxa.app.ui.catalog.LocalAccentColor
 
 @Composable
 fun DiscoverScreen(
@@ -175,32 +177,44 @@ private fun DiscoverSearchField(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(52.dp)
-            .background(Color.White.copy(alpha = 0.06f), RoundedCornerShape(26.dp)),
+            .height(48.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .background(FluxaColors.surfaceRaised)
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp)),
         contentAlignment = Alignment.CenterStart
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = FluxaIcons.Filled.Search,
+                imageVector = FluxaIcons.Outlined.Search,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
-                modifier = Modifier.width(20.dp)
+                tint = Color.White.copy(alpha = 0.58f),
+                modifier = Modifier.size(19.dp)
             )
-            Spacer(modifier = Modifier.width(10.dp))
-            Box(modifier = Modifier.fillMaxWidth()) {
+            Spacer(modifier = Modifier.width(9.dp))
+            Box(modifier = Modifier.weight(1f)) {
                 if (query.isEmpty()) {
-                    Text(text = placeholder, color = Color.White.copy(alpha = 0.4f), fontSize = 15.sp)
+                    Text(text = placeholder, color = Color.White.copy(alpha = 0.42f), fontSize = 14.sp)
                 }
                 BasicTextField(
                     value = query,
                     onValueChange = onQueryChanged,
-                    textStyle = TextStyle(color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Medium),
+                    textStyle = TextStyle(color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium),
                     singleLine = true,
                     cursorBrush = androidx.compose.ui.graphics.SolidColor(Color.White),
                     modifier = Modifier.fillMaxWidth()
+                )
+            }
+            if (query.isNotEmpty()) {
+                Icon(
+                    imageVector = FluxaIcons.Filled.Close,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable { onQueryChanged("") }
                 )
             }
         }
@@ -294,30 +308,49 @@ internal fun DiscoverDropdownFilter(
     var triggerFocused by remember { mutableStateOf(false) }
     val normalizedSelectedId = selectedId?.trim()?.lowercase()
     val selectedLabel = options.firstOrNull { it.id?.trim()?.lowercase() == normalizedSelectedId }?.label ?: label
+    val isActive = normalizedSelectedId != null
+    val chipShape = RoundedCornerShape(12.dp)
+    val accentColor = LocalAccentColor.current
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
+            .clip(chipShape)
             .onFocusChanged { triggerFocused = it.isFocused }
-            .background(if (triggerFocused) Color.White else Color.White.copy(alpha = 0.08f), RoundedCornerShape(999.dp))
+            .background(
+                when {
+                    triggerFocused -> Color.White
+                    isActive -> accentColor.copy(alpha = 0.16f)
+                    else -> FluxaColors.surfaceRaised
+                },
+                chipShape
+            )
+            .border(
+                width = 1.dp,
+                color = when {
+                    triggerFocused -> Color.White
+                    isActive -> accentColor.copy(alpha = 0.72f)
+                    else -> Color.White.copy(alpha = 0.08f)
+                },
+                shape = chipShape
+            )
             .clickable { showSheet = true }
-            .padding(horizontal = 14.dp, vertical = 9.dp),
+            .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Text(
             text = selectedLabel,
-            color = if (triggerFocused) Color.Black else Color.White,
+            color = if (triggerFocused) Color.Black else Color.White.copy(alpha = if (isActive) 0.96f else 0.78f),
             fontWeight = FontWeight.Medium,
-            fontSize = 14.sp,
+            fontSize = 13.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.widthIn(max = 140.dp)
+            modifier = Modifier.widthIn(max = 132.dp)
         )
         Spacer(modifier = Modifier.width(2.dp))
         Icon(
             imageVector = FluxaIcons.Filled.KeyboardArrowDown,
             contentDescription = null,
-            tint = if (triggerFocused) Color.Black else Color.White.copy(alpha = 0.6f),
-            modifier = Modifier.width(18.dp)
+            tint = if (triggerFocused) Color.Black else Color.White.copy(alpha = 0.52f),
+            modifier = Modifier.size(16.dp)
         )
     }
 
@@ -426,14 +459,14 @@ internal fun DiscoverDropdownFilter(
                     ) {
                         Text(
                             text = option.label,
-                            color = if (selected) FluxaColors.accent else Color.White,
+                            color = if (selected) LocalAccentColor.current else Color.White,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
                         )
                         if (selected) {
                             Icon(
                                 imageVector = FluxaIcons.Filled.Check,
                                 contentDescription = null,
-                                tint = FluxaColors.accent
+                                tint = LocalAccentColor.current
                             )
                         }
                     }

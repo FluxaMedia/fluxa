@@ -5,7 +5,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 
 enum class SettingsCategory {
-    Hub, Account, TmdbFeatures, MdblistApi, Notifications, General, Appearance, AppearanceHome, AppearanceDetail,
+    Hub, Account, TmdbFeatures, MdblistApi, Notifications, General, Updates, Appearance, AppearanceHome, AppearanceDetail,
     Playback, PlaybackStream, PlaybackSkip, Subtitles, Advanced, Content, Downloads, Developer, DeviceCapabilities,
     AccountStremio, AccountNuvio, AccountTrakt, AccountSimkl, AccountAnilist
 }
@@ -220,7 +220,52 @@ data class SettingsDownloadsUiModel(
 data class SettingsSystemUiModel(
     val automaticUpdates: Boolean = true,
     val rememberLastProfile: Boolean = true,
+    val discordRichPresenceEnabled: Boolean = true,
     val appVersionLabel: String = ""
+)
+
+enum class SettingsUpdateCheckState {
+    Idle, Checking, UpToDate, Available, Failed, NoCompatibleRelease
+}
+
+data class SettingsReleaseUiModel(
+    val version: String,
+    val publishedAt: String? = null,
+    val notes: String? = null,
+    val contributors: List<SettingsContributorUiModel> = emptyList(),
+)
+
+data class SettingsContributorUiModel(
+    val login: String,
+    val avatarUrl: String? = null,
+    val profileUrl: String? = null,
+    val contributions: Int = 0,
+    val latestContributionAt: String? = null,
+)
+
+data class SettingsSupporterUiModel(
+    val login: String,
+    val displayName: String? = null,
+    val avatarUrl: String? = null,
+    val profileUrl: String? = null,
+    val supportCount: Int = 1,
+    val supportedAt: String? = null,
+)
+
+data class SettingsCommunityUiModel(
+    val contributors: List<SettingsContributorUiModel> = emptyList(),
+    val supporters: List<SettingsSupporterUiModel> = emptyList(),
+    val isLoading: Boolean = false,
+    val loadFailed: Boolean = false,
+)
+
+data class SettingsUpdatesUiModel(
+    val currentVersion: String = "",
+    val latestRelease: SettingsReleaseUiModel? = null,
+    val releases: List<SettingsReleaseUiModel> = emptyList(),
+    val checkState: SettingsUpdateCheckState = SettingsUpdateCheckState.Idle,
+    val lastCheckedAt: String? = null,
+    val community: SettingsCommunityUiModel = SettingsCommunityUiModel(),
 )
 
 data class SettingsDeveloperUiModel(
@@ -260,6 +305,7 @@ data class SettingsUiState(
     val addons: SettingsAddonsUiModel = SettingsAddonsUiModel(),
     val downloads: SettingsDownloadsUiModel = SettingsDownloadsUiModel(),
     val system: SettingsSystemUiModel = SettingsSystemUiModel(),
+    val updates: SettingsUpdatesUiModel = SettingsUpdatesUiModel(),
     val developer: SettingsDeveloperUiModel = SettingsDeveloperUiModel(),
     val deviceCapabilities: SettingsDeviceCapabilitiesUiModel = SettingsDeviceCapabilitiesUiModel(),
     val isLoading: Boolean = false

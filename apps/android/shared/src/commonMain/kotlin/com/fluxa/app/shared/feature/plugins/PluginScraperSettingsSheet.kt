@@ -28,8 +28,6 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
@@ -48,6 +46,7 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fluxa.app.ui.catalog.FluxaSwitch
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.ui.AdaptiveModalSheet
 
@@ -236,15 +235,10 @@ private fun PluginSettingsField(
                         Text(it, color = Color.White.copy(alpha = 0.4f), fontSize = 11.sp)
                     }
                 }
-                Switch(
+                FluxaSwitch(
                     checked = value as? Boolean ?: field.defaultBoolean,
                     onCheckedChange = onValueChange,
-                    colors = SwitchDefaults.colors(
-                        checkedTrackColor = Color.White,
-                        checkedThumbColor = Color.Black,
-                        uncheckedTrackColor = Color.White.copy(alpha = 0.15f),
-                        uncheckedThumbColor = Color.White.copy(alpha = 0.7f)
-                    )
+                    accentColor = Color.White,
                 )
             }
         }

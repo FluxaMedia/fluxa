@@ -2,8 +2,9 @@ package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
-import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.LocalAccentColor
+import com.fluxa.app.ui.catalog.FluxaSwitch
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -12,8 +13,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -61,7 +60,11 @@ fun PlayerPremiumToggle(title: String, desc: String, isEnabled: Boolean, onToggl
                 Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                 Text(desc, color = Color.White.copy(alpha = 0.56f), fontSize = 12.sp)
             }
-            Switch(checked = isEnabled, onCheckedChange = { onToggle() }, colors = SwitchDefaults.colors(checkedThumbColor = FluxaColors.accent, checkedTrackColor = FluxaColors.accent))
+            FluxaSwitch(
+                checked = isEnabled,
+                onCheckedChange = { onToggle() },
+                accentColor = LocalAccentColor.current,
+            )
         }
     }
 }

@@ -101,7 +101,7 @@ val LocalFluxaThemePack = compositionLocalOf { FluxaThemePacks.fluxaDark }
 
 fun FluxaThemePack.toColorScheme(accentOverride: Color? = null): ColorScheme {
     val theme = colors
-    val accent = accentOverride ?: theme.accent.toThemeColor(FluxaColors.accent)
+    val accent = accentOverride ?: theme.accent.toThemeColor(Color.White)
     return darkColorScheme(
         background = theme.background.toThemeColor(FluxaColors.background),
         surface = theme.surface.toThemeColor(FluxaColors.surface),

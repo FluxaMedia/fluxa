@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,7 +22,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -53,10 +51,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
-import com.fluxa.app.ui.catalog.DeviceType
-import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 
 @Composable
 fun SourceSelectionScreen(
@@ -69,7 +67,18 @@ fun SourceSelectionScreen(
     modifier: Modifier = Modifier
 ) {
     val addonFilter = content.selectedAddon
-    val isDesktop = LocalDeviceType.current == DeviceType.Desktop
+    val widthClass = LocalWindowWidthClass.current
+    val isExpanded = widthClass == WindowWidthClass.Expanded
+    val contentWidthFraction = when (widthClass) {
+        WindowWidthClass.Compact -> 1f
+        WindowWidthClass.Medium -> 0.96f
+        WindowWidthClass.Expanded -> 0.94f
+    }
+    val listBottomPadding = when (widthClass) {
+        WindowWidthClass.Compact -> 220.dp
+        WindowWidthClass.Medium -> 160.dp
+        WindowWidthClass.Expanded -> 32.dp
+    }
     fun addonPriority(name: String): Int = content.addonPriorityOrder.indexOf(name).let { if (it < 0) Int.MAX_VALUE else it }
     val addons = remember(content.streams, content.addonPriorityOrder) {
         content.streams.map { it.addonName }.filter { it.isNotBlank() }.distinct()
@@ -86,21 +95,15 @@ fun SourceSelectionScreen(
     val episode = content.selectedEpisodeId?.let { id -> content.seasonEpisodes.firstOrNull { it.id == id } }
 
     Box(modifier = modifier.fillMaxSize().background(FluxaColors.background)) {
-        Backdrop(content = content, episode = episode, compact = isDesktop)
+        Backdrop(content = content, episode = episode, compact = isExpanded)
         Column(modifier = Modifier.fillMaxSize()) {
-            Header(content = content, episode = episode, language = language, onBack = onBack, compact = isDesktop)
+            Header(content = content, episode = episode, language = language, onBack = onBack, compact = isExpanded)
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth(if (isDesktop) 0.94f else 1f)
+                        .fillMaxWidth(contentWidthFraction)
                         .widthIn(max = 1120.dp)
                 ) {
-                    SourceSummary(
-                        total = content.streams.size,
-                        visible = visibleStreams.size,
-                        selectedAddon = addonFilter,
-                        language = language
-                    )
                     AddonChips(
                         addons = addons,
                         addonCounts = addonCounts,
@@ -143,20 +146,19 @@ fun SourceSelectionScreen(
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
-                            Text(
-                                text = AppStrings.t(language, "player.source_selection_subtitle"),
-                                color = Color.White.copy(alpha = 0.38f),
-                                fontSize = 12.sp,
-                                modifier = Modifier.padding(top = 6.dp)
-                            )
                         }
                     }
                     else -> LazyColumn(
                         modifier = Modifier
-                            .fillMaxWidth(if (isDesktop) 0.94f else 1f)
+                            .fillMaxWidth(contentWidthFraction)
                             .widthIn(max = 1120.dp)
                             .fillMaxHeight(),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 32.dp),
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 4.dp,
+                            bottom = listBottomPadding
+                        ),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(visibleStreams, key = { "${it.addonName}:${it.playableUrl}" }) { stream ->
@@ -170,48 +172,6 @@ fun SourceSelectionScreen(
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun SourceSummary(
-    total: Int,
-    visible: Int,
-    selectedAddon: String?,
-    language: String?
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = AppStrings.t(language, "player.source_selection_title"),
-                color = Color.White,
-                fontWeight = FontWeight.Bold,
-                fontSize = 17.sp
-            )
-            Text(
-                text = AppStrings.t(language, "player.source_selection_subtitle"),
-                color = Color.White.copy(alpha = 0.48f),
-                fontSize = 11.sp,
-                modifier = Modifier.padding(top = 2.dp)
-            )
-        }
-        val count = if (selectedAddon == null) total else visible
-        Box(
-            modifier = Modifier
-                .clip(CircleShape)
-                .background(Color.White.copy(alpha = 0.08f))
-                .padding(horizontal = 10.dp, vertical = 6.dp)
-        ) {
-            Text(
-                text = "$count ${AppStrings.t(language, "auto.sources").lowercase()}",
-                color = Color.White.copy(alpha = 0.72f),
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold
-            )
         }
     }
 }
@@ -413,8 +373,8 @@ private fun AddonChip(label: String, selected: Boolean, onClick: () -> Unit) {
     val bg by animateColorAsState(
         targetValue = when {
             selected -> Color.White
-            focused -> Color.White.copy(alpha = 0.22f)
-            else -> Color.White.copy(alpha = 0.07f)
+            focused -> Color(0xFF252525)
+            else -> Color(0xFF111111)
         },
         animationSpec = tween(150),
         label = "chipBg"
@@ -462,12 +422,6 @@ private fun LoadingAddonsRow(addonNames: List<String>, language: String?) {
 
 @Composable
 private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
-    val provider = stream.addonName.trim().ifBlank { "Source" }
-    val rawTitle = stream.title.trim().ifBlank { stream.name.trim() }.ifBlank { provider }
-    val cleanName = stream.name.trim().takeIf { it.isNotBlank() && !it.equals(provider, ignoreCase = true) }
-    val primary = cleanName ?: rawTitle.lineSequence().firstOrNull()?.trim().orEmpty().ifBlank { provider }
-    val secondary = rawTitle.takeIf { it.isNotBlank() && !it.equals(primary, ignoreCase = true) }
-    val quality = remember(rawTitle, stream.name) { sourceQualityLabel("${stream.name} $rawTitle") }
     var focused by remember { mutableStateOf(false) }
     val bg by animateColorAsState(
         targetValue = if (focused) Color.White.copy(alpha = 0.14f) else Color.White.copy(alpha = 0.045f),
@@ -491,97 +445,30 @@ private fun StreamCard(stream: DetailStreamUiModel, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .onFocusChanged { focused = it.isFocused }
             .focusable()
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(horizontal = 14.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.Top
     ) {
-        Column(
-            modifier = Modifier.widthIn(min = 96.dp, max = 150.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text(
-                text = provider,
-                color = Color.White,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            if (stream.sourceKind == "plugin") {
-                Text(
-                    text = "PLUGIN",
-                    color = Color.White.copy(alpha = 0.42f),
-                    fontSize = 9.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.8.sp
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(16.dp))
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = primary,
-                color = Color.White,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            secondary?.let {
+            if (stream.name.isNotBlank()) {
                 Text(
-                    text = it,
+                    text = stream.name,
+                    color = Color.White,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    softWrap = true,
+                )
+            }
+            if (stream.description.isNotBlank()) {
+                Text(
+                    text = stream.description,
                     color = Color.White.copy(alpha = 0.52f),
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(top = 3.dp)
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    softWrap = true,
+                    modifier = Modifier.padding(top = 5.dp)
                 )
             }
         }
-        quality?.let {
-            Spacer(modifier = Modifier.width(12.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White.copy(alpha = 0.09f))
-                    .padding(horizontal = 8.dp, vertical = 5.dp)
-            ) {
-                Text(
-                    text = it,
-                    color = Color.White.copy(alpha = 0.78f),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-        Spacer(modifier = Modifier.width(12.dp))
-        Box(
-            modifier = Modifier
-                .size(34.dp)
-                .clip(CircleShape)
-                .background(if (focused) Color.White else Color.White.copy(alpha = 0.08f)),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                imageVector = FluxaIcons.PlayArrow,
-                contentDescription = null,
-                tint = if (focused) Color.Black else Color.White.copy(alpha = 0.72f),
-                modifier = Modifier.size(18.dp)
-            )
-        }
-    }
-}
-
-private fun sourceQualityLabel(value: String): String? {
-    val normalized = value.uppercase()
-    return when {
-        "2160P" in normalized || "4K" in normalized || "UHD" in normalized -> "4K"
-        "1440P" in normalized -> "1440p"
-        "1080P" in normalized -> "1080p"
-        "720P" in normalized -> "720p"
-        "480P" in normalized -> "480p"
-        "360P" in normalized -> "360p"
-        else -> null
     }
 }

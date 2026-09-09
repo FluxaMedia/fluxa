@@ -299,6 +299,7 @@ fun UserProfile.toSettingsUiState(
     system = SettingsSystemUiModel(
         automaticUpdates = safeAutomaticUpdates,
         appVersionLabel = appVersionLabel,
+        discordRichPresenceEnabled = discordRichPresenceEnabled ?: true,
     ),
     developer = SettingsDeveloperUiModel(
         lastProbeUpdatedAt = developerSnapshot.lastProbeUpdatedAt,

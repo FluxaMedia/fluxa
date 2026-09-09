@@ -73,6 +73,7 @@ private val SETTINGS_TV_RAIL_CATEGORIES = listOf(
     SettingsCategory.Account,
     SettingsCategory.Notifications,
     SettingsCategory.General,
+    SettingsCategory.Updates,
     SettingsCategory.Appearance,
     SettingsCategory.Playback,
     SettingsCategory.Content,
@@ -84,6 +85,7 @@ private val SETTINGS_TV_RAIL_CATEGORIES = listOf(
 @Composable
 fun SettingsScreen(
     state: SettingsUiState,
+    updates: SettingsUpdatesUiModel = state.updates,
     language: String?,
     onAction: (SettingsAction) -> Unit,
     onSwitchProfilesRequested: () -> Unit,
@@ -94,6 +96,7 @@ fun SettingsScreen(
     onPushCategory: (SettingsCategory) -> Unit = {},
     onPopCategory: () -> Unit = {},
     onSelectCategory: (SettingsCategory) -> Unit = {},
+    onOpenUrlRequested: (String) -> Unit = {},
     deviceType: com.fluxa.app.ui.catalog.DeviceType = com.fluxa.app.ui.catalog.DeviceType.Mobile,
     brandIcons: SettingsBrandIcons = SettingsBrandIcons(),
     onImportThemeRequested: ((String?) -> Unit) -> Unit = { onResult -> onResult(null) },
@@ -169,9 +172,10 @@ fun SettingsScreen(
                     Spacer(Modifier.height(16.dp))
                     CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                         SettingsCategoryContent(
-                            animatedCategory, state, lang, brandIcons, onAction, onPushCategory,
+                            animatedCategory, state.copy(updates = updates), lang, brandIcons, onAction, onPushCategory,
                             onSwitchProfilesRequested, profileState, onProfileAction, navigateAndHighlight,
-                            onImportThemeRequested
+                            onImportThemeRequested,
+                            onOpenUrlRequested
                         )
                     }
                     Spacer(Modifier.height(120.dp))
@@ -218,9 +222,10 @@ fun SettingsScreen(
             ) {
                 CompositionLocalProvider(LocalSettingsHighlightLabel provides highlightLabel) {
                     SettingsCategoryContent(
-                        animatedCategory, state, lang, brandIcons, onAction, onPushCategory,
+                        animatedCategory, state.copy(updates = updates), lang, brandIcons, onAction, onPushCategory,
                         onSwitchProfilesRequested, profileState, onProfileAction, navigateAndHighlight,
-                        onImportThemeRequested
+                        onImportThemeRequested,
+                        onOpenUrlRequested
                     )
                 }
                 Spacer(Modifier.height(120.dp))
@@ -243,7 +248,8 @@ internal fun SettingsCategoryContent(
     profileState: ProfileUiState?,
     onProfileAction: (ProfileAction) -> Unit,
     onNavigateSearchResult: (SettingsSearchEntry) -> Unit,
-    onImportThemeRequested: ((String?) -> Unit) -> Unit
+    onImportThemeRequested: ((String?) -> Unit) -> Unit,
+    onOpenUrlRequested: (String) -> Unit
 ) {
     when (category) {
         SettingsCategory.Hub -> SettingsHubContent(
@@ -269,7 +275,8 @@ internal fun SettingsCategoryContent(
         SettingsCategory.TmdbFeatures -> SettingsTmdbFeaturesContent(state.account, lang, onAction)
         SettingsCategory.MdblistApi -> SettingsMdblistApiContent(state.account, lang, onAction)
         SettingsCategory.Notifications -> SettingsNotificationsContent(state.notifications, lang, onAction)
-        SettingsCategory.General -> SettingsGeneralContent(state.general, lang, onAction)
+        SettingsCategory.General -> SettingsGeneralContent(state.general, state.system, lang, onAction)
+        SettingsCategory.Updates -> SettingsUpdatesContent(state.updates, lang, onAction, onOpenUrlRequested)
         SettingsCategory.Appearance -> SettingsAppearanceContent(state.appearance, lang, onAction, onNavigate = onNavigate, onImportThemeRequested = onImportThemeRequested)
         SettingsCategory.AppearanceHome -> SettingsAppearanceHomeContent(state.appearanceHome, lang, onAction)
         SettingsCategory.AppearanceDetail -> SettingsAppearanceDetailContent(state.appearanceDetail, lang, onAction)
@@ -435,19 +442,9 @@ internal fun SettingsHubContent(
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.section_system"))
     SettingsGroupCard {
-        SettingsToggleRow(
-            label = AppStrings.t(lang, "settings.automatic_updates"),
-            description = AppStrings.t(lang, "settings.automatic_updates_desc"),
-            value = state.system.automaticUpdates,
-            onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(automaticUpdates = it))) }
-        )
-        SettingsToggleRow(
-            label = AppStrings.t(lang, "settings.remember_last_profile"),
-            description = AppStrings.t(lang, "settings.remember_last_profile_desc"),
-            value = state.system.rememberLastProfile,
-            onValueChanged = { onAction(SettingsAction.SystemChanged(state.system.copy(rememberLastProfile = it))) }
-        )
-        SettingsActionRow(AppStrings.t(lang, "settings.check_for_updates")) { onAction(SettingsAction.CheckForUpdateRequested) }
+        SettingsNavRow(AppStrings.t(lang, "settings.updates"), description = AppStrings.t(lang, "settings.updates_desc")) {
+            onNavigate(SettingsCategory.Updates)
+        }
         SettingsNavRow(AppStrings.t(lang, "settings.developer")) { onNavigate(SettingsCategory.Developer) }
         SettingsNavRow(AppStrings.t(lang, "settings.device_capabilities")) { onNavigate(SettingsCategory.DeviceCapabilities) }
     }

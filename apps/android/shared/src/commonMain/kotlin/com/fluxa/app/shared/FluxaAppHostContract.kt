@@ -12,6 +12,7 @@ import com.fluxa.app.shared.feature.plugins.PluginsDataSource
 import com.fluxa.app.shared.feature.profile.ProfileDataSource
 import com.fluxa.app.shared.feature.search.SearchDataSource
 import com.fluxa.app.shared.feature.settings.SettingsDataSource
+import com.fluxa.app.shared.feature.settings.SettingsUpdatesUiModel
 import com.fluxa.app.shared.feature.streambadges.StreamBadgesDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogAction
 import com.fluxa.app.shared.feature.detail.DetailNavigationEvent
@@ -48,6 +49,7 @@ data class FluxaAppHostConfig(
     val biometricAvailable: Boolean = false,
     val settingsPopRequestId: Int = 0,
     val overlayPopRequestId: Int = 0,
+    val settingsUpdates: SettingsUpdatesUiModel = SettingsUpdatesUiModel(),
 )
 
 data class FluxaAppHostVisuals(

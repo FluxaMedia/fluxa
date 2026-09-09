@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -34,13 +35,20 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.FluxaThemePacks
+import com.fluxa.app.ui.catalog.FluxaColors
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Composable
-internal fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?, onAction: (SettingsAction) -> Unit) {
+internal fun SettingsGeneralContent(
+    model: SettingsGeneralUiModel,
+    system: SettingsSystemUiModel,
+    lang: String?,
+    onAction: (SettingsAction) -> Unit
+) {
     val languageOptions = listOf(
         SettingsChoiceOption("en", AppStrings.t(lang, "language.english")),
         SettingsChoiceOption("tr", AppStrings.t(lang, "language.turkish"))
@@ -56,8 +64,252 @@ internal fun SettingsGeneralContent(model: SettingsGeneralUiModel, lang: String?
         SettingsToggleRow(AppStrings.t(lang, "auto.background_playback"), description = AppStrings.t(lang, "settings.background_playback_desc"), value = model.backgroundPlayback) {
             onAction(SettingsAction.GeneralChanged(model.copy(backgroundPlayback = it)))
         }
+        SettingsToggleRow(
+            label = AppStrings.t(lang, "settings.automatic_updates"),
+            description = AppStrings.t(lang, "settings.automatic_updates_desc"),
+            value = system.automaticUpdates,
+            onValueChanged = { onAction(SettingsAction.SystemChanged(system.copy(automaticUpdates = it))) }
+        )
+        SettingsToggleRow(
+            label = AppStrings.t(lang, "settings.remember_last_profile"),
+            description = AppStrings.t(lang, "settings.remember_last_profile_desc"),
+            value = system.rememberLastProfile,
+            onValueChanged = { onAction(SettingsAction.SystemChanged(system.copy(rememberLastProfile = it))) }
+        )
+        SettingsToggleRow(
+            label = AppStrings.t(lang, "settings.discord_rich_presence_enable"),
+            description = AppStrings.t(lang, "settings.discord_rich_presence_enable_desc"),
+            value = system.discordRichPresenceEnabled,
+            onValueChanged = { onAction(SettingsAction.SystemChanged(system.copy(discordRichPresenceEnabled = it))) }
+        )
     }
 }
+
+@Composable
+internal fun SettingsUpdatesContent(
+    model: SettingsUpdatesUiModel,
+    lang: String?,
+    onAction: (SettingsAction) -> Unit,
+    onOpenUrlRequested: (String) -> Unit,
+) {
+    SettingsSectionHeader(AppStrings.t(lang, "settings.section_updates"))
+    SettingsGroupCard {
+        SettingsInfoRow(AppStrings.t(lang, "settings.current_version"), model.currentVersion)
+        SettingsActionRow(
+            label = when (model.checkState) {
+                SettingsUpdateCheckState.Checking -> AppStrings.t(lang, "update.checking")
+                else -> AppStrings.t(lang, "settings.check_for_updates")
+            },
+            value = when (model.checkState) {
+                SettingsUpdateCheckState.UpToDate -> AppStrings.t(lang, "update.up_to_date")
+                SettingsUpdateCheckState.Available -> AppStrings.t(lang, "update.available")
+                SettingsUpdateCheckState.Failed -> AppStrings.t(lang, "update.check_failed")
+                SettingsUpdateCheckState.NoCompatibleRelease -> AppStrings.t(lang, "settings.no_app_release_short")
+                else -> null
+            },
+            onClick = { if (model.checkState != SettingsUpdateCheckState.Checking) onAction(SettingsAction.CheckForUpdateRequested) }
+        )
+    }
+
+    val releases = (model.releases + listOfNotNull(model.latestRelease)).distinctBy { it.version }
+    releases.forEachIndexed { index, release ->
+        SettingsSectionHeader(
+            if (index == 0) AppStrings.t(lang, "settings.latest_release")
+            else AppStrings.t(lang, "settings.release_history")
+        )
+        SettingsGroupCard {
+            SettingsInfoRow(AppStrings.t(lang, "settings.release_version"), release.version)
+            release.publishedAt?.takeIf { it.isNotBlank() }?.let {
+                SettingsInfoRow(AppStrings.t(lang, "settings.published"), formatReleasePublishedAt(it))
+            }
+            release.notes?.takeIf { it.isNotBlank() }?.let {
+                Text(
+                    AppStrings.t(lang, "settings.release_notes"),
+                    color = Color.White.copy(alpha = 0.62f),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                )
+                Text(
+                    formatReleaseNotes(it),
+                    color = Color.White.copy(alpha = 0.86f),
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                    modifier = Modifier.padding(bottom = 10.dp)
+                )
+            }
+            if (release.contributors.isNotEmpty()) {
+                Text(
+                    AppStrings.t(lang, "community.release_contributors"),
+                    color = Color.White.copy(alpha = 0.62f),
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(top = 8.dp, bottom = 6.dp),
+                )
+                release.contributors.forEach { contributor ->
+                    CommunityPersonRow(
+                        name = contributor.login,
+                        avatarUrl = contributor.avatarUrl,
+                        detail = contributor.contributions.toString(),
+                        onClick = { contributor.profileUrl?.let(onOpenUrlRequested) },
+                    )
+                }
+            }
+        }
+    }
+
+    CommunityListsContent(model.community, lang, onOpenUrlRequested)
+
+    if (model.latestRelease == null && model.checkState == SettingsUpdateCheckState.NoCompatibleRelease) {
+        Text(
+            AppStrings.t(lang, "settings.no_app_release"),
+            color = Color.White.copy(alpha = 0.62f),
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+            modifier = Modifier.padding(top = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun CommunityListsContent(
+    community: SettingsCommunityUiModel,
+    lang: String?,
+    onOpenUrlRequested: (String) -> Unit,
+) {
+    var contributorSort by remember { mutableStateOf("contributions") }
+    var supporterSort by remember { mutableStateOf("support_count") }
+    val contributorOptions = listOf(
+        SettingsChoiceOption("contributions", AppStrings.t(lang, "community.sort_most")),
+        SettingsChoiceOption("latest", AppStrings.t(lang, "community.sort_latest")),
+    )
+    val supporterOptions = listOf(
+        SettingsChoiceOption("support_count", AppStrings.t(lang, "community.sort_most_support")),
+        SettingsChoiceOption("latest", AppStrings.t(lang, "community.sort_latest")),
+    )
+    val contributors = when (contributorSort) {
+        "latest" -> community.contributors.sortedByDescending { it.latestContributionAt.orEmpty() }
+        else -> community.contributors.sortedByDescending { it.contributions }
+    }
+    val supporters = when (supporterSort) {
+        "latest" -> community.supporters.sortedByDescending { it.supportedAt.orEmpty() }
+        else -> community.supporters.sortedByDescending { it.supportCount }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "community.contributors"))
+    SettingsGroupCard {
+        SettingsChoiceRow(
+            AppStrings.t(lang, "community.sort_by"),
+            contributorSort,
+            contributorOptions,
+        ) { contributorSort = it }
+        if (contributors.isEmpty()) {
+            SettingsEmptyCommunityRow(AppStrings.t(lang, "community.no_contributors"))
+        } else {
+            contributors.forEach { contributor ->
+                CommunityPersonRow(
+                    name = contributor.login,
+                    avatarUrl = contributor.avatarUrl,
+                    detail = contributor.contributions.toString(),
+                    onClick = { contributor.profileUrl?.let(onOpenUrlRequested) },
+                )
+            }
+        }
+    }
+
+    SettingsSectionHeader(AppStrings.t(lang, "community.supporters"))
+    SettingsGroupCard {
+        SettingsChoiceRow(
+            AppStrings.t(lang, "community.sort_by"),
+            supporterSort,
+            supporterOptions,
+        ) { supporterSort = it }
+        if (supporters.isEmpty()) {
+            SettingsEmptyCommunityRow(AppStrings.t(lang, "community.no_supporters"))
+        } else {
+            supporters.forEach { supporter ->
+                CommunityPersonRow(
+                    name = supporter.displayName?.takeIf { it.isNotBlank() } ?: supporter.login,
+                    avatarUrl = supporter.avatarUrl,
+                    detail = supporter.supportCount.toString(),
+                    onClick = { supporter.profileUrl?.let(onOpenUrlRequested) },
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CommunityPersonRow(
+    name: String,
+    avatarUrl: String?,
+    detail: String,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .settingsRowDivider()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        CommunityAvatar(name, avatarUrl)
+        Text(name, color = Color.White, modifier = Modifier.weight(1f), fontSize = 14.sp)
+        Text(detail, color = Color.White.copy(alpha = 0.55f), fontSize = 12.sp)
+    }
+}
+
+@Composable
+private fun CommunityAvatar(name: String, avatarUrl: String?) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(FluxaColors.surfaceRaised),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (!avatarUrl.isNullOrBlank()) {
+            com.fluxa.app.shared.image.FluxaRemoteImage(
+                imageUrl = avatarUrl,
+                cacheKey = "community-avatar:$name",
+                contentDescription = name,
+                modifier = Modifier.fillMaxSize().clip(CircleShape),
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+            )
+        } else {
+            Text(name.take(1).uppercase(), color = Color.White, fontSize = 14.sp)
+        }
+    }
+}
+
+@Composable
+private fun SettingsEmptyCommunityRow(text: String) {
+    Text(
+        text,
+        color = Color.White.copy(alpha = 0.58f),
+        fontSize = 13.sp,
+        modifier = Modifier.padding(vertical = 14.dp),
+    )
+}
+
+private fun formatReleasePublishedAt(value: String): String {
+    val parts = value.removeSuffix("Z").split("T")
+    val date = parts.getOrNull(0).orEmpty()
+    val time = parts.getOrNull(1).orEmpty().substringBefore(".").take(5)
+    return listOf(date, time).filter { it.isNotBlank() }.joinToString(" · ")
+}
+
+private fun formatReleaseNotes(value: String): String = value
+    .lines()
+    .map { line ->
+        line
+            .replace(Regex("\\[([^\\]]+)]\\([^)]*\\)"), "$1")
+            .replace(Regex("`([^`]+)`"), "$1")
+            .replace(Regex("^#{1,6}\\s*"), "")
+            .let { cleaned -> if (cleaned.startsWith("- ")) "• ${cleaned.drop(2)}" else cleaned }
+    }
+    .joinToString("\n")
+    .trim()
 
 @Composable
 internal fun SettingsAppearanceContent(model: SettingsAppearanceUiModel, lang: String?, onAction: (SettingsAction) -> Unit, onNavigate: (SettingsCategory) -> Unit, onImportThemeRequested: ((String?) -> Unit) -> Unit) {

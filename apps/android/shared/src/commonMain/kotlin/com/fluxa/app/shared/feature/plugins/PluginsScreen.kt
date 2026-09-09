@@ -30,8 +30,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +51,7 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.FluxaSwitch
 
 @Composable
 fun PluginsScreen(
@@ -194,13 +193,10 @@ fun PluginsScreen(
                                     fontSize = 12.sp
                                 )
                             }
-                            Switch(
+                            FluxaSwitch(
                                 checked = state.cloudstreamAutomaticUpdatesEnabled,
                                 onCheckedChange = { enabled -> onAction(PluginsAction.CloudstreamAutomaticUpdatesChanged(enabled)) },
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.Black,
-                                    checkedTrackColor = Color.White
-                                )
+                                accentColor = Color.White,
                             )
                         }
 
@@ -543,15 +539,10 @@ private fun PluginScraperRow(
             )
             Spacer(Modifier.width(4.dp))
         }
-        Switch(
+        FluxaSwitch(
             checked = scraper.enabled,
             onCheckedChange = onToggle,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = Color.White,
-                checkedThumbColor = Color.Black,
-                uncheckedTrackColor = Color.White.copy(alpha = 0.18f),
-                uncheckedThumbColor = Color.White.copy(alpha = 0.72f)
-            )
+            accentColor = Color.White,
         )
     }
 }

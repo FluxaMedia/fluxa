@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.localmedia
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import java.io.InputStream
 
 data class LocalMediaFileCandidate(
@@ -22,12 +23,4 @@ interface LocalMediaSourceReader {
     fun open(source: LocalMediaSourceConfig, locator: String, offset: Long): LocalMediaOpenedStream
 }
 
-fun localMediaContentType(name: String): String = when (name.substringAfterLast('.', "").lowercase()) {
-    "mp4", "m4v" -> "video/mp4"
-    "webm" -> "video/webm"
-    "ts", "m2ts" -> "video/mp2t"
-    "mov" -> "video/quicktime"
-    "avi" -> "video/x-msvideo"
-    "mkv" -> "video/x-matroska"
-    else -> "application/octet-stream"
-}
+fun localMediaContentType(name: String): String = FluxaCoreNative.localMediaContentType(name)

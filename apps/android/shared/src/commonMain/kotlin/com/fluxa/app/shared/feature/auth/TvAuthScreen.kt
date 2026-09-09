@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.auth
 
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.FluxaUiTokens
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -13,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -41,12 +43,15 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.LocalAccentColor
 
 @Composable
 fun TvAuthScreen(
@@ -54,7 +59,6 @@ fun TvAuthScreen(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    fluxaIcon: @Composable () -> Unit,
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(state.isAuthenticated) {
@@ -70,7 +74,7 @@ fun TvAuthScreen(
     ) {
         Box(modifier = Modifier.widthIn(max = 600.dp).fillMaxWidth()) {
             when (state.stage) {
-                AuthStage.Credentials -> TvCredentialsStage(state, language, onAction, nuvioIcon, fluxaIcon)
+                AuthStage.Credentials -> TvCredentialsStage(state, language, onAction, nuvioIcon)
                 AuthStage.Nuvio -> TvNuvioCredentialsStage(state, language, onAction, nuvioIcon)
                 AuthStage.NuvioImporting -> TvNuvioImportingStage(state, language, onAction)
                 AuthStage.DeviceQr -> DeviceQrStage(state, language, onAction)
@@ -96,6 +100,24 @@ private fun TvFocusRing(
 }
 
 @Composable
+private fun TvAuthDivider(language: String?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(FluxaUiTokens.colorBorder))
+        Text(
+            text = AppStrings.t(language, "auth.or"),
+            color = FluxaUiTokens.colorTextMuted,
+            fontSize = FluxaUiTokens.typographyAuthCaption,
+            fontWeight = FontWeight.SemiBold
+        )
+        Box(Modifier.weight(1f).height(1.dp).background(FluxaUiTokens.colorBorder))
+    }
+}
+
+@Composable
 private fun TvAuthProviderButton(
     label: String,
     icon: @Composable () -> Unit,
@@ -111,8 +133,8 @@ private fun TvAuthProviderButton(
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
                 .onFocusChanged { focused = it.isFocused }
                 .fillMaxWidth()
-                .height(72.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .height(FluxaUiTokens.authProviderHeight)
+                .clip(RoundedCornerShape(FluxaUiTokens.shapeControl))
                 .background(if (focused) Color.White else FluxaColors.surfaceRaised)
                 .clickable(onClick = onClick)
                 .padding(horizontal = 24.dp),
@@ -124,7 +146,7 @@ private fun TvAuthProviderButton(
                 label,
                 color = if (focused) Color.Black else contentColor,
                 fontWeight = FontWeight.SemiBold,
-                fontSize = 18.sp,
+                fontSize = FluxaUiTokens.typographyAuthControl,
             )
         }
     }
@@ -144,15 +166,15 @@ private fun TvAuthSubmitButton(
                 .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
                 .onFocusChanged { focused = it.isFocused }
                 .fillMaxWidth()
-                .height(56.dp)
-                .background(if (focused) FluxaColors.accent else FluxaColors.surfaceRaised)
+                .height(FluxaUiTokens.authSubmitHeight)
+                .background(if (focused) LocalAccentColor.current else FluxaColors.surfaceRaised)
                 .clickable(enabled = !isSubmitting, onClick = onClick),
             contentAlignment = Alignment.Center
         ) {
             if (isSubmitting) {
                 CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
-                Text(label, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                Text(label, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = FluxaUiTokens.typographyAuthControl)
             }
         }
     }
@@ -181,8 +203,9 @@ private fun TvCredentialsStage(
     language: String?,
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
-    fluxaIcon: @Composable () -> Unit,
 ) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
     val primaryFocusRequester = remember { FocusRequester() }
     LaunchedEffect(state.showProviderActions) {
         primaryFocusRequester.requestFocus()
@@ -192,97 +215,42 @@ private fun TvCredentialsStage(
         modifier = Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(horizontal = 4.dp, vertical = 28.dp)
+            .padding(horizontal = FluxaUiTokens.spacingScreen, vertical = 28.dp)
     ) {
-        TvAuthBackButton(onClick = { onAction(if (state.showProviderActions) AuthAction.BackRequested else AuthAction.BackToRoot) })
-        Spacer(Modifier.height(32.dp))
+        if (state.showProviderActions) {
+            Spacer(Modifier.height(40.dp))
+        } else {
+            TvAuthBackButton(onClick = { onAction(AuthAction.BackToRoot) })
+            Spacer(Modifier.height(32.dp))
+        }
 
         if (state.showProviderActions) {
             Text(
                 text = AppStrings.t(language, "auth.welcome_back"),
                 color = Color.White,
-                fontSize = 30.sp,
+                fontSize = FluxaUiTokens.typographyAuthTitle,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
             )
             Spacer(Modifier.height(8.dp))
             Text(
                 text = AppStrings.t(language, "auth.choose_login_method"),
                 color = Color.White.copy(alpha = 0.58f),
-                fontSize = 15.sp,
+                fontSize = FluxaUiTokens.typographyAuthSubtitle,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(24.dp))
-            TvAuthProviderButton(
-                label = AppStrings.t(language, "auth.continue_with_nuvio"),
-                icon = nuvioIcon,
-                containerColor = FluxaColors.surfaceCard,
-                contentColor = Color.White,
-                onClick = { onAction(AuthAction.ContinueWithNuvio) },
-                focusRequester = primaryFocusRequester
-            )
-            Spacer(Modifier.height(12.dp))
-            TvAuthProviderButton(
-                label = AppStrings.t(language, "auth.continue_with_fluxa"),
-                icon = fluxaIcon,
-                containerColor = Color.White.copy(alpha = 0.08f),
-                contentColor = Color.White,
-                onClick = { onAction(AuthAction.ContinueWithFluxa) }
-            )
-            Spacer(Modifier.height(24.dp))
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
         } else {
             Spacer(Modifier.height(24.dp))
         }
 
-        if (state.showProviderActions) {
-            Spacer(Modifier.height(12.dp))
-            var skipFocused by remember { mutableStateOf(false) }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(10.dp))
-                    .border(width = if (skipFocused) 2.dp else 0.dp, color = Color.White, shape = RoundedCornerShape(10.dp))
-                    .onFocusChanged { skipFocused = it.isFocused }
-                    .clickable { onAction(AuthAction.ContinueWithoutAccount) }
-                    .padding(vertical = 12.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f))
-            }
-            return@Column
-        }
-
-        if (state.allowSignup) {
-            var plannedFocused by remember { mutableStateOf(false) }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .padding(4.dp)
-            ) {
-                listOf(false to AppStrings.t(language, "auth.log_in"), true to AppStrings.t(language, "auth.sign_up")).forEach { (signup, label) ->
-                    val selected = state.isSignupTab == signup
-                    var focused by remember(signup) { mutableStateOf(false) }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .border(width = if (focused) 2.dp else 0.dp, color = Color.White, shape = RoundedCornerShape(10.dp))
-                            .background(if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
-                            .onFocusChanged { focused = it.isFocused }
-                            .clickable { onAction(AuthAction.TabChanged(signup)) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(label, color = Color.White, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
-                    }
-                }
-            }
-        } else {
-            Text(AppStrings.t(language, "auth.log_in"), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        }
-
-        Spacer(Modifier.height(20.dp))
-
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(0.dp)
+        ) {
         OutlinedTextField(
             value = state.email,
             onValueChange = { onAction(AuthAction.EmailChanged(it)) },
@@ -291,7 +259,8 @@ private fun TvCredentialsStage(
             supportingText = state.emailError?.let { { Text(it) } },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
             singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+            modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
             colors = tvAuthFieldColors()
         )
         Spacer(Modifier.height(12.dp))
@@ -301,21 +270,27 @@ private fun TvCredentialsStage(
             label = { Text(AppStrings.t(language, "auth.field.password")) },
             isError = state.passwordError != null,
             supportingText = state.passwordError?.let { { Text(it) } },
-            visualTransformation = PasswordVisualTransformation(),
+            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            trailingIcon = {
+                AuthPasswordVisibilityToggle(passwordVisible, language) { passwordVisible = !passwordVisible }
+            },
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
             singleLine = true,
             modifier = Modifier.fillMaxWidth(),
             colors = tvAuthFieldColors()
         )
         if (state.allowSignup && state.isSignupTab) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
             OutlinedTextField(
                 value = state.confirmPassword,
                 onValueChange = { onAction(AuthAction.ConfirmPasswordChanged(it)) },
                 label = { Text(AppStrings.t(language, "auth.field.confirm_password")) },
                 isError = state.confirmError != null,
                 supportingText = state.confirmError?.let { { Text(it) } },
-                visualTransformation = PasswordVisualTransformation(),
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    AuthPasswordVisibilityToggle(confirmPasswordVisible, language) { confirmPasswordVisible = !confirmPasswordVisible }
+                },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
@@ -327,7 +302,7 @@ private fun TvCredentialsStage(
             Text(it, color = FluxaColors.errorRed, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
 
         TvAuthSubmitButton(
             label = if (state.allowSignup && state.isSignupTab) AppStrings.t(language, "auth.create_account") else AppStrings.t(language, "auth.log_in"),
@@ -335,6 +310,61 @@ private fun TvCredentialsStage(
             onClick = { onAction(AuthAction.Submit) }
         )
 
+        if (state.allowSignup) {
+            var switchFocused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .onFocusChanged { switchFocused = it.isFocused }
+                    .border(
+                        width = if (switchFocused) 2.dp else 0.dp,
+                        color = Color.White,
+                        shape = RoundedCornerShape(FluxaUiTokens.shapeControl)
+                    )
+                    .clickable { onAction(AuthAction.TabChanged(!state.isSignupTab)) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    AppStrings.t(
+                        language,
+                        if (state.isSignupTab) "auth.already_have_account_sign_in" else "auth.no_account_sign_up"
+                    ),
+                    color = FluxaUiTokens.colorTextSecondary,
+                    fontSize = FluxaUiTokens.typographyAuthCaption,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+        }
+
+        if (state.showProviderActions && !state.isSignupTab) {
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+            TvAuthDivider(language)
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            TvAuthProviderButton(
+                label = AppStrings.t(language, "auth.continue_with_nuvio"),
+                icon = nuvioIcon,
+                containerColor = FluxaUiTokens.colorSurfaceRaised,
+                contentColor = Color.White,
+                onClick = { onAction(AuthAction.ContinueWithNuvio) },
+                focusRequester = primaryFocusRequester
+            )
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            var skipFocused by remember { mutableStateOf(false) }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(FluxaUiTokens.shapeControl))
+                    .border(width = if (skipFocused) 2.dp else 0.dp, color = Color.White, shape = RoundedCornerShape(FluxaUiTokens.shapeControl))
+                    .onFocusChanged { skipFocused = it.isFocused }
+                    .clickable { onAction(AuthAction.ContinueWithoutAccount) }
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(AppStrings.t(language, "auth.continue_without_account"), color = FluxaUiTokens.colorTextMuted, fontSize = FluxaUiTokens.typographyAuthCaption)
+            }
+        }
     }
 }
 
@@ -345,43 +375,83 @@ private fun TvNuvioCredentialsStage(
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp)) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = FluxaUiTokens.spacingScreen, vertical = 28.dp)
+    ) {
         TvAuthBackButton(onClick = { onAction(AuthAction.BackToRoot) })
-        Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Spacer(Modifier.height(24.dp))
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             nuvioIcon()
-            Text(AppStrings.t(language, "auth.nuvio.title"), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.height(12.dp))
+            Text(
+                AppStrings.t(language, "auth.nuvio.title"),
+                color = Color.White,
+                fontSize = FluxaUiTokens.typographyAuthTitle,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                AppStrings.t(language, "auth.nuvio.subtitle"),
+                color = FluxaUiTokens.colorTextSecondary,
+                fontSize = FluxaUiTokens.typographyAuthSubtitle,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(FluxaUiTokens.shapeAuthCard))
+                .background(FluxaUiTokens.colorSurface.copy(alpha = 0.72f))
+                .border(1.dp, FluxaUiTokens.colorBorder, RoundedCornerShape(FluxaUiTokens.shapeAuthCard))
+                .padding(FluxaUiTokens.spacingAuthCardPadding)
+        ) {
+            OutlinedTextField(
+                value = state.email,
+                onValueChange = { onAction(AuthAction.EmailChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.email")) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Email, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                colors = tvAuthFieldColors()
+            )
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            OutlinedTextField(
+                value = state.password,
+                onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.password")) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    AuthPasswordVisibilityToggle(passwordVisible, language) { passwordVisible = !passwordVisible }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                colors = tvAuthFieldColors()
+            )
+            state.globalError?.let {
+                Text(it, color = FluxaColors.errorRed, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+            TvAuthSubmitButton(
+                label = AppStrings.t(language, "auth.nuvio.sign_in"),
+                isSubmitting = state.isSubmitting,
+                onClick = { onAction(AuthAction.Submit) }
+            )
         }
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(
-            value = state.email,
-            onValueChange = { onAction(AuthAction.EmailChanged(it)) },
-            label = { Text(AppStrings.t(language, "auth.field.email")) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = tvAuthFieldColors()
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.password,
-            onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
-            label = { Text(AppStrings.t(language, "auth.field.password")) },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = tvAuthFieldColors()
-        )
-        state.globalError?.let {
-            Text(it, color = FluxaColors.errorRed, modifier = Modifier.padding(top = 8.dp))
-        }
-        Spacer(Modifier.height(20.dp))
-        TvAuthSubmitButton(
-            label = AppStrings.t(language, "auth.nuvio.sign_in"),
-            isSubmitting = state.isSubmitting,
-            onClick = { onAction(AuthAction.Submit) }
-        )
     }
 }
 
@@ -469,11 +539,15 @@ private val TV_IMPORT_STEP_ORDER = listOf(
 
 @Composable
 private fun tvAuthFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
-    focusedBorderColor = Color.White,
-    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-    focusedLabelColor = Color.White.copy(alpha = 0.9f),
-    unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
-    cursorColor = Color.White
+    focusedTextColor = FluxaUiTokens.colorTextPrimary,
+    unfocusedTextColor = FluxaUiTokens.colorTextPrimary,
+    focusedBorderColor = FluxaUiTokens.colorFocus,
+    unfocusedBorderColor = FluxaUiTokens.colorBorderStrong,
+    focusedLabelColor = FluxaUiTokens.colorTextPrimary.copy(alpha = 0.9f),
+    unfocusedLabelColor = FluxaUiTokens.colorTextMuted,
+    focusedContainerColor = FluxaUiTokens.colorSurfaceRaised.copy(alpha = 0.72f),
+    unfocusedContainerColor = FluxaUiTokens.colorSurface.copy(alpha = 0.72f),
+    focusedTrailingIconColor = FluxaUiTokens.colorTextSecondary,
+    unfocusedTrailingIconColor = FluxaUiTokens.colorTextMuted,
+    cursorColor = FluxaUiTokens.colorFocus
 )

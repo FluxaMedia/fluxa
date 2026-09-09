@@ -330,6 +330,7 @@ private fun FluxaAppHostContent(
         authStore?.state?.collectAsState()?.value
     } else null
     LaunchedEffect(appState.uiState.destination) {
+        libraryStore?.dispatch(LibraryAction.FolderClosed)
         onDestinationChanged(appState.uiState.destination)
     }
     var profileAvatarUrl by remember(appState.uiState.editingProfile) {
@@ -732,6 +733,7 @@ private fun FluxaAppHostContent(
             authBackdrop = authBackdrop,
             biometricAvailable = biometricAvailable,
             showNavigationBar = showNavigationBar,
+            settingsUpdates = config.settingsUpdates,
         ),
         modifier = modifier,
     )

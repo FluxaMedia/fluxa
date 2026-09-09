@@ -60,13 +60,19 @@ fun CatalogCard(
     var focused by remember { mutableStateOf(false) }
     var animatedArtworkFailed by remember(model.animatedArtworkUrl) { mutableStateOf(false) }
     var artworkFailed by remember(model.artworkUrl) { mutableStateOf(model.artworkUrl.isNullOrBlank()) }
-    val wantsAnimatedArtwork = (focused || hovered) &&
+    val wantsAnimatedArtwork = (model.preferAnimatedArtwork || focused || hovered) &&
         !animatedArtworkFailed &&
         !model.animatedArtworkUrl.isNullOrBlank()
-    var showAnimatedArtwork by remember(model.animatedArtworkUrl) { mutableStateOf(false) }
-    LaunchedEffect(wantsAnimatedArtwork, focused, deviceType) {
-        showAnimatedArtwork = false
-        if (wantsAnimatedArtwork) {
+    var showAnimatedArtwork by remember(model.animatedArtworkUrl, model.preferAnimatedArtwork) {
+        mutableStateOf(model.preferAnimatedArtwork)
+    }
+    LaunchedEffect(wantsAnimatedArtwork, focused, deviceType, model.preferAnimatedArtwork) {
+        if (!wantsAnimatedArtwork) {
+            showAnimatedArtwork = false
+        } else if (model.preferAnimatedArtwork) {
+            showAnimatedArtwork = true
+        } else {
+            showAnimatedArtwork = false
             // TV must still play focus artwork. A short debounce avoids starting a decoder
             // for cards that the user crosses during a fast D-pad burst.
             val delayMs = when {

@@ -43,7 +43,6 @@ import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.shared.feature.profile.ProfileDefaultAvatar
 import com.fluxa.app.ui.catalog.LocalAccentColor
-import com.fluxa.app.ui.catalog.FluxaTvIcons
 
 private data class TvSidebarItem(
     val destination: FluxaDestination,
@@ -52,11 +51,11 @@ private data class TvSidebarItem(
 )
 
 private val TvSidebarItems = listOf(
-    TvSidebarItem(FluxaDestination.Home, { FluxaIcons.Outlined.Home }, "nav.home"),
-    TvSidebarItem(FluxaDestination.Discover, { FluxaIcons.Outlined.Explore }, "nav.discover"),
-    TvSidebarItem(FluxaDestination.Calendar, { FluxaTvIcons.ReleaseTimeline }, "nav.calendar"),
-    TvSidebarItem(FluxaDestination.Library, { FluxaIcons.Rounded.AnimatedImages }, "nav.library"),
-    TvSidebarItem(FluxaDestination.Settings, { FluxaIcons.Outlined.Settings }, "nav.settings")
+    TvSidebarItem(FluxaDestination.Home, { FluxaIcons.Navigation.Home }, "nav.home"),
+    TvSidebarItem(FluxaDestination.Discover, { FluxaIcons.Navigation.Discover }, "nav.discover"),
+    TvSidebarItem(FluxaDestination.Calendar, { FluxaIcons.Navigation.Calendar }, "nav.calendar"),
+    TvSidebarItem(FluxaDestination.Library, { FluxaIcons.Navigation.Library }, "nav.library"),
+    TvSidebarItem(FluxaDestination.Settings, { FluxaIcons.Navigation.Settings }, "nav.settings")
 )
 
 @Composable

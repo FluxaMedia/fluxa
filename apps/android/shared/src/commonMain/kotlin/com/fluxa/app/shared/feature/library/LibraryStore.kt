@@ -1,6 +1,9 @@
 package com.fluxa.app.shared.feature.library
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -9,10 +12,11 @@ import kotlinx.coroutines.flow.stateIn
 
 class LibraryStore(
     private val dataSource: LibraryDataSource,
-    scope: CoroutineScope
+    private val scope: CoroutineScope
 ) {
     private val folderDetail = MutableStateFlow(LibraryFolderDetailUiState())
     private val folderEditor = MutableStateFlow(LibraryFolderEditorUiState())
+    private var folderLoadJob: Job? = null
 
     val state: StateFlow<LibraryUiState> = combine(
         dataSource.observeLibrary(),
@@ -31,11 +35,22 @@ class LibraryStore(
             is LibraryAction.DownloadOpened -> Unit
             is LibraryAction.DownloadCancelled -> dataSource.cancelDownload(action.id)
             is LibraryAction.FolderSelected -> {
+                folderLoadJob?.cancel()
                 folderDetail.value = LibraryFolderDetailUiState(folder = action.folder, isLoading = true)
-                val sections = dataSource.loadFolder(action.folder)
-                folderDetail.value = LibraryFolderDetailUiState(folder = action.folder, sections = sections, isLoading = false)
+                folderLoadJob = scope.launch {
+                    val sections = dataSource.loadFolder(action.folder)
+                    if (isActive && folderDetail.value.folder?.id == action.folder.id) {
+                        folderDetail.value = LibraryFolderDetailUiState(
+                            folder = action.folder,
+                            sections = sections,
+                            isLoading = false
+                        )
+                    }
+                }
             }
             LibraryAction.FolderClosed -> {
+                folderLoadJob?.cancel()
+                folderLoadJob = null
                 folderDetail.value = LibraryFolderDetailUiState()
             }
             is LibraryAction.FolderEditorOpened -> {

@@ -6,6 +6,8 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -116,7 +118,6 @@ internal fun FluxaApp(
     val settingsBrandIcons = presentation.settingsBrandIcons
     val nuvioIcon = presentation.nuvioIcon
     val stremioIcon = presentation.stremioIcon
-    val fluxaIcon = presentation.fluxaIcon
     val authBackdrop = presentation.authBackdrop
     val biometricAvailable = presentation.biometricAvailable
     val showNavigationBar = presentation.showNavigationBar
@@ -133,7 +134,7 @@ internal fun FluxaApp(
     val streamBadgesState = features.streamBadges
     val authState = features.auth
     val playerState = features.player
-    val accentColor = profileState?.activeProfile?.accentColorArgb?.let { Color(it) } ?: FluxaColors.accent
+    val accentColor = profileState?.activeProfile?.accentColorArgb?.let { Color(it) } ?: Color.White
 
     val onDestinationSelected = actions.onDestinationSelected
     val onCatalogAction = actions.onCatalogAction
@@ -253,8 +254,14 @@ internal fun FluxaApp(
                             fadeIn(tween(180)).togetherWith(fadeOut(tween(130)))
                         }
                         else -> {
-                            // Avoid scaling two full bitmap-heavy routes at once on mobile.
-                            fadeIn(tween(220)).togetherWith(fadeOut(tween(160)))
+                            slideInHorizontally(
+                                animationSpec = tween(280),
+                                initialOffsetX = { it / 5 }
+                            ) + fadeIn(tween(220)) togetherWith
+                                (slideOutHorizontally(
+                                    animationSpec = tween(240),
+                                    targetOffsetX = { -it / 8 }
+                                ) + fadeOut(tween(160)))
                         }
                     }
                 },
@@ -346,7 +353,8 @@ internal fun FluxaApp(
                     } ?: DetailPresentationOptions(),
                     modifier = Modifier.fillMaxSize().then(tvRouteModifier)
                 )
-                libraryState?.folderDetail?.folder != null -> LibraryFolderDetailScreen(
+                state.destination in setOf(FluxaDestination.Home, FluxaDestination.Library) &&
+                    libraryState?.folderDetail?.folder != null -> LibraryFolderDetailScreen(
                     state = libraryState.folderDetail,
                     language = state.language,
                     onBack = { onLibraryAction(LibraryAction.FolderClosed) },
@@ -435,6 +443,7 @@ internal fun FluxaApp(
                 )
                 state.destination == FluxaDestination.Settings && settingsState != null -> SettingsScreen(
                     state = settingsState,
+                    updates = presentation.settingsUpdates,
                     language = state.language,
                     backStack = state.settingsBackStack,
                     onAction = onSettingsAction,
@@ -450,6 +459,7 @@ internal fun FluxaApp(
                     onPushCategory = onSettingsPushCategory,
                     onPopCategory = onSettingsPopCategory,
                     onSelectCategory = onSettingsSelectCategory,
+                    onOpenUrlRequested = onOpenUrlRequested,
                     onImportThemeRequested = onImportThemeRequested,
                     deviceType = deviceType,
                     brandIcons = settingsBrandIcons,
@@ -484,7 +494,6 @@ internal fun FluxaApp(
                     language = state.language,
                     onAction = onAuthAction,
                     nuvioIcon = nuvioIcon,
-                    fluxaIcon = fluxaIcon,
                     modifier = Modifier.fillMaxSize()
                 )
                 state.destination == FluxaDestination.Auth && authState != null -> AuthScreen(

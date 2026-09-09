@@ -1,5 +1,6 @@
 package com.fluxa.app.shared.feature.localmedia
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.platform.PlatformSecureStore
 import kotlinx.coroutines.CoroutineDispatcher
@@ -233,10 +234,8 @@ class JvmLocalMediaLibraryService(
     }
 
     private fun episodeMatchesVideoId(file: LocalMediaIndexedFile, videoId: String): Boolean {
-        val parts = videoId.split(':')
-        val season = parts.getOrNull(parts.lastIndex - 1)?.toIntOrNull()
-        val episode = parts.lastOrNull()?.toIntOrNull()
-        return season != null && episode != null && file.season == season && file.episode == episode
+        val locator = FluxaCoreNative.parseEpisodeLocator(videoId) ?: return false
+        return file.season == locator.season && file.episode == locator.episode
     }
 
     private fun openFile(fileId: String, offset: Long): LocalMediaOpenedStream? {

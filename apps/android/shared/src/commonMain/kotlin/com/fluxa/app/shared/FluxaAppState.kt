@@ -20,8 +20,10 @@ class FluxaAppState internal constructor(initialState: FluxaAppUiState) {
         uiState = uiState.copy(
             destination = destination,
             selectedDetail = null,
+            showSourceSelection = false,
             selectedCategoryId = null,
             selectedCategoryTitle = null,
+            showNotifications = false,
             editingProfile = null,
             showProfilePickerSettings = false,
             initialLibrarySection = null

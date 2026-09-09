@@ -22,8 +22,6 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -41,7 +39,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -52,11 +49,12 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.ui.catalog.FluxaSwitch
 
 data class SettingsChoiceOption(val value: String, val label: String, val description: String? = null)
 
 val LocalSettingsHighlightLabel = compositionLocalOf<String?> { null }
-val LocalSettingsAccentColor = compositionLocalOf { FluxaColors.accent }
+val LocalSettingsAccentColor = compositionLocalOf { Color.White }
 private val LocalSettingsGroupRowCounter = compositionLocalOf<IntArray?> { null }
 
 fun Modifier.settingsHighlight(highlighted: Boolean): Modifier = composed {
@@ -169,19 +167,11 @@ fun SettingsToggleRow(label: String, description: String? = null, value: Boolean
         }
         Spacer(Modifier.width(12.dp))
         val accentColor = LocalSettingsAccentColor.current
-        val checkedThumbColor = if (accentColor.luminance() > 0.5f) Color.Black else Color.White
-        Switch(
+        FluxaSwitch(
             checked = value,
             onCheckedChange = null,
             modifier = Modifier.scale(0.82f),
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = checkedThumbColor,
-                checkedTrackColor = accentColor,
-                checkedBorderColor = Color.Transparent,
-                uncheckedThumbColor = Color.White.copy(alpha = 0.8f),
-                uncheckedTrackColor = Color.White.copy(alpha = FluxaDimensions.Alpha.trackInactive),
-                uncheckedBorderColor = Color.Transparent
-            )
+            accentColor = accentColor,
         )
     }
 }

@@ -249,7 +249,7 @@ fun MobilePlayerSeekbar(
     duration: Long,
     bufferedFraction: Float,
     onSeek: (Long) -> Unit,
-    accentColor: Color = FluxaColors.accent,
+    accentColor: Color = Color.White,
     onScrubbingChange: (Boolean, Long) -> Unit = { _, _ -> },
     seekPreviewBitmap: ImageBitmap? = null,
     chapters: List<Chapter> = emptyList()
@@ -455,7 +455,7 @@ fun MobilePlayerUIContent(
     scrubPosition: Long = 0L,
     onScrubbingChange: (Boolean, Long) -> Unit = { _, _ -> },
     seekPreviewBitmap: ImageBitmap? = null,
-    accentColor: Color = FluxaColors.accent
+    accentColor: Color = Color.White
 ) {
     val duration = controls.duration
     val position = controls.position

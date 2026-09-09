@@ -26,8 +26,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -46,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.shared.image.FluxaRemoteImage
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.FluxaSwitch
 
 @Composable
 fun AddonStoreScreen(
@@ -290,15 +289,11 @@ private fun InstalledAddonItem(
             }
         }
         if (addon.canRemove) {
-            Switch(
+            FluxaSwitch(
                 checked = addon.isEnabled,
                 onCheckedChange = onToggleEnabled,
                 modifier = Modifier.align(Alignment.TopEnd).height(40.dp),
-                colors = SwitchDefaults.colors(
-                    checkedTrackColor = accentColor,
-                    uncheckedThumbColor = Color.White.copy(alpha = 0.72f),
-                    uncheckedTrackColor = Color.White.copy(alpha = 0.18f)
-                )
+                accentColor = accentColor,
             )
         }
     }

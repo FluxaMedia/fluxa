@@ -27,7 +27,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,6 +47,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.fluxa.app.ui.catalog.FluxaSwitch
 import com.fluxa.app.shared.ui.AdaptiveModalSheet
 import kotlinx.coroutines.launch
 import com.fluxa.app.common.AppStrings
@@ -226,7 +226,7 @@ fun ProfileEditScreen(
                         Text(AppStrings.t(language, "profiles.biometric_lock"), color = Color.White, fontWeight = FontWeight.Medium)
                         Text(AppStrings.t(language, "profiles.biometric_lock_desc"), color = Color.Gray, fontSize = 12.sp)
                     }
-                    Switch(checked = biometricEnabled, onCheckedChange = { biometricEnabled = it })
+                    FluxaSwitch(checked = biometricEnabled, onCheckedChange = { biometricEnabled = it })
                 }
             }
         }

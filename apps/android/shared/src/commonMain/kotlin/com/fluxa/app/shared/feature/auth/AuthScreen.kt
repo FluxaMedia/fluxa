@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -21,28 +22,38 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.FluxaColors
+import com.fluxa.app.ui.catalog.FluxaUiTokens
 
 @Composable
 fun AuthScreen(
@@ -59,7 +70,7 @@ fun AuthScreen(
 
     Box(
         modifier = modifier.fillMaxSize().then(
-            if (backdrop == null) Modifier.background(FluxaColors.backgroundNearBlack) else Modifier
+            if (backdrop == null) Modifier.background(FluxaUiTokens.colorBackground) else Modifier
         )
     ) {
         backdrop?.invoke()
@@ -67,11 +78,11 @@ fun AuthScreen(
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                 Box(
                     modifier = Modifier
-                        .widthIn(max = 420.dp)
+                        .widthIn(max = FluxaUiTokens.authDesktopMaxWidth)
                         .shadow(elevation = 40.dp, shape = RoundedCornerShape(28.dp), clip = false, ambientColor = Color.Black, spotColor = Color.Black)
-                        .clip(RoundedCornerShape(28.dp))
-                        .background(FluxaColors.backgroundNearBlack.copy(alpha = 0.97f))
-                        .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(28.dp))
+                        .clip(RoundedCornerShape(FluxaUiTokens.shapeAuthCard))
+                        .background(FluxaUiTokens.colorBackground.copy(alpha = 0.97f))
+                        .border(1.dp, FluxaUiTokens.colorBorder, RoundedCornerShape(FluxaUiTokens.shapeAuthCard))
                 ) {
                     when (state.stage) {
                         AuthStage.Credentials -> DesktopCredentialsCard(state, language, onAction, nuvioIcon)
@@ -144,20 +155,6 @@ private fun DesktopCredentialsCard(
             fontSize = 24.sp
         )
 
-        if (isRoot) {
-            Spacer(Modifier.height(28.dp))
-            DesktopProviderRow(
-                label = AppStrings.t(language, "auth.continue_with_nuvio"),
-                icon = nuvioIcon,
-                onClick = { onAction(AuthAction.ContinueWithNuvio) }
-            )
-            Spacer(Modifier.height(24.dp))
-            TextButton(onClick = { onAction(AuthAction.ContinueWithoutAccount) }, modifier = Modifier.fillMaxWidth()) {
-                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
-            }
-            return@Column
-        }
-
         Spacer(Modifier.height(24.dp))
         OutlinedTextField(
             value = state.email,
@@ -187,12 +184,29 @@ private fun DesktopCredentialsCard(
             modifier = Modifier.fillMaxWidth(),
             colors = desktopAuthFieldColors()
         )
+        if (state.allowSignup && state.isSignupTab) {
+            Spacer(Modifier.height(12.dp))
+            OutlinedTextField(
+                value = state.confirmPassword,
+                onValueChange = { onAction(AuthAction.ConfirmPasswordChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.confirm_password"), color = Color.White.copy(alpha = 0.3f)) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(18.dp)) },
+                isError = state.confirmError != null,
+                supportingText = state.confirmError?.let { { Text(it) } },
+                visualTransformation = PasswordVisualTransformation(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                shape = RoundedCornerShape(14.dp),
+                modifier = Modifier.fillMaxWidth(),
+                colors = desktopAuthFieldColors()
+            )
+        }
         state.globalError?.let {
             Spacer(Modifier.height(10.dp))
             Text(it, color = FluxaColors.errorRed, fontSize = 12.sp)
         }
 
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
         Button(
             onClick = { onAction(AuthAction.Submit) },
             enabled = !state.isSubmitting,
@@ -203,13 +217,59 @@ private fun DesktopCredentialsCard(
             if (state.isSubmitting) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
             } else {
-                Text(AppStrings.t(language, "auth.log_in"), fontWeight = FontWeight.SemiBold)
+                Text(
+                    AppStrings.t(
+                        language,
+                        if (state.allowSignup && state.isSignupTab) "auth.create_account" else "auth.log_in"
+                    ),
+                    fontWeight = FontWeight.SemiBold
+                )
             }
         }
 
-        Spacer(Modifier.height(16.dp))
-        TextButton(onClick = { onAction(AuthAction.BackToRoot) }, modifier = Modifier.fillMaxWidth()) {
-            Text(AppStrings.t(language, "common.back"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+        if (state.allowSignup) {
+            TextButton(
+                onClick = { onAction(AuthAction.TabChanged(!state.isSignupTab)) },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    AppStrings.t(
+                        language,
+                        if (state.isSignupTab) "auth.already_have_account_sign_in" else "auth.no_account_sign_up"
+                    ),
+                    color = FluxaUiTokens.colorTextSecondary,
+                    fontSize = FluxaUiTokens.typographyAuthCaption,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
+
+        if (isRoot && !state.isSignupTab) {
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(Modifier.weight(1f).height(1.dp).background(FluxaUiTokens.colorBorder))
+                Text(AppStrings.t(language, "auth.or"), color = FluxaUiTokens.colorTextMuted, fontSize = FluxaUiTokens.typographyAuthCaption)
+                Box(Modifier.weight(1f).height(1.dp).background(FluxaUiTokens.colorBorder))
+            }
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            DesktopProviderRow(
+                label = AppStrings.t(language, "auth.continue_with_nuvio"),
+                icon = nuvioIcon,
+                onClick = { onAction(AuthAction.ContinueWithNuvio) }
+            )
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            TextButton(onClick = { onAction(AuthAction.ContinueWithoutAccount) }, modifier = Modifier.fillMaxWidth()) {
+                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+            }
+        } else if (!isRoot) {
+            Spacer(Modifier.height(16.dp))
+            TextButton(onClick = { onAction(AuthAction.BackToRoot) }, modifier = Modifier.fillMaxWidth()) {
+                Text(AppStrings.t(language, "common.back"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
+            }
         }
     }
 }
@@ -253,9 +313,25 @@ private fun DesktopNuvioCard(
             text = AppStrings.t(language, "auth.nuvio.title"),
             color = Color.White,
             fontWeight = FontWeight.Bold,
-            fontSize = 22.sp
+            fontSize = FluxaUiTokens.typographyAuthTitle,
+            textAlign = TextAlign.Center,
         )
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = AppStrings.t(language, "auth.nuvio.subtitle"),
+            color = FluxaUiTokens.colorTextSecondary,
+            fontSize = FluxaUiTokens.typographyAuthSubtitle,
+            textAlign = TextAlign.Center,
+        )
+        Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(FluxaUiTokens.shapeAuthCard))
+                .background(FluxaUiTokens.colorSurface.copy(alpha = 0.72f))
+                .border(1.dp, FluxaUiTokens.colorBorder, RoundedCornerShape(FluxaUiTokens.shapeAuthCard))
+                .padding(FluxaUiTokens.spacingAuthCardPadding)
+        ) {
         OutlinedTextField(
             value = state.email,
             onValueChange = { onAction(AuthAction.EmailChanged(it)) },
@@ -284,13 +360,13 @@ private fun DesktopNuvioCard(
             Spacer(Modifier.height(10.dp))
             Text(it, color = FluxaColors.errorRed, fontSize = 12.sp)
         }
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
         Button(
             onClick = { onAction(AuthAction.Submit) },
             enabled = !state.isSubmitting,
-            modifier = Modifier.fillMaxWidth().height(50.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+            modifier = Modifier.fillMaxWidth().height(FluxaUiTokens.authSubmitHeight),
+            shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+            colors = ButtonDefaults.buttonColors(containerColor = FluxaUiTokens.colorTextPrimary, contentColor = FluxaUiTokens.colorBackground)
         ) {
             if (state.isSubmitting) {
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.Black, strokeWidth = 2.dp)
@@ -298,10 +374,29 @@ private fun DesktopNuvioCard(
                 Text(AppStrings.t(language, "auth.nuvio.sign_in"), fontWeight = FontWeight.SemiBold)
             }
         }
+        }
         Spacer(Modifier.height(16.dp))
         TextButton(onClick = { onAction(AuthAction.BackToRoot) }, modifier = Modifier.fillMaxWidth()) {
             Text(AppStrings.t(language, "common.back"), color = Color.White.copy(alpha = 0.5f), fontSize = 13.sp)
         }
+    }
+}
+
+@Composable
+private fun AuthDivider(language: String?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Box(Modifier.weight(1f).height(1.dp).background(FluxaUiTokens.colorBorder))
+        Text(
+            text = AppStrings.t(language, "auth.or"),
+            color = FluxaUiTokens.colorTextMuted,
+            fontSize = FluxaUiTokens.typographyAuthCaption,
+            fontWeight = FontWeight.SemiBold
+        )
+        Box(Modifier.weight(1f).height(1.dp).background(FluxaUiTokens.colorBorder))
     }
 }
 
@@ -315,13 +410,13 @@ private fun AuthProviderButton(
 ) {
     Button(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        shape = RoundedCornerShape(14.dp),
+        modifier = Modifier.fillMaxWidth().height(FluxaUiTokens.authProviderHeight),
+        shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
         colors = ButtonDefaults.buttonColors(containerColor = containerColor, contentColor = contentColor)
     ) {
         icon()
         Spacer(Modifier.width(12.dp))
-        Text(label, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+        Text(label, fontWeight = FontWeight.SemiBold, fontSize = FluxaUiTokens.typographyAuthControl)
     }
 }
 
@@ -346,126 +441,157 @@ private fun CredentialsStage(
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit,
 ) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 24.dp)
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(horizontal = FluxaUiTokens.spacingScreen)
     ) {
-        Spacer(Modifier.height(16.dp))
         val isRoot = state.showProviderActions
-        AuthBackButton(onClick = { onAction(if (isRoot) AuthAction.BackRequested else AuthAction.BackToRoot) })
-        Spacer(Modifier.height(24.dp))
+        if (isRoot) {
+            Spacer(Modifier.height(40.dp))
+        } else {
+            Spacer(Modifier.height(16.dp))
+            AuthBackButton(onClick = { onAction(AuthAction.BackToRoot) })
+            Spacer(Modifier.height(28.dp))
+        }
 
         if (state.showProviderActions) {
+            Text(
+                text = AppStrings.t(language, "auth.welcome_back"),
+                color = Color.White,
+                fontSize = FluxaUiTokens.typographyAuthTitle,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(6.dp))
+            Text(
+                text = AppStrings.t(language, "auth.choose_login_method"),
+                color = Color.White.copy(alpha = 0.58f),
+                fontSize = FluxaUiTokens.typographyAuthSubtitle,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+        } else {
+            Spacer(Modifier.height(8.dp))
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = state.email,
+                onValueChange = { onAction(AuthAction.EmailChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.email")) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Email, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                isError = state.emailError != null,
+                supportingText = state.emailError?.let { { Text(it) } },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                colors = authFieldColors()
+            )
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            OutlinedTextField(
+                value = state.password,
+                onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.password")) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                isError = state.passwordError != null,
+                supportingText = state.passwordError?.let { { Text(it) } },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    AuthPasswordVisibilityToggle(passwordVisible, language) { passwordVisible = !passwordVisible }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                colors = authFieldColors()
+            )
+            if (state.allowSignup && state.isSignupTab) {
+                Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+                OutlinedTextField(
+                    value = state.confirmPassword,
+                    onValueChange = { onAction(AuthAction.ConfirmPasswordChanged(it)) },
+                    placeholder = { Text(AppStrings.t(language, "auth.field.confirm_password")) },
+                    leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                    isError = state.confirmError != null,
+                    supportingText = state.confirmError?.let { { Text(it) } },
+                    visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                    trailingIcon = {
+                        AuthPasswordVisibilityToggle(confirmPasswordVisible, language) { confirmPasswordVisible = !confirmPasswordVisible }
+                    },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                    singleLine = true,
+                    shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                    modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                    colors = authFieldColors()
+                )
+            }
+
+            state.globalError?.let {
+                Text(it, color = FluxaColors.errorRed, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+
+            Button(
+                onClick = { onAction(AuthAction.Submit) },
+                enabled = !state.isSubmitting,
+                modifier = Modifier.fillMaxWidth().height(FluxaUiTokens.authSubmitHeight),
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                colors = ButtonDefaults.buttonColors(containerColor = FluxaUiTokens.colorTextPrimary, contentColor = FluxaUiTokens.colorBackground)
+            ) {
+                if (state.isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
+                } else {
+                    Text(
+                        if (state.allowSignup && state.isSignupTab) AppStrings.t(language, "auth.create_account") else AppStrings.t(language, "auth.log_in"),
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+
+            if (state.allowSignup) {
+                TextButton(
+                    onClick = { onAction(AuthAction.TabChanged(!state.isSignupTab)) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        AppStrings.t(
+                            language,
+                            if (state.isSignupTab) "auth.already_have_account_sign_in" else "auth.no_account_sign_up"
+                        ),
+                        color = FluxaUiTokens.colorTextSecondary,
+                        fontSize = FluxaUiTokens.typographyAuthCaption,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+        }
+
+        if (state.showProviderActions && !state.isSignupTab) {
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+            AuthDivider(language)
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
             AuthProviderButton(
                 label = AppStrings.t(language, "auth.continue_with_nuvio"),
                 icon = nuvioIcon,
-                containerColor = Color.White,
-                contentColor = Color.Black,
+                containerColor = FluxaUiTokens.colorSurfaceRaised,
+                contentColor = FluxaUiTokens.colorTextPrimary,
                 onClick = { onAction(AuthAction.ContinueWithNuvio) }
             )
-            Spacer(Modifier.height(12.dp))
-            Spacer(Modifier.height(12.dp))
-        } else {
-            Spacer(Modifier.height(24.dp))
-        }
-
-        if (state.allowSignup) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(Color.White.copy(alpha = 0.05f))
-                    .padding(4.dp)
-            ) {
-                listOf(false to AppStrings.t(language, "auth.log_in"), true to AppStrings.t(language, "auth.sign_up")).forEach { (signup, label) ->
-                    val selected = state.isSignupTab == signup
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
-                            .clickable { onAction(AuthAction.TabChanged(signup)) }
-                            .padding(vertical = 10.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(label, color = Color.White, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal)
-                    }
-                }
-            }
-        } else {
-            Text(AppStrings.t(language, "auth.log_in"), color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-        }
-
-        Spacer(Modifier.height(20.dp))
-
-        OutlinedTextField(
-            value = state.email,
-            onValueChange = { onAction(AuthAction.EmailChanged(it)) },
-            label = { Text(AppStrings.t(language, "auth.field.email")) },
-            isError = state.emailError != null,
-            supportingText = state.emailError?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = authFieldColors()
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.password,
-            onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
-            label = { Text(AppStrings.t(language, "auth.field.password")) },
-            isError = state.passwordError != null,
-            supportingText = state.passwordError?.let { { Text(it) } },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = authFieldColors()
-        )
-        if (state.allowSignup && state.isSignupTab) {
-            Spacer(Modifier.height(12.dp))
-            OutlinedTextField(
-                value = state.confirmPassword,
-                onValueChange = { onAction(AuthAction.ConfirmPasswordChanged(it)) },
-                label = { Text(AppStrings.t(language, "auth.field.confirm_password")) },
-                isError = state.confirmError != null,
-                supportingText = state.confirmError?.let { { Text(it) } },
-                visualTransformation = PasswordVisualTransformation(),
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-                singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
-                colors = authFieldColors()
-            )
-        }
-
-        state.globalError?.let {
-            Text(it, color = FluxaColors.errorRed, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Button(
-            onClick = { onAction(AuthAction.Submit) },
-            enabled = !state.isSubmitting,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
-        ) {
-            if (state.isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
-            } else {
-                Text(
-                    if (state.allowSignup && state.isSignupTab) AppStrings.t(language, "auth.create_account") else AppStrings.t(language, "auth.log_in"),
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-        }
-
-        if (state.showProviderActions) {
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
             TextButton(onClick = { onAction(AuthAction.ContinueWithoutAccount) }, modifier = Modifier.fillMaxWidth()) {
-                Text(AppStrings.t(language, "auth.continue_without_account"), color = Color.White.copy(alpha = 0.5f))
+                Text(AppStrings.t(language, "auth.continue_without_account"), color = FluxaUiTokens.colorTextMuted)
             }
         }
         Spacer(Modifier.height(24.dp))
@@ -479,52 +605,89 @@ private fun NuvioCredentialsStage(
     onAction: (AuthAction) -> Unit,
     nuvioIcon: @Composable () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 24.dp)) {
+    var passwordVisible by remember { mutableStateOf(false) }
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .imePadding()
+            .padding(horizontal = FluxaUiTokens.spacingScreen)
+    ) {
         Spacer(Modifier.height(16.dp))
         AuthBackButton(onClick = { onAction(AuthAction.BackToRoot) })
-        Spacer(Modifier.height(16.dp))
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            nuvioIcon()
-            Text(AppStrings.t(language, "auth.nuvio.title"), color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.SemiBold)
-        }
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(
-            value = state.email,
-            onValueChange = { onAction(AuthAction.EmailChanged(it)) },
-            label = { Text(AppStrings.t(language, "auth.field.email")) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-            singleLine = true,
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            colors = authFieldColors()
-        )
-        Spacer(Modifier.height(12.dp))
-        OutlinedTextField(
-            value = state.password,
-            onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
-            label = { Text(AppStrings.t(language, "auth.field.password")) },
-            visualTransformation = PasswordVisualTransformation(),
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth(),
-            colors = authFieldColors()
-        )
-        state.globalError?.let {
-            Text(it, color = FluxaColors.errorRed, modifier = Modifier.padding(top = 8.dp))
-        }
-        Spacer(Modifier.height(20.dp))
-        Button(
-            onClick = { onAction(AuthAction.Submit) },
-            enabled = !state.isSubmitting,
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = Color.Black)
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            if (state.isSubmitting) {
-                CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
-            } else {
-                Text(AppStrings.t(language, "auth.nuvio.sign_in"), fontWeight = FontWeight.SemiBold)
+            nuvioIcon()
+            Spacer(Modifier.height(12.dp))
+            Text(
+                AppStrings.t(language, "auth.nuvio.title"),
+                color = Color.White,
+                fontSize = FluxaUiTokens.typographyAuthTitle,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                AppStrings.t(language, "auth.nuvio.subtitle"),
+                color = FluxaUiTokens.colorTextSecondary,
+                fontSize = FluxaUiTokens.typographyAuthSubtitle,
+                textAlign = TextAlign.Center,
+            )
+        }
+        Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+        ) {
+            OutlinedTextField(
+                value = state.email,
+                onValueChange = { onAction(AuthAction.EmailChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.email")) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Email, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                singleLine = true,
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                colors = authFieldColors()
+            )
+            Spacer(Modifier.height(FluxaUiTokens.spacingControl))
+            OutlinedTextField(
+                value = state.password,
+                onValueChange = { onAction(AuthAction.PasswordChanged(it)) },
+                placeholder = { Text(AppStrings.t(language, "auth.field.password")) },
+                leadingIcon = { Icon(FluxaIcons.Filled.Lock, contentDescription = null, modifier = Modifier.size(20.dp)) },
+                visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    AuthPasswordVisibilityToggle(passwordVisible, language) { passwordVisible = !passwordVisible }
+                },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+                singleLine = true,
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                modifier = Modifier.fillMaxWidth().heightIn(min = FluxaUiTokens.authFieldHeight),
+                colors = authFieldColors()
+            )
+            state.globalError?.let {
+                Text(it, color = FluxaColors.errorRed, fontSize = 13.sp, modifier = Modifier.padding(top = 8.dp))
+            }
+            Spacer(Modifier.height(FluxaUiTokens.spacingAuthSection))
+            Button(
+                onClick = { onAction(AuthAction.Submit) },
+                enabled = !state.isSubmitting,
+                modifier = Modifier.fillMaxWidth().height(FluxaUiTokens.authSubmitHeight),
+                shape = RoundedCornerShape(FluxaUiTokens.shapeControl),
+                colors = ButtonDefaults.buttonColors(containerColor = FluxaUiTokens.colorTextPrimary, contentColor = FluxaUiTokens.colorBackground)
+            ) {
+                if (state.isSubmitting) {
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.Black, strokeWidth = 2.dp)
+                } else {
+                    Text(AppStrings.t(language, "auth.nuvio.sign_in"), fontWeight = FontWeight.SemiBold)
+                }
             }
         }
+        Spacer(Modifier.height(24.dp))
     }
 }
 
@@ -688,14 +851,37 @@ private fun DesktopNuvioImportingCard(
 }
 
 @Composable
+internal fun AuthPasswordVisibilityToggle(
+    visible: Boolean,
+    language: String?,
+    onToggle: () -> Unit,
+) {
+    IconButton(onClick = onToggle) {
+        Icon(
+            imageVector = if (visible) FluxaIcons.Filled.VisibilityOff else FluxaIcons.Filled.Visibility,
+            contentDescription = AppStrings.t(language, if (visible) "auth.hide_password" else "auth.show_password"),
+            tint = FluxaUiTokens.colorTextSecondary,
+            modifier = Modifier.size(20.dp),
+        )
+    }
+}
+
+@Composable
 private fun authFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedTextColor = Color.White,
-    unfocusedTextColor = Color.White,
-    focusedBorderColor = Color.White.copy(alpha = 0.4f),
-    unfocusedBorderColor = Color.White.copy(alpha = 0.15f),
-    focusedLabelColor = Color.White.copy(alpha = 0.7f),
-    unfocusedLabelColor = Color.White.copy(alpha = 0.4f),
-    cursorColor = Color.White
+    focusedTextColor = FluxaUiTokens.colorTextPrimary,
+    unfocusedTextColor = FluxaUiTokens.colorTextPrimary,
+    focusedBorderColor = FluxaUiTokens.colorFocus,
+    unfocusedBorderColor = FluxaUiTokens.colorBorderStrong,
+    focusedPlaceholderColor = FluxaUiTokens.colorTextSecondary,
+    unfocusedPlaceholderColor = FluxaUiTokens.colorTextMuted,
+    focusedLeadingIconColor = FluxaUiTokens.colorTextSecondary,
+    unfocusedLeadingIconColor = FluxaUiTokens.colorTextMuted,
+    focusedTrailingIconColor = FluxaUiTokens.colorTextSecondary,
+    unfocusedTrailingIconColor = FluxaUiTokens.colorTextMuted,
+    focusedContainerColor = FluxaUiTokens.colorSurfaceRaised.copy(alpha = 0.72f),
+    unfocusedContainerColor = FluxaUiTokens.colorSurface.copy(alpha = 0.72f),
+    errorContainerColor = Color(0xFFFF6B6B).copy(alpha = 0.08f),
+    cursorColor = FluxaUiTokens.colorFocus
 )
 
 @Composable

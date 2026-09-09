@@ -7,13 +7,17 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -437,7 +441,7 @@ internal fun FluxaNavigationBar(
             .padding(horizontal = if (floating) 12.dp else 0.dp)
             .padding(bottom = if (floating) 10.dp else 0.dp)
     ) {
-        Row(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
@@ -497,77 +501,97 @@ internal fun FluxaNavigationBar(
                 )
                 .padding(horizontal = 12.dp)
                 .height(if (showLabels) 68.dp else 64.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
         ) {
-            items.forEach { item ->
-                val isSelected = item.destination == destination
-                val tint by animateColorAsState(
-                    targetValue = if (isSelected) selectedColor else inactiveColor,
-                    label = "nav-item-tint"
-                )
-                Column(
+            val selectedIndex = items.indexOfFirst { it.destination == destination }
+            val slotWidth = maxWidth / items.size.coerceAtLeast(1)
+            val targetPillOffset = if (selectedIndex >= 0) {
+                slotWidth * selectedIndex + (slotWidth - 88.dp) / 2
+            } else {
+                0.dp
+            }
+            val pillOffset by animateDpAsState(
+                targetValue = targetPillOffset,
+                animationSpec = tween(durationMillis = 320, easing = FastOutSlowInEasing),
+                label = "nav-selection-offset"
+            )
+            if (liquidGlass && selectedIndex >= 0) {
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(18.dp))
-                        .clickable { onDestinationSelected(item.destination) }
-                        .padding(vertical = 8.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (liquidGlass && isSelected) {
-                            Box(
-                                modifier = Modifier
-                                    .size(50.dp)
-                                    .background(
-                                        Brush.radialGradient(
-                                            listOf(selectedColor.copy(alpha = 0.28f), Color.Transparent)
-                                        ),
-                                        CircleShape
-                                    )
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .size(38.dp)
-                                    .background(Color.White.copy(alpha = 0.1f), CircleShape)
-                                    .border(1.dp, selectedColor.copy(alpha = 0.4f), CircleShape)
-                            )
-                        }
-                        if (item.destination == FluxaDestination.Settings && !profileAvatarUrl.isNullOrBlank()) {
-                            FluxaRemoteImage(
-                                imageUrl = profileAvatarUrl,
-                                cacheKey = "profile-avatar:$profileAvatarUrl",
-                                contentDescription = null,
-                                modifier = Modifier
-                                    .size(32.dp)
-                                    .then(
-                                        if (isSelected) {
-                                            Modifier.border(2.dp, tint, CircleShape).padding(2.dp)
-                                        } else {
-                                            Modifier
-                                        }
-                                    )
-                                    .clip(CircleShape),
-                                contentScale = ContentScale.Crop
-                            )
-                        } else {
-                            Icon(
-                                if (isSelected) item.selectedIcon() else item.icon(),
-                                contentDescription = null,
-                                tint = tint,
-                                modifier = Modifier.size(29.dp)
-                            )
-                        }
-                    }
-                    if (showLabels) {
-                        Text(
-                            text = AppStrings.t(language, item.destination.titleKey),
-                            color = tint,
-                            fontSize = 10.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                        .align(Alignment.CenterStart)
+                        .offset(x = pillOffset)
+                        .size(width = 88.dp, height = 54.dp)
+                        .background(
+                            Brush.radialGradient(
+                                listOf(selectedColor.copy(alpha = 0.28f), Color.Transparent)
+                            ),
+                            RoundedCornerShape(50)
                         )
+                )
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .offset(x = pillOffset + 6.dp)
+                        .size(width = 76.dp, height = 48.dp)
+                        .background(Color.White.copy(alpha = 0.1f), RoundedCornerShape(50))
+                        .border(1.dp, selectedColor.copy(alpha = 0.4f), RoundedCornerShape(50))
+                )
+            }
+            Row(
+                modifier = Modifier.fillMaxSize(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                items.forEach { item ->
+                    val isSelected = item.destination == destination
+                    val tint by animateColorAsState(
+                        targetValue = if (isSelected) selectedColor else inactiveColor,
+                        label = "nav-item-tint"
+                    )
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .clip(RoundedCornerShape(18.dp))
+                            .clickable { onDestinationSelected(item.destination) }
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            if (item.destination == FluxaDestination.Settings && !profileAvatarUrl.isNullOrBlank()) {
+                                FluxaRemoteImage(
+                                    imageUrl = profileAvatarUrl,
+                                    cacheKey = "profile-avatar:$profileAvatarUrl",
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .then(
+                                            if (isSelected) {
+                                                Modifier.border(2.dp, tint, CircleShape).padding(2.dp)
+                                            } else {
+                                                Modifier
+                                            }
+                                        )
+                                        .clip(CircleShape),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(
+                                    if (isSelected) item.selectedIcon() else item.icon(),
+                                    contentDescription = null,
+                                    tint = tint,
+                                    modifier = Modifier.size(29.dp)
+                                )
+                            }
+                        }
+                        if (showLabels) {
+                            Text(
+                                text = AppStrings.t(language, item.destination.titleKey),
+                                color = tint,
+                                fontSize = 10.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
                 }
             }
