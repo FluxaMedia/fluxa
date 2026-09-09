@@ -22,7 +22,7 @@ internal class HomeBillboardLoader(
     private val fetchCs3FeedItems: suspend (MetadataFeedOption) -> List<Meta>,
     private val setPool: (List<Meta>) -> Unit,
     private val updateContent: suspend (Meta) -> Unit,
-    private val normalizePool: (List<Meta>) -> List<Meta>,
+    private val buildPool: (List<Meta>, List<Meta>) -> List<Meta>,
     private val startRotation: () -> Unit
 ) {
     suspend fun load(profile: UserProfile?) {
@@ -50,24 +50,8 @@ internal class HomeBillboardLoader(
                 .awaitAll()
                 .flatten()
 
-            val scoredCandidates = spotlightCandidates
-                .distinctBy(HomeBillboardRanking::contentIdentityKey)
-                .map { assignHomeBadge(it, lang) }
-
-            val reserved = scoredCandidates
-                .groupBy { it.billboardTypeGroup() }
-                .values
-                .flatMap { group -> group.sortedByDescending(HomeBillboardRanking::scoreCandidate).take(POOL_QUOTA_PER_TYPE) }
-
-            val remainingSlots = (POOL_SIZE - reserved.size).coerceAtLeast(0)
-            val remainder = scoredCandidates
-                .minus(reserved.toSet())
-                .sortedByDescending(HomeBillboardRanking::scoreCandidate)
-                .take(remainingSlots)
-
-            val pool = (reserved + remainder)
-                .sortedByDescending(HomeBillboardRanking::scoreCandidate)
-                .let(normalizePool)
+            val candidates = spotlightCandidates.map { assignHomeBadge(it, lang) }
+            val pool = buildPool(emptyList(), candidates).take(POOL_SIZE)
 
             if (pool.isNotEmpty()) {
                 setPool(pool)
@@ -79,14 +63,7 @@ internal class HomeBillboardLoader(
         }
     }
 
-    private fun Meta.billboardTypeGroup(): String = when (type) {
-        "movie" -> "movie"
-        "series", "tv", "anime" -> "series"
-        else -> "other"
-    }
-
     private companion object {
         const val POOL_SIZE = 8
-        const val POOL_QUOTA_PER_TYPE = 4
     }
 }

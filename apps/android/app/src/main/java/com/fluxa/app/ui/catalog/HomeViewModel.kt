@@ -226,7 +226,22 @@ class HomeViewModel @Inject constructor(
     suspend fun loadFolderSections(
         folder: com.fluxa.app.data.local.LibraryUserCollectionFolder
     ): List<Pair<String, List<Meta>>> {
-        return feedCoordinator.fetchFolderSections(folder, currentActiveProfile?.safeLanguage ?: "en")
+        val profile = currentActiveProfile
+        val addons = when {
+            profile != null && !profile.nuvioAccessToken.isNullOrBlank() -> {
+                nuvioSyncCoordinator.fetchAddons(profile).also(::setUserAddonsState)
+            }
+            _userAddons.value.isNotEmpty() -> _userAddons.value
+            else -> addonRepository.getUserAddons(
+                profile?.authKey.orEmpty(),
+                profile?.safeLocalAddons.orEmpty()
+            ).also(::setUserAddonsState)
+        }
+        return feedCoordinator.fetchFolderSections(
+            folder = folder,
+            lang = profile?.safeLanguage ?: "en",
+            addons = addons
+        )
     }
 
     val loadedCs3ApiNames: StateFlow<List<String>> = platformContentGateway.loadedApis
@@ -445,7 +460,7 @@ class HomeViewModel @Inject constructor(
                 homeBillboardCache.save(currentActiveProfile, pool)
             },
             updateContent = billboardRuntime::updateContent,
-            normalizePool = { items -> items.distinctBy(HomeBillboardRanking::contentIdentityKey) },
+            buildPool = FluxaCoreNative::buildBillboardPool,
             startRotation = billboardRuntime::startRotation
         )
     }
@@ -497,6 +512,7 @@ class HomeViewModel @Inject constructor(
             repository = repository,
             addonRepository = addonRepository,
             scope = viewModelScope,
+            gson = gson,
             userAddons = { _userAddons.value },
             setUserAddons = ::setUserAddonsState,
             continueWatchingItems = ::buildContinueWatchingItems,

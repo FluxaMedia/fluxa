@@ -50,7 +50,7 @@ internal fun PlayerUIContent(
     onPictureInPicture: () -> Unit = {},
     onShowSettings: (Int) -> Unit,
     onClose: () -> Unit,
-    accentColor: Color = FluxaColors.accent
+    accentColor: Color = Color.White
 ) {
     val seekSurfaceView = LocalSeekSurfaceView.current
     val seekPreviewBitmap = rememberSeekThumbnail(

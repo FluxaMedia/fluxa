@@ -389,6 +389,7 @@ object NetworkModule {
         watchlistManager: com.fluxa.app.data.local.WatchlistManager,
         providerDataStore: com.fluxa.app.data.repository.library.ProviderDataStore,
         deltaSyncEngine: com.fluxa.app.data.repository.NuvioDeltaSyncEngine,
+        nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator,
         gson: com.google.gson.Gson,
         @Named("NuvioBaseUrl") baseUrl: String
     ): com.fluxa.app.data.repository.NuvioAccountImportCoordinator {
@@ -398,6 +399,7 @@ object NetworkModule {
             watchlistManager = watchlistManager,
             providerDataStore = providerDataStore,
             deltaSyncEngine = deltaSyncEngine,
+            nuvioSyncCoordinator = nuvioSyncCoordinator,
             supabaseUrl = baseUrl,
             gson = gson
         )

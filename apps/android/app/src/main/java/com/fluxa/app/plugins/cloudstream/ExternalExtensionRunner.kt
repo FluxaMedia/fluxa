@@ -2,6 +2,7 @@ package com.fluxa.app.plugins.cloudstream
 
 import android.util.Log
 import com.fluxa.app.BuildConfig
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.lagradost.cloudstream3.LoadResponse
 import com.lagradost.cloudstream3.MainAPI
 import com.lagradost.cloudstream3.SubtitleFile
@@ -64,14 +65,14 @@ class ExternalExtensionRunner(
         episode: Int?
     ): ScraperStreamResult {
         val tmdbIdInt = tmdbId.toIntOrNull()
-        val type = if (mediaType.equals("movie", ignoreCase = true)) "movie" else "tv"
+        val type = FluxaCoreNative.tmdbContentType(mediaType)
         val loadJson = """{"id":$tmdbIdInt,"type":"$type"}"""
         logDebug { "TmdbProvider ${api.name}: load($loadJson)" }
         runCatching { api.load(loadJson) }.getOrNull()
             ?.let { extractLoadData(it, mediaType, season, episode) }
             ?.let { return executeLoadLinks(api, it) }
 
-        val tmdbUrl = "https://www.themoviedb.org/${if (type == "movie") "movie" else "tv"}/$tmdbId"
+        val tmdbUrl = "https://www.themoviedb.org/$type/$tmdbId"
         logDebug { "TmdbProvider ${api.name}: fallback load($tmdbUrl)" }
         runCatching { api.load(tmdbUrl) }.getOrNull()
             ?.let { extractLoadData(it, mediaType, season, episode) }

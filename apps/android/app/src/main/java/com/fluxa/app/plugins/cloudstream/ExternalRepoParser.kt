@@ -1,6 +1,7 @@
 package com.fluxa.app.plugins.cloudstream
 
 import android.util.Log
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.repository.HttpRequestSecurity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -287,7 +288,8 @@ data class PluginInfo(
     val status: Int // 1 = active, 0 = deprecated
 ) {
     val isActive: Boolean get() = status == 1
-    val hasRequiredChecksum: Boolean get() = sha256?.matches(ChecksumPattern) == true
+    val hasRequiredChecksum: Boolean
+        get() = sha256?.let { FluxaCoreNative.sha256VerificationStatus(it, it) == "ok" } == true
     
     /**
      * Get display types for UI
@@ -304,8 +306,6 @@ data class PluginInfo(
         return replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
     }
 }
-
-private val ChecksumPattern = Regex("[0-9a-fA-F]{64}")
 
 // Local storage models
 data class InstalledPlugin(

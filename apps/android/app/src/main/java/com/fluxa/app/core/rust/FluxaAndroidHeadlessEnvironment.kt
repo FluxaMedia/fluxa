@@ -11,6 +11,8 @@ import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+import com.fluxa.app.data.repository.NuvioSyncCoordinator
+import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.MetaDetail
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.repository.AddonRepository
@@ -60,6 +62,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val gson: Gson,
     internal val profileManager: ProfileManager,
     internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
+    internal val nuvioSyncCoordinator: NuvioSyncCoordinator,
     internal val mdblistRatingsClient: MdblistRatingsClient,
     internal val httpEffectExecutor: HttpEffectExecutor,
     internal val playbackProgressScheduler: PlaybackProgressScheduler,
@@ -113,6 +116,19 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal fun ok(effect: NativeHeadlessEffect, value: Any?): HeadlessEffectCompletion = HeadlessEffectCompletion(effectId = effect.id, status = "ok", value = value)
     internal fun error(effect: NativeHeadlessEffect, code: String): HeadlessEffectCompletion = HeadlessEffectCompletion(effectId = effect.id, status = "error", error = mapOf("code" to code))
     internal fun Map<String, Any?>.profile(): UserProfile? = parseProfile(gson)
+
+    internal suspend fun configuredStreamAddons(profile: UserProfile?): List<AddonDescriptor> {
+        if (profile == null) return emptyList()
+        return if (!profile.nuvioAccessToken.isNullOrBlank()) {
+            val managed = nuvioSyncCoordinator.fetchAddons(profile).filter { it.isEnabled }
+            managed.ifEmpty {
+                repository.getUserAddons(profile.authKey, profile.safeLocalAddons)
+            }
+        } else {
+            repository.getUserAddons(profile.authKey, profile.safeLocalAddons)
+        }
+    }
+
     internal fun Map<String, Any?>.remoteSources(): List<LibraryRemoteSource> {
         val raw = this["remoteSource"] ?: return emptyList()
         val values = raw as? List<*> ?: listOf(raw)

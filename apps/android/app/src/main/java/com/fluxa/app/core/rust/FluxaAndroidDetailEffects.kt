@@ -51,7 +51,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchMetaDetail(effect: Nat
     )
     val detailSummary = when {
         detail == null -> "NULL"
-        detail.type.equals("series", ignoreCase = true) || detail.type.equals("tv", ignoreCase = true) ->
+        FluxaCoreNative.isSeriesContentType(detail.type) ->
             "SUCCESS name=${detail.name} episodes=${detail.videos?.size ?: 0}"
         else -> "SUCCESS name=${detail.name}"
     }
@@ -81,7 +81,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.readDetailLocalState(effect
     )
     val savedPlayback = watchlistManager.getPlaybackProgress(primaryId)
         ?: fallbackId?.let { watchlistManager.getPlaybackProgress(it) }
-    val localWatched = if (payload.string("contentType") == "series") {
+    val localWatched = if (FluxaCoreNative.isSeriesContentType(payload.string("contentType"))) {
         watchlistManager.getLocalWatchedVideoIds(primaryId)
             .ifEmpty { fallbackId?.let { watchlistManager.getLocalWatchedVideoIds(it) }.orEmpty() }
     } else {
@@ -106,7 +106,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchDetailSecondary(effect
     val type = payload.string("contentType")
     val id = payload.string("id")
     val language = payload.string("language", profile?.safeLanguage ?: "en")
-    val watchedIds = if (type == "series" && !profile?.authKey.isNullOrBlank()) {
+    val watchedIds = if (FluxaCoreNative.isSeriesContentType(type) && !profile?.authKey.isNullOrBlank()) {
         repository.getWatchedVideoIds(profile.authKey, id)
     } else {
         emptySet()
@@ -140,7 +140,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchDetailSecondary(effect
 internal suspend fun FluxaAndroidHeadlessEnvironment.prefetchDetailStreams(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
     val payload = effect.payload
     val profile = payload.profile()
-    val addons = repository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
+    val addons = configuredStreamAddons(profile)
     val preFetched = streamDiscovery.prefetch(
         StreamDiscoveryRequest(
             addons = addons,
@@ -193,16 +193,17 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchDetailStreams(effect: 
     val profile = payload.profile()
     val type = payload.string("contentType")
     val language = payload.string("language", profile?.safeLanguage ?: "en")
-    val addons = repository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
+    val addons = configuredStreamAddons(profile)
     val loadedApis = pluginManager.loadedApis.value
     val providerPlan = FluxaCoreNative.headlessProviderAvailability(addons, loadedApis.map { it.name })
-    val detail = payload.objectValue("detail")?.let { gson.fromJson(gson.toJsonTree(it), MetaDetail::class.java) }
+    val detail = payload.objectValue("detail")?.let { decodeMetaDetailPayload(gson.toJson(it)) }
     val seasonEpisodes = payload.list("seasonEpisodes").mapNotNull { raw ->
         runCatching { gson.fromJson(gson.toJsonTree(raw), Video::class.java) }.getOrNull()
     }
     val attempts = mutableListOf<Pair<String, List<Stream>>>()
     for ((index, requestId) in requestIds.withIndex()) {
         val episodeContext = FluxaCoreNative.streamDiscoveryEpisodeContext(type, requestId, detail, seasonEpisodes)
+        val requestLocator = FluxaCoreNative.parseEpisodeLocator(requestId)
         val request = StreamDiscoveryRequest(
             addons = addons,
             type = type,
@@ -218,9 +219,9 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchDetailStreams(effect: 
             cs3Year = detail?.releaseInfo?.toIntOrNull(),
             pluginTmdbId = detail?.tmdbId,
             pluginSeason = detail?.videos.orEmpty().firstOrNull { it.id == requestId }?.season
-                ?: requestId.split(':').let { parts -> parts.getOrNull(parts.lastIndex - 1)?.toIntOrNull() },
+                ?: requestLocator?.season,
             pluginEpisode = detail?.videos.orEmpty().firstOrNull { it.id == requestId }?.number
-                ?: requestId.substringAfterLast(':', "").toIntOrNull(),
+                ?: requestLocator?.episode,
         )
         val streams = if (index == 0) {
             streamDiscovery.discoverProgressive(request) { streams, completedAddons, loadingAddons ->
@@ -280,11 +281,12 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.prepareDirectPlayback(effec
     val playbackMeta = plan.meta ?: meta
     val targetVideoId = plan.targetVideoId
     val lookupId = plan.lookupId.ifBlank { targetVideoId ?: detail?.id ?: meta.id }
-    val addons = repository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
+    val addons = configuredStreamAddons(profile)
     val prefetchedDetail = if (StremioId.baseContentId(lookupId) == StremioId.baseContentId(meta.id)) detail else null
     val requestIds = buildPlaybackStreamRequestIds(meta.type, lookupId, language, profile, policy.streamDetailTimeoutMs, prefetchedDetail)
     val attempts = mutableListOf<Pair<String, List<Stream>>>()
     for (requestId in requestIds) {
+        val requestLocator = FluxaCoreNative.parseEpisodeLocator(requestId)
         val streams = streamDiscovery.discover(
             StreamDiscoveryRequest(
                 addons = addons,
@@ -298,9 +300,9 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.prepareDirectPlayback(effec
                 cs3Year = playbackMeta.releaseInfo?.toIntOrNull(),
                 pluginTmdbId = prefetchedDetail?.tmdbId,
                 pluginSeason = prefetchedDetail?.videos.orEmpty().firstOrNull { it.id == requestId }?.season
-                    ?: requestId.split(':').let { parts -> parts.getOrNull(parts.lastIndex - 1)?.toIntOrNull() },
+                    ?: requestLocator?.season,
                 pluginEpisode = prefetchedDetail?.videos.orEmpty().firstOrNull { it.id == requestId }?.number
-                    ?: requestId.substringAfterLast(':', "").toIntOrNull(),
+                    ?: requestLocator?.episode,
             )
         )
         attempts += requestId to streams

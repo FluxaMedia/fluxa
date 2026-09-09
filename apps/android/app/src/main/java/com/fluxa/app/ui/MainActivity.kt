@@ -7,6 +7,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.shared.FluxaDestination
+import com.fluxa.app.shared.feature.settings.SettingsUpdateCheckState
 import com.fluxa.app.shared.feature.watchtogether.JvmWatchTogetherTransport
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherCorrection
@@ -154,7 +155,6 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CommonActivity.activity = this
-        runCatching { DiscordPresenceNative.initialize(this) }
         WatchTogetherManager.installTransportFactory { JvmWatchTogetherTransport() }
         WatchTogetherManager.installDriftPolicy { local, expected, hostPlaying, speedActive ->
             val correction = FluxaCoreNative.watchTogetherDriftCorrection(local, expected, hostPlaying, speedActive)
@@ -231,9 +231,19 @@ class MainActivity : FragmentActivity() {
                     var isTraktSyncing by remember { mutableStateOf(false) }
                     var showSimklSheet by remember { mutableStateOf(false) }
                     val coroutineScope = rememberCoroutineScope()
+
+                    LaunchedEffect(activeProfile?.id, activeProfile?.discordRichPresenceEnabled) {
+                        DiscordPresenceNative.initialize(
+                            activity = this@MainActivity,
+                            enabled = activeProfile?.let { it.discordRichPresenceEnabled != false } == true,
+                        )
+                    }
                     
 
                     var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
+                    var latestReleaseInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
+                    var releaseHistory by remember { mutableStateOf<List<UpdateManager.UpdateInfo>>(emptyList()) }
+                    var updateCheckState by remember { mutableStateOf(SettingsUpdateCheckState.Idle) }
                     var downloadProgress by remember { mutableFloatStateOf(0f) }
                     var isDownloading by remember { mutableStateOf(false) }
 
@@ -406,6 +416,7 @@ class MainActivity : FragmentActivity() {
                             nuvioService = nuvioService,
                             fluxaSyncService = fluxaSyncService,
                             nuvioImportCoordinator = nuvioImportCoordinator,
+                            nuvioSyncCoordinator = nuvioSyncCoordinator,
                             thirdPartyProviderRepository = thirdPartyProviderRepository,
                             appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}",
                             deviceType = deviceType,
@@ -430,12 +441,20 @@ class MainActivity : FragmentActivity() {
                         if (initialProfile == null) {
                             homeViewModel.loadInitialData(null)
                         }
+                        val releases = UpdateManager.fetchReleaseHistory()
+                        releaseHistory = releases
+                        latestReleaseInfo = releases.firstOrNull()
                     }
 
                     AppUpdateCheckEffect(
                         automaticUpdatesEnabled = activeProfile?.safeAutomaticUpdates != false,
                         isDebugBuild = com.fluxa.app.BuildConfig.DEBUG,
-                        onUpdateFound = { updateInfo = it }
+                        onUpdateFound = {
+                            updateInfo = it
+                            latestReleaseInfo = it
+                            releaseHistory = listOf(it) + releaseHistory.filterNot { release -> release.versionName == it.versionName }
+                            updateCheckState = SettingsUpdateCheckState.Available
+                        }
                     )
 
                     LaunchedEffect(activeProfile?.id) {
@@ -556,7 +575,17 @@ class MainActivity : FragmentActivity() {
                             onShowTraktSheet = { showTraktSheet = true },
                             onShowSimklSheet = { showSimklSheet = true },
                             onTraktDeviceAuthChanged = { traktDeviceAuth = it },
-                            onUpdateInfoChanged = { updateInfo = it },
+                            onUpdateInfoChanged = {
+                                updateInfo = it
+                                updateCheckState = if (it == null) SettingsUpdateCheckState.Idle else SettingsUpdateCheckState.Available
+                            },
+                            updateInfo = updateInfo,
+                            latestReleaseInfo = latestReleaseInfo,
+                            onLatestReleaseInfoChanged = { latestReleaseInfo = it },
+                            releaseHistory = releaseHistory,
+                            onReleaseHistoryChanged = { releaseHistory = it },
+                            updateCheckState = updateCheckState,
+                            onUpdateCheckStateChanged = { updateCheckState = it },
                             navigateBackSafely = navigateBackSafely
                         )
 

@@ -3,6 +3,7 @@ package com.fluxa.app.ui.catalog
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.common.ReleaseDateUtils
 import com.fluxa.app.core.StremioId
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.domain.discovery.Cs3CatalogFeedDescriptor
@@ -48,11 +49,11 @@ internal fun formatSeasonEpisode(videoId: String, lang: String): String? {
 }
 
 internal fun isRecentlyReleased(dateStr: String?, windowDays: Int): Boolean {
-    return ReleaseDateUtils.isRecentlyReleased(dateStr, windowDays)
+    return FluxaCoreNative.releaseDateRecentlyReleased(dateStr, ReleaseDateUtils.todayIso(), windowDays)
 }
 
 internal fun isUpcomingRelease(dateStr: String?): Boolean {
-    return ReleaseDateUtils.isUpcoming(dateStr)
+    return dateStr != null && FluxaCoreNative.releaseDateUpcoming(dateStr, ReleaseDateUtils.todayIso())
 }
 
 internal fun List<MainAPI>.toCs3CatalogFeedDescriptors(): List<Cs3CatalogFeedDescriptor> {

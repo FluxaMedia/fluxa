@@ -1,5 +1,6 @@
 package com.fluxa.app.plugins.cloudstream
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.lagradost.cloudstream3.ActorData
 import com.lagradost.cloudstream3.AnimeLoadResponse
 import com.lagradost.cloudstream3.AnimeSearchResponse
@@ -243,21 +244,12 @@ private fun ExtractorLink.resolvedQualityLabel(): String {
         reflectString("getDisplayName"),
         reflectString("getQualityName"),
         reflectString("getFullName")
-    ).firstNotNullOfOrNull(::extractResolutionLabel)
+    ).firstNotNullOfOrNull(FluxaCoreNative::cloudstreamQualityLabel)
     if (!reflected.isNullOrBlank()) return reflected
-    return extractResolutionLabel(listOf(source, name, url).joinToString(" ")) ?: "unknown"
+    return FluxaCoreNative.cloudstreamQualityLabel(listOf(source, name, url).joinToString(" ")) ?: "unknown"
 }
 
 private fun Any.reflectString(methodName: String): String? = runCatching {
     javaClass.methods.firstOrNull { it.name == methodName && it.parameterTypes.isEmpty() }
         ?.invoke(this) as? String
 }.getOrNull()?.takeIf { it.isNotBlank() }
-
-private fun extractResolutionLabel(value: String): String? {
-    val text = value.takeIf { it.isNotBlank() } ?: return null
-    Regex("""\b\d{3,5}\s*x\s*\d{3,5}\b""")
-        .find(text)?.value?.replace(Regex("""\s+"""), "")?.let { return it }
-    Regex("""\b\d{3,4}p\b""", RegexOption.IGNORE_CASE)
-        .find(text)?.value?.lowercase()?.let { return it }
-    return null
-}

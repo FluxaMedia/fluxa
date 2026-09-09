@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.LibraryUserCollection
 import com.fluxa.app.data.local.LibraryUserCollectionFolder
@@ -26,6 +27,10 @@ import com.fluxa.app.shared.feature.library.LibraryUiState
 import com.fluxa.app.shared.feature.localmedia.LocalMediaLibraryService
 import com.fluxa.app.shared.feature.localmedia.LocalMediaSourceInput
 import com.fluxa.app.shared.feature.localmedia.toCatalogRows
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -54,7 +59,23 @@ class AndroidLibraryDataSource(
     private val deviceType: DeviceType = DeviceType.Mobile,
 ) : LibraryDataSource {
 
+    private val collectionGson = Gson()
     private val librarySourceOverrides = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    private fun applyCollectionCommand(profile: UserProfile, command: JsonObject): UserProfile? {
+        val request = JsonObject().apply {
+            add("collections", collectionGson.toJsonTree(profile.safeLibraryCollections))
+            add("command", command)
+        }
+        val result = FluxaCoreNative.collectionMutationPlan(request.toString()) ?: return null
+        val collections = JsonParser.parseString(result).asJsonObject.get("collections")
+        val type = object : TypeToken<List<com.fluxa.app.data.local.LibraryUserCollection>>() {}.type
+        val nextCollections: List<com.fluxa.app.data.local.LibraryUserCollection> =
+            collectionGson.fromJson(collections, type) ?: return null
+        return profileManager.updateProfile(profile.id) {
+            it.copy(libraryCollections = nextCollections)
+        }
+    }
 
     private fun profileFlow(): Flow<UserProfile?> = callbackFlow {
         val listener: () -> Unit = { trySend(activeProfile()) }
@@ -233,30 +254,41 @@ class AndroidLibraryDataSource(
 
     override suspend fun createCollection(title: String) {
         val profile = activeProfile() ?: return
-        val updated = profileManager.updateProfile(profile.id) {
-            it.copy(libraryCollections = it.safeLibraryCollections + LibraryUserCollection(
-                id = "local_${System.currentTimeMillis()}",
-                title = title
-            ))
-        } ?: return
+        val updated = applyCollectionCommand(
+            profile,
+            JsonObject().apply {
+                addProperty("type", "create")
+                add("collection", collectionGson.toJsonTree(LibraryUserCollection(
+                    id = "local_${System.currentTimeMillis()}",
+                    title = title
+                )))
+            }
+        ) ?: return
         onProfileChanged(updated)
     }
 
     override suspend fun renameCollection(id: String, title: String) {
         val profile = activeProfile() ?: return
-        val updated = profileManager.updateProfile(profile.id) {
-            it.copy(libraryCollections = it.safeLibraryCollections.map { collection ->
-                if (collection.id == id) collection.copy(title = title) else collection
-            })
-        } ?: return
+        val updated = applyCollectionCommand(
+            profile,
+            JsonObject().apply {
+                addProperty("type", "rename")
+                addProperty("id", id)
+                addProperty("title", title)
+            }
+        ) ?: return
         onProfileChanged(updated)
     }
 
     override suspend fun deleteCollection(id: String) {
         val profile = activeProfile() ?: return
-        val updated = profileManager.updateProfile(profile.id) {
-            it.copy(libraryCollections = it.safeLibraryCollections.filterNot { collection -> collection.id == id })
-        } ?: return
+        val updated = applyCollectionCommand(
+            profile,
+            JsonObject().apply {
+                addProperty("type", "delete")
+                addProperty("id", id)
+            }
+        ) ?: return
         onProfileChanged(updated)
     }
 
@@ -363,37 +395,35 @@ class AndroidLibraryDataSource(
         }
 
         val folderId = folder.id ?: "folder_${System.currentTimeMillis()}"
-        val updated = profileManager.updateProfile(profile.id) { current ->
-            current.copy(libraryCollections = current.safeLibraryCollections.map { collection ->
-                if (collection.id != collectionId) return@map collection
-                val existingFolders = collection.folders.orEmpty()
-                val nextFolder = LibraryUserCollectionFolder(
-                    id = folderId,
-                    title = title,
-                    coverEmoji = folder.coverEmoji?.trim()?.takeIf { it.isNotEmpty() },
-                    sources = sources,
-                    catalogSources = catalogSources
-                )
-                val nextFolders = if (existingFolders.any { it.id == folderId }) {
-                    existingFolders.map { if (it.id == folderId) nextFolder else it }
-                } else {
-                    existingFolders + nextFolder
-                }
-                collection.copy(folders = nextFolders)
-            })
-        } ?: return false
+        val nextFolder = LibraryUserCollectionFolder(
+            id = folderId,
+            title = title,
+            coverEmoji = folder.coverEmoji?.trim()?.takeIf { it.isNotEmpty() },
+            sources = sources,
+            catalogSources = catalogSources
+        )
+        val updated = applyCollectionCommand(
+            profile,
+            JsonObject().apply {
+                addProperty("type", "saveFolder")
+                addProperty("collectionId", collectionId)
+                add("folder", collectionGson.toJsonTree(nextFolder))
+            }
+        ) ?: return false
         onProfileChanged(updated)
         return true
     }
 
     override suspend fun deleteFolder(collectionId: String, folderId: String): Boolean {
         val profile = activeProfile() ?: return false
-        val updated = profileManager.updateProfile(profile.id) { current ->
-            current.copy(libraryCollections = current.safeLibraryCollections.map { collection ->
-                if (collection.id != collectionId) return@map collection
-                collection.copy(folders = collection.folders.orEmpty().filterNot { it.id == folderId })
-            })
-        } ?: return false
+        val updated = applyCollectionCommand(
+            profile,
+            JsonObject().apply {
+                addProperty("type", "deleteFolder")
+                addProperty("collectionId", collectionId)
+                addProperty("folderId", folderId)
+            }
+        ) ?: return false
         onProfileChanged(updated)
         return true
     }

@@ -1,6 +1,7 @@
 package com.fluxa.app.ui.catalog
 
 import android.content.Context
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeWatchedThresholdPercent
 import com.fluxa.app.data.remote.Meta
@@ -135,7 +136,7 @@ internal class HomeExternalPlaybackCoordinator(
         if (current.simklStarted) playbackSyncCoordinator.scheduleSimklScrobble(
             current.profile, current.meta, current.videoId, position, duration, "stop"
         )
-        val progress = (position.toDouble() / duration.toDouble() * 100.0).coerceIn(0.0, 100.0)
+        val progress = FluxaCoreNative.playerProgressPercent(position, duration).toDouble()
         if (progress >= current.profile.safeWatchedThresholdPercent.toDouble()) {
             markWatched(current.meta, current.videoId, current.episodeName, duration)
         }

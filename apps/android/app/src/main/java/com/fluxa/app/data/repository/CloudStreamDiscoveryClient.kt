@@ -1,5 +1,7 @@
 package com.fluxa.app.data.repository
 
+import com.fluxa.app.core.rust.FluxaCoreNative
+
 import android.util.Log
 import com.fluxa.app.BuildConfig
 import com.fluxa.app.data.remote.Stream
@@ -29,7 +31,8 @@ class CloudStreamDiscoveryClient @Inject constructor() {
         originalName: String? = null
     ): List<Stream> {
         val runner = ExternalExtensionRunner()
-        val isMovieRequest = type == "movie"
+        val cloudstreamType = FluxaCoreNative.cloudstreamContentType(type)
+        val isMovieRequest = cloudstreamType == "movie"
         val semaphore = Semaphore(MAX_CONCURRENT_CLOUDSTREAM_DISCOVERY)
 
         val parsedLocator = TraktIntegration.episodeLocator(id)
@@ -43,7 +46,7 @@ class CloudStreamDiscoveryClient @Inject constructor() {
                     semaphore.withPermit {
                         try {
                             if (api is TmdbProvider) {
-                                loadTmdbProviderStreams(api, runner, id, type, isMovieRequest, season, episode)
+                                loadTmdbProviderStreams(api, runner, id, cloudstreamType, isMovieRequest, season, episode)
                             } else {
                                 loadSearchProviderStreams(api, runner, title, originalName, year, type, isMovieRequest, season, episode)
                             }
@@ -68,11 +71,9 @@ class CloudStreamDiscoveryClient @Inject constructor() {
         season: Int?,
         episode: Int?
     ): List<Stream> {
-        val baseId = Regex("""tt\d+""").find(id)?.value
-            ?: com.fluxa.app.core.StremioId.baseContentId(id).removePrefix("tmdb:").substringBefore(":")
+        val baseId = FluxaCoreNative.tmdbNumericId(id) ?: return emptyList()
         val tmdbIdInt = baseId.toIntOrNull() ?: return emptyList()
-        val tmdbType = if (type == "movie") "movie" else "tv"
-        val tmdbUrl = "https://www.themoviedb.org/$tmdbType/$tmdbIdInt"
+        val tmdbUrl = "https://www.themoviedb.org/$type/$tmdbIdInt"
         logDebug("StremioRepo") { "CS3 ${api.name}: direct TMDB lookup $tmdbUrl" }
 
         val response = runner.loadContent(api, tmdbUrl) ?: return emptyList()

@@ -146,7 +146,7 @@ class TraktScrobbleWorker @AssistedInject constructor(
 
     private fun buildRequest(mediaType: String, mediaId: String, progress: Float): TraktScrobbleRequest? {
         val ids = TraktIntegration.idsFromContentId(mediaId) ?: return null
-        return if (mediaType == "movie") {
+        return if (!FluxaCoreNative.isSeriesContentType(mediaType)) {
             TraktScrobbleRequest(movie = TraktSummary(null, null, ids), progress = progress)
         } else {
             val episode = TraktIntegration.episodeLocator(mediaId) ?: return null

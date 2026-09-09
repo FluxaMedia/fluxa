@@ -49,7 +49,7 @@ class SimklScrobbleWorker @AssistedInject constructor(
         val imdbId = SimklIntegration.imdbIdFrom(mediaId)
         if (imdbId.isNullOrBlank()) return Result.success()
 
-        val isEpisode = mediaType == "series"
+        val isEpisode = FluxaCoreNative.isSeriesContentType(mediaType)
         val episode = if (isEpisode) TraktIntegration.episodeLocator(mediaId) else null
         if (isEpisode && episode == null) return Result.success()
 

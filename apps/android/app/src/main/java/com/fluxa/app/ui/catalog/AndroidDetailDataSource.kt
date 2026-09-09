@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.stream.*
 
@@ -54,12 +55,10 @@ class AndroidDetailDataSource(
                 SharedDetailUiState(
                     content = state.detail?.let { detail ->
                         val effectiveWatched = state.watchedVideoIds.toSet() + state.localWatchedVideoIds
-                        val availableSeasons = buildList {
-                            val seasonsCount = detail.seasonsCount ?: 0
-                            if (seasonsCount > 0) addAll(1..seasonsCount)
-                            addAll(detail.videos?.mapNotNull { it.season }.orEmpty().filter { it > 0 })
-                            if (detail.videos?.any { it.season == 0 } == true) add(0)
-                        }.distinct().sortedWith(compareBy<Int> { if (it == 0) 1 else 0 }.thenBy { it }).ifEmpty { listOf(1) }
+                        val availableSeasons = FluxaCoreNative.detailAvailableSeasons(
+                            seasons = detail.videos?.mapNotNull { it.season }.orEmpty(),
+                            seasonsCount = detail.seasonsCount,
+                        )
                         val currentEpisodeId = selectedEpisodeId
                             ?: state.seasonEpisodes.firstOrNull { !detailIsUpcoming(it.released) }?.id
                             ?: state.seasonEpisodes.firstOrNull()?.id
@@ -88,7 +87,7 @@ class AndroidDetailDataSource(
                                 sourceKind = "local",
                             )
                         }
-                        val remoteStreams = state.filteredStreams.toUiModels()
+                        val remoteStreams = state.streams.toUiModels()
                         DetailUiModel(
                             id = detail.id,
                             type = detail.type,
@@ -273,7 +272,8 @@ internal fun com.fluxa.app.data.remote.Stream.toDetailStreamUiModel(): DetailStr
         addonName = addonName.orEmpty(),
         title = title ?: name.orEmpty(),
         playableUrl = url,
-        name = name.orEmpty()
+        name = name.orEmpty(),
+        description = this.description.orEmpty()
     )
 }
 

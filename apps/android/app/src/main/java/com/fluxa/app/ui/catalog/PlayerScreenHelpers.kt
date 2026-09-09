@@ -208,11 +208,8 @@ internal fun Stream.subtitleExtraArgs(): String {
 
 internal fun playbackNotificationTitle(meta: Meta, videoId: String?): String {
     if (meta.type != "series" || videoId.isNullOrBlank()) return meta.name
-    val parts = videoId.split(":")
-    if (parts.size < 3) return meta.name
-    val season = parts[parts.size - 2].toIntOrNull() ?: return meta.name
-    val episode = parts[parts.size - 1].toIntOrNull() ?: return meta.name
-    return "${meta.name} - S$season E$episode"
+    val locator = FluxaCoreNative.parseEpisodeLocator(videoId) ?: return meta.name
+    return "${meta.name} - S${locator.season} E${locator.episode}"
 }
 
 internal fun String?.isTorrentPlaybackUrl(): Boolean {

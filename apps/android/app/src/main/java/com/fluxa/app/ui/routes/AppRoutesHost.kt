@@ -16,6 +16,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.getValue
@@ -35,6 +36,7 @@ import com.fluxa.app.shared.FluxaDestination
 import com.fluxa.app.ui.PlayerLaunchRequest
 import com.fluxa.app.ui.TraktDeviceAuthUiState
 import com.fluxa.app.ui.catalog.DeviceType
+import com.fluxa.app.ui.catalog.FluxaUiTokens
 import com.fluxa.app.ui.catalog.HomeViewModel
 import com.fluxa.app.ui.catalog.UpdateManager
 import com.fluxa.app.ui.catalog.BiometricLockHelper
@@ -44,6 +46,27 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import com.fluxa.app.ui.catalog.formatRuntimeLabel
+import com.fluxa.app.shared.feature.settings.SettingsReleaseUiModel
+import com.fluxa.app.shared.feature.settings.SettingsCommunityUiModel
+import com.fluxa.app.shared.feature.settings.SettingsContributorUiModel
+import com.fluxa.app.shared.feature.settings.SettingsSupporterUiModel
+import com.fluxa.app.shared.feature.settings.SettingsUpdateCheckState
+import com.fluxa.app.shared.feature.settings.SettingsUpdatesUiModel
+
+private fun UpdateManager.UpdateInfo.toSettingsRelease(): SettingsReleaseUiModel = SettingsReleaseUiModel(
+    version = versionName,
+    publishedAt = publishedAt,
+    notes = releaseNotes,
+    contributors = contributors.map { contributor ->
+        SettingsContributorUiModel(
+            login = contributor.login,
+            avatarUrl = contributor.avatarUrl,
+            profileUrl = contributor.profileUrl,
+            contributions = contributor.contributions,
+            latestContributionAt = contributor.latestContributionAt,
+        )
+    },
+)
 
 @Composable
 internal fun AppRoutesHost(
@@ -68,6 +91,13 @@ internal fun AppRoutesHost(
     onShowSimklSheet: () -> Unit,
     onTraktDeviceAuthChanged: (TraktDeviceAuthUiState?) -> Unit,
     onUpdateInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
+    updateInfo: UpdateManager.UpdateInfo?,
+    latestReleaseInfo: UpdateManager.UpdateInfo?,
+    onLatestReleaseInfoChanged: (UpdateManager.UpdateInfo?) -> Unit,
+    releaseHistory: List<UpdateManager.UpdateInfo>,
+    onReleaseHistoryChanged: (List<UpdateManager.UpdateInfo>) -> Unit,
+    updateCheckState: SettingsUpdateCheckState,
+    onUpdateCheckStateChanged: (SettingsUpdateCheckState) -> Unit,
     navigateBackSafely: () -> Unit,
     settingsPopRequestId: Int,
     onSettingsCanPopChanged: (Boolean) -> Unit,
@@ -142,6 +172,12 @@ internal fun AppRoutesHost(
         }
     }
 
+    var communityInfo by remember { mutableStateOf(UpdateManager.CommunityInfo()) }
+    LaunchedEffect(currentDestination) {
+        if (currentDestination != FluxaDestination.Settings) return@LaunchedEffect
+        communityInfo = UpdateManager.fetchCommunityInfo()
+    }
+
     CompositionLocalProvider(
         LocalHeroTrailerSurface provides { url, cues, onActiveSubtitleChanged, trailerModifier ->
             HeroTrailerVideoSurface(url, cues, onActiveSubtitleChanged, trailerModifier)
@@ -176,6 +212,36 @@ internal fun AppRoutesHost(
             biometricAvailable = BiometricLockHelper.isAvailable(context),
             settingsPopRequestId = settingsPopRequestId,
             overlayPopRequestId = overlayPopRequestId,
+            settingsUpdates = SettingsUpdatesUiModel(
+                currentVersion = com.fluxa.app.BuildConfig.VERSION_NAME,
+                latestRelease = latestReleaseInfo?.let {
+                    it.toSettingsRelease()
+                },
+                releases = releaseHistory.map { it.toSettingsRelease() },
+                checkState = updateCheckState,
+                community = SettingsCommunityUiModel(
+                    contributors = communityInfo.contributors.map { contributor ->
+                        SettingsContributorUiModel(
+                            login = contributor.login,
+                            avatarUrl = contributor.avatarUrl,
+                            profileUrl = contributor.profileUrl,
+                            contributions = contributor.contributions,
+                            latestContributionAt = contributor.latestContributionAt,
+                        )
+                    },
+                    supporters = communityInfo.supporters.map { supporter ->
+                        SettingsSupporterUiModel(
+                            login = supporter.login,
+                            displayName = supporter.displayName,
+                            avatarUrl = supporter.avatarUrl,
+                            profileUrl = supporter.profileUrl,
+                            supportCount = supporter.supportCount,
+                            supportedAt = supporter.supportedAt,
+                        )
+                    },
+                    loadFailed = communityInfo.loadFailed,
+                ),
+            ),
         ),
         callbacks = com.fluxa.app.shared.FluxaAppHostCallbacks(
             navigation = com.fluxa.app.shared.FluxaAppNavigationCallbacks(
@@ -450,9 +516,21 @@ internal fun AppRoutesHost(
                 onManagePluginsRequested = { onNavigateToDestination(FluxaDestination.Plugins) },
                 onManageStreamBadgesRequested = { onNavigateToDestination(FluxaDestination.StreamBadges) },
                 onCheckForUpdateRequested = {
+                    onUpdateCheckStateChanged(SettingsUpdateCheckState.Checking)
                     coroutineScope.launch {
-                        val update = com.fluxa.app.ui.catalog.UpdateManager.checkUpdate()
+                        val releases = com.fluxa.app.ui.catalog.UpdateManager.fetchReleaseHistory()
+                        val latest = releases.firstOrNull()
+                        onReleaseHistoryChanged(releases)
+                        onLatestReleaseInfoChanged(latest)
+                        val update = latest?.takeIf(com.fluxa.app.ui.catalog.UpdateManager::isUpdateAvailable)
                         onUpdateInfoChanged(update)
+                        onUpdateCheckStateChanged(
+                            when {
+                                latest == null -> SettingsUpdateCheckState.NoCompatibleRelease
+                                update == null -> SettingsUpdateCheckState.UpToDate
+                                else -> SettingsUpdateCheckState.Available
+                            }
+                        )
                     }
                 },
                 onSettingsBackRequested = navigateBackSafely,
@@ -471,7 +549,7 @@ internal fun AppRoutesHost(
                 androidx.compose.foundation.Image(
                     painter = androidx.compose.ui.res.painterResource(id = com.fluxa.app.R.drawable.ic_nuvio),
                     contentDescription = null,
-                    modifier = Modifier.size(34.dp)
+                    modifier = Modifier.size(FluxaUiTokens.authProviderIconSize)
                 )
             },
             stremioIcon = {

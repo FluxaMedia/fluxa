@@ -14,7 +14,7 @@ internal fun JsonElement.asJsonObjectOrNull() = takeIf { it.isJsonObject }?.asJs
 
 internal fun com.google.gson.JsonObject.getAsJsonArrayOrNull(key: String): JsonArray? = get(key)?.takeIf { it.isJsonArray }?.asJsonArray
 
-internal fun FluxaAndroidHeadlessEnvironment.isTmdbContentId(id: String): Boolean = id.startsWith("tmdb:", ignoreCase = true) || id.toIntOrNull() != null
+internal fun FluxaAndroidHeadlessEnvironment.isTmdbContentId(id: String): Boolean = FluxaCoreNative.isTmdbLikeContentId(id)
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.loadCsNativeMetaDetail(id: String): MetaDetail? = cloudStreamRuntime.loadMetaDetail(id)
 

@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
@@ -15,13 +16,17 @@ import com.fluxa.app.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.io.FileOutputStream
 import java.security.MessageDigest
 
 object UpdateManager {
-    private const val RELEASES_URL = "https://api.github.com/repos/KhooLy/Fluxa/releases/latest"
+    private const val RELEASES_URL = "https://api.github.com/repos/FluxaMedia/fluxa/releases?per_page=100"
+    private const val CONTRIBUTORS_URL = "https://api.github.com/repos/FluxaMedia/fluxa/contributors?per_page=100"
+    private const val RECENT_COMMITS_URL = "https://api.github.com/repos/FluxaMedia/fluxa/commits?per_page=100"
+    private const val SUPPORTERS_URL = "https://raw.githubusercontent.com/FluxaMedia/fluxa/master/shared/supporters.json"
 
     private val client = okhttp3.OkHttpClient.Builder()
         .connectTimeout(5, java.util.concurrent.TimeUnit.SECONDS)
@@ -32,10 +37,37 @@ object UpdateManager {
         val versionName: String,
         val url: String,
         val releaseNotes: String?,
-        val sha256: String? = null
+        val sha256: String? = null,
+        val publishedAt: String? = null,
+        val contributors: List<ContributorInfo> = emptyList(),
     )
 
-    suspend fun checkUpdate(): UpdateInfo? = withContext(Dispatchers.IO) {
+    data class ContributorInfo(
+        val login: String,
+        val avatarUrl: String? = null,
+        val profileUrl: String? = null,
+        val contributions: Int = 0,
+        val latestContributionAt: String? = null,
+    )
+
+    data class SupporterInfo(
+        val login: String,
+        val displayName: String? = null,
+        val avatarUrl: String? = null,
+        val profileUrl: String? = null,
+        val supportCount: Int = 1,
+        val supportedAt: String? = null,
+    )
+
+    data class CommunityInfo(
+        val contributors: List<ContributorInfo> = emptyList(),
+        val supporters: List<SupporterInfo> = emptyList(),
+        val loadFailed: Boolean = false,
+    )
+
+    suspend fun fetchLatestRelease(): UpdateInfo? = fetchReleaseHistory().firstOrNull()
+
+    suspend fun fetchReleaseHistory(): List<UpdateInfo> = withContext(Dispatchers.IO) {
         try {
             val request = Request.Builder()
                 .url(RELEASES_URL)
@@ -45,46 +77,165 @@ object UpdateManager {
             client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     Log.w("UpdateManager", "GitHub releases request failed: ${response.code}")
-                    return@withContext null
+                    return@withContext emptyList()
                 }
-                val json = JSONObject(response.body.string())
-                val tagName = json.getString("tag_name").removePrefix("v")
+                val releases = JSONArray(response.body.string())
+                buildList {
+                    for (index in 0 until releases.length()) {
+                        val release = releases.getJSONObject(index)
+                        val assets = release.optJSONArray("assets") ?: continue
+                        val apkAssets = (0 until assets.length())
+                            .map { assets.getJSONObject(it) }
+                            .filter { it.optString("name").endsWith(".apk", ignoreCase = true) }
+                        val apkUrl = findMatchingApk(apkAssets) ?: continue
+                        val tagName = release.optString("tag_name").removePrefix("v")
+                        if (tagName.isBlank()) continue
 
-                Log.i("UpdateManager", "Latest release: $tagName, current: ${BuildConfig.VERSION_NAME}")
-
-                if (!isNewerVersion(tagName, BuildConfig.VERSION_NAME)) {
-                    Log.i("UpdateManager", "Already up to date")
-                    return@withContext null
+                        Log.i("UpdateManager", "Compatible ${BuildConfig.DEVICE_FLAVOR} release: $tagName, current: ${BuildConfig.VERSION_NAME}")
+                        add(UpdateInfo(
+                            versionName = tagName,
+                            url = apkUrl,
+                            releaseNotes = release.optString("body").takeIf { it.isNotBlank() },
+                            publishedAt = release.optString("published_at").takeIf { it.isNotBlank() },
+                            contributors = parseReleaseContributors(release.optString("body")),
+                        ))
+                    }
                 }
-
-                val assets = json.getJSONArray("assets")
-                val apkAssets = (0 until assets.length())
-                    .map { assets.getJSONObject(it) }
-                    .filter { it.getString("name").endsWith(".apk") }
-
-                val apkUrl = findMatchingApk(apkAssets)
-                if (apkUrl == null) {
-                    Log.w("UpdateManager", "No matching APK asset found for ABIs ${Build.SUPPORTED_ABIS.joinToString()}")
-                    return@withContext null
-                }
-
-                UpdateInfo(
-                    versionName = tagName,
-                    url = apkUrl,
-                    releaseNotes = json.optString("body").takeIf { it.isNotBlank() }
-                )
+                    .also { releasesForDevice ->
+                        if (releasesForDevice.isEmpty()) {
+                            Log.i("UpdateManager", "No compatible ${BuildConfig.DEVICE_FLAVOR} release found for ABIs ${Build.SUPPORTED_ABIS.joinToString()}")
+                        }
+                    }
             }
         } catch (e: Exception) {
             Log.w("UpdateManager", "Update check failed: ${e.message}")
-            null
+            emptyList()
         }
     }
 
+    suspend fun fetchCommunityInfo(): CommunityInfo = withContext(Dispatchers.IO) {
+        try {
+            val contributorsResponse = getJsonArray(CONTRIBUTORS_URL)
+            val recentCommitsResponse = getJsonArray(RECENT_COMMITS_URL)
+            val latestByLogin = mutableMapOf<String, String>()
+            for (index in 0 until recentCommitsResponse.length()) {
+                val commit = recentCommitsResponse.optJSONObject(index) ?: continue
+                val login = commit.optJSONObject("author")?.optString("login").orEmpty()
+                val date = commit.optJSONObject("commit")?.optJSONObject("author")?.optString("date").orEmpty()
+                if (login.isNotBlank() && date.isNotBlank() && date > latestByLogin[login].orEmpty()) {
+                    latestByLogin[login] = date
+                }
+            }
+            val contributors = buildList {
+                for (index in 0 until contributorsResponse.length()) {
+                    val contributor = contributorsResponse.optJSONObject(index) ?: continue
+                    val login = contributor.optString("login").takeIf { it.isNotBlank() } ?: continue
+                    add(
+                        ContributorInfo(
+                            login = login,
+                            avatarUrl = contributor.optString("avatar_url").takeIf { it.isNotBlank() },
+                            profileUrl = contributor.optString("html_url").takeIf { it.isNotBlank() },
+                            contributions = contributor.optInt("contributions"),
+                            latestContributionAt = latestByLogin[login],
+                        )
+                    )
+                }
+            }
+            CommunityInfo(
+                contributors = contributors,
+                supporters = fetchSupporters(),
+            )
+        } catch (e: Exception) {
+            Log.w("UpdateManager", "Community data request failed: ${e.message}")
+            CommunityInfo(loadFailed = true)
+        }
+    }
+
+    private fun fetchSupporters(): List<SupporterInfo> {
+        return runCatching {
+            val source = getJsonObject(SUPPORTERS_URL)
+            val supporters = source.optJSONArray("supporters") ?: return@runCatching emptyList()
+            buildList {
+                for (index in 0 until supporters.length()) {
+                    val supporter = supporters.optJSONObject(index) ?: continue
+                    val login = supporter.optString("login").takeIf { it.isNotBlank() } ?: continue
+                    add(
+                        SupporterInfo(
+                            login = login,
+                            displayName = supporter.optString("displayName").takeIf { it.isNotBlank() },
+                            avatarUrl = supporter.optString("avatarUrl").takeIf { it.isNotBlank() },
+                            profileUrl = supporter.optString("profileUrl").takeIf { it.isNotBlank() },
+                            supportCount = supporter.optInt("supportCount", 1).coerceAtLeast(1),
+                            supportedAt = supporter.optString("supportedAt").takeIf { it.isNotBlank() },
+                        )
+                    )
+                }
+            }
+        }.getOrDefault(emptyList())
+    }
+
+    private fun getJsonArray(url: String): JSONArray {
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "Fluxa-App")
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("HTTP ${response.code}")
+            return JSONArray(response.body.string())
+        }
+    }
+
+    private fun getJsonObject(url: String): JSONObject {
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .header("User-Agent", "Fluxa-App")
+            .build()
+        client.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) error("HTTP ${response.code}")
+            return JSONObject(response.body.string())
+        }
+    }
+
+    private fun parseReleaseContributors(body: String): List<ContributorInfo> {
+        if (body.isBlank()) return emptyList()
+        val regex = Regex("(?<![A-Za-z0-9_])@([A-Za-z0-9-]+)")
+        val counts = linkedMapOf<String, Int>()
+        regex.findAll(body).forEach { match ->
+            val login = match.groupValues[1]
+            if (!login.equals("username", ignoreCase = true)) counts[login] = (counts[login] ?: 0) + 1
+        }
+        return counts.map { (login, count) ->
+            ContributorInfo(
+                login = login,
+                avatarUrl = "https://github.com/$login.png?size=96",
+                profileUrl = "https://github.com/$login",
+                contributions = count,
+            )
+        }
+    }
+
+    suspend fun checkUpdate(): UpdateInfo? {
+        val latest = fetchLatestRelease() ?: return null
+        if (!isNewerVersion(latest.versionName, BuildConfig.VERSION_NAME)) {
+            Log.i("UpdateManager", "Already up to date")
+            return null
+        }
+        if (latest.url.isBlank()) {
+            Log.w("UpdateManager", "Newer release has no compatible APK asset")
+            return null
+        }
+        return latest
+    }
+
+    fun isUpdateAvailable(update: UpdateInfo): Boolean = isNewerVersion(update.versionName, BuildConfig.VERSION_NAME)
+
     private fun findMatchingApk(apkAssets: List<JSONObject>): String? {
-        val flavorMatches = apkAssets.filter {
+        val candidates = apkAssets.filter {
             it.getString("name").contains(BuildConfig.DEVICE_FLAVOR, ignoreCase = true)
         }
-        val candidates = flavorMatches.ifEmpty { apkAssets }
+        if (candidates.isEmpty()) return null
 
         for (abi in Build.SUPPORTED_ABIS) {
             val match = candidates.find { it.getString("name").contains(abi, ignoreCase = true) }
@@ -96,15 +247,7 @@ object UpdateManager {
     }
 
     private fun isNewerVersion(remote: String, current: String): Boolean {
-        val remoteParts = remote.split(".").map { it.toIntOrNull() ?: 0 }
-        val currentParts = current.split(".").map { it.toIntOrNull() ?: 0 }
-        val size = maxOf(remoteParts.size, currentParts.size)
-        for (i in 0 until size) {
-            val r = remoteParts.getOrElse(i) { 0 }
-            val c = currentParts.getOrElse(i) { 0 }
-            if (r != c) return r > c
-        }
-        return false
+        return FluxaCoreNative.versionIsNewer(remote, current)
     }
 
     suspend fun downloadAndInstall(

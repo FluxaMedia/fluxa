@@ -101,7 +101,7 @@ internal class HomeContinueWatchingCoordinator(
         if (!usesLocalSource()) return
         val lang = activeProfile()?.safeLanguage ?: "en"
         val targets = items.filter {
-            val isSeries = it.type == "series" || it.type == "tv" || it.type == "anime"
+            val isSeries = FluxaCoreNative.normalizeContentType(it.type) in setOf("series", "anime")
             val hasEpisode = isSeries && !it.lastVideoId.isNullOrBlank()
             val hasOnlyTitleArtwork = it.continueWatchingPoster.isNullOrBlank() ||
                 it.continueWatchingPoster == it.poster ||
@@ -129,7 +129,7 @@ internal class HomeContinueWatchingCoordinator(
                     val episodeLocator = meta.lastVideoId?.let(::parseEpisodeLocator)
                     val seasonEpisodeArtwork = if (
                         episodeLocator != null &&
-                        (meta.type == "series" || meta.type == "tv" || meta.type == "anime")
+                        (FluxaCoreNative.normalizeContentType(meta.type) in setOf("series", "anime"))
                     ) {
                         runCatching {
                             getSeasonEpisodes(meta.id, episodeLocator.first, lang)

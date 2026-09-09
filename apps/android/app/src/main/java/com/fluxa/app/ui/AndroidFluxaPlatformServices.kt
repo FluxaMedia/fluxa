@@ -28,6 +28,7 @@ import com.fluxa.app.data.remote.FluxaSyncService
 import com.fluxa.app.data.remote.NuvioDeviceAuthAdapter
 import com.fluxa.app.data.remote.FluxaDeviceAuthAdapter
 import com.fluxa.app.data.repository.NuvioAccountImportCoordinator
+import com.fluxa.app.data.repository.NuvioSyncCoordinator
 import com.fluxa.app.data.repository.AddonRepository
 import com.fluxa.app.data.platform.PlatformSecureStore
 import com.fluxa.app.data.repository.StremioRepository
@@ -58,6 +59,7 @@ class AndroidFluxaPlatformServices(
     nuvioService: NuvioService,
     fluxaSyncService: FluxaSyncService,
     nuvioImportCoordinator: NuvioAccountImportCoordinator,
+    nuvioSyncCoordinator: NuvioSyncCoordinator,
     thirdPartyProviderRepository: ThirdPartyProviderRepository,
     appVersionLabel: String,
     deviceType: DeviceType = DeviceType.Mobile,
@@ -98,7 +100,8 @@ class AndroidFluxaPlatformServices(
         profileManager = profileManager,
         homeViewModel = homeViewModel,
         activeProfile = activeProfile,
-        onProfileChanged = onActiveProfileChanged
+        onProfileChanged = onActiveProfileChanged,
+        nuvioSyncCoordinator = nuvioSyncCoordinator,
     )
     override val pluginsDataSource = AndroidPluginsDataSource(
         pluginRepositoryManager = pluginRepositoryManager,

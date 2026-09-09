@@ -25,6 +25,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -471,8 +472,6 @@ class DetailViewModel @Inject constructor(
         android.util.Log.d("CS3Detail", "loadSeason called: id=${id.take(40)}, season=$seasonNumber, detailVideos=${_uiState.value.detail?.videos?.size ?: "null"}")
         val lang = currentProfile?.language ?: "en"
         viewModelScope.launch {
-            _uiState.update { it.copy(seasonEpisodes = emptyList()) }
-
             val allVideos = _uiState.value.detail?.videos.orEmpty()
             if (allVideos.isNotEmpty()) {
                 android.util.Log.d("CS3Detail", "loadSeason from detail: detail=${_uiState.value.detail?.name}, videosInDetail=${allVideos.size}")
@@ -481,8 +480,12 @@ class DetailViewModel @Inject constructor(
                         gson.toJson(mapOf("season" to seasonNumber, "videos" to allVideos))
                     )
                 }
-                _uiState.update { it.copy(seasonEpisodes = episodes) }
-                return@launch
+                val detailContainsSeason = allVideos.any { it.season == seasonNumber }
+                if (episodes.isNotEmpty() || detailContainsSeason) {
+                    _uiState.update { it.copy(seasonEpisodes = episodes) }
+                    return@launch
+                }
+                android.util.Log.d("CS3Detail", "season=$seasonNumber missing from detail videos; fetching season endpoint")
             }
             if (currentStrictProviderData) return@launch
 
@@ -731,12 +734,17 @@ class DetailViewModel @Inject constructor(
     }
 
     fun fetchStreamsForSelection(type: String, id: String, context: android.content.Context? = null) {
-        streamsFetchJob?.cancel()
+        val language = currentProfile?.language ?: "en"
+        val requestIds = buildStreamRequestIds(type, id, language)
+        val requestSet = requestIds.toSet()
+        if (_uiState.value.isLoadingStreams && activeStreamsRequestIds == requestSet) return
+
+        activeStreamsRequestIds = requestSet
+        val previousFetchJob = streamsFetchJob
+        previousFetchJob?.cancel()
         streamsFetchJob = viewModelScope.launch {
             try {
-                val language = currentProfile?.language ?: "en"
-                val requestIds = buildStreamRequestIds(type, id, language)
-                activeStreamsRequestIds = requestIds.toSet()
+                previousFetchJob?.cancelAndJoin()
                 android.util.Log.d("Detail", " FETCHING STREAMS: type=$type, id=$id, requestIds=$requestIds")
                 _uiState.update {
                     it.copy(
@@ -767,7 +775,7 @@ class DetailViewModel @Inject constructor(
                         "profile" to currentProfile
                     )
                 )
-                if (activeStreamsRequestIds != requestIds.toSet()) return@launch
+                if (activeStreamsRequestIds != requestSet) return@launch
                 val detail = result.state["detail"] as? Map<*, *>
                 applyDetailStreamState(detail)
                 val fetchedStreams: List<Stream> = withContext(Dispatchers.Default) {
@@ -786,7 +794,9 @@ class DetailViewModel @Inject constructor(
             } catch (e: Exception) {
                 android.util.Log.e("Detail", " FATAL FETCH ERROR for $id", e)
             } finally {
-                _uiState.update { it.copy(isLoadingStreams = false, loadingAddonNames = emptyList()) }
+                if (activeStreamsRequestIds == requestSet) {
+                    _uiState.update { it.copy(isLoadingStreams = false, loadingAddonNames = emptyList()) }
+                }
             }
         }
     }
@@ -812,24 +822,9 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    private fun buildStreamRequestIds(type: String, id: String, language: String): List<String> {
+    private fun buildStreamRequestIds(type: String, id: String, _language: String): List<String> {
         if (id.startsWith("cs3:")) return listOf(id)
-        val detailId = _uiState.value.detail?.id
-        val canonicalBaseId = resolveCanonicalStreamBaseId(type, id, language)
-        return StremioId.streamRequestIds(
-            type = type,
-            id = id,
-            detailId = detailId,
-            currentSeriesLookupId = currentSeriesLookupId,
-            canonicalBaseId = canonicalBaseId
-        )
-    }
-
-    private fun resolveCanonicalStreamBaseId(type: String, id: String, language: String): String? {
-        StremioId.imdbId(id)?.let { return it }
-        StremioId.imdbId(_uiState.value.detail?.id)?.let { return it }
-        StremioId.imdbId(currentSeriesLookupId)?.let { return it }
-        return null
+        return FluxaCoreNative.playbackStreamRequestIds(type, id, _uiState.value.detail?.id)
     }
 
     suspend fun getSubtitlesFromAddon(baseUrl: String, type: String, id: String, extra: String = ""): List<SubtitleData> {

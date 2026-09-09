@@ -1,7 +1,6 @@
 package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.domain.discovery.StremioAddonUrls
 
 internal fun addonNameFromUrl(url: String): String {
     val host = runCatching { java.net.URI(url).host.orEmpty() }.getOrDefault("")
@@ -19,8 +18,7 @@ internal fun addonNameFromUrl(url: String): String {
 }
 
 internal fun addonConfigUrl(url: String): String? {
-    return StremioAddonUrls.normalizeManifestUrl(url)
-        .substringBefore("/manifest.json")
+    return FluxaCoreNative.baseUrl(url)
         .takeIf { it.startsWith("http://") || it.startsWith("https://") }
 }
 

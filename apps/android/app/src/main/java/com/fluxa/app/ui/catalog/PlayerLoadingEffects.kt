@@ -54,10 +54,9 @@ internal fun PlayerEpisodeMetadataEffect(
             setEpisodeLine(selectedEpisode.playerEpisodeLine() ?: fallbackEpisodeLine)
             return@LaunchedEffect
         }
-        val parts = targetId.split(":")
-        if (parts.size < 3) return@LaunchedEffect
-        val season = parts[parts.size - 2].toIntOrNull() ?: return@LaunchedEffect
-        val episode = parts[parts.size - 1].toIntOrNull() ?: return@LaunchedEffect
+        val locator = FluxaCoreNative.parseEpisodeLocator(targetId) ?: return@LaunchedEffect
+        val season = locator.season
+        val episode = locator.episode
         val shortEpisodeLine = "S$season, E$episode"
         setEpisodeLine(fallbackEpisodeLine ?: shortEpisodeLine)
         runCatching {

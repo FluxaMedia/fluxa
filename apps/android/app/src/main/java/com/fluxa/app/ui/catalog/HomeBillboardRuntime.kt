@@ -164,7 +164,7 @@ internal class HomeBillboardRuntime(
             val neighborIndices = listOf((currentIndex + 1) % currentPool.size, (currentIndex - 1 + currentPool.size) % currentPool.size)
             neighborIndices.forEach { idx ->
                 val item = currentPool[idx]
-                if (enrichedCache.get(HomeBillboardRanking.contentIdentityKey(item)) == null) enrich(item)
+                if (enrichedCache.get(FluxaCoreNative.homeBillboardIdentityKey(item)) == null) enrich(item)
             }
         }
     }
@@ -188,7 +188,7 @@ internal class HomeBillboardRuntime(
                 logo = detail.logo,
                 seasonPosters = detail.seasonPosters ?: item.seasonPosters
             )
-            val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
+            val cacheKey = FluxaCoreNative.homeBillboardIdentityKey(item)
             enrichedCache.put(cacheKey, enriched)
             updatePoolItem(cacheKey, enriched)
             return enriched
@@ -201,7 +201,7 @@ internal class HomeBillboardRuntime(
         trailerJob?.cancel()
         setTrailerUrl(null)
         setTrailerSubtitleCues(emptyList())
-        val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
+        val cacheKey = FluxaCoreNative.homeBillboardIdentityKey(item)
         val cached = enrichedCache.get(cacheKey)
         if (cached != null) {
             setMovie(cached)
@@ -221,10 +221,10 @@ internal class HomeBillboardRuntime(
     private fun maybeAutoPlayTrailer(item: Meta) {
         if (activeProfile()?.safeTrailerOnHomeHeroEnabled != true) return
         val delaySeconds = activeProfile()?.safeTrailerOnHomeHeroDelaySeconds ?: 4
-        val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
+        val cacheKey = FluxaCoreNative.homeBillboardIdentityKey(item)
         trailerJob = scope.launch {
             if (delaySeconds > 0) delay(delaySeconds * 1000L)
-            val isStillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
+            val isStillActive = FluxaCoreNative.homeBillboardIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
             if (!isStillActive) return@launch
             val resolution = JvmTrailerPlaybackResolver.resolvePlayable(
                 trailers = getTrailers(item.type, item.id, language()),
@@ -232,7 +232,7 @@ internal class HomeBillboardRuntime(
                 preferDirect = true,
                 dispatchHeadless = dispatchHeadless,
             ) as? TrailerResolveResult.Ok ?: return@launch
-            val stillActive = HomeBillboardRanking.contentIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
+            val stillActive = FluxaCoreNative.homeBillboardIdentityKey(pool().getOrNull(index()) ?: return@launch) == cacheKey
             if (!stillActive) return@launch
             setTrailerUrl(resolution.data.streamUrl)
             setTrailerSubtitleCues(resolveTrailerSubtitleCues(resolution.data.subtitles, activeProfile()?.safeLanguage))
@@ -241,10 +241,10 @@ internal class HomeBillboardRuntime(
 
     private suspend fun enrichAndPublish(item: Meta) {
         val lang = language()
-        val cacheKey = HomeBillboardRanking.contentIdentityKey(item)
+        val cacheKey = FluxaCoreNative.homeBillboardIdentityKey(item)
         try {
             val detail = withTimeoutOrNull(4000) { getMetaDetail(item.type, item.id) } ?: return
-            val isSeries = item.type == "series" || item.type == "tv"
+            val isSeries = FluxaCoreNative.normalizeContentType(item.type) == "series"
             val videos = detail.videos
 
             val seasonBackground: String? = if (isSeries) {
@@ -276,7 +276,7 @@ internal class HomeBillboardRuntime(
             val currentPool = pool()
             val currentIndex = index()
             val currentItem = currentPool.getOrNull(currentIndex)
-            if (currentItem != null && HomeBillboardRanking.contentIdentityKey(currentItem) == cacheKey) {
+            if (currentItem != null && FluxaCoreNative.homeBillboardIdentityKey(currentItem) == cacheKey) {
                 setMovie(enrichedMeta)
                 setLogo(enrichedMeta.logo)
                 if (isSeries && !videos.isNullOrEmpty()) {
@@ -299,7 +299,7 @@ internal class HomeBillboardRuntime(
 
     private fun updatePoolItem(cacheKey: String, item: Meta) {
         val currentPool = pool().toMutableList()
-        val idx = currentPool.indexOfFirst { HomeBillboardRanking.contentIdentityKey(it) == cacheKey }
+        val idx = currentPool.indexOfFirst { FluxaCoreNative.homeBillboardIdentityKey(it) == cacheKey }
         if (idx != -1) {
             currentPool[idx] = item
             setPool(normalizePool(currentPool))
@@ -307,10 +307,7 @@ internal class HomeBillboardRuntime(
     }
 
     fun normalizePool(items: List<Meta>): List<Meta> {
-        return items
-            .distinctBy(HomeBillboardRanking::contentIdentityKey)
-            .distinctBy { HomeBillboardRanking.normalizeTitle(it.originalName ?: it.name) }
-            .take(10)
+        return FluxaCoreNative.buildBillboardPool(items, emptyList()).take(10)
     }
 }
 

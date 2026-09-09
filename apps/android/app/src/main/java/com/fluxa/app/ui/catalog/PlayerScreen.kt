@@ -125,8 +125,14 @@ fun PlayerScreen(
     val seekBackwardMs = (activeProfile?.safeSeekBackwardSeconds ?: 10) * 1000L
     val seekForwardMs = (activeProfile?.safeSeekForwardSeconds ?: 10) * 1000L
 
-    LaunchedEffect(activeProfile?.safeTorrentSpeedPreset) {
-        torrentManager.configurePreferences(speedPreset = activeProfile?.safeTorrentSpeedPreset)
+    LaunchedEffect(activeProfile?.safeTorrentSpeedPreset, activeProfile?.safeTorrentCachePreset) {
+        torrentManager.configurePreferences(
+            speedPreset = activeProfile?.safeTorrentSpeedPreset,
+            cacheLimitMb = FluxaCoreNative.torrentCacheLimitMb(
+                preset = activeProfile?.safeTorrentCachePreset,
+                platform = "android"
+            )
+        )
     }
 
     PlayerTransientFeedbackEffects(

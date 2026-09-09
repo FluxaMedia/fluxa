@@ -8,17 +8,8 @@ import java.security.MessageDigest
 internal fun isSecureCloudStreamPluginUrl(url: String): Boolean =
     FluxaCoreNative.pluginIsSecureRemoteUrl(url)
 
-internal fun expandCloudStreamRepositoryShortcode(input: String): String {
-    val trimmed = input.trim()
-    if (trimmed.contains("://")) return trimmed
-    if (trimmed.startsWith("github.com/") || trimmed.startsWith("www.github.com/")) {
-        return "https://$trimmed"
-    }
-    if (trimmed.matches(Regex("^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$"))) {
-        return "https://raw.githubusercontent.com/$trimmed/builds"
-    }
-    return trimmed
-}
+internal fun expandCloudStreamRepositoryShortcode(input: String): String =
+    FluxaCoreNative.normalizeCloudstreamRepoInput(input)
 
 internal fun normalizeCloudStreamRepositoryUrl(url: String): String =
     FluxaCoreNative.normalizePluginRepositoryUrl(url)
@@ -35,10 +26,12 @@ internal fun InstalledPlugin.cloudStreamInstallKey(): String =
     installId ?: cloudStreamPluginInstallId(repositoryUrl, internalName)
 
 internal fun verifyCloudStreamPluginChecksum(file: File, expectedSha256: String?): String? {
-    val expected = expectedSha256?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
-        ?: return "Plugin checksum is required"
-    if (!expected.matches(Regex("^[a-f0-9]{64}$"))) return "Invalid plugin checksum"
-    return if (sha256(file) == expected) null else "Plugin checksum verification failed"
+    return when (FluxaCoreNative.sha256VerificationStatus(expectedSha256, sha256(file))) {
+        "ok" -> null
+        "missing" -> "Plugin checksum is required"
+        "invalid" -> "Invalid plugin checksum"
+        else -> "Plugin checksum verification failed"
+    }
 }
 
 internal fun sha256(file: File): String {

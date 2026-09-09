@@ -4,6 +4,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.shared.feature.catalog.CatalogBillboardUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogHomeDataSource
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
@@ -11,7 +12,6 @@ import com.fluxa.app.shared.feature.catalog.CatalogItemUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogResumeUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogRowUiModel
 import com.fluxa.app.shared.feature.catalog.CatalogSourceUiModel
-import com.fluxa.app.shared.feature.catalog.toHomeCollectionRows
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
@@ -47,10 +47,9 @@ class AndroidCatalogHomeDataSource(
         }.mapLatest { input ->
             withContext(Dispatchers.Default) {
                 val profile = input.profile
-                val orderedCategories = orderHomeCategories(input.categories, input.filter)
+                val orderedCategories = filterHomeCategoriesWithCore(input.categories, input.filter)
                 RowsResolution(
-                    rows = profile.toHomeCollectionRows(deviceType = deviceType) +
-                        orderedCategories.map { category -> category.toRowUiModel(profile) },
+                    rows = orderedCategories.map { category -> category.toRowUiModel(profile) },
                     categoriesByItem = input.categories.buildCategoryLookup(),
                     profile = profile,
                     filter = input.filter,
@@ -172,8 +171,8 @@ class AndroidCatalogHomeDataSource(
         billboardTrailerSubtitleCues: List<com.fluxa.app.shared.feature.player.TrailerCue>,
         filter: String,
     ): BillboardResolution {
-        val filteredPool = billboardPool.filter { it.matchesFilter(filter) }
-        val effectiveMovie = billboardMovie?.takeIf { it.matchesFilter(filter) }
+        val filteredPool = billboardPool.filter { FluxaCoreNative.contentMatchesFilter(it.type, filter) }
+        val effectiveMovie = billboardMovie?.takeIf { FluxaCoreNative.contentMatchesFilter(it.type, filter) }
             ?: filteredPool.firstOrNull()
             ?: billboardMovie
         val effectiveMovieInPool = effectiveMovie != null && filteredPool.any { candidate ->
@@ -284,10 +283,9 @@ private fun Meta.resolveResumeProgressPercent(): Float? {
     resumeProgressPercent?.let { return it }
     val offset = timeOffset
     val total = duration
-    if (offset != null && total != null && total > 0L) {
-        return (offset.toFloat() / total.toFloat()) * 100f
-    }
-    return null
+    return if (offset != null && total != null && total > 0L) {
+        FluxaCoreNative.playerProgressPercent(offset, total)
+    } else null
 }
 
 private fun Meta.toCatalogResumeUiModel(): CatalogResumeUiModel? {

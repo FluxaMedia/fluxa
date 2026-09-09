@@ -18,6 +18,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.core.content.ContextCompat
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.player.PlayerEngine
 
 internal object PlayerPipSuppression {
@@ -42,9 +43,9 @@ internal fun PlayerEpisodeNavigationEffect(
         setPreviousEpisode(null)
         if (meta.type != "series") return@LaunchedEffect
 
-        val parts = currentVideoId?.split(":") ?: return@LaunchedEffect
-        val season = parts.getOrNull(parts.size - 2)?.toIntOrNull() ?: 1
-        val episode = parts.getOrNull(parts.size - 1)?.toIntOrNull() ?: 1
+        val locator = currentVideoId?.let(FluxaCoreNative::parseEpisodeLocator) ?: return@LaunchedEffect
+        val season = locator.season
+        val episode = locator.episode
         val episodes = viewModel.getSeasonEpisodes(meta.id, season, language)
         val currentIndex = episodes.indexOfFirst { it.id == currentVideoId }
 

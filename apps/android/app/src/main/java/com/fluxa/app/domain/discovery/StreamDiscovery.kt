@@ -1,8 +1,6 @@
 package com.fluxa.app.domain.discovery
 
 import com.fluxa.app.data.remote.*
-import com.fluxa.app.data.plugins.nuvioPluginContentId
-import com.fluxa.app.data.plugins.normalizeNuvioPluginType
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
@@ -91,7 +89,7 @@ class StreamDiscoveryUseCase @Inject constructor(
                     scraper.supportedTypes.isEmpty() || mediaType in scraper.supportedTypes
                 )
             }
-        val pluginContentId = nuvioPluginContentId(
+        val pluginContentId = FluxaCoreNative.nuvioPluginContentId(
             videoId = request.pluginTmdbId?.takeIf(String::isNotBlank) ?: request.id,
             season = request.pluginSeason,
             episode = request.pluginEpisode,
@@ -109,7 +107,7 @@ class StreamDiscoveryUseCase @Inject constructor(
         gson.fromJson(value, PluginExecutionPlan::class.java)
     }.getOrNull()
 
-    private fun normalizePluginMediaType(value: String): String = normalizeNuvioPluginType(value)
+    private fun normalizePluginMediaType(value: String): String = FluxaCoreNative.nuvioPluginContentType(value)
 
     private suspend fun runPluginScrapers(
         plan: PluginExecutionPlan?,

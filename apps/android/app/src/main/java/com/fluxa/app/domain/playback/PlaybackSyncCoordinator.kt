@@ -1,5 +1,6 @@
 package com.fluxa.app.domain.playback
 
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.isProviderConnected
@@ -79,7 +80,7 @@ class PlaybackSyncCoordinator @Inject constructor(
         action: String
     ): Boolean {
         if (!profile.isProviderConnected(ThirdPartyProviderId.TRAKT) || durationMs <= 0L) return false
-        val progress = (positionMs.toFloat() / durationMs.toFloat() * 100f).coerceIn(0f, 100f)
+        val progress = FluxaCoreNative.playerProgressPercent(positionMs, durationMs)
         return scheduleTraktScrobble(
             profile,
             meta.type,

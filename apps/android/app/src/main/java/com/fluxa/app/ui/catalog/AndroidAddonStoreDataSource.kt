@@ -6,6 +6,7 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.local.ProfileManager
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.AddonDescriptor
+import com.fluxa.app.data.repository.NuvioSyncCoordinator
 import com.fluxa.app.data.repository.StremioRepository
 import com.fluxa.app.shared.feature.addonstore.AddonStoreDataSource
 import com.fluxa.app.shared.feature.addonstore.AddonStoreInputType
@@ -15,6 +16,9 @@ import com.fluxa.app.ui.installLocalAddonForProfile
 import com.fluxa.app.ui.moveLocalAddonForProfile
 import com.fluxa.app.ui.removeLocalAddonForProfile
 import com.fluxa.app.ui.setLocalAddonEnabledForProfile
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.google.gson.JsonParser
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
@@ -25,9 +29,9 @@ class AndroidAddonStoreDataSource(
     private val profileManager: ProfileManager,
     private val homeViewModel: HomeViewModel,
     private val activeProfile: () -> UserProfile?,
-    private val onProfileChanged: (UserProfile) -> Unit
+    private val onProfileChanged: (UserProfile) -> Unit,
+    private val nuvioSyncCoordinator: NuvioSyncCoordinator,
 ) : AddonStoreDataSource {
-
     private data class Extras(
         val inputText: String = "",
         val detectedType: AddonStoreInputType = AddonStoreInputType.UNKNOWN,
@@ -51,72 +55,53 @@ class AndroidAddonStoreDataSource(
         installedUserAddons,
         extras
     ) { userAddonsAndLoaded, ex ->
-        buildState(userAddonsAndLoaded.first, userAddonsAndLoaded.second, ex)
+        buildState(
+            userAddons = userAddonsAndLoaded.first,
+            localLoaded = userAddonsAndLoaded.second,
+            ex = ex,
+        )
     }
 
     private fun buildState(
         userAddons: List<AddonDescriptor>,
-        loaded: Boolean,
+        localLoaded: Boolean,
         ex: Extras
     ): AddonStoreUiState {
         val profile = activeProfile()
-        val normalizedInstalledUrls = profile?.safeInstalledLocalAddons.orEmpty().map(::normalizeAddonUrlForProfile)
-        val normalizedIdentities = normalizedInstalledUrls.map(::addonUrlIdentity)
-        val disabledIdentities = profile?.disabledLocalAddons.orEmpty().map(::addonUrlIdentity).toSet()
-
-        val fromRepository = userAddons.map { addon ->
-            val normalizedUrl = normalizeAddonUrlForProfile(addon.transportUrl)
-            InstalledAddonUiModel(
-                name = addon.manifest.name.takeIf { it.isNotBlank() } ?: addonNameFromUrl(normalizedUrl),
-                description = addon.manifest.description?.takeIf { it.isNotBlank() }.orEmpty(),
-                url = normalizedUrl,
-                logoUrl = addon.manifest.logo,
-                version = addon.manifest.version,
-                configUrl = addonConfigUrl(normalizedUrl),
-                configurable = addon.manifest.configurable == true
-            )
+        val isNuvioProfile = !profile?.nuvioAccessToken.isNullOrBlank()
+        val request = JsonObject().apply {
+            add("repositoryAddons", Gson().toJsonTree(userAddons))
+            add("localUrls", Gson().toJsonTree(profile?.safeInstalledLocalAddons.orEmpty()))
+            add("disabledKeys", Gson().toJsonTree(profile?.disabledLocalAddons.orEmpty()))
+            addProperty("isNuvioProfile", isNuvioProfile)
+            addProperty("localLoaded", localLoaded)
+            addProperty("refreshingUrl", ex.refreshingUrl)
         }
-        val repoIdentities = fromRepository.map { addonUrlIdentity(it.url) }.toSet()
-        val localFallback = if (loaded) {
-            profile?.safeInstalledLocalAddons.orEmpty()
-                .filterNot { addonUrlIdentity(it) in repoIdentities }
-                .map { url ->
-                    val normalizedUrl = normalizeAddonUrlForProfile(url)
-                    InstalledAddonUiModel(
-                        name = addonNameFromUrl(normalizedUrl),
-                        description = "",
-                        url = normalizedUrl,
-                        configUrl = addonConfigUrl(normalizedUrl)
-                    )
-                }
-        } else {
-            emptyList()
-        }
-
-        val merged = (fromRepository + localFallback)
-            .distinctBy { addonUrlIdentity(it.url) }
-            .sortedWith(
-                compareBy<InstalledAddonUiModel> {
-                    normalizedIdentities.indexOf(addonUrlIdentity(it.url)).takeIf { index -> index >= 0 } ?: Int.MAX_VALUE
-                }.thenBy { it.name.lowercase() }
-            )
-            .map { model ->
-                val identity = addonUrlIdentity(model.url)
-                val localIndex = normalizedIdentities.indexOf(identity)
-                val canRemove = localIndex >= 0
-                model.copy(
-                    isEnabled = identity !in disabledIdentities,
-                    canRemove = canRemove,
-                    canMoveUp = canRemove && localIndex > 0,
-                    canMoveDown = canRemove && localIndex < normalizedInstalledUrls.lastIndex,
-                    isRefreshing = ex.refreshingUrl != null && addonUrlIdentity(ex.refreshingUrl) == identity
+        val merged = JsonParser.parseString(FluxaCoreNative.addonStoreEntriesPlan(request.toString()))
+            .asJsonArray
+            .map { value ->
+                val entry = value.asJsonObject
+                val url = entry.get("url").asString
+                InstalledAddonUiModel(
+                    name = entry.get("name").asString,
+                    description = entry.get("description").asString,
+                    url = url,
+                    logoUrl = entry.get("logoUrl")?.takeUnless { it.isJsonNull }?.asString,
+                    version = entry.get("version")?.takeUnless { it.isJsonNull }?.asString,
+                    configUrl = addonConfigUrl(url),
+                    configurable = entry.get("configurable").asBoolean,
+                    isEnabled = entry.get("isEnabled").asBoolean,
+                    canRemove = entry.get("canRemove").asBoolean,
+                    canMoveUp = entry.get("canMoveUp").asBoolean,
+                    canMoveDown = entry.get("canMoveDown").asBoolean,
+                    isRefreshing = entry.get("isRefreshing").asBoolean
                 )
             }
 
         return AddonStoreUiState(
             installedAddons = merged,
             accentColorArgb = profile?.safeAccentColorArgb?.toLong()?.and(0xffffffffL) ?: 0xFF4CAF50L,
-            isLoading = profile != null && !loaded,
+            isLoading = profile != null && !localLoaded,
             inputText = ex.inputText,
             inputDetectedType = ex.detectedType,
             isSubmittingInput = ex.isSubmittingInput,
@@ -129,6 +114,12 @@ class AndroidAddonStoreDataSource(
         val profile = activeProfile()
         if (profile == null) {
             installedUserAddons.value = emptyList<AddonDescriptor>() to true
+            return
+        }
+        if (!profile.nuvioAccessToken.isNullOrBlank()) {
+            val result = runCatching { nuvioSyncCoordinator.fetchAddons(profile) }
+                .getOrDefault(emptyList())
+            installedUserAddons.value = result to true
             return
         }
         val result = runCatching {
@@ -180,16 +171,37 @@ class AndroidAddonStoreDataSource(
     }
 
     override suspend fun toggleAddon(url: String, enabled: Boolean) {
+        val profile = activeProfile()
+        val addon = installedUserAddons.value.first.firstOrNull { addonUrlIdentity(it.transportUrl) == addonUrlIdentity(url) }
+        if (!profile?.nuvioAccessToken.isNullOrBlank() && addon?.isManaged == true) {
+            nuvioSyncCoordinator.setAddonEnabled(profile, addon, enabled)
+            refresh()
+            return
+        }
         setLocalAddonEnabledForProfile(activeProfile(), url, enabled, profileManager, homeViewModel, onProfileChanged)
         refreshProfileState()
     }
 
     override suspend fun removeAddon(url: String) {
+        val profile = activeProfile()
+        val addon = installedUserAddons.value.first.firstOrNull { addonUrlIdentity(it.transportUrl) == addonUrlIdentity(url) }
+        if (!profile?.nuvioAccessToken.isNullOrBlank() && addon?.isManaged == true) {
+            nuvioSyncCoordinator.removeAddon(profile, addon)
+            refresh()
+            return
+        }
         removeLocalAddonForProfile(activeProfile(), url, profileManager, homeViewModel, onProfileChanged)
         refreshProfileState()
     }
 
     override suspend fun moveAddon(url: String, direction: Int) {
+        val profile = activeProfile()
+        val addon = installedUserAddons.value.first.firstOrNull { addonUrlIdentity(it.transportUrl) == addonUrlIdentity(url) }
+        if (!profile?.nuvioAccessToken.isNullOrBlank() && addon?.isManaged == true) {
+            nuvioSyncCoordinator.moveAddon(profile, addon, direction)
+            refresh()
+            return
+        }
         moveLocalAddonForProfile(activeProfile(), url, direction, profileManager, homeViewModel, onProfileChanged)
         refreshProfileState()
     }
@@ -200,6 +212,13 @@ class AndroidAddonStoreDataSource(
 
     override suspend fun refreshAddon(url: String) {
         extras.update { it.copy(refreshingUrl = url) }
+        val profile = activeProfile()
+        if (!profile?.nuvioAccessToken.isNullOrBlank()) {
+            val reloaded = runCatching { nuvioSyncCoordinator.fetchAddons(profile) }.getOrDefault(emptyList())
+            installedUserAddons.value = reloaded to true
+            extras.update { it.copy(refreshingUrl = null) }
+            return
+        }
         val refreshed = repository.getAddonManifest(url, forceRefresh = true)
         val (current, loaded) = installedUserAddons.value
         installedUserAddons.value = if (refreshed != null) {

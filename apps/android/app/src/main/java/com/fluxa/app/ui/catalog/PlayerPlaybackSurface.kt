@@ -371,7 +371,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
                 onPictureInPicture = onPictureInPicture,
                 onShowSettings = onShowSettingsTab,
                 onClose = onClose,
-                accentColor = Color(activeProfile?.safeAccentColorArgb ?: FluxaColors.accentArgb)
+                accentColor = Color(activeProfile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt())
             )
         }
     }
@@ -403,7 +403,7 @@ internal fun BoxScope.PlayerPlaybackSurface(
         lang = lang,
         isVisible = showParentsGuide,
         onAnimationComplete = onParentsGuideAnimationComplete,
-        accentColor = Color(activeProfile?.safeAccentColorArgb ?: FluxaColors.accentArgb),
+        accentColor = Color(activeProfile?.safeAccentColorArgb ?: 0xFFFFFFFF.toInt()),
         modifier = Modifier
             .align(Alignment.TopStart)
             .windowInsetsPadding(WindowInsets.safeDrawing)

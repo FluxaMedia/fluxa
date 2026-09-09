@@ -25,11 +25,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.delay
+import com.fluxa.app.core.rust.FluxaCoreNative
+import com.google.gson.Gson
 
 internal class HomeCatalogFeedCoordinator(
     private val repository: StremioRepository,
     private val addonRepository: AddonRepository,
     private val scope: CoroutineScope,
+    private val gson: Gson,
     private val userAddons: () -> List<AddonDescriptor>,
     private val setUserAddons: (List<AddonDescriptor>) -> Unit,
     private val continueWatchingItems: (String) -> List<Meta>,
@@ -97,7 +100,8 @@ internal class HomeCatalogFeedCoordinator(
         val collections = profile?.safeLibraryCollections.orEmpty()
             .filter { it.folders.orEmpty().isNotEmpty() }
             .filter { collection ->
-                showAboveContinueWatching == null || collection.showOnHome == showAboveContinueWatching
+                showAboveContinueWatching == null ||
+                    (collection.showOnHome ?: true) == showAboveContinueWatching
             }
         return collections.flatMap { collection ->
             val folderSources = collection.folders.orEmpty().associateWith { folder ->
@@ -106,7 +110,7 @@ internal class HomeCatalogFeedCoordinator(
                     val catalogName = addon.manifest.catalogs.orEmpty()
                         .firstOrNull { catalog ->
                             catalog.id == source.catalogId &&
-                                normalizeCollectionContentType(catalog.type) == normalizeCollectionContentType(source.type)
+                                normalizeCatalogType(catalog.type) == normalizeCatalogType(source.type)
                         }
                         ?.name
                         ?.takeIf(String::isNotBlank)
@@ -139,43 +143,9 @@ internal class HomeCatalogFeedCoordinator(
                     remoteSources = remoteSources
                 )
             }
-            val allSources = collection.folders.orEmpty().flatMap { folderSources[it].orEmpty() }
-            val allRemoteSources = collection.folders.orEmpty().flatMap { it.sources.orEmpty() }
-            val allCategoryId = "${collection.id}.all"
-            val allResultCategory = if (collection.showAllTab == true && (allSources.isNotEmpty() || allRemoteSources.isNotEmpty())) {
-                HomeCategory(
-                    name = AppStrings.t(lang, "auto.all"),
-                    items = emptyList(),
-                    id = allCategoryId,
-                    type = "collection_folder",
-                    catalogId = allSources.firstOrNull()?.catalogId ?: allCategoryId,
-                    addonTransportUrl = allSources.firstOrNull()?.transportUrl,
-                    addonGenre = null,
-                    catalogSources = allSources,
-                    remoteSources = allRemoteSources
-                )
-            } else {
-                null
-            }
-            val allCard = if (allResultCategory != null) {
-                listOf(
-                    Meta(
-                        id = allCategoryId,
-                        name = AppStrings.t(lang, "auto.all"),
-                        type = "catalog_folder",
-                        poster = collection.imageUrl,
-                        background = collection.imageUrl,
-                        reason = null,
-                        coverEmoji = "*",
-                        focusGlowEnabled = collection.focusGlowEnabled
-                    )
-                )
-            } else {
-                emptyList()
-            }
             listOf(HomeCategory(
                 name = collection.title,
-                items = allCard + collection.folders.orEmpty().map { folder ->
+                items = collection.folders.orEmpty().map { folder ->
                     Meta(
                         id = folder.id,
                         name = folder.title,
@@ -194,15 +164,15 @@ internal class HomeCatalogFeedCoordinator(
                 type = "collection",
                 id = collection.id,
                 canLoadMore = false
-            )) + listOfNotNull(allResultCategory) + folderResultCategories
+            )) + folderResultCategories
         }
     }
 
     suspend fun fetchFolderSections(
         folder: com.fluxa.app.data.local.LibraryUserCollectionFolder,
-        lang: String
+        lang: String,
+        addons: List<AddonDescriptor> = userAddons()
     ): List<Pair<String, List<Meta>>> {
-        val addons = userAddons()
         return coroutineScope {
             folder.catalogSources.orEmpty().map { source ->
                 async(Dispatchers.IO) {
@@ -210,7 +180,7 @@ internal class HomeCatalogFeedCoordinator(
                     val catalogName = addon.manifest.catalogs.orEmpty()
                         .firstOrNull { catalog ->
                             catalog.id == source.catalogId &&
-                                normalizeCollectionContentType(catalog.type) == normalizeCollectionContentType(source.type)
+                                normalizeCatalogType(catalog.type) == normalizeCatalogType(source.type)
                         }
                         ?.name
                         ?.takeIf(String::isNotBlank)
@@ -246,28 +216,13 @@ internal class HomeCatalogFeedCoordinator(
         source: com.fluxa.app.data.local.LibraryCatalogSource,
         addons: List<AddonDescriptor>
     ): AddonDescriptor? {
-        val addonId = source.addonId
-        if (!addonId.isNullOrBlank()) {
-            val normalizedAddonId = normalizeAddonIdentity(addonId)
-            return addons.firstOrNull { addon ->
-                addon.manifest.id.equals(addonId, ignoreCase = true) ||
-                    addon.transportUrl.contains(addonId, ignoreCase = true) ||
-                    normalizeAddonIdentity(addon.manifest.id) == normalizedAddonId ||
-                    normalizeAddonIdentity(addon.transportUrl).contains(normalizedAddonId)
-            }
-        }
+        val resolvedTransportUrl = FluxaCoreNative.resolveTransportUrl(
+            sourceJson = gson.toJson(source),
+            addonsJson = gson.toJson(addons),
+        ) ?: return null
+        val normalizedResolvedUrl = FluxaCoreNative.normalizeManifestUrl(resolvedTransportUrl)
         return addons.firstOrNull { addon ->
-            addon.manifest.catalogs.orEmpty().any { catalog ->
-                catalog.id == source.catalogId && normalizeCollectionContentType(catalog.type) == normalizeCollectionContentType(source.type)
-            }
-        }
-    }
-
-    private fun normalizeCollectionContentType(value: String?): String? {
-        return when (value?.trim()?.lowercase()) {
-            "movie", "movies" -> "movie"
-            "series", "tv", "show", "shows" -> "series"
-            else -> value?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+            FluxaCoreNative.normalizeManifestUrl(addon.transportUrl) == normalizedResolvedUrl
         }
     }
 
@@ -275,9 +230,8 @@ internal class HomeCatalogFeedCoordinator(
         return value?.trim()?.takeIf { it.isNotBlank() && !it.equals("none", ignoreCase = true) }
     }
 
-    private fun normalizeAddonIdentity(value: String?): String {
-        return value.orEmpty().lowercase().filter(Char::isLetterOrDigit)
-    }
+    private fun normalizeCatalogType(value: String?): String? =
+        value?.trim()?.takeIf { it.isNotEmpty() }?.let(FluxaCoreNative::normalizeCatalogType)
 
     fun loadRemainingCatalogs(profile: UserProfile?) {
         remainingCatalogsJob?.cancel()

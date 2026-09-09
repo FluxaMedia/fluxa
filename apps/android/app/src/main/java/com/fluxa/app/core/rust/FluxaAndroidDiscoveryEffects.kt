@@ -20,7 +20,6 @@ import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
 import com.fluxa.app.ui.catalog.DiscoverGenreOption
 import com.fluxa.app.data.repository.TraktIntegration
 import com.google.gson.JsonElement
-import android.net.Uri
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -59,7 +58,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.runDiscover(effect: NativeH
     // catalog order in the merged result; the semaphore caps concurrent addon requests.
     val semaphore = Semaphore(8)
     val fetched = catalogs.flatMap { catalog ->
-        val selectedTypes = if (catalog.type == "all") listOf("movie", "series") else listOf(catalog.type)
+        val selectedTypes = FluxaCoreNative.discoverCatalogRequestTypes(catalog.type)
         selectedTypes.map { type -> catalog to type }
     }.map { (catalog, type) ->
         async {
@@ -151,7 +150,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchRemoteCollectionSource
 internal suspend fun FluxaAndroidHeadlessEnvironment.fetchTraktCollectionSource(source: LibraryRemoteSource, skip: Int): List<Meta> {
     if (!TraktIntegration.hasClient(BuildConfig.TRAKT_CLIENT_ID)) return emptyList()
     val listId = source.traktListId ?: return emptyList()
-    val isSeries = source.mediaType.equals("series", ignoreCase = true) || source.mediaType.equals("show", ignoreCase = true) || source.mediaType.equals("tv", ignoreCase = true)
+    val isSeries = FluxaCoreNative.isSeriesContentType(source.mediaType)
     return ExternalSyncApi.create().getListItems(
         listId = listId,
         type = if (isSeries) "show" else "movie",
@@ -177,50 +176,19 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchTmdbCollectionSource(s
     val apiKey = profile?.safeTmdbApiKey.orEmpty()
     val sourceId = source.tmdbId ?: return emptyList()
     if (apiKey.isBlank()) return emptyList()
-    val mediaType = if (source.mediaType.equals("series", true) || source.mediaType.equals("tv", true) || source.mediaType.equals("show", true)) "tv" else "movie"
+    val mediaType = if (FluxaCoreNative.isSeriesContentType(source.mediaType)) "tv" else "movie"
     val sourceType = source.tmdbSourceType.orEmpty().uppercase()
-    val path = when (sourceType) {
-        "LIST" -> "list/$sourceId"
-        "COLLECTION" -> "collection/$sourceId"
-        "PERSON", "DIRECTOR" -> "person/$sourceId/combined_credits"
-        "COMPANY" -> "discover/$mediaType"
-        "NETWORK" -> "discover/tv"
-        else -> "discover/$mediaType"
-    }
-    val url = Uri.parse("https://api.themoviedb.org/3/$path").buildUpon()
-        .appendQueryParameter("api_key", apiKey)
-        .appendQueryParameter("language", profile?.safeLanguage ?: "en")
-        .apply {
-            if (sourceType !in setOf("COLLECTION", "PERSON", "DIRECTOR")) {
-                appendQueryParameter("page", (skip / 20 + 1).toString())
-            }
-            when (sourceType) {
-                "COMPANY" -> appendQueryParameter("with_companies", sourceId.toString())
-                "NETWORK" -> appendQueryParameter("with_networks", sourceId.toString())
-            }
-            if (sourceType !in setOf("LIST", "COLLECTION", "PERSON", "DIRECTOR")) {
-                appendQueryParameter("sort_by", source.sortBy ?: "popularity.desc")
-            }
-            val filters = source.filters.orEmpty()
-            mapOf(
-                "year" to if (mediaType == "tv") "first_air_date_year" else "year",
-                "withGenres" to "with_genres",
-                "watchRegion" to "watch_region",
-                "voteCountGte" to "vote_count.gte",
-                "withKeywords" to "with_keywords",
-                "withNetworks" to "with_networks",
-                "withCompanies" to "with_companies",
-                "releaseDateGte" to if (mediaType == "tv") "first_air_date.gte" else "primary_release_date.gte",
-                "releaseDateLte" to if (mediaType == "tv") "first_air_date.lte" else "primary_release_date.lte",
-                "voteAverageGte" to "vote_average.gte",
-                "voteAverageLte" to "vote_average.lte",
-                "withOriginCountry" to "with_origin_country",
-                "withWatchProviders" to "with_watch_providers",
-                "withOriginalLanguage" to "with_original_language"
-            ).forEach { (input, output) -> filters[input]?.let { appendQueryParameter(output, it.toString()) } }
-        }
-        .build()
-        .toString()
+    val filtersJson = source.filters?.let { gson.toJson(it) }
+    val url = FluxaCoreNative.tmdbCollectionSourceUrl(
+        sourceType = sourceType,
+        sourceId = sourceId,
+        mediaType = source.mediaType,
+        skip = skip,
+        sortBy = source.sortBy,
+        filtersJson = filtersJson,
+        apiKey = apiKey,
+        language = profile?.safeLanguage ?: "en",
+    ) ?: return emptyList()
     val root = TmdbService.create().getCollectionSource(url)
     val items = root.asJsonObjectOrNull()?.let { objectNode ->
         when {
@@ -249,13 +217,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchSeasonEpisodes(effect:
         useConfiguredAddons = true
     )
     val enriched = if (profile?.safeTmdbApiKey?.isNotBlank() == true && profile.safeTmdbEpisodeImagesEnabled) {
-        val tmdbNumId = when {
-            seriesId.startsWith("tmdb:", ignoreCase = true) ->
-                seriesId.removePrefix("tmdb:").substringBefore(":").takeIf { it.toIntOrNull() != null }
-            seriesId.substringBefore(":").toIntOrNull() != null ->
-                seriesId.substringBefore(":")
-            else -> null
-        }
+        val tmdbNumId = FluxaCoreNative.tmdbNumericId(seriesId)
         if (tmdbNumId != null) {
             repository.enrichSeasonEpisodesWithTmdb(tmdbNumId, seasonNumber, episodes, profile.safeTmdbApiKey, language)
         } else {
@@ -273,17 +235,17 @@ internal fun FluxaAndroidHeadlessEnvironment.fetchSubtitles(effect: NativeHeadle
 }
 
 private fun TmdbMeta.toCollectionMeta(defaultMediaType: String): Meta? {
-    val type = if (media_type == "tv" || defaultMediaType == "tv") "series" else "movie"
-    val title = if (type == "series") name else title
+    val type = FluxaCoreNative.tmdbItemContentType(media_type, first_air_date != null, defaultMediaType)
+    val title = if (FluxaCoreNative.isSeriesContentType(type)) name else title
     return title?.let {
         Meta(
             id = "tmdb:$id",
             name = it,
             type = type,
-            poster = posterPath?.let { path -> "https://image.tmdb.org/t/p/w500$path" },
-            background = backdropPath?.let { path -> "https://image.tmdb.org/t/p/w1280$path" },
+            poster = FluxaCoreNative.tmdbImageUrl(posterPath, "w500"),
+            background = FluxaCoreNative.tmdbImageUrl(backdropPath, "w1280"),
             description = overview,
-            releaseInfo = (if (type == "series") first_air_date else release_date)?.take(4),
+            releaseInfo = (if (FluxaCoreNative.isSeriesContentType(type)) first_air_date else release_date)?.take(4),
             originalName = original_name
         )
     }

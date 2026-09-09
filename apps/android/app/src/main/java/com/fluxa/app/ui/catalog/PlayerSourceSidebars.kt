@@ -6,6 +6,7 @@ import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.safeAccentColorArgb
 import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.remote.Video
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.shared.feature.player.PlayerContentUiModel
 import com.fluxa.app.shared.feature.player.PlayerSidebarShell
 import com.fluxa.app.shared.feature.player.TrackItem
@@ -52,8 +53,7 @@ fun EpisodeSidebar(
     var showSeasonMenu by remember { mutableStateOf(false) }
     var hasExtras by remember(content.id) { mutableStateOf(false) }
     val currentSeasonFromId = remember(currentId) {
-        val parts = currentId.split(":")
-        if (parts.size >= 3) parts[parts.size - 2].toIntOrNull() ?: 1 else 1
+        FluxaCoreNative.parseEpisodeLocator(currentId)?.season ?: 1
     }
     var selectedSeason by remember(currentId) { mutableIntStateOf(currentSeasonFromId) }
     val availableSeasons = remember(content.seasonsCount, hasExtras, currentSeasonFromId) {

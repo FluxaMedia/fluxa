@@ -11,7 +11,6 @@ import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.repository.CloudStreamCatalogClient
 import com.fluxa.app.data.repository.toFluxaStreams
-import com.fluxa.app.data.repository.toStremioType
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
 import com.fluxa.app.plugins.cloudstream.ScraperActor
@@ -47,7 +46,7 @@ internal class AndroidCloudStreamRuntime(private val pluginManager: PluginManage
         }
         return MetaDetail(
             id = id,
-            type = load.type.toStremioType(),
+            type = FluxaCoreNative.cloudstreamContentType(load.type.name),
             name = load.title,
             genres = load.tags,
             poster = load.posterUrl,
@@ -110,7 +109,7 @@ internal class AndroidCloudStreamRuntime(private val pluginManager: PluginManage
         return Meta(
             id = CloudStreamCatalogClient.encodeCsId(apiName, url),
             name = name,
-            type = type?.toStremioType() ?: "movie",
+            type = type?.let { FluxaCoreNative.cloudstreamContentType(it.name) } ?: "movie",
             poster = posterUrl,
             releaseInfo = year?.toString(),
             imdbRating = quality,

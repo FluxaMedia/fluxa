@@ -3,6 +3,7 @@ package com.fluxa.app.data.repository
 import android.util.Base64
 import android.util.Log
 import com.fluxa.app.data.remote.Meta
+import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.domain.discovery.cs3CatalogFeedKey
 import com.fluxa.app.domain.discovery.cs3PluginFeedKey
 import com.fluxa.app.plugins.cloudstream.ExternalExtensionRunner
@@ -212,14 +213,10 @@ class CloudStreamCatalogClient @Inject constructor() {
     private fun resolveId(result: SearchResponse, api: MainAPI): String {
         if (api is TmdbProvider) {
             result.id?.let { return "tmdb:$it" }
-            extractTmdbId(result.url)?.let { return "tmdb:$it" }
+            FluxaCoreNative.tmdbNumericId(result.url)?.let { return "tmdb:$it" }
         }
         return encodeCsId(api.name, result.url)
     }
-
-    private fun extractTmdbId(url: String): Int? =
-        Regex("""themoviedb\.org/(?:movie|tv)/(\d+)""")
-            .find(url)?.groupValues?.get(1)?.toIntOrNull()
 
     companion object {
         fun encodeCsId(apiName: String, data: String): String {
@@ -245,8 +242,4 @@ class CloudStreamCatalogClient @Inject constructor() {
     }
 }
 
-internal fun TvType.toStremioType(): String = when (this) {
-    TvType.Movie, TvType.AnimeMovie, TvType.Documentary -> "movie"
-    TvType.TvSeries, TvType.Anime, TvType.OVA, TvType.Cartoon, TvType.AsianDrama -> "series"
-    else -> "movie"
-}
+internal fun TvType.toStremioType(): String = FluxaCoreNative.cloudstreamContentType(name)
