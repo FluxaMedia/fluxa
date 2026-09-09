@@ -16,8 +16,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import com.fluxa.app.ui.catalog.DeviceType
-import com.fluxa.app.ui.catalog.LocalDeviceType
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
+import com.fluxa.app.ui.catalog.WindowWidthClass
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -26,7 +26,7 @@ fun AdaptiveModalSheet(
     containerColor: Color,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    if (LocalDeviceType.current == DeviceType.TV) {
+    if (LocalWindowWidthClass.current == WindowWidthClass.Expanded) {
         Dialog(onDismissRequest = onDismissRequest) {
             Column(
                 modifier = Modifier

@@ -27,6 +27,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.models.NativeStreamBadge
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.fluxa.app.player.LibassDebugLog
@@ -165,6 +167,20 @@ internal fun BoxScope.PlayerPlaybackSurface(
     val seekSurfaceViewRef = remember { mutableStateOf<SurfaceView?>(null) }
     val nativeLibassSurfaceView = remember { mutableStateOf<NativeLibassSubtitleSurfaceView?>(null) }
     val exoSubtitleViewRef = remember { mutableStateOf<androidx.media3.ui.SubtitleView?>(null) }
+    val playerActivity = LocalContext.current.findActivity()
+    var isInPictureInPictureMode by remember(playerActivity) {
+        mutableStateOf(playerActivity?.isInPictureInPictureMode == true)
+    }
+    LaunchedEffect(playerActivity) {
+        if (playerActivity == null) return@LaunchedEffect
+        while (isActive) {
+            val inPictureInPicture = playerActivity.isInPictureInPictureMode
+            if (isInPictureInPictureMode != inPictureInPicture) {
+                isInPictureInPictureMode = inPictureInPicture
+            }
+            delay(200)
+        }
+    }
 
     if (!useMpvBackend) {
         LaunchedEffect(exoPlayer, exoSubtitleViewRef.value) {
@@ -377,16 +393,24 @@ internal fun BoxScope.PlayerPlaybackSurface(
     }
 
     var pausedOverlayVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(playback.isPlaying, playback.isBuffering, timeline.duration, playerError) {
+    val pauseMetadataOverlayEnabled = activeProfile?.safePauseMetadataOverlayEnabled != false
+    LaunchedEffect(
+        pauseMetadataOverlayEnabled,
+        isInPictureInPictureMode,
+        playback.isPlaying,
+        playback.isBuffering,
+        timeline.duration,
+        playerError,
+    ) {
         pausedOverlayVisible = false
-        if (playback.isPlaying || playback.isBuffering || timeline.duration <= 0L || playerError != null) {
+        if (!pauseMetadataOverlayEnabled || isInPictureInPictureMode || playback.isPlaying || playback.isBuffering || timeline.duration <= 0L || playerError != null) {
             return@LaunchedEffect
         }
         kotlinx.coroutines.delay(5000)
         pausedOverlayVisible = true
     }
     androidx.compose.animation.AnimatedVisibility(
-        visible = pausedOverlayVisible && !showControls && playback.hasStartedPlaying,
+        visible = pauseMetadataOverlayEnabled && !isInPictureInPictureMode && pausedOverlayVisible && !showControls && playback.hasStartedPlaying,
         enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(220)),
         exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(180))
     ) {

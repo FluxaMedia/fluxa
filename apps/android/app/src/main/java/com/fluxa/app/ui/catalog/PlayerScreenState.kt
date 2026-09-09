@@ -142,7 +142,8 @@ internal class PlayerScreenState(
     var nextEpisodePending by mutableStateOf<Video?>(null)
     var previousEpisodePending by mutableStateOf<Video?>(null)
     var terminalRecommendations by mutableStateOf<List<Meta>>(emptyList())
-    var terminalRecommendationsLoaded by mutableStateOf(false)
+    var terminalRecommendationsRequested by mutableStateOf(false)
+    var terminalRecommendationsLoading by mutableStateOf(false)
 
     private var lastCorePositionMs: Long? = null
     private var lastCoreStreamIndex: Long? = null
@@ -153,7 +154,8 @@ internal class PlayerScreenState(
 
     fun resetForEpisode(videoId: String) {
         terminalRecommendations = emptyList()
-        terminalRecommendationsLoaded = false
+        terminalRecommendationsRequested = false
+        terminalRecommendationsLoading = false
         val snapshot = coreState.dispatch(
             CoreAction(
                 type = "playerResetForEpisode",

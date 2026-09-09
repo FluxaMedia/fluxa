@@ -111,8 +111,8 @@ class StremioRepository @Inject constructor(
         localAddons: List<String>? = emptyList()
     ): MetaDetail? = addonRepository.getAddonMetaDetail(type, id, authKey, localAddons)
 
-    suspend fun getSimilar(type: String, id: String, language: String = "en"): List<Meta> =
-        tmdbRepository.getSimilar(type, id, language)
+    suspend fun getSimilar(type: String, id: String, language: String = "en", apiKey: String = ""): List<Meta> =
+        tmdbRepository.getSimilar(type, id, language, apiKey)
 
     suspend fun getTmdbTrailers(type: String, id: String, language: String = "en", apiKey: String): List<DetailTrailer> =
         tmdbRepository.getTrailers(type, id, language, apiKey)

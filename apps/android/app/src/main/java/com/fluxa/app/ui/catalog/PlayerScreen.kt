@@ -3,6 +3,7 @@
 package com.fluxa.app.ui.catalog
 
 import android.content.Context
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -25,6 +26,7 @@ import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.stream.playableUrl
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.FluxaCoreUniFfi
 import com.fluxa.app.player.*
 import com.fluxa.app.player.MediaPlayerController
 import com.fluxa.app.ui.playback.FluxaPlaybackSessionController
@@ -686,11 +688,80 @@ fun PlayerScreen(
         context = context,
         lang = lang,
         isPlaying = state.engine.playback.isPlaying,
-        hasNextEpisode = state.nextEpisodePending != null,
         activeEngine = activeEngine,
-        playNext = playbackActions::playNext
+        seekBackward = { playbackActions.performRelativeSeek(-1) },
+        seekForward = { playbackActions.performRelativeSeek(1) }
     )
 
+    suspend fun requestTerminalRecommendations() {
+        if (state.terminalRecommendationsRequested || state.terminalRecommendationsLoading) return
+        state.terminalRecommendationsRequested = true
+        state.terminalRecommendationsLoading = true
+        Log.d("TerminalRec", "request start id=${meta.id} type=${meta.type}")
+        try {
+            state.terminalRecommendations = viewModel.loadTerminalRecommendations(
+                meta = meta,
+                hasNextEpisode = false,
+                language = lang,
+                profile = activeProfile,
+            )
+            Log.d("TerminalRec", "request result count=${state.terminalRecommendations.size}")
+        } finally {
+            state.terminalRecommendationsLoading = false
+        }
+    }
+
+    LaunchedEffect(
+        state.currentVideoId,
+        useMpvBackend,
+        activeProfile?.safeMovieRecommendationOutroPercent,
+        activeProfile?.safeSeriesRecommendationOutroPercent,
+        state.skipSegments,
+    ) {
+        while (isActive) {
+            val isPlaying = if (useMpvBackend) state.engine.playback.isPlaying else exoPlayer.isPlaying
+            val hasStartedPlaying = state.engine.playback.hasStartedPlaying || isPlaying
+            val positionMs = if (useMpvBackend) state.engine.timeline.position else exoPlayer.currentPosition
+            val durationMs = if (useMpvBackend) {
+                state.engine.timeline.duration
+            } else {
+                exoPlayer.duration.takeIf { it > 0L } ?: state.engine.timeline.duration
+            }
+            val thresholdPercent = if (meta.type == "series") {
+                activeProfile?.safeSeriesRecommendationOutroPercent ?: 85f
+            } else {
+                activeProfile?.safeMovieRecommendationOutroPercent ?: 85f
+            }
+            val outroStartSeconds = state.skipSegments
+                .firstOrNull { it.type == "outro" && it.endTime >= durationMs - 1_000L }
+                ?.startTime
+                ?.div(1_000.0)
+            val shouldShowRecommendations = if (isPlaying && durationMs > 0L && hasStartedPlaying) {
+                runCatching {
+                    FluxaCoreUniFfi.coreInvokeValue(
+                        "recommendationOutroPlan",
+                        JsonObject().apply {
+                            addProperty("positionSeconds", positionMs / 1_000.0)
+                            addProperty("durationSeconds", durationMs / 1_000.0)
+                            addProperty("thresholdPercent", thresholdPercent)
+                            addProperty("alreadyShown", state.terminalRecommendationsRequested)
+                            outroStartSeconds?.let { addProperty("outroStartSeconds", it) }
+                        }.toString(),
+                    ).asJsonObject.get("shouldShow")?.asBoolean == true
+                }.getOrDefault(false)
+            } else {
+                false
+            }
+            if (
+                state.nextEpisodePending == null &&
+                    shouldShowRecommendations
+            ) {
+                Log.d("TerminalRec", "threshold reached id=${meta.id} positionMs=$positionMs durationMs=$durationMs threshold=$thresholdPercent")
+                requestTerminalRecommendations()
+            }
+            delay(1_000)
+        }
+    }
 
 
     LaunchedEffect(state.engine.playback.playbackEnded, state.nextEpisodePending) {
@@ -702,13 +773,9 @@ fun PlayerScreen(
         val hasNextEpisode = state.nextEpisodePending != null
         if (hasNextEpisode) {
             playbackActions.autoPlayNextWhenEnded()
-        } else if (!state.terminalRecommendationsLoaded) {
-            state.terminalRecommendationsLoaded = true
-            state.terminalRecommendations = viewModel.loadTerminalRecommendations(
-                meta = meta,
-                hasNextEpisode = false,
-                language = lang,
-            )
+        } else {
+            requestTerminalRecommendations()
+            while (state.terminalRecommendationsLoading) delay(50)
             if (state.terminalRecommendations.isEmpty()) playbackActions.closePlayer()
         }
     }

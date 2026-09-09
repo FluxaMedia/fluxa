@@ -37,8 +37,15 @@ pub(crate) fn recommendation_outro_plan_json(args_json: &str) -> Option<String> 
         .and_then(Value::as_f64)
         .unwrap_or(85.0)
         .clamp(0.0, 100.0);
+    let outro_start = args
+        .get("outroStartSeconds")
+        .and_then(Value::as_f64)
+        .filter(|value| value.is_finite() && *value >= 0.0);
     let valid = position.is_finite() && duration.is_finite() && duration > 0.0;
-    let reached = valid && position / duration * 100.0 >= threshold;
+    let reached = valid && (
+        position / duration * 100.0 >= threshold ||
+            outro_start.is_some_and(|start| position >= start)
+    );
     Some(json!({"shouldShow": reached && !args.get("alreadyShown").and_then(Value::as_bool).unwrap_or(false)}).to_string())
 }
 
@@ -134,6 +141,10 @@ mod tests {
             r#"{"positionSeconds":90,"durationSeconds":100,"thresholdPercent":85,"alreadyShown":true}"#,
         ).unwrap()).unwrap();
         assert_eq!(value["shouldShow"], false);
+        let outro_value: Value = serde_json::from_str(&recommendation_outro_plan_json(
+            r#"{"positionSeconds":600,"durationSeconds":1200,"thresholdPercent":95,"outroStartSeconds":590,"alreadyShown":false}"#,
+        ).unwrap()).unwrap();
+        assert_eq!(outro_value["shouldShow"], true);
     }
 
     #[test]

@@ -1,6 +1,7 @@
 package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
+import com.fluxa.app.shared.shortenHeroSynopsis
 import com.fluxa.app.ui.catalog.FluxaDimensions
 
 import coil3.compose.AsyncImage
@@ -38,6 +39,10 @@ fun PlayerPauseMetadataOverlay(
 ) {
     var logoLoadError by remember(content.logoUrl) { mutableStateOf(false) }
     val logoUrl = content.logoUrl?.takeIf { it.isNotBlank() }
+    val description = content.subtitle.trim().takeIf { it.isNotBlank() }
+    val shortenedDescription = remember(content.id, description) {
+        description?.let(::shortenHeroSynopsis)
+    }
 
     Column(
         modifier = modifier
@@ -91,13 +96,13 @@ fun PlayerPauseMetadataOverlay(
             )
         }
 
-        if (content.subtitle.isNotBlank()) {
+        if (!shortenedDescription.isNullOrBlank()) {
             Text(
-                text = content.subtitle,
+                text = shortenedDescription,
                 color = Color(0xFFD6D6D6),
                 fontSize = 14.sp,
                 lineHeight = 20.sp,
-                maxLines = 3,
+                maxLines = 5,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .padding(top = 12.dp)

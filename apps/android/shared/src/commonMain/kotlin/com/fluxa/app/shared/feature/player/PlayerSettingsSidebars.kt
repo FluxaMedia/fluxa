@@ -2,12 +2,10 @@ package com.fluxa.app.shared.feature.player
 
 import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.DeviceType
-import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.LocalWindowWidthClass
 import com.fluxa.app.ui.catalog.WindowWidthClass
-import com.fluxa.app.shared.ui.AdaptiveModalSheet
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -331,23 +329,55 @@ fun MobilePlayerSettingsSheet(
     onSelectSettings: (Int) -> Unit,
     onDismiss: () -> Unit
 ) {
-    AdaptiveModalSheet(
-        onDismissRequest = onDismiss,
-        containerColor = FluxaColors.surfaceRaised
+    var shown by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) { shown = true }
+    val progress by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(220, easing = FastOutSlowInEasing),
+        label = "mobilePlayerSettingsSheet"
+    )
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .zIndex(100f)
     ) {
+        val landscape = maxWidth > maxHeight
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.52f * progress))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    onClick = onDismiss
+                )
+        )
         Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .windowInsetsPadding(WindowInsets.navigationBars)
-                .padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth(if (landscape) 0.5f else 1f)
+                .widthIn(max = 520.dp)
+                .graphicsLayer { translationY = (1f - progress) * size.height }
+                .background(Color.Black, RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp))
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterHorizontally)
+                    .padding(bottom = 8.dp)
+                    .width(48.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(999.dp))
+                    .background(Color.White.copy(alpha = 0.22f))
+            )
             Text(
                 text = AppStrings.t(lang, "nav.settings"),
                 color = Color.White,
-                fontSize = 18.sp,
+                fontSize = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                modifier = Modifier.padding(bottom = 6.dp)
+                modifier = Modifier.padding(start = 4.dp, end = 4.dp, bottom = 2.dp)
             )
             if (supportsTrackSettings) {
                 MobilePlayerSettingsRow(
@@ -362,7 +392,7 @@ fun MobilePlayerSettingsSheet(
                 detail = "${formatSpeedLabel(playbackSpeed)}",
                 onClick = { onSelectSettings(2) }
             )
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(4.dp))
         }
     }
 }
@@ -377,17 +407,15 @@ private fun MobilePlayerSettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.rounded))
-            .background(Color.White.copy(alpha = 0.06f))
             .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 4.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(14.dp)
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
     ) {
-        Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
-        Text(title, color = Color.White, fontSize = FluxaDimensions.PlayerChrome.sidebarRowTextSize, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-        detail?.let { Text(it, color = Color.White.copy(alpha = 0.65f), fontSize = 14.sp) }
-        Icon(FluxaIcons.ChevronRight, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(18.dp))
+        Icon(icon, null, tint = Color.White, modifier = Modifier.size(20.dp))
+        Text(title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+        detail?.let { Text(it, color = Color.White.copy(alpha = 0.65f), fontSize = 13.sp) }
+        Icon(FluxaIcons.ChevronRight, null, tint = Color.White.copy(alpha = 0.6f), modifier = Modifier.size(16.dp))
     }
 }
 

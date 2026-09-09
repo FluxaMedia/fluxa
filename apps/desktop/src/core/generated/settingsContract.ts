@@ -93,6 +93,7 @@ export const SETTINGS_KEYS = {
   omdbApiKey: 'omdbApiKey',
   p2pEnabled: 'p2pEnabled',
   pictureInPicture: 'pictureInPicture',
+  pauseMetadataOverlayEnabled: 'pauseMetadataOverlayEnabled',
   playbackSpeed: 'playbackSpeed',
   playerBackBufferSeconds: 'playerBackBufferSeconds',
   playerBufferCacheMb: 'playerBufferCacheMb',
@@ -291,6 +292,7 @@ export interface GeneratedSettingsValues {
   omdbApiKey: string;
   p2pEnabled: boolean;
   pictureInPicture: boolean;
+  pauseMetadataOverlayEnabled: boolean;
   playbackSpeed: string;
   playerBackBufferSeconds: string;
   playerBufferCacheMb: string;
@@ -468,6 +470,7 @@ export const SETTINGS_DEFAULTS: Partial<GeneratedSettingsValues> = {
   omdbApiKey: "",
   p2pEnabled: true,
   pictureInPicture: false,
+  pauseMetadataOverlayEnabled: true,
   playbackSpeed: "1.0",
   playerBackBufferSeconds: "15",
   playerBufferCacheMb: "100",

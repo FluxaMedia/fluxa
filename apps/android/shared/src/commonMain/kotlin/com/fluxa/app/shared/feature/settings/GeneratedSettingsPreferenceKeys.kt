@@ -95,6 +95,7 @@ object GeneratedSettingsPreferenceKeys {
     const val OMDB_API_KEY = "omdbApiKey"
     const val P2P_ENABLED = "p2pEnabled"
     const val PICTURE_IN_PICTURE = "pictureInPicture"
+    const val PAUSE_METADATA_OVERLAY_ENABLED = "pauseMetadataOverlayEnabled"
     const val PLAYBACK_SPEED = "playbackSpeed"
     const val PLAYER_BACK_BUFFER_SECONDS = "playerBackBufferSeconds"
     const val PLAYER_BUFFER_CACHE_MB = "playerBufferCacheMb"

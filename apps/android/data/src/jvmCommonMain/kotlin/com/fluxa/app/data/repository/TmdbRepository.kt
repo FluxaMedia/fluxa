@@ -22,12 +22,24 @@ import javax.inject.Singleton
 class TmdbRepository @Inject constructor(
     private val tmdbService: TmdbService
 ) {
-    suspend fun getRecommendations(type: String, id: String, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
-        tmdbService.getRecommendations(type, id, language).results.map { it.toMeta(type) }
+    suspend fun getRecommendations(type: String, id: String, language: String = "en", apiKey: String = ""): List<Meta> = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext emptyList()
+        val tmdbId = resolveTmdbId(type, id, language, apiKey) ?: return@withContext emptyList()
+        tmdbService.getRecommendations(FluxaCoreNative.tmdbContentType(type), tmdbId, language, apiKey)
+            .results
+            .map { it.toMeta(type) }
     }
 
-    suspend fun getSimilar(type: String, id: String, language: String = "en"): List<Meta> = withContext(Dispatchers.IO) {
-        tmdbService.getSimilar(type, id, language).results.map { it.toMeta(type) }
+    suspend fun getSimilar(type: String, id: String, language: String = "en", apiKey: String = ""): List<Meta> = withContext(Dispatchers.IO) {
+        if (apiKey.isBlank()) return@withContext emptyList()
+        val tmdbId = resolveTmdbId(type, id, language, apiKey) ?: return@withContext emptyList()
+        val tmdbType = FluxaCoreNative.tmdbContentType(type)
+        val recommendations = tmdbService.getRecommendations(tmdbType, tmdbId, language, apiKey).results
+        (if (recommendations.isNotEmpty()) {
+            recommendations
+        } else {
+            tmdbService.getSimilar(tmdbType, tmdbId, language, apiKey).results
+        }).map { it.toMeta(type) }
     }
 
     suspend fun findTmdbId(type: String, imdbId: String): String? = withContext(Dispatchers.IO) {
@@ -279,8 +291,11 @@ class TmdbRepository @Inject constructor(
             id = "tmdb:$id",
             name = title ?: name ?: "",
             type = type,
-            poster = null,
-            releaseInfo = release_date ?: first_air_date
+            poster = posterPath?.let { FluxaCoreNative.tmdbImageUrl(it, "w500") },
+            background = backdropPath?.let { FluxaCoreNative.tmdbImageUrl(it, "w1280") },
+            description = overview,
+            releaseInfo = (release_date ?: first_air_date)?.take(4),
+            released = release_date ?: first_air_date,
         )
     }
 

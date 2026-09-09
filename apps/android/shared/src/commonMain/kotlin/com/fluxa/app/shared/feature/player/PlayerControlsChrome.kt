@@ -460,7 +460,6 @@ fun MobilePlayerUIContent(
     val duration = controls.duration
     val position = controls.position
     var showRemainingTime by remember { mutableStateOf(false) }
-    var showOverflowMenu by remember { mutableStateOf(false) }
     val chromeVisible = !isScrubbing
     val edgeMargin = FluxaDimensions.PlayerChrome.edgeMargin
     val dimAlpha by animateFloatAsState(
@@ -492,7 +491,8 @@ fun MobilePlayerUIContent(
                     PlayerFlatIconButton(
                         icon = FluxaIcons.ArrowBack,
                         onClick = callbacks.onClose,
-                        contentDescription = AppStrings.t(lang, "common.back")
+                        contentDescription = AppStrings.t(lang, "common.back"),
+                        modifier = Modifier.offset(x = -(edgeMargin / 2))
                     )
                     Spacer(modifier = Modifier.width(10.dp))
                     Column(modifier = Modifier.weight(1f)) {
@@ -504,8 +504,11 @@ fun MobilePlayerUIContent(
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        val metaLine = controls.episodeMetaLine?.takeIf { it.isNotBlank() }
-                            ?: listOfNotNull(content.releaseInfo, content.runtime).joinToString("   ").takeIf { it.isNotBlank() }
+                        val metaLine = if (content.isSeries) {
+                            controls.episodeMetaLine?.takeIf { it.isNotBlank() }
+                        } else {
+                            null
+                        }
                         if (!metaLine.isNullOrBlank()) {
                             Text(
                                 text = metaLine,
@@ -518,16 +521,36 @@ fun MobilePlayerUIContent(
                             )
                         }
                     }
-                    PlayerOverflowMenuButton(
-                        lang = lang,
-                        showOverflowMenu = showOverflowMenu,
-                        onToggle = { showOverflowMenu = !showOverflowMenu },
-                        onDismiss = { showOverflowMenu = false },
-                        onPictureInPicture = callbacks.onPictureInPicture,
-                        onCast = callbacks.onCast,
-                        onOpenInExternalPlayer = callbacks.onOpenInExternalPlayer,
-                        onWatchParty = callbacks.onWatchParty
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        PlayerFlatIconButton(
+                            icon = FluxaIcons.PictureInPictureAlt,
+                            onClick = callbacks.onPictureInPicture,
+                            contentDescription = AppStrings.t(lang, "common.picture_in_picture")
+                        )
+                        PlayerFlatIconButton(
+                            icon = FluxaIcons.Cast,
+                            onClick = callbacks.onCast,
+                            contentDescription = AppStrings.t(lang, "auto.cast")
+                        )
+                        PlayerFlatIconButton(
+                            icon = FluxaIcons.OpenInNew,
+                            onClick = callbacks.onOpenInExternalPlayer,
+                            contentDescription = AppStrings.t(lang, "common.external_player")
+                        )
+                        PlayerFlatIconButton(
+                            icon = FluxaIcons.Groups,
+                            onClick = callbacks.onWatchParty,
+                            contentDescription = AppStrings.t(lang, "player.watch_party")
+                        )
+                        PlayerFlatIconButton(
+                            icon = FluxaIcons.Settings,
+                            onClick = { callbacks.onShowSettings(-1) },
+                            contentDescription = AppStrings.t(lang, "nav.settings")
+                        )
+                    }
                 }
             }
 
@@ -633,17 +656,9 @@ fun MobilePlayerUIContent(
                 ) {
                     Row(
                         modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        horizontalArrangement = Arrangement.End,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                            MobileBottomAction(
-                                icon = FluxaIcons.Settings,
-                                label = AppStrings.t(lang, "nav.settings"),
-                                onClick = { callbacks.onShowSettings(-1) },
-                                iconOnly = true
-                            )
-                        }
                         Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
                             if (controls.hasNextEpisode) {
                                 MobileBottomAction(

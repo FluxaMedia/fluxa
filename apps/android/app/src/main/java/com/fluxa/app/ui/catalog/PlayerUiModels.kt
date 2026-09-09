@@ -8,6 +8,7 @@ internal fun Meta.toPlayerContentUiModel(): PlayerContentUiModel =
         id = id,
         type = type,
         title = name,
+        subtitle = description.orEmpty(),
         logoUrl = logo,
         backgroundUrl = background,
         releaseInfo = releaseInfo,

@@ -27,7 +27,8 @@ internal object PlayerPipSuppression {
 }
 
 private const val PIP_ACTION_PLAY_PAUSE = "com.fluxa.app.PIP_PLAY_PAUSE"
-private const val PIP_ACTION_NEXT = "com.fluxa.app.PIP_NEXT"
+private const val PIP_ACTION_REWIND = "com.fluxa.app.PIP_REWIND"
+private const val PIP_ACTION_FORWARD = "com.fluxa.app.PIP_FORWARD"
 
 @Composable
 internal fun PlayerEpisodeNavigationEffect(
@@ -68,30 +69,33 @@ internal fun PlayerPipEffect(
     context: Context,
     lang: String,
     isPlaying: Boolean,
-    hasNextEpisode: Boolean,
     activeEngine: PlayerEngine?,
-    playNext: () -> Unit
+    seekBackward: () -> Unit,
+    seekForward: () -> Unit
 ) {
-    DisposableEffect(context, isPlaying, hasNextEpisode, activeEngine) {
+    DisposableEffect(context, isPlaying, activeEngine) {
         val appContext = context
-        updatePlayerPipParams(appContext, lang, isPlaying, hasNextEpisode)
+        updatePlayerPipParams(appContext, lang, isPlaying)
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context?, intent: Intent?) {
                 when (intent?.action) {
                     PIP_ACTION_PLAY_PAUSE -> {
                         activeEngine?.setPaused(isPlaying)
-                        updatePlayerPipParams(appContext, lang, isPlaying, hasNextEpisode)
+                        updatePlayerPipParams(appContext, lang, !isPlaying)
                     }
-                    PIP_ACTION_NEXT -> {
-                        playNext()
-                        updatePlayerPipParams(appContext, lang, isPlaying, hasNextEpisode)
+                    PIP_ACTION_REWIND -> {
+                        seekBackward()
+                    }
+                    PIP_ACTION_FORWARD -> {
+                        seekForward()
                     }
                 }
             }
         }
         val filter = IntentFilter().apply {
             addAction(PIP_ACTION_PLAY_PAUSE)
-            addAction(PIP_ACTION_NEXT)
+            addAction(PIP_ACTION_REWIND)
+            addAction(PIP_ACTION_FORWARD)
         }
         ContextCompat.registerReceiver(appContext, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         onDispose { runCatching { appContext.unregisterReceiver(receiver) } }
@@ -101,22 +105,20 @@ internal fun PlayerPipEffect(
 internal fun enterPlayerPipMode(
     context: Context,
     lang: String,
-    isPlaying: Boolean,
-    hasNextEpisode: Boolean
+    isPlaying: Boolean
 ) {
     val activity = context.findActivity() ?: return
-    val params = buildPlayerPipParams(context, lang, isPlaying, hasNextEpisode) ?: return
+    val params = buildPlayerPipParams(context, lang, isPlaying) ?: return
     runCatching { activity.enterPictureInPictureMode(params) }
 }
 
 private fun updatePlayerPipParams(
     context: Context,
     lang: String,
-    isPlaying: Boolean,
-    hasNextEpisode: Boolean
+    isPlaying: Boolean
 ) {
     val activity = context.findActivity() ?: return
-    buildPlayerPipParams(context, lang, isPlaying, hasNextEpisode)?.let { params ->
+    buildPlayerPipParams(context, lang, isPlaying)?.let { params ->
         runCatching { activity.setPictureInPictureParams(params) }
     }
 }
@@ -124,36 +126,43 @@ private fun updatePlayerPipParams(
 private fun buildPlayerPipParams(
     context: Context,
     lang: String,
-    isPlaying: Boolean,
-    hasNextEpisode: Boolean
+    isPlaying: Boolean
 ): PictureInPictureParams? {
+    val rewindTitle = AppStrings.t(lang, "player.seek_back")
     val playPauseTitle = AppStrings.t(lang, if (isPlaying) "player.pause" else "player.play")
+    val forwardTitle = AppStrings.t(lang, "player.seek_forward")
     val actions = buildList {
+        // Android launchers commonly show at most three PiP actions.
+        add(pipRemoteAction(context, android.R.drawable.ic_media_rew, rewindTitle, PIP_ACTION_REWIND, 4103))
         add(
-            RemoteAction(
-                Icon.createWithResource(context, if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play),
+            pipRemoteAction(
+                context,
+                if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play,
                 playPauseTitle,
-                playPauseTitle,
-                pipPendingIntent(context, PIP_ACTION_PLAY_PAUSE, 4101)
+                PIP_ACTION_PLAY_PAUSE,
+                4101
             )
         )
-        if (hasNextEpisode) {
-            val nextTitle = AppStrings.t(lang, "auto.next_episode")
-            add(
-                RemoteAction(
-                    Icon.createWithResource(context, android.R.drawable.ic_media_next),
-                    nextTitle,
-                    nextTitle,
-                    pipPendingIntent(context, PIP_ACTION_NEXT, 4102)
-                )
-            )
-        }
+        add(pipRemoteAction(context, android.R.drawable.ic_media_ff, forwardTitle, PIP_ACTION_FORWARD, 4105))
     }
     return PictureInPictureParams.Builder()
         .setAspectRatio(Rational(16, 9))
         .setActions(actions)
         .build()
 }
+
+private fun pipRemoteAction(
+    context: Context,
+    iconRes: Int,
+    title: String,
+    action: String,
+    requestCode: Int
+): RemoteAction = RemoteAction(
+    Icon.createWithResource(context, iconRes),
+    title,
+    title,
+    pipPendingIntent(context, action, requestCode)
+)
 
 private fun pipPendingIntent(context: Context, action: String, requestCode: Int): PendingIntent {
     return PendingIntent.getBroadcast(

@@ -93,6 +93,7 @@ enum FluxaSettingsKey {
     static let omdbApiKey = "omdbApiKey"
     static let p2pEnabled = "p2pEnabled"
     static let pictureInPicture = "pictureInPicture"
+    static let pauseMetadataOverlayEnabled = "pauseMetadataOverlayEnabled"
     static let playbackSpeed = "playbackSpeed"
     static let playerBackBufferSeconds = "playerBackBufferSeconds"
     static let playerBufferCacheMb = "playerBufferCacheMb"

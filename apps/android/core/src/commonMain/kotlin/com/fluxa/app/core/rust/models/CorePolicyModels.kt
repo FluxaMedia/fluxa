@@ -204,6 +204,7 @@ data class NativeProfileSafePrefs(
     val automaticUpdates: Boolean = true,
     val backgroundPlayback: Boolean = false,
     val pictureInPicture: Boolean = true,
+    val pauseMetadataOverlayEnabled: Boolean = true,
     val playbackSpeed: Float = 1f,
     val holdToSpeedEnabled: Boolean = true,
     val holdSpeed: Float = 2f,

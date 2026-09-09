@@ -118,6 +118,9 @@ abstract class PersistentSettingsDataSource(
         preferences.putBoolean(SettingsPreferenceKeys.AUTO_RETRY_NEXT_SOURCE, value.autoRetryNextSource)
         preferences.putBoolean(GeneratedSettingsPreferenceKeys.P2P_ENABLED, value.p2pEnabled)
         preferences.putBoolean(SettingsPreferenceKeys.TRY_BINGE_GROUP, value.tryBingeGroup)
+        preferences.putBoolean(SettingsPreferenceKeys.PAUSE_METADATA_OVERLAY_ENABLED, value.pauseMetadataOverlayEnabled)
+        preferences.putString(SettingsPreferenceKeys.MOVIE_RECOMMENDATION_OUTRO_PERCENT, value.movieRecommendationOutroPercent.toString())
+        preferences.putString(SettingsPreferenceKeys.SERIES_RECOMMENDATION_OUTRO_PERCENT, value.seriesRecommendationOutroPercent.toString())
         preferences.putFloat(SettingsPreferenceKeys.NEXT_EPISODE_THRESHOLD_PERCENT, value.nextEpisodeThresholdPercent)
         preferences.putFloat(SettingsPreferenceKeys.WATCHED_THRESHOLD_PERCENT, value.watchedThresholdPercent)
         preferences.putBoolean(SettingsPreferenceKeys.USE_SKIP_SEGMENTS, value.useSkipSegments)
@@ -328,6 +331,9 @@ abstract class PersistentSettingsDataSource(
                 autoRetryNextSource = preferences.getBoolean(SettingsPreferenceKeys.AUTO_RETRY_NEXT_SOURCE, defaults.playback.autoRetryNextSource),
                 p2pEnabled = preferences.getBoolean(GeneratedSettingsPreferenceKeys.P2P_ENABLED, defaults.playback.p2pEnabled),
                 tryBingeGroup = preferences.getBoolean(SettingsPreferenceKeys.TRY_BINGE_GROUP, defaults.playback.tryBingeGroup),
+                pauseMetadataOverlayEnabled = preferences.getBoolean(SettingsPreferenceKeys.PAUSE_METADATA_OVERLAY_ENABLED, defaults.playback.pauseMetadataOverlayEnabled),
+                movieRecommendationOutroPercent = preferences.getString(SettingsPreferenceKeys.MOVIE_RECOMMENDATION_OUTRO_PERCENT, defaults.playback.movieRecommendationOutroPercent.toString())?.toFloatOrNull() ?: defaults.playback.movieRecommendationOutroPercent,
+                seriesRecommendationOutroPercent = preferences.getString(SettingsPreferenceKeys.SERIES_RECOMMENDATION_OUTRO_PERCENT, defaults.playback.seriesRecommendationOutroPercent.toString())?.toFloatOrNull() ?: defaults.playback.seriesRecommendationOutroPercent,
                 nextEpisodeThresholdPercent = preferences.getFloat(SettingsPreferenceKeys.NEXT_EPISODE_THRESHOLD_PERCENT, defaults.playback.nextEpisodeThresholdPercent),
                 watchedThresholdPercent = preferences.getFloat(SettingsPreferenceKeys.WATCHED_THRESHOLD_PERCENT, defaults.playback.watchedThresholdPercent),
                 useSkipSegments = preferences.getBoolean(SettingsPreferenceKeys.USE_SKIP_SEGMENTS, defaults.playback.useSkipSegments),
@@ -443,6 +449,9 @@ object SettingsPreferenceKeys {
     const val AUTO_PLAY_COUNTDOWN_SECONDS = "autoPlayCountdownSecs"
     const val AUTO_RETRY_NEXT_SOURCE = "autoRetryNextSource"
     const val TRY_BINGE_GROUP = "tryBingeGroup"
+    const val PAUSE_METADATA_OVERLAY_ENABLED = "pauseMetadataOverlayEnabled"
+    const val MOVIE_RECOMMENDATION_OUTRO_PERCENT = "movieRecommendationOutroPercent"
+    const val SERIES_RECOMMENDATION_OUTRO_PERCENT = "seriesRecommendationOutroPercent"
     const val NEXT_EPISODE_THRESHOLD_PERCENT = "nextEpisodeThresholdPercent"
     const val WATCHED_THRESHOLD_PERCENT = "watchedThresholdPercent"
     const val USE_SKIP_SEGMENTS = "useSkipSegments"

@@ -74,7 +74,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.readDetailLocalState(effect
     profile?.id?.let(watchlistManager::setActiveProfile)
     val primaryId = payload.string("primaryId")
     val fallbackId = payload.stringOrNull("fallbackId")
-    val userAddons = repository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
+    val userAddons = configuredStreamAddons(profile)
     val providerPlan = FluxaCoreNative.headlessProviderAvailability(
         addons = userAddons,
         pluginNames = pluginManager.loadedApis.value.map { it.name }
@@ -112,11 +112,13 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchDetailSecondary(effect
         emptySet()
     }
     val apiKey = profile?.safeTmdbApiKey.orEmpty()
-    val similarItems = if (isTmdbContentId(id) && apiKey.isNotBlank() && (profile?.safeTmdbSimilarResultsEnabled == true || profile?.safeTmdbRecommendationsEnabled == true)) {
-        repository.getSimilar(type, id, language)
+    Log.d("TerminalRec", "secondary fetch id=${id.take(40)} type=$type apiKeyPresent=${apiKey.isNotBlank()} similarEnabled=${profile?.safeTmdbSimilarResultsEnabled} recommendationsEnabled=${profile?.safeTmdbRecommendationsEnabled}")
+    val similarItems = if (apiKey.isNotBlank() && (profile?.safeTmdbSimilarResultsEnabled == true || profile?.safeTmdbRecommendationsEnabled == true)) {
+        repository.getSimilar(type, id, language, apiKey)
     } else {
         emptyList()
     }
+    Log.d("TerminalRec", "secondary fetch result similar=${similarItems.size} id=${id.take(40)}")
     val trailers = if (apiKey.isNotBlank() && profile?.safeTmdbTrailersEnabled == true) {
         repository.getTmdbTrailers(type, id, language, apiKey)
     } else {

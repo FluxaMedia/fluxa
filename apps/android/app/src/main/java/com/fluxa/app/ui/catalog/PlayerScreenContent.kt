@@ -4,16 +4,21 @@
 package com.fluxa.app.ui.catalog
 
 import android.content.Context
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
@@ -36,6 +41,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
@@ -163,10 +169,30 @@ internal fun PlayerScreenContent(
             .getOrNull(state.currentStreamIndex)
             ?.cloudstreamPlaybackDetailLine()
     }
+    val recommendationMiniPlayer = state.terminalRecommendations.isNotEmpty()
+    val widthClass = LocalWindowWidthClass.current
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val recommendationMiniWidth = when {
+        isLandscape && widthClass == WindowWidthClass.Compact -> 0.30f
+        widthClass == WindowWidthClass.Compact -> 0.78f
+        widthClass == WindowWidthClass.Medium -> 0.30f
+        else -> 0.24f
+    }
 
     Box(
         modifier = Modifier
-            .fillMaxSize()
+            .then(
+                if (recommendationMiniPlayer) {
+                    Modifier
+                        .padding(24.dp)
+                        .fillMaxWidth(recommendationMiniWidth)
+                        .aspectRatio(16f / 9f)
+                        .clip(RoundedCornerShape(8.dp))
+                        .animateContentSize(animationSpec = tween(280))
+                } else {
+                    Modifier.fillMaxSize()
+                }
+            )
             .background(Color.Black)
             .focusRequester(mainFocusRequester)
             .onSizeChanged { containerSize = it }
@@ -317,7 +343,13 @@ internal fun PlayerScreenContent(
             onCast = smartCast,
             onOpenInExternalPlayer = openInExternalPlayer,
             onWatchParty = openWatchParty,
-            onPictureInPicture = { enterPlayerPipMode(context, lang, state.engine.playback.isPlaying, state.nextEpisodePending != null) },
+            onPictureInPicture = {
+                enterPlayerPipMode(
+                    context,
+                    lang,
+                    state.engine.playback.isPlaying,
+                )
+            },
             onShowSettingsTab = { tab ->
                 if (tab == 4) {
                     openSourceSelectionScreen()

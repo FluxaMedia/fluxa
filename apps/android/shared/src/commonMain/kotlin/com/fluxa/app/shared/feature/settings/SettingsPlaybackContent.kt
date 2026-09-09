@@ -50,6 +50,11 @@ internal fun SettingsPlaybackCoreContent(
             value = languageOptionLabel(subtitles.preferredSubtitleLanguage, lang)
         ) { onNavigate(SettingsCategory.Subtitles) }
         SettingsNavRow(AppStrings.t(lang, "settings.advanced_settings")) { onNavigate(SettingsCategory.Advanced) }
+        SettingsToggleRow(
+            AppStrings.t(lang, "settings.pause_metadata_overlay"),
+            description = AppStrings.t(lang, "settings.pause_metadata_overlay_desc"),
+            value = model.pauseMetadataOverlayEnabled,
+        ) { onAction(SettingsAction.PlaybackChanged(model.copy(pauseMetadataOverlayEnabled = it))) }
     }
 
     SettingsSectionHeader(AppStrings.t(lang, "auto.playback"))
@@ -165,6 +170,12 @@ internal fun SettingsPlaybackStreamContent(
 
     SettingsSectionHeader(AppStrings.t(lang, "settings.progress_thresholds"))
     SettingsGroupCard {
+        SettingsPercentSliderRow(AppStrings.t(lang, "settings.movie_recommendation_outro_percent"), model.movieRecommendationOutroPercent) {
+            onAction(SettingsAction.PlaybackChanged(model.copy(movieRecommendationOutroPercent = it)))
+        }
+        SettingsPercentSliderRow(AppStrings.t(lang, "settings.series_recommendation_outro_percent"), model.seriesRecommendationOutroPercent) {
+            onAction(SettingsAction.PlaybackChanged(model.copy(seriesRecommendationOutroPercent = it)))
+        }
         SettingsPercentSliderRow(AppStrings.t(lang, "settings.next_episode_threshold"), model.nextEpisodeThresholdPercent) {
             onAction(SettingsAction.PlaybackChanged(model.copy(nextEpisodeThresholdPercent = it)))
         }

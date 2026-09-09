@@ -653,6 +653,13 @@
       "category": "system"
     },
     {
+      "key": "pauseMetadataOverlayEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "playbackSpeed",
       "type": "string",
       "default": "1.0",
