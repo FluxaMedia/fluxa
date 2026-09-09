@@ -62,7 +62,6 @@ internal object MediaPlayerCache {
         if (!shouldUsePlayerDiskCache(uri)) return
         val okHttp = PlayerHttpResources.newBuilder()
             .callTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-            .apply { cronetTransportInterceptor(context)?.let { addInterceptor(it) } }
             .build()
         val upstream = OkHttpDataSource.Factory(okHttp)
             .setUserAgent(StreamRequestPolicy.DEFAULT_USER_AGENT)

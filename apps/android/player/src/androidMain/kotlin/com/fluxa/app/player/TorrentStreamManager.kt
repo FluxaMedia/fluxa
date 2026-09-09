@@ -77,7 +77,10 @@ class TorrentStreamManager private constructor() {
     }
 
     fun configurePreferences(speedPreset: String?, cacheLimitMb: Long? = null) {
-        val newSettings = TorrentSettings(preloadSize = speedPreset.toPreloadSizeMb(), cacheLimitMb = cacheLimitMb)
+        val newSettings = TorrentSettings(
+            preloadSize = speedPreset.toPreloadSizeMb(),
+            cacheLimitMb = cacheLimitMb ?: 256L
+        )
         if (newSettings == pendingSettings) return
         pendingSettings = newSettings
         scope.launch {
@@ -387,6 +390,6 @@ class TorrentStreamManager private constructor() {
         fun getInstance(): TorrentStreamManager =
             instance ?: error("TorrentStreamManager not initialized — call getInstance(context) first")
 
-        private fun defaultSettings(): TorrentSettings = TorrentSettings(preloadSize = 3L)
+        private fun defaultSettings(): TorrentSettings = TorrentSettings(preloadSize = 3L, cacheLimitMb = 256L)
     }
 }

@@ -11,8 +11,6 @@ import androidx.media3.exoplayer.FormatHolder
 import androidx.media3.exoplayer.RendererCapabilities
 import androidx.media3.exoplayer.source.MediaSource
 import com.fluxa.app.player.subtitle.SubtitleCoordinator
-import com.fluxa.app.player.subtitle.SubtitleFormat
-import com.fluxa.app.player.subtitle.cueParserFor
 import java.nio.charset.StandardCharsets
 
 internal class EmbeddedTextInterceptor(
@@ -23,7 +21,6 @@ internal class EmbeddedTextInterceptor(
     private var inputStreamEnded = false
     private var pendingStartUs = C.TIME_UNSET
     private var pendingText: String? = null
-    private var currentFormat: SubtitleFormat = SubtitleFormat.SRT
 
     override fun getName(): String = "EmbeddedTextInterceptor"
 
@@ -62,7 +59,6 @@ internal class EmbeddedTextInterceptor(
             inputBuffer.clear()
             when (readSource(formatHolder, inputBuffer, 0)) {
                 C.RESULT_FORMAT_READ -> {
-                    currentFormat = subtitleFormatFor(formatHolder.format?.sampleMimeType)
                 }
                 C.RESULT_BUFFER_READ -> {
                     if (inputBuffer.isEndOfStream) {
@@ -83,7 +79,7 @@ internal class EmbeddedTextInterceptor(
     }
 
     private fun handleSample(timeUs: Long, text: String) {
-        val parsed = cueParserFor(currentFormat).parse(text)
+        val parsed = CoreSubtitleCueDecoder.decode(text)
         if (parsed.isNotEmpty()) {
             closePending(null)
             coordinator.addEmbeddedCues(parsed)
@@ -102,12 +98,6 @@ internal class EmbeddedTextInterceptor(
         }
         pendingStartUs = C.TIME_UNSET
         pendingText = null
-    }
-
-    private fun subtitleFormatFor(mimeType: String?): SubtitleFormat = when (mimeType) {
-        MimeTypes.TEXT_VTT -> SubtitleFormat.WEBVTT
-        MimeTypes.APPLICATION_TTML -> SubtitleFormat.TTML
-        else -> SubtitleFormat.SRT
     }
 
     override fun isEnded(): Boolean = inputStreamEnded

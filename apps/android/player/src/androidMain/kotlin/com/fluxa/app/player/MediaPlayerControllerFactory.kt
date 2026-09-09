@@ -362,7 +362,6 @@ internal object MediaPlayerControllerFactory {
                     chain.proceed(chain.request())
                 }
             }
-            .apply { cronetTransportInterceptor(context)?.let { addInterceptor(it) } }
             .build()
 
         val httpDataSourceFactory = OkHttpDataSource.Factory(okHttpClient)

@@ -26,8 +26,3 @@ sealed interface TrailerResolveResult {
     data object GeoBlocked : TrailerResolveResult
     data object Failed : TrailerResolveResult
 }
-
-object TrailerPolicy {
-    fun youtubeVideoId(url: String): String? =
-        Regex("(?:v=|youtu\\.be/|embed/)([A-Za-z0-9_-]{11})").find(url)?.groupValues?.get(1)
-}

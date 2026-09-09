@@ -10,7 +10,7 @@ import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.Format
 import androidx.media3.exoplayer.audio.AudioCapabilities
-import com.fluxa.app.shared.feature.player.AudioPcmChannelPolicy
+import com.fluxa.app.core.rust.FluxaCoreNative
 
 enum class AudioOutputMode {
     PASSTHROUGH,
@@ -293,7 +293,7 @@ object AudioCapabilityResolver {
         // their capability masks advertise accepted 5.1/7.1 PCM layouts. The
         // shared policy keeps those layouts instead of downmixing too early;
         // ordinary headphones and Bluetooth remain conservative.
-        return AudioPcmChannelPolicy.resolve(
+        return FluxaCoreNative.audioPcmChannelCount(
             deviceMaxChannels = deviceMax,
             capabilitiesMaxChannels = capabilities.maxChannelCount,
             speakerLayoutMaxChannels = speakerLayoutMax,
