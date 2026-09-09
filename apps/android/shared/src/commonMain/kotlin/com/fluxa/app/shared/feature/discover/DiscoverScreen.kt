@@ -40,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -84,6 +85,14 @@ fun DiscoverScreen(
     modifier: Modifier = Modifier
 ) {
     val isTv = LocalDeviceType.current == DeviceType.TV
+    var draftQuery by rememberSaveable { mutableStateOf(searchQuery) }
+    var pendingQuery by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(searchQuery) {
+        when {
+            pendingQuery == null -> draftQuery = searchQuery
+            searchQuery == pendingQuery -> pendingQuery = null
+        }
+    }
     LaunchedEffect(state.catalogOptions, state.filters.contentType) {
         if (state.filters.catalogKey == null && state.catalogOptions.isNotEmpty()) {
             onFiltersChanged(state.filters.copy(catalogKey = state.catalogOptions.first().id))
@@ -98,11 +107,15 @@ fun DiscoverScreen(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         DiscoverSearchField(
-            query = searchQuery,
+            query = draftQuery,
             placeholder = AppStrings.t(language, "auto.search"),
-            onQueryChanged = onSearchQueryChanged
+            onQueryChanged = { value ->
+                draftQuery = value
+                pendingQuery = value
+                onSearchQueryChanged(value)
+            }
         )
-        if (searchQuery.isNotBlank()) {
+        if (draftQuery.isNotBlank()) {
             when {
                 searchResultRows.isNotEmpty() -> SearchResultRows(
                     rows = searchResultRows,
