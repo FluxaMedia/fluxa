@@ -59,7 +59,7 @@ val rustCoreDelegateFiles = mapOf(
         "FluxaCoreNative.mergeLiveManifest"
     ),
     "data/src/jvmCommonMain/kotlin/com/fluxa/app/data/repository/StremioAddonResourceClient.kt" to listOf(
-        "FluxaCoreNative.parseAddonResourceResult",
+        "FluxaCoreNative.parseAndPlanAddonResource",
         "FluxaCoreNative.parseExtraArgs"
     ),
     "player/src/androidMain/kotlin/com/fluxa/app/player/TorrentServerEngine.kt" to listOf(

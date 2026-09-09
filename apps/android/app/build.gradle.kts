@@ -23,6 +23,11 @@ fun secret(name: String, default: String = ""): String {
         ?: localProperties.getProperty(name, default)
 }
 
+val appVersionName = providers.gradleProperty("fluxaVersion").orNull
+    ?: System.getenv("FLUXA_VERSION")
+    ?: System.getenv("GITHUB_REF_NAME")?.removePrefix("v")
+    ?: "1.0.0"
+
 android {
     namespace = "com.fluxa.app"
     compileSdk = 36
@@ -32,7 +37,7 @@ android {
         minSdk = 24
         targetSdk = 36
         versionCode = 700
-        versionName = "2.1.7"
+        versionName = appVersionName
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
@@ -53,7 +58,7 @@ android {
         abi {
             isEnable = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86")
+            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
             isUniversalApk = false
         }
     }

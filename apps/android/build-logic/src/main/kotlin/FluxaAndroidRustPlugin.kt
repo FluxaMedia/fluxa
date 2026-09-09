@@ -22,6 +22,7 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             RustTarget("arm64-v8a", "aarch64-linux-android", "AARCH64_LINUX_ANDROID"),
             RustTarget("armeabi-v7a", "armv7-linux-androideabi", "ARMV7_LINUX_ANDROIDEABI"),
             RustTarget("x86", "i686-linux-android", "I686_LINUX_ANDROID"),
+            RustTarget("x86_64", "x86_64-linux-android", "X86_64_LINUX_ANDROID"),
         )
         val releaseBuild = gradle.startParameter.taskNames.any {
             it.contains("release", ignoreCase = true) || it.contains("benchmark", ignoreCase = true)
