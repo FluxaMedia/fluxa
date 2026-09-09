@@ -110,11 +110,11 @@ export function ProfilePickerSettings({
             style={S.input}
           />
           <button onClick={() => fileInputRef.current?.click()} style={S.secondaryButton} title={t('profiles.choose_image')}>
-            <ImagePlus size={16} />
+            <ImagePlus size={20} />
           </button>
           {backgroundUrl && (
             <button onClick={() => void updateBackground('')} style={S.secondaryButton} title={t('profiles.clear_background')}>
-              <Trash2 size={16} />
+            <Trash2 size={20} />
             </button>
           )}
         </div>
@@ -133,7 +133,7 @@ export function ProfilePickerSettings({
             style={S.input}
           />
           <button onClick={() => void addRepository()} disabled={!repositoryUrl.trim() || busy} style={S.primaryButton}>
-            <Plus size={16} />
+            <Plus size={20} />
             {busy ? t('common.loading') : t('profiles.add_pack')}
           </button>
         </div>
@@ -160,7 +160,7 @@ export function ProfilePickerSettings({
                     style={S.refreshButton}
                     title={t('profiles.refresh_pack')}
                   >
-                    <RefreshCw size={16} />
+                    <RefreshCw size={20} />
                   </button>
                   <button
                     onClick={() => {
@@ -171,7 +171,7 @@ export function ProfilePickerSettings({
                     style={S.removeButton}
                     title={t('profiles.remove_pack')}
                   >
-                    <Trash2 size={16} />
+                    <Trash2 size={20} />
                   </button>
                 </div>
               </div>
@@ -218,61 +218,65 @@ export function ProfilePickerSettings({
 }
 
 const S: Record<string, React.CSSProperties> = {
-  shell: { display: 'grid', gap: '1.5rem', maxWidth: '43rem' },
+  shell: { display: 'grid', gap: '2rem', width: '100%', maxWidth: '64rem' },
   section: {
-    padding: '1.25rem',
+    padding: '2rem',
     border: '1px solid var(--fluxa-border)',
-    borderRadius: '0.75rem',
+    borderRadius: '1rem',
     background: 'var(--fluxa-background-elevated)',
   },
-  heading: { margin: 0, fontSize: '1rem' },
-  copy: { margin: '0.5rem 0 1rem', color: 'var(--fluxa-text-muted)', fontSize: '0.8125rem' },
-  row: { display: 'flex', gap: '0.5rem' },
+  heading: { margin: 0, fontSize: '1.25rem' },
+  copy: { margin: '0.625rem 0 1.5rem', color: 'var(--fluxa-text-muted)', fontSize: '0.9375rem' },
+  row: { display: 'flex', gap: '0.75rem' },
   input: {
     minWidth: 0,
     flex: 1,
     border: '1px solid var(--fluxa-border-strong)',
-    borderRadius: '0.5rem',
+    borderRadius: '0.625rem',
     background: 'var(--fluxa-background)',
     color: 'var(--fluxa-text-primary)',
-    padding: '0.625rem 0.75rem',
+    padding: '0.875rem 1rem',
+    fontSize: '0.9375rem',
+    minHeight: '3.25rem',
+    boxSizing: 'border-box',
   },
   primaryButton: {
     border: 0,
-    borderRadius: '0.5rem',
+    borderRadius: '0.625rem',
     background: 'var(--fluxa-accent)',
     color: 'var(--fluxa-accent-foreground)',
     display: 'flex',
     alignItems: 'center',
     gap: '0.375rem',
-    padding: '0 0.75rem',
+    padding: '0 1rem',
+    fontSize: '0.9375rem',
     cursor: 'pointer',
     whiteSpace: 'nowrap',
   },
   secondaryButton: {
     border: '1px solid var(--fluxa-border-strong)',
-    borderRadius: '0.5rem',
+    borderRadius: '0.625rem',
     background: 'var(--fluxa-border)',
     color: 'var(--fluxa-text-primary)',
-    padding: '0.625rem',
+    padding: '0.875rem',
     cursor: 'pointer',
   },
-  packList: { display: 'grid', gap: '0.5rem', marginTop: '1rem' },
+  packList: { display: 'grid', gap: '0.75rem', marginTop: '1.5rem' },
   packRow: {
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     color: 'var(--fluxa-text-primary)',
-    fontSize: '0.8125rem',
-    padding: '0.625rem 0.75rem',
+    fontSize: '0.9375rem',
+    padding: '0.875rem 1rem',
     background: 'var(--fluxa-background-elevated)',
-    borderRadius: '0.5rem',
+    borderRadius: '0.625rem',
   },
-  packSummary: { minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' },
-  packPreview: { display: 'flex', overflow: 'hidden', borderRadius: '0.375rem', flexShrink: 0 },
-  packPreviewImage: { width: '2.25rem', height: '2.25rem', objectFit: 'cover', marginLeft: '-0.375rem', border: '1px solid #202020' },
+  packSummary: { minWidth: 0, display: 'flex', alignItems: 'center', gap: '1rem' },
+  packPreview: { display: 'flex', overflow: 'hidden', borderRadius: '0.5rem', flexShrink: 0 },
+  packPreviewImage: { width: '3rem', height: '3rem', objectFit: 'cover', marginLeft: '-0.5rem', border: '1px solid #202020' },
   removeButton: { border: 0, background: 'transparent', color: '#d34a4a', cursor: 'pointer', display: 'flex' },
   refreshButton: { border: 0, background: 'transparent', color: 'var(--fluxa-text-secondary)', cursor: 'pointer', display: 'flex' },
-  empty: { margin: 0, color: 'var(--fluxa-text-muted)', fontSize: '0.8125rem' },
-  backButton: { justifySelf: 'start', border: 0, background: 'transparent', color: 'var(--fluxa-text-primary)', cursor: 'pointer', padding: '0.5rem 0' },
+  empty: { margin: 0, color: 'var(--fluxa-text-muted)', fontSize: '0.9375rem' },
+  backButton: { justifySelf: 'start', border: 0, background: 'transparent', color: 'var(--fluxa-text-primary)', cursor: 'pointer', padding: '0.75rem 0', fontSize: '0.9375rem' },
 };

@@ -1,43 +1,35 @@
+import { useEffect, useState } from 'react';
 import type { NuvioRemoteCollectionSource, UserCollection, UserCollectionFolder } from './types';
-import { coreExportCollections, coreImportCollections } from './engine';
+import { coreExportCollections, coreImportCollections, coreInvoke } from './engine';
 
-function cleanedUrl(raw: string | null | undefined): string | null {
-  const s = raw?.trim();
-  return s && s.length > 0 ? s : null;
-}
+export type CollectionFolderPresentation = {
+  imageUrl: string | null;
+  shape: string;
+  catalogId: string | null;
+  catalogType: string | null;
+};
 
-function cleanedArtworkUrl(raw: string | null | undefined): string | null {
-  const s = cleanedUrl(raw)
-    ?.replace(/^['"]|['"]$/g, '')
-    .trim();
-  if (!s) return null;
-  const withScheme = s.startsWith('//') ? `https:${s}` : s;
-  const githubBlob = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/blob\/([^/]+)\/(.+)$/;
-  const m = withScheme.match(githubBlob);
-  const normalized = m ? `https://raw.githubusercontent.com/${m[1]}/${m[2]}/${m[3]}/${m[4]}` : withScheme;
-  return normalized.replace(/ /g, '%20');
-}
+export function useCollectionFolderPresentation(folder: UserCollectionFolder): CollectionFolderPresentation {
+  const [presentation, setPresentation] = useState<CollectionFolderPresentation>({
+    imageUrl: null,
+    shape: 'poster',
+    catalogId: null,
+    catalogType: null,
+  });
 
-export function effectiveFolderImageUrl(folder: UserCollectionFolder): string | null {
-  return cleanedArtworkUrl(folder.coverImageUrl) ?? cleanedArtworkUrl(folder.imageUrl);
-}
+  useEffect(() => {
+    let active = true;
+    void coreInvoke<CollectionFolderPresentation>('collectionFolderPresentation', JSON.stringify(folder))
+      .then((next) => {
+        if (active && next) setPresentation(next);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [folder]);
 
-export function effectiveFolderShape(folder: UserCollectionFolder): string {
-  const raw = (folder.shape ?? 'poster').toLowerCase();
-  return raw === 'landscape' ? 'wide' : raw;
-}
-
-export function effectiveCatalogId(folder: UserCollectionFolder): string | null {
-  return (
-    folder.sources?.find((source) => source.provider === 'addon')?.catalogId ??
-    folder.catalogSources?.[0]?.catalogId ??
-    folder.catalogId ??
-    null
-  );
-}
-
-export function effectiveCatalogType(folder: UserCollectionFolder): string | null {
-  return folder.sources?.find((source) => source.provider === 'addon')?.type ?? folder.catalogSources?.[0]?.type ?? null;
+  return presentation;
 }
 
 export function remoteSourceKey(source: NuvioRemoteCollectionSource): string {

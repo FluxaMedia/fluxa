@@ -5,6 +5,7 @@ import type { Meta } from '../core/types';
 import type { PosterPrefs } from '../core/posterPrefs';
 import { rpdbPosterUrl } from '../core/rpdb';
 import { cardImageUrl } from '../core/imageSizes';
+import { coreReleaseDateUpcoming } from '../core/engineCoreContent';
 import { ContextMenu } from './ui/ContextMenu';
 import { useLongPress } from '../hooks/useLongPress';
 import { PosterPreviewCard } from './PosterPreviewCard';
@@ -40,6 +41,7 @@ export const MovieCard = React.memo(
     const [imgError, setImgError] = useState(false);
     const [imgLoaded, setImgLoaded] = useState(false);
     const [rpdbFailed, setRpdbFailed] = useState(false);
+    const [upcoming, setUpcoming] = useState(false);
     const [menuPoint, setMenuPoint] = useState<{ x: number; y: number } | null>(null);
     const longPress = useLongPress((point) => {
       if (!onDispatch) return;
@@ -56,6 +58,20 @@ export const MovieCard = React.memo(
     }, []);
 
     useEffect(() => clearPreviewTimer, [clearPreviewTimer]);
+
+    useEffect(() => {
+      let active = true;
+      if (!meta.releaseInfo) {
+        setUpcoming(false);
+      } else {
+        void coreReleaseDateUpcoming(meta.releaseInfo).then((value) => {
+          if (active) setUpcoming(value);
+        });
+      }
+      return () => {
+        active = false;
+      };
+    }, [meta.releaseInfo]);
 
     const openPreview = useCallback(
       (target: HTMLElement) => {
@@ -280,7 +296,7 @@ export const MovieCard = React.memo(
             )}
 
             {/* Upcoming badge */}
-            {meta.releaseInfo && isUpcoming(meta.releaseInfo) && (
+            {meta.releaseInfo && upcoming && (
               <div
                 style={{
                   position: 'absolute',
@@ -416,10 +432,4 @@ function WatchedCheckmark() {
       }}
     />
   );
-}
-
-function isUpcoming(releaseInfo?: string): boolean {
-  if (!releaseInfo) return false;
-  const year = parseInt(String(releaseInfo).slice(0, 4));
-  return year > new Date().getFullYear();
 }

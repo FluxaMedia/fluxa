@@ -19,7 +19,7 @@ const routeFiles = existsSync(routesPath)
       .map((name) => path.join(routesPath, name))
   : [];
 const methods = [ffiPath, ...routeFiles, path.resolve(path.dirname(ffiPath), 'local_media.rs')].flatMap((sourcePath) =>
-  [...readFileSync(sourcePath, 'utf8').matchAll(/^ {8}"([A-Za-z.]+)" =>/gm)].map((m) => m[1]),
+  [...readFileSync(sourcePath, 'utf8').matchAll(/^ {8}"([A-Za-z0-9.]+)" =>/gm)].map((m) => m[1]),
 );
 const unique = [...new Set(methods)].sort();
 

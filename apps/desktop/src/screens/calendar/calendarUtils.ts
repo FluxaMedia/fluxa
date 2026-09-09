@@ -89,10 +89,6 @@ export function eventEpisodeCode(item: CalendarItem): string {
   return t('calendar.episode');
 }
 
-export function isReleased(item: CalendarItem): boolean {
-  return !!item.dateIso && localDateKeyFromIso(item.dateIso) <= todayIso();
-}
-
 export function buildMonthCells(monthStart: Date): CalendarCell[] {
   const first = firstDayOfMonth(monthStart);
   const leading = (first.getDay() + 6) % 7;

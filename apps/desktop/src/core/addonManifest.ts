@@ -6,6 +6,10 @@ export async function normalizeManifestUrl(rawUrl: string): Promise<string> {
   return (await coreInvoke<string>('normalizeManifestUrl', JSON.stringify({ url: rawUrl }))) ?? rawUrl;
 }
 
+export async function addonIdentity(rawUrl: string): Promise<string> {
+  return (await coreInvoke<string>('identity', JSON.stringify({ url: rawUrl }))) ?? rawUrl;
+}
+
 export async function manifestFetchPlan(
   rawUrl: string,
 ): Promise<{ normalizedTransportUrl: string; cacheKey: string; candidateUrls: string[] } | null> {

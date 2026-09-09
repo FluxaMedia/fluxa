@@ -4,6 +4,7 @@ import { assetUrl } from '../../platform/assets';
 import { OFFICIAL_FLUXA_SYNC_URL } from '../../appConstants';
 import { fluxaSignIn, fluxaSignUp, fluxaAuthErrorKind, type FluxaSession } from '../../core/fluxaSyncApi';
 import { S } from './styles';
+import { FLUXA_UI_TOKENS } from '../../theme/uiTokens.generated';
 import { TopBar, Field, PasswordField } from './fields';
 
 type AuthTab = 'login' | 'signup';
@@ -93,32 +94,12 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
       <TopBar onBack={onBack} />
 
       <main style={S.authMain}>
-        <div style={S.card}>
-          <button style={S.nuvioBtn} onClick={onNuvioClick}>
-            <img
-              src={assetUrl('nuvio.png')}
-              alt="Nuvio"
-              style={{ width: '1.375rem', height: '1.375rem', objectFit: 'contain', flexShrink: 0 }}
-            />
-            <span>{t('auth.continue_with_nuvio')}</span>
-          </button>
-
-          <div style={S.divider}>
-            <span style={S.dividerLine} />
-            <span style={S.dividerText}>{t('auth.or')}</span>
-            <span style={S.dividerLine} />
-          </div>
-
-          <div style={S.tabs}>
-            <button style={{ ...S.tabBtn, ...(tab === 'login' ? S.tabBtnActive : {}) }} onClick={() => handleTabChange('login')}>
-              {t('auth.log_in')}
-            </button>
-            <button style={{ ...S.tabBtn, ...(tab === 'signup' ? S.tabBtnActive : {}) }} onClick={() => handleTabChange('signup')}>
-              {t('auth.sign_up')}
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} noValidate style={S.form}>
+        <div style={S.authIntro}>
+          <h1 style={S.authTitle}>{t('auth.welcome_back')}</h1>
+          <p style={S.authSubtitle}>{t('auth.choose_login_method')}</p>
+        </div>
+        <div style={S.authCard}>
+          <form onSubmit={handleSubmit} noValidate style={S.authForm}>
             <Field
               label={t('auth.field.email')}
               type="email"
@@ -176,18 +157,45 @@ export function AuthView({ tab, onTabChange, onBack, onSubmit, onNuvioClick, onC
 
             {globalError && <p style={S.globalError}>{globalError}</p>}
 
-            <button type="submit" style={{ ...S.submitBtn, opacity: submitting ? 0.6 : 1 }} disabled={submitting}>
+            <button
+              type="submit"
+              style={{ ...S.authSubmitBtn, marginTop: `${FLUXA_UI_TOKENS.spacing.authSection}px`, opacity: submitting ? 0.6 : 1 }}
+              disabled={submitting}
+            >
               {submitting ? t('welcome.loading') : tab === 'login' ? t('auth.log_in') : t('auth.create_account')}
             </button>
           </form>
 
-          <button
-            style={{ ...S.localBtn, marginTop: '1.25rem', opacity: localLoading ? 0.4 : 1 }}
-            onClick={onContinueLocal}
-            disabled={localLoading || submitting}
-          >
-            {localLoading ? t('welcome.loading') : t('welcome.continue_local')}
+          <button style={S.authSwitchBtn} onClick={() => handleTabChange(tab === 'login' ? 'signup' : 'login')}>
+            {t(tab === 'login' ? 'auth.no_account_sign_up' : 'auth.already_have_account_sign_in')}
           </button>
+
+          {tab === 'login' && (
+            <>
+              <div style={S.divider}>
+                <span style={S.dividerLine} />
+                <span style={S.dividerText}>{t('auth.or')}</span>
+                <span style={S.dividerLine} />
+              </div>
+
+              <button style={S.authNuvioBtn} onClick={onNuvioClick}>
+                <img
+                  src={assetUrl('nuvio.png')}
+                  alt="Nuvio"
+                  style={{ width: `${FLUXA_UI_TOKENS.auth.providerIconSize}px`, height: `${FLUXA_UI_TOKENS.auth.providerIconSize}px`, objectFit: 'contain', flexShrink: 0 }}
+                />
+                <span>{t('auth.continue_with_nuvio')}</span>
+              </button>
+
+              <button
+                style={{ ...S.authLocalBtn, opacity: localLoading ? 0.4 : 1 }}
+                onClick={onContinueLocal}
+                disabled={localLoading || submitting}
+              >
+                {localLoading ? t('welcome.loading') : t('welcome.continue_local')}
+              </button>
+            </>
+          )}
         </div>
       </main>
     </div>

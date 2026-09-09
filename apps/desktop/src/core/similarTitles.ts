@@ -1,5 +1,5 @@
 import { platformInvoke } from '../platform/invoke';
-import { coreInvoke, httpExecuteText } from './engine';
+import { coreInvoke, coreIsSeriesContentType, httpExecuteText } from './engine';
 import { _appVersion, tryFetchJson } from './httpClient';
 import type { Meta } from './types';
 
@@ -50,7 +50,7 @@ export async function fetchTraktSimilarItems({ imdbId, contentType }: { imdbId: 
     'trakt-api-key': clientId,
   };
 
-  const wantType = contentType === 'series' ? 'show' : 'movie';
+  const wantType = (await coreIsSeriesContentType(contentType)) ? 'show' : 'movie';
   const lookup = await tryFetchJsonWithHeaders(`https://api.trakt.tv/search/imdb/${encodeURIComponent(imdbId)}?type=${wantType}`, headers);
   const lookupItems = Array.isArray(lookup) ? (lookup as TraktLookupItem[]) : [];
   const slugFromCore = await tryCoreMapper<string>(
@@ -105,7 +105,7 @@ export async function fetchSimklSimilarItems({ imdbId, contentType }: { imdbId: 
   if (!clientId) return [];
 
   const simklQuery = `client_id=${encodeURIComponent(clientId)}&app-name=fluxa&app-version=${encodeURIComponent(_appVersion)}`;
-  const wantType = contentType === 'series' ? 'tv' : 'movie';
+  const wantType = (await coreIsSeriesContentType(contentType)) ? 'tv' : 'movie';
 
   const headers = { 'Content-Type': 'application/json', 'User-Agent': `Fluxa Desktop/${_appVersion}` };
   const lookup = await tryFetchJson(`https://api.simkl.com/search/id?imdb=${encodeURIComponent(imdbId)}&${simklQuery}`, { headers });

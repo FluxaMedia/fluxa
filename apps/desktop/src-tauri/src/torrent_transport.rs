@@ -1,4 +1,19 @@
+use fluxa_core::FluxaCore;
 use serde_json::{Value, json};
+
+fn cache_limit_mb(preferences: Option<&Value>) -> u64 {
+    if let Some(limit) = preferences
+        .and_then(|value| value.get("torrentCacheLimitMb"))
+        .and_then(Value::as_u64)
+    {
+        return limit;
+    }
+
+    let preset = preferences
+        .and_then(|value| value.get("torrentCachePreset"))
+        .and_then(Value::as_str);
+    FluxaCore::torrent_cache_limit_mb(preset, "desktop")
+}
 
 pub(crate) fn request(
     url: &str,
@@ -75,9 +90,7 @@ pub(crate) fn apply_preferences(base_url: &str, preferences: Option<&Value>) {
         Some("ultra_fast") => 64,
         _ => 16,
     };
-    let cache_limit_mb = preferences
-        .and_then(|value| value.get("torrentCacheLimitMb"))
-        .and_then(Value::as_u64);
+    let cache_limit_mb = cache_limit_mb(preferences);
     post_async(
         base_url,
         "settings",

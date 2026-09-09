@@ -1,5 +1,51 @@
 import { coreInvoke } from './engineCoreClient';
 
+const releaseDateUpcomingCache = new Map<string, Promise<boolean>>();
+const releaseDateReleasedCache = new Map<string, Promise<boolean>>();
+const trailerVideoIdsCache = new Map<string, Promise<string[]>>();
+
+function localDateIso(): string {
+  const now = new Date();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${now.getFullYear()}-${month}-${day}`;
+}
+
+export function coreReleaseDateUpcoming(released: string): Promise<boolean> {
+  const todayIso = localDateIso();
+  const key = `${released}\u0000${todayIso}`;
+  const cached = releaseDateUpcomingCache.get(key);
+  if (cached) return cached;
+  const pending = coreInvoke<boolean>('releaseDateUpcoming', JSON.stringify({ released, todayIso }))
+    .then((value) => value === true)
+    .catch(() => false);
+  releaseDateUpcomingCache.set(key, pending);
+  return pending;
+}
+
+export function coreReleaseDateReleased(released: string): Promise<boolean> {
+  const todayIso = localDateIso();
+  const key = `${released}\u0000${todayIso}`;
+  const cached = releaseDateReleasedCache.get(key);
+  if (cached) return cached;
+  const pending = coreInvoke<boolean>('releaseDateIsReleased', JSON.stringify({ released, todayIso }))
+    .then((value) => value === true)
+    .catch(() => false);
+  releaseDateReleasedCache.set(key, pending);
+  return pending;
+}
+
+export function coreTrailerYoutubeVideoIds(urls: string[]): Promise<string[]> {
+  const key = JSON.stringify(urls);
+  const cached = trailerVideoIdsCache.get(key);
+  if (cached) return cached;
+  const pending = coreInvoke<string[]>('trailerYoutubeVideoIds', JSON.stringify({ urls }))
+    .then((value) => value ?? [])
+    .catch(() => []);
+  trailerVideoIdsCache.set(key, pending);
+  return pending;
+}
+
 export async function corePlaybackPreparePlan(request: unknown): Promise<Record<string, unknown> | null> {
   return coreInvoke('playbackPreparePlan', JSON.stringify(request));
 }
@@ -68,6 +114,27 @@ export async function coreLibraryContinueWatchingItems(items: unknown[]): Promis
 
 export async function coreDetailSeriesLookupId(rawId: string): Promise<string> {
   return (await coreInvoke<string>('detailSeriesLookupId', JSON.stringify({ id: rawId }))) ?? rawId;
+}
+
+export async function coreContentImdbId(id: string): Promise<string | null> {
+  return coreInvoke<string>('contentImdbId', JSON.stringify({ id }));
+}
+
+export async function coreIsSeriesContentType(contentType: string): Promise<boolean> {
+  return (await coreInvoke<boolean>('isSeriesContentType', JSON.stringify({ value: contentType }))) === true;
+}
+
+export async function coreNuvioCanonicalContentType(contentType: string): Promise<string> {
+  return (await coreInvoke<string>('nuvioCanonicalContentType', JSON.stringify({ value: contentType }))) ?? 'movie';
+}
+
+export async function coreTmdbNumericId(id: string): Promise<string | null> {
+  return coreInvoke<string>('tmdbNumericId', JSON.stringify({ id }));
+}
+
+export async function corePlaybackExternalIds(id: string): Promise<{ imdbId: string | null; tmdbId: number | null }> {
+  const [imdbId, tmdbId] = await Promise.all([coreContentImdbId(id), coreTmdbNumericId(id)]);
+  return { imdbId, tmdbId: tmdbId ? Number(tmdbId) : null };
 }
 
 export async function coreStreamRequestIds(request: {
@@ -176,6 +243,10 @@ export async function coreParseVideoId(id: string): Promise<{
 
 export async function coreBuildTraktIds(videoId: string): Promise<Record<string, unknown> | null> {
   return coreInvoke('buildTraktIds', JSON.stringify({ id: videoId }));
+}
+
+export async function coreTraktCollectionBody(idsJson: string, contentType: string): Promise<Record<string, unknown> | null> {
+  return coreInvoke('traktCollectionBody', JSON.stringify({ idsJson, contentType }));
 }
 
 export async function coreDetectAnimePlayback(

@@ -1,5 +1,7 @@
 import {
   coreDetailSeriesLookupId,
+  coreContentImdbId,
+  coreTmdbNumericId,
   coreStreamRequestIds,
   coreParseVideoId,
   coreTmdbImageUrl,
@@ -8,7 +10,9 @@ import {
   coreTmdbMergeEnrichment,
   coreTerminalRecommendationPlan,
   coreMdblistMediaInfoUrl,
+  coreMdblistContentType,
   coreMdblistMediaRatingsFromResponse,
+  coreIsSeriesContentType,
   coreInvoke,
   getSnapshot,
   storageRead,
@@ -20,6 +24,7 @@ import { fetchBuiltinMeta, fetchTmdbLogo } from './tmdbAddon';
 import { tryFetchJson } from './httpClient';
 import { fetchPluginStreams } from './pluginRuntime';
 import { fetchTraktSimilarItems, fetchSimklSimilarItems } from './similarTitles';
+import { coreTmdbContentType } from './engineTmdb';
 import type { AppState, Meta, Video } from './types';
 import { DEFAULT_APP_PREFS, prefBool, prefString } from './appPrefs';
 import { stringValue } from './playerUtils';
@@ -240,7 +245,7 @@ async function fetchPluginStreamsForDetail(
     // on the critical path; plugin enrichment is optional and can arrive late.
     const snapshot = (await getSnapshot()) as { plugins?: { scrapers?: Array<{ enabled?: boolean; supportedTypes?: string[] }> } } | null;
     const installedScrapers = snapshot?.plugins?.scrapers ?? [];
-    const scraperMediaType = contentType === 'series' || contentType === 'show' ? 'tv' : contentType;
+    const scraperMediaType = await coreTmdbContentType(contentType);
     if (!installedScrapers.some((scraper) => scraper.enabled !== false && (!scraper.supportedTypes || scraper.supportedTypes.includes(scraperMediaType)))) {
       console.debug('[fluxa:plugin] no compatible installed scraper', JSON.stringify({ contentType, scraperMediaType, scrapers: installedScrapers }));
       return [];
@@ -281,7 +286,7 @@ export async function fetchDetailStreams(
     ? payload.detail as Record<string, unknown>
     : {};
   const detailId = typeof detailRecord.id === 'string' ? detailRecord.id : undefined;
-  const currentSeriesLookupId = detailId && payload.contentType === 'series'
+  const currentSeriesLookupId = detailId && await coreIsSeriesContentType(String(payload.contentType ?? ''))
     ? await coreDetailSeriesLookupId(detailId)
     : undefined;
   const requestIds = [...new Set((await Promise.all(requestedIds.map((id) => coreStreamRequestIds({
@@ -379,8 +384,8 @@ interface OmdbRatings {
 
 async function fetchOmdbRatings(id: string, apiKey: string): Promise<OmdbRatings | null> {
   if (!apiKey) return null;
-  const imdbId = id.split(':')[0];
-  if (!/^tt\d+$/i.test(imdbId)) return null;
+  const imdbId = await coreContentImdbId(id);
+  if (!imdbId) return null;
   const response = (await tryFetchJson(`https://www.omdbapi.com/?i=${encodeURIComponent(imdbId)}&apikey=${apiKey}`)) as {
     Ratings?: { Source?: string; Value?: string }[];
     Metascore?: string;
@@ -395,20 +400,20 @@ async function fetchOmdbRatings(id: string, apiKey: string): Promise<OmdbRatings
 async function fetchMdblistRatings(contentType: string, id: string, apiKey: string): Promise<Record<string, number> | null> {
   if (!apiKey) return null;
   try {
-    const tmdbBaseId = id.replace(/^tmdb:/i, '').split(':')[0] ?? '';
-    const imdbBaseId = id.split(':')[0] ?? '';
+    const tmdbBaseId = await coreTmdbNumericId(id);
+    const imdbBaseId = await coreContentImdbId(id);
     let provider: string;
     let mediaId: string;
-    if (/^\d+$/.test(tmdbBaseId)) {
+    if (tmdbBaseId) {
       provider = 'tmdb';
       mediaId = tmdbBaseId;
-    } else if (/^tt\d+$/i.test(imdbBaseId)) {
+    } else if (imdbBaseId) {
       provider = 'imdb';
       mediaId = imdbBaseId;
     } else {
       return null;
     }
-    const mediaType = contentType === 'series' ? 'show' : 'movie';
+  const mediaType = await coreMdblistContentType(contentType);
     const url = await coreMdblistMediaInfoUrl(provider, mediaType, mediaId, 'ratings');
     if (!url) return null;
     const separator = url.includes('?') ? '&' : '?';
@@ -448,7 +453,7 @@ async function fetchFanartArtwork({ contentType, id, language, apiKey }: TmdbReq
   if (!plan) return null;
   const tmdbId = plan.tmdbId;
 
-  if (contentType === 'series') {
+  if (await coreIsSeriesContentType(contentType)) {
     const tvdbId = await resolveTvdbId(tmdbId, apiKey, language);
     if (!tvdbId) return null;
     const response = (await tryFetchJson(`https://webservice.fanart.tv/v3/tv/${tvdbId}?api_key=${fanartApiKey}`)) as {

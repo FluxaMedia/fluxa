@@ -7,7 +7,7 @@ import type { PlayerSubtitleSource } from '../core/playerUtils';
 import { corePlaybackPreparePlan } from '../core/engine';
 import { appPrefs } from '../core/appPrefs';
 import { fetchPlaybackSkipSegments, type IntroSegmentResult } from '../core/effectRunner';
-import { corePlaybackIntroLookupContentId, coreResolveNextEpisode, coreTerminalRecommendationEligibility } from '../core/engine';
+import { corePlaybackExternalIds, corePlaybackIntroLookupContentId, coreResolveNextEpisode, coreTerminalRecommendationEligibility } from '../core/engine';
 import { persistLastPlaybackSource } from '../core/libraryStorage';
 import { fetchTerminalRecommendations } from '../core/detailEffects';
 import {
@@ -132,8 +132,9 @@ export function useWebPlayer({
       if ((!useSkipSegments && !useAnimeSkip) || !episode) return;
       try {
         const resolvedId = useSkipSegments && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
-        const imdbId = resolvedId.startsWith('tt') ? resolvedId : '';
-        const tmdbId = !imdbId && /^\d+$/.test(resolvedId) ? Number(resolvedId) : undefined;
+        const externalIds = await corePlaybackExternalIds(resolvedId);
+        const imdbId = externalIds.imdbId ?? '';
+        const tmdbId = externalIds.tmdbId ?? undefined;
         const { segments, coverage } = await fetchPlaybackSkipSegments({
           imdbId,
           tmdbId,

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { useState } from 'react';
 import { ChevronUp, ChevronDown, X } from 'lucide-react';
-import { effectiveFolderImageUrl, effectiveFolderShape } from '../core/collections';
+import { useCollectionFolderPresentation } from '../core/collections';
 import type { UserCollectionFolder } from '../core/types';
 import { t } from '../i18n';
 
@@ -222,8 +222,7 @@ export function Toggle({ checked, onChange, accent }: { checked: boolean; onChan
 }
 
 export function FolderRow({ folder, accent, onClick }: { folder: UserCollectionFolder; accent: string; onClick: () => void }) {
-  const imgUrl = effectiveFolderImageUrl(folder);
-  const shape = effectiveFolderShape(folder).toUpperCase();
+  const { imageUrl: imgUrl, shape } = useCollectionFolderPresentation(folder);
   return (
     <div
       onClick={onClick}

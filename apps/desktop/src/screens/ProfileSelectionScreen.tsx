@@ -121,12 +121,8 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
           : {}),
       }}
     >
-      <div style={S.topBar}>
-        <div>
-          <p style={S.logo}>fluxa</p>
-          <p style={S.kicker}>{t('app.desktop')}</p>
-        </div>
-        {showForm || isSettings ? (
+      {(showForm || isSettings) && (
+        <div style={S.topBar}>
           <button
             style={S.closeButton}
             onClick={() => {
@@ -137,17 +133,8 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
           >
             <X size={20} />
           </button>
-        ) : (
-          <button
-            style={S.closeButton}
-            onClick={() => setMode('settings')}
-            aria-label={t('profiles.picker_settings')}
-            title={t('profiles.picker_settings')}
-          >
-            <Settings size={19} />
-          </button>
-        )}
-      </div>
+        </div>
+      )}
 
       <main style={showForm || isSettings ? S.main : S.mainSelect}>
         {showForm ? (
@@ -163,7 +150,23 @@ export function ProfileSelectionScreen({ onProfileSelected, onProfilesChanged }:
             <p style={S.subtitle}>{t('profiles.form_subtitle')}</p>
           </section>
         ) : (
-          <h1 style={S.selectTitle}>{t('profiles.who_watching')}</h1>
+          <>
+            <div style={S.selectWordmark} aria-label="Fluxa">
+              <img src="/fluxa.png" alt="" style={S.selectWordmarkIcon} />
+              fluxa
+            </div>
+            <div style={S.selectTitleWrap}>
+              <h1 style={S.selectTitle}>{t('profiles.who_watching')}</h1>
+              <button
+                style={S.selectSettingsButton}
+                onClick={() => setMode('settings')}
+                aria-label={t('profiles.picker_settings')}
+                title={t('profiles.picker_settings')}
+              >
+                <Settings size={26} />
+              </button>
+            </div>
+          </>
         )}
 
         {mode === 'select' && (
@@ -346,16 +349,6 @@ const S: Record<string, React.CSSProperties> = {
     padding: '0 2.75rem',
     zIndex: 2,
   },
-  logo: { margin: 0, fontSize: '1.375rem', fontWeight: 700, letterSpacing: '0.125rem', fontFamily: FONT },
-  kicker: {
-    margin: '0.125rem 0 0',
-    color: 'rgba(255,255,255,0.28)',
-    fontSize: '0.625rem',
-    fontWeight: 500,
-    textTransform: 'uppercase',
-    letterSpacing: '0.09em',
-    fontFamily: FONT,
-  },
   main: { minHeight: '100%', width: 'min(68.75rem, calc(100vw - 3.5rem))', margin: '0 auto', padding: '6.875rem 0 3.5rem' },
   mainSelect: {
     minHeight: '100vh',
@@ -366,13 +359,43 @@ const S: Record<string, React.CSSProperties> = {
     padding: '5rem 2.5rem 3.75rem',
   },
   selectTitle: {
-    margin: '0 0 3.25rem',
+    margin: 0,
     fontSize: '2.375rem',
     fontWeight: 700,
     letterSpacing: '-0.03em',
     textAlign: 'center',
     fontFamily: FONT,
   },
+  selectTitleWrap: { position: 'relative', display: 'inline-block', marginBottom: '3.25rem' },
+  selectSettingsButton: {
+    position: 'absolute',
+    left: 'calc(100% + 1rem)',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    width: '2.75rem',
+    height: '2.75rem',
+    padding: 0,
+    border: 'none',
+    background: 'transparent',
+    color: 'rgba(255,255,255,0.72)',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    cursor: 'pointer',
+    outline: 'none',
+  },
+  selectWordmark: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.625rem',
+    margin: '0 0 1.5rem',
+    color: colors.white,
+    fontSize: '2rem',
+    fontWeight: 700,
+    letterSpacing: '-0.02em',
+    fontFamily: FONT,
+  },
+  selectWordmarkIcon: { width: '2.5rem', height: '2.5rem', objectFit: 'contain' },
   hero: { marginBottom: '2rem', maxWidth: '37.5rem' },
   eyebrow: {
     color: 'rgba(255,255,255,0.40)',
@@ -441,8 +464,8 @@ const S: Record<string, React.CSSProperties> = {
     marginTop: '0.875rem',
     maxWidth: '8.75rem',
     color: 'rgba(255,255,255,0.85)',
-    fontSize: '0.875rem',
-    fontWeight: 500,
+    fontSize: '1rem',
+    fontWeight: 700,
     overflow: 'hidden',
     textOverflow: 'ellipsis',
     whiteSpace: 'nowrap',

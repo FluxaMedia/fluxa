@@ -82,15 +82,24 @@ export function useLibraryCollections({
     } catch {}
   }
 
+  async function applyCollectionCommand(command: Record<string, unknown>): Promise<UserCollection[] | null> {
+    const result = await coreInvoke<{ collections: UserCollection[] }>(
+      'collectionMutationPlan',
+      JSON.stringify({ collections, command }),
+    );
+    return result?.collections ?? null;
+  }
+
   async function handleSaveCollection(col: UserCollection) {
-    const existing = collections.findIndex((c) => c.id === col.id);
-    const next = existing >= 0 ? collections.map((c) => (c.id === col.id ? col : c)) : [...collections, col];
+    const next = await applyCollectionCommand({ type: 'upsert', collection: col });
+    if (!next) return;
     await saveCollections(next);
     setEditingCollection(null);
   }
 
   async function handleDeleteCollection(id: string) {
-    await saveCollections(collections.filter((c) => c.id !== id));
+    const next = await applyCollectionCommand({ type: 'delete', id });
+    if (next) await saveCollections(next);
   }
 
   async function handleImportJson(json: string) {

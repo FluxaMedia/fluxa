@@ -5,10 +5,10 @@ import type { DetailState, LibraryItem, Meta, MetaLink, Stream, Trailer, Video }
 import type { posterPrefsFromState } from '../../core/posterPrefs';
 import { MS } from './detailStyles';
 import { type NormalizedCastMember } from './castSection';
-import { youtubeVideoId } from './youtube';
 import { InlineSourceList, MovieSourcePanel } from './SourcePanel';
 import { type ProgressEntry } from './EpisodePanel';
 import { useSeasonWatched } from '../../hooks/useSeasonWatched';
+import { useTrailerVideoIds } from '../../hooks/useTrailerVideoIds';
 import { CastRow, DetailsTabContent, EpisodesTabContent, RelatedTabContent } from './ModernDetailTabs';
 import { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
 import { ModernDetailHero } from './ModernDetailHero';
@@ -214,20 +214,7 @@ export function ModernDetailLayout({
     onDispatch,
   });
 
-  const trailerVideoIdsRef = useRef<string[]>([]);
-  const trailerVideoIds = useMemo(() => {
-    const ids: string[] = [];
-    for (const trailer of displayTrailers) {
-      const id = youtubeVideoId(trailer.url);
-      if (id && !ids.includes(id)) ids.push(id);
-    }
-    const previous = trailerVideoIdsRef.current;
-    if (previous.length === ids.length && previous.every((id, index) => id === ids[index])) {
-      return previous;
-    }
-    trailerVideoIdsRef.current = ids;
-    return ids;
-  }, [displayTrailers]);
+  const trailerVideoIds = useTrailerVideoIds(displayTrailers);
 
   const trailer = useTrailerPlayback({
     metaId: displayMeta.id,

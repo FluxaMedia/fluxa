@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { color, fade, fontSize, radius } from '../../design';
-import { coreInvoke } from '../../core/engine';
+import { coreInvoke, coreTmdbImageUrl } from '../../core/engine';
 import type { CastMember, Meta, MetaLink } from '../../core/types';
 
 export type NormalizedCastMember = {
@@ -12,7 +12,7 @@ export type NormalizedCastMember = {
 export async function buildCastMembers(meta: Meta): Promise<NormalizedCastMember[]> {
   const record = meta as Meta & { app_extras?: { cast?: unknown[] }; appExtras?: { cast?: unknown[] } };
   const rawCast = [...castArray(record.cast), ...castArray(record.app_extras?.cast), ...castArray(record.appExtras?.cast)];
-  const fromCast = rawCast.map(normalizeCastMember).filter(Boolean) as NormalizedCastMember[];
+  const fromCast = (await Promise.all(rawCast.map(normalizeCastMember))).filter(Boolean) as NormalizedCastMember[];
   if (fromCast.length > 0) return uniqueCastMembers(fromCast);
 
   const classified = await coreInvoke<{ cast: MetaLink[] }>('classifyMetaLinks', JSON.stringify(meta.links ?? []));
@@ -24,7 +24,7 @@ function castArray(value: unknown): unknown[] {
   return value ? [value] : [];
 }
 
-function normalizeCastMember(value: unknown): NormalizedCastMember | null {
+async function normalizeCastMember(value: unknown): Promise<NormalizedCastMember | null> {
   if (typeof value === 'string') {
     const name = value.trim();
     return name ? { name } : null;
@@ -36,7 +36,7 @@ function normalizeCastMember(value: unknown): NormalizedCastMember | null {
   return {
     name,
     role: optionalString(item.character) ?? optionalString(item.role) ?? optionalString(item.as) ?? undefined,
-    imageUrl: normalizeProfileImage(item.profilePath ?? item.profile_path ?? item.photo ?? item.profile ?? item.image ?? item.img),
+    imageUrl: await normalizeProfileImage(item.profilePath ?? item.profile_path ?? item.photo ?? item.profile ?? item.image ?? item.img),
   };
 }
 
@@ -88,12 +88,10 @@ function optionalString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
-function normalizeProfileImage(value: unknown): string | undefined {
+async function normalizeProfileImage(value: unknown): Promise<string | undefined> {
   const image = optionalString(value);
   if (!image) return undefined;
-  if (image.startsWith('//')) return `https:${image}`;
-  if (image.startsWith('/')) return `https://image.tmdb.org/t/p/w185${image}`;
-  return image;
+  return (await coreTmdbImageUrl(image, 'w185')) ?? image;
 }
 
 function uniqueCastMembers(items: NormalizedCastMember[]): NormalizedCastMember[] {

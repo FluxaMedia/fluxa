@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { corePlaybackIntroLookupContentId } from '../../core/engine';
+import { corePlaybackExternalIds, corePlaybackIntroLookupContentId } from '../../core/engine';
 
 export function usePlayerIntroDb(metaId: string | undefined, enabled: boolean) {
   const [ids, setIds] = useState<{ imdbId: string | null; tmdbId: number | null }>({ imdbId: null, tmdbId: null });
@@ -9,12 +9,11 @@ export function usePlayerIntroDb(metaId: string | undefined, enabled: boolean) {
       return;
     }
     let cancelled = false;
-    void corePlaybackIntroLookupContentId(metaId)
-      .then((id) => {
-        if (cancelled || !id) return;
-        if (id.startsWith('tt')) setIds({ imdbId: id, tmdbId: null });
-        else if (/^\d+$/.test(id)) setIds({ imdbId: null, tmdbId: Number(id) });
-        else setIds({ imdbId: null, tmdbId: null });
+      void corePlaybackIntroLookupContentId(metaId)
+      .then((id) => corePlaybackExternalIds(id))
+      .then(({ imdbId, tmdbId }) => {
+        if (cancelled) return;
+        setIds({ imdbId, tmdbId });
       })
       .catch(() => undefined);
     return () => {

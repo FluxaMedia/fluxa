@@ -1,6 +1,6 @@
 import { loadLibrary, saveLibrary, loadPrefs, persistContinueWatchingMerge } from './libraryOps';
 import { fetchMetaDetail, fetchTmdbPosterFallback } from './detailEffects';
-import { coreReplaceExternalContinueWatching } from './engine';
+import { coreIsSeriesContentType, coreReplaceExternalContinueWatching } from './engine';
 import { prefString } from './appPrefs';
 
 export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Promise<Record<string, unknown>[]> {
@@ -18,8 +18,9 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
       const item = items[i];
       const id = typeof item.id === 'string' ? item.id : '';
       const contentType = typeof item.type === 'string' ? item.type : 'movie';
+      const isSeries = await coreIsSeriesContentType(contentType);
       const needsEpisodeMeta =
-        contentType === 'series' &&
+        isSeries &&
         typeof item.lastEpisodeSeason === 'number' &&
         typeof item.lastEpisodeNumber === 'number' &&
         (!item.lastEpisodeName || !item.lastEpisodeThumbnail);
@@ -43,7 +44,7 @@ export async function enrichWithAddonMeta(items: Record<string, unknown>[]): Pro
         }
         let lastEpisodeThumbnail = typeof item.lastEpisodeThumbnail === 'string' ? item.lastEpisodeThumbnail : undefined;
         let lastEpisodeName = typeof item.lastEpisodeName === 'string' ? item.lastEpisodeName : undefined;
-        if (meta && contentType === 'series' && Array.isArray(meta.videos)) {
+        if (meta && isSeries && Array.isArray(meta.videos)) {
           const season = typeof item.lastEpisodeSeason === 'number' ? item.lastEpisodeSeason : undefined;
           const epNum = typeof item.lastEpisodeNumber === 'number' ? item.lastEpisodeNumber : undefined;
           if (season != null && epNum != null) {

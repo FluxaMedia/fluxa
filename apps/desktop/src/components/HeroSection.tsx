@@ -5,8 +5,8 @@ import type { Meta } from '../core/types';
 import { t } from '../i18n';
 import { heroKeyframes, heroStyles as styles } from './heroStyles';
 import { readOptionalString } from './HeroSectionParts';
-import { youtubeVideoId } from './detail/youtube';
 import { useTrailerPlayback } from '../hooks/useTrailerPlayback';
+import { useTrailerVideoIds } from '../hooks/useTrailerVideoIds';
 import { assetUrl } from '../platform/assets';
 
 const SWIPE_THRESHOLD_PX = 60;
@@ -78,20 +78,7 @@ export const HeroSection = React.memo(function HeroSection({
   const activeMeta = items[activeIndex] ?? meta;
   const canSlide = items.length > 1;
 
-  const trailerVideoIdsRef = useRef<string[]>([]);
-  const trailerVideoIds = useMemo(() => {
-    const ids: string[] = [];
-    for (const trailer of activeMeta.trailers ?? []) {
-      const id = youtubeVideoId(trailer.url);
-      if (id && !ids.includes(id)) ids.push(id);
-    }
-    const previous = trailerVideoIdsRef.current;
-    if (previous.length === ids.length && previous.every((id, index) => id === ids[index])) {
-      return previous;
-    }
-    trailerVideoIdsRef.current = ids;
-    return ids;
-  }, [activeMeta.trailers]);
+  const trailerVideoIds = useTrailerVideoIds(activeMeta.trailers);
 
   const {
     trailerContainerRef,

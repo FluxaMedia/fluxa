@@ -1,4 +1,5 @@
 import {
+  coreNuvioCanonicalContentType,
   coreBuildHomeCollectionShelves,
   coreBuildMetadataFeedOptions,
   coreComputeContinueWatchingBadges,
@@ -124,23 +125,23 @@ async function continueWatchingFromCompactProgress(
   addons: AddonDescriptor[],
 ): Promise<Record<string, unknown>[]> {
   const progressMap = (library.progress as Record<string, Record<string, unknown>> | undefined) ?? {};
-  const libraryItems = Object.entries(progressMap).map(([key, entry]) => {
+  const progressEntries = await Promise.all(Object.entries(progressMap).map(async ([key, entry]) => {
     const meta = (entry.meta as Record<string, unknown> | undefined) ?? {};
+    const rawType = String(entry.contentType ?? meta.type ?? (entry.lastEpisodeSeason != null ? 'series' : 'movie'));
+    return { key, entry, meta, contentType: await coreNuvioCanonicalContentType(rawType) };
+  }));
+  const libraryItems = progressEntries.map(({ key, entry, meta, contentType }) => {
     return {
       content_id: String(entry.contentId ?? meta.id ?? key),
-      content_type: String(entry.contentType ?? meta.type ?? (entry.lastEpisodeSeason != null ? 'series' : 'movie')),
+      content_type: contentType,
       name: meta.name ?? null,
       poster: meta.poster ?? null,
       background: meta.background ?? null,
     };
   });
-  const watchProgress = Object.entries(progressMap).map(([key, entry]) => ({
+  const watchProgress = progressEntries.map(({ key, entry, contentType }) => ({
     content_id: String(entry.contentId ?? (entry.meta as Record<string, unknown> | undefined)?.id ?? key),
-    content_type: String(
-      entry.contentType ??
-        (entry.meta as Record<string, unknown> | undefined)?.type ??
-        (entry.lastEpisodeSeason != null ? 'series' : 'movie'),
-    ),
+    content_type: contentType,
     video_id: entry.videoId ?? entry.lastVideoId ?? null,
     season: entry.season ?? entry.lastEpisodeSeason ?? null,
     episode: entry.episode ?? entry.lastEpisodeNumber ?? null,

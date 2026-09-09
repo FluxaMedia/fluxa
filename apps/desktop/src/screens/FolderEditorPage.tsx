@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft as ArrowBack } from 'lucide-react';
-import { effectiveCatalogId, effectiveCatalogType } from '../core/collections';
+import { useCollectionFolderPresentation } from '../core/collections';
 import { loadNuvioCollectionSource } from '../core/collectionSources';
 import type {
   HomeCategory,
@@ -213,6 +213,7 @@ function AddTraktSource({ accent, onAdd }: { accent: string; onAdd: (source: Nuv
 }
 
 export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, onSave }: Props) {
+  const presentation = useCollectionFolderPresentation(initial);
   const [title, setTitle] = useState(initial.title ?? '');
   const [imageUrl, setImageUrl] = useState(initial.imageUrl ?? initial.coverImageUrl ?? '');
   const [focusGifUrl, setFocusGifUrl] = useState(initial.focusGifUrl ?? '');
@@ -225,8 +226,8 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
   const [shape, setShape] = useState(initial.shape ?? 'poster');
   const [sources, setSources] = useState<NuvioCollectionSource[]>(() => {
     if (initial.sources?.length) return initial.sources;
-    const catalogId = effectiveCatalogId(initial);
-    const type = effectiveCatalogType(initial);
+    const catalogId = initial.catalogSources?.[0]?.catalogId ?? initial.catalogId;
+    const type = initial.catalogSources?.[0]?.type;
     if (!catalogId) return [];
     const catalog = catalogOptions.find((c) => c.id === catalogId);
     return [
@@ -242,6 +243,22 @@ export function FolderEditorPage({ initial, accent, catalogOptions, onDismiss, o
   const [pendingCatalogId, setPendingCatalogId] = useState('');
   const [pendingGenre, setPendingGenre] = useState('');
   const [addingProvider, setAddingProvider] = useState<'tmdb' | 'trakt' | null>(null);
+
+  useEffect(() => {
+    if (!initial.imageUrl && !initial.coverImageUrl && presentation.imageUrl) setImageUrl(presentation.imageUrl);
+    if (!initial.shape && presentation.shape !== 'poster') setShape(presentation.shape);
+    if (initial.sources?.length || !presentation.catalogId || sources.length > 0) return;
+    const catalog = catalogOptions.find((option) => option.id === presentation.catalogId);
+    setSources([
+      {
+        provider: 'addon',
+        addonId: catalog?.addonName ?? 'addon',
+        catalogId: presentation.catalogId,
+        type: presentation.catalogType ?? catalog?.type ?? 'movie',
+        genre: initial.genre,
+      },
+    ]);
+  }, [catalogOptions, initial, presentation, sources.length]);
 
   const browsableCatalogs = catalogOptions.filter((c) => !c.id.startsWith('cw_') && c.type !== 'collection');
   const pendingCatalog = browsableCatalogs.find((c) => c.id === pendingCatalogId);

@@ -66,6 +66,11 @@ export async function runScrobbleLifecycle(options: {
 }): Promise<ScrobbleEvent | null> {
   const { event, profile, meta, episode, snapshot, flags, onProfileUpdated } = options;
   if (!profile || !meta || !snapshotIsUsable(snapshot)) return null;
+  const progress =
+    (await coreInvoke<number>(
+      'playerProgressPercent',
+      JSON.stringify({ positionMs: Math.round(snapshot.timePos * 1000), durationMs: Math.round(snapshot.duration * 1000) }),
+    )) ?? 0;
   const action = await coreInvoke<{ action: ScrobbleEvent }>(
     'playerScrobbleLifecycleAction',
     JSON.stringify({
@@ -74,7 +79,7 @@ export async function runScrobbleLifecycle(options: {
       hasStarted: flags.hasStarted,
       hasPaused: flags.hasPaused,
       hasStopped: flags.hasStopped,
-      progress: (snapshot.timePos / snapshot.duration) * 100,
+      progress,
     }),
   );
   if (!action) return null;

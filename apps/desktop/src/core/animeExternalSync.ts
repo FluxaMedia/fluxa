@@ -8,6 +8,7 @@ import {
   coreShouldAttemptAnimeTracking,
   storageRead,
   storageWrite,
+  coreInvoke,
 } from './engine';
 import { saveProfile } from './profiles';
 import type { Meta, UserProfile } from './types';
@@ -67,7 +68,7 @@ export async function refreshAnimeTrackingProfile(profile: UserProfile): Promise
 }
 
 async function resolveAnimeIds(meta: Meta): Promise<AnimeIds | null> {
-  const cacheKey = animeCacheKey(meta);
+  const cacheKey = await animeCacheKey(meta);
   const cache = (await storageRead<AnimeIdCache>(ANIME_ID_CACHE_KEY)) ?? {};
   if (cacheKey && cache[cacheKey]) return cache[cacheKey];
 
@@ -174,19 +175,16 @@ function firstEpisodeNumberFromMeta(meta: Meta): number | undefined {
   return first?.episode ?? first?.number;
 }
 
-function animeCacheKey(meta: Meta): string {
-  return meta.id || `${normalizeTitle(meta.name)}:${meta.year ?? parseYear(meta.releaseInfo) ?? ''}`;
+async function animeCacheKey(meta: Meta): Promise<string> {
+  if (meta.id) return meta.id;
+  const normalizedTitle = (await coreInvoke<string>(
+    'homeBillboardNormalizedTitle',
+    JSON.stringify({ value: meta.name }),
+  )) ?? meta.name.trim().toLowerCase();
+  return `${normalizedTitle}:${meta.year ?? parseYear(meta.releaseInfo) ?? ''}`;
 }
 
 function parseYear(value?: string): number | undefined {
   const match = value?.match(/\b(19|20)\d{2}\b/);
   return match ? Number(match[0]) : undefined;
-}
-
-function normalizeTitle(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }

@@ -5,6 +5,7 @@ import {
   coreDetectAnimePlayback,
   coreInvoke,
   corePlaybackIntroLookupContentId,
+  corePlaybackExternalIds,
   corePlaybackPreparePlan,
   coreResolveNextEpisode,
   coreSelectNextEpisodeStream,
@@ -335,8 +336,9 @@ export function usePlayerPlaybackStart(options: any) {
           const useAnimeSkip = playbackPrefs.useAnimeSkip;
           if ((!useSkipSegments && !useAnimeSkip) || !episode) return { segments: [], coverage: {} };
           const resolvedId = useSkipSegments && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
-          const imdbId = resolvedId.startsWith('tt') ? resolvedId : '';
-          const tmdbId = !imdbId && /^\d+$/.test(resolvedId) ? Number(resolvedId) : undefined;
+          const externalIds = await corePlaybackExternalIds(resolvedId);
+          const imdbId = externalIds.imdbId ?? '';
+          const tmdbId = externalIds.tmdbId ?? undefined;
           const season = episode.season ?? 1;
           const epNum = episode.episode ?? episode.number ?? 1;
           return fetchPlaybackSkipSegments({

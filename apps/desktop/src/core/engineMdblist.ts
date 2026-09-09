@@ -9,6 +9,10 @@ export async function coreMdblistMediaInfoUrl(
   return coreInvoke('mdblistMediaInfoUrl', JSON.stringify({ provider, mediaType, mediaId, appendToResponse }));
 }
 
+export async function coreMdblistContentType(contentType: string): Promise<string> {
+  return (await coreInvoke<string>('mdblistContentType', JSON.stringify({ contentType }))) ?? 'movie';
+}
+
 export async function coreMdblistMediaRatingsFromResponse(responseJson: string): Promise<Record<string, number> | null> {
   return coreInvoke('mdblistMediaRatingsFromResponse', responseJson);
 }

@@ -1,5 +1,6 @@
 import {
   coreBuildTraktIds,
+  coreTraktCollectionBody,
   coreInvoke,
   coreTraktActivityDiff,
   coreTraktMarkWatchedBody,
@@ -341,7 +342,8 @@ export async function pushWatchlistTrakt(
   const ids = await coreBuildTraktIds(id);
   if (!ids) return;
   const endpoint = command === 'add' ? '/sync/watchlist' : '/sync/watchlist/remove';
-  const body = contentType === 'series' ? { shows: [{ ids }] } : { movies: [{ ids }] };
+  const body = await coreTraktCollectionBody(JSON.stringify(ids), contentType);
+  if (!body) return;
   await platformFetch(`https://api.trakt.tv${endpoint}`, { method: 'POST', headers, body: JSON.stringify(body) });
 }
 
@@ -356,7 +358,8 @@ export async function pushFavoriteTrakt(
   const ids = await coreBuildTraktIds(id);
   if (!ids) return;
   const endpoint = command === 'add' ? '/sync/favorites' : '/sync/favorites/remove';
-  const body = contentType === 'series' ? { shows: [{ ids }] } : { movies: [{ ids }] };
+  const body = await coreTraktCollectionBody(JSON.stringify(ids), contentType);
+  if (!body) return;
   await platformFetch(`https://api.trakt.tv${endpoint}`, { method: 'POST', headers, body: JSON.stringify(body) });
 }
 

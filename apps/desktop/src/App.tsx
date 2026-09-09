@@ -38,6 +38,7 @@ import { useOnlineStatus } from './hooks/useOnlineStatus';
 import { setActiveProfileId, loadProfiles } from './core/profiles';
 import { invalidateLibraryKeyCache } from './core/libraryOps';
 import { storageWrite, storageRead } from './core/engine';
+import { normalizeManifestUrl } from './core/addonManifest';
 import { getLanguage } from './i18n';
 import { appPrefs, prefBool, prefString } from './core/appPrefs';
 import { AppStateStore, appStateSliceEqual, useAppStateSelector } from './core/appStateStore';
@@ -314,11 +315,12 @@ export default function App() {
       const raw = e.payload.url ?? '';
       const match = raw.match(/^fluxa:\/\/addon\/(.+)$/i);
       if (!match) return;
-      let addonUrl = decodeURIComponent(match[1]);
-      if (addonUrl.startsWith('stremio://')) addonUrl = addonUrl.replace(/^stremio:\/\//, 'https://');
-      if (!/^https?:\/\//i.test(addonUrl)) return;
-      setPendingAddonUrl(addonUrl);
-      navigateRoute('settings');
+      const rawAddonUrl = decodeURIComponent(match[1]);
+      void normalizeManifestUrl(rawAddonUrl).then((addonUrl) => {
+        if (!/^https?:\/\//i.test(addonUrl)) return;
+        setPendingAddonUrl(addonUrl);
+        navigateRoute('settings');
+      });
     });
     return () => {
       void unlisten.then((fn) => fn());

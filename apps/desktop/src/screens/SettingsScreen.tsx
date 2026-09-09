@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { platformInvoke as invoke } from '../platform/invoke';
 import { coreApplyPreferenceUpdate, coreInvoke, storageRead, storageWrite } from '../core/engine';
 import { Gamepad2, Keyboard, Search } from 'lucide-react';
-import { coreAddonCollectionMutationPlan, loadAddonManifestFromUrl, normalizeManifestUrl } from '../core/addonManifest';
+import { addonIdentity, coreAddonCollectionMutationPlan, loadAddonManifestFromUrl, normalizeManifestUrl } from '../core/addonManifest';
 import type { AddonDescriptor, AppState, PluginRepository, PluginScraper, UserProfile } from '../core/types';
 import { addonKey, normalizeAddonDescriptor } from '../core/addons';
 import { saveProfile } from '../core/profiles';
@@ -360,16 +360,31 @@ export function SettingsScreen({
   };
 
   const handleReorderAddon = async (addon: AddonDescriptor, direction: 'up' | 'down') => {
-    const idx = installedAddons.findIndex((a) => addonKey(a) === addonKey(addon));
-    if (idx < 0) return;
-    const next = [...installedAddons];
-    const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-    if (swapIdx < 0 || swapIdx >= next.length) return;
-    [next[idx], next[swapIdx]] = [next[swapIdx], next[idx]];
+    if (!activeProfile) return;
+    const updatedProfile =
+      (await coreInvoke<UserProfile>(
+        'addonProfileMutationPlan',
+        JSON.stringify({
+          profile: activeProfile,
+          command: 'move',
+          addonKey: addonKey(addon),
+          direction: direction === 'up' ? -1 : 1,
+        }),
+      )) ?? activeProfile;
+    const orderedKeys = await Promise.all((updatedProfile.localAddons ?? []).map((url) => addonIdentity(url)));
+    const identityByAddon = new Map(await Promise.all(installedAddons.map(async (item) => [await addonIdentity(item.transportUrl), item] as const)));
+    const orderedItems = orderedKeys.map((key) => identityByAddon.get(key)).filter((item): item is AddonDescriptor => Boolean(item));
+    const orderedItemSet = new Set(orderedItems);
+    const next = [
+      ...orderedItems,
+      ...installedAddons.filter((item) => !orderedItemSet.has(item)),
+    ];
     await saveAddons(next);
     setInstalledAddons(next);
-    void syncNuvioAddons(activeProfile, next);
-    void syncStremioAddonsForProfile(activeProfile, next);
+    await saveProfile(updatedProfile);
+    onProfileUpdated(updatedProfile);
+    void syncNuvioAddons(updatedProfile, next);
+    void syncStremioAddonsForProfile(updatedProfile, next);
     onDispatch(JSON.stringify({ type: 'addonsRefreshRequested' }));
   };
 

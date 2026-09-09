@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { effectiveFolderImageUrl, effectiveFolderShape } from '../../core/collections';
+import { useCollectionFolderPresentation } from '../../core/collections';
 import { contrastOn, MoveButtons, moveItem } from '../../screens/CollectionEditorPrimitives';
 import type { UserCollection, UserCollectionFolder } from '../../core/types';
 import { t } from '../../i18n';
@@ -190,8 +190,7 @@ function CollectionSection({
 
 function FolderTile({ folder, accent, onClick }: { folder: UserCollectionFolder; accent: string; onClick: () => void }) {
   const [hovered, setHovered] = useState(false);
-  const imgUrl = effectiveFolderImageUrl(folder);
-  const shape = effectiveFolderShape(folder);
+  const { imageUrl: imgUrl, shape } = useCollectionFolderPresentation(folder);
   const tileH = shape === 'wide' ? TILE_H_WIDE : shape === 'square' ? TILE_H_SQUARE : TILE_H_POSTER;
   const tileW = shape === 'wide' ? TILE_W * 1.78 : TILE_W;
 

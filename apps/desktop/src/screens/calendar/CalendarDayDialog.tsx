@@ -1,8 +1,10 @@
 import { Check, Film, X } from 'lucide-react';
 import type { CSSProperties } from 'react';
+import { useEffect, useState } from 'react';
+import { coreReleaseDateReleased } from '../../core/engineCoreContent';
 import { t } from '../../i18n';
 import { CalendarArtwork } from './CalendarArtwork';
-import { calendarPoster, eventEpisodeLabel, formatLongDate, isReleased, type CalendarItem } from './calendarUtils';
+import { calendarPoster, eventEpisodeLabel, formatLongDate, type CalendarItem } from './calendarUtils';
 
 export function CalendarDayDialog({
   dateIso,
@@ -19,6 +21,19 @@ export function CalendarDayDialog({
   seriesArtwork: Record<string, string>;
   styles: Record<string, CSSProperties>;
 }) {
+  const [releasedItems, setReleasedItems] = useState<boolean[]>([]);
+
+  useEffect(() => {
+    let active = true;
+    void Promise.all(items.map((item) => (item.dateIso ? coreReleaseDateReleased(item.dateIso) : Promise.resolve(false))))
+      .then((values) => {
+        if (active) setReleasedItems(values);
+      });
+    return () => {
+      active = false;
+    };
+  }, [items]);
+
   return (
     <div style={styles.modalOverlay} onMouseDown={onClose}>
       <section
@@ -58,7 +73,7 @@ export function CalendarDayDialog({
                   <span style={styles.modalItemTitle}>{item.title ?? item.name ?? item.subtitle}</span>
                   <span style={styles.modalItemMeta}>{eventEpisodeLabel(item)}</span>
                 </div>
-                {isReleased(item) && <Check size={19} style={styles.releaseCheck} />}
+                {releasedItems[index] && <Check size={19} style={styles.releaseCheck} />}
               </div>
             ))}
           </div>
