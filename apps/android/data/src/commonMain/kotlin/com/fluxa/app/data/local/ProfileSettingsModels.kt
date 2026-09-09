@@ -1,8 +1,5 @@
 package com.fluxa.app.data.local
 
-private const val CINEMETA_ADDON_URL = "https://v3-cinemeta.strem.io/manifest.json"
-val DEFAULT_ADDON_URLS = listOf(CINEMETA_ADDON_URL)
-
 data class ExternalAccounts(
     val traktAccessToken: String? = null,
     val traktRefreshToken: String? = null,
@@ -15,7 +12,7 @@ data class ExternalAccounts(
 )
 
 data class AddonSettings(
-    val localAddons: List<String>? = DEFAULT_ADDON_URLS,
+    val localAddons: List<String>? = emptyList(),
     val disabledLocalAddons: List<String>? = emptyList()
 )
 
@@ -44,6 +41,8 @@ data class PlaybackSettings(
     val externalPlayerTarget: String? = null,
     val autoSkipIntro: Boolean? = false,
     val autoPlayNextEpisode: Boolean? = true,
+    val movieRecommendationOutroPercent: String? = "85",
+    val seriesRecommendationOutroPercent: String? = "85",
     val nextEpisodeThresholdPercent: Float? = 90f,
     val watchedThresholdPercent: Float? = 80f,
     val seekForwardSeconds: Int? = 10,
@@ -56,6 +55,7 @@ data class PlaybackSettings(
     val playerRebufferBufferMs: Int? = 2500,
     val backgroundPlayback: Boolean? = false,
     val pictureInPicture: Boolean? = true,
+    val pauseMetadataOverlayEnabled: Boolean? = true,
     val playbackSpeed: Float? = 1f,
     val holdToSpeedEnabled: Boolean? = true,
     val holdSpeed: Float? = 2f,

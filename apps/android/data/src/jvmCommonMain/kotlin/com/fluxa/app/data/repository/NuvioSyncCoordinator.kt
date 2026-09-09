@@ -84,6 +84,18 @@ class NuvioSyncCoordinator @Inject constructor(
         }
     }
 
+    /** Returns the last managed addon snapshot when Nuvio is temporarily unreachable. */
+    suspend fun getCachedAddons(profile: UserProfile): List<AddonDescriptor> {
+        val profileIndexes = listOfNotNull(profile.nuvioProfileIndex, 1).distinct()
+        for (index in profileIndexes) {
+            val cached = addonPersistentCache.getUserAddons(
+                "nuvio_managed_addons_v1_${profile.id}_$index"
+            )
+            if (cached.isNotEmpty()) return cached
+        }
+        return emptyList()
+    }
+
     suspend fun setAddonEnabled(profile: UserProfile, addon: AddonDescriptor, enabled: Boolean): Boolean {
         return updateAddon(profile, addon, mapOf("enabled" to enabled))
     }

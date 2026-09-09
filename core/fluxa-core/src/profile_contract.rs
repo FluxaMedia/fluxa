@@ -367,18 +367,6 @@ pub(crate) fn profile_settings_migration_plan_json(request_json: &str) -> Option
         applied.push("flatten_home_feed_settings".to_string());
     }
 
-    // Ensure localAddons always has at least the default addon
-    {
-        let has_local_addons = obj
-            .get("localAddons")
-            .and_then(Value::as_array)
-            .is_some_and(|arr| !arr.is_empty());
-        if !has_local_addons {
-            obj.insert("localAddons".to_string(), json!([DEFAULT_ADDON_URL]));
-            applied.push("ensure_default_addon".to_string());
-        }
-    }
-
     serde_json::to_string(&json!({
         "migratedProfile": profile,
         "appliedMigrations": applied,
@@ -596,5 +584,18 @@ mod tests {
         assert_eq!(result["isGuest"], true);
         let addons = result["localAddons"].as_array().unwrap();
         assert!(!addons.is_empty());
+    }
+
+    #[test]
+    fn settings_migration_preserves_an_explicitly_empty_addon_list() {
+        let result: Value = serde_json::from_str(
+            &profile_settings_migration_plan_json(
+                r#"{"raw":{"id":"p1","localAddons":[]},"schemaVersion":2}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(result["migratedProfile"]["localAddons"].as_array().map(Vec::len), Some(0));
     }
 }

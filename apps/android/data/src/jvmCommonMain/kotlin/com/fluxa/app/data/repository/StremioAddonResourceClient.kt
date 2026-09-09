@@ -59,6 +59,7 @@ class StremioAddonResourceClient @Inject constructor(
             .map(addonManifestClient::normalizeAddonTransportUrl)
             .filter { it.isNotBlank() }
             .distinctBy(StremioAddonUrls::identity)
+        if (normalizedLocalAddons.isEmpty()) return@withContext emptyList()
         val cacheKey = "addons_v10_${authKey}_${normalizedLocalAddons.joinToString("|")}"
         if (!forceRefresh) {
             cache.get<List<AddonDescriptor>>(cacheKey)?.let { return@withContext it }

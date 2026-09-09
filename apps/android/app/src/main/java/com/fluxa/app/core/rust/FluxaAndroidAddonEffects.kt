@@ -30,13 +30,17 @@ internal fun FluxaAndroidHeadlessEnvironment.fetchPluginManifest(effect: NativeH
 internal suspend fun FluxaAndroidHeadlessEnvironment.refreshInstalledAddons(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
     val payload = effect.payload
     val profile = payload.profile() ?: return ok(effect, mapOf("addons" to emptyList<AddonDescriptor>()))
-    val addons = withTimeoutOrNull(10_000L) {
-        repository.getUserAddons(
-            authKey = profile.authKey,
-            localAddons = profile.safeLocalAddons,
-            forceRefresh = payload.boolean("forceRefresh", true)
-        )
-    }.orEmpty()
+    val addons = if (!profile.nuvioAccessToken.isNullOrBlank()) {
+        configuredStreamAddons(profile)
+    } else {
+        withTimeoutOrNull(10_000L) {
+            repository.getUserAddons(
+                authKey = profile.authKey,
+                localAddons = profile.safeLocalAddons,
+                forceRefresh = payload.boolean("forceRefresh", true)
+            )
+        }.orEmpty()
+    }
     return ok(effect, mapOf("addons" to addons))
 }
 

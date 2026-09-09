@@ -27,9 +27,7 @@ internal class HomePlaybackStreamCoordinator(
 ) {
     suspend fun getStreams(type: String, id: String): List<Stream> = withContext(Dispatchers.IO) {
         val language = activeProfile()?.safeLanguage ?: "en"
-        val addons = userAddons().ifEmpty {
-            repository.getUserAddons(activeProfile()?.authKey ?: "", activeProfile()?.safeLocalAddons)
-        }
+        val addons = userAddons()
         val requestIds = buildPlaybackStreamRequestIds(type, id, language)
         for (requestId in requestIds) {
             val streams = streamDiscovery.discover(

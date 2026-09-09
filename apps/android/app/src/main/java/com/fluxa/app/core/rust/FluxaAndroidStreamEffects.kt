@@ -25,7 +25,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.loadStreams(effect: NativeH
         return ok(effect, loadCsNativeStreams(id))
     }
     val profile = payload.profile()
-    val addons = addonRepository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
+    val addons = configuredStreamAddons(profile)
     val streams = streamDiscovery.discover(
         StreamDiscoveryRequest(
             addons = addons,

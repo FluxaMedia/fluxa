@@ -120,10 +120,12 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal suspend fun configuredStreamAddons(profile: UserProfile?): List<AddonDescriptor> {
         if (profile == null) return emptyList()
         return if (!profile.nuvioAccessToken.isNullOrBlank()) {
-            val managed = nuvioSyncCoordinator.fetchAddons(profile).filter { it.isEnabled }
-            managed.ifEmpty {
-                repository.getUserAddons(profile.authKey, profile.safeLocalAddons)
-            }
+            val managed = runCatching {
+                nuvioSyncCoordinator.fetchAddons(profile)
+            }.getOrElse { emptyList() }
+                .filter { it.isEnabled }
+            managed
+                .ifEmpty { nuvioSyncCoordinator.getCachedAddons(profile).filter { it.isEnabled } }
         } else {
             repository.getUserAddons(profile.authKey, profile.safeLocalAddons)
         }
