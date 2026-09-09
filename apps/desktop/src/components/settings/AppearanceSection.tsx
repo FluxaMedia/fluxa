@@ -6,68 +6,6 @@ import { BUILT_IN_THEMES } from '../../theme/defaults';
 import { isValidThemePack, parseThemePacks } from '../../theme/adapter';
 import type { ThemePack } from '../../theme/types';
 
-function skinNavigationVisible(raw: string, route: string): boolean {
-  try {
-    const config = JSON.parse(raw) as { navigation?: { visible?: string[] } };
-    return config.navigation?.visible?.includes(route) ?? true;
-  } catch {
-    return true;
-  }
-}
-
-function setSkinNavigationVisible(raw: string, route: string, visible: boolean): string {
-  let config: { navigation?: { visible?: string[]; order?: string[] } } = {};
-  try {
-    config = JSON.parse(raw) as typeof config;
-  } catch {
-    config = {};
-  }
-  const current = config.navigation?.visible ?? ['home', 'library', 'discover', 'calendar', 'settings'];
-  const next = visible ? [...new Set([...current, route])] : current.filter((item) => item !== route);
-  return JSON.stringify({ ...config, navigation: { ...config.navigation, visible: next } });
-}
-
-function skinHomeSectionVisible(raw: string, section: string): boolean {
-  try {
-    const config = JSON.parse(raw) as { home?: { hiddenSections?: string[] } };
-    return !(config.home?.hiddenSections ?? []).includes(section);
-  } catch {
-    return true;
-  }
-}
-
-function setSkinHomeSectionVisible(raw: string, section: string, visible: boolean): string {
-  let config: { home?: { hiddenSections?: string[]; sectionOrder?: string[] } } = {};
-  try {
-    config = JSON.parse(raw) as typeof config;
-  } catch {
-    config = {};
-  }
-  const hiddenSections = config.home?.hiddenSections ?? [];
-  const next = visible ? hiddenSections.filter((item) => item !== section) : [...new Set([...hiddenSections, section])];
-  return JSON.stringify({ ...config, home: { ...config.home, hiddenSections: next } });
-}
-
-function skinHomeOrderValue(raw: string): string {
-  try {
-    const config = JSON.parse(raw) as { home?: { sectionOrder?: string[] } };
-    const order = config.home?.sectionOrder ?? ['hero', 'continueWatching', 'catalogs'];
-    return order.join('-');
-  } catch {
-    return 'hero-continueWatching-catalogs';
-  }
-}
-
-function setSkinHomeOrder(raw: string, value: string): string {
-  let config: { home?: { hiddenSections?: string[]; sectionOrder?: string[] } } = {};
-  try {
-    config = JSON.parse(raw) as typeof config;
-  } catch {
-    config = {};
-  }
-  return JSON.stringify({ ...config, home: { ...config.home, sectionOrder: value.split('-') } });
-}
-
 function themeLabel(theme: ThemePack): string {
   return theme.name ?? t(theme.nameKey);
 }
@@ -141,50 +79,6 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           ]}
           selected={prefs.accentColorArgb}
           onSelect={(v) => setPref('accentColorArgb', v)}
-        />
-        <ToggleTile
-          title={t('settings.skin_show_calendar')}
-          subtitle={t('settings.skin_show_calendar_desc')}
-          checked={skinNavigationVisible(prefs.skinConfig, 'calendar')}
-          onToggle={(v) => setPref('skinConfig', setSkinNavigationVisible(prefs.skinConfig, 'calendar', v))}
-        />
-        {(['library', 'discover', 'settings'] as const).map((route) => (
-          <ToggleTile
-            key={route}
-            title={t(`settings.skin_show_${route}`)}
-            subtitle={t(`settings.skin_show_${route}_desc`)}
-            checked={skinNavigationVisible(prefs.skinConfig, route)}
-            onToggle={(v) => setPref('skinConfig', setSkinNavigationVisible(prefs.skinConfig, route, v))}
-          />
-        ))}
-        <ToggleTile
-          title={t('settings.skin_show_hero')}
-          subtitle={t('settings.skin_show_hero_desc')}
-          checked={skinHomeSectionVisible(prefs.skinConfig, 'hero')}
-          onToggle={(v) => setPref('skinConfig', setSkinHomeSectionVisible(prefs.skinConfig, 'hero', v))}
-        />
-        <ToggleTile
-          title={t('settings.skin_show_continue_watching')}
-          subtitle={t('settings.skin_show_continue_watching_desc')}
-          checked={skinHomeSectionVisible(prefs.skinConfig, 'continueWatching')}
-          onToggle={(v) => setPref('skinConfig', setSkinHomeSectionVisible(prefs.skinConfig, 'continueWatching', v))}
-        />
-        <ToggleTile
-          title={t('settings.skin_show_catalogs')}
-          subtitle={t('settings.skin_show_catalogs_desc')}
-          checked={skinHomeSectionVisible(prefs.skinConfig, 'catalogs')}
-          onToggle={(v) => setPref('skinConfig', setSkinHomeSectionVisible(prefs.skinConfig, 'catalogs', v))}
-        />
-        <ChoiceTile
-          title={t('settings.skin_home_order')}
-          subtitle={t('settings.skin_home_order_desc')}
-          options={[
-            { value: 'hero-continueWatching-catalogs', label: t('settings.skin_home_order_default') },
-            { value: 'hero-catalogs-continueWatching', label: t('settings.skin_home_order_catalogs_first') },
-            { value: 'catalogs-continueWatching-hero', label: t('settings.skin_home_order_hero_last') },
-          ]}
-          selected={skinHomeOrderValue(prefs.skinConfig)}
-          onSelect={(v) => setPref('skinConfig', setSkinHomeOrder(prefs.skinConfig, v))}
         />
       </SettingsSection>
       <SettingsSection title={t('settings.ui_scale')} subtitle={t('settings.ui_scale_desc')}>
