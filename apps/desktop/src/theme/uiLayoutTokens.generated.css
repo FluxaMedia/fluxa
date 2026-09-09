@@ -115,7 +115,7 @@
   --fluxa-layout-episode-card-height: 148px;
   --fluxa-layout-poster-card-width: 136px;
   --fluxa-layout-poster-card-height: 204px;
-  --fluxa-layout-horizontal-card-base: 166px;
+  --fluxa-layout-horizontal-card-base: 196px;
 }
 [data-fluxa-platform="desktop"] {
   --fluxa-layout-episode-card-width: 300px;
@@ -137,14 +137,14 @@
   --fluxa-layout-header-vertical-padding: 12px;
   --fluxa-layout-minimum-card-width: 150px;
   --fluxa-layout-horizontal-spacing: 12px;
-  --fluxa-layout-vertical-spacing: 16px;
+  --fluxa-layout-vertical-spacing: 12px;
   --fluxa-layout-navigation-horizontal-padding: 20px;
   --fluxa-layout-navigation-vertical-padding: 10px;
   --fluxa-layout-navigation-item-spacing: 6px;
   --fluxa-layout-navigation-icon-size: 24px;
   --fluxa-layout-navigation-item-horizontal-padding: 12px;
   --fluxa-layout-navigation-item-vertical-padding: 8px;
-  --fluxa-layout-horizontal-card-base: 166px;
+  --fluxa-layout-horizontal-card-base: 196px;
   --fluxa-layout-catalog-title-size: 24px;
   --fluxa-layout-navigation-label-size: 13px;
   --fluxa-layout-grid-columns: 3;

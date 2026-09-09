@@ -124,7 +124,7 @@ enum FluxaUiLayoutTokens {
         static let episodeCardHeight = CGFloat(148)
         static let posterCardWidth = CGFloat(136)
         static let posterCardHeight = CGFloat(204)
-        static let horizontalCardBase = CGFloat(166)
+        static let horizontalCardBase = CGFloat(196)
     }
   }
   enum Desktop {
@@ -152,14 +152,14 @@ enum FluxaUiLayoutTokens {
         static let headerVerticalPadding = CGFloat(12)
         static let minimumCardWidth = CGFloat(150)
         static let horizontalSpacing = CGFloat(12)
-        static let verticalSpacing = CGFloat(16)
+        static let verticalSpacing = CGFloat(12)
         static let navigationHorizontalPadding = CGFloat(20)
         static let navigationVerticalPadding = CGFloat(10)
         static let navigationItemSpacing = CGFloat(6)
         static let navigationIconSize = CGFloat(24)
         static let navigationItemHorizontalPadding = CGFloat(12)
         static let navigationItemVerticalPadding = CGFloat(8)
-        static let horizontalCardBase = CGFloat(166)
+        static let horizontalCardBase = CGFloat(196)
     }
     enum Sp {
         static let catalogTitleSize = CGFloat(24)

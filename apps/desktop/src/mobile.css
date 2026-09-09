@@ -236,7 +236,7 @@ html[data-mobile="true"] .shelf-title {
 }
 
 html[data-mobile="true"] .shelf-row {
-  margin-bottom: 1.125rem !important;
+  margin-bottom: var(--fluxa-layout-vertical-spacing) !important;
 }
 
 html[data-mobile="true"] .continue-watching-header,
@@ -256,9 +256,9 @@ html[data-mobile="true"] .this-week-scroll {
 }
 
 html[data-mobile="true"] .continue-card-horizontal {
-  width: min(72vw, 11.5rem) !important;
-  min-width: min(72vw, 11.5rem) !important;
-  height: min(40.5vw, 6.5rem) !important;
+  width: min(78vw, var(--fluxa-layout-horizontal-card-base)) !important;
+  min-width: min(78vw, var(--fluxa-layout-horizontal-card-base)) !important;
+  height: min(43.7vw, 6.875rem) !important;
 }
 
 html[data-mobile="true"] .continue-card-poster {

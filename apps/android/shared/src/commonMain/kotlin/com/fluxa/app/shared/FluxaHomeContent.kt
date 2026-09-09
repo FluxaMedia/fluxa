@@ -39,6 +39,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -85,6 +86,7 @@ import com.fluxa.app.shared.feature.catalog.withProminentContinueWatchingCard
 import com.fluxa.app.shared.feature.catalog.CategoryResultsScreen
 import com.fluxa.app.ui.catalog.FluxaIcons
 import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
+import com.fluxa.app.ui.catalog.FluxaDimensions
 import com.fluxa.app.shared.feature.addonstore.AddonStoreAction
 import com.fluxa.app.shared.feature.addonstore.AddonStoreScreen
 import com.fluxa.app.shared.feature.addonstore.AddonStoreUiState
@@ -131,6 +133,8 @@ import com.fluxa.app.ui.catalog.cardRowSpacing
 import com.fluxa.app.ui.catalog.LocalDeviceType
 import com.fluxa.app.ui.catalog.LocalFluxaThemePack
 import com.fluxa.app.ui.catalog.PosterActionSheet
+import com.fluxa.app.ui.catalog.FluxaUiLayoutTokens
+import com.fluxa.app.ui.catalog.LocalWindowWidthClass
 
 @Composable
 internal fun FluxaHomeContent(
@@ -168,8 +172,15 @@ internal fun FluxaHomeContent(
             contentRows.filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
     }
     val isDesktop = LocalDeviceType.current == DeviceType.Desktop
+    val widthClass = LocalWindowWidthClass.current
     val homeLayout = LocalFluxaThemePack.current.layouts.home
     val compactLayout = homeLayout == "compact"
+    val catalogRowSpacing = when {
+        compactLayout || widthClass == com.fluxa.app.ui.catalog.WindowWidthClass.Compact -> FluxaUiLayoutTokens.Compact.Dp.verticalSpacing
+        isDesktop && showHero -> 10.dp
+        isDesktop -> 18.dp
+        else -> 24.dp
+    }
     val listState = rememberLazyListState()
     var initialHeroResolved by remember { mutableStateOf(false) }
     var posterActionItem by remember { mutableStateOf<CatalogItemUiModel?>(null) }
@@ -186,7 +197,7 @@ internal fun FluxaHomeContent(
             state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(bottom = bottomContentInset),
-            verticalArrangement = Arrangement.spacedBy(if (compactLayout) 14.dp else if (isDesktop && showHero) 10.dp else if (isDesktop) 18.dp else 24.dp)
+            verticalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             if (showHero && !compactLayout) {
                 item(key = "hero") {
@@ -195,15 +206,15 @@ internal fun FluxaHomeContent(
                         billboard = catalogHome.billboard,
                         language = state.language,
                         onCatalogAction = onCatalogAction,
-                        modifier = Modifier
+                        modifier = Modifier.padding(bottom = catalogRowSpacing)
                     )
                 }
             }
-            items(
+            itemsIndexed(
                 items = orderedRows,
-                key = { it.id },
-                contentType = { "catalog-row" },
-            ) { row ->
+                key = { _, row -> row.id },
+                contentType = { _, _ -> "catalog-row" },
+            ) { rowIndex, row ->
                 val rowState = rememberLazyListState()
                 val shouldLoadMore by remember(row.id, row.canLoadMore) {
                     derivedStateOf {
@@ -216,7 +227,20 @@ internal fun FluxaHomeContent(
                         onCatalogAction(CatalogAction.LoadMore(row.id))
                     }
                 }
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
+                val hasEpisodeLabels = row.items.any { it.card.subtitle.isNotBlank() }
+                val continueWatchingMetadataExtraHeight =
+                    FluxaDimensions.cardMetaBarWithEpisodeLabelHeight - FluxaDimensions.cardMetaBarHeight
+                val rowSpacingAfter = when {
+                    rowIndex == orderedRows.lastIndex -> 0.dp
+                    isContinueWatchingRow && !hideContinueWatchingLabels && hasEpisodeLabels ->
+                        (catalogRowSpacing - continueWatchingMetadataExtraHeight).coerceAtLeast(0.dp)
+                    else -> catalogRowSpacing
+                }
+                Column(
+                    modifier = Modifier.padding(bottom = rowSpacingAfter),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -275,7 +299,6 @@ internal fun FluxaHomeContent(
                     } else {
                         Modifier
                     }
-                    val isContinueWatchingRow = row.id == CONTINUE_WATCHING_CATEGORY_ID
                     val deviceType = LocalDeviceType.current
                     val widthClass = com.fluxa.app.ui.catalog.LocalWindowWidthClass.current
                     LazyRow(
@@ -331,7 +354,9 @@ private fun FluxaHomeSkeleton(modifier: Modifier = Modifier) {
     val isDesktop = LocalDeviceType.current == DeviceType.Desktop
     LazyColumn(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(if (isDesktop) 18.dp else 24.dp)
+        verticalArrangement = Arrangement.spacedBy(
+            if (isDesktop) 18.dp else FluxaUiLayoutTokens.Compact.Dp.verticalSpacing
+        )
     ) {
         item(key = "hero-skeleton") {
             Box(

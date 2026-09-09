@@ -165,7 +165,7 @@ export const FLUXA_UI_TOKENS = {
           "episodeCardHeight": 148,
           "posterCardWidth": 136,
           "posterCardHeight": 204,
-          "horizontalCardBase": 166
+          "horizontalCardBase": 196
         }
       },
       "desktop": {
@@ -195,14 +195,14 @@ export const FLUXA_UI_TOKENS = {
           "headerVerticalPadding": 12,
           "minimumCardWidth": 150,
           "horizontalSpacing": 12,
-          "verticalSpacing": 16,
+          "verticalSpacing": 12,
           "navigationHorizontalPadding": 20,
           "navigationVerticalPadding": 10,
           "navigationItemSpacing": 6,
           "navigationIconSize": 24,
           "navigationItemHorizontalPadding": 12,
           "navigationItemVerticalPadding": 8,
-          "horizontalCardBase": 166
+          "horizontalCardBase": 196
         },
         "sp": {
           "catalogTitleSize": 24,

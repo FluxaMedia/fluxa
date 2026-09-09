@@ -127,7 +127,7 @@ object FluxaUiLayoutTokens {
         val episodeCardHeight = 148.dp
         val posterCardWidth = 136.dp
         val posterCardHeight = 204.dp
-        val horizontalCardBase = 166.dp
+        val horizontalCardBase = 196.dp
     }
   }
   object Desktop {
@@ -155,14 +155,14 @@ object FluxaUiLayoutTokens {
         val headerVerticalPadding = 12.dp
         val minimumCardWidth = 150.dp
         val horizontalSpacing = 12.dp
-        val verticalSpacing = 16.dp
+        val verticalSpacing = 12.dp
         val navigationHorizontalPadding = 20.dp
         val navigationVerticalPadding = 10.dp
         val navigationItemSpacing = 6.dp
         val navigationIconSize = 24.dp
         val navigationItemHorizontalPadding = 12.dp
         val navigationItemVerticalPadding = 8.dp
-        val horizontalCardBase = 166.dp
+        val horizontalCardBase = 196.dp
     }
     object Sp {
         val catalogTitleSize = 24.sp
