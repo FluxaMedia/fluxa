@@ -4,8 +4,6 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
 enum class WindowWidthClass { Compact, Medium, Expanded }
 
@@ -31,29 +29,74 @@ data class TopNavigationLayoutSpec(
 val LocalWindowWidthClass = compositionLocalOf { WindowWidthClass.Compact }
 
 fun widthClassFor(maxWidth: Dp): WindowWidthClass = when {
-    maxWidth < 600.dp -> WindowWidthClass.Compact
-    maxWidth < 840.dp -> WindowWidthClass.Medium
+    maxWidth < FluxaUiLayoutTokens.Compact.Dp.breakpointMaxWidth -> WindowWidthClass.Compact
+    maxWidth < FluxaUiLayoutTokens.Medium.Dp.breakpointMaxWidth -> WindowWidthClass.Medium
     else -> WindowWidthClass.Expanded
 }
 
 fun WindowWidthClass.gridColumns(): Int = when (this) {
-    WindowWidthClass.Compact -> 3
-    WindowWidthClass.Medium -> 5
-    WindowWidthClass.Expanded -> 7
+    WindowWidthClass.Compact -> FluxaUiLayoutTokens.Compact.Int.gridColumns
+    WindowWidthClass.Medium -> FluxaUiLayoutTokens.Medium.Int.gridColumns
+    WindowWidthClass.Expanded -> FluxaUiLayoutTokens.Expanded.Int.gridColumns
 }
 
 @Composable
 fun rememberCatalogGridLayoutSpec(): CatalogGridLayoutSpec = when (LocalWindowWidthClass.current) {
-    WindowWidthClass.Compact -> CatalogGridLayoutSpec(16.dp, 12.dp, 24.sp, 150.dp, 12.dp, 16.dp)
-    WindowWidthClass.Medium -> CatalogGridLayoutSpec(28.dp, 20.dp, 26.sp, 160.dp, 16.dp, 20.dp)
-    WindowWidthClass.Expanded -> CatalogGridLayoutSpec(48.dp, 28.dp, 28.sp, 170.dp, 20.dp, 24.dp)
+    WindowWidthClass.Compact -> CatalogGridLayoutSpec(
+        FluxaUiLayoutTokens.Compact.Dp.pageHorizontalPadding,
+        FluxaUiLayoutTokens.Compact.Dp.headerVerticalPadding,
+        FluxaUiLayoutTokens.Compact.Sp.catalogTitleSize,
+        FluxaUiLayoutTokens.Compact.Dp.minimumCardWidth,
+        FluxaUiLayoutTokens.Compact.Dp.horizontalSpacing,
+        FluxaUiLayoutTokens.Compact.Dp.verticalSpacing
+    )
+    WindowWidthClass.Medium -> CatalogGridLayoutSpec(
+        FluxaUiLayoutTokens.Medium.Dp.pageHorizontalPadding,
+        FluxaUiLayoutTokens.Medium.Dp.headerVerticalPadding,
+        FluxaUiLayoutTokens.Medium.Sp.catalogTitleSize,
+        FluxaUiLayoutTokens.Medium.Dp.minimumCardWidth,
+        FluxaUiLayoutTokens.Medium.Dp.horizontalSpacing,
+        FluxaUiLayoutTokens.Medium.Dp.verticalSpacing
+    )
+    WindowWidthClass.Expanded -> CatalogGridLayoutSpec(
+        FluxaUiLayoutTokens.Expanded.Dp.pageHorizontalPadding,
+        FluxaUiLayoutTokens.Expanded.Dp.headerVerticalPadding,
+        FluxaUiLayoutTokens.Expanded.Sp.catalogTitleSize,
+        FluxaUiLayoutTokens.Expanded.Dp.minimumCardWidth,
+        FluxaUiLayoutTokens.Expanded.Dp.horizontalSpacing,
+        FluxaUiLayoutTokens.Expanded.Dp.verticalSpacing
+    )
 }
 
 @Composable
 fun rememberTopNavigationLayoutSpec(): TopNavigationLayoutSpec = when (LocalWindowWidthClass.current) {
-    WindowWidthClass.Compact -> TopNavigationLayoutSpec(20.dp, 10.dp, 6.dp, 24.dp, 12.dp, 8.dp, 13.sp)
-    WindowWidthClass.Medium -> TopNavigationLayoutSpec(32.dp, 12.dp, 8.dp, 26.dp, 14.dp, 9.dp, 14.sp)
-    WindowWidthClass.Expanded -> TopNavigationLayoutSpec(48.dp, 16.dp, 12.dp, 28.dp, 16.dp, 10.dp, 15.sp)
+    WindowWidthClass.Compact -> TopNavigationLayoutSpec(
+        FluxaUiLayoutTokens.Compact.Dp.navigationHorizontalPadding,
+        FluxaUiLayoutTokens.Compact.Dp.navigationVerticalPadding,
+        FluxaUiLayoutTokens.Compact.Dp.navigationItemSpacing,
+        FluxaUiLayoutTokens.Compact.Dp.navigationIconSize,
+        FluxaUiLayoutTokens.Compact.Dp.navigationItemHorizontalPadding,
+        FluxaUiLayoutTokens.Compact.Dp.navigationItemVerticalPadding,
+        FluxaUiLayoutTokens.Compact.Sp.navigationLabelSize
+    )
+    WindowWidthClass.Medium -> TopNavigationLayoutSpec(
+        FluxaUiLayoutTokens.Medium.Dp.navigationHorizontalPadding,
+        FluxaUiLayoutTokens.Medium.Dp.navigationVerticalPadding,
+        FluxaUiLayoutTokens.Medium.Dp.navigationItemSpacing,
+        FluxaUiLayoutTokens.Medium.Dp.navigationIconSize,
+        FluxaUiLayoutTokens.Medium.Dp.navigationItemHorizontalPadding,
+        FluxaUiLayoutTokens.Medium.Dp.navigationItemVerticalPadding,
+        FluxaUiLayoutTokens.Medium.Sp.navigationLabelSize
+    )
+    WindowWidthClass.Expanded -> TopNavigationLayoutSpec(
+        FluxaUiLayoutTokens.Expanded.Dp.navigationHorizontalPadding,
+        FluxaUiLayoutTokens.Expanded.Dp.navigationVerticalPadding,
+        FluxaUiLayoutTokens.Expanded.Dp.navigationItemSpacing,
+        FluxaUiLayoutTokens.Expanded.Dp.navigationIconSize,
+        FluxaUiLayoutTokens.Expanded.Dp.navigationItemHorizontalPadding,
+        FluxaUiLayoutTokens.Expanded.Dp.navigationItemVerticalPadding,
+        FluxaUiLayoutTokens.Expanded.Sp.navigationLabelSize
+    )
 }
 
 @Composable

@@ -16,28 +16,29 @@ fun posterCardWidth(value: String): Dp = with(FluxaDimensions.PosterPresets) {
 fun posterCardHeight(value: String): Dp = posterCardWidth(value) * FluxaDimensions.PosterPresets.heightRatio
 
 fun horizontalCardWidth(value: String, deviceType: DeviceType): Dp {
-    return horizontalCardWidth(
-        value = value,
-        widthClass = if (deviceType == DeviceType.TV) WindowWidthClass.Expanded else WindowWidthClass.Compact
-    )
+    val base = when (deviceType) {
+        DeviceType.Mobile -> FluxaUiLayoutTokens.Mobile.Dp.horizontalCardBase
+        DeviceType.Desktop -> FluxaUiLayoutTokens.Desktop.Dp.horizontalCardBase
+        DeviceType.TV -> FluxaUiLayoutTokens.Tv.Dp.horizontalCardBase
+    }
+    return base + horizontalCardSizeDelta(value)
 }
 
 fun horizontalCardWidth(value: String, widthClass: WindowWidthClass): Dp {
     val base = when (widthClass) {
-        WindowWidthClass.Compact -> FluxaDimensions.HorizontalCard.mobileBase
-        WindowWidthClass.Medium -> 210.dp
-        WindowWidthClass.Expanded -> FluxaDimensions.HorizontalCard.tvBase
+        WindowWidthClass.Compact -> FluxaUiLayoutTokens.Compact.Dp.horizontalCardBase
+        WindowWidthClass.Medium -> FluxaUiLayoutTokens.Medium.Dp.horizontalCardBase
+        WindowWidthClass.Expanded -> FluxaUiLayoutTokens.Expanded.Dp.horizontalCardBase
     }
-    val delta = with(FluxaDimensions.HorizontalCard) {
-        when (value) {
-            "xsmall" -> deltaXsmall
-            "small" -> deltaSmall
-            "large" -> deltaLarge
-            "xlarge" -> deltaXlarge
-            else -> 0.dp
-        }
-    }
-    return base + delta
+    return base + horizontalCardSizeDelta(value)
+}
+
+private fun horizontalCardSizeDelta(value: String): Dp = when (value) {
+    "xsmall" -> FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaXsmall
+    "small" -> FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaSmall
+    "large" -> FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaLarge
+    "xlarge" -> FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaXlarge
+    else -> 0.dp
 }
 
 fun horizontalCardHeight(value: String, deviceType: DeviceType): Dp = horizontalCardWidth(value, deviceType) * FluxaDimensions.HorizontalCard.heightRatio
@@ -45,17 +46,17 @@ fun horizontalCardHeight(value: String, deviceType: DeviceType): Dp = horizontal
 fun horizontalCardHeight(value: String, widthClass: WindowWidthClass): Dp = horizontalCardWidth(value, widthClass) * FluxaDimensions.HorizontalCard.heightRatio
 
 fun cardCornerRadius(preset: String): Dp = when (preset) {
-    "sharp" -> 0.dp
-    "classic" -> 4.dp
-    "soft" -> 8.dp
-    "rounded" -> 14.dp
-    "pill" -> 22.dp
-    else -> 8.dp
+    "sharp" -> FluxaUiLayoutTokens.Common.Dp.cornerSharp
+    "classic" -> FluxaUiLayoutTokens.Common.Dp.cornerClassic
+    "soft" -> FluxaUiLayoutTokens.Common.Dp.cornerSoft
+    "rounded" -> FluxaUiLayoutTokens.Common.Dp.cornerRounded
+    "pill" -> FluxaUiLayoutTokens.Common.Dp.cornerPill
+    else -> FluxaUiLayoutTokens.Common.Dp.cardCornerDefault
 }
 
 fun cardRowSpacing(preset: String): Dp = when (preset) {
-    "small" -> 6.dp
-    "medium" -> 12.dp
-    "large" -> 20.dp
-    else -> 12.dp
+    "small" -> FluxaUiLayoutTokens.Common.Dp.cardRowSpacingSmall
+    "medium" -> FluxaUiLayoutTokens.Common.Dp.cardRowSpacingMedium
+    "large" -> FluxaUiLayoutTokens.Common.Dp.cardRowSpacingLarge
+    else -> FluxaUiLayoutTokens.Common.Dp.cardRowSpacingMedium
 }

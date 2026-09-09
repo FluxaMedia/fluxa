@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { FLUXA_UI_TOKENS } from '../theme/uiTokens.generated';
 
 const MOBILE_QUERY = '(max-width: 820px), (orientation: landscape) and (max-height: 480px)';
 const TABLET_QUERY = '(min-width: 821px) and (max-width: 1180px)';
@@ -34,6 +35,16 @@ export function layoutTier(): LayoutTier {
   return tablet?.matches ? 'tablet' : 'desktop';
 }
 
+export type WindowClass = 'compact' | 'medium' | 'expanded';
+
+export function windowClass(): WindowClass {
+  const width = typeof window === 'undefined' ? 0 : window.innerWidth;
+  const breakpoints = FLUXA_UI_TOKENS.layout.windowClasses;
+  if (width < breakpoints.compact.dp.breakpointMaxWidth) return 'compact';
+  if (width < breakpoints.medium.dp.breakpointMaxWidth) return 'medium';
+  return 'expanded';
+}
+
 export function isTouchInput(): boolean {
   return touch?.matches ?? false;
 }
@@ -67,6 +78,8 @@ export function startViewportFlags(): void {
     root.dataset.mobile = isMobileLayout() ? 'true' : 'false';
     root.dataset.tier = layoutTier();
     root.dataset.touch = isTouchInput() ? 'true' : 'false';
+    root.dataset.fluxaPlatform = isMobileLayout() ? 'mobile' : 'desktop';
+    root.dataset.fluxaWindowClass = windowClass();
   };
   apply();
   subscribe(apply);

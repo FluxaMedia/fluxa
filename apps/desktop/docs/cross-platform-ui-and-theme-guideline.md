@@ -250,6 +250,16 @@ Use semantic tokens instead of raw color names:
 
 Content-specific colors are separate from the application theme. IMDb yellow, rating colors, media badges, and stream-quality colors must not be replaced accidentally by a global text or accent token.
 
+### Shared layout tokens
+
+Layout values have a separate framework-independent source of truth at `shared/contracts/ui-tokens.json`. The `layout` section owns shared spacing, card dimensions, poster ratios, shapes, motion durations, typography sizes, and responsive profiles. Responsive values are grouped by both platform (`mobile`, `desktop`, `tv`) and window class (`compact`, `medium`, `expanded`).
+
+`apps/desktop/scripts/generate-ui-tokens.mjs` generates the Kotlin, Swift, TypeScript, and CSS consumers. Run `npm --prefix apps/desktop run ui:sync` after changing the contract; CI checks the generated files with `npm --prefix apps/desktop run ui:verify`.
+
+Compose consumes the generated values through `FluxaUiLayoutTokens`; `FluxaDimensions` remains a compatibility facade while component call sites are migrated. `WindowWidthClass` resolves compact/medium/expanded values from the same contract. React receives the generated CSS variables and applies the active platform and window class on the document root. Existing `FluxaThemePack` colors, theme selection, and custom theme behavior remain separate and unchanged by layout token updates.
+
+New UI code must use a generated token or a semantic adapter. A raw `.dp`, `.sp`, CSS pixel value, or animation duration is acceptable only for a genuinely local value that is not a reusable design decision.
+
 ### Frontend adapters
 
 React maps the theme to CSS variables:

@@ -1,155 +1,151 @@
 package com.fluxa.app.ui.catalog
 
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 
+/** Compatibility facade backed by shared/contracts/ui-tokens.json. */
 object FluxaDimensions {
-
     object EpisodeCard {
-        val mobileWidth = 244.dp
-        val mobileHeight = 148.dp
-        val tvWidth = 356.dp
-        val tvHeight = 208.dp
+        val mobileWidth = FluxaUiLayoutTokens.Mobile.Dp.episodeCardWidth
+        val mobileHeight = FluxaUiLayoutTokens.Mobile.Dp.episodeCardHeight
+        val desktopWidth = FluxaUiLayoutTokens.Desktop.Dp.episodeCardWidth
+        val desktopHeight = FluxaUiLayoutTokens.Desktop.Dp.episodeCardHeight
+        val tvWidth = FluxaUiLayoutTokens.Tv.Dp.episodeCardWidth
+        val tvHeight = FluxaUiLayoutTokens.Tv.Dp.episodeCardHeight
     }
 
     object TvPosterCard {
-        val width = 136.dp
-        val height = 204.dp
+        val width = FluxaUiLayoutTokens.Tv.Dp.posterCardWidth
+        val height = FluxaUiLayoutTokens.Tv.Dp.posterCardHeight
     }
 
-    val mobileBillboardHeight = 540.dp
+    val mobileBillboardHeight = FluxaUiLayoutTokens.Common.Dp.mobileBillboardHeight
 
     object PosterPresets {
-        val xsmall = 96.dp
-        val small = 112.dp
-        val medium = 128.dp
-        val large = 148.dp
-        val xlarge = 176.dp
-        const val heightRatio = 1.5f
+        val xsmall = FluxaUiLayoutTokens.Common.Dp.posterXsmall
+        val small = FluxaUiLayoutTokens.Common.Dp.posterSmall
+        val medium = FluxaUiLayoutTokens.Common.Dp.posterMedium
+        val large = FluxaUiLayoutTokens.Common.Dp.posterLarge
+        val xlarge = FluxaUiLayoutTokens.Common.Dp.posterXlarge
+        val heightRatio = FluxaUiLayoutTokens.Common.Number.posterHeightRatio
     }
 
     object CornerPresets {
-        val sharp = 2.dp
-        val classic = 8.dp
-        val highlight = 10.dp
-        val soft = 12.dp
-        val rounded = 18.dp
-        val pill = 28.dp
+        val sharp = FluxaUiLayoutTokens.Common.Dp.cornerSharp
+        val classic = FluxaUiLayoutTokens.Common.Dp.cornerClassic
+        val highlight = FluxaUiLayoutTokens.Common.Dp.cornerHighlight
+        val soft = FluxaUiLayoutTokens.Common.Dp.cornerSoft
+        val rounded = FluxaUiLayoutTokens.Common.Dp.cornerRounded
+        val pill = FluxaUiLayoutTokens.Common.Dp.cornerPill
     }
 
     object HorizontalCard {
-        val mobileBase = 166.dp
-        val tvBase = 260.dp
-        const val heightRatio = 0.56f
-        val deltaXsmall = (-25).dp
-        val deltaSmall = (-13).dp
-        val deltaLarge = 31.dp
-        val deltaXlarge = 61.dp
+        val mobileBase = FluxaUiLayoutTokens.Mobile.Dp.horizontalCardBase
+        val desktopBase = FluxaUiLayoutTokens.Desktop.Dp.horizontalCardBase
+        val tvBase = FluxaUiLayoutTokens.Tv.Dp.horizontalCardBase
+        val heightRatio = FluxaUiLayoutTokens.Common.Number.horizontalCardHeightRatio
+        val deltaXsmall = FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaXsmall
+        val deltaSmall = FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaSmall
+        val deltaLarge = FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaLarge
+        val deltaXlarge = FluxaUiLayoutTokens.Common.Dp.horizontalCardDeltaXlarge
     }
 
-    val cardMetaBarHeight = 28.dp
-    val cardMetaBarWithEpisodeLabelHeight = 50.dp
-
-    val cardProgressBarHeight = 4.dp
+    val cardMetaBarHeight = FluxaUiLayoutTokens.Common.Dp.cardMetaBarHeight
+    val cardMetaBarWithEpisodeLabelHeight = FluxaUiLayoutTokens.Common.Dp.cardMetaBarWithEpisodeLabelHeight
+    val cardProgressBarHeight = FluxaUiLayoutTokens.Common.Dp.cardProgressBarHeight
 
     object LibraryListItem {
-        val height = 132.dp
-        val thumbnailWidth = 112.dp
-        val rowCornerRadius = 14.dp
-        val thumbnailCornerRadius = 10.dp
+        val height = FluxaUiLayoutTokens.Common.Dp.libraryListItemHeight
+        val thumbnailWidth = FluxaUiLayoutTokens.Common.Dp.libraryThumbnailWidth
+        val rowCornerRadius = FluxaUiLayoutTokens.Common.Dp.libraryRowCornerRadius
+        val thumbnailCornerRadius = FluxaUiLayoutTokens.Common.Dp.libraryThumbnailCornerRadius
     }
 
     object Profile {
-        val avatarSize = 120.dp
+        val avatarSize = FluxaUiLayoutTokens.Common.Dp.profileAvatarSize
     }
 
     object CardText {
-        val titleSize = 12.sp
-        val subtitleSize = 10.sp
-        val coverEmojiSize = 42.sp
-        val coverFallbackSize = 48.sp
+        val titleSize = FluxaUiLayoutTokens.Common.Sp.cardTitleSize
+        val subtitleSize = FluxaUiLayoutTokens.Common.Sp.cardSubtitleSize
+        val coverEmojiSize = FluxaUiLayoutTokens.Common.Sp.cardCoverEmojiSize
+        val coverFallbackSize = FluxaUiLayoutTokens.Common.Sp.cardCoverFallbackSize
     }
 
     object Alpha {
-        const val emptyCardBackground = 0.05f
-        const val cardSubtitle = 0.58f
-        const val progressBarTrack = 0.38f
-        const val hairline = 0.05f
-        const val subtleBorder = 0.08f
-        const val mediumBorder = 0.16f
-        const val dimText = 0.48f
-        const val mutedText = 0.56f
-        const val upNextBadge = 0.72f
-        const val coverEmoji = 0.82f
-        const val coverFallbackText = 0.2f
-        const val secondaryText = 0.5f
-        const val faintText = 0.4f
-        const val trackInactive = 0.14f
-        const val mutedLabel = 0.45f
-        const val valueText = 0.55f
-        const val placeholderText = 0.3f
-        const val borderFaint = 0.15f
-        const val iconMuted = 0.6f
+        const val emptyCardBackground = FluxaUiLayoutTokens.Common.Alpha.emptyCardBackground
+        const val cardSubtitle = FluxaUiLayoutTokens.Common.Alpha.cardSubtitle
+        const val progressBarTrack = FluxaUiLayoutTokens.Common.Alpha.progressBarTrack
+        const val hairline = FluxaUiLayoutTokens.Common.Alpha.hairline
+        const val subtleBorder = FluxaUiLayoutTokens.Common.Alpha.subtleBorder
+        const val mediumBorder = FluxaUiLayoutTokens.Common.Alpha.mediumBorder
+        const val dimText = FluxaUiLayoutTokens.Common.Alpha.dimText
+        const val mutedText = FluxaUiLayoutTokens.Common.Alpha.mutedText
+        const val upNextBadge = FluxaUiLayoutTokens.Common.Alpha.upNextBadge
+        const val coverEmoji = FluxaUiLayoutTokens.Common.Alpha.coverEmoji
+        const val coverFallbackText = FluxaUiLayoutTokens.Common.Alpha.coverFallbackText
+        const val secondaryText = FluxaUiLayoutTokens.Common.Alpha.secondaryText
+        const val faintText = FluxaUiLayoutTokens.Common.Alpha.faintText
+        const val trackInactive = FluxaUiLayoutTokens.Common.Alpha.trackInactive
+        const val mutedLabel = FluxaUiLayoutTokens.Common.Alpha.mutedLabel
+        const val valueText = FluxaUiLayoutTokens.Common.Alpha.valueText
+        const val placeholderText = FluxaUiLayoutTokens.Common.Alpha.placeholderText
+        const val borderFaint = FluxaUiLayoutTokens.Common.Alpha.borderFaint
+        const val iconMuted = FluxaUiLayoutTokens.Common.Alpha.iconMuted
     }
 
     object AnimDuration {
-        const val blink = 90
-        const val quick = 140
-        const val scaleAlpha = 180
-        const val fadeIn = 200
-        const val contentExpand = 220
-        const val cardFocusScale = 240
-        const val settingsExpand = 240
-        const val settingsExpandAlt = 260
-        const val heightAnim = 130
-        const val heroSnap = 150
-        const val fadeOut = 150
-        const val routeExit = 160
-        const val parentsContainer = 300
-        const val parentsExpand = 400
-        const val nextEpisode = 560
-        const val progressRing = 520
-        const val sidebarSlide = 620
-        const val heroReveal = 650
-        const val ambientColor = 700
-        const val loginPulse = 1000
-        const val marquee = 1120
+        val blink = FluxaUiLayoutTokens.Common.DurationMs.blink
+        val quick = FluxaUiLayoutTokens.Common.DurationMs.quick
+        val scaleAlpha = FluxaUiLayoutTokens.Common.DurationMs.scaleAlpha
+        val fadeIn = FluxaUiLayoutTokens.Common.DurationMs.fadeIn
+        val contentExpand = FluxaUiLayoutTokens.Common.DurationMs.contentExpand
+        val cardFocusScale = FluxaUiLayoutTokens.Common.DurationMs.cardFocusScale
+        val settingsExpand = FluxaUiLayoutTokens.Common.DurationMs.settingsExpand
+        val settingsExpandAlt = FluxaUiLayoutTokens.Common.DurationMs.settingsExpandAlt
+        val heightAnim = FluxaUiLayoutTokens.Common.DurationMs.heightAnim
+        val heroSnap = FluxaUiLayoutTokens.Common.DurationMs.heroSnap
+        val fadeOut = FluxaUiLayoutTokens.Common.DurationMs.fadeOut
+        val routeExit = FluxaUiLayoutTokens.Common.DurationMs.routeExit
+        val parentsContainer = FluxaUiLayoutTokens.Common.DurationMs.parentsContainer
+        val parentsExpand = FluxaUiLayoutTokens.Common.DurationMs.parentsExpand
+        val nextEpisode = FluxaUiLayoutTokens.Common.DurationMs.nextEpisode
+        val progressRing = FluxaUiLayoutTokens.Common.DurationMs.progressRing
+        val sidebarSlide = FluxaUiLayoutTokens.Common.DurationMs.sidebarSlide
+        val heroReveal = FluxaUiLayoutTokens.Common.DurationMs.heroReveal
+        val ambientColor = FluxaUiLayoutTokens.Common.DurationMs.ambientColor
+        val loginPulse = FluxaUiLayoutTokens.Common.DurationMs.loginPulse
+        val marquee = FluxaUiLayoutTokens.Common.DurationMs.marquee
     }
 
     object PlayerChrome {
-        val topScrimHeight = 160.dp
-        val bottomScrimHeight = 230.dp
-        const val topScrimAlpha = 0.72f
-        const val bottomScrimAlpha = 0.86f
-        val seekTrackHeight = 5.dp
-        val seekTrackHeightDragging = 7.dp
-
-        val edgeMargin = 20.dp
-        val iconSize = 22.dp
-        val pillCornerRadius = 999.dp
-        const val chromeDimAlpha = 0.35f
+        val topScrimHeight = FluxaUiLayoutTokens.Common.Dp.playerTopScrimHeight
+        val bottomScrimHeight = FluxaUiLayoutTokens.Common.Dp.playerBottomScrimHeight
+        const val topScrimAlpha = FluxaUiLayoutTokens.Common.Alpha.playerTopScrim
+        const val bottomScrimAlpha = FluxaUiLayoutTokens.Common.Alpha.playerBottomScrim
+        val seekTrackHeight = FluxaUiLayoutTokens.Common.Dp.playerSeekTrackHeight
+        val seekTrackHeightDragging = FluxaUiLayoutTokens.Common.Dp.playerSeekTrackHeightDragging
+        val edgeMargin = FluxaUiLayoutTokens.Common.Dp.playerEdgeMargin
+        val iconSize = FluxaUiLayoutTokens.Common.Dp.playerIconSize
+        val pillCornerRadius = FluxaUiLayoutTokens.Common.Dp.playerPillCornerRadius
+        const val chromeDimAlpha = FluxaUiLayoutTokens.Common.Alpha.playerChromeDim
         const val textAlphaPrimary = 1.0f
-        const val textAlphaSecondary = 0.7f
-        const val textAlphaDisabled = 0.35f
-
-        val deckCornerRadius = 22.dp
-        val deckPadding = 14.dp
-        val deckActionRowSpacing = 22.dp
+        const val textAlphaSecondary = FluxaUiLayoutTokens.Common.Alpha.playerTextSecondary
+        const val textAlphaDisabled = FluxaUiLayoutTokens.Common.Alpha.playerTextDisabled
+        val deckCornerRadius = FluxaUiLayoutTokens.Common.Dp.playerDeckCornerRadius
+        val deckPadding = FluxaUiLayoutTokens.Common.Dp.playerDeckPadding
+        val deckActionRowSpacing = FluxaUiLayoutTokens.Common.Dp.playerDeckActionRowSpacing
         val deckBackground = Color(0xE6101418)
-        val deckDivider = Color.White.copy(alpha = 0.08f)
-
-        val titleTextSize = 15.sp
-        val metaTextSize = 12.sp
-        val timeTextSize = 13.sp
-        val actionLabelTextSize = 11.sp
-        val sidebarTitleTextSize = 15.sp
-        val sidebarRowTextSize = 14.sp
-        val sidebarRowSubtitleTextSize = 11.sp
+        val deckDivider = Color.White.copy(alpha = FluxaUiLayoutTokens.Common.Alpha.playerDeckDivider)
+        val titleTextSize = FluxaUiLayoutTokens.Common.Sp.playerTitleTextSize
+        val metaTextSize = FluxaUiLayoutTokens.Common.Sp.playerMetaTextSize
+        val timeTextSize = FluxaUiLayoutTokens.Common.Sp.playerTimeTextSize
+        val actionLabelTextSize = FluxaUiLayoutTokens.Common.Sp.playerActionLabelTextSize
+        val sidebarTitleTextSize = FluxaUiLayoutTokens.Common.Sp.playerSidebarTitleTextSize
+        val sidebarRowTextSize = FluxaUiLayoutTokens.Common.Sp.playerSidebarRowTextSize
+        val sidebarRowSubtitleTextSize = FluxaUiLayoutTokens.Common.Sp.playerSidebarRowSubtitleTextSize
     }
 
-    val mobileFocusBorderStroke = 2.dp
-    val tvFocusBorderStroke = 3.dp
-
-    const val cardFocusedScale = 1.12f
+    val mobileFocusBorderStroke = FluxaUiLayoutTokens.Common.Dp.mobileFocusBorderStroke
+    val tvFocusBorderStroke = FluxaUiLayoutTokens.Common.Dp.tvFocusBorderStroke
+    val cardFocusedScale = FluxaUiLayoutTokens.Common.Number.cardFocusedScale
 }

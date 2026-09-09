@@ -18,8 +18,6 @@ import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.fluxa.app.R
 
 val FluxaDisplay = FontFamily(
@@ -31,7 +29,7 @@ val FluxaDisplay = FontFamily(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = FluxaColors.accent,
+    primary = Color.White,
     secondary = Color(0xFF7A8799),
     tertiary = FluxaColors.accentGold,
     background = FluxaColors.background,
@@ -48,55 +46,55 @@ private val AppTypography = Typography(
     displayLarge = TextStyle(
         fontFamily = FluxaDisplay,
         fontWeight = FontWeight.Black,
-        fontSize = 52.sp,
-        lineHeight = 56.sp,
-        letterSpacing = (-1.5).sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.displayLarge,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.displayLargeLineHeight,
+        letterSpacing = FluxaUiLayoutTokens.MaterialTheme.Sp.displayLargeLetterSpacing
     ),
     displayMedium = TextStyle(
         fontFamily = FluxaDisplay,
         fontWeight = FontWeight.ExtraBold,
-        fontSize = 40.sp,
-        lineHeight = 44.sp,
-        letterSpacing = (-1).sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.displayMedium,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.displayMediumLineHeight,
+        letterSpacing = FluxaUiLayoutTokens.MaterialTheme.Sp.displayMediumLetterSpacing
     ),
     titleLarge = TextStyle(
         fontFamily = FluxaDisplay,
         fontWeight = FontWeight.Bold,
-        fontSize = 24.sp,
-        lineHeight = 28.sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.titleLarge,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.titleLargeLineHeight
     ),
     titleMedium = TextStyle(
         fontFamily = FluxaDisplay,
         fontWeight = FontWeight.SemiBold,
-        fontSize = 18.sp,
-        lineHeight = 24.sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.titleMedium,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.titleMediumLineHeight
     ),
     bodyLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Medium,
-        fontSize = 17.sp,
-        lineHeight = 26.sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.bodyLarge,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.bodyLargeLineHeight
     ),
     bodyMedium = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Normal,
-        fontSize = 15.sp,
-        lineHeight = 22.sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.bodyMedium,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.bodyMediumLineHeight
     ),
     labelLarge = TextStyle(
         fontFamily = FontFamily.SansSerif,
         fontWeight = FontWeight.Bold,
-        fontSize = 13.sp,
-        lineHeight = 16.sp,
-        letterSpacing = 0.4.sp
+        fontSize = FluxaUiLayoutTokens.MaterialTheme.Sp.labelLarge,
+        lineHeight = FluxaUiLayoutTokens.MaterialTheme.Sp.labelLargeLineHeight,
+        letterSpacing = FluxaUiLayoutTokens.MaterialTheme.Sp.labelLargeLetterSpacing
     )
 )
 
 private val AppShapes = Shapes(
-    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(6.dp),
-    small = androidx.compose.foundation.shape.RoundedCornerShape(10.dp),
-    medium = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-    large = androidx.compose.foundation.shape.RoundedCornerShape(24.dp)
+    extraSmall = androidx.compose.foundation.shape.RoundedCornerShape(FluxaUiLayoutTokens.MaterialTheme.Dp.shapeExtraSmall),
+    small = androidx.compose.foundation.shape.RoundedCornerShape(FluxaUiLayoutTokens.MaterialTheme.Dp.shapeSmall),
+    medium = androidx.compose.foundation.shape.RoundedCornerShape(FluxaUiLayoutTokens.MaterialTheme.Dp.shapeMedium),
+    large = androidx.compose.foundation.shape.RoundedCornerShape(FluxaUiLayoutTokens.MaterialTheme.Dp.shapeLarge)
 )
 
 @Composable

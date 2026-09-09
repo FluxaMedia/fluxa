@@ -65,6 +65,11 @@ internal fun Meta.toCatalogCardUiModel(
     val horizontal = effectiveLayout == "horizontal" || episodeStyle
     val square = effectiveLayout == "square"
     val folder = type == "catalog_folder"
+    val animatedArtwork = if (folder) {
+        focusGifUrl?.takeIf { it.isNotBlank() }
+    } else {
+        null
+    }
     val progressFields = FluxaCoreNative.continueWatchingProgressFields(this)
     val progressPercent = (progressFields["progressPercent"] as? Number)?.toFloat() ?: 0f
     val progressCard = isContinueWatchingCard &&
@@ -72,17 +77,26 @@ internal fun Meta.toCatalogCardUiModel(
     val showTitleBar = !(isContinueWatchingCard && profile?.safeContinueWatchingHideTitles == true) &&
         !(profile?.safePosterHideTitles == true || hideTitle == true)
     val width = (when {
-        episodeStyle -> if (deviceType == DeviceType.TV) FluxaDimensions.EpisodeCard.tvWidth else FluxaDimensions.EpisodeCard.mobileWidth
+        episodeStyle -> when (deviceType) {
+            DeviceType.TV -> FluxaDimensions.EpisodeCard.tvWidth
+            DeviceType.Desktop -> FluxaDimensions.EpisodeCard.desktopWidth
+            DeviceType.Mobile -> FluxaDimensions.EpisodeCard.mobileWidth
+        }
         horizontal -> horizontalCardWidth(widthPreset, deviceType)
         else -> posterCardWidth(widthPreset)
     }) * cardScale
     val imageHeight = (when {
-        episodeStyle -> if (deviceType == DeviceType.TV) FluxaDimensions.EpisodeCard.tvHeight else FluxaDimensions.EpisodeCard.mobileHeight
+        episodeStyle -> when (deviceType) {
+            DeviceType.TV -> FluxaDimensions.EpisodeCard.tvHeight
+            DeviceType.Desktop -> FluxaDimensions.EpisodeCard.desktopHeight
+            DeviceType.Mobile -> FluxaDimensions.EpisodeCard.mobileHeight
+        }
         horizontal -> horizontalCardHeight(widthPreset, deviceType)
         square -> posterCardWidth(widthPreset)
         else -> posterCardHeight(widthPreset)
     }) * cardScale
     val artwork = when {
+        folder -> poster
         episodeStyle -> when (artworkPreference) {
             "poster" -> poster
             "background" -> background
@@ -145,6 +159,9 @@ internal fun Meta.toCatalogCardUiModel(
         rankOffsetY = if (horizontal) 1.dp else 2.dp,
         rankFontSizeRatio = if (topTenRank != null) { if (horizontal) 0.86f else 0.90f } else 0f,
         loadArtwork = loadArtwork,
+        animatedArtworkUrl = animatedArtwork,
+        animatedArtworkMemoryCacheKey = animatedArtwork?.let { "home-folder-focus:$it" },
+        preferAnimatedArtwork = folder && animatedArtwork != null,
         cornerRadius = cardCornerRadius(profile?.safeCardCornerPreset ?: "medium")
     )
 }

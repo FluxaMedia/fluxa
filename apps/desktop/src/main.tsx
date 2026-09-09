@@ -12,6 +12,7 @@ import { benchmarkMark, benchmarkReactCommit, initPerformanceBenchmark, performa
 import { startPwa } from './platform/browser/pwa';
 import './index.css';
 import './mobile.css';
+import './theme/uiLayoutTokens.generated.css';
 
 const TAURI_HTTP_ABORT_RACE = /The resource id \d+ is invalid/;
 
