@@ -16,6 +16,7 @@ import {
 import { PlaybackHost } from './components/PlaybackHost';
 import { AppShell } from './components/AppShell';
 import { AppBootstrap } from './components/AppBootstrap';
+import { FluxaSplashScreen } from './components/FluxaSplashScreen';
 import { isBrowserTarget, platformListen } from './platform/browser';
 import { ensureWebosProxy, IS_WEBOS, webosExitApp, webosStageReady } from './platform/webos';
 import { platformInvoke as invoke } from './platform/invoke';
@@ -65,6 +66,7 @@ export default function App() {
   const [homeScrolled, setHomeScrolled] = useState(false);
   const [globalSearchQuery, setGlobalSearchQuery] = useState('');
   const [pendingAddonUrl, setPendingAddonUrl] = useState<string | null>(null);
+  const [profileSplashPending, setProfileSplashPending] = useState(false);
   const [p2pDialog, setP2PDialog] = useState<{ mode: 'first-time' | 'disabled'; pendingPlay: () => void } | null>(null);
   const storedPrefsRef = useRef<Record<string, unknown>>({});
   const stateRef = useRef<AppState>(store.getState());
@@ -130,6 +132,7 @@ export default function App() {
 
   const {
     ready,
+    homeReady,
     profilesChecked,
     welcomeCompleted,
     externalSyncPending,
@@ -141,6 +144,14 @@ export default function App() {
     setUpdateModalState,
     setWelcomeCompleted,
   } = useAppInit(updateState, setActiveRoute, storedPrefsRef);
+
+  const setActiveProfileWithSplash = useCallback(
+    (profile: UserProfile | null) => {
+      if (profile && profile.id !== activeProfile?.id) setProfileSplashPending(true);
+      setActiveProfile(profile);
+    },
+    [activeProfile?.id, setActiveProfile],
+  );
 
   const {
     playerLoadingOverlay,
@@ -436,8 +447,9 @@ export default function App() {
       updateState={updateState}
       applyStoredPrefs={applyStoredPrefs}
       setAllProfiles={setAllProfiles}
-      setActiveProfile={setActiveProfile}
+      setActiveProfile={setActiveProfileWithSplash}
       setWelcomeCompleted={setWelcomeCompleted}
+      onProfileBootstrapComplete={() => setProfileSplashPending(false)}
       invalidateProfileWork={invalidateProfileWork}
     />
   );
@@ -451,7 +463,8 @@ export default function App() {
       applyStoredPrefs={applyStoredPrefs}
       updateState={updateState}
       setAllProfiles={setAllProfiles}
-      setActiveProfile={setActiveProfile}
+      setActiveProfile={setActiveProfileWithSplash}
+      onProfileBootstrapComplete={() => setProfileSplashPending(false)}
       setEditProfileOpen={setEditProfileOpen}
       setHomeResetKey={setHomeResetKey}
       invalidateProfileWork={invalidateProfileWork}
@@ -525,12 +538,14 @@ export default function App() {
             invalidateLibraryKeyCache();
             stateRef.current = DEFAULT_STATE;
             replaceState(DEFAULT_STATE);
+            setProfileSplashPending(true);
             setActiveProfile(p);
             setHomeResetKey((k) => k + 1);
             await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
             await applyStoredPrefs();
             void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-            void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+            await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+            setProfileSplashPending(false);
           }}
           onOpenSettings={() => navigateRoute('settings')}
           onEditProfile={() => setEditProfileOpen(true)}
@@ -792,8 +807,10 @@ export default function App() {
       ready={ready}
       profilesChecked={profilesChecked}
       welcomeCompleted={welcomeCompleted}
+      homeReady={homeReady}
+      profileSplashPending={profileSplashPending}
       profileReady={!!activeProfile && !editProfileOpen}
-      loading={<span style={appStyles.loadingText}>fluxa</span>}
+      loading={<FluxaSplashScreen />}
       welcome={welcomeGate}
       profile={profileGate}
     >

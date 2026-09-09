@@ -19,6 +19,7 @@ import { benchmarkMark, benchmarkMeasure } from '../core/performanceBenchmark';
 
 interface AppInitResult {
   ready: boolean;
+  homeReady: boolean;
   profilesChecked: boolean;
   welcomeCompleted: boolean;
   externalSyncPending: boolean;
@@ -37,6 +38,7 @@ export function useAppInit(
   storedPrefsRef: React.MutableRefObject<Record<string, unknown>>,
 ): AppInitResult {
   const [ready, setReady] = useState(false);
+  const [homeReady, setHomeReady] = useState(false);
   const [profilesChecked, setProfilesChecked] = useState(false);
   const [welcomeCompleted, setWelcomeCompleted] = useState(true);
   const [externalSyncPending, setExternalSyncPending] = useState(true);
@@ -54,6 +56,7 @@ export function useAppInit(
     } catch {
     } finally {
       setExternalSyncPending(false);
+      setHomeReady(true);
     }
   }, [updateState]);
 
@@ -151,6 +154,7 @@ export function useAppInit(
 
   return {
     ready,
+    homeReady,
     profilesChecked,
     welcomeCompleted,
     externalSyncPending,

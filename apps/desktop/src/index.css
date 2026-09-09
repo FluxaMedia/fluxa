@@ -379,3 +379,63 @@ button, input, select, textarea {
     padding-top: 1.5rem !important;
   }
 }
+
+.fluxa-splash {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(1.5rem, 3vw, 1.75rem);
+  background-color: var(--fluxa-background);
+  background-position: center;
+  background-size: cover;
+  color: var(--fluxa-text-primary);
+  font-family: 'Archivo', 'Montserrat', sans-serif;
+}
+
+.fluxa-splash-brand {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.7rem, 1.2vw, 1rem);
+  animation: fluxa-splash-breathe 1.9s ease-in-out infinite;
+}
+
+.fluxa-splash-mark {
+  width: clamp(3.5rem, 6vw, 5.5rem);
+  height: clamp(3.5rem, 6vw, 5.5rem);
+  object-fit: contain;
+}
+
+.fluxa-splash-wordmark {
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.04em;
+}
+
+.fluxa-splash-spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  border: 0.1875rem solid rgba(255, 255, 255, 0.2);
+  border-top-color: rgba(255, 255, 255, 0.86);
+  border-radius: 50%;
+  animation: fluxa-splash-spin 0.8s linear infinite;
+}
+
+@keyframes fluxa-splash-breathe {
+  0%, 100% { opacity: 0.72; transform: scale(0.985); }
+  50% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fluxa-splash-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fluxa-splash-brand,
+  .fluxa-splash-spinner {
+    animation: none;
+  }
+}

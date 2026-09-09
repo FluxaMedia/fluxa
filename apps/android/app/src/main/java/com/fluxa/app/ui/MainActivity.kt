@@ -7,6 +7,7 @@ import com.fluxa.app.data.remote.*
 import com.fluxa.app.data.repository.*
 import com.fluxa.app.domain.discovery.*
 import com.fluxa.app.shared.FluxaDestination
+import com.fluxa.app.shared.FluxaSplashScreen
 import com.fluxa.app.shared.feature.settings.SettingsUpdateCheckState
 import com.fluxa.app.shared.feature.watchtogether.JvmWatchTogetherTransport
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
@@ -200,12 +201,7 @@ class MainActivity : FragmentActivity() {
                     }
 
                     if (!profilesReady) {
-                        Box(
-                            modifier = Modifier.fillMaxSize().background(Color.Black),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Color.White)
-                        }
+                        FluxaSplashScreen(backgroundUrl = profilePickerSettingsStore.get().backgroundUrl)
                         return@CompositionLocalProvider
                     }
 
@@ -225,6 +221,7 @@ class MainActivity : FragmentActivity() {
                     }
 
                     var activeProfile by remember { mutableStateOf<UserProfile?>(initialProfile) }
+                    var profileSplashPending by remember(initialProfile?.id) { mutableStateOf(initialProfile != null) }
                     var profiles by remember { mutableStateOf(profileManager.getProfiles()) }
                     var traktDeviceAuth by remember { mutableStateOf<TraktDeviceAuthUiState?>(null) }
                     var showTraktSheet by remember { mutableStateOf(false) }
@@ -255,12 +252,22 @@ class MainActivity : FragmentActivity() {
                     val tvLauncherCategories by homeViewModel.categories.collectAsStateWithLifecycle()
                     val tvLauncherBillboardItems by homeViewModel.billboardPool.collectAsStateWithLifecycle()
                     val tvLauncherWatchlist by homeViewModel.watchlist.collectAsStateWithLifecycle()
+                    val hasLoadedHome by homeViewModel.hasLoadedHome.collectAsStateWithLifecycle()
+
+                    val handleActiveProfileChanged: (UserProfile?) -> Unit = { updated ->
+                        if (updated != null && activeProfile?.id != updated.id) profileSplashPending = true
+                        activeProfile = updated
+                    }
+
+                    LaunchedEffect(profileSplashPending, hasLoadedHome) {
+                        if (profileSplashPending && hasLoadedHome) profileSplashPending = false
+                    }
 
                     NuvioHealthSyncEffect(
                         profile = activeProfile,
                         homeViewModel = homeViewModel,
                         onProfileUpdated = { updated ->
-                            activeProfile = updated
+                            handleActiveProfileChanged(updated)
                             profileManager.saveProfile(updated)
                             profileManager.setLastActiveProfile(updated)
                             homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
@@ -433,7 +440,7 @@ class MainActivity : FragmentActivity() {
                         mainPlayer = mainPlayer,
                         homeViewModel = homeViewModel,
                         enterPictureInPicture = {
-                            this@MainActivity.enterPictureInPictureMode(android.app.PictureInPictureParams.Builder().build())
+                            this@MainActivity.enterPictureInPictureMode()
                         }
                     )
 
@@ -549,6 +556,9 @@ class MainActivity : FragmentActivity() {
                     }
 
                     Box(modifier = Modifier.fillMaxSize()) {
+                        if (profileSplashPending && activeProfile != null) {
+                            FluxaSplashScreen(backgroundUrl = profilePickerSettingsStore.get().backgroundUrl)
+                        } else {
                         AppRoutesHost(
                             context = context,
                             currentDestination = currentDestination,
@@ -558,7 +568,7 @@ class MainActivity : FragmentActivity() {
                             deviceType = deviceType,
                             androidFluxaPlatformServices = androidFluxaPlatformServices,
                             activeProfile = activeProfile,
-                            onActiveProfileChanged = { activeProfile = it },
+                            onActiveProfileChanged = handleActiveProfileChanged,
                             settingsPopRequestId = settingsPopRequestId,
                             onSettingsCanPopChanged = { canPopSettings = it },
                             overlayPopRequestId = overlayPopRequestId,
@@ -594,7 +604,7 @@ class MainActivity : FragmentActivity() {
                             applicationContext = applicationContext,
                             deviceType = deviceType,
                             activeProfile = activeProfile,
-                            onActiveProfileChanged = { activeProfile = it },
+                            onActiveProfileChanged = handleActiveProfileChanged,
                             profileManager = profileManager,
                             homeViewModel = homeViewModel,
                             updateInfo = updateInfo,
@@ -612,6 +622,7 @@ class MainActivity : FragmentActivity() {
                             onTraktSyncingChanged = { isTraktSyncing = it },
                             onShowSimklSheetChanged = { showSimklSheet = it }
                         )
+                        }
                     }
                 }
             }

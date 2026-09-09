@@ -16,6 +16,7 @@ export function AppWelcomeGate({
   setAllProfiles,
   setActiveProfile,
   setWelcomeCompleted,
+  onProfileBootstrapComplete,
   invalidateProfileWork,
 }: {
   dispatch: (actionJson: string) => Promise<void> | void;
@@ -24,6 +25,7 @@ export function AppWelcomeGate({
   setAllProfiles: (profiles: UserProfile[]) => void;
   setActiveProfile: (profile: UserProfile) => void;
   setWelcomeCompleted: (done: boolean) => void;
+  onProfileBootstrapComplete?: () => void;
   invalidateProfileWork: () => void;
 }) {
   return (
@@ -37,7 +39,9 @@ export function AppWelcomeGate({
           setAllProfiles(profiles);
           setActiveProfile(profile);
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+          await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
           setWelcomeCompleted(true);
+          onProfileBootstrapComplete?.();
         }}
         onContinueLocal={async () => {
           invalidateProfileWork();
@@ -50,6 +54,8 @@ export function AppWelcomeGate({
           setWelcomeCompleted(true);
           setActiveProfile(profile);
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+          await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+          onProfileBootstrapComplete?.();
         }}
         onNuvioLogin={async (profile) => {
           invalidateProfileWork();
@@ -76,7 +82,9 @@ export function AppWelcomeGate({
           await dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
           await hydratePluginsFromNuvio(visibleActiveProfile);
           await hydratePluginsFromStorage(updateState);
+          await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
           setWelcomeCompleted(true);
+          onProfileBootstrapComplete?.();
         }}
       />
     </React.Suspense>
@@ -94,6 +102,7 @@ export function AppProfileGate({
   setActiveProfile,
   setEditProfileOpen,
   setHomeResetKey,
+  onProfileBootstrapComplete,
   invalidateProfileWork,
 }: {
   state: AppState;
@@ -106,6 +115,7 @@ export function AppProfileGate({
   setActiveProfile: (profile: UserProfile) => void;
   setEditProfileOpen: (open: boolean) => void;
   setHomeResetKey: (updater: (k: number) => number) => void;
+  onProfileBootstrapComplete?: () => void;
   invalidateProfileWork: () => void;
 }) {
   return (
@@ -123,10 +133,11 @@ export function AppProfileGate({
           await dispatch(JSON.stringify({ type: 'profileActivated', profile }));
           await applyStoredPrefs();
           void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-          void dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+          await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
           await clearEnginePlugins(outgoingRepositories, updateState);
           await hydratePluginsFromNuvio(profile);
           await hydratePluginsFromStorage(updateState);
+          onProfileBootstrapComplete?.();
         }}
         onProfilesChanged={setAllProfiles}
       />

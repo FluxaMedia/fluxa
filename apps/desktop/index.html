@@ -10,10 +10,37 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <title>Fluxa Desktop</title>
-    <style>html, body { background: #040508; margin: 0; }</style>
+    <style>
+      html, body { background: #060606; margin: 0; }
+      #root { min-height: 100vh; }
+      #root > .fluxa-static-splash {
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.75rem;
+        background: radial-gradient(circle at 50% 42%, rgba(255,255,255,.055), transparent 28%), #060606;
+        color: #fff;
+        font-family: Arial, sans-serif;
+      }
+      .fluxa-static-splash-brand { display: flex; align-items: center; gap: .9rem; }
+      .fluxa-static-splash-mark { width: 5rem; height: 5rem; object-fit: contain; }
+      .fluxa-static-splash-wordmark { font-size: 3.25rem; font-weight: 800; letter-spacing: -.04em; }
+      .fluxa-static-splash-spinner { width: 1.75rem; height: 1.75rem; border: 3px solid rgba(255,255,255,.2); border-top-color: rgba(255,255,255,.86); border-radius: 50%; animation: fluxa-static-splash-spin .8s linear infinite; }
+      @keyframes fluxa-static-splash-spin { to { transform: rotate(360deg); } }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="fluxa-static-splash" aria-hidden="true">
+        <div class="fluxa-static-splash-brand">
+          <img class="fluxa-static-splash-mark" src="./fluxa.png" alt="" />
+          <span class="fluxa-static-splash-wordmark">fluxa</span>
+        </div>
+        <span class="fluxa-static-splash-spinner" aria-hidden="true"></span>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

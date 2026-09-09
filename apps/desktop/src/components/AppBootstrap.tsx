@@ -5,6 +5,8 @@ interface Props {
   ready: boolean;
   profilesChecked: boolean;
   welcomeCompleted: boolean;
+  homeReady: boolean;
+  profileSplashPending: boolean;
   profileReady: boolean;
   loading: ReactNode;
   welcome: ReactNode;
@@ -12,11 +14,12 @@ interface Props {
   children: ReactNode;
 }
 
-export function AppBootstrap({ ready, profilesChecked, welcomeCompleted, profileReady, loading, welcome, profile, children }: Props) {
+export function AppBootstrap({ ready, profilesChecked, welcomeCompleted, homeReady, profileSplashPending, profileReady, loading, welcome, profile, children }: Props) {
   if (!ready || !profilesChecked) {
     return <div style={appStyles.loading}>{loading}</div>;
   }
   if (!welcomeCompleted) return <>{welcome}</>;
+  if (!homeReady || profileSplashPending) return <div style={appStyles.loading}>{loading}</div>;
   if (!profileReady) return <>{profile}</>;
   return <>{children}</>;
 }
