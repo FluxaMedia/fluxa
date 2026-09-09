@@ -26,7 +26,7 @@ final class FluxaApplePluginHttpClient: PluginHttpClient {
         var redirectsLeft = request.followRedirects ? maxRedirects : 0
 
         while true {
-            guard let url = URL(string: currentUrl), FluxaAppleNetGuard.isSchemeAllowed(url.scheme) else {
+            guard let url = URL(string: currentUrl), FluxaCoreStremio.pluginUrlAllowed(currentUrl) else {
                 return blockedResponse("unsupported scheme or invalid url")
             }
             guard let host = url.host, FluxaAppleNetGuard.resolveAllowedAddresses(host: host) != nil else {

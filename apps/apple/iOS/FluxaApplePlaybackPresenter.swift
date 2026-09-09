@@ -194,7 +194,7 @@ final class FluxaApplePlaybackPresenter: NSObject, UIAdaptivePresentationControl
     }
 
     private func resolveHasNextEpisode(_ request: ApplePlaybackRequestSnapshot) -> Bool {
-        guard request.contentType == "series", request.currentEpisodeNumber > 0 else { return false }
+        guard FluxaCoreStremio.isSeriesContentType(request.contentType), request.currentEpisodeNumber > 0 else { return false }
         let videos = request.episodeCandidates.map { episode in
             ["season": episode.season, "episode": episode.number, "number": episode.number, "id": episode.id]
         }

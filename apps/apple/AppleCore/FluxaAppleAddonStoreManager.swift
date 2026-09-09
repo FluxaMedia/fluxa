@@ -27,73 +27,94 @@ final class FluxaAppleAddonStoreManager {
     func currentAddons() async -> [FluxaAppleInstalledAddon] {
         let urls = configurationStore.localAddonUrls()
         let disabled = configurationStore.disabledAddonUrls()
-        var results = [FluxaAppleInstalledAddon]()
-        for (index, url) in urls.enumerated() {
+        var repositoryAddons = [[String: Any]]()
+        for url in urls {
             let manifest = await fetchManifest(rawUrl: url)
-            results.append(
-                FluxaAppleInstalledAddon(
-                    name: manifest?.name ?? fallbackName(for: url),
-                    description: manifest?.description ?? "",
-                    url: url,
-                    logoUrl: manifest?.logo,
-                    version: manifest?.version,
-                    configurable: manifest?.configurable ?? false,
-                    isEnabled: !disabled.contains(url),
-                    canMoveUp: index > 0,
-                    canMoveDown: index < urls.count - 1
-                )
+            let resolved = manifest ?? FluxaCoreAddonManifest(
+                id: "",
+                name: fallbackName(for: url),
+                description: nil,
+                logo: nil,
+                version: nil,
+                configurable: false,
+                supportsCatalog: false,
+                catalogs: []
+            )
+            var manifestFields: [String: Any] = ["name": resolved.name]
+            if let description = resolved.description { manifestFields["description"] = description }
+            if let logo = resolved.logo { manifestFields["logo"] = logo }
+            if let version = resolved.version { manifestFields["version"] = version }
+            if let configurable = resolved.configurable { manifestFields["configurable"] = configurable }
+            repositoryAddons.append([
+                "transportUrl": url,
+                "manifest": manifestFields,
+                "isManaged": false,
+                "isEnabled": true
+            ])
+        }
+        return FluxaCoreStremio.addonStoreEntriesPlan(
+            repositoryAddons: repositoryAddons,
+            localUrls: urls,
+            disabledKeys: disabled,
+            localLoaded: true
+        ).map {
+            FluxaAppleInstalledAddon(
+                name: $0.name,
+                description: $0.description,
+                url: $0.url,
+                logoUrl: $0.logoUrl,
+                version: $0.version,
+                configurable: $0.configurable,
+                isEnabled: $0.isEnabled,
+                canMoveUp: $0.canMoveUp,
+                canMoveDown: $0.canMoveDown
             )
         }
-        return results
     }
 
     func submitManifestUrl(_ raw: String) async -> (addons: [FluxaAppleInstalledAddon], addedName: String?, failed: Bool) {
-        let normalized = normalizeManifestUrl(raw)
+        let normalized = FluxaCoreStremio.normalizeManifestUrl(raw)
         guard let manifest = await fetchManifest(rawUrl: normalized) else {
             return (await currentAddons(), nil, true)
         }
-        var urls = configurationStore.localAddonUrls()
-        if !urls.contains(where: { normalizeManifestUrl($0) == normalized }) {
-            urls.append(normalized)
-            configurationStore.save(localAddonUrls: urls)
-        }
+        let profile = mutationProfile()
+        let updated = FluxaCoreStremio.addonProfileMutationPlan(
+            profile: profile,
+            command: "install",
+            addonKey: normalized
+        ) ?? profile
+        saveMutationProfile(updated)
         return (await currentAddons(), manifest.name, false)
     }
 
     func toggleAddon(url: String, enabled: Bool) async -> [FluxaAppleInstalledAddon] {
-        var disabled = configurationStore.disabledAddonUrls()
-        if enabled {
-            disabled.remove(url)
-        } else {
-            disabled.insert(url)
-        }
-        configurationStore.save(disabledAddonUrls: disabled)
+        let updated = FluxaCoreStremio.addonProfileMutationPlan(
+            profile: mutationProfile(),
+            command: enabled ? "enable" : "disable",
+            addonKey: url
+        ) ?? mutationProfile()
+        saveMutationProfile(updated)
         return await currentAddons()
     }
 
     func removeAddon(url: String) async -> [FluxaAppleInstalledAddon] {
-        let normalized = normalizeManifestUrl(url)
-        var urls = configurationStore.localAddonUrls()
-        urls.removeAll { normalizeManifestUrl($0) == normalized }
-        configurationStore.save(localAddonUrls: urls)
-        var disabled = configurationStore.disabledAddonUrls()
-        disabled.remove(url)
-        configurationStore.save(disabledAddonUrls: disabled)
+        let updated = FluxaCoreStremio.addonProfileMutationPlan(
+            profile: mutationProfile(),
+            command: "remove",
+            addonKey: url
+        ) ?? mutationProfile()
+        saveMutationProfile(updated)
         return await currentAddons()
     }
 
     func moveAddon(url: String, direction: Int) async -> [FluxaAppleInstalledAddon] {
-        let normalized = normalizeManifestUrl(url)
-        var urls = configurationStore.localAddonUrls()
-        guard let index = urls.firstIndex(where: { normalizeManifestUrl($0) == normalized }) else {
-            return await currentAddons()
-        }
-        let newIndex = index + direction
-        guard urls.indices.contains(newIndex) else {
-            return await currentAddons()
-        }
-        urls.swapAt(index, newIndex)
-        configurationStore.save(localAddonUrls: urls)
+        let updated = FluxaCoreStremio.addonProfileMutationPlan(
+            profile: mutationProfile(),
+            command: "move",
+            addonKey: url,
+            direction: direction
+        ) ?? mutationProfile()
+        saveMutationProfile(updated)
         return await currentAddons()
     }
 
@@ -102,7 +123,7 @@ final class FluxaAppleAddonStoreManager {
     }
 
     private func fetchManifest(rawUrl: String) async -> FluxaCoreAddonManifest? {
-        let transportUrl = normalizeManifestUrl(rawUrl)
+        let transportUrl = FluxaCoreStremio.normalizeManifestUrl(rawUrl)
         guard let manifestUrl = URL(string: transportUrl) else {
             return nil
         }
@@ -121,11 +142,23 @@ final class FluxaAppleAddonStoreManager {
         }
     }
 
-    private func normalizeManifestUrl(_ raw: String) -> String {
-        FluxaCoreStremio.normalizeManifestUrl(raw)
-    }
-
     private func fallbackName(for url: String) -> String {
         URL(string: url)?.host ?? url
+    }
+
+    private func mutationProfile() -> [String: Any] {
+        [
+            "localAddons": configurationStore.localAddonUrls(),
+            "disabledLocalAddons": Array(configurationStore.disabledAddonUrls())
+        ]
+    }
+
+    private func saveMutationProfile(_ profile: [String: Any]) {
+        if let urls = profile["localAddons"] as? [String] {
+            configurationStore.save(localAddonUrls: urls)
+        }
+        if let disabled = profile["disabledLocalAddons"] as? [String] {
+            configurationStore.save(disabledAddonUrls: Set(disabled))
+        }
     }
 }

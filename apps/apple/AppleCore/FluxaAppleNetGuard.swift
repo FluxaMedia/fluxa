@@ -4,11 +4,6 @@ import Darwin
 #endif
 
 enum FluxaAppleNetGuard {
-    static func isSchemeAllowed(_ scheme: String?) -> Bool {
-        guard let scheme = scheme?.lowercased() else { return false }
-        return scheme == "http" || scheme == "https"
-    }
-
     static func resolveAllowedAddresses(host: String) -> [[UInt8]]? {
         var hints = addrinfo(
             ai_flags: 0,
@@ -49,47 +44,6 @@ enum FluxaAppleNetGuard {
     }
 
     static func isBlockedAddress(_ bytes: [UInt8]) -> Bool {
-        switch bytes.count {
-        case 4:
-            return isBlockedIPv4(bytes)
-        case 16:
-            if let mapped = ipv4Mapped(bytes) {
-                return isBlockedIPv4(mapped)
-            }
-            return isBlockedIPv6(bytes)
-        default:
-            return true
-        }
-    }
-
-    private static func isBlockedIPv4(_ bytes: [UInt8]) -> Bool {
-        guard bytes.count == 4 else { return true }
-        let a = Int(bytes[0])
-        let b = Int(bytes[1])
-        if a == 127 { return true }
-        if a == 10 { return true }
-        if a == 172, (16...31).contains(b) { return true }
-        if a == 192, b == 168 { return true }
-        if a == 169, b == 254 { return true }
-        if bytes == [0, 0, 0, 0] { return true }
-        if bytes == [255, 255, 255, 255] { return true }
-        if a == 100, (64...127).contains(b) { return true }
-        return false
-    }
-
-    private static func isBlockedIPv6(_ bytes: [UInt8]) -> Bool {
-        guard bytes.count == 16 else { return true }
-        if bytes.allSatisfy({ $0 == 0 }) { return true }
-        if bytes[0..<15].allSatisfy({ $0 == 0 }), bytes[15] == 1 { return true }
-        let firstSegment = (Int(bytes[0]) << 8) | Int(bytes[1])
-        if (firstSegment & 0xfe00) == 0xfc00 { return true }
-        if (firstSegment & 0xffc0) == 0xfe80 { return true }
-        return false
-    }
-
-    private static func ipv4Mapped(_ bytes: [UInt8]) -> [UInt8]? {
-        guard bytes.count == 16 else { return nil }
-        guard bytes[0..<10].allSatisfy({ $0 == 0 }), bytes[10] == 0xFF, bytes[11] == 0xFF else { return nil }
-        return Array(bytes[12..<16])
+        !FluxaCoreStremio.pluginNetworkAddressBytesAllowed(bytes)
     }
 }

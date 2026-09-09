@@ -8,7 +8,7 @@ struct FluxaAppleAddonCatalogResolver {
     }
 
     func resolveRequests(localAddonUrls: [String]) async throws -> [FluxaAppleCatalogRequest] {
-        var requests = [FluxaAppleCatalogRequest]()
+        var descriptors = [[String: Any]]()
         var lastError: Error?
         for rawUrl in localAddonUrls {
             do {
@@ -30,13 +30,32 @@ struct FluxaAppleAddonCatalogResolver {
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                requests.append(contentsOf: manifest.catalogs.compactMap {
-                    makeRequest(catalog: $0, manifest: manifest, transportUrl: transportUrl)
-                })
+                if let descriptor = FluxaCoreStremio.addonDescriptorValue(
+                    manifest: manifest,
+                    transportUrl: transportUrl
+                ) {
+                    descriptors.append(descriptor)
+                }
             } catch {
                 lastError = error
             }
         }
+        let requests = FluxaCoreStremio.resourceFetchPlan(
+            manifests: descriptors,
+            kind: "home"
+        ).map { plan in
+            plan.requests.compactMap { request in
+                guard let url = URL(string: request.url) else { return nil }
+                return FluxaAppleCatalogRequest(
+                    id: request.categoryId ?? request.url,
+                    title: request.categoryName ?? request.catalogId ?? request.url,
+                    url: url,
+                    contentType: request.catalogType ?? "",
+                    addonTransportUrl: request.transportUrl,
+                    catalogType: request.catalogType
+                )
+            }
+        } ?? []
         if requests.isEmpty, let lastError {
             throw lastError
         }
@@ -51,7 +70,7 @@ struct FluxaAppleAddonCatalogResolver {
         guard !normalizedQuery.isEmpty else {
             return []
         }
-        var requests = [FluxaAppleSearchRequest]()
+        var descriptors = [[String: Any]]()
         var lastError: Error?
         for rawUrl in localAddonUrls {
             do {
@@ -73,13 +92,31 @@ struct FluxaAppleAddonCatalogResolver {
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                requests.append(contentsOf: manifest.catalogs.compactMap {
-                    makeSearchRequest(catalog: $0, transportUrl: transportUrl, query: normalizedQuery)
-                })
+                if let descriptor = FluxaCoreStremio.addonDescriptorValue(
+                    manifest: manifest,
+                    transportUrl: transportUrl
+                ) {
+                    descriptors.append(descriptor)
+                }
             } catch {
                 lastError = error
             }
         }
+        let requests = FluxaCoreStremio.resourceFetchPlan(
+            manifests: descriptors,
+            kind: "search",
+            query: normalizedQuery
+        ).map { plan in
+            plan.requests.compactMap { request in
+                guard let url = URL(string: request.url) else { return nil }
+                return FluxaAppleSearchRequest(
+                    url: url,
+                    contentType: request.catalogType ?? "",
+                    addonTransportUrl: request.transportUrl ?? "",
+                    catalogType: request.catalogType ?? ""
+                )
+            }
+        } ?? []
         if requests.isEmpty, let lastError {
             throw lastError
         }
@@ -90,7 +127,7 @@ struct FluxaAppleAddonCatalogResolver {
         localAddonUrls: [String],
         contentType: String
     ) async throws -> [FluxaAppleDiscoverCatalog] {
-        let normalizedType = contentType.lowercased()
+        let normalizedType = normalizeCatalogType(contentType)
         var catalogs = [FluxaAppleDiscoverCatalog]()
         var lastError: Error?
         for rawUrl in localAddonUrls {
@@ -113,12 +150,19 @@ struct FluxaAppleAddonCatalogResolver {
                 guard manifest.supportsCatalog else {
                     continue
                 }
-                catalogs.append(contentsOf: manifest.catalogs.compactMap { catalog in
-                    makeDiscoverCatalog(
-                        catalog: catalog,
-                        manifest: manifest,
-                        transportUrl: transportUrl,
-                        contentType: normalizedType
+                catalogs.append(contentsOf: FluxaCoreStremio.discoverCatalogOptions(
+                    manifest: manifest,
+                    transportUrl: transportUrl,
+                    selectedType: normalizedType
+                ).orEmpty().map {
+                    FluxaAppleDiscoverCatalog(
+                        key: $0.key,
+                        label: $0.label,
+                        transportUrl: $0.transportUrl,
+                        contentType: $0.type,
+                        catalogId: $0.id,
+                        genres: $0.genres,
+                        requiresGenre: $0.requiresGenre
                     )
                 })
             } catch {
@@ -160,114 +204,13 @@ struct FluxaAppleAddonCatalogResolver {
         ))
     }
 
-    private func makeRequest(
-        catalog: FluxaCoreAddonCatalog,
-        manifest: FluxaCoreAddonManifest,
-        transportUrl: String
-    ) -> FluxaAppleCatalogRequest? {
-        guard let catalogId = catalog.id?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !catalogId.isEmpty,
-              let contentType = catalog.type?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !contentType.isEmpty,
-              catalog.supportsInitialLoad,
-              let url = resourceUrl(
-                  transportUrl: transportUrl,
-                  resource: "catalog",
-                  contentType: contentType,
-                  id: catalogId
-              ) else {
-            return nil
-        }
-        let title = catalog.name?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedTitle = title.flatMap { $0.isEmpty ? nil : $0 } ?? catalogId
-        return FluxaAppleCatalogRequest(
-            id: "\(manifest.id):\(contentType):\(catalogId)",
-            title: resolvedTitle,
-            url: url,
-            contentType: contentType,
-            addonTransportUrl: transportUrl,
-            catalogType: contentType
-        )
-    }
-
-    private func makeSearchRequest(
-        catalog: FluxaCoreAddonCatalog,
-        transportUrl: String,
-        query: String
-    ) -> FluxaAppleSearchRequest? {
-        guard let catalogId = catalog.id?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !catalogId.isEmpty,
-              let contentType = catalog.type?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !contentType.isEmpty,
-              catalog.supportsSearch,
-              let url = searchUrl(
-                  transportUrl: transportUrl,
-                  contentType: contentType,
-                  catalogId: catalogId,
-                  query: query
-              ) else {
-            return nil
-        }
-        return FluxaAppleSearchRequest(
-            url: url,
-            contentType: contentType,
-            addonTransportUrl: transportUrl,
-            catalogType: contentType
-        )
-    }
-
-    private func makeDiscoverCatalog(
-        catalog: FluxaCoreAddonCatalog,
-        manifest: FluxaCoreAddonManifest,
-        transportUrl: String,
-        contentType: String
-    ) -> FluxaAppleDiscoverCatalog? {
-        guard let catalogId = catalog.id?.trimmingCharacters(in: .whitespacesAndNewlines),
-              !catalogId.isEmpty,
-              let catalogType = catalog.type?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-              catalogType == contentType,
-              !catalog.hasRequiredExtraExceptGenre else {
-            return nil
-        }
-        let trimmedName = catalog.name?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let label: String
-        if let trimmedName, !trimmedName.isEmpty {
-            label = trimmedName
-        } else {
-            label = catalogId
-        }
-        let genres = (catalog.genres ?? []) + (catalog.extra ?? [])
-            .filter { $0.name?.lowercased() == "genre" }
-            .flatMap { $0.options ?? [] }
-        let uniqueGenres = Array(Set(genres.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty })).sorted()
-        return FluxaAppleDiscoverCatalog(
-            key: "discover:\(manifest.id):\(catalogType):\(catalogId)",
-            label: label,
-            transportUrl: transportUrl,
-            contentType: catalogType,
-            catalogId: catalogId,
-            genres: uniqueGenres,
-            requiresGenre: catalog.extra?.contains { $0.name?.lowercased() == "genre" && $0.isRequired == true } == true
-        )
-    }
-
-    private func searchUrl(
-        transportUrl: String,
-        contentType: String,
-        catalogId: String,
-        query: String
-    ) -> URL? {
-        URL(string: FluxaCoreStremio.resourceUrl(
-            transportUrl: transportUrl,
-            resource: "catalog",
-            contentType: contentType,
-            id: catalogId,
-            extra: ["search": query]
-        ) ?? "")
-    }
-
     private func normalizeManifestUrl(_ rawUrl: String) -> String {
         FluxaCoreStremio.normalizeManifestUrl(rawUrl)
+    }
+
+    private func normalizeCatalogType(_ rawType: String) -> String {
+        let trimmed = rawType.trimmingCharacters(in: .whitespacesAndNewlines)
+        return FluxaCoreStremio.normalizeCatalogType(trimmed) ?? trimmed.lowercased()
     }
 
     private func resourceUrlString(

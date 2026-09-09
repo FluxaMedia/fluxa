@@ -135,7 +135,10 @@ final class FluxaAppleDetailStartup {
         let videos = parseVideos(meta["videos"])
         let recommendations = parseCatalogItems(detail["similarItems"])
         let seasonsCount = int32(meta["seasonsCount"])
-        let seasons = availableSeasons(from: videos, seasonsCount: seasonsCount)
+        let seasons = FluxaCoreStremio.detailAvailableSeasons(
+            seasons: videos.map { Int($0.season) },
+            seasonsCount: seasonsCount.map(Int.init)
+        ).map(String.init)
         let initialSeason = seasons.first.flatMap { Int32($0) } ?? 1
 
         let entry = FluxaAppleDetailCacheEntry(
@@ -158,7 +161,7 @@ final class FluxaAppleDetailStartup {
         )
         cache[id] = entry
 
-        if type == "series" && !videos.isEmpty {
+        if FluxaCoreStremio.isSeriesContentType(type) && !videos.isEmpty {
             pushSnapshot(entry: entry, streams: [], isLoadingStreams: false, loadingAddonNames: [], selectedAddon: nil)
         } else {
             let streams = await loadDirectStreams(addons: addons, contentType: type, id: id)
@@ -279,7 +282,7 @@ final class FluxaAppleDetailStartup {
             description: video.overview,
             thumbnailUrl: video.thumbnail,
             releaseLabel: video.released,
-            runtimeLabel: video.episodeRuntime.map { "\($0)m" },
+            runtimeLabel: video.episodeRuntime.flatMap { FluxaCoreStremio.formatRuntimeLabel("\($0)m") },
             isUpcoming: isUpcoming(video.released),
             isWatched: false
         )
@@ -302,23 +305,6 @@ final class FluxaAppleDetailStartup {
         }
     }
 
-    private func availableSeasons(from videos: [FluxaAppleVideo], seasonsCount: Int32?) -> [String] {
-        var seasons = Set<Int32>()
-        if let seasonsCount, seasonsCount > 0 {
-            for season in 1...seasonsCount {
-                seasons.insert(season)
-            }
-        }
-        for video in videos where video.season > 0 {
-            seasons.insert(video.season)
-        }
-        var sorted = seasons.sorted().map(String.init)
-        if videos.contains(where: { $0.season == 0 }) {
-            sorted.append("0")
-        }
-        return sorted.isEmpty ? ["1"] : sorted
-    }
-
     private func addonDisplayName(_ transportUrl: String) -> String {
         URL(string: transportUrl)?.host ?? transportUrl
     }
@@ -333,16 +319,13 @@ final class FluxaAppleDetailStartup {
 
     private func isUpcoming(_ released: String?) -> Bool {
         guard let released, !released.isEmpty else { return false }
-        if let date = ISO8601DateFormatter().date(from: released) {
-            return date > Date()
-        }
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        formatter.timeZone = TimeZone(identifier: "UTC")
-        if let date = formatter.date(from: String(released.prefix(10))) {
-            return date > Date()
-        }
-        return false
+        formatter.timeZone = TimeZone.current
+        return FluxaCoreStremio.releaseDateUpcoming(
+            released,
+            todayIso: formatter.string(from: Date())
+        )
     }
 
     private func updateEmptyDetail(request: FluxaShared.AppleDetailRequestSnapshot) {

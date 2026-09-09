@@ -14,21 +14,16 @@ final class FluxaAppleTmdbService {
         apiKey: String
     ) async throws -> [FluxaAppleJsonValue] {
         guard !apiKey.isEmpty,
-              let numericId = Int(id.split(separator: ":").last.map(String.init) ?? id) else {
+              let numericId = FluxaCoreStremio.tmdbNumericId(id) else {
             return []
         }
-        let mediaType = contentType == "series" || contentType == "tv" ? "tv" : "movie"
-        guard var components = URLComponents(
-            string: "https://api.themoviedb.org/3/\(mediaType)/\(numericId)/recommendations"
-        ) else {
-            return []
-        }
-        components.queryItems = [
-            URLQueryItem(name: "api_key", value: apiKey),
-            URLQueryItem(name: "language", value: language),
-            URLQueryItem(name: "page", value: "1")
-        ]
-        guard let url = components.url else { return [] }
+        let mediaType = FluxaCoreStremio.tmdbContentType(contentType)
+        guard let urlString = FluxaCoreStremio.tmdbRecommendationsUrl(
+            contentType: contentType,
+            tmdbId: numericId,
+            apiKey: apiKey,
+            language: language
+        ), let url = URL(string: urlString) else { return [] }
         let (data, response) = try await session.data(from: url)
         guard let httpResponse = response as? HTTPURLResponse,
               (200..<300).contains(httpResponse.statusCode) else {
@@ -40,17 +35,22 @@ final class FluxaAppleTmdbService {
         return results.prefix(20).compactMap { value in
             guard case .object(let result) = value,
                   let resultId = number(result["id"]),
-                  let title = string(result[mediaType == "tv" ? "name" : "title"]),
+                  let resolvedType = FluxaCoreStremio.tmdbItemContentType(
+                      mediaType: string(result["media_type"]),
+                      hasFirstAirDate: string(result["first_air_date"])?.isEmpty == false,
+                      requestedType: contentType
+                  ),
+                  let title = string(result[FluxaCoreStremio.isSeriesContentType(resolvedType) ? "name" : "title"]),
                   !title.isEmpty else {
                 return nil
             }
             return .object([
                 "id": .string("tmdb:\(Int(resultId))"),
-                "type": .string(contentType == "anime" ? "anime" : (mediaType == "tv" ? "series" : "movie")),
+                "type": .string(resolvedType),
                 "name": .string(title),
-                "poster": image(result["poster_path"], size: "w500"),
-                "background": image(result["backdrop_path"], size: "w1280"),
-                "releaseInfo": .string(string(result[mediaType == "tv" ? "first_air_date" : "release_date"]) ?? "")
+                "poster": FluxaCoreStremio.tmdbImageUrl(string(result["poster_path"]), size: "w500").map(FluxaAppleJsonValue.string) ?? .null,
+                "background": FluxaCoreStremio.tmdbImageUrl(string(result["backdrop_path"]), size: "w1280").map(FluxaAppleJsonValue.string) ?? .null,
+                "releaseInfo": .string(string(result[FluxaCoreStremio.isSeriesContentType(resolvedType) ? "first_air_date" : "release_date"]) ?? "")
             ])
         }
     }
@@ -65,8 +65,4 @@ final class FluxaAppleTmdbService {
         return number
     }
 
-    private func image(_ value: FluxaAppleJsonValue?, size: String) -> FluxaAppleJsonValue {
-        guard let path = string(value) else { return .null }
-        return .string("https://image.tmdb.org/t/p/\(size)\(path)")
-    }
 }
