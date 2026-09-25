@@ -111,7 +111,7 @@ pub fn draw_calendar(
     );
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(egui::LayerId::background());
-    painter.rect_filled(screen, 0.0, metrics.background);
+    paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 3, assets);
     let compact = viewport.is_compact();

@@ -3438,7 +3438,7 @@ fn draw_home_with_options(
     let hero_height = home_hero_height(viewport);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let painter = context.layer_painter(egui::LayerId::background());
-    painter.rect_filled(screen, 0.0, metrics.background);
+    paint_ambient(&painter, screen, assets);
     let hero_rect = Rect::from_min_size(
         Pos2::new(0.0, -scroll_offset),
         Vec2::new(viewport.width, hero_height),
@@ -4241,18 +4241,22 @@ fn contain_size(source: [u32; 2], bounds: Vec2) -> Vec2 {
     Vec2::new(width * scale, height * scale)
 }
 
-fn draw_loading_screen(
-    context: &egui::Context,
-    painter: &egui::Painter,
-    screen: Rect,
-    assets: &impl HomeAssets,
-) {
+pub(crate) fn paint_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
     painter.image(
         assets.background(),
         screen,
         Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
         Color32::WHITE,
     );
+}
+
+fn draw_loading_screen(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    screen: Rect,
+    assets: &impl HomeAssets,
+) {
+    paint_ambient(painter, screen, assets);
     let time = context.input(|input| input.time) as f32;
     let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
