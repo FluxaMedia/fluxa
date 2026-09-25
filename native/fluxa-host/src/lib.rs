@@ -3079,10 +3079,10 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
             "home" => vec![
                 navigation("home"),
                 json!({
-                    "type": "homeLoadRequested",
+                    "type": "refreshContinueWatchingRequested",
                     "profile": profile,
                     "language": profile_language(profile),
-                    "force": false,
+                    "source": "navigation",
                 }),
             ],
             "library" => vec![
