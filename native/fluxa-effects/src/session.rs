@@ -121,6 +121,14 @@ impl AppSession {
         self.runtime.snapshot_shared()
     }
 
+    pub fn poll_torrent_status(
+        &self,
+        link: String,
+        file_id: Option<usize>,
+    ) -> Receiver<Value> {
+        self.executor.poll_torrent_status(link, file_id)
+    }
+
     pub fn revision(&self) -> u64 {
         self.runtime.revision()
     }

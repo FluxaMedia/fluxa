@@ -23,7 +23,8 @@ use fluxa_ui::{
     AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, HomeAssets,
     HomeLayout, HomeModel, LibraryModel, LibraryTab, SettingsModel, UiFormFactorJson, Viewport,
     detail_model_from_core_snapshot, discover_model_from_core_snapshot, draw_calendar, draw_detail,
-    draw_discover, draw_home, draw_library, draw_settings, home_model_from_core_snapshot,
+    PlayerModel, draw_discover, draw_home, draw_library, draw_player, draw_settings,
+    home_model_from_core_snapshot,
     library_model_from_core_snapshot, settings_model_from_core_snapshot,
 };
 use serde::Serialize;
@@ -62,6 +63,10 @@ impl NativeSurface {
         }
     }
 }
+
+mod player;
+
+pub use player::{DeviceOpener, VideoBackend, VideoCommand, VideoStatus};
 
 static GPU_WAIT_LOGS: AtomicU32 = AtomicU32::new(0);
 static HOME_SYNC_LOGS: AtomicU32 = AtomicU32::new(0);
@@ -109,6 +114,9 @@ struct RendererState {
     mouse_position: Option<Pos2>,
     cursor: egui::CursorIcon,
     wants_keyboard: bool,
+    player: Option<player::PlayerSession>,
+    video: Option<Box<dyn VideoBackend>>,
+    fullscreen_toggle: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -134,6 +142,9 @@ enum NativeAction {
     Play {
         id: String,
         item_type: String,
+    },
+    StartPlayback {
+        item: Value,
     },
     ToggleWatchlist {
         item: Value,
@@ -511,7 +522,7 @@ impl ArtworkLoader {
 }
 
 struct Gpu {
-    _instance: wgpu::Instance,
+    instance: wgpu::Instance,
     _surface: NativeSurface,
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
@@ -662,6 +673,7 @@ impl Gpu {
         size: [u32; 2],
         density: f32,
         artwork_cache_dir: Option<PathBuf>,
+        opener: Option<DeviceOpener>,
     ) -> Result<Self, String> {
         host_log(format!(
             "GPU init start: surface={}x{}, density={density:.2}",
@@ -676,6 +688,7 @@ impl Gpu {
                 density,
                 artwork_cache_dir.clone(),
                 backends_for(backend),
+                opener.clone(),
             )
             .await
             {
@@ -702,6 +715,7 @@ impl Gpu {
         density: f32,
         artwork_cache_dir: Option<PathBuf>,
         backends: wgpu::Backends,
+        opener: Option<DeviceOpener>,
     ) -> Result<Self, String> {
         let mut descriptor = wgpu::InstanceDescriptor::new_without_display_handle();
         descriptor.backends = backends;
@@ -730,17 +744,21 @@ impl Gpu {
         } else {
             wgpu::Limits::default()
         };
-        let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                label: Some("fluxa-host-device"),
-                required_features: wgpu::Features::empty(),
-                required_limits,
-                memory_hints: wgpu::MemoryHints::Performance,
-                trace: wgpu::Trace::Off,
-                experimental_features: wgpu::ExperimentalFeatures::disabled(),
-            })
-            .await
-            .map_err(|error| error.to_string())?;
+        let device_descriptor = wgpu::DeviceDescriptor {
+            label: Some("fluxa-host-device"),
+            required_features: wgpu::Features::empty(),
+            required_limits,
+            memory_hints: wgpu::MemoryHints::Performance,
+            trace: wgpu::Trace::Off,
+            experimental_features: wgpu::ExperimentalFeatures::disabled(),
+        };
+        let (device, queue) = match opener {
+            Some(opener) => opener(&adapter, &device_descriptor)?,
+            None => adapter
+                .request_device(&device_descriptor)
+                .await
+                .map_err(|error| error.to_string())?,
+        };
         host_log("Device requested successfully");
         let capabilities = surface.get_capabilities(&adapter);
         let format = capabilities
@@ -825,7 +843,7 @@ impl Gpu {
             icons.textures.len()
         ));
         Ok(Self {
-            _instance: instance,
+            instance: instance,
             _surface: native_surface.clone(),
             surface,
             device,
@@ -859,6 +877,7 @@ impl Gpu {
         calendar: &CalendarModel,
         detail: &DetailModel,
         settings: &SettingsModel,
+        player: Option<&PlayerModel>,
         focused: Option<u64>,
         safe_bottom: f32,
         scroll_y: f32,
@@ -901,7 +920,9 @@ impl Gpu {
             let viewport = Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
-            if route == "library" {
+            if let Some(player) = player {
+                rendered_layout = draw_player(ui.ctx(), viewport, player, focused);
+            } else if route == "library" {
                 rendered_layout = draw_library(
                     ui.ctx(),
                     viewport,
@@ -1071,7 +1092,7 @@ fn rebuild_current_ui(state: &mut RendererState) {
     let cached_layout = state
         .rendered_layout
         .as_ref()
-        .filter(|(route, _)| route == &state.route)
+        .filter(|(route, _)| *route == active_route(state))
         .map(|(_, layout)| layout.clone());
     if let Some(layout) = cached_layout {
         // This path only runs when an input event has invalidated the
@@ -1079,7 +1100,7 @@ fn rebuild_current_ui(state: &mut RendererState) {
         rebuild_ui_from_layout(state, &layout, size);
         return;
     }
-    if state.route != "home" {
+    if state.route != "home" || state.player.is_some() {
         return;
     }
     rebuild_home_ui(&mut state.ui, size, &state.home, state.safe_bottom);
@@ -1702,9 +1723,8 @@ fn native_action_for_node(
         }
         if node == fluxa_ui::NODE_DETAIL_PLAY {
             if !detail.id.is_empty() {
-                return Some(NativeAction::Play {
-                    id: detail.id.clone(),
-                    item_type: detail.content_type.clone(),
+                return Some(NativeAction::StartPlayback {
+                    item: detail.item.clone(),
                 });
             }
         }
@@ -1859,6 +1879,14 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
             UiAction::Activated(node) | UiAction::PointerReleased(node) => Some(*node),
             _ => None,
         };
+        if state.player.is_some() {
+            if let Some(node) = node {
+                player::activate(state, node);
+            } else if matches!(action, UiAction::Back) {
+                player::close(state);
+            }
+            continue;
+        }
         if let Some(node) = node {
             if state.route == "library" && node == fluxa_ui::NODE_LIBRARY_SORT {
                 state.library_sort = match state.library_sort.as_str() {
@@ -2218,6 +2246,9 @@ impl FluxaHost {
             mouse_position: None,
             cursor: egui::CursorIcon::Default,
             wants_keyboard: false,
+            player: None,
+            video: None,
+            fullscreen_toggle: false,
         })))
     }
 
@@ -2310,6 +2341,9 @@ impl FluxaHost {
             let position = Pos2::new(x, y);
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
+            if let Some(player) = state.player.as_mut() {
+                player.touch();
+            }
             state.egui_events.push(egui::Event::PointerMoved(position));
         });
     }
@@ -2457,10 +2491,24 @@ impl FluxaHost {
         Ok(())
     }
 
+    pub fn set_video_backend(&self, backend: Box<dyn VideoBackend>) {
+        self.with_state(|state| state.video = Some(backend));
+    }
+
+    pub fn is_playing(&self) -> bool {
+        self.with_state(|state| state.player.is_some())
+            .unwrap_or(false)
+    }
+
+    pub fn take_fullscreen_toggle(&self) -> bool {
+        self.with_state(|state| std::mem::take(&mut state.fullscreen_toggle))
+            .unwrap_or(false)
+    }
+
     pub fn surface_created(&self, surface: NativeSurface, width: u32, height: u32) {
         let size = [width.max(1), height.max(1)];
         host_log(format!("Surface created: {}x{}", size[0], size[1]));
-        let Some((generation, density, artwork_cache_dir)) = self.with_state(|state| {
+        let Some((generation, density, artwork_cache_dir, opener)) = self.with_state(|state| {
             state.generation = state.generation.saturating_add(1);
             state.size = size;
             state.pending_resize = None;
@@ -2469,13 +2517,14 @@ impl FluxaHost {
                 state.generation,
                 state.density,
                 state.artwork_cache_dir.clone(),
+                state.video.as_ref().and_then(|video| video.device_opener()),
             )
         }) else {
             return;
         };
         let shared = self.0.clone();
         let task = async move {
-            let result = Gpu::create(surface, size, density, artwork_cache_dir).await;
+            let result = Gpu::create(surface, size, density, artwork_cache_dir, opener).await;
             let Ok(mut state) = shared.lock() else { return };
             if state.generation != generation {
                 return;
@@ -2666,6 +2715,11 @@ fn pointer_event(state: &mut RendererState, phase: PointerPhase, position: [f32;
 }
 
 fn key_down(state: &mut RendererState, input: KeyInput) {
+    if state.player.is_some()
+        && matches!(player::key(state, input), player::KeyOutcome::Handled)
+    {
+        return;
+    }
     state.keyboard_focus_visible = true;
     rebuild_current_ui(state);
     if matches!(input, KeyInput::Backspace) {
@@ -2698,9 +2752,19 @@ fn key_down(state: &mut RendererState, input: KeyInput) {
     ensure_focused_visible(state);
 }
 
+fn active_route(state: &RendererState) -> String {
+    if state.player.is_some() {
+        "player".to_owned()
+    } else {
+        state.route.clone()
+    }
+}
+
 fn render_frame(state: &mut RendererState) {
     route_actions_to_session(state);
     pull_session_snapshot(state);
+    player::pump(state);
+    player::upload_frame(state);
     if state.gpu.is_none() {
         let count = GPU_WAIT_LOGS.fetch_add(1, Ordering::Relaxed);
         if count % 120 == 0 {
@@ -2722,7 +2786,8 @@ fn render_frame(state: &mut RendererState) {
         advance_home_inertia(state);
     }
     rebuild_current_ui(state);
-    let route = state.route.clone();
+    let route = active_route(state);
+    let player_model = state.player.as_ref().map(player::PlayerSession::model);
     let library_tab = state.library_tab;
     let focused = state
         .keyboard_focus_visible
@@ -2730,7 +2795,7 @@ fn render_frame(state: &mut RendererState) {
         .flatten();
     let safe_bottom = state.safe_bottom;
     let logical_size = logical_surface_size(state);
-    if route != "home" {
+    if route != "home" && route != "player" {
         let viewport = Viewport::new(
             logical_size[0],
             logical_size[1],
@@ -2772,6 +2837,7 @@ fn render_frame(state: &mut RendererState) {
                 calendar,
                 detail,
                 settings,
+                player_model.as_ref(),
                 focused,
                 safe_bottom,
                 scroll_y,
@@ -2786,6 +2852,9 @@ fn render_frame(state: &mut RendererState) {
                 state.cursor = frame.cursor;
                 state.wants_keyboard = frame.wants_keyboard;
                 let layout = frame.layout;
+                if let Some(position) = layout.seek_to {
+                    player::command(state, VideoCommand::SeekTo(position));
+                }
                 apply_pointer_results(state, &route, &layout);
                 if route == "discover" {
                     for request in &layout.load_more {
@@ -3033,6 +3102,9 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
         NativeAction::SettingsChange { key, value } => {
             vec![json!({"type": "settingsChanged", "key": key, "value": value})]
         }
+        NativeAction::StartPlayback { item } => {
+            vec![player::direct_playback_command(item, profile)]
+        }
         NativeAction::SettingsSection { .. } => return None,
     };
     Some(commands)
@@ -3048,6 +3120,10 @@ fn route_actions_to_session(state: &mut RendererState) {
     let profile = session.active_profile();
     let mut unhandled = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
+        if let NativeAction::StartPlayback { item } = &action {
+            state.player = Some(player::PlayerSession::new(item.clone()));
+            state.ui = UiTree::default();
+        }
         match session_commands(&action, &profile) {
             Some(commands) => {
                 for command in commands {
@@ -3113,5 +3189,28 @@ mod tests {
         assert!(
             session_commands(&NativeAction::SettingsSection { index: 2 }, &Value::Null).is_none()
         );
+    }
+
+    #[test]
+    fn detail_play_requests_direct_playback_with_the_full_item() {
+        let item = json!({"id": "tt1", "type": "movie", "lastVideoId": "tt1:1:2"});
+        let commands = session_commands(
+            &NativeAction::StartPlayback { item: item.clone() },
+            &json!({"language": "tr"}),
+        )
+        .unwrap();
+        assert_eq!(commands.len(), 1);
+        assert_eq!(commands[0]["type"], "directPlaybackRequested");
+        assert_eq!(commands[0]["meta"], item);
+        assert_eq!(commands[0]["language"], "tr");
+    }
+
+    #[test]
+    fn back_closes_player_instead_of_navigating() {
+        let host = FluxaHost::new(1.0, None);
+        host.with_state(|state| state.player = Some(player::PlayerSession::new(json!({}))));
+        host.key_down(KeyInput::Key(Key::Back));
+        assert!(!host.is_playing());
+        host.with_state(|state| assert!(state.pending_native_actions.is_empty()));
     }
 }
