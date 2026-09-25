@@ -13,6 +13,7 @@ mod components;
 mod detail;
 mod discover;
 mod library;
+mod player;
 mod settings;
 
 pub use calendar::draw_calendar;
@@ -20,6 +21,7 @@ pub use calendar::draw_calendar;
 pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use library::draw_library;
+pub use player::{draw_player, format_time, torrent_status_lines, PlayerModel};
 use settings::settings_card_height;
 pub use settings::{
     SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, draw_settings,
@@ -2137,6 +2139,7 @@ pub struct HomeLayout {
     pub filter_change: Option<(String, String)>,
     /// Core page requests generated when a shelf approaches its loaded end.
     pub load_more: Vec<serde_json::Value>,
+    pub seek_to: Option<f64>,
 }
 
 pub const NODE_HOME: u64 = 10;
@@ -2148,6 +2151,13 @@ pub const NODE_PLAY: u64 = 20;
 pub const NODE_MORE_INFO: u64 = 21;
 pub const NODE_LIBRARY_TAB_BASE: u64 = 30;
 pub const NODE_LIBRARY_SEARCH: u64 = 80;
+pub const NODE_PLAYER_CLOSE: u64 = 700;
+pub const NODE_PLAYER_TOGGLE: u64 = 701;
+pub const NODE_PLAYER_SEEK: u64 = 702;
+pub const NODE_PLAYER_REWIND: u64 = 703;
+pub const NODE_PLAYER_FORWARD: u64 = 704;
+pub const NODE_PLAYER_MUTE: u64 = 705;
+pub const NODE_PLAYER_FULLSCREEN: u64 = 706;
 pub const NODE_LIBRARY_SORT: u64 = 81;
 pub const NODE_LIBRARY_SOURCE: u64 = 82;
 pub const NODE_DISCOVER_TYPE_BASE: u64 = 40;
@@ -3622,6 +3632,7 @@ fn draw_home_with_options(
             setting_change: None,
             filter_change: None,
             load_more: Vec::new(),
+            seek_to: None,
         };
         let message = if home.is_loading {
             "Loading home data…"
