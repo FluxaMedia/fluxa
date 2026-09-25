@@ -12,11 +12,11 @@ use winit::{
     window::{CursorIcon, Fullscreen, Window, WindowId},
 };
 
-#[cfg(target_os = "linux")]
+#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
 mod mpv;
 
 #[cfg(target_os = "macos")]
-const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Metal];
+const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Metal];
 #[cfg(not(target_os = "macos"))]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
@@ -138,7 +138,7 @@ impl ApplicationHandler for App {
             data_dir.as_ref().map(|directory| directory.join("artwork-cache")),
         );
         host.set_form_factor("desktop");
-        #[cfg(target_os = "linux")]
+        #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
         host.set_video_backend(Box::new(mpv::MpvBackend::new()));
         match data_dir {
             Some(directory) => {

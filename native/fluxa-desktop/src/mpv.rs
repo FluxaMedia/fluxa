@@ -442,10 +442,11 @@ fn open_shared_device(
 ) -> Result<(wgpu::Device, wgpu::Queue), String> {
     let hal_adapter = unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }
         .ok_or_else(|| "wgpu adapter is not backed by Vulkan".to_owned())?;
-    let required = [
-        CStr::from_bytes_with_nul(b"VK_KHR_external_memory_fd\0").expect("extension name"),
-        CStr::from_bytes_with_nul(b"VK_KHR_external_semaphore_fd\0").expect("extension name"),
-    ];
+    let required: &[&CStr] = if cfg!(target_os = "linux") {
+        &[c"VK_KHR_external_memory_fd", c"VK_KHR_external_semaphore_fd"]
+    } else {
+        &[]
+    };
     let capabilities = hal_adapter.physical_device_capabilities();
     let missing = required
         .iter()
@@ -457,7 +458,7 @@ fn open_shared_device(
     }
     let callback = Box::new(
         move |args: wgpu::hal::vulkan::CreateDeviceCallbackArgs<'_, '_, '_>| {
-            for extension in required {
+            for &extension in required {
                 if !args.extensions.contains(&extension) {
                     args.extensions.push(extension);
                 }
