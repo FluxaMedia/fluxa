@@ -2902,15 +2902,7 @@ fn screen_margin(viewport: Viewport, metrics: UiMetrics) -> f32 {
     }
 }
 
-fn grid_row_count(count: usize, available_width: f32, card_width: f32, gap: f32) -> usize {
-    if count == 0 {
-        return 0;
-    }
-    let columns = ((available_width + gap) / (card_width + gap).max(1.0))
-        .floor()
-        .max(1.0) as usize;
-    count.div_ceil(columns)
-}
+pub(crate) const LIBRARY_CARD_LIMIT: usize = 240;
 
 fn discover_grid_geometry(
     available_width: f32,
@@ -2936,87 +2928,153 @@ fn mobile_scroll_reserve(viewport: Viewport) -> f32 {
     }
 }
 
-pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: LibraryTab) -> f32 {
-    let metrics = UiMetrics::for_viewport(viewport);
-    let margin = screen_margin(viewport, metrics);
-    let top = if viewport.is_compact() {
-        metrics.content_header_top_mobile
-    } else {
-        metrics.content_header_top
-    };
-    let tab_rows = if viewport.is_compact() {
-        1.0
-    } else if available_library_tab_width(viewport, metrics) < 800.0 {
-        2.0
-    } else {
-        1.0
-    };
-    let row_top = top
-        + metrics.screen_control_height
-        + metrics.section_gap
-        + tab_rows * (metrics.screen_control_height + metrics.control_gap)
-        + metrics.vertical_spacing;
-    let available = (viewport.width - margin * 2.0).max(1.0);
-    let card_width = metrics.poster_card_width.min(available.max(120.0));
-    let rows = grid_row_count(
-        library.cards(tab).len().min(64),
-        available,
-        card_width,
-        metrics.horizontal_spacing,
-    );
-    let content_height = rows as f32
-        * (metrics.poster_card_height
-            + metrics.screen_card_title_size
-            + metrics.screen_card_subtitle_size
-            + metrics.control_gap * 2.0)
-        + rows.saturating_sub(1) as f32 * metrics.vertical_spacing;
-    (row_top + content_height - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
+pub(crate) struct PageLayout {
+    pub margin: f32,
+    pub width: f32,
+    pub top: f32,
+    pub title_height: f32,
+    pub search: Rect,
+    pub filters_top: f32,
+    pub second_row_top: Option<f32>,
+    pub content_top: f32,
 }
 
-fn available_library_tab_width(viewport: Viewport, metrics: UiMetrics) -> f32 {
-    viewport.width - screen_margin(viewport, metrics) * 2.0
+impl PageLayout {
+    pub fn new(viewport: Viewport, metrics: UiMetrics, second_row: bool) -> Self {
+        let compact = viewport.is_compact();
+        let margin = screen_margin(viewport, metrics);
+        let width = (viewport.width - margin * 2.0).max(1.0);
+        let top = if compact {
+            metrics.content_header_top_mobile
+        } else {
+            metrics.content_header_top
+        };
+        let title_size = if compact {
+            metrics.screen_title_size_mobile
+        } else if viewport.is_tv() {
+            metrics.screen_title_size_tv
+        } else {
+            metrics.screen_title_size
+        };
+        let control = metrics.screen_control_height;
+        let search_height = control + 4.0;
+        let (title_height, search, filters_top) = if compact {
+            let title_height = title_size * 1.25;
+            let search_top = top + title_height + metrics.control_gap;
+            (
+                title_height,
+                Rect::from_min_size(
+                    Pos2::new(margin, search_top),
+                    Vec2::new(width, search_height),
+                ),
+                search_top + search_height + metrics.control_gap,
+            )
+        } else {
+            let title_height = (title_size * 1.25).max(search_height);
+            let search_width = (width * 0.36).clamp(220.0, 420.0);
+            (
+                title_height,
+                Rect::from_min_size(
+                    Pos2::new(
+                        margin + width - search_width,
+                        top + (title_height - search_height) * 0.5,
+                    ),
+                    Vec2::new(search_width, search_height),
+                ),
+                top + title_height + metrics.section_gap,
+            )
+        };
+        let second_row_top = second_row.then_some(filters_top + control + metrics.control_gap);
+        let content_top =
+            second_row_top.unwrap_or(filters_top) + control + metrics.section_gap * 1.5;
+        Self {
+            margin,
+            width,
+            top,
+            title_height,
+            search,
+            filters_top,
+            second_row_top,
+            content_top,
+        }
+    }
+}
+
+pub(crate) struct PosterGrid {
+    pub columns: usize,
+    pub card_width: f32,
+    pub poster_height: f32,
+    pub card_height: f32,
+    pub gap: f32,
+    pub row_gap: f32,
+}
+
+impl PosterGrid {
+    pub fn new(width: f32, metrics: UiMetrics) -> Self {
+        let gap = metrics.horizontal_spacing;
+        let (columns, card_width) = discover_grid_geometry(width, metrics.poster_card_width, gap);
+        let poster_height =
+            metrics.poster_card_height * (card_width / metrics.poster_card_width.max(1.0));
+        let card_height = poster_height
+            + metrics.control_gap * 2.0
+            + metrics.screen_card_title_size
+            + metrics.screen_card_subtitle_size;
+        Self {
+            columns,
+            card_width,
+            poster_height,
+            card_height,
+            gap,
+            row_gap: metrics.vertical_spacing * 1.4,
+        }
+    }
+
+    pub fn height(&self, count: usize) -> f32 {
+        let rows = count.div_ceil(self.columns);
+        rows as f32 * self.card_height + rows.saturating_sub(1) as f32 * self.row_gap
+    }
+
+    pub fn cell(&self, origin: Pos2, index: usize) -> Rect {
+        Rect::from_min_size(
+            origin
+                + Vec2::new(
+                    (index % self.columns) as f32 * (self.card_width + self.gap),
+                    (index / self.columns) as f32 * (self.card_height + self.row_gap),
+                ),
+            Vec2::new(self.card_width, self.card_height),
+        )
+    }
+}
+
+pub(crate) fn library_needs_second_row(viewport: Viewport, metrics: UiMetrics) -> bool {
+    viewport.is_compact() || viewport.width - screen_margin(viewport, metrics) * 2.0 < 1240.0
+}
+
+pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: LibraryTab) -> f32 {
+    let metrics = UiMetrics::for_viewport(viewport);
+    let page = PageLayout::new(
+        viewport,
+        metrics,
+        library_needs_second_row(viewport, metrics),
+    );
+    let grid = PosterGrid::new(page.width, metrics);
+    let content = grid.height(library.cards(tab).len().min(LIBRARY_CARD_LIMIT));
+    (page.content_top + content + metrics.section_gap
+        - (viewport.height - mobile_scroll_reserve(viewport)))
+    .max(0.0)
 }
 
 pub fn discover_scroll_max(viewport: Viewport, discover: &DiscoverModel) -> f32 {
     discover_scroll_max_for_result_count(viewport, discover.results.len())
 }
 
-/// Scroll extent for a Discover result count, without projecting Core's full
-/// result payload into UI cards. Hosts that only need scrollbar geometry
-/// should use this instead of rebuilding a DiscoverModel on every frame.
 pub fn discover_scroll_max_for_result_count(viewport: Viewport, result_count: usize) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
-    let margin = screen_margin(viewport, metrics);
-    let available = (viewport.width - margin * 2.0).max(1.0);
-    let top = if viewport.is_compact() {
-        metrics.content_header_top_mobile
-    } else {
-        metrics.content_header_top
-    };
-    let header_height = metrics
-        .screen_title_size_mobile
-        .max(metrics.screen_title_size)
-        * 1.25
-        + metrics.section_gap
-        + metrics.screen_control_height
-        + metrics.control_gap
-        + metrics.screen_control_height;
-    let row_top = top + header_height + 4.0;
-    let (columns, card_width) = discover_grid_geometry(
-        available,
-        metrics.poster_card_width,
-        metrics.horizontal_spacing,
-    );
-    let rows = result_count.div_ceil(columns);
-    let poster_height =
-        metrics.poster_card_height * (card_width / metrics.poster_card_width.max(1.0));
-    let card_height = poster_height
-        + metrics.control_gap * 2.0
-        + metrics.screen_card_title_size
-        + metrics.screen_card_subtitle_size;
-    let content_height =
-        rows as f32 * card_height + rows.saturating_sub(1) as f32 * metrics.vertical_spacing;
-    (row_top + content_height - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
+    let page = PageLayout::new(viewport, metrics, false);
+    let grid = PosterGrid::new(page.width, metrics);
+    (page.content_top + grid.height(result_count) + metrics.section_gap
+        - (viewport.height - mobile_scroll_reserve(viewport)))
+    .max(0.0)
 }
 
 pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 {

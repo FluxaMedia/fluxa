@@ -97,36 +97,134 @@ pub(super) fn empty_state(
     description: &str,
     metrics: UiMetrics,
 ) {
-    let icon_center = egui::Pos2::new(rect.left() + 15.0, rect.center().y);
-    if let Some(icon) = icon {
-        let icon_rect = Rect::from_center_size(icon_center, Vec2::splat(24.0));
-        texture_image(painter, icon, icon_rect, full_uv(), metrics.text_secondary);
-    }
-    let text_x = rect.left() + 38.0;
-    let text_width = (rect.right() - text_x).max(1.0);
+    let center = rect.center();
+    let icon_size = 36.0;
     let title_font = FontId::proportional(metrics.screen_section_title_size);
     let description_font = FontId::proportional(metrics.screen_body_size);
+    let mut y = center.y - (icon_size + metrics.section_gap + title_font.size * 2.6) * 0.5;
+    if let Some(icon) = icon {
+        let icon_rect = Rect::from_min_size(
+            egui::Pos2::new(center.x - icon_size * 0.5, y),
+            Vec2::splat(icon_size),
+        );
+        texture_image(painter, icon, icon_rect, full_uv(), metrics.text_muted);
+        y += icon_size + metrics.section_gap;
+    }
+    let width = rect.width() - metrics.section_gap * 2.0;
     painter.text(
-        egui::Pos2::new(text_x, icon_center.y - metrics.control_gap * 0.35),
-        Align2::LEFT_BOTTOM,
-        truncate_to_width(painter, title, &title_font, text_width),
-        title_font,
+        egui::Pos2::new(center.x, y),
+        Align2::CENTER_TOP,
+        truncate_to_width(painter, title, &title_font, width),
+        title_font.clone(),
         metrics.text_primary,
     );
     painter.text(
-        egui::Pos2::new(text_x, icon_center.y + metrics.control_gap * 0.3),
-        Align2::LEFT_TOP,
-        truncate_to_width(painter, description, &description_font, text_width),
+        egui::Pos2::new(center.x, y + title_font.size * 1.5),
+        Align2::CENTER_TOP,
+        truncate_to_width(painter, description, &description_font, width),
         description_font,
         metrics.text_secondary,
     );
+}
+
+pub(super) fn search_field(
+    ui: &mut Ui,
+    query: &mut String,
+    hint: &str,
+    width: f32,
+    height: f32,
+    metrics: UiMetrics,
+) -> Response {
+    let radius = height * 0.5;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+    ui.painter()
+        .rect_filled(rect, radius, Color32::from_white_alpha(12));
+    let icon_color = Color32::from_white_alpha(140);
+    let icon = egui::Pos2::new(rect.left() + radius, rect.center().y);
+    ui.painter().circle_stroke(
+        icon - Vec2::splat(1.5),
+        6.0,
+        egui::Stroke::new(1.6, icon_color),
+    );
+    ui.painter().line_segment(
+        [icon + Vec2::splat(3.0), icon + Vec2::splat(7.0)],
+        egui::Stroke::new(1.6, icon_color),
+    );
+    let text_rect = Rect::from_min_max(
+        egui::Pos2::new(rect.left() + radius + 16.0, rect.top()),
+        egui::Pos2::new(rect.right() - radius * 0.6, rect.bottom()),
+    );
+    let response = ui.put(
+        text_rect,
+        egui::TextEdit::singleline(query)
+            .frame(egui::Frame::NONE)
+            .font(FontId::proportional(metrics.screen_body_size + 1.0))
+            .vertical_align(egui::Align::Center)
+            .hint_text(RichText::new(hint).color(Color32::from_white_alpha(110)))
+            .text_color(Color32::WHITE)
+            .margin(Vec2::ZERO),
+    );
+    let stroke = if response.has_focus() {
+        egui::Stroke::new(1.0, Color32::from_white_alpha(120))
+    } else {
+        egui::Stroke::new(1.0, Color32::from_white_alpha(22))
+    };
+    ui.painter()
+        .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
+    response
+}
+
+pub(super) fn text_tabs(
+    ui: &mut Ui,
+    labels: &[String],
+    selected: usize,
+    height: f32,
+    metrics: UiMetrics,
+) -> Vec<Response> {
+    let font = FontId::proportional(metrics.nav_label_size + 1.0);
+    let gap = metrics.control_gap * 2.5;
+    let mut responses = Vec::with_capacity(labels.len());
+    ui.horizontal(|ui| {
+        ui.spacing_mut().item_spacing.x = gap;
+        for (index, label) in labels.iter().enumerate() {
+            let active = index == selected;
+            let galley = ui
+                .painter()
+                .layout_no_wrap(label.clone(), font.clone(), Color32::WHITE);
+            let (rect, response) =
+                ui.allocate_exact_size(Vec2::new(galley.size().x, height), Sense::click());
+            let color = if active {
+                Color32::WHITE
+            } else if response.hovered() {
+                Color32::from_white_alpha(200)
+            } else {
+                Color32::from_white_alpha(130)
+            };
+            ui.painter().galley(
+                egui::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
+                galley,
+                color,
+            );
+            if active {
+                ui.painter().rect_filled(
+                    Rect::from_min_max(
+                        egui::Pos2::new(rect.left(), rect.bottom() - 2.0),
+                        rect.right_bottom(),
+                    ),
+                    1.0,
+                    Color32::WHITE,
+                );
+            }
+            responses.push(response);
+        }
+    });
+    responses
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum ButtonKind {
     Primary,
     Secondary,
-    Subtle,
     Accent,
     Selected,
 }
@@ -187,12 +285,11 @@ pub(super) fn button_with_text_size(
     let fill = match kind {
         ButtonKind::Primary => metrics.accent,
         ButtonKind::Secondary => Color32::from_white_alpha(52),
-        ButtonKind::Subtle => Color32::from_white_alpha(24),
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent,
     };
     let text_color = match kind {
         ButtonKind::Primary => metrics.accent_foreground,
-        ButtonKind::Secondary | ButtonKind::Subtle => Color32::WHITE,
+        ButtonKind::Secondary => Color32::WHITE,
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent_foreground,
     };
     ui.add_sized(

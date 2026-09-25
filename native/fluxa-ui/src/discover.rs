@@ -49,111 +49,57 @@ pub fn draw_discover(
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 2, assets);
     let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
-    let margin = if compact {
-        metrics.page_padding
-    } else if tv {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics.screen_padding
-    };
-    let top = if compact {
-        metrics.content_header_top_mobile
-    } else {
-        metrics.content_header_top
-    };
-    let filter_row_width = (viewport.width - margin * 2.0).max(1.0);
+    let page = PageLayout::new(viewport, metrics, false);
+    let margin = page.margin;
+    let filter_row_width = page.width;
     let has_catalogs_for_type = discover
         .catalogs
         .iter()
         .any(|catalog| catalog.content_type == discover.content_type);
-    let mut header_bottom = top;
-    egui::Area::new(Id::new("fluxa-shared-discover-header"))
-        .order(egui::Order::Foreground)
-        .fixed_pos(Pos2::new(margin, top))
+    egui::Area::new(Id::new("fluxa-shared-discover-title"))
+        .fixed_pos(Pos2::new(margin, page.top))
         .show(context, |ui| {
-            ui.set_min_width(filter_row_width);
-            ui.set_max_width(filter_row_width);
-            ui.label(
-                RichText::new(localized("nav.discover", &discover.language))
-                    .size(if compact {
-                        metrics.screen_title_size_mobile
-                    } else if tv {
-                        metrics.screen_title_size_tv
-                    } else {
-                        metrics.screen_title_size
-                    })
-                    .strong()
-                    .color(Color32::WHITE),
-            );
-            ui.add_space(metrics.section_gap);
-            let search_width = filter_row_width;
-            let search_height =
-                metrics
-                    .screen_control_height
-                    .max(if compact { 48.0 } else { 52.0 });
+            ui.set_min_height(page.title_height);
+            ui.horizontal_centered(|ui| {
+                ui.label(
+                    RichText::new(localized("nav.discover", &discover.language))
+                        .size(if compact {
+                            metrics.screen_title_size_mobile
+                        } else if viewport.is_tv() {
+                            metrics.screen_title_size_tv
+                        } else {
+                            metrics.screen_title_size
+                        })
+                        .strong()
+                        .color(Color32::WHITE),
+                );
+            });
+        });
+    egui::Area::new(Id::new("fluxa-shared-discover-search"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(page.search.min)
+        .show(context, |ui| {
             let mut query = discover.query.clone();
-            let inner_width = (search_width - 28.0).max(1.0);
-            let search_frame = egui::Frame::new()
-                .fill(metrics.surface_raised)
-                .stroke(egui::Stroke::NONE)
-                .corner_radius(10.0)
-                .inner_margin(egui::Margin::symmetric(14, 0))
-                .show(ui, |ui| {
-                    ui.set_min_width(inner_width);
-                    ui.set_max_width(inner_width);
-                    ui.set_min_height(search_height);
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 12.0;
-                        let (icon_rect, _) =
-                            ui.allocate_exact_size(Vec2::new(20.0, search_height), Sense::hover());
-                        let icon_color = Color32::from_rgb(160, 165, 174);
-                        ui.painter().circle_stroke(
-                            icon_rect.center() - Vec2::new(1.5, 1.5),
-                            6.0,
-                            egui::Stroke::new(1.8, icon_color),
-                        );
-                        ui.painter().line_segment(
-                            [
-                                icon_rect.center() + Vec2::new(3.0, 3.0),
-                                icon_rect.center() + Vec2::new(7.0, 7.0),
-                            ],
-                            egui::Stroke::new(1.8, icon_color),
-                        );
-                        ui.add_sized(
-                            [(inner_width - 32.0).max(1.0), search_height],
-                            egui::TextEdit::singleline(&mut query)
-                                .frame(egui::Frame::NONE)
-                                .font(FontId::proportional(17.0))
-                                .vertical_align(egui::Align::Center)
-                                .hint_text(localized(
-                                    "search.placeholder_expanded",
-                                    &discover.language,
-                                ))
-                                .text_color(Color32::WHITE)
-                                .margin(Vec2::ZERO),
-                        )
-                    })
-                    .inner
-                });
-            let search = search_frame.inner;
-            let search_stroke = if search.has_focus() {
-                egui::Stroke::new(1.3, metrics.accent)
-            } else {
-                egui::Stroke::new(1.0, Color32::from_white_alpha(28))
-            };
-            ui.painter().rect_stroke(
-                search_frame.response.rect,
-                10.0,
-                search_stroke,
-                egui::StrokeKind::Inside,
+            let search = components::search_field(
+                ui,
+                &mut query,
+                &localized("search.placeholder_expanded", &discover.language),
+                page.search.width(),
+                page.search.height(),
+                metrics,
             );
             layout.focusable.push((NODE_DISCOVER_SEARCH, search.rect));
             if search.changed() {
                 layout.text_input = Some(query);
                 layout.text_input_node = Some(NODE_DISCOVER_SEARCH);
             }
-            ui.add_space(metrics.control_gap);
+        });
+    egui::Area::new(Id::new("fluxa-shared-discover-header"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(Pos2::new(margin, page.filters_top))
+        .show(context, |ui| {
+            ui.set_min_width(filter_row_width);
+            ui.set_max_width(filter_row_width);
             let catalogs = discover
                 .catalogs
                 .iter()
@@ -365,35 +311,23 @@ pub fn draw_discover(
                     layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
                 }
             };
-            if compact {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                    draw_filter_controls(ui);
-                });
-            } else {
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                    draw_filter_controls(ui);
-                });
-            }
-            header_bottom = ui.min_rect().bottom();
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                draw_filter_controls(ui);
+            });
         });
 
-    let results_width = (viewport.width - margin * 2.0).max(1.0);
-    let (_, card_width) = discover_grid_geometry(
-        results_width,
-        metrics.poster_card_width,
-        metrics.horizontal_spacing,
+    let results_width = page.width;
+    let grid = PosterGrid::new(results_width, metrics);
+    let card_width = grid.card_width;
+    let poster_height = grid.poster_height;
+    let card_height = grid.card_height;
+    let results_view_top = page.content_top;
+    painter.hline(
+        margin..=margin + page.width,
+        page.content_top - metrics.section_gap * 0.75,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(18)),
     );
-    let poster_height =
-        metrics.poster_card_height * (card_width / metrics.poster_card_width.max(1.0));
-    let card_height = poster_height
-        + metrics.control_gap * 2.0
-        + metrics.screen_card_title_size
-        + metrics.screen_card_subtitle_size;
-    // Discover already has a screen title; a second "Results" heading only
-    // pushes the poster grid down without adding useful hierarchy.
-    let results_view_top = header_bottom + 4.0;
     let results_clip = Rect::from_min_max(
         Pos2::new(margin, results_view_top),
         Pos2::new(
@@ -414,11 +348,8 @@ pub fn draw_discover(
             // both paint and hit targets so cards cannot bleed into controls.
             ui.set_clip_rect(ui.clip_rect().intersect(results_clip));
             let grid_top = row_top;
-            let columns = ((results_width + metrics.horizontal_spacing)
-                / (card_width + metrics.horizontal_spacing).max(1.0))
-            .floor()
-            .max(1.0) as usize;
-            let row_stride = card_height + metrics.vertical_spacing;
+            let columns = grid.columns;
+            let row_stride = card_height + grid.row_gap;
             let total_rows = discover.results.len().div_ceil(columns);
             let first_row = ((results_clip.top() - grid_top) / row_stride)
                 .floor()
@@ -430,8 +361,7 @@ pub fn draw_discover(
             let grid_height = if total_rows == 0 {
                 0.0
             } else {
-                total_rows as f32 * card_height
-                    + total_rows.saturating_sub(1) as f32 * metrics.vertical_spacing
+                grid.height(discover.results.len())
             };
 
             // The document uses an explicit scroll offset, so ordinary wrapped
@@ -447,7 +377,7 @@ pub fn draw_discover(
                     };
                     let rect = Rect::from_min_size(
                         Pos2::new(
-                            margin + column as f32 * (card_width + metrics.horizontal_spacing),
+                            margin + column as f32 * (card_width + grid.gap),
                             grid_top + row as f32 * row_stride,
                         ),
                         Vec2::new(card_width, card_height),
@@ -517,9 +447,6 @@ pub fn draw_discover(
             ui.allocate_space(Vec2::new(results_width, grid_height));
         });
     if discover.results.is_empty() {
-        let state_width = (viewport.width - margin * 2.0).min(760.0).max(1.0);
-        let state_height = 72.0;
-        let state_top = row_top + metrics.control_gap;
         let title = if discover.is_loading || discover.catalogs_loading {
             localized("common.loading", &discover.language)
         } else if discover.error.is_some() {
@@ -543,13 +470,10 @@ pub fn draw_discover(
                     )
                 }
             });
-        let state_rect = Rect::from_min_size(
-            Pos2::new(margin, state_top),
-            Vec2::new(state_width, state_height),
-        );
-        if state_rect.intersect(results_clip).is_positive() {
+        let state_rect = results_clip;
+        {
             components::empty_state(
-                &painter.with_clip_rect(results_clip),
+                &painter,
                 state_rect,
                 if discover.catalogs.is_empty() {
                     assets.icon("Discover")

@@ -538,7 +538,8 @@ fn library_cards_scroll_without_moving_tabs_or_navigation() {
     };
 
     assert!(
-        (rect(&first, NODE_CARD_BASE).top() - rect(&scrolled, NODE_CARD_BASE).top() - 52.0).abs()
+        (rect(&first, NODE_CARD_BASE).bottom() - rect(&scrolled, NODE_CARD_BASE).bottom() - 52.0)
+            .abs()
             < 0.01
     );
     assert_eq!(
@@ -945,18 +946,6 @@ fn mobile_discover_search_sits_above_three_horizontal_filters() {
 }
 
 #[test]
-fn discover_poster_grid_adapts_columns_to_available_width() {
-    let phone_rows = grid_row_count(12, 328.0, 136.0, 12.0);
-    let tablet_rows = grid_row_count(12, 760.0, 160.0, 12.0);
-
-    assert_eq!(phone_rows, 6, "phone layout should fit two posters per row");
-    assert_eq!(
-        tablet_rows, 3,
-        "tablet layout should fit four posters per row"
-    );
-}
-
-#[test]
 fn discover_grid_fills_width_and_starts_after_filters() {
     let viewport = Viewport::new(1880, 920, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
@@ -998,7 +987,7 @@ fn discover_grid_fills_width_and_starts_after_filters() {
     };
     let poster_gap = rect(NODE_CARD_BASE).top() - rect(NODE_DISCOVER_EXTRA).bottom();
     assert!(
-        poster_gap > 0.0 && poster_gap <= 8.0,
+        poster_gap > 0.0 && poster_gap <= metrics.section_gap * 2.0,
         "poster gap is {poster_gap}px"
     );
     assert!(
@@ -1379,3 +1368,4 @@ fn settings_row_labels_reuse_existing_web_translations() {
         localized("settings.seek_thumbnails", "tr")
     );
 }
+
