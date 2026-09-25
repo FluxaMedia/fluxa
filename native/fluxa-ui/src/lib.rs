@@ -3805,6 +3805,9 @@ fn draw_home_with_options(
                         } else {
                             (metrics.horizontal_card_width * 0.46).max(160.0)
                         };
+                        if compact {
+                            ui.add_space(((ui.available_width() - play_width) * 0.5).max(0.0));
+                        }
                         if components::button(
                             ui,
                             "View Details",

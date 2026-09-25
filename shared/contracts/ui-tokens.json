@@ -430,7 +430,7 @@
         "border": "#FFFFFF14",
         "borderStrong": "#FFFFFF29",
         "accent": "#FFFFFF",
-        "accentForeground": "#FFFFFF",
+        "accentForeground": "#060606",
         "success": "#45D483",
         "warning": "#F0C674",
         "error": "#FF6B6B",
