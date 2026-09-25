@@ -602,7 +602,7 @@ pub fn home_model_from_core_snapshot(
             .unwrap_or(false),
         title: first_value_string(billboard, &["name", "title"])
             .unwrap_or_else(|| "Recommended".to_owned()),
-        eyebrow: hero_meta_line(billboard),
+        eyebrow: hero_meta_line(billboard, &snapshot_language(snapshot)),
         description: first_value_string(billboard, &["description", "overview"])
             .unwrap_or_else(|| "Your connected catalogs will appear here.".to_owned()),
         background_url: first_value_string(
@@ -671,7 +671,7 @@ pub fn home_model_from_core_snapshot(
             .into_iter()
             .flatten(),
     ) {
-        let hero = core_home_hero(item);
+        let hero = core_home_hero(item, &snapshot_language(snapshot));
         let key = hero
             .item_id
             .clone()
@@ -769,10 +769,10 @@ pub fn home_model_from_core_snapshot(
     model
 }
 
-fn core_home_hero(item: &serde_json::Value) -> HomeHero {
+fn core_home_hero(item: &serde_json::Value, language: &str) -> HomeHero {
     HomeHero {
         title: first_value_string(item, &["name", "title"]).unwrap_or_default(),
-        eyebrow: hero_meta_line(item),
+        eyebrow: hero_meta_line(item, language),
         description: first_value_string(item, &["description", "overview"]).unwrap_or_default(),
         background_url: first_value_string(
             item,
@@ -1328,13 +1328,12 @@ fn first_value_string(value: &serde_json::Value, keys: &[&str]) -> Option<String
     keys.iter().find_map(|key| value_string(value, key))
 }
 
-fn hero_meta_line(value: &serde_json::Value) -> String {
-    let kind = match value_string(value, "type").as_deref() {
-        Some("series") | Some("tv") | Some("show") => "TV",
-        Some("movie") => "Movie",
-        Some("tv_movie") | Some("tvMovie") => "TV Movie",
-        _ => "",
-    };
+fn hero_meta_line(value: &serde_json::Value, language: &str) -> String {
+    let series = matches!(
+        value_string(value, "type").as_deref(),
+        Some("series" | "tv" | "show")
+    )
+    .then(|| localized("auto.series", language));
     let year = value
         .get("year")
         .and_then(serde_json::Value::as_i64)
@@ -1354,12 +1353,13 @@ fn hero_meta_line(value: &serde_json::Value) -> String {
             genres
                 .iter()
                 .filter_map(serde_json::Value::as_str)
+                .filter(|genre| !genre.eq_ignore_ascii_case("tv movie"))
                 .take(2)
                 .collect::<Vec<_>>()
-                .join(" · ")
+                .join(", ")
         })
         .filter(|genres| !genres.is_empty());
-    [Some(kind.to_owned()), genres, year, runtime]
+    [series, year, runtime, genres]
         .into_iter()
         .flatten()
         .filter(|part| !part.is_empty())
@@ -2296,7 +2296,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             .unwrap_or(false),
         title: first_value_string(meta, &["name", "title"])
             .unwrap_or_else(|| "Title details".to_owned()),
-        meta_line: hero_meta_line(meta),
+        meta_line: hero_meta_line(meta, &snapshot_language(snapshot)),
         description: first_value_string(meta, &["description", "overview", "plot"])
             .unwrap_or_else(|| "No description available.".to_owned()),
         poster_url: first_value_string(
@@ -3736,7 +3736,7 @@ fn draw_home_with_options(
             + if compact {
                 26.0
             } else {
-                18.0 + synopsis_button_gap
+                20.0 + synopsis_button_gap
             };
         let content_top = (hero_height - bottom_padding - block_height).max(if compact {
             16.0
@@ -3830,7 +3830,7 @@ fn draw_home_with_options(
                             Color32::WHITE,
                         );
                     }
-                    ui.add_space(if compact { 6.0 } else { 8.0 });
+                    ui.add_space(if compact { 6.0 } else { 16.0 });
                     if !hero.eyebrow.is_empty() {
                         let metadata_rect = ui
                             .allocate_exact_size(
@@ -3858,7 +3858,7 @@ fn draw_home_with_options(
                             Color32::from_white_alpha(185),
                         );
                     }
-                    ui.add_space(if compact { 6.0 } else { 10.0 });
+                    ui.add_space(if compact { 6.0 } else { 4.0 });
                     if let Some(galley) = synopsis_galley.as_ref() {
                         let synopsis_rect = ui
                             .allocate_exact_size(

@@ -85,7 +85,7 @@ fn core_snapshot_projection_keeps_home_rows_and_progress() {
     );
 
     assert_eq!(model.title, "Featured");
-    assert_eq!(model.eyebrow, "Movie · Drama · 2026");
+    assert_eq!(model.eyebrow, "2026 · Drama");
     assert_eq!(model.item_id.as_deref(), Some("tt42"));
     assert_eq!(model.form_factor, UiFormFactorJson::Tv);
     assert_eq!(model.cards[0].progress, 0.25);
@@ -1107,7 +1107,7 @@ fn responsive_metrics_are_loaded_from_shared_token_contract() {
     assert_eq!(desktop.settings_extended_line_spacing_tv, 42.0);
     assert_eq!(desktop.home_hero_content_max_width_desktop, 980.0);
     assert_eq!(desktop.home_hero_logo_max_width_desktop, 820.0);
-    assert_eq!(desktop.home_hero_synopsis_size_desktop, 20.0);
+    assert_eq!(desktop.home_hero_synopsis_size_desktop, 16.0);
     assert_eq!(desktop.settings_nav_width, 268.0);
     assert_eq!(desktop.settings_content_offset, 300.0);
     assert_eq!(desktop.settings_content_max_width_desktop, 2400.0);
