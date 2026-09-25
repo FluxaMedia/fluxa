@@ -2692,11 +2692,12 @@ fn draw_navigation_bar_with_profile(
                             Vec2::new(profile_width, NAV_ITEM_HEIGHT),
                             Sense::click(),
                         );
-                        if response.hovered() {
+                        let profile_active = active_route == 4;
+                        if profile_active || response.hovered() {
                             ui.painter().rect_filled(
                                 rect,
                                 NAV_ITEM_HEIGHT * 0.5,
-                                Color32::from_white_alpha(12),
+                                Color32::from_white_alpha(if profile_active { 28 } else { 12 }),
                             );
                         }
                         let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
@@ -2728,7 +2729,7 @@ fn draw_navigation_bar_with_profile(
                                 rect.right() - 12.0 - label_left,
                             ),
                             font.clone(),
-                            if response.hovered() {
+                            if profile_active || response.hovered() {
                                 Color32::WHITE
                             } else {
                                 Color32::from_white_alpha(200)
