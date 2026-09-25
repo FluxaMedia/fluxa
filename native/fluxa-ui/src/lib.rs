@@ -1747,7 +1747,7 @@ impl UiMetrics {
             home_hero_logo_max_width_desktop: common_dp("homeHeroLogoMaxWidthDesktop", 820.0),
             home_hero_logo_height_desktop: common_dp("homeHeroLogoHeightDesktop", 148.0),
             home_hero_synopsis_height_desktop: common_dp("homeHeroSynopsisHeightDesktop", 88.0),
-            home_hero_synopsis_size_desktop: common_sp("homeHeroSynopsisSizeDesktop", 20.0),
+            home_hero_synopsis_size_desktop: common_sp("homeHeroSynopsisSizeDesktop", 16.0),
             library_search_reserved_width: common_dp("librarySearchReservedWidth", 150.0),
             library_search_min_width: common_dp("librarySearchMinWidth", 100.0),
             library_search_max_width: common_dp("librarySearchMaxWidth", 360.0),
@@ -3708,13 +3708,9 @@ fn draw_home_with_options(
         let synopsis_width = if compact {
             hero_width
         } else {
-            (hero_width * 0.68).max(440.0).min(hero_width)
+            (hero_width * 0.4).clamp(380.0, 560.0).min(hero_width)
         };
-        let synopsis_color = if compact {
-            Color32::from_white_alpha(210)
-        } else {
-            Color32::WHITE
-        };
+        let synopsis_color = Color32::from_white_alpha(200);
         let synopsis_galley = if hero.description.is_empty() {
             None
         } else {
@@ -3724,15 +3720,15 @@ fn draw_home_with_options(
                 synopsis_color,
                 synopsis_width,
             );
-            job.wrap.max_rows = if compact { 2 } else { 4 };
+            job.wrap.max_rows = if compact { 2 } else { 3 };
             job.wrap.overflow_character = Some('…');
             Some(context.fonts_mut(|fonts| fonts.layout_job(job)))
         };
         let synopsis_height = synopsis_galley
             .as_ref()
             .map_or(0.0, |galley| galley.size().y);
-        let play_height = if compact { 42.0 } else { 50.0 };
-        let synopsis_button_gap = if compact { 8.0 } else { 14.0 };
+        let play_height = if compact { 42.0 } else { 44.0 };
+        let synopsis_button_gap = if compact { 8.0 } else { 22.0 };
         let block_height = title_height
             + metadata_height
             + synopsis_height
@@ -3773,7 +3769,7 @@ fn draw_home_with_options(
                         } else if tv {
                             380.0
                         } else {
-                            metrics.home_hero_logo_max_width_desktop
+                            metrics.home_hero_logo_max_width_desktop.min(460.0)
                         },
                         (title_height - logo_inset * 2.0).max(1.0),
                     );
@@ -3807,7 +3803,7 @@ fn draw_home_with_options(
                             let logo_x = if compact {
                                 title_rect.center().x - size.x * 0.5
                             } else {
-                                title_rect.left() + logo_inset
+                                title_rect.left()
                             };
                             let logo_rect = Rect::from_min_size(
                                 Pos2::new(logo_x, title_rect.center().y - size.y * 0.5),
@@ -3849,9 +3845,9 @@ fn draw_home_with_options(
                             egui::FontId::proportional(if tv {
                                 metrics.nav_label_size + 4.0
                             } else {
-                                metrics.nav_label_size + 2.0
+                                metrics.nav_label_size
                             }),
-                            Color32::from_white_alpha(220),
+                            Color32::from_white_alpha(150),
                         );
                     }
                     ui.add_space(if compact { 6.0 } else { 10.0 });
@@ -3878,7 +3874,7 @@ fn draw_home_with_options(
                         let play_width = if compact {
                             108.0
                         } else {
-                            (metrics.horizontal_card_width * 0.46).max(160.0)
+                            140.0
                         };
                         if compact {
                             ui.add_space(((ui.available_width() - play_width) * 0.5).max(0.0));
