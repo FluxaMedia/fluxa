@@ -10,11 +10,14 @@ enum FluxaHeadlessActionType {
     static let detailSelectedAddonChanged = "detailSelectedAddonChanged"
     static let metaDetailRequested = "metaDetailRequested"
     static let directPlaybackRequested = "directPlaybackRequested"
+    static let continueWatchingPlaybackRequested = "continueWatchingPlaybackRequested"
     static let introSegmentsRequested = "introSegmentsRequested"
     static let introImdbIdRequested = "introImdbIdRequested"
     static let playerLoadStreamsRequested = "playerLoadStreamsRequested"
     static let playerStreamsLoaded = "playerStreamsLoaded"
     static let playerStreamsFailed = "playerStreamsFailed"
+    static let playerResetForEpisode = "playerResetForEpisode"
+    static let playerTelemetryUpdated = "playerTelemetryUpdated"
     static let playerResolvePlaybackRequested = "playerResolvePlaybackRequested"
     static let scrobbleRequested = "scrobbleRequested"
     static let profileActivated = "profileActivated"
@@ -64,11 +67,14 @@ enum FluxaHeadlessActionType {
         detailSelectedAddonChanged,
         metaDetailRequested,
         directPlaybackRequested,
+        continueWatchingPlaybackRequested,
         introSegmentsRequested,
         introImdbIdRequested,
         playerLoadStreamsRequested,
         playerStreamsLoaded,
         playerStreamsFailed,
+        playerResetForEpisode,
+        playerTelemetryUpdated,
         playerResolvePlaybackRequested,
         scrobbleRequested,
         profileActivated,

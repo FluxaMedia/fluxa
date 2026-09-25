@@ -43,7 +43,6 @@ final class FluxaTvosHomeModel: ObservableObject {
     @Published private(set) var isLoading = false
 
     private let coordinator: FluxaAppleHeadlessCoordinator
-    private let resourceLoader = FluxaAppleAddonResourceLoader()
 
     init(runtime: FluxaAppleHeadlessRuntime) {
         let configurationStore = FluxaAppleAddonConfigurationStore()
@@ -75,38 +74,68 @@ final class FluxaTvosHomeModel: ObservableObject {
     }
 
     func playbackOptions(for item: Item, contentId: String) async -> [Playback] {
-        guard let addon = item.addonTransportUrl else { return [] }
-        guard let streams = try? await resourceLoader.loadDirectStreams(
-            transportUrl: addon,
-            contentType: item.type,
-            id: contentId
-        ) else { return [] }
-        let subtitles = (try? await resourceLoader.loadSubtitleUrls(
-            transportUrl: addon,
-            contentType: item.type,
-            id: contentId
-        )) ?? []
-        let subtitleUrls = subtitles.compactMap(URL.init(string:))
-        return streams.compactMap { stream in
-            guard let url = URL(string: stream.playableUrl) else { return nil }
-            return Playback(
-                url: url,
-                title: item.title,
-                streamTitle: stream.title,
-                headers: decodeHeaders(stream.requestHeadersJson),
-                subtitleUrls: subtitleUrls
+        let preferredAddons = item.addonTransportUrl.map { [$0] } ?? []
+        let action: [String: Any] = [
+            "type": FluxaHeadlessActionType.detailStreamsRequested,
+            "contentType": item.type,
+            "requestIds": [contentId],
+            "detail": NSNull(),
+            "seasonEpisodes": [],
+            "language": "en",
+            "profile": [
+                "id": "apple-default",
+                "localAddons": preferredAddons
+            ]
+        ]
+        do {
+            let data = try JSONSerialization.data(withJSONObject: action)
+            let result = try await coordinator.dispatch(
+                actionJson: String(decoding: data, as: UTF8.self)
             )
+            guard case .object(let detail)? = result.state["detail"],
+                  case .array(let streams)? = detail["streams"] else {
+                return []
+            }
+            return streams.compactMap { stream in
+                guard case .object(let fields) = stream,
+                      let urlString = text(fields["playableUrl"]) ?? text(fields["url"]),
+                      let url = URL(string: urlString) else {
+                    return nil
+                }
+                let subtitleUrls: [URL] = {
+                    guard case .array(let raw)? = fields["subtitleUrls"] else { return [] }
+                    return raw.compactMap { text($0).flatMap(URL.init(string:)) }
+                }()
+                return Playback(
+                    url: url,
+                    title: item.title,
+                    streamTitle: text(fields["title"]) ?? text(fields["name"]) ?? "",
+                    headers: decodeHeaders(text(fields["requestHeadersJson"]) ?? "{}"),
+                    subtitleUrls: subtitleUrls
+                )
+            }
+        } catch {
+            return []
         }
     }
 
     func detail(for item: Item) async -> Detail? {
-        guard let addon = item.addonTransportUrl,
-              let meta = try? await resourceLoader.loadMeta(
-                  transportUrl: addon,
-                  contentType: item.type,
-                  id: item.id
+        let action: [String: Any] = [
+            "type": FluxaHeadlessActionType.metaDetailRequested,
+            "contentType": item.type,
+            "id": item.id,
+            "language": "en",
+            "profile": [
+                "id": "apple-default",
+                "localAddons": item.addonTransportUrl.map { [$0] } ?? []
+            ]
+        ]
+        guard let data = try? JSONSerialization.data(withJSONObject: action),
+              let result = try? await coordinator.dispatch(
+                  actionJson: String(decoding: data, as: UTF8.self)
               ),
-              case .object(let object) = meta else {
+              case .object(let lookup)? = result.state["lookup"],
+              case .object(let object)? = lookup["metaDetail"] else {
             return nil
         }
         let episodes: [Episode]

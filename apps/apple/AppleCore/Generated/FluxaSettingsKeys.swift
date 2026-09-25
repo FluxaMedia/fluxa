@@ -86,6 +86,7 @@ enum FluxaSettingsKey {
     static let mpvCustomOptions = "mpvCustomOptions"
     static let navBarPosition = "navBarPosition"
     static let navItemsAlign = "navItemsAlign"
+    static let navMode = "navMode"
     static let navLayout = "navLayout"
     static let navSidebarMode = "navSidebarMode"
     static let nextEpisodeThresholdPercent = "nextEpisodeThresholdPercent"

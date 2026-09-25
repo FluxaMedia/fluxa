@@ -1,7 +1,7 @@
 import Foundation
 
 enum FluxaUiTokens {
-    static let schemaVersion = 2
+    static let schemaVersion = 3
     static let colorBackground = "#060606"
     static let colorSurface = "#141416"
     static let colorSurfaceRaised = "#1C1C1F"

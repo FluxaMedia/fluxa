@@ -38,6 +38,20 @@ final class FluxaAppleAddonResourceLoader {
         return try FluxaAppleJsonValue(any: meta)
     }
 
+    func loadMeta(url: String) async throws -> FluxaAppleJsonValue {
+        guard let url = URL(string: url) else { throw URLError(.badURL) }
+        let (data, response) = try await session.data(from: url)
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        let root = try JSONSerialization.jsonObject(with: data)
+        guard let object = root as? [String: Any], let meta = object["meta"] else {
+            throw URLError(.cannotParseResponse)
+        }
+        return try FluxaAppleJsonValue(any: meta)
+    }
+
 
     func loadSubtitleUrls(
         transportUrl: String,

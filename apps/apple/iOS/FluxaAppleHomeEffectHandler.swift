@@ -5,7 +5,7 @@ import FluxaShared
 final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
     private let configurationStore: FluxaAppleAddonConfigurationStore
     private let catalogService: FluxaAppleCatalogService
-    private let addonResourceLoader: FluxaAppleAddonResourceLoader
+    private let streamEffectService: FluxaAppleAddonStreamEffectService
     private let libraryStore: FluxaAppleLibraryStore
     private let tmdbService: FluxaAppleTmdbService
 
@@ -18,7 +18,10 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
     ) {
         self.configurationStore = configurationStore
         self.catalogService = catalogService
-        self.addonResourceLoader = addonResourceLoader
+        self.streamEffectService = FluxaAppleAddonStreamEffectService(
+            configurationStore: configurationStore,
+            addonResourceLoader: addonResourceLoader
+        )
         self.libraryStore = libraryStore
         self.tmdbService = tmdbService
     }
@@ -40,9 +43,15 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         case FluxaHeadlessEffectType.refreshContinueWatching:
             return .object(["continueWatching": .array([])])
         case FluxaHeadlessEffectType.fetchMetaDetail:
-            return try await loadMeta(effect: effect)
+            return try await streamEffectService.execute(effect: effect)
+        case FluxaHeadlessEffectType.fetchMetaDetailLookup:
+            return try await streamEffectService.execute(effect: effect)
         case FluxaHeadlessEffectType.fetchDetailSecondary:
             return try await loadDetailSecondary(effect: effect)
+        case FluxaHeadlessEffectType.fetchDetailStreams:
+            return try await streamEffectService.execute(effect: effect)
+        case FluxaHeadlessEffectType.prefetchNextEpisodeStreams:
+            return try await streamEffectService.execute(effect: effect)
         case FluxaHeadlessEffectType.runSearch:
             return try await runSearch(effect: effect)
         case FluxaHeadlessEffectType.runDiscover:
@@ -50,18 +59,19 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
         case FluxaHeadlessEffectType.readDiscoverCatalogFilters:
             return try await readDiscoverCatalogFilters(effect: effect)
         case FluxaHeadlessEffectType.readLibraryState:
-            return .object([
-                "watchlist": .array(libraryStore.watchlist()),
-                "continueWatching": .array([]),
-                "liked": .array([]),
-                "watched": .object([:])
-            ])
+            return libraryStore.snapshot()
         case FluxaHeadlessEffectType.readCalendarMonth:
             return .object(["items": .array([])])
         case FluxaHeadlessEffectType.writeLibraryCommand:
             return try writeLibraryCommand(effect: effect)
         case FluxaHeadlessEffectType.readPlaybackProgress:
             return .null
+        case FluxaHeadlessEffectType.fetchSubtitles:
+            guard case .object(let payload) = effect.payload,
+                  let stream = payload["stream"] else {
+                return .object(["subtitles": .array([])])
+            }
+            return FluxaCoreStremio.streamSubtitlesResult(stream: stream)
         default:
             throw NSError(domain: "FluxaAppleUnsupportedEffect", code: 1)
         }
@@ -100,24 +110,6 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             return nil
         }
         return text
-    }
-
-    private func loadMeta(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
-        guard case .object(let payload) = effect.payload,
-              let contentType = string(payload["contentType"]),
-              let id = string(payload["id"]) else {
-            throw URLError(.cannotParseResponse)
-        }
-        let transportUrl = string(payload["sourceAddonTransportUrl"])
-            ?? configurationStore.enabledAddonUrls().first
-        guard let transportUrl else {
-            throw URLError(.fileDoesNotExist)
-        }
-        return try await addonResourceLoader.loadMeta(
-            transportUrl: transportUrl,
-            contentType: contentType,
-            id: id
-        )
     }
 
     private func loadDetailSecondary(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
@@ -160,95 +152,105 @@ final class FluxaAppleHomeEffectHandler: FluxaApplePlatformEffectHandler {
             }
             return value
         }()
-        let selectedCatalogKey = string(filters["catalogKey"])
-        let genre = string(filters["genre"])
-        let catalogs = try await catalogService.resolveDiscoverCatalogs(
-            addonUrls: configurationStore.enabledAddonUrls(),
-            contentType: contentType
-        )
-        let selectedCatalogs = selectedCatalogKey.map { key in catalogs.filter { $0.key == key } } ?? []
-        let catalogsToLoad = selectedCatalogs.isEmpty ? catalogs : selectedCatalogs
-        let requests = catalogsToLoad.compactMap { catalog -> FluxaAppleCatalogRequest? in
-            guard let url = catalogService.discoverUrl(
-                transportUrl: catalog.transportUrl,
-                contentType: catalog.contentType,
-                catalogId: catalog.catalogId,
-                genre: genre
-            ) else {
-                return nil
-            }
-            return FluxaAppleCatalogRequest(
-                id: catalog.key,
-                title: catalog.label,
-                url: url,
-                contentType: catalog.contentType,
-                addonTransportUrl: catalog.transportUrl,
-                catalogType: catalog.contentType
-            )
+        guard let filterData = try? JSONEncoder().encode(FluxaAppleJsonValue.object(filters)),
+              let coreFilters = try? JSONSerialization.jsonObject(with: filterData) as? [String: Any] else {
+            throw URLError(.cannotParseResponse)
         }
-        let rows = try await catalogService.loadRows(requests: requests)
-        let items = rows.flatMap(\.items)
-        return .object([
-            "results": .array(items.map(homeMeta)),
-            "resultSources": .object([:])
-        ])
+        guard let sourceRequests = FluxaCoreStremio.discoverSourceRequests(
+            contentType: contentType,
+            filters: coreFilters
+        ) else { throw URLError(.cannotParseResponse) }
+        let requestsWithSources = sourceRequests.compactMap { source -> (FluxaAppleCatalogRequest, [String: Any])? in
+            guard let transportUrl = source["transportUrl"] as? String,
+                  let requestType = source["type"] as? String,
+                  let catalogId = source["catalogId"] as? String,
+                  let rawUrl = FluxaCoreStremio.resourceUrl(
+                    transportUrl: transportUrl,
+                    resource: "catalog",
+                    contentType: requestType,
+                    id: catalogId,
+                    extra: (source["extra"] as? [String: Any] ?? [:]).compactMapValues { value in
+                        if let value = value as? String { return value }
+                        if let value = value as? NSNumber { return value.stringValue }
+                        return nil
+                    }
+                  ),
+                  let url = URL(string: rawUrl) else { return nil }
+            let request = FluxaAppleCatalogRequest(
+                id: "\(transportUrl)|\(catalogId)|\(requestType)",
+                title: catalogId,
+                url: url,
+                contentType: requestType,
+                addonTransportUrl: transportUrl,
+                catalogType: requestType
+            )
+            return (request, source)
+        }
+        let requests = requestsWithSources.map(\.0)
+        let rows = (try? await catalogService.loadRows(requests: requests)) ?? []
+        let sourcesByRequestId = Dictionary(uniqueKeysWithValues: requestsWithSources.map { ($0.0.id, $0.1) })
+        let sources = rows.map { row -> [String: Any] in
+            let request = requestsWithSources.first { $0.0.id == row.id }?.0
+            let sourceRequest = sourcesByRequestId[row.id] ?? [:]
+            let sourceExtra = sourceRequest["extra"] as? [String: Any] ?? [:]
+            return [
+                "transportUrl": sourceRequest["transportUrl"] as? String ?? request?.addonTransportUrl ?? "",
+                "catalogId": sourceRequest["catalogId"] as? String ?? "",
+                "type": sourceRequest["type"] as? String ?? request?.catalogType ?? row.items.first?.type ?? contentType,
+                "genre": sourceExtra["genre"] as Any? ?? NSNull(),
+                "items": row.items.map { item in
+                    [
+                        "id": item.id,
+                        "type": item.type,
+                        "name": item.title,
+                        "releaseInfo": item.subtitle,
+                        "poster": item.artworkUrl as Any? ?? NSNull(),
+                        "logo": item.logoUrl as Any? ?? NSNull(),
+                        "addonTransportUrl": item.addonTransportUrl as Any? ?? NSNull(),
+                        "catalogType": item.catalogType as Any? ?? NSNull()
+                    ]
+                }
+            ]
+        }
+        guard let merged = FluxaCoreStremio.mergeDiscoverSources(sources),
+              JSONSerialization.isValidJSONObject(merged),
+              let data = try? JSONSerialization.data(withJSONObject: merged),
+              let result = try? JSONDecoder().decode(FluxaAppleJsonValue.self, from: data) else {
+            throw URLError(.cannotParseResponse)
+        }
+        return result
     }
 
     private func readDiscoverCatalogFilters(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
-        guard case .object(let payload) = effect.payload,
-              let contentType = string(payload["contentType"]) else {
+        guard case .object(let payload) = effect.payload else {
             throw URLError(.cannotParseResponse)
         }
-        let selectedCatalogKey = string(payload["selectedCatalogKey"])
-        let catalogs = try await catalogService.resolveDiscoverCatalogs(
-            localAddonUrls: configurationStore.enabledAddonUrls(),
-            contentType: contentType
+        let profileAddonUrls: [String] = {
+            guard case .object(let profile)? = payload["profile"],
+                  case .array(let values)? = profile["localAddons"] else {
+                return []
+            }
+            return values.compactMap { string($0) }.filter { !$0.isEmpty }
+        }()
+        let addonUrls = (profileAddonUrls + configurationStore.enabledAddonUrls()).reduce(into: [String]()) {
+            if !$0.contains($1) { $0.append($1) }
+        }
+        let descriptors = try await catalogService.loadAddonDescriptors(
+            addonUrls: addonUrls
         )
-        let selectedCatalog = catalogs.first { $0.key == selectedCatalogKey }
-        let genres = selectedCatalog.map { catalog in
-            catalog.requiresGenre ? catalog.genres : [""] + catalog.genres
-        } ?? []
-        return .object([
-            "catalogs": .array(catalogs.map(discoverCatalog)),
-            "genres": .array(genres.map { genre in
-                .object([
-                    "id": genre.isEmpty ? .null : .string(genre),
-                    "label": .string(genre)
-                ])
-            })
-        ])
-    }
-
-    private func discoverCatalog(_ catalog: FluxaAppleDiscoverCatalog) -> FluxaAppleJsonValue {
-        .object([
-            "key": .string(catalog.key),
-            "label": .string(catalog.label),
-            "transportUrl": .string(catalog.transportUrl),
-            "type": .string(catalog.contentType),
-            "id": .string(catalog.catalogId),
-            "genres": .array(catalog.genres.map(FluxaAppleJsonValue.string)),
-            "requiresGenre": .boolean(catalog.requiresGenre)
-        ])
+        guard JSONSerialization.isValidJSONObject(descriptors),
+              let data = try? JSONSerialization.data(withJSONObject: descriptors),
+              let value = try? JSONDecoder().decode(FluxaAppleJsonValue.self, from: data) else {
+            throw URLError(.cannotParseResponse)
+        }
+        return .object(["addons": value])
     }
 
     private func writeLibraryCommand(effect: FluxaAppleHeadlessEffect) throws -> FluxaAppleJsonValue {
         guard case .object(let payload) = effect.payload,
-              case .object(let command)? = payload["command"],
-              case .string(let type)? = command["type"] else {
+              let command = payload["command"] else {
             throw URLError(.cannotParseResponse)
         }
-        switch type {
-        case "toggleWatchlist":
-            guard let item = command["item"] else {
-                throw URLError(.cannotParseResponse)
-            }
-            let result = libraryStore.watchlistState(item: item)
-            return .object([
-                "watchlist": .array(result.watchlist),
-                "isInWatchlist": .boolean(result.isInWatchlist)
-            ])
-        default:
-            throw NSError(domain: "FluxaAppleUnsupportedLibraryCommand", code: 1)
-        }
+        return try libraryStore.applyCommand(command, source: string(payload["source"]))
     }
 }

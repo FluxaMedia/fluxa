@@ -6,20 +6,14 @@ struct FluxaCoreAddonCatalogExtra: Decodable {
     let options: [String]?
 }
 
-struct FluxaCoreDiscoverCatalogOption: Decodable {
-    let key: String
-    let label: String
-    let transportUrl: String
-    let type: String
-    let id: String
-    let genres: [String]
-    let requiresGenre: Bool
-}
-
 struct FluxaCoreResourceRequest: Decodable {
     let url: String
     let kind: String
+    let addonName: String?
+    let stopOnFirstResult: Bool?
     let transportUrl: String?
+    let contentType: String?
+    let id: String?
     let catalogId: String?
     let catalogType: String?
     let categoryId: String?
@@ -28,6 +22,12 @@ struct FluxaCoreResourceRequest: Decodable {
 
 struct FluxaCoreResourceFetchPlan: Decodable {
     let requests: [FluxaCoreResourceRequest]
+}
+
+struct FluxaCoreResourceExecutionPolicy: Decodable {
+    let requests: [FluxaCoreResourceRequest]
+    let mode: String
+    let concurrency: Int
 }
 
 struct FluxaCoreAddonCatalog: Decodable {
@@ -88,6 +88,26 @@ private struct FluxaCoreAddonManifestDescriptor: Decodable {
 }
 
 enum FluxaCoreStremio {
+    static func libraryCommandPlan(
+        library: FluxaAppleJsonValue,
+        command: FluxaAppleJsonValue,
+        nowIso: String
+    ) -> FluxaAppleJsonValue? {
+        let request = FluxaAppleJsonValue.object([
+            "library": library,
+            "command": command,
+            "nowIso": .string(nowIso)
+        ])
+        guard let requestData = try? JSONEncoder().encode(request),
+              let requestJson = String(data: requestData, encoding: .utf8),
+              let result = value(method: "libraryCommandPlan", argsJson: requestJson),
+              JSONSerialization.isValidJSONObject(result),
+              let resultData = try? JSONSerialization.data(withJSONObject: result) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(FluxaAppleJsonValue.self, from: resultData)
+    }
+
     static func formatRuntimeLabel(_ value: String) -> String? {
         stringValue(method: "formatRuntimeLabel", arguments: ["value": value])
     }
@@ -131,6 +151,88 @@ enum FluxaCoreStremio {
                 "language": language,
             ]
         ) as? String
+    }
+
+    static func tmdbBuiltinMetaRequestPlan(
+        contentType: String,
+        contentId: String,
+        apiKey: String,
+        language: String
+    ) -> [String: Any]? {
+        value(
+            method: "tmdbBuiltinMetaRequestPlan",
+            arguments: ["contentType": contentType, "contentId": contentId, "apiKey": apiKey, "language": language]
+        ) as? [String: Any]
+    }
+
+    static func tmdbBuiltinMetaUrlsFromFind(
+        find: Any,
+        contentType: String,
+        apiKey: String,
+        language: String
+    ) -> [String: Any]? {
+        value(
+            method: "tmdbBuiltinMetaUrlsFromFind",
+            arguments: ["find": find, "contentType": contentType, "apiKey": apiKey, "language": language]
+        ) as? [String: Any]
+    }
+
+    static func tmdbSeasonRequestUrl(contentId: String, season: Int, apiKey: String, language: String) -> String? {
+        stringValue(
+            method: "tmdbSeasonRequestUrl",
+            arguments: ["contentId": contentId, "season": season, "apiKey": apiKey, "language": language]
+        )
+    }
+
+    static func tmdbFullMetaToMeta(
+        detailsJson: String,
+        creditsJson: String,
+        imagesJson: String,
+        externalIdsJson: String,
+        extrasJson: String,
+        requestedType: String,
+        language: String
+    ) -> FluxaAppleJsonValue? {
+        let result = value(
+            method: "tmdbFullMetaToMeta",
+            arguments: [
+                "detailsJson": detailsJson,
+                "creditsJson": creditsJson,
+                "imagesJson": imagesJson,
+                "externalIdsJson": externalIdsJson,
+                "extrasJson": extrasJson,
+                "requestedType": requestedType,
+                "language": language,
+            ]
+        )
+        return decodeJsonValue(result)
+    }
+
+    static func tmdbEpisodesToVideos(seasonJson: String, seriesId: String) -> [FluxaAppleJsonValue] {
+        decodeValue(
+            method: "tmdbEpisodesToVideos",
+            arguments: ["seasonJson": seasonJson, "seriesId": seriesId],
+            as: [FluxaAppleJsonValue].self
+        ) ?? []
+    }
+
+    static func tmdbMergeEnrichment(
+        base: FluxaAppleJsonValue,
+        tmdb: FluxaAppleJsonValue,
+        flags: [String: Bool]
+    ) -> FluxaAppleJsonValue? {
+        guard let baseData = try? JSONEncoder().encode(base),
+              let tmdbData = try? JSONEncoder().encode(tmdb),
+              let baseJson = String(data: baseData, encoding: .utf8),
+              let tmdbJson = String(data: tmdbData, encoding: .utf8),
+              let flagsData = try? JSONSerialization.data(withJSONObject: flags),
+              let flagsJson = String(data: flagsData, encoding: .utf8) else {
+            return nil
+        }
+        return decodeJsonValue(value(
+            method: "tmdbMergeEnrichment",
+            arguments: ["baseJson": baseJson, "tmdbJson": tmdbJson, "flagsJson": flagsJson]
+        ))
     }
 
     static func tmdbItemContentType(
@@ -253,6 +355,14 @@ enum FluxaCoreStremio {
         return try? JSONDecoder().decode(FluxaCoreAddonManifestDescriptor.self, from: data).manifest
     }
 
+    static func parseManifestDescriptor(body: String, transportUrl: String) -> [String: Any]? {
+        let unknownName = URL(string: transportUrl)?.host ?? "Unknown Addon"
+        return value(
+            method: "parseManifest",
+            arguments: ["body": body, "transportUrl": transportUrl, "unknownName": unknownName]
+        ) as? [String: Any]
+    }
+
     static func parseCatalogItems(body: String, fallbackType: String) -> [FluxaCoreCatalogItem]? {
         decodeValue(
             method: "parseCatalogItems",
@@ -261,31 +371,51 @@ enum FluxaCoreStremio {
         )
     }
 
-    static func discoverCatalogOptions(
-        manifest: FluxaCoreAddonManifest,
-        transportUrl: String,
-        selectedType: String
-    ) -> [FluxaCoreDiscoverCatalogOption]? {
-        guard let addonValue = addonDescriptorValue(manifest: manifest, transportUrl: transportUrl),
-              let data = try? JSONSerialization.data(withJSONObject: [addonValue]),
-              let addonsJson = String(data: data, encoding: .utf8) else {
-            return nil
-        }
-        return decodeValue(
-            method: "discoverCatalogOptions",
-            arguments: ["addons": addonsJson, "selectedType": selectedType],
-            as: [FluxaCoreDiscoverCatalogOption].self
-        )
-    }
-
     static func resourceFetchPlan(
         manifests: [[String: Any]],
         kind: String,
-        query: String? = nil
+        query: String? = nil,
+        transportUrl: String? = nil,
+        contentType: String? = nil,
+        id: String? = nil
     ) -> FluxaCoreResourceFetchPlan? {
         var arguments: [String: Any] = ["kind": kind, "addons": manifests]
         if let query { arguments["query"] = query }
+        if let transportUrl { arguments["transportUrl"] = transportUrl }
+        if let contentType { arguments["contentType"] = contentType }
+        if let id { arguments["id"] = id }
         return decodeValue(method: "resourceFetchPlan", arguments: arguments, as: FluxaCoreResourceFetchPlan.self)
+    }
+
+    static func resourceFetchExecutionPolicy(
+        manifests: [[String: Any]],
+        kind: String,
+        query: String? = nil,
+        transportUrl: String? = nil,
+        contentType: String? = nil,
+        id: String? = nil
+    ) -> FluxaCoreResourceExecutionPolicy? {
+        var arguments: [String: Any] = ["kind": kind, "addons": manifests]
+        if let query { arguments["query"] = query }
+        if let transportUrl { arguments["transportUrl"] = transportUrl }
+        if let contentType { arguments["contentType"] = contentType }
+        if let id { arguments["id"] = id }
+        return decodeValue(
+            method: "resourceFetchExecutionPolicy",
+            arguments: arguments,
+            as: FluxaCoreResourceExecutionPolicy.self
+        )
+    }
+
+    static func mergeDiscoverSources(_ sources: [[String: Any]]) -> [String: Any]? {
+        value(method: "mergeDiscoverSources", arguments: ["sources": sources]) as? [String: Any]
+    }
+
+    static func discoverSourceRequests(contentType: String, filters: [String: Any]) -> [[String: Any]]? {
+        value(
+            method: "discoverSourceRequests",
+            arguments: ["contentType": contentType, "filters": filters]
+        ) as? [[String: Any]]
     }
 
     static func addonDescriptorValue(
@@ -328,8 +458,29 @@ enum FluxaCoreStremio {
         )
     }
 
+    static func streamSubtitlesResult(stream: FluxaAppleJsonValue) -> FluxaAppleJsonValue {
+        guard let streamData = try? JSONEncoder().encode(stream),
+              let streamJson = String(data: streamData, encoding: .utf8),
+              let result = value(method: "streamSubtitlesResult", argsJson: streamJson),
+              JSONSerialization.isValidJSONObject(result),
+              let resultData = try? JSONSerialization.data(withJSONObject: result),
+              let decoded = try? JSONDecoder().decode(FluxaAppleJsonValue.self, from: resultData) else {
+            return .object(["subtitles": .array([])])
+        }
+        return decoded
+    }
+
     private static func stringValue(method: String, arguments: [String: Any]) -> String? {
         value(method: method, arguments: arguments) as? String
+    }
+
+    private static func value(method: String, argsJson: String) -> Any? {
+        guard let responseData = coreInvoke(method: method, argsJson: argsJson).data(using: .utf8),
+              let response = try? JSONSerialization.jsonObject(with: responseData) as? [String: Any],
+              response["ok"] as? Bool == true else {
+            return nil
+        }
+        return response["value"]
     }
 
     private static func decodeValue<T: Decodable>(method: String, arguments: [String: Any], as type: T.Type) -> T? {
@@ -339,6 +490,15 @@ enum FluxaCoreStremio {
             return nil
         }
         return try? JSONDecoder().decode(T.self, from: data)
+    }
+
+    private static func decodeJsonValue(_ value: Any?) -> FluxaAppleJsonValue? {
+        guard let value,
+              JSONSerialization.isValidJSONObject(value),
+              let data = try? JSONSerialization.data(withJSONObject: value) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(FluxaAppleJsonValue.self, from: data)
     }
 
     private static func value(method: String, arguments: [String: Any]) -> Any? {

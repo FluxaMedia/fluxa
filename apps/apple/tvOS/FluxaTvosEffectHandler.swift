@@ -4,13 +4,18 @@ import FluxaCore
 final class FluxaTvosEffectHandler: FluxaApplePlatformEffectHandler {
     private let configurationStore: FluxaAppleAddonConfigurationStore
     private let catalogService: FluxaAppleCatalogService
+    private let streamEffectService: FluxaAppleAddonStreamEffectService
+    private let libraryStore: FluxaAppleLibraryStore
 
     init(
         configurationStore: FluxaAppleAddonConfigurationStore,
-        catalogService: FluxaAppleCatalogService = FluxaAppleCatalogService()
+        catalogService: FluxaAppleCatalogService = FluxaAppleCatalogService(),
+        libraryStore: FluxaAppleLibraryStore = FluxaAppleLibraryStore()
     ) {
         self.configurationStore = configurationStore
         self.catalogService = catalogService
+        self.streamEffectService = FluxaAppleAddonStreamEffectService(configurationStore: configurationStore)
+        self.libraryStore = libraryStore
     }
 
     func execute(effect: FluxaAppleHeadlessEffect) async throws -> FluxaAppleJsonValue {
@@ -31,16 +36,29 @@ final class FluxaTvosEffectHandler: FluxaApplePlatformEffectHandler {
         case FluxaHeadlessEffectType.refreshContinueWatching:
             return .object(["continueWatching": .array([])])
         case FluxaHeadlessEffectType.readLibraryState:
-            return .object([
-                "watchlist": .array([]),
-                "continueWatching": .array([]),
-                "liked": .array([]),
-                "watched": .object([:])
-            ])
+            return libraryStore.snapshot()
+        case FluxaHeadlessEffectType.writeLibraryCommand:
+            guard case .object(let payload) = effect.payload,
+                  let command = payload["command"] else {
+                throw URLError(.cannotParseResponse)
+            }
+            return try libraryStore.applyCommand(command, source: string(payload["source"]))
         case FluxaHeadlessEffectType.readCalendarMonth:
             return .object(["items": .array([])])
         case FluxaHeadlessEffectType.readPlaybackProgress:
             return .null
+        case FluxaHeadlessEffectType.fetchSubtitles:
+            guard case .object(let payload) = effect.payload,
+                  let stream = payload["stream"] else {
+                return .object(["subtitles": .array([])])
+            }
+            return FluxaCoreStremio.streamSubtitlesResult(stream: stream)
+        case FluxaHeadlessEffectType.fetchMetaDetail,
+             FluxaHeadlessEffectType.fetchMetaDetailLookup:
+            return try await streamEffectService.execute(effect: effect)
+        case FluxaHeadlessEffectType.fetchDetailStreams,
+             FluxaHeadlessEffectType.prefetchNextEpisodeStreams:
+            return try await streamEffectService.execute(effect: effect)
         default:
             throw NSError(domain: "FluxaTvosUnsupportedEffect", code: 1)
         }
@@ -70,6 +88,13 @@ final class FluxaTvosEffectHandler: FluxaApplePlatformEffectHandler {
 
     private func optionalString(_ value: String?) -> FluxaAppleJsonValue {
         value.map(FluxaAppleJsonValue.string) ?? .null
+    }
+
+    private func string(_ value: FluxaAppleJsonValue?) -> String? {
+        guard case .string(let text)? = value else {
+            return nil
+        }
+        return text
     }
 
     private func firstItem(in categories: [FluxaAppleJsonValue]) -> FluxaAppleJsonValue? {

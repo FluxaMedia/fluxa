@@ -75,11 +75,10 @@ final class FluxaAppleDetailStartup {
             selectedAddon: nil
         )
         let targetId = request.episodeId ?? request.id
-        let streams = await loadDirectStreams(addons: entry.addons, contentType: request.type, id: targetId)
-        let subtitleUrls = await loadSubtitleUrls(addons: entry.addons, contentType: request.type, id: targetId)
+        let streams = await loadCoreStreams(entry: entry, requestIds: [targetId])
         pushSnapshot(
             entry: entry,
-            streams: streams.map { toSharedStream($0, subtitleUrls: subtitleUrls) },
+            streams: streams,
             isLoadingStreams: false,
             loadingAddonNames: [],
             selectedAddon: nil,
@@ -156,6 +155,7 @@ final class FluxaAppleDetailStartup {
             availableSeasons: seasons,
             addons: addons,
             recommendationItems: recommendations,
+            meta: meta,
             selectedSeason: initialSeason,
             selectedEpisodeId: nil
         )
@@ -164,11 +164,10 @@ final class FluxaAppleDetailStartup {
         if FluxaCoreStremio.isSeriesContentType(type) && !videos.isEmpty {
             pushSnapshot(entry: entry, streams: [], isLoadingStreams: false, loadingAddonNames: [], selectedAddon: nil)
         } else {
-            let streams = await loadDirectStreams(addons: addons, contentType: type, id: id)
-            let subtitleUrls = await loadSubtitleUrls(addons: addons, contentType: type, id: id)
+            let streams = await loadCoreStreams(entry: entry, requestIds: [id])
             pushSnapshot(
                 entry: entry,
-                streams: streams.map { toSharedStream($0, subtitleUrls: subtitleUrls) },
+                streams: streams,
                 isLoadingStreams: false,
                 loadingAddonNames: [],
                 selectedAddon: nil
@@ -241,34 +240,74 @@ final class FluxaAppleDetailStartup {
         return results
     }
 
-    private func loadSubtitleUrls(
-        addons: [String],
-        contentType: String,
-        id: String
-    ) async -> [String] {
-        var results = [String]()
-        for addon in addons {
-            if let subtitles = try? await addonResourceLoader.loadSubtitleUrls(
-                transportUrl: addon,
-                contentType: contentType,
-                id: id
-            ) {
-                results.append(contentsOf: subtitles)
+    private func loadCoreStreams(
+        entry: FluxaAppleDetailCacheEntry,
+        requestIds: [String]
+    ) async -> [FluxaShared.AppleDetailStreamSnapshot] {
+        do {
+            let episodes = entry.videos.map { video in
+                FluxaAppleJsonValue.object([
+                    "id": .string(video.id),
+                    "season": .number(Double(video.season)),
+                    // Match fluxa_core::types::Video's serde contract. `title`
+                    // and `episode` are not aliases for the Stremio response
+                    // names used by the local Swift cache model.
+                    "episode": .number(Double(video.number)),
+                    "title": video.name.map(FluxaAppleJsonValue.string) ?? .null,
+                    "released": video.released.map(FluxaAppleJsonValue.string) ?? .null,
+                    "thumbnail": video.thumbnail.map(FluxaAppleJsonValue.string) ?? .null,
+                    "overview": video.overview.map(FluxaAppleJsonValue.string) ?? .null
+                ])
             }
+            let action = FluxaAppleDetailStreamsAction(
+                type: "detailStreamsRequested",
+                contentType: entry.type,
+                requestIds: requestIds,
+                detail: entry.meta,
+                seasonEpisodes: episodes,
+                language: "en",
+                profile: .object([
+                    "id": .string("apple-default"),
+                    "localAddons": .array(entry.addons.map(FluxaAppleJsonValue.string))
+                ])
+            )
+            let actionJson = String(decoding: try encoder.encode(action), as: UTF8.self)
+            let result = try await coordinator.dispatch(actionJson: actionJson)
+            guard case .object(let detail)? = result.state["detail"],
+                  case .array(let streams)? = detail["streams"] else {
+                return []
+            }
+            return streams.compactMap(sharedStream)
+        } catch {
+            return []
         }
-        var seen = Set<String>()
-        return results.filter { seen.insert($0).inserted }
     }
 
-    private func toSharedStream(
-        _ stream: FluxaCore.AppleDetailStreamSnapshot,
-        subtitleUrls: [String]
-    ) -> FluxaShared.AppleDetailStreamSnapshot {
-        FluxaShared.AppleDetailStreamSnapshot(
-            addonName: stream.addonName,
-            title: stream.title,
-            playableUrl: stream.playableUrl,
-            requestHeadersJson: stream.requestHeadersJson,
+    private func sharedStream(_ value: FluxaAppleJsonValue) -> FluxaShared.AppleDetailStreamSnapshot? {
+        guard case .object(let fields) = value,
+              let playableUrl = text(fields["playableUrl"]) ?? text(fields["url"]) else {
+            return nil
+        }
+        let headersJson: String = {
+            if let existing = text(fields["requestHeadersJson"]) { return existing }
+            guard case .object(let headers)? = fields["headers"] else { return "{}" }
+            let values = headers.compactMapValues { value -> String? in
+                guard case .string(let string) = value else { return nil }
+                return string
+            }
+            guard let data = try? JSONSerialization.data(withJSONObject: values),
+                  let json = String(data: data, encoding: .utf8) else { return "{}" }
+            return json
+        }()
+        let subtitleUrls: [String] = {
+            guard case .array(let values)? = fields["subtitleUrls"] else { return [] }
+            return values.compactMap(text)
+        }()
+        return FluxaShared.AppleDetailStreamSnapshot(
+            addonName: text(fields["addonName"]) ?? "",
+            title: text(fields["title"]) ?? text(fields["name"]) ?? "",
+            playableUrl: playableUrl,
+            requestHeadersJson: headersJson,
             subtitleUrls: subtitleUrls
         )
     }
@@ -402,6 +441,7 @@ private final class FluxaAppleDetailCacheEntry {
     let availableSeasons: [String]
     let addons: [String]
     let recommendationItems: [FluxaShared.AppleCatalogItemSnapshot]
+    let meta: FluxaAppleJsonValue
     var selectedSeason: Int32
     var selectedEpisodeId: String?
 
@@ -420,6 +460,7 @@ private final class FluxaAppleDetailCacheEntry {
         availableSeasons: [String],
         addons: [String],
         recommendationItems: [FluxaShared.AppleCatalogItemSnapshot],
+        meta: FluxaAppleJsonValue,
         selectedSeason: Int32,
         selectedEpisodeId: String?
     ) {
@@ -437,6 +478,7 @@ private final class FluxaAppleDetailCacheEntry {
         self.availableSeasons = availableSeasons
         self.addons = addons
         self.recommendationItems = recommendationItems
+        self.meta = meta
         self.selectedSeason = selectedSeason
         self.selectedEpisodeId = selectedEpisodeId
     }
@@ -461,6 +503,16 @@ private struct FluxaAppleDetailAction: Encodable {
     let sourceAddonTransportUrl: String?
     let sourceAddonCatalogType: String?
     let profile: FluxaAppleDetailProfile
+}
+
+private struct FluxaAppleDetailStreamsAction: Encodable {
+    let type: String
+    let contentType: String
+    let requestIds: [String]
+    let detail: FluxaAppleJsonValue
+    let seasonEpisodes: [FluxaAppleJsonValue]
+    let language: String
+    let profile: FluxaAppleJsonValue
 }
 
 private struct FluxaAppleDetailProfile: Encodable {

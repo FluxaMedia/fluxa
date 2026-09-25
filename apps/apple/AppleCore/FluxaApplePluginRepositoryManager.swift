@@ -63,13 +63,14 @@ final class FluxaApplePluginRepositoryManager {
     private let codeCacheLock = NSLock()
     private var codeCache: [String: String] = [:]
 
-    init(session: URLSession = .shared, defaults: UserDefaults = .standard) {
-        let runtime = requireFluxaAppleHeadlessRuntime()
+    init(
+        runtime: FluxaAppleHeadlessRuntime,
+        coordinator: FluxaAppleHeadlessCoordinator,
+        session: URLSession = .shared,
+        defaults: UserDefaults = .standard
+    ) {
         self.runtime = runtime
-        self.coordinator = FluxaAppleHeadlessCoordinator(
-            runtime: runtime,
-            executor: FluxaApplePlatformEffectExecutor(handler: FluxaApplePluginsEffectHandler(session: session))
-        )
+        self.coordinator = coordinator
         self.session = session
         self.defaults = defaults
     }

@@ -18,6 +18,10 @@ final class FluxaAppleCatalogService {
         return try await loader.loadRows(requests: requests)
     }
 
+    func loadAddonDescriptors(addonUrls: [String]) async throws -> [[String: Any]] {
+        try await resolver.loadAddonDescriptors(localAddonUrls: addonUrls)
+    }
+
     func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [FluxaCore.AppleCatalogRowSnapshot] {
         try await loader.loadRows(requests: requests)
     }
@@ -30,24 +34,4 @@ final class FluxaAppleCatalogService {
         return try await loader.loadSearchItems(requests: requests)
     }
 
-    func resolveDiscoverCatalogs(
-        addonUrls: [String],
-        contentType: String
-    ) async throws -> [FluxaAppleDiscoverCatalog] {
-        try await resolver.resolveDiscoverCatalogs(localAddonUrls: addonUrls, contentType: contentType)
-    }
-
-    func discoverUrl(
-        transportUrl: String,
-        contentType: String,
-        catalogId: String,
-        genre: String?
-    ) -> URL? {
-        resolver.discoverUrl(
-            transportUrl: transportUrl,
-            contentType: contentType,
-            catalogId: catalogId,
-            genre: genre
-        )
-    }
 }

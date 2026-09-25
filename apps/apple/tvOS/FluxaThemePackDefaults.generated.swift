@@ -1,5 +1,6 @@
 import Foundation
 
+// Generated from shared/contracts/ui-tokens.json. Do not edit.
 enum FluxaThemePackDefaults {
     static let fluxaDark = FluxaThemePack(
         schemaVersion: 1,

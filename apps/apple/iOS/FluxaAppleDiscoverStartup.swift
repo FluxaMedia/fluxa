@@ -12,28 +12,20 @@ final class FluxaAppleDiscoverStartup {
 
     func discover(request: AppleDiscoverRequestSnapshot) async {
         do {
-            let filtersAction = FluxaAppleDiscoverFiltersAction(
-                type: FluxaHeadlessActionType.discoverCatalogFiltersRequested,
-                contentType: request.contentType,
-                selectedCatalogKey: request.catalogKey,
-                language: "en",
-                profile: FluxaAppleDiscoverProfile(id: "apple-default")
-            )
-            let filtersActionJson = String(decoding: try encoder.encode(filtersAction), as: UTF8.self)
-            let filtersResult = try await coordinator.dispatch(actionJson: filtersActionJson)
             let action = FluxaAppleDiscoverAction(
                 type: FluxaHeadlessActionType.discoverRequested,
                 contentType: request.contentType,
+                loadCatalogFilters: true,
                 filters: FluxaAppleDiscoverFilters(
                     catalogKey: request.catalogKey,
-                    genre: request.genre
+                    extra: request.genre.map { ["genre": $0] } ?? [:]
                 ),
                 language: "en",
                 profile: FluxaAppleDiscoverProfile(id: "apple-default")
             )
             let actionJson = String(decoding: try encoder.encode(action), as: UTF8.self)
             let result = try await coordinator.dispatch(actionJson: actionJson)
-            updateSharedDiscover(result: result, filtersResult: filtersResult, request: request)
+            updateSharedDiscover(result: result, request: request)
         } catch {
             updateSharedDiscover(items: [], request: AppleDiscoverRequestSnapshot(contentType: "movie", catalogKey: nil, genre: nil))
         }
@@ -41,7 +33,6 @@ final class FluxaAppleDiscoverStartup {
 
     private func updateSharedDiscover(
         result: FluxaAppleHeadlessResult,
-        filtersResult: FluxaAppleHeadlessResult,
         request: AppleDiscoverRequestSnapshot
     ) {
         let items: [AppleCatalogItemSnapshot]
@@ -52,12 +43,12 @@ final class FluxaAppleDiscoverStartup {
             items = []
         }
         let catalogOptions = filterOptions(
-            state: filtersResult.state,
+            state: result.state,
             key: "catalogs",
             idKey: "key"
         )
         let genreOptions = filterOptions(
-            state: filtersResult.state,
+            state: result.state,
             key: "genres",
             idKey: "id"
         )
@@ -101,22 +92,15 @@ final class FluxaAppleDiscoverStartup {
 private struct FluxaAppleDiscoverAction: Encodable {
     let type: String
     let contentType: String
+    let loadCatalogFilters: Bool
     let filters: FluxaAppleDiscoverFilters
-    let language: String
-    let profile: FluxaAppleDiscoverProfile
-}
-
-private struct FluxaAppleDiscoverFiltersAction: Encodable {
-    let type: String
-    let contentType: String
-    let selectedCatalogKey: String?
     let language: String
     let profile: FluxaAppleDiscoverProfile
 }
 
 private struct FluxaAppleDiscoverFilters: Encodable {
     let catalogKey: String?
-    let genre: String?
+    let extra: [String: String]
 }
 
 private struct FluxaAppleDiscoverProfile: Encodable {

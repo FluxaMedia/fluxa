@@ -1,8 +1,10 @@
 import FluxaShared
+import Foundation
 
 @MainActor
 final class FluxaAppleCatalogStartup {
     private let coordinator: FluxaAppleHeadlessCoordinator
+    private let encoder = JSONEncoder()
 
     init(coordinator: FluxaAppleHeadlessCoordinator) {
         self.coordinator = coordinator
@@ -10,8 +12,15 @@ final class FluxaAppleCatalogStartup {
 
     func refresh() async {
         do {
+            let action = FluxaAppleCatalogHomeAction(
+                type: FluxaHeadlessActionType.homeLoadRequested,
+                profile: FluxaAppleCatalogProfile(id: "apple-default"),
+                language: "en",
+                force: true
+            )
+            let actionJson = String(decoding: try encoder.encode(action), as: UTF8.self)
             let result = try await coordinator.dispatch(
-                actionJson: "{\"type\":\"(FluxaHeadlessActionType.homeLoadRequested)\",\"profile\":{\"id\":\"apple-default\"},\"language\":\"en\",\"force\":true}"
+                actionJson: actionJson
             )
             updateSharedHome(result: result)
         } catch {
@@ -37,4 +46,15 @@ final class FluxaAppleCatalogStartup {
         )
     }
 
+}
+
+private struct FluxaAppleCatalogHomeAction: Encodable {
+    let type: String
+    let profile: FluxaAppleCatalogProfile
+    let language: String
+    let force: Bool
+}
+
+private struct FluxaAppleCatalogProfile: Encodable {
+    let id: String
 }

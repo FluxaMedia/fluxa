@@ -27,7 +27,10 @@ struct FluxaIosApp: App {
         let calendarStartup = FluxaAppleCalendarStartup(coordinator: runtimeApp.coordinator)
         let libraryStartup = FluxaAppleLibraryStartup(coordinator: runtimeApp.coordinator)
         let authStartup = FluxaAppleAuthStartup()
-        let pluginsManager = FluxaApplePluginRepositoryManager()
+        let pluginsManager = FluxaApplePluginRepositoryManager(
+            runtime: runtime,
+            coordinator: runtimeApp.coordinator
+        )
         self.pluginsManager = pluginsManager
         let pluginsStartup = FluxaApplePluginsStartup(manager: pluginsManager)
         self.pluginsStartup = pluginsStartup
