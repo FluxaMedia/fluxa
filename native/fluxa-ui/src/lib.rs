@@ -3710,7 +3710,7 @@ fn draw_home_with_options(
         } else {
             (hero_width * 0.4).clamp(380.0, 560.0).min(hero_width)
         };
-        let synopsis_color = Color32::from_white_alpha(200);
+        let synopsis_color = Color32::from_white_alpha(240);
         let synopsis_galley = if hero.description.is_empty() {
             None
         } else {
@@ -3773,6 +3773,14 @@ fn draw_home_with_options(
                         },
                         (title_height - logo_inset * 2.0).max(1.0),
                     );
+                    if home.hero_slides.len() > 1 {
+                        let next = &home.hero_slides[(active_hero_index + 1) % home.hero_slides.len()];
+                        assets.texture_for(
+                            next.logo_url.as_deref(),
+                            artwork_target_size(max_logo_size, context.pixels_per_point()),
+                            ArtworkPriority::Hero,
+                        );
+                    }
                     let title_font_size = if compact {
                         metrics.catalog_title_size + 2.0
                     } else if tv {
@@ -3847,7 +3855,7 @@ fn draw_home_with_options(
                             } else {
                                 metrics.nav_label_size
                             }),
-                            Color32::from_white_alpha(150),
+                            Color32::from_white_alpha(185),
                         );
                     }
                     ui.add_space(if compact { 6.0 } else { 10.0 });
