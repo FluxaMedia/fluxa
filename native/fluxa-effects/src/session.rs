@@ -129,6 +129,10 @@ impl AppSession {
         self.executor.poll_torrent_status(link, file_id)
     }
 
+    pub fn fetch_json(&self, url: String) -> Receiver<Option<Value>> {
+        self.executor.fetch_json(url)
+    }
+
     pub fn revision(&self) -> u64 {
         self.runtime.revision()
     }

@@ -114,6 +114,37 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_json(&self, url: String) -> std::sync::mpsc::Receiver<Option<Value>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let task = async move {
+            let response = async {
+                Client::builder()
+                    .native_timeout(Duration::from_secs(10))
+                    .build()?
+                    .get(&url)
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .json::<Value>()
+                    .await
+            }
+            .await;
+            let _ = sender.send(response.ok());
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn(move || {
+            if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                runtime.block_on(task);
+            }
+        });
+        receiver
+    }
+
     pub fn spawn(&self, effect: Value, sender: Sender<EffectCompletion>) {
         let executor = self.clone();
         let task = async move {
