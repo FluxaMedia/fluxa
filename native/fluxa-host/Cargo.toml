@@ -7,14 +7,22 @@ description = "Platform-neutral host for the Fluxa renderer: screen state, input
 
 [dependencies]
 egui = "0.34.2"
-fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["full-api", "plugin-js-engine"] }
+fluxa-artwork = { path = "../fluxa-artwork" }
+fluxa-effects = { path = "../fluxa-effects", default-features = false }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 fluxa-ui = { path = "../fluxa-ui" }
-fluxa-artwork = { path = "../fluxa-artwork" }
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
-pollster = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+web-time = "1"
 wgpu = { version = "29.0.3", default-features = false, features = ["wgsl"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
-fluxa-effects = { path = "../fluxa-effects", default-features = false }
+fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["full-api", "plugin-js-engine"] }
+pollster = "0.4"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+chrono = { version = "0.4.45", default-features = false, features = ["clock", "wasmbind"] }
+fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["wasm"] }
+wasm-bindgen-futures = "0.4"

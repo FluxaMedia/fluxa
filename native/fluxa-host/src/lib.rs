@@ -5,8 +5,10 @@ use std::{
         Arc, Mutex, OnceLock,
         atomic::{AtomicU32, Ordering},
     },
-    time::{Duration, Instant},
+    time::Duration,
 };
+
+use web_time::Instant;
 
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
@@ -642,7 +644,7 @@ impl SvgIconRegistry {
 }
 
 impl Gpu {
-    fn create(
+    async fn create(
         surface: NativeSurface,
         size: [u32; 2],
         density: f32,
@@ -661,7 +663,9 @@ impl Gpu {
                 density,
                 artwork_cache_dir.clone(),
                 backends_for(backend),
-            ) {
+            )
+            .await
+            {
                 Ok(gpu) => {
                     host_log(format!(
                         "GPU ready: {} ({})",
@@ -679,7 +683,7 @@ impl Gpu {
         Err(format!("no GPU backend succeeded ({})", errors.join("; ")))
     }
 
-    fn create_for_backend(
+    async fn create_for_backend(
         native_surface: &NativeSurface,
         size: [u32; 2],
         density: f32,
@@ -694,27 +698,36 @@ impl Gpu {
                 .create_surface_unsafe((native_surface.target)()?)
                 .map_err(|error| error.to_string())?
         };
-        let adapter = pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions {
-            power_preference: wgpu::PowerPreference::HighPerformance,
-            compatible_surface: Some(&surface),
-            force_fallback_adapter: false,
-        }))
-        .map_err(|error| error.to_string())?;
+        let adapter = instance
+            .request_adapter(&wgpu::RequestAdapterOptions {
+                power_preference: wgpu::PowerPreference::HighPerformance,
+                compatible_surface: Some(&surface),
+                force_fallback_adapter: false,
+            })
+            .await
+            .map_err(|error| error.to_string())?;
         let info = adapter.get_info();
         let adapter_name = info.name.clone();
         host_log(format!(
             "Adapter selected: {:?} / {}",
             info.backend, info.name
         ));
-        let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("fluxa-host-device"),
-            required_features: wgpu::Features::empty(),
-            required_limits: wgpu::Limits::default(),
-            memory_hints: wgpu::MemoryHints::Performance,
-            trace: wgpu::Trace::Off,
-            experimental_features: wgpu::ExperimentalFeatures::disabled(),
-        }))
-        .map_err(|error| error.to_string())?;
+        let required_limits = if cfg!(target_arch = "wasm32") {
+            wgpu::Limits::downlevel_webgl2_defaults().using_resolution(adapter.limits())
+        } else {
+            wgpu::Limits::default()
+        };
+        let (device, queue) = adapter
+            .request_device(&wgpu::DeviceDescriptor {
+                label: Some("fluxa-host-device"),
+                required_features: wgpu::Features::empty(),
+                required_limits,
+                memory_hints: wgpu::MemoryHints::Performance,
+                trace: wgpu::Trace::Off,
+                experimental_features: wgpu::ExperimentalFeatures::disabled(),
+            })
+            .await
+            .map_err(|error| error.to_string())?;
         host_log("Device requested successfully");
         let capabilities = surface.get_capabilities(&adapter);
         let format = capabilities
@@ -2324,8 +2337,8 @@ impl FluxaHost {
             return;
         };
         let shared = self.0.clone();
-        std::thread::spawn(move || {
-            let result = Gpu::create(surface, size, density, artwork_cache_dir);
+        let task = async move {
+            let result = Gpu::create(surface, size, density, artwork_cache_dir).await;
             let Ok(mut state) = shared.lock() else { return };
             if state.generation != generation {
                 return;
@@ -2334,7 +2347,11 @@ impl FluxaHost {
                 Ok(gpu) => state.gpu = Some(gpu),
                 Err(error) => host_log(format!("GPU surface init failed: {error}")),
             }
-        });
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn(move || pollster::block_on(task));
     }
 
     pub fn surface_changed(&self, width: u32, height: u32) {
