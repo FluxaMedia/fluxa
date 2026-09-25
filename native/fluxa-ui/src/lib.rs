@@ -4094,7 +4094,9 @@ fn draw_home_with_options(
                                     assets,
                                     card.motion_enabled
                                         && card.motion_url.is_some()
-                                        && (home.gif_autoplay_enabled
+                                        && ((home.gif_autoplay_enabled
+                                            && screen.intersect(row_clip).contains_rect(rect))
+                                            || focused == Some(node_id)
                                             || response
                                                 .as_ref()
                                                 .is_some_and(|response| response.hovered())),
