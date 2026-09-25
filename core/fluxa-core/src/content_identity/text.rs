@@ -170,13 +170,35 @@ fn first_sentence(text: &str) -> Option<String> {
     for (i, &(byte_idx, ch)) in chars.iter().enumerate() {
         if matches!(ch, '.' | '!' | '?') && byte_idx >= 20 {
             let at_boundary = chars.get(i + 1).is_none_or(|&(_, c)| c.is_whitespace());
-            if at_boundary {
+            if at_boundary && !(ch == '.' && is_abbreviation(text, byte_idx, &chars[i + 1..])) {
                 let end = byte_idx + ch.len_utf8();
                 return Some(text[..end].to_string());
             }
         }
     }
     None
+}
+
+const ABBREVIATIONS: &[&str] = &[
+    "dr", "mr", "mrs", "ms", "mx", "prof", "st", "jr", "sr", "sgt", "capt", "lt", "col", "gen",
+    "rev", "fr", "vs", "etc", "no", "mt", "ft", "u.s", "u.k",
+];
+
+fn is_abbreviation(text: &str, dot: usize, rest: &[(usize, char)]) -> bool {
+    let word = text[..dot]
+        .rsplit(|c: char| c.is_whitespace() || c == '(' || c == '"')
+        .next()
+        .unwrap_or("");
+    if word.chars().count() == 1 && word.chars().all(char::is_alphabetic) {
+        return true;
+    }
+    if ABBREVIATIONS.contains(&word.to_lowercase().as_str()) {
+        return true;
+    }
+    rest.iter()
+        .map(|&(_, c)| c)
+        .find(|c| !c.is_whitespace())
+        .is_some_and(char::is_lowercase)
 }
 
 pub(crate) fn shorten_synopsis(text: &str) -> String {

@@ -138,6 +138,17 @@ mod tests {
     }
 
     #[test]
+    fn shorten_synopsis_does_not_split_on_titles_or_initials() {
+        let text = "Olive Smith, a biology PhD candidate, and Dr. Adam Carlsen fake a relationship. Then things get complicated.";
+        assert_eq!(
+            shorten_synopsis(text),
+            "Olive Smith, a biology PhD candidate, and Dr. Adam Carlsen fake a relationship."
+        );
+        let text = "A reclusive author named J. R. Hartley returns home. Nobody is pleased.";
+        assert_eq!(shorten_synopsis(text), "A reclusive author named J. R. Hartley returns home.");
+    }
+
+    #[test]
     fn shorten_synopsis_keeps_short_single_sentence_untouched() {
         let text = "When Bonnie receives a Lilypad tablet as a gift and becomes obsessed, Buzz, Woody, Jessie and the rest of the gang's jobs become exponentially harder when they have to go head to head with the all-new threat to playtime.";
         assert_eq!(shorten_synopsis(text), text);
