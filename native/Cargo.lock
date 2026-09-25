@@ -1831,7 +1831,7 @@ checksum = "98de4bbd547a563b716d8dfa9aad1cb19bfab00f4fa09a6a4ed21dbcf44ce9c4"
 name = "fluxa-android-renderer"
 version = "0.1.0"
 dependencies = [
- "fluxa-mobile-host",
+ "fluxa-host",
  "fluxa-renderer",
  "fluxa_core",
  "jni 0.21.1",
@@ -1852,7 +1852,7 @@ dependencies = [
 name = "fluxa-apple-renderer"
 version = "0.1.0"
 dependencies = [
- "fluxa-mobile-host",
+ "fluxa-host",
  "fluxa-renderer",
  "fluxa_core",
  "wgpu",
@@ -1931,7 +1931,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fluxa-mobile-host"
+name = "fluxa-host"
 version = "0.1.0"
 dependencies = [
  "chrono",

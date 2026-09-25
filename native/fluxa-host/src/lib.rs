@@ -707,7 +707,7 @@ impl Gpu {
             info.backend, info.name
         ));
         let (device, queue) = pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor {
-            label: Some("fluxa-mobile-host-device"),
+            label: Some("fluxa-host-device"),
             required_features: wgpu::Features::empty(),
             required_limits: wgpu::Limits::default(),
             memory_hints: wgpu::MemoryHints::Performance,
@@ -2124,9 +2124,9 @@ pub enum KeyInput {
 }
 
 #[derive(Clone)]
-pub struct MobileHost(SharedRenderer);
+pub struct FluxaHost(SharedRenderer);
 
-impl MobileHost {
+impl FluxaHost {
     pub fn new(density: f32, artwork_cache_dir: Option<PathBuf>) -> Self {
         let density = if density.is_finite() && density > 0.0 {
             density

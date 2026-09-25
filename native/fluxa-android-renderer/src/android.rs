@@ -4,7 +4,7 @@ use std::{
     ptr::NonNull,
 };
 
-use fluxa_mobile_host::{GamepadButton, Key, KeyInput, MobileHost, NativeSurface, PointerPhase};
+use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
     JNIEnv,
@@ -44,8 +44,8 @@ impl Drop for NativeWindowRef {
     }
 }
 
-fn host(handle: jlong) -> Option<&'static MobileHost> {
-    (handle != 0).then(|| unsafe { &*(handle as *const MobileHost) })
+fn host(handle: jlong) -> Option<&'static FluxaHost> {
+    (handle != 0).then(|| unsafe { &*(handle as *const FluxaHost) })
 }
 
 fn string(env: &mut JNIEnv<'_>, value: &JString<'_>) -> Option<String> {
@@ -97,9 +97,9 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
     density: jfloat,
     artwork_cache_dir: JString<'_>,
 ) -> jlong {
-    fluxa_mobile_host::set_logger(android_log);
+    fluxa_host::set_logger(android_log);
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
-    Box::into_raw(Box::new(MobileHost::new(density, artwork_cache_dir))) as jlong
+    Box::into_raw(Box::new(FluxaHost::new(density, artwork_cache_dir))) as jlong
 }
 
 #[unsafe(no_mangle)]
@@ -128,7 +128,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_destroyN
     handle: jlong,
 ) {
     if handle != 0 {
-        drop(unsafe { Box::from_raw(handle as *mut MobileHost) });
+        drop(unsafe { Box::from_raw(handle as *mut FluxaHost) });
     }
 }
 
@@ -186,7 +186,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_snapshot
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(MobileHost::snapshot_json))
+    java_string(&env, host(handle).and_then(FluxaHost::snapshot_json))
 }
 
 #[unsafe(no_mangle)]
@@ -195,7 +195,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pollActi
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(MobileHost::take_actions_json))
+    java_string(&env, host(handle).and_then(FluxaHost::take_actions_json))
 }
 
 #[unsafe(no_mangle)]
@@ -250,7 +250,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedN
     handle: jlong,
 ) -> jlong {
     host(handle)
-        .and_then(MobileHost::focused_node)
+        .and_then(FluxaHost::focused_node)
         .map(|node| node as jlong)
         .unwrap_or(-1)
 }

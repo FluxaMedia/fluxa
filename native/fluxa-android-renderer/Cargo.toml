@@ -10,7 +10,7 @@ crate-type = ["cdylib"]
 
 [dependencies]
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["native"] }
-fluxa-mobile-host = { path = "../fluxa-mobile-host" }
+fluxa-host = { path = "../fluxa-host" }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 jni = "0.21"
 raw-window-handle = "0.6"

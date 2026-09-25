@@ -8,7 +8,7 @@ license = "MIT"
 crate-type = ["staticlib", "rlib"]
 
 [dependencies]
-fluxa-mobile-host = { path = "../fluxa-mobile-host" }
+fluxa-host = { path = "../fluxa-host" }
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["ios"] }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 wgpu = { version = "29.0.3", default-features = false, features = ["metal", "wgsl"] }

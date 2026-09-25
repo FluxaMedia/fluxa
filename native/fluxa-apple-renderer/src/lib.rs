@@ -4,10 +4,10 @@ use std::{
     ptr::NonNull,
 };
 
-use fluxa_mobile_host::{GamepadButton, Key, KeyInput, MobileHost, NativeSurface, PointerPhase};
+use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
 use fluxa_renderer::platform::APPLE_BACKEND_ORDER;
 
-pub type FluxaRenderer = MobileHost;
+pub type FluxaRenderer = FluxaHost;
 
 #[link(name = "CoreFoundation", kind = "framework")]
 unsafe extern "C" {
@@ -73,7 +73,7 @@ pub unsafe extern "C" fn fluxa_renderer_create(
     artwork_cache_dir: *const c_char,
 ) -> *mut FluxaRenderer {
     let cache = unsafe { text(artwork_cache_dir) }.map(PathBuf::from);
-    Box::into_raw(Box::new(MobileHost::new(density, cache)))
+    Box::into_raw(Box::new(FluxaHost::new(density, cache)))
 }
 
 #[unsafe(no_mangle)]
@@ -194,14 +194,14 @@ pub unsafe extern "C" fn fluxa_renderer_set_core_snapshot(
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_snapshot(renderer: *const FluxaRenderer) -> *mut c_char {
-    owned(unsafe { renderer.as_ref() }.and_then(MobileHost::snapshot_json))
+    owned(unsafe { renderer.as_ref() }.and_then(FluxaHost::snapshot_json))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_poll_actions(
     renderer: *const FluxaRenderer,
 ) -> *mut c_char {
-    owned(unsafe { renderer.as_ref() }.and_then(MobileHost::take_actions_json))
+    owned(unsafe { renderer.as_ref() }.and_then(FluxaHost::take_actions_json))
 }
 
 #[unsafe(no_mangle)]
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn fluxa_renderer_text_input(
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_focused_node(renderer: *const FluxaRenderer) -> i64 {
     unsafe { renderer.as_ref() }
-        .and_then(MobileHost::focused_node)
+        .and_then(FluxaHost::focused_node)
         .map(|node| node as i64)
         .unwrap_or(-1)
 }

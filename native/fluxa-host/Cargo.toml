@@ -1,9 +1,9 @@
 [package]
-name = "fluxa-mobile-host"
+name = "fluxa-host"
 version = "0.1.0"
 edition = "2024"
 license = "MIT"
-description = "Platform-neutral touch host for Fluxa's Rust WGPU renderer, shared by Android and Apple."
+description = "Platform-neutral host for the Fluxa renderer: screen state, input, artwork, frame loop and core session."
 
 [dependencies]
 egui = "0.34.2"
