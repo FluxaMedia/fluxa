@@ -8,7 +8,6 @@ use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-#[path = "mpv_render/api.rs"]
 mod api;
 use api::MpvApi;
 
@@ -539,15 +538,10 @@ impl PlayerStatus {
     }
 }
 
-#[path = "mpv_render/commands.rs"]
 mod commands;
-#[path = "mpv_render/context.rs"]
 mod context;
-#[path = "mpv_render/frame.rs"]
 mod frame;
-#[path = "mpv_render/lifecycle.rs"]
 mod lifecycle;
-#[path = "mpv_render/status.rs"]
 mod status;
 
 fn load_error(error: libloading::Error) -> String {
@@ -653,4 +647,25 @@ pub(crate) fn find_libmpv_path() -> String {
     return "libmpv.dylib".to_string();
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     return "libmpv.so.2".to_string();
+}
+
+pub struct PlaybackError {
+    pub message: String,
+    pub error_code: i32,
+    pub url: Option<String>,
+    pub log_tail: String,
+}
+
+static ERROR_REPORTER: std::sync::OnceLock<Box<dyn Fn(PlaybackError) + Send + Sync>> =
+    std::sync::OnceLock::new();
+
+pub fn set_error_reporter(reporter: impl Fn(PlaybackError) + Send + Sync + 'static) {
+    let _ = ERROR_REPORTER.set(Box::new(reporter));
+}
+
+fn report_playback_error(error: PlaybackError) {
+    match ERROR_REPORTER.get() {
+        Some(reporter) => reporter(error),
+        None => log::error!("mpv playback error: {}", error.message),
+    }
 }

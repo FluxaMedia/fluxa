@@ -199,19 +199,12 @@ impl MpvClientHandle {
                         }
                         let url = self.current_url.clone();
                         let error_code = end_file.error;
-                        crate::diagnostics::report_global_with_scope(
-                            message.clone(),
-                            sentry::Level::Error,
-                            move |scope| {
-                                scope.set_tag("mpv.error_code", error_code);
-                                if let Some(url) = &url {
-                                    scope.set_extra("mpv.url", url.clone().into());
-                                }
-                                if !details.is_empty() {
-                                    scope.set_extra("mpv.log_tail", details.join("\n").into());
-                                }
-                            },
-                        );
+                        crate::report_playback_error(crate::PlaybackError {
+                            message: message.clone(),
+                            error_code,
+                            url,
+                            log_tail: details.join("\n"),
+                        });
                         events.push(PlayerEvent::EndFile {
                             eof: false,
                             error: Some(message),
@@ -699,7 +692,7 @@ impl MpvClientHandle {
 #[cfg(test)]
 mod tests {
     use super::{audio_output_mode_for_policy, audio_passthrough_failure_text};
-    use crate::mpv_render::MpvAudioPolicyState;
+    use crate::MpvAudioPolicyState;
 
     #[test]
     fn recognizes_audio_sink_bitstream_failures_only() {

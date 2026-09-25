@@ -29,7 +29,7 @@ mod macos_avplayer;
 pub mod macos_player_surface;
 #[cfg(target_os = "macos")]
 mod macos_vulkan;
-mod mpv_render;
+use fluxa_mpv as mpv_render;
 mod thumbnail_helper;
 pub use thumbnail_helper::run as run_thumbnail_helper;
 mod net_guard;

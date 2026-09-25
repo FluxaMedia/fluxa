@@ -53,26 +53,9 @@ mod widgets;
 #[cfg(target_os = "linux")]
 use wayland_presentation::{FeedbackEvent, WaylandPresentation};
 
-mod diagnostics {
-    pub(crate) fn report_global_with_scope(
-        message: String,
-        level: sentry::Level,
-        configure_scope: impl Fn(&mut sentry::Scope) + Send + Sync + 'static,
-    ) {
-        log::error!("native mpv: {message}");
-        sentry::with_scope(configure_scope, || sentry::capture_message(&message, level));
-    }
-}
-
-// Keep the native desktop host on the same libmpv ABI wrapper as the mature
-// desktop player while the shared Rust renderer replaces the old web shell.
-// The wrapper is host-only; the shared UI never depends on mpv types.
-#[path = "../../../apps/desktop/src-tauri/src/mpv_render.rs"]
-mod native_mpv;
-// The shared legacy unit tests still name this module `mpv_render`; production
-// intentionally uses the `native_mpv` alias to keep it host-specific.
+use fluxa_mpv as native_mpv;
 #[cfg(test)]
-use native_mpv as mpv_render;
+use fluxa_mpv as mpv_render;
 
 use screen_hosts::{
     draw_shared_calendar_screen, draw_shared_detail_screen, draw_shared_discover_screen,
@@ -6112,5 +6095,20 @@ fn main() -> Result<(), winit::error::EventLoopError> {
     // SAFETY: this is the process entry point, before the event loop or any
     // worker thread has started reading the environment.
     unsafe { std::env::set_var("MPV_LIBMPV_RENDER_BACKEND", "gpu-next") };
+    fluxa_mpv::set_error_reporter(|error| {
+        log::error!("native mpv: {}", error.message);
+        sentry::with_scope(
+            |scope| {
+                scope.set_tag("mpv.error_code", error.error_code);
+                if let Some(url) = &error.url {
+                    scope.set_extra("mpv.url", url.clone().into());
+                }
+                if !error.log_tail.is_empty() {
+                    scope.set_extra("mpv.log_tail", error.log_tail.clone().into());
+                }
+            },
+            || sentry::capture_message(&error.message, sentry::Level::Error),
+        );
+    });
     EventLoop::new()?.run_app(&mut FluxaDesktopApp::default())
 }

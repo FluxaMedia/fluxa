@@ -1992,6 +1992,7 @@ dependencies = [
  "discord-rich-presence",
  "ecb",
  "ego-tree",
+ "fluxa-mpv",
  "fluxa_core",
  "fluxa_streaming_engine",
  "gdk",
@@ -2045,6 +2046,17 @@ dependencies = [
  "windows 0.58.0",
  "windows-sys 0.52.0",
  "x11",
+]
+
+[[package]]
+name = "fluxa-mpv"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "libloading 0.9.0",
+ "log",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

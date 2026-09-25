@@ -19,6 +19,7 @@ path = "src/main.rs"
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
+fluxa-mpv = { path = "../../../native/fluxa-mpv" }
 tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-fs = "2"
 tauri-plugin-shell = "2"
