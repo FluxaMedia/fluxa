@@ -10,6 +10,7 @@ use std::{
 
 use web_time::Instant;
 
+pub use egui;
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
 use fluxa_effects::{AppSession, Storage};
@@ -103,6 +104,11 @@ struct RendererState {
     last_snapshot_revision: Option<u64>,
     session: Option<AppSession>,
     session_revision: Option<u64>,
+    egui_events: Vec<egui::Event>,
+    modifiers: egui::Modifiers,
+    mouse_position: Option<Pos2>,
+    cursor: egui::CursorIcon,
+    wants_keyboard: bool,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -522,6 +528,12 @@ struct Gpu {
     adapter_name: String,
 }
 
+struct FrameOutput {
+    layout: HomeLayout,
+    cursor: egui::CursorIcon,
+    wants_keyboard: bool,
+}
+
 struct HostAssets<'a> {
     background: egui::TextureId,
     artwork: &'a mut ArtworkLoader,
@@ -850,7 +862,9 @@ impl Gpu {
         focused: Option<u64>,
         safe_bottom: f32,
         scroll_y: f32,
-    ) -> Result<HomeLayout, String> {
+        events: Vec<egui::Event>,
+        modifiers: egui::Modifiers,
+    ) -> Result<FrameOutput, String> {
         self.artwork.poll(&self.egui_context);
         self.artwork.begin_frame();
         let screen_size = [self.config.width, self.config.height];
@@ -872,6 +886,9 @@ impl Gpu {
                 Vec2::new(logical_size[0] as f32, logical_size[1] as f32),
             )),
             time: Some(self.started_at.elapsed().as_secs_f64()),
+            events,
+            modifiers,
+            focused: true,
             ..Default::default()
         };
         let mut rendered_layout = HomeLayout::default();
@@ -964,7 +981,11 @@ impl Gpu {
         frame.present();
         self.egui_renderer
             .free_texture_deltas(&output.textures_delta);
-        Ok(rendered_layout)
+        Ok(FrameOutput {
+            layout: rendered_layout,
+            cursor: output.platform_output.cursor_icon,
+            wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
+        })
     }
 }
 
@@ -2131,6 +2152,13 @@ pub enum PointerPhase {
 }
 
 #[derive(Clone, Copy, Debug)]
+pub enum MouseButton {
+    Primary,
+    Secondary,
+    Middle,
+}
+
+#[derive(Clone, Copy, Debug)]
 pub enum KeyInput {
     Key(Key),
     Gamepad(GamepadButton),
@@ -2185,6 +2213,11 @@ impl FluxaHost {
             last_snapshot_revision: None,
             session: None,
             session_revision: None,
+            egui_events: Vec::new(),
+            modifiers: egui::Modifiers::NONE,
+            mouse_position: None,
+            cursor: egui::CursorIcon::Default,
+            wants_keyboard: false,
         })))
     }
 
@@ -2270,6 +2303,109 @@ impl FluxaHost {
                 update_screen_scroll(state, delta_y, viewport);
             }
         });
+    }
+
+    pub fn mouse_moved(&self, x: f32, y: f32) {
+        self.with_state(|state| {
+            let position = Pos2::new(x, y);
+            state.mouse_position = Some(position);
+            state.keyboard_focus_visible = false;
+            state.egui_events.push(egui::Event::PointerMoved(position));
+        });
+    }
+
+    pub fn mouse_button(&self, button: MouseButton, pressed: bool, x: f32, y: f32) {
+        self.with_state(|state| {
+            let position = Pos2::new(x, y);
+            state.mouse_position = Some(position);
+            state.keyboard_focus_visible = false;
+            state.egui_events.push(egui::Event::PointerButton {
+                pos: position,
+                button: match button {
+                    MouseButton::Primary => egui::PointerButton::Primary,
+                    MouseButton::Secondary => egui::PointerButton::Secondary,
+                    MouseButton::Middle => egui::PointerButton::Middle,
+                },
+                pressed,
+                modifiers: state.modifiers,
+            });
+        });
+    }
+
+    pub fn mouse_left(&self) {
+        self.with_state(|state| {
+            state.mouse_position = None;
+            state.egui_events.push(egui::Event::PointerGone);
+        });
+    }
+
+    pub fn wheel(&self, delta_x: f32, delta_y: f32) {
+        self.with_state(|state| {
+            let (delta_x, delta_y) = if state.modifiers.shift && delta_x == 0.0 {
+                (delta_y, 0.0)
+            } else {
+                (delta_x, delta_y)
+            };
+            state.egui_events.push(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Point,
+                delta: Vec2::new(-delta_x, -delta_y),
+                phase: egui::TouchPhase::Move,
+                modifiers: state.modifiers,
+            });
+            let viewport = logical_viewport(state);
+            if state.route == "home" {
+                if delta_x != 0.0
+                    && let Some(row) = state.mouse_position.and_then(|position| {
+                        fluxa_ui::home_row_at_y(viewport, &state.home, position.y)
+                    })
+                {
+                    if state.home.row_scroll_offsets.len() <= row {
+                        state.home.row_scroll_offsets.resize(row + 1, 0.0);
+                    }
+                    let max = fluxa_ui::home_row_scroll_max(viewport, &state.home, row);
+                    let offset = &mut state.home.row_scroll_offsets[row];
+                    *offset = (*offset + delta_x).clamp(0.0, max);
+                    request_home_row_load_more(state, row, viewport);
+                }
+                let max = fluxa_ui::home_scroll_max(viewport, &state.home);
+                state.home.scroll_offset = (state.home.scroll_offset + delta_y).clamp(0.0, max);
+            } else if delta_y != 0.0 {
+                update_screen_scroll(state, delta_y, viewport);
+            }
+        });
+    }
+
+    pub fn set_modifiers(&self, modifiers: egui::Modifiers) {
+        self.with_state(|state| state.modifiers = modifiers);
+    }
+
+    pub fn egui_key(&self, key: egui::Key, pressed: bool) {
+        self.with_state(|state| {
+            state.egui_events.push(egui::Event::Key {
+                key,
+                physical_key: None,
+                pressed,
+                repeat: false,
+                modifiers: state.modifiers,
+            });
+        });
+    }
+
+    pub fn egui_text(&self, text: &str) {
+        self.with_state(|state| state.egui_events.push(egui::Event::Text(text.to_owned())));
+    }
+
+    pub fn egui_event(&self, event: egui::Event) {
+        self.with_state(|state| state.egui_events.push(event));
+    }
+
+    pub fn wants_keyboard(&self) -> bool {
+        self.with_state(|state| state.wants_keyboard)
+            .unwrap_or(false)
+    }
+
+    pub fn cursor(&self) -> egui::CursorIcon {
+        self.with_state(|state| state.cursor).unwrap_or_default()
     }
 
     pub fn pointer(&self, phase: PointerPhase, x: f32, y: f32) {
@@ -2620,8 +2756,12 @@ fn render_frame(state: &mut RendererState) {
             calendar,
             detail,
             settings,
+            egui_events,
+            modifiers,
             ..
         } = state;
+        let events = std::mem::take(egui_events);
+        let modifiers = *modifiers;
         gpu.as_mut().map(|gpu| {
             gpu.render(
                 &route,
@@ -2635,12 +2775,18 @@ fn render_frame(state: &mut RendererState) {
                 focused,
                 safe_bottom,
                 scroll_y,
+                events,
+                modifiers,
             )
         })
     };
     if let Some(render_result) = render_result {
         match render_result {
-            Ok(layout) => {
+            Ok(frame) => {
+                state.cursor = frame.cursor;
+                state.wants_keyboard = frame.wants_keyboard;
+                let layout = frame.layout;
+                apply_pointer_results(state, &route, &layout);
                 if route == "discover" {
                     for request in &layout.load_more {
                         state
@@ -2692,6 +2838,55 @@ fn render_frame(state: &mut RendererState) {
             }
             Err(error) => host_log(format!("Frame skipped: {error}")),
         }
+    }
+}
+
+fn apply_pointer_results(state: &mut RendererState, route: &str, layout: &HomeLayout) {
+    if let (Some(node), Some(value)) = (layout.text_input_node, layout.text_input.as_ref()) {
+        set_text_value(state, node, value);
+    }
+    if let Some((key, value)) = layout.filter_change.as_ref()
+        && key == "librarySort"
+        && route == "library"
+    {
+        state.library_sort = value.clone();
+        refresh_library_view(state);
+    }
+    if let Some((key, value)) = layout.setting_change.as_ref() {
+        state
+            .pending_native_actions
+            .push(NativeAction::SettingsChange {
+                key: key.clone(),
+                value: value.clone(),
+            });
+    }
+    if let Some(node) = layout.activated {
+        rebuild_current_ui(state);
+        remember_actions(state, vec![UiAction::Activated(node)]);
+    }
+}
+
+fn set_text_value(state: &mut RendererState, node: u64, value: &str) {
+    match node {
+        fluxa_ui::NODE_LIBRARY_SEARCH if state.library_query != value => {
+            state.library_query = value.to_owned();
+            refresh_library_view(state);
+        }
+        fluxa_ui::NODE_DISCOVER_SEARCH if state.discover.query != value => {
+            state.discover.query = value.to_owned();
+            state
+                .pending_native_actions
+                .push(NativeAction::DiscoverFilters {
+                    content_type: state.discover.content_type.clone(),
+                    catalog_key: state.discover.selected_catalog_key.clone(),
+                    query: state.discover.query.clone(),
+                    extra_name: state.discover.selected_extra_name.clone(),
+                    extra_value: state.discover.selected_extra_value.clone(),
+                });
+        }
+        fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
+        fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
+        _ => {}
     }
 }
 

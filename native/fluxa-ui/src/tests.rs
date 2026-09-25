@@ -1369,3 +1369,55 @@ fn settings_row_labels_reuse_existing_web_translations() {
     );
 }
 
+#[test]
+fn clicking_library_search_then_typing_reports_the_query() {
+    let viewport = Viewport::new(1600, 900, UiFormFactor::Desktop);
+    let context = egui::Context::default();
+    let mut assets = EmptyHomeAssets;
+    let library = LibraryModel::default();
+    let page = PageLayout::new(viewport, UiMetrics::for_viewport(viewport), false);
+    let target = page.search.center();
+    let frames = [
+        Vec::new(),
+        Vec::new(),
+        vec![egui::Event::PointerMoved(target)],
+        vec![egui::Event::PointerButton {
+            pos: target,
+            button: egui::PointerButton::Primary,
+            pressed: true,
+            modifiers: egui::Modifiers::NONE,
+        }],
+        vec![egui::Event::PointerButton {
+            pos: target,
+            button: egui::PointerButton::Primary,
+            pressed: false,
+            modifiers: egui::Modifiers::NONE,
+        }],
+        vec![egui::Event::Text("du".to_owned())],
+    ];
+    let mut typed = None;
+    for (frame, events) in frames.into_iter().enumerate() {
+        let _ = context.run_ui(
+            egui::RawInput {
+                screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1600.0, 900.0))),
+                time: Some(frame as f64 / 60.0),
+                events,
+                ..Default::default()
+            },
+            |ui| {
+                let layout = draw_library(
+                    ui.ctx(),
+                    viewport,
+                    &library,
+                    LibraryTab::Watchlist,
+                    &mut assets,
+                    None,
+                );
+                if layout.text_input.is_some() {
+                    typed = layout.text_input;
+                }
+            },
+        );
+    }
+    assert_eq!(typed.as_deref(), Some("du"));
+}

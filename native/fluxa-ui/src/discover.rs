@@ -59,8 +59,8 @@ pub fn draw_discover(
     egui::Area::new(Id::new("fluxa-shared-discover-title"))
         .fixed_pos(Pos2::new(margin, page.top))
         .show(context, |ui| {
-            ui.set_min_height(page.title_height);
-            ui.horizontal_centered(|ui| {
+            ui.horizontal(|ui| {
+                ui.set_min_height(page.title_height);
                 ui.label(
                     RichText::new(localized("nav.discover", &discover.language))
                         .size(if compact {

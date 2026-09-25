@@ -29,8 +29,8 @@ pub fn draw_library(
     egui::Area::new(Id::new("fluxa-shared-library-title"))
         .fixed_pos(Pos2::new(page.margin, page.top))
         .show(context, |ui| {
-            ui.set_min_height(page.title_height);
-            ui.horizontal_centered(|ui| {
+            ui.horizontal(|ui| {
+                ui.set_min_height(page.title_height);
                 ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
                 ui.label(
                     RichText::new(localized("nav.library", &library.language))
