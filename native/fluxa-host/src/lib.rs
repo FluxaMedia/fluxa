@@ -34,6 +34,7 @@ static LOGGER: OnceLock<fn(&str)> = OnceLock::new();
 
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
+    fluxa_effects::set_logger(logger);
 }
 
 fn host_log(message: impl AsRef<str>) {
@@ -2758,7 +2759,15 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
         NativeAction::LoadMore { .. } => Vec::new(),
         NativeAction::Back => vec![navigation("home")],
         NativeAction::Navigate { destination } => match destination.as_str() {
-            "home" => vec![navigation("home")],
+            "home" => vec![
+                navigation("home"),
+                json!({
+                    "type": "homeLoadRequested",
+                    "profile": profile,
+                    "language": profile_language(profile),
+                    "force": false,
+                }),
+            ],
             "library" => vec![
                 navigation("library"),
                 json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}),
@@ -2774,7 +2783,7 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
                     json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
                 ]
             }
-            "profile" => vec![navigation("settings")],
+            "profile" | "settings" => vec![navigation("settings")],
             _ => return None,
         },
         NativeAction::DiscoverType { content_type } => {
@@ -2890,6 +2899,18 @@ mod tests {
         assert_eq!(command["filters"]["extra"]["search"], "dune");
         assert_eq!(command["filters"]["catalogKey"], "top");
         assert_eq!(command["language"], "en");
+    }
+
+    #[test]
+    fn profile_button_opens_settings() {
+        let commands = session_commands(
+            &NativeAction::Navigate {
+                destination: "settings".to_owned(),
+            },
+            &Value::Null,
+        )
+        .unwrap();
+        assert_eq!(commands[0]["route"], "settings");
     }
 
     #[test]
