@@ -836,15 +836,13 @@ impl Gpu {
             .or_default()
             .splice(0..0, ["archivo".to_owned()]);
         egui_context.set_fonts(fonts);
-        let background_image = image::load_from_memory(BACKGROUND_BYTES)
-            .map(|image| {
-                let image = image.to_rgba8();
-                egui::ColorImage::from_rgba_unmultiplied(
-                    [image.width() as usize, image.height() as usize],
-                    image.as_raw(),
-                )
-            })
-            .unwrap_or_else(|_| egui::ColorImage::example());
+        let background_image = {
+            let image = fluxa_renderer::ambient_background();
+            egui::ColorImage::from_rgba_unmultiplied(
+                [image.width() as usize, image.height() as usize],
+                image.as_raw(),
+            )
+        };
         let background_texture = egui_context.load_texture(
             "fluxa-native-background",
             background_image,
@@ -1046,8 +1044,6 @@ impl Gpu {
 
 const BRAND_MARK_BYTES: &[u8] = include_bytes!("../../../apps/desktop/public/fluxa.png");
 
-const BACKGROUND_BYTES: &[u8] =
-    include_bytes!("../../../apps/desktop/public/welcome-background.png");
 
 fn rebuild_home_ui(ui: &mut UiTree, [width, height]: [u32; 2], home: &HomeModel, safe_bottom: f32) {
     if ui.node(NODE_PLAY).is_some() {

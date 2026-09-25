@@ -115,8 +115,22 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 }
 "#;
 
-const BACKGROUND_BYTES: &[u8] =
-    include_bytes!("../../../apps/desktop/public/welcome-background.png");
+pub fn ambient_background() -> image::RgbaImage {
+    let (width, height) = (640u32, 360u32);
+    image::RgbaImage::from_fn(width, height, |x, y| {
+        let u = x as f32 / width as f32;
+        let v = y as f32 / height as f32;
+        let glow = |cx: f32, cy: f32, rx: f32, ry: f32| {
+            let d = ((u - cx) / rx).powi(2) + ((v - cy) / ry).powi(2);
+            (-d * 2.2).exp()
+        };
+        let light = 24.0 * glow(0.18, -0.05, 0.75, 0.8) + 10.0 * glow(0.95, 1.05, 0.6, 0.6);
+        let hash = (x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263)).wrapping_mul(1_274_126_177);
+        let grain = ((hash >> 24) as f32 / 255.0 - 0.5) * 3.0;
+        let value = (11.0 + light + grain).clamp(0.0, 255.0) as u8;
+        image::Rgba([value, value, value, 255])
+    })
+}
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Rect {
@@ -391,9 +405,7 @@ impl WgpuRenderer {
         };
         surface.configure(&device, &config);
 
-        let background_image = image::load_from_memory(BACKGROUND_BYTES)
-            .map_err(|error| RendererError::Asset(error.to_string()))?
-            .to_rgba8();
+        let background_image = ambient_background();
         let background_texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("fluxa-native-renderer-background"),
             size: wgpu::Extent3d {

@@ -4247,7 +4247,12 @@ fn draw_loading_screen(
     screen: Rect,
     assets: &impl HomeAssets,
 ) {
-    painter.rect_filled(screen, 0.0, Color32::from_rgb(12, 12, 12));
+    painter.image(
+        assets.background(),
+        screen,
+        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+        Color32::WHITE,
+    );
     let time = context.input(|input| input.time) as f32;
     let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
