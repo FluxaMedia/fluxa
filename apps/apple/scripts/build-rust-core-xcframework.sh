@@ -7,6 +7,7 @@ fi
 
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
 rust_dir="$(cd "$project_dir/../../core/fluxa-core" && pwd)"
+native_dir="$(cd "$project_dir/../../native" && pwd)"
 output_dir="$project_dir/Generated"
 headers_dir="$output_dir/FluxaRustCoreFFI"
 profile="${CONFIGURATION:-Debug}"
@@ -162,6 +163,26 @@ for target in "${targets[@]}"; do
     build_rust_core --target "$target"
 done
 
+build_apple_renderer() {
+    local target="$1"
+    local sdk clang_triple sdk_path
+    sdk="$(apple_sdk_for_rust_target "$target")"
+    clang_triple="$(apple_clang_triple_for_rust_target "$target")"
+    sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
+    local cargo_cmd=(cargo build -p fluxa-apple-renderer --target "$target")
+    [[ "$profile" == "Release" ]] && cargo_cmd+=(--release)
+    (cd "$native_dir" && env \
+        "IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET:-18.5}" \
+        "SDKROOT=$sdk_path" \
+        "LIBCLANG_PATH=$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib" \
+        "BINDGEN_EXTRA_CLANG_ARGS=--target=$clang_triple --sysroot=$sdk_path -isysroot $sdk_path" \
+        "${cargo_cmd[@]}")
+}
+
+for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
+    build_apple_renderer "$target"
+done
+
 if should_build_streaming_engine; then
     for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios \
         aarch64-apple-tvos aarch64-apple-tvos-sim; do
@@ -174,6 +195,11 @@ lipo -create \
     "target/x86_64-apple-ios/$cargo_profile/libfluxa_core.a" \
     -output "$output_dir/libfluxa_core-ios-simulator.a"
 cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-ios.a"
+lipo -create \
+    "$native_dir/target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_apple_renderer.a" \
+    "$native_dir/target/x86_64-apple-ios/$cargo_profile/libfluxa_apple_renderer.a" \
+    -output "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
+cp "$native_dir/target/aarch64-apple-ios/$cargo_profile/libfluxa_apple_renderer.a" "$output_dir/libfluxa_apple_renderer-ios.a"
 cp "target/aarch64-apple-tvos/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos.a"
 cp "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos-simulator.a"
 if should_build_streaming_engine; then

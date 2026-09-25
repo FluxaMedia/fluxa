@@ -1,0 +1,4 @@
+module FluxaRendererFFI {
+    header "fluxa_renderer.h"
+    export *
+}
