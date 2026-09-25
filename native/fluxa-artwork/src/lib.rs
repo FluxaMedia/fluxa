@@ -70,12 +70,24 @@ const MAX_PREFETCH_DECODE_IN_FLIGHT: usize = 1;
 const MAX_ANIMATION_DECODE_IN_FLIGHT: usize = 2;
 pub const MAX_CACHE_BYTES: u64 = 256 * 1024 * 1024;
 pub const MAX_CACHE_AGE: Duration = Duration::from_secs(30 * 24 * 60 * 60);
+#[cfg(not(target_arch = "wasm32"))]
+pub const MAX_ANIMATION_BYTES: usize = 64 * 1024 * 1024;
+#[cfg(target_arch = "wasm32")]
 pub const MAX_ANIMATION_BYTES: usize = 16 * 1024 * 1024;
+#[cfg(not(target_arch = "wasm32"))]
+pub const MAX_ANIMATION_ATLAS_SIDE: u32 = 4096;
+#[cfg(target_arch = "wasm32")]
 pub const MAX_ANIMATION_ATLAS_SIDE: u32 = 2048;
 const MAX_SOURCE_ANIMATION_FRAMES: usize = 4096;
+#[cfg(not(target_arch = "wasm32"))]
+const MAX_ANIMATION_FRAMES: usize = 180;
+#[cfg(target_arch = "wasm32")]
 const MAX_ANIMATION_FRAMES: usize = 72;
+#[cfg(not(target_arch = "wasm32"))]
+const MIN_ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(33);
+#[cfg(target_arch = "wasm32")]
 const MIN_ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(80);
-const ANIMATION_CACHE_MAGIC: &[u8] = b"FXAN1";
+const ANIMATION_CACHE_MAGIC: &[u8] = b"FXAN2";
 const FAILED_REQUEST_RETRY_DELAY: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -1499,14 +1511,14 @@ mod tests {
         let target = animation_target_size([324, 486]);
         assert_eq!(target, [324, 486]);
 
-        let target = animation_size_for_frame_count([378, 214], 90)
+        let target = animation_size_for_frame_count([378, 214], 400)
             .expect("90 full-timeline frames should fit after scaling");
         assert!(target[0] < 378 && target[1] < 214);
-        assert!((target[0] as usize * target[1] as usize * 4) * 90 <= MAX_ANIMATION_BYTES);
+        assert!((target[0] as usize * target[1] as usize * 4) * 400 <= MAX_ANIMATION_BYTES);
         assert!(
             (MAX_ANIMATION_ATLAS_SIDE / target[0]) as usize
                 * (MAX_ANIMATION_ATLAS_SIDE / target[1]) as usize
-                >= 90
+                >= 400
         );
         assert_eq!(animation_target_size([120, 180]), [120, 180]);
     }
@@ -1524,7 +1536,7 @@ mod tests {
         let target = [378, 214];
         let frame_count = 156;
         let frame_bytes = target[0] as usize * target[1] as usize * 4;
-        assert!(frame_bytes * frame_count > MAX_ANIMATION_BYTES);
+        assert!(frame_bytes * frame_count > 16 * 1024 * 1024);
 
         let size =
             animation_size_for_frame_count_with_limits(target, frame_count, 64 * 1024 * 1024, 4096)
@@ -1609,16 +1621,16 @@ mod tests {
     }
 
     #[test]
-    fn fast_animations_drop_to_twelve_fps_without_shortening_the_loop() {
-        let decoded = collect_animation_frames(solid_frames(120, 8, 25), [8, 8], None)
+    fn fast_animations_drop_to_thirty_fps_without_shortening_the_loop() {
+        let decoded = collect_animation_frames(solid_frames(120, 8, 20), [8, 8], None)
             .expect("decode fixture");
 
-        assert_eq!(decoded.len(), 30);
+        assert_eq!(decoded.len(), 60);
         assert_eq!(
             decoded.iter().map(|frame| frame.duration).sum::<Duration>(),
-            Duration::from_millis(120 * 25)
+            Duration::from_millis(120 * 20)
         );
-        assert_eq!(decoded[1].image.get_pixel(0, 0)[0], 4);
+        assert_eq!(decoded[1].image.get_pixel(0, 0)[0], 2);
     }
 
     #[test]
