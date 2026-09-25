@@ -45,5 +45,3 @@ wayland-client = { version = "0.31.15", features = ["system"] }
 wayland-protocols = { version = "0.32.13", features = ["client"] }
 
 [build-dependencies]
-cc = "1.2"
-pkg-config = "0.3"

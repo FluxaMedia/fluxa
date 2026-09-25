@@ -38,12 +38,6 @@ use winit::{
 };
 
 mod font_manager;
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-mod nvdec;
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-mod nvdec_gpu;
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-mod nvdec_vulkan_buffer;
 mod screen_hosts;
 mod svg_icons;
 #[cfg(target_os = "linux")]
@@ -74,10 +68,6 @@ const BACKGROUND_BYTES: &[u8] =
 // 2048 on the supported renderer path, so this avoids the old 1024px hero
 // upscale that made wide backdrops visibly pixelated.
 const MAX_SAFE_TEXTURE_SIDE: u32 = 2048;
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-const MAX_NVDEC_ATLAS_SIDE: u32 = 4096;
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-const MAX_NVDEC_ANIMATION_BYTES: usize = 64 * 1024 * 1024;
 // Decoding happens off the UI thread, so several already-prepared images can
 // be handed to WGPU per frame without making the window appear stuck.
 const MAX_ARTWORK_UPLOADS_PER_FRAME: usize = 8;
@@ -85,48 +75,6 @@ const MAX_ARTWORK_UPLOADS_PER_FRAME: usize = 8;
 // native textures resident for all shelves so a loaded poster/logo is not
 // evicted and immediately requested again on the next frame.
 const MAX_ARTWORK_TEXTURES: usize = 256;
-
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-fn gpu_atlas_layout(
-    target_size: [u32; 2],
-    animation: &fluxa_artwork::NvdecWebpAnimation,
-    max_atlas_side: u32,
-) -> Option<([u32; 2], [u32; 2], Vec<fluxa_artwork::AnimatedAtlasFrame>)> {
-    let frame_size = fluxa_artwork::animation_size_for_frame_count_with_limits(
-        target_size,
-        animation.frames.len(),
-        MAX_NVDEC_ANIMATION_BYTES,
-        max_atlas_side,
-    )?;
-    let max_columns = (max_atlas_side / frame_size[0]).max(1) as usize;
-    let max_rows = (max_atlas_side / frame_size[1]).max(1) as usize;
-    let columns = animation.frames.len().min(max_columns);
-    let rows = animation.frames.len().div_ceil(columns);
-    if rows > max_rows {
-        return None;
-    }
-    let atlas_width = frame_size[0].checked_mul(columns as u32)?;
-    let atlas_height = frame_size[1].checked_mul(rows as u32)?;
-    if atlas_width > max_atlas_side || atlas_height > max_atlas_side {
-        return None;
-    }
-    let mut frames = Vec::with_capacity(animation.frames.len());
-    for (index, source_frame) in animation.frames.iter().enumerate() {
-        let x = (index % columns) as u32 * frame_size[0];
-        let y = (index / columns) as u32 * frame_size[1];
-        frames.push(fluxa_artwork::AnimatedAtlasFrame {
-            uv: [
-                (x as f32 + 0.5) / atlas_width as f32,
-                (y as f32 + 0.5) / atlas_height as f32,
-                (x as f32 + frame_size[0] as f32 - 0.5) / atlas_width as f32,
-                (y as f32 + frame_size[1] as f32 - 0.5) / atlas_height as f32,
-            ],
-            image_size: frame_size,
-            duration: source_frame.duration,
-        });
-    }
-    Some((frame_size, [atlas_width, atlas_height], frames))
-}
 
 fn benchmark_target_fps() -> Option<u32> {
     std::env::var("FLUXA_NATIVE_BENCH_FPS")
@@ -155,8 +103,6 @@ struct NativeUi {
     surface: wgpu::Surface<'static>,
     device: wgpu::Device,
     queue: wgpu::Queue,
-    #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-    adapter: wgpu::Adapter,
     config: wgpu::SurfaceConfiguration,
     pending_resize: Option<winit::dpi::PhysicalSize<u32>>,
     resize_reconfigure_until: Option<Instant>,
@@ -1743,8 +1689,6 @@ struct ArtworkRegistry {
     active_animations: HashSet<String>,
     animation_slots: HashSet<String>,
     animation_start_times: HashMap<String, Instant>,
-    #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-    nvdec_pending: HashMap<String, PendingNvdecAnimation>,
     latest_keys: HashMap<String, String>,
     icon_textures: HashMap<&'static str, TextureId>,
     active_profile_name: String,
@@ -1755,8 +1699,6 @@ struct ArtworkRegistry {
 
 struct NativeArtworkTexture {
     _texture: Option<wgpu::Texture>,
-    #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-    _gpu_atlas: Option<nvdec_gpu::Nv12RgbaAtlas>,
     id: TextureId,
     size: [u32; 2],
     last_used: u64,
@@ -1768,20 +1710,6 @@ struct NativeArtworkAnimation {
     ready_frame_count: usize,
     started_at: Option<Instant>,
     next_frame_at: Instant,
-}
-
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-struct PendingNvdecAnimation {
-    source_url: String,
-    target_size: [u32; 2],
-    receiver: Receiver<nvdec::NvdecWorkerEvent>,
-    gpu_completion: Option<std::sync::mpsc::Sender<()>>,
-    atlas: Option<nvdec_gpu::Nv12RgbaAtlas>,
-    texture_registered: bool,
-    frames: Vec<fluxa_artwork::AnimatedAtlasFrame>,
-    frame_size: [u32; 2],
-    failed: bool,
-    animation_started_at: Option<Instant>,
 }
 
 impl ArtworkRegistry {
@@ -1798,8 +1726,6 @@ impl ArtworkRegistry {
             active_animations: HashSet::new(),
             animation_slots: HashSet::new(),
             animation_start_times: HashMap::new(),
-            #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-            nvdec_pending: HashMap::new(),
             latest_keys: HashMap::new(),
             icon_textures: HashMap::new(),
             active_profile_name: "Profile".to_owned(),
@@ -1864,7 +1790,6 @@ impl ArtworkRegistry {
         renderer: &mut EguiWgpuBackend,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))] adapter: &wgpu::Adapter,
     ) {
         for prepared in self.fetcher.poll(MAX_ARTWORK_UPLOADS_PER_FRAME) {
             let url = prepared.source_url;
@@ -1872,8 +1797,6 @@ impl ArtworkRegistry {
             let animation_requested = prepared.animation_requested;
             let animation_started_at = prepared.animation_started_at;
             let animation_atlas = prepared.animation_atlas;
-            #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-            let nvdec_animation = prepared.nvdec_animation;
             let image = animation_atlas
                 .as_ref()
                 .map(|atlas| &atlas.image)
@@ -1943,8 +1866,6 @@ impl ArtworkRegistry {
                 key.clone(),
                 NativeArtworkTexture {
                     _texture: Some(texture),
-                    #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-                    _gpu_atlas: None,
                     id,
                     size: [image.width(), image.height()],
                     last_used: self.access_counter,
@@ -1971,77 +1892,6 @@ impl ArtworkRegistry {
                     },
                 );
             }
-            #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-            if let Some(animation) = nvdec_animation.filter(|_| animation_requested) {
-                let max_atlas_side = device
-                    .limits()
-                    .max_texture_dimension_2d
-                    .min(MAX_NVDEC_ATLAS_SIDE);
-                match gpu_atlas_layout(image_size, &animation, max_atlas_side) {
-                    Some((frame_size, atlas_size, frames)) => {
-                        match nvdec_gpu::Nv12RgbaAtlas::new(device, atlas_size[0], atlas_size[1]) {
-                            Ok(atlas) => {
-                                match nvdec::spawn_vp8_worker(
-                                    animation,
-                                    device.clone(),
-                                    adapter.clone(),
-                                ) {
-                                    Ok(mut worker) => {
-                                        self.nvdec_pending.insert(
-                                            key.clone(),
-                                            PendingNvdecAnimation {
-                                                source_url: url.clone(),
-                                                target_size,
-                                                receiver: worker.receiver,
-                                                gpu_completion: worker.gpu_completion.take(),
-                                                atlas: Some(atlas),
-                                                texture_registered: false,
-                                                frames,
-                                                frame_size,
-                                                failed: false,
-                                                animation_started_at,
-                                            },
-                                        );
-                                    }
-                                    Err(error) => {
-                                        eprintln!(
-                                            "[fluxa-native] could not start NVDEC WebP worker: {error}"
-                                        );
-                                        self.request_cpu_animation_fallback(
-                                            &key,
-                                            &url,
-                                            target_size,
-                                            animation_started_at,
-                                        );
-                                    }
-                                }
-                            }
-                            Err(error) => {
-                                eprintln!(
-                                    "[fluxa-native] could not create NVDEC WebP atlas: {error}"
-                                );
-                                self.request_cpu_animation_fallback(
-                                    &key,
-                                    &url,
-                                    target_size,
-                                    animation_started_at,
-                                );
-                            }
-                        }
-                    }
-                    None => {
-                        eprintln!(
-                            "[fluxa-native] NVDEC WebP animation exceeds the GPU atlas budget"
-                        );
-                        self.request_cpu_animation_fallback(
-                            &key,
-                            &url,
-                            target_size,
-                            animation_started_at,
-                        );
-                    }
-                }
-            }
             while self.textures.len() > MAX_ARTWORK_TEXTURES {
                 let Some(oldest_url) = self
                     .textures
@@ -2060,8 +1910,6 @@ impl ArtworkRegistry {
             }
             context.request_repaint();
         }
-        #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-        self.poll_nvdec_pending(context, renderer, device, queue);
         let now = Instant::now();
         let active = self.active_animations.iter().cloned().collect::<Vec<_>>();
         let mut next_frame_in = None;
@@ -2087,251 +1935,6 @@ impl ArtworkRegistry {
         if let Some(wait) = next_frame_in {
             context.request_repaint_after(wait.max(Duration::from_millis(1)));
         }
-    }
-
-    #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-    fn poll_nvdec_pending(
-        &mut self,
-        context: &Context,
-        renderer: &mut EguiWgpuBackend,
-        device: &wgpu::Device,
-        queue: &wgpu::Queue,
-    ) {
-        let pending_keys = self.nvdec_pending.keys().cloned().collect::<Vec<_>>();
-        let mut any_pending = false;
-        for key in pending_keys {
-            let Some(mut pending) = self.nvdec_pending.remove(&key) else {
-                continue;
-            };
-            let mut terminal = None;
-            for _ in 0..8 {
-                match pending.receiver.try_recv() {
-                    Ok(nvdec::NvdecWorkerEvent::Frame {
-                        index,
-                        duration: _,
-                        alpha,
-                        buffer,
-                    }) => {
-                        if pending.failed {
-                            if let Some(atlas) = pending.atlas.as_ref()
-                                && let Err(error) = atlas.discard_frame(device, queue, &buffer)
-                            {
-                                eprintln!(
-                                    "[fluxa-native] failed to release discarded NVDEC frame: {error}"
-                                );
-                            }
-                        } else if let (Some(atlas), Some(frame)) =
-                            (pending.atlas.as_ref(), pending.frames.get(index))
-                        {
-                            let atlas_size = atlas.size();
-                            let tile_origin = [
-                                (frame.uv[0] * atlas_size[0] as f32 - 0.5).round().max(0.0) as u32,
-                                (frame.uv[1] * atlas_size[1] as f32 - 0.5).round().max(0.0) as u32,
-                            ];
-                            if let Err(error) = atlas.submit_frame(
-                                device,
-                                queue,
-                                &buffer,
-                                pending.frame_size,
-                                tile_origin,
-                                alpha.as_deref().map(Vec::as_slice),
-                            ) {
-                                eprintln!(
-                                    "[fluxa-native] NVDEC GPU frame conversion failed: {error}"
-                                );
-                                pending.failed = true;
-                            } else {
-                                if !pending.texture_registered || !self.textures.contains_key(&key)
-                                {
-                                    let texture_id = renderer.register_native_texture(
-                                        device,
-                                        atlas.view(),
-                                        wgpu::FilterMode::Linear,
-                                    );
-                                    if let Some(previous) = self.textures.insert(
-                                        key.clone(),
-                                        NativeArtworkTexture {
-                                            _texture: None,
-                                            _gpu_atlas: None,
-                                            id: texture_id,
-                                            size: atlas_size,
-                                            last_used: self.access_counter,
-                                        },
-                                    ) {
-                                        renderer.free_texture(&previous.id);
-                                    }
-                                    let started_at = *pending
-                                        .animation_started_at
-                                        .get_or_insert_with(Instant::now);
-                                    self.animations.insert(
-                                        key.clone(),
-                                        NativeArtworkAnimation {
-                                            frames: pending.frames.clone(),
-                                            frame_index: 0,
-                                            ready_frame_count: index + 1,
-                                            started_at: Some(started_at),
-                                            next_frame_at: Instant::now()
-                                                + pending.frames[0]
-                                                    .duration
-                                                    .max(Duration::from_millis(1)),
-                                        },
-                                    );
-                                    pending.texture_registered = true;
-                                } else if let Some(animation) = self.animations.get_mut(&key) {
-                                    animation.ready_frame_count =
-                                        animation.ready_frame_count.max(index + 1);
-                                }
-                                context.request_repaint();
-                            }
-                        } else {
-                            pending.failed = true;
-                            if let Some(atlas) = pending.atlas.as_ref() {
-                                let _ = atlas.discard_frame(device, queue, &buffer);
-                            }
-                            eprintln!(
-                                "[fluxa-native] NVDEC worker returned an invalid frame index"
-                            );
-                        }
-                    }
-                    Ok(nvdec::NvdecWorkerEvent::Finished { decoded_frames }) => {
-                        eprintln!(
-                            "[fluxa-native] NVDEC hardware decode completed: {decoded_frames} WebP frames"
-                        );
-                        terminal = Some(if decoded_frames == pending.frames.len() {
-                            Ok(())
-                        } else {
-                            Err(format!(
-                                "NVDEC returned {decoded_frames} frames; expected {}",
-                                pending.frames.len()
-                            ))
-                        });
-                        break;
-                    }
-                    Ok(nvdec::NvdecWorkerEvent::Failed {
-                        decoded_frames,
-                        error,
-                    }) => {
-                        terminal = Some(Err(format!(
-                            "NVDEC worker failed after {decoded_frames} frames: {error}"
-                        )));
-                        break;
-                    }
-                    Err(std::sync::mpsc::TryRecvError::Empty) => break,
-                    Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                        terminal = Some(Err("NVDEC worker channel closed unexpectedly".to_owned()));
-                        break;
-                    }
-                }
-            }
-            if terminal.is_none() {
-                any_pending = true;
-                self.nvdec_pending.insert(key, pending);
-                continue;
-            }
-
-            match terminal {
-                Some(Ok(())) if !pending.failed => {
-                    if let Some(atlas) = pending.atlas.take() {
-                        if let Some(texture) = self.textures.get_mut(&key) {
-                            texture._gpu_atlas = Some(atlas);
-                        } else {
-                            let atlas_size = atlas.size();
-                            let texture_id = renderer.register_native_texture(
-                                device,
-                                atlas.view(),
-                                wgpu::FilterMode::Linear,
-                            );
-                            self.textures.insert(
-                                key.clone(),
-                                NativeArtworkTexture {
-                                    _texture: None,
-                                    _gpu_atlas: Some(atlas),
-                                    id: texture_id,
-                                    size: atlas_size,
-                                    last_used: self.access_counter,
-                                },
-                            );
-                        }
-                        let now = Instant::now();
-                        let (frame_index, next_frame_at) = pending
-                            .animation_started_at
-                            .and_then(|started_at| {
-                                fluxa_artwork::animation_frame_at(&pending.frames, started_at, now)
-                            })
-                            .unwrap_or((
-                                0,
-                                now + pending.frames[0].duration.max(Duration::from_millis(1)),
-                            ));
-                        release_nvdec_worker_after_gpu(queue, &mut pending);
-                        if let Some(animation) = self.animations.get_mut(&key) {
-                            animation.ready_frame_count = pending.frames.len();
-                            animation.frame_index = frame_index;
-                            animation.next_frame_at = next_frame_at;
-                            animation.started_at = pending.animation_started_at;
-                        } else {
-                            self.animations.insert(
-                                key,
-                                NativeArtworkAnimation {
-                                    ready_frame_count: pending.frames.len(),
-                                    frames: pending.frames,
-                                    frame_index,
-                                    started_at: pending.animation_started_at,
-                                    next_frame_at,
-                                },
-                            );
-                        }
-                        context.request_repaint();
-                    } else {
-                        release_nvdec_worker_after_gpu(queue, &mut pending);
-                    }
-                }
-                Some(Ok(())) => {
-                    eprintln!("[fluxa-native] NVDEC conversion failed; retaining static artwork");
-                    self.request_cpu_animation_fallback(
-                        &key,
-                        &pending.source_url,
-                        pending.target_size,
-                        pending.animation_started_at,
-                    );
-                    release_nvdec_worker_after_gpu(queue, &mut pending);
-                }
-                Some(Err(error)) => {
-                    eprintln!("[fluxa-native] GPU animated WebP path unavailable: {error}");
-                    self.request_cpu_animation_fallback(
-                        &key,
-                        &pending.source_url,
-                        pending.target_size,
-                        pending.animation_started_at,
-                    );
-                    release_nvdec_worker_after_gpu(queue, &mut pending);
-                }
-                None => unreachable!("pending worker must have emitted a terminal event"),
-            }
-        }
-        if any_pending {
-            context.request_repaint_after(Duration::from_millis(12));
-        }
-    }
-
-    #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-    fn request_cpu_animation_fallback(
-        &mut self,
-        key: &str,
-        source_url: &str,
-        target_size: [u32; 2],
-        animation_started_at: Option<Instant>,
-    ) {
-        self.animation_checked.remove(key);
-        self.animation_slots.remove(key);
-        self.animation_start_times.insert(
-            key.to_owned(),
-            animation_started_at.unwrap_or_else(Instant::now),
-        );
-        let _ = self.fetcher.request_animated(
-            Some(source_url),
-            target_size,
-            ArtworkFetchPriority::Visible,
-        );
     }
 
     fn begin_frame(&mut self) {
@@ -2410,11 +2013,6 @@ impl ArtworkRegistry {
         self.animation_start_times
             .entry(key)
             .or_insert_with(Instant::now);
-        #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-        let _ = self
-            .fetcher
-            .request_animated_nvdec(Some(&source_url), target_size, priority);
-        #[cfg(not(all(target_os = "linux", fluxa_nvdec_ffmpeg)))]
         let _ = self
             .fetcher
             .request_animated(Some(&source_url), target_size, priority);
@@ -2448,11 +2046,6 @@ impl ArtworkRegistry {
         {
             return;
         }
-        #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-        let _ = self
-            .fetcher
-            .prefetch_animated_nvdec(Some(&source_url), target_size, priority);
-        #[cfg(not(all(target_os = "linux", fluxa_nvdec_ffmpeg)))]
         let _ = self
             .fetcher
             .prefetch_animated(Some(&source_url), target_size, priority);
@@ -2507,15 +2100,6 @@ impl ArtworkRegistry {
 
     fn has_active_animation(&self) -> bool {
         !self.active_animations.is_empty()
-    }
-}
-
-#[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-fn release_nvdec_worker_after_gpu(queue: &wgpu::Queue, pending: &mut PendingNvdecAnimation) {
-    if let Some(gpu_completion) = pending.gpu_completion.take() {
-        queue.on_submitted_work_done(move || {
-            let _ = gpu_completion.send(());
-        });
     }
 }
 
@@ -2733,8 +2317,6 @@ impl NativeUi {
             surface,
             device,
             queue,
-            #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-            adapter: adapter.clone(),
             config,
             pending_resize: None,
             resize_reconfigure_until: None,
@@ -2863,14 +2445,8 @@ impl NativeUi {
         let frame_started = Instant::now();
         self.dev_reload.poll(&self.context);
         self.apply_pending_resize();
-        self.artwork.poll(
-            &self.context,
-            &mut self.renderer,
-            &self.device,
-            &self.queue,
-            #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
-            &self.adapter,
-        );
+        self.artwork
+            .poll(&self.context, &mut self.renderer, &self.device, &self.queue);
         self.artwork.begin_frame();
         self.player.sync(
             window,
