@@ -534,6 +534,7 @@ struct Gpu {
     egui_renderer: EguiWgpuBackend,
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
+    brand_mark: Option<egui::TextureHandle>,
     artwork: ArtworkLoader,
     started_at: Instant,
     density: f32,
@@ -549,6 +550,7 @@ struct FrameOutput {
 
 struct HostAssets<'a> {
     background: egui::TextureId,
+    brand_mark: Option<egui::TextureId>,
     artwork: &'a mut ArtworkLoader,
     icons: &'a SvgIconRegistry,
     profile_name: Option<&'a str>,
@@ -561,6 +563,9 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn active_profile_name(&self) -> Option<&str> {
         self.profile_name
+    }
+    fn brand_mark(&self) -> Option<egui::TextureId> {
+        self.brand_mark
     }
     fn active_profile_avatar_url(&self) -> Option<&str> {
         self.profile_avatar_url
@@ -845,6 +850,17 @@ impl Gpu {
             background_image,
             egui::TextureOptions::LINEAR,
         );
+        let brand_mark = image::load_from_memory(BRAND_MARK_BYTES).ok().map(|image| {
+            let image = image.to_rgba8();
+            egui_context.load_texture(
+                "fluxa-brand-mark",
+                egui::ColorImage::from_rgba_unmultiplied(
+                    [image.width() as usize, image.height() as usize],
+                    image.as_raw(),
+                ),
+                egui::TextureOptions::LINEAR,
+            )
+        });
         let egui_renderer = EguiWgpuBackend::new(&device, format);
         host_log("egui renderer created");
         let icons = SvgIconRegistry::new(&egui_context);
@@ -864,6 +880,7 @@ impl Gpu {
             egui_renderer,
             icons,
             background_texture,
+            brand_mark,
             artwork: ArtworkLoader::new(artwork_cache_dir),
             started_at: Instant::now(),
             density,
@@ -924,6 +941,7 @@ impl Gpu {
         let output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
+                brand_mark: self.brand_mark.as_ref().map(egui::TextureHandle::id),
                 artwork: &mut self.artwork,
                 icons: &self.icons,
                 profile_name: home.profile_name.as_deref(),
@@ -1025,6 +1043,8 @@ impl Gpu {
         })
     }
 }
+
+const BRAND_MARK_BYTES: &[u8] = include_bytes!("../../../apps/desktop/public/fluxa.png");
 
 const BACKGROUND_BYTES: &[u8] =
     include_bytes!("../../../apps/desktop/public/welcome-background.png");

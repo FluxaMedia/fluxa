@@ -1427,6 +1427,9 @@ pub trait HomeAssets {
     fn active_profile_name(&self) -> Option<&str> {
         None
     }
+    fn brand_mark(&self) -> Option<TextureId> {
+        None
+    }
     fn active_profile_avatar_url(&self) -> Option<&str> {
         None
     }
@@ -3626,18 +3629,17 @@ fn draw_home_with_options(
             load_more: Vec::new(),
             ..HomeLayout::default()
         };
-        let message = if home.is_loading {
-            "Loading home data…"
+        if home.is_loading {
+            draw_loading_screen(context, &painter, screen, assets);
         } else {
-            "Home"
-        };
-        painter.text(
-            screen.center(),
-            Align2::CENTER_CENTER,
-            message,
-            FontId::proportional(metrics.screen_title_size_mobile),
-            metrics.text_primary,
-        );
+            painter.text(
+                screen.center(),
+                Align2::CENTER_CENTER,
+                "Home",
+                FontId::proportional(metrics.screen_title_size_mobile),
+                metrics.text_primary,
+            );
+        }
         if let Some((_, rect)) = layout
             .focusable
             .iter()
@@ -4237,6 +4239,74 @@ fn contain_size(source: [u32; 2], bounds: Vec2) -> Vec2 {
     let height = source[1].max(1) as f32;
     let scale = (bounds.x / width).min(bounds.y / height).min(1.0);
     Vec2::new(width * scale, height * scale)
+}
+
+fn draw_loading_screen(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    screen: Rect,
+    assets: &impl HomeAssets,
+) {
+    painter.image(
+        assets.background(),
+        screen,
+        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+        Color32::WHITE,
+    );
+    paint_vertical_gradient(
+        painter,
+        screen,
+        Color32::from_rgba_unmultiplied(12, 12, 12, 200),
+        Color32::from_rgba_unmultiplied(12, 12, 12, 235),
+    );
+    let time = context.input(|input| input.time) as f32;
+    let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
+    let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
+    let alpha = (0.72 + 0.28 * breathe) * 255.0;
+    let tint = Color32::from_white_alpha(alpha as u8);
+    let mark_size = 64.0 * unit;
+    let gap = 14.0 * unit;
+    let galley = painter.layout_no_wrap(
+        "fluxa".to_owned(),
+        FontId::proportional(52.0 * unit),
+        tint,
+    );
+    let brand_width = mark_size + gap + galley.size().x;
+    let center = screen.center() - Vec2::new(0.0, 24.0 * unit);
+    let left = center.x - brand_width * 0.5;
+    if let Some(mark) = assets.brand_mark() {
+        painter.image(
+            mark,
+            Rect::from_center_size(
+                Pos2::new(left + mark_size * 0.5, center.y),
+                Vec2::splat(mark_size),
+            ),
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            tint,
+        );
+    }
+    let text_pos = Pos2::new(left + mark_size + gap, center.y - galley.size().y * 0.5);
+    painter.galley(text_pos, galley, tint);
+    let radius = 12.0 * unit;
+    let spinner_center = center + Vec2::new(0.0, mark_size * 0.5 + 44.0 * unit);
+    let stroke = 3.0 * unit;
+    painter.circle_stroke(
+        spinner_center,
+        radius,
+        egui::Stroke::new(stroke, Color32::from_white_alpha(50)),
+    );
+    let start = time * std::f32::consts::TAU / 0.8;
+    let arc: Vec<Pos2> = (0..=24)
+        .map(|step| {
+            let angle = start + step as f32 / 24.0 * std::f32::consts::FRAC_PI_2;
+            spinner_center + Vec2::angled(angle) * radius
+        })
+        .collect();
+    painter.add(egui::Shape::line(
+        arc,
+        egui::Stroke::new(stroke, Color32::from_white_alpha(220)),
+    ));
+    context.request_repaint();
 }
 
 fn paint_vertical_gradient(painter: &egui::Painter, rect: Rect, top: Color32, bottom: Color32) {
