@@ -10,6 +10,7 @@ import androidx.lifecycle.viewModelScope
 import com.fluxa.app.core.fromState
 import com.fluxa.app.core.fromStateList
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
+import com.fluxa.app.core.rust.FluxaHeadlessAppRuntime
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.StreamProgressUpdate
 import com.fluxa.app.core.StremioId
@@ -18,7 +19,6 @@ import com.fluxa.app.data.repository.TraktIntegration
 import com.fluxa.app.data.repository.library.ProviderAdapters
 import com.fluxa.app.data.repository.library.ProviderCapability
 import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
-import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.supportsStremioResource
 import com.google.gson.Gson
 import kotlinx.coroutines.CancellationException
@@ -65,6 +65,7 @@ private data class DetailStreamsDecoded(
 class DetailViewModel @Inject constructor(
     @param:ApplicationContext private val applicationContext: android.content.Context,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
+    private val headlessRuntime: FluxaHeadlessAppRuntime,
     private val gson: Gson,
     private val communityDiscussionRepository: CommunityDiscussionRepository,
     private val providerAdapters: ProviderAdapters,
@@ -85,8 +86,6 @@ class DetailViewModel @Inject constructor(
     private var streamsFetchJob: Job? = null
     private var activeStreamsRequestIds: Set<String> = emptySet()
 
-    private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
-    private val libraryCommandRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
     private val downloadCoordinator by lazy {
         DetailDownloadCoordinator(
             runtime = headlessRuntime,
@@ -651,7 +650,7 @@ class DetailViewModel @Inject constructor(
                     )
                     if (!success) _uiState.update { it.copy(isInWatchlist = previous) }
                 } else {
-                    val result = libraryCommandRuntime.dispatch(
+                    val result = headlessRuntime.dispatch(
                         mapOf(
                             "type" to "toggleWatchlistRequested",
                             "item" to meta,
@@ -869,8 +868,6 @@ class DetailViewModel @Inject constructor(
 
     override fun onCleared() {
         DetailTrailerPreloader.discard()
-        headlessRuntime.close()
-        libraryCommandRuntime.close()
         super.onCleared()
     }
 }

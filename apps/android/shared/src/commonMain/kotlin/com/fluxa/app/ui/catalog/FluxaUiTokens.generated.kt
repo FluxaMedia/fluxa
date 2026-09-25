@@ -5,7 +5,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 object FluxaUiTokens {
-    const val schemaVersion = 2
+    const val schemaVersion = 3
     val colorBackground = Color(0xFF060606)
     val colorSurface = Color(0xFF141416)
     val colorSurfaceRaised = Color(0xFF1C1C1F)

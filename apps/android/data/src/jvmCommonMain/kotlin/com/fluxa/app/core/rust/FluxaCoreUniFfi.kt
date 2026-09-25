@@ -29,7 +29,7 @@ class FluxaUniFfiHeadlessEngineHandle internal constructor(
         check(handle != 0L) { "Fluxa UniFFI headless engine could not be created." }
     }
 
-    fun snapshotJson(): String = headlessEngineSnapshotJson(handle)
+    override fun snapshotJson(): String = headlessEngineSnapshotJson(handle)
 
     fun dispatchJson(actionJson: String): String = headlessEngineDispatchJson(handle, actionJson)
 

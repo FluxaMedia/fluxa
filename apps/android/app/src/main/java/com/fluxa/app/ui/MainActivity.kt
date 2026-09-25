@@ -13,7 +13,9 @@ import com.fluxa.app.shared.feature.watchtogether.JvmWatchTogetherTransport
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
 import com.fluxa.app.shared.feature.watchtogether.WatchTogetherCorrection
 import com.fluxa.app.core.rust.FluxaCoreNative
+import com.fluxa.app.core.rust.FluxaHeadlessAppRuntime
 import com.fluxa.app.ui.catalog.FluxaIcons
+import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
 import com.fluxa.app.ui.routes.AppRoutesHost
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.data.remote.StremioService
@@ -59,6 +61,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -79,6 +82,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import com.google.gson.JsonObject
+import com.google.gson.Gson
+import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
+import com.fluxa.app.ui.rust.FluxaNativeRendererView
 
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -100,6 +106,7 @@ class MainActivity : FragmentActivity() {
     @Inject lateinit var nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator
     @Inject lateinit var watchlistStore: com.fluxa.app.data.local.WatchlistStore
     @Inject lateinit var thirdPartyProviderRepository: com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
+    @Inject lateinit var headlessAppRuntime: FluxaHeadlessAppRuntime
 
     private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
     private val playbackDeepLinkFlow = MutableStateFlow<PlaybackDeepLink?>(null)
@@ -260,7 +267,15 @@ class MainActivity : FragmentActivity() {
                     }
 
                     LaunchedEffect(profileSplashPending, hasLoadedHome) {
-                        if (profileSplashPending && hasLoadedHome) profileSplashPending = false
+                        // Native Core owns the home-data load in the Rust path, so the
+                        // legacy Compose HomeViewModel flag never becomes true there.
+                        // Waiting for it leaves the profile splash above the native
+                        // renderer forever.
+                        if (profileSplashPending &&
+                            (hasLoadedHome || com.fluxa.app.BuildConfig.FLUXA_NATIVE_CORE_RUNTIME)
+                        ) {
+                            profileSplashPending = false
+                        }
                     }
 
                     NuvioHealthSyncEffect(
@@ -434,6 +449,191 @@ class MainActivity : FragmentActivity() {
                         onDispose { androidFluxaPlatformServices.close() }
                     }
 
+                    val nativeHomeEnabled = com.fluxa.app.BuildConfig.FLUXA_NATIVE_HOME
+                    val nativeCoreRuntimeEnabled = com.fluxa.app.BuildConfig.FLUXA_NATIVE_CORE_RUNTIME
+                    var nativeHomeStateJson by remember {
+                        mutableStateOf(
+                            encodeNativeHomeState(
+                                CatalogHomeUiState(isLoading = true),
+                                activeProfile?.avatarUrl,
+                            )
+                        )
+                    }
+                    val nativeRendererView = remember { mutableStateOf<FluxaNativeRendererView?>(null) }
+                    val dispatchNativeCoreCommand: (String) -> Unit = { commandJson ->
+                        val targetView = nativeRendererView.value
+                        lifecycleScope.launch {
+                            runCatching {
+                                val command = com.google.gson.JsonParser.parseString(commandJson).asJsonObject
+                                headlessAppRuntime.dispatch(command)
+                                targetView?.setCoreSnapshotJson(headlessAppRuntime.snapshotJson())
+                            }.onFailure { error ->
+                                Log.e("FluxaNativeRenderer", "Shared Core dispatch failed", error)
+                            }
+                        }
+                    }
+                    LaunchedEffect(
+                        nativeHomeEnabled,
+                        nativeCoreRuntimeEnabled,
+                        androidFluxaPlatformServices,
+                        activeProfile?.id,
+                    ) {
+                        if (!nativeHomeEnabled || nativeCoreRuntimeEnabled) return@LaunchedEffect
+                        androidFluxaPlatformServices.catalogHomeDataSource.observeHome().collect { state ->
+                            nativeHomeStateJson = encodeNativeHomeState(state, activeProfile?.avatarUrl)
+                        }
+                    }
+                    val handleNativeHomeAction: (String) -> Unit = { rawJson ->
+                        runCatching {
+                            com.google.gson.JsonParser.parseString(rawJson).asJsonArray.forEach { rawAction ->
+                                val action = rawAction.asJsonObject
+                                when (action.get("type")?.asString) {
+                                    "coreCommand" -> {
+                                        action.getAsJsonObject("command")?.toString()?.let { command ->
+                                            nativeRendererView.value?.dispatchCoreCommand(command)
+                                        }
+                                    }
+                                    "loadMore" -> if (!nativeCoreRuntimeEnabled) {
+                                        action.get("rowId")?.asString
+                                            ?.takeIf(String::isNotBlank)
+                                            ?.let(homeViewModel::loadMore)
+                                    }
+                                    "back" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeNavigationCommandJson("home")
+                                        )
+                                    } else {
+                                        this@MainActivity.onBackPressedDispatcher.onBackPressed()
+                                    }
+                                    "navigate" -> when (action.get("destination")?.asString) {
+                                        "home" -> if (nativeCoreRuntimeEnabled) {
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeNavigationCommandJson("home")
+                                            )
+                                        } else {
+                                            navigateToDestination(FluxaDestination.Home, true)
+                                        }
+                                        "library" -> if (nativeCoreRuntimeEnabled) {
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeNavigationCommandJson("library")
+                                            )
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeLibraryHydrateCommandJson(activeProfile?.id)
+                                            )
+                                        } else {
+                                            navigateToDestination(FluxaDestination.Library, false)
+                                        }
+                                        "discover" -> if (nativeCoreRuntimeEnabled) {
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeNavigationCommandJson("discover")
+                                            )
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeDiscoverRequestedCommandJson(
+                                                    "movie", "", "", "", "", activeProfile,
+                                                    loadCatalogFilters = true,
+                                                )
+                                            )
+                                        } else {
+                                            navigateToDestination(FluxaDestination.Discover, false)
+                                        }
+                                        "calendar" -> if (nativeCoreRuntimeEnabled) {
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeNavigationCommandJson("calendar")
+                                            )
+                                            nativeRendererView.value?.dispatchCoreCommand(
+                                                nativeCalendarMonthCommandJson(activeProfile)
+                                            )
+                                        } else {
+                                            navigateToDestination(FluxaDestination.Calendar, false)
+                                        }
+                                        "profile" -> if (nativeCoreRuntimeEnabled) {
+                                            nativeRendererView.value?.dispatchCoreCommand(nativeNavigationCommandJson("settings"))
+                                        } else {
+                                            navigateToDestination(FluxaDestination.ProfileList, false)
+                                        }
+                                    }
+                                    "discoverType" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeDiscoverRequestedCommandJson(
+                                                action.get("contentType")?.asString ?: "movie",
+                                                "", "", "", "", activeProfile,
+                                                loadCatalogFilters = true,
+                                            )
+                                        )
+                                    }
+                                    "discoverCatalog" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeDiscoverRequestedCommandJson(
+                                                action.get("contentType")?.asString ?: "movie",
+                                                action.get("catalogKey")?.asString.orEmpty(),
+                                                action.get("extraName")?.asString.orEmpty(),
+                                                action.get("extraValue")?.asString.orEmpty(),
+                                                action.get("query")?.asString.orEmpty(),
+                                                activeProfile,
+                                            )
+                                        )
+                                    }
+                                    "discoverFilters" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeDiscoverRequestedCommandJson(
+                                                action.get("contentType")?.asString ?: "movie",
+                                                action.get("catalogKey")?.asString.orEmpty(),
+                                                action.get("extraName")?.asString.orEmpty(),
+                                                action.get("extraValue")?.asString.orEmpty(),
+                                                action.get("query")?.asString.orEmpty(),
+                                                activeProfile,
+                                            )
+                                        )
+                                    }
+                                    "calendarMonth" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeCalendarMonthCommandJson(
+                                                action.get("year")?.asInt,
+                                                action.get("month")?.asInt,
+                                                activeProfile,
+                                            )
+                                        )
+                                    }
+                                    "detail", "play" -> {
+                                        val id = action.get("id")?.asString?.takeIf(String::isNotBlank)
+                                        val itemType = action.get("itemType")?.asString?.takeIf(String::isNotBlank)
+                                        if (id != null && itemType != null) {
+                                            if (nativeCoreRuntimeEnabled) {
+                                                nativeRendererView.value?.dispatchCoreCommand(
+                                                    nativeNavigationCommandJson("detail")
+                                                )
+                                                nativeRendererView.value?.dispatchCoreCommand(
+                                                    nativeDetailLoadCommandJson(id, itemType, activeProfile)
+                                                )
+                                            } else {
+                                                terminalDetailRequest = com.fluxa.app.shared.feature.detail.DetailRequestUiModel(
+                                                    id = id,
+                                                    type = itemType,
+                                                    autoPlay = action.get("type")?.asString == "play",
+                                                )
+                                            }
+                                        }
+                                    }
+                                    "toggleWatchlist" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeToggleWatchlistCommandJson(action.get("item"), activeProfile)
+                                        )
+                                    }
+                                    "settingsChange" -> if (nativeCoreRuntimeEnabled) {
+                                        nativeRendererView.value?.dispatchCoreCommand(
+                                            nativeSettingsChangedCommandJson(
+                                                action.get("key")?.asString.orEmpty(),
+                                                action.get("value"),
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }.onFailure { error ->
+                            Log.w("FluxaNativeRenderer", "Invalid native action payload", error)
+                        }
+                    }
+
                     PlayerLifecycleEffect(
                         isPlayerActive = playerRequest != null,
                         activeProfile = activeProfile,
@@ -445,7 +645,7 @@ class MainActivity : FragmentActivity() {
                     )
 
                     LaunchedEffect(Unit) {
-                        if (initialProfile == null) {
+                        if (initialProfile == null && !nativeCoreRuntimeEnabled) {
                             homeViewModel.loadInitialData(null)
                         }
                         val releases = UpdateManager.fetchReleaseHistory()
@@ -466,31 +666,33 @@ class MainActivity : FragmentActivity() {
 
                     LaunchedEffect(activeProfile?.id) {
                         activeProfile?.let { profile ->
-                            homeViewModel.refreshTraktTokenIfNeeded(profile) { updated ->
-                                activeProfile = updated
-                                profileManager.saveProfile(updated)
-                                profileManager.setLastActiveProfile(updated)
-                            }
-                            homeViewModel.loadInitialData(profile)
-                            if (!profile.traktAccessToken.isNullOrBlank()) {
-                                isTraktSyncing = true
-                                homeViewModel.syncTraktIntegration(
-                                    profile = profile,
-                                    onProfileUpdated = { updated ->
-                                        activeProfile = updated
-                                        profileManager.saveProfile(updated)
-                                        profileManager.setLastActiveProfile(updated)
-                                    }
-                                ) { isTraktSyncing = false }
-                            }
-                            if (!profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
-                                homeViewModel.loadLibraryItems(profile)
+                            if (!nativeCoreRuntimeEnabled) {
+                                homeViewModel.refreshTraktTokenIfNeeded(profile) { updated ->
+                                    activeProfile = updated
+                                    profileManager.saveProfile(updated)
+                                    profileManager.setLastActiveProfile(updated)
+                                }
+                                homeViewModel.loadInitialData(profile)
+                                if (!profile.traktAccessToken.isNullOrBlank()) {
+                                    isTraktSyncing = true
+                                    homeViewModel.syncTraktIntegration(
+                                        profile = profile,
+                                        onProfileUpdated = { updated ->
+                                            activeProfile = updated
+                                            profileManager.saveProfile(updated)
+                                            profileManager.setLastActiveProfile(updated)
+                                        }
+                                    ) { isTraktSyncing = false }
+                                }
+                                if (!profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
+                                    homeViewModel.loadLibraryItems(profile)
+                                }
                             }
                         }
                     }
 
                     LaunchedEffect(isNetworkAvailable, activeProfile?.id) {
-                        if (previousNetworkAvailable == false && isNetworkAvailable) {
+                        if (!nativeCoreRuntimeEnabled && previousNetworkAvailable == false && isNetworkAvailable) {
                             activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
                         }
                         previousNetworkAvailable = isNetworkAvailable
@@ -529,9 +731,13 @@ class MainActivity : FragmentActivity() {
                     var hasOpenOverlay by remember { mutableStateOf(false) }
                     var overlayPopRequestId by remember { mutableStateOf(0) }
 
-                    val navigateBackSafely = {
+                    val navigateBackSafely: () -> Unit = {
                         if (playerRequest != null) {
                             playerRequest = null
+                        } else if (nativeCoreRuntimeEnabled && activeProfile != null) {
+                            nativeRendererView.value?.dispatchCoreCommand(
+                                nativeNavigationCommandJson("home")
+                            )
                         } else if (deviceType == DeviceType.Mobile && activeProfile == null && profileManager.getProfiles().isEmpty()) {
                             navigateToDestination(FluxaDestination.Auth, true)
                             authStartOnNuvio = false
@@ -558,6 +764,52 @@ class MainActivity : FragmentActivity() {
                     Box(modifier = Modifier.fillMaxSize()) {
                         if (profileSplashPending && activeProfile != null) {
                             FluxaSplashScreen(backgroundUrl = profilePickerSettingsStore.get().backgroundUrl)
+                        } else if (
+                            nativeHomeEnabled &&
+                            (nativeCoreRuntimeEnabled || currentDestination == FluxaDestination.Home) &&
+                            playerRequest == null &&
+                            terminalDetailRequest == null &&
+                            activeProfile != null
+                        ) {
+                            AndroidView(
+                                factory = { viewContext ->
+                                    FluxaNativeRendererView(viewContext).also { view ->
+                                        nativeRendererView.value = view
+                                        view.onNativeAction = handleNativeHomeAction
+                                        view.onCoreCommand = dispatchNativeCoreCommand
+                                        if (nativeCoreRuntimeEnabled) {
+                                            view.setCoreSnapshotJson(headlessAppRuntime.snapshotJson())
+                                        } else {
+                                            view.setHomeStateJson(nativeHomeStateJson)
+                                        }
+                                        if (nativeCoreRuntimeEnabled) {
+                                            view.dispatchCoreCommand(
+                                                nativeHomeCoreLoadCommandJson(
+                                                    activeProfile,
+                                                    if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
+                                                )
+                                            )
+                                        }
+                                    }
+                                },
+                                update = { view ->
+                                    nativeRendererView.value = view
+                                    view.onNativeAction = handleNativeHomeAction
+                                    view.onCoreCommand = dispatchNativeCoreCommand
+                                    if (!nativeCoreRuntimeEnabled) {
+                                        view.setHomeStateJson(nativeHomeStateJson)
+                                    } else {
+                                        view.setCoreSnapshotJson(headlessAppRuntime.snapshotJson())
+                                        view.dispatchCoreCommand(
+                                            nativeHomeCoreLoadCommandJson(
+                                                activeProfile,
+                                                if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
+                                            )
+                                        )
+                                    }
+                                },
+                                modifier = Modifier.fillMaxSize(),
+                            )
                         } else {
                         AppRoutesHost(
                             context = context,
@@ -628,6 +880,185 @@ class MainActivity : FragmentActivity() {
             }
         }
     }
+}
+
+private val nativeHomeGson = Gson()
+
+private fun nativeNavigationCommandJson(destination: String): String = nativeHomeGson.toJson(
+    mapOf(
+        "type" to "navigationRequested",
+        "route" to destination,
+        "params" to emptyMap<String, Any>(),
+    ),
+)
+
+private fun nativeLibraryHydrateCommandJson(profileId: String?): String = nativeHomeGson.toJson(
+    mapOf(
+        "type" to "libraryHydrateRequested",
+        "profileId" to profileId,
+    ),
+)
+
+private fun nativeDiscoverRequestedCommandJson(
+    contentType: String,
+    catalogKey: String,
+    extraName: String,
+    extraValue: String,
+    query: String,
+    profile: UserProfile?,
+    loadCatalogFilters: Boolean = false,
+): String = nativeHomeGson.toJson(
+    mapOf(
+        "type" to "discoverRequested",
+        "loadCatalogFilters" to loadCatalogFilters,
+        "contentType" to contentType,
+        "filters" to mapOf(
+            "catalogKey" to catalogKey.takeIf(String::isNotBlank),
+            "extra" to buildMap {
+                if (extraName.isNotBlank() && extraValue.isNotBlank()) put(extraName, extraValue)
+                if (query.isNotBlank()) put("search", query)
+            },
+        ),
+        "profile" to profile,
+        "language" to (profile?.safeLanguage ?: "en"),
+    ),
+)
+
+private fun nativeCalendarMonthCommandJson(profile: UserProfile?): String =
+    nativeCalendarMonthCommandJson(null, null, profile)
+
+private fun nativeCalendarMonthCommandJson(
+    year: Int?,
+    month: Int?,
+    profile: UserProfile?,
+): String {
+    val now = java.util.Calendar.getInstance()
+    val resolvedYear = year ?: now.get(java.util.Calendar.YEAR)
+    val resolvedMonth = month ?: now.get(java.util.Calendar.MONTH) + 1
+    return nativeHomeGson.toJson(
+        mapOf(
+            "type" to "calendarMonthRequested",
+            "profile" to profile,
+            "year" to resolvedYear,
+            "month" to resolvedMonth,
+            "plannedItems" to emptyList<Any>(),
+        ),
+    )
+}
+
+private fun nativeDetailLoadCommandJson(
+    id: String,
+    contentType: String,
+    profile: UserProfile?,
+): String = nativeHomeGson.toJson(
+    mapOf(
+        "type" to "detailLoadRequested",
+        "id" to id,
+        "contentType" to contentType,
+        "language" to (profile?.safeLanguage ?: "en"),
+        "profile" to profile,
+    ),
+)
+
+private fun nativeToggleWatchlistCommandJson(
+    item: com.google.gson.JsonElement?,
+    profile: UserProfile?,
+): String = nativeHomeGson.toJson(
+    mapOf(
+        "type" to "toggleWatchlistRequested",
+        "item" to (item ?: com.google.gson.JsonObject()),
+        "profile" to profile,
+    ),
+)
+
+private fun nativeSettingsChangedCommandJson(key: String, value: com.google.gson.JsonElement?): String =
+    com.google.gson.JsonObject().apply {
+        addProperty("type", "settingsChanged")
+        addProperty("key", key)
+        add("value", value ?: com.google.gson.JsonNull.INSTANCE)
+    }.toString()
+
+private fun nativeHomeCoreLoadCommandJson(profile: UserProfile?, formFactor: String): String =
+    nativeHomeGson.toJson(
+        mapOf(
+            "type" to "homeLoadRequested",
+            "profile" to profile,
+            "language" to (profile?.safeLanguage ?: "en"),
+            "force" to true,
+            "formFactor" to formFactor,
+        ),
+    )
+
+private fun nativeHomeLoadingStateJson(): String = nativeHomeGson.toJson(
+    mapOf(
+        "isLoading" to true,
+        "title" to "Recommended",
+        "eyebrow" to "Featured title",
+        "description" to "Loading home data…",
+        "formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
+        "cards" to emptyList<Any>(),
+        "rows" to emptyList<Any>(),
+    ),
+)
+
+private fun encodeNativeHomeState(state: CatalogHomeUiState, profileAvatarUrl: String?): String {
+    val billboard = state.billboard?.item
+    val continueWatchingRow = state.rows.firstOrNull { it.id == CONTINUE_WATCHING_CATEGORY_ID }
+    val cards = continueWatchingRow?.items
+        .orEmpty()
+        .asSequence()
+        .distinctBy { item -> "${item.type}:${item.id}" }
+        .map { item ->
+            mapOf(
+                "id" to item.id,
+                "itemType" to item.type,
+                "title" to item.card.title,
+                "subtitle" to item.card.subtitle,
+                "progress" to item.card.progress.coerceIn(0f, 1f),
+                "artworkUrl" to (item.card.artworkUrl ?: item.posterUrl ?: item.backdropUrl),
+            )
+        }
+        .toList()
+    val rows = state.rows
+        .filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
+        .map { row ->
+            mapOf(
+                "id" to row.id,
+                "title" to row.title,
+                "canLoadMore" to row.canLoadMore,
+                "cards" to row.items.map { item ->
+                    mapOf(
+                        "id" to item.id,
+                        "itemType" to item.type,
+                        "title" to item.card.title,
+                        // Poster shelves show release metadata; the card model's
+                        // generic progress fallback belongs only to Continue Watching.
+                        "subtitle" to (item.releaseLabel?.takeIf { it.isNotBlank() }
+                            ?: item.card.subtitle.takeUnless {
+                                it.equals("Continue watching", ignoreCase = true)
+                            }.orEmpty()),
+                        "progress" to item.card.progress.coerceIn(0f, 1f),
+                        "artworkUrl" to (item.card.artworkUrl ?: item.posterUrl ?: item.backdropUrl),
+                    )
+                },
+            )
+        }
+    return nativeHomeGson.toJson(
+        mapOf(
+            "title" to (billboard?.card?.title ?: "Recommended"),
+            "eyebrow" to (billboard?.releaseLabel ?: "Featured title"),
+            "description" to (billboard?.description ?: "Your connected catalogs will appear here."),
+            "backgroundUrl" to (billboard?.backdropUrl ?: billboard?.posterUrl),
+            "logoUrl" to state.billboard?.logoUrl,
+            "profileAvatarUrl" to profileAvatarUrl,
+            "itemId" to billboard?.id,
+            "itemType" to billboard?.type,
+            "showHeroSection" to state.showHeroSection,
+            "formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
+            "cards" to cards,
+            "rows" to rows,
+        ),
+    )
 }
 
 private data class PlaybackDeepLink(

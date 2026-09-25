@@ -25,6 +25,7 @@ class AndroidDiscoverDataSource(
     private val filters = MutableStateFlow(DiscoverFiltersUiModel())
     private val catalogOptions = MutableStateFlow<List<DiscoverCatalogOption>>(emptyList())
     private val contentTypes = MutableStateFlow<List<String>>(emptyList())
+    private var catalogProfileId: String? = null
 
     override fun observeDiscover(): Flow<DiscoverUiState> = combine(
         filters,
@@ -73,75 +74,55 @@ class AndroidDiscoverDataSource(
     override suspend fun updateFilters(filters: DiscoverFiltersUiModel) {
         val previousFilters = this.filters.value
         if (filters != previousFilters) homeViewModel.clearDiscoverResults()
+        this.filters.value = filters
         homeViewModel.setDiscoverLoading(true)
-        val contentTypeUnchanged = filters.contentType == previousFilters.contentType
-        val availableCatalogs = if (contentTypeUnchanged && catalogOptions.value.isNotEmpty()) {
-            catalogOptions.value
+        val profileId = activeProfile()?.id
+        val canUseCachedCatalogs = filters.contentType == previousFilters.contentType &&
+            catalogOptions.value.isNotEmpty() && catalogProfileId == profileId
+        if (canUseCachedCatalogs) {
+            resolveAndDiscover(filters, catalogOptions.value)
         } else {
-            homeViewModel.discoverCatalogOptions(filters.contentType).also { catalogOptions.value = it }
+            homeViewModel.loadDiscoverCatalogFilters(filters.contentType, filters.catalogKey) { catalogs, types ->
+                if (this.filters.value != filters) return@loadDiscoverCatalogFilters
+                catalogOptions.value = catalogs
+                contentTypes.value = types
+                catalogProfileId = profileId
+                // Core's single discoverRequested action has already loaded
+                // catalogs and run the selected/default catalog. Only project
+                // its resolved selection into the legacy Compose state here;
+                // do not dispatch a second discover request.
+                val plan = FluxaCoreNative.discoverSelectionPlan(
+                    contentType = filters.contentType,
+                    catalogs = catalogs,
+                    selectedCatalogKey = filters.catalogKey,
+                    extraValue = filters.genre
+                )
+                this.filters.value = filters.copy(
+                    catalogKey = plan.selectedCatalogKey,
+                    genre = plan.extraValue
+                )
+            }
         }
-        if (!contentTypeUnchanged || contentTypes.value.isEmpty()) {
-            contentTypes.value = homeViewModel.discoverContentTypes()
-        }
+    }
+
+    private fun resolveAndDiscover(filters: DiscoverFiltersUiModel, catalogs: List<DiscoverCatalogOption>) {
         val plan = FluxaCoreNative.discoverSelectionPlan(
             contentType = filters.contentType,
-            catalogs = availableCatalogs,
+            catalogs = catalogs,
             selectedCatalogKey = filters.catalogKey,
             extraValue = filters.genre
         )
         val selectedCatalogKey = plan.selectedCatalogKey
-        if (selectedCatalogKey != null) {
-            val selectedCatalog = availableCatalogs.firstOrNull { it.key == selectedCatalogKey }
-            val selectedFilters = filters.copy(catalogKey = selectedCatalogKey, genre = plan.extraValue)
-            this.filters.value = selectedFilters
-            homeViewModel.discover(
-                type = selectedFilters.contentType,
-                catalogKey = selectedFilters.catalogKey,
-                genre = selectedFilters.genre,
-                year = null,
-                rating = null,
-                provider = null,
-                region = null
-            )
-            if (selectedCatalog?.genres.isNullOrEmpty()) {
-                homeViewModel.loadDiscoverCatalogFilters(filters.contentType, selectedCatalogKey) { catalogs ->
-                    if (this.filters.value.catalogKey == selectedCatalogKey) {
-                        catalogOptions.value = catalogs
-                    }
-                }
-            }
+        if (selectedCatalogKey == null) {
+            homeViewModel.setDiscoverLoading(false)
             return
         }
-        if (filters.catalogKey == null || homeViewModel.discoverUiState.value.catalogs.none { it.key == filters.catalogKey }) {
-            homeViewModel.loadDiscoverCatalogFilters(filters.contentType, filters.catalogKey) { catalogs ->
-                val resolvedCatalogKey = catalogs.firstOrNull()?.key
-                if (resolvedCatalogKey == null) {
-                    homeViewModel.setDiscoverLoading(false)
-                    return@loadDiscoverCatalogFilters
-                }
-                if (this.filters.value == filters) {
-                    catalogOptions.value = catalogs
-                    contentTypes.value = catalogs.map { it.type }.distinct()
-                    val selectedFilters = filters.copy(catalogKey = resolvedCatalogKey)
-                    this.filters.value = selectedFilters
-                    homeViewModel.discover(
-                        type = selectedFilters.contentType,
-                        catalogKey = selectedFilters.catalogKey,
-                        genre = selectedFilters.genre,
-                        year = null,
-                        rating = null,
-                        provider = null,
-                        region = null
-                    )
-                }
-            }
-            return
-        }
-        this.filters.value = filters
+        val selectedFilters = filters.copy(catalogKey = selectedCatalogKey, genre = plan.extraValue)
+        this.filters.value = selectedFilters
         homeViewModel.discover(
-            type = filters.contentType,
-            catalogKey = filters.catalogKey,
-            genre = filters.genre,
+            type = selectedFilters.contentType,
+            catalogKey = selectedFilters.catalogKey,
+            genre = selectedFilters.genre,
             year = null,
             rating = null,
             provider = null,

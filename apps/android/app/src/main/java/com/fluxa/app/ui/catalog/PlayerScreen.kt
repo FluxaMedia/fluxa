@@ -104,6 +104,12 @@ fun PlayerScreen(
         initialVideoId = videoId,
         initialStreamIndex = initialStreamIndex,
         initialVolume = initialAudioManager.getStreamVolume(android.media.AudioManager.STREAM_MUSIC),
+        onCoreTelemetry = { telemetry ->
+            scope.launch { viewModel.updatePlayerCoreTelemetry(telemetry) }
+        },
+        onCoreReset = { resetVideoId ->
+            scope.launch { viewModel.resetPlayerForEpisode(resetVideoId) }
+        },
     )
     DisposableEffect(exoPlayer, mpvPlayer, useMpvBackend) {
         onDispose {

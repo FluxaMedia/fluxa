@@ -16,6 +16,7 @@ class NativeHeadlessEngineResult(
 interface FluxaHeadlessEngine {
     fun dispatch(action: Any): NativeHeadlessEngineResult
     fun completeEffect(result: Any): NativeHeadlessEngineResult
+    fun snapshotJson(): String
 }
 
 class FluxaHeadlessEffectRunner(

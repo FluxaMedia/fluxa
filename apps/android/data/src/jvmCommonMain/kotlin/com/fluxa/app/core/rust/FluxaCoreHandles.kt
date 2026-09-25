@@ -11,7 +11,7 @@ class FluxaHeadlessEngineHandle internal constructor(
         check(handle != 0L) { "Fluxa headless engine could not be created." }
     }
 
-    fun snapshotJson(): String = FluxaCoreNative.headlessEngineSnapshotJson(handle)
+    override fun snapshotJson(): String = FluxaCoreNative.headlessEngineSnapshotJson(handle)
 
     fun dispatchJson(actionJson: String): String = FluxaCoreNative.headlessEngineDispatchJson(handle, actionJson)
 

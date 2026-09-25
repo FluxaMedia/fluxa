@@ -6,30 +6,33 @@ import com.fluxa.app.data.local.*
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.ui.catalog.HomeCategory
+import com.fluxa.app.domain.discovery.buildCs3MetadataFeedOptions
 import com.fluxa.app.domain.discovery.buildMetadataFeedOptions
-import com.fluxa.app.domain.discovery.effectiveHomeMetadataFeedSelection
-import com.fluxa.app.domain.discovery.isMetadataFeedEnabled
-import com.fluxa.app.domain.discovery.orderedMetadataFeeds
+import com.fluxa.app.ui.catalog.toCs3CatalogFeedDescriptors
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.readHomeBootstrap(effect: NativeHeadlessEffect): HeadlessEffectCompletion = coroutineScope {
     val profile = effect.payload.profile()
     profile?.id?.let(watchlistManager::setActiveProfile)
-    val addons = addonRepository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
+    // A Nuvio-authenticated profile owns its addon list remotely. Calling the
+    // local Stremio lookup here silently returns an empty home on a fresh
+    // device, even though the same account is populated in Compose.
+    val addons = configuredStreamAddons(profile)
     val language = effect.payload.string("language", profile?.safeLanguage ?: "en")
     val allFeeds = buildMetadataFeedOptions(addons, language)
-    val metadataFeeds = orderedMetadataFeeds(allFeeds, profile?.homeFeedOrder).let { feeds ->
-        val availableKeys = feeds.map { it.key }
-        val selectedKeys = effectiveHomeMetadataFeedSelection(profile?.homeFeedToggles, availableKeys)
-        feeds.filter { isMetadataFeedEnabled(selectedKeys, it.key) }
-    }
+    val metadataFeeds = FluxaCoreNative.homeMetadataFeedPlan(
+        feeds = allFeeds,
+        selectedKeys = profile?.homeFeedToggles,
+        order = profile?.homeFeedOrder
+    )
     val semaphore = Semaphore(8)
-    val categories = metadataFeeds.map { feed ->
+    val addonCategories = metadataFeeds.map { feed ->
         async {
             val items = semaphore.withPermit {
                 runCatching {
@@ -55,21 +58,110 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.readHomeBootstrap(effect: N
             }
         }
     }.awaitAll().filterNotNull()
+    // Compose loads the spotlight from the profile's hero-feed selection,
+    // separately from the ordinary Home rows. Keep that distinction here too;
+    // selecting categories.first() made an unrelated feed item the hero.
+    val heroFeeds = FluxaCoreNative.homeMetadataFeedPlan(
+        feeds = allFeeds,
+        selectedKeys = profile?.heroFeedToggles,
+        order = profile?.heroFeedOrder
+    ).take(2)
+    val heroCandidates = heroFeeds.map { feed ->
+        async {
+            semaphore.withPermit {
+                runCatching {
+                    addonRepository.getAddonCatalog(
+                        transportUrl = feed.transportUrl,
+                        type = feed.type,
+                        id = feed.id,
+                        genre = feed.genre
+                    ).take(10)
+                }.getOrDefault(emptyList())
+            }
+        }
+    }.awaitAll().flatten()
+    val billboard = FluxaCoreNative.buildBillboardPool(emptyList(), heroCandidates).firstOrNull()
+    val apis = pluginManager.loadedApis.value.filter { it.hasMainPage }
+    val cs3Options = buildCs3MetadataFeedOptions(apis.toCs3CatalogFeedDescriptors())
+    val cs3EnabledKeys = when {
+        profile?.cs3FeedsConfigured != true -> null
+        profile.homeFeedToggles.orEmpty().any { it.startsWith("cs3_catalog_") } ->
+            FluxaCoreNative.homeMetadataFeedPlan(
+                feeds = cs3Options,
+                selectedKeys = profile.homeFeedToggles,
+                order = null
+            ).map { it.key }.toSet()
+        profile.homeFeedToggles.orEmpty().any { it.startsWith("cs3_plugin_") } ->
+            profile.homeFeedToggles.orEmpty().toSet()
+        else -> null
+    }
+    val cs3Categories = if (apis.isEmpty()) emptyList() else {
+        platformContentGateway.cloudHomeCategories(apis, emptyMap(), cs3EnabledKeys)
+    }
+    val categories = addonCategories + cs3Categories
+    val continueWatching = continueWatchingForProfile(profile)
     ok(
         effect,
         mapOf(
             "categories" to categories,
-            "continueWatching" to watchlistManager.getContinueWatchingSnapshot(),
+            "continueWatching" to continueWatching,
             "watchlist" to watchlistManager.getWatchlistSnapshot(),
             "userAddons" to addons,
             "metadataFeeds" to metadataFeeds,
-            "billboard" to categories.firstOrNull()?.items?.firstOrNull()
+            "billboard" to billboard
         )
     )
 }
 
+internal suspend fun FluxaAndroidHeadlessEnvironment.refreshContinueWatching(
+    effect: NativeHeadlessEffect,
+): HeadlessEffectCompletion {
+    val profile = effect.payload.profile()
+    profile?.id?.let(watchlistManager::setActiveProfile)
+    return ok(effect, mapOf("continueWatching" to continueWatchingForProfile(profile)))
+}
+
+private suspend fun FluxaAndroidHeadlessEnvironment.continueWatchingForProfile(
+    profile: UserProfile?,
+): List<Meta> = when {
+        profile?.safeContinueWatchingEnabled == false -> emptyList()
+        profile == null -> emptyList()
+        ThirdPartyProviderId.from(profile.safeContinueWatchingSource) != null -> {
+            val fresh = withTimeoutOrNull(12_000L) {
+                providerContinueWatchingRepository.loadSelected(profile, refresh = true)
+            }
+            (fresh ?: providerContinueWatchingRepository.loadSelected(profile, refresh = false))
+                ?.items
+                .orEmpty()
+        }
+        else -> watchlistManager.getContinueWatchingSnapshot()
+    }
+
 internal suspend fun FluxaAndroidHeadlessEnvironment.readLibraryState(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-    effect.payload.stringOrNull("profileId")?.let(watchlistManager::setActiveProfile)
+    val profileId = effect.payload.stringOrNull("profileId")
+    profileId?.let(watchlistManager::setActiveProfile)
+    val profile = effect.payload.objectValue("profile")?.let {
+        runCatching { gson.fromJson(gson.toJsonTree(it), UserProfile::class.java) }.getOrNull()
+    } ?: profileId?.let { id -> profileManager.getProfiles().firstOrNull { it.id == id } }
+    val providerId = ThirdPartyProviderId.from(
+        effect.payload.stringOrNull("source") ?: profile?.integrationLibrarySource
+    )
+    if (providerId != null) {
+        if (profile == null) return error(effect, "library_profile_missing")
+        val snapshot = thirdPartyProviderRepository.load(profile, providerId, refresh = true)
+            ?: return error(effect, "library_provider_not_connected")
+        return ok(
+            effect,
+            mapOf(
+                "watchlist" to snapshot.libraryItems,
+                "continueWatching" to snapshot.continueWatching,
+                "liked" to snapshot.favorites,
+                "watched" to snapshot.watchedEpisodeIdsBySeries,
+                "dropped" to emptyList<Meta>(),
+                "completed" to snapshot.completed
+            )
+        )
+    }
     return ok(
         effect,
         mapOf(
@@ -90,7 +182,9 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.writeLibraryCommand(effect:
         "toggleWatchlist" -> {
             val item = command.objectValue("item")?.let { gson.fromJson(gson.toJsonTree(it), Meta::class.java) }
             if (item != null) {
-                val selectedProvider = profile?.integrationLibrarySource
+                val selectedProvider = (
+                    effect.payload.stringOrNull("source") ?: profile?.integrationLibrarySource
+                )
                     ?.let(ThirdPartyProviderId::from)
                 if (profile != null && selectedProvider != null) {
                     val identity = com.fluxa.app.data.repository.TraktIntegration.contentIdentityKey(item)
@@ -98,7 +192,12 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.writeLibraryCommand(effect:
                     val wasInProviderLibrary = snapshot?.libraryItems.orEmpty().any { existing ->
                         com.fluxa.app.data.repository.TraktIntegration.contentIdentityKey(existing) == identity
                     }
-                    val requestedState = !wasInProviderLibrary
+                    val plan = planLibraryCommand(
+                        library = mapOf("watchlist" to snapshot?.libraryItems.orEmpty()),
+                        command = command + ("isCurrentlyInWatchlist" to wasInProviderLibrary)
+                    )
+                    val requestedState = plan.getAsJsonObject("externalAction")
+                        ?.get("command")?.asString == "add"
                     val success = thirdPartyProviderRepository.pushWatchlist(
                         profile = profile,
                         providerId = selectedProvider,
@@ -113,18 +212,32 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.writeLibraryCommand(effect:
                         "provider" to selectedProvider.key
                     )
                 } else {
-                    watchlistManager.toggleWatchlist(item)
-                    val isInWatchlist = watchlistManager.isInWatchlist(item.id)
-                    mapOf("watchlist" to watchlistManager.getWatchlistSnapshot(), "isInWatchlist" to isInWatchlist)
+                    val current = watchlistManager.getWatchlistSnapshot()
+                    val plan = planLibraryCommand(mapOf("watchlist" to current), command)
+                    val isInWatchlist = plan.getAsJsonObject("externalAction")
+                        ?.get("command")?.asString == "add"
+                    watchlistManager.setWatchlistMembership(item, isInWatchlist)
+                    mapOf(
+                        "watchlist" to watchlistManager.getWatchlistSnapshot(),
+                        "isInWatchlist" to isInWatchlist
+                    )
                 }
             } else {
-                mapOf("watchlist" to watchlistManager.getWatchlistSnapshot())
+                return error(effect, "library_item_missing")
             }
         }
         "markWatched" -> {
-            val watched = command.boolean("watched", true)
             val seriesId = command.string("seriesId")
-            val videoIds = command.list("videoIds").mapNotNull { it?.toString() }
+            val previousWatched = watchlistManager.getLocalWatchedVideoIds(seriesId)
+            val plan = planLibraryCommand(
+                library = mapOf("watched" to previousWatched.associateWith { true }),
+                command = command
+            )
+            val action = plan.getAsJsonObject("externalAction")
+            val watched = action?.get("watched")?.asBoolean ?: true
+            val videoIds = action?.getAsJsonArray("videoIds")
+                ?.mapNotNull { it.takeUnless { value -> value.isJsonNull }?.asString }
+                .orEmpty()
             val localWatched = watchlistManager.markEpisodesWatched(
                 seriesId = seriesId,
                 videoIds = videoIds,
@@ -143,12 +256,25 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.writeLibraryCommand(effect:
                     }
                 }
             }
-            mapOf("watchlist" to watchlistManager.getWatchlistSnapshot(), "localWatchedVideoIds" to localWatched.toList())
+                mapOf("watchlist" to watchlistManager.getWatchlistSnapshot(), "localWatchedVideoIds" to localWatched.toList())
         }
-        else -> mapOf("watchlist" to watchlistManager.getWatchlistSnapshot())
+        else -> return error(effect, "unsupported_library_command")
     }
     return ok(effect, value)
 }
+
+private fun FluxaAndroidHeadlessEnvironment.planLibraryCommand(
+    library: Any,
+    command: Map<String, Any?>
+) = FluxaCoreNative.libraryCommandPlan(
+    gson.toJson(
+        mapOf(
+            "library" to library,
+            "command" to command,
+            "nowIso" to java.time.Instant.now().toString()
+        )
+    )
+)
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.writeFeedback(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
     val payload = effect.payload

@@ -12,11 +12,14 @@ object FluxaHeadlessActionType {
     const val DetailSelectedAddonChanged = "detailSelectedAddonChanged"
     const val MetaDetailRequested = "metaDetailRequested"
     const val DirectPlaybackRequested = "directPlaybackRequested"
+    const val ContinueWatchingPlaybackRequested = "continueWatchingPlaybackRequested"
     const val IntroSegmentsRequested = "introSegmentsRequested"
     const val IntroImdbIdRequested = "introImdbIdRequested"
     const val PlayerLoadStreamsRequested = "playerLoadStreamsRequested"
     const val PlayerStreamsLoaded = "playerStreamsLoaded"
     const val PlayerStreamsFailed = "playerStreamsFailed"
+    const val PlayerResetForEpisode = "playerResetForEpisode"
+    const val PlayerTelemetryUpdated = "playerTelemetryUpdated"
     const val PlayerResolvePlaybackRequested = "playerResolvePlaybackRequested"
     const val ScrobbleRequested = "scrobbleRequested"
     const val ProfileActivated = "profileActivated"
@@ -66,11 +69,14 @@ object FluxaHeadlessActionType {
         DetailSelectedAddonChanged,
         MetaDetailRequested,
         DirectPlaybackRequested,
+        ContinueWatchingPlaybackRequested,
         IntroSegmentsRequested,
         IntroImdbIdRequested,
         PlayerLoadStreamsRequested,
         PlayerStreamsLoaded,
         PlayerStreamsFailed,
+        PlayerResetForEpisode,
+        PlayerTelemetryUpdated,
         PlayerResolvePlaybackRequested,
         ScrobbleRequested,
         ProfileActivated,

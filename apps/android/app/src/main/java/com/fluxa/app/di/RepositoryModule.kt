@@ -1,6 +1,9 @@
 package com.fluxa.app.di
 
 import com.fluxa.app.data.repository.*
+import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
+import com.fluxa.app.core.rust.FluxaHeadlessAppRuntime
+import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
 import com.fluxa.app.domain.discovery.StreamDiscoveryMemoryCache
 import dagger.Module
 import dagger.Provides
@@ -23,6 +26,12 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 @Module
 @InstallIn(SingletonComponent::class)
 object RepositoryModule {
+
+    @Provides
+    @Singleton
+    fun provideFluxaHeadlessAppRuntime(
+        environment: FluxaAndroidHeadlessEnvironment
+    ): FluxaHeadlessAppRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(environment)
 
     @Provides
     @Singleton

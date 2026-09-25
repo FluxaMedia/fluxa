@@ -88,6 +88,7 @@ object GeneratedSettingsPreferenceKeys {
     const val MPV_CUSTOM_OPTIONS = "mpvCustomOptions"
     const val NAV_BAR_POSITION = "navBarPosition"
     const val NAV_ITEMS_ALIGN = "navItemsAlign"
+    const val NAV_MODE = "navMode"
     const val NAV_LAYOUT = "navLayout"
     const val NAV_SIDEBAR_MODE = "navSidebarMode"
     const val NEXT_EPISODE_THRESHOLD_PERCENT = "nextEpisodeThresholdPercent"

@@ -62,6 +62,14 @@ object NuvioCoreBridge {
         }
     ).asJsonArray
 
+    fun effectiveProfileScopes(profileIndex: Int, profiles: JsonElement): JsonObject = invoke(
+        "nuvioEffectiveProfileScopes",
+        JsonObject().apply {
+            addProperty("profileIndex", profileIndex)
+            add("profiles", profiles)
+        }
+    ).asJsonObject
+
     fun libraryToWatchlist(library: JsonElement): JsonArray = invoke(
         "nuvioLibraryToWatchlist",
         JsonObject().apply { add("library", library) }

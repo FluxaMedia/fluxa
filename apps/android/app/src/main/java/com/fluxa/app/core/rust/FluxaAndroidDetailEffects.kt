@@ -21,6 +21,9 @@ import com.fluxa.app.ui.catalog.DirectPlaybackTarget
 import android.net.Uri
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.fetchMetaDetail(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
     val payload = effect.payload
@@ -39,27 +42,84 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchMetaDetail(effect: Nat
     val preferredUrl = payload.stringOrNull("sourceAddonTransportUrl")
     val preferredCatalogType = payload.stringOrNull("sourceAddonCatalogType")
     Log.d("MetaFetch", "fetchMetaDetail: type=$contentType id=${id.take(40)} preferredUrl=$preferredUrl preferredCatalogType=$preferredCatalogType localAddons=${profile?.safeLocalAddons?.size}")
-    val detail = repository.getMetaDetail(
-        type = contentType,
-        id = id,
-        language = language,
-        authKey = profile?.authKey.orEmpty(),
-        localAddons = profile?.safeLocalAddons.orEmpty(),
-        useConfiguredAddons = true,
-        preferredAddonTransportUrl = preferredUrl,
-        preferredAddonCatalogType = preferredCatalogType
+    val addons = configuredStreamAddons(profile)
+    val plannerAddons = gson.toJsonTree(addons).asJsonArray
+    val planArgs = mapOf(
+        "kind" to "metaDetail",
+        "addons" to plannerAddons,
+        "transportUrl" to preferredUrl,
+        "contentType" to contentType,
+        "id" to id
     )
+    val requests = runCatching {
+        FluxaCoreUniFfi.coreInvokeValue("resourceFetchExecutionPolicy", gson.toJson(planArgs))
+            .asJsonObject.getAsJsonArray("requests")
+    }.getOrNull()
+    val detail = coroutineScope {
+        val outcomes = requests?.mapIndexed { index, requestElement ->
+            async {
+                val request = requestElement.asJsonObject
+                val requestUrl = request.get("url")?.takeUnless { it.isJsonNull }?.asString.orEmpty()
+                val requestType = request.get("contentType")?.takeUnless { it.isJsonNull }?.asString ?: contentType
+                val requestId = request.get("id")?.takeUnless { it.isJsonNull }?.asString ?: id
+                val requestAddon = request.get("transportUrl")?.takeUnless { it.isJsonNull }?.asString
+                val result = if (requestUrl.isNotBlank() && requestAddon != null) {
+                    // Execute Core-selected candidates concurrently; select by plan order below.
+                    addonRepository.getMetaDetailFromSpecificAddon(requestAddon, requestType, requestId)
+                } else null
+                index to result
+            }
+        }?.awaitAll().orEmpty()
+        outcomes.sortedBy { it.first }.firstNotNullOfOrNull { it.second }
+    }
+    val resolvedDetail = detail ?: run {
+        // Keep authenticated Stremio metadata as the platform fallback, without letting the host re-plan addons.
+        repository.getMetaDetail(
+            type = contentType,
+            id = id,
+            language = language,
+            authKey = profile?.authKey.orEmpty(),
+            localAddons = emptyList(),
+            useConfiguredAddons = false
+        )
+    }
     val detailSummary = when {
-        detail == null -> "NULL"
-        FluxaCoreNative.isSeriesContentType(detail.type) ->
-            "SUCCESS name=${detail.name} episodes=${detail.videos?.size ?: 0}"
-        else -> "SUCCESS name=${detail.name}"
+        resolvedDetail == null -> "NULL"
+        FluxaCoreNative.isSeriesContentType(resolvedDetail.type) ->
+            "SUCCESS name=${resolvedDetail.name} episodes=${resolvedDetail.videos?.size ?: 0}"
+        else -> "SUCCESS name=${resolvedDetail.name}"
     }
     Log.d("MetaFetch", "fetchMetaDetail result: $detailSummary")
-    val enriched = if (detail != null && profile?.safeTmdbApiKey?.isNotBlank() == true) {
-        repository.enrichDetailWithTmdb(detail, profile.safeTmdbApiKey, profile, language)
+    val enriched = if (resolvedDetail != null && profile?.safeTmdbApiKey?.isNotBlank() == true) {
+        val tmdbDetail = repository.enrichDetailWithTmdb(resolvedDetail, profile.safeTmdbApiKey, profile, language)
+        val flags = mapOf(
+            "artwork" to profile.safeTmdbLogosBackdropsEnabled,
+            "description" to profile.safeTmdbBasicInfoEnabled,
+            "genresKeywords" to profile.safeTmdbBasicInfoEnabled,
+            "castCrew" to profile.safeTmdbCastImagesEnabled,
+            "network" to profile.safeTmdbNetworksEnabled,
+            "ratings" to profile.safeTmdbRatingsEnabled,
+            "collection" to profile.safeTmdbCollectionInfoEnabled,
+            "statusSchedule" to profile.safeTmdbDetailsEnabled,
+            "originTitles" to profile.safeTmdbDetailsEnabled,
+            "watchProviders" to true,
+            "episodeStills" to profile.safeTmdbEpisodeImagesEnabled
+        )
+        runCatching {
+            val merged = FluxaCoreUniFfi.coreInvokeValue(
+                "tmdbMergeEnrichment",
+                gson.toJson(
+                    mapOf(
+                        "baseJson" to gson.toJson(resolvedDetail),
+                        "tmdbJson" to gson.toJson(tmdbDetail),
+                        "flagsJson" to gson.toJson(flags)
+                    )
+                )
+            )
+            gson.fromJson(merged, MetaDetail::class.java)
+        }.getOrNull() ?: tmdbDetail
     } else {
-        detail
+        resolvedDetail
     }
     return ok(effect, if (isLookup) enriched else mapOf("meta" to enriched))
 }
@@ -175,6 +235,44 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.prefetchDetailStreams(effec
             primeScope.launch { MediaPlayerController.primeHttpStream(context, url, headers) }
         }
     return ok(effect, mapOf("count" to plan.count, "prewarmedUrl" to prewarmUrl))
+}
+
+internal suspend fun FluxaAndroidHeadlessEnvironment.prefetchNextEpisodeStreams(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
+    val payload = effect.payload
+    val profile = payload.profile()
+    val addons = configuredStreamAddons(profile)
+    val nextVideoId = payload.string("nextVideoId")
+    val contentType = payload.string("contentType", "series")
+    val prefetched = streamDiscovery.prefetch(
+        StreamDiscoveryRequest(
+            addons = addons,
+            type = contentType,
+            id = nextVideoId,
+            language = payload.string("language", profile?.safeLanguage ?: "en"),
+            preferFastStart = true,
+            cs3PluginApis = pluginManager.loadedApis.value,
+            cs3SearchQuery = payload.stringOrNull("title"),
+            cs3OriginalName = payload.stringOrNull("originalName"),
+            cs3Year = payload.number("year")?.toInt()
+        )
+    )
+
+    val prewarmPlan = FluxaCoreNative.headlessPrefetchDetailStreams(prefetched)
+    val prewarmUrl = prewarmPlan.prewarmUrl
+    if (profile?.safeP2pEnabled != false && prewarmPlan.shouldPrewarmTorrent && prewarmUrl != null) {
+        TorrentStreamManager.getInstance(context).preWarm(prewarmUrl, nextVideoId)
+    }
+    prefetched.firstOrNull { stream ->
+        val url = stream.playableUrl ?: return@firstOrNull false
+        val scheme = Uri.parse(url).scheme?.lowercase() ?: return@firstOrNull false
+        stream.infoHash == null && (scheme == "http" || scheme == "https")
+    }?.let { stream ->
+        val url = stream.playableUrl ?: return@let
+        val headers = stream.resolveHeaders()
+        primeScope.launch { MediaPlayerController.primeHttpStream(context, url, headers) }
+    }
+
+    return ok(effect, mapOf("streams" to prefetched))
 }
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.fetchDetailStreams(effect: NativeHeadlessEffect): HeadlessEffectCompletion {

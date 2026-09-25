@@ -1,5 +1,6 @@
 package com.fluxa.app.ui.catalog
 
+// Generated from shared/contracts/ui-tokens.json. Do not edit.
 object FluxaThemePackDefaults {
     val fluxaDark = FluxaThemePack(
         schemaVersion = 1,

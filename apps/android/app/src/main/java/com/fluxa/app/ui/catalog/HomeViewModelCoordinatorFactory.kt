@@ -1,6 +1,5 @@
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.WatchlistManager
 import com.fluxa.app.data.remote.AddonDescriptor
@@ -10,7 +9,6 @@ import com.fluxa.app.data.repository.TraktWatchedState
 import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
 import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.domain.discovery.StreamDiscoveryUseCase
-import com.google.gson.Gson
 import com.fluxa.app.domain.playback.PlaybackProgressScheduler
 import com.fluxa.app.domain.playback.PlaybackSyncCoordinator
 import kotlinx.coroutines.CoroutineScope
@@ -22,15 +20,11 @@ class HomeViewModelCoordinatorFactory @Inject constructor(
     private val thirdPartyProviderRepository: ThirdPartyProviderRepository,
 ) {
     internal fun library(
-        scope: CoroutineScope,
-        coreState: FluxaUniFfiCoreStateHandle,
-        gson: Gson
+        scope: CoroutineScope
     ): HomeLibraryCoordinator {
         return HomeLibraryCoordinator(
             providerRepository = thirdPartyProviderRepository,
-            scope = scope,
-            coreState = coreState,
-            gson = gson
+            scope = scope
         )
     }
 

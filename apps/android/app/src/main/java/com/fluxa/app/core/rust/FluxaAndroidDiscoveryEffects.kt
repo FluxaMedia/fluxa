@@ -8,109 +8,122 @@ import com.fluxa.app.data.local.LibraryRemoteSource
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.distinctByTypeAndId
-import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.TmdbMeta
 import com.fluxa.app.data.remote.TmdbService
 import com.fluxa.app.data.remote.ExternalSyncApi
 import com.fluxa.app.core.rust.effects.fetchAddonCatalogPage
-import com.fluxa.app.common.AppStrings
 import com.fluxa.app.ui.catalog.HomeCatalogSource
-import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
-import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
-import com.fluxa.app.ui.catalog.DiscoverGenreOption
 import com.fluxa.app.data.repository.TraktIntegration
 import com.google.gson.JsonElement
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.runSearch(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
     val profile = effect.payload.profile()
+    val query = effect.payload.string("query").trim()
+    val rows = addonRepository.searchRows(
+        query = query,
+        language = effect.payload.string("language", profile?.safeLanguage ?: "en"),
+        authKey = profile?.authKey.orEmpty(),
+        localAddons = profile?.safeLocalAddons.orEmpty()
+    )
+    val sources = rows.map { row ->
+        val items = row.items.map { meta ->
+            gson.toJsonTree(meta).asJsonObject.apply {
+                row.sourceAddonTransportUrl?.let { addProperty("sourceAddonTransportUrl", it) }
+                row.sourceAddonCatalogType?.let { addProperty("sourceAddonCatalogType", it) }
+            }
+        }
+        mapOf(
+            "id" to row.id,
+            "name" to row.title,
+            "semanticName" to row.title,
+            "type" to row.type,
+            "items" to items
+        )
+    }
+    val merged = FluxaCoreUniFfi.coreInvokeValue("mergeSearchSources", gson.toJson(sources)).asJsonObject
+    val results = merged.get("results")
+    val categories = merged.get("categories")
+    val grouping = FluxaCoreUniFfi.coreInvokeValue(
+        "searchResultGrouping",
+        gson.toJson(mapOf("query" to query, "results" to results))
+    )
     return ok(
         effect,
         mapOf(
-            "results" to addonRepository.searchRows(
-                query = effect.payload.string("query"),
-                language = effect.payload.string("language", profile?.safeLanguage ?: "en"),
-                authKey = profile?.authKey.orEmpty(),
-                localAddons = profile?.safeLocalAddons.orEmpty()
-            ).flatMap { it.items }
+            "results" to results,
+            "categories" to categories,
+            "grouping" to grouping
         )
     )
 }
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.runDiscover(effect: NativeHeadlessEffect): HeadlessEffectCompletion = coroutineScope {
     val payload = effect.payload
-    val profile = payload.profile()
     val contentType = payload.string("contentType")
-    val filters = payload.objectValue("filters")
-    val genre = filters?.stringOrNull("genre")
-    val selectedCatalogKey = filters?.stringOrNull("catalogKey")
-    val addons = addonRepository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
-    val catalogOptions = buildDiscoverCatalogOptions(addons, contentType)
-    val catalogs = selectedCatalogKey
-        ?.let { key -> catalogOptions.filter { it.key == key } }
-        ?.takeIf { it.isNotEmpty() }
-        ?: catalogOptions.take(1)
-    // Fan out catalog fetches concurrently (was a sequential flatMap). awaitAll preserves
-    // catalog order in the merged result; the semaphore caps concurrent addon requests.
-    val semaphore = Semaphore(8)
-    val fetched = catalogs.flatMap { catalog ->
-        val selectedTypes = FluxaCoreNative.discoverCatalogRequestTypes(catalog.type)
-        selectedTypes.map { type -> catalog to type }
-    }.map { (catalog, type) ->
+    val requestPlan = FluxaCoreUniFfi.coreInvokeValue(
+        "discoverSourceRequests",
+        gson.toJson(mapOf("contentType" to contentType, "filters" to payload.objectValue("filters")))
+    ).asJsonArray
+    if (requestPlan.isEmpty) return@coroutineScope error(effect, "discover_plan_has_no_requests")
+    // Core owns request-type expansion, field aliases, and provenance for all hosts.
+    val fetched = requestPlan.map { requestElement ->
+        val request = requestElement.asJsonObject
+        val transportUrl = request.get("transportUrl")?.asString.orEmpty()
+        val type = request.get("type")?.asString.orEmpty()
+        val catalogId = request.get("catalogId")?.asString.orEmpty()
+        val extra = request.getAsJsonObject("extra")
+        val genre = request.get("genre")?.takeUnless { it.isJsonNull }?.asString
+        val search = extra?.get("search")?.takeUnless { it.isJsonNull }?.asString.orEmpty().trim()
         async {
-            semaphore.withPermit {
-                runCatching {
-                    val items = addonRepository.getAddonCatalog(
-                        transportUrl = catalog.transportUrl,
-                        type = type,
-                        id = catalog.id,
-                        genre = genre
-                    )
-                    val source = HomeCatalogSource(
-                        transportUrl = catalog.transportUrl,
-                        catalogId = catalog.id,
-                        type = type,
-                        genre = genre
-                    )
-                    items to source
-                }.getOrDefault(emptyList<Meta>() to HomeCatalogSource(catalog.transportUrl, catalog.id, type, genre))
+            runCatching {
+                val items = addonRepository.getAddonCatalog(
+                    transportUrl = transportUrl,
+                    type = type,
+                    id = catalogId,
+                    skip = extra?.get("skip")?.takeUnless { it.isJsonNull }?.asInt ?: 0,
+                    genre = genre,
+                    search = search.takeIf { it.isNotBlank() }
+                )
+                val source = HomeCatalogSource(
+                    transportUrl = transportUrl,
+                    catalogId = catalogId,
+                    type = type,
+                    genre = genre
+                )
+                items to source
             }
+                .getOrDefault(emptyList<Meta>() to HomeCatalogSource(transportUrl, catalogId, type, genre))
         }
     }.awaitAll()
-    val results = fetched.flatMap { it.first }
-    val resultSources = linkedMapOf<String, HomeCatalogSource>()
-    fetched.forEach { (items, source) ->
-        items.forEach { item ->
-            resultSources["${item.type}:${item.id}"] = source
-            resultSources.putIfAbsent(item.id, source)
-        }
-    }
-    ok(effect, mapOf("results" to results, "resultSources" to resultSources))
+    val merged = FluxaCoreNative.mergeDiscoverSources(fetched.map { (items, source) ->
+        mapOf(
+            "transportUrl" to source.transportUrl,
+            "catalogId" to source.catalogId,
+            "type" to source.type,
+            "genre" to source.genre,
+            "items" to items
+        )
+    }).asJsonObject
+    val results: List<Meta> = gson.fromJson(
+        merged.get("results"),
+        object : TypeToken<List<Meta>>() {}.type
+    ) ?: emptyList()
+    val resultSources: Map<String, HomeCatalogSource> = gson.fromJson(
+        merged.get("resultSources"),
+        object : TypeToken<Map<String, HomeCatalogSource>>() {}.type
+    ) ?: emptyMap()
+    return@coroutineScope ok(effect, mapOf("results" to results, "resultSources" to resultSources))
 }
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.readDiscoverCatalogFilters(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
     val payload = effect.payload
     val profile = payload.profile()
-    val addons = addonRepository.getUserAddons(profile?.authKey.orEmpty(), profile?.safeLocalAddons.orEmpty())
-    val catalogOptions = buildDiscoverCatalogOptions(addons, payload.string("contentType"))
-    val contentTypes = buildDiscoverContentTypes(addons)
-    val selectedCatalog = catalogOptions.firstOrNull { it.key == payload.stringOrNull("selectedCatalogKey") }
-    val selectedGenres = selectedCatalog?.genres.orEmpty()
-        .distinct()
-        .sortedBy { it.lowercase(java.util.Locale.ROOT) }
-        .map { DiscoverGenreOption(it, it) }
-    val genres = if (selectedCatalog == null || selectedGenres.isEmpty()) {
-        emptyList()
-    } else if (!selectedCatalog.requiresGenre) {
-        listOf(DiscoverGenreOption(null, AppStrings.t(payload.string("language", profile?.safeLanguage ?: "en"), "auto.all"))) + selectedGenres
-    } else {
-        selectedGenres
-    }
-    return ok(effect, mapOf("catalogs" to catalogOptions, "genres" to genres, "contentTypes" to contentTypes))
+    val addons = configuredStreamAddons(profile)
+    return ok(effect, mapOf("addons" to addons))
 }
 
 internal suspend fun FluxaAndroidHeadlessEnvironment.fetchCatalogPage(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
@@ -230,8 +243,9 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.fetchSeasonEpisodes(effect:
 }
 
 internal fun FluxaAndroidHeadlessEnvironment.fetchSubtitles(effect: NativeHeadlessEffect): HeadlessEffectCompletion {
-    val stream = effect.payload.objectValue("stream")?.let { gson.fromJson(gson.toJsonTree(it), Stream::class.java) }
-    return ok(effect, mapOf("subtitles" to stream?.subtitles.orEmpty()))
+    val streamJson = gson.toJson(effect.payload["stream"] ?: emptyMap<String, Any?>())
+    val result = FluxaCoreUniFfi.coreInvokeValue("streamSubtitlesResult", streamJson)
+    return ok(effect, result)
 }
 
 private fun TmdbMeta.toCollectionMeta(defaultMediaType: String): Meta? {

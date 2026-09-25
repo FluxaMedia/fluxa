@@ -2,12 +2,9 @@ package com.fluxa.app.ui.catalog
 
 import com.fluxa.app.core.rust.NativeHeadlessEngineResult
 import com.fluxa.app.data.local.*
-import com.fluxa.app.data.remote.AddonDescriptor
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.remote.distinctByTypeAndId
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
-import com.fluxa.app.domain.discovery.buildDiscoverCatalogOptions
-import com.fluxa.app.domain.discovery.buildDiscoverContentTypes
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
@@ -26,8 +23,7 @@ internal class HomeHeadlessBrowseCoordinator(
     private val scope: CoroutineScope,
     private val gson: Gson,
     private val dispatch: suspend (Any) -> NativeHeadlessEngineResult,
-    private val activeProfile: () -> UserProfile?,
-    private val userAddons: () -> List<AddonDescriptor>
+    private val activeProfile: () -> UserProfile?
 ) {
     private val metaListType = object : TypeToken<List<Meta>>() {}.type
     private val calendarItemListType = object : TypeToken<List<CalendarUpcomingItem>>() {}.type
@@ -66,10 +62,6 @@ internal class HomeHeadlessBrowseCoordinator(
     fun clearResults() {
         results.value = emptyList()
     }
-
-    fun catalogOptions(type: String): List<DiscoverCatalogOption> = buildDiscoverCatalogOptions(userAddons(), type)
-
-    fun availableContentTypes(): List<String> = buildDiscoverContentTypes(userAddons())
 
     fun setLoading(value: Boolean) {
         loading.value = value
@@ -174,24 +166,36 @@ internal class HomeHeadlessBrowseCoordinator(
         genres.value = emptyList()
     }
 
-    fun loadFilters(type: String, selectedCatalogKey: String?, onLoaded: ((List<DiscoverCatalogOption>) -> Unit)?) {
+    fun loadFilters(
+        type: String,
+        selectedCatalogKey: String?,
+        onLoaded: ((List<DiscoverCatalogOption>, List<String>) -> Unit)?
+    ) {
         scope.launch {
             val profile = activeProfile()
             val result = dispatch(
                 mapOf(
-                    "type" to "discoverCatalogFiltersRequested",
+                    "type" to "discoverRequested",
+                    "loadCatalogFilters" to true,
                     "contentType" to type,
-                    "selectedCatalogKey" to selectedCatalogKey,
+                    "filters" to mapOf(
+                        "catalogKey" to selectedCatalogKey,
+                        "extra" to emptyMap<String, String>(),
+                    ),
                     "profile" to profile,
-                    "language" to (profile?.safeLanguage ?: "en")
+                    "language" to (profile?.safeLanguage ?: "en"),
                 )
             )
             val state = result.state["discover"] as? Map<*, *> ?: return@launch
+            results.value = decodeList<Meta>(state["results"], metaListType).distinctByTypeAndId()
+            resultSources.value = decodeObject(state["resultSources"], sourceMapType) ?: emptyMap()
+            loading.value = state["isLoading"] as? Boolean ?: false
             val updatedCatalogs = decodeList<DiscoverCatalogOption>(state["catalogs"], catalogListType)
             catalogs.value = updatedCatalogs
             genres.value = decodeList(state["genres"], genreListType)
-            contentTypes.value = decodeList(state["contentTypes"], contentTypeListType)
-            onLoaded?.invoke(updatedCatalogs)
+            val updatedContentTypes = decodeList<String>(state["contentTypes"], contentTypeListType)
+            contentTypes.value = updatedContentTypes
+            onLoaded?.invoke(updatedCatalogs, updatedContentTypes)
         }
     }
 

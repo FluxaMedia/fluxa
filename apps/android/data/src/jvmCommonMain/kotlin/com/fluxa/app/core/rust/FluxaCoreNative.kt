@@ -86,6 +86,7 @@ import com.fluxa.app.player.NativeTorrentStatusInfo
 import com.fluxa.app.player.TorrentFileStat
 import com.fluxa.app.player.TorrentStatus
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import com.google.gson.stream.JsonReader
@@ -1292,6 +1293,20 @@ object FluxaCoreNative {
         return gson.fromJson(value, object : TypeToken<List<MetadataFeedOption>>() {}.type) ?: emptyList()
     }
 
+    fun homeMetadataFeedPlan(
+        feeds: List<MetadataFeedOption>,
+        selectedKeys: List<String>?,
+        order: List<String>?
+    ): List<MetadataFeedOption> {
+        val args = JsonObject().apply {
+            add("feeds", gson.toJsonTree(feeds))
+            add("selectedKeys", gson.toJsonTree(selectedKeys))
+            add("order", gson.toJsonTree(order))
+        }
+        val value = FluxaCoreUniFfi.coreInvokeValue("homeMetadataFeedPlan", args.toString())
+        return gson.fromJson(value, object : TypeToken<List<MetadataFeedOption>>() {}.type) ?: emptyList()
+    }
+
     fun discoverContentTypes(addons: List<AddonDescriptor>): List<String> {
         val value = FluxaCoreUniFfi.coreInvokeValue("discoverContentTypes", gson.toJson(addons))
         return gson.fromJson(value, stringListType) ?: emptyList()
@@ -1301,6 +1316,11 @@ object FluxaCoreNative {
         val args = JsonObject().apply { addProperty("catalogType", catalogType) }
         val value = FluxaCoreUniFfi.coreInvokeValue("discoverCatalogRequestTypes", args.toString())
         return gson.fromJson(value, stringListType) ?: emptyList()
+    }
+
+    fun mergeDiscoverSources(sources: List<Map<String, Any?>>): JsonElement {
+        val args = JsonObject().apply { add("sources", gson.toJsonTree(sources)) }
+        return FluxaCoreUniFfi.coreInvokeValue("mergeDiscoverSources", args.toString())
     }
 
     fun discoverCatalogOptions(addons: List<AddonDescriptor>, selectedType: String): List<DiscoverCatalogOption> {
@@ -2575,6 +2595,9 @@ object FluxaCoreNative {
         val value = FluxaCoreUniFfi.coreInvokeValue("watchlistTogglePlan", requestJson)
         return gson.fromJson(value, NativeWatchlistTogglePlan::class.java) ?: NativeWatchlistTogglePlan()
     }
+
+    fun libraryCommandPlan(requestJson: String): JsonObject =
+        FluxaCoreUniFfi.coreInvokeValue("libraryCommandPlan", requestJson).asJsonObject
 
     fun libraryExternalMergePlanJson(requestJson: String): String =
         FluxaCoreUniFfi.coreInvokeValue("libraryExternalMergePlan", requestJson).toString()

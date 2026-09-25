@@ -1,26 +1,13 @@
 package com.fluxa.app.ui.catalog
 
-import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.remote.Meta
-import com.google.gson.Gson
-import java.io.Closeable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 class HomeSearchFocusStateHolder(
-    initialHistory: List<Meta>,
-    private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
-        mapOf(
-            "homeSearch" to mapOf(
-                "searchHistory" to initialHistory
-            )
-        )
-    ),
-    private val ownsCoreState: Boolean = true,
-    private val gson: Gson = Gson()
-) : Closeable {
+    initialHistory: List<Meta>
+) {
 
     private val _searchResults = MutableStateFlow<List<Meta>>(emptyList())
     val searchResults: StateFlow<List<Meta>> = _searchResults.asStateFlow()
@@ -42,63 +29,25 @@ class HomeSearchFocusStateHolder(
 
     var searchResultsValue: List<Meta>
         get() = _searchResults.value
-        set(value) { dispatchHomeSearch("setSearchResults", value) }
+        set(value) { _searchResults.value = value }
 
     var searchRowsValue: List<SearchResultRow>
         get() = _searchRows.value
-        set(value) { dispatchHomeSearch("setSearchRows", value) }
+        set(value) { _searchRows.value = value }
 
     var searchHistoryValue: List<Meta>
         get() = _searchHistory.value
-        set(value) { dispatchHomeSearch("setSearchHistory", value) }
+        set(value) { _searchHistory.value = value }
 
     var focusedMovieValue: Meta?
         get() = _focusedMovie.value
-        set(value) { dispatchHomeSearch("setFocusedMovie", value) }
+        set(value) { _focusedMovie.value = value }
 
     var focusedMovieTrailerUrlValue: String?
         get() = _focusedMovieTrailerUrl.value
-        set(value) { dispatchHomeSearch("setFocusedMovieTrailerUrl", value) }
+        set(value) { _focusedMovieTrailerUrl.value = value }
 
     var previewUrlValue: String?
         get() = _previewUrl.value
-        set(value) { dispatchHomeSearch("setPreviewUrl", value) }
-
-    private fun dispatchHomeSearch(type: String, value: Any?) {
-        applySnapshot(coreState.dispatch(CoreAction(type = type, value = value)))
-    }
-
-    private fun applySnapshot(snapshotJson: String) {
-        val state = gson.fromJson(snapshotJson, CoreStateSnapshot::class.java) ?: return
-        _searchResults.value = state.homeSearch.searchResults
-        _searchRows.value = state.homeSearch.searchRows
-        _searchHistory.value = state.homeSearch.searchHistory
-        _focusedMovie.value = state.homeSearch.focusedMovie
-        _focusedMovieTrailerUrl.value = state.homeSearch.focusedMovieTrailerUrl
-        _previewUrl.value = state.homeSearch.previewUrl
-    }
-
-    override fun close() {
-        if (ownsCoreState) {
-            coreState.close()
-        }
-    }
-
-    private data class CoreAction(
-        val type: String,
-        val value: Any?
-    )
-
-    private data class CoreStateSnapshot(
-        val homeSearch: CoreHomeSearchSnapshot = CoreHomeSearchSnapshot()
-    )
-
-    private data class CoreHomeSearchSnapshot(
-        val searchResults: List<Meta> = emptyList(),
-        val searchRows: List<SearchResultRow> = emptyList(),
-        val searchHistory: List<Meta> = emptyList(),
-        val focusedMovie: Meta? = null,
-        val focusedMovieTrailerUrl: String? = null,
-        val previewUrl: String? = null
-    )
+        set(value) { _previewUrl.value = value }
 }

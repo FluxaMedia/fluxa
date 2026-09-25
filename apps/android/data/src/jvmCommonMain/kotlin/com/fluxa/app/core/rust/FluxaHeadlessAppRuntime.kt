@@ -21,6 +21,8 @@ class FluxaHeadlessAppRuntime(
     private val _state = MutableStateFlow<Map<String, Any?>>(emptyMap())
     val state: StateFlow<Map<String, Any?>> = _state.asStateFlow()
 
+    fun snapshotJson(): String = engine.snapshotJson()
+
     suspend fun dispatch(action: Any): NativeHeadlessEngineResult {
         return runner.dispatchAndDrain(action).also { result ->
             _state.value = result.state

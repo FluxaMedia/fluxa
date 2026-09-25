@@ -28,6 +28,7 @@ import com.fluxa.app.data.repository.library.ProviderContinueWatchingRepository
 import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.plugins.PluginManager
 import com.fluxa.app.plugins.PluginRepositoryManager
+import com.fluxa.app.ui.catalog.HomePlatformContentGateway
 import com.google.gson.Gson
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -59,6 +60,7 @@ class FluxaAndroidHeadlessEnvironment @Inject constructor(
     internal val streamDiscovery: StreamDiscoveryUseCase,
     internal val pluginManager: PluginManager,
     internal val pluginRepositoryManager: PluginRepositoryManager,
+    internal val platformContentGateway: HomePlatformContentGateway,
     internal val gson: Gson,
     internal val profileManager: ProfileManager,
     internal val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,

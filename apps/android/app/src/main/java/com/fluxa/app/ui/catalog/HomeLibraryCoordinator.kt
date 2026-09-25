@@ -1,7 +1,6 @@
 package com.fluxa.app.ui.catalog
 
 import android.util.Log
-import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.local.ThirdPartyProviderId
 import com.fluxa.app.data.local.UserProfile
 import com.fluxa.app.data.local.providerAccountId
@@ -10,7 +9,6 @@ import com.fluxa.app.data.local.safeLanguage
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
 import com.fluxa.app.data.repository.library.ThirdPartyProviderSnapshot
-import com.google.gson.Gson
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,9 +46,7 @@ data class LibraryUiState(
  */
 internal class HomeLibraryCoordinator(
     private val providerRepository: ThirdPartyProviderRepository,
-    private val scope: CoroutineScope,
-    private val coreState: FluxaUniFfiCoreStateHandle,
-    private val gson: Gson
+    private val scope: CoroutineScope
 ) {
     private val _state = MutableStateFlow(LibraryUiState())
     val state: StateFlow<LibraryUiState> = _state.asStateFlow()
@@ -96,23 +92,8 @@ internal class HomeLibraryCoordinator(
     }
 
     private fun setLibraryState(value: LibraryUiState) {
-        val snapshotJson = coreState.dispatch(CoreAction(type = "setLibraryUiState", value = value))
-        val snapshot = gson.fromJson(snapshotJson, CoreStateSnapshot::class.java)?.library ?: return
-        _state.value = snapshot.uiState
+        _state.value = value
     }
-
-    private data class CoreAction(
-        val type: String,
-        val value: Any?
-    )
-
-    private data class CoreStateSnapshot(
-        val library: CoreLibrarySnapshot = CoreLibrarySnapshot()
-    )
-
-    private data class CoreLibrarySnapshot(
-        val uiState: LibraryUiState = LibraryUiState()
-    )
 
     private fun UserProfile?.libraryProfileKey(): String {
         if (this == null) return "none"

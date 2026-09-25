@@ -11,19 +11,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.media3.ui.AspectRatioFrameLayout
-import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
 import com.fluxa.app.data.remote.IntroTimestamps
 import com.fluxa.app.data.remote.Stream
 import com.fluxa.app.data.remote.Video
 import com.fluxa.app.data.remote.Meta
 import com.fluxa.app.player.ExternalSubtitleTrack
 import com.fluxa.app.player.NativeAssTrack
-import com.google.gson.Gson
 import kotlinx.coroutines.Job
 
 internal data class PlayerRuntimeCoreState(
     val currentVideoId: String? = null,
+    val positionMs: Long = 0L,
     val currentStreams: List<Stream> = emptyList(),
     val currentStreamIndex: Int = 0,
     val currentUrl: String? = null,
@@ -31,33 +29,21 @@ internal data class PlayerRuntimeCoreState(
     val zeroSpeedTicks: Int = 0,
     val isBuffering: Boolean = false,
     val isVideoRendered: Boolean = false,
+    val playbackEnded: Boolean = false,
+    val hasStartedPlaying: Boolean = false,
     val playerError: String? = null
 )
 
 internal class PlayerScreenState(
     initialVideoId: String?,
     initialStreamIndex: Int,
-    initialVolume: Int
+    initialVolume: Int,
+    private val onCoreTelemetry: (PlayerRuntimeCoreState) -> Unit,
+    private val onCoreReset: (String) -> Unit
 ) {
     private companion object {
         const val CORE_PROGRESS_CHECKPOINT_MS = 3_000L
     }
-
-    private val gson = Gson()
-    private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
-        mapOf(
-            "player" to mapOf(
-                "currentVideoId" to initialVideoId,
-                "currentStreamIndex" to initialStreamIndex,
-                "lastSavedPosition" to 0L,
-                "shouldApplyInitialProgress" to true,
-                "playbackEnded" to false,
-                "hasStartedPlaying" to false,
-                "isVideoRendered" to false,
-                "isBuffering" to true
-            )
-        )
-    )
 
     var currentUrl by mutableStateOf<String?>(null)
     var telemetryAttemptGeneration by mutableLongStateOf(0L)
@@ -156,26 +142,25 @@ internal class PlayerScreenState(
         terminalRecommendations = emptyList()
         terminalRecommendationsRequested = false
         terminalRecommendationsLoading = false
-        val snapshot = coreState.dispatch(
-            CoreAction(
-                type = "playerResetForEpisode",
-                videoId = videoId
-            )
-        )
-        val player = gson.fromJson(snapshot, CoreStateSnapshot::class.java)?.player ?: return
-        currentVideoId = player.currentVideoId
-        currentStreamIndexState = player.currentStreamIndex
-        lastSavedPosition = player.lastSavedPosition
-        shouldApplyInitialProgress = player.shouldApplyInitialProgress
+        currentVideoId = videoId
+        currentStreamIndexState = 0
+        lastSavedPosition = 0L
+        shouldApplyInitialProgress = false
         engine = PlayerEngineSnapshot(
             playback = PlaybackSnapshot(
-                isBuffering = player.isBuffering,
-                hasStartedPlaying = player.hasStartedPlaying,
-                playbackEnded = player.playbackEnded,
+                isBuffering = true,
+                hasStartedPlaying = false,
+                playbackEnded = false,
             ),
-            render = RenderSnapshot(isVideoRendered = player.isVideoRendered),
+            render = RenderSnapshot(isVideoRendered = false),
         )
-        syncPlayerCoreState()
+        lastCorePositionMs = 0L
+        lastCoreStreamIndex = 0L
+        lastCoreBuffering = true
+        lastCorePlaybackEnded = false
+        lastCoreStarted = false
+        lastCoreRendered = false
+        onCoreReset(videoId)
     }
 
     fun updateEngineSnapshot(next: PlayerEngineSnapshot) {
@@ -199,13 +184,21 @@ internal class PlayerScreenState(
             rendered != lastCoreRendered
         if (!positionChangedEnough && !stateChanged) return
 
-        coreState.updatePlayer(
-            positionMs = positionMs,
-            streamIndex = streamIndex,
-            buffering = buffering,
-            playbackEnded = playbackEnded,
-            started = started,
-            rendered = rendered,
+        onCoreTelemetry(
+            PlayerRuntimeCoreState(
+                currentVideoId = currentVideoId,
+                positionMs = positionMs,
+                currentStreams = currentStreams,
+                currentStreamIndex = currentStreamIndex,
+                currentUrl = currentUrl,
+                resolvedUrl = resolvedUrl,
+                zeroSpeedTicks = zeroSpeedTicks,
+                isBuffering = buffering,
+                isVideoRendered = rendered,
+                playbackEnded = playbackEnded,
+                hasStartedPlaying = started,
+                playerError = null,
+            )
         )
         lastCorePositionMs = positionMs
         lastCoreStreamIndex = streamIndex
@@ -215,32 +208,17 @@ internal class PlayerScreenState(
         lastCoreRendered = rendered
     }
 
-    private data class CoreAction(
-        val type: String,
-        val videoId: String
-    )
-
-    private data class CoreStateSnapshot(
-        val player: CorePlayerSnapshot = CorePlayerSnapshot()
-    )
-
-    private data class CorePlayerSnapshot(
-        val currentVideoId: String? = null,
-        val currentStreamIndex: Int = 0,
-        val lastSavedPosition: Long = 0L,
-        val shouldApplyInitialProgress: Boolean = false,
-        val playbackEnded: Boolean = false,
-        val hasStartedPlaying: Boolean = false,
-        val isVideoRendered: Boolean = false,
-        val isBuffering: Boolean = true
-    )
 }
 
 @Composable
 internal fun rememberPlayerScreenState(
     initialVideoId: String?,
     initialStreamIndex: Int,
-    initialVolume: Int
+    initialVolume: Int,
+    onCoreTelemetry: (PlayerRuntimeCoreState) -> Unit,
+    onCoreReset: (String) -> Unit
 ): PlayerScreenState {
-    return remember { PlayerScreenState(initialVideoId, initialStreamIndex, initialVolume) }
+    return remember(initialVideoId, initialStreamIndex, initialVolume) {
+        PlayerScreenState(initialVideoId, initialStreamIndex, initialVolume, onCoreTelemetry, onCoreReset)
+    }
 }

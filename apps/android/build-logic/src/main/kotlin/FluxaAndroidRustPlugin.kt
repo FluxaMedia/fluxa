@@ -17,6 +17,9 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             .resolve("../../core/fluxa-core")
             .canonicalFile
         val streamingDir = rustCoreDir.resolve("fluxa-streaming-engine")
+        val rendererDir = rootProject.layout.projectDirectory.asFile
+            .resolve("../../native")
+            .canonicalFile
         val outputDir = layout.buildDirectory.dir("generated/rustJniLibs")
         val targets = listOf(
             RustTarget("arm64-v8a", "aarch64-linux-android", "AARCH64_LINUX_ANDROID"),
@@ -161,6 +164,37 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             description = "Builds the Fluxa streaming engine for selected Android ABIs."
             dependsOn(streamingTasks)
         }
+        val rendererTasks = selectedTargets.map { target ->
+            tasks.register<Exec>("buildFluxaAndroidRenderer${target.taskSuffix}") {
+                group = "build"
+                description = "Builds the Fluxa Rust Android renderer for ${target.abi}."
+                workingDir = rendererDir
+                commandLine(
+                    "cargo", "build", "--manifest-path", "Cargo.toml",
+                    "-p", "fluxa-android-renderer", "--target", target.triple,
+                    *cargoProfileArgs.toTypedArray(),
+                )
+                inputs.files(fileTree(rendererDir) {
+                    exclude("target/**", ".git/**", ".agents/**", ".codex/**")
+                })
+                outputs.file(outputDir.map { it.file("${target.abi}/libfluxa_android_renderer.so") })
+                configureToolchain(this, target)
+                doLast {
+                    copyLibrary(
+                        rendererDir,
+                        target,
+                        profile,
+                        "libfluxa_android_renderer.so",
+                        outputDir.get().dir(target.abi).asFile,
+                    )
+                }
+            }
+        }
+        tasks.register("buildFluxaAndroidRenderer") {
+            group = "build"
+            description = "Builds the Fluxa Rust Android renderer for selected Android ABIs."
+            dependsOn(rendererTasks)
+        }
         val cleanUnselectedRustJniLibs = tasks.register("cleanUnselectedFluxaRustJniLibs") {
             doLast {
                 outputDir.get().asFile.listFiles()
@@ -170,7 +204,7 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
         }
         tasks.matching { it.name == "preBuild" }.configureEach {
             dependsOn(cleanUnselectedRustJniLibs)
-            dependsOn("buildFluxaCore", "buildFluxaStreamingEngine")
+            dependsOn("buildFluxaCore", "buildFluxaStreamingEngine", "buildFluxaAndroidRenderer")
         }
         tasks.withType<Test>().configureEach {
             dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))

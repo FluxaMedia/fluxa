@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.fluxa.app.ui.catalog.FluxaColors
 import com.fluxa.app.ui.catalog.FluxaDimensions
+import com.fluxa.app.shared.ui.FluxaButton
 
 @Composable
 fun SettingsActionRow(
@@ -332,17 +333,7 @@ fun SettingsConnectedAccountCard(statusLabel: String, email: String, badgeText: 
 
 @Composable
 fun SettingsPrimaryButton(label: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(FluxaDimensions.CornerPresets.pill))
-            .background(Color.White)
-            .clickable(onClick = onClick)
-            .padding(vertical = 16.dp),
-        contentAlignment = Alignment.Center
-    ) {
-        Text(label, color = Color.Black, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
-    }
+    FluxaButton(label = label, onClick = onClick, modifier = Modifier.fillMaxWidth())
 }
 
 @Composable

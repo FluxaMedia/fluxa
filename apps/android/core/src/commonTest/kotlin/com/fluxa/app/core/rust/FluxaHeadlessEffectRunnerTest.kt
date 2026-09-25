@@ -48,6 +48,8 @@ class FluxaHeadlessEffectRunnerTest {
     fun mergesStatePatchesWhileDraining() = runTest {
         var completed = false
         val engine = object : FluxaHeadlessEngine {
+            override fun snapshotJson() = "{}"
+
             override fun dispatch(action: Any) = NativeHeadlessEngineResult(
                 effects = listOf(NativeHeadlessEffect("effect", "load")),
                 stateProvider = { mapOf("home" to "ready") }
@@ -74,6 +76,8 @@ private class QueueEngine(
     effects: List<NativeHeadlessEffect>
 ) : FluxaHeadlessEngine {
     private val pending = effects.toMutableList()
+
+    override fun snapshotJson() = "{}"
 
     override fun dispatch(action: Any): NativeHeadlessEngineResult = next()
 

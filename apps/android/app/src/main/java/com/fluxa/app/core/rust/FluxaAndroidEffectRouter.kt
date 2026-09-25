@@ -9,6 +9,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.dispatchEffect(
     FluxaHeadlessEffectType.ReadDetailLocalState -> readDetailLocalState(effect)
     FluxaHeadlessEffectType.FetchDetailSecondary -> fetchDetailSecondary(effect)
     FluxaHeadlessEffectType.PrefetchDetailStreams -> prefetchDetailStreams(effect)
+    FluxaHeadlessEffectType.PrefetchNextEpisodeStreams -> prefetchNextEpisodeStreams(effect)
     FluxaHeadlessEffectType.FetchDetailStreams -> fetchDetailStreams(effect)
     FluxaHeadlessEffectType.PrepareDirectPlayback -> prepareDirectPlayback(effect)
     FluxaHeadlessEffectType.FetchIntroSegments -> fetchIntroSegments(effect)
@@ -28,6 +29,7 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.dispatchEffect(
     FluxaHeadlessEffectType.FetchAddonResource -> fetchAddonResource(effect)
 
     FluxaHeadlessEffectType.ReadHomeBootstrap -> readHomeBootstrap(effect)
+    FluxaHeadlessEffectType.RefreshContinueWatching -> refreshContinueWatching(effect)
     FluxaHeadlessEffectType.ReadLibraryState -> readLibraryState(effect)
     FluxaHeadlessEffectType.WriteLibraryCommand -> writeLibraryCommand(effect)
     FluxaHeadlessEffectType.WriteFeedback -> writeFeedback(effect)

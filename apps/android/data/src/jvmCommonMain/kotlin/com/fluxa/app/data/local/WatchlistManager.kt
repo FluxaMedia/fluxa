@@ -92,7 +92,6 @@ class WatchlistManager @Inject constructor(
 
     suspend fun toggleWatchlist(item: Meta) {
         val profileId = pid()
-        dao.upsertContent(item.toContentItemEntity(profileId))
         val plan = FluxaCoreNative.watchlistTogglePlan(
             gson.toJson(
                 mapOf(
@@ -102,7 +101,13 @@ class WatchlistManager @Inject constructor(
                 )
             )
         )
-        if (plan.command == "remove") {
+        setWatchlistMembership(item, plan.command != "remove")
+    }
+
+    suspend fun setWatchlistMembership(item: Meta, inWatchlist: Boolean) {
+        val profileId = pid()
+        dao.upsertContent(item.toContentItemEntity(profileId))
+        if (!inWatchlist) {
             dao.deleteWatchlistEntry(profileId, item.id)
             dao.upsertWatchlistRemoval(WatchlistRemovalEntity(profileId, item.id))
         } else {

@@ -10,8 +10,7 @@ import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.NativeHeadlessEffect
 import com.fluxa.app.core.rust.FluxaCoreNative
 import com.fluxa.app.core.rust.FluxaCoreUniFfi
-import com.fluxa.app.core.rust.FluxaUniFfiCoreStateHandle
-import com.fluxa.app.core.rust.FluxaHeadlessRuntimeFactory
+import com.fluxa.app.core.rust.FluxaHeadlessAppRuntime
 import com.fluxa.app.domain.discovery.DiscoverCatalogOption
 import com.fluxa.app.domain.discovery.MetadataFeedOption
 import com.fluxa.app.domain.playback.PlaybackSyncCoordinator
@@ -34,6 +33,7 @@ import kotlinx.coroutines.withContext
 
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import javax.inject.Provider
 
 @HiltViewModel
 class HomeViewModel @Inject constructor(
@@ -50,6 +50,7 @@ class HomeViewModel @Inject constructor(
     private val providerAdapters: com.fluxa.app.data.repository.library.ProviderAdapters,
     private val thirdPartyProviderRepository: ThirdPartyProviderRepository,
     private val headlessEnvironment: FluxaAndroidHeadlessEnvironment,
+    private val sharedHeadlessRuntime: Provider<FluxaHeadlessAppRuntime>,
     private val nuvioSyncCoordinator: NuvioSyncCoordinator,
     private val nuvioAccountImportCoordinator: NuvioAccountImportCoordinator,
     private val platformContentGateway: HomePlatformContentGateway,
@@ -63,61 +64,8 @@ class HomeViewModel @Inject constructor(
     private val metaListType = object : TypeToken<List<Meta>>() {}.type
     private val categoryListType = object : TypeToken<List<HomeCategory>>() {}.type
     private val addonListType = object : TypeToken<List<AddonDescriptor>>() {}.type
-    private val headlessRuntime = FluxaHeadlessRuntimeFactory.createUniFfi(headlessEnvironment)
+    private val headlessRuntime get() = sharedHeadlessRuntime.get()
     private val initialSearchHistory = searchHistoryStore.load(null)
-    private val coreState: FluxaUniFfiCoreStateHandle = FluxaCoreUniFfi.createAppCoreState(
-        mapOf(
-            "home" to mapOf(
-                "categories" to emptyList<HomeCategory>(),
-                "isLoading" to false,
-                "currentFilter" to "all",
-                "isDirectLoading" to false,
-                "traktContinueWatchingLastUpdatedAt" to 0L,
-                "userAddons" to emptyList<AddonDescriptor>(),
-                "watchlist" to emptyList<Meta>(),
-                "likedItems" to emptyList<Meta>(),
-                "activeProfile" to null,
-                "currentWatchlist" to emptyList<Meta>(),
-                "externalContinueWatching" to emptyList<Meta>(),
-                "traktWatchedState" to TraktWatchedState()
-            ),
-            "homeSearch" to mapOf(
-                "searchHistory" to initialSearchHistory
-            ),
-            "billboard" to emptyMap<String, Any?>(),
-            "discover" to emptyMap<String, Any?>(),
-            "calendar" to emptyMap<String, Any?>(),
-            "library" to mapOf("uiState" to LibraryUiState())
-        )
-    )
-
-    private data class CoreAction(val type: String, val value: Any?)
-
-    private data class CoreStateSnapshot(val home: CoreHomeSnapshot = CoreHomeSnapshot())
-
-    private data class CoreHomeSnapshot(
-        val categories: List<HomeCategory> = emptyList(),
-        val isLoading: Boolean = false,
-        val currentFilter: String = "all",
-        val isDirectLoading: Boolean = false,
-        val traktContinueWatchingLastUpdatedAt: Long = 0L,
-        val userAddons: List<AddonDescriptor> = emptyList(),
-        val watchlist: List<Meta> = emptyList(),
-        val likedItems: List<Meta> = emptyList(),
-        val activeProfile: UserProfile? = null,
-        val currentWatchlist: List<Meta> = emptyList(),
-        val externalContinueWatching: List<Meta> = emptyList(),
-        val traktWatchedState: TraktWatchedState = TraktWatchedState()
-    )
-
-    private fun dispatchHomeState(type: String, value: Any?): CoreHomeSnapshot? =
-        runCatching {
-            gson.fromJson(
-                coreState.dispatch(CoreAction(type, value)),
-                CoreStateSnapshot::class.java
-            )?.home
-        }.getOrNull()
-
     private val categoryState = HomeCategoryStateStore()
     val categories: StateFlow<List<HomeCategory>> = categoryState.categories
     val collectionFolderCategories: StateFlow<Map<String, HomeCategory>> = categoryState.folderCategories
@@ -138,22 +86,21 @@ class HomeViewModel @Inject constructor(
     private val _currentFilter = MutableStateFlow("all")
     val currentFilter: StateFlow<String> = _currentFilter
 
-    private val searchFocusState = HomeSearchFocusStateHolder(
-        initialHistory = initialSearchHistory,
-        coreState = coreState,
-        ownsCoreState = false,
-        gson = gson
-    )
-    val searchResults: StateFlow<List<Meta>> = searchFocusState.searchResults
-    val searchRows: StateFlow<List<SearchResultRow>> = searchFocusState.searchRows
+    private val searchFocusStateLazy = lazy {
+        HomeSearchFocusStateHolder(
+            initialHistory = initialSearchHistory
+        )
+    }
+    private val searchFocusState get() = searchFocusStateLazy.value
+    val searchResults: StateFlow<List<Meta>> get() = searchFocusState.searchResults
+    val searchRows: StateFlow<List<SearchResultRow>> get() = searchFocusState.searchRows
 
     private val browseCoordinator by lazy {
         HomeHeadlessBrowseCoordinator(
             scope = viewModelScope,
             gson = gson,
             dispatch = ::dispatchHeadless,
-            activeProfile = { currentActiveProfile },
-            userAddons = { _userAddons.value }
+            activeProfile = { currentActiveProfile }
         )
     }
     val discoverUiState: StateFlow<DiscoverUiState> get() = browseCoordinator.discoverUiState
@@ -201,10 +148,10 @@ class HomeViewModel @Inject constructor(
 
     fun loadParentsGuide(metaId: String) = parentsGuideCoordinator.load(metaId)
 
-    val searchHistory: StateFlow<List<Meta>> = searchFocusState.searchHistory
-    val focusedMovie: StateFlow<Meta?> = searchFocusState.focusedMovie
-    val focusedMovieTrailerUrl: StateFlow<String?> = searchFocusState.focusedMovieTrailerUrl
-    val previewUrl: StateFlow<String?> = searchFocusState.previewUrl
+    val searchHistory: StateFlow<List<Meta>> get() = searchFocusState.searchHistory
+    val focusedMovie: StateFlow<Meta?> get() = searchFocusState.focusedMovie
+    val focusedMovieTrailerUrl: StateFlow<String?> get() = searchFocusState.focusedMovieTrailerUrl
+    val previewUrl: StateFlow<String?> get() = searchFocusState.previewUrl
 
     private val _watchlist = MutableStateFlow<List<Meta>>(emptyList())
     val watchlist: StateFlow<List<Meta>> = _watchlist.asStateFlow()
@@ -216,7 +163,7 @@ class HomeViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0L)
 
     private val libraryCoordinator by lazy {
-        coordinatorFactory.library(viewModelScope, coreState, gson)
+        coordinatorFactory.library(viewModelScope)
     }
     val libraryUiState: StateFlow<LibraryUiState> get() = libraryCoordinator.state
 
@@ -600,7 +547,12 @@ class HomeViewModel @Inject constructor(
 
     init {
         watchlistFlowBinder.bind()
-        cloudStreamCoordinator.bind()
+        // Native Rust Home owns bootstrap/billboard state in this mode. The
+        // legacy cloud-stream binder eagerly wires billboardRuntime, which in
+        // turn would materialize another headless Core engine.
+        if (!com.fluxa.app.BuildConfig.FLUXA_NATIVE_CORE_RUNTIME) {
+            cloudStreamCoordinator.bind()
+        }
     }
 
     private fun scheduleCs3Refresh() {
@@ -608,9 +560,6 @@ class HomeViewModel @Inject constructor(
     }
 
     override fun onCleared() {
-        searchFocusState.close()
-        coreState.close()
-        headlessRuntime.close()
         super.onCleared()
     }
 
@@ -862,6 +811,24 @@ class HomeViewModel @Inject constructor(
     fun forgetPlaybackProgress(meta: Meta) =
         headlessPlaybackCoordinator.forgetPlaybackProgress(meta)
 
+    internal suspend fun resetPlayerForEpisode(videoId: String) {
+        dispatchHeadless(mapOf("type" to "playerResetForEpisode", "videoId" to videoId))
+    }
+
+    internal suspend fun updatePlayerCoreTelemetry(state: PlayerRuntimeCoreState) {
+        dispatchHeadless(
+            mapOf(
+                "type" to "playerTelemetryUpdated",
+                "positionMs" to state.positionMs,
+                "streamIndex" to state.currentStreamIndex,
+                "buffering" to state.isBuffering,
+                "playbackEnded" to state.playbackEnded,
+                "started" to state.hasStartedPlaying,
+                "rendered" to state.isVideoRendered,
+            )
+        )
+    }
+
     suspend fun getStreams(type: String, id: String): List<Stream> =
         headlessPlaybackCoordinator.getStreams(type, id)
 
@@ -1042,11 +1009,6 @@ class HomeViewModel @Inject constructor(
         browseCoordinator.clearResults()
     }
 
-    fun discoverCatalogOptions(type: String): List<DiscoverCatalogOption> =
-        browseCoordinator.catalogOptions(type)
-
-    fun discoverContentTypes(): List<String> = browseCoordinator.availableContentTypes()
-
     fun setDiscoverLoading(isLoading: Boolean) {
         browseCoordinator.setLoading(isLoading)
     }
@@ -1076,7 +1038,7 @@ class HomeViewModel @Inject constructor(
     fun loadDiscoverCatalogFilters(
         type: String,
         selectedCatalogKey: String?,
-        onLoaded: ((List<DiscoverCatalogOption>) -> Unit)? = null
+        onLoaded: ((List<DiscoverCatalogOption>, List<String>) -> Unit)? = null
     ) {
         browseCoordinator.loadFilters(type, selectedCatalogKey, onLoaded)
     }
@@ -1279,60 +1241,55 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun setCategoriesState(categories: List<HomeCategory>) {
-        categoryState.setCategories(dispatchHomeState("setHomeCategories", categories)?.categories ?: categories)
+        categoryState.setCategories(categories)
     }
 
     private fun setLoadingState(isLoading: Boolean) {
-        _isLoading.value = dispatchHomeState("setHomeLoading", isLoading)?.isLoading ?: isLoading
+        _isLoading.value = isLoading
     }
 
     private fun setCurrentFilterState(filter: String) {
         val normalized = filter.takeIf { it.isNotEmpty() } ?: "all"
-        _currentFilter.value = dispatchHomeState("setHomeCurrentFilter", normalized)?.currentFilter ?: normalized
+        _currentFilter.value = normalized
     }
 
     private fun setDirectLoadingState(isLoading: Boolean) {
-        _isDirectLoading.value = dispatchHomeState("setHomeDirectLoading", isLoading)?.isDirectLoading ?: isLoading
+        _isDirectLoading.value = isLoading
     }
 
     private fun setTraktUpdatedAtState(updatedAt: Long) {
-        _traktContinueWatchingLastUpdatedAt.value = dispatchHomeState(
-            "setTraktContinueWatchingLastUpdatedAt",
-            updatedAt
-        )?.traktContinueWatchingLastUpdatedAt ?: updatedAt
+        _traktContinueWatchingLastUpdatedAt.value = updatedAt
     }
 
     private fun setUserAddonsState(addons: List<AddonDescriptor>) {
-        _userAddons.value = dispatchHomeState("setUserAddons", addons)?.userAddons ?: addons
+        _userAddons.value = addons
     }
 
     private fun setWatchlistState(items: List<Meta>) {
-        _watchlist.value = dispatchHomeState("setWatchlist", items)?.watchlist ?: items
+        _watchlist.value = items
     }
 
     private fun setLikedItemsState(items: List<Meta>) {
-        _likedItems.value = dispatchHomeState("setLikedItems", items)?.likedItems ?: items
+        _likedItems.value = items
     }
 
     private fun setActiveProfileState(profile: UserProfile?) {
         if (profile == null && currentActiveProfile != null) return
-        val home = dispatchHomeState("setActiveProfile", profile)
-        currentActiveProfile = home?.activeProfile ?: profile
+        currentActiveProfile = profile
         watchlistManager.setActiveProfile(profile?.id.orEmpty())
     }
 
     private fun setCurrentWatchlistState(items: List<Meta>) {
-        val projected = dispatchHomeState("setCurrentWatchlist", items)?.currentWatchlist ?: items
-        currentWatchlist = projected
-        _currentContinueWatchingCount.value = projected.size
+        currentWatchlist = items
+        _currentContinueWatchingCount.value = items.size
     }
 
     private fun setExternalContinueWatchingState(items: List<Meta>) {
-        externalContinueWatching = dispatchHomeState("setExternalContinueWatching", items)?.externalContinueWatching ?: items
+        externalContinueWatching = items
     }
 
     private fun setTraktWatchedState(state: TraktWatchedState) {
-        traktWatchedState = dispatchHomeState("setTraktWatchedState", state)?.traktWatchedState ?: state
+        traktWatchedState = state
     }
 
     private fun prefetchDirectPlayback(meta: Meta, detail: MetaDetail?) {
