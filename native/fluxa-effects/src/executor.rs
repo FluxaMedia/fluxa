@@ -2,7 +2,7 @@ use crate::storage::{Storage, sanitize_key};
 use reqwest::{Client, ClientBuilder};
 use serde_json::{Value, json};
 use std::sync::mpsc::Sender;
-use std::sync::{Mutex, OnceLock};
+use std::sync::OnceLock;
 use std::time::Duration;
 
 trait NativeTimeout {
@@ -26,7 +26,7 @@ fn chrono_unix_seconds() -> i64 {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-static TORRENT_SERVER: OnceLock<Mutex<Option<Value>>> = OnceLock::new();
+static TORRENT_SERVER: OnceLock<std::sync::Mutex<Option<Value>>> = OnceLock::new();
 
 #[derive(Clone)]
 pub struct EffectExecutor {
@@ -2281,7 +2281,7 @@ static TORRENT_CACHE_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ensure_torrent_server() -> Result<Value, String> {
-    let slot = TORRENT_SERVER.get_or_init(|| Mutex::new(None));
+    let slot = TORRENT_SERVER.get_or_init(|| std::sync::Mutex::new(None));
     let mut guard = slot
         .lock()
         .map_err(|_| "torrent server state is poisoned".to_owned())?;
