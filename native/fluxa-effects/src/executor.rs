@@ -1,17 +1,31 @@
 use crate::storage::{Storage, sanitize_key};
-use reqwest::Client;
+use reqwest::{Client, ClientBuilder};
 use serde_json::{Value, json};
 use std::sync::mpsc::Sender;
 use std::sync::{Mutex, OnceLock};
 use std::time::Duration;
 
-fn chrono_unix_seconds() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|duration| duration.as_secs().min(i64::MAX as u64) as i64)
-        .unwrap_or_default()
+trait NativeTimeout {
+    fn native_timeout(self, timeout: Duration) -> Self;
 }
 
+impl NativeTimeout for ClientBuilder {
+    #[cfg(not(target_arch = "wasm32"))]
+    fn native_timeout(self, timeout: Duration) -> Self {
+        self.timeout(timeout)
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn native_timeout(self, _timeout: Duration) -> Self {
+        self
+    }
+}
+
+fn chrono_unix_seconds() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 static TORRENT_SERVER: OnceLock<Mutex<Option<Value>>> = OnceLock::new();
 
 #[derive(Clone)]
@@ -33,6 +47,10 @@ impl EffectExecutor {
         Self { storage }
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn warm_torrent_engine(&self) {}
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn warm_torrent_engine(&self) {
         std::thread::spawn(|| match ensure_torrent_server() {
             Ok(_) => eprintln!("[fluxa-native] torrent engine warmed up"),
@@ -40,6 +58,16 @@ impl EffectExecutor {
         });
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn poll_torrent_status(
+        &self,
+        _link: String,
+        _file_id: Option<usize>,
+    ) -> std::sync::mpsc::Receiver<Value> {
+        std::sync::mpsc::channel().1
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn poll_torrent_status(
         &self,
         link: String,
@@ -88,7 +116,7 @@ impl EffectExecutor {
 
     pub fn spawn(&self, effect: Value, sender: Sender<EffectCompletion>) {
         let executor = self.clone();
-        std::thread::spawn(move || {
+        let task = async move {
             let effect_id = effect
                 .get("id")
                 .and_then(Value::as_str)
@@ -99,13 +127,7 @@ impl EffectExecutor {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_owned();
-            let runtime = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build();
-            let result = runtime
-                .map_err(|error| error.to_string())
-                .and_then(|runtime| runtime.block_on(executor.execute(&effect)));
-            let completion = match result {
+            let completion = match executor.execute(&effect).await {
                 Ok(value) => EffectCompletion {
                     effect_id,
                     effect_type,
@@ -122,6 +144,18 @@ impl EffectExecutor {
                 },
             };
             let _ = sender.send(completion);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn(move || {
+            match tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                Ok(runtime) => runtime.block_on(task),
+                Err(error) => eprintln!("[fluxa-effects] tokio runtime failed: {error}"),
+            }
         });
     }
 
@@ -323,7 +357,7 @@ impl EffectExecutor {
 
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         let mut categories = Vec::new();
@@ -602,7 +636,7 @@ impl EffectExecutor {
             .unwrap_or(1);
         let client = match Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(12))
+            .native_timeout(Duration::from_secs(12))
             .build()
         {
             Ok(client) => client,
@@ -1061,7 +1095,7 @@ impl EffectExecutor {
         };
 
         let client = Client::builder()
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         let expires_at = profile
@@ -1133,7 +1167,7 @@ impl EffectExecutor {
         let headers = |request: reqwest::RequestBuilder| {
             request.header("apikey", api_key).bearer_auth(&token)
         };
-        let (library, progress) = tokio::try_join!(
+        let (library, progress) = futures::try_join!(
             async {
                 headers(client.post(format!("{endpoint}sync_pull_library")))
                     .json(&json!({"p_profile_id": nuvio_profile_id, "p_limit": 500, "p_offset": 0}))
@@ -1264,7 +1298,7 @@ impl EffectExecutor {
             ) {
                 let client = Client::builder()
                     .user_agent("Fluxa/1.0")
-                    .timeout(Duration::from_secs(12))
+                    .native_timeout(Duration::from_secs(12))
                     .build()
                     .map_err(|error| error.to_string())?;
                 let expires_at = profile
@@ -1521,17 +1555,17 @@ impl EffectExecutor {
         }
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(60))
+            .native_timeout(Duration::from_secs(60))
             .build()
             .map_err(|error| error.to_string())?;
         // Stream providers are independent. The old loop waited for every
         // addon serially, so one dead provider delayed the entire player by
         // its full timeout. Fan them out and flatten in request order.
-        let mut jobs = tokio::task::JoinSet::new();
+        let mut jobs = Vec::new();
         for (index, item) in requests.into_iter().enumerate() {
             let client = client.clone();
             let request_resource = request.get("resource").cloned();
-            jobs.spawn(async move {
+            jobs.push(async move {
                 let Some(url) = item.get("url").and_then(Value::as_str) else {
                     return (index, Vec::new());
                 };
@@ -1586,12 +1620,7 @@ impl EffectExecutor {
             });
         }
 
-        let mut results = Vec::new();
-        while let Some(result) = jobs.join_next().await {
-            if let Ok((index, streams)) = result {
-                results.push((index, streams));
-            }
-        }
+        let mut results = futures::future::join_all(jobs).await;
         results.sort_by_key(|(index, _)| *index);
         Ok(results
             .into_iter()
@@ -1666,7 +1695,7 @@ impl EffectExecutor {
             .unwrap_or_default();
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         let mut sources = Vec::new();
@@ -1896,7 +1925,7 @@ impl EffectExecutor {
             .unwrap_or_default();
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         for request in requests {
@@ -1961,7 +1990,7 @@ impl EffectExecutor {
         .ok_or_else(|| "Fluxa Core could not build the catalog page URL".to_owned())?;
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         let (status_code, body) = fetch_text(&client, &url).await?;
@@ -1984,7 +2013,7 @@ impl EffectExecutor {
             .unwrap_or_default();
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         for candidate in candidates.iter().filter_map(Value::as_str) {
@@ -2083,7 +2112,7 @@ impl EffectExecutor {
         let season = payload.get("season").and_then(Value::as_i64);
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .timeout(Duration::from_secs(20))
+            .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
         for url in urls.iter().filter_map(Value::as_str) {
@@ -2240,8 +2269,17 @@ fn progress_meta(progress: &Value) -> Value {
     Value::Object(meta)
 }
 
+#[cfg(target_arch = "wasm32")]
+fn ensure_torrent_server() -> Result<Value, String> {
+    Err("torrent streaming is not available on this platform".to_owned())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn start_torrent_add(_base_url: String, _link: String, _file_id: Option<i64>) {}
+
 static TORRENT_CACHE_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
 
+#[cfg(not(target_arch = "wasm32"))]
 fn ensure_torrent_server() -> Result<Value, String> {
     let slot = TORRENT_SERVER.get_or_init(|| Mutex::new(None));
     let mut guard = slot
@@ -2263,6 +2301,7 @@ fn ensure_torrent_server() -> Result<Value, String> {
     Ok(server)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
     std::thread::spawn(move || {
         let info_hash = link
