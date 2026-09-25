@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artwork", "fluxa-desktop", "fluxa-android-renderer", "fluxa-host", "fluxa-effects", "fluxa-mpv", "fluxa-apple-renderer"]
+members = ["fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artwork", "fluxa-desktop", "fluxa-android-renderer", "fluxa-host", "fluxa-effects", "fluxa-mpv", "fluxa-web", "fluxa-apple-renderer"]
 
 [workspace.package]
 edition = "2024"

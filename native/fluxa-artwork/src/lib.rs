@@ -27,6 +27,30 @@ use web_time::Instant;
 
 pub mod webp_animation;
 
+static FETCH_PROXY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+pub fn set_fetch_proxy(base_url: &str) {
+    let _ = FETCH_PROXY.set(base_url.trim_end_matches('/').to_owned());
+}
+
+fn proxied(url: &str) -> std::borrow::Cow<'_, str> {
+    match FETCH_PROXY.get() {
+        Some(base) if url.starts_with("http://") || url.starts_with("https://") => {
+            let encoded: String = url
+                .bytes()
+                .map(|byte| match byte {
+                    b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
+                        (byte as char).to_string()
+                    }
+                    _ => format!("%{byte:02X}"),
+                })
+                .collect();
+            std::borrow::Cow::Owned(format!("{base}/proxy?url={encoded}"))
+        }
+        _ => std::borrow::Cow::Borrowed(url),
+    }
+}
+
 pub const MAX_RESPONSE_BYTES: u64 = 16 * 1024 * 1024;
 pub const MAX_DECODE_SIDE: u32 = 4096;
 pub const MAX_ARTWORK_WIDTH: u32 = 1920;
@@ -869,7 +893,7 @@ async fn fetch_bytes(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, Str
     let mut last_error = String::from("unknown artwork error");
     for attempt in 0..3 {
         let response = match client
-            .get(url)
+            .get(proxied(url).as_ref())
             .header(reqwest::header::ACCEPT_ENCODING, "identity")
             .send()
             .await
@@ -1838,5 +1862,18 @@ mod tests {
         assert!(pixel[0] <= pixel[3]);
         assert!(pixel[1] <= pixel[3]);
         assert!(pixel[2] <= pixel[3]);
+    }
+}
+
+#[cfg(test)]
+mod proxy_tests {
+    #[test]
+    fn remote_urls_are_percent_encoded_behind_the_proxy() {
+        super::set_fetch_proxy("http://127.0.0.1:19876/");
+        assert_eq!(
+            super::proxied("https://img.example/a b?x=1"),
+            "http://127.0.0.1:19876/proxy?url=https%3A%2F%2Fimg.example%2Fa%20b%3Fx%3D1"
+        );
+        assert_eq!(super::proxied("file:///tmp/a.png"), "file:///tmp/a.png");
     }
 }

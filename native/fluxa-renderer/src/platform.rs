@@ -9,6 +9,7 @@ pub enum GraphicsBackend {
     Vulkan,
     Gles,
     Metal,
+    WebGpu,
 }
 
 impl GraphicsBackend {
@@ -17,6 +18,7 @@ impl GraphicsBackend {
             Self::Vulkan => "Vulkan",
             Self::Gles => "GLES",
             Self::Metal => "Metal",
+            Self::WebGpu => "WebGPU",
         }
     }
 }
@@ -27,6 +29,8 @@ pub const ANDROID_BACKEND_ORDER: [GraphicsBackend; 2] =
     [GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
 pub const APPLE_BACKEND_ORDER: [GraphicsBackend; 1] = [GraphicsBackend::Metal];
+
+pub const WEB_BACKEND_ORDER: [GraphicsBackend; 2] = [GraphicsBackend::WebGpu, GraphicsBackend::Gles];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SurfaceLifecycle {
@@ -120,6 +124,7 @@ pub fn backends_for(preference: GraphicsBackend) -> wgpu::Backends {
         GraphicsBackend::Vulkan => wgpu::Backends::VULKAN,
         GraphicsBackend::Gles => wgpu::Backends::GL,
         GraphicsBackend::Metal => wgpu::Backends::METAL,
+        GraphicsBackend::WebGpu => wgpu::Backends::BROWSER_WEBGPU,
     }
 }
 
