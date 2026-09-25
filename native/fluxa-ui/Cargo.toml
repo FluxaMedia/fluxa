@@ -11,3 +11,4 @@ fluxa-artwork = { path = "../fluxa-artwork" }
 fluxa-theme = { path = "../fluxa-theme" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+web-time = "1"

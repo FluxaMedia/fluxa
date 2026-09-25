@@ -700,6 +700,7 @@ fn selected_calendar_day_exposes_releases_to_touch_and_dpad() {
                 title: "Episode".to_owned(),
                 ..Default::default()
             },
+            ..Default::default()
         }],
         ..Default::default()
     };

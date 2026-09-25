@@ -16,7 +16,7 @@ mod library;
 mod settings;
 
 pub use calendar::draw_calendar;
-use calendar::{days_in_month, weekday_sunday_zero};
+
 pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use library::draw_library;
@@ -435,6 +435,9 @@ pub struct DiscoverModel {
 #[derive(Clone, Debug, Default)]
 pub struct CalendarEntry {
     pub date: String,
+    pub show: String,
+    pub episode: String,
+    pub still_url: Option<String>,
     pub card: HomeCard,
 }
 
@@ -447,6 +450,7 @@ pub struct CalendarModel {
     pub error: Option<String>,
     pub entries: Vec<CalendarEntry>,
     pub selected_day: Option<u32>,
+    pub today: Option<String>,
 }
 
 impl CalendarModel {
@@ -1172,6 +1176,7 @@ pub fn calendar_model_from_core_snapshot(snapshot: &serde_json::Value) -> Calend
         year,
         month,
         selected_day: None,
+        today: Some(today_iso()),
         is_loading: calendar
             .get("isLoading")
             .and_then(serde_json::Value::as_bool)
@@ -1191,9 +1196,30 @@ pub fn calendar_model_from_core_snapshot(snapshot: &serde_json::Value) -> Calend
                 .chars()
                 .take(10)
                 .collect();
+                let card = core_home_card(&item);
+                let show = item
+                    .get("meta")
+                    .and_then(|meta| first_value_string(meta, &["name", "title"]))
+                    .or_else(|| value_string(&item, "title"))
+                    .unwrap_or_else(|| card.title.clone());
+                let episode = first_value_string(&item, &["subtitle", "episodeTitle"])
+                    .filter(|episode| *episode != show)
+                    .unwrap_or_default();
+                let still_url = first_value_string(
+                    &item,
+                    &["episodePoster", "background", "backdrop", "poster"],
+                )
+                .or_else(|| {
+                    item.get("meta")
+                        .and_then(|meta| first_value_string(meta, &["background", "poster"]))
+                })
+                .or_else(|| card.artwork_url.clone());
                 Some(CalendarEntry {
                     date,
-                    card: core_home_card(&item),
+                    show,
+                    episode,
+                    still_url,
+                    card,
                 })
             })
             .collect(),
@@ -2998,40 +3024,17 @@ pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 
         return 0.0;
     }
     let metrics = UiMetrics::for_viewport(viewport);
-    let top = if viewport.is_compact() {
-        metrics.content_header_top_mobile
-    } else {
-        metrics.content_header_top
-    };
-    let gap = if viewport.is_compact() {
-        metrics.calendar_grid_gap_mobile
-    } else {
-        metrics.calendar_grid_gap
-    };
-    let grid_top =
-        top + metrics.screen_control_height * 2.0 + metrics.section_gap + metrics.control_gap;
-    let cell_height = if viewport.is_compact() {
-        metrics.calendar_cell_height_mobile
-    } else if viewport.is_tv() {
-        metrics.calendar_cell_height_tv
-    } else {
-        metrics.calendar_cell_height_desktop
-    };
-    let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
-    let rows = (leading + days_in_month(calendar.year, calendar.month) as usize).div_ceil(7);
-    let grid_height =
-        metrics.screen_control_height + metrics.control_gap + rows as f32 * (cell_height + gap);
+    let grid = calendar::CalendarGrid::new(viewport, metrics, calendar);
     let panel_height = calendar
         .selected_day
-        .filter(|day| *day >= 1 && *day <= days_in_month(calendar.year, calendar.month) as u32)
+        .filter(|_| viewport.is_compact())
         .map(|day| {
             150.0
                 + calendar.entries_for_day(day).count().min(10) as f32
                     * (metrics.horizontal_card_height * 0.34 + metrics.control_gap)
         })
         .unwrap_or(0.0);
-    (grid_top + grid_height + panel_height - (viewport.height - mobile_scroll_reserve(viewport)))
-        .max(0.0)
+    (grid.bottom() + panel_height - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
 }
 
 pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 {
@@ -4097,6 +4100,28 @@ fn truncate_text(text: &str, max_chars: usize) -> String {
         output.push('…');
     }
     output
+}
+
+fn today_iso() -> String {
+    let days = web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
+        .map(|elapsed| elapsed.as_secs() / 86_400)
+        .unwrap_or(0) as i64;
+    let shifted = days + 719_468;
+    let era = shifted.div_euclid(146_097);
+    let day_of_era = shifted - era * 146_097;
+    let year_of_era =
+        (day_of_era - day_of_era / 1_460 + day_of_era / 36_524 - day_of_era / 146_096) / 365;
+    let day_of_year = day_of_era - (365 * year_of_era + year_of_era / 4 - year_of_era / 100);
+    let month_index = (5 * day_of_year + 2) / 153;
+    let day = day_of_year - (153 * month_index + 2) / 5 + 1;
+    let month = if month_index < 10 {
+        month_index + 3
+    } else {
+        month_index - 9
+    };
+    let year = year_of_era + era * 400 + i64::from(month <= 2);
+    format!("{year:04}-{month:02}-{day:02}")
 }
 
 fn truncate_to_width(painter: &egui::Painter, text: &str, font: &FontId, max_width: f32) -> String {

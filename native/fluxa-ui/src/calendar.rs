@@ -1,5 +1,100 @@
 use super::*;
 
+pub(super) struct CalendarGrid {
+    pub margin: f32,
+    pub top: f32,
+    pub grid_top: f32,
+    pub weekday_height: f32,
+    pub cell_width: f32,
+    pub cell_height: f32,
+    pub gap: f32,
+    pub leading: usize,
+    pub rows: usize,
+}
+
+impl CalendarGrid {
+    pub fn new(viewport: Viewport, metrics: UiMetrics, calendar: &CalendarModel) -> Self {
+        let compact = viewport.is_compact();
+        let tv = viewport.is_tv();
+        let margin = if compact {
+            metrics.page_padding
+        } else if tv {
+            metrics.screen_padding.max(32.0)
+        } else {
+            metrics.screen_padding
+        };
+        let top = if compact {
+            metrics.content_header_top_mobile
+        } else {
+            metrics.content_header_top
+        };
+        let mut header = title_size(viewport, metrics) * 1.25
+            + metrics.control_gap
+            + body_size(viewport, metrics) * 1.4
+            + metrics.section_gap;
+        if compact {
+            header += metrics.screen_control_height + metrics.section_gap;
+        }
+        let grid_top = top + header;
+        let gap = if compact {
+            metrics.calendar_grid_gap_mobile
+        } else {
+            metrics.calendar_grid_gap
+        };
+        let weekday_height = metrics.screen_card_subtitle_size * 2.2;
+        let cell_width = ((viewport.width - margin * 2.0 - gap * 6.0) / 7.0).max(1.0);
+        let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
+        let rows = (leading + days_in_month(calendar.year, calendar.month) as usize).div_ceil(7);
+        let minimum = if compact {
+            metrics.calendar_cell_height_mobile
+        } else if tv {
+            metrics.calendar_cell_height_tv
+        } else {
+            metrics.calendar_cell_height_desktop
+        };
+        let available =
+            (viewport.height - grid_top - weekday_height - margin) / rows.max(1) as f32 - gap;
+        let cell_height = if compact {
+            minimum
+        } else {
+            (cell_width * 0.62).min(available).max(minimum)
+        };
+        Self {
+            margin,
+            top,
+            grid_top,
+            weekday_height,
+            cell_width,
+            cell_height,
+            gap,
+            leading,
+            rows,
+        }
+    }
+
+    pub fn bottom(&self) -> f32 {
+        self.grid_top + self.weekday_height + self.rows as f32 * (self.cell_height + self.gap)
+    }
+}
+
+fn title_size(viewport: Viewport, metrics: UiMetrics) -> f32 {
+    if viewport.is_compact() {
+        metrics.screen_title_size_mobile
+    } else if viewport.is_tv() {
+        metrics.screen_title_size_tv
+    } else {
+        metrics.screen_title_size
+    }
+}
+
+fn body_size(viewport: Viewport, metrics: UiMetrics) -> f32 {
+    if viewport.is_tv() {
+        metrics.screen_body_size_tv
+    } else {
+        metrics.screen_body_size
+    }
+}
+
 pub fn draw_calendar(
     context: &egui::Context,
     viewport: Viewport,
@@ -21,19 +116,9 @@ pub fn draw_calendar(
     layout.activated = draw_navigation_bar(context, viewport, 3, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
-    let margin = if compact {
-        metrics.page_padding
-    } else if tv {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics.screen_padding
-    };
-    let top = if compact {
-        metrics.content_header_top_mobile
-    } else {
-        metrics.content_header_top
-    };
-    let title = if calendar.year > 0 && (1..=12).contains(&calendar.month) {
+    let valid = calendar.year > 0 && (1..=12).contains(&calendar.month);
+    let grid = CalendarGrid::new(viewport, metrics, calendar);
+    let month_title = if valid {
         format!(
             "{} {}",
             localized(
@@ -46,145 +131,153 @@ pub fn draw_calendar(
             calendar.year
         )
     } else {
-        "Calendar".to_owned()
+        String::new()
     };
     egui::Area::new(Id::new("fluxa-shared-calendar-header"))
-        .fixed_pos(Pos2::new(margin, top))
+        .fixed_pos(Pos2::new(grid.margin, grid.top - scroll_y))
         .show(context, |ui| {
+            ui.spacing_mut().item_spacing = Vec2::ZERO;
             ui.label(
                 RichText::new(localized("nav.calendar", &calendar.language))
-                    .size(if compact {
-                        metrics.screen_title_size_mobile
-                    } else if tv {
-                        metrics.screen_title_size_tv
-                    } else {
-                        metrics.screen_title_size
-                    })
+                    .size(title_size(viewport, metrics))
                     .strong()
                     .color(Color32::WHITE),
             );
             ui.add_space(metrics.control_gap);
             ui.label(
                 RichText::new(localized("native.calendar.description", &calendar.language))
-                    .size(if tv {
-                        metrics.screen_body_size_tv
-                    } else {
-                        metrics.screen_body_size
-                    })
-                    .color(Color32::from_white_alpha(170)),
+                    .size(body_size(viewport, metrics))
+                    .color(Color32::from_white_alpha(150)),
             );
-            ui.add_space(metrics.section_gap);
-            ui.horizontal(|ui| {
-                let previous = components::button_with_text_size(
-                    ui,
-                    "‹",
-                    metrics.screen_control_height,
-                    metrics.screen_control_height,
-                    components::ButtonKind::Secondary,
-                    metrics.nav_label_size + 3.0,
-                    metrics,
-                );
-                layout.focusable.push((NODE_CALENDAR_PREV, previous.rect));
-                if previous.clicked() {
-                    layout.activated = Some(NODE_CALENDAR_PREV);
-                }
-                ui.label(
-                    RichText::new(title.as_str())
-                        .size(metrics.nav_label_size + 3.0)
-                        .strong(),
-                );
-                let next = components::button_with_text_size(
-                    ui,
-                    "›",
-                    metrics.screen_control_height,
-                    metrics.screen_control_height,
-                    components::ButtonKind::Secondary,
-                    metrics.nav_label_size + 3.0,
-                    metrics,
-                );
-                layout.focusable.push((NODE_CALENDAR_NEXT, next.rect));
-                if next.clicked() {
-                    layout.activated = Some(NODE_CALENDAR_NEXT);
-                }
-                if calendar.is_loading {
-                    ui.add_space(metrics.control_gap);
-                    ui.label(
-                        RichText::new(localized("native.calendar.loading", &calendar.language))
-                            .color(Color32::from_white_alpha(140)),
-                    );
-                }
-            });
         });
-    if calendar.year > 0 && (1..=12).contains(&calendar.month) {
-        let grid_top =
-            top + metrics.screen_control_height * 2.0 + metrics.section_gap + metrics.control_gap
-                - scroll_y;
-        let grid_width = (viewport.width - margin * 2.0).max(1.0);
-        let gap = if compact {
-            metrics.calendar_grid_gap_mobile
+    if valid {
+        let nav_width = metrics.screen_control_height * 2.0
+            + metrics.control_gap * 3.0
+            + (metrics.nav_label_size + 3.0) * 8.5;
+        let nav_pos = if compact {
+            Pos2::new(
+                grid.margin,
+                grid.grid_top - metrics.screen_control_height - metrics.section_gap - scroll_y,
+            )
         } else {
-            metrics.calendar_grid_gap
+            Pos2::new(
+                viewport.width - grid.margin - nav_width,
+                grid.top
+                    + (title_size(viewport, metrics) * 1.25 - metrics.screen_control_height) * 0.5
+                    - scroll_y,
+            )
         };
-        let cell_width = ((grid_width - gap * 7.0) / 7.0).max(1.0);
-        let cell_height = if compact {
-            metrics.calendar_cell_height_mobile
-        } else if tv {
-            metrics.calendar_cell_height_tv
-        } else {
-            metrics.calendar_cell_height_desktop
-        };
-        let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-        egui::Area::new(Id::new("fluxa-shared-calendar-grid"))
-            .fixed_pos(Pos2::new(margin, grid_top))
+        egui::Area::new(Id::new("fluxa-shared-calendar-month"))
+            .fixed_pos(nav_pos)
             .show(context, |ui| {
-                ui.spacing_mut().item_spacing = Vec2::ZERO;
+                ui.set_width(if compact {
+                    viewport.width - grid.margin * 2.0
+                } else {
+                    nav_width
+                });
                 ui.horizontal(|ui| {
-                    for weekday in weekdays {
-                        ui.add_sized(
-                            [cell_width, metrics.screen_control_height],
-                            egui::Label::new(
+                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                    let label = RichText::new(month_title.as_str())
+                        .size(metrics.nav_label_size + 3.0)
+                        .strong()
+                        .color(Color32::WHITE);
+                    if compact {
+                        ui.label(label.clone());
+                    }
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                        let next = components::button_with_text_size(
+                            ui,
+                            "›",
+                            metrics.screen_control_height,
+                            metrics.screen_control_height,
+                            components::ButtonKind::Secondary,
+                            metrics.nav_label_size + 3.0,
+                            metrics,
+                        );
+                        let previous = components::button_with_text_size(
+                            ui,
+                            "‹",
+                            metrics.screen_control_height,
+                            metrics.screen_control_height,
+                            components::ButtonKind::Secondary,
+                            metrics.nav_label_size + 3.0,
+                            metrics,
+                        );
+                        if !compact {
+                            ui.label(label);
+                        }
+                        if calendar.is_loading {
+                            ui.label(
                                 RichText::new(localized(
-                                    &format!("native.calendar.weekday.{}", weekday.to_lowercase()),
+                                    "native.calendar.loading",
                                     &calendar.language,
                                 ))
                                 .size(metrics.screen_card_subtitle_size)
-                                .strong()
-                                .color(Color32::from_white_alpha(130)),
-                            ),
-                        );
-                        ui.add_space(gap);
-                    }
-                });
-                ui.add_space(metrics.control_gap);
-                let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
-                let total = days_in_month(calendar.year, calendar.month) as usize;
-                let row_count = (leading + total).div_ceil(7);
-                for row in 0..row_count {
-                    ui.horizontal(|ui| {
-                        for column in 0..7usize {
-                            let index = row * 7 + column;
-                            let day = index
-                                .checked_sub(leading)
-                                .and_then(|value| (value < total).then_some(value as u32 + 1));
-                            draw_calendar_cell(
-                                ui,
-                                day,
-                                calendar,
-                                cell_width,
-                                cell_height,
-                                gap,
-                                metrics,
-                                assets,
-                                &mut layout,
+                                .color(Color32::from_white_alpha(120)),
                             );
                         }
+                        layout.focusable.push((NODE_CALENDAR_PREV, previous.rect));
+                        layout.focusable.push((NODE_CALENDAR_NEXT, next.rect));
+                        if previous.clicked() {
+                            layout.activated = Some(NODE_CALENDAR_PREV);
+                        }
+                        if next.clicked() {
+                            layout.activated = Some(NODE_CALENDAR_NEXT);
+                        }
                     });
-                    ui.add_space(gap);
+                });
+            });
+        let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        let grid_painter = context.layer_painter(egui::LayerId::new(
+            egui::Order::Middle,
+            Id::new("fluxa-shared-calendar-grid"),
+        ));
+        let origin = Pos2::new(grid.margin, grid.grid_top - scroll_y);
+        for (column, weekday) in weekdays.iter().enumerate() {
+            let label = localized(
+                &format!("native.calendar.weekday.{}", weekday.to_lowercase()),
+                &calendar.language,
+            );
+            grid_painter.text(
+                origin
+                    + Vec2::new(
+                        column as f32 * (grid.cell_width + grid.gap) + metrics.calendar_day_padding,
+                        grid.weekday_height * 0.5,
+                    ),
+                Align2::LEFT_CENTER,
+                if compact {
+                    label.chars().take(1).collect::<String>()
+                } else {
+                    label.to_uppercase()
+                },
+                FontId::proportional(metrics.screen_card_subtitle_size - 1.0),
+                Color32::from_white_alpha(110),
+            );
+        }
+        let total = days_in_month(calendar.year, calendar.month) as u32;
+        egui::Area::new(Id::new("fluxa-shared-calendar-cells"))
+            .fixed_pos(origin + Vec2::new(0.0, grid.weekday_height))
+            .show(context, |ui| {
+                for day in 1..=total {
+                    let index = grid.leading + day as usize - 1;
+                    let rect = Rect::from_min_size(
+                        ui.min_rect().min
+                            + Vec2::new(
+                                (index % 7) as f32 * (grid.cell_width + grid.gap),
+                                (index / 7) as f32 * (grid.cell_height + grid.gap),
+                            ),
+                        Vec2::new(grid.cell_width, grid.cell_height),
+                    );
+                    draw_calendar_cell(ui, rect, day, calendar, metrics, assets, &mut layout);
                 }
             });
     } else {
         egui::Area::new(Id::new("fluxa-shared-calendar-empty"))
-            .fixed_pos(Pos2::new(margin, top + metrics.calendar_empty_offset))
+            .fixed_pos(Pos2::new(
+                grid.margin,
+                grid.top + metrics.calendar_empty_offset,
+            ))
             .show(context, |ui| {
                 ui.label(
                     RichText::new(localized("calendar.empty", &calendar.language))
@@ -202,35 +295,22 @@ pub fn draw_calendar(
         .filter(|day| *day >= 1 && *day <= days_in_month(calendar.year, calendar.month) as u32)
     {
         let panel_width = if compact {
-            (viewport.width - margin * 2.0).max(1.0)
+            (viewport.width - grid.margin * 2.0).max(1.0)
         } else if tv {
             metrics.calendar_panel_width_tv
         } else {
             metrics.calendar_panel_width_desktop
         }
-        .min(viewport.width - margin * 2.0);
+        .min(viewport.width - grid.margin * 2.0);
         let panel_x = if compact {
-            margin
+            grid.margin
         } else {
-            viewport.width - margin - panel_width
+            viewport.width - grid.margin - panel_width
         };
         let panel_top = if compact {
-            let grid_top = top
-                + metrics.screen_control_height * 2.0
-                + metrics.section_gap
-                + metrics.control_gap
-                - scroll_y;
-            let gap = metrics.calendar_grid_gap_mobile;
-            let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
-            let rows =
-                (leading + days_in_month(calendar.year, calendar.month) as usize).div_ceil(7);
-            grid_top
-                + metrics.screen_control_height
-                + metrics.control_gap
-                + rows as f32 * (metrics.calendar_cell_height_mobile + gap)
-                + metrics.section_gap
+            grid.bottom() - scroll_y + metrics.section_gap
         } else {
-            top
+            grid.top
         };
         egui::Area::new(Id::new("fluxa-calendar-day-panel"))
             .fixed_pos(Pos2::new(panel_x, panel_top))
@@ -336,81 +416,154 @@ pub fn draw_calendar(
 
 fn draw_calendar_cell(
     ui: &mut egui::Ui,
-    day: Option<u32>,
+    rect: Rect,
+    day: u32,
     calendar: &CalendarModel,
-    width: f32,
-    height: f32,
-    gap: f32,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
-    ui.painter().rect_filled(
-        rect,
-        metrics.calendar_cell_radius,
-        if day.is_some() {
-            Color32::from_rgb(19, 20, 25)
-        } else {
-            Color32::from_rgb(10, 10, 12)
-        },
-    );
-    if let Some(day) = day {
-        let node = NODE_CALENDAR_DAY_BASE + day as u64;
-        layout.focusable.push((node, rect));
-        if response.clicked() {
-            layout.activated = Some(node);
-        }
-        ui.painter().text(
-            rect.left_top() + Vec2::new(metrics.calendar_day_padding, metrics.calendar_day_top),
-            Align2::LEFT_TOP,
-            day.to_string(),
-            FontId::proportional(metrics.screen_card_title_size),
-            Color32::from_white_alpha(195),
-        );
-        for (index, entry) in calendar.entries_for_day(day).take(2).enumerate() {
-            let title = if entry.card.title.is_empty() {
-                localized("calendar.new_release", &calendar.language)
-            } else {
-                entry.card.title.clone()
-            };
-            ui.painter().text(
-                rect.left_top()
-                    + Vec2::new(
-                        metrics.calendar_day_padding,
-                        metrics.calendar_entry_top
-                            + index as f32 * metrics.calendar_entry_line_height,
-                    ),
-                Align2::LEFT_TOP,
-                title,
-                FontId::proportional(metrics.screen_card_subtitle_size),
-                Color32::WHITE,
-            );
-            components::artwork_image(
-                ui.painter(),
-                Rect::from_min_size(
-                    rect.right_top()
-                        + Vec2::new(
-                            -metrics.calendar_thumb_right_inset,
-                            metrics.calendar_thumb_top,
-                        ),
-                    Vec2::new(
-                        metrics.calendar_day_thumb_width,
-                        metrics.calendar_day_thumb_height,
-                    ),
-                ),
-                entry.card.artwork_url.as_deref(),
-                [
-                    (metrics.calendar_day_thumb_width * 1.35).ceil() as u32,
-                    (metrics.calendar_day_thumb_height * 1.35).ceil() as u32,
-                ],
-                ArtworkPriority::Visible,
-                Color32::WHITE,
-                assets,
-            );
+    let response = ui.interact(rect, ui.id().with(("calendar-day", day)), Sense::click());
+    let node = NODE_CALENDAR_DAY_BASE + day as u64;
+    layout.focusable.push((node, rect));
+    if response.clicked() {
+        layout.activated = Some(node);
+    }
+    let painter = ui.painter_at(rect);
+    let radius = metrics.calendar_cell_radius;
+    let entries: Vec<_> = calendar.entries_for_day(day).collect();
+    let date = format!("{:04}-{:02}-{:02}", calendar.year, calendar.month, day);
+    let today = calendar.today.as_deref() == Some(date.as_str());
+    let past = calendar
+        .today
+        .as_deref()
+        .is_some_and(|today| date.as_str() < today);
+    let padding = metrics.calendar_day_padding;
+    let mut has_art = false;
+    if let Some(entry) = entries.first() {
+        let url = entry.still_url.as_deref();
+        let size = [
+            (rect.width() * 1.5).ceil() as u32,
+            (rect.height() * 1.5).ceil() as u32,
+        ];
+        if let Some(texture) = assets.texture_for(url, size, ArtworkPriority::Visible) {
+            let uv = assets
+                .texture_size(url)
+                .map(|size| cover_uv(size, rect))
+                .unwrap_or_else(full_uv);
+            painter.add(egui::Shape::Rect(
+                egui::epaint::RectShape::filled(rect, radius, Color32::WHITE)
+                    .with_texture(texture, uv),
+            ));
+            has_art = true;
         }
     }
-    ui.add_space(gap);
+    if !has_art {
+        painter.rect_filled(
+            rect,
+            radius,
+            if entries.is_empty() {
+                Color32::from_white_alpha(6)
+            } else {
+                Color32::from_white_alpha(14)
+            },
+        );
+    } else {
+        if past {
+            painter.rect_filled(rect, radius, Color32::from_black_alpha(110));
+        }
+        let scrim_top = rect.top() + rect.height() * 0.35;
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_max(Pos2::new(rect.left(), scrim_top), rect.right_bottom()),
+            Color32::TRANSPARENT,
+            Color32::from_black_alpha(220),
+        );
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_max(
+                rect.left_top(),
+                Pos2::new(
+                    rect.right(),
+                    rect.top() + metrics.screen_card_title_size * 2.4,
+                ),
+            ),
+            Color32::from_black_alpha(140),
+            Color32::TRANSPARENT,
+        );
+    }
+    let day_font = FontId::proportional(metrics.screen_card_title_size);
+    let day_pos = rect.left_top() + Vec2::new(padding, metrics.calendar_day_top);
+    if today {
+        let size = metrics.screen_card_title_size * 1.7;
+        let badge = Rect::from_min_size(day_pos - Vec2::splat(size * 0.2), Vec2::splat(size));
+        painter.circle_filled(badge.center(), size * 0.5, Color32::WHITE);
+        painter.text(
+            badge.center(),
+            Align2::CENTER_CENTER,
+            day.to_string(),
+            day_font,
+            Color32::from_rgb(6, 6, 6),
+        );
+    } else {
+        painter.text(
+            day_pos,
+            Align2::LEFT_TOP,
+            day.to_string(),
+            day_font,
+            if entries.is_empty() {
+                Color32::from_white_alpha(if past { 70 } else { 150 })
+            } else {
+                Color32::WHITE
+            },
+        );
+    }
+    let text_width = rect.width() - padding * 2.0;
+    if entries.len() > 1 {
+        let more_font = FontId::proportional(metrics.screen_card_subtitle_size - 1.0);
+        let label = format!("+{}", entries.len() - 1);
+        let galley = painter.layout_no_wrap(label, more_font, Color32::WHITE);
+        let pill = Rect::from_min_size(
+            Pos2::new(
+                rect.right() - padding - galley.size().x - padding,
+                rect.top() + metrics.calendar_day_top,
+            ),
+            galley.size() + Vec2::new(padding, padding * 0.5),
+        );
+        painter.rect_filled(pill, pill.height() * 0.5, Color32::from_black_alpha(170));
+        painter.galley(pill.center() - galley.size() * 0.5, galley, Color32::WHITE);
+    }
+    let Some(entry) = entries.first() else {
+        return;
+    };
+    if text_width < 90.0 {
+        return;
+    }
+    let title_font = FontId::proportional(metrics.screen_card_subtitle_size + 1.0);
+    let episode_font = FontId::proportional(metrics.screen_card_subtitle_size - 1.0);
+    let mut baseline = rect.bottom() - padding;
+    if !entry.episode.is_empty() {
+        painter.text(
+            Pos2::new(rect.left() + padding, baseline),
+            Align2::LEFT_BOTTOM,
+            truncate_to_width(&painter, &entry.episode, &episode_font, text_width),
+            episode_font.clone(),
+            Color32::from_white_alpha(180),
+        );
+        baseline -= episode_font.size * 1.35;
+    }
+    let show = if entry.show.is_empty() {
+        localized("calendar.new_release", &calendar.language)
+    } else {
+        entry.show.clone()
+    };
+    painter.text(
+        Pos2::new(rect.left() + padding, baseline),
+        Align2::LEFT_BOTTOM,
+        truncate_to_width(&painter, &show, &title_font, text_width),
+        title_font,
+        Color32::WHITE,
+    );
 }
 
 fn month_name(month: i32) -> &'static str {
