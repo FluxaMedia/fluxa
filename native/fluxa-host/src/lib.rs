@@ -535,6 +535,7 @@ struct Gpu {
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
     brand_mark: Option<egui::TextureHandle>,
+    ambient_glow: egui::TextureHandle,
     artwork: ArtworkLoader,
     started_at: Instant,
     density: f32,
@@ -551,6 +552,8 @@ struct FrameOutput {
 struct HostAssets<'a> {
     background: egui::TextureId,
     brand_mark: Option<egui::TextureId>,
+    ambient_glow: egui::TextureId,
+    accent: Option<egui::Color32>,
     artwork: &'a mut ArtworkLoader,
     icons: &'a SvgIconRegistry,
     profile_name: Option<&'a str>,
@@ -566,6 +569,12 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn brand_mark(&self) -> Option<egui::TextureId> {
         self.brand_mark
+    }
+    fn ambient_glow(&self) -> Option<egui::TextureId> {
+        Some(self.ambient_glow)
+    }
+    fn accent_color(&self) -> Option<egui::Color32> {
+        self.accent
     }
     fn active_profile_avatar_url(&self) -> Option<&str> {
         self.profile_avatar_url
@@ -859,6 +868,17 @@ impl Gpu {
                 egui::TextureOptions::LINEAR,
             )
         });
+        let ambient_glow = {
+            let image = fluxa_renderer::ambient_glow();
+            egui_context.load_texture(
+                "fluxa-ambient-glow",
+                egui::ColorImage::from_rgba_unmultiplied(
+                    [image.width() as usize, image.height() as usize],
+                    image.as_raw(),
+                ),
+                egui::TextureOptions::LINEAR,
+            )
+        };
         let egui_renderer = EguiWgpuBackend::new(&device, format);
         host_log("egui renderer created");
         let icons = SvgIconRegistry::new(&egui_context);
@@ -879,6 +899,7 @@ impl Gpu {
             icons,
             background_texture,
             brand_mark,
+            ambient_glow,
             artwork: ArtworkLoader::new(artwork_cache_dir),
             started_at: Instant::now(),
             density,
@@ -940,6 +961,8 @@ impl Gpu {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
                 brand_mark: self.brand_mark.as_ref().map(egui::TextureHandle::id),
+                ambient_glow: self.ambient_glow.id(),
+                accent: home.accent,
                 artwork: &mut self.artwork,
                 icons: &self.icons,
                 profile_name: home.profile_name.as_deref(),

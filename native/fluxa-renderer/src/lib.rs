@@ -115,20 +115,32 @@ fn fs_main(input: VertexOutput) -> @location(0) vec4<f32> {
 }
 "#;
 
+fn ambient_light(u: f32, v: f32) -> f32 {
+    let glow = |cx: f32, cy: f32, rx: f32, ry: f32| {
+        let d = ((u - cx) / rx).powi(2) + ((v - cy) / ry).powi(2);
+        (-d * 2.2).exp()
+    };
+    glow(0.18, -0.05, 0.75, 0.8) + 0.4 * glow(0.95, 1.05, 0.6, 0.6)
+}
+
+const AMBIENT_SIZE: (u32, u32) = (640, 360);
+
 pub fn ambient_background() -> image::RgbaImage {
-    let (width, height) = (640u32, 360u32);
+    let (width, height) = AMBIENT_SIZE;
     image::RgbaImage::from_fn(width, height, |x, y| {
-        let u = x as f32 / width as f32;
-        let v = y as f32 / height as f32;
-        let glow = |cx: f32, cy: f32, rx: f32, ry: f32| {
-            let d = ((u - cx) / rx).powi(2) + ((v - cy) / ry).powi(2);
-            (-d * 2.2).exp()
-        };
-        let light = 24.0 * glow(0.18, -0.05, 0.75, 0.8) + 10.0 * glow(0.95, 1.05, 0.6, 0.6);
+        let light = 24.0 * ambient_light(x as f32 / width as f32, y as f32 / height as f32);
         let hash = (x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263)).wrapping_mul(1_274_126_177);
         let grain = ((hash >> 24) as f32 / 255.0 - 0.5) * 3.0;
         let value = (11.0 + light + grain).clamp(0.0, 255.0) as u8;
         image::Rgba([value, value, value, 255])
+    })
+}
+
+pub fn ambient_glow() -> image::RgbaImage {
+    let (width, height) = AMBIENT_SIZE;
+    image::RgbaImage::from_fn(width, height, |x, y| {
+        let light = ambient_light(x as f32 / width as f32, y as f32 / height as f32).min(1.0);
+        image::Rgba([255, 255, 255, (light * 255.0) as u8])
     })
 }
 

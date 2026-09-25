@@ -194,6 +194,8 @@ pub struct HomeModel {
     pub show_hero_section: bool,
     #[serde(rename = "gifAutoplayEnabled")]
     pub gif_autoplay_enabled: bool,
+    #[serde(skip)]
+    pub accent: Option<Color32>,
     pub cards: Vec<HomeCard>,
     pub rows: Vec<HomeRow>,
     #[serde(rename = "formFactor")]
@@ -264,6 +266,7 @@ impl HomeModel {
             hero_slides: Vec::new(),
             show_hero_section: true,
             gif_autoplay_enabled: true,
+            accent: None,
             cards: Vec::new(),
             rows: Vec::new(),
             form_factor: UiFormFactorJson::Desktop,
@@ -659,6 +662,9 @@ pub fn home_model_from_core_snapshot(
             .pointer("/settings/values/gifAutoplayEnabled")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(true),
+        accent: snapshot
+            .pointer("/settings/values/accentColorArgb")
+            .and_then(accent_from_value),
         form_factor,
         ..HomeModel::default_empty()
     };
@@ -1428,6 +1434,9 @@ pub trait HomeAssets {
         None
     }
     fn brand_mark(&self) -> Option<TextureId> {
+        None
+    }
+    fn ambient_glow(&self) -> Option<TextureId> {
         None
     }
     fn active_profile_avatar_url(&self) -> Option<&str> {
@@ -4241,13 +4250,28 @@ fn contain_size(source: [u32; 2], bounds: Vec2) -> Vec2 {
     Vec2::new(width * scale, height * scale)
 }
 
+fn accent_from_value(value: &serde_json::Value) -> Option<Color32> {
+    if let Some(text) = value.as_str() {
+        return settings::parse_settings_color(text);
+    }
+    let argb = value.as_i64()? as u32;
+    Some(Color32::from_rgb((argb >> 16) as u8, (argb >> 8) as u8, argb as u8))
+}
+
 pub(crate) fn paint_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
-    painter.image(
-        assets.background(),
-        screen,
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
-    );
+    let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+    painter.image(assets.background(), screen, uv, Color32::WHITE);
+    let Some(accent) = assets.accent_color() else {
+        return;
+    };
+    let [r, g, b, _] = accent.to_array();
+    let chroma = r.max(g).max(b) - r.min(g).min(b);
+    if chroma < 24 {
+        return;
+    }
+    if let Some(glow) = assets.ambient_glow() {
+        painter.image(glow, screen, uv, Color32::from_rgba_unmultiplied(r, g, b, 70));
+    }
 }
 
 fn draw_loading_screen(
