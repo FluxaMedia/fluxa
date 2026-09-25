@@ -1798,6 +1798,7 @@ dependencies = [
  "gilrs",
  "log",
  "sentry",
+ "serde_json",
  "wgpu",
  "winit",
 ]

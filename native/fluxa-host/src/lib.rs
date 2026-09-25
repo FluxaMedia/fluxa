@@ -66,7 +66,7 @@ impl NativeSurface {
 
 mod player;
 
-pub use player::{DeviceOpener, VideoBackend, VideoCommand, VideoStatus};
+pub use player::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
 
 static GPU_WAIT_LOGS: AtomicU32 = AtomicU32::new(0);
 static HOME_SYNC_LOGS: AtomicU32 = AtomicU32::new(0);
@@ -921,7 +921,7 @@ impl Gpu {
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
             if let Some(player) = player {
-                rendered_layout = draw_player(ui.ctx(), viewport, player, focused);
+                rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
             } else if route == "library" {
                 rendered_layout = draw_library(
                     ui.ctx(),
@@ -2855,6 +2855,7 @@ fn render_frame(state: &mut RendererState) {
                 if let Some(position) = layout.seek_to {
                     player::command(state, VideoCommand::SeekTo(position));
                 }
+                player::hover_seek(state, layout.seek_hover);
                 apply_pointer_results(state, &route, &layout);
                 if route == "discover" {
                     for request in &layout.load_more {

@@ -10,6 +10,7 @@ use crate::{RendererState, UiTree, core_value, host_log, profile_language};
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const SEEK_STEP: f64 = 10.0;
+const THUMBNAIL_INTERVAL: Duration = Duration::from_millis(75);
 
 #[derive(Clone, Debug, Default)]
 pub struct VideoStatus {
@@ -20,6 +21,13 @@ pub struct VideoStatus {
     pub volume: f64,
     pub has_frame: bool,
     pub error: Option<String>,
+    pub chapters: Vec<(f64, String)>,
+}
+
+pub struct Thumbnail {
+    pub time: f64,
+    pub size: [usize; 2],
+    pub rgba: Vec<u8>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -45,6 +53,10 @@ pub trait VideoBackend: Send {
     fn command(&mut self, command: VideoCommand);
     fn render(&mut self, device: &wgpu::Device) -> Option<wgpu::TextureView>;
     fn status(&mut self) -> VideoStatus;
+    fn request_thumbnail(&mut self, _time: f64) {}
+    fn take_thumbnail(&mut self) -> Option<Thumbnail> {
+        None
+    }
 }
 
 pub(crate) struct PlayerSession {
@@ -58,6 +70,16 @@ pub(crate) struct PlayerSession {
     torrent_status: Option<Value>,
     error: Option<String>,
     status: VideoStatus,
+    language: String,
+    description: Option<String>,
+    episode_title: Option<String>,
+    warnings_rx: Option<Receiver<Option<Value>>>,
+    warnings_requested: bool,
+    warnings: Vec<(String, String)>,
+    warnings_clock: Option<f32>,
+    last_pump: Instant,
+    thumbnail: Option<(f64, egui::TextureHandle)>,
+    thumbnail_requested: Option<(f64, Instant)>,
 }
 
 impl PlayerSession {
@@ -73,6 +95,16 @@ impl PlayerSession {
             torrent_status: None,
             error: None,
             status: VideoStatus::default(),
+            language: "en".to_owned(),
+            description: None,
+            episode_title: None,
+            warnings_rx: None,
+            warnings_requested: false,
+            warnings: Vec::new(),
+            warnings_clock: None,
+            last_pump: Instant::now(),
+            thumbnail: None,
+            thumbnail_requested: None,
         }
     }
 
@@ -86,9 +118,7 @@ impl PlayerSession {
     }
 
     pub(crate) fn controls_visible(&self) -> bool {
-        self.texture.is_none()
-            || self.status.paused
-            || self.last_activity.elapsed() < CONTROLS_TIMEOUT
+        self.texture.is_none() || self.last_activity.elapsed() < CONTROLS_TIMEOUT
     }
 
     pub(crate) fn touch(&mut self) {
@@ -109,6 +139,23 @@ impl PlayerSession {
             muted: self.status.muted,
             volume: self.status.volume,
             controls_visible: self.controls_visible(),
+            show_pause_info: self.status.paused
+                && self.status.has_frame
+                && !self.controls_visible(),
+            logo: self
+                .meta
+                .get("logo")
+                .or_else(|| self.meta.get("logoUrl"))
+                .and_then(Value::as_str)
+                .filter(|url| !url.trim().is_empty())
+                .map(ToOwned::to_owned),
+            episode_title: self.episode_title.clone(),
+            description: self.description.clone(),
+            chapters: self.status.chapters.clone(),
+            thumbnail: self.thumbnail.as_ref().map(|(time, texture)| (*time, texture.id())),
+            warnings: self.warnings.clone(),
+            warnings_elapsed: self.warnings_clock,
+            language: self.language.clone(),
         }
     }
 }
@@ -165,7 +212,141 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     if let Some(video) = video.as_mut() {
         player.status = video.status();
+        if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
+            let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
+            match player.thumbnail.as_mut() {
+                Some((time, texture)) => {
+                    texture.set(image, egui::TextureOptions::LINEAR);
+                    *time = thumbnail.time;
+                }
+                None => {
+                    player.thumbnail = Some((
+                        thumbnail.time,
+                        gpu.egui_context.load_texture(
+                            "fluxa-seek-thumbnail",
+                            image,
+                            egui::TextureOptions::LINEAR,
+                        ),
+                    ))
+                }
+            }
+        }
     }
+    player.episode_title = episode_title(&player.meta, &snapshot);
+    if !player.warnings_requested {
+        player.warnings_requested = true;
+        player.language = profile_language(
+            snapshot.pointer("/profile/active").unwrap_or(&Value::Null),
+        );
+        player.description = player
+            .meta
+            .get("description")
+            .and_then(Value::as_str)
+            .filter(|text| !text.trim().is_empty())
+            .map(|text| {
+                core_value("shortenSynopsis", json!({"text": text}))
+                    .and_then(|value| value.as_str().map(ToOwned::to_owned))
+                    .unwrap_or_else(|| text.to_owned())
+            });
+        player.warnings_rx = content_warning_url(&player.meta, &snapshot)
+            .map(|url| session.fetch_json(url));
+    }
+    tick_warnings(player);
+}
+
+fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
+    let id = snapshot.pointer("/player/currentVideoId").and_then(Value::as_str)?;
+    meta.get("videos")?
+        .as_array()?
+        .iter()
+        .find(|video| video.get("id").and_then(Value::as_str) == Some(id))?
+        .get("name")
+        .or_else(|| meta.get("title"))
+        .and_then(Value::as_str)
+        .filter(|title| !title.trim().is_empty())
+        .map(ToOwned::to_owned)
+}
+
+fn content_warning_url(meta: &Value, snapshot: &Value) -> Option<String> {
+    let candidates = [
+        meta.get("id").and_then(Value::as_str),
+        snapshot.pointer("/player/currentVideoId").and_then(Value::as_str),
+    ];
+    let imdb = candidates.into_iter().flatten().find_map(|id| {
+        core_value("contentImdbId", json!({"id": id}))?
+            .as_str()
+            .filter(|id| !id.is_empty())
+            .map(ToOwned::to_owned)
+    })?;
+    core_value("contentWarningUrl", json!({"imdbId": imdb}))?
+        .as_str()
+        .map(ToOwned::to_owned)
+}
+
+fn tick_warnings(player: &mut PlayerSession) {
+    let delta = player.last_pump.elapsed().as_secs_f32();
+    player.last_pump = Instant::now();
+    if let Some(response) = player.warnings_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        player.warnings_rx = None;
+        player.warnings = response
+            .and_then(|response| build_warnings(&response, &player.language))
+            .unwrap_or_default();
+    }
+    if player.warnings.is_empty() || !player.status.has_frame {
+        return;
+    }
+    let clock = player.warnings_clock.get_or_insert(0.0);
+    if !player.status.paused {
+        *clock += delta.min(0.25);
+    }
+    if *clock > fluxa_ui::content_warning_duration(player.warnings.len()) {
+        player.warnings.clear();
+        player.warnings_clock = None;
+    }
+}
+
+fn build_warnings(response: &Value, language: &str) -> Option<Vec<(String, String)>> {
+    let label = |key: &str| fluxa_ui::localized(&format!("content_warning.{key}"), language);
+    let labels = ["nudity", "violence", "profanity", "alcohol", "frightening", "severe", "moderate", "mild"]
+        .into_iter()
+        .map(|key| (key.to_owned(), Value::String(label(key))))
+        .collect::<serde_json::Map<_, _>>();
+    let result = core_value(
+        "buildContentWarnings",
+        json!({"responseJson": response.to_string(), "labels": labels}),
+    )?;
+    Some(
+        result
+            .get("warnings")?
+            .as_array()?
+            .iter()
+            .filter_map(|warning| {
+                Some((
+                    warning.get("label")?.as_str()?.to_owned(),
+                    warning.get("severity")?.as_str()?.to_owned(),
+                ))
+            })
+            .collect(),
+    )
+}
+
+pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
+    let (Some(player), Some(video)) = (state.player.as_mut(), state.video.as_mut()) else {
+        return;
+    };
+    let Some(time) = time else {
+        return;
+    };
+    player.touch();
+    let time = (time * 2.0).round() / 2.0;
+    if player
+        .thumbnail_requested
+        .is_some_and(|(last, at)| last == time || at.elapsed() < THUMBNAIL_INTERVAL)
+    {
+        return;
+    }
+    player.thumbnail_requested = Some((time, Instant::now()));
+    video.request_thumbnail(time);
 }
 
 fn command_starts_playback(snapshot: &Value) -> bool {

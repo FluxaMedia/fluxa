@@ -21,7 +21,9 @@ pub use calendar::draw_calendar;
 pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use library::draw_library;
-pub use player::{draw_player, format_time, torrent_status_lines, PlayerModel};
+pub use player::{
+    PlayerModel, content_warning_duration, draw_player, format_time, torrent_status_lines,
+};
 use settings::settings_card_height;
 pub use settings::{
     SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, draw_settings,
@@ -2140,6 +2142,7 @@ pub struct HomeLayout {
     /// Core page requests generated when a shelf approaches its loaded end.
     pub load_more: Vec<serde_json::Value>,
     pub seek_to: Option<f64>,
+    pub seek_hover: Option<f64>,
 }
 
 pub const NODE_HOME: u64 = 10;
@@ -3632,7 +3635,7 @@ fn draw_home_with_options(
             setting_change: None,
             filter_change: None,
             load_more: Vec::new(),
-            seek_to: None,
+            ..HomeLayout::default()
         };
         let message = if home.is_loading {
             "Loading home data…"

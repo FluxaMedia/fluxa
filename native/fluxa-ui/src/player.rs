@@ -12,12 +12,43 @@ pub struct PlayerModel {
     pub muted: bool,
     pub volume: f64,
     pub controls_visible: bool,
+    pub show_pause_info: bool,
+    pub logo: Option<String>,
+    pub episode_title: Option<String>,
+    pub description: Option<String>,
+    pub chapters: Vec<(f64, String)>,
+    pub thumbnail: Option<(f64, TextureId)>,
+    pub warnings: Vec<(String, String)>,
+    pub warnings_elapsed: Option<f32>,
+    pub language: String,
+}
+
+const WARNING_BAR: f32 = 0.3;
+const WARNING_STAGGER: f32 = 0.08;
+const WARNING_FADE: f32 = 0.25;
+const WARNING_HOLD: f32 = 5.0;
+
+pub fn content_warning_duration(rows: usize) -> f32 {
+    let rows = rows as f32 * WARNING_STAGGER + WARNING_FADE;
+    WARNING_BAR * 2.0 + rows * 2.0 + WARNING_HOLD
+}
+
+impl PlayerModel {
+    fn chapter_at(&self, time: f64) -> Option<&str> {
+        self.chapters
+            .iter()
+            .rev()
+            .find(|(start, _)| *start <= time)
+            .map(|(_, title)| title.as_str())
+            .filter(|title| !title.trim().is_empty())
+    }
 }
 
 pub fn draw_player(
     context: &egui::Context,
     viewport: Viewport,
     player: &PlayerModel,
+    assets: &mut impl HomeAssets,
     focused: Option<u64>,
 ) -> HomeLayout {
     let mut layout = HomeLayout::default();
@@ -35,10 +66,17 @@ pub fn draw_player(
     if player.video.is_none() {
         draw_status(&painter, rect, player);
     }
+    if player.show_pause_info {
+        draw_pause_info(context, &painter, rect, player, assets);
+    }
     let compact = viewport.is_compact();
     let margin = (rect.width() * 0.035).clamp(if compact { 14.0 } else { 22.0 }, 64.0);
     let header_y = rect.top() + 30.0 + if compact { 8.0 } else { 0.0 };
     let close_rect = Rect::from_center_size(Pos2::new(margin + 20.0, header_y), Vec2::splat(42.0));
+    if let Some(elapsed) = player.warnings_elapsed {
+        let top = if player.controls_visible { 72.0 } else { 24.0 };
+        draw_warnings(context, Pos2::new(margin, top), player, elapsed);
+    }
     egui::Area::new(Id::new("fluxa-player-controls"))
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
@@ -104,6 +142,17 @@ pub fn draw_player(
                 Color32::from_white_alpha(95),
             );
             if duration > 0.0 {
+                for (start, _) in &player.chapters {
+                    if *start <= 0.0 || *start >= duration {
+                        continue;
+                    }
+                    let x = track.left() + track.width() * (*start / duration) as f32;
+                    painter.rect_filled(
+                        Rect::from_center_size(Pos2::new(x, track.center().y), Vec2::new(2.0, 5.0)),
+                        0.0,
+                        Color32::BLACK,
+                    );
+                }
                 let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
                 painter.rect_filled(
                     Rect::from_min_size(
@@ -120,6 +169,15 @@ pub fn draw_player(
                         Color32::WHITE,
                     );
                 }
+            }
+
+            if duration > 0.0
+                && let Some(pointer) = seek.hover_pos()
+            {
+                let ratio = ((pointer.x - track.left()) / track.width()).clamp(0.0, 1.0);
+                let time = duration * ratio as f64;
+                layout.seek_hover = Some(time);
+                draw_seek_preview(context, track, pointer.x, time, player);
             }
 
             let controls_y = rect.bottom() - 48.0 - viewport.safe_bottom;
@@ -193,7 +251,7 @@ pub fn draw_player(
                 Pos2::new(volume_x - 18.0, controls_y),
                 Align2::RIGHT_CENTER,
                 if player.muted {
-                    "Muted".to_owned()
+                    localized("player.muted", &player.language)
                 } else {
                     format!("{}%", player.volume.round() as i32)
                 },
@@ -226,6 +284,220 @@ pub fn draw_player(
             );
     }
     layout
+}
+
+fn draw_seek_preview(
+    context: &egui::Context,
+    track: Rect,
+    pointer_x: f32,
+    time: f64,
+    player: &PlayerModel,
+) {
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        Id::new("fluxa-player-seek-preview"),
+    ));
+    let chapter = player.chapter_at(time);
+    let thumbnail = player
+        .thumbnail
+        .filter(|(shown, _)| (shown - time).abs() <= 30.0)
+        .map(|(_, texture)| texture);
+    let width = if thumbnail.is_some() { 240.0 } else { 160.0 };
+    let x = pointer_x.clamp(track.left() + width * 0.5, track.right() - width * 0.5);
+    let mut bottom = track.top() - 10.0;
+    let label_font = FontId::proportional(13.0);
+    painter.text(
+        Pos2::new(x, bottom),
+        Align2::CENTER_BOTTOM,
+        format_time(time),
+        label_font.clone(),
+        Color32::WHITE,
+    );
+    bottom -= 18.0;
+    if let Some(chapter) = chapter {
+        painter.text(
+            Pos2::new(x, bottom),
+            Align2::CENTER_BOTTOM,
+            truncate_to_width(&painter, chapter, &label_font, width),
+            label_font,
+            Color32::from_white_alpha(200),
+        );
+        bottom -= 20.0;
+    }
+    if let Some(texture) = thumbnail {
+        let frame = Rect::from_min_max(
+            Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
+            Pos2::new(x + width * 0.5, bottom),
+        );
+        painter.rect_filled(frame.expand(1.0), 4.0, Color32::from_white_alpha(40));
+        painter.image(texture, frame, full_uv(), Color32::WHITE);
+    }
+}
+
+fn draw_pause_info(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    rect: Rect,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+) {
+    let band = rect.width() / 24.0;
+    for index in 0..24 {
+        let fade = 1.0 - index as f32 / 24.0;
+        let left = rect.left() + index as f32 * band;
+        painter.rect_filled(
+            Rect::from_min_max(Pos2::new(left, rect.top()), Pos2::new(left + band, rect.bottom())),
+            0.0,
+            Color32::from_black_alpha((200.0 * fade.powf(1.4)).round() as u8),
+        );
+    }
+    let left = rect.left() + 64.0;
+    let width = (rect.width() * 0.42).clamp(260.0, 620.0);
+    let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
+    let muted = Color32::from_white_alpha(190);
+
+    let label = localized("player.youre_watching", &player.language);
+    blocks.push((
+        28.0,
+        Box::new(move |painter, y| {
+            painter.text(
+                Pos2::new(left, y),
+                Align2::LEFT_TOP,
+                &label,
+                FontId::proportional(16.0),
+                muted,
+            );
+        }),
+    ));
+    let max_logo = Vec2::new(width.min(420.0), 96.0);
+    let logo = player.logo.as_deref().and_then(|url| {
+        let texture = assets.texture_for(
+            Some(url),
+            artwork_target_size(max_logo, context.pixels_per_point()),
+            ArtworkPriority::Hero,
+        )?;
+        let size = assets
+            .texture_size(Some(url))
+            .map(|size| contain_size(size, max_logo))
+            .unwrap_or(max_logo);
+        Some((texture, size))
+    });
+    match logo {
+        Some((texture, size)) => blocks.push((
+            size.y + 16.0,
+            Box::new(move |painter, y| {
+                painter.image(
+                    texture,
+                    Rect::from_min_size(Pos2::new(left, y), size),
+                    full_uv(),
+                    Color32::WHITE,
+                );
+            }),
+        )),
+        None => {
+            let galley = wrapped(painter, &player.title, 40.0, Color32::WHITE, width, 2);
+            blocks.push((
+                galley.size().y + 12.0,
+                Box::new(move |painter, y| {
+                    painter.galley(Pos2::new(left, y), galley.clone(), Color32::WHITE)
+                }),
+            ));
+        }
+    }
+    let chapter = player
+        .chapter_at(player.position)
+        .map(|title| format!("{}: {title}", localized("player.chapter", &player.language)));
+    for (text, size) in [
+        (player.episode_title.clone(), 20.0),
+        (chapter, 15.0),
+        (player.description.clone(), 16.0),
+    ] {
+        let Some(text) = text else {
+            continue;
+        };
+        let rows = if size == 16.0 { 5 } else { 1 };
+        let galley = wrapped(painter, &text, size, muted, width, rows);
+        blocks.push((
+            galley.size().y + 10.0,
+            Box::new(move |painter, y| painter.galley(Pos2::new(left, y), galley.clone(), muted)),
+        ));
+    }
+    let height: f32 = blocks.iter().map(|(height, _)| height).sum();
+    let mut y = rect.bottom() - 120.0 - height;
+    for (height, draw) in blocks {
+        draw(painter, y);
+        y += height;
+    }
+}
+
+fn wrapped(
+    painter: &egui::Painter,
+    text: &str,
+    size: f32,
+    color: Color32,
+    width: f32,
+    rows: usize,
+) -> std::sync::Arc<egui::Galley> {
+    let mut job = egui::text::LayoutJob::simple(text.to_owned(), FontId::proportional(size), color, width);
+    job.wrap.max_rows = rows;
+    painter.layout_job(job)
+}
+
+fn draw_warnings(context: &egui::Context, origin: Pos2, player: &PlayerModel, elapsed: f32) {
+    let rows = player.warnings.len();
+    if rows == 0 {
+        return;
+    }
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        Id::new("fluxa-player-warnings"),
+    ));
+    let total = content_warning_duration(rows);
+    let ramp = |value: f32| value.clamp(0.0, 1.0);
+    let box_alpha = ramp(elapsed / WARNING_BAR).min(ramp((total - elapsed) / WARNING_BAR));
+    let font = FontId::proportional(14.0);
+    let row_height = 20.0;
+    let lines = player
+        .warnings
+        .iter()
+        .map(|(label, severity)| format!("{label} · {severity}"))
+        .collect::<Vec<_>>();
+    let text_width = lines
+        .iter()
+        .map(|line| {
+            painter
+                .layout_no_wrap(line.clone(), font.clone(), Color32::WHITE)
+                .size()
+                .x
+        })
+        .fold(0.0, f32::max);
+    let panel = Rect::from_min_size(
+        origin,
+        Vec2::new(text_width + 34.0, rows as f32 * row_height + 20.0),
+    );
+    painter.rect_filled(panel, 6.0, Color32::from_black_alpha((173.0 * box_alpha) as u8));
+    let bar = panel.height() - 20.0;
+    painter.rect_filled(
+        Rect::from_min_size(
+            panel.min + Vec2::new(12.0, 10.0),
+            Vec2::new(3.0, bar * ramp(elapsed / WARNING_BAR)),
+        ),
+        1.5,
+        Color32::from_white_alpha((230.0 * box_alpha) as u8),
+    );
+    let fade_out_start = total - WARNING_BAR - rows as f32 * WARNING_STAGGER - WARNING_FADE;
+    for (index, line) in lines.into_iter().enumerate() {
+        let appear = ramp((elapsed - WARNING_BAR - index as f32 * WARNING_STAGGER) / WARNING_FADE);
+        let leave = fade_out_start + (rows - 1 - index) as f32 * WARNING_STAGGER;
+        let alpha = appear.min(1.0 - ramp((elapsed - leave) / WARNING_FADE));
+        painter.text(
+            panel.min + Vec2::new(24.0, 10.0 + index as f32 * row_height + row_height * 0.5),
+            Align2::LEFT_CENTER,
+            line,
+            font.clone(),
+            Color32::from_white_alpha((255.0 * alpha) as u8),
+        );
+    }
 }
 
 fn draw_status(painter: &egui::Painter, rect: Rect, player: &PlayerModel) {

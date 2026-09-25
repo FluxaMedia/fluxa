@@ -1,18 +1,23 @@
 use std::ffi::{CStr, c_void};
 use std::sync::{
     Arc,
-    mpsc::{self, Receiver, TryRecvError},
+    mpsc::{self, Receiver, Sender, TryRecvError},
 };
+use std::time::{Duration, Instant};
 
 use ash::vk::Handle as _;
-use fluxa_host::{DeviceOpener, VideoBackend, VideoCommand, VideoStatus};
+use fluxa_host::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
 
 const FRAME_SIZE: [u32; 2] = [1920, 1080];
+const THUMBNAIL_SIZE: [usize; 2] = [320, 180];
+const CHAPTER_REFRESH: Duration = Duration::from_secs(2);
 
 pub struct MpvBackend {
     pending: Option<Receiver<Result<MpvPlayer, String>>>,
     player: Option<MpvPlayer>,
     error: Option<String>,
+    url: Option<String>,
+    thumbnails: Option<ThumbnailWorker>,
 }
 
 impl MpvBackend {
@@ -21,6 +26,8 @@ impl MpvBackend {
             pending: None,
             player: None,
             error: None,
+            url: None,
+            thumbnails: None,
         }
     }
 }
@@ -36,9 +43,11 @@ impl VideoBackend for MpvBackend {
         let instance = instance.clone();
         let device = device.clone();
         let url = url.to_owned();
+        let target = url.clone();
         std::thread::spawn(move || {
-            let _ = sender.send(MpvPlayer::new(&instance, &device, &url));
+            let _ = sender.send(MpvPlayer::new(&instance, &device, &target));
         });
+        self.url = Some(url.clone());
         self.pending = Some(receiver);
     }
 
@@ -48,6 +57,8 @@ impl VideoBackend for MpvBackend {
         }
         self.pending = None;
         self.error = None;
+        self.url = None;
+        self.thumbnails = None;
     }
 
     fn command(&mut self, command: VideoCommand) {
@@ -101,7 +112,7 @@ impl VideoBackend for MpvBackend {
     }
 
     fn status(&mut self) -> VideoStatus {
-        let Some(player) = self.player.as_ref() else {
+        let Some(player) = self.player.as_mut() else {
             return VideoStatus {
                 error: self.error.clone(),
                 volume: 100.0,
@@ -119,8 +130,92 @@ impl VideoBackend for MpvBackend {
             volume: number(status.volume.as_deref()).unwrap_or(100.0),
             has_frame: player.first_frame,
             error: self.error.clone(),
+            chapters: player.chapters().to_vec(),
         }
     }
+
+    fn request_thumbnail(&mut self, time: f64) {
+        let Some(url) = self.url.as_deref() else {
+            return;
+        };
+        let worker = self
+            .thumbnails
+            .get_or_insert_with(|| ThumbnailWorker::spawn(thumbnail_url(url)));
+        let _ = worker.requests.send(time);
+    }
+
+    fn take_thumbnail(&mut self) -> Option<Thumbnail> {
+        let worker = self.thumbnails.as_ref()?;
+        let mut latest = None;
+        while let Ok(thumbnail) = worker.results.try_recv() {
+            latest = Some(thumbnail);
+        }
+        latest
+    }
+}
+
+fn thumbnail_url(url: &str) -> String {
+    if url.contains("/stream/fname") {
+        format!("{url}&role=auxiliary")
+    } else {
+        url.to_owned()
+    }
+}
+
+struct ThumbnailWorker {
+    requests: Sender<f64>,
+    results: Receiver<Thumbnail>,
+}
+
+impl ThumbnailWorker {
+    fn spawn(url: String) -> Self {
+        let (requests, request_rx) = mpsc::channel::<f64>();
+        let (result_tx, results) = mpsc::channel();
+        std::thread::spawn(move || {
+            let mut renderer = match fluxa_mpv::MpvThumbnailRenderer::new()
+                .and_then(|mut renderer| renderer.load_thumbnail(&url).map(|_| renderer))
+            {
+                Ok(renderer) => renderer,
+                Err(error) => {
+                    eprintln!("[fluxa-desktop] seek thumbnails unavailable: {error}");
+                    return;
+                }
+            };
+            while let Ok(mut time) = request_rx.recv() {
+                while let Ok(next) = request_rx.try_recv() {
+                    time = next;
+                }
+                match render_thumbnail(&mut renderer, time) {
+                    Ok(rgba) => {
+                        let thumbnail = Thumbnail {
+                            time,
+                            size: THUMBNAIL_SIZE,
+                            rgba,
+                        };
+                        if result_tx.send(thumbnail).is_err() {
+                            return;
+                        }
+                    }
+                    Err(error) => eprintln!("[fluxa-desktop] seek thumbnail failed: {error}"),
+                }
+            }
+        });
+        Self { requests, results }
+    }
+}
+
+fn render_thumbnail(
+    renderer: &mut fluxa_mpv::MpvThumbnailRenderer,
+    time: f64,
+) -> Result<Vec<u8>, String> {
+    renderer.set_paused(false)?;
+    renderer.seek_thumbnail_to(time)?;
+    renderer.pump_events();
+    std::thread::sleep(Duration::from_millis(50));
+    renderer.set_paused(true)?;
+    renderer.pump_events();
+    std::thread::sleep(Duration::from_millis(20));
+    renderer.render_thumbnail(THUMBNAIL_SIZE[0] as i32, THUMBNAIL_SIZE[1] as i32)
 }
 
 struct MpvPlayer {
@@ -131,6 +226,8 @@ struct MpvPlayer {
     image_layout: i32,
     sync: VulkanSync,
     first_frame: bool,
+    chapters: Vec<(f64, String)>,
+    chapters_at: Option<Instant>,
 }
 
 impl MpvPlayer {
@@ -182,7 +279,34 @@ impl MpvPlayer {
             image_layout: 0,
             sync,
             first_frame: false,
+            chapters: Vec::new(),
+            chapters_at: None,
         })
+    }
+
+    fn chapters(&mut self) -> &[(f64, String)] {
+        if self.chapters_at.is_none_or(|at| at.elapsed() >= CHAPTER_REFRESH) {
+            self.chapters_at = Some(Instant::now());
+            self.chapters = self
+                .client
+                .chapters_json()
+                .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+                .and_then(|value| {
+                    value.get("chapters")?.as_array().map(|chapters| {
+                        chapters
+                            .iter()
+                            .filter_map(|chapter| {
+                                Some((
+                                    chapter.get("startMs")?.as_u64()? as f64 / 1000.0,
+                                    chapter.get("title")?.as_str()?.to_owned(),
+                                ))
+                            })
+                            .collect()
+                    })
+                })
+                .unwrap_or_default();
+        }
+        &self.chapters
     }
 
     fn render(&mut self) -> Result<bool, String> {
