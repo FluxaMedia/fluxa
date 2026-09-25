@@ -10,6 +10,8 @@ use crate::{EffectCompletion, EffectExecutor, Storage};
 
 pub struct AppSession {
     runtime: FluxaRuntime,
+    storage: Storage,
+    persisted_addons: Value,
     executor: EffectExecutor,
     sender: Sender<EffectCompletion>,
     receiver: Receiver<EffectCompletion>,
@@ -18,12 +20,15 @@ pub struct AppSession {
 impl AppSession {
     pub fn open(storage: Storage) -> Result<Self, String> {
         let state = persisted_runtime_state(&storage, json!({}));
+        let persisted_addons = state["addons"]["installed"].clone();
         let runtime = FluxaRuntime::new(state)?;
-        let executor = EffectExecutor::new(storage);
+        let executor = EffectExecutor::new(storage.clone());
         executor.warm_torrent_engine();
         let (sender, receiver) = mpsc::channel();
         Ok(Self {
             runtime,
+            storage,
+            persisted_addons,
             executor,
             sender,
             receiver,
@@ -32,6 +37,7 @@ impl AppSession {
 
     pub fn dispatch(&mut self, action: Value) -> Result<(), String> {
         let update = self.runtime.dispatch(action)?;
+        self.persist_addons();
         self.schedule(update.effects);
         Ok(())
     }
@@ -41,6 +47,13 @@ impl AppSession {
         let mut changed = false;
         while let Ok(completion) = self.receiver.try_recv() {
             changed = true;
+            if completion.status != "ok" {
+                crate::log!(
+                    "[fluxa-session] effect {} failed: {}",
+                    completion.effect_type,
+                    completion.error
+                );
+            }
             let result = if completion.effect_type == "fetchDiscoverPage" {
                 self.runtime.complete_discover_page_result(
                     &completion.effect_id,
@@ -58,14 +71,50 @@ impl AppSession {
             };
             match result {
                 Ok(update) => follow_ups.extend(update.effects),
-                Err(error) => eprintln!(
+                Err(error) => crate::log!(
                     "[fluxa-session] effect {} completion rejected: {error}",
                     completion.effect_id
                 ),
             }
         }
+        if changed {
+            self.persist_addons();
+        }
         self.schedule(follow_ups);
         changed
+    }
+
+    fn persist_addons(&mut self) {
+        let snapshot = self.runtime.snapshot();
+        let Some(installed) = snapshot.pointer("/addons/installed").filter(|value| value.is_array())
+        else {
+            return;
+        };
+        if *installed == self.persisted_addons {
+            return;
+        }
+        let active_id = snapshot
+            .pointer("/profile/activeProfileId")
+            .and_then(Value::as_str)
+            .unwrap_or("guest")
+            .to_owned();
+        let profiles = self
+            .storage
+            .read_json("profiles")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| json!([]));
+        let owner = core_value(
+            "effectiveAddonsOwnerId",
+            json!({"profiles": profiles, "activeProfileId": active_id}),
+        )
+        .and_then(|value| value.as_str().map(ToOwned::to_owned))
+        .unwrap_or(active_id);
+        let installed = installed.clone();
+        match self.storage.write_json(&Storage::addons_key(&owner), &installed) {
+            Ok(()) => self.persisted_addons = installed,
+            Err(error) => crate::log!("[fluxa-session] saving add-ons failed: {error}"),
+        }
     }
 
     pub fn snapshot(&self) -> Arc<Value> {

@@ -53,8 +53,8 @@ impl EffectExecutor {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn warm_torrent_engine(&self) {
         std::thread::spawn(|| match ensure_torrent_server() {
-            Ok(_) => eprintln!("[fluxa-native] torrent engine warmed up"),
-            Err(error) => eprintln!("[fluxa-native] torrent engine warm-up failed: {error}"),
+            Ok(_) => crate::log!("[fluxa-native] torrent engine warmed up"),
+            Err(error) => crate::log!("[fluxa-native] torrent engine warm-up failed: {error}"),
         });
     }
 
@@ -154,7 +154,7 @@ impl EffectExecutor {
                 .build()
             {
                 Ok(runtime) => runtime.block_on(task),
-                Err(error) => eprintln!("[fluxa-effects] tokio runtime failed: {error}"),
+                Err(error) => crate::log!("[fluxa-effects] tokio runtime failed: {error}"),
             }
         });
     }
@@ -348,7 +348,7 @@ impl EffectExecutor {
         .and_then(|value| value.as_array().cloned())
         .ok_or_else(|| "Fluxa Core could not resolve selected home metadata feeds".to_owned())?;
         let metadata_feeds = visible_feeds.clone();
-        eprintln!(
+        crate::log!(
             "[fluxa-native] home bootstrap: addons={} feeds={} visible_feeds={}",
             addons.as_array().map_or(0, Vec::len),
             feed_count,
@@ -382,7 +382,7 @@ impl EffectExecutor {
                 let response = match fetch_json(&client, &url).await {
                     Ok(response) => response,
                     Err(error) => {
-                        eprintln!(
+                        crate::log!(
                             "[fluxa-native] TMDB catalog request failed for {}: {error}",
                             url_without_query(&url)
                         );
@@ -415,7 +415,7 @@ impl EffectExecutor {
                 let (status_code, body) = match fetch_text(&client, &url).await {
                     Ok(response) => response,
                     Err(error) => {
-                        eprintln!(
+                        crate::log!(
                             "[fluxa-native] catalog request failed for {}: {error}",
                             url_without_query(&url)
                         );
@@ -425,7 +425,7 @@ impl EffectExecutor {
                 match parse_catalog_items(&url, status_code, body.as_deref(), "discover") {
                     Ok(items) => Value::Array(items),
                     Err(error) => {
-                        eprintln!("[fluxa-native] catalog response rejected by Core: {error}");
+                        crate::log!("[fluxa-native] catalog response rejected by Core: {error}");
                         continue;
                     }
                 }
@@ -457,7 +457,7 @@ impl EffectExecutor {
                 "catalogId": catalog_id
             }));
         }
-        eprintln!(
+        crate::log!(
             "[fluxa-native] home bootstrap: populated_catalog_shelves={}",
             categories.len()
         );
@@ -593,20 +593,20 @@ impl EffectExecutor {
                 match response.json::<Vec<Value>>().await {
                     Ok(profiles) => profiles,
                     Err(error) => {
-                        eprintln!("[fluxa-native] Nuvio profile scopes decode failed: {error}");
+                        crate::log!("[fluxa-native] Nuvio profile scopes decode failed: {error}");
                         return profile_index;
                     }
                 }
             }
             Ok(response) => {
-                eprintln!(
+                crate::log!(
                     "[fluxa-native] Nuvio profile scopes request failed: HTTP {}",
                     response.status()
                 );
                 return profile_index;
             }
             Err(error) => {
-                eprintln!("[fluxa-native] Nuvio profile scopes request failed: {error}");
+                crate::log!("[fluxa-native] Nuvio profile scopes request failed: {error}");
                 return profile_index;
             }
         };
@@ -641,7 +641,7 @@ impl EffectExecutor {
         {
             Ok(client) => client,
             Err(error) => {
-                eprintln!("[fluxa-native] Nuvio add-on client unavailable: {error}");
+                crate::log!("[fluxa-native] Nuvio add-on client unavailable: {error}");
                 return;
             }
         };
@@ -664,12 +664,12 @@ impl EffectExecutor {
             Ok(response) => match response.json::<Vec<Value>>().await {
                 Ok(addons) => addons,
                 Err(error) => {
-                    eprintln!("[fluxa-native] Nuvio add-on list response invalid: {error}");
+                    crate::log!("[fluxa-native] Nuvio add-on list response invalid: {error}");
                     return;
                 }
             },
             Err(error) => {
-                eprintln!("[fluxa-native] Nuvio add-on list request failed: {error}");
+                crate::log!("[fluxa-native] Nuvio add-on list request failed: {error}");
                 return;
             }
         };
@@ -694,17 +694,17 @@ impl EffectExecutor {
                     Ok(response) => match response.json::<Value>().await {
                         Ok(manifest) => manifest,
                         Err(error) => {
-                            eprintln!("[fluxa-native] Nuvio add-on manifest invalid: {error}");
+                            crate::log!("[fluxa-native] Nuvio add-on manifest invalid: {error}");
                             continue;
                         }
                     },
                     Err(error) => {
-                        eprintln!("[fluxa-native] Nuvio add-on manifest request failed: {error}");
+                        crate::log!("[fluxa-native] Nuvio add-on manifest request failed: {error}");
                         continue;
                     }
                 },
                 Err(error) => {
-                    eprintln!("[fluxa-native] Nuvio add-on manifest request failed: {error}");
+                    crate::log!("[fluxa-native] Nuvio add-on manifest request failed: {error}");
                     continue;
                 }
             };
@@ -771,7 +771,7 @@ impl EffectExecutor {
             .unwrap_or(link)
             .to_owned();
         let file_id = runtime.get("selectedFileIdx").and_then(Value::as_i64);
-        eprintln!(
+        crate::log!(
             "[fluxa-native] torrent stream ready base={} url={}",
             base_url, stream_url
         );
@@ -1193,7 +1193,7 @@ impl EffectExecutor {
                     .map_err(|error| format!("Nuvio watch progress response was invalid: {error}"))
             }
         )?;
-        eprintln!(
+        crate::log!(
             "[fluxa-native] Nuvio library sync: library_rows={} progress_rows={}",
             library.as_array().map_or(0, Vec::len),
             progress.as_array().map_or(0, Vec::len)
@@ -1366,7 +1366,7 @@ impl EffectExecutor {
             self.merge_nuvio_addons(&profile_for_addons, &mut addons)
                 .await;
         }
-        eprintln!(
+        crate::log!(
             "[fluxa-native] Discover catalogs: cached_addons={} hydrated_remote_addons={}",
             cached_addon_count,
             addons
@@ -1586,7 +1586,7 @@ impl EffectExecutor {
                 let (status_code, body) = match fetch_text(&client, url).await {
                     Ok(response) => response,
                     Err(error) => {
-                        eprintln!(
+                        crate::log!(
                             "[fluxa-native] stream request failed for {}: {error}",
                             url_without_query(url)
                         );
@@ -1706,7 +1706,7 @@ impl EffectExecutor {
             let (status_code, body) = match fetch_text(&client, url).await {
                 Ok(response) => response,
                 Err(error) => {
-                    eprintln!(
+                    crate::log!(
                         "[fluxa-native] search request failed for {}: {error}",
                         url_without_query(url)
                     );
@@ -1716,7 +1716,7 @@ impl EffectExecutor {
             let items = match parse_catalog_items(url, status_code, body.as_deref(), "search") {
                 Ok(items) => items,
                 Err(error) => {
-                    eprintln!("[fluxa-native] search response rejected by Core: {error}");
+                    crate::log!("[fluxa-native] search response rejected by Core: {error}");
                     continue;
                 }
             };
@@ -1935,7 +1935,7 @@ impl EffectExecutor {
             let (status_code, body) = match fetch_text(&client, url).await {
                 Ok(response) => response,
                 Err(error) => {
-                    eprintln!(
+                    crate::log!(
                         "[fluxa-native] meta request failed for {}: {error}",
                         url_without_query(url)
                     );
@@ -2313,7 +2313,7 @@ fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
                     .collect::<String>()
             })
             .unwrap_or_default();
-        eprintln!("[fluxa-native] torrent metadata add started hash={info_hash} file={file_id:?}");
+        crate::log!("[fluxa-native] torrent metadata add started hash={info_hash} file={file_id:?}");
         let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -2336,7 +2336,7 @@ fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
             serde_json::from_str(&body).map_err(|error| error.to_string())
         });
         match result {
-            Ok(status) => eprintln!(
+            Ok(status) => crate::log!(
                 "[fluxa-native] torrent metadata ready hash={} peers={}",
                 status.get("hash").and_then(Value::as_str).unwrap_or(""),
                 status
@@ -2344,7 +2344,7 @@ fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
                     .and_then(Value::as_u64)
                     .unwrap_or(0)
             ),
-            Err(error) => eprintln!("[fluxa-native] torrent add failed: {error}"),
+            Err(error) => crate::log!("[fluxa-native] torrent add failed: {error}"),
         }
     });
 }
@@ -2488,7 +2488,7 @@ fn core_value(method: &str, args: Value) -> Option<Value> {
     let envelope: Value = match serde_json::from_str(&raw) {
         Ok(envelope) => envelope,
         Err(error) => {
-            eprintln!("[fluxa-native] core method `{method}` returned invalid JSON: {error}");
+            crate::log!("[fluxa-native] core method `{method}` returned invalid JSON: {error}");
             return None;
         }
     };
@@ -2502,7 +2502,7 @@ fn core_value(method: &str, args: Value) -> Option<Value> {
             .and_then(|value| value.get("message"))
             .and_then(Value::as_str)
             .unwrap_or("");
-        eprintln!(
+        crate::log!(
             "[fluxa-native] core method `{method}` failed: {kind}{}",
             if message.is_empty() {
                 String::new()
