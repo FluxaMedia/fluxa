@@ -4247,18 +4247,7 @@ fn draw_loading_screen(
     screen: Rect,
     assets: &impl HomeAssets,
 ) {
-    painter.image(
-        assets.background(),
-        screen,
-        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-        Color32::WHITE,
-    );
-    paint_vertical_gradient(
-        painter,
-        screen,
-        Color32::from_rgba_unmultiplied(12, 12, 12, 200),
-        Color32::from_rgba_unmultiplied(12, 12, 12, 235),
-    );
+    painter.rect_filled(screen, 0.0, Color32::from_rgb(12, 12, 12));
     let time = context.input(|input| input.time) as f32;
     let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
