@@ -20,9 +20,10 @@ use std::{
         Arc,
         mpsc::{self, Receiver, Sender},
     },
-    time::{Duration, Instant, SystemTime},
+    time::{Duration, SystemTime},
 };
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
+use web_time::Instant;
 
 pub mod webp_animation;
 
@@ -146,6 +147,7 @@ struct PreparedImage {
 
 pub struct ArtworkFetcher {
     client: reqwest::Client,
+    #[cfg(not(target_arch = "wasm32"))]
     runtime: tokio::runtime::Runtime,
     decode_slots: Arc<Semaphore>,
     animation_decode_slots: Arc<Semaphore>,
@@ -191,12 +193,16 @@ impl ArtworkFetcher {
     pub fn new(cache_dir: Option<PathBuf>, worker_threads: usize) -> Self {
         let (sender, receiver) = mpsc::channel();
         let decode_concurrency = worker_threads.clamp(2, 6);
+        #[cfg(not(target_arch = "wasm32"))]
         let client = reqwest::Client::builder()
             .user_agent("Fluxa/1.0")
             .connect_timeout(Duration::from_secs(5))
             .timeout(Duration::from_secs(20))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
+        #[cfg(target_arch = "wasm32")]
+        let client = reqwest::Client::new();
+        #[cfg(not(target_arch = "wasm32"))]
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(worker_threads.max(1))
             .max_blocking_threads(decode_concurrency)
@@ -206,6 +212,7 @@ impl ArtworkFetcher {
             .expect("Fluxa artwork runtime must start");
         Self {
             client,
+            #[cfg(not(target_arch = "wasm32"))]
             runtime,
             decode_slots: Arc::new(Semaphore::new(decode_concurrency)),
             animation_decode_slots: Arc::new(Semaphore::new(MAX_ANIMATION_DECODE_IN_FLIGHT)),
@@ -364,7 +371,7 @@ impl ArtworkFetcher {
         let nvdec_candidate = request.nvdec_candidate;
         let request_id = request.sequence;
         let animation_started_at = request.animation_started_at;
-        self.runtime.spawn(async move {
+        self.spawn_task(async move {
             let cache_path = if animated {
                 None
             } else {
@@ -381,7 +388,7 @@ impl ArtworkFetcher {
                     animated,
                 )
                 .await;
-                tokio::task::spawn_blocking(move || {
+                blocking(move || {
                     let _decode_permit = decode_permit;
                     let _animation_decode_permit = animation_decode_permit;
                     let _prefetch_permit = prefetch_permit;
@@ -420,7 +427,7 @@ impl ArtworkFetcher {
                             animated,
                         )
                         .await;
-                        tokio::task::spawn_blocking(move || {
+                        blocking(move || {
                             let _decode_permit = decode_permit;
                             let _animation_decode_permit = animation_decode_permit;
                             let _prefetch_permit = prefetch_permit;
@@ -578,6 +585,16 @@ impl ArtworkFetcher {
         self.in_flight.len() < MAX_IN_FLIGHT
             && (priority != Priority::Prefetch
                 || self.in_flight_prefetch.len() < MAX_PREFETCH_IN_FLIGHT)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn spawn_task(&self, task: impl std::future::Future<Output = ()> + Send + 'static) {
+        self.runtime.spawn(task);
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    fn spawn_task(&self, task: impl std::future::Future<Output = ()> + 'static) {
+        wasm_bindgen_futures::spawn_local(task);
     }
 
     pub fn has_pending(&self) -> bool {
@@ -825,6 +842,26 @@ pub fn request_key(source_url: &str, target_size: [u32; 2]) -> String {
     format!("{}#{}x{}", source_url, target_size[0], target_size[1])
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+async fn blocking<T: Send + 'static>(work: impl FnOnce() -> T + Send + 'static) -> Result<T, String> {
+    tokio::task::spawn_blocking(work)
+        .await
+        .map_err(|error| error.to_string())
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn blocking<T>(work: impl FnOnce() -> T) -> Result<T, String> {
+    Ok(work())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn retry_delay(delay: Duration) {
+    tokio::time::sleep(delay).await;
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn retry_delay(_delay: Duration) {}
+
 async fn fetch_bytes(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, String> {
     if let Some(path) = url.strip_prefix("file://") {
         return std::fs::read(path).map_err(|error| error.to_string());
@@ -847,7 +884,7 @@ async fn fetch_bytes(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, Str
             Err(error) => {
                 last_error = error.to_string();
                 if attempt < 2 {
-                    tokio::time::sleep(Duration::from_millis(150 * (attempt + 1))).await;
+                    retry_delay(Duration::from_millis(150 * (attempt + 1))).await;
                 }
                 continue;
             }

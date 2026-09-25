@@ -1868,6 +1868,8 @@ dependencies = [
  "resvg",
  "tiny-skia",
  "tokio",
+ "wasm-bindgen-futures",
+ "web-time",
 ]
 
 [[package]]

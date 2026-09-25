@@ -7,8 +7,18 @@ description = "Provider-independent asynchronous artwork fetch, decode, and rast
 
 [dependencies]
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
-libloading = "0.8"
-reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots", "json"] }
 resvg = { version = "0.45.0", default-features = false }
 tiny-skia = "0.11.4"
-tokio = { version = "1", features = ["rt", "rt-multi-thread", "time"] }
+web-time = "1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots", "json"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+libloading = "0.8"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+reqwest = { version = "0.12", default-features = false }
+tokio = { version = "1", default-features = false, features = ["sync"] }
+wasm-bindgen-futures = "0.4"
