@@ -1,4 +1,4 @@
-use crate::platform::{Storage, sanitize_key};
+use crate::storage::{Storage, sanitize_key};
 use reqwest::Client;
 use serde_json::{Value, json};
 use std::sync::mpsc::Sender;
@@ -29,6 +29,7 @@ pub struct EffectCompletion {
 
 impl EffectExecutor {
     pub fn new(storage: Storage) -> Self {
+        let _ = TORRENT_CACHE_DIR.set(storage.dir().join("torrent-cache"));
         Self { storage }
     }
 
@@ -1796,7 +1797,11 @@ impl EffectExecutor {
         if let Some(genre) = payload.get("genre").and_then(Value::as_str) {
             extra.insert("genre".to_owned(), json!(genre));
         }
-        if let Some(search) = payload.get("search").and_then(Value::as_str).filter(|value| !value.trim().is_empty()) {
+        if let Some(search) = payload
+            .get("search")
+            .and_then(Value::as_str)
+            .filter(|value| !value.trim().is_empty())
+        {
             extra.insert("search".to_owned(), json!(search));
         }
         let items = self
@@ -2235,6 +2240,8 @@ fn progress_meta(progress: &Value) -> Value {
     Value::Object(meta)
 }
 
+static TORRENT_CACHE_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
+
 fn ensure_torrent_server() -> Result<Value, String> {
     let slot = TORRENT_SERVER.get_or_init(|| Mutex::new(None));
     let mut guard = slot
@@ -2243,7 +2250,10 @@ fn ensure_torrent_server() -> Result<Value, String> {
     if let Some(server) = guard.as_ref() {
         return Ok(server.clone());
     }
-    let cache_dir = crate::platform::data_dir()?.join("torrent-cache");
+    let cache_dir = TORRENT_CACHE_DIR
+        .get()
+        .cloned()
+        .ok_or_else(|| "torrent cache directory is not configured".to_owned())?;
     let server_raw =
         fluxa_streaming_engine::start_torrent_server(&cache_dir.to_string_lossy(), 0, "")
             .ok_or_else(|| "failed to start torrent server".to_owned())?;
@@ -2496,7 +2506,7 @@ fn normalize_enabled_addons(addons: Value) -> Result<Value, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::platform::Storage;
+    use crate::storage::Storage;
     use std::path::PathBuf;
 
     fn temporary_directory() -> PathBuf {

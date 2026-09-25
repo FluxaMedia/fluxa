@@ -1884,6 +1884,7 @@ dependencies = [
  "egui-winit",
  "fluxa-app",
  "fluxa-artwork",
+ "fluxa-effects",
  "fluxa-renderer",
  "fluxa-ui",
  "fluxa_core",
@@ -1908,6 +1909,20 @@ dependencies = [
  "wayland-protocols",
  "wgpu",
  "winit",
+]
+
+[[package]]
+name = "fluxa-effects"
+version = "0.1.0"
+dependencies = [
+ "aes-gcm 0.11.0",
+ "chrono",
+ "fluxa_core",
+ "fluxa_streaming_engine",
+ "reqwest 0.12.28",
+ "rusqlite",
+ "serde_json",
+ "tokio",
 ]
 
 [[package]]

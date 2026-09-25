@@ -581,7 +581,9 @@ pub(super) fn draw_shared_discover_screen(
             if previous_key.1 == cache_key.1
                 && previous_key.2 == cache_key.2
                 && previous_key.3 == cache_key.3 =>
-        { model }
+        {
+            model
+        }
         _ => fluxa_ui::discover_model_from_core_snapshot(runtime.snapshot()),
     };
     let snapshot = runtime.snapshot();
@@ -591,7 +593,8 @@ pub(super) fn draw_shared_discover_screen(
     {
         screen_state.discover_projection_pending = None;
     }
-    while let Ok((generation, start, cards)) = screen_state.discover_projection_receiver.try_recv() {
+    while let Ok((generation, start, cards)) = screen_state.discover_projection_receiver.try_recv()
+    {
         if screen_state
             .discover_projection_pending
             .is_some_and(|(pending_generation, _)| pending_generation == generation)
@@ -703,7 +706,10 @@ pub(super) fn draw_shared_discover_screen(
             eprintln!(
                 "[fluxa-native] discover page dispatch on UI thread: {:.1}ms (skip={})",
                 dispatch_ms,
-                request.pointer("/skip").and_then(Value::as_i64).unwrap_or(-1),
+                request
+                    .pointer("/skip")
+                    .and_then(Value::as_i64)
+                    .unwrap_or(-1),
             );
         }
     }

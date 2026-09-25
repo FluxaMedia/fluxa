@@ -29,6 +29,7 @@ fluxa-renderer = { path = "../fluxa-renderer", default-features = false, feature
 fluxa-ui = { path = "../fluxa-ui" }
 fluxa-app = { path = "../fluxa-app", features = ["desktop"] }
 fluxa-artwork = { path = "../fluxa-artwork" }
+fluxa-effects = { path = "../fluxa-effects" }
 rusqlite = { version = "0.40", features = ["bundled"] }
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }

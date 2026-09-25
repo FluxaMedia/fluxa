@@ -28,6 +28,10 @@ impl Storage {
         Ok(storage)
     }
 
+    pub fn dir(&self) -> &Path {
+        &self.dir
+    }
+
     pub fn read_json(&self, key: &str) -> Result<Option<Value>, String> {
         let connection = self.connection()?;
         let storage_key = sanitize_key(key);

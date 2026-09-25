@@ -7,12 +7,13 @@ use std::{
 
 #[cfg(target_os = "linux")]
 use ash::vk::Handle as _;
-use effect_executor::{EffectCompletion, EffectExecutor};
 use egui::{Align2, Color32, Context, FontId, RichText, Sense, TextureId, Vec2};
 use egui_winit::State as EguiWinitState;
 use fluxa_app::FluxaRuntime;
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
 use fluxa_core::FluxaCore;
+use fluxa_effects::{EffectCompletion, EffectExecutor};
+use fluxa_effects::{Storage, storage as platform};
 use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
 use fluxa_renderer::{
     AnimationClock, Color as SceneColor, Easing, Rect as SceneRect, RenderNode, RenderScene,
@@ -25,7 +26,6 @@ use fluxa_ui::{
     settings_model_from_core_snapshot,
 };
 use gilrs::{Button as GilrsButton, EventType as GilrsEventType, Gilrs};
-use platform::Storage;
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 use std::sync::mpsc::{self, Receiver, Sender};
@@ -37,7 +37,6 @@ use winit::{
     window::{Fullscreen, Window, WindowId},
 };
 
-mod effect_executor;
 mod font_manager;
 #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
 mod nvdec;
@@ -45,7 +44,6 @@ mod nvdec;
 mod nvdec_gpu;
 #[cfg(all(target_os = "linux", fluxa_nvdec_ffmpeg))]
 mod nvdec_vulkan_buffer;
-mod platform;
 mod screen_hosts;
 mod svg_icons;
 #[cfg(target_os = "linux")]
@@ -5224,8 +5222,14 @@ impl FluxaDesktopApp {
                         let snapshot = runtime.snapshot();
                         eprintln!(
                             "[fluxa-native] Discover snapshot after completion: catalogs={} content_type={} follow_up_effects={}",
-                            snapshot.pointer("/discover/catalogs").and_then(Value::as_array).map_or(0, Vec::len),
-                            snapshot.pointer("/discover/contentType").and_then(Value::as_str).unwrap_or("<missing>"),
+                            snapshot
+                                .pointer("/discover/catalogs")
+                                .and_then(Value::as_array)
+                                .map_or(0, Vec::len),
+                            snapshot
+                                .pointer("/discover/contentType")
+                                .and_then(Value::as_str)
+                                .unwrap_or("<missing>"),
                             update.effects.len(),
                         );
                     }
