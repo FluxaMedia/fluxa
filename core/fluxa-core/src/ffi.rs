@@ -80,10 +80,10 @@ use crate::{
     desktop_playback, device_resource, discovery_plan, external_sync, fluxa_sync,
     headless_adapter_plan, headless_engine, home_ranking, integration_settings, intro_segments,
     library_persistence, library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan,
-    player_flow, player_policy, player_scrobble, plugin_runtime, plugins, profile_avatar_pack,
-    profile_contract, profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow,
-    runtime_label, search_plan, stream_badges, stream_policy, subtitle_sync, tmdb_plan,
-    trailer_subtitles, watchlist_plan,
+    player_flow, player_policy, player_scrobble, plugin_network_policy, plugins,
+    profile_avatar_pack, profile_contract, profile_prefs, publicmetadb_plan, recommendation_policy,
+    repository_flow, runtime_label, search_plan, stream_badges, stream_policy, subtitle_sync,
+    tmdb_plan, trailer_subtitles, watchlist_plan,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]

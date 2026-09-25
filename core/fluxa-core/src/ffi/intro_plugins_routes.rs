@@ -74,9 +74,9 @@ pub(super) fn route_plugins(method: &str, args_json: &str) -> Outcome {
         }
         "pluginExecutionPlan" => opt_json(plugins::plugin_execution_plan_json(args_json)),
         "pluginUpdatePlan" => opt_json(plugins::plugin_update_plan_json(args_json)),
-        "pluginNetworkAddressAllowed" => Ok(json!(plugin_runtime::plugin_network_address_allowed(
-            &arg_str(args_json, "address")?
-        ))),
+        "pluginNetworkAddressAllowed" => Ok(json!(
+            plugin_network_policy::plugin_network_address_allowed(&arg_str(args_json, "address")?)
+        )),
         "pluginNetworkAddressBytesAllowed" => {
             let args = object(args_json)?;
             let bytes = args
@@ -91,11 +91,11 @@ pub(super) fn route_plugins(method: &str, args_json: &str) -> Outcome {
                         .ok_or_else(|| fail(ErrorKind::InvalidArgs, "bytes must contain octets"))
                 })
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(json!(plugin_runtime::plugin_network_address_bytes_allowed(
-                &bytes
-            )))
+            Ok(json!(
+                plugin_network_policy::plugin_network_address_bytes_allowed(&bytes)
+            ))
         }
-        "pluginUrlAllowed" => Ok(json!(plugin_runtime::plugin_url_allowed(&arg_str(
+        "pluginUrlAllowed" => Ok(json!(plugin_network_policy::plugin_url_allowed(&arg_str(
             args_json, "url",
         )?))),
         "pluginStreamResultsParse" => {
