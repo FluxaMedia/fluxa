@@ -1921,22 +1921,25 @@ impl UiMetrics {
     }
 
     pub fn navigation_label_size(self, tv: bool) -> f32 {
-        self.nav_label_size + if tv { 3.0 } else { 2.0 }
+        self.nav_label_size + if tv { 3.0 } else { 0.0 }
+    }
+
+    pub fn navigation_icon_size(self, tv: bool) -> f32 {
+        if tv { 24.0 } else { 18.0 }
     }
 
     pub fn navigation_item_width(self, label: &str, tv: bool) -> f32 {
-        let icon_size = self.nav_icon_size.min(if tv { 28.0 } else { 26.0 });
-        20.0 + icon_size
+        28.0 + self.navigation_icon_size(tv)
             + 8.0
             + estimated_navigation_text_width(label, self.navigation_label_size(tv))
     }
 
     pub fn navigation_profile_width(self, profile_name: &str, tv: bool) -> f32 {
-        (20.0
-            + 28.0
+        (26.0
+            + NAV_AVATAR_RADIUS * 2.0
             + 8.0
             + estimated_navigation_text_width(profile_name, self.navigation_label_size(tv)))
-        .clamp(84.0, 220.0)
+        .clamp(72.0, 200.0)
     }
 
     pub fn navigation_bar_width(self, viewport: Viewport, profile_name: &str) -> f32 {
@@ -1957,13 +1960,18 @@ impl UiMetrics {
             (viewport.width - margin * 2.0).max(280.0)
         } else {
             nav_width
-                + self.nav_item_gap * 4.0
+                + NAV_ITEM_GAP * 4.0
                 + self.navigation_profile_width(profile_name, tv)
-                + 16.0
         })
         .min((viewport.width - margin * 2.0).max(1.0))
     }
 }
+
+const NAV_BAR_TOP: f32 = 14.0;
+const NAV_ITEM_HEIGHT: f32 = 36.0;
+const NAV_BAR_PADDING: f32 = 5.0;
+const NAV_ITEM_GAP: f32 = 2.0;
+const NAV_AVATAR_RADIUS: f32 = 12.0;
 
 fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
     text.chars()
@@ -2601,136 +2609,118 @@ fn draw_navigation_bar_with_profile(
         );
     }
     let label_size = metrics.navigation_label_size(tv);
-    let icon_size = metrics.nav_icon_size.min(if tv { 28.0 } else { 24.0 });
+    let icon_size = metrics.navigation_icon_size(tv);
     let profile_width = metrics.navigation_profile_width(profile_name, tv);
-    let bar_width = metrics.navigation_bar_width(viewport, profile_name) + 28.0;
+    let bar_width = metrics.navigation_bar_width(viewport, profile_name) + NAV_BAR_PADDING * 2.0;
     let bar_x = (viewport.width - bar_width).max(12.0) * 0.5;
-    let bar_y = 12.0;
+    let font = FontId::proportional(label_size);
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-top-bar"))
-        .fixed_pos(Pos2::new(bar_x, bar_y))
+        .fixed_pos(Pos2::new(bar_x, NAV_BAR_TOP))
         .order(egui::Order::Foreground)
         .show(context, |ui| {
             egui::Frame::NONE
-                .fill(Color32::from_rgb(17, 18, 21))
-                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(30)))
-                .corner_radius(18.0)
-                .inner_margin(egui::Margin::symmetric(10, 8))
+                .fill(Color32::from_black_alpha(190))
+                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(22)))
+                .corner_radius(NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING)
+                .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 4.0;
-                        for (index, (label, icon)) in [
-                            ("Home", "Home"),
-                            ("Library", "Library"),
-                            ("Discover", "Discover"),
-                            ("Calendar", "Calendar"),
-                        ]
-                        .into_iter()
-                        .enumerate()
+                        ui.spacing_mut().item_spacing.x = NAV_ITEM_GAP;
+                        for (index, label) in ["Home", "Library", "Discover", "Calendar"]
+                            .into_iter()
+                            .enumerate()
                         {
                             let active = index == active_route;
                             let width = metrics.navigation_item_width(label, tv);
-                            let response = ui.add_sized(
-                                [width, 44.0],
-                                egui::Button::new("")
-                                    .fill(if active {
-                                        Color32::from_rgb(45, 46, 50)
-                                    } else {
-                                        Color32::TRANSPARENT
-                                    })
-                                    .corner_radius(12.0)
-                                    .stroke(egui::Stroke::NONE),
+                            let (rect, response) = ui.allocate_exact_size(
+                                Vec2::new(width, NAV_ITEM_HEIGHT),
+                                Sense::click(),
                             );
-                            if response.hovered() && !active {
-                                ui.painter().rect_filled(
-                                    response.rect,
-                                    12.0,
-                                    Color32::from_white_alpha(10),
-                                );
-                            }
-                            if let Some(icon_id) = assets.icon(icon) {
-                                let icon_rect = Rect::from_center_size(
-                                    response.rect.left_center()
-                                        + Vec2::new(10.0 + icon_size * 0.5, 0.0),
-                                    Vec2::splat(icon_size),
-                                );
+                            let fill = if active {
+                                Color32::from_white_alpha(28)
+                            } else if response.hovered() {
+                                Color32::from_white_alpha(12)
+                            } else {
+                                Color32::TRANSPARENT
+                            };
+                            ui.painter().rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, fill);
+                            let color = if active || response.hovered() {
+                                Color32::WHITE
+                            } else {
+                                Color32::from_white_alpha(160)
+                            };
+                            let galley = ui.painter().layout_no_wrap(label.to_owned(), font.clone(), color);
+                            let content = icon_size + 8.0 + galley.size().x;
+                            let left = rect.center().x - content * 0.5;
+                            if let Some(icon_id) = assets.icon(label) {
                                 ui.painter().image(
                                     icon_id,
-                                    icon_rect,
-                                    Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                    if active {
-                                        Color32::WHITE
-                                    } else {
-                                        Color32::from_white_alpha(165)
-                                    },
+                                    Rect::from_min_size(
+                                        Pos2::new(left, rect.center().y - icon_size * 0.5),
+                                        Vec2::splat(icon_size),
+                                    ),
+                                    full_uv(),
+                                    color,
                                 );
                             }
-                            ui.painter().text(
+                            ui.painter().galley(
                                 Pos2::new(
-                                    response.rect.left() + 10.0 + icon_size + 8.0,
-                                    response.rect.center().y,
+                                    left + icon_size + 8.0,
+                                    rect.center().y - galley.size().y * 0.5,
                                 ),
-                                Align2::LEFT_CENTER,
-                                label,
-                                FontId::proportional(label_size),
-                                if active {
-                                    Color32::WHITE
-                                } else {
-                                    Color32::from_white_alpha(175)
-                                },
+                                galley,
+                                color,
                             );
                             if response.clicked() {
                                 activated = Some(NODE_HOME + index as u64);
                             }
                         }
-                        ui.add_space(4.0);
-                        let divider = ui.allocate_response(Vec2::new(1.0, 24.0), Sense::hover());
-                        ui.painter().line_segment(
-                            [divider.rect.center_top(), divider.rect.center_bottom()],
-                            egui::Stroke::new(1.0, Color32::from_white_alpha(24)),
+                        let (rect, response) = ui.allocate_exact_size(
+                            Vec2::new(profile_width, NAV_ITEM_HEIGHT),
+                            Sense::click(),
                         );
-                        let response = ui.add_sized(
-                            [profile_width, 44.0],
-                            egui::Button::new("")
-                                .fill(Color32::TRANSPARENT)
-                                .corner_radius(12.0)
-                                .stroke(egui::Stroke::NONE),
-                        );
-                        if let Some(texture) = assets.cached_texture(profile_avatar_url) {
-                            let center = response.rect.left_center() + Vec2::new(24.0, 0.0);
-                            paint_circle_texture(ui.painter(), texture, center, 14.0);
-                            ui.painter().circle_stroke(
-                                center,
-                                14.0,
-                                egui::Stroke::new(1.0, Color32::from_white_alpha(70)),
-                            );
-                        } else if let Some(icon) = assets.icon("Account") {
-                            let rect = Rect::from_center_size(
-                                response.rect.left_center() + Vec2::new(24.0, 0.0),
-                                Vec2::splat(22.0),
-                            );
-                            ui.painter().image(
-                                icon,
+                        if response.hovered() {
+                            ui.painter().rect_filled(
                                 rect,
-                                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                Color32::from_white_alpha(215),
+                                NAV_ITEM_HEIGHT * 0.5,
+                                Color32::from_white_alpha(12),
                             );
                         }
-                        let label_rect = Rect::from_min_max(
-                            Pos2::new(response.rect.left() + 48.0, response.rect.top()),
-                            Pos2::new(response.rect.right() - 8.0, response.rect.bottom()),
-                        );
+                        let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
+                        if let Some(texture) = assets.cached_texture(profile_avatar_url) {
+                            paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
+                        } else {
+                            ui.painter().circle_filled(
+                                center,
+                                NAV_AVATAR_RADIUS,
+                                Color32::from_white_alpha(30),
+                            );
+                            if let Some(icon) = assets.icon("Account") {
+                                ui.painter().image(
+                                    icon,
+                                    Rect::from_center_size(center, Vec2::splat(16.0)),
+                                    full_uv(),
+                                    Color32::from_white_alpha(215),
+                                );
+                            }
+                        }
+                        let label_left = center.x + NAV_AVATAR_RADIUS + 8.0;
                         ui.painter().text(
-                            label_rect.left_center(),
+                            Pos2::new(label_left, rect.center().y),
                             Align2::LEFT_CENTER,
                             truncate_to_width(
                                 ui.painter(),
                                 profile_name,
-                                &FontId::proportional(label_size),
-                                label_rect.width(),
+                                &font,
+                                rect.right() - 12.0 - label_left,
                             ),
-                            FontId::proportional(label_size),
-                            Color32::from_white_alpha(210),
+                            font.clone(),
+                            if response.hovered() {
+                                Color32::WHITE
+                            } else {
+                                Color32::from_white_alpha(200)
+                            },
                         );
                         if response.clicked() {
                             activated = Some(NODE_PROFILE);
@@ -2872,9 +2862,9 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
         let tv = viewport.is_tv();
         let widths = ["Home", "Library", "Discover", "Calendar"]
             .map(|label| metrics.navigation_item_width(label, tv));
-        let bar_width = metrics.navigation_bar_width(viewport, "Profile") + 28.0;
-        let x = (viewport.width - bar_width).max(12.0) * 0.5 + 10.0;
-        let y = 12.0 + 8.0;
+        let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
+        let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
+        let y = NAV_BAR_TOP + NAV_BAR_PADDING;
         let mut left = x;
         let mut rects = Vec::with_capacity(5);
         for (index, node) in [NODE_HOME, NODE_LIBRARY, NODE_DISCOVER, NODE_CALENDAR]
@@ -2884,15 +2874,14 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             let item_width = widths[index];
             rects.push((
                 node,
-                Rect::from_min_size(Pos2::new(left, y), Vec2::new(item_width, 44.0)),
+                Rect::from_min_size(Pos2::new(left, y), Vec2::new(item_width, NAV_ITEM_HEIGHT)),
             ));
-            left += item_width + 4.0;
+            left += item_width + NAV_ITEM_GAP;
         }
         let profile_width = metrics.navigation_profile_width("Profile", tv);
-        left += 4.0 + 1.0 + 4.0;
         rects.push((
             NODE_PROFILE,
-            Rect::from_min_size(Pos2::new(left, y), Vec2::new(profile_width, 44.0)),
+            Rect::from_min_size(Pos2::new(left, y), Vec2::new(profile_width, NAV_ITEM_HEIGHT)),
         ));
         rects
     }
