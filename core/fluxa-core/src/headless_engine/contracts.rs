@@ -82,6 +82,12 @@ pub(super) enum AppAction {
         language: Option<String>,
         profile: Option<Value>,
     },
+    #[serde(rename = "continueWatchingPlaybackRequested")]
+    ContinueWatchingPlaybackRequested {
+        item: Value,
+        language: Option<String>,
+        profile: Option<Value>,
+    },
     #[serde(rename = "introSegmentsRequested")]
     IntroSegmentsRequested {
         imdb_id: String,
@@ -130,6 +136,17 @@ pub(super) enum AppAction {
     },
     #[serde(rename = "playerStreamsFailed")]
     PlayerStreamsFailed { error_code: Option<String> },
+    #[serde(rename = "playerResetForEpisode")]
+    PlayerResetForEpisode { video_id: String },
+    #[serde(rename = "playerTelemetryUpdated")]
+    PlayerTelemetryUpdated {
+        position_ms: i64,
+        stream_index: i64,
+        buffering: bool,
+        playback_ended: bool,
+        started: bool,
+        rendered: bool,
+    },
     #[serde(rename = "playerResolvePlaybackRequested")]
     PlayerResolvePlaybackRequested {
         url: String,
@@ -214,13 +231,13 @@ pub(super) enum AppAction {
         filters: Option<Value>,
         profile: Option<Value>,
         language: Option<String>,
+        load_catalog_filters: Option<bool>,
     },
     #[serde(rename = "discoverCatalogFiltersRequested")]
     DiscoverCatalogFiltersRequested {
         content_type: String,
         selected_catalog_key: Option<String>,
         profile: Option<Value>,
-        language: Option<String>,
     },
     #[serde(rename = "discoverPageRequested")]
     DiscoverPageRequested {
@@ -229,6 +246,7 @@ pub(super) enum AppAction {
         catalog_id: String,
         skip: Option<i32>,
         genre: Option<String>,
+        search: Option<String>,
     },
     #[serde(rename = "catalogPageRequested")]
     CatalogPageRequested {

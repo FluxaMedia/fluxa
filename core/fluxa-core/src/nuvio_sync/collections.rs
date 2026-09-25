@@ -189,7 +189,11 @@ fn fallback_collection_id(title: &str, index: usize, profile_index: Option<i64>)
         .collect::<String>()
         .trim_matches('_')
         .to_string();
-    let slug = if slug.is_empty() { index.to_string() } else { slug };
+    let slug = if slug.is_empty() {
+        index.to_string()
+    } else {
+        slug
+    };
     profile_index
         .map(|profile| format!("nuvio_{profile}_{slug}"))
         .unwrap_or_else(|| format!("nuvio_collection_{index}"))
@@ -220,10 +224,7 @@ pub(crate) fn map_collections_json(args_json: &str) -> Option<String> {
                         .unwrap_or(fallback_id),
                 ),
             );
-            out.insert(
-                "title".into(),
-                Value::String(title),
-            );
+            out.insert("title".into(), Value::String(title));
             match c.get("backdropImageUrl").filter(|v| v.is_string()) {
                 Some(url) => {
                     out.insert("imageUrl".into(), url.clone());
@@ -380,6 +381,9 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(result[0]["folders"][0]["catalogSources"][0]["catalogId"], "top");
+        assert_eq!(
+            result[0]["folders"][0]["catalogSources"][0]["catalogId"],
+            "top"
+        );
     }
 }

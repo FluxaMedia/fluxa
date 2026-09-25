@@ -1,6 +1,6 @@
+mod cloudstream;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod external_audio;
-mod cloudstream;
 mod language;
 mod magnet;
 mod meta;
@@ -8,9 +8,9 @@ mod selection;
 mod torrent_files;
 mod torrent_runtime;
 
+pub(crate) use cloudstream::*;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use external_audio::*;
-pub(crate) use cloudstream::*;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use language::*;
 pub(crate) use magnet::*;

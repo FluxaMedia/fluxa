@@ -114,6 +114,47 @@ fn normalize_categories_trailers(mut categories: Value) -> Value {
     categories
 }
 
+fn add_continue_watching_episode_labels(mut items: Value) -> Value {
+    let Some(items) = items.as_array_mut() else {
+        return items;
+    };
+    for item in items.iter_mut() {
+        let label = crate::library_state::format_episode_line_json(
+            item.get("lastEpisodeName").and_then(Value::as_str),
+            item.get("lastEpisodeSeason").and_then(Value::as_i64),
+            item.get("lastEpisodeNumber").and_then(Value::as_i64),
+            item.get("lastVideoId").and_then(Value::as_str),
+        );
+        if let Some(object) = item.as_object_mut() {
+            if label.is_empty() {
+                object.remove("episodeLabel");
+            } else {
+                object.insert("episodeLabel".to_owned(), Value::String(label));
+            }
+        }
+    }
+    Value::Array(items.clone())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::add_continue_watching_episode_labels;
+    use serde_json::json;
+
+    #[test]
+    fn continue_watching_episode_label_includes_locator_and_episode_name() {
+        let items = add_continue_watching_episode_labels(json!([{
+            "lastEpisodeName": "The Day I Become a Shinigami",
+            "lastVideoId": "show-id:1:1",
+        }]));
+
+        assert_eq!(
+            items[0]["episodeLabel"],
+            "S1:E1 The Day I Become a Shinigami"
+        );
+    }
+}
+
 pub(super) fn dispatch_refresh_continue_watching(
     engine: &mut HeadlessEngine,
     profile: Option<Value>,
@@ -161,6 +202,12 @@ pub(super) fn dispatch_load(
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Home);
     let profile_value = profile.unwrap_or_else(|| engine.state.profile.active.clone());
+    if !profile_value.is_null() {
+        // Home-load callers carry the selected profile explicitly. Mirror it
+        // into ambient Core state as well so snapshot consumers (including
+        // native renderers) see the same profile preferences as platform UI.
+        super::profile::update_active(engine, profile_value.clone());
+    }
     let profile_id = active_profile_id(&engine.state, &profile_value);
     let force = force.unwrap_or(false);
     if force {
@@ -199,6 +246,7 @@ pub(super) fn dispatch_direct_playback(
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::PlaybackPrep);
     engine.state.home.is_direct_loading = true;
+    player::reset_for_direct_playback(engine);
     vec![engine.effect(
         EffectKind::PrepareDirectPlayback,
         generation,
@@ -277,13 +325,71 @@ pub(super) fn complete(
     effect_type: &str,
     generation: u64,
     result: &EffectResultInput,
+    effect_payload: &Value,
 ) -> Vec<EffectEnvelope> {
+    if effect_type == "fetchCatalogPage" {
+        if result.status.is_ok() {
+            let category_id = effect_payload
+                .get("categoryId")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let items = result
+                .value
+                .get("items")
+                .cloned()
+                .unwrap_or_else(|| result.value.clone());
+            if let (Some(categories), Some(page)) = (
+                engine.state.home.categories.as_array_mut(),
+                items.as_array(),
+            ) && let Some(category) = categories
+                .iter_mut()
+                .find(|category| category.get("id").and_then(Value::as_str) == Some(category_id))
+            {
+                let current = category
+                    .get("items")
+                    .and_then(Value::as_array)
+                    .cloned()
+                    .unwrap_or_default();
+                let mut appended = current;
+                for item in page {
+                    let id = item.get("id").and_then(Value::as_str);
+                    let item_type = item.get("type").and_then(Value::as_str);
+                    let duplicate = appended.iter().any(|existing| {
+                        existing.get("id").and_then(Value::as_str) == id
+                            && existing.get("type").and_then(Value::as_str) == item_type
+                    });
+                    if !duplicate {
+                        appended.push(item.clone());
+                    }
+                }
+                if let Some(object) = category.as_object_mut() {
+                    object.insert("items".to_owned(), Value::Array(appended));
+                    object.insert("canLoadMore".to_owned(), Value::from(!page.is_empty()));
+                }
+            }
+            if engine.state.home.paging.category_id == category_id {
+                engine.state.home.paging.is_loading = false;
+                engine.state.home.paging.items = items;
+                engine.state.home.paging.error = Value::Null;
+            }
+        } else if engine.state.home.paging.category_id
+            == effect_payload
+                .get("categoryId")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+        {
+            engine.state.home.paging.is_loading = false;
+            engine.state.home.paging.error = normalize_error(result.error.clone());
+        }
+        return vec![];
+    }
     match effect_type {
         "refreshContinueWatching" => {
             if result.status.is_ok()
                 && let Some(cw) = result.value.get("continueWatching")
             {
-                engine.state.home.continue_watching = cw.clone();
+                engine.state.home.continue_watching =
+                    add_continue_watching_episode_labels(cw.clone());
             }
         }
         "readHomeBootstrap" => {
@@ -298,7 +404,8 @@ pub(super) fn complete(
                         engine.state.home.categories = normalize_categories_trailers(categories);
                     }
                     if let Some(continue_watching) = result.value.get("continueWatching").cloned() {
-                        engine.state.home.continue_watching = continue_watching;
+                        engine.state.home.continue_watching =
+                            add_continue_watching_episode_labels(continue_watching);
                     }
                     if let Some(watchlist) = result.value.get("watchlist").cloned() {
                         engine.state.home.watchlist = watchlist;
@@ -336,21 +443,6 @@ pub(super) fn complete(
                         Value::Null,
                         Value::String(error_code(&result.error)),
                     );
-                }
-            }
-        }
-        "fetchCatalogPage" => {
-            if generation == engine.state.runtime.get(GenerationKey::Home) {
-                engine.state.home.paging.is_loading = false;
-                if result.status.is_ok() {
-                    engine.state.home.paging.items = result
-                        .value
-                        .get("items")
-                        .cloned()
-                        .unwrap_or_else(|| result.value.clone());
-                    engine.state.home.paging.error = Value::Null;
-                } else {
-                    engine.state.home.paging.error = normalize_error(result.error.clone());
                 }
             }
         }

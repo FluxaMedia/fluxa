@@ -30,7 +30,13 @@ pub(super) fn route_nuvio_sync(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object
         "nuvioBuildLocalProfiles" => opt_json(nuvio_sync::build_local_profiles_json(args_json)),
+        "nuvioEffectiveProfileScopes" => {
+            opt_json(nuvio_sync::effective_profile_scopes_json(args_json))
+        }
         "nuvioLibraryToWatchlist" => opt_json(nuvio_sync::library_to_watchlist_json(args_json)),
+        "nuvioProviderLibrarySnapshot" => {
+            opt_json(nuvio_sync::provider_library_snapshot_json(args_json))
+        }
         "nuvioProgressMetaNeeds" => opt_json(nuvio_sync::progress_meta_needs_json(args_json)),
         "nuvioProgressPresentation" => opt_json(nuvio_sync::progress_presentation_json(args_json)),
         "nuvioProgressSyncRequestPlan" => {
@@ -77,9 +83,9 @@ pub(super) fn route_nuvio_sync(method: &str, args_json: &str) -> Outcome {
         "nuvioPluginContentType" => Ok(Value::String(nuvio_sync::plugin_content_type(&arg_str(
             args_json, "value",
         )?))),
-        "nuvioCandidateContentTypes" => Ok(json!(nuvio_sync::candidate_content_types(
-            &arg_str(args_json, "value")?
-        ))),
+        "nuvioCandidateContentTypes" => Ok(json!(nuvio_sync::candidate_content_types(&arg_str(
+            args_json, "value"
+        )?))),
 
         _ => Err(unknown_method()),
     }

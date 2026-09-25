@@ -24,6 +24,7 @@ pub(super) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         "playerSourceSidebarPlan" => {
             opt_json(player_policy::player_source_sidebar_plan_json(args_json))
         }
+        "streamSubtitlesResult" => opt_json(player_policy::stream_subtitles_result_json(args_json)),
         "canPrefetchNextEpisode" => {
             let args = object(args_json)?;
             Ok(json!(player_policy::can_prefetch_next_episode_json(
@@ -42,10 +43,11 @@ pub(super) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         }
         "chapterSkipSegments" => {
             let args = object(args_json)?;
-            into_json(desktop_playback::chapter_skip_segments_json(field_str(
-                &args,
-                "chaptersJson",
-            )?))
+            let duration_ms = args.get("durationMs").and_then(Value::as_i64).unwrap_or(0);
+            into_json(desktop_playback::chapter_skip_segments_json(
+                field_str(&args, "chaptersJson")?,
+                duration_ms,
+            ))
         }
 
         _ => Err(unknown_method()),

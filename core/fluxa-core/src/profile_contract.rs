@@ -596,6 +596,11 @@ mod tests {
         )
         .unwrap();
 
-        assert_eq!(result["migratedProfile"]["localAddons"].as_array().map(Vec::len), Some(0));
+        assert_eq!(
+            result["migratedProfile"]["localAddons"]
+                .as_array()
+                .map(Vec::len),
+            Some(0)
+        );
     }
 }

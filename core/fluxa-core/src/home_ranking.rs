@@ -1,7 +1,8 @@
 mod billboard;
 mod bootstrap;
-mod folders;
+mod catalog;
 mod filter;
+mod folders;
 mod helpers;
 mod ranking;
 
@@ -10,12 +11,15 @@ pub(crate) use billboard::{
     billboard_has_backdrop_json, billboard_identity_key_json, billboard_normalized_title,
     billboard_visual_score_json, build_billboard_pool_json, normalize_home_catalog_items_json,
 };
-pub(crate) use bootstrap::{home_hero_episode_plan_json, home_hero_plan_json};
+pub(crate) use bootstrap::{
+    home_hero_episode_plan_json, home_hero_plan_json, home_metadata_feed_plan_json,
+};
+pub(crate) use catalog::annotate_catalog_items_json;
+pub(crate) use filter::filter_home_categories_json;
 pub(crate) use folders::{
     build_home_collection_shelves_json, folder_page_state_json, folder_source_page_plan_json,
     merge_folder_sources_json,
 };
-pub(crate) use filter::filter_home_categories_json;
 pub(crate) use ranking::{
     curate_home_items_json, home_overlap_ratio_json, home_personalization_score_json,
     home_prioritize_rows_json, optimize_home_rows_json,
@@ -25,6 +29,46 @@ mod tests {
     use super::folders::resolve_folder_catalog_sources;
     use super::*;
     use serde_json::{Value, json};
+
+    #[test]
+    fn home_metadata_feed_plan_shares_order_and_unknown_selection_fallback() {
+        let feeds = json!([
+            {"key":"a", "label":"A"},
+            {"key":"b", "label":"B"},
+            {"key":"c", "label":"C"}
+        ]);
+        let planned: Value = serde_json::from_str(
+            &home_metadata_feed_plan_json(
+                &json!({"feeds":feeds.clone(), "order":["c", "a"], "selectedKeys":["removed"]})
+                    .to_string(),
+            )
+            .expect("home feed plan"),
+        )
+        .expect("valid home feed plan");
+        let keys = planned
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter_map(|feed| feed["key"].as_str())
+            .collect::<Vec<_>>();
+        assert_eq!(keys, vec!["c", "a", "b"]);
+
+        let empty_selection_defaults_to_all: Value = serde_json::from_str(
+            &home_metadata_feed_plan_json(
+                &json!({"feeds":feeds, "order":[], "selectedKeys":[]}).to_string(),
+            )
+            .expect("empty selection plan"),
+        )
+        .expect("valid empty plan");
+        assert_eq!(
+            empty_selection_defaults_to_all,
+            json!([
+                {"key":"a", "label":"A"},
+                {"key":"b", "label":"B"},
+                {"key":"c", "label":"C"}
+            ])
+        );
+    }
 
     #[test]
     fn hero_episode_plan_skips_specials_and_advances_from_progress() {
@@ -303,5 +347,75 @@ mod tests {
         .unwrap();
 
         assert_eq!(plan["logoTargets"][0]["id"], "tt1");
+    }
+
+    #[test]
+    fn hero_plan_uses_selected_catalog_items_not_collection_tiles_or_fallback_billboard() {
+        let collection_tile = json!({
+            "id": "trending-folder",
+            "type": "catalog_folder",
+            "name": "Trending",
+            "background": "https://image.example/collection-collage.webp",
+        });
+        let plan: Value = serde_json::from_str(
+            &home_hero_plan_json(
+                &json!({
+                    "categories": [
+                        {"id":"my-collection", "type":"collection", "items":[collection_tile.clone()]},
+                        {"id":"selected-feed", "type":"movie", "items":[{"id":"tt123", "type":"movie", "background":"https://image.example/catalog-backdrop.jpg"}]},
+                    ],
+                    "billboard": collection_tile,
+                    "prefs": {"heroFeedToggles":["selected-feed"]},
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(plan["billboard"]["id"], "tt123");
+        assert!(
+            plan["slides"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|slide| slide["id"] != "trending-folder")
+        );
+
+        let collections_only: Value = serde_json::from_str(
+            &home_hero_plan_json(
+                &json!({
+                    "categories": [{"id":"my-collection", "type":"collection", "items":[{"id":"folder", "type":"catalog_folder", "background":"https://image.example/folder.webp"}]}],
+                    "billboard": {"id":"folder", "type":"catalog_folder", "background":"https://image.example/folder.webp"},
+                    "prefs": {},
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert!(collections_only["billboard"].is_null());
+        assert!(collections_only["slides"].as_array().unwrap().is_empty());
+    }
+
+    #[test]
+    fn hero_plan_recovers_when_saved_feed_keys_are_stale() {
+        let plan: Value = serde_json::from_str(
+            &home_hero_plan_json(
+                &json!({
+                    "categories": [{
+                        "id": "current-feed",
+                        "type": "movie",
+                        "items": [{"id":"tt123", "background":"https://image.example/title.webp"}],
+                    }],
+                    "prefs": {"heroFeedToggles": ["removed-addon-feed"]},
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(plan["billboard"]["id"], "tt123");
     }
 }

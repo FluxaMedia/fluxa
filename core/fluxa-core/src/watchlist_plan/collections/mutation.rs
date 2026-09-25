@@ -71,10 +71,9 @@ pub(crate) fn collection_mutation_plan_json(request_json: &str) -> Option<String
             let mut next_folder = folder;
             next_folder["title"] = Value::String(title);
             let mut next_folders = folders;
-            if let Some(index) = next_folders
-                .iter()
-                .position(|entry| entry.get("id").and_then(Value::as_str) == Some(folder_id.as_str()))
-            {
+            if let Some(index) = next_folders.iter().position(|entry| {
+                entry.get("id").and_then(Value::as_str) == Some(folder_id.as_str())
+            }) {
                 next_folders[index] = next_folder;
             } else {
                 next_folders.push(next_folder);

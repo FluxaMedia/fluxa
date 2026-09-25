@@ -248,7 +248,10 @@ fn is_public_plugin_ipv4(ip: std::net::Ipv4Addr) -> bool {
 }
 
 fn is_public_plugin_ipv6(ip: std::net::Ipv6Addr) -> bool {
-    !ip.is_loopback() && !ip.is_unspecified() && !ip.is_unique_local() && !ip.is_unicast_link_local()
+    !ip.is_loopback()
+        && !ip.is_unspecified()
+        && !ip.is_unique_local()
+        && !ip.is_unicast_link_local()
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

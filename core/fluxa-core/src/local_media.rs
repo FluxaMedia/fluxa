@@ -5,7 +5,7 @@
 //! candidates, and mapping a parsed episode to a metadata video.
 
 use regex::Regex;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::sync::OnceLock;
 
 fn video_extensions() -> &'static [&'static str] {
@@ -103,7 +103,10 @@ fn accepts_content_type(kind: &str, content_type: &str) -> bool {
     if kind.eq_ignore_ascii_case("movies") {
         content_type.eq_ignore_ascii_case("movie")
     } else {
-        matches!(content_type.to_ascii_lowercase().as_str(), "series" | "tv" | "anime")
+        matches!(
+            content_type.to_ascii_lowercase().as_str(),
+            "series" | "tv" | "anime"
+        )
     }
 }
 
@@ -381,14 +384,15 @@ fn resolve_video(args: &Value) -> Option<Value> {
 
 pub(crate) fn route(method: &str, args: &Value) -> Option<Value> {
     match method {
-        "localMediaIsVideoFile" => Some(json!(args
-            .get("name")
-            .and_then(Value::as_str)
-            .is_some_and(is_video_file))),
+        "localMediaIsVideoFile" => Some(json!(
+            args.get("name")
+                .and_then(Value::as_str)
+                .is_some_and(is_video_file)
+        )),
         "localMediaContentType" => Some(json!(content_type(args.get("name")?.as_str()?))),
-        "localMediaRequestedContentType" => Some(json!(requested_content_type(
-            args.get("kind")?.as_str()?
-        ))),
+        "localMediaRequestedContentType" => {
+            Some(json!(requested_content_type(args.get("kind")?.as_str()?)))
+        }
         "localMediaAcceptsContentType" => Some(json!(accepts_content_type(
             args.get("kind")?.as_str()?,
             args.get("contentType")?.as_str()?

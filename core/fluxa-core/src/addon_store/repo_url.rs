@@ -43,9 +43,12 @@ pub(crate) fn normalize_cloudstream_repo_input(raw: &str) -> String {
         return format!("https://{trimmed}");
     }
     let valid_shortcode = trimmed.matches('/').count() == 1
-        && trimmed
-            .split('/')
-            .all(|part| !part.is_empty() && part.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.')));
+        && trimmed.split('/').all(|part| {
+            !part.is_empty()
+                && part
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '_' | '-' | '.'))
+        });
     if valid_shortcode {
         return format!("https://raw.githubusercontent.com/{trimmed}/builds");
     }

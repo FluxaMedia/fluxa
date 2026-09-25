@@ -2,6 +2,63 @@ use super::super::*;
 use serde_json::{Value, json};
 
 #[test]
+fn library_hydration_carries_the_selected_provider_source_to_the_host_effect() {
+    let handle = create_headless_engine(
+        r#"{"profile":{"active":{"id":"p1","integrationLibrarySource":"nuvio"},"activeProfileId":"p1"}}"#,
+    );
+    let requested: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(handle, r#"{"type":"libraryHydrateRequested"}"#).unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(requested["effects"][0]["type"], "readLibraryState");
+    assert_eq!(requested["effects"][0]["payload"]["profileId"], "p1");
+    assert_eq!(requested["effects"][0]["payload"]["source"], "nuvio");
+    assert_eq!(requested["effects"][0]["payload"]["profile"]["id"], "p1");
+    assert_eq!(
+        requested["effects"][0]["payload"]["profile"]["integrationLibrarySource"],
+        "nuvio"
+    );
+    assert!(destroy_headless_engine(handle));
+}
+
+#[test]
+fn library_hydration_normalizes_platform_snapshot_shapes_in_core() {
+    let handle = create_headless_engine(r#"{"profile":{"activeProfileId":"p1"}}"#);
+    let requested: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(handle, r#"{"type":"libraryHydrateRequested"}"#).unwrap(),
+    )
+    .unwrap();
+    let effect_id = requested["effects"][0]["id"].as_str().unwrap();
+    let completed: Value = serde_json::from_str(
+        &headless_engine_complete_effect_json(
+            handle,
+            &json!({
+                "effectId": effect_id,
+                "status": "ok",
+                "value": {
+                    "watchlist": [{"id": "tt1"}],
+                    "continueWatching": [],
+                    "favorites": [{"id": "tt2"}],
+                    "watched": {"tt1": ["tt1:1:2", "tt1:1:3"]}
+                }
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    assert_eq!(completed["state"]["library"]["watchlist"][0]["id"], "tt1");
+    assert_eq!(completed["state"]["library"]["liked"][0]["id"], "tt2");
+    assert_eq!(completed["state"]["library"]["watched"]["tt1:1:2"], true);
+    assert_eq!(completed["state"]["library"]["watched"]["tt1:1:3"], true);
+    assert_eq!(completed["state"]["library"]["dropped"], json!([]));
+    assert_eq!(completed["state"]["library"]["completed"], json!([]));
+    assert!(destroy_headless_engine(handle));
+}
+
+#[test]
 fn library_commands_are_storage_effects_owned_by_core() {
     let handle = create_headless_engine(r#"{"profile":{"activeProfileId":"p1"}}"#);
     let requested: Value = serde_json::from_str(
@@ -15,6 +72,7 @@ fn library_commands_are_storage_effects_owned_by_core() {
 
     assert_eq!(requested["effects"][0]["type"], "writeLibraryCommand");
     assert_eq!(requested["effects"][0]["payload"]["profileId"], "p2");
+    assert_eq!(requested["effects"][0]["payload"]["source"], "local");
     assert_eq!(
         requested["effects"][0]["payload"]["command"]["type"],
         "toggleWatchlist"

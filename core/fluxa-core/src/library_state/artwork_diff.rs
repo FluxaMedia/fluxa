@@ -2,7 +2,11 @@ use super::continue_watching::format_episode_line_json;
 use serde_json::{Value, json};
 
 fn progress_seconds(value: f64, duration: f64) -> f64 {
-    if duration >= 100_000.0 { value / 1_000.0 } else { value }
+    if duration >= 100_000.0 {
+        value / 1_000.0
+    } else {
+        value
+    }
 }
 
 /// Selects the best artwork URL for a continue-watching card.
@@ -88,9 +92,19 @@ pub(crate) fn continue_watching_card_fields_json(
                 item.get("lastEpisodeNumber").and_then(Value::as_i64),
                 item.get("lastVideoId").and_then(Value::as_str),
             );
-            let offset = item.get("timeOffset").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
-            let duration = item.get("duration").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
-            let progress_percent = item.get("resumeProgressPercent").and_then(Value::as_f64)
+            let offset = item
+                .get("timeOffset")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0)
+                .max(0.0);
+            let duration = item
+                .get("duration")
+                .and_then(Value::as_f64)
+                .unwrap_or(0.0)
+                .max(0.0);
+            let progress_percent = item
+                .get("resumeProgressPercent")
+                .and_then(Value::as_f64)
                 .filter(|value| value.is_finite())
                 .or_else(|| (duration > 0.0).then_some(offset / duration * 100.0))
                 .map(|value| value.clamp(0.0, 100.0));
@@ -116,9 +130,19 @@ pub(crate) fn continue_watching_card_fields_json(
 
 pub(crate) fn continue_watching_progress_fields_json(item_json: &str) -> Option<String> {
     let item: Value = serde_json::from_str(item_json).ok()?;
-    let offset = item.get("timeOffset").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
-    let duration = item.get("duration").and_then(Value::as_f64).unwrap_or(0.0).max(0.0);
-    let percent = item.get("resumeProgressPercent").and_then(Value::as_f64)
+    let offset = item
+        .get("timeOffset")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.0)
+        .max(0.0);
+    let duration = item
+        .get("duration")
+        .and_then(Value::as_f64)
+        .unwrap_or(0.0)
+        .max(0.0);
+    let percent = item
+        .get("resumeProgressPercent")
+        .and_then(Value::as_f64)
         .filter(|value| value.is_finite())
         .or_else(|| (duration > 0.0).then_some(offset / duration * 100.0))
         .map(|value| value.clamp(0.0, 100.0))
@@ -126,15 +150,19 @@ pub(crate) fn continue_watching_progress_fields_json(item_json: &str) -> Option<
     let content_type = item.get("type").and_then(Value::as_str).unwrap_or("");
     let is_up_next = matches!(content_type, "series" | "tv" | "anime")
         && (item.get("continueWatchingBadge").and_then(Value::as_str) == Some("upNext")
-            || percent <= 0.0 || percent >= 99.5);
+            || percent <= 0.0
+            || percent >= 99.5);
     let watched_seconds = progress_seconds(offset, duration);
     let remaining_seconds = progress_seconds((duration - offset).max(0.0), duration);
-    Some(json!({
-        "progressPercent": percent,
-        "isUpNext": is_up_next,
-        "watchedSeconds": watched_seconds,
-        "remainingSeconds": remaining_seconds,
-    }).to_string())
+    Some(
+        json!({
+            "progressPercent": percent,
+            "isUpNext": is_up_next,
+            "watchedSeconds": watched_seconds,
+            "remainingSeconds": remaining_seconds,
+        })
+        .to_string(),
+    )
 }
 
 /// Decides which entries of a bool map (e.g. watched) actually changed and need

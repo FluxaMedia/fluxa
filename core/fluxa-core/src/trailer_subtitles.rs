@@ -9,7 +9,9 @@ pub(crate) fn trailer_youtube_video_ids_json(input: &str) -> Option<String> {
     let urls = value.get("urls")?.as_array()?;
     let mut ids = Vec::new();
     for url in urls.iter().filter_map(Value::as_str) {
-        if let Some(id) = youtube_video_id(url) && !ids.contains(&id) {
+        if let Some(id) = youtube_video_id(url)
+            && !ids.contains(&id)
+        {
             ids.push(id);
         }
     }
@@ -55,17 +57,23 @@ pub(crate) fn trailer_direct_selection_json(input: &str) -> Option<String> {
     let selected = best_declared
         .map(|(url, mime_type, _)| (url, mime_type))
         .or(first_unknown);
-    serde_json::to_string(&selected.map(|(url, mime_type)| {
-        json!({ "url": url, "mimeType": mime_type })
-    }))
+    serde_json::to_string(
+        &selected.map(|(url, mime_type)| json!({ "url": url, "mimeType": mime_type })),
+    )
     .ok()
 }
 
 fn youtube_video_id(raw: &str) -> Option<String> {
     let parsed = Url::parse(raw.trim()).ok()?;
-    let host = parsed.host_str()?.trim_end_matches('.').to_ascii_lowercase();
+    let host = parsed
+        .host_str()?
+        .trim_end_matches('.')
+        .to_ascii_lowercase();
     let candidate = if host == "youtu.be" || host.ends_with(".youtu.be") {
-        parsed.path_segments()?.find(|segment| !segment.is_empty())?.to_string()
+        parsed
+            .path_segments()?
+            .find(|segment| !segment.is_empty())?
+            .to_string()
     } else if host == "youtube.com" || host.ends_with(".youtube.com") {
         parsed
             .query_pairs()
@@ -95,7 +103,13 @@ fn direct_trailer_mime_type(raw: &str) -> Option<&'static str> {
     if !matches!(parsed.scheme(), "http" | "https") {
         return None;
     }
-    match parsed.path().rsplit('.').next()?.to_ascii_lowercase().as_str() {
+    match parsed
+        .path()
+        .rsplit('.')
+        .next()?
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "m3u8" => Some("application/x-mpegURL"),
         "mpd" => Some("application/dash+xml"),
         "webm" => Some("video/webm"),
@@ -142,11 +156,14 @@ pub(crate) fn trailer_playback_policy_json(input: &str) -> Option<String> {
         .get("autoplay")
         .and_then(Value::as_bool)
         .unwrap_or(true);
-    Some(json!({
-        "stallTimeoutMs": if is_autoplay { 7_000 } else { 10_000 },
-        "maxRetries": 1,
-        "retryDelayMs": 250,
-    }).to_string())
+    Some(
+        json!({
+            "stallTimeoutMs": if is_autoplay { 7_000 } else { 10_000 },
+            "maxRetries": 1,
+            "retryDelayMs": 250,
+        })
+        .to_string(),
+    )
 }
 
 fn language(value: Option<&str>) -> Option<String> {

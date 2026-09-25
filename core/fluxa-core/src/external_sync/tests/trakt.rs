@@ -21,9 +21,10 @@ fn trakt_ids_support_stremio_episode_ids() {
 
 #[test]
 fn trakt_collection_body_uses_provider_resource_for_content_type() {
-    let movie = trakt_collection_body_json(r#"{"idsJson":"{\"imdb\":\"tt1\"}","contentType":"movie"}"#)
-        .and_then(|body| serde_json::from_str::<Value>(&body).ok())
-        .unwrap();
+    let movie =
+        trakt_collection_body_json(r#"{"idsJson":"{\"imdb\":\"tt1\"}","contentType":"movie"}"#)
+            .and_then(|body| serde_json::from_str::<Value>(&body).ok())
+            .unwrap();
     assert!(movie.get("movies").is_some());
     assert!(movie.get("shows").is_none());
 

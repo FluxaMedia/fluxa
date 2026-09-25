@@ -10,8 +10,8 @@ mod calendar_routes;
 mod content_identity_routes;
 mod content_warning_routes;
 mod core_addon_store_routes;
-mod discord_presence_routes;
 mod device_auth_routes;
+mod discord_presence_routes;
 mod engine_routes;
 mod external_sync_routes;
 mod fluxa_sync_routes;
@@ -40,8 +40,8 @@ use calendar_routes::route_calendar;
 use content_identity_routes::route_content_identity;
 use content_warning_routes::route_content_warnings;
 use core_addon_store_routes::{route_addon_store, route_core_contract, route_profile_avatar_pack};
-use discord_presence_routes::route_discord_presence;
 use device_auth_routes::route_device_auth;
+use discord_presence_routes::route_discord_presence;
 use engine_routes::route_engine_lifecycle;
 use external_sync_routes::{
     route_external_sync_anilist, route_external_sync_simkl, route_external_sync_trakt,
@@ -80,9 +80,10 @@ use crate::{
     desktop_playback, device_resource, discovery_plan, external_sync, fluxa_sync,
     headless_adapter_plan, headless_engine, home_ranking, integration_settings, intro_segments,
     library_persistence, library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan,
-    player_flow, player_policy, player_scrobble, plugin_runtime, plugins, profile_avatar_pack, profile_contract,
-    profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow, runtime_label, search_plan,
-    stream_badges, stream_policy, subtitle_sync, tmdb_plan, trailer_subtitles, watchlist_plan,
+    player_flow, player_policy, player_scrobble, plugin_runtime, plugins, profile_avatar_pack,
+    profile_contract, profile_prefs, publicmetadb_plan, recommendation_policy, repository_flow,
+    runtime_label, search_plan, stream_badges, stream_policy, subtitle_sync, tmdb_plan,
+    trailer_subtitles, watchlist_plan,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -554,7 +555,10 @@ mod tests {
             r#"{"maxHeight":1080,"trailers":[{"title":"4K","url":"https://video.example/4k.m3u8"},{"title":"1080p","url":"https://video.example/1080.mp4"}]}"#,
         ));
         assert_eq!(direct["ok"], json!(true));
-        assert_eq!(direct["value"]["url"], json!("https://video.example/1080.mp4"));
+        assert_eq!(
+            direct["value"]["url"],
+            json!("https://video.example/1080.mp4")
+        );
     }
 
     #[test]
@@ -818,6 +822,13 @@ mod tests {
             .lines()
             .map(str::trim)
             .filter(|l| !l.is_empty())
+            .filter(|method| {
+                cfg!(feature = "dv-codec")
+                    || !matches!(
+                        *method,
+                        "dolbyVisionConvertRpu" | "dolbyVisionRpuInfo" | "dolbyVisionProcessSample"
+                    )
+            })
             .collect();
         assert!(!methods.is_empty(), "fixture list must not be empty");
 

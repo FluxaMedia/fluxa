@@ -3,12 +3,11 @@ mod collections;
 mod delta_state;
 mod export_push;
 mod helpers;
-mod profiles;
 mod plugin_content;
+mod profiles;
 mod progress_sync;
 mod reconciliation;
 
-pub(crate) use helpers::canonical_content_type;
 pub(crate) use addon_priority::{addon_state_json, sort_addons_by_priority_json};
 pub(crate) use collections::map_collections_json;
 pub(crate) use delta_state::{
@@ -19,11 +18,12 @@ pub(crate) use export_push::{
     collection_request_json, export_push_plan_json, library_item_request_json,
     playback_progress_request_json, watched_items_request_json,
 };
-pub(crate) use profiles::build_local_profiles_json;
+pub(crate) use helpers::canonical_content_type;
 pub(crate) use plugin_content::{candidate_content_types, plugin_content_id, plugin_content_type};
+pub(crate) use profiles::{build_local_profiles_json, effective_profile_scopes_json};
 pub(crate) use progress_sync::{
     import_merge_plan_json, library_to_watchlist_json, progress_meta_needs_json,
-    progress_presentation_json, resolve_continue_watching_json,
+    progress_presentation_json, provider_library_snapshot_json, resolve_continue_watching_json,
 };
 pub(crate) use reconciliation::{addon_reconciliation_plan_json, library_mutation_plan_json};
 #[cfg(test)]
@@ -39,6 +39,56 @@ mod tests {
         }
         assert_eq!(canonical_content_type("movie"), "movie");
         assert_eq!(canonical_content_type(""), "movie");
+    }
+
+    #[test]
+    fn effective_profile_scopes_apply_primary_inheritance_for_all_consumers() {
+        let profiles = json!([
+            {"profile_index": 1, "uses_primary_addons": false, "uses_primary_plugins": false},
+            {"profile_index": 2, "uses_primary_addons": true, "uses_primary_plugins": false},
+            {"profileIndex": 3, "usesPrimaryAddons": false, "usesPrimaryPlugins": true}
+        ]);
+        let resolve = |profile_index| {
+            let input = json!({"profileIndex": profile_index, "profiles": profiles});
+            serde_json::from_str::<Value>(
+                &effective_profile_scopes_json(&input.to_string()).unwrap(),
+            )
+            .unwrap()
+        };
+        assert_eq!(resolve(1), json!({"addons": 1, "plugins": 1}));
+        assert_eq!(resolve(2), json!({"addons": 1, "plugins": 2}));
+        assert_eq!(resolve(3), json!({"addons": 3, "plugins": 1}));
+        assert_eq!(resolve(4), json!({"addons": 4, "plugins": 4}));
+    }
+
+    #[test]
+    fn provider_library_snapshot_maps_nuvio_watchlist_and_progress_for_native_consumers() {
+        let snapshot: Value = serde_json::from_str(
+            &provider_library_snapshot_json(
+                &json!({
+                    "library": [{
+                        "content_id": "tt1", "content_type": "series", "name": "Show",
+                        "poster": "poster.jpg", "release_info": "2024", "genres": ["Drama"]
+                    }],
+                    "progress": [{
+                        "content_id": "tt1", "content_type": "series", "video_id": "tt1:1:2",
+                        "season": 1, "episode": 2, "position": 120_000, "duration": 600_000,
+                        "last_watched": 1_700_000_000_000i64
+                    }]
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(snapshot["watchlist"][0]["id"], "tt1");
+        assert_eq!(snapshot["watchlist"][0]["inWatchlist"], true);
+        assert_eq!(snapshot["continueWatching"][0]["name"], "Show");
+        assert_eq!(snapshot["continueWatching"][0]["poster"], "poster.jpg");
+        assert_eq!(snapshot["continueWatching"][0]["videoId"], "tt1:1:2");
+        assert_eq!(snapshot["continueWatching"][0]["timeOffset"], 120);
+        assert_eq!(snapshot["continueWatching"][0]["duration"], 600);
     }
 
     fn merge(args: Value) -> Value {

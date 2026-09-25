@@ -122,8 +122,8 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
             }) else {
                 return serde_json::to_string(&profile).ok();
             };
-            let to = (from as i64 + direction)
-                .clamp(0, local.len().saturating_sub(1) as i64) as usize;
+            let to =
+                (from as i64 + direction).clamp(0, local.len().saturating_sub(1) as i64) as usize;
             if from != to {
                 let item = local.remove(from);
                 local.insert(to, item);
@@ -133,7 +133,10 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
     }
     let object = profile.as_object_mut()?;
     object.insert("localAddons".to_string(), Value::Array(local.clone()));
-    object.insert("disabledLocalAddons".to_string(), Value::Array(disabled.clone()));
+    object.insert(
+        "disabledLocalAddons".to_string(),
+        Value::Array(disabled.clone()),
+    );
     let settings = object
         .entry("addonSettings")
         .or_insert_with(|| json!({}))

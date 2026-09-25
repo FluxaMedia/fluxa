@@ -1,5 +1,6 @@
 use super::state::PlayerState;
 use crate::headless_engine::HeadlessEngine;
+use crate::headless_engine::home;
 use crate::headless_engine::library;
 use crate::headless_engine::state::GenerationKey;
 use crate::player_flow::{self, PlayerFlowAction};
@@ -234,6 +235,113 @@ pub(in crate::headless_engine) fn dispatch_load_streams(
         Some(engine.effect(kind, generation, payload))
     }));
     save_effects
+}
+
+pub(in crate::headless_engine) fn dispatch_continue_watching_playback(
+    engine: &mut HeadlessEngine,
+    item: Value,
+    language: Option<String>,
+    profile: Option<Value>,
+) -> Vec<EffectEnvelope> {
+    let content_type = item
+        .get("type")
+        .and_then(Value::as_str)
+        .unwrap_or("movie")
+        .to_owned();
+    let media_id = item
+        .get("id")
+        .or_else(|| item.get("_id"))
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let current_video_id = item
+        .get("lastVideoId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+        .unwrap_or(&media_id)
+        .to_owned();
+
+    let mut saved_stream = item
+        .get("lastStream")
+        .filter(|stream| stream.is_object())
+        .cloned()
+        .unwrap_or(Value::Null);
+    if !saved_stream.is_object() {
+        saved_stream = Value::Object(serde_json::Map::new());
+    }
+    if let Value::Object(stream) = &mut saved_stream {
+        let has_source = ["url", "playableUrl", "infoHash", "ytId", "yt_ID"]
+            .iter()
+            .any(|key| {
+                stream
+                    .get(*key)
+                    .and_then(Value::as_str)
+                    .is_some_and(|v| !v.is_empty())
+            });
+        if !has_source
+            && let Some(url) = item
+                .get("lastStreamUrl")
+                .and_then(Value::as_str)
+                .filter(|url| !url.trim().is_empty())
+        {
+            stream.insert("url".to_owned(), Value::String(url.to_owned()));
+        }
+        if stream.get("title").is_none()
+            && let Some(title) = item.get("lastStreamTitle").filter(|value| !value.is_null())
+        {
+            stream.insert("title".to_owned(), title.clone());
+        }
+        if stream.get("name").is_none()
+            && let Some(name) = item.get("lastStreamTitle").filter(|value| !value.is_null())
+        {
+            stream.insert("name".to_owned(), name.clone());
+        }
+    }
+    let has_saved_source = ["url", "playableUrl", "infoHash", "ytId", "yt_ID"]
+        .iter()
+        .any(|key| {
+            saved_stream
+                .get(*key)
+                .and_then(Value::as_str)
+                .is_some_and(|v| !v.is_empty())
+        });
+
+    if has_saved_source && !current_video_id.is_empty() {
+        engine.state.player.direct_playback_target = Value::Null;
+        return dispatch_load_streams(
+            engine,
+            content_type,
+            current_video_id.clone(),
+            Some(current_video_id.clone()),
+            Some(current_video_id),
+            Some(vec![saved_stream]),
+            Some(0),
+            item.get("lastStreamUrl")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            item.get("lastStreamTitle")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            None,
+            None,
+            None,
+            item.get("name")
+                .or_else(|| item.get("title"))
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            item.get("originalName")
+                .and_then(Value::as_str)
+                .map(ToOwned::to_owned),
+            item.get("year")
+                .and_then(Value::as_i64)
+                .and_then(|year| i32::try_from(year).ok()),
+            language,
+            profile,
+            None,
+        );
+    }
+
+    home::dispatch_direct_playback(engine, item, language, profile)
 }
 
 #[allow(clippy::too_many_arguments)]

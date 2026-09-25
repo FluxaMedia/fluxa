@@ -38,6 +38,11 @@ impl FluxaCore {
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+    pub fn destroy_headless_engine(handle: u64) -> bool {
+        guard(false, || headless_engine::destroy_headless_engine(handle))
+    }
+
+    #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<String> {
         guard(None, || {
             headless_engine::headless_engine_dispatch_json(handle, action_json)
@@ -45,9 +50,26 @@ impl FluxaCore {
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+    pub fn headless_engine_dispatch_effects_json(handle: u64, action_json: &str) -> Option<String> {
+        guard(None, || {
+            headless_engine::headless_engine_dispatch_effects_json(handle, action_json)
+        })
+    }
+
+    #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
     pub fn headless_engine_complete_effect_json(handle: u64, result_json: &str) -> Option<String> {
         guard(None, || {
             headless_engine::headless_engine_complete_effect_json(handle, result_json)
+        })
+    }
+
+    #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+    pub fn headless_engine_complete_discover_page_json(
+        handle: u64,
+        result_json: &str,
+    ) -> Option<String> {
+        guard(None, || {
+            headless_engine::headless_engine_complete_discover_page_json(handle, result_json)
         })
     }
 
@@ -95,9 +117,9 @@ impl FluxaCore {
     }
 
     #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
-    pub fn chapter_skip_segments_json(chapters_json: &str) -> String {
+    pub fn chapter_skip_segments_json(chapters_json: &str, duration_ms: i64) -> String {
         guard("[]".to_string(), || {
-            desktop_playback::chapter_skip_segments_json(chapters_json)
+            desktop_playback::chapter_skip_segments_json(chapters_json, duration_ms)
         })
     }
 

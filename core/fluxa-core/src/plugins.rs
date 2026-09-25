@@ -513,11 +513,13 @@ mod tests {
             .unwrap()
             .pop()
             .unwrap();
-        let plan = crate::player_policy::stream_shell_plan_json(&stream_to_json(&stream))
-            .unwrap();
+        let plan = crate::player_policy::stream_shell_plan_json(&stream_to_json(&stream)).unwrap();
         let plan: Value = serde_json::from_str(&plan).unwrap();
 
-        assert_eq!(plan["requestHeaders"]["Referer"], "https://vidrame.example/embed/abc");
+        assert_eq!(
+            plan["requestHeaders"]["Referer"],
+            "https://vidrame.example/embed/abc"
+        );
         assert_eq!(plan["requestHeaders"]["Origin"], "https://vidrame.example");
         assert_eq!(plan["requestHeaders"]["User-Agent"], "Mozilla/5.0");
     }

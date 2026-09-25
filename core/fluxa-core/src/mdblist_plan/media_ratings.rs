@@ -21,7 +21,10 @@ pub(crate) const LIST_ITEMS_QUERY_KEYS: &[&str] = &[
 ];
 
 pub(crate) fn mdblist_content_type(content_type: &str) -> &'static str {
-    if matches!(content_type.trim().to_ascii_lowercase().as_str(), "series" | "show" | "tv" | "anime") {
+    if matches!(
+        content_type.trim().to_ascii_lowercase().as_str(),
+        "series" | "show" | "tv" | "anime"
+    ) {
         "show"
     } else {
         "movie"

@@ -54,8 +54,7 @@ pub(crate) fn select_audio_track_json(request_json: &str) -> Option<String> {
     let language_matches = |track: &AudioTrackCandidate| {
         let language = track.language.as_deref().unwrap_or_default().to_lowercase();
         !preferred.is_empty()
-            && (language == preferred
-                || language.split('-').next() == preferred.split('-').next())
+            && (language == preferred || language.split('-').next() == preferred.split('-').next())
     };
     let pool: Vec<AudioTrackCandidate> = if candidates.iter().any(language_matches) {
         candidates.into_iter().filter(language_matches).collect()
@@ -98,21 +97,40 @@ fn audio_track_score(
 }
 
 fn codec_rank(mime: Option<&str>) -> i32 {
-    let value = mime.unwrap_or_default().to_lowercase().replace(['-', '.'], "");
-    if ["truehd", "dtshd", "dtsx", "dtsuhd", "dolbymat", "mpegh", "dra"]
-        .iter()
-        .any(|codec| value.contains(codec))
+    let value = mime
+        .unwrap_or_default()
+        .to_lowercase()
+        .replace(['-', '.'], "");
+    if [
+        "truehd", "dtshd", "dtsx", "dtsuhd", "dolbymat", "mpegh", "dra",
+    ]
+    .iter()
+    .any(|codec| value.contains(codec))
     {
         600
     } else if [
-        "flac", "alac", "pcm", "raw", "wav", "aiff", "ape", "monkeysaudio", "wavpack",
-        "tta", "tak", "shn", "mlp",
+        "flac",
+        "alac",
+        "pcm",
+        "raw",
+        "wav",
+        "aiff",
+        "ape",
+        "monkeysaudio",
+        "wavpack",
+        "tta",
+        "tak",
+        "shn",
+        "mlp",
     ]
     .iter()
     .any(|codec| value.contains(codec))
     {
         500
-    } else if ["eac3", "ac3", "ac4", "dts"].iter().any(|codec| value.contains(codec)) {
+    } else if ["eac3", "ac3", "ac4", "dts"]
+        .iter()
+        .any(|codec| value.contains(codec))
+    {
         400
     } else if ["opus", "vorbis"].iter().any(|codec| value.contains(codec)) {
         300

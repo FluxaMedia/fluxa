@@ -137,12 +137,19 @@ pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
     }
     let description_is_blank = stream_object
         .get("description")
-        .map(|value| value.is_null() || value.as_str().map(str::trim).unwrap_or_default().is_empty())
+        .map(|value| {
+            value.is_null() || value.as_str().map(str::trim).unwrap_or_default().is_empty()
+        })
         .unwrap_or(true);
     if description_is_blank {
         if let Some(title) = stream_object
             .get("title")
-            .filter(|value| value.as_str().map(str::trim).is_some_and(|title| !title.is_empty()))
+            .filter(|value| {
+                value
+                    .as_str()
+                    .map(str::trim)
+                    .is_some_and(|title| !title.is_empty())
+            })
             .cloned()
         {
             stream_object.insert("description".to_string(), title);
@@ -309,6 +316,9 @@ mod tests {
         let value: Value = serde_json::from_str(&streams).unwrap();
         assert_eq!(value[0]["title"].as_str(), Some("Torrentio details"));
         assert_eq!(value[0]["description"].as_str(), Some("Torrentio details"));
-        assert_eq!(value[1]["description"].as_str(), Some("Original description"));
+        assert_eq!(
+            value[1]["description"].as_str(),
+            Some("Original description")
+        );
     }
 }

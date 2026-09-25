@@ -240,7 +240,10 @@ mod meta_item_tests {
 
         assert_eq!(
             meta.cast,
-            Some(vec!["Paddy Considine".to_string(), "Matt Smith".to_string()])
+            Some(vec![
+                "Paddy Considine".to_string(),
+                "Matt Smith".to_string()
+            ])
         );
     }
 }

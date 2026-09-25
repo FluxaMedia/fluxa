@@ -54,6 +54,7 @@ nuvioExportPushPlan
 nuvioAddonState
 nuvioAddonReconciliationPlan
 nuvioCollectionRequest
+nuvioEffectiveProfileScopes
 nuvioLibraryMutationPlan
 nuvioLibraryItemRequest
 nuvioPlaybackProgressRequest
@@ -269,6 +270,7 @@ streamDiscoveryExecutionPolicy
 streamDiscoveryPlan
 streamMatchesEpisode
 streamPlaybackInfo
+streamSubtitlesResult
 subtitleCueList
 subtitleSyncApply
 subtitleSyncCapture

@@ -488,19 +488,15 @@ mod tests {
 
     #[test]
     fn expands_mixed_catalog_to_supported_request_types() {
-        let value: Value = serde_json::from_str(
-            &discover_catalog_request_types_json(" all ").unwrap(),
-        )
-        .unwrap();
+        let value: Value =
+            serde_json::from_str(&discover_catalog_request_types_json(" all ").unwrap()).unwrap();
         assert_eq!(value, serde_json::json!(["movie", "series"]));
     }
 
     #[test]
     fn preserves_specific_catalog_type() {
-        let value: Value = serde_json::from_str(
-            &discover_catalog_request_types_json("anime").unwrap(),
-        )
-        .unwrap();
+        let value: Value =
+            serde_json::from_str(&discover_catalog_request_types_json("anime").unwrap()).unwrap();
         assert_eq!(value, serde_json::json!(["anime"]));
     }
 }

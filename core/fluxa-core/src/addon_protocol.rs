@@ -75,7 +75,9 @@ mod tests {
         assert!(catalog_search_eligible(
             r#"{"type":"movie","extraSupported":["search"]}"#
         ));
-        assert!(!catalog_search_eligible(r#"{"type":"anime","extraSupported":["search"]}"#));
+        assert!(!catalog_search_eligible(
+            r#"{"type":"anime","extraSupported":["search"]}"#
+        ));
         assert!(!catalog_search_eligible(r#"{"type":"movie"}"#));
         assert!(!catalog_search_eligible(
             r#"{"type":"movie","extraSupported":["search"],"extra":[{"name":"genre","isRequired":true}]}"#

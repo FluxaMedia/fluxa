@@ -42,10 +42,9 @@ pub(crate) fn recommendation_outro_plan_json(args_json: &str) -> Option<String> 
         .and_then(Value::as_f64)
         .filter(|value| value.is_finite() && *value >= 0.0);
     let valid = position.is_finite() && duration.is_finite() && duration > 0.0;
-    let reached = valid && (
-        position / duration * 100.0 >= threshold ||
-            outro_start.is_some_and(|start| position >= start)
-    );
+    let reached = valid
+        && (position / duration * 100.0 >= threshold
+            || outro_start.is_some_and(|start| position >= start));
     Some(json!({"shouldShow": reached && !args.get("alreadyShown").and_then(Value::as_bool).unwrap_or(false)}).to_string())
 }
 
@@ -100,7 +99,10 @@ pub(crate) fn terminal_recommendation_plan_json(args_json: &str) -> Option<Strin
 
 #[cfg(test)]
 mod tests {
-    use super::{recommendation_outro_plan_json, terminal_recommendation_eligibility_json, terminal_recommendation_plan_json};
+    use super::{
+        recommendation_outro_plan_json, terminal_recommendation_eligibility_json,
+        terminal_recommendation_plan_json,
+    };
     use serde_json::Value;
 
     fn plan(input: Value) -> Value {

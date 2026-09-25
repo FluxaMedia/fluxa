@@ -370,11 +370,15 @@ mod tests {
             "incoming": [{"id": "same", "title": "Remote"}, {"id": "new", "title": "New"}],
             "incomingWins": true,
         });
-        let result: Value = serde_json::from_str(&collection_merge_plan_json(&args.to_string()).unwrap()).unwrap();
-        assert_eq!(result, json!([
-            {"id": "local", "title": "Local"},
-            {"id": "same", "title": "Remote"},
-            {"id": "new", "title": "New"},
-        ]));
+        let result: Value =
+            serde_json::from_str(&collection_merge_plan_json(&args.to_string()).unwrap()).unwrap();
+        assert_eq!(
+            result,
+            json!([
+                {"id": "local", "title": "Local"},
+                {"id": "same", "title": "Remote"},
+                {"id": "new", "title": "New"},
+            ])
+        );
     }
 }

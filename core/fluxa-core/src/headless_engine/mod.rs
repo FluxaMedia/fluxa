@@ -24,8 +24,9 @@ mod trailer;
 mod youtube_cipher;
 
 use crate::core_error::{CoreError, LogAndDiscard};
-use crate::runtime::EffectEnvelope;
+use crate::runtime::{EffectEnvelope, EffectKind};
 use contracts::{AppAction, DispatchResult, StatePatch};
+use serde::Serialize;
 use state::EngineState;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -127,6 +128,59 @@ pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<S
     result_patch_json(revision, patch, visible_effects)
 }
 
+/// Dispatch a Discover paging action without serializing the entire Discover
+/// state back to the host. Page requests only need their effect envelopes;
+/// serializing the full accumulated results array on every scroll-triggered
+/// request makes the UI cost grow with every page already loaded.
+pub fn headless_engine_dispatch_effects_json(handle: u64, action_json: &str) -> Option<String> {
+    let action: AppAction = serde_json::from_str(action_json)
+        .map_err(|e| CoreError::BadInput {
+            context: "headless_engine_dispatch_effects_json",
+            detail: e.to_string(),
+        })
+        .log_discard()?;
+    if !matches!(&action, AppAction::DiscoverPageRequested { .. }) {
+        return CoreError::BadInput {
+            context: "headless_engine_dispatch_effects_json",
+            detail: "effects-only dispatch is reserved for Discover page requests".to_owned(),
+        }
+        .log_and_none();
+    }
+    let (revision, effects) = {
+        let engine = match lock_engines().get(&handle) {
+            Some(engine) => Arc::clone(engine),
+            None => {
+                return CoreError::NotFound {
+                    context: "headless_engine_dispatch_effects_json",
+                }
+                .log_and_none();
+            }
+        };
+        let mut engine = lock_engine(&engine).or_else(|| {
+            CoreError::NotFound {
+                context: "headless_engine_dispatch_effects_json (poisoned handle)",
+            }
+            .log_and_none()
+        })?;
+        engine.expire_stale_pending_effects(Instant::now());
+        let effects = engine.dispatch(action);
+        let effects = engine.resolve_visible_effects(effects);
+        engine.revision = engine.revision.saturating_add(1);
+        // Keep dirty tracking coherent for the next full state-bearing action,
+        // but intentionally drop the patch instead of serializing its large
+        // Discover.results payload.
+        drop(engine.state.diff_dirty());
+        (engine.revision, effects)
+    };
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct EffectsOnlyResult {
+        revision: u64,
+        effects: Vec<EffectEnvelope>,
+    }
+    serde_json::to_string(&EffectsOnlyResult { revision, effects }).ok()
+}
+
 pub fn headless_engine_set_player_buffering(handle: u64, buffering: bool) -> bool {
     update_player(handle, |engine| player::set_buffering(engine, buffering))
 }
@@ -182,6 +236,69 @@ pub fn headless_engine_complete_effect_json(handle: u64, result_json: &str) -> O
         (engine.revision, engine.state.diff_dirty(), visible_effects)
     };
     result_patch_json(revision, patch, visible_effects)
+}
+
+/// Complete a Discover page effect and return only the newly appended items,
+/// their source metadata, paging flags, and follow-up effects. The generic
+/// completion response serializes the entire Discover state, whose results
+/// array grows with every page and was stalling desktop scroll frames.
+pub fn headless_engine_complete_discover_page_json(
+    handle: u64,
+    result_json: &str,
+) -> Option<String> {
+    let result: EffectResultInput = serde_json::from_str(result_json)
+        .map_err(|e| CoreError::BadInput {
+            context: "headless_engine_complete_discover_page_json",
+            detail: e.to_string(),
+        })
+        .log_discard()?;
+    let (revision, delta, effects) = {
+        let engine = match lock_engines().get(&handle) {
+            Some(engine) => Arc::clone(engine),
+            None => {
+                return CoreError::NotFound {
+                    context: "headless_engine_complete_discover_page_json",
+                }
+                .log_and_none();
+            }
+        };
+        let mut engine = lock_engine(&engine).or_else(|| {
+            CoreError::NotFound {
+                context: "headless_engine_complete_discover_page_json (poisoned handle)",
+            }
+            .log_and_none()
+        })?;
+        engine.expire_stale_pending_effects(Instant::now());
+        if !engine.pending_effects.iter().any(|effect| {
+            effect.id == result.effect_id && effect.kind == EffectKind::FetchDiscoverPage
+        }) {
+            return CoreError::BadInput {
+                context: "headless_engine_complete_discover_page_json",
+                detail: "effect id is not a pending Discover page request".to_owned(),
+            }
+            .log_and_none();
+        }
+        let effects = engine.complete_effect(result);
+        let effects = engine.resolve_visible_effects(effects);
+        engine.revision = engine.revision.saturating_add(1);
+        let delta = discover::take_page_delta(&mut engine);
+        // Clear dirty tracking without creating or serializing a full-state patch.
+        drop(engine.state.diff_dirty());
+        (engine.revision, delta, effects)
+    };
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct PageCompletionResult {
+        revision: u64,
+        delta: discover::DiscoverPageDelta,
+        effects: Vec<EffectEnvelope>,
+    }
+    serde_json::to_string(&PageCompletionResult {
+        revision,
+        delta,
+        effects,
+    })
+    .ok()
 }
 
 // Deliberately takes owned before/after snapshots rather than a reference to the locked

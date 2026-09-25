@@ -2,6 +2,48 @@ use super::folders::build_home_collection_shelves_json;
 use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 
+pub(crate) fn home_metadata_feed_plan_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let feeds = request.get("feeds")?.as_array()?;
+    let available_keys = feeds
+        .iter()
+        .filter_map(|feed| feed.get("key").and_then(Value::as_str))
+        .map(str::to_owned)
+        .collect::<Vec<_>>();
+    let ordered_keys = crate::content_identity::ordered_metadata_feed_keys(
+        &serde_json::to_string(&available_keys).ok()?,
+        &serde_json::to_string(request.get("order").unwrap_or(&Value::Null)).ok()?,
+    )
+    .and_then(|value| serde_json::from_str::<Vec<String>>(&value).ok())?;
+    let selected = request
+        .get("selectedKeys")
+        .and_then(Value::as_array)
+        .map(|keys| {
+            keys.iter()
+                .filter_map(Value::as_str)
+                .filter(|key| available_keys.iter().any(|available| available == key))
+                .map(str::to_owned)
+                .collect::<Vec<_>>()
+        });
+    // Match Settings/web semantics: an empty list means "all feeds enabled".
+    // It can also happen when persisted keys no longer match refreshed add-ons;
+    // in either case don't silently remove every Home catalog.
+    let visible_keys = selected
+        .filter(|keys| !keys.is_empty())
+        .unwrap_or_else(|| available_keys.clone());
+    let ordered = ordered_keys
+        .iter()
+        .filter(|key| visible_keys.contains(key))
+        .filter_map(|key| {
+            feeds
+                .iter()
+                .find(|feed| feed.get("key").and_then(Value::as_str) == Some(key))
+        })
+        .cloned()
+        .collect::<Vec<_>>();
+    serde_json::to_string(&ordered).ok()
+}
+
 fn hero_episode_plan_value(request: &Value) -> Option<Value> {
     let content_type = request.get("type").and_then(Value::as_str).unwrap_or("");
     if !matches!(content_type, "series" | "tv" | "show") {
@@ -11,7 +53,10 @@ fn hero_episode_plan_value(request: &Value) -> Option<Value> {
     let regular_episodes = videos
         .iter()
         .filter(|video| {
-            video.get("season").and_then(Value::as_i64).is_some_and(|season| season > 0)
+            video
+                .get("season")
+                .and_then(Value::as_i64)
+                .is_some_and(|season| season > 0)
                 && video
                     .get("number")
                     .or_else(|| video.get("episode"))
@@ -22,10 +67,22 @@ fn hero_episode_plan_value(request: &Value) -> Option<Value> {
     if regular_episodes.is_empty() {
         return None;
     }
-    let last_video_id = request.get("lastVideoId").and_then(Value::as_str).filter(|id| !id.is_empty());
+    let last_video_id = request
+        .get("lastVideoId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty());
     let selected = last_video_id
-        .and_then(|id| regular_episodes.iter().position(|video| video.get("id").and_then(Value::as_str) == Some(id)))
-        .map(|index| regular_episodes.get(index + 1).copied().unwrap_or(regular_episodes[0]))
+        .and_then(|id| {
+            regular_episodes
+                .iter()
+                .position(|video| video.get("id").and_then(Value::as_str) == Some(id))
+        })
+        .map(|index| {
+            regular_episodes
+                .get(index + 1)
+                .copied()
+                .unwrap_or(regular_episodes[0])
+        })
         .unwrap_or(regular_episodes[0]);
     let season = selected.get("season").and_then(Value::as_i64)?;
     let number = selected
@@ -90,12 +147,22 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
         })
         .unwrap_or_default();
     if !hero_toggles.is_empty() {
-        content_categories.retain(|category| {
-            category
-                .get("id")
-                .and_then(Value::as_str)
-                .is_some_and(|id| hero_toggles.contains(id))
-        });
+        let selected_categories = content_categories
+            .iter()
+            .filter(|category| {
+                category
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|id| hero_toggles.contains(id))
+            })
+            .cloned()
+            .collect::<Vec<_>>();
+        // Feed keys can change when add-ons are reinstalled or refreshed.
+        // Don't strand the hero on an empty plan if every saved selection is
+        // stale; fall back to the currently available catalog feeds.
+        if !selected_categories.is_empty() {
+            content_categories = selected_categories;
+        }
     }
     let hero_order = prefs
         .get("heroFeedOrder")
@@ -125,13 +192,7 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
         .and_then(|category| category.get("items"))
         .and_then(Value::as_array)
         .and_then(|items| items.first())
-        .cloned()
-        .or_else(|| {
-            request
-                .get("billboard")
-                .filter(|value| !value.is_null())
-                .cloned()
-        });
+        .cloned();
     let mut seen = HashSet::new();
     let mut slides = billboard
         .iter()

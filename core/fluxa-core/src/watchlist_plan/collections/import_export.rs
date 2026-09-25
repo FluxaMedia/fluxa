@@ -74,7 +74,12 @@ pub(crate) fn collection_folder_presentation_json(folder_json: &str) -> Option<S
                     .is_some_and(|provider| provider.eq_ignore_ascii_case("addon"))
             })
         })
-        .or_else(|| object.get("catalogSources").and_then(Value::as_array)?.first());
+        .or_else(|| {
+            object
+                .get("catalogSources")
+                .and_then(Value::as_array)?
+                .first()
+        });
     let catalog_id = source
         .and_then(|value| value.get("catalogId"))
         .and_then(Value::as_str)
@@ -84,7 +89,15 @@ pub(crate) fn collection_folder_presentation_json(folder_json: &str) -> Option<S
         .and_then(Value::as_str);
     let image_url = cleaned_artwork_url(pick_str(
         object,
-        &["coverImageUrl", "coverUrl", "coverImage", "cover", "poster", "thumbnail", "thumb"],
+        &[
+            "coverImageUrl",
+            "coverUrl",
+            "coverImage",
+            "cover",
+            "poster",
+            "thumbnail",
+            "thumb",
+        ],
     ))
     .or_else(|| {
         cleaned_artwork_url(pick_str(

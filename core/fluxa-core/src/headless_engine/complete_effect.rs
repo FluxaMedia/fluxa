@@ -46,7 +46,7 @@ impl HeadlessEngine {
             | EffectKind::RefreshContinueWatching
             | EffectKind::PrepareDirectPlayback
             | EffectKind::FetchCatalogPage => {
-                home::complete(self, effect_type, generation, &result)
+                home::complete(self, effect_type, generation, &result, &effect.payload)
             }
 
             EffectKind::ReadLibraryState

@@ -6,12 +6,17 @@ pub(crate) fn is_upcoming(released: &str, today_iso: &str) -> bool {
     }
 
     let date = released.get(..10).unwrap_or("");
-    if date.len() == 10 && date.as_bytes().get(4) == Some(&b'-') && date.as_bytes().get(7) == Some(&b'-') {
+    if date.len() == 10
+        && date.as_bytes().get(4) == Some(&b'-')
+        && date.as_bytes().get(7) == Some(&b'-')
+    {
         return date > today.get(..10).unwrap_or(today);
     }
 
     let year = released.get(..4).unwrap_or("");
-    year.len() == 4 && year.chars().all(|value| value.is_ascii_digit()) && year > today.get(..4).unwrap_or(today)
+    year.len() == 4
+        && year.chars().all(|value| value.is_ascii_digit())
+        && year > today.get(..4).unwrap_or(today)
 }
 
 pub(crate) fn is_released(released: &str, today_iso: &str) -> bool {
@@ -64,7 +69,11 @@ fn days_in_month(year: i64, month: i64) -> i64 {
 
 fn days_from_civil(year: i64, month: i64, day: i64) -> i64 {
     let adjusted_year = year - i64::from(month <= 2);
-    let era = (if adjusted_year >= 0 { adjusted_year } else { adjusted_year - 399 }) / 400;
+    let era = (if adjusted_year >= 0 {
+        adjusted_year
+    } else {
+        adjusted_year - 399
+    }) / 400;
     let year_of_era = adjusted_year - era * 400;
     let month_offset = month + if month > 2 { -3 } else { 9 };
     let day_of_year = (153 * month_offset + 2) / 5 + day - 1;
@@ -100,7 +109,11 @@ mod tests {
 
     #[test]
     fn recently_released_uses_the_supplied_local_day_and_window() {
-        assert!(is_recently_released("2026-09-01T00:00:00Z", "2026-09-08", 7));
+        assert!(is_recently_released(
+            "2026-09-01T00:00:00Z",
+            "2026-09-08",
+            7
+        ));
         assert!(!is_recently_released("2026-08-31", "2026-09-08", 7));
         assert!(!is_recently_released("2026-09-09", "2026-09-08", 7));
     }

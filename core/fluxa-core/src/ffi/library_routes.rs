@@ -2,21 +2,23 @@ use super::*;
 
 pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
     match method {
-        "formatRuntimeLabel" => Ok(match runtime_label::format_runtime_label(
-            object(args_json)?.get("value").and_then(Value::as_str),
-        ) {
-            Some(value) => Value::String(value),
-            None => Value::Null,
-        }),
+        "formatRuntimeLabel" => Ok(
+            match runtime_label::format_runtime_label(
+                object(args_json)?.get("value").and_then(Value::as_str),
+            ) {
+                Some(value) => Value::String(value),
+                None => Value::Null,
+            },
+        ),
         "terminalRecommendationPlan" => opt_json(
             recommendation_policy::terminal_recommendation_plan_json(args_json),
         ),
         "terminalRecommendationEligibility" => {
             opt_json(recommendation_policy::terminal_recommendation_eligibility_json(args_json))
         }
-        "recommendationOutroPlan" => {
-            opt_json(recommendation_policy::recommendation_outro_plan_json(args_json))
-        }
+        "recommendationOutroPlan" => opt_json(
+            recommendation_policy::recommendation_outro_plan_json(args_json),
+        ),
         "playbackProgressItem" => {
             let args = object(args_json)?;
             let time_offset = field(&args, "timeOffset")?
@@ -132,6 +134,7 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
                 field_str(&args, "candidatesJson")?,
             ))
         }
+        "homeMetadataFeedPlan" => opt_json(home_ranking::home_metadata_feed_plan_json(args_json)),
         "normalizeHomeCatalogItems" => {
             let args = object(args_json)?;
             let genre = args.get("genre").and_then(Value::as_str);
@@ -142,6 +145,7 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
                 field_str(&args, "todayIso")?,
             ))
         }
+        "annotateCatalogItems" => opt_json(home_ranking::annotate_catalog_items_json(args_json)),
         // args_json IS the items/item/doc JSON for single-arg methods
         "libraryContinueWatchingItems" => opt_json(
             library_state::library_continue_watching_items_json(args_json),
@@ -199,9 +203,9 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
         "resolveNextAfterWatched" => {
             opt_json(library_state::resolve_next_after_watched_json(args_json))
         }
-        "continueWatchingResumePlan" => opt_json(
-            library_state::continue_watching_resume_plan_json(args_json),
-        ),
+        "continueWatchingResumePlan" => {
+            opt_json(library_state::continue_watching_resume_plan_json(args_json))
+        }
         "nextProgressInfoPlan" => opt_json(library_state::next_progress_info_plan_json(args_json)),
         "formatEpisodeLine" => {
             let args = object(args_json)?;
@@ -232,11 +236,11 @@ pub(super) fn route_library_state(method: &str, args_json: &str) -> Outcome {
                     .ok_or_else(|| fail(ErrorKind::InvalidArgs, "isHorizontal must be bool"))?,
             ))
         }
-        "continueWatchingProgressFields" => opt_json(
-            library_state::continue_watching_progress_fields_json(
+        "continueWatchingProgressFields" => {
+            opt_json(library_state::continue_watching_progress_fields_json(
                 field_str(&object(args_json)?, "itemJson")?,
-            ),
-        ),
+            ))
+        }
         "buildHomeCollectionShelves" => {
             let args = object(args_json)?;
             opt_json(home_ranking::build_home_collection_shelves_json(

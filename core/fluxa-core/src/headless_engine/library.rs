@@ -35,6 +35,8 @@ pub(super) struct LibraryState {
 #[serde(rename_all = "camelCase")]
 struct ReadLibraryStatePayload {
     profile_id: String,
+    source: String,
+    profile: Value,
 }
 
 #[derive(Clone, Serialize)]
@@ -58,6 +60,7 @@ struct ToggleLibraryStatusCommand {
 #[serde(rename_all = "camelCase")]
 struct WriteLibraryCommandPayload {
     profile_id: String,
+    source: String,
     command: Value,
 }
 
@@ -147,11 +150,29 @@ pub(super) fn dispatch_hydrate(
     engine.state.library.is_loading = true;
     engine.state.library.error = Value::Null;
     engine.state.library.generation = generation;
+    let source = engine
+        .state
+        .settings
+        .values
+        .get("integrationLibrarySource")
+        .and_then(Value::as_str)
+        .or_else(|| {
+            engine
+                .state
+                .profile
+                .active
+                .get("integrationLibrarySource")
+                .and_then(Value::as_str)
+        })
+        .unwrap_or("local")
+        .to_owned();
     vec![engine.effect(
         EffectKind::ReadLibraryState,
         generation,
         ReadLibraryStatePayload {
             profile_id: resolved_profile_id,
+            source,
+            profile: engine.state.profile.active.clone(),
         },
     )]
 }
@@ -162,6 +183,7 @@ pub(super) fn dispatch_toggle_watchlist(
     profile: Option<Value>,
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Library);
+    let source = selected_library_source(engine, profile.as_ref());
     let profile_id = active_profile_id(&engine.state, &profile.unwrap_or(Value::Null));
     let command = ToggleWatchlistCommand {
         kind: "toggleWatchlist",
@@ -174,6 +196,7 @@ pub(super) fn dispatch_toggle_watchlist(
         generation,
         WriteLibraryCommandPayload {
             profile_id,
+            source,
             command: command_value,
         },
     )]
@@ -186,6 +209,7 @@ pub(super) fn dispatch_toggle_status(
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Library);
     let profile_id = active_profile_id(&engine.state, &Value::Null);
+    let source = selected_library_source(engine, None);
     let command = ToggleLibraryStatusCommand {
         kind: "toggleLibraryStatus",
         list,
@@ -198,6 +222,7 @@ pub(super) fn dispatch_toggle_status(
         generation,
         WriteLibraryCommandPayload {
             profile_id,
+            source,
             command: command_value,
         },
     )]
@@ -297,6 +322,7 @@ pub(super) fn dispatch_mark_watched(
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Library);
     let profile_id = active_profile_id(&engine.state, &Value::Null);
+    let source = selected_library_source(engine, profile.as_ref());
     let watched_value = watched.unwrap_or(true);
     let mut seen_video_ids = HashSet::with_capacity(video_ids.len());
     let clean_video_ids: Vec<String> = video_ids
@@ -316,6 +342,7 @@ pub(super) fn dispatch_mark_watched(
         generation,
         WriteLibraryCommandPayload {
             profile_id,
+            source,
             command: command_value,
         },
     )];
@@ -334,6 +361,26 @@ pub(super) fn dispatch_mark_watched(
     effects
 }
 
+fn selected_library_source(engine: &HeadlessEngine, explicit_profile: Option<&Value>) -> String {
+    engine
+        .state
+        .settings
+        .values
+        .get("integrationLibrarySource")
+        .and_then(Value::as_str)
+        .or_else(|| explicit_profile?.get("integrationLibrarySource")?.as_str())
+        .or_else(|| {
+            engine
+                .state
+                .profile
+                .active
+                .get("integrationLibrarySource")
+                .and_then(Value::as_str)
+        })
+        .unwrap_or("local")
+        .to_owned()
+}
+
 pub(super) fn complete(
     engine: &mut HeadlessEngine,
     effect_type: &str,
@@ -345,33 +392,33 @@ pub(super) fn complete(
             if generation == engine.state.runtime.get(GenerationKey::Library) {
                 engine.state.library.is_loading = false;
                 if result.status.is_ok() {
-                    engine.state.library.watchlist = result
-                        .value
+                    let library_result = serde_json::from_str::<Value>(
+                        &crate::library_state::normalize_library_read_result_json(
+                            &result.value.to_string(),
+                        ),
+                    )
+                    .unwrap_or_else(|_| serde_json::json!({}));
+                    engine.state.library.watchlist = library_result
                         .get("watchlist")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
-                    engine.state.library.continue_watching = result
-                        .value
+                    engine.state.library.continue_watching = library_result
                         .get("continueWatching")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
-                    engine.state.library.liked = result
-                        .value
+                    engine.state.library.liked = library_result
                         .get("liked")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
-                    engine.state.library.watched = result
-                        .value
+                    engine.state.library.watched = library_result
                         .get("watched")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!({}));
-                    engine.state.library.dropped = result
-                        .value
+                    engine.state.library.dropped = library_result
                         .get("dropped")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
-                    engine.state.library.completed = result
-                        .value
+                    engine.state.library.completed = library_result
                         .get("completed")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));

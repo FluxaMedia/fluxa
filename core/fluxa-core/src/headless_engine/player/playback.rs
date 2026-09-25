@@ -37,6 +37,16 @@ pub(in crate::headless_engine) fn complete_direct_playback(
     }
 }
 
+pub(in crate::headless_engine) fn reset_for_direct_playback(engine: &mut HeadlessEngine) {
+    engine.state.player.current_url = Value::Null;
+    engine.state.player.resolved_url = Value::Null;
+    engine.state.player.current_streams = serde_json::json!([]);
+    engine.state.player.direct_playback_target = Value::Null;
+    engine.state.player.pending_stream_load = Value::Null;
+    engine.state.player.is_buffering = true;
+    engine.state.player.player_error = Value::Null;
+}
+
 pub(in crate::headless_engine) fn dispatch_resolve_playback(
     engine: &mut HeadlessEngine,
     url: String,

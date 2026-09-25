@@ -604,6 +604,13 @@
       "category": "appearance"
     },
     {
+      "key": "navMode",
+      "type": "string",
+      "default": "classic",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "navLayout",
       "type": "string",
       "default": "sidebar",

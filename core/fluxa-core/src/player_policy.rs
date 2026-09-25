@@ -22,6 +22,17 @@ pub(crate) use retry_and_ordering::{
 };
 pub use source_sidebar::player_source_sidebar_plan_json;
 pub(crate) use torrent_fallback::torrent_fallback_file_policy_json;
+
+pub(crate) fn stream_subtitles_result_json(stream_json: &str) -> Option<String> {
+    let stream = serde_json::from_str::<serde_json::Value>(stream_json).ok()?;
+    let subtitles = stream
+        .get("subtitles")
+        .filter(|value| value.is_array())
+        .cloned()
+        .unwrap_or_else(|| serde_json::json!([]));
+    Some(serde_json::json!({ "subtitles": subtitles }).to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -35,6 +46,22 @@ mod tests {
         )
         .unwrap();
         assert_eq!(result["backend"], "exoplayer");
+    }
+
+    #[test]
+    fn stream_subtitles_result_has_one_shared_empty_and_populated_shape() {
+        let populated: Value = serde_json::from_str(
+            &stream_subtitles_result_json(
+                r#"{"subtitles":[{"url":"https://sub.example/en.vtt","lang":"en"}]}"#,
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(populated["subtitles"][0]["lang"], "en");
+
+        let empty: Value =
+            serde_json::from_str(&stream_subtitles_result_json("{}").unwrap()).unwrap();
+        assert_eq!(empty["subtitles"], serde_json::json!([]));
     }
 
     #[test]

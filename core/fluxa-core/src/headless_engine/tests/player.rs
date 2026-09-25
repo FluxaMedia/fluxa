@@ -42,6 +42,58 @@ fn player_load_streams_uses_effect_completion_without_reordering_streams() {
 }
 
 #[test]
+fn continue_watching_reuses_saved_stream_without_direct_addon_discovery() {
+    let handle = create_headless_engine("{}");
+    let requested: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(
+            handle,
+            &json!({
+                "type": "continueWatchingPlaybackRequested",
+                "item": {
+                    "id": "tt-show",
+                    "type": "series",
+                    "name": "Show",
+                    "lastVideoId": "tt-show:2:4",
+                    "lastStreamUrl": "stremio://torrent/abc/7",
+                    "lastStreamTitle": "Saved torrent",
+                    "lastStream": {"infoHash": "abc", "fileIdx": 7, "title": "Saved torrent"}
+                }
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+
+    let effect = &requested["effects"][0];
+    assert_eq!(effect["type"], "loadStreams");
+    assert_eq!(effect["payload"]["useInitialStreams"], true);
+    assert_eq!(effect["payload"]["id"], "tt-show:2:4");
+    assert_eq!(effect["payload"]["initialStreams"][0]["infoHash"], "abc");
+    assert_eq!(effect["payload"]["initialStreams"][0]["fileIdx"], 7);
+
+    let effect_id = effect["id"].as_str().unwrap();
+    let completed: Value = serde_json::from_str(
+        &headless_engine_complete_effect_json(
+            handle,
+            &json!({
+                "effectId": effect_id,
+                "status": "ok",
+                "value": effect["payload"]["initialStreams"].clone()
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        completed["state"]["player"]["currentUrl"],
+        "stremio://torrent/abc/7"
+    );
+    assert!(destroy_headless_engine(handle));
+}
+
+#[test]
 fn player_load_streams_saves_outgoing_episode_progress_before_switching() {
     let handle = create_headless_engine("{}");
     let requested: Value = serde_json::from_str(

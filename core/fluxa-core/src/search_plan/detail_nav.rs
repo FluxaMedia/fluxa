@@ -71,9 +71,11 @@ pub(crate) fn detail_available_seasons_json(request_json: &str) -> Option<String
     let mut seasons: Vec<i32> = (1..=seasons_count).collect();
     let mut has_special_season = false;
     if let Some(values) = request.get("seasons").and_then(Value::as_array) {
-        seasons.extend(values.iter().filter_map(Value::as_i64).filter_map(|value| {
-            (value > 0 && value <= i32::MAX as i64).then_some(value as i32)
-        }));
+        seasons.extend(
+            values.iter().filter_map(Value::as_i64).filter_map(|value| {
+                (value > 0 && value <= i32::MAX as i64).then_some(value as i32)
+            }),
+        );
         has_special_season = values.iter().any(|value| value.as_i64() == Some(0));
     }
     seasons.sort_unstable();
@@ -151,10 +153,7 @@ pub(crate) fn detail_load_plan_json(request_json: &str) -> Option<String> {
 pub(crate) fn detail_season_videos_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     let videos = request.get("videos").and_then(Value::as_array)?;
-    let season = request
-        .get("season")
-        .and_then(Value::as_i64)
-        .unwrap_or(1) as i32;
+    let season = request.get("season").and_then(Value::as_i64).unwrap_or(1) as i32;
     let has_season_data = videos.iter().any(|video| {
         video
             .get("season")
@@ -194,15 +193,11 @@ mod tests {
     #[test]
     fn available_seasons_merges_count_video_seasons_and_special_season_last() {
         assert_eq!(
-            detail_available_seasons_json(
-                r#"{"seasonsCount":2,"seasons":[3,0,2,3]}"#
-            )
-            .as_deref(),
+            detail_available_seasons_json(r#"{"seasonsCount":2,"seasons":[3,0,2,3]}"#).as_deref(),
             Some("[1,2,3,0]")
         );
         assert_eq!(
-            detail_available_seasons_json(r#"{"seasonsCount":0,"seasons":[]}"#)
-                .as_deref(),
+            detail_available_seasons_json(r#"{"seasonsCount":0,"seasons":[]}"#).as_deref(),
             Some("[1]")
         );
     }

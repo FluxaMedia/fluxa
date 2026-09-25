@@ -1,5 +1,5 @@
 use crate::addon_protocol::{identity, normalize_manifest_url};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 fn text(value: Option<&Value>) -> String {
     value
@@ -156,10 +156,6 @@ trait EmptyTextFallback {
 
 impl EmptyTextFallback for String {
     fn if_empty_then(self, fallback: impl FnOnce() -> String) -> String {
-        if self.is_empty() {
-            fallback()
-        } else {
-            self
-        }
+        if self.is_empty() { fallback() } else { self }
     }
 }

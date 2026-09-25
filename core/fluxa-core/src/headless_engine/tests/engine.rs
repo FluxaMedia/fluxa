@@ -47,3 +47,36 @@ fn primitive_player_updates_mark_only_the_player_domain_dirty() {
     assert!(response.contains(r#"lastPositionMs":12345"#));
     assert!(destroy_headless_engine(handle));
 }
+
+#[test]
+fn player_reset_and_telemetry_use_the_headless_core_state() {
+    let handle = create_headless_engine("{}");
+    headless_engine_dispatch_json(
+        handle,
+        r#"{"type":"playerResetForEpisode","videoId":"tt123:1:2"}"#,
+    )
+    .unwrap();
+    let reset = serde_json::from_str::<serde_json::Value>(
+        &headless_engine_snapshot_json(handle).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(reset["player"]["currentVideoId"], "tt123:1:2");
+    assert_eq!(reset["player"]["currentStreamIndex"], 0);
+
+    headless_engine_dispatch_json(
+        handle,
+        r#"{"type":"playerTelemetryUpdated","positionMs":12345,"streamIndex":2,"buffering":false,"playbackEnded":true,"started":true,"rendered":true}"#,
+    )
+    .unwrap();
+    let telemetry = serde_json::from_str::<serde_json::Value>(
+        &headless_engine_snapshot_json(handle).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(telemetry["player"]["lastPositionMs"], 12345);
+    assert_eq!(telemetry["player"]["currentStreamIndex"], 2);
+    assert_eq!(telemetry["player"]["isBuffering"], false);
+    assert_eq!(telemetry["player"]["playbackEnded"], true);
+    assert_eq!(telemetry["player"]["hasStartedPlaying"], true);
+    assert_eq!(telemetry["player"]["isVideoRendered"], true);
+    assert!(destroy_headless_engine(handle));
+}

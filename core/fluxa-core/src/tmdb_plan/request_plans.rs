@@ -20,7 +20,11 @@ pub(crate) fn tmdb_collection_source_url_json(args_json: &str) -> Option<String>
         .and_then(Value::as_str)
         .unwrap_or("")
         .to_uppercase();
-    let media_type = tmdb_content_type(args.get("mediaType").and_then(Value::as_str).unwrap_or("movie"));
+    let media_type = tmdb_content_type(
+        args.get("mediaType")
+            .and_then(Value::as_str)
+            .unwrap_or("movie"),
+    );
     let api_key = args.get("apiKey")?.as_str()?;
     let language = args.get("language")?.as_str()?;
     let path = match source_type.as_str() {
@@ -42,7 +46,10 @@ pub(crate) fn tmdb_collection_source_url_json(args_json: &str) -> Option<String>
         "NETWORK" => extra.push(("with_networks".to_string(), source_id.to_string())),
         _ => {}
     }
-    if !matches!(source_type.as_str(), "LIST" | "COLLECTION" | "PERSON" | "DIRECTOR") {
+    if !matches!(
+        source_type.as_str(),
+        "LIST" | "COLLECTION" | "PERSON" | "DIRECTOR"
+    ) {
         extra.push((
             "sort_by".to_string(),
             args.get("sortBy")
@@ -53,15 +60,36 @@ pub(crate) fn tmdb_collection_source_url_json(args_json: &str) -> Option<String>
     }
     let filters = args.get("filters").and_then(Value::as_object);
     let filter_keys = [
-        ("year", if media_type == "tv" { "first_air_date_year" } else { "year" }),
+        (
+            "year",
+            if media_type == "tv" {
+                "first_air_date_year"
+            } else {
+                "year"
+            },
+        ),
         ("withGenres", "with_genres"),
         ("watchRegion", "watch_region"),
         ("voteCountGte", "vote_count.gte"),
         ("withKeywords", "with_keywords"),
         ("withNetworks", "with_networks"),
         ("withCompanies", "with_companies"),
-        ("releaseDateGte", if media_type == "tv" { "first_air_date.gte" } else { "primary_release_date.gte" }),
-        ("releaseDateLte", if media_type == "tv" { "first_air_date.lte" } else { "primary_release_date.lte" }),
+        (
+            "releaseDateGte",
+            if media_type == "tv" {
+                "first_air_date.gte"
+            } else {
+                "primary_release_date.gte"
+            },
+        ),
+        (
+            "releaseDateLte",
+            if media_type == "tv" {
+                "first_air_date.lte"
+            } else {
+                "primary_release_date.lte"
+            },
+        ),
         ("voteAverageGte", "vote_average.gte"),
         ("voteAverageLte", "vote_average.lte"),
         ("withOriginCountry", "with_origin_country"),

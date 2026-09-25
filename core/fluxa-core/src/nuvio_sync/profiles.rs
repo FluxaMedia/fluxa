@@ -165,3 +165,33 @@ pub(crate) fn build_local_profiles_json(args_json: &str) -> Option<String> {
     result.extend(imported);
     Some(Value::Array(result).to_string())
 }
+
+pub(crate) fn effective_profile_scopes_json(args_json: &str) -> Option<String> {
+    let args = parse(args_json)?;
+    let profile_index = args
+        .get("profileIndex")
+        .and_then(Value::as_i64)
+        .filter(|index| *index > 0)
+        .unwrap_or(1);
+    let profiles = args.get("profiles").and_then(Value::as_array)?;
+    let profile = profiles.iter().find(|profile| {
+        profile
+            .get("profile_index")
+            .or_else(|| profile.get("profileIndex"))
+            .and_then(Value::as_i64)
+            == Some(profile_index)
+    });
+    let uses_primary = |snake: &str, camel: &str| {
+        profile
+            .and_then(|value| value.get(snake).or_else(|| value.get(camel)))
+            .and_then(Value::as_bool)
+            == Some(true)
+    };
+    Some(
+        json!({
+            "addons": if profile_index != 1 && uses_primary("uses_primary_addons", "usesPrimaryAddons") { 1 } else { profile_index },
+            "plugins": if profile_index != 1 && uses_primary("uses_primary_plugins", "usesPrimaryPlugins") { 1 } else { profile_index },
+        })
+        .to_string(),
+    )
+}

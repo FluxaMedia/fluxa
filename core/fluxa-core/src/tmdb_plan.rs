@@ -12,10 +12,10 @@ pub(crate) use meta_conversion::{
 };
 pub(crate) use request_plans::{
     tmdb_builtin_meta_request_plan_json, tmdb_builtin_meta_urls_from_find_json,
-    tmdb_builtin_meta_urls_json, tmdb_credits_url_from_find, tmdb_detail_request_plan_json,
-    tmdb_detail_request_urls_from_find_json, tmdb_people_images_from_credits,
-    tmdb_people_request_plan, tmdb_season_request_url, tmdb_collection_source_url_json,
-    tmdb_recommendations_url_json,
+    tmdb_builtin_meta_urls_json, tmdb_collection_source_url_json, tmdb_credits_url_from_find,
+    tmdb_detail_request_plan_json, tmdb_detail_request_urls_from_find_json,
+    tmdb_people_images_from_credits, tmdb_people_request_plan, tmdb_recommendations_url_json,
+    tmdb_season_request_url,
 };
 #[cfg(test)]
 mod tests {

@@ -190,6 +190,40 @@ mod tests {
     }
 
     #[test]
+    fn resource_fetch_plan_meta_detail_returns_executable_candidate_identity() {
+        let request = json!({
+            "kind": "metaDetail",
+            "transportUrl": "https://preferred.example/manifest.json",
+            "contentType": "movie",
+            "id": "tt42",
+            "addons": [{
+                "name": "Preferred",
+                "transportUrl": "https://preferred.example/manifest.json",
+                "manifest": {
+                    "resources": ["meta"],
+                    "types": ["movie"],
+                },
+            }],
+        });
+        let plan = resource_fetch_plan_json(&request.to_string())
+            .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+            .expect("plan");
+        let candidate = &plan["requests"][0];
+
+        assert_eq!(
+            candidate["transportUrl"],
+            "https://preferred.example/manifest.json"
+        );
+        assert_eq!(candidate["contentType"], "movie");
+        assert_eq!(candidate["id"], "tt42");
+        assert_eq!(candidate["stopOnFirstResult"], true);
+        assert!(candidate["url"]
+            .as_str()
+            .unwrap()
+            .contains("/meta/movie/tt42.json"));
+    }
+
+    #[test]
     fn resource_fetch_plan_search_only_targets_catalogs_supporting_search() {
         let request = json!({
             "kind": "search",
@@ -223,6 +257,39 @@ mod tests {
                 .unwrap()
                 .contains("search=batman")
         );
+    }
+
+    #[test]
+    fn resource_fetch_execution_policy_marks_multiple_meta_candidates_as_priority_race() {
+        let addons = ["first", "second"]
+            .into_iter()
+            .map(|name| {
+                json!({
+                    "name": name,
+                    "transportUrl": format!("https://{name}.example/manifest.json"),
+                    "manifest": { "resources": ["meta"], "types": ["movie"] },
+                })
+            })
+            .collect::<Vec<_>>();
+        let request = json!({
+            "kind": "metaDetail",
+            "contentType": "movie",
+            "id": "tt42",
+            "addons": addons,
+        });
+        let policy = resource_fetch_execution_policy_json(&request.to_string())
+            .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+            .expect("policy");
+
+        assert_eq!(policy["mode"], "race");
+        assert_eq!(policy["concurrency"], 12);
+        assert_eq!(policy["requests"][0]["addonName"], "first");
+        assert_eq!(policy["requests"][1]["addonName"], "second");
+        assert!(policy["requests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|request| request["stopOnFirstResult"] == true));
     }
 
     #[test]

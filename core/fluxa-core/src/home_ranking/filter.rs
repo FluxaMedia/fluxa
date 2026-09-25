@@ -5,7 +5,10 @@ pub(crate) fn filter_home_categories_json(categories_json: &str, filter: &str) -
     let filtered = categories
         .into_iter()
         .filter_map(|mut category| {
-            let id = category.get("id").and_then(Value::as_str).unwrap_or_default();
+            let id = category
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
             let category_type = category
                 .get("type")
                 .and_then(Value::as_str)

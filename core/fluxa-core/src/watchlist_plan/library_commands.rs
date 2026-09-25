@@ -104,9 +104,13 @@ pub(crate) fn library_command_plan_json(request_json: &str) -> Option<String> {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        let exists = list
-            .iter()
-            .any(|entry| entry.get("id").and_then(Value::as_str) == Some(id));
+        let exists = command
+            .get("isCurrentlyInWatchlist")
+            .and_then(Value::as_bool)
+            .unwrap_or_else(|| {
+                list.iter()
+                    .any(|entry| entry.get("id").and_then(Value::as_str) == Some(id))
+            });
         let toggle_plan: Value = watchlist_toggle_plan_json(
             &json!({"item": item.clone(), "isCurrentlyInWatchlist": exists}).to_string(),
         )
@@ -280,6 +284,23 @@ pub(crate) fn library_command_plan_json(request_json: &str) -> Option<String> {
         return None;
     }
     Some(json!({"library": library, "statusMutation": status_mutation, "externalAction": external_action}).to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::library_command_plan_json;
+    use serde_json::Value;
+
+    #[test]
+    fn library_command_plan_uses_host_resolved_watchlist_identity() {
+        let result = library_command_plan_json(
+            r#"{"library":{"watchlist":[]},"command":{"type":"toggleWatchlist","item":{"id":"tt:1","type":"movie"},"isCurrentlyInWatchlist":true}}"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .unwrap();
+
+        assert_eq!(result["externalAction"]["command"], "remove");
+    }
 }
 
 pub(crate) fn playback_progress_write_plan_json(request_json: &str) -> Option<String> {

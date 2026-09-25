@@ -33,9 +33,7 @@ pub(super) fn route_tmdb(method: &str, args_json: &str) -> Outcome {
         "tmdbCollectionSourceUrl" => {
             opt_json(tmdb_plan::tmdb_collection_source_url_json(args_json))
         }
-        "tmdbRecommendationsUrl" => {
-            opt_json(tmdb_plan::tmdb_recommendations_url_json(args_json))
-        }
+        "tmdbRecommendationsUrl" => opt_json(tmdb_plan::tmdb_recommendations_url_json(args_json)),
         "tmdbMetaToMeta" => {
             let args = object(args_json)?;
             opt_json(tmdb_plan::tmdb_meta_to_meta_json(

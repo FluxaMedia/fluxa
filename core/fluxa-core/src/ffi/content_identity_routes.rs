@@ -153,9 +153,9 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         "normalizeContentType" => Ok(json!(content_identity::normalize_content_type(&arg_str(
             args_json, "value",
         )?))),
-        "isSeriesContentType" => Ok(json!(content_identity::is_series_content_type(
-            &arg_str(args_json, "value")?,
-        ))),
+        "isSeriesContentType" => Ok(json!(content_identity::is_series_content_type(&arg_str(
+            args_json, "value"
+        )?,))),
         "normalizeCatalogType" => Ok(Value::String(content_identity::normalize_catalog_type(
             &arg_str(args_json, "value")?,
         ))),

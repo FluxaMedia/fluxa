@@ -173,14 +173,17 @@ pub(crate) fn torrent_retry_plan_json(args_json: &str) -> Option<String> {
         })
         .and_then(Value::as_u64)?;
     let retry_budget = budget.get("retryBudgetMs").and_then(Value::as_u64)?;
-    Some(json!({
-        "maxPeerRetries": max_retries,
-        "firstAttemptMs": budget.get("firstAttemptMs")?,
-        "retryBudgetMs": retry_budget,
-        "hardLimitMs": budget.get("hardLimitMs")?,
-        "stallExtensionMs": budget.get("stallExtensionMs")?,
-        "perRetryMs": if max_retries > 0 { retry_budget / max_retries } else { 0 },
-    }).to_string())
+    Some(
+        json!({
+            "maxPeerRetries": max_retries,
+            "firstAttemptMs": budget.get("firstAttemptMs")?,
+            "retryBudgetMs": retry_budget,
+            "hardLimitMs": budget.get("hardLimitMs")?,
+            "stallExtensionMs": budget.get("stallExtensionMs")?,
+            "perRetryMs": if max_retries > 0 { retry_budget / max_retries } else { 0 },
+        })
+        .to_string(),
+    )
 }
 
 #[cfg(test)]

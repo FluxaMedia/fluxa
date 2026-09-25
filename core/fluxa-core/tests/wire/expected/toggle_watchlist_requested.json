@@ -12,7 +12,8 @@
           },
           "type": "toggleWatchlist"
         },
-        "profileId": "guest"
+        "profileId": "guest",
+        "source": "local"
       },
       "type": "writeLibraryCommand"
     }

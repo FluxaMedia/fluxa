@@ -118,6 +118,11 @@ impl HeadlessEngine {
                 language,
                 profile,
             } => home::dispatch_direct_playback(self, meta, language, profile),
+            AppAction::ContinueWatchingPlaybackRequested {
+                item,
+                language,
+                profile,
+            } => player::dispatch_continue_watching_playback(self, item, language, profile),
             AppAction::IntroSegmentsRequested {
                 imdb_id,
                 season,
@@ -199,6 +204,29 @@ impl HeadlessEngine {
             ),
             AppAction::PlayerStreamsFailed { error_code } => {
                 player::dispatch_streams_failed(self, error_code)
+            }
+            AppAction::PlayerResetForEpisode { video_id } => {
+                player::dispatch_reset_for_episode(self, video_id);
+                vec![]
+            }
+            AppAction::PlayerTelemetryUpdated {
+                position_ms,
+                stream_index,
+                buffering,
+                playback_ended,
+                started,
+                rendered,
+            } => {
+                player::dispatch_telemetry(
+                    self,
+                    position_ms,
+                    stream_index,
+                    buffering,
+                    playback_ended,
+                    started,
+                    rendered,
+                );
+                vec![]
             }
             AppAction::PlayerResolvePlaybackRequested {
                 url,
@@ -309,18 +337,24 @@ impl HeadlessEngine {
                 filters,
                 profile,
                 language,
-            } => discover::dispatch_discover(self, content_type, filters, profile, language),
+                load_catalog_filters,
+            } => discover::dispatch_discover(
+                self,
+                content_type,
+                filters,
+                profile,
+                language,
+                load_catalog_filters.unwrap_or(false),
+            ),
             AppAction::DiscoverCatalogFiltersRequested {
                 content_type,
                 selected_catalog_key,
                 profile,
-                language,
             } => discover::dispatch_catalog_filters(
                 self,
                 content_type,
                 selected_catalog_key,
                 profile,
-                language,
             ),
             AppAction::DiscoverPageRequested {
                 transport_url,
@@ -328,6 +362,7 @@ impl HeadlessEngine {
                 catalog_id,
                 skip,
                 genre,
+                search,
             } => discover::dispatch_discover_page(
                 self,
                 transport_url,
@@ -335,6 +370,7 @@ impl HeadlessEngine {
                 catalog_id,
                 skip,
                 genre,
+                search,
             ),
             AppAction::CatalogPageRequested {
                 category_id,

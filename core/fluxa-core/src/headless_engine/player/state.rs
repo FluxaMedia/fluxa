@@ -14,6 +14,8 @@ pub(in crate::headless_engine) struct PlayerState {
     pub(super) zero_speed_ticks: i64,
     pub(super) is_buffering: bool,
     pub(super) is_video_rendered: bool,
+    pub(super) playback_ended: bool,
+    pub(super) has_started_playing: bool,
     pub(super) player_error: Value,
     pub(super) preferred_binge_group: Value,
     pub(super) pending_stream_load: Value,
@@ -41,6 +43,8 @@ impl Default for PlayerState {
             zero_speed_ticks: 0,
             is_buffering: true,
             is_video_rendered: false,
+            playback_ended: false,
+            has_started_playing: false,
             player_error: Value::Null,
             preferred_binge_group: Value::Null,
             pending_stream_load: Value::Null,
@@ -93,6 +97,8 @@ impl PlayerState {
             zero_speed_ticks: flow_state.zero_speed_ticks as i64,
             is_buffering: flow_state.is_buffering,
             is_video_rendered: flow_state.is_video_rendered,
+            playback_ended: false,
+            has_started_playing: false,
             player_error: flow_state
                 .player_error
                 .map(Value::String)

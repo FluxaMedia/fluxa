@@ -63,7 +63,9 @@ mod tests {
     #[test]
     fn keeps_multichannel_layout_when_hdmi_endpoint_reports_stereo() {
         assert_eq!(
-            audio_pcm_channel_count_json(r#"{"deviceMaxChannels":2,"capabilitiesMaxChannels":2,"speakerLayoutMaxChannels":8,"routeSupportsMultichannel":true}"#),
+            audio_pcm_channel_count_json(
+                r#"{"deviceMaxChannels":2,"capabilitiesMaxChannels":2,"speakerLayoutMaxChannels":8,"routeSupportsMultichannel":true}"#
+            ),
             Some("8".to_string())
         );
     }
@@ -71,7 +73,9 @@ mod tests {
     #[test]
     fn remains_conservative_for_stereo_headphones() {
         assert_eq!(
-            audio_pcm_channel_count_json(r#"{"deviceMaxChannels":2,"capabilitiesMaxChannels":8,"speakerLayoutMaxChannels":8,"routeSupportsMultichannel":false}"#),
+            audio_pcm_channel_count_json(
+                r#"{"deviceMaxChannels":2,"capabilitiesMaxChannels":8,"speakerLayoutMaxChannels":8,"routeSupportsMultichannel":false}"#
+            ),
             Some("2".to_string())
         );
     }
@@ -79,7 +83,9 @@ mod tests {
     #[test]
     fn spatializer_can_advertise_multichannel_input_without_device_channel_list() {
         assert_eq!(
-            audio_pcm_channel_count_json(r#"{"capabilitiesMaxChannels":8,"spatializerMaxChannels":6,"routeSupportsMultichannel":false}"#),
+            audio_pcm_channel_count_json(
+                r#"{"capabilitiesMaxChannels":8,"spatializerMaxChannels":6,"routeSupportsMultichannel":false}"#
+            ),
             Some("6".to_string())
         );
     }

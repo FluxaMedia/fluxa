@@ -10,7 +10,7 @@ use serde_json::Value;
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub(super) struct SettingsState {
-    values: Value,
+    pub(super) values: Value,
     last_write_error: Value,
 }
 

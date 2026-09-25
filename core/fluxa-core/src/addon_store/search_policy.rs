@@ -70,9 +70,40 @@ pub(crate) fn filter_enabled_addons_json(args_json: &str) -> Option<String> {
         .collect();
     let filtered: Vec<Value> = addons
         .into_iter()
-        .filter(|addon| !disabled_keys.contains(&addon_key(addon).as_str()))
+        .filter(|addon| {
+            addon.get("enabled").and_then(Value::as_bool) != Some(false)
+                && !disabled_keys.contains(&addon_key(addon).as_str())
+        })
         .collect();
     serde_json::to_string(&filtered).ok()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::filter_enabled_addons_json;
+    use serde_json::{Value, json};
+
+    #[test]
+    fn enabled_addon_filter_applies_core_and_host_persisted_disable_flags() {
+        let filtered = filter_enabled_addons_json(
+            &json!({
+                "addons": [
+                    {"transportUrl": "https://enabled.test/manifest.json", "enabled": true},
+                    {"transportUrl": "https://disabled.test/manifest.json", "enabled": false},
+                    {"transportUrl": "https://profile-disabled.test/manifest.json"}
+                ],
+                "disabledKeys": ["https://profile-disabled.test/manifest.json"]
+            })
+            .to_string(),
+        )
+        .and_then(|value| serde_json::from_str::<Value>(&value).ok())
+        .expect("filter should return JSON");
+
+        assert_eq!(
+            filtered,
+            json!([{"transportUrl": "https://enabled.test/manifest.json", "enabled": true}])
+        );
+    }
 }
 
 #[expect(
