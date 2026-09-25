@@ -77,6 +77,18 @@ pub unsafe extern "C" fn fluxa_renderer_create(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_start_session(
+    renderer: *const FluxaRenderer,
+    data_dir: *const c_char,
+) -> bool {
+    let (Some(renderer), Some(dir)) = (unsafe { renderer.as_ref() }, unsafe { text(data_dir) })
+    else {
+        return false;
+    };
+    renderer.start_session(PathBuf::from(dir)).is_ok()
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_destroy(renderer: *mut FluxaRenderer) {
     if !renderer.is_null() {
         drop(unsafe { Box::from_raw(renderer) });

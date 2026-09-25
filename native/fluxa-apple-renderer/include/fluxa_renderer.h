@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stdint.h>
 
 typedef struct FluxaRenderer FluxaRenderer;
@@ -30,6 +31,7 @@ static const uint32_t FLUXA_GAMEPAD_START = 28;
 static const uint32_t FLUXA_GAMEPAD_SELECT = 29;
 
 FluxaRenderer *fluxa_renderer_create(float density, const char *artwork_cache_dir);
+bool fluxa_renderer_start_session(const FluxaRenderer *renderer, const char *data_dir);
 void fluxa_renderer_destroy(FluxaRenderer *renderer);
 void fluxa_renderer_string_free(char *value);
 

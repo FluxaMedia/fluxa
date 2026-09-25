@@ -10,6 +10,7 @@ use std::{
 
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
+use fluxa_effects::{AppSession, Storage};
 use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
 use fluxa_renderer::platform::{GraphicsBackend, backends_for};
 use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, rasterize_svg};
@@ -97,6 +98,8 @@ struct RendererState {
     core_snapshot: Option<Value>,
     core_snapshot_revision: u64,
     last_snapshot_revision: Option<u64>,
+    session: Option<AppSession>,
+    session_revision: Option<u64>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -2166,6 +2169,8 @@ impl MobileHost {
             core_snapshot: None,
             core_snapshot_revision: 0,
             last_snapshot_revision: None,
+            session: None,
+            session_revision: None,
         })))
     }
 
@@ -2235,7 +2240,10 @@ impl MobileHost {
     }
 
     pub fn take_actions_json(&self) -> Option<String> {
-        self.with_state(take_native_actions)
+        self.with_state(|state| {
+            route_actions_to_session(state);
+            take_native_actions(state)
+        })
     }
 
     pub fn scroll(&self, delta_y: f32) {
@@ -2284,6 +2292,19 @@ impl MobileHost {
             let actions = state.ui.dispatch(UiEvent::TextInput(text.to_owned()));
             remember_actions(state, actions);
         });
+    }
+
+    pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
+        let mut session = AppSession::open(Storage::open(data_dir)?)?;
+        let profile = session.active_profile();
+        session.dispatch(json!({
+            "type": "homeLoadRequested",
+            "profile": profile,
+            "language": profile_language(&profile),
+            "force": true,
+        }))?;
+        self.with_state(|state| state.session = Some(session));
+        Ok(())
     }
 
     pub fn surface_created(&self, surface: NativeSurface, width: u32, height: u32) {
@@ -2524,6 +2545,8 @@ fn key_down(state: &mut RendererState, input: KeyInput) {
 }
 
 fn render_frame(state: &mut RendererState) {
+    route_actions_to_session(state);
+    pull_session_snapshot(state);
     if state.gpu.is_none() {
         let count = GPU_WAIT_LOGS.fetch_add(1, Ordering::Relaxed);
         if count % 120 == 0 {
@@ -2651,5 +2674,211 @@ fn render_frame(state: &mut RendererState) {
             }
             Err(error) => host_log(format!("Frame skipped: {error}")),
         }
+    }
+}
+
+fn profile_language(profile: &Value) -> String {
+    profile
+        .get("language")
+        .and_then(Value::as_str)
+        .filter(|language| !language.is_empty())
+        .unwrap_or("en")
+        .to_owned()
+}
+
+fn pull_session_snapshot(state: &mut RendererState) {
+    let Some(session) = state.session.as_mut() else {
+        return;
+    };
+    session.pump();
+    let revision = session.revision();
+    if state.session_revision == Some(revision) {
+        return;
+    }
+    state.session_revision = Some(revision);
+    state.core_snapshot = Some(session.snapshot().as_ref().clone());
+    state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
+    sync_home_from_core_snapshot(state);
+    state.ui = UiTree::default();
+}
+
+fn discover_command(
+    profile: &Value,
+    content_type: &str,
+    catalog_key: &str,
+    extra_name: &str,
+    extra_value: &str,
+    query: &str,
+    load_catalog_filters: bool,
+) -> Value {
+    let mut extra = serde_json::Map::new();
+    if !extra_name.is_empty() && !extra_value.is_empty() {
+        extra.insert(extra_name.to_owned(), json!(extra_value));
+    }
+    if !query.is_empty() {
+        extra.insert("search".to_owned(), json!(query));
+    }
+    json!({
+        "type": "discoverRequested",
+        "loadCatalogFilters": load_catalog_filters,
+        "contentType": content_type,
+        "filters": {
+            "catalogKey": (!catalog_key.is_empty()).then_some(catalog_key),
+            "extra": extra,
+        },
+        "profile": profile,
+        "language": profile_language(profile),
+    })
+}
+
+fn navigation(route: &str) -> Value {
+    json!({"type": "navigationRequested", "route": route, "params": {}})
+}
+
+fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>> {
+    let commands = match action {
+        NativeAction::CoreCommand { command } => vec![command.clone()],
+        NativeAction::LoadMore { .. } => Vec::new(),
+        NativeAction::Back => vec![navigation("home")],
+        NativeAction::Navigate { destination } => match destination.as_str() {
+            "home" => vec![navigation("home")],
+            "library" => vec![
+                navigation("library"),
+                json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}),
+            ],
+            "discover" => vec![
+                navigation("discover"),
+                discover_command(profile, "movie", "", "", "", "", true),
+            ],
+            "calendar" => {
+                let (year, month) = current_year_month();
+                vec![
+                    navigation("calendar"),
+                    json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
+                ]
+            }
+            "profile" => vec![navigation("settings")],
+            _ => return None,
+        },
+        NativeAction::DiscoverType { content_type } => {
+            vec![discover_command(
+                profile,
+                content_type,
+                "",
+                "",
+                "",
+                "",
+                true,
+            )]
+        }
+        NativeAction::DiscoverCatalog {
+            content_type,
+            catalog_key,
+            extra_name,
+            extra_value,
+            query,
+        }
+        | NativeAction::DiscoverFilters {
+            content_type,
+            catalog_key,
+            extra_name,
+            extra_value,
+            query,
+        } => vec![discover_command(
+            profile,
+            content_type,
+            catalog_key,
+            extra_name,
+            extra_value,
+            query,
+            false,
+        )],
+        NativeAction::CalendarMonth { year, month } => vec![
+            json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
+        ],
+        NativeAction::Detail { id, item_type } | NativeAction::Play { id, item_type } => vec![
+            navigation("detail"),
+            json!({
+                "type": "detailLoadRequested",
+                "id": id,
+                "contentType": item_type,
+                "language": profile_language(profile),
+                "profile": profile,
+            }),
+        ],
+        NativeAction::ToggleWatchlist { item } => {
+            vec![json!({"type": "toggleWatchlistRequested", "item": item, "profile": profile})]
+        }
+        NativeAction::SettingsChange { key, value } => {
+            vec![json!({"type": "settingsChanged", "key": key, "value": value})]
+        }
+        NativeAction::SettingsSection { .. } => return None,
+    };
+    Some(commands)
+}
+
+fn route_actions_to_session(state: &mut RendererState) {
+    let Some(session) = state.session.as_mut() else {
+        return;
+    };
+    if state.pending_native_actions.is_empty() {
+        return;
+    }
+    let profile = session.active_profile();
+    let mut unhandled = Vec::new();
+    for action in std::mem::take(&mut state.pending_native_actions) {
+        match session_commands(&action, &profile) {
+            Some(commands) => {
+                for command in commands {
+                    if let Err(error) = session.dispatch(command) {
+                        host_log(format!("core dispatch failed: {error}"));
+                    }
+                }
+            }
+            None => unhandled.push(action),
+        }
+    }
+    state.pending_native_actions = unhandled;
+}
+
+fn current_year_month() -> (i32, u32) {
+    use chrono::Datelike;
+    let today = chrono::Local::now().date_naive();
+    (today.year(), today.month())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opening_detail_navigates_then_loads_in_profile_language() {
+        let profile = json!({"id": "p1", "language": "tr"});
+        let commands = session_commands(
+            &NativeAction::Detail {
+                id: "tt1".to_owned(),
+                item_type: "movie".to_owned(),
+            },
+            &profile,
+        )
+        .unwrap();
+        assert_eq!(commands[0]["route"], "detail");
+        assert_eq!(commands[1]["type"], "detailLoadRequested");
+        assert_eq!(commands[1]["language"], "tr");
+    }
+
+    #[test]
+    fn discover_search_goes_into_extra_filters() {
+        let command = discover_command(&Value::Null, "series", "top", "", "", "dune", false);
+        assert_eq!(command["filters"]["extra"]["search"], "dune");
+        assert_eq!(command["filters"]["catalogKey"], "top");
+        assert_eq!(command["language"], "en");
+    }
+
+    #[test]
+    fn settings_section_stays_with_the_platform() {
+        assert!(
+            session_commands(&NativeAction::SettingsSection { index: 2 }, &Value::Null).is_none()
+        );
     }
 }

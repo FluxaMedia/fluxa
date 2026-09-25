@@ -16,3 +16,5 @@ pollster = "0.4"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 wgpu = { version = "29.0.3", default-features = false, features = ["wgsl"] }
+chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+fluxa-effects = { path = "../fluxa-effects", default-features = false }

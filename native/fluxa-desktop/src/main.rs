@@ -5574,73 +5574,8 @@ impl ApplicationHandler for FluxaDesktopApp {
 
 fn native_initial_runtime_state(initial_prefs: Value, storage: &Storage) -> (Value, bool) {
     let Some(path) = std::env::var_os("FLUXA_NATIVE_FIXTURE") else {
-        let profiles = storage
-            .read_json("profiles")
-            .ok()
-            .flatten()
-            .unwrap_or_else(|| json!([]));
-        let active_id = storage
-            .read_json("active_profile_id")
-            .ok()
-            .flatten()
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "guest".to_owned());
-        let active_profile = profiles
-            .as_array()
-            .and_then(|items| {
-                items.iter().find(|profile| {
-                    profile.get("id").and_then(Value::as_str) == Some(active_id.as_str())
-                })
-            })
-            .cloned()
-            .unwrap_or(Value::Null);
-        let mut prefs = storage
-            .read_json(&Storage::prefs_key(&active_id))
-            .ok()
-            .flatten()
-            .unwrap_or(initial_prefs);
-        if active_profile
-            .get("nuvioAccessToken")
-            .and_then(Value::as_str)
-            .is_some_and(|token| !token.is_empty())
-            && let Some(values) = prefs.as_object_mut()
-        {
-            for key in ["integrationLibrarySource", "continueWatchingSource"] {
-                if values
-                    .get(key)
-                    .and_then(Value::as_str)
-                    .is_none_or(|source| source == "local")
-                {
-                    values.insert(key.to_owned(), Value::String("nuvio".to_owned()));
-                }
-            }
-        }
-        let owner = native_core_value(
-            "effectiveAddonsOwnerId",
-            json!({"profiles": profiles, "activeProfileId": active_id}),
-        )
-        .and_then(|value| value.as_str().map(ToOwned::to_owned))
-        .unwrap_or_else(|| active_id.clone());
-        let addons = storage
-            .read_json(&Storage::addons_key(&owner))
-            .ok()
-            .flatten()
-            .or_else(|| {
-                storage
-                    .read_json(&Storage::addons_key(&active_id))
-                    .ok()
-                    .flatten()
-            })
-            .or_else(|| storage.read_json("addons").ok().flatten())
-            .filter(Value::is_array)
-            .unwrap_or_else(|| json!([]));
         return (
-            json!({
-                "settings": {"values": prefs},
-                "profile": {"active": active_profile, "activeProfileId": active_id},
-                "addons": {"installed": addons},
-            }),
+            fluxa_effects::persisted_runtime_state(storage, initial_prefs),
             false,
         );
     };

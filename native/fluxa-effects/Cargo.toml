@@ -11,6 +11,7 @@ desktop = ["fluxa_core/desktop"]
 [dependencies]
 aes-gcm = "0.11"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
+fluxa-app = { path = "../fluxa-app", default-features = false }
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["full-api", "plugin-js-engine"] }
 fluxa_streaming_engine = { path = "../../core/fluxa-core/fluxa-streaming-engine", default-features = false, features = ["native"] }
 reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-native-roots", "json"] }
