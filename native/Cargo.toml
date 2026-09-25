@@ -1,0 +1,48 @@
+[workspace]
+resolver = "2"
+members = ["fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artwork", "fluxa-desktop", "fluxa-android-renderer", "fluxa-mobile-host"]
+
+[workspace.package]
+edition = "2024"
+license = "MIT"
+
+# Keep CPU-heavy artwork decoding representative of release performance while
+# running the native app in the dev profile. Animated WebP decoding is handled
+# by this pure-Rust dependency, whose unoptimized loops otherwise dominate
+# image preparation time by orders of magnitude.
+[profile.dev.package.image-webp]
+opt-level = 3
+
+[profile.dev.package.image]
+opt-level = 3
+
+[profile.dev.package.fluxa-artwork]
+opt-level = 3
+
+# The Android Rust UI is exercised from debug APKs during development. Keep
+# Kotlin/Java debuggable, but compile the frame-critical Rust UI and its egui
+# drawing stack with release-like optimization so device profiling reflects
+# actual interactive performance rather than unoptimized layout/tessellation.
+[profile.dev.package.fluxa-android-renderer]
+opt-level = 2
+
+[profile.dev.package.fluxa-ui]
+opt-level = 2
+
+[profile.dev.package.fluxa-renderer]
+opt-level = 2
+
+[profile.dev.package.egui]
+opt-level = 2
+
+[profile.dev.package.epaint]
+opt-level = 2
+
+[profile.dev.package.emath]
+opt-level = 2
+
+[profile.dev.package.ecolor]
+opt-level = 2
+
+[profile.dev.package.wgpu]
+opt-level = 2

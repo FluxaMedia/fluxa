@@ -1,0 +1,45 @@
+{
+  "navigation": { "route": "home", "params": null },
+  "home": {
+    "isLoading": false,
+    "billboard": {
+      "id": "fixture-featured",
+      "type": "movie",
+      "name": "Clash of the Thunder...",
+      "year": 2026,
+      "runtime": "1h12min",
+      "genres": ["Family", "Action"],
+      "description": "When Chloe develops a destructive new superpower, the Hero League orders her to an elite boarding school for superheroes to learn control of her abilities."
+    },
+    "continueWatching": [
+      { "id": "bleach", "type": "series", "name": "Bleach", "lastEpisodeName": "The Day I Became a Shinigami", "resumeProgressPercent": 34 },
+      { "id": "deadpool", "type": "movie", "name": "Deadpool", "year": "22 min left", "resumeProgressPercent": 43 },
+      { "id": "ben10", "type": "series", "name": "Ben 10", "lastEpisodeName": "The Kraken", "resumeProgressPercent": 25 },
+      { "id": "rick-morty", "type": "series", "name": "Rick and Morty", "lastEpisodeName": "Lawnmower Dog", "resumeProgressPercent": 18 },
+      { "id": "invincible", "type": "series", "name": "INVINCIBLE (2021)", "lastEpisodeName": "IN ABOUT SIX HOURS I LOSE MY...", "resumeProgressPercent": 61 },
+      { "id": "regular-show", "type": "series", "name": "Regular Show", "lastEpisodeName": "Just Set Up the Chairs", "resumeProgressPercent": 12 }
+    ],
+    "categories": [
+      { "name": "TMDB Popular - Movies", "items": [
+        { "id": "m1", "type": "movie", "name": "Clash of the Thunder...", "year": "2026" },
+        { "id": "m2", "type": "movie", "name": "The Runner", "year": "2026" },
+        { "id": "m3", "type": "movie", "name": "Mayday", "year": "2026" },
+        { "id": "m4", "type": "movie", "name": "Toxic: A Fairy Tale", "year": "2026" },
+        { "id": "m5", "type": "movie", "name": "Facing El Chapo", "year": "2026" },
+        { "id": "m6", "type": "movie", "name": "Mutiny", "year": "2026" },
+        { "id": "m7", "type": "movie", "name": "Rage of Stars", "year": "2026" }
+      ]},
+      { "name": "TMDB Popular - Series", "items": [
+        { "id": "s1", "type": "series", "name": "Reacher", "year": "2022" },
+        { "id": "s2", "type": "series", "name": "NCIS", "year": "2003" },
+        { "id": "s3", "type": "series", "name": "Game of Thrones", "year": "2011" },
+        { "id": "s4", "type": "series", "name": "Rick and Morty", "year": "2013" },
+        { "id": "s5", "type": "series", "name": "Bleach", "year": "2004" }
+      ]}
+    ]
+  },
+  "library": { "isLoading": false, "watchlist": [], "continueWatching": [], "completed": [], "dropped": [], "liked": [] },
+  "discover": { "contentType": "movie", "catalogs": [{ "key": "popular", "label": "Popular" }, { "key": "recent", "label": "Recently added" }], "results": [], "isLoading": false, "catalogsLoading": false },
+  "detail": { "id": "fixture-featured", "contentType": "movie", "isLoading": false, "isInWatchlist": false, "meta": { "id": "fixture-featured", "type": "movie", "name": "Clash of the Thunder...", "year": 2026, "description": "Fixture detail description for visual testing." }, "similarItems": [] },
+  "settings": { "values": { "animationsEnabled": true, "notificationsEnabled": true, "autoplayNext": true, "rememberPlayback": true, "compactCards": false, "showEpisodeBadges": true, "cacheArtwork": true, "hardwareDecoding": true }, "lastWriteError": null }
+}

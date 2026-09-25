@@ -1,0 +1,13 @@
+[package]
+name = "fluxa-ui"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Shared responsive Fluxa UI model, layout and egui drawing primitives."
+
+[dependencies]
+egui = "0.34.2"
+fluxa-artwork = { path = "../fluxa-artwork" }
+fluxa-theme = { path = "../fluxa-theme" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"

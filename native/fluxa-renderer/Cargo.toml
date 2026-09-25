@@ -1,0 +1,28 @@
+[package]
+name = "fluxa-renderer"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "WGPU scene and egui painter backend for Fluxa UI surfaces."
+
+[features]
+default = ["desktop-demo"]
+desktop-demo = ["dep:pollster", "dep:winit"]
+
+[dependencies]
+bytemuck = { version = "1.25", features = ["derive"] }
+egui = "0.34.2"
+egui-wgpu = "0.34.2"
+fluxa-theme = { path = "../fluxa-theme" }
+image = { version = "0.25.10", default-features = false, features = ["png"] }
+pollster = { version = "0.4", optional = true }
+resvg = "0.45"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tiny-skia = "0.11"
+wgpu = { version = "29.0.3", default-features = false, features = ["dx12", "gles", "metal", "vulkan", "wgsl"] }
+winit = { version = "0.30.12", optional = true }
+
+[[example]]
+name = "native-home"
+required-features = ["desktop-demo"]

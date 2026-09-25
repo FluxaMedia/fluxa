@@ -1,0 +1,17 @@
+[package]
+name = "fluxa-android-renderer"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Android Surface/JNI host for Fluxa's Rust WGPU renderer."
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["native"] }
+fluxa-mobile-host = { path = "../fluxa-mobile-host" }
+fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
+jni = "0.21"
+raw-window-handle = "0.6"
+wgpu = { version = "29.0.3", default-features = false, features = ["gles", "vulkan", "wgsl"] }

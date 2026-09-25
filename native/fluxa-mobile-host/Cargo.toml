@@ -1,0 +1,18 @@
+[package]
+name = "fluxa-mobile-host"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+description = "Platform-neutral touch host for Fluxa's Rust WGPU renderer, shared by Android and Apple."
+
+[dependencies]
+egui = "0.34.2"
+fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["full-api", "plugin-js-engine"] }
+fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
+fluxa-ui = { path = "../fluxa-ui" }
+fluxa-artwork = { path = "../fluxa-artwork" }
+image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
+pollster = "0.4"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+wgpu = { version = "29.0.3", default-features = false, features = ["wgsl"] }
