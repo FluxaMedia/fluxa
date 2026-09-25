@@ -551,11 +551,19 @@ struct HostAssets<'a> {
     background: egui::TextureId,
     artwork: &'a mut ArtworkLoader,
     icons: &'a SvgIconRegistry,
+    profile_name: Option<&'a str>,
+    profile_avatar_url: Option<&'a str>,
 }
 
 impl HomeAssets for HostAssets<'_> {
     fn background(&self) -> egui::TextureId {
         self.background
+    }
+    fn active_profile_name(&self) -> Option<&str> {
+        self.profile_name
+    }
+    fn active_profile_avatar_url(&self) -> Option<&str> {
+        self.profile_avatar_url
     }
     fn texture(&mut self, url: Option<&str>) -> Option<egui::TextureId> {
         self.artwork.texture(url)
@@ -918,6 +926,8 @@ impl Gpu {
                 background: self.background_texture.id(),
                 artwork: &mut self.artwork,
                 icons: &self.icons,
+                profile_name: home.profile_name.as_deref(),
+                profile_avatar_url: home.profile_avatar_url.as_deref(),
             };
             let viewport = Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
                 .with_safe_bottom(safe_bottom)
