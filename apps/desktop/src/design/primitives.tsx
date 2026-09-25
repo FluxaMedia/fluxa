@@ -1,18 +1,20 @@
 import React from 'react';
 import { color, fontSize, font, lineHeight, radius, space, tracking, weight } from './tokens';
 
-type ButtonVariant = 'primary' | 'secondary' | 'ghost';
-type ButtonSize = 'sm' | 'md';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 const buttonSizing: Record<ButtonSize, React.CSSProperties> = {
   sm: { height: '2.25rem', padding: `0 ${space[3]}`, fontSize: fontSize.base },
   md: { height: '2.75rem', padding: `0 ${space[6]}`, fontSize: fontSize.md },
+  lg: { height: '3rem', padding: `0 ${space[8]}`, fontSize: fontSize.md },
 };
 
 const buttonSkin: Record<ButtonVariant, React.CSSProperties> = {
   primary: { background: color.light, color: color.onLight, border: 'none' },
   secondary: { background: color.fill, color: color.textPrimary, border: `1px solid ${color.line}` },
   ghost: { background: 'transparent', color: color.textMuted, border: 'none' },
+  danger: { background: color.error, color: color.light, border: 'none' },
 };
 
 export function Button({

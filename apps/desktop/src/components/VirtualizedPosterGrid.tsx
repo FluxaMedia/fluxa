@@ -23,6 +23,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   onNearEnd,
   resetKey,
   isLoadingMore = false,
+  paddingX: paddingXOverride,
 }: {
   items: Meta[];
   selectedId: string | null;
@@ -34,6 +35,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   onNearEnd?: () => void;
   resetKey?: string;
   isLoadingMore?: boolean;
+  paddingX?: number;
 }) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
@@ -82,7 +84,7 @@ export const VirtualizedPosterGrid = React.memo(function VirtualizedPosterGrid({
   }, [resetKey]);
 
   const narrow = viewport.width > 0 && viewport.width <= 820;
-  const paddingX = narrow ? 16 : GRID_PADDING_X;
+  const paddingX = narrow ? 16 : (paddingXOverride ?? GRID_PADDING_X);
   const gapX = narrow ? 12 : GRID_GAP_X;
   const availableWidth = Math.max(0, viewport.width - paddingX * 2);
   const minColumnWidth = narrow

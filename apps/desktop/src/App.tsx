@@ -427,7 +427,7 @@ export default function App() {
   }, [setDiscoverInitialGenre]);
 
   const prefs = React.useMemo(() => appPrefs(settingsState), [settingsState.settings?.values]);
-  const { rootStyle, isTopBar, navBarPosition, navItemsAlign, sidebarAlwaysOpen, sidebarOffset, mirrorSearchToLeft, navigationRoutes } =
+  const { rootStyle, isTopBar, navMode, navBarPosition, navItemsAlign, sidebarAlwaysOpen, sidebarOffset, navigationRoutes } =
     useAppLayoutPrefs({
       state: settingsState,
       prefs,
@@ -474,6 +474,49 @@ export default function App() {
   const showDetail = detailMeta !== null;
   const bannerOffset = (serverDown && !dismissed) || justRecovered ? 36 : 0;
 
+  const profileControl = (
+    <ProfileChip
+      profile={activeProfile!}
+      allProfiles={allProfiles}
+      showName={isTopBar}
+      active={activeRoute === 'settings'}
+      onSwitchProfile={() => void switchToNoProfile()}
+      onSwitchToProfile={async (p) => {
+        invalidateProfileWork();
+        await setActiveProfileId(p.id);
+        invalidateLibraryKeyCache();
+        stateRef.current = DEFAULT_STATE;
+        replaceState(DEFAULT_STATE);
+        setProfileSplashPending(true);
+        setActiveProfile(p);
+        setHomeResetKey((k) => k + 1);
+        await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
+        await applyStoredPrefs();
+        void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
+        await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
+        setProfileSplashPending(false);
+      }}
+      onOpenSettings={() => navigateRoute('settings')}
+      onEditProfile={() => setEditProfileOpen(true)}
+    />
+  );
+
+  const searchControl = (
+    <GlobalSearchRoute
+      store={store}
+      alwaysOpen={isTopBar}
+      query={globalSearchQuery}
+      onSearch={(query) => {
+        setGlobalSearchQuery(query);
+        navigateRoute('search');
+      }}
+      onBack={leaveSearch}
+      focusSignal={searchFocusSignal}
+      onDispatch={dispatch}
+      onNavigateDetail={handleNavigateDetail}
+    />
+  );
+
   const navigation =
     !nativePlayerActive &&
     (isMobile ? (
@@ -482,11 +525,13 @@ export default function App() {
       <TopBar
         activeRoute={activeRoute}
         onNavigate={navigateRoute}
-        transparent={activeRoute === 'home' && !showDetail && !homeScrolled}
+        mode={navMode}
+        transparent={false}
         position={navBarPosition}
         itemsAlign={navItemsAlign}
         topOffset={bannerOffset}
         routes={navigationRoutes as NavRoute[]}
+        endContent={profileControl}
       />
     ) : (
       <NavSidebar
@@ -500,14 +545,13 @@ export default function App() {
       />
     ));
 
-  const globalControls = !nativePlayerActive ? (
+  const globalControls = !nativePlayerActive && (isMobile || !isTopBar) ? (
     <div
       className="app-topbar"
       style={{
         position: 'fixed',
         top: 18 + bannerOffset,
-        left: mirrorSearchToLeft ? 20 : undefined,
-        right: mirrorSearchToLeft ? undefined : 20,
+        right: 20,
         zIndex: 46,
         display: 'flex',
         alignItems: 'center',
@@ -515,42 +559,8 @@ export default function App() {
         pointerEvents: 'none',
       }}
     >
-      <GlobalSearchRoute
-        store={store}
-        query={globalSearchQuery}
-        onSearch={(query) => {
-          setGlobalSearchQuery(query);
-          navigateRoute('search');
-        }}
-        onBack={leaveSearch}
-        focusSignal={searchFocusSignal}
-        onDispatch={dispatch}
-        onNavigateDetail={handleNavigateDetail}
-      />
-      <div style={{ pointerEvents: 'auto', flexShrink: 0 }}>
-        <ProfileChip
-          profile={activeProfile!}
-          allProfiles={allProfiles}
-          onSwitchProfile={() => void switchToNoProfile()}
-          onSwitchToProfile={async (p) => {
-            invalidateProfileWork();
-            await setActiveProfileId(p.id);
-            invalidateLibraryKeyCache();
-            stateRef.current = DEFAULT_STATE;
-            replaceState(DEFAULT_STATE);
-            setProfileSplashPending(true);
-            setActiveProfile(p);
-            setHomeResetKey((k) => k + 1);
-            await dispatch(JSON.stringify({ type: 'profileActivated', profile: p }));
-            await applyStoredPrefs();
-            void dispatch(JSON.stringify({ type: 'addonsRefreshRequested', forceRefresh: false }));
-            await dispatch(JSON.stringify({ type: 'homeLoadRequested' }));
-            setProfileSplashPending(false);
-          }}
-          onOpenSettings={() => navigateRoute('settings')}
-          onEditProfile={() => setEditProfileOpen(true)}
-        />
-      </div>
+      {activeRoute !== 'discover' && searchControl}
+      <div style={{ pointerEvents: 'auto', flexShrink: 0 }}>{profileControl}</div>
     </div>
   ) : null;
 
@@ -628,6 +638,8 @@ export default function App() {
             onNavigateDetail={handleNavigateDetail}
             onBack={handleDiscoverBack}
             initialGenre={discoverInitialGenre}
+            query={globalSearchQuery}
+            onQueryChange={handleSearchQueryChange}
           />
         </React.Suspense>
       )}

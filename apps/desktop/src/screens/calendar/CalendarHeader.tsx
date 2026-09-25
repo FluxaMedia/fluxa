@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react';
 import type { CSSProperties } from 'react';
 import { t } from '../../i18n';
 import { monthTitle, shiftMonth } from './calendarUtils';
@@ -22,7 +22,12 @@ export function CalendarHeader({
   const month = monthStart.getMonth() + 1;
   return (
     <header style={styles.header}>
-      <div />
+      <div style={styles.headerBrand}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <CalendarDays size={20} />
+          <p style={styles.headerBrandTitle}>{t('nav.calendar')}</p>
+        </div>
+      </div>
       <div style={styles.monthControls}>
         <button style={styles.navBtn} onClick={() => onMonthChange(shiftMonth(monthStart, -1))} aria-label={t('calendar.previous_month')}>
           <ChevronLeft size={21} />

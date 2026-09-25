@@ -1,5 +1,7 @@
-import builtInThemesJson from '../../contracts/built-in-themes.json';
+import themeTokensJson from '../../../../shared/contracts/ui-tokens.json';
 import type { SkinLayout, ThemePack } from './types';
+
+const builtInThemesJson = themeTokensJson.themes;
 
 export const FLUXA_DARK_THEME = builtInThemesJson[0] as ThemePack;
 

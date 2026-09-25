@@ -4,7 +4,6 @@ import { sendCmd, type FeedbackFlash } from './PlayerOverlayPrimitives';
 export function usePlayerCenterGesture({
   playbackSpeed,
   preSpeedRef,
-  pausedRef,
   episodePanelOpenRef,
   showEpisodePanel,
   setShowEpisodePanel,
@@ -19,7 +18,6 @@ export function usePlayerCenterGesture({
 }: {
   playbackSpeed: number;
   preSpeedRef: MutableRefObject<number>;
-  pausedRef: MutableRefObject<boolean>;
   episodePanelOpenRef: MutableRefObject<boolean>;
   showEpisodePanel: boolean;
   setShowEpisodePanel: (visible: boolean) => void;
@@ -43,7 +41,7 @@ export function usePlayerCenterGesture({
       holdTimerRef.current = setTimeout(() => {
         holdActiveRef.current = true;
         sendCmd('set speed 2.00');
-        flashFeedback('speed', '2×');
+        flashFeedback('speed', '2x Speed');
       }, 300);
     },
     [flashFeedback, playbackSpeed, preSpeedRef, resetActivity],
@@ -83,14 +81,11 @@ export function usePlayerCenterGesture({
     }
     clickTimerRef.current = setTimeout(() => {
       clickTimerRef.current = null;
-      flashFeedback(pausedRef.current ? 'play' : 'pause', '');
       setPaused((paused) => !paused);
       sendCmd('cycle pause');
     }, 250);
   }, [
     episodePanelOpenRef,
-    flashFeedback,
-    pausedRef,
     resetActivity,
     setPaused,
     setShowEpisodePanel,

@@ -136,7 +136,7 @@ export const layout = {
   topBar: '3.25rem',
   gutter: '2.5rem',
   detailRail: '17.5rem',
-  reading: '50rem',
+  reading: '70rem',
 } as const;
 
 export const z = {

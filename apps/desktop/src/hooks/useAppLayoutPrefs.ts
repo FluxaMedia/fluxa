@@ -68,29 +68,23 @@ export function useAppLayoutPrefs({
 
   const navLayout = prefString(prefs, 'navLayout', 'sidebar');
   const storedPrefs = (state.settings?.values ?? {}) as Record<string, unknown>;
-  const rawNavBarPosition =
-    typeof storedPrefs.navBarPosition === 'string'
-      ? prefString(storedPrefs, 'navBarPosition', navLayout === 'topbar' ? 'top' : 'left')
-      : navLayout === 'topbar'
-        ? 'top'
-        : 'left';
   const isTopBar = navLayout === 'topbar';
-  const navBarPosition = isTopBar && (rawNavBarPosition === 'left' || rawNavBarPosition === 'right') ? 'top' : rawNavBarPosition;
-  const navItemsAlign = prefString(prefs, 'navItemsAlign', 'center');
+  const navMode = prefString(prefs, 'navMode', 'classic');
+  const navBarPosition = isTopBar ? 'top' : 'left';
+  const navItemsAlign = 'start';
   const navSidebarMode = prefString(prefs, 'navSidebarMode', 'hover');
   const sidebarAlwaysOpen = !isTopBar && navSidebarMode === 'always';
   const sidebarOffset = sidebarAlwaysOpen ? 112 : 0;
-  const mirrorSearchToLeft = isTopBar && (navBarPosition === 'right' || (navBarPosition === 'top' && navItemsAlign === 'end'));
 
   return {
     rootStyle,
     accentColor,
     isTopBar,
+    navMode,
     navBarPosition,
     navItemsAlign,
     sidebarAlwaysOpen,
     sidebarOffset,
-    mirrorSearchToLeft,
     navigationRoutes: orderedVisibleRoutes(themeRuntime.skin),
   };
 }

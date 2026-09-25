@@ -1,6 +1,6 @@
 import React from 'react';
 import { color, fade } from '../../design';
-import { Maximize2, Volume2, VolumeX, X } from 'lucide-react';
+import { ArrowLeft, Maximize2, Volume2, VolumeX } from 'lucide-react';
 import { t } from '../../i18n';
 import { MS } from './detailStyles';
 import type { useTrailerPlayback } from '../../hooks/useTrailerPlayback';
@@ -118,8 +118,8 @@ export function ModernDetailHero({
       )}
 
       <div className="detail-hero" style={MS.heroWrap}>
-        <button className="detail-back" style={MS.backBtn} onClick={onBack} aria-label={t('common.close')} title={t('common.close')}>
-          <X size={18} color={color.textStrong} />
+        <button className="detail-back" style={MS.backBtn} onClick={onBack} aria-label={t('auto.back')} title={t('auto.back')}>
+          <ArrowLeft size={18} color={color.textStrong} />
         </button>
 
         <div className="detail-logo" style={{ ...MS.logoWrap, opacity: trailerActive ? 0 : 1, transition: 'opacity 0.4s ease' }}>

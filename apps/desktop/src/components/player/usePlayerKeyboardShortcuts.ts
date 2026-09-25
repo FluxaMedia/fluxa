@@ -91,7 +91,7 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
         holdTimerRef.current = setTimeout(() => {
           holdActiveRef.current = true;
           sendCmd('set speed 2.00');
-          flashFeedback('speed', '2×');
+          flashFeedback('speed', '2x Speed');
         }, 300);
         return;
       }
@@ -195,8 +195,6 @@ export function usePlayerKeyboardShortcuts(bindings: Bindings) {
           holdActiveRef.current = false;
           sendCmd(`set speed ${preSpeedRef.current.toFixed(2)}`);
         } else {
-          const icon = pausedRef.current ? 'play' : 'pause';
-          flashFeedback(icon, '');
           setPaused((prev) => !prev);
           sendCmd('cycle pause');
         }

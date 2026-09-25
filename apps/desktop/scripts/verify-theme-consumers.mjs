@@ -4,7 +4,8 @@ import process from 'node:process';
 
 const desktopRoot = process.cwd();
 const kmpRoot = process.argv[2] ?? path.resolve(desktopRoot, '../android');
-const theme = JSON.parse(fs.readFileSync(path.join(desktopRoot, 'contracts/built-in-themes.json'), 'utf8'));
+const source = JSON.parse(fs.readFileSync(path.join(desktopRoot, '../../shared/contracts/ui-tokens.json'), 'utf8'));
+const theme = source.themes ?? [];
 const consumers = [
   path.join(kmpRoot, 'shared/src/commonMain/kotlin/com/fluxa/app/ui/catalog/FluxaThemePackDefaults.generated.kt'),
   path.join(kmpRoot, '../apple/tvOS/FluxaThemePackDefaults.generated.swift'),

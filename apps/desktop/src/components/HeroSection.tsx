@@ -30,6 +30,7 @@ interface Props {
   preferredSubtitleLanguage?: string;
   secondarySubtitleLanguage?: string;
   pendingLogoIds?: Set<string>;
+  compactLayout?: boolean;
 }
 
 const DEFAULT_SLIDE_INTERVAL_MS = 6500;
@@ -64,6 +65,7 @@ export const HeroSection = React.memo(function HeroSection({
   preferredSubtitleLanguage,
   secondarySubtitleLanguage,
   pendingLogoIds,
+  compactLayout = false,
 }: Props) {
   const items = useMemo(() => {
     const seen = new Set<string>();
@@ -129,6 +131,13 @@ export const HeroSection = React.memo(function HeroSection({
   const genreLine = (Array.isArray(activeMeta.genres) ? activeMeta.genres : [])
     .filter((g): g is string => typeof g === 'string' && g.length > 0)
     .slice(0, 5);
+
+  const compactMetaLine = [
+    genreLine.slice(0, 2).join('  ·  '),
+    activeMeta.year != null ? String(activeMeta.year) : '',
+    activeMeta.runtime ?? '',
+    certification ?? '',
+  ].filter(Boolean);
 
   useEffect(() => {
     setBgError(false);
@@ -306,7 +315,15 @@ export const HeroSection = React.memo(function HeroSection({
       {showLeftGradient && <div style={{ ...styles.gradientLeft, opacity: trailerActive ? 0.45 : 1, transition: 'opacity 0.6s ease' }} />}
       <div style={{ ...styles.gradientBottom, ...(bottomGradientHeight ? { height: bottomGradientHeight } : null) }} />
 
-      <div className="hero-panel" style={{ ...styles.panel, ...(panelBottom ? { bottom: panelBottom } : null), ...panelStyle, ...contentStyle }}>
+      <div
+        className="hero-panel"
+        style={{
+          ...(compactLayout ? styles.compactPanel : styles.panel),
+          ...(panelBottom ? { bottom: panelBottom } : null),
+          ...panelStyle,
+          ...contentStyle,
+        }}
+      >
         {logoUrl ? (
           <img
             className="hero-logo"
@@ -317,16 +334,21 @@ export const HeroSection = React.memo(function HeroSection({
               if (el?.complete) setLogoLoaded(true);
             }}
             style={{
-              ...styles.logo,
+              ...(compactLayout ? styles.compactLogo : styles.logo),
               ...(trailerActive ? styles.logoTrailerActive : null),
               opacity: logoLoaded ? 1 : 0,
-              transition: `${styles.logo.transition}, opacity 0.4s ease`,
+              transition: `${compactLayout ? styles.compactLogo.transition : styles.logo.transition}, opacity 0.4s ease`,
             }}
             onLoad={() => setLogoLoaded(true)}
             onError={() => setLogoError(true)}
           />
         ) : pendingLogoIds?.has(activeMeta.id) ? (
-          <div style={{ height: styles.logo.height, marginBottom: styles.logo.marginBottom }} />
+          <div
+            style={{
+              height: compactLayout ? styles.compactLogo.height : styles.logo.height,
+              marginBottom: compactLayout ? styles.compactLogo.marginBottom : styles.logo.marginBottom,
+            }}
+          />
         ) : (
           <h1 style={styles.title}>{String(activeMeta.name ?? '')}</h1>
         )}
@@ -339,15 +361,20 @@ export const HeroSection = React.memo(function HeroSection({
             transition: 'max-height 0.5s ease, opacity 0.3s ease',
           }}
         >
-          {tagline && <p style={styles.tagline}>{tagline}</p>}
+          {!compactLayout && tagline && <p style={styles.tagline}>{tagline}</p>}
+
+          {compactLayout && compactMetaLine.length > 0 && <p style={styles.compactMeta}>{compactMetaLine.join('  ·  ')}</p>}
 
           {activeMeta.description && (
-            <p className="hero-desc" style={{ ...styles.description, animation: 'heroFadeIn 0.4s ease' }}>
+            <p
+              className="hero-desc"
+              style={{ ...(compactLayout ? styles.compactDescription : styles.description), animation: 'heroFadeIn 0.4s ease' }}
+            >
               {activeMeta.description}
             </p>
           )}
 
-          {(!isNaN(imdbNum) || certification || genreLine.length > 0) && (
+          {!compactLayout && (!isNaN(imdbNum) || certification || genreLine.length > 0) && (
             <div style={styles.metaRow}>
               {!isNaN(imdbNum) && (
                 <span style={styles.imdbBadge}>
@@ -363,7 +390,7 @@ export const HeroSection = React.memo(function HeroSection({
           {awards && <p style={styles.awards}>{awards}</p>}
         </div>
 
-        <div className="hero-actions" style={styles.actions}>
+        <div className="hero-actions" style={compactLayout ? styles.compactActions : styles.actions}>
           <button style={styles.watchBtn} onClick={() => onPlay?.(activeMeta)}>
             <Play size={13} fill="currentColor" />
             {heroPlayLabel(activeMeta)}

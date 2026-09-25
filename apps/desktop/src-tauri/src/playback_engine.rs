@@ -16,6 +16,9 @@ pub trait PlaybackEngine: Send {
         language: Option<&str>,
     ) -> Result<(), String>;
     fn query_property(&self, name: &str) -> Option<String>;
+    fn chapters_json(&self) -> Option<String> {
+        None
+    }
     fn status(&self) -> PlayerStatus;
     fn track_options(&self, track_type: &str) -> Vec<PlayerTrackOption>;
     fn title(&self) -> Option<String>;
@@ -51,6 +54,9 @@ impl PlaybackEngine for MpvClientHandle {
     }
     fn query_property(&self, name: &str) -> Option<String> {
         MpvClientHandle::query_property(self, name)
+    }
+    fn chapters_json(&self) -> Option<String> {
+        MpvClientHandle::chapters_json(self)
     }
     fn status(&self) -> PlayerStatus {
         MpvClientHandle::status(self)

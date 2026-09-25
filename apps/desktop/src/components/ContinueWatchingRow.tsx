@@ -7,7 +7,7 @@ import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
 import { ConfirmDialog } from './ConfirmDialog';
 
-const ROW_PADDING_LEFT = '2rem';
+const ROW_PADDING_LEFT = 'var(--fluxa-screen-padding, 1.5rem)';
 
 let lastCardFieldsKey: string | null = null;
 let lastCardFields: Map<string, ContinueWatchingCardFields> = new Map();
@@ -352,7 +352,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
   },
   scroll: {
     display: 'flex',
-    gap: '0.75rem',
+    gap: '0.6rem',
     overflowX: 'auto',
     paddingLeft: ROW_PADDING_LEFT,
     paddingRight: '2.5rem',

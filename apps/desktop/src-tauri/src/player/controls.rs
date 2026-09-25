@@ -44,10 +44,18 @@ pub fn player_render_frame(
         return Err("headless frame rendering is not supported by the libvlc engine".to_string());
     }
     let mut renderer = state.player_render_state.lock().unwrap();
-    renderer
+    let result = renderer
         .as_mut()
         .ok_or_else(|| "player renderer is not initialized".to_string())?
-        .render_frame(width, height)
+        .render_frame(width, height);
+    if let Err(error) = &result {
+        log::warn!(
+            "player_render_frame failed size={}x{} error={error}",
+            width,
+            height
+        );
+    }
+    result
 }
 
 #[tauri::command]

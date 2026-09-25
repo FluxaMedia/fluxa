@@ -45,20 +45,20 @@ export function runPlayerAction(action: string, ctx: PlayerActionContext): boole
   switch (action) {
     case 'player_seek_back':
       startSeekOverlay();
-      flashFeedback('seekBack', '-10s');
+      flashFeedback('seekBack', '-10s Rewound');
       sendCmd('seek -10 relative');
       return true;
     case 'player_seek_forward':
       startSeekOverlay();
-      flashFeedback('seekFwd', '+10s');
+      flashFeedback('seekFwd', '+10 Forwarded');
       sendCmd('seek 10 relative');
       return true;
     case 'player_volume_up':
-      flashFeedback('volume', '');
+      flashFeedback('volume', 'Volume +5');
       sendCmd('add volume 5');
       return true;
     case 'player_volume_down':
-      flashFeedback('volume', '');
+      flashFeedback('volume', 'Volume -5');
       sendCmd('add volume -5');
       return true;
     case 'player_seek_big_back':
@@ -72,8 +72,6 @@ export function runPlayerAction(action: string, ctx: PlayerActionContext): boole
       sendCmd('seek 60 relative');
       return true;
     case 'player_play_pause': {
-      const icon = pausedRef.current ? 'play' : 'pause';
-      flashFeedback(icon, '');
       setPaused((prev) => !prev);
       sendCmd('cycle pause');
       return true;
@@ -82,14 +80,14 @@ export function runPlayerAction(action: string, ctx: PlayerActionContext): boole
       const next = Math.max(0.25, parseFloat((playbackSpeed - 0.25).toFixed(2)));
       sendCmd(`set speed ${next}`);
       setPlaybackSpeed(next);
-      flashFeedback('speed', t('player.speed_decrease'));
+      flashFeedback('speed', `${next}x Speed`);
       return true;
     }
     case 'player_speed_increase': {
       const next = Math.min(4, parseFloat((playbackSpeed + 0.25).toFixed(2)));
       sendCmd(`set speed ${next}`);
       setPlaybackSpeed(next);
-      flashFeedback('speed', t('player.speed_increase'));
+      flashFeedback('speed', `${next}x Speed`);
       return true;
     }
     case 'player_cycle_subtitle':

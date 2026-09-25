@@ -5,7 +5,7 @@ import { ContinueCard, isRenderableMeta } from './ContinueCard';
 import { t } from '../i18n';
 import { useDragScroll } from '../hooks/useDragScroll';
 
-const ROW_PADDING_LEFT = '2rem';
+const ROW_PADDING_LEFT = 'var(--fluxa-screen-padding, 1.5rem)';
 
 export const ThisWeekRow = React.memo(function ThisWeekRow({
   items,

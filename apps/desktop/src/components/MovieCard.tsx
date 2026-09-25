@@ -49,6 +49,7 @@ export const MovieCard = React.memo(
     });
     const [previewAnchor, setPreviewAnchor] = useState<DOMRect | null>(null);
     const previewTimerRef = useRef<number | null>(null);
+    const previewCloseTimerRef = useRef<number | null>(null);
 
     const clearPreviewTimer = useCallback(() => {
       if (previewTimerRef.current !== null) {
@@ -57,7 +58,20 @@ export const MovieCard = React.memo(
       }
     }, []);
 
-    useEffect(() => clearPreviewTimer, [clearPreviewTimer]);
+    const clearPreviewCloseTimer = useCallback(() => {
+      if (previewCloseTimerRef.current !== null) {
+        window.clearTimeout(previewCloseTimerRef.current);
+        previewCloseTimerRef.current = null;
+      }
+    }, []);
+
+    useEffect(
+      () => () => {
+        clearPreviewTimer();
+        clearPreviewCloseTimer();
+      },
+      [clearPreviewTimer, clearPreviewCloseTimer],
+    );
 
     useEffect(() => {
       let active = true;
@@ -77,15 +91,26 @@ export const MovieCard = React.memo(
       (target: HTMLElement) => {
         if (!preview) return;
         clearPreviewTimer();
+        clearPreviewCloseTimer();
         previewTimerRef.current = window.setTimeout(() => setPreviewAnchor(target.getBoundingClientRect()), 650);
       },
-      [preview, clearPreviewTimer],
+      [preview, clearPreviewTimer, clearPreviewCloseTimer],
     );
 
     const closePreview = useCallback(() => {
       clearPreviewTimer();
+      clearPreviewCloseTimer();
       setPreviewAnchor(null);
-    }, [clearPreviewTimer]);
+    }, [clearPreviewTimer, clearPreviewCloseTimer]);
+
+    const schedulePreviewClose = useCallback(() => {
+      clearPreviewTimer();
+      clearPreviewCloseTimer();
+      previewCloseTimerRef.current = window.setTimeout(() => {
+        previewCloseTimerRef.current = null;
+        setPreviewAnchor(null);
+      }, 180);
+    }, [clearPreviewTimer, clearPreviewCloseTimer]);
 
     const anyMeta = meta as unknown as Record<string, unknown>;
     const isWatched = anyMeta.watched === true || anyMeta.notWatched === false;
@@ -170,7 +195,7 @@ export const MovieCard = React.memo(
               onClick?.(meta);
             }}
             onMouseEnter={(e) => openPreview(e.currentTarget)}
-            onMouseLeave={closePreview}
+            onMouseLeave={schedulePreviewClose}
             onKeyDown={(e) => {
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
@@ -375,8 +400,11 @@ export const MovieCard = React.memo(
                   }
                 : undefined
             }
-            onMouseEnter={clearPreviewTimer}
-            onMouseLeave={closePreview}
+            onMouseEnter={() => {
+              clearPreviewTimer();
+              clearPreviewCloseTimer();
+            }}
+            onMouseLeave={schedulePreviewClose}
           />
         )}
         {onDispatch && (

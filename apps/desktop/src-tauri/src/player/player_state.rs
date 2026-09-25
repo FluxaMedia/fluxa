@@ -169,15 +169,22 @@ pub fn player_status(
 #[tauri::command]
 pub fn player_get_playback_info(state: State<DesktopState>) -> serde_json::Value {
     let overlay = state.player_overlay.lock().unwrap();
+    let chapters_json = overlay.chapters_json.clone().or_else(|| {
+        with_renderer_retry(&state, 4, |renderer| Ok(renderer.chapters_json()))
+            .ok()
+            .flatten()
+            .flatten()
+    });
     serde_json::json!({
         "skipSegmentsJson": overlay.skip_segments_json.clone(),
-        "chaptersJson": overlay.chapters_json.clone(),
+        "chaptersJson": chapters_json,
         "episodesJson": overlay.episodes_json.clone(),
         "nextEpSubtitle": overlay.next_ep_subtitle.clone(),
         "nextEpThresholdPercent": overlay.next_ep_threshold_percent,
         "autoPlayNextEpisode": overlay.auto_play_next_episode,
         "autoPlayCountdownSecs": overlay.auto_play_countdown_secs,
         "autoSkipSegments": overlay.auto_skip_segments,
+        "useChapterSkip": overlay.use_chapter_skip,
     })
 }
 

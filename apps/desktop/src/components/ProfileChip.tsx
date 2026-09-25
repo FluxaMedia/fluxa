@@ -12,41 +12,103 @@ interface Props {
   onSwitchToProfile: (p: UserProfile) => void | Promise<void>;
   onOpenSettings: () => void;
   onEditProfile: () => void;
+  showName?: boolean;
+  active?: boolean;
 }
 
-export function ProfileChip({ profile, allProfiles, onSwitchProfile, onSwitchToProfile, onOpenSettings, onEditProfile }: Props) {
+export function ProfileChip({ profile, allProfiles, onSwitchProfile, onSwitchToProfile, onOpenSettings, onEditProfile, showName = false, active = false }: Props) {
   const [open, setOpen] = useState(false);
   const [pinProfile, setPinProfile] = useState<UserProfile | null>(null);
   const avatarBtnRef = useRef<HTMLButtonElement>(null);
+  const avatarSize = showName ? 28 : 42;
+  const avatarButtonSize = showName ? 32 : 42;
 
   const close = () => setOpen(false);
 
   return (
-    <div style={{ position: 'relative', flexShrink: 0 }}>
+    <div
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.375rem',
+        flexShrink: 0,
+        height: '2.625rem',
+        boxSizing: 'border-box',
+        padding: showName ? '0 0.875rem' : 0,
+        borderRadius: '999px',
+        background: showName && active ? 'var(--fluxa-fill-active)' : 'transparent',
+        cursor: showName ? 'pointer' : undefined,
+        transition: 'background 0.15s',
+      }}
+      onClick={showName ? onOpenSettings : undefined}
+    >
       <button
         ref={avatarBtnRef}
-        onClick={() => setOpen((v) => !v)}
+        onClick={(event) => {
+          event.stopPropagation();
+          setOpen((v) => !v);
+        }}
         style={{
-          width: '2.625rem',
-          height: '2.625rem',
+          width: `${avatarButtonSize}px`,
+          height: `${avatarButtonSize}px`,
           borderRadius: '50%',
           background: 'transparent',
-          border: open ? '0.125rem solid rgba(255,255,255,0.75)' : '0.125rem solid rgba(255,255,255,0.15)',
+          border: open ? `${showName ? '0.125rem' : '0.125rem'} solid var(--fluxa-focus)` : `${showName ? '0.0625rem' : '0.125rem'} solid var(--fluxa-border-strong)`,
           padding: 0,
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
-          boxShadow: '0 0.25rem 0.875rem rgba(0,0,0,0.4)',
+          boxShadow: '0 0.25rem 0.875rem var(--fluxa-scrim, rgba(0,0,0,0.4))',
           transition: 'border-color 0.18s, box-shadow 0.18s',
           flexShrink: 0,
         }}
       >
-        <AvatarPreview profile={profile} size={42} circular />
+        <AvatarPreview profile={profile} size={avatarSize} circular />
       </button>
-
-      <Popover open={open} onClose={close} anchorRef={avatarBtnRef} placement="bottom-end" gap={10} width="13.75rem">
+      {showName && (
+        <button
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpenSettings();
+          }}
+          title={t('nav.settings')}
+          style={{
+            maxWidth: '10rem',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            border: 'none',
+            background: 'transparent',
+            color: 'var(--fluxa-text-secondary)',
+            fontFamily: 'inherit',
+            fontSize: '0.875rem',
+            fontWeight: 600,
+            textShadow: '0 1px 0.25rem var(--fluxa-scrim, rgba(0,0,0,0.8))',
+            cursor: 'pointer',
+            padding: 0,
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            borderRadius: '999px',
+            outline: 'none',
+            transition: 'background 0.15s, color 0.15s',
+          }}
+          onMouseEnter={(event) => {
+            event.currentTarget.style.background = 'transparent';
+            event.currentTarget.style.color = 'var(--fluxa-text-primary)';
+          }}
+          onMouseLeave={(event) => {
+            event.currentTarget.style.background = 'transparent';
+            event.currentTarget.style.color = 'var(--fluxa-text-secondary)';
+          }}
+        >
+          {profile.name ?? t('auto.profile')}
+        </button>
+      )}
+      <Popover open={open} onClose={close} anchorRef={avatarBtnRef} placement="bottom-end" gap={10} width="13.75rem" surface="navigation">
         <div style={{ padding: '0.375rem 0' }}>
           {allProfiles.map((p) => (
             <ProfileRow
@@ -67,7 +129,7 @@ export function ProfileChip({ profile, allProfiles, onSwitchProfile, onSwitchToP
           ))}
         </div>
 
-        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)' }} />
+        <div style={{ height: 1, background: 'var(--fluxa-border)' }} />
 
         <div style={{ padding: '0.375rem 0' }}>
           <DropdownItem
@@ -115,7 +177,7 @@ function ProfileRow({ profile, active, onClick }: { profile: UserProfile; active
       style={{
         width: '100%',
         height: '2.75rem',
-        background: hovered ? 'rgba(255,255,255,0.07)' : 'transparent',
+        background: active ? 'var(--fluxa-fill-active)' : hovered ? 'var(--fluxa-fill-hover)' : 'transparent',
         border: 'none',
         display: 'flex',
         alignItems: 'center',
@@ -131,9 +193,10 @@ function ProfileRow({ profile, active, onClick }: { profile: UserProfile; active
       <span
         style={{
           flex: 1,
-          color: active ? '#FFFFFF' : 'rgba(255,255,255,0.7)',
-          fontSize: '0.8438rem',
-          fontWeight: active ? 600 : 400,
+          color: active ? 'var(--fluxa-text-primary)' : 'var(--fluxa-text-secondary)',
+          fontFamily: 'inherit',
+          fontSize: '0.875rem',
+          fontWeight: 600,
           whiteSpace: 'nowrap',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
@@ -143,7 +206,7 @@ function ProfileRow({ profile, active, onClick }: { profile: UserProfile; active
         {profile.name ?? t('auto.profile')}
       </span>
       {active && (
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="rgba(255,255,255,0.6)" style={{ flexShrink: 0 }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style={{ color: 'var(--fluxa-text-secondary)', flexShrink: 0 }}>
           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z" />
         </svg>
       )}
@@ -161,16 +224,17 @@ function DropdownItem({ icon, label, onClick, danger }: { icon: React.ReactNode;
       style={{
         width: '100%',
         height: '2.5rem',
-        background: hovered ? 'rgba(255,255,255,0.07)' : 'transparent',
+        background: hovered ? 'var(--fluxa-fill-hover)' : 'transparent',
         border: 'none',
         display: 'flex',
         alignItems: 'center',
         gap: '0.6875rem',
         padding: '0 1rem',
         cursor: 'pointer',
-        color: danger ? '#FF6B6B' : hovered ? '#FFFFFF' : 'rgba(255,255,255,0.75)',
-        fontSize: '0.8438rem',
-        fontWeight: 550,
+        color: danger ? 'var(--fluxa-error)' : hovered ? 'var(--fluxa-text-primary)' : 'var(--fluxa-text-secondary)',
+        fontFamily: 'inherit',
+        fontSize: '0.875rem',
+        fontWeight: 600,
         transition: 'background 0.12s, color 0.12s',
         textAlign: 'left',
       }}

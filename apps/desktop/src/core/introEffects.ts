@@ -1,7 +1,6 @@
-export type IntroSegmentResult = { startTime: number; endTime: number; type: string };
+export type IntroSegmentResult = { startTime: number; endTime: number; type: string; provider?: string };
 
 import {
-  coreMergeIntroSegments,
   coreAniListMalId,
   coreAniListId,
   coreAnilistMediaIdPlan,
@@ -79,13 +78,21 @@ export async function fetchIntroSegments(
     animeSkip: segmentTypes(animeSkipSegments),
   };
 
-  const sources = [introDbSegments, skipDbSegments, theIntroDbSegments, aniSkipSegments, animeSkipSegments].filter(
-    (segments): segments is unknown[] => Array.isArray(segments),
-  );
+  const candidates = [
+    { provider: 'IntroDB', priority: 0, segments: introDbSegments },
+    { provider: 'SkipDB', priority: 1, segments: skipDbSegments },
+    { provider: 'TheIntroDB', priority: 2, segments: theIntroDbSegments },
+    { provider: 'AniSkip', priority: 3, segments: aniSkipSegments },
+    { provider: 'AnimeSkip', priority: 4, segments: animeSkipSegments },
+  ]
+    .filter((candidate): candidate is typeof candidate & { segments: unknown[] } => Array.isArray(candidate.segments) && candidate.segments.length > 0)
+    .sort((a, b) => b.segments.length - a.segments.length || a.priority - b.priority);
 
-  if (sources.length === 0) return { segments: [], coverage };
-  if (sources.length === 1) return { segments: sources[0], coverage };
-  return { segments: (await coreMergeIntroSegments(JSON.stringify(sources))) ?? [], coverage };
+  const selected = candidates[0];
+  return {
+    segments: selected ? selected.segments.map((segment) => ({ ...(segment as Record<string, unknown>), provider: selected.provider })) : [],
+    coverage,
+  };
 }
 
 function segmentTypes(segments: unknown): string[] {

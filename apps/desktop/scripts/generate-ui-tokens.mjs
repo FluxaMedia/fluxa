@@ -6,6 +6,9 @@ const desktopRoot = process.cwd();
 const repoRoot = path.resolve(desktopRoot, '../..');
 const sourcePath = path.join(repoRoot, 'shared/contracts/ui-tokens.json');
 const source = JSON.parse(fs.readFileSync(sourcePath, 'utf8'));
+const themes = source.themes ?? [];
+const { themes: _themes, ...uiTokenSource } = source;
+const kmpRoot = path.resolve(desktopRoot, '../android');
 
 const kotlinPath = path.join(
   repoRoot,
@@ -19,6 +22,11 @@ const swiftPath = path.join(repoRoot, 'apps/apple/tvOS/FluxaUiTokens.generated.s
 const swiftLayoutPath = path.join(repoRoot, 'apps/apple/tvOS/FluxaUiLayoutTokens.generated.swift');
 const tsPath = path.join(desktopRoot, 'src/theme/uiTokens.generated.ts');
 const cssLayoutPath = path.join(desktopRoot, 'src/theme/uiLayoutTokens.generated.css');
+const kotlinThemePath = path.join(
+  kmpRoot,
+  'shared/src/commonMain/kotlin/com/fluxa/app/ui/catalog/FluxaThemePackDefaults.generated.kt',
+);
+const swiftThemePath = path.join(kmpRoot, '../apple/tvOS/FluxaThemePackDefaults.generated.swift');
 
 const json = (value) => JSON.stringify(value);
 const colorToKotlin = (value) => {
@@ -183,7 +191,63 @@ ${Object.entries(source.typography).map(([key, value]) => `    static let typogr
 }
 `;
 
-const typescript = `export const FLUXA_UI_TOKENS = ${JSON.stringify(source, null, 2)} as const;
+const typescript = `export const FLUXA_UI_TOKENS = ${JSON.stringify(uiTokenSource, null, 2)} as const;
+`;
+
+const kotlinString = (value) => JSON.stringify(String(value));
+const swiftString = (value) => JSON.stringify(String(value));
+const kotlinTheme = (theme, propertyName) => {
+  const colors = Object.entries(theme.colors)
+    .map(([key, value]) => `            ${key} = ${kotlinString(value)},`)
+    .join('\n');
+  return `    val ${propertyName} = FluxaThemePack(
+        schemaVersion = ${theme.schemaVersion},
+        id = ${kotlinString(theme.id)},
+        nameKey = ${kotlinString(theme.nameKey)},
+        colors = FluxaThemeColors(
+${colors}
+        ),
+        typography = FluxaThemeTypography(${kotlinString(theme.typography.displayFont)}, ${kotlinString(theme.typography.bodyFont)}, ${theme.typography.titleWeight}, ${theme.typography.bodyWeight}),
+        shape = FluxaThemeShape(${theme.shape.cardRadius}, ${theme.shape.controlRadius}, ${theme.shape.dialogRadius}),
+        spacing = FluxaThemeSpacing(${theme.spacing.screenPadding}, ${theme.spacing.sectionGap}, ${theme.spacing.controlGap}),
+        motion = FluxaThemeMotion(${theme.motion.enabled}, ${theme.motion.fastMs}, ${theme.motion.normalMs}, ${theme.motion.slowMs}),
+        layouts = FluxaThemeLayouts(${kotlinString(theme.layouts.home)}, ${kotlinString(theme.layouts.detail)}, ${kotlinString(theme.layouts.library)}, ${kotlinString(theme.layouts.navigation)}),
+    )`;
+};
+
+const swiftTheme = (theme, propertyName) => {
+  const colors = Object.entries(theme.colors)
+    .map(([key, value]) => `            ${key}: ${swiftString(value)},`)
+    .join('\n');
+  return `    static let ${propertyName} = FluxaThemePack(
+        schemaVersion: ${theme.schemaVersion},
+        id: ${swiftString(theme.id)},
+        nameKey: ${swiftString(theme.nameKey)},
+        colors: FluxaThemeColors(
+${colors}
+        ),
+        typography: FluxaThemeTypography(displayFont: ${swiftString(theme.typography.displayFont)}, bodyFont: ${swiftString(theme.typography.bodyFont)}, titleWeight: ${theme.typography.titleWeight}, bodyWeight: ${theme.typography.bodyWeight}),
+        shape: FluxaThemeShape(cardRadius: ${theme.shape.cardRadius}, controlRadius: ${theme.shape.controlRadius}, dialogRadius: ${theme.shape.dialogRadius}),
+        spacing: FluxaThemeSpacing(screenPadding: ${theme.spacing.screenPadding}, sectionGap: ${theme.spacing.sectionGap}, controlGap: ${theme.spacing.controlGap}),
+        motion: FluxaThemeMotion(enabled: ${theme.motion.enabled}, fastMs: ${theme.motion.fastMs}, normalMs: ${theme.motion.normalMs}, slowMs: ${theme.motion.slowMs}),
+        layouts: FluxaThemeLayouts(home: ${swiftString(theme.layouts.home)}, detail: ${swiftString(theme.layouts.detail)}, library: ${swiftString(theme.layouts.library)}, navigation: ${swiftString(theme.layouts.navigation)})
+    )`;
+};
+
+const propertyNames = ['fluxaDark', 'amoled', 'midnightBlue'];
+const kotlinThemes = `package com.fluxa.app.ui.catalog
+
+// Generated from shared/contracts/ui-tokens.json. Do not edit.
+object FluxaThemePackDefaults {
+${themes.map((theme, index) => kotlinTheme(theme, propertyNames[index] ?? theme.id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()))).join('\n\n')}
+}
+`;
+const swiftThemes = `import Foundation
+
+// Generated from shared/contracts/ui-tokens.json. Do not edit.
+enum FluxaThemePackDefaults {
+${themes.map((theme, index) => swiftTheme(theme, propertyNames[index] ?? theme.id.replace(/-([a-z])/g, (_, letter) => letter.toUpperCase()))).join('\n\n')}
+}
 `;
 
 const outputs = [
@@ -193,6 +257,8 @@ const outputs = [
   [swiftLayoutPath, layoutSwift],
   [tsPath, typescript],
   [cssLayoutPath, layoutCss],
+  [kotlinThemePath, kotlinThemes],
+  [swiftThemePath, swiftThemes],
 ];
 
 if (process.argv.includes('--check')) {

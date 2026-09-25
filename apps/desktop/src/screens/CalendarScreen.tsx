@@ -5,7 +5,7 @@ import { refreshExternalCalendarItems, refreshCalendarMonth, refreshWatchlistAir
 import { coreInvoke } from '../core/engine';
 import { t } from '../i18n';
 import { Toast } from '../components/Toast';
-import { CalendarDayDialog } from './calendar/CalendarDayDialog';
+import { CalendarDayPanel } from './calendar/CalendarDayDialog';
 import { CalendarGrid } from './calendar/CalendarGrid';
 import { CalendarHeader } from './calendar/CalendarHeader';
 import { useCalendarArtwork } from './calendar/useCalendarArtwork';
@@ -174,56 +174,66 @@ export const CalendarScreen = React.memo(
             />
           </div>
         )}
-        <CalendarHeader
-          monthStart={monthStart}
-          isRefreshing={isRefreshingAirDates}
-          showCompleted={showCompleted}
-          onMonthChange={(nextMonth) => {
-            setMonthStart(nextMonth);
-            setSelectedDateIso(null);
+        <div
+          className="calendar-layout"
+          style={{
+            ...styles.calendarLayout,
+            ...(selectedDateIso ? {} : { gridTemplateColumns: 'minmax(0, 1fr)' }),
           }}
-          onToggleCompleted={() => {
-            const next = !showCompleted;
-            setShowCompleted(next);
-            if (next) setVisibleItems(items);
-          }}
-          styles={styles}
-        />
+        >
+          <main style={styles.calendarMain}>
+            <CalendarHeader
+              monthStart={monthStart}
+              isRefreshing={isRefreshingAirDates}
+              showCompleted={showCompleted}
+              onMonthChange={(nextMonth) => {
+                setMonthStart(nextMonth);
+                setSelectedDateIso(null);
+              }}
+              onToggleCompleted={() => {
+                const next = !showCompleted;
+                setShowCompleted(next);
+                if (next) setVisibleItems(items);
+              }}
+              styles={styles}
+            />
 
-        <div style={styles.weekRow}>
-          {weekdays().map((day) => (
-            <div key={day} style={styles.weekday}>
-              {day}
+            <div style={styles.weekRow}>
+              {weekdays().map((day) => (
+                <div key={day} style={styles.weekday}>
+                  {day}
+                </div>
+              ))}
             </div>
-          ))}
+            <CalendarGrid
+              cells={cells}
+              itemsByDate={itemsByDate}
+              selectedDateIso={selectedDateIso}
+              onSelectDate={setSelectedDateIso}
+              resolvedArtwork={resolvedArtwork}
+              seriesArtwork={seriesArtwork}
+              styles={styles}
+            />
+
+            {visibleItems.length === 0 && (
+              <div style={styles.empty}>
+                <Bell size={18} />
+                <span>{items.length === 0 ? t('calendar.empty') : t('calendar.empty_filtered')}</span>
+              </div>
+            )}
+          </main>
+
+          {selectedDateIso && (
+            <CalendarDayPanel
+              dateIso={selectedDateIso}
+              items={selectedItems}
+              onClose={() => setSelectedDateIso(null)}
+              resolvedArtwork={resolvedArtwork}
+              seriesArtwork={seriesArtwork}
+              styles={styles}
+            />
+          )}
         </div>
-        <CalendarGrid
-          cells={cells}
-          itemsByDate={itemsByDate}
-          selectedDateIso={selectedDateIso}
-          onSelectDate={setSelectedDateIso}
-          resolvedArtwork={resolvedArtwork}
-          seriesArtwork={seriesArtwork}
-          styles={styles}
-        />
-
-        {visibleItems.length === 0 && (
-          <div style={styles.empty}>
-            <Bell size={18} />
-            <span>{items.length === 0 ? t('calendar.empty') : t('calendar.empty_filtered')}</span>
-          </div>
-        )}
-
-        {selectedDateIso && (
-          <CalendarDayDialog
-            dateIso={selectedDateIso}
-            items={selectedItems}
-            onClose={() => setSelectedDateIso(null)}
-            resolvedArtwork={resolvedArtwork}
-            seriesArtwork={seriesArtwork}
-            styles={styles}
-          />
-        )}
       </div>
     );
   },

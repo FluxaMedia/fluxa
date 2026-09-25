@@ -42,32 +42,35 @@ export function CalendarGrid({
             }}
             style={{
               ...styles.day,
-              opacity: cell.isCurrentMonth ? 1 : 0.22,
+              opacity: cell.isCurrentMonth ? 1 : 0.48,
               borderColor: selected
                 ? 'rgba(255,255,255,0.52)'
                 : today
-                  ? 'rgba(255,255,255,0.3)'
+                  ? 'rgba(255,255,255,0.34)'
                   : hasItems
-                    ? 'rgba(255,255,255,0.055)'
-                    : 'transparent',
-              background: hasItems ? '#111214' : 'transparent',
+                    ? 'rgba(255,255,255,0.12)'
+                    : 'rgba(255,255,255,0.09)',
+              background: selected ? 'rgba(255,255,255,0.085)' : hasItems ? '#111214' : '#0c0e10',
               cursor: 'pointer',
             }}
           >
-            <CalendarArtwork
-              src={calendarPoster(dayItems[0], resolvedArtwork, seriesArtwork)}
-              fallbackSrc={dayItems[0]?.seriesPoster}
-              style={styles.dayBackdrop}
-            />
-            {hasItems && <div style={styles.dayShade} />}
             <div style={styles.dayHeader}>
               <span style={{ ...styles.dayNumber, ...(today ? styles.todayNumber : {}) }}>{cell.day}</span>
+              {hasItems && <span style={styles.eventCount}>{dayItems.length}</span>}
             </div>
             <div className="calendar-day-items" style={styles.dayItems}>
               {dayItems.slice(0, 3).map((item, itemIndex) => (
                 <div key={item.id ?? `${item.title}-${itemIndex}`} style={styles.event}>
-                  <span style={styles.eventText}>{item.title ?? item.name ?? item.subtitle}</span>
-                  <span style={styles.eventEpisode}>{eventEpisodeCode(item)}</span>
+                  <CalendarArtwork
+                    src={calendarPoster(item, resolvedArtwork, seriesArtwork)}
+                    fallbackSrc={item.seriesPoster}
+                    style={styles.eventArtwork}
+                    fallback={<span style={styles.eventArtworkFallback}>•</span>}
+                  />
+                  <span style={styles.eventTextWrap}>
+                    <span style={styles.eventText}>{item.title ?? item.name ?? item.subtitle}</span>
+                    <span style={styles.eventEpisode}>{eventEpisodeCode(item)}</span>
+                  </span>
                 </div>
               ))}
               {dayItems.length > 3 && <span style={styles.moreEvents}>{t('calendar.more_events', dayItems.length - 3)}</span>}

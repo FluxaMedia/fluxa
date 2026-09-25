@@ -29,6 +29,7 @@ unsafe impl Sync for MpvApi {}
 impl MpvApi {
     pub(super) fn load() -> Result<Self, String> {
         let lib_path = find_libmpv_path();
+        eprintln!("[fluxa-native] player: loading libmpv from {lib_path}");
         let library = load_library(&lib_path)
             .map_err(|error| format!("failed to load libmpv from '{lib_path}': {error}"))?;
         unsafe {

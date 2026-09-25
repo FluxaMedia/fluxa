@@ -1,6 +1,7 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { platformEmit as emit, platformListen as listen } from '../../platform/browser';
 import { playerGetPlaybackInfo } from '../../core/mpvPlayer';
+import { coreInvoke } from '../../core/engineCoreClient';
 import type { EpisodeInfo } from './EpisodePanel';
 import { parseChapters, parseEpisodes, parseSegments, type ActiveSkip, type Chapter, type SkipSegment } from './PlayerOverlayPrimitives';
 
@@ -26,6 +27,7 @@ type Bindings = {
   setActiveSkip: Setter<ActiveSkip | null>;
   countdown: number | null;
   pausedRef: MutableRefObject<boolean>;
+  durRef: MutableRefObject<number>;
   resetActivity: () => void;
 };
 
@@ -50,6 +52,7 @@ export function usePlayerPlaybackNavigation(options: Bindings) {
     setActiveSkip,
     countdown,
     pausedRef,
+    durRef,
     resetActivity,
   } = options;
   useEffect(() => {
@@ -59,7 +62,15 @@ export function usePlayerPlaybackNavigation(options: Bindings) {
         const chapters = parseChapters(info.chaptersJson);
         chaptersRef.current = chapters;
         setChapters(chapters);
-        setSkipSegments(parseSegments(info.skipSegmentsJson));
+        const externalSegments = parseSegments(info.skipSegmentsJson);
+        const chapterSegments = info.useChapterSkip
+          ? ((await coreInvoke<SkipSegment[]>(
+              'chapterSkipSegments',
+              JSON.stringify({ chaptersJson: info.chaptersJson ?? '[]', durationMs: Math.round(durRef.current * 1000) }),
+            )) ?? [])
+          : [];
+        const chapterTypes = new Set(chapterSegments.map((segment) => segment.type));
+        setSkipSegments([...chapterSegments, ...externalSegments.filter((segment) => !chapterTypes.has(segment.type))]);
         setNextEpSubtitle((previous: string) => {
           const next = info.nextEpSubtitle ?? '';
           if (next !== previous) setNextEpDismissed(false);

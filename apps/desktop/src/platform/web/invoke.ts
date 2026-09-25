@@ -150,6 +150,8 @@ export async function webInvoke<T>(command: string, args?: Record<string, unknow
     case 'debug_log':
       console.debug('[fluxa]', args?.msg);
       return undefined as T;
+    case 'is_wayland':
+      return false as T;
     case 'get_version':
       return 'web' as T;
     case 'get_oauth_client_id':

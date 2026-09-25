@@ -10,6 +10,12 @@ export const styles: Record<string, React.CSSProperties> = {
     background: 'var(--fluxa-background)',
     overflow: 'hidden',
   },
+  embeddedScreen: {
+    height: '100%',
+    minHeight: 0,
+    margin: 0,
+    background: 'transparent',
+  },
   topBar: {
     padding: '1.5rem 2rem 1rem',
     flexShrink: 0,
@@ -51,6 +57,9 @@ export const styles: Record<string, React.CSSProperties> = {
     overflowY: 'auto',
     padding: `2.125rem 2.25rem 2.75rem ${NAV_RAIL_WIDTH + 2.625}rem`,
     scrollbarWidth: 'none',
+  },
+  embeddedContent: {
+    padding: '1.25rem 1.5rem 2.75rem',
   },
   header: {
     marginBottom: '1.375rem',

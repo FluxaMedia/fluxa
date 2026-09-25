@@ -15,14 +15,16 @@ interface Props {
   state: Pick<AppState, 'home' | 'search' | 'settings'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
+  alwaysOpen?: boolean;
+  wide?: boolean;
 }
 
 const SUGGESTION_DEBOUNCE_MS = 200;
 const LOCAL_SUGGESTIONS_DEBOUNCE_MS = 100;
 const MAX_SUGGESTIONS = 6;
 
-export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, onDispatch, onNavigateDetail }: Props) {
-  const [expanded, setExpanded] = useState(false);
+export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, onDispatch, onNavigateDetail, alwaysOpen = false, wide = false }: Props) {
+  const [expanded, setExpanded] = useState(alwaysOpen);
   const [inputValue, setInputValue] = useState('');
   const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
   const [focused, setFocused] = useState(false);
@@ -35,6 +37,10 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
   useEffect(() => {
     setInputValue(query);
   }, [query]);
+
+  useEffect(() => {
+    if (alwaysOpen) setExpanded(true);
+  }, [alwaysOpen]);
 
   useEffect(() => {
     if (focusSignal) open();
@@ -137,6 +143,12 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
   };
 
   const close = () => {
+    if (alwaysOpen) {
+      setInputValue('');
+      onSearch('');
+      onBack?.();
+      return;
+    }
     setExpanded(false);
     setInputValue('');
     onSearch('');
@@ -197,7 +209,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     const openDetail = prefBool(appPrefs(state), 'searchSuggestionsOpenDetail', false);
     if (openDetail) {
       saveRecentSearch(meta.name, meta);
-      setExpanded(false);
+      if (!alwaysOpen) setExpanded(false);
       setInputValue('');
       onNavigateDetail(meta);
       return;
@@ -208,12 +220,12 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
   const handleRecentClick = (recent: RecentSearch) => {
     const openDetail = prefBool(appPrefs(state), 'searchSuggestionsOpenDetail', false);
     if (openDetail && recent.meta) {
-      setExpanded(false);
+      if (!alwaysOpen) setExpanded(false);
       setInputValue('');
       onNavigateDetail(recent.meta);
       return;
     }
-    setExpanded(false);
+    if (!alwaysOpen) setExpanded(false);
     setInputValue(recent.query);
     saveRecentSearch(recent.query);
     onSearch(recent.query);
@@ -223,7 +235,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
     void removeRecentSearch(value, recentSearches).then(setRecentSearches);
   };
 
-  if (!expanded) {
+  if (!expanded && !alwaysOpen) {
     return (
       <button
         onClick={open}
@@ -246,7 +258,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
         }}
         onMouseEnter={(e) => {
           (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,12,20,0.97)';
-          (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.22)';
+          (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(255,255,255,0.28)';
         }}
         onMouseLeave={(e) => {
           (e.currentTarget as HTMLButtonElement).style.background = 'rgba(10,12,20,0.88)';
@@ -259,7 +271,15 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
   }
 
   return (
-    <div className="global-search-expanded" style={{ position: 'relative', width: '22.5rem', pointerEvents: 'auto' }}>
+    <div
+      className={`global-search-expanded${alwaysOpen ? ' always-open' : ''}`}
+      style={{
+        position: 'relative',
+        zIndex: 50,
+        width: wide ? 'min(100%, 42rem)' : 'min(22.5rem, calc(100vw - 4rem))',
+        pointerEvents: 'auto',
+      }}
+    >
       <div
         style={{
           display: 'flex',
@@ -267,11 +287,11 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
           gap: '0.625rem',
           width: '100%',
           height: '2.625rem',
-          background: 'rgba(10,12,20,0.97)',
-          border: '1px solid rgba(255,255,255,0.25)',
-          borderRadius: showDropdown ? '1rem 1rem 0 0' : '62.4375rem',
+          background: wide ? 'var(--fluxa-fill)' : alwaysOpen ? 'rgba(135,149,158,0.38)' : 'rgba(10,12,20,0.97)',
+          border: wide ? '1px solid var(--fluxa-border-strong)' : '1px solid rgba(255,255,255,0.25)',
+          borderRadius: showDropdown ? '0.75rem 0.75rem 0 0' : wide ? '0.75rem' : '62.4375rem',
           padding: '0 1rem',
-          boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.4), 0 0 0 1px rgba(232,93,63,0.15)',
+          boxShadow: wide ? '0 0.5rem 1.5rem rgba(0,0,0,0.22)' : alwaysOpen ? 'none' : '0 0.5rem 2rem rgba(0,0,0,0.4), 0 0 0 1px rgba(232,93,63,0.15)',
         }}
       >
         <SearchIcon size={18} color="rgba(255,255,255,0.48)" style={{ flexShrink: 0 }} />
@@ -285,7 +305,7 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
           onFocus={() => setFocused(true)}
           onBlur={() => {
             setFocused(false);
-            if (!inputValue) close();
+            if (!inputValue && !alwaysOpen) close();
           }}
           style={{
             flex: 1,
@@ -293,11 +313,11 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
             border: 'none',
             outline: 'none',
             color: '#FFFFFF',
-            fontSize: '0.9375rem',
+            fontSize: alwaysOpen ? '0.875rem' : '0.9375rem',
             fontWeight: 500,
           }}
         />
-        <button
+        {(!alwaysOpen || inputValue) && <button
           style={{
             background: 'transparent',
             border: 'none',
@@ -314,18 +334,19 @@ export function GlobalSearchBar({ query, onSearch, onBack, focusSignal, state, o
           }}
         >
           <X size={17} />
-        </button>
+        </button>}
       </div>
 
       {showDropdown && (
         <div
           style={{
             position: 'absolute',
+            zIndex: 60,
             top: 'calc(100% - 1px)',
             left: 0,
             right: 0,
-            background: 'rgba(10,12,20,0.97)',
-            border: '1px solid rgba(255,255,255,0.16)',
+            background: wide ? 'var(--fluxa-background-elevated)' : alwaysOpen ? 'rgba(38,45,53,0.92)' : 'rgba(10,12,20,0.97)',
+            border: wide ? '1px solid var(--fluxa-border-strong)' : '1px solid rgba(255,255,255,0.2)',
             borderTop: 'none',
             borderRadius: '0 0 1rem 1rem',
             boxShadow: '0 0.75rem 2rem rgba(0,0,0,0.48)',

@@ -50,7 +50,7 @@ import { loadShortcutOverrides, onShortcutsChanged, type ShortcutOverrides } fro
 import { loadGamepadBindingOverrides, onGamepadBindingsChanged, type GamepadBindingOverrides } from '../core/gamepadBindings';
 import { platformInvoke as invoke } from '../platform/invoke';
 
-import { sendCmd, type Chapter, type FeedbackFlash } from './player/PlayerOverlayPrimitives';
+import { sendCmd, skipToastText, type ActiveSkip, type Chapter, type FeedbackFlash } from './player/PlayerOverlayPrimitives';
 
 interface Props {
   closePlayer: () => Promise<void>;
@@ -340,7 +340,7 @@ export function ReactPlayerOverlay({
   const flashFeedback = useCallback((icon: FeedbackFlash['icon'], label: string) => {
     setFeedback({ icon, label });
     if (feedbackTimerRef.current) clearTimeout(feedbackTimerRef.current);
-    feedbackTimerRef.current = setTimeout(() => setFeedback(null), 700);
+    feedbackTimerRef.current = setTimeout(() => setFeedback(null), 2000);
   }, []);
   const { abLoopStage, setAbLoopStage, cycleAbLoop, cycleAbLoopRef, takeScreenshot, takeScreenshotRef, copyTimestamp } =
     usePlayerUtilityActions({ title, posRef, resetActivity, flashFeedback });
@@ -449,6 +449,7 @@ export function ReactPlayerOverlay({
     setActiveSkip,
     countdown,
     pausedRef,
+    durRef,
     resetActivity,
   });
   usePlayerTitleReset({
@@ -464,13 +465,20 @@ export function ReactPlayerOverlay({
     resetTorrentSpeedHistory,
   });
 
+  const skipToSegment = useCallback(
+    (segment: ActiveSkip) => {
+      sendCmd(`set time-pos ${Math.floor(segment.endMs / 1000)}`);
+      window.setTimeout(() => void onSeekPersist?.(), 250);
+      flashFeedback('seekFwd', skipToastText(segment.type, segment.endMs, segment.provider));
+    },
+    [flashFeedback, onSeekPersist],
+  );
+
   const triggerActiveSkip = useCallback(() => {
     if (!activeSkip) return false;
-    sendCmd(`set time-pos ${Math.floor(activeSkip.endMs / 1000)}`);
-    window.setTimeout(() => void onSeekPersist?.(), 250);
-    flashFeedback('seekFwd', activeSkip.label);
+    skipToSegment(activeSkip);
     return true;
-  }, [activeSkip, flashFeedback, onSeekPersist]);
+  }, [activeSkip, skipToSegment]);
 
   usePlayerKeyboardShortcuts({
     closePlayer,
@@ -578,7 +586,6 @@ export function ReactPlayerOverlay({
   const { onCenterPointerDown, releaseCenterHold, onCenterClick } = usePlayerCenterGesture({
     playbackSpeed,
     preSpeedRef,
-    pausedRef,
     episodePanelOpenRef,
     showEpisodePanel,
     setShowEpisodePanel,
@@ -604,7 +611,7 @@ export function ReactPlayerOverlay({
       ? chapters.map((ch, i) => {
           const start = ch.startMs / 1000 / dur;
           const end = i + 1 < chapters.length ? chapters[i + 1].startMs / 1000 / dur : 1;
-          return { start, end };
+          return { start, end, title: ch.title || `Chapter ${i + 1}` };
         })
       : null;
   chapterSegmentsRef.current = chapterSegments;
@@ -627,7 +634,6 @@ export function ReactPlayerOverlay({
         paused={paused}
         onTogglePause={() => {
           resetActivity();
-          flashFeedback(paused ? 'play' : 'pause', '');
           setPaused((value) => !value);
           sendCmd('cycle pause');
         }}
@@ -707,6 +713,7 @@ export function ReactPlayerOverlay({
         episodes={episodes}
         currentEpisode={currentEpisode}
         skipFillRef={skipFillRef}
+        onSkip={skipToSegment}
         onActivity={resetActivity}
         onDismissSkip={() => setActiveSkip(null)}
         onDismissNextEpisode={() => setNextEpDismissed(true)}
@@ -920,7 +927,6 @@ export function ReactPlayerOverlay({
         volumeLevel={volumeLevel}
         onTogglePause={() => {
           resetActivity();
-          flashFeedback(paused ? 'play' : 'pause', '');
           setPaused((value) => !value);
           sendCmd('cycle pause');
         }}

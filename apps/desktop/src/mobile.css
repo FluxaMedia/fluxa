@@ -156,7 +156,7 @@ html[data-mobile="true"] .home-shelves {
 html[data-mobile="true"] .hero-panel {
   left: var(--mobile-gutter) !important;
   right: var(--mobile-gutter) !important;
-  bottom: 4.75rem !important;
+  bottom: 3.75rem !important;
   max-width: none !important;
   align-items: center !important;
   text-align: center !important;
@@ -187,14 +187,14 @@ html[data-mobile="true"] .hero-panel h1 {
 }
 
 html[data-mobile="true"] .hero-logo {
-  height: clamp(3.25rem, 16vw, 5rem) !important;
+  height: clamp(3rem, 14vw, 4.5rem) !important;
   max-width: 70% !important;
   margin-bottom: 0.75rem !important;
 }
 
 html[data-mobile="true"] .hero-desc {
-  font-size: 0.8125rem !important;
-  line-height: 1.45 !important;
+  font-size: 0.75rem !important;
+  line-height: 1.4 !important;
   display: -webkit-box;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
@@ -378,7 +378,11 @@ html[data-mobile="true"] .category-header {
 
 html[data-mobile="true"] .discover-filterbar {
   flex-wrap: wrap !important;
-  padding: calc(3.5rem + var(--mobile-safe-top)) var(--mobile-gutter) 0.625rem !important;
+  padding: 0.625rem var(--mobile-gutter) !important;
+}
+
+html[data-mobile="true"] .discover-searchbar {
+  padding: calc(3.5rem + var(--mobile-safe-top)) var(--mobile-gutter) 0.75rem !important;
 }
 
 html[data-mobile="true"] .discover-loading-grid {
@@ -541,6 +545,16 @@ html[data-tier="tablet"] .movie-card {
 
 html[data-mobile="true"] .calendar-grid {
   gap: 0.25rem !important;
+}
+
+html[data-mobile="true"] .calendar-layout {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 1rem !important;
+}
+
+html[data-mobile="true"] .calendar-day-panel {
+  position: static !important;
 }
 
 html[data-mobile="true"] .calendar-day {

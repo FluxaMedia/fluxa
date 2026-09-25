@@ -290,6 +290,7 @@ export type PlayerPlaybackInfo = {
   autoPlayNextEpisode: boolean;
   autoPlayCountdownSecs: number;
   autoSkipSegments: boolean;
+  useChapterSkip: boolean;
 };
 
 export async function playerGetPlaybackInfo(): Promise<PlayerPlaybackInfo> {

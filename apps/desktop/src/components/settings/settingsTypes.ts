@@ -41,6 +41,7 @@ export interface Prefs {
   navLayout: string;
   navBarPosition: string;
   navItemsAlign: string;
+  navMode: string;
   navSidebarMode: string;
   interfaceDensity: string;
   posterWidthPreset: string;

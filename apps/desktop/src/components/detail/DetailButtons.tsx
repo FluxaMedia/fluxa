@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Play } from 'lucide-react';
 import { t } from '../../i18n';
-import { Button, color, fontSize, radius, space, weight } from '../../design';
+import { Button, color, fontSize, IconButton, radius, space, weight } from '../../design';
 import { MS } from './detailStyles';
 
 export function ModernPlayButton({
@@ -41,31 +41,17 @@ export function ModernIconBtn({
   onClick: () => void;
   children: React.ReactNode;
 }) {
-  const [hovered, setHovered] = useState(false);
   return (
-    <button
+    <IconButton
       title={title}
       aria-label={title}
       onClick={onClick}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      style={{
-        width: '2.5rem',
-        height: '2.5rem',
-        borderRadius: radius.circle,
-        border: 'none',
-        background: hovered ? color.fillHover : 'transparent',
-        color: active || hovered ? color.textPrimary : color.textMuted,
-        display: 'grid',
-        placeItems: 'center',
-        padding: 0,
-        flexShrink: 0,
-        cursor: 'pointer',
-        transition: 'background 0.12s ease, color 0.12s ease',
-      }}
+      active={active}
+      size="2.5rem"
+      style={{ color: active ? color.textPrimary : color.textMuted, border: 'none' }}
     >
       {children}
-    </button>
+    </IconButton>
   );
 }
 

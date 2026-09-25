@@ -6,7 +6,7 @@ import type { PosterPrefs } from '../core/posterPrefs';
 import { useDragScroll } from '../hooks/useDragScroll';
 import { useIsMobile } from '../platform/viewport';
 
-const ROW_PADDING_LEFT = '2rem';
+const ROW_PADDING_LEFT = 'var(--fluxa-screen-padding, 1.5rem)';
 const NEAR_END_THRESHOLD_PX = 1200;
 const SKELETON_INDICES = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 const CARD_GAP_PX = 10;

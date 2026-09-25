@@ -1,5 +1,6 @@
 import { AlertTriangle, Check, X } from 'lucide-react';
 import { useState } from 'react';
+import { FluxaButton, FluxaIconButton } from './ui/FluxaButton';
 
 interface ToastAction {
   label: string;
@@ -63,21 +64,19 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
           <p style={{ color: 'var(--fluxa-text-secondary)', fontSize: '0.8125rem', margin: '0.1875rem 0 0', lineHeight: 1.4 }}>{message}</p>
           {details && (
             <>
-              <button
+              <FluxaButton
+                variant="ghost"
+                size="sm"
                 onClick={() => setDetailsOpen((v) => !v)}
                 style={{
-                  background: 'none',
-                  border: 'none',
+                  minHeight: 'auto',
                   padding: 0,
                   marginTop: '0.5rem',
                   color: 'var(--fluxa-text-muted)',
-                  fontSize: '0.7188rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
                 }}
               >
                 {detailsOpen ? detailsHideLabel : detailsLabel}
-              </button>
+              </FluxaButton>
               {detailsOpen && (
                 <pre
                   style={{
@@ -104,42 +103,32 @@ export function Toast({ variant = 'warning', title, message, details, detailsLab
           {actions && actions.length > 0 && (
             <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
               {actions.map((action) => (
-                <button
+                <FluxaButton
+                  variant={action.primary ? 'primary' : 'secondary'}
+                  size="sm"
                   key={action.label}
                   onClick={action.onClick}
-                  style={{
-                    background: action.primary ? 'var(--fluxa-accent)' : 'var(--fluxa-border)',
-                    border: action.primary ? 'none' : '1px solid var(--fluxa-border-strong)',
-                    borderRadius: '0.5rem',
-                    padding: '0.4375rem 0.875rem',
-                    color: action.primary ? 'var(--fluxa-accent-foreground)' : 'var(--fluxa-text-primary)',
-                    fontSize: '0.8125rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
                 >
                   {action.label}
-                </button>
+                </FluxaButton>
               ))}
             </div>
           )}
         </div>
         {onClose && (
-          <button
+          <FluxaIconButton
+            ariaLabel="Close"
+            size="sm"
+            variant="ghost"
             onClick={onClose}
             style={{
-              background: 'none',
-              border: 'none',
-              padding: '0.125rem',
               margin: '-0.125rem -0.25rem 0 0',
               color: 'rgba(255,255,255,0.4)',
-              cursor: 'pointer',
               flexShrink: 0,
-              display: 'flex',
             }}
           >
             <X size={15} />
-          </button>
+          </FluxaIconButton>
         )}
       </div>
       <style>{`

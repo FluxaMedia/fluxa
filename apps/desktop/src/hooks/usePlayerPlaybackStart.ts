@@ -334,14 +334,22 @@ export function usePlayerPlaybackStart(options: any) {
         const skipSegmentsPromise = (async () => {
           const useSkipSegments = playbackPrefs.useSkipSegments;
           const useAnimeSkip = playbackPrefs.useAnimeSkip;
-          if ((!useSkipSegments && !useAnimeSkip) || !episode) return { segments: [], coverage: {} };
+          if ((!useSkipSegments && !useAnimeSkip) || !episode) {
+            debugLog(
+              `player-debug:skipSegments skipped useSkipSegments=${useSkipSegments} useAnimeSkip=${useAnimeSkip} episode=${episode ? 'yes' : 'no'}`,
+            );
+            return { segments: [], coverage: {} };
+          }
           const resolvedId = useSkipSegments && meta?.id ? await corePlaybackIntroLookupContentId(meta.id) : '';
           const externalIds = await corePlaybackExternalIds(resolvedId);
           const imdbId = externalIds.imdbId ?? '';
           const tmdbId = externalIds.tmdbId ?? undefined;
           const season = episode.season ?? 1;
           const epNum = episode.episode ?? episode.number ?? 1;
-          return fetchPlaybackSkipSegments({
+          debugLog(
+            `player-debug:skipSegments request imdb=${imdbId || 'none'} tmdb=${tmdbId ?? 'none'} season=${season} episode=${epNum} title=${meta?.name ?? 'none'}`,
+          );
+          const result = await fetchPlaybackSkipSegments({
             imdbId,
             tmdbId,
             season,
@@ -351,12 +359,20 @@ export function usePlayerPlaybackStart(options: any) {
             useAnimeSkip,
             animeSkipClientId: playbackPrefs.animeSkipClientId,
           });
+          debugLog(
+            `player-debug:skipSegments result count=${result.segments.length} coverage=${JSON.stringify(result.coverage)} autoSkip=${playbackPrefs.autoSkipIntro}`,
+          );
+          return result;
         })();
         void skipSegmentsPromise
           .then(({ segments, coverage }) => {
             if (isCancelled()) return;
             setSkipSegmentCoverage(coverage);
-            if (segments.length === 0) return;
+            if (segments.length === 0) {
+              debugLog('player-debug:skipSegments no usable segments to apply');
+              return;
+            }
+            debugLog(`player-debug:skipSegments applying count=${segments.length}`);
             return playerSetSkipInfo(
               JSON.stringify(segments),
               playableInitialNextEp ? formatNextEpisodeSubtitle(playableInitialNextEp) : undefined,
@@ -366,7 +382,9 @@ export function usePlayerPlaybackStart(options: any) {
               playbackPrefs.autoSkipIntro,
             );
           })
-          .catch(() => undefined);
+          .catch((error) => {
+            debugLog(`player-debug:skipSegments failed ${error instanceof Error ? error.message : String(error)}`);
+          });
 
         let loadingStatusPollActive = true;
         const pollMpvLoadingStatus = async () => {

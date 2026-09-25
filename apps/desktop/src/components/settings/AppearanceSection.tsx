@@ -106,51 +106,25 @@ export function AppearanceSection({ prefs, setPref }: { prefs: Prefs; setPref: <
           checked={prefs.reducedEffects}
           onToggle={(v) => setPref('reducedEffects', v)}
         />
-        <ChoiceTile
-          title={t('appearance.sidebar_layout')}
-          subtitle={t('appearance.sidebar_layout_desc')}
-          options={[
-            { value: 'sidebar', label: 'Sidebar' },
-            { value: 'topbar', label: 'Top Bar' },
-          ]}
-          selected={prefs.navLayout}
-          onSelect={(v) => setPref('navLayout', v)}
+        <ToggleTile
+          title="Topbar"
+          subtitle="Use the top navigation instead of the sidebar."
+          checked={prefs.navLayout === 'topbar'}
+          onToggle={(enabled) => setPref('navLayout', enabled ? 'topbar' : 'sidebar')}
         />
-        {prefs.navLayout === 'sidebar' && (
+        {prefs.navLayout === 'topbar' && (
           <ChoiceTile
-            title={t('appearance.sidebar_mode')}
-            subtitle={t('appearance.sidebar_mode_desc')}
+            title="Topbar mode"
+            subtitle="Choose how navigation labels behave on desktop."
             options={[
-              { value: 'hover', label: t('appearance.sidebar_mode_hover') },
-              { value: 'always', label: t('appearance.sidebar_mode_always') },
+              { value: 'compact', label: 'Compact' },
+              { value: 'classic', label: 'Classic' },
+              { value: 'adaptive', label: 'Adaptive' },
             ]}
-            selected={prefs.navSidebarMode}
-            onSelect={(v) => setPref('navSidebarMode', v)}
+            selected={prefs.navMode}
+            onSelect={(v) => setPref('navMode', v)}
           />
         )}
-        <ChoiceTile
-          title={t('appearance.bar_rotation')}
-          subtitle={t('appearance.bar_rotation_desc')}
-          options={[
-            { value: 'left', label: 'Left' },
-            { value: 'right', label: 'Right' },
-            { value: 'top', label: 'Top' },
-            { value: 'bottom', label: 'Bottom' },
-          ]}
-          selected={prefs.navBarPosition}
-          onSelect={(v) => setPref('navBarPosition', v)}
-        />
-        <ChoiceTile
-          title={t('appearance.items_rotation')}
-          subtitle={t('appearance.items_rotation_desc')}
-          options={[
-            { value: 'start', label: 'Left' },
-            { value: 'center', label: 'Center' },
-            { value: 'end', label: 'Right' },
-          ]}
-          selected={prefs.navItemsAlign}
-          onSelect={(v) => setPref('navItemsAlign', v)}
-        />
       </SettingsSection>
       <SettingsSection title={t('auto.posters')} subtitle={t('settings.appearance_posters_desc')}>
         <ChoiceTile

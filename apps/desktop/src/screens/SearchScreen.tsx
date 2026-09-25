@@ -18,6 +18,7 @@ interface Props {
   query: string;
   onQueryChange: (query: string) => void;
   onBack: () => void;
+  embedded?: boolean;
 }
 
 function groupCategoriesByAddon(categories: HomeCategory[]): HomeCategory[] {
@@ -47,7 +48,7 @@ const GENRE_CHIPS = [
 ];
 
 export const SearchScreen = React.memo(
-  function SearchScreen({ state, onDispatch, onNavigateDetail, query, onQueryChange, onBack }: Props) {
+  function SearchScreen({ state, onDispatch, onNavigateDetail, query, onQueryChange, onBack, embedded = false }: Props) {
     const typeFilter = '';
     const [recentSearches, setRecentSearches] = useState<RecentSearch[]>([]);
     const search = state.search;
@@ -170,12 +171,14 @@ export const SearchScreen = React.memo(
     };
 
     return (
-      <div className="search-screen" style={styles.screen}>
-        <div className="search-content" style={styles.content}>
-          <button style={styles.backBtn} onClick={onBack}>
-            <ArrowLeft size={18} strokeWidth={2.2} />
-            {t('auto.back')}
-          </button>
+      <div className="search-screen" style={embedded ? { ...styles.screen, ...styles.embeddedScreen } : styles.screen}>
+        <div className="search-content" style={embedded ? { ...styles.content, ...styles.embeddedContent } : styles.content}>
+          {!embedded && (
+            <button style={styles.backBtn} onClick={onBack}>
+              <ArrowLeft size={18} strokeWidth={2.2} />
+              {t('auto.back')}
+            </button>
+          )}
 
           <div style={styles.header}>
             <p style={styles.eyebrow}>{t('auto.search_results')}</p>
@@ -287,5 +290,6 @@ export const SearchScreen = React.memo(
     prev.onDispatch === next.onDispatch &&
     prev.onNavigateDetail === next.onNavigateDetail &&
     prev.onQueryChange === next.onQueryChange &&
-    prev.onBack === next.onBack,
-);
+    prev.onBack === next.onBack &&
+    prev.embedded === next.embedded,
+  );

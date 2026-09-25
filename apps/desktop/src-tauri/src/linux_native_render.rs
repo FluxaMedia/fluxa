@@ -27,10 +27,14 @@ pub(crate) fn spawn_vulkan_render_thread(
             let mut last_present = Instant::now();
             let mut last_context_error: Option<String> = None;
             let mut last_render_error: Option<String> = None;
+            let mut last_presented_extents: Option<(u32, u32, u32, u32)> = None;
             loop {
                 let width = shared.width.load(Ordering::Acquire);
                 let height = shared.height.load(Ordering::Acquire);
-                if width > 1 && height > 1 {
+                if width > 1
+                    && height > 1
+                    && std::env::var_os("FLUXA_NATIVE_AUTOTEST_SKIP_RESIZE").is_none()
+                {
                     if let Err(error) = ctx.resize(width, height) {
                         log::warn!("linux_native_render: Vulkan resize failed: {error}");
                         std::thread::sleep(Duration::from_millis(100));
@@ -86,7 +90,8 @@ pub(crate) fn spawn_vulkan_render_thread(
                     continue;
                 }
                 let image_usage = ctx.image_usage();
-                let result = ctx.render_and_present(|image, format, width, height, wait, signal| {
+                let result = ctx.render_and_present(
+                    |image, format, width, height, layout, wait, signal| {
                     let mut guard = state.player_render_state.lock().map_err(|_| "player renderer lock poisoned".to_string())?;
                     let renderer = guard.as_mut().ok_or_else(|| "player renderer destroyed".to_string())?;
                     let mut target = VulkanTargetImage {
@@ -95,16 +100,28 @@ pub(crate) fn spawn_vulkan_render_thread(
                         w: width as i32,
                         h: height as i32,
                         usage: image_usage,
-                        layout: 0,
+                        layout,
                         wait_semaphore: wait,
                         signal_semaphore: signal,
                     };
                     renderer.render_vulkan_frame(&mut target).map(|_| target.layout)
-                });
+                },
+                );
                 match result {
                     Ok(()) => {
                         last_present = Instant::now();
                         last_render_error = None;
+                        let extents = ctx.debug_extents();
+                        if last_presented_extents != Some(extents) {
+                            log::info!(
+                                "linux_native_render: frame presented requested={}x{} surface={}x{}",
+                                extents.0,
+                                extents.1,
+                                extents.2,
+                                extents.3
+                            );
+                            last_presented_extents = Some(extents);
+                        }
                         if let Ok(mut guard) = state.player_render_state.lock() {
                             if let Some(renderer) = guard.as_mut() {
                                 renderer.report_swap();

@@ -23,6 +23,7 @@ export function PlayerOverlayDecorations({
   episodes,
   currentEpisode,
   skipFillRef,
+  onSkip,
   onActivity,
   onDismissSkip,
   onDismissNextEpisode,
@@ -43,6 +44,7 @@ export function PlayerOverlayDecorations({
   episodes: EpisodeInfo[];
   currentEpisode?: Video | null;
   skipFillRef: RefObject<HTMLDivElement | null>;
+  onSkip: (skip: ActiveSkip) => void;
   onActivity: () => void;
   onDismissSkip: () => void;
   onDismissNextEpisode: () => void;
@@ -104,7 +106,7 @@ export function PlayerOverlayDecorations({
         </div>
       )}
       {!showNextEpCard && (
-        <PlayerSkipPrompt activeSkip={activeSkip} skipFillRef={skipFillRef} onDismiss={onDismissSkip} onActivity={onActivity} />
+        <PlayerSkipPrompt activeSkip={activeSkip} skipFillRef={skipFillRef} onSkip={onSkip} onDismiss={onDismissSkip} onActivity={onActivity} />
       )}
       {showNextEpCard && nextEpSubtitle && !showEpisodePanel && (
         <NextEpCard

@@ -26,12 +26,13 @@ export function usePlayerOverlayInput({
       if (event.shiftKey) {
         startSeekOverlay();
         const seconds = event.deltaY < 0 ? 5 : -5;
-        flashFeedback(seconds > 0 ? 'seekFwd' : 'seekBack', `${seconds > 0 ? '+' : ''}${seconds}s`);
+        flashFeedback(seconds > 0 ? 'seekFwd' : 'seekBack', `${seconds > 0 ? '+' : ''}${seconds}s ${seconds > 0 ? 'Forwarded' : 'Rewound'}`);
         sendCmd(`seek ${seconds} relative`);
         return;
       }
-      flashFeedback('volume', '');
-      sendCmd(`add volume ${event.deltaY < 0 ? 5 : -5}`);
+      const delta = event.deltaY < 0 ? 5 : -5;
+      flashFeedback('volume', `Volume ${delta > 0 ? '+' : ''}${delta}`);
+      sendCmd(`add volume ${delta}`);
     },
     [flashFeedback, resetActivity, startSeekOverlay],
   );

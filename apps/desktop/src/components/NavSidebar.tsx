@@ -10,6 +10,7 @@ function onChromeDoubleClick(e: React.MouseEvent) {
 export type NavRoute = 'home' | 'search' | 'library' | 'discover' | 'calendar' | 'settings';
 export type NavBarPosition = 'left' | 'right' | 'top' | 'bottom';
 export type NavItemsAlign = 'start' | 'center' | 'end';
+export type TopBarMode = 'compact' | 'classic' | 'adaptive';
 
 const ICONS: Partial<Record<NavRoute, React.ElementType>> = {
   home: Home,
@@ -19,10 +20,10 @@ const ICONS: Partial<Record<NavRoute, React.ElementType>> = {
   settings: Settings,
 };
 
-function NavIcon({ route, active }: { route: NavRoute; active: boolean }) {
+function NavIcon({ route, active, size = 22 }: { route: NavRoute; active: boolean; size?: number }) {
   const Icon = ICONS[route];
   if (!Icon) return null;
-  return <Icon size={22} strokeWidth={active ? 2.5 : 1.75} />;
+  return <Icon size={size} strokeWidth={active ? 2.5 : 1.75} />;
 }
 
 const LABEL_KEYS: Record<NavRoute, string> = {
@@ -49,6 +50,8 @@ interface SidebarProps {
 interface TopBarProps {
   activeRoute: NavRoute;
   onNavigate: (route: NavRoute) => void;
+  endContent?: React.ReactNode;
+  mode?: string;
   transparent?: boolean;
   position?: string;
   itemsAlign?: string;
@@ -234,6 +237,8 @@ export const NavSidebar = React.memo(function NavSidebar({
 export const TopBar = React.memo(function TopBar({
   activeRoute,
   onNavigate,
+  endContent,
+  mode: modeValue = 'classic',
   transparent = false,
   position: positionValue = 'top',
   itemsAlign: alignValue = 'center',
@@ -241,9 +246,13 @@ export const TopBar = React.memo(function TopBar({
   routes,
 }: TopBarProps) {
   const TOP_ROUTES: NavRoute[] = (routes ?? ['home', 'library', 'discover', 'calendar']).filter((route) => route !== 'settings');
+  const mode: TopBarMode = modeValue === 'compact' || modeValue === 'adaptive' ? modeValue : 'classic';
   const position = normalizePosition(positionValue, 'top');
   const itemsAlign = normalizeAlign(alignValue);
   const isVertical = position === 'left' || position === 'right';
+  const isCenteredHorizontal = !isVertical && (position === 'top' || position === 'bottom');
+  const [hovered, setHovered] = useState(false);
+  const showLabels = mode === 'classic' || (mode === 'adaptive' && hovered);
 
   return (
     <div
@@ -252,36 +261,63 @@ export const TopBar = React.memo(function TopBar({
         top: position === 'bottom' ? undefined : position === 'top' ? 18 + topOffset : '50%',
         bottom: position === 'bottom' ? 18 : undefined,
         left:
-          position === 'right'
+          isCenteredHorizontal
+            ? '50%'
+            : position === 'right'
             ? undefined
             : position === 'left'
               ? 18
-              : itemsAlign === 'start'
-                ? 24
-                : itemsAlign === 'end'
-                  ? undefined
-                  : '50%',
-        right:
-          position === 'right' ? 18 : position === 'bottom' || position === 'top' ? (itemsAlign === 'end' ? 24 : undefined) : undefined,
-        transform: isVertical ? 'translateY(-50%)' : itemsAlign === 'center' ? 'translateX(-50%)' : undefined,
+              : 18,
+        right: isCenteredHorizontal ? undefined : position === 'right' ? 18 : undefined,
+        transform: isVertical ? 'translateY(-50%)' : isCenteredHorizontal ? 'translateX(-50%)' : undefined,
+        width: isCenteredHorizontal ? 'max-content' : undefined,
+        maxWidth: isCenteredHorizontal ? 'calc(100vw - 2rem)' : undefined,
         zIndex: 100,
         display: 'flex',
         flexDirection: isVertical ? 'column' : 'row',
         alignItems: 'center',
-        justifyContent: panelJustify(position, itemsAlign),
+        justifyContent: isVertical ? panelJustify(position, itemsAlign) : 'space-between',
         gap: '0.125rem',
         background: transparent ? 'transparent' : 'var(--fluxa-navigation)',
         border: transparent ? 'none' : '1px solid var(--fluxa-border)',
-        borderRadius: transparent ? 0 : 999,
-        padding: transparent ? '0.875rem 0.375rem 0.5rem' : '0.3125rem 0.375rem',
+        borderRadius: '1rem',
+        padding: transparent ? '0.5rem 0.75rem' : '0.5rem 0.75rem',
         boxShadow: transparent ? 'none' : '0 0.5rem 2rem var(--fluxa-scrim, rgba(0,0,0,0.35))',
         maxHeight: isVertical ? 'calc(100vh - 3rem)' : undefined,
       }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       onDoubleClick={onChromeDoubleClick}
     >
-      {TOP_ROUTES.map((route) => (
-        <TopBarItem key={route} route={route} isActive={route === activeRoute} onNavigate={onNavigate} label={t(LABEL_KEYS[route])} />
-      ))}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: isVertical ? panelJustify(position, itemsAlign) : itemsAlign === 'end' ? 'flex-end' : itemsAlign === 'center' ? 'center' : 'flex-start', gap: '0.125rem', minWidth: 0 }}>
+        {TOP_ROUTES.map((route) => (
+          <TopBarItem
+            key={route}
+            route={route}
+            isActive={route === activeRoute}
+            onNavigate={onNavigate}
+            label={t(LABEL_KEYS[route])}
+            showLabel={showLabels}
+            compact={mode === 'compact'}
+            adaptive={mode === 'adaptive'}
+          />
+        ))}
+      </div>
+      {endContent && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.625rem',
+            flexShrink: 0,
+            marginLeft: '0.35rem',
+            paddingLeft: '0.65rem',
+            borderLeft: '1px solid var(--fluxa-border)',
+          }}
+        >
+          {endContent}
+        </div>
+      )}
     </div>
   );
 });
@@ -357,11 +393,17 @@ function TopBarItem({
   isActive,
   onNavigate,
   label,
+  showLabel,
+  compact,
+  adaptive,
 }: {
   route: NavRoute;
   isActive: boolean;
   onNavigate: (r: NavRoute) => void;
   label: string;
+  showLabel: boolean;
+  compact: boolean;
+  adaptive: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
 
@@ -372,18 +414,20 @@ function TopBarItem({
       style={{
         display: 'flex',
         alignItems: 'center',
+        justifyContent: compact ? 'center' : 'flex-start',
         gap: '0.375rem',
-        height: '2.25rem',
-        padding: '0 0.75rem',
+        height: '2.625rem',
+        width: compact ? '2.625rem' : undefined,
+        padding: compact ? 0 : '0 0.875rem',
         borderRadius: '62.4375rem',
         border: 'none',
-        background: hovered ? 'rgba(255,255,255,0.10)' : 'transparent',
+        background: isActive ? 'var(--fluxa-fill-active)' : hovered ? 'rgba(255,255,255,0.10)' : 'transparent',
         color: isActive ? '#FFFFFF' : hovered ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.65)',
         textShadow: '0 1px 0.25rem rgba(0,0,0,0.8)',
         cursor: 'pointer',
         outline: 'none',
         transition: 'background 0.15s, color 0.15s',
-        fontSize: '0.8125rem',
+        fontSize: '0.875rem',
         fontWeight: isActive ? 700 : 600,
         whiteSpace: 'nowrap',
         flexShrink: 0,
@@ -391,8 +435,20 @@ function TopBarItem({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      <NavIcon route={route} active={isActive} />
-      {label}
+      <NavIcon route={route} active={isActive} size={24} />
+      {!compact && (
+        <span
+          style={{
+            maxWidth: showLabel ? '10rem' : 0,
+            opacity: showLabel ? 1 : 0,
+            overflow: 'hidden',
+            transition: adaptive ? 'max-width 0.22s ease, opacity 0.16s ease' : undefined,
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </span>
+      )}
     </button>
   );
 }

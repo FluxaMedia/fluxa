@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { Popover } from './ui/Popover';
+import { FluxaButton } from './ui/FluxaButton';
 
 export function FilterDropdown({
   value,
@@ -12,22 +13,24 @@ export function FilterDropdown({
   onSelect: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const btnRef = useRef<HTMLButtonElement>(null);
+  const btnRef = useRef<HTMLDivElement>(null);
 
   return (
     <div style={{ position: 'relative', flexShrink: 0 }}>
-      <button ref={btnRef} style={FD.trigger} onClick={() => setOpen((o) => !o)}>
-        <span style={FD.label}>{value}</span>
-        <ChevronDown
-          size={16}
-          style={{
-            flexShrink: 0,
-            color: 'rgba(255,255,255,0.6)',
-            transform: open ? 'rotate(180deg)' : 'none',
-            transition: 'transform 0.2s',
-          }}
-        />
-      </button>
+      <div ref={btnRef} style={{ display: 'inline-flex' }}>
+        <FluxaButton variant="secondary" size="sm" style={FD.trigger} onClick={() => setOpen((o) => !o)}>
+          <span style={FD.label}>{value}</span>
+          <ChevronDown
+            size={16}
+            style={{
+              flexShrink: 0,
+              color: 'rgba(255,255,255,0.6)',
+              transform: open ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.2s',
+            }}
+          />
+        </FluxaButton>
+      </div>
       <Popover
         open={open}
         onClose={() => setOpen(false)}
@@ -39,9 +42,11 @@ export function FilterDropdown({
         padding="0.25rem"
       >
         {options.map((opt) => (
-          <button
+          <FluxaButton
             key={opt.value}
             className="ui-popover-row"
+            variant="ghost"
+            size="sm"
             style={{
               ...FD.menuItem,
               background: opt.label === value ? 'rgba(255,255,255,0.12)' : 'transparent',
@@ -53,7 +58,7 @@ export function FilterDropdown({
             }}
           >
             {opt.label}
-          </button>
+          </FluxaButton>
         ))}
       </Popover>
     </div>

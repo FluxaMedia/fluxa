@@ -35,12 +35,12 @@ export function usePlayerMediaSession({
     });
     mediaSession.setActionHandler('seekbackward', () => {
       startSeekOverlay();
-      flashFeedback('seekBack', '-10s');
+      flashFeedback('seekBack', '-10s Rewound');
       sendCmd('seek -10 relative');
     });
     mediaSession.setActionHandler('seekforward', () => {
       startSeekOverlay();
-      flashFeedback('seekFwd', '+10s');
+      flashFeedback('seekFwd', '+10 Forwarded');
       sendCmd('seek 10 relative');
     });
     mediaSession.setActionHandler('nexttrack', () => {

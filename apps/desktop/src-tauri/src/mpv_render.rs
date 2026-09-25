@@ -8,6 +8,7 @@ use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+#[path = "mpv_render/api.rs"]
 mod api;
 use api::MpvApi;
 
@@ -280,8 +281,8 @@ pub struct MpvRenderState {
 unsafe impl Send for MpvRenderState {}
 
 pub struct MpvThumbnailRenderer {
-    client: MpvClientHandle,
     render: MpvRenderState,
+    client: MpvClientHandle,
 }
 
 #[derive(Serialize)]
@@ -538,10 +539,15 @@ impl PlayerStatus {
     }
 }
 
+#[path = "mpv_render/commands.rs"]
 mod commands;
+#[path = "mpv_render/context.rs"]
 mod context;
+#[path = "mpv_render/frame.rs"]
 mod frame;
+#[path = "mpv_render/lifecycle.rs"]
 mod lifecycle;
+#[path = "mpv_render/status.rs"]
 mod status;
 
 fn load_error(error: libloading::Error) -> String {
@@ -583,6 +589,15 @@ pub(crate) fn find_libmpv_path() -> String {
     let lib_names: &[&str] = &[];
 
     let mut search_dirs: Vec<PathBuf> = Vec::new();
+
+    // Cargo's manifest path is a compile-time value. Relying only on a
+    // runtime CARGO_MANIFEST_DIR made the standalone native shell silently
+    // fall back to the system libmpv, which does not contain Fluxa's
+    // gpu-next Vulkan render API fork.
+    let compiled_manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    search_dirs.push(compiled_manifest_dir.join("lib"));
+    #[cfg(target_os = "linux")]
+    search_dirs.push(compiled_manifest_dir.join("../../apps/desktop/src-tauri/lib"));
 
     // Beside the executable (bundled distribution)
     if let Ok(exe_path) = std::env::current_exe() {

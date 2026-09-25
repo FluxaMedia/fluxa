@@ -145,11 +145,11 @@ export function SyncServiceRow({
         {value && (
           <p
             style={{
-              color: valueColor ?? color.textDim,
-              fontSize: fontSize.sm,
+              color: valueColor ?? color.textMuted,
+              fontSize: fontSize.base,
               margin: '0.125rem 0 0',
               fontFamily: FONT,
-              lineHeight: '0.9375rem',
+              lineHeight: '1.1rem',
               fontWeight: 400,
             }}
           >

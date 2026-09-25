@@ -1,9 +1,9 @@
 use crate::vulkan::{
-    PfnGetInstanceProcAddr, VkInstance, VkResult, VkSurfaceKHR, VulkanPlatform, get_instance_proc,
+    PfnGetInstanceProcAddr, VkDevice, VkInstance, VkPhysicalDevice, VkQueue, VkResult,
+    VkSurfaceKHR, VulkanPlatform, get_instance_proc,
 };
 use std::ffi::{CString, c_void};
 use std::ptr;
-use std::sync::Mutex;
 
 pub use crate::vulkan::VulkanContext;
 
@@ -79,7 +79,6 @@ fn dlsym_typed(module: isize, name: &str) -> Result<*mut c_void, String> {
 
 struct LinuxPlatform {
     native_surface: NativeSurface,
-    owned_xlib_display: Mutex<*mut c_void>,
 }
 
 unsafe impl Send for LinuxPlatform {}
@@ -97,17 +96,24 @@ impl VulkanPlatform for LinuxPlatform {
 
     fn instance_extensions(
         &self,
-        _available: &dyn Fn(&str) -> bool,
+        available: &dyn Fn(&str) -> bool,
     ) -> Result<Vec<CString>, String> {
         let surface_ext = match self.native_surface {
             NativeSurface::Xlib { .. } => "VK_KHR_xlib_surface",
             NativeSurface::Wayland { .. } => "VK_KHR_wayland_surface",
         };
-        Ok(vec![
+        let mut extensions = vec![
             CString::new("VK_KHR_surface").unwrap(),
             CString::new(surface_ext).unwrap(),
-            CString::new("VK_EXT_swapchain_colorspace").unwrap(),
-        ])
+        ];
+        // The harness only enables optional extensions when the loader
+        // advertises them.  Do the same here: some native Wayland/X11
+        // Vulkan loaders do not expose swapchain-colorspace even though the
+        // platform surface extension is fully supported.
+        if available("VK_EXT_swapchain_colorspace") {
+            extensions.push(CString::new("VK_EXT_swapchain_colorspace").unwrap());
+        }
+        Ok(extensions)
     }
 
     unsafe fn create_surface(
@@ -125,14 +131,11 @@ impl VulkanPlatform for LinuxPlatform {
                         "vkCreateXlibSurfaceKHR",
                     )?)
                 };
-                let owned = unsafe { x11::xlib::XOpenDisplay(ptr::null()) as *mut c_void };
-                *self.owned_xlib_display.lock().unwrap() = owned;
-                let dpy = if owned.is_null() { display } else { owned };
                 let create_info = VkXlibSurfaceCreateInfoKHR {
                     s_type: VK_STRUCTURE_TYPE_XLIB_SURFACE_CREATE_INFO_KHR,
                     p_next: ptr::null(),
                     flags: 0,
-                    dpy,
+                    dpy: display,
                     window,
                 };
                 unsafe { create(instance, &create_info, ptr::null(), &mut surface) }
@@ -179,26 +182,36 @@ impl VulkanPlatform for LinuxPlatform {
     }
 }
 
-impl Drop for LinuxPlatform {
-    fn drop(&mut self) {
-        let display = *self.owned_xlib_display.lock().unwrap();
-        if !display.is_null() {
-            unsafe { x11::xlib::XCloseDisplay(display as *mut x11::xlib::Display) };
-        }
-    }
-}
-
 pub fn create_context(
     native_surface: NativeSurface,
     width: i32,
     height: i32,
 ) -> Result<VulkanContext, String> {
-    VulkanContext::new(
-        Box::new(LinuxPlatform {
-            native_surface,
-            owned_xlib_display: Mutex::new(ptr::null_mut()),
-        }),
-        width,
-        height,
-    )
+    VulkanContext::new(Box::new(LinuxPlatform { native_surface }), width, height)
+}
+
+pub unsafe fn create_context_from_external_device(
+    native_surface: NativeSurface,
+    instance: VkInstance,
+    phys_device: VkPhysicalDevice,
+    device: VkDevice,
+    queue: VkQueue,
+    queue_family_index: u32,
+    device_extensions: Vec<CString>,
+    width: i32,
+    height: i32,
+) -> Result<VulkanContext, String> {
+    unsafe {
+        VulkanContext::from_external_handles(
+            Box::new(LinuxPlatform { native_surface }),
+            instance,
+            phys_device,
+            device,
+            queue,
+            queue_family_index,
+            device_extensions,
+            width,
+            height,
+        )
+    }
 }

@@ -38,7 +38,7 @@ export function PlayerBottomControls(props: {
   segmentBufferRefs: MutableRefObject<(HTMLDivElement | null)[]>;
   durationRef: MutableRefObject<number>;
   chaptersRef: MutableRefObject<Chapter[]>;
-  chapterSegments: Array<{ start: number; end: number }> | null;
+  chapterSegments: Array<{ start: number; end: number; title?: string }> | null;
   skipMarkers: Array<{ start: number; end: number }>;
   onSeekStart: (event: PointerEvent) => void;
   paused: boolean;

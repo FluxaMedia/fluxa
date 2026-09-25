@@ -7,7 +7,7 @@ import { useGifSlot } from '../hooks/useGifSlot';
 import { useDragScroll } from '../hooks/useDragScroll';
 import { usePosterSrc } from '../hooks/usePosterSrc';
 
-const ROW_PADDING_LEFT = '2rem';
+const ROW_PADDING_LEFT = 'var(--fluxa-screen-padding, 1.5rem)';
 
 const SCROLL_GAP = 12;
 const BUFFER = 3;

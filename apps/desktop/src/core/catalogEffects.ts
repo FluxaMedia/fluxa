@@ -1,10 +1,10 @@
 import { coreInvoke, coreSearchResultGrouping } from './engine';
-import { coreResourceFetchPlan } from './addonManifest';
+import { buildResourceUrl, coreResourceFetchPlan } from './addonManifest';
 import { loadEnabledAddons, loadPrefs } from './libraryOps';
 import { fetchPlannedResources, fetchParsedAddonResource, resourceForPlannedRequest } from './fetchPlanning';
-import { discoverCatalogOptions } from './homeEffects';
-import { fetchBuiltinCatalog, isBuiltinTmdbAddon } from './tmdbAddon';
+import { fetchBuiltinCatalog, isBuiltinTmdbAddon, withBuiltinTmdbAddon } from './tmdbAddon';
 import { startPerfSpan } from './performance';
+import type { UserProfile } from './models';
 
 export async function fetchCatalogPage(payload: Record<string, unknown>, signal?: AbortSignal): Promise<unknown> {
   const perf = startPerfSpan('catalog.page', { contentType: payload.contentType, catalogId: payload.catalogId });
@@ -151,50 +151,43 @@ export async function runDiscover(payload: Record<string, unknown>, signal?: Abo
   const requestSignal = signal ? AbortSignal.any([signal, abortController.signal]) : abortController.signal;
 
   const contentType = payload.contentType as string;
-  const filters = payload.filters as { catalogKey?: string; transportUrl?: string; extra?: Record<string, unknown> } | undefined;
-  const extra = filters?.extra ?? {};
-
-  if (isBuiltinTmdbAddon(filters?.transportUrl)) {
-    const prefs = await loadPrefs();
-    const { metas } = await fetchBuiltinCatalog(
-      contentType,
-      extra,
-      String(prefs.tmdbApiKey ?? ''),
-      String(prefs.language ?? 'en'),
-      requestSignal,
-    );
-    if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
-    perf.end({ builtin: true, results: metas.length });
-    return { results: metas };
-  }
-
-  const catalogKey = filters?.catalogKey;
-  const addons = await loadEnabledAddons();
-  const values = await fetchPlannedResources({ kind: 'discover', contentType, catalogKey, extra, addons, traceId: perf.traceId }, undefined, requestSignal);
-  if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
-
-  const rawResults = values.flatMap((value) => (value as { items?: unknown[] })?.items ?? []);
-  if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
-  const results = rawResults.map((item) =>
-    item && typeof item === 'object'
-      ? { ...(item as Record<string, unknown>), sourceAddonTransportUrl: filters?.transportUrl, sourceAddonCatalogType: contentType }
-      : item,
+  const filters = (payload.filters ?? {}) as Record<string, unknown>;
+  const sourceRequests = await coreInvoke<Array<Record<string, unknown>>>(
+    'discoverSourceRequests',
+    JSON.stringify({ contentType, filters }),
   );
-  perf.end({ builtin: false, results: results.length });
-  return { results };
+  const prefs = await loadPrefs();
+  const apiKey = String(prefs.tmdbApiKey ?? '').trim();
+  const sources = await Promise.all((sourceRequests ?? []).map(async (source) => {
+    const transportUrl = String(source.transportUrl ?? '');
+    const type = String(source.type ?? contentType);
+    const catalogId = String(source.catalogId ?? '');
+    const extra = (source.extra as Record<string, unknown> | undefined) ?? {};
+    const genre = typeof extra.genre === 'string' ? extra.genre : null;
+    let items: unknown[] = [];
+    if (isBuiltinTmdbAddon(transportUrl)) {
+      const result = await fetchBuiltinCatalog(type, extra, apiKey, String(prefs.language ?? 'en'), requestSignal);
+      items = result.metas;
+    } else {
+      const url = await buildResourceUrl(transportUrl, 'catalog', type, catalogId, JSON.stringify(extra));
+      const resource = await resourceForPlannedRequest('discover');
+      const parsed = url ? await fetchParsedAddonResource(url, resource, 'discover', transportUrl, undefined, requestSignal) : null;
+      items = (parsed?.items as unknown[] | undefined) ?? [];
+    }
+    return { transportUrl, catalogId, type, genre, items };
+  }));
+  if (discoverAbortController !== abortController) throw new DOMException('superseded', 'AbortError');
+  const merged = await coreInvoke<{ results: unknown[]; resultSources: unknown }>(
+    'mergeDiscoverSources',
+    JSON.stringify({ sources }),
+  );
+  const result = merged ?? { results: [], resultSources: {} };
+  perf.end({ sources: sources.length, results: result.results.length });
+  return result;
 }
 
 export async function readDiscoverCatalogFilters(payload: Record<string, unknown>): Promise<unknown> {
-  const contentType = payload.contentType as string;
-  const addons = await loadEnabledAddons();
-  const catalogOptions = await discoverCatalogOptions(addons, contentType);
-  const catalogs = catalogOptions.map((catalog) => ({
-    key: catalog.key,
-    label: catalog.label,
-    transportUrl: catalog.transportUrl,
-    type: catalog.type,
-    id: catalog.id,
-    extras: catalog.extras ?? [],
-  }));
-  return { catalogs };
+  const profile = payload.profile as UserProfile | null | undefined;
+  const addons = await withBuiltinTmdbAddon(await loadEnabledAddons(profile), await loadPrefs());
+  return { addons };
 }

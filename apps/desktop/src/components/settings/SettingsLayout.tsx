@@ -22,7 +22,7 @@ export function SidebarItem({
       style={{
         width: '100%',
         minHeight: '2.5rem',
-        background: hovered ? fade.tint(0.04) : 'transparent',
+        background: selected ? fade.tint(0.055) : hovered ? fade.tint(0.04) : 'transparent',
         color: color.textPrimary,
         border: 'none',
         borderRadius: radius.md,
@@ -64,7 +64,7 @@ export function SidebarItem({
           flexShrink: 0,
           width: '1.375rem',
           height: '1.375rem',
-          color: selected ? 'var(--primary-accent-color)' : color.textDim,
+          color: selected ? color.textPrimary : color.textDim,
           transition: 'color 0.12s',
         }}
       >

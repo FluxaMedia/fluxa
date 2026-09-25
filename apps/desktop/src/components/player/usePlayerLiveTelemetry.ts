@@ -16,6 +16,7 @@ import {
   fmtTime,
   sendCmd,
   skipLabelForType,
+  skipToastText,
   type ActiveSkip,
   type FeedbackFlash,
   type SkipSegment,
@@ -301,13 +302,19 @@ export function usePlayerLiveTelemetry(options: Bindings) {
           autoSkippedKeysRef.current.add(newSkipKey);
           lastSeekAtRef.current = now;
           sendCmd(`set time-pos ${Math.floor(segment.endTime / 1000)}`);
-          flashFeedback('seekFwd', t('player.skipped'));
+          flashFeedback('seekFwd', skipToastText(segment.type, segment.endTime, segment.provider));
           setActiveSkip(null);
         } else {
           const outroEndsPlayback = segment?.type === 'outro' && dur > 0 && segment.endTime >= dur * 1000 - 500;
           setActiveSkip(
             segment && !outroEndsPlayback
-              ? { label: skipLabelForType(segment.type), startMs: segment.startTime, endMs: segment.endTime, type: segment.type }
+              ? {
+                  label: skipLabelForType(segment.type),
+                  startMs: segment.startTime,
+                  endMs: segment.endTime,
+                  type: segment.type,
+                  provider: segment.provider,
+                }
               : null,
           );
         }

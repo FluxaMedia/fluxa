@@ -373,6 +373,7 @@ export const HomeScreen = React.memo(
             preferredSubtitleLanguage={prefString(prefs, 'preferredSubtitleLanguage', 'none')}
             secondarySubtitleLanguage={prefString(prefs, 'secondarySubtitleLanguage', 'none')}
             pendingLogoIds={heroPendingLogoIds}
+            compactLayout
           />
         )}
       </>

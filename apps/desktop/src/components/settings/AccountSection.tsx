@@ -161,7 +161,7 @@ export function AccountSection({
       {activeProfile && (
         <SettingsSection title={t('profiles.active_profile')} subtitle={t('profiles.active_profile_desc')}>
           <SyncServiceRow
-            icon={<AvatarPreview profile={activeProfile} size={36} circular />}
+            icon={<AvatarPreview profile={activeProfile} size={40} circular />}
             title={activeProfile.name ?? t('auto.profile')}
             value={t('settings.switch_profiles_desc')}
             onClick={onSwitchProfile}

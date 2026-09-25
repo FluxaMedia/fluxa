@@ -26,6 +26,7 @@ interface PopoverProps {
   maxWidth?: number | string;
   maxHeight?: number | string;
   padding?: string;
+  surface?: 'raised' | 'navigation';
   zIndex?: number;
   children: ReactNode;
 }
@@ -45,12 +46,14 @@ export function Popover({
   maxWidth,
   maxHeight,
   padding = '0.375rem 0',
+  surface = 'raised',
   zIndex = 10000,
   children,
 }: PopoverProps) {
   const panelRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number; anchorWidth?: number } | null>(null);
   const asSheet = useIsMobile();
+  const surfaceStyle = surface === 'navigation' ? { ...POPOVER_SURFACE, background: 'var(--fluxa-navigation)' } : POPOVER_SURFACE;
 
   useLayoutEffect(() => {
     if (!open || asSheet) return;
@@ -133,7 +136,7 @@ export function Popover({
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           style={{
-            ...POPOVER_SURFACE,
+            ...surfaceStyle,
             width: '100%',
             maxHeight: '80dvh',
             overflowY: 'auto',
@@ -159,7 +162,7 @@ export function Popover({
       onWheel={(e) => e.stopPropagation()}
       onContextMenu={(e) => e.preventDefault()}
       style={{
-        ...POPOVER_SURFACE,
+        ...surfaceStyle,
         position: 'fixed',
         top: position?.top ?? -9999,
         left: position?.left ?? -9999,

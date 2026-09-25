@@ -158,7 +158,7 @@ The long-term source of truth should be a small versioned theme contract package
 - a dedicated `fluxa-theme` package/repository, or
 - a `contracts/theme` directory maintained with the cross-platform contract files.
 
-The first implementation may live in `apps/desktop` while the schema is stabilized. `contracts/built-in-themes.json` contains the built-in packs, and `npm run theme:sync` generates the native consumers from it; generated files must not be hand-edited.
+The first implementation may live in `apps/desktop` while the schema is stabilized. `shared/contracts/ui-tokens.json` is the single theme/token source: it contains the shared UI tokens and built-in theme packs, and `npm run theme:sync` / `npm run ui:sync` generate the native consumers from it; generated files must not be hand-edited.
 
 ### Theme pack format
 
@@ -252,7 +252,7 @@ Content-specific colors are separate from the application theme. IMDb yellow, ra
 
 ### Shared layout tokens
 
-Layout values have a separate framework-independent source of truth at `shared/contracts/ui-tokens.json`. The `layout` section owns shared spacing, card dimensions, poster ratios, shapes, motion durations, typography sizes, and responsive profiles. Responsive values are grouped by both platform (`mobile`, `desktop`, `tv`) and window class (`compact`, `medium`, `expanded`).
+Layout values live in the same framework-independent source of truth at `shared/contracts/ui-tokens.json`. The `layout` section owns shared spacing, card dimensions, poster ratios, shapes, motion durations, typography sizes, and responsive profiles. Responsive values are grouped by both platform (`mobile`, `desktop`, `tv`) and window class (`compact`, `medium`, `expanded`).
 
 `apps/desktop/scripts/generate-ui-tokens.mjs` generates the Kotlin, Swift, TypeScript, and CSS consumers. Run `npm --prefix apps/desktop run ui:sync` after changing the contract; CI checks the generated files with `npm --prefix apps/desktop run ui:verify`.
 
@@ -337,7 +337,7 @@ Consolidate these into one React theme adapter. `useAppLayoutPrefs` should apply
 
 The same React build is the correct UI path for browser and webOS. Platform modules such as `src/platform/webos/` should continue to provide only webOS capabilities and services.
 
-The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable contract, `contracts/built-in-themes.json` is the built-in data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
+The first desktop foundation is now present: `contracts/theme.schema.json` defines the portable theme-pack contract, `shared/contracts/ui-tokens.json` is the single built-in token/theme data source, and `src/theme/adapter.ts` maps it to CSS variables. Built-in theme selection and a first skin capability (showing or hiding Calendar in navigation) are wired through the existing profile preferences. The adapter validates theme data and safely falls back when skin JSON is invalid.
 
 The desktop shell now accepts and exports validated JSON theme packs up to 256 KiB, stores up to 24 custom packs in profile preferences, and applies skin visibility and section-order settings to the Home and Detail screens. Detail skin section IDs are `hero`, `actions`, `meta`, `tabs`, `episodes`, `details`, `related`, and `rail`. Packs contain data only; they cannot execute code. Artwork/font installation and drag-and-drop route ordering remain future extensions. The Compose adapter and Android custom JSON import are implemented in `apps/android`; the tvOS SwiftUI adapter loads a persisted JSON pack from `AppStorage` and is implemented in `apps/apple/tvOS`.
 

@@ -151,7 +151,9 @@ export function themeCssVariables(theme: ThemePack): Record<string, string> {
   variables['--fluxa-card-radius'] = `${theme.shape.cardRadius}px`;
   variables['--fluxa-control-radius'] = `${theme.shape.controlRadius}px`;
   variables['--fluxa-dialog-radius'] = `${theme.shape.dialogRadius}px`;
-  variables['--fluxa-screen-padding'] = `${theme.spacing.screenPadding}px`;
+  // Keep the shared page edge usable even if an old/custom theme contains a
+  // desktop-unfriendly value. All hero and shelf consumers use this variable.
+  variables['--fluxa-screen-padding'] = `${Math.max(24, theme.spacing.screenPadding)}px`;
   variables['--fluxa-section-gap'] = `${theme.spacing.sectionGap}px`;
   variables['--fluxa-control-gap'] = `${theme.spacing.controlGap}px`;
   variables['--fluxa-motion-enabled'] = theme.motion.enabled ? '1' : '0';

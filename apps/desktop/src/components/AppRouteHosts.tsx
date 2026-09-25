@@ -32,7 +32,7 @@ export function CalendarRoute({ store, ...props }: StoreProp & Omit<ComponentPro
 export function DiscoverRoute({ store, ...props }: StoreProp & Omit<ComponentProps<typeof DiscoverScreen>, 'state'>) {
   const state = useAppStateSelector(
     store,
-    (value) => ({ discover: value.discover, settings: value.settings, addons: value.addons }),
+    (value) => ({ discover: value.discover, settings: value.settings, addons: value.addons, home: value.home, search: value.search }),
     shallowEqual,
   );
   return <DiscoverScreen state={state} {...props} />;

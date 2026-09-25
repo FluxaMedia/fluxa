@@ -4,6 +4,8 @@ impl MpvClientHandle {
     fn new_internal(
         thumbnail: bool,
         scripts: &[PathBuf],
+        x11_window_id: Option<u64>,
+        disable_ytdl: bool,
     ) -> Result<(Self, MpvRenderState), String> {
         let api = MpvApi::load()?;
         let handle = unsafe { (api.mpv_create)() };
@@ -66,7 +68,26 @@ impl MpvClientHandle {
         } else {
             client.set_option("terminal", "no")?;
             client.set_option("config", "no")?;
-            client.set_option("vo", "libmpv")?;
+            if disable_ytdl {
+                client.set_option("ytdl", "no")?;
+            }
+            if let Some(window_id) = x11_window_id {
+                // XWayland/X11 native embedding: let mpv own its Vulkan
+                // swapchain for the real X11 window instead of routing every
+                // frame through Fluxa's experimental render bridge.
+                client.set_option("vo", "gpu")?;
+                let x11_opengl = std::env::var_os("FLUXA_NATIVE_AUTOTEST_X11_OPENGL").is_some();
+                client.set_option("gpu-api", if x11_opengl { "opengl" } else { "vulkan" })?;
+                // Let mpv select the X11 Vulkan context from the actual
+                // display connection. Some bundled libmpv builds reject an
+                // explicit `x11vk` value even though the context is listed
+                // as available, while `auto` selects it correctly for an X11
+                // `wid` under XWayland.
+                client.set_option("gpu-context", if x11_opengl { "x11" } else { "auto" })?;
+                client.set_option("wid", &window_id.to_string())?;
+            } else {
+                client.set_option("vo", "libmpv")?;
+            }
             client.set_option("idle", "yes")?;
             client.set_option("keep-open", "yes")?;
             if let Err(error) = client.set_option("osc", "no") {
@@ -81,7 +102,12 @@ impl MpvClientHandle {
             if cfg!(target_os = "macos") {
                 client.set_option("hwdec", "videotoolbox")?;
             } else {
-                client.set_option("hwdec", "auto-safe")?;
+                let hwdec = if std::env::var_os("FLUXA_NATIVE_AUTOTEST_SOFTWARE_DECODE").is_some() {
+                    "no"
+                } else {
+                    "auto-safe"
+                };
+                client.set_option("hwdec", hwdec)?;
             }
             client.set_option("hwdec-codecs", "all")?;
 
@@ -116,7 +142,8 @@ impl MpvClientHandle {
         let init_result = unsafe { (client.api.mpv_initialize)(client.handle) };
         if init_result < 0 {
             let message = client.api.error_string(init_result);
-            unsafe { (client.api.mpv_terminate_destroy)(client.handle) };
+            // `client` is dropped on return and owns this handle. Destroying it
+            // here as well would call mpv_terminate_destroy twice.
             return Err(format!("mpv_initialize failed: {message}"));
         }
 
@@ -192,12 +219,24 @@ impl MpvClientHandle {
         Self::new_with_scripts(Vec::new())
     }
 
+    pub fn new_without_ytdl() -> Result<(Self, MpvRenderState), String> {
+        Self::new_internal(false, &[], None, true)
+    }
+
     pub fn new_with_scripts(scripts: Vec<PathBuf>) -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false, &scripts)
+        Self::new_internal(false, &scripts, None, false)
+    }
+
+    #[cfg(target_os = "linux")]
+    pub fn new_with_scripts_x11_wid(
+        scripts: Vec<PathBuf>,
+        window_id: u64,
+    ) -> Result<(Self, MpvRenderState), String> {
+        Self::new_internal(false, &scripts, Some(window_id), false)
     }
 
     pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {
-        let (client, mut render) = Self::new_internal(true, &[])?;
+        let (client, mut render) = Self::new_internal(true, &[], None, false)?;
         render.create_software_context()?;
         Ok((client, render))
     }

@@ -1,24 +1,25 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { LayoutGrid } from 'lucide-react';
-import { posterPrefsFromState, type PosterPrefs } from '../core/posterPrefs';
+import { posterPrefsFromState } from '../core/posterPrefs';
 import type { AppState, Meta } from '../core/types';
 import { getLanguage, t } from '../i18n';
 import { FilterDropdown } from '../components/FilterDropdown';
-import { DiscoverDetailPanel } from '../components/DiscoverDetailPanel';
+import { GlobalSearchBar } from '../components/GlobalSearchBar';
 import { VirtualizedPosterGrid } from '../components/VirtualizedPosterGrid';
 import { coreInvoke } from '../core/engine';
+import { SearchScreen } from './SearchScreen';
 
 interface Props {
-  state: Pick<AppState, 'addons' | 'discover' | 'settings'>;
+  state: Pick<AppState, 'addons' | 'discover' | 'settings' | 'home' | 'search'>;
   onDispatch: (actionJson: string) => void;
   onNavigateDetail: (meta: Meta) => void;
   onBack: () => void;
   initialGenre?: string | null;
+  query?: string;
+  onQueryChange?: (query: string) => void;
 }
 
-const SCROLL_HOVER_IDLE_MS = 180;
-
 const discoverResultsCache = new Map<string, Meta[]>();
+const DISCOVER_CONTENT_GUTTER = 42;
 
 interface DiscoverCatalog {
   key: string;
@@ -33,16 +34,11 @@ interface DiscoverCatalog {
   }>;
 }
 
-function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre }: Props) {
+function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre, query = '', onQueryChange }: Props) {
   const discover = state.discover;
   const [contentType, setContentType] = useState<string>('movie');
   const [selectedCatalogKey, setSelectedCatalogKey] = useState<string | null>(null);
   const [extraValue, setExtraValue] = useState<string | null>(initialGenre ?? null);
-  const [hoveredMeta, setHoveredMeta] = useState<Meta | null>(null);
-  const [selectedMeta, setSelectedMeta] = useState<Meta | null>(null);
-  const isGridScrollingRef = useRef(false);
-  const scrollIdleTimerRef = useRef<number | null>(null);
-  const hoveredMetaRef = useRef<Meta | null>(null);
   const [selectionPlan, setSelectionPlan] = useState<{
     catalogs: DiscoverCatalog[];
     selectedCatalogKey: string | null;
@@ -57,14 +53,12 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
   const key = selectionPlan.key;
   const cachedResults = discoverResultsCache.get(key) ?? null;
   const lastDispatchedKeyRef = useRef<string | null>(null);
-  const posterPrefs = useMemo(() => posterPrefsFromState(state), [state.settings?.values]);
-
-  const panelMeta = hoveredMeta ?? selectedMeta;
+  const posterPrefs = useMemo(() => posterPrefsFromState(state, 0.88), [state.settings?.values]);
 
   useEffect(() => {
     setSelectedCatalogKey(null);
     setExtraValue(initialGenre ?? null);
-    onDispatch(JSON.stringify({ type: 'discoverCatalogFiltersRequested', contentType, language: getLanguage() }));
+    onDispatch(JSON.stringify({ type: 'discoverCatalogFiltersRequested', contentType }));
   }, [contentType]);
 
   useEffect(() => {
@@ -207,117 +201,100 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
     }));
   }, [contentTypes]);
 
-  const handleGridScroll = useCallback(() => {
-    isGridScrollingRef.current = true;
-    if (hoveredMetaRef.current) {
-      hoveredMetaRef.current = null;
-      setHoveredMeta(null);
-    }
-    if (scrollIdleTimerRef.current != null) window.clearTimeout(scrollIdleTimerRef.current);
-    scrollIdleTimerRef.current = window.setTimeout(() => {
-      isGridScrollingRef.current = false;
-      scrollIdleTimerRef.current = null;
-    }, SCROLL_HOVER_IDLE_MS);
-  }, []);
-
-  useEffect(() => {
-    return () => {
-      if (scrollIdleTimerRef.current != null) window.clearTimeout(scrollIdleTimerRef.current);
-    };
-  }, []);
-
-  const handlePosterHover = useCallback((meta: Meta | null): boolean => {
-    if (isGridScrollingRef.current) return false;
-    hoveredMetaRef.current = meta;
-    setHoveredMeta(meta);
-    return true;
-  }, []);
-
-  const handlePosterClick = useCallback(
-    (meta: Meta) => {
-      setSelectedMeta((prev) => {
-        if (prev?.id === meta.id) {
-          onNavigateDetail(meta);
-          return prev;
-        }
-        return meta;
-      });
-    },
-    [onNavigateDetail],
-  );
+  const handlePosterClick = useCallback((meta: Meta) => onNavigateDetail(meta), [onNavigateDetail]);
+  const isSearching = query.trim().length > 0;
 
   return (
     <div className="discover-screen" style={S.screen}>
       <div style={S.left}>
-        <div className="discover-filterbar" style={S.filterBar}>
-          <FilterDropdown
-            value={typeOptions.find((o) => o.value === contentType)?.label ?? contentType}
-            options={typeOptions}
-            onSelect={setContentType}
+        <div className="discover-searchbar" style={S.searchbar}>
+          <GlobalSearchBar
+            query={query}
+            onSearch={(nextQuery) => onQueryChange?.(nextQuery)}
+            onBack={() => onQueryChange?.('')}
+            state={state}
+            onDispatch={onDispatch}
+            onNavigateDetail={onNavigateDetail}
+            alwaysOpen
+            wide
           />
-          <FilterDropdown
-            value={selectedCatalog?.label ?? t('discover.catalog')}
-            options={catalogs.map((catalog) => ({ value: catalog.key, label: catalog.label }))}
-            onSelect={(v) => {
-              setSelectedCatalogKey(v);
-              setExtraValue(null);
-            }}
-          />
-          {selectedExtra && (
-            <FilterDropdown
-              value={extraValue ?? selectedExtra.name}
-              options={[
-                { value: '__all__', label: t('discover.all_filter_values', selectedExtra.name) },
-                ...selectedExtra.options.map((option) => ({ value: option, label: option })),
-              ]}
-              onSelect={(v) => setExtraValue(v === '__all__' ? null : v)}
-            />
-          )}
-          {isLoading && <div style={S.loadingDot} />}
         </div>
 
-        {isLoading && displayResults.length === 0 ? (
-          <div className="discover-loading-grid" style={S.loadingGrid}>
-            {Array.from({ length: 24 }).map((_, i) => (
-              <div
-                key={i}
-                style={{
-                  borderRadius: '0.625rem',
-                  background: '#222222',
-                  aspectRatio: '2/3',
-                  animation: 'pulse 1.6s ease-in-out infinite',
-                  animationDelay: `${(i % 8) * 0.07}s`,
+        {isSearching ? (
+          <div style={S.searchResults}>
+            <SearchScreen
+              state={state}
+              onDispatch={onDispatch}
+              onNavigateDetail={onNavigateDetail}
+              query={query}
+              onQueryChange={(nextQuery) => onQueryChange?.(nextQuery)}
+              onBack={() => onQueryChange?.('')}
+              embedded
+            />
+          </div>
+        ) : (
+          <>
+            <div className="discover-filterbar" style={S.filterBar}>
+              <FilterDropdown
+                value={typeOptions.find((o) => o.value === contentType)?.label ?? contentType}
+                options={typeOptions}
+                onSelect={setContentType}
+              />
+              <FilterDropdown
+                value={selectedCatalog?.label ?? t('discover.catalog')}
+                options={catalogs.map((catalog) => ({ value: catalog.key, label: catalog.label }))}
+                onSelect={(v) => {
+                  setSelectedCatalogKey(v);
+                  setExtraValue(null);
                 }}
               />
-            ))}
-          </div>
-        ) : displayResults.length === 0 ? (
-          <div style={S.empty}>
-            <p style={S.emptyTitle}>{t('discover.no_content')}</p>
-            <p style={S.emptyHint}>{t('discover.install_addons_hint')}</p>
-          </div>
-        ) : (
-          <VirtualizedPosterGrid
-            resetKey={key}
-            items={displayResults}
-            selectedId={panelMeta?.id ?? null}
-            posterPrefs={posterPrefs}
-            onHover={handlePosterHover}
-            onClick={handlePosterClick}
-            onScrollActivity={handleGridScroll}
-            onNearEnd={handleLoadMore}
-          />
-        )}
-      </div>
+              {selectedExtra && (
+                <FilterDropdown
+                  value={extraValue ?? selectedExtra.name}
+                  options={[
+                    { value: '__all__', label: t('discover.all_filter_values', selectedExtra.name) },
+                    ...selectedExtra.options.map((option) => ({ value: option, label: option })),
+                  ]}
+                  onSelect={(v) => setExtraValue(v === '__all__' ? null : v)}
+                />
+              )}
+              {isLoading && <div style={S.loadingDot} />}
+            </div>
 
-      <div className="discover-panel" style={S.right}>
-        {panelMeta ? (
-          <DiscoverDetailPanel meta={panelMeta} onPlay={() => onNavigateDetail(panelMeta)} onDispatch={onDispatch} />
-        ) : (
-          <div style={S.panelEmpty}>
-            <LayoutGrid size={40} style={{ color: 'rgba(255,255,255,0.12)' }} />
-            <p style={S.panelEmptyText}>{t('discover.hover_title_hint')}</p>
-          </div>
+            {isLoading && displayResults.length === 0 ? (
+              <div className="discover-loading-grid" style={S.loadingGrid}>
+                {Array.from({ length: 24 }).map((_, i) => (
+                  <div
+                    key={i}
+                    style={{
+                      borderRadius: '0.625rem',
+                      background: '#222222',
+                      aspectRatio: '2/3',
+                      animation: 'pulse 1.6s ease-in-out infinite',
+                      animationDelay: `${(i % 8) * 0.07}s`,
+                    }}
+                  />
+                ))}
+              </div>
+            ) : displayResults.length === 0 ? (
+              <div style={S.empty}>
+                <p style={S.emptyTitle}>{t('discover.no_content')}</p>
+                <p style={S.emptyHint}>{t('discover.install_addons_hint')}</p>
+              </div>
+            ) : (
+              <VirtualizedPosterGrid
+                resetKey={key}
+                items={displayResults}
+                selectedId={null}
+                posterPrefs={posterPrefs}
+                onHover={() => true}
+                onClick={handlePosterClick}
+                onScrollActivity={() => {}}
+                onNearEnd={handleLoadMore}
+                paddingX={DISCOVER_CONTENT_GUTTER}
+              />
+            )}
+          </>
         )}
       </div>
     </div>
@@ -327,19 +304,30 @@ function DiscoverScreenInner({ state, onDispatch, onNavigateDetail, initialGenre
 const S: Record<string, React.CSSProperties> = {
   screen: {
     display: 'flex',
-    width: 'calc(100% - 6.5rem)',
-    height: 'calc(100% - 3.25rem)',
-    marginLeft: '6.5rem',
-    marginTop: '3.25rem',
+    width: '100%',
+    height: '100%',
+    marginLeft: 0,
+    marginTop: 0,
     background: '#09091280',
     overflow: 'hidden',
   },
   left: { flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+  searchbar: {
+    display: 'flex',
+    justifyContent: 'flex-start',
+    position: 'relative',
+    zIndex: 40,
+    background: 'var(--fluxa-background)',
+    padding: '0.875rem 2.625rem 0.75rem',
+    flexShrink: 0,
+    borderBottom: '1px solid rgba(255,255,255,0.05)',
+  },
+  searchResults: { flex: 1, minHeight: 0, overflow: 'hidden' },
   filterBar: {
     display: 'flex',
     alignItems: 'center',
     gap: '0.625rem',
-    padding: '0.625rem 1.5rem',
+    padding: '0.625rem 2.625rem',
     flexShrink: 0,
     borderBottom: '1px solid rgba(255,255,255,0.05)',
   },
@@ -358,7 +346,7 @@ const S: Record<string, React.CSSProperties> = {
     display: 'grid',
     gridTemplateColumns: 'repeat(auto-fill, minmax(9.375rem, 1fr))',
     gap: '1.75rem 1.125rem',
-    padding: '1.25rem 1.5rem 3.75rem',
+    padding: '1.25rem 2.625rem 3.75rem',
     alignContent: 'start',
     scrollbarWidth: 'thin',
     scrollbarColor: 'rgba(255,255,255,0.1) transparent',
@@ -367,35 +355,19 @@ const S: Record<string, React.CSSProperties> = {
   empty: { flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '0.625rem' },
   emptyTitle: { color: '#FFFFFF', fontSize: '1.25rem', fontWeight: 700, margin: 0 },
   emptyHint: { color: 'rgba(255,255,255,0.4)', fontSize: '0.875rem', margin: 0, textAlign: 'center' },
-  right: {
-    width: '18.75rem',
-    flexShrink: 0,
-    background: '#0C0D18',
-    borderLeft: '1px solid rgba(255,255,255,0.06)',
-    overflowY: 'auto',
-    scrollbarWidth: 'none',
-    display: 'flex',
-    flexDirection: 'column',
-  },
-  panelEmpty: {
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: '0.75rem',
-    padding: '1.5rem',
-  },
-  panelEmptyText: { color: 'rgba(255,255,255,0.28)', fontSize: '0.8125rem', textAlign: 'center', margin: 0 },
 };
 
 export const DiscoverScreen = memo(
   DiscoverScreenInner,
   (prev, next) =>
     prev.state.discover === next.state.discover &&
+    prev.state.home === next.state.home &&
+    prev.state.search === next.state.search &&
     prev.state.settings === next.state.settings &&
     prev.state.addons === next.state.addons &&
     prev.onDispatch === next.onDispatch &&
     prev.onNavigateDetail === next.onNavigateDetail &&
-    prev.initialGenre === next.initialGenre,
+    prev.initialGenre === next.initialGenre &&
+    prev.query === next.query &&
+    prev.onQueryChange === next.onQueryChange,
 );

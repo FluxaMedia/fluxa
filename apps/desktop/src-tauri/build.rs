@@ -194,6 +194,7 @@ fn copy_bundled_libmpv_files() {
     if !source_dir.exists() {
         return;
     }
+    println!("cargo:rerun-if-changed={}", source_dir.display());
     let out_dir = match std::env::var("OUT_DIR") {
         Ok(value) => std::path::PathBuf::from(value),
         Err(_) => return,
@@ -213,6 +214,7 @@ fn copy_bundled_libmpv_files() {
     };
     for entry in entries.flatten() {
         let path = entry.path();
+        println!("cargo:rerun-if-changed={}", path.display());
         if path.is_file() {
             let target = profile_dir.join(entry.file_name());
             let _ = std::fs::copy(path, target);

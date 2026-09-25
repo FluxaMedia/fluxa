@@ -82,6 +82,7 @@ html {
   --fluxa-surface: #141416;
   --fluxa-surface-raised: #1C1C1F;
   --fluxa-navigation: #0D0D0D;
+  --fluxa-screen-padding: 1.5rem;
   --fluxa-text-primary: #FFFFFF;
   --fluxa-text-primary-rgb: 255, 255, 255;
   --fluxa-text-secondary-rgb: 184, 184, 190;
@@ -120,6 +121,11 @@ html, body, #root {
   min-height: 0;
   overflow: auto !important;
   overscroll-behavior: contain;
+}
+
+.global-search-expanded.always-open input::placeholder {
+  color: rgba(255,255,255,0.68);
+  opacity: 1;
 }
 
 html[data-native-player-active],

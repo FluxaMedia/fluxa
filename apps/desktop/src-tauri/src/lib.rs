@@ -20,6 +20,8 @@ mod linux_native_render;
 mod linux_vulkan;
 #[cfg(target_os = "linux")]
 mod linux_wayland_subsurface;
+#[cfg(target_os = "linux")]
+mod linux_wayland_native_overlay;
 mod local_media;
 #[cfg(target_os = "macos")]
 mod macos_avplayer;
@@ -248,6 +250,27 @@ pub(crate) fn sentry_dsn() -> Option<sentry::types::Dsn> {
 #[tauri::command]
 fn is_linux() -> bool {
     cfg!(target_os = "linux")
+}
+
+#[tauri::command]
+fn is_wayland() -> bool {
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(backend) = std::env::var_os("GDK_BACKEND") {
+            let backend = backend.to_string_lossy().to_ascii_lowercase();
+            if backend.split(',').any(|value| value.trim() == "x11") {
+                return false;
+            }
+            if backend.split(',').any(|value| value.trim() == "wayland") {
+                return true;
+            }
+        }
+        return std::env::var_os("WAYLAND_DISPLAY").is_some();
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        false
+    }
 }
 
 #[tauri::command]
@@ -486,6 +509,40 @@ pub fn run() {
             storage::initialize_storage(&data_dir).map_err(std::io::Error::other)?;
             torrent_stream::warm_up_torrent_engine(app.handle().clone());
 
+            // Opt-in compositor regression test.  This starts the actual
+            // production native player surface with a local test clip after
+            // the WebView has mounted, so fullscreen/windowed transitions can
+            // be driven and captured without manual UI interaction.
+            #[cfg(target_os = "linux")]
+            if let Ok(url) = std::env::var("FLUXA_NATIVE_AUTOTEST_URL") {
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(3)).await;
+                    let url_for_test = url.clone();
+                    let result = tauri::async_runtime::spawn_blocking(move || {
+                        let state = app_handle.state::<DesktopState>();
+                        let Some(surface) =
+                            player::ensure_native_player_surface(&app_handle, &state)
+                        else {
+                            return Err("autotest: native surface unavailable".to_string());
+                        };
+                        surface.show_loading(
+                            "Native compositor test".to_string(),
+                            Some("WebView overlay + Vulkan video".to_string()),
+                        );
+                        surface.load(url_for_test, Some(0), None)
+                    })
+                    .await
+                    .map_err(|error| error.to_string())
+                    .and_then(|result| result);
+                    if let Err(error) = result {
+                        log::error!("native compositor autotest failed: {error}");
+                    } else {
+                        log::warn!("native compositor autotest playback started");
+                    }
+                });
+            }
+
             if let Ok(cache_dir) = app.path().app_cache_dir() {
                 std::thread::spawn(move || {
                     if let Ok(entries) = fs::read_dir(&cache_dir) {
@@ -590,6 +647,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             is_linux,
+            is_wayland,
             debug_log,
             app_close_flush_done,
             set_diagnostic_mode,

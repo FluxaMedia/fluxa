@@ -4,10 +4,10 @@ import { t } from '../../i18n';
 import type { EpisodeInfo } from './EpisodePanel';
 
 export type Chapter = { title: string; startMs: number };
-export type SkipSegment = { type: string; startTime: number; endTime: number };
-export type ActiveSkip = { label: string; startMs: number; endMs: number; type: string };
+export type SkipSegment = { type: string; startTime: number; endTime: number; provider?: string };
+export type ActiveSkip = { label: string; startMs: number; endMs: number; type: string; provider?: string };
 export type FeedbackFlash = {
-  icon: 'play' | 'pause' | 'seekBack' | 'seekFwd' | 'speed' | 'abLoop' | 'screenshot' | 'subDelay' | 'volume' | 'anime4k';
+  icon: 'seekBack' | 'seekFwd' | 'speed' | 'abLoop' | 'screenshot' | 'subDelay' | 'volume' | 'anime4k';
   label: string;
 };
 
@@ -29,8 +29,16 @@ export function sendCmd(command: string) {
 export function parseChapters(json: string | null | undefined): Chapter[] {
   if (!json) return [];
   try {
-    const arr = JSON.parse(json) as Array<{ title?: string; startTime?: number }>;
-    return arr.map((chapter) => ({ title: chapter.title ?? '', startMs: chapter.startTime ?? 0 }));
+    const parsed = JSON.parse(json) as
+      | Array<{ title?: string; startTime?: number; startMs?: number }>
+      | { chapters?: Array<{ title?: string; startTime?: number; startMs?: number }> };
+    const entries = Array.isArray(parsed) ? parsed : (parsed.chapters ?? []);
+    return entries
+      .map((chapter) => ({
+        title: chapter.title ?? '',
+        startMs: chapter.startMs ?? chapter.startTime ?? 0,
+      }))
+      .filter((chapter) => Number.isFinite(chapter.startMs) && chapter.startMs >= 0);
   } catch {
     return [];
   }
@@ -43,6 +51,11 @@ export function parseSegments(json: string | null | undefined): SkipSegment[] {
   } catch {
     return [];
   }
+}
+
+export function skipToastText(type: string, endMs: number, provider?: string): string {
+  const label = type.charAt(0).toUpperCase() + type.slice(1);
+  return `${label} skipped to ${fmtTime(endMs / 1000)}${provider ? ` via ${provider}` : ''}`;
 }
 
 export function parseEpisodes(json: string | null | undefined): EpisodeInfo[] {

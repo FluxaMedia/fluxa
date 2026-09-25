@@ -6,6 +6,7 @@ import { DiscoverScreen } from './DiscoverScreen';
 import type { AppState, DiscoverCatalog } from '../core/types';
 
 vi.mock('../core/engine', () => ({
+  storageRead: async () => null,
   coreInvoke: async (method: string, argsJson: string) => {
     const args = JSON.parse(argsJson);
     if (method === 'discoverContentTypes') return ['movie', 'series'];

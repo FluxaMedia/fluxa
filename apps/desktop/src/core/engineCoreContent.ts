@@ -92,10 +92,6 @@ export async function coreBuildMetadataFeedOptions(addons: unknown[]): Promise<u
   return coreInvoke('buildMetadataFeedOptions', JSON.stringify(addons));
 }
 
-export async function coreDiscoverCatalogOptions(addons: unknown[], selectedType: string): Promise<unknown[] | null> {
-  return coreInvoke('discoverCatalogOptions', JSON.stringify({ addons: JSON.stringify(addons), selectedType }));
-}
-
 export async function coreLibrarySortPlan(request: unknown): Promise<unknown | null> {
   return coreInvoke('librarySortPlan', JSON.stringify(request));
 }

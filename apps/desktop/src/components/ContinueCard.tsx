@@ -176,9 +176,10 @@ export function ContinueCard({
         WebkitTouchCallout: 'none',
         WebkitUserSelect: 'none',
         userSelect: 'none',
-        transform: dismissing ? 'translateX(-0.75rem)' : hovered ? 'translateY(-0.125rem)' : 'translateY(0)',
+        transform: dismissing ? 'translateX(-0.75rem)' : hovered ? 'translateY(-0.125rem) scale(1.03)' : 'translateY(0) scale(1)',
         transition: dismissing ? 'opacity 0.22s ease, transform 0.22s ease' : 'opacity 0.22s ease, transform 0.16s ease',
         boxShadow: hovered && !dismissing && !pending ? '0 0 0 0.125rem rgba(255,255,255,0.44)' : 'none',
+        zIndex: hovered && !dismissing && !pending ? 2 : 1,
         pointerEvents: dismissing || pending ? 'none' : undefined,
       }}
       onMouseEnter={() => setHovered(true)}
@@ -247,36 +248,6 @@ export function ContinueCard({
         )}
         {cornerText && <div style={cwStyles.cornerBadge}>{cornerText}</div>}
 
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-            opacity: hovered && !dismissing && !pending ? 1 : 0,
-            transition: 'opacity 0.16s ease',
-          }}
-        >
-          <div
-            style={{
-              width: '3.5rem',
-              height: '3.5rem',
-              borderRadius: '50%',
-              background: 'var(--fluxa-fill-active)',
-              backdropFilter: 'blur(0.375rem)',
-              border: '1px solid var(--fluxa-border-strong)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="var(--fluxa-text-primary)" style={{ marginLeft: '0.1875rem' }}>
-              <path d="M8 5v14l11-7z" />
-            </svg>
-          </div>
-        </div>
       </div>
 
       <div style={isHorizontal ? { ...cwStyles.footer, ...cwStyles.landscapeFooter } : cwStyles.footer}>
@@ -334,9 +305,9 @@ export function ContinueCard({
 const cwStyles: Record<string, React.CSSProperties> = {
   landscapeCard: {
     position: 'relative',
-    width: '22.5rem',
-    minWidth: '22.5rem',
-    height: '12.65rem',
+    width: '18rem',
+    minWidth: '18rem',
+    height: '10.125rem',
     borderRadius: '0.5rem',
     overflow: 'hidden',
     background: 'var(--fluxa-surface)',
@@ -345,9 +316,9 @@ const cwStyles: Record<string, React.CSSProperties> = {
   },
   posterCard: {
     position: 'relative',
-    width: '8rem',
-    minWidth: '8rem',
-    height: '13.625rem',
+    width: '6.4rem',
+    minWidth: '6.4rem',
+    height: '10.9rem',
     borderRadius: '0.1875rem',
     overflow: 'hidden',
     background: 'var(--fluxa-surface-raised)',
@@ -364,7 +335,7 @@ const cwStyles: Record<string, React.CSSProperties> = {
   posterImageArea: {
     position: 'relative',
     width: '100%',
-    height: '10.0625rem',
+    height: '8.05rem',
     overflow: 'hidden',
     background: 'var(--fluxa-surface-raised)',
   },
@@ -389,8 +360,8 @@ const cwStyles: Record<string, React.CSSProperties> = {
   },
   footer: {
     position: 'relative',
-    height: '3.5625rem',
-    padding: '0.5625rem 0.625rem 0.625rem',
+    height: '2.85rem',
+    padding: '0.45rem 0.5rem 0.5rem',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -403,18 +374,18 @@ const cwStyles: Record<string, React.CSSProperties> = {
     right: 0,
     bottom: 0,
     left: 0,
-    height: '5rem',
-    padding: '2rem 0.85rem 1.5rem',
+    height: '4rem',
+    padding: '1.6rem 0.68rem 1.2rem',
     alignItems: 'flex-end',
     background: 'linear-gradient(transparent, var(--fluxa-scrim))',
   },
   metaStack: { flex: 1, minWidth: 0 },
   imageProgressBg: {
     position: 'absolute',
-    left: '0.625rem',
-    right: '0.625rem',
-    bottom: '0.5rem',
-    height: '0.25rem',
+    left: '0.5rem',
+    right: '0.5rem',
+    bottom: '0.4rem',
+    height: '0.2rem',
     borderRadius: '62.4375rem',
     background: 'var(--fluxa-fill-active)',
   },
@@ -427,10 +398,10 @@ const cwStyles: Record<string, React.CSSProperties> = {
   landscapeProgressBg: {
     position: 'absolute',
     zIndex: 2,
-    right: '0.85rem',
-    bottom: '0.55rem',
-    left: '0.85rem',
-    height: '0.3125rem',
+    right: '0.68rem',
+    bottom: '0.44rem',
+    left: '0.68rem',
+    height: '0.25rem',
     borderRadius: '62.4375rem',
     background: 'var(--fluxa-fill-strong)',
     boxShadow: '0 0 0.375rem rgba(0,0,0,0.5)',
@@ -443,8 +414,8 @@ const cwStyles: Record<string, React.CSSProperties> = {
   },
   remainingBadge: {
     position: 'absolute',
-    top: '0.5rem',
-    right: '0.5625rem',
+    top: '0.4rem',
+    right: '0.45rem',
     color: 'var(--fluxa-text-primary)',
     fontSize: '0.6875rem',
     fontWeight: 750,
@@ -460,8 +431,8 @@ const cwStyles: Record<string, React.CSSProperties> = {
   },
   cornerBadge: {
     position: 'absolute',
-    top: '0.5rem',
-    left: '0.5625rem',
+    top: '0.4rem',
+    left: '0.45rem',
     color: 'var(--fluxa-text-primary)',
     fontSize: '0.75rem',
     fontWeight: 800,

@@ -1,6 +1,7 @@
 import type React from 'react';
 import { t } from '../i18n';
 import type { ExternalHandoffPrompt as PromptState } from '../hooks/useExternalHandoff';
+import { FluxaButton } from './ui/FluxaButton';
 
 function clock(seconds: number): string {
   const total = Math.max(0, Math.floor(seconds));
@@ -31,17 +32,17 @@ export function ExternalHandoffPrompt({
       <div style={styles.sheet} onClick={(event) => event.stopPropagation()}>
         <p style={styles.title}>{t('external.prompt_title')}</p>
         <p style={styles.subtitle}>{label}</p>
-        <button style={styles.primary} onClick={() => onCommit(estimate.duration, estimate.duration)}>
+        <FluxaButton variant="primary" fullWidth style={styles.primary} onClick={() => onCommit(estimate.duration, estimate.duration)}>
           {t('external.mark_watched')}
-        </button>
+        </FluxaButton>
         {!estimate.finished && estimate.duration > 0 && (
-          <button style={styles.secondary} onClick={() => onCommit(estimate.timePos, estimate.duration)}>
+          <FluxaButton variant="secondary" fullWidth style={styles.secondary} onClick={() => onCommit(estimate.timePos, estimate.duration)}>
             {t('external.save_position', clock(estimate.timePos))}
-          </button>
+          </FluxaButton>
         )}
-        <button style={styles.ghost} onClick={onDismiss}>
+        <FluxaButton variant="ghost" fullWidth style={styles.ghost} onClick={onDismiss}>
           {t('external.save_nothing')}
-        </button>
+        </FluxaButton>
       </div>
     </div>
   );
@@ -71,28 +72,12 @@ const styles: Record<string, React.CSSProperties> = {
   subtitle: { color: 'var(--fluxa-text-secondary)', fontSize: '0.8125rem', margin: '0 0 0.5rem' },
   primary: {
     minHeight: '2.75rem',
-    borderRadius: '0.625rem',
-    border: 'none',
-    background: 'var(--fluxa-accent)',
-    color: 'var(--fluxa-accent-foreground)',
-    fontSize: '0.875rem',
-    fontWeight: 800,
   },
   secondary: {
     minHeight: '2.75rem',
-    borderRadius: '0.625rem',
-    border: '1px solid var(--fluxa-border-strong)',
-    background: 'transparent',
-    color: 'var(--fluxa-text-primary)',
-    fontSize: '0.875rem',
-    fontWeight: 700,
   },
   ghost: {
     minHeight: '2.5rem',
-    border: 'none',
-    background: 'transparent',
     color: 'var(--fluxa-text-muted)',
-    fontSize: '0.8125rem',
-    fontWeight: 700,
   },
 };

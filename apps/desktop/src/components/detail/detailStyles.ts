@@ -677,7 +677,7 @@ export const MS: Record<string, React.CSSProperties> = {
   backBtn: {
     position: 'absolute',
     top: `${TOP_BAR_H + 0.875}rem`,
-    right: '2.5rem',
+    left: '2.5rem',
     width: '2.375rem',
     height: '2.375rem',
     borderRadius: radius.circle,

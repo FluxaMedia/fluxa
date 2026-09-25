@@ -2,6 +2,8 @@ import { platformInvoke as invoke } from '../../platform/invoke';
 import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react';
 import { fmtTime, type Chapter } from './PlayerOverlayPrimitives';
 
+const TRACK_HIT_TOLERANCE_PX = 10;
+
 export function SeekPreview({
   barRef,
   durRef,
@@ -70,6 +72,10 @@ export function SeekPreview({
     if (!bar) return;
     const onMove = (e: MouseEvent) => {
       const rect = bar.getBoundingClientRect();
+      if (Math.abs(e.clientY - (rect.top + rect.height / 2)) > TRACK_HIT_TOLERANCE_PX) {
+        setPreview(null);
+        return;
+      }
       const frac = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
       const previewTime = frac * durRef.current;
       const chaps = chaptersRef.current;
@@ -123,7 +129,9 @@ export function SeekPreview({
     <div
       style={{
         position: 'absolute',
-        bottom: '1.375rem',
+        // Keep the preview above the track even though the seekbar now reserves
+        // extra height for chapter labels below it.
+        bottom: 'calc(50% + 1.25rem)',
         left: preview.x,
         transform: 'translateX(-50%)',
         pointerEvents: 'none',

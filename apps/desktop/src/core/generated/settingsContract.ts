@@ -86,6 +86,7 @@ export const SETTINGS_KEYS = {
   mpvCustomOptions: 'mpvCustomOptions',
   navBarPosition: 'navBarPosition',
   navItemsAlign: 'navItemsAlign',
+  navMode: 'navMode',
   navLayout: 'navLayout',
   navSidebarMode: 'navSidebarMode',
   nextEpisodeThresholdPercent: 'nextEpisodeThresholdPercent',
@@ -285,6 +286,7 @@ export interface GeneratedSettingsValues {
   mpvCustomOptions: string;
   navBarPosition: string;
   navItemsAlign: string;
+  navMode: string;
   navLayout: string;
   navSidebarMode: string;
   nextEpisodeThresholdPercent: string;
@@ -463,6 +465,7 @@ export const SETTINGS_DEFAULTS: Partial<GeneratedSettingsValues> = {
   mpvCustomOptions: "",
   navBarPosition: "left",
   navItemsAlign: "center",
+  navMode: "classic",
   navLayout: "sidebar",
   navSidebarMode: "hover",
   nextEpisodeThresholdPercent: "85",

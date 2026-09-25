@@ -489,7 +489,7 @@ export function SettingsScreen({
           ) : (
             <div style={{ padding: '0.5625rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.625rem' }}>
               <RefreshIcon />
-              <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: '0.8125rem' }}>
+              <span style={{ color: 'rgba(255,255,255,0.62)', fontSize: '0.875rem', lineHeight: 1.35 }}>
                 {t('settings.updates_managed_by_package_manager')}
               </span>
             </div>

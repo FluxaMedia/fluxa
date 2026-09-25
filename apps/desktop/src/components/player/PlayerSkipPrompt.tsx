@@ -1,16 +1,18 @@
 import { SkipForward } from 'lucide-react';
 import type { CSSProperties, RefObject } from 'react';
 import { t } from '../../i18n';
-import { sendCmd, type ActiveSkip } from './PlayerOverlayPrimitives';
+import type { ActiveSkip } from './PlayerOverlayPrimitives';
 
 export function PlayerSkipPrompt({
   activeSkip,
   skipFillRef,
+  onSkip,
   onDismiss,
   onActivity,
 }: {
   activeSkip: ActiveSkip | null;
   skipFillRef: RefObject<HTMLDivElement | null>;
+  onSkip: (skip: ActiveSkip) => void;
   onDismiss: () => void;
   onActivity: () => void;
 }) {
@@ -33,7 +35,7 @@ export function PlayerSkipPrompt({
         onClick={(event) => {
           event.stopPropagation();
           onActivity();
-          sendCmd(`set time-pos ${Math.floor(activeSkip.endMs / 1000)}`);
+          onSkip(activeSkip);
           onDismiss();
         }}
         className="fluxa-skip-btn"

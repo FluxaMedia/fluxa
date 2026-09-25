@@ -4,7 +4,6 @@ import {
   coreBuildMetadataFeedOptions,
   coreComputeContinueWatchingBadges,
   coreContinueWatchingForSource,
-  coreDiscoverCatalogOptions,
   coreEffectiveMetadataFeedSelection,
   coreInvoke,
   coreNuvioResolveContinueWatching,
@@ -61,19 +60,6 @@ async function selectedContinueWatchingSource(prefs: Record<string, unknown>): P
   );
 }
 
-export interface DiscoverCatalogOption {
-  key: string;
-  label: string;
-  transportUrl: string;
-  type: string;
-  id: string;
-  extras?: Array<{
-    name: string;
-    options: string[];
-    isRequired?: boolean;
-  }>;
-}
-
 async function metadataFeedOptions(addons: AddonDescriptor[]): Promise<MetadataFeedOption[]> {
   const options = ((await coreBuildMetadataFeedOptions(addons)) ?? []) as MetadataFeedOption[];
   const addonsJson = JSON.stringify(addons);
@@ -83,11 +69,6 @@ async function metadataFeedOptions(addons: AddonDescriptor[]): Promise<MetadataF
       return { ...option, genre };
     }),
   );
-}
-
-export async function discoverCatalogOptions(addons: AddonDescriptor[], selectedType: string): Promise<DiscoverCatalogOption[]> {
-  const withBuiltin = await withBuiltinTmdbAddon(addons, await loadPrefs());
-  return ((await coreDiscoverCatalogOptions(withBuiltin, selectedType)) ?? []) as DiscoverCatalogOption[];
 }
 
 export async function refreshReleasedContinueWatching(

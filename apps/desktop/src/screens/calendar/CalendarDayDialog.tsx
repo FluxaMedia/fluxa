@@ -6,7 +6,7 @@ import { t } from '../../i18n';
 import { CalendarArtwork } from './CalendarArtwork';
 import { calendarPoster, eventEpisodeLabel, formatLongDate, type CalendarItem } from './calendarUtils';
 
-export function CalendarDayDialog({
+export function CalendarDayPanel({
   dateIso,
   items,
   onClose,
@@ -35,50 +35,46 @@ export function CalendarDayDialog({
   }, [items]);
 
   return (
-    <div style={styles.modalOverlay} onMouseDown={onClose}>
-      <section
-        className="calendar-modal"
-        style={styles.modal}
-        role="dialog"
-        aria-modal="true"
+      <aside
+        className="calendar-day-panel"
+        style={styles.sidePanel}
+        role="complementary"
         aria-label={formatLongDate(dateIso)}
-        onMouseDown={(event) => event.stopPropagation()}
       >
-        <div style={styles.modalHeader}>
+        <div style={styles.sidePanelHeader}>
           <div>
-            <h2 style={styles.modalTitle}>{formatLongDate(dateIso)}</h2>
-            <p style={styles.modalCount}>{t('calendar.scheduled_episodes', items.length)}</p>
+            <h2 style={styles.sidePanelTitle}>{formatLongDate(dateIso)}</h2>
+            <p style={styles.sidePanelCount}>{t('calendar.scheduled_episodes', items.length)}</p>
           </div>
-          <button style={styles.closeBtn} onClick={onClose} aria-label={t('common.close')}>
+          <button style={styles.sidePanelClose} onClick={onClose} aria-label={t('common.close')}>
             <X size={21} />
           </button>
         </div>
         {items.length === 0 ? (
-          <div style={styles.modalEmpty}>{t('calendar.empty_filtered')}</div>
+          <div style={styles.sidePanelEmpty}>{t('calendar.empty_filtered')}</div>
         ) : (
-          <div style={styles.modalList}>
+          <div style={styles.sidePanelList}>
             {items.map((item, index) => (
-              <div key={item.id ?? `${item.title}-${index}`} className="calendar-modal-item" style={styles.modalItem}>
+              <div key={item.id ?? `${item.title}-${index}`} className="calendar-panel-item" style={styles.sidePanelItem}>
                 <CalendarArtwork
                   src={calendarPoster(item, resolvedArtwork, seriesArtwork)}
                   fallbackSrc={item.seriesPoster}
-                  style={styles.modalPoster}
+                  style={styles.sidePanelPoster}
                   fallback={
-                    <div style={styles.modalPosterFallback}>
+                    <div style={styles.sidePanelPosterFallback}>
                       <Film size={19} />
                     </div>
                   }
                 />
-                <div style={styles.modalText}>
-                  <span style={styles.modalItemTitle}>{item.title ?? item.name ?? item.subtitle}</span>
-                  <span style={styles.modalItemMeta}>{eventEpisodeLabel(item)}</span>
+                <div style={styles.sidePanelText}>
+                  <span style={styles.sidePanelItemTitle}>{item.title ?? item.name ?? item.subtitle}</span>
+                  <span style={styles.sidePanelItemMeta}>{eventEpisodeLabel(item)}</span>
                 </div>
-                {releasedItems[index] && <Check size={19} style={styles.releaseCheck} />}
+                {releasedItems[index] && <Check size={19} style={styles.sidePanelReleaseCheck} />}
               </div>
             ))}
           </div>
         )}
-      </section>
-    </div>
+      </aside>
   );
 }

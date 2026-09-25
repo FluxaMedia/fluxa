@@ -1,9 +1,10 @@
-import React, { useLayoutEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Bookmark, BookmarkCheck, Info, Play } from 'lucide-react';
 import { t } from '../i18n';
 import type { Meta } from '../core/types';
 import { cardImageUrl } from '../core/imageSizes';
+import { coreInvoke } from '../core/engine';
 import { Button, IconButton, color, fade, fontSize, lineHeight, radius, space, weight, z } from '../design';
 
 const WIDTH = 21.5;
@@ -41,18 +42,44 @@ export function PosterPreviewCard({
     const width = WIDTH * unit;
     const margin = MARGIN * unit;
     const height = element.offsetHeight;
-    const left = Math.min(
-      Math.max(margin, anchor.left + anchor.width / 2 - width / 2),
-      window.innerWidth - width - margin,
-    );
-    const top = Math.min(
-      Math.max(margin, anchor.top + anchor.height / 2 - height / 2),
-      window.innerHeight - height - margin,
-    );
+    const rightPosition = anchor.right + margin;
+    const leftPosition = anchor.left - width - margin;
+    const fitsRight = rightPosition + width <= window.innerWidth - margin;
+    const preferredLeft = fitsRight ? rightPosition : leftPosition;
+    const preferredTop = anchor.top - height * 0.16;
+    const left = Math.min(Math.max(margin, preferredLeft), window.innerWidth - width - margin);
+    const top = Math.min(Math.max(margin, preferredTop), window.innerHeight - height - margin);
     setBox({ left, top });
   }, [element, anchor]);
 
   const record = meta as unknown as Record<string, unknown>;
+  const ratings = record.ratings as Record<string, unknown> | undefined;
+  const rawRating = meta.imdbRating ?? record.rating ?? ratings?.imdb;
+  const rating =
+    typeof rawRating === 'number' || typeof rawRating === 'string' ? String(rawRating) : null;
+  const directCast = (meta.cast ?? [])
+    .map((member) => {
+      const value = member as unknown as Record<string, unknown>;
+      return typeof value.name === 'string' ? value.name.trim() : '';
+    })
+    .filter(Boolean);
+  const [castNames, setCastNames] = useState<string[]>(directCast.slice(0, 4));
+
+  useEffect(() => {
+    if (directCast.length > 0) {
+      setCastNames(directCast.slice(0, 4));
+      return;
+    }
+    let active = true;
+    void coreInvoke<{ cast?: Array<{ name?: string }> }>('classifyMetaLinks', JSON.stringify(meta.links ?? [])).then((result) => {
+      if (!active) return;
+      setCastNames((result?.cast ?? []).map((link) => link.name?.trim() ?? '').filter(Boolean).slice(0, 4));
+    });
+    return () => {
+      active = false;
+    };
+  }, [meta.cast, meta.links]);
+
   const timeOffset = typeof record.timeOffset === 'number' ? record.timeOffset : 0;
   const duration = typeof record.duration === 'number' ? record.duration : 0;
   const progress = timeOffset > 0 && duration > 0 ? Math.min(99, Math.round((timeOffset / duration) * 100)) : 0;
@@ -136,7 +163,15 @@ export function PosterPreviewCard({
         <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
           <span style={{ fontSize: fontSize.md, fontWeight: weight.bold, color: color.textPrimary }}>{meta.name}</span>
           {facts.length > 0 && (
-            <span style={{ fontSize: fontSize.xs, fontWeight: weight.medium, color: color.textMuted }}>{facts.join(' · ')}</span>
+            <span style={{ fontSize: fontSize.sm, fontWeight: weight.medium, color: color.textMuted }}>{facts.join(' · ')}</span>
+          )}
+          {rating && (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.375rem', fontSize: fontSize.sm, fontWeight: weight.semibold }}>
+              <span style={{ padding: '0.125rem 0.25rem', borderRadius: radius.xs, background: color.imdb, color: color.black, fontSize: fontSize.xs, fontWeight: weight.bold }}>
+                IMDb
+              </span>
+              <span style={{ color: color.textPrimary }}>{rating}</span>
+            </span>
           )}
         </div>
 
@@ -144,8 +179,8 @@ export function PosterPreviewCard({
           <p
             style={{
               margin: 0,
-              fontSize: fontSize.xs,
-              lineHeight: lineHeight.normal,
+              fontSize: fontSize.base,
+              lineHeight: lineHeight.relaxed,
               color: color.textBody,
               display: '-webkit-box',
               WebkitLineClamp: 3,
@@ -155,6 +190,15 @@ export function PosterPreviewCard({
           >
             {meta.description}
           </p>
+        )}
+
+        {castNames.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: space[1] }}>
+            <span style={{ fontSize: fontSize.sm, fontWeight: weight.bold, color: color.textPrimary }}>{t('auto.cast')}</span>
+            <span style={{ fontSize: fontSize.base, lineHeight: lineHeight.normal, color: color.textBody }}>
+              {castNames.join(' · ')}
+            </span>
+          </div>
         )}
       </div>
     </div>,

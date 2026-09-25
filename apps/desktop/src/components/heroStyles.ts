@@ -1,6 +1,8 @@
 import type React from 'react';
 
-export const PANEL_LEFT = '7.5rem';
+// The hero and every shelf must share the same page edge. The theme supplies
+// the value at runtime; the fallback keeps the first paint aligned as well.
+export const PANEL_LEFT = 'var(--fluxa-screen-padding, 1.5rem)';
 
 export const heroKeyframes = `
 @keyframes heroKenBurns {
@@ -115,6 +117,16 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     gap: 0,
     zIndex: 10,
   },
+  compactPanel: {
+    position: 'absolute',
+    bottom: '13.75rem' as unknown as number,
+    left: PANEL_LEFT,
+    maxWidth: '36.25rem',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: 0,
+    zIndex: 10,
+  },
   logo: {
     height: 'clamp(5rem, 13vh, 12.5rem)' as unknown as number,
     maxWidth: '33.75rem',
@@ -123,6 +135,16 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     filter: 'drop-shadow(0 0.25rem 0.75rem rgba(0,0,0,0.65)) drop-shadow(0 0 1px rgba(255,255,255,0.25))',
     userSelect: 'none',
     marginBottom: '1.375rem',
+    transition: 'height 0.35s ease, max-width 0.35s ease, margin-bottom 0.35s ease',
+  },
+  compactLogo: {
+    height: 'clamp(4rem, 10.5vh, 7.75rem)' as unknown as number,
+    maxWidth: 'min(34rem, 39vw)',
+    objectFit: 'contain',
+    objectPosition: 'left center',
+    filter: 'drop-shadow(0 0.25rem 0.75rem rgba(0,0,0,0.65)) drop-shadow(0 0 1px rgba(255,255,255,0.25))',
+    userSelect: 'none',
+    marginBottom: '0.75rem',
     transition: 'height 0.35s ease, max-width 0.35s ease, margin-bottom 0.35s ease',
   },
   logoTrailerActive: {
@@ -204,6 +226,22 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     maxWidth: '30rem',
     textShadow: '0 1px 0.1875rem rgba(0,0,0,0.98), 0 0 0.3rem rgba(0,0,0,0.9)',
   },
+  compactDescription: {
+    color: '#FFFFFF',
+    fontSize: 'clamp(0.8rem, 0.9vw, 1rem)' as unknown as number,
+    lineHeight: 1.3,
+    margin: '0 0 0.75rem',
+    maxWidth: 'min(36rem, 38vw)',
+    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.98), 0 0 0.3rem rgba(0,0,0,0.9)',
+  },
+  compactMeta: {
+    color: '#FFFFFF',
+    fontSize: 'clamp(0.75rem, 0.8vw, 1rem)' as unknown as number,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    margin: '0 0 0.875rem',
+    textShadow: '0 1px 0.1875rem rgba(0,0,0,0.95), 0 0 0.3rem rgba(0,0,0,0.8)',
+  },
   awards: {
     color: 'rgba(255,255,255,0.65)',
     fontSize: '0.82rem',
@@ -218,6 +256,13 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     gap: '0.625rem',
     marginTop: '1.5rem',
+    alignSelf: 'flex-start',
+  },
+  compactActions: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginTop: '0.25rem',
     alignSelf: 'flex-start',
   },
   watchBtn: {
@@ -251,6 +296,38 @@ export const heroStyles: Record<string, React.CSSProperties> = {
     fontFamily: "'Montserrat', sans-serif",
     transition: 'all 0.25s ease-in-out',
     boxShadow: '0 0.5rem 2rem rgba(0,0,0,0.3), 0 0.25rem 1rem rgba(0,0,0,0.1)',
+  },
+  compactWatchBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    height: '2rem',
+    background: '#FFFFFF',
+    color: '#000000',
+    border: '1px solid transparent',
+    borderRadius: '62.4375rem',
+    padding: '0 0.9375rem',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: "'Montserrat', sans-serif",
+    boxShadow: '0 0.375rem 1rem rgba(0,0,0,0.28)',
+  },
+  compactMoreInfoBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '0.4rem',
+    height: '2rem',
+    background: 'rgba(109,109,110,0.72)',
+    color: '#FFFFFF',
+    border: '1px solid transparent',
+    borderRadius: '62.4375rem',
+    padding: '0 0.9375rem',
+    fontSize: '0.8125rem',
+    fontWeight: 700,
+    cursor: 'pointer',
+    fontFamily: "'Montserrat', sans-serif",
+    boxShadow: '0 0.375rem 1rem rgba(0,0,0,0.28)',
   },
   indicators: {
     position: 'absolute',

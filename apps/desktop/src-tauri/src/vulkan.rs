@@ -51,11 +51,15 @@ pub const VK_COLOR_SPACE_SRGB_NONLINEAR_KHR: i32 = 0;
 pub const VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT: i32 = 1000104002;
 pub const VK_SHARING_MODE_EXCLUSIVE: i32 = 0;
 pub const VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR: u32 = 0x1;
+pub const VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR: u32 = 0x2;
+pub const VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR: u32 = 0x4;
+pub const VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR: u32 = 0x8;
 pub const VK_PRESENT_MODE_FIFO_KHR: i32 = 2;
 pub const VK_API_VERSION_1_0: u32 = 1 << 22;
 pub const VK_API_VERSION_1_2: u32 = (1 << 22) | (2 << 12);
 pub const VK_API_VERSION_1_3: u32 = (1 << 22) | (3 << 12);
 pub const VK_API_VERSION_1_4: u32 = (1 << 22) | (4 << 12);
+pub const VK_IMAGE_LAYOUT_UNDEFINED: i32 = 0;
 pub const VK_IMAGE_LAYOUT_PRESENT_SRC_KHR: i32 = 1000001002;
 pub const VK_IMAGE_ASPECT_COLOR_BIT: u32 = 0x1;
 pub const VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT: u32 = 0x00002000;
@@ -554,17 +558,42 @@ pub struct VulkanContext {
     surface: VkSurfaceKHR,
     swapchain: VkSwapchainKHR,
     images: Vec<VkImage>,
+    image_layouts: Vec<i32>,
     image_format: i32,
     image_usage: u32,
+    // The compositor can choose a different surface extent during fullscreen.
+    // Keep the requested size separate to avoid resize loops.
+    requested_extent: VkExtent2D,
     extent: VkExtent2D,
     acquire_semaphore: VkSemaphore,
     render_done_semaphore: VkSemaphore,
-    transition_semaphore: VkSemaphore,
+    // Present waits can outlive the submit fence. Keep one semaphore per
+    // swapchain image so a semaphore is never reused while the compositor is
+    // still consuming it during fullscreen reconfiguration.
+    transition_semaphores: Vec<VkSemaphore>,
     in_flight_fence: VkFence,
     command_pool: VkCommandPool,
     command_buffer: VkCommandBuffer,
     hdr: AtomicBool,
     device_extension_names: Vec<CString>,
+    // The native Rust shell can import wgpu's Vulkan instance/device instead
+    // of creating a second logical device. In that mode wgpu remains the
+    // owner and this context only owns its surface/swapchain resources.
+    owns_instance_and_device: bool,
+}
+
+fn choose_composite_alpha(supported: u32) -> Result<u32, String> {
+    [
+        VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        VK_COMPOSITE_ALPHA_PRE_MULTIPLIED_BIT_KHR,
+        VK_COMPOSITE_ALPHA_POST_MULTIPLIED_BIT_KHR,
+        VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR,
+    ]
+    .into_iter()
+    .find(|candidate| supported & candidate != 0)
+    .ok_or_else(|| {
+        format!("Vulkan surface exposes no supported composite-alpha mode (mask=0x{supported:x})")
+    })
 }
 
 unsafe impl Send for VulkanContext {}
@@ -1026,22 +1055,154 @@ impl VulkanContext {
             surface,
             swapchain: 0,
             images: Vec::new(),
+            image_layouts: Vec::new(),
             image_format: VK_FORMAT_B8G8R8A8_UNORM,
             image_usage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            requested_extent: VkExtent2D {
+                width: width.max(2) as u32,
+                height: height.max(2) as u32,
+            },
             extent: VkExtent2D {
                 width: width.max(2) as u32,
                 height: height.max(2) as u32,
             },
             acquire_semaphore: 0,
             render_done_semaphore: 0,
-            transition_semaphore: 0,
+            transition_semaphores: Vec::new(),
             in_flight_fence: 0,
             command_pool: ptr::null_mut(),
             command_buffer: ptr::null_mut(),
             hdr: AtomicBool::new(false),
             device_extension_names: device_extensions,
+            owns_instance_and_device: true,
         };
         ctx.create_swapchain(width.max(2) as u32, height.max(2) as u32)?;
+        ctx.create_semaphores()?;
+        ctx.create_command_buffer()?;
+        Ok(ctx)
+    }
+
+    /// Build the video swapchain on top of an already-open Vulkan device.
+    ///
+    /// The caller retains ownership of `instance`, `device`, and `queue` and
+    /// must keep them alive for the whole lifetime of the returned context.
+    /// This is used by the wgpu shell so UI and libmpv do not open competing
+    /// NVIDIA Vulkan devices for two Wayland surfaces in the same process.
+    pub unsafe fn from_external_handles(
+        platform: Box<dyn VulkanPlatform>,
+        instance: VkInstance,
+        phys_device: VkPhysicalDevice,
+        device: VkDevice,
+        queue: VkQueue,
+        queue_family_index: u32,
+        device_extension_names: Vec<CString>,
+        width: i32,
+        height: i32,
+    ) -> Result<Self, String> {
+        let get_instance_proc_addr = platform.load_loader()?;
+
+        macro_rules! proc {
+            ($name:expr) => {
+                unsafe {
+                    std::mem::transmute(get_instance_proc(get_instance_proc_addr, instance, $name)?)
+                }
+            };
+        }
+
+        let destroy_instance: PfnDestroyInstance = proc!("vkDestroyInstance");
+        let get_surface_capabilities: PfnGetPhysicalDeviceSurfaceCapabilitiesKHR =
+            proc!("vkGetPhysicalDeviceSurfaceCapabilitiesKHR");
+        let get_surface_formats: PfnGetPhysicalDeviceSurfaceFormatsKHR =
+            proc!("vkGetPhysicalDeviceSurfaceFormatsKHR");
+        let destroy_surface: PfnDestroySurfaceKHR = proc!("vkDestroySurfaceKHR");
+        let destroy_device: PfnDestroyDevice = proc!("vkDestroyDevice");
+        let get_device_queue: PfnGetDeviceQueue = proc!("vkGetDeviceQueue");
+        let create_swapchain: PfnCreateSwapchainKHR = proc!("vkCreateSwapchainKHR");
+        let destroy_swapchain: PfnDestroySwapchainKHR = proc!("vkDestroySwapchainKHR");
+        let get_swapchain_images: PfnGetSwapchainImagesKHR = proc!("vkGetSwapchainImagesKHR");
+        let acquire_next_image: PfnAcquireNextImageKHR = proc!("vkAcquireNextImageKHR");
+        let queue_present: PfnQueuePresentKHR = proc!("vkQueuePresentKHR");
+        let create_semaphore: PfnCreateSemaphore = proc!("vkCreateSemaphore");
+        let destroy_semaphore: PfnDestroySemaphore = proc!("vkDestroySemaphore");
+        let create_fence: PfnCreateFence = proc!("vkCreateFence");
+        let destroy_fence: PfnDestroyFence = proc!("vkDestroyFence");
+        let wait_for_fences: PfnWaitForFences = proc!("vkWaitForFences");
+        let reset_fences: PfnResetFences = proc!("vkResetFences");
+        let device_wait_idle: PfnDeviceWaitIdle = proc!("vkDeviceWaitIdle");
+        let create_command_pool: PfnCreateCommandPool = proc!("vkCreateCommandPool");
+        let destroy_command_pool: PfnDestroyCommandPool = proc!("vkDestroyCommandPool");
+        let allocate_command_buffers: PfnAllocateCommandBuffers = proc!("vkAllocateCommandBuffers");
+        let reset_command_buffer: PfnResetCommandBuffer = proc!("vkResetCommandBuffer");
+        let begin_command_buffer: PfnBeginCommandBuffer = proc!("vkBeginCommandBuffer");
+        let end_command_buffer: PfnEndCommandBuffer = proc!("vkEndCommandBuffer");
+        let cmd_pipeline_barrier: PfnCmdPipelineBarrier = proc!("vkCmdPipelineBarrier");
+        let queue_submit: PfnQueueSubmit = proc!("vkQueueSubmit");
+
+        let surface = unsafe { platform.create_surface(instance, get_instance_proc_addr)? };
+        let fns = VkFns {
+            get_instance_proc_addr,
+            destroy_instance,
+            get_physical_device_surface_capabilities_khr: get_surface_capabilities,
+            get_physical_device_surface_formats_khr: get_surface_formats,
+            destroy_surface_khr: destroy_surface,
+            destroy_device,
+            get_device_queue,
+            create_swapchain_khr: create_swapchain,
+            destroy_swapchain_khr: destroy_swapchain,
+            get_swapchain_images_khr: get_swapchain_images,
+            acquire_next_image_khr: acquire_next_image,
+            queue_present_khr: queue_present,
+            create_semaphore,
+            destroy_semaphore,
+            create_fence,
+            destroy_fence,
+            wait_for_fences,
+            reset_fences,
+            device_wait_idle,
+            create_command_pool,
+            destroy_command_pool,
+            allocate_command_buffers,
+            reset_command_buffer,
+            begin_command_buffer,
+            end_command_buffer,
+            cmd_pipeline_barrier,
+            queue_submit,
+        };
+        let requested_extent = VkExtent2D {
+            width: width.max(2) as u32,
+            height: height.max(2) as u32,
+        };
+        let mut ctx = Self {
+            platform,
+            fns,
+            instance,
+            phys_device,
+            device,
+            queue,
+            queue_family_index,
+            surface,
+            swapchain: 0,
+            images: Vec::new(),
+            image_layouts: Vec::new(),
+            image_format: VK_FORMAT_B8G8R8A8_UNORM,
+            image_usage: VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+            requested_extent,
+            extent: requested_extent,
+            acquire_semaphore: 0,
+            render_done_semaphore: 0,
+            transition_semaphores: Vec::new(),
+            in_flight_fence: 0,
+            command_pool: ptr::null_mut(),
+            command_buffer: ptr::null_mut(),
+            hdr: AtomicBool::new(false),
+            device_extension_names,
+            owns_instance_and_device: false,
+        };
+        if let Err(error) = ctx.create_swapchain(requested_extent.width, requested_extent.height) {
+            unsafe { (ctx.fns.destroy_surface_khr)(ctx.instance, ctx.surface, ptr::null()) };
+            ctx.surface = 0;
+            return Err(error);
+        }
         ctx.create_semaphores()?;
         ctx.create_command_buffer()?;
         Ok(ctx)
@@ -1055,21 +1216,16 @@ impl VulkanContext {
         };
         let mut acquire: VkSemaphore = 0;
         let mut render_done: VkSemaphore = 0;
-        let mut transition: VkSemaphore = 0;
         let r1 =
             unsafe { (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut acquire) };
         let r2 = unsafe {
             (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut render_done)
         };
-        let r3 = unsafe {
-            (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut transition)
-        };
-        if r1 != VK_SUCCESS || r2 != VK_SUCCESS || r3 != VK_SUCCESS {
-            return Err(format!("vkCreateSemaphore failed: {r1}/{r2}/{r3}"));
+        if r1 != VK_SUCCESS || r2 != VK_SUCCESS {
+            return Err(format!("vkCreateSemaphore failed: {r1}/{r2}"));
         }
         self.acquire_semaphore = acquire;
         self.render_done_semaphore = render_done;
-        self.transition_semaphore = transition;
 
         let fence_info = VkFenceCreateInfo {
             s_type: VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -1083,6 +1239,41 @@ impl VulkanContext {
             return Err(format!("vkCreateFence failed: {r4}"));
         }
         self.in_flight_fence = fence;
+        Ok(())
+    }
+
+    fn destroy_transition_semaphores(&mut self) {
+        unsafe {
+            for semaphore in self.transition_semaphores.drain(..) {
+                (self.fns.destroy_semaphore)(self.device, semaphore, ptr::null());
+            }
+        }
+    }
+
+    fn create_transition_semaphores(&mut self) -> Result<(), String> {
+        self.destroy_transition_semaphores();
+        let info = VkSemaphoreCreateInfo {
+            s_type: VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
+            p_next: ptr::null(),
+            flags: 0,
+        };
+        let mut semaphores = Vec::with_capacity(self.images.len());
+        for _ in &self.images {
+            let mut semaphore = 0;
+            let result = unsafe {
+                (self.fns.create_semaphore)(self.device, &info, ptr::null(), &mut semaphore)
+            };
+            if result != VK_SUCCESS {
+                unsafe {
+                    for created in semaphores.drain(..) {
+                        (self.fns.destroy_semaphore)(self.device, created, ptr::null());
+                    }
+                }
+                return Err(format!("vkCreateSemaphore(present image) failed: {result}"));
+            }
+            semaphores.push(semaphore);
+        }
+        self.transition_semaphores = semaphores;
         Ok(())
     }
 
@@ -1205,27 +1396,40 @@ impl VulkanContext {
                 });
             (f, false)
         };
-        self.hdr.store(hdr, Ordering::Release);
-        log::info!(
-            "{} Vulkan swapchain: format={} color_space={} hdr={} surface_extent={}x{}",
-            self.platform.label(),
-            chosen_format.format,
-            chosen_format.color_space,
-            hdr,
-            caps.current_extent.width,
-            caps.current_extent.height
-        );
-
+        let extent = if caps.current_extent.width != u32::MAX {
+            caps.current_extent
+        } else {
+            VkExtent2D {
+                width: width
+                    .max(caps.min_image_extent.width)
+                    .min(caps.max_image_extent.width),
+                height: height
+                    .max(caps.min_image_extent.height)
+                    .min(caps.max_image_extent.height),
+            }
+        };
+        let composite_alpha = choose_composite_alpha(caps.supported_composite_alpha)?;
         let mut image_count = caps.min_image_count + 1;
         if caps.max_image_count > 0 && image_count > caps.max_image_count {
             image_count = caps.max_image_count;
         }
 
-        let extent = if caps.current_extent.width != u32::MAX {
-            caps.current_extent
-        } else {
-            VkExtent2D { width, height }
-        };
+        self.hdr.store(hdr, Ordering::Release);
+        log::info!(
+            "{} Vulkan swapchain: requested={}x{} surface_extent={}x{} chosen_extent={}x{} images={} composite_alpha=0x{:x} format={} color_space={} hdr={}",
+            self.platform.label(),
+            width,
+            height,
+            caps.current_extent.width,
+            caps.current_extent.height,
+            extent.width,
+            extent.height,
+            image_count,
+            composite_alpha,
+            chosen_format.format,
+            chosen_format.color_space,
+            hdr
+        );
 
         let image_usage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
             | (caps.supported_usage_flags & VK_IMAGE_USAGE_TRANSFER_DST_BIT);
@@ -1247,7 +1451,7 @@ impl VulkanContext {
             queue_family_index_count: 0,
             p_queue_family_indices: ptr::null(),
             pre_transform: caps.current_transform,
-            composite_alpha: VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+            composite_alpha,
             present_mode: VK_PRESENT_MODE_FIFO_KHR,
             clipped: 1,
             old_swapchain,
@@ -1285,8 +1489,10 @@ impl VulkanContext {
 
         self.swapchain = swapchain;
         self.images = images;
+        self.image_layouts = vec![VK_IMAGE_LAYOUT_UNDEFINED; image_count_out as usize];
         self.image_format = chosen_format.format;
         self.extent = extent;
+        self.create_transition_semaphores()?;
         Ok(())
     }
 
@@ -1316,23 +1522,47 @@ impl VulkanContext {
         self.hdr.load(Ordering::Acquire)
     }
 
+    pub fn debug_extents(&self) -> (u32, u32, u32, u32) {
+        (
+            self.requested_extent.width,
+            self.requested_extent.height,
+            self.extent.width,
+            self.extent.height,
+        )
+    }
+
     pub fn resize(&mut self, width: i32, height: i32) -> Result<(), String> {
         let width = width.max(2) as u32;
         let height = height.max(2) as u32;
-        if self.extent.width == width && self.extent.height == height {
+        if self.requested_extent.width == width && self.requested_extent.height == height {
             return Ok(());
         }
+        log::info!(
+            "linux Vulkan resize: requested {}x{} -> {}x{} (surface was {}x{})",
+            self.requested_extent.width,
+            self.requested_extent.height,
+            width,
+            height,
+            self.extent.width,
+            self.extent.height
+        );
         unsafe { (self.fns.device_wait_idle)(self.device) };
-        self.create_swapchain(width, height)
+        self.create_swapchain(width, height)?;
+        self.requested_extent = VkExtent2D { width, height };
+        Ok(())
     }
 
     pub fn vk_format(&self) -> i32 {
         self.image_format
     }
 
+    pub fn extent(&self) -> (u32, u32) {
+        (self.extent.width, self.extent.height)
+    }
+
     pub fn render_and_present<F>(&mut self, render: F) -> Result<(), String>
     where
-        F: FnMut(u64, i32, u32, u32, u64, u64) -> Result<i32, String>,
+        F: FnMut(u64, i32, u32, u32, i32, u64, u64) -> Result<i32, String>,
     {
         let result = self.render_and_present_inner(render);
         if result.is_err() {
@@ -1344,11 +1574,7 @@ impl VulkanContext {
     fn recover_after_render_error(&mut self) {
         unsafe {
             (self.fns.device_wait_idle)(self.device);
-            for sem in [
-                self.acquire_semaphore,
-                self.render_done_semaphore,
-                self.transition_semaphore,
-            ] {
+            for sem in [self.acquire_semaphore, self.render_done_semaphore] {
                 if sem != 0 {
                     (self.fns.destroy_semaphore)(self.device, sem, ptr::null());
                 }
@@ -1359,16 +1585,23 @@ impl VulkanContext {
         }
         self.acquire_semaphore = 0;
         self.render_done_semaphore = 0;
-        self.transition_semaphore = 0;
+        self.destroy_transition_semaphores();
         self.in_flight_fence = 0;
-        let extent = self.extent;
+        let extent = self.requested_extent;
+        log::warn!(
+            "linux Vulkan render recovery: requested={}x{} surface={}x{}",
+            extent.width,
+            extent.height,
+            self.extent.width,
+            self.extent.height
+        );
         let _ = self.create_semaphores();
         let _ = self.create_swapchain(extent.width, extent.height);
     }
 
     fn render_and_present_inner<F>(&mut self, mut render: F) -> Result<(), String>
     where
-        F: FnMut(u64, i32, u32, u32, u64, u64) -> Result<i32, String>,
+        F: FnMut(u64, i32, u32, u32, i32, u64, u64) -> Result<i32, String>,
     {
         unsafe {
             let wait_result =
@@ -1393,21 +1626,37 @@ impl VulkanContext {
             )
         };
         if result == VK_ERROR_OUT_OF_DATE_KHR {
-            return Err("vkAcquireNextImageKHR reported VK_ERROR_OUT_OF_DATE_KHR".to_string());
+            return Err(format!(
+                "vkAcquireNextImageKHR reported VK_ERROR_OUT_OF_DATE_KHR (surface={}x{})",
+                self.extent.width, self.extent.height
+            ));
         }
-        if result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR {
+        let acquire_suboptimal = result == VK_SUBOPTIMAL_KHR;
+        if result != VK_SUCCESS && !acquire_suboptimal {
             return Err(format!("vkAcquireNextImageKHR failed: VkResult {result}"));
         }
 
         let image = self.images[image_index as usize];
+        let transition_semaphore = self
+            .transition_semaphores
+            .get(image_index as usize)
+            .copied()
+            .ok_or_else(|| "missing present semaphore for swapchain image".to_string())?;
+        let image_layout = self
+            .image_layouts
+            .get(image_index as usize)
+            .copied()
+            .ok_or_else(|| "missing layout state for swapchain image".to_string())?;
         let out_layout = render(
             image,
             self.image_format,
             self.extent.width,
             self.extent.height,
+            image_layout,
             self.acquire_semaphore,
             self.render_done_semaphore,
         )?;
+        self.image_layouts[image_index as usize] = out_layout;
 
         unsafe {
             (self.fns.reset_command_buffer)(self.command_buffer, 0);
@@ -1466,7 +1715,7 @@ impl VulkanContext {
                 command_buffer_count: 1,
                 p_command_buffers: &self.command_buffer,
                 signal_semaphore_count: 1,
-                p_signal_semaphores: &self.transition_semaphore,
+                p_signal_semaphores: &transition_semaphore,
             };
             let result = (self.fns.queue_submit)(self.queue, 1, &submit_info, self.in_flight_fence);
             if result != VK_SUCCESS {
@@ -1478,7 +1727,7 @@ impl VulkanContext {
             s_type: VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
             p_next: ptr::null(),
             wait_semaphore_count: 1,
-            p_wait_semaphores: &self.transition_semaphore,
+            p_wait_semaphores: &transition_semaphore,
             swapchain_count: 1,
             p_swapchains: &self.swapchain,
             p_image_indices: &image_index,
@@ -1486,9 +1735,18 @@ impl VulkanContext {
         };
         let result = unsafe { (self.fns.queue_present_khr)(self.queue, &present_info) };
         if result == VK_ERROR_OUT_OF_DATE_KHR {
-            return Err("vkQueuePresentKHR reported VK_ERROR_OUT_OF_DATE_KHR".to_string());
+            return Err(format!(
+                "vkQueuePresentKHR reported VK_ERROR_OUT_OF_DATE_KHR (surface={}x{})",
+                self.extent.width, self.extent.height
+            ));
         }
-        if result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR {
+        if result == VK_SUBOPTIMAL_KHR || acquire_suboptimal {
+            return Err(format!(
+                "Vulkan present became suboptimal; rebuilding swapchain (surface={}x{})",
+                self.extent.width, self.extent.height
+            ));
+        }
+        if result != VK_SUCCESS {
             return Err(format!("vkQueuePresentKHR failed: VkResult {result}"));
         }
         Ok(())
@@ -1504,8 +1762,8 @@ impl Drop for VulkanContext {
             if self.render_done_semaphore != 0 {
                 (self.fns.destroy_semaphore)(self.device, self.render_done_semaphore, ptr::null());
             }
-            if self.transition_semaphore != 0 {
-                (self.fns.destroy_semaphore)(self.device, self.transition_semaphore, ptr::null());
+            for semaphore in self.transition_semaphores.drain(..) {
+                (self.fns.destroy_semaphore)(self.device, semaphore, ptr::null());
             }
             if self.in_flight_fence != 0 {
                 (self.fns.destroy_fence)(self.device, self.in_flight_fence, ptr::null());
@@ -1516,9 +1774,13 @@ impl Drop for VulkanContext {
             if self.swapchain != 0 {
                 (self.fns.destroy_swapchain_khr)(self.device, self.swapchain, ptr::null());
             }
-            (self.fns.destroy_device)(self.device, ptr::null());
-            (self.fns.destroy_surface_khr)(self.instance, self.surface, ptr::null());
-            (self.fns.destroy_instance)(self.instance, ptr::null());
+            if self.surface != 0 {
+                (self.fns.destroy_surface_khr)(self.instance, self.surface, ptr::null());
+            }
+            if self.owns_instance_and_device {
+                (self.fns.destroy_device)(self.device, ptr::null());
+                (self.fns.destroy_instance)(self.instance, ptr::null());
+            }
         }
     }
 }

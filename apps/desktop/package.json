@@ -20,7 +20,7 @@
     "tauri": "tauri",
     "bump": "bash scripts/bump-version.sh",
     "lint:design": "node scripts/check-design.mjs",
-    "theme:sync": "node scripts/generate-theme-consumers.mjs",
+    "theme:sync": "node scripts/generate-ui-tokens.mjs",
     "theme:verify": "node scripts/verify-theme-consumers.mjs",
     "ui:sync": "node scripts/generate-ui-tokens.mjs",
     "ui:verify": "node scripts/generate-ui-tokens.mjs --check",

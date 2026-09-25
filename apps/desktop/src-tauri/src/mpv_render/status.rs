@@ -29,6 +29,10 @@ fn audio_passthrough_failure_text(details: &[String], message: &str) -> bool {
 }
 
 impl MpvClientHandle {
+    pub fn recent_log_lines(&self) -> Vec<String> {
+        self.log_ring.iter().map(|(_, line)| line.clone()).collect()
+    }
+
     fn audio_output_mode(&self) -> String {
         let policy = *self.audio_policy.lock().unwrap();
         audio_output_mode_for_policy(policy).to_string()
@@ -605,6 +609,32 @@ impl MpvClientHandle {
         self.get_string_property(name)
     }
 
+    pub fn chapters_json(&self) -> Option<String> {
+        let count = self.get_i64_property("chapter-list/count")?;
+        if count <= 0 {
+            return None;
+        }
+
+        let chapters = (0..count)
+            .filter_map(|index| {
+                let start_seconds = self.get_f64_property(&format!("chapter-list/{index}/time"))?;
+                if !start_seconds.is_finite() || start_seconds < 0.0 {
+                    return None;
+                }
+                let title = self
+                    .get_string_property(&format!("chapter-list/{index}/title"))
+                    .filter(|value| !value.trim().is_empty())
+                    .unwrap_or_else(|| format!("Chapter {}", index + 1));
+                Some(serde_json::json!({
+                    "title": title,
+                    "startMs": (start_seconds * 1000.0).round() as u64,
+                }))
+            })
+            .collect::<Vec<_>>();
+
+        (!chapters.is_empty()).then(|| serde_json::json!({ "chapters": chapters }).to_string())
+    }
+
     fn get_i64_property(&self, name: &str) -> Option<i64> {
         let c_name = CString::new(name).ok()?;
         let mut value = 0i64;
@@ -614,6 +644,20 @@ impl MpvClientHandle {
                 c_name.as_ptr(),
                 4,
                 (&mut value as *mut i64).cast(),
+            )
+        };
+        (result >= 0).then_some(value)
+    }
+
+    fn get_f64_property(&self, name: &str) -> Option<f64> {
+        let c_name = CString::new(name).ok()?;
+        let mut value = 0.0f64;
+        let result = unsafe {
+            (self.api.mpv_get_property)(
+                self.handle,
+                c_name.as_ptr(),
+                5,
+                (&mut value as *mut f64).cast(),
             )
         };
         (result >= 0).then_some(value)

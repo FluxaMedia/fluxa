@@ -33,6 +33,28 @@ echo "Downloading $URL"
 curl -fL "$URL" -o "$TMP/$ASSET"
 unzip -o "$TMP/$ASSET" -d "$LIB_DIR"
 
+if [[ "$(uname -s)" == "Linux" && -f "$LIB_DIR/libpulse.so.0" ]]; then
+    # libpulse.so.0 from the Ubuntu build has a private, versioned dependency.
+    # ldd on libmpv alone can pass on CI while the downloaded bundle fails to
+    # load on another distro because that transitive library was omitted.
+    PULSE_COMMON="$(readelf -d "$LIB_DIR/libpulse.so.0" | sed -n 's/.*Shared library: \[\(libpulsecommon-[^]]*\)\].*/\1/p' | head -n 1)"
+    if [[ -n "$PULSE_COMMON" && ! -f "$LIB_DIR/$PULSE_COMMON" ]]; then
+        for dir in \
+            /usr/lib/x86_64-linux-gnu/pulseaudio \
+            /usr/lib/pulseaudio \
+            '/usr/lib/Fluxa Desktop/lib'; do
+            if [[ -f "$dir/$PULSE_COMMON" ]]; then
+                cp -L "$dir/$PULSE_COMMON" "$LIB_DIR/$PULSE_COMMON"
+                break
+            fi
+        done
+        if [[ ! -f "$LIB_DIR/$PULSE_COMMON" ]]; then
+            echo "Missing bundled $PULSE_COMMON required by libpulse.so.0" >&2
+            exit 1
+        fi
+    fi
+fi
+
 if [[ "$(uname -s)" == "Darwin" ]]; then
     test -f "$LIB_DIR/libmpv.dylib"
     test -f "$LIB_DIR/libMoltenVK.dylib"
