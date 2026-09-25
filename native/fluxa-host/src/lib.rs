@@ -114,6 +114,7 @@ struct RendererState {
     mouse_position: Option<Pos2>,
     cursor: egui::CursorIcon,
     wants_keyboard: bool,
+    redraw_at: Option<Instant>,
     player: Option<player::PlayerSession>,
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
@@ -543,6 +544,7 @@ struct FrameOutput {
     layout: HomeLayout,
     cursor: egui::CursorIcon,
     wants_keyboard: bool,
+    repaint_delay: Duration,
 }
 
 struct HostAssets<'a> {
@@ -1006,6 +1008,10 @@ impl Gpu {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,
             wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
+            repaint_delay: output
+                .viewport_output
+                .get(&egui::ViewportId::ROOT)
+                .map_or(Duration::ZERO, |viewport| viewport.repaint_delay),
         })
     }
 }
@@ -2246,6 +2252,7 @@ impl FluxaHost {
             mouse_position: None,
             cursor: egui::CursorIcon::Default,
             wants_keyboard: false,
+            redraw_at: Some(Instant::now()),
             player: None,
             video: None,
             fullscreen_toggle: false,
@@ -2559,6 +2566,11 @@ impl FluxaHost {
     pub fn render(&self) {
         self.with_state(render_frame);
     }
+
+    /// Returns when the next frame is due; `None` means the host is idle until input arrives.
+    pub fn next_redraw(&self) -> Option<Instant> {
+        self.with_state(next_redraw).flatten()
+    }
 }
 
 fn logical_viewport(state: &RendererState) -> Viewport {
@@ -2760,6 +2772,35 @@ fn active_route(state: &RendererState) -> String {
     }
 }
 
+fn next_redraw(state: &mut RendererState) -> Option<Instant> {
+    let now = Instant::now();
+    let busy = state.gpu.is_none()
+        || state.player.is_some()
+        || state.touch_start.is_some()
+        || state.scroll_velocity != 0.0
+        || !state.pending_native_actions.is_empty()
+        || state.pending_resize.is_some();
+    if busy {
+        return Some(now);
+    }
+    let revision = state.session.as_mut().map(|session| {
+        session.pump();
+        session.revision()
+    });
+    if revision.is_some() && revision != state.session_revision {
+        return Some(now);
+    }
+    let artwork = state
+        .gpu
+        .as_ref()
+        .is_some_and(|gpu| gpu.artwork.fetcher.has_pending())
+        .then(|| now + Duration::from_millis(50));
+    match (state.redraw_at, artwork) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    }
+}
+
 fn render_frame(state: &mut RendererState) {
     route_actions_to_session(state);
     pull_session_snapshot(state);
@@ -2851,6 +2892,7 @@ fn render_frame(state: &mut RendererState) {
             Ok(frame) => {
                 state.cursor = frame.cursor;
                 state.wants_keyboard = frame.wants_keyboard;
+                state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
                 let layout = frame.layout;
                 if let Some(position) = layout.seek_to {
                     player::command(state, VideoCommand::SeekTo(position));

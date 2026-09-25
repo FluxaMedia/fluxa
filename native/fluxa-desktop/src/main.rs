@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, MouseButton, NativeSurface, egui};
 use fluxa_renderer::platform::GraphicsBackend;
@@ -6,7 +7,7 @@ use gilrs::{Button, EventType, Gilrs};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, MouseScrollDelta, WindowEvent},
-    event_loop::{ActiveEventLoop, EventLoop},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{Key as WinitKey, ModifiersState, NamedKey},
     window::{CursorIcon, Fullscreen, Window, WindowId},
 };
@@ -20,6 +21,7 @@ const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Metal];
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
 const LINE_HEIGHT: f32 = 40.0;
+const GAMEPAD_POLL: Duration = Duration::from_millis(50);
 
 struct App {
     host: Option<FluxaHost>,
@@ -57,6 +59,9 @@ impl App {
                 && let Some(button) = gamepad_button(button)
             {
                 host.key_down(KeyInput::Gamepad(button));
+                if let Some(window) = self.window.as_ref() {
+                    window.request_redraw();
+                }
             }
         }
     }
@@ -157,11 +162,22 @@ impl ApplicationHandler for App {
         self.window = Some(window);
     }
 
-    fn about_to_wait(&mut self, _event_loop: &ActiveEventLoop) {
+    fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.poll_gamepad();
-        if let Some(window) = self.window.as_ref() {
+        let (Some(host), Some(window)) = (self.host.as_ref(), self.window.as_ref()) else {
+            return;
+        };
+        let now = Instant::now();
+        let mut wake = host.next_redraw();
+        if wake.is_some_and(|at| at <= now) {
             window.request_redraw();
+            wake = None;
         }
+        if self.gamepad.is_some() {
+            let poll = now + GAMEPAD_POLL;
+            wake = Some(wake.map_or(poll, |at| at.min(poll)));
+        }
+        event_loop.set_control_flow(wake.map_or(ControlFlow::Wait, ControlFlow::WaitUntil));
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
@@ -169,6 +185,11 @@ impl ApplicationHandler for App {
             return;
         };
         let scale = self.scale();
+        if !matches!(event, WindowEvent::RedrawRequested)
+            && let Some(window) = self.window.as_ref()
+        {
+            window.request_redraw();
+        }
         match event {
             WindowEvent::CloseRequested => {
                 host.surface_destroyed();
