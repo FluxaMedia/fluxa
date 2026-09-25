@@ -3708,7 +3708,7 @@ fn draw_home_with_options(
         let synopsis_width = if compact {
             hero_width
         } else {
-            (hero_width * 0.4).clamp(380.0, 560.0).min(hero_width)
+            (hero_width * 0.55).clamp(420.0, 720.0).min(hero_width)
         };
         let synopsis_color = Color32::from_white_alpha(240);
         let synopsis_galley = if hero.description.is_empty() {
