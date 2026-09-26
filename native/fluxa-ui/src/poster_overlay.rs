@@ -842,32 +842,9 @@ pub(super) fn paint(
 
     if overlays.quality && personal.quality.contains(&true) {
         let size = (rect.width() * 0.06).clamp(8.0, 13.0) * overlays.scale;
-        let mut y = rect.top() + inset + stacks[Placement::TopRight as usize];
-        for label in QUALITY_LABELS
-            .iter()
-            .zip(personal.quality)
-            .filter_map(|(label, on)| on.then_some(*label))
-        {
-            let galley = painter.layout_no_wrap(
-                label.to_owned(),
-                FontId::proportional(size),
-                Color32::WHITE,
-            );
-            let badge = Rect::from_min_size(
-                Pos2::new(rect.right() - inset - galley.size().x - size * 0.8, y),
-                Vec2::new(galley.size().x + size * 0.8, size * 1.5),
-            );
-            painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
-            painter.rect_stroke(
-                badge,
-                3.0,
-                Stroke::new(1.0, Color32::from_white_alpha(60)),
-                egui::StrokeKind::Inside,
-            );
-            painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
-            y += badge.height() + 3.0;
-        }
-        stacks[Placement::TopRight as usize] = y - rect.top() - inset;
+        let top = rect.top() + inset + stacks[Placement::TopRight as usize];
+        let bottom = quality_badges(&painter, rect.right() - inset, top, size, personal.quality);
+        stacks[Placement::TopRight as usize] = bottom - rect.top() - inset;
     }
 
     let mut badges = Vec::with_capacity(2);
@@ -966,6 +943,85 @@ pub(super) fn paint(
             egui::StrokeKind::Inside,
         );
         painter.galley(badge.min + pad, galley, Color32::WHITE);
+    }
+}
+
+fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality: [bool; 4]) -> f32 {
+    for label in QUALITY_LABELS
+        .iter()
+        .zip(quality)
+        .filter_map(|(label, on)| on.then_some(*label))
+    {
+        let galley =
+            painter.layout_no_wrap(label.to_owned(), FontId::proportional(size), Color32::WHITE);
+        let badge = Rect::from_min_size(
+            Pos2::new(right - galley.size().x - size * 0.8, y),
+            Vec2::new(galley.size().x + size * 0.8, size * 1.5),
+        );
+        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
+        painter.rect_stroke(
+            badge,
+            3.0,
+            Stroke::new(1.0, Color32::from_white_alpha(60)),
+            egui::StrokeKind::Inside,
+        );
+        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        y += badge.height() + 3.0;
+    }
+    y
+}
+
+pub(super) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
+    let Some(overlays) = current(painter.ctx()) else {
+        return;
+    };
+    let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
+    let facts = &card.overlay;
+    let inset = (rect.height() * 0.06).max(4.0);
+    let size = (rect.height() * 0.09).clamp(8.0, 13.0) * overlays.scale;
+    let graded = painter
+        .ctx()
+        .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()))
+        .and_then(|enrichment| enrichment.graded(facts).and_then(|graded| graded.score));
+    let rating = graded.filter(|_| overlays.mdblist_score).or(facts.rating);
+    if let (true, Some(value)) = (overlays.rating.is_some(), rating) {
+        let source = if rating == facts.rating {
+            "IMDb"
+        } else {
+            "★"
+        };
+        let galley = painter.layout_no_wrap(
+            format!("{source} {value:.1}"),
+            FontId::proportional(size),
+            Color32::WHITE,
+        );
+        let (fill, _) = score_colors(value);
+        let badge = Rect::from_min_size(
+            rect.left_top() + Vec2::splat(inset),
+            galley.size() + Vec2::new(size * 0.9, size * 0.5),
+        );
+        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
+        painter.rect_stroke(badge, 3.0, Stroke::new(1.0, fill), egui::StrokeKind::Inside);
+        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+    }
+    if overlays.quality {
+        let quality = card
+            .id
+            .as_deref()
+            .zip(
+                painter
+                    .ctx()
+                    .data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id())),
+            )
+            .and_then(|(id, index)| index.0.get(id).map(|personal| personal.quality))
+            .unwrap_or_default();
+        quality_badges(
+            &painter,
+            rect.right() - inset,
+            rect.top() + inset,
+            size,
+            quality,
+        );
     }
 }
 

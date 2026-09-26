@@ -500,6 +500,7 @@ pub(super) fn continue_card(
     });
     let subtitle_font = FontId::proportional(metrics.screen_card_subtitle_size);
     let content_width = (rect.width() - metrics.card_content_padding * 2.0).max(1.0);
+    super::poster_overlay::paint_landscape(painter, rect, card);
     let bar_top = rect.bottom() - metrics.card_content_padding - metrics.card_progress_height;
     let subtitle_height = metrics.screen_card_subtitle_size * 1.25;
     let title_height = if viewport.is_tv() {
@@ -509,13 +510,44 @@ pub(super) fn continue_card(
     };
     let subtitle_top = bar_top - metrics.control_gap * 0.5 - subtitle_height;
     let title_top = subtitle_top - metrics.control_gap * 0.35 - title_height;
-    painter.text(
-        egui::Pos2::new(rect.left() + metrics.card_content_padding, title_top),
-        Align2::LEFT_TOP,
-        truncate_to_width(painter, &card.title, &title_font, content_width),
-        title_font,
-        Color32::WHITE,
-    );
+    let logo_box = Vec2::new(content_width * 0.6, title_height * 1.6);
+    let logo = assets
+        .texture_for(
+            card.logo_url.as_deref(),
+            artwork_target_size(logo_box, painter.ctx().pixels_per_point()),
+            ArtworkPriority::Visible,
+        )
+        .zip(assets.texture_size(card.logo_url.as_deref()));
+    if let Some((texture, size)) = logo {
+        let aspect = size[0] as f32 / size[1].max(1) as f32;
+        let logo_size = if logo_box.y * aspect > logo_box.x {
+            Vec2::new(logo_box.x, logo_box.x / aspect)
+        } else {
+            Vec2::new(logo_box.y * aspect, logo_box.y)
+        };
+        let logo_rect = Rect::from_min_size(
+            egui::Pos2::new(
+                rect.left() + metrics.card_content_padding,
+                title_top + title_height - logo_size.y,
+            ),
+            logo_size,
+        );
+        texture_image(
+            painter,
+            texture,
+            logo_rect,
+            Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+            Color32::WHITE,
+        );
+    } else {
+        painter.text(
+            egui::Pos2::new(rect.left() + metrics.card_content_padding, title_top),
+            Align2::LEFT_TOP,
+            truncate_to_width(painter, &card.title, &title_font, content_width),
+            title_font,
+            Color32::WHITE,
+        );
+    }
     painter.text(
         egui::Pos2::new(rect.left() + metrics.card_content_padding, subtitle_top),
         Align2::LEFT_TOP,

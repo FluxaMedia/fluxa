@@ -580,6 +580,8 @@ pub struct HomeCard {
     pub row_kind: HomeRowKind,
     #[serde(skip)]
     pub overlay: poster_overlay::PosterFacts,
+    #[serde(skip)]
+    pub logo_url: Option<String>,
 }
 
 impl HomeModel {
@@ -1466,11 +1468,12 @@ fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKind) -> HomeC
             .get("focusGifEnabled")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(true),
-        overlay: if matches!(kind, HomeRowKind::Poster) {
-            poster_overlay::poster_facts(item)
-        } else {
+        overlay: if matches!(kind, HomeRowKind::Collection) {
             Default::default()
+        } else {
+            poster_overlay::poster_facts(item)
         },
+        logo_url: first_value_string(item, &["logo", "logoUrl", "clearLogo"]),
         raw: item.clone(),
         row_kind: kind,
     }
