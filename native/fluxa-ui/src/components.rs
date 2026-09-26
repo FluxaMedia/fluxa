@@ -145,6 +145,57 @@ pub(super) fn avatar(
     );
 }
 
+pub(super) fn icon_button(
+    ui: &mut Ui,
+    icon: Option<egui::TextureId>,
+    size: f32,
+    color: Color32,
+    framed: bool,
+    active: bool,
+    enabled: bool,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(
+        Vec2::splat(size),
+        if enabled { Sense::click() } else { Sense::hover() },
+    );
+    let hovered = enabled && response.hovered();
+    if framed {
+        let fill = if active {
+            46
+        } else if hovered {
+            34
+        } else {
+            18
+        };
+        ui.painter()
+            .circle_filled(rect.center(), size * 0.5, Color32::from_white_alpha(fill));
+        ui.painter().circle_stroke(
+            rect.center(),
+            size * 0.5 - 0.5,
+            egui::Stroke::new(1.0, Color32::from_white_alpha(if active { 90 } else { 36 })),
+        );
+    } else if hovered {
+        ui.painter()
+            .circle_filled(rect.center(), size * 0.5, Color32::from_white_alpha(18));
+    }
+    let tint = if !enabled {
+        color.gamma_multiply(0.4)
+    } else if hovered {
+        Color32::WHITE
+    } else {
+        color
+    };
+    if let Some(icon) = icon {
+        ui.painter().image(
+            icon,
+            Rect::from_center_size(rect.center(), Vec2::splat(size * 0.44)),
+            full_uv(),
+            tint,
+        );
+    }
+    response
+}
+
 pub(super) fn wrapped_text(
     painter: &Painter,
     text: &str,
@@ -261,6 +312,27 @@ pub(super) fn text_field(
     size: Vec2,
     font_size: f32,
 ) -> Response {
+    text_edit(ui, value, hint, size, font_size, false)
+}
+
+pub(super) fn text_input(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    width: f32,
+    password: bool,
+) -> Response {
+    text_edit(ui, value, hint, Vec2::new(width, 44.0), 14.0, password)
+}
+
+fn text_edit(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    size: Vec2,
+    font_size: f32,
+    password: bool,
+) -> Response {
     let radius = size.y * 0.5;
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     ui.painter()
@@ -270,6 +342,7 @@ pub(super) fn text_field(
         text_rect,
         egui::TextEdit::singleline(value)
             .frame(egui::Frame::NONE)
+            .password(password)
             .font(FontId::proportional(font_size))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(Color32::from_white_alpha(90)))

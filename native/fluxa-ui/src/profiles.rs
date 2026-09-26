@@ -235,7 +235,7 @@ pub fn draw_profiles(
                                 )
                                 .wrap(),
                             );
-                            if icon_button(ui, assets, "Close", 22.0, Color32::from_white_alpha(170), false, true)
+                            if components::icon_button(ui, assets.icon("Close"), 22.0, Color32::from_white_alpha(170), false, false, true)
                                 .clicked()
                             {
                                 model.notice = None;
@@ -550,55 +550,13 @@ fn close_button(
     ui.add_space(20.0);
     ui.horizontal(|ui| {
         ui.add_space(28.0);
-        let response = icon_button(ui, assets, "Close", 36.0, Color32::from_white_alpha(190), true, true)
+        let response = components::icon_button(ui, assets.icon("Close"), 36.0, Color32::from_white_alpha(190), true, false, true)
             .on_hover_text(t("common.close"));
         if response.clicked() {
             model.mode = ProfilesMode::Select;
         }
     });
     ui.add_space(24.0);
-}
-
-fn icon_button(
-    ui: &mut egui::Ui,
-    assets: &impl HomeAssets,
-    icon: &str,
-    size: f32,
-    color: Color32,
-    framed: bool,
-    enabled: bool,
-) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(
-        Vec2::splat(size),
-        if enabled { Sense::click() } else { Sense::hover() },
-    );
-    if framed {
-        ui.painter().rect(
-            rect,
-            8.0,
-            Color32::from_white_alpha(if response.hovered() { 24 } else { 14 }),
-            egui::Stroke::new(1.0, Color32::from_white_alpha(26)),
-            egui::StrokeKind::Inside,
-        );
-    } else if response.hovered() {
-        ui.painter().rect_filled(rect, 6.0, Color32::from_white_alpha(18));
-    }
-    let tint = if !enabled {
-        color.gamma_multiply(0.4)
-    } else if response.hovered() {
-        Color32::WHITE
-    } else {
-        color
-    };
-    if let Some(texture) = assets.icon(icon) {
-        ui.painter().image(
-            texture,
-            Rect::from_center_size(rect.center(), Vec2::splat((size * 0.45).clamp(14.0, 22.0))),
-            full_uv(),
-            tint,
-        );
-    }
-    response
 }
 
 fn field_label(ui: &mut egui::Ui, text: &str) {
@@ -613,32 +571,6 @@ fn field_label(ui: &mut egui::Ui, text: &str) {
 fn note(ui: &mut egui::Ui, text: &str) {
     ui.add_space(4.0);
     ui.label(RichText::new(text).size(12.0).color(Color32::from_white_alpha(170)));
-}
-
-fn text_field(ui: &mut egui::Ui, value: &mut String, hint: &str, width: f32, password: bool) -> egui::Response {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 44.0), Sense::hover());
-    let response = ui.put(
-        rect.shrink2(Vec2::new(13.0, 0.0)),
-        egui::TextEdit::singleline(value)
-            .frame(egui::Frame::NONE)
-            .password(password)
-            .font(FontId::proportional(14.0))
-            .vertical_align(egui::Align::Center)
-            .hint_text(RichText::new(hint).color(Color32::from_white_alpha(90)))
-            .text_color(Color32::WHITE)
-            .margin(Vec2::ZERO),
-    );
-    ui.painter().rect_filled(rect, 8.0, Color32::from_white_alpha(10));
-    ui.painter().rect_stroke(
-        rect,
-        8.0,
-        egui::Stroke::new(
-            1.0,
-            Color32::from_white_alpha(if response.has_focus() { 110 } else { 26 }),
-        ),
-        egui::StrokeKind::Inside,
-    );
-    response
 }
 
 fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
@@ -793,7 +725,7 @@ fn form_details(
                 ui.add_space(20.0);
                 let field_width = ui.available_width();
                 field_label(ui, &t("profiles.name"));
-                text_field(ui, &mut model.draft.name, &t("profiles.name_placeholder"), field_width, false);
+                components::text_input(ui, &mut model.draft.name, &t("profiles.name_placeholder"), field_width, false);
                 if model.duplicate_name() {
                     note(ui, &t("profiles.duplicate_name"));
                 }
@@ -804,7 +736,7 @@ fn form_details(
                 } else {
                     t("profiles.pin_placeholder")
                 };
-                if text_field(ui, &mut model.draft.pin, &hint, field_width, true).changed() {
+                if components::text_input(ui, &mut model.draft.pin, &hint, field_width, true).changed() {
                     model.draft.pin.retain(|character| character.is_ascii_digit());
                     model.draft.pin.truncate(4);
                     model.draft.remove_pin = false;
@@ -891,7 +823,7 @@ fn form_images(
                 ui.horizontal(|ui| {
                     field_label(ui, &t("profiles.avatar_packs"));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                        let refresh = icon_button(ui, assets, "Refresh", 24.0, Color32::from_white_alpha(150), false, !model.busy)
+                        let refresh = components::icon_button(ui, assets.icon("Refresh"), 24.0, Color32::from_white_alpha(150), false, false, !model.busy)
                             .on_hover_text(t("profiles.refresh_pack"));
                         if refresh.clicked() {
                             *request = Some(ProfilesRequest::RefreshAllPacks);
@@ -975,7 +907,7 @@ fn draw_picker_settings(
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 10.0;
                 let field_width = ui.available_width() - buttons * 54.0;
-                let field = text_field(
+                let field = components::text_input(
                     ui,
                     &mut model.background_input,
                     &t("profiles.picker_background_placeholder"),
@@ -985,14 +917,14 @@ fn draw_picker_settings(
                 if field.lost_focus() {
                     *request = Some(ProfilesRequest::SaveBackground);
                 }
-                if icon_button(ui, assets, "ImagePlus", 44.0, Color32::from_white_alpha(200), true, true)
+                if components::icon_button(ui, assets.icon("ImagePlus"), 44.0, Color32::from_white_alpha(200), true, false, true)
                     .on_hover_text(t("profiles.choose_image"))
                     .clicked()
                 {
                     *request = Some(ProfilesRequest::PickBackgroundImage);
                 }
                 if has_background
-                    && icon_button(ui, assets, "Delete", 44.0, Color32::from_white_alpha(200), true, true)
+                    && components::icon_button(ui, assets.icon("Delete"), 44.0, Color32::from_white_alpha(200), true, false, true)
                         .on_hover_text(t("profiles.clear_background"))
                         .clicked()
                 {
@@ -1015,7 +947,7 @@ fn draw_picker_settings(
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 10.0;
                 let field_width = ui.available_width() - 150.0;
-                let field = text_field(
+                let field = components::text_input(
                     ui,
                     &mut model.repository_input,
                     &t("profiles.avatar_pack_repository_placeholder"),
@@ -1066,13 +998,13 @@ fn draw_picker_settings(
                                 .color(Color32::from_white_alpha(220)),
                             );
                             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if icon_button(ui, assets, "Delete", 32.0, Color32::from_rgb(211, 74, 74), false, true)
+                                if components::icon_button(ui, assets.icon("Delete"), 32.0, Color32::from_rgb(211, 74, 74), false, false, true)
                                     .on_hover_text(t("profiles.remove_pack"))
                                     .clicked()
                                 {
                                     *request = Some(ProfilesRequest::RemovePack(pack.id.clone()));
                                 }
-                                if icon_button(ui, assets, "Refresh", 32.0, Color32::from_white_alpha(170), false, !model.busy)
+                                if components::icon_button(ui, assets.icon("Refresh"), 32.0, Color32::from_white_alpha(170), false, false, !model.busy)
                                     .on_hover_text(t("profiles.refresh_pack"))
                                     .clicked()
                                 {
@@ -1148,7 +1080,7 @@ fn draw_pin_prompt(
         });
         ui.add_space(18.0);
         let width = ui.available_width();
-        let field = text_field(ui, &mut pin, &t("profiles.enter_pin"), width, true);
+        let field = components::text_input(ui, &mut pin, &t("profiles.enter_pin"), width, true);
         if !field.has_focus() && pin.is_empty() {
             field.request_focus();
         }

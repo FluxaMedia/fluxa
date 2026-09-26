@@ -65,38 +65,6 @@ pub fn detail_scroll_max(viewport: Viewport, detail: &DetailModel) -> f32 {
     (geometry.bottom - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
 }
 
-fn icon_button(
-    ui: &mut egui::Ui,
-    icon: Option<TextureId>,
-    active: bool,
-    hint: &str,
-    size: f32,
-) -> egui::Response {
-    let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), Sense::click());
-    let fill = if active {
-        Color32::from_white_alpha(46)
-    } else if response.hovered() {
-        Color32::from_white_alpha(34)
-    } else {
-        Color32::from_white_alpha(18)
-    };
-    ui.painter().circle_filled(rect.center(), size * 0.5, fill);
-    ui.painter().circle_stroke(
-        rect.center(),
-        size * 0.5 - 0.5,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(if active { 90 } else { 36 })),
-    );
-    if let Some(icon) = icon {
-        ui.painter().image(
-            icon,
-            Rect::from_center_size(rect.center(), Vec2::splat(size * 0.44)),
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
-    }
-    response.on_hover_text(hint)
-}
-
 fn section_title(painter: &egui::Painter, pos: Pos2, text: &str, size: f32) {
     painter.text(
         pos,
@@ -309,7 +277,7 @@ pub fn draw_detail(
                         t("library.favorites"),
                     ),
                 ] {
-                    let response = icon_button(ui, assets.icon(icon), active, &hint, 48.0);
+                    let response = components::icon_button(ui, assets.icon(icon), 48.0, Color32::WHITE, true, active, true).on_hover_text(&hint);
                     action_rects.push((node, response.rect));
                     if response.clicked() {
                         layout.activated = Some(node);
@@ -331,7 +299,7 @@ pub fn draw_detail(
         .fixed_pos(back_rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            let response = icon_button(ui, assets.icon("ArrowLeft"), false, &t("auto.back"), 40.0);
+            let response = components::icon_button(ui, assets.icon("ArrowLeft"), 40.0, Color32::WHITE, true, false, true).on_hover_text(t("auto.back"));
             if response.clicked() {
                 layout.activated = Some(NODE_DETAIL_BACK);
             }
