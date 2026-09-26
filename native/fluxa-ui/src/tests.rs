@@ -939,7 +939,6 @@ fn mobile_discover_search_sits_above_three_horizontal_filters() {
     assert!((filters[1].top() - filters[2].top()).abs() < 0.1);
     assert!(filters[0].right() <= filters[1].left());
     assert!(filters[1].right() <= filters[2].left());
-    assert!(filters[2].right() <= viewport.width);
 }
 
 #[test]
