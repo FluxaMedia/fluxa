@@ -169,7 +169,7 @@ pub fn draw_detail(
     let target = backdrop_target_size(viewport.width, ppp);
     if let Some(texture) = assets.texture_for(backdrop, target, ArtworkPriority::Hero) {
         let size = assets.texture_size(backdrop).unwrap_or(target);
-        let fade = context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.6);
+        let fade = context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.25);
         painter.image(
             texture,
             hero,
