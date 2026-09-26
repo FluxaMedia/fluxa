@@ -10,6 +10,7 @@ use crate::{NativeAction, RendererState, UiTree, core_value, host_log, profile_l
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const SEEK_STEP: f64 = 10.0;
+const SCRUB_COMMIT: Duration = Duration::from_millis(900);
 const THUMBNAIL_INTERVAL: Duration = Duration::from_millis(75);
 
 #[derive(Clone, Debug, Default)]
@@ -94,6 +95,8 @@ pub(crate) struct PlayerSession {
     recommendations: Vec<Value>,
     recommendation_index: usize,
     load_progress: f32,
+    scrub: Option<(f64, Instant)>,
+    scrub_streak: u32,
     passthrough: bool,
     dispatched: Option<Value>,
 }
@@ -129,6 +132,8 @@ impl PlayerSession {
             dispatched: None,
             recommendation_index: 0,
             load_progress: 0.0,
+            scrub: None,
+            scrub_streak: 0,
         }
     }
 
@@ -142,7 +147,26 @@ impl PlayerSession {
     }
 
     pub(crate) fn controls_visible(&self) -> bool {
-        self.texture.is_none() || self.last_activity.elapsed() < CONTROLS_TIMEOUT
+        !self.status.has_frame || self.last_activity.elapsed() < CONTROLS_TIMEOUT
+    }
+
+    fn hide(&mut self) {
+        self.scrub = None;
+        if let Some(past) = Instant::now().checked_sub(CONTROLS_TIMEOUT) {
+            self.last_activity = past;
+        }
+    }
+
+    fn scrub(&mut self, direction: f64) {
+        let (base, streak) = match self.scrub {
+            Some((time, at)) if at.elapsed() < SCRUB_COMMIT => (time, self.scrub_streak + 1),
+            _ => (self.status.position, 0),
+        };
+        self.scrub_streak = streak;
+        let step = SEEK_STEP * (1 + streak / 4).min(6) as f64;
+        let target = (base + direction * step).clamp(0.0, self.status.duration.max(0.0));
+        self.scrub = Some((target, Instant::now()));
+        self.touch();
     }
 
     pub(crate) fn touch(&mut self) {
@@ -211,6 +235,7 @@ impl PlayerSession {
                 .filter(|url| !url.trim().is_empty())
                 .map(ToOwned::to_owned),
             load_progress: (self.load_progress > 0.0).then_some(self.load_progress),
+            scrub: self.scrub.map(|(time, _)| time),
         }
     }
 }
@@ -225,6 +250,13 @@ pub(crate) fn direct_playback_command(item: &Value, profile: &Value) -> Value {
 }
 
 pub(crate) fn pump(state: &mut RendererState) {
+    if let Some((time, _)) = state
+        .player
+        .as_mut()
+        .and_then(|player| player.scrub.take_if(|(_, at)| at.elapsed() >= SCRUB_COMMIT))
+    {
+        command(state, VideoCommand::SeekTo(time));
+    }
     let RendererState {
         player,
         session,
@@ -771,6 +803,16 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
         fluxa_ui::NODE_PLAYER_UPSCALING => cycle_upscaling(state),
+        fluxa_ui::NODE_PLAYER_CONTROLS => {
+            if let Some(player) = state.player.as_mut() {
+                player.touch();
+            }
+        }
+        fluxa_ui::NODE_PLAYER_HIDE_CONTROLS => {
+            if let Some(player) = state.player.as_mut() {
+                player.hide();
+            }
+        }
         fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => dismiss_recommendations(state),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_PLAY => open_recommendation(state, true),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_DETAILS => open_recommendation(state, false),
@@ -832,13 +874,23 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
         input,
         KeyInput::Key(Key::Back | Key::Escape) | KeyInput::Gamepad(GamepadButton::East)
     );
+    let tv = state.home.form_factor == fluxa_ui::UiFormFactorJson::Tv;
     let recommending = state
         .player
         .as_ref()
         .is_some_and(|player| !player.recommendations.is_empty());
     if closes {
+        let tv_hides = tv
+            && state
+                .player
+                .as_ref()
+                .is_some_and(|player| player.status.has_frame && player.controls_visible());
         if recommending {
             dismiss_recommendations(state);
+        } else if tv_hides {
+            if let Some(player) = state.player.as_mut() {
+                player.hide();
+            }
         } else {
             close(state);
         }
@@ -846,6 +898,9 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
     }
     if recommending {
         return KeyOutcome::Focus;
+    }
+    if tv {
+        return tv_key(state, input);
     }
     let Some(player) = state.player.as_mut() else {
         return KeyOutcome::Focus;
@@ -867,6 +922,41 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
         }
         _ => {}
     }
+    KeyOutcome::Handled
+}
+
+fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
+    use fluxa_renderer::ui::{GamepadButton, Key};
+    use crate::KeyInput;
+    let on_seek = state.ui.focused() == Some(fluxa_ui::NODE_PLAYER_SEEK);
+    let Some(player) = state.player.as_mut() else {
+        return KeyOutcome::Focus;
+    };
+    let direction = match input {
+        KeyInput::Key(Key::Left) | KeyInput::Gamepad(GamepadButton::DPadLeft) => -1.0,
+        KeyInput::Key(Key::Right) | KeyInput::Gamepad(GamepadButton::DPadRight) => 1.0,
+        _ => 0.0,
+    };
+    let ok = matches!(input, KeyInput::Key(Key::Enter) | KeyInput::Gamepad(GamepadButton::South));
+    let visible = player.controls_visible();
+    if visible && !on_seek {
+        player.touch();
+        return KeyOutcome::Focus;
+    }
+    if direction != 0.0 {
+        player.scrub(direction);
+    } else if ok && visible {
+        match player.scrub.take() {
+            Some((time, _)) => command(state, VideoCommand::SeekTo(time)),
+            None => command(state, VideoCommand::TogglePause),
+        }
+    } else if visible {
+        player.touch();
+        return KeyOutcome::Focus;
+    } else {
+        player.touch();
+    }
+    state.ui.set_focus(Some(fluxa_ui::NODE_PLAYER_SEEK));
     KeyOutcome::Handled
 }
 

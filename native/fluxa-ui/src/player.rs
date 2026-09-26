@@ -27,6 +27,7 @@ pub struct PlayerModel {
     pub recommendation_index: usize,
     pub background: Option<String>,
     pub load_progress: Option<f32>,
+    pub scrub: Option<f64>,
 }
 
 const WARNING_BAR: f32 = 0.3;
@@ -80,242 +81,372 @@ pub fn draw_player(
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);
     }
-    let compact = viewport.is_compact();
-    let margin = (rect.width() * 0.035).clamp(if compact { 14.0 } else { 22.0 }, 64.0);
-    let header_y = rect.top() + 30.0 + if compact { 8.0 } else { 0.0 };
-    let close_rect = Rect::from_center_size(Pos2::new(margin + 20.0, header_y), Vec2::splat(42.0));
+    let chrome = Chrome {
+        context,
+        painter: &painter,
+        viewport,
+        rect,
+        player,
+        focused,
+    };
     if let Some(elapsed) = player.warnings_elapsed {
         let top = if player.controls_visible { 72.0 } else { 24.0 };
-        draw_warnings(context, Pos2::new(margin, top), player, elapsed);
+        draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
     egui::Area::new(Id::new("fluxa-player-controls"))
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
-            if !player.has_video() || !player.controls_visible {
-                let close = control(ui, &painter, close_rect, "close", false);
-                layout.focusable.push((NODE_PLAYER_CLOSE, close.rect));
-                if close.clicked() {
-                    layout.activated = Some(NODE_PLAYER_CLOSE);
-                }
-                if player.has_video() {
-                    let surface = ui.interact(rect, Id::new("fluxa-player-surface"), Sense::click());
-                    if surface.clicked() {
-                        layout.activated = Some(NODE_PLAYER_TOGGLE);
-                    }
-                }
-                return;
-            }
-            scrims(&painter, rect);
-            let close = control(ui, &painter, close_rect, "close", false);
-            layout.focusable.push((NODE_PLAYER_CLOSE, close.rect));
-            if close.clicked() {
-                layout.activated = Some(NODE_PLAYER_CLOSE);
-            }
-            painter.text(
-                Pos2::new(close_rect.right() + 10.0, header_y),
-                Align2::LEFT_CENTER,
-                truncate_to_width(
-                    &painter,
-                    &player.title,
-                    &FontId::proportional(19.0),
-                    rect.width() - close_rect.right() - margin - 10.0,
-                ),
-                FontId::proportional(19.0),
-                Color32::WHITE,
-            );
-
-            let bar_width = (rect.width() - margin * 2.0).max(80.0);
-            let track = Rect::from_min_size(
-                Pos2::new(margin, rect.bottom() - 93.0 - viewport.safe_bottom),
-                Vec2::new(bar_width, 16.0),
-            );
-            let seek = ui.interact(
-                track.expand2(Vec2::new(0.0, 8.0)),
-                Id::new("fluxa-player-seek"),
-                Sense::click_and_drag(),
-            );
-            layout.focusable.push((NODE_PLAYER_SEEK, track));
-            let duration = player.duration.max(0.0);
-            let mut position = player.position;
-            if (seek.clicked() || seek.dragged())
-                && let Some(pointer) = seek.interact_pointer_pos()
-            {
-                let ratio = ((pointer.x - track.left()) / track.width()).clamp(0.0, 1.0);
-                position = duration * ratio as f64;
-                if seek.clicked() || seek.drag_stopped() || seek.dragged() {
-                    layout.seek_to = Some(position);
-                }
-            }
-            painter.rect_filled(
-                Rect::from_center_size(track.center(), Vec2::new(track.width(), 3.0)),
-                2.0,
-                Color32::from_white_alpha(95),
-            );
-            if duration > 0.0 {
-                for (start, _) in &player.chapters {
-                    if *start <= 0.0 || *start >= duration {
-                        continue;
-                    }
-                    let x = track.left() + track.width() * (*start / duration) as f32;
-                    painter.rect_filled(
-                        Rect::from_center_size(Pos2::new(x, track.center().y), Vec2::new(2.0, 5.0)),
-                        0.0,
-                        Color32::BLACK,
-                    );
-                }
-                let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
-                painter.rect_filled(
-                    Rect::from_min_size(
-                        Pos2::new(track.left(), track.center().y - 1.75),
-                        Vec2::new(played, 3.5),
-                    ),
-                    2.0,
-                    Color32::WHITE,
-                );
-                if seek.hovered() || seek.dragged() || focused == Some(NODE_PLAYER_SEEK) {
-                    painter.circle_filled(
-                        Pos2::new(track.left() + played, track.center().y),
-                        6.0,
-                        Color32::WHITE,
-                    );
-                }
-            }
-
-            if duration > 0.0
-                && let Some(pointer) = seek.hover_pos()
-            {
-                let ratio = ((pointer.x - track.left()) / track.width()).clamp(0.0, 1.0);
-                let time = duration * ratio as f64;
-                layout.seek_hover = Some(time);
-                draw_seek_preview(context, track, pointer.x, time, player);
-            }
-
-            let controls_y = rect.bottom() - 48.0 - viewport.safe_bottom;
-            let mut x = margin + 1.0;
-            let play = control(
-                ui,
-                &painter,
-                Rect::from_center_size(Pos2::new(x + 22.0, controls_y), Vec2::splat(48.0)),
-                if player.paused { "play" } else { "pause" },
-                true,
-            );
-            layout.focusable.push((NODE_PLAYER_TOGGLE, play.rect));
-            if play.clicked() {
-                layout.activated = Some(NODE_PLAYER_TOGGLE);
-            }
-            x += 62.0;
-            for (icon, node) in [
-                ("back", NODE_PLAYER_REWIND),
-                ("forward", NODE_PLAYER_FORWARD),
-            ] {
-                let button = control(
-                    ui,
-                    &painter,
-                    Rect::from_center_size(Pos2::new(x + 21.0, controls_y), Vec2::splat(42.0)),
-                    icon,
-                    false,
-                );
-                layout.focusable.push((node, button.rect));
-                if button.clicked() {
-                    layout.activated = Some(node);
-                }
-                x += 48.0;
-            }
-            painter.text(
-                Pos2::new(x + 2.0, controls_y),
-                Align2::LEFT_CENTER,
-                format!(
-                    "{}  /  {}",
-                    format_time(position),
-                    format_time(duration)
-                ),
-                FontId::proportional(13.0),
-                Color32::from_white_alpha(218),
-            );
-
-            let right = rect.right() - margin - 20.0;
-            let fullscreen = control(
-                ui,
-                &painter,
-                Rect::from_center_size(Pos2::new(right, controls_y), Vec2::splat(42.0)),
-                "fullscreen",
-                false,
-            );
-            layout.focusable.push((NODE_PLAYER_FULLSCREEN, fullscreen.rect));
-            if fullscreen.clicked() {
-                layout.activated = Some(NODE_PLAYER_FULLSCREEN);
-            }
-            let volume_x = right - 52.0;
-            let mute = control(
-                ui,
-                &painter,
-                Rect::from_center_size(Pos2::new(volume_x, controls_y), Vec2::splat(42.0)),
-                if player.muted { "mute" } else { "volume" },
-                false,
-            );
-            layout.focusable.push((NODE_PLAYER_MUTE, mute.rect));
-            if mute.clicked() {
-                layout.activated = Some(NODE_PLAYER_MUTE);
-            }
-            painter.text(
-                Pos2::new(volume_x - 18.0, controls_y),
-                Align2::RIGHT_CENTER,
-                if player.muted {
-                    localized("player.muted", &player.language)
-                } else {
-                    format!("{}%", player.volume.round() as i32)
-                },
-                FontId::proportional(12.0),
-                Color32::from_white_alpha(170),
-            );
-            let upscaling_label = format!(
-                "{}  {}",
-                localized("player.anime4k", &player.language),
-                match player.upscaling.as_str() {
-                    "off" | "" => localized("player.off", &player.language),
-                    mode => localized(&format!("player.anime4k_mode_{mode}"), &player.language),
-                }
-            );
-            let upscaling_rect = Rect::from_center_size(
-                Pos2::new(volume_x - 138.0, controls_y),
-                Vec2::new(150.0, 34.0),
-            );
-            let upscaling = ui.interact(
-                upscaling_rect,
-                Id::new("fluxa-player-upscaling"),
-                Sense::click(),
-            );
-            painter.rect_filled(
-                upscaling_rect,
-                17.0,
-                Color32::from_white_alpha(if upscaling.hovered() { 40 } else { 22 }),
-            );
-            painter.text(
-                upscaling_rect.center(),
-                Align2::CENTER_CENTER,
-                upscaling_label,
-                FontId::proportional(13.0),
-                Color32::from_white_alpha(225),
-            );
-            layout.focusable.push((NODE_PLAYER_UPSCALING, upscaling_rect));
-            if upscaling.clicked() {
-                layout.activated = Some(NODE_PLAYER_UPSCALING);
-            }
-            let surface = ui.interact(
-                Rect::from_min_max(
-                    Pos2::new(rect.left(), close_rect.bottom() + 8.0),
-                    Pos2::new(rect.right(), track.top() - 8.0),
-                ),
-                Id::new("fluxa-player-surface"),
-                Sense::click(),
-            );
-            if surface.clicked() {
-                layout.activated = Some(NODE_PLAYER_TOGGLE);
+            match viewport.form_factor {
+                UiFormFactor::Tv => tv_controls(&chrome, ui, &mut layout),
+                UiFormFactor::Mobile => mobile_controls(&chrome, ui, &mut layout),
+                UiFormFactor::Desktop => desktop_controls(&chrome, ui, &mut layout),
             }
         });
     draw_focus_ring(context, &layout, focused);
     layout
+}
+
+struct Chrome<'a> {
+    context: &'a egui::Context,
+    painter: &'a egui::Painter,
+    viewport: Viewport,
+    rect: Rect,
+    player: &'a PlayerModel,
+    focused: Option<u64>,
+}
+
+impl Chrome<'_> {
+    fn margin(&self) -> f32 {
+        let min = if self.viewport.is_compact() { 14.0 } else { 22.0 };
+        (self.rect.width() * 0.035).clamp(min, 64.0)
+    }
+
+    fn button(
+        &self,
+        ui: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        center: Pos2,
+        size: f32,
+        icon: &str,
+        node: u64,
+    ) {
+        let rect = Rect::from_center_size(center, Vec2::splat(size));
+        let response = control(ui, self.painter, rect, icon, node == NODE_PLAYER_TOGGLE);
+        layout.focusable.push((node, response.rect));
+        if response.clicked() {
+            layout.activated = Some(node);
+        }
+    }
+
+    fn text(&self, pos: Pos2, align: Align2, text: &str, size: f32, max_width: f32, alpha: u8) {
+        let font = FontId::proportional(size);
+        self.painter.text(
+            pos,
+            align,
+            truncate_to_width(self.painter, text, &font, max_width),
+            font,
+            Color32::from_white_alpha(alpha),
+        );
+    }
+
+    fn surface(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, area: Rect) {
+        let response = ui.interact(area, Id::new("fluxa-player-surface"), Sense::click());
+        if self.viewport.form_factor != UiFormFactor::Mobile {
+            if response.clicked() {
+                layout.activated = Some(NODE_PLAYER_TOGGLE);
+            }
+            return;
+        }
+        if response.double_clicked()
+            && let Some(pointer) = response.interact_pointer_pos()
+        {
+            layout.activated = Some(if pointer.x < area.center().x {
+                NODE_PLAYER_REWIND
+            } else {
+                NODE_PLAYER_FORWARD
+            });
+        } else if response.clicked() {
+            layout.activated = Some(if self.player.controls_visible {
+                NODE_PLAYER_HIDE_CONTROLS
+            } else {
+                NODE_PLAYER_CONTROLS
+            });
+        }
+    }
+
+    fn seek_bar(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, track: Rect, thickness: f32) -> f64 {
+        let player = self.player;
+        let seek = ui.interact(
+            track.expand2(Vec2::new(0.0, 10.0)),
+            Id::new("fluxa-player-seek"),
+            Sense::click_and_drag(),
+        );
+        layout.focusable.push((NODE_PLAYER_SEEK, track));
+        let duration = player.duration.max(0.0);
+        let ratio = |x: f32| ((x - track.left()) / track.width()).clamp(0.0, 1.0) as f64;
+        let mut position = player.scrub.unwrap_or(player.position);
+        if (seek.clicked() || seek.dragged())
+            && let Some(pointer) = seek.interact_pointer_pos()
+        {
+            position = duration * ratio(pointer.x);
+            layout.seek_to = Some(position);
+        }
+        let y = track.center().y;
+        painter_bar(self.painter, track, thickness, Color32::from_white_alpha(95), track.width());
+        if duration <= 0.0 {
+            return position;
+        }
+        for (start, _) in &player.chapters {
+            if *start <= 0.0 || *start >= duration {
+                continue;
+            }
+            let x = track.left() + track.width() * (*start / duration) as f32;
+            self.painter.rect_filled(
+                Rect::from_center_size(Pos2::new(x, y), Vec2::new(2.0, thickness + 2.0)),
+                0.0,
+                Color32::BLACK,
+            );
+        }
+        let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
+        painter_bar(self.painter, track, thickness + 0.5, Color32::WHITE, played);
+        let active = seek.hovered()
+            || seek.dragged()
+            || player.scrub.is_some()
+            || self.focused == Some(NODE_PLAYER_SEEK);
+        if active {
+            self.painter.circle_filled(
+                Pos2::new(track.left() + played, y),
+                thickness * 1.8,
+                Color32::WHITE,
+            );
+        }
+        let pointer = if self.viewport.form_factor == UiFormFactor::Mobile {
+            seek.interact_pointer_pos().filter(|_| seek.dragged())
+        } else {
+            seek.hover_pos()
+        };
+        let preview = pointer
+            .map(|pointer| (pointer.x, duration * ratio(pointer.x)))
+            .or_else(|| player.scrub.map(|time| (track.left() + played, time)));
+        if let Some((x, time)) = preview {
+            layout.seek_hover = Some(time);
+            draw_seek_preview(self.context, track, x, time, player);
+        }
+        position
+    }
+
+    fn upscaling(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, rect: Rect, size: f32) {
+        let player = self.player;
+        let label = format!(
+            "{}  {}",
+            localized("player.anime4k", &player.language),
+            match player.upscaling.as_str() {
+                "off" | "" => localized("player.off", &player.language),
+                mode => localized(&format!("player.anime4k_mode_{mode}"), &player.language),
+            }
+        );
+        let response = ui.interact(rect, Id::new("fluxa-player-upscaling"), Sense::click());
+        self.painter.rect_filled(
+            rect,
+            rect.height() * 0.5,
+            Color32::from_white_alpha(if response.hovered() { 40 } else { 22 }),
+        );
+        self.text(rect.center(), Align2::CENTER_CENTER, &label, size, rect.width() - 12.0, 225);
+        layout.focusable.push((NODE_PLAYER_UPSCALING, rect));
+        if response.clicked() {
+            layout.activated = Some(NODE_PLAYER_UPSCALING);
+        }
+    }
+
+    fn times(&self, position: f64) -> String {
+        format!(
+            "{}  /  {}",
+            format_time(position),
+            format_time(self.player.duration.max(0.0))
+        )
+    }
+}
+
+fn painter_bar(painter: &egui::Painter, track: Rect, thickness: f32, color: Color32, width: f32) {
+    painter.rect_filled(
+        Rect::from_min_size(
+            Pos2::new(track.left(), track.center().y - thickness * 0.5),
+            Vec2::new(width, thickness),
+        ),
+        thickness * 0.5,
+        color,
+    );
+}
+
+fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+    let (rect, player) = (chrome.rect, chrome.player);
+    let margin = chrome.margin();
+    let header_y = rect.top() + 30.0;
+    let close_center = Pos2::new(margin + 20.0, header_y);
+    chrome.button(ui, layout, close_center, 42.0, "close", NODE_PLAYER_CLOSE);
+    if !player.has_video() || !player.controls_visible {
+        if player.has_video() {
+            chrome.surface(ui, layout, rect);
+        }
+        return;
+    }
+    scrims(chrome.painter, rect);
+    let title_x = close_center.x + 31.0;
+    chrome.text(
+        Pos2::new(title_x, header_y),
+        Align2::LEFT_CENTER,
+        &player.title,
+        19.0,
+        rect.width() - title_x - margin,
+        255,
+    );
+    let track = Rect::from_min_size(
+        Pos2::new(margin, rect.bottom() - 93.0 - chrome.viewport.safe_bottom),
+        Vec2::new((rect.width() - margin * 2.0).max(80.0), 16.0),
+    );
+    chrome.surface(
+        ui,
+        layout,
+        Rect::from_min_max(
+            Pos2::new(rect.left(), header_y + 29.0),
+            Pos2::new(rect.right(), track.top() - 8.0),
+        ),
+    );
+    let position = chrome.seek_bar(ui, layout, track, 3.0);
+    let y = rect.bottom() - 48.0 - chrome.viewport.safe_bottom;
+    let play = if player.paused { "play" } else { "pause" };
+    chrome.button(ui, layout, Pos2::new(margin + 23.0, y), 48.0, play, NODE_PLAYER_TOGGLE);
+    chrome.button(ui, layout, Pos2::new(margin + 84.0, y), 42.0, "back", NODE_PLAYER_REWIND);
+    chrome.button(ui, layout, Pos2::new(margin + 132.0, y), 42.0, "forward", NODE_PLAYER_FORWARD);
+    let right = rect.right() - margin - 20.0;
+    let volume_x = right - 52.0;
+    let upscaling = Rect::from_center_size(Pos2::new(volume_x - 138.0, y), Vec2::new(150.0, 34.0));
+    chrome.text(
+        Pos2::new(margin + 158.0, y),
+        Align2::LEFT_CENTER,
+        &chrome.times(position),
+        13.0,
+        (upscaling.left() - margin - 166.0).max(0.0),
+        218,
+    );
+    chrome.button(ui, layout, Pos2::new(right, y), 42.0, "fullscreen", NODE_PLAYER_FULLSCREEN);
+    let mute = if player.muted { "mute" } else { "volume" };
+    chrome.button(ui, layout, Pos2::new(volume_x, y), 42.0, mute, NODE_PLAYER_MUTE);
+    let volume = if player.muted {
+        localized("player.muted", &player.language)
+    } else {
+        format!("{}%", player.volume.round() as i32)
+    };
+    chrome.text(Pos2::new(volume_x - 18.0, y), Align2::RIGHT_CENTER, &volume, 12.0, 60.0, 170);
+    chrome.upscaling(ui, layout, upscaling, 13.0);
+}
+
+fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+    let (rect, player) = (chrome.rect, chrome.player);
+    let margin = chrome.margin();
+    let header_y = rect.top() + 38.0;
+    let close_center = Pos2::new(margin + 20.0, header_y);
+    if !player.has_video() {
+        chrome.button(ui, layout, close_center, 42.0, "close", NODE_PLAYER_CLOSE);
+        return;
+    }
+    chrome.surface(ui, layout, rect);
+    if !player.controls_visible {
+        return;
+    }
+    scrims(chrome.painter, rect);
+    chrome.button(ui, layout, close_center, 42.0, "close", NODE_PLAYER_CLOSE);
+    let upscaling = Rect::from_min_size(
+        Pos2::new(rect.right() - margin - 132.0, header_y - 16.0),
+        Vec2::new(132.0, 32.0),
+    );
+    chrome.upscaling(ui, layout, upscaling, 12.0);
+    let title_x = close_center.x + 31.0;
+    chrome.text(
+        Pos2::new(title_x, header_y),
+        Align2::LEFT_CENTER,
+        &player.title,
+        17.0,
+        upscaling.left() - title_x - 12.0,
+        255,
+    );
+    let center = rect.center();
+    let gap = (rect.width() * 0.26).min(150.0);
+    let play = if player.paused { "play" } else { "pause" };
+    chrome.button(ui, layout, center - Vec2::new(gap, 0.0), 56.0, "back", NODE_PLAYER_REWIND);
+    chrome.button(ui, layout, center, 76.0, play, NODE_PLAYER_TOGGLE);
+    chrome.button(ui, layout, center + Vec2::new(gap, 0.0), 56.0, "forward", NODE_PLAYER_FORWARD);
+    let track = Rect::from_min_size(
+        Pos2::new(margin, rect.bottom() - 44.0 - chrome.viewport.safe_bottom),
+        Vec2::new((rect.width() - margin * 2.0).max(80.0), 20.0),
+    );
+    let position = chrome.seek_bar(ui, layout, track, 3.0);
+    let label_y = track.top() - 8.0;
+    chrome.text(
+        Pos2::new(track.left(), label_y),
+        Align2::LEFT_BOTTOM,
+        &format_time(position),
+        13.0,
+        120.0,
+        218,
+    );
+    chrome.text(
+        Pos2::new(track.right(), label_y),
+        Align2::RIGHT_BOTTOM,
+        &format_time(player.duration.max(0.0)),
+        13.0,
+        120.0,
+        218,
+    );
+}
+
+fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+    let (rect, player) = (chrome.rect, chrome.player);
+    if !player.has_video() || !player.controls_visible {
+        return;
+    }
+    scrims(chrome.painter, rect);
+    let margin = (rect.width() * 0.05).max(48.0);
+    let y = rect.bottom() - 64.0 - chrome.viewport.safe_bottom;
+    let track = Rect::from_min_size(
+        Pos2::new(margin, y - 72.0),
+        Vec2::new(rect.width() - margin * 2.0, 20.0),
+    );
+    let position = chrome.seek_bar(ui, layout, track, 4.0);
+    let width = track.width() * 0.7;
+    chrome.text(
+        Pos2::new(margin, track.top() - 46.0),
+        Align2::LEFT_BOTTOM,
+        &player.title,
+        28.0,
+        width,
+        255,
+    );
+    if let Some(episode) = player.episode_title.as_deref() {
+        chrome.text(
+            Pos2::new(margin, track.top() - 16.0),
+            Align2::LEFT_BOTTOM,
+            episode,
+            17.0,
+            width,
+            200,
+        );
+    }
+    chrome.text(
+        Pos2::new(track.right(), track.top() - 16.0),
+        Align2::RIGHT_BOTTOM,
+        &chrome.times(position),
+        17.0,
+        track.width() * 0.3,
+        218,
+    );
+    let play = if player.paused { "play" } else { "pause" };
+    chrome.button(ui, layout, Pos2::new(margin + 28.0, y), 56.0, play, NODE_PLAYER_TOGGLE);
+    chrome.button(ui, layout, Pos2::new(margin + 96.0, y), 52.0, "back", NODE_PLAYER_REWIND);
+    chrome.button(ui, layout, Pos2::new(margin + 160.0, y), 52.0, "forward", NODE_PLAYER_FORWARD);
+    let upscaling = Rect::from_min_size(Pos2::new(margin + 204.0, y - 22.0), Vec2::new(190.0, 44.0));
+    chrome.upscaling(ui, layout, upscaling, 16.0);
 }
 
 fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focused: Option<u64>) {
@@ -983,14 +1114,15 @@ fn control(
         Color32::from_white_alpha(235)
     };
     let c = rect.center();
+    let s = (rect.width() / 48.0).max(1.0);
     let stroke = egui::Stroke::new(2.0, color);
     match icon {
         "play" => {
             painter.add(egui::Shape::convex_polygon(
                 vec![
-                    c + Vec2::new(-5.0, -8.0),
-                    c + Vec2::new(8.0, 0.0),
-                    c + Vec2::new(-5.0, 8.0),
+                    c + s * Vec2::new(-5.0, -8.0),
+                    c + s * Vec2::new(8.0, 0.0),
+                    c + s * Vec2::new(-5.0, 8.0),
                 ],
                 color,
                 egui::Stroke::NONE,
@@ -999,62 +1131,62 @@ fn control(
         "pause" => {
             for offset in [-4.0, 4.0] {
                 painter.rect_filled(
-                    Rect::from_center_size(c + Vec2::new(offset, 0.0), Vec2::new(4.0, 17.0)),
+                    Rect::from_center_size(c + s * Vec2::new(offset, 0.0), s * Vec2::new(4.0, 17.0)),
                     1.0,
                     color,
                 );
             }
         }
         "close" => {
-            painter.line_segment([c + Vec2::new(-6.0, -6.0), c + Vec2::new(6.0, 6.0)], stroke);
-            painter.line_segment([c + Vec2::new(6.0, -6.0), c + Vec2::new(-6.0, 6.0)], stroke);
+            painter.line_segment([c + s * Vec2::new(-6.0, -6.0), c + s * Vec2::new(6.0, 6.0)], stroke);
+            painter.line_segment([c + s * Vec2::new(6.0, -6.0), c + s * Vec2::new(-6.0, 6.0)], stroke);
         }
         "back" | "forward" => {
             let sign = if icon == "back" { -1.0 } else { 1.0 };
-            let center = c + Vec2::new(-4.0 * sign, -2.0);
+            let center = c + s * Vec2::new(-4.0 * sign, -2.0);
             painter.add(egui::Shape::line(
                 (0..=20)
                     .map(|step| {
                         let angle = 0.25 + (5.2 - 0.25) * step as f32 / 20.0;
-                        center + Vec2::new(angle.cos() * 8.0, angle.sin() * 8.0)
+                        center + Vec2::new(angle.cos() * 8.0 * s, angle.sin() * 8.0 * s)
                     })
                     .collect(),
-                egui::Stroke::new(1.8, color),
+                egui::Stroke::new(1.8 * s, color),
             ));
             painter.text(
-                c + Vec2::new(0.0, 7.0),
+                c + s * Vec2::new(0.0, 7.0),
                 Align2::CENTER_CENTER,
                 "10",
-                FontId::proportional(9.0),
+                FontId::proportional(9.0 * s),
                 color,
             );
         }
         "volume" | "mute" => {
             painter.rect_filled(
-                Rect::from_min_max(c + Vec2::new(-9.0, -4.0), c + Vec2::new(-5.0, 4.0)),
+                Rect::from_min_max(c + s * Vec2::new(-9.0, -4.0), c + s * Vec2::new(-5.0, 4.0)),
                 0.5,
                 color,
             );
             painter.add(egui::Shape::convex_polygon(
                 vec![
-                    c + Vec2::new(-5.0, -5.0),
-                    c + Vec2::new(2.0, -10.0),
-                    c + Vec2::new(2.0, 10.0),
-                    c + Vec2::new(-5.0, 5.0),
+                    c + s * Vec2::new(-5.0, -5.0),
+                    c + s * Vec2::new(2.0, -10.0),
+                    c + s * Vec2::new(2.0, 10.0),
+                    c + s * Vec2::new(-5.0, 5.0),
                 ],
                 color,
                 egui::Stroke::NONE,
             ));
             if icon == "mute" {
                 let thin = egui::Stroke::new(1.8, color);
-                painter.line_segment([c + Vec2::new(5.0, -5.0), c + Vec2::new(11.0, 5.0)], thin);
-                painter.line_segment([c + Vec2::new(11.0, -5.0), c + Vec2::new(5.0, 5.0)], thin);
+                painter.line_segment([c + s * Vec2::new(5.0, -5.0), c + s * Vec2::new(11.0, 5.0)], thin);
+                painter.line_segment([c + s * Vec2::new(11.0, -5.0), c + s * Vec2::new(5.0, 5.0)], thin);
             } else {
                 painter.add(egui::Shape::line(
                     (0..=10)
                         .map(|step| {
                             let angle = -0.75 + 1.5 * step as f32 / 10.0;
-                            c + Vec2::new(angle.cos() * 10.0, angle.sin() * 10.0)
+                            c + s * Vec2::new(angle.cos() * 10.0, angle.sin() * 10.0)
                         })
                         .collect(),
                     egui::Stroke::new(1.5, color),
@@ -1072,7 +1204,7 @@ fn control(
                 ((8.0, 3.0), (8.0, 8.0)),
                 ((8.0, 8.0), (3.0, 8.0)),
             ] {
-                painter.line_segment([c + Vec2::new(a.0, a.1), c + Vec2::new(b.0, b.1)], stroke);
+                painter.line_segment([c + s * Vec2::new(a.0, a.1), c + s * Vec2::new(b.0, b.1)], stroke);
             }
         }
         _ => {}
