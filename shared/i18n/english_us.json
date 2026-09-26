@@ -2591,6 +2591,7 @@
   "settings.poster_rating_source": "Rating source",
   "settings.poster_trending_badge": "Trending sash",
   "settings.poster_age_rating": "Age rating",
+  "settings.poster_quality_badges": "Quality badges",
   "settings.option.imdb": "IMDb",
   "settings.option.mdblist": "MDBList score",
   "poster.badge.trending": "Trending",

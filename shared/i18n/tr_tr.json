@@ -2591,6 +2591,7 @@
   "settings.poster_rating_source": "Puan kaynağı",
   "settings.poster_trending_badge": "Trend şeridi",
   "settings.poster_age_rating": "Yaş sınırı",
+  "settings.poster_quality_badges": "Kalite rozetleri",
   "settings.option.imdb": "IMDb",
   "settings.option.mdblist": "MDBList puanı",
   "poster.badge.trending": "Trend",

@@ -80,6 +80,7 @@ pub struct PosterOverlays {
     pub saved: bool,
     pub fade: Fade,
     pub trending: bool,
+    pub quality: bool,
     pub age: bool,
     pub mdblist_score: bool,
     pub trending_label: String,
@@ -110,6 +111,7 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterFadeTint": false,
                 "posterFadeStrength": "high",
                 "posterTrendingBadge": true,
+                "posterQualityBadges": true,
                 "posterAgeRating": true,
                 "posterRatingSource": "imdb",
             })
@@ -153,6 +155,7 @@ impl super::SettingsModel {
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
             trending: enabled && self.bool_value("posterTrendingBadge"),
+            quality: enabled && self.bool_value("posterQualityBadges"),
             age: enabled && self.bool_value("posterAgeRating"),
             mdblist_score: self.str_value("posterRatingSource") == Some("mdblist"),
             trending_label: localized(
@@ -198,6 +201,25 @@ pub struct Personal {
     pub watched: bool,
     pub saved: bool,
     pub progress: f32,
+    pub quality: [bool; 4],
+}
+
+const QUALITY_LABELS: [&str; 4] = ["4K", "DV", "HDR", "REMUX"];
+
+fn stream_quality(text: &str) -> [bool; 4] {
+    let text = text.to_lowercase();
+    let tokens: Vec<&str> = text
+        .split(|c: char| !c.is_ascii_alphanumeric())
+        .filter(|token| !token.is_empty())
+        .collect();
+    let has = |words: &[&str]| tokens.iter().any(|token| words.contains(token));
+    let dv = has(&["dv", "dovi", "dvhe"]) || text.contains("dolby vision");
+    [
+        has(&["2160p", "4k", "uhd"]),
+        dv,
+        !dv && (has(&["hdr", "hdr10", "hlg"]) || text.contains("hdr10+")),
+        has(&["remux"]),
+    ]
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -235,8 +257,14 @@ pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
                 .pointer("/meta/id")
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or(key);
-            index.entry(id.to_owned()).or_default().progress =
-                (offset / duration).clamp(0.0, 1.0) as f32;
+            let personal = index.entry(id.to_owned()).or_default();
+            personal.progress = (offset / duration).clamp(0.0, 1.0) as f32;
+            let stream = ["lastStreamTitle", "lastStreamUrl"]
+                .iter()
+                .filter_map(|key| entry.get(*key).and_then(serde_json::Value::as_str))
+                .collect::<Vec<_>>()
+                .join(" ");
+            personal.quality = stream_quality(&stream);
         }
     }
     PersonalIndex(index)
@@ -767,6 +795,36 @@ pub(super) fn paint(
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     }
 
+    if overlays.quality && personal.quality.contains(&true) {
+        let size = (rect.width() * 0.06).clamp(8.0, 13.0) * overlays.scale;
+        let mut y = rect.top() + inset + stacks[Placement::TopRight as usize];
+        for label in QUALITY_LABELS
+            .iter()
+            .zip(personal.quality)
+            .filter_map(|(label, on)| on.then_some(*label))
+        {
+            let galley = painter.layout_no_wrap(
+                label.to_owned(),
+                FontId::proportional(size),
+                Color32::WHITE,
+            );
+            let badge = Rect::from_min_size(
+                Pos2::new(rect.right() - inset - galley.size().x - size * 0.8, y),
+                Vec2::new(galley.size().x + size * 0.8, size * 1.5),
+            );
+            painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
+            painter.rect_stroke(
+                badge,
+                3.0,
+                Stroke::new(1.0, Color32::from_white_alpha(60)),
+                egui::StrokeKind::Inside,
+            );
+            painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+            y += badge.height() + 3.0;
+        }
+        stacks[Placement::TopRight as usize] = y - rect.top() - inset;
+    }
+
     let mut badges = Vec::with_capacity(2);
     if let (Some(placement), Some(value)) = (overlays.rating, rating) {
         let source = if rating == facts.rating {
@@ -1269,4 +1327,15 @@ mod tests {
         assert_eq!(graded.certification.as_deref(), Some("TV-MA"));
     }
 
+    #[test]
+    fn dolby_vision_release_is_not_also_tagged_hdr() {
+        assert_eq!(
+            stream_quality("Movie.2023.2160p.DV.HEVC.REMUX.mkv"),
+            [true, true, false, true]
+        );
+        assert_eq!(
+            stream_quality("Show S01E01 1080p HDR10"),
+            [false, false, true, false]
+        );
+    }
 }

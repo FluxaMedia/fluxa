@@ -712,7 +712,7 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
-const POSTER_SETTINGS: [SettingsRow; 14] = [
+const POSTER_SETTINGS: [SettingsRow; 15] = [
     SettingsRow {
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
@@ -790,6 +790,11 @@ const POSTER_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Age rating",
         key: "posterAgeRating",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Quality badges",
+        key: "posterQualityBadges",
         options: &[],
     },
 ];
