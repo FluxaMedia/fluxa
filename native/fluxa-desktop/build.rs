@@ -5,7 +5,7 @@ fn main() {
     let Some(repository_root) = manifest.parent().and_then(|path| path.parent()) else {
         return;
     };
-    let dot_env = repository_root.join("apps/desktop/.env");
+    let dot_env = repository_root.join(".env");
     println!("cargo:rerun-if-changed={}", dot_env.display());
     for key in ["FLUXA_NUVIO_SUPABASE_URL", "FLUXA_NUVIO_SUPABASE_KEY"] {
         println!("cargo:rerun-if-env-changed={key}");

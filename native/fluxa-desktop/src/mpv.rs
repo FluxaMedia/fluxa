@@ -185,7 +185,7 @@ fn shader_dir() -> Option<PathBuf> {
         .ok()
         .and_then(|exe| exe.parent().map(|dir| dir.join("mpv-shaders/anime4k")));
     let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../apps/desktop/src-tauri/assets/mpv-shaders/anime4k");
+        .join("../fluxa-mpv/shaders/anime4k");
     [beside, Some(source)].into_iter().flatten().find(|dir| dir.is_dir())
 }
 

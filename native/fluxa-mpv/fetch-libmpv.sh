@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Downloads the gpu-next-patched libmpv build for the current platform from
-# https://github.com/KhooLy/mpv releases and unpacks it into src-tauri/lib/.
+# https://github.com/KhooLy/mpv releases and unpacks it into native/fluxa-mpv/lib/.
 #
 # Usage: ./src-tauri/fetch-libmpv.sh [tag]
 # Defaults to the latest release if no tag is given.

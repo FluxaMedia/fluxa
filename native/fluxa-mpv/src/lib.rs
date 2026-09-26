@@ -590,8 +590,6 @@ pub(crate) fn find_libmpv_path() -> String {
     // gpu-next Vulkan render API fork.
     let compiled_manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     search_dirs.push(compiled_manifest_dir.join("lib"));
-    #[cfg(target_os = "linux")]
-    search_dirs.push(compiled_manifest_dir.join("../../apps/desktop/src-tauri/lib"));
 
     // Beside the executable (bundled distribution)
     if let Ok(exe_path) = std::env::current_exe() {

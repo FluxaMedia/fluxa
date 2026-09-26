@@ -1175,7 +1175,7 @@ impl Gpu {
     }
 }
 
-const BRAND_MARK_BYTES: &[u8] = include_bytes!("../../../apps/desktop/public/fluxa.png");
+const BRAND_MARK_BYTES: &[u8] = include_bytes!("../assets/fluxa.png");
 
 
 fn rebuild_home_ui(ui: &mut UiTree, [width, height]: [u32; 2], home: &HomeModel, safe_bottom: f32) {
