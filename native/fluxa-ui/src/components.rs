@@ -759,3 +759,62 @@ pub(super) fn choice_field(
     response
 }
 
+
+pub(super) fn play_button(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    label: &str,
+    width: Option<f32>,
+    height: f32,
+    text_size: f32,
+    progress: Option<f32>,
+) -> Response {
+    let font = FontId::proportional(text_size);
+    let width = width.unwrap_or_else(|| {
+        ui.painter()
+            .layout_no_wrap(label.to_owned(), font.clone(), Color32::BLACK)
+            .size()
+            .x
+            + 70.0
+    });
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
+    let painter = ui.painter();
+    painter.rect_filled(
+        rect,
+        height * 0.5,
+        if response.hovered() {
+            Color32::from_gray(225)
+        } else {
+            Color32::WHITE
+        },
+    );
+    let lift = if progress.is_some() { 4.0 } else { 0.0 };
+    if let Some(icon) = assets.icon("PlayFilled") {
+        painter.image(
+            icon,
+            Rect::from_center_size(rect.left_center() + Vec2::new(28.0, 0.0), Vec2::splat(18.0)),
+            full_uv(),
+            Color32::BLACK,
+        );
+    }
+    painter.text(
+        rect.left_center() + Vec2::new(44.0, -lift),
+        Align2::LEFT_CENTER,
+        label,
+        font,
+        Color32::BLACK,
+    );
+    if let Some(progress) = progress {
+        let track = Rect::from_min_max(
+            Pos2::new(rect.left() + 44.0, rect.center().y + text_size * 0.5 + 2.0),
+            Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
+        );
+        painter.rect_filled(track, 1.5, Color32::from_black_alpha(40));
+        painter.rect_filled(
+            Rect::from_min_size(track.min, Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height())),
+            1.5,
+            Color32::BLACK,
+        );
+    }
+    response
+}

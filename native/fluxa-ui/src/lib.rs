@@ -218,6 +218,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub trailer: Option<HeroTrailer>,
     #[serde(skip)]
+    pub language: String,
+    #[serde(skip)]
     artwork_signature: OnceLock<u64>,
 }
 
@@ -236,6 +238,8 @@ pub struct HomeHero {
     #[serde(rename = "itemType")]
     pub item_type: Option<String>,
     pub trailers: Vec<String>,
+    #[serde(skip)]
+    pub raw: serde_json::Value,
 }
 
 #[derive(Clone, Debug)]
@@ -293,6 +297,7 @@ impl HomeModel {
             scroll_offset: 0.0,
             row_scroll_offsets: Vec::new(),
             trailer: None,
+            language: "en".to_owned(),
             artwork_signature: OnceLock::new(),
         }
     }
@@ -697,6 +702,7 @@ pub fn home_model_from_core_snapshot(
             .pointer("/settings/values/accentColorArgb")
             .and_then(accent_from_value),
         form_factor,
+        language: snapshot_language(snapshot),
         ..HomeModel::default_empty()
     };
     let mut slide_keys = Vec::new();
@@ -826,6 +832,7 @@ fn core_home_hero(item: &serde_json::Value, language: &str) -> HomeHero {
         item_id: value_string(item, "id"),
         item_type: value_string(item, "type"),
         trailers: trailer_urls(item),
+        raw: item.clone(),
     }
 }
 
@@ -1344,6 +1351,35 @@ pub fn calendar_model_from_core_snapshot(snapshot: &serde_json::Value) -> Calend
                 })
             })
             .collect(),
+    }
+}
+
+impl HomeModel {
+    pub fn resume_for(&self, id: &str) -> Option<&HomeCard> {
+        self.cards
+            .iter()
+            .find(|card| card.row_kind == HomeRowKind::Continue && card.id.as_deref() == Some(id))
+    }
+}
+
+pub fn resume_episode(card: &HomeCard) -> Option<(i64, i64)> {
+    let number = |keys: &[&str]| keys.iter().find_map(|key| card.raw.get(*key)?.as_i64());
+    Some((
+        number(&["lastEpisodeSeason", "season"])?,
+        number(&["lastEpisodeNumber", "episode"])?,
+    ))
+}
+
+pub fn play_label(language: &str, resume: Option<&HomeCard>, episode: Option<(i64, i64)>) -> String {
+    let action = localized(if resume.is_some() { "common.continue" } else { "common.play" }, language);
+    match resume.and_then(resume_episode).or(episode) {
+        Some((season, number)) => format!(
+            "{action}  {}",
+            localized("format.season_episode_short", language)
+                .replacen("%s", &season.to_string(), 1)
+                .replacen("%s", &number.to_string(), 1)
+        ),
+        None => action,
     }
 }
 
@@ -2382,6 +2418,7 @@ pub struct DetailModel {
     pub facts: Vec<String>,
     pub episodes: Vec<DetailEpisode>,
     pub cast: Vec<DetailCastMember>,
+    pub resume: Option<HomeCard>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -2660,6 +2697,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             .or_else(|| value_string(meta, "logo")),
         facts: detail_facts(meta, &episodes, &snapshot_language(snapshot)),
         cast: detail_cast(meta),
+        resume: None,
         episodes,
     }
 }
@@ -2686,27 +2724,29 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let hero_height = home_hero_height(viewport);
     if show_hero {
         let play_y = hero_height - if compact { 92.0 } else { 194.0 } - home.scroll_offset;
-        layout.focusable.push((
-            NODE_PLAY,
-            Rect::from_min_size(
-                Pos2::new(
-                    if compact {
-                        (viewport.width - 108.0) * 0.5
-                    } else {
-                        margin
-                    },
-                    play_y,
-                ),
-                Vec2::new(
-                    if compact {
-                        108.0
-                    } else {
-                        (metrics.horizontal_card_width * 0.46).max(160.0)
-                    },
-                    if compact { 42.0 } else { 50.0 },
-                ),
+        let size = Vec2::new(
+            if compact {
+                108.0
+            } else {
+                (metrics.horizontal_card_width * 0.46).max(160.0)
+            },
+            if compact { 42.0 } else { 50.0 },
+        );
+        let play = Rect::from_min_size(
+            Pos2::new(
+                if compact {
+                    (viewport.width - size.x * 2.0 - 12.0) * 0.5
+                } else {
+                    margin
+                },
+                play_y,
             ),
-        ));
+            size,
+        );
+        layout.focusable.push((NODE_PLAY, play));
+        layout
+            .focusable
+            .push((NODE_MORE_INFO, play.translate(Vec2::new(size.x + 12.0, 0.0))));
     }
     let row_start = home_row_start(viewport, metrics, hero_height, show_hero);
     let mut flat = 0;
@@ -3729,6 +3769,7 @@ fn draw_home_with_options(
         item_id: home.item_id.clone(),
         item_type: home.item_type.clone(),
         trailers: Vec::new(),
+        raw: serde_json::Value::Null,
     };
     let mut hero = home
         .hero_slides
@@ -3916,6 +3957,7 @@ fn draw_home_with_options(
         metrics.screen_padding
     };
     let mut activated = None;
+    let mut hero_actions: Option<(Rect, Rect)> = None;
     if draw_top_bar {
         let profile_avatar_url = home
             .profile_avatar_url
@@ -4192,25 +4234,46 @@ fn draw_home_with_options(
                     }
                     ui.add_space(if compact { 6.0 } else { synopsis_button_gap });
                     ui.horizontal(|ui| {
-                        let play_width = if compact {
-                            108.0
-                        } else {
-                            140.0
+                        ui.spacing_mut().item_spacing.x = 12.0;
+                        let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
+                        let series = matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
+                        let label = play_label(&home.language, resume, series.then_some((1, 1)));
+                        let details_label = localized("home.view_details", &home.language);
+                        let text_size = metrics.nav_label_size + 2.0;
+                        let measure = |ui: &egui::Ui, text: &str| {
+                            ui.painter()
+                                .layout_no_wrap(text.to_owned(), egui::FontId::proportional(text_size), Color32::WHITE)
+                                .size()
+                                .x
                         };
+                        let play_width = measure(ui, &label) + 70.0;
+                        let details_width = measure(ui, &details_label) + metrics.control_gap * 2.0;
                         if compact {
-                            ui.add_space(((ui.available_width() - play_width) * 0.5).max(0.0));
+                            ui.add_space(((ui.available_width() - play_width - details_width - 12.0) * 0.5).max(0.0));
                         }
-                        if components::button(
+                        let play = components::play_button(
                             ui,
-                            "View Details",
-                            play_width,
+                            assets,
+                            &label,
+                            Some(play_width),
                             play_height,
-                            components::ButtonKind::Primary,
+                            text_size,
+                            resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
+                        );
+                        let details = components::button(
+                            ui,
+                            &details_label,
+                            details_width,
+                            play_height,
+                            components::ButtonKind::Secondary,
                             metrics,
-                        )
-                        .clicked()
-                        {
+                        );
+                        hero_actions = Some((play.rect, details.rect));
+                        if play.clicked() {
                             activated = Some(NODE_PLAY);
+                        }
+                        if details.clicked() {
+                            activated = Some(NODE_MORE_INFO);
                         }
                     });
                 });
@@ -4441,7 +4504,10 @@ fn draw_home_with_options(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if show_hero {
+    if let Some((play, details)) = hero_actions {
+        layout.focusable.push((NODE_PLAY, play));
+        layout.focusable.push((NODE_MORE_INFO, details));
+    } else if show_hero {
         let play_y = hero_height - if compact { 92.0 } else { 194.0 } - scroll_offset;
         layout.focusable.push((
             NODE_PLAY,

@@ -20,7 +20,7 @@ use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, rasterize_svg};
 pub use fluxa_renderer::ui::{GamepadButton, Key};
 use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, UiTree};
 use fluxa_ui::{
-    AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, HomeAssets,
+    AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, HomeAssets, HomeCard, HomeHero,
     HomeLayout, HomeModel, LibraryModel, LibraryTab, SettingsModel, UiFormFactorJson, Viewport,
     draw_calendar, draw_detail, PlayerModel, draw_discover, draw_home, draw_library, draw_player,
     draw_settings,
@@ -1667,6 +1667,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
         state.calendar.selected_day = selected_day;
     }
     state.detail = projection.detail;
+    state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
@@ -1728,6 +1729,7 @@ fn native_action_for_node(
     detail: &DetailModel,
     settings: &SettingsModel,
     route: &str,
+    hero: Option<&HomeHero>,
 ) -> Option<NativeAction> {
     let destination = match node {
         NODE_HOME => Some("home"),
@@ -1848,8 +1850,14 @@ fn native_action_for_node(
         }
         if node == fluxa_ui::NODE_DETAIL_PLAY {
             if !detail.id.is_empty() {
+                let first = detail
+                    .episodes
+                    .iter()
+                    .find(|episode| episode.season > 0)
+                    .or(detail.episodes.first())
+                    .map(|episode| episode.id.clone());
                 return Some(NativeAction::StartPlayback {
-                    item: detail.item.clone(),
+                    item: playback_item(&detail.item, detail.resume.as_ref(), first),
                 });
             }
         }
@@ -1885,6 +1893,21 @@ fn native_action_for_node(
         let card = discover.results.get((node - NODE_CARD_BASE) as usize)?;
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else if node == NODE_PLAY || node == NODE_MORE_INFO {
+        if let Some(hero) = hero
+            && let (Some(id), Some(item_type)) = (hero.item_id.as_ref(), hero.item_type.as_ref())
+        {
+            if node == NODE_MORE_INFO {
+                return Some(NativeAction::Detail {
+                    id: id.clone(),
+                    item_type: item_type.clone(),
+                    preview: hero.raw.clone(),
+                });
+            }
+            let series = matches!(item_type.as_str(), "series" | "tv" | "show");
+            return Some(NativeAction::StartPlayback {
+                item: playback_item(&hero.raw, home.resume_for(id), series.then(|| format!("{id}:1:1"))),
+            });
+        }
         (home.item_id.as_ref()?, home.item_type.as_ref()?, &Value::Null)
     } else if node >= NODE_CARD_BASE {
         let card = home.card_at((node - NODE_CARD_BASE) as usize)?;
@@ -1904,6 +1927,28 @@ fn native_action_for_node(
             preview: preview.clone(),
         })
     }
+}
+
+fn playback_item(item: &Value, resume: Option<&HomeCard>, first_video: Option<String>) -> Value {
+    let mut item = item.clone();
+    let Some(fields) = item.as_object_mut() else {
+        return item;
+    };
+    if let Some(resume) = resume.and_then(|card| card.raw.as_object()) {
+        for (key, value) in resume {
+            if key.starts_with("last") || matches!(key.as_str(), "timeOffset" | "duration") {
+                fields.insert(key.clone(), value.clone());
+            }
+        }
+        if !fields.contains_key("lastVideoId")
+            && let Some(video) = resume.get("videoId")
+        {
+            fields.insert("lastVideoId".to_owned(), video.clone());
+        }
+    } else if let Some(video) = first_video {
+        fields.insert("lastVideoId".to_owned(), video.into());
+    }
+    item
 }
 
 fn refresh_library_view(state: &mut RendererState) {
@@ -2092,6 +2137,10 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
                 &state.detail,
                 &state.settings,
                 &state.route,
+                state
+                    .gpu
+                    .as_ref()
+                    .and_then(|gpu| fluxa_ui::active_home_hero(&gpu.egui_context, &state.home)),
             ) {
                 if let NativeAction::Detail { preview, .. } = &native_action {
                     state.backdrop_prefetch = ["background", "poster"]

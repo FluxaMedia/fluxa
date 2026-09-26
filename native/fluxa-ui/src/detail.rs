@@ -315,55 +315,28 @@ pub fn draw_detail(
             ui.add_space(24.0);
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::new(12.0, 12.0);
-                let play_label = match play_target {
-                    Some((_, episode)) if detail.is_series() => format!(
-                        "{}  {}",
-                        t("common.play"),
-                        t("format.season_episode_short")
-                            .replacen("%s", &episode.season.to_string(), 1)
-                            .replacen("%s", &episode.number.to_string(), 1)
-                    ),
-                    _ => t("common.play"),
-                };
-                let font = FontId::proportional(17.0);
-                let text_width = ui
-                    .painter()
-                    .layout_no_wrap(play_label.clone(), font.clone(), Color32::BLACK)
-                    .size()
-                    .x;
-                let play_width = if compact {
-                    content_width
-                } else {
-                    text_width + 70.0
-                };
-                let (rect, play) = ui.allocate_exact_size(Vec2::new(play_width, 48.0), Sense::click());
-                ui.painter().rect_filled(
-                    rect,
-                    24.0,
-                    if play.hovered() {
-                        Color32::from_gray(225)
-                    } else {
-                        Color32::WHITE
-                    },
+                let resume = detail.resume.as_ref();
+                let play_label = crate::play_label(
+                    language,
+                    resume,
+                    play_target
+                        .filter(|_| detail.is_series())
+                        .map(|(_, episode)| (episode.season, episode.number)),
                 );
-                if let Some(icon) = assets.icon("PlayFilled") {
-                    ui.painter().image(
-                        icon,
-                        Rect::from_center_size(rect.left_center() + Vec2::new(28.0, 0.0), Vec2::splat(18.0)),
-                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                        Color32::BLACK,
-                    );
-                }
-                ui.painter().text(
-                    rect.left_center() + Vec2::new(44.0, 0.0),
-                    Align2::LEFT_CENTER,
+                let play = components::play_button(
+                    ui,
+                    assets,
                     &play_label,
-                    font,
-                    Color32::BLACK,
+                    compact.then_some(content_width),
+                    48.0,
+                    17.0,
+                    resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
                 );
+                let rect = play.rect;
                 action_rects.push((NODE_DETAIL_PLAY, rect));
                 if play.clicked() {
                     layout.activated = Some(match play_target {
+                        _ if resume.is_some() => NODE_DETAIL_PLAY,
                         Some((index, _)) if detail.is_series() => NODE_DETAIL_EPISODE_BASE + index as u64,
                         _ => NODE_DETAIL_PLAY,
                     });
