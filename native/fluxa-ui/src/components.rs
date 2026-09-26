@@ -526,6 +526,8 @@ pub(super) fn continue_card(
     );
 }
 
+const DROPDOWN_CHROME: f32 = 44.0;
+
 pub(super) fn dropdown_width_for_label(
     ui: &Ui,
     label: &str,
@@ -539,10 +541,7 @@ pub(super) fn dropdown_width_for_label(
         .layout_no_wrap(label.to_owned(), font, Color32::WHITE)
         .size()
         .x;
-    // Match the actual label inset, reserved chevron area, and gap between
-    // them; don't add popup padding to the closed control's natural width.
-    let chrome = metrics.control_gap * 3.0;
-    (text_width + chrome).clamp(min_width, max_width.max(min_width))
+    (text_width + DROPDOWN_CHROME + 2.0).clamp(min_width, max_width.max(min_width))
 }
 
 fn dropdown_popup_width(
@@ -682,7 +681,7 @@ pub(super) fn choice_field(
     painter.text(
         rect.left_center() + Vec2::new(14.0, 0.0),
         Align2::LEFT_CENTER,
-        truncate_to_width(painter, current, &font, (rect.width() - 44.0).max(1.0)),
+        truncate_to_width(painter, current, &font, (rect.width() - DROPDOWN_CHROME).max(1.0)),
         font.clone(),
         text_color,
     );
