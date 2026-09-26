@@ -1957,7 +1957,7 @@ impl UiMetrics {
     }
 
     pub fn navigation_icon_size(self, tv: bool) -> f32 {
-        if tv { 24.0 } else { 18.0 }
+        if tv { 25.0 } else { 19.0 }
     }
 
     pub fn navigation_item_width(self, label: &str, tv: bool) -> f32 {
@@ -2000,10 +2000,10 @@ impl UiMetrics {
 }
 
 const NAV_BAR_TOP: f32 = 14.0;
-const NAV_ITEM_HEIGHT: f32 = 36.0;
-const NAV_BAR_PADDING: f32 = 5.0;
+const NAV_ITEM_HEIGHT: f32 = 40.0;
+const NAV_BAR_PADDING: f32 = 6.0;
 const NAV_ITEM_GAP: f32 = 2.0;
-const NAV_AVATAR_RADIUS: f32 = 12.0;
+const NAV_AVATAR_RADIUS: f32 = 13.5;
 
 fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
     text.chars()

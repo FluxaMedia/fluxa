@@ -1506,7 +1506,7 @@ pub fn draw_settings(
     let top = if compact {
         metrics.detail_header_top_mobile
     } else if desktop {
-        margin.max(64.0)
+        margin.max(76.0)
     } else {
         metrics.content_header_top
     };
