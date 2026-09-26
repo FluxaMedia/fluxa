@@ -1656,7 +1656,9 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
         ));
     }
     state.library = projection.library;
+    let query = std::mem::take(&mut state.discover.query);
     state.discover = projection.discover;
+    state.discover.query = query;
     let selected_day = state.calendar.selected_day;
     let previous_month = (state.calendar.year, state.calendar.month);
     state.calendar = projection.calendar;
