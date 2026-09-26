@@ -22,10 +22,8 @@ use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, U
 use fluxa_ui::{
     AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, HomeAssets,
     HomeLayout, HomeModel, LibraryModel, LibraryTab, SettingsModel, UiFormFactorJson, Viewport,
-    detail_model_from_core_snapshot, discover_model_from_core_snapshot, draw_calendar, draw_detail,
-    PlayerModel, draw_discover, draw_home, draw_library, draw_player, draw_settings,
-    home_model_from_core_snapshot,
-    library_model_from_core_snapshot, settings_model_from_core_snapshot,
+    draw_calendar, draw_detail, PlayerModel, draw_discover, draw_home, draw_library, draw_player,
+    draw_settings,
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -67,6 +65,7 @@ impl NativeSurface {
 mod player;
 mod presence;
 mod profiles;
+mod projection;
 pub use profiles::ImagePicker;
 
 pub use player::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
@@ -107,7 +106,8 @@ struct RendererState {
     calendar: CalendarModel,
     detail: DetailModel,
     settings: SettingsModel,
-    core_snapshot: Option<Value>,
+    core_snapshot: Option<Arc<Value>>,
+    projector: projection::Projector,
     core_snapshot_revision: u64,
     last_snapshot_revision: Option<u64>,
     session: Option<AppSession>,
@@ -125,7 +125,6 @@ struct RendererState {
     pack_job: Option<profiles::PackJob>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
-    hero_plan_cache: Option<(Value, Option<Value>)>,
 }
 
 fn current_presence(state: &RendererState) -> presence::Presence {
@@ -288,7 +287,7 @@ impl ArtworkLoader {
     }
 
     fn poll(&mut self, context: &egui::Context) {
-        for prepared in self.fetcher.poll(6) {
+        for prepared in self.fetcher.poll(2) {
             let url = prepared.source_url;
             let target_size = prepared.target_size;
             let animation_requested = prepared.animation_requested;
@@ -327,9 +326,7 @@ impl ArtworkLoader {
                 ],
                 image_pixels.as_raw(),
             );
-            let transparent_ratio = image.pixels.iter().filter(|pixel| pixel.a() < 250).count()
-                as f32
-                / image.pixels.len().max(1) as f32;
+            let transparent_ratio = prepared.transparent_ratio;
             let texture = context.load_texture(
                 format!("fluxa-native-artwork-{key}"),
                 image,
@@ -996,9 +993,11 @@ impl Gpu {
         scroll_y: f32,
         events: Vec<egui::Event>,
         modifiers: egui::Modifiers,
+        timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         self.artwork.poll(&self.egui_context);
         self.artwork.begin_frame();
+        timer.mark("artwork");
         let screen_size = [self.config.width, self.config.height];
         let logical_size = [
             (screen_size[0] as f32 / self.density).round().max(1.0) as u32,
@@ -1065,11 +1064,13 @@ impl Gpu {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
             }
         });
+        timer.mark("draw");
         let paint_jobs = self
             .egui_context
             .tessellate(output.shapes, output.pixels_per_point);
         self.egui_renderer
             .apply_texture_deltas(&self.device, &self.queue, &output.textures_delta);
+        timer.mark("upload");
         let screen_descriptor = ScreenDescriptor {
             size_in_pixels: screen_size,
             pixels_per_point: output.pixels_per_point,
@@ -1085,6 +1086,7 @@ impl Gpu {
                 return Err("surface validation error".to_owned());
             }
         };
+        timer.mark("acquire");
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
@@ -1122,6 +1124,7 @@ impl Gpu {
         }
         self.queue.submit([encoder.finish()]);
         frame.present();
+        timer.mark("present");
         self.egui_renderer
             .free_texture_deltas(&output.textures_delta);
         Ok(FrameOutput {
@@ -1607,59 +1610,35 @@ fn ensure_focused_visible(state: &mut RendererState) {
     // position and rebuild the same UiTree with the updated geometry.
 }
 
-fn sync_home_from_core_snapshot(state: &mut RendererState) {
-    let Some(mut snapshot) = state.core_snapshot.clone() else {
+fn request_projection(state: &mut RendererState) {
+    let Some(snapshot) = state.core_snapshot.clone() else {
         return;
     };
     let revision = state.core_snapshot_revision;
     if state.last_snapshot_revision == Some(revision) {
         return;
     }
-    // Keep Android on the same Core hero plan as desktop. The plan contains
-    // the selected catalog slides after profile ordering/toggles are applied;
-    // projecting it into the snapshot means the shared Rust renderer owns the
-    // carousel instead of Kotlin inventing a second hero selection.
-    let hero_inputs = json!({
-        "categories": snapshot.pointer("/home/categories").cloned().unwrap_or_else(|| json!([])),
-        "billboard": snapshot.pointer("/home/billboard").cloned().unwrap_or(Value::Null),
-        "prefs": snapshot.pointer("/settings/values").cloned().unwrap_or_else(|| json!({})),
-        "fetchedTrailers": {},
-        "fetchedIds": [],
-        "fetchedLogos": {},
-        "fetchedLogoIds": [],
+    state.last_snapshot_revision = Some(revision);
+    state.projector.submit(projection::Request {
+        revision,
+        snapshot,
+        form_factor: state.home.form_factor,
+        library_tab: state.library_tab,
+        library_query: state.library_query.clone(),
+        library_sort: state.library_sort.clone(),
     });
-    let hero_plan = match &state.hero_plan_cache {
-        Some((inputs, plan)) if *inputs == hero_inputs => plan.clone(),
-        _ => {
-            let plan = core_value("homeHeroPlan", hero_inputs.clone());
-            state.hero_plan_cache = Some((hero_inputs, plan.clone()));
-            plan
-        }
-    };
-    if let Some(hero_plan) = hero_plan
-        && let Some(home_object) = snapshot.get_mut("home").and_then(Value::as_object_mut)
-    {
-        if let Some(billboard) = hero_plan.get("billboard") {
-            home_object.insert("billboard".to_owned(), billboard.clone());
-        }
-        if let Some(slides) = hero_plan.get("slides") {
-            home_object.insert("heroSlides".to_owned(), slides.clone());
-        }
-    }
-    let route = snapshot
-        .pointer("/navigation/route")
-        .and_then(Value::as_str)
-        .unwrap_or("home")
-        .to_owned();
-    if route != state.route {
+}
+
+fn apply_projection(state: &mut RendererState, projection: projection::Projection) {
+    state.projector.settle(projection.revision, state.core_snapshot_revision);
+    if projection.route != state.route {
         state.active_scroll = None;
         state.scroll_velocity = 0.0;
     }
-    state.route = route;
-    let form_factor = state.home.form_factor;
+    state.route = projection.route;
     let scroll_offset = state.home.scroll_offset;
-    let row_scroll_offsets = state.home.row_scroll_offsets.clone();
-    state.home = home_model_from_core_snapshot(&snapshot, form_factor);
+    let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
+    state.home = projection.home;
     state.home.scroll_offset = scroll_offset;
     state.home.row_scroll_offsets = row_scroll_offsets;
     if HOME_SYNC_LOGS.fetch_add(1, Ordering::Relaxed) % 120 == 0 {
@@ -1679,48 +1658,30 @@ fn sync_home_from_core_snapshot(state: &mut RendererState) {
             titles,
         ));
     }
-    state.library = library_model_from_core_snapshot(&snapshot);
-    state.library.query = state.library_query.clone();
-    state.library.sort_by = state.library_sort.clone();
-    if state.route == "library" {
-        let library = snapshot
-            .get("library")
-            .cloned()
-            .unwrap_or_else(|| json!({}));
-        if let Some(plan) = core_value(
-            "libraryViewPlan",
-            json!({
-                "watchlist": library.get("watchlist"),
-                "watching": library.get("continueWatching"),
-                "completed": library.get("completed"),
-                "dropped": library.get("dropped"),
-                "favorites": library.get("liked"),
-                "progress": library.get("progress"),
-                "tab": state.library_tab.core_tab_key(),
-                "query": state.library_query,
-                "sortBy": state.library_sort,
-            }),
-        ) {
-            state.library.apply_core_plan(&plan, state.library_tab);
-        }
-    }
-    state.discover = discover_model_from_core_snapshot(&snapshot);
+    state.library = projection.library;
+    state.discover = projection.discover;
     let selected_day = state.calendar.selected_day;
     let previous_month = (state.calendar.year, state.calendar.month);
-    state.calendar = fluxa_ui::calendar_model_from_core_snapshot(&snapshot);
+    state.calendar = projection.calendar;
     if previous_month == (state.calendar.year, state.calendar.month) {
         state.calendar.selected_day = selected_day;
     }
-    state.detail = detail_model_from_core_snapshot(&snapshot);
+    state.detail = projection.detail;
     let settings_section = state.settings.active_section;
-    let addon_url = state.settings.addon_url.clone();
-    let plugin_url = state.settings.plugin_url.clone();
-    state.settings = settings_model_from_core_snapshot(&snapshot);
+    let addon_url = std::mem::take(&mut state.settings.addon_url);
+    let plugin_url = std::mem::take(&mut state.settings.plugin_url);
+    state.settings = projection.settings;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
     state.ui = UiTree::default();
-    state.last_snapshot_revision = Some(revision);
+}
+
+fn sync_home_from_core_snapshot(state: &mut RendererState) {
+    request_projection(state);
+    if let Some(projection) = state.projector.take() {
+        apply_projection(state, projection);
+    }
 }
 
 fn core_value(method: &str, args: Value) -> Option<Value> {
@@ -2386,6 +2347,7 @@ impl FluxaHost {
             detail: DetailModel::default(),
             settings: SettingsModel::default(),
             core_snapshot: None,
+            projector: projection::Projector::new(),
             core_snapshot_revision: 0,
             last_snapshot_revision: None,
             session: None,
@@ -2403,7 +2365,6 @@ impl FluxaHost {
             pack_job: None,
             picker_background: None,
             image_picker: None,
-            hero_plan_cache: None,
         })))
     }
 
@@ -2455,7 +2416,7 @@ impl FluxaHost {
             return;
         };
         self.with_state(|state| {
-            state.core_snapshot = Some(snapshot);
+            state.core_snapshot = Some(Arc::new(snapshot));
             state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
             sync_home_from_core_snapshot(state);
             state.ui = UiTree::default();
@@ -2467,7 +2428,7 @@ impl FluxaHost {
             state
                 .core_snapshot
                 .as_ref()
-                .map(Value::to_string)
+                .map(|snapshot| snapshot.to_string())
                 .unwrap_or_else(|| "{}".to_owned())
         })
     }
@@ -2961,18 +2922,66 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .as_ref()
         .is_some_and(|gpu| gpu.artwork.fetcher.has_pending())
         .then(|| now + Duration::from_millis(50));
+    let projecting = state
+        .projector
+        .pending()
+        .then(|| now + Duration::from_millis(8));
+    let artwork = match (artwork, projecting) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    };
     match (state.redraw_at, artwork) {
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),
     }
 }
 
+struct FrameTimer {
+    started: Instant,
+    last: Instant,
+    phases: Vec<(&'static str, Duration)>,
+}
+
+impl FrameTimer {
+    fn start() -> Self {
+        let now = Instant::now();
+        Self { started: now, last: now, phases: Vec::new() }
+    }
+
+    fn mark(&mut self, phase: &'static str) {
+        let now = Instant::now();
+        self.phases.push((phase, now - self.last));
+        self.last = now;
+    }
+
+    fn report(self, label: &str) {
+        let total = self.started.elapsed();
+        if total < SLOW_FRAME {
+            return;
+        }
+        let phases = self
+            .phases
+            .iter()
+            .filter(|(_, spent)| *spent >= Duration::from_millis(2))
+            .map(|(phase, spent)| format!("{phase}={}ms", spent.as_millis()))
+            .collect::<Vec<_>>()
+            .join(" ");
+        host_log(format!("Slow {label}: {}ms {phases}", total.as_millis()));
+    }
+}
+
+const SLOW_FRAME: Duration = Duration::from_millis(24);
+
 fn render_frame(state: &mut RendererState) {
+    let mut timer = FrameTimer::start();
     route_actions_to_session(state);
+    timer.mark("actions");
     pull_session_snapshot(state);
+    timer.mark("snapshot");
     profiles::poll(state);
     player::pump(state);
     player::upload_frame(state);
+    timer.mark("player");
     if state.gpu.is_none() {
         let count = GPU_WAIT_LOGS.fetch_add(1, Ordering::Relaxed);
         if count % 120 == 0 {
@@ -2988,12 +2997,14 @@ fn render_frame(state: &mut RendererState) {
         gpu.resize(size);
     }
     sync_home_from_core_snapshot(state);
+    timer.mark("sync");
     if state.route == "home"
         || matches!(state.active_scroll, Some(HomeScrollTarget::ScreenVertical))
     {
         advance_home_inertia(state);
     }
     rebuild_current_ui(state);
+    timer.mark("rebuild");
     let route = active_route(state);
     let player_model = state.player.as_ref().map(player::PlayerSession::model);
     let library_tab = state.library_tab;
@@ -3022,6 +3033,7 @@ fn render_frame(state: &mut RendererState) {
         .unwrap_or(0.0);
     let scale = state.scale();
     presence::update(current_presence(state));
+    timer.mark("prepare");
     let render_result = {
         let RendererState {
             gpu,
@@ -3058,6 +3070,7 @@ fn render_frame(state: &mut RendererState) {
                 scroll_y,
                 events,
                 modifiers,
+                &mut timer,
             )
         })
     };
@@ -3128,6 +3141,8 @@ fn render_frame(state: &mut RendererState) {
             Err(error) => host_log(format!("Frame skipped: {error}")),
         }
     }
+    timer.mark("layout");
+    timer.report(&format!("frame on {}", state.route));
 }
 
 fn apply_pointer_results(state: &mut RendererState, route: &str, layout: &HomeLayout) {
@@ -3198,10 +3213,9 @@ fn pull_session_snapshot(state: &mut RendererState) {
         return;
     }
     state.session_revision = Some(revision);
-    state.core_snapshot = Some(session.snapshot().as_ref().clone());
+    state.core_snapshot = Some(session.snapshot());
     state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
     sync_home_from_core_snapshot(state);
-    state.ui = UiTree::default();
 }
 
 fn discover_command(
