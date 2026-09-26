@@ -753,6 +753,10 @@ impl SettingsModel {
         })
     }
 
+    pub fn str_value(&self, key: &str) -> Option<&str> {
+        self.value(key).and_then(serde_json::Value::as_str)
+    }
+
     pub fn bool_value(&self, key: &str) -> bool {
         self.value(key)
             .and_then(serde_json::Value::as_bool)

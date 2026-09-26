@@ -21,6 +21,7 @@ pub struct PlayerModel {
     pub warnings: Vec<(String, String)>,
     pub warnings_elapsed: Option<f32>,
     pub language: String,
+    pub upscaling: String,
 }
 
 const WARNING_BAR: f32 = 0.3;
@@ -258,6 +259,39 @@ pub fn draw_player(
                 FontId::proportional(12.0),
                 Color32::from_white_alpha(170),
             );
+            let upscaling_label = format!(
+                "{}  {}",
+                localized("player.anime4k", &player.language),
+                match player.upscaling.as_str() {
+                    "off" | "" => localized("player.off", &player.language),
+                    mode => localized(&format!("player.anime4k_mode_{mode}"), &player.language),
+                }
+            );
+            let upscaling_rect = Rect::from_center_size(
+                Pos2::new(volume_x - 138.0, controls_y),
+                Vec2::new(150.0, 34.0),
+            );
+            let upscaling = ui.interact(
+                upscaling_rect,
+                Id::new("fluxa-player-upscaling"),
+                Sense::click(),
+            );
+            painter.rect_filled(
+                upscaling_rect,
+                17.0,
+                Color32::from_white_alpha(if upscaling.hovered() { 40 } else { 22 }),
+            );
+            painter.text(
+                upscaling_rect.center(),
+                Align2::CENTER_CENTER,
+                upscaling_label,
+                FontId::proportional(13.0),
+                Color32::from_white_alpha(225),
+            );
+            layout.focusable.push((NODE_PLAYER_UPSCALING, upscaling_rect));
+            if upscaling.clicked() {
+                layout.activated = Some(NODE_PLAYER_UPSCALING);
+            }
             let surface = ui.interact(
                 Rect::from_min_max(
                     Pos2::new(rect.left(), close_rect.bottom() + 8.0),

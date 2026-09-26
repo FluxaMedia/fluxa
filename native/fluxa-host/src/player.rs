@@ -2,7 +2,7 @@ use std::sync::{Arc, mpsc::Receiver};
 use std::time::Duration;
 
 use fluxa_core::FluxaCore;
-use fluxa_ui::PlayerModel;
+use fluxa_ui::{PlayerModel, SettingsModel};
 use serde_json::{Value, json};
 use web_time::Instant;
 
@@ -30,12 +30,13 @@ pub struct Thumbnail {
     pub rgba: Vec<u8>,
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub enum VideoCommand {
     TogglePause,
     Seek(f64),
     SeekTo(f64),
     ToggleMute,
+    Shaders(Vec<String>),
 }
 
 pub type DeviceOpener = Arc<
@@ -175,6 +176,7 @@ impl PlayerSession {
             warnings: self.warnings.clone(),
             warnings_elapsed: self.warnings_clock,
             language: self.language.clone(),
+            upscaling: String::new(),
         }
     }
 }
@@ -194,6 +196,7 @@ pub(crate) fn pump(state: &mut RendererState) {
         session,
         video,
         gpu,
+        settings,
         ..
     } = state;
     let (Some(player), Some(session)) = (player.as_mut(), session.as_ref()) else {
@@ -223,6 +226,7 @@ pub(crate) fn pump(state: &mut RendererState) {
             (Some(video), Some(gpu)) => {
                 host_log(format!("loading player url: {url}"));
                 video.load(&gpu.instance, &gpu.device, url);
+                video.command(VideoCommand::Shaders(shader_chain(settings)));
                 player.loaded_url = Some(url.to_owned());
             }
             (None, _) => player.error = Some("No video backend on this platform".to_owned()),
@@ -508,6 +512,58 @@ pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
     }
 }
 
+pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
+    if settings.str_value("animeUpscalingMode").is_none_or(|mode| mode == "off") {
+        return "off";
+    }
+    match settings.str_value("animeUpscalingModePreset") {
+        Some(mode @ ("b" | "c")) => mode,
+        _ => "a",
+    }
+}
+
+fn shader_chain(settings: &SettingsModel) -> Vec<String> {
+    let mode = upscaling(settings);
+    if mode == "off" {
+        return Vec::new();
+    }
+    let tier = settings.str_value("animeUpscalingQuality").unwrap_or("anime4k_m");
+    core_value("anime4kShaderChain", json!({"tier": tier, "mode": mode}))
+        .and_then(|chain| serde_json::from_value(chain).ok())
+        .unwrap_or_default()
+}
+
+fn cycle_upscaling(state: &mut RendererState) {
+    let next = match upscaling(&state.settings) {
+        "off" => "a",
+        "a" => "b",
+        "b" => "c",
+        _ => "off",
+    };
+    let mut changes = vec![(
+        "animeUpscalingMode",
+        if next == "off" {
+            json!("off")
+        } else {
+            json!(state.settings.str_value("animeUpscalingQuality").unwrap_or("anime4k_m"))
+        },
+    )];
+    if next != "off" {
+        changes.push(("animeUpscalingModePreset", json!(next)));
+    }
+    for (key, value) in changes {
+        if let Some(values) = state.settings.values.as_object_mut() {
+            values.insert(key.to_owned(), value.clone());
+        }
+        state.pending_native_actions.push(crate::NativeAction::SettingsChange {
+            key: key.to_owned(),
+            value,
+        });
+    }
+    let chain = shader_chain(&state.settings);
+    command(state, VideoCommand::Shaders(chain));
+}
+
 pub(crate) fn activate(state: &mut RendererState, node: u64) {
     match node {
         fluxa_ui::NODE_PLAYER_CLOSE => close(state),
@@ -516,6 +572,7 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_FORWARD => command(state, VideoCommand::Seek(SEEK_STEP)),
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
+        fluxa_ui::NODE_PLAYER_UPSCALING => cycle_upscaling(state),
         _ => {}
     }
 }

@@ -1,4 +1,5 @@
 use std::ffi::{CStr, c_void};
+use std::path::PathBuf;
 use std::sync::{
     Arc,
     mpsc::{self, Receiver, Sender, TryRecvError},
@@ -18,6 +19,8 @@ pub struct MpvBackend {
     error: Option<String>,
     url: Option<String>,
     thumbnails: Option<ThumbnailWorker>,
+    shaders: Vec<String>,
+    preview: bool,
 }
 
 impl MpvBackend {
@@ -28,6 +31,8 @@ impl MpvBackend {
             error: None,
             url: None,
             thumbnails: None,
+            shaders: Vec::new(),
+            preview: false,
         }
     }
 
@@ -43,6 +48,7 @@ impl MpvBackend {
         });
         self.url = Some(url.clone());
         self.pending = Some(receiver);
+        self.preview = preview;
     }
 }
 
@@ -70,6 +76,13 @@ impl VideoBackend for MpvBackend {
     }
 
     fn command(&mut self, command: VideoCommand) {
+        if let VideoCommand::Shaders(shaders) = command {
+            self.shaders = shaders;
+            if let Some(player) = self.player.as_ref().filter(|_| !self.preview) {
+                apply_shaders(player, &self.shaders);
+            }
+            return;
+        }
         let Some(player) = self.player.as_mut() else {
             return;
         };
@@ -82,6 +95,7 @@ impl VideoBackend for MpvBackend {
                     .command(&["seek", &delta.to_string(), "relative"])
             }
             VideoCommand::SeekTo(position) => player.client.seek_to(position),
+            VideoCommand::Shaders(_) => Ok(()),
         };
         if let Err(error) = result {
             eprintln!("[fluxa-desktop] mpv command failed: {error}");
@@ -93,6 +107,9 @@ impl VideoBackend for MpvBackend {
             match receiver.try_recv() {
                 Ok(Ok(player)) => {
                     self.pending = None;
+                    if !self.preview && !self.shaders.is_empty() {
+                        apply_shaders(&player, &self.shaders);
+                    }
                     self.player = Some(player);
                 }
                 Ok(Err(error)) => {
@@ -159,6 +176,46 @@ impl VideoBackend for MpvBackend {
             latest = Some(thumbnail);
         }
         latest
+    }
+}
+
+fn shader_dir() -> Option<PathBuf> {
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("mpv-shaders/anime4k")));
+    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../apps/desktop/src-tauri/assets/mpv-shaders/anime4k");
+    [beside, Some(source)].into_iter().flatten().find(|dir| dir.is_dir())
+}
+
+fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
+    let commands: Vec<Vec<String>> = match shader_dir().filter(|_| !shaders.is_empty()) {
+        Some(dir) => {
+            let chain = shaders
+                .iter()
+                .map(|shader| dir.join(shader).to_string_lossy().into_owned())
+                .collect::<Vec<_>>()
+                .join(if cfg!(windows) { ";" } else { ":" });
+            vec![
+                vec!["change-list".into(), "glsl-shaders".into(), "set".into(), chain],
+                vec!["set".into(), "scale".into(), "ewa_lanczossharp".into()],
+                vec!["set".into(), "cscale".into(), "ewa_lanczos".into()],
+                vec!["set".into(), "dscale".into(), "mitchell".into()],
+                vec!["set".into(), "correct-downscaling".into(), "yes".into()],
+                vec!["set".into(), "linear-downscaling".into(), "yes".into()],
+            ]
+        }
+        None => vec![
+            vec!["change-list".into(), "glsl-shaders".into(), "clr".into(), String::new()],
+            vec!["set".into(), "scale".into(), "bilinear".into()],
+            vec!["set".into(), "cscale".into(), "bilinear".into()],
+        ],
+    };
+    for command in commands {
+        let args = command.iter().map(String::as_str).collect::<Vec<_>>();
+        if let Err(error) = player.client.command_args(&args) {
+            eprintln!("[fluxa-desktop] mpv shader command failed: {error}");
+        }
     }
 }
 

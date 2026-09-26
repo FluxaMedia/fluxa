@@ -3015,7 +3015,10 @@ fn render_frame(state: &mut RendererState) {
     rebuild_current_ui(state);
     timer.mark("rebuild");
     let route = active_route(state);
-    let player_model = state.player.as_ref().map(player::PlayerSession::model);
+    let player_model = state.player.as_ref().map(|player| fluxa_ui::PlayerModel {
+        upscaling: player::upscaling(&state.settings).to_owned(),
+        ..player.model()
+    });
     let library_tab = state.library_tab;
     let focused = state
         .keyboard_focus_visible
