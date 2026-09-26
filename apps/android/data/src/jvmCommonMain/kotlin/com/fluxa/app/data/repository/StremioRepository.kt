@@ -95,7 +95,8 @@ class StremioRepository @Inject constructor(
             fromAddon?.let { return it }
         }
         return if (plan.fallbackToStremioMetaDetail) {
-            authService.getMetaDetail(type, id).use { responseBody ->
+            val response = runCatching { authService.getMetaDetail(type, id) }.getOrNull() ?: return null
+            response.use { responseBody ->
                 val body = responseBody.string()
                 runCatching { stremioMetaJson.decodeFromString<MetaDetailResponse>(body) }.getOrNull()?.meta
             }
