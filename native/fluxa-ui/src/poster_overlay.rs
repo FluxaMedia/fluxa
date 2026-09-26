@@ -1,6 +1,8 @@
 use egui::epaint::{Mesh, TextShape};
 use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, Vec2};
-use std::sync::OnceLock;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::sync::{Arc, OnceLock};
 
 use super::{HomeCard, HomeRowKind, localized};
 
@@ -63,7 +65,7 @@ pub struct PosterOverlays {
     pub rating: Option<Placement>,
     pub status: Option<Placement>,
     pub scale: f32,
-    pub language: String,
+    pub labels: [String; 4],
     pub template: Option<String>,
 }
 
@@ -105,7 +107,16 @@ impl super::SettingsModel {
                 Some("large") => 1.3,
                 _ => 1.0,
             },
-            language: self.str_value("language").unwrap_or("en").to_owned(),
+            labels: {
+                let language = self.str_value("language").unwrap_or("en");
+                [
+                    PosterStatus::Upcoming,
+                    PosterStatus::NewSeason,
+                    PosterStatus::NewEpisode,
+                    PosterStatus::NewRelease,
+                ]
+                .map(|status| localized(status.key(), language))
+            },
             template,
         })
     }
@@ -118,25 +129,46 @@ fn overlays_id() -> Id {
 pub fn set_poster_overlays(context: &egui::Context, overlays: Option<PosterOverlays>) {
     context.data_mut(|data| match overlays {
         Some(overlays) => {
-            data.insert_temp(overlays_id(), overlays);
+            let current = data.get_temp::<Arc<PosterOverlays>>(overlays_id());
+            if current.as_deref() != Some(&overlays) {
+                data.insert_temp(overlays_id(), Arc::new(overlays));
+            }
         }
-        None => data.remove::<PosterOverlays>(overlays_id()),
+        None => data.remove::<Arc<PosterOverlays>>(overlays_id()),
     });
+}
+
+fn current(context: &egui::Context) -> Option<Arc<PosterOverlays>> {
+    context.data(|data| data.get_temp::<Arc<PosterOverlays>>(overlays_id()))
+}
+
+thread_local! {
+    static URLS: RefCell<(String, HashMap<String, Option<String>>)> = RefCell::default();
 }
 
 pub(super) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<String> {
     if card.row_kind == HomeRowKind::Collection {
         return None;
     }
-    let template = context
-        .data(|data| data.get_temp::<PosterOverlays>(overlays_id()))?
-        .template?;
-    fill_template(
-        &template,
-        card.id.as_deref()?,
-        card.item_type.as_deref().unwrap_or_default(),
-        &card.raw,
-    )
+    let overlays = current(context)?;
+    let template = overlays.template.as_deref()?;
+    let id = card.id.as_deref()?;
+    URLS.with_borrow_mut(|(cached, urls)| {
+        if cached != template {
+            *cached = template.to_owned();
+            urls.clear();
+        }
+        urls.entry(id.to_owned())
+            .or_insert_with(|| {
+                fill_template(
+                    template,
+                    id,
+                    card.item_type.as_deref().unwrap_or_default(),
+                    &card.raw,
+                )
+            })
+            .clone()
+    })
 }
 
 fn fill_template(
@@ -328,10 +360,7 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     if card.row_kind == HomeRowKind::Collection {
         return;
     }
-    let Some(overlays) = painter
-        .ctx()
-        .data(|data| data.get_temp::<PosterOverlays>(overlays_id()))
-    else {
+    let Some(overlays) = current(painter.ctx()) else {
         return;
     };
     let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
@@ -351,7 +380,7 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
             &painter,
             rect,
             status,
-            &localized(status.key(), &overlays.language),
+            &overlays.labels[status as usize],
         );
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     }
@@ -361,7 +390,7 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
         badges.push((placement, format!("IMDb {value:.1}")));
     }
     if let (Some(placement), Some(status)) = (overlays.status, facts.status) {
-        badges.push((placement, localized(status.key(), &overlays.language)));
+        badges.push((placement, overlays.labels[status as usize].clone()));
     }
     badges.retain(|(placement, _)| !matches!(placement, Placement::Bar | Placement::Sash));
     badges.sort_by_key(|(placement, _)| *placement != Placement::Banner);
