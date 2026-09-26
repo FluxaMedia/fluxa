@@ -4,6 +4,7 @@ use super::*;
 pub struct PlayerModel {
     pub title: String,
     pub video: Option<TextureId>,
+    pub passthrough: bool,
     pub status: Option<(String, String)>,
     pub error: Option<String>,
     pub position: f64,
@@ -39,6 +40,10 @@ pub fn content_warning_duration(rows: usize) -> f32 {
 }
 
 impl PlayerModel {
+    fn has_video(&self) -> bool {
+        self.video.is_some() || self.passthrough
+    }
+
     fn chapter_at(&self, time: f64) -> Option<&str> {
         self.chapters
             .iter()
@@ -69,6 +74,7 @@ pub fn draw_player(
             painter.rect_filled(rect, 0.0, Color32::BLACK);
             painter.image(texture, rect, full_uv(), Color32::WHITE);
         }
+        None if player.passthrough => {}
         None => draw_loading(context, &painter, rect, player, assets),
     }
     if player.show_pause_info {
@@ -86,13 +92,13 @@ pub fn draw_player(
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
-            if player.video.is_none() || !player.controls_visible {
+            if !player.has_video() || !player.controls_visible {
                 let close = control(ui, &painter, close_rect, "close", false);
                 layout.focusable.push((NODE_PLAYER_CLOSE, close.rect));
                 if close.clicked() {
                     layout.activated = Some(NODE_PLAYER_CLOSE);
                 }
-                if player.video.is_some() {
+                if player.has_video() {
                     let surface = ui.interact(rect, Id::new("fluxa-player-surface"), Sense::click());
                     if surface.clicked() {
                         layout.activated = Some(NODE_PLAYER_TOGGLE);

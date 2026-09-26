@@ -6,7 +6,7 @@ use fluxa_ui::{PlayerModel, SettingsModel};
 use serde_json::{Value, json};
 use web_time::Instant;
 
-use crate::{RendererState, UiTree, core_value, host_log, profile_language};
+use crate::{NativeAction, RendererState, UiTree, core_value, host_log, profile_language};
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const SEEK_STEP: f64 = 10.0;
@@ -62,6 +62,9 @@ pub trait VideoBackend: Send {
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
         None
     }
+    fn passthrough(&self) -> bool {
+        false
+    }
 }
 
 pub(crate) struct PlayerSession {
@@ -90,6 +93,8 @@ pub(crate) struct PlayerSession {
     recommendations: Vec<Value>,
     recommendation_index: usize,
     load_progress: f32,
+    passthrough: bool,
+    dispatched: Option<Value>,
 }
 
 impl PlayerSession {
@@ -118,6 +123,8 @@ impl PlayerSession {
             outro_reached: false,
             recommendations_rx: None,
             recommendations: Vec::new(),
+            passthrough: false,
+            dispatched: None,
             recommendation_index: 0,
             load_progress: 0.0,
         }
@@ -162,6 +169,7 @@ impl PlayerSession {
         PlayerModel {
             title: self.title(),
             video: self.texture.filter(|_| self.status.has_frame),
+            passthrough: self.passthrough && self.status.has_frame,
             status,
             error: self.error.clone().or_else(|| self.status.error.clone()),
             position: self.status.position,
@@ -221,42 +229,47 @@ pub(crate) fn pump(state: &mut RendererState) {
         video,
         gpu,
         settings,
+        core_snapshot,
+        pending_native_actions,
         ..
     } = state;
-    let (Some(player), Some(session)) = (player.as_mut(), session.as_ref()) else {
+    let Some(player) = player.as_mut() else {
         return;
     };
-    let snapshot = session.snapshot();
-    if !player.started && !session.has_queued_dispatches() {
+    let session = session.as_ref();
+    let snapshot = match (session, core_snapshot.as_ref()) {
+        (Some(session), _) => session.snapshot(),
+        (None, Some(snapshot)) => snapshot.clone(),
+        (None, None) => return,
+    };
+    player.passthrough = video.as_ref().is_some_and(|video| video.passthrough());
+    if !player.started && !session.is_some_and(|session| session.has_queued_dispatches()) {
         if let Some(command) = resolution_command(&snapshot, player) {
-            match session.dispatch(command) {
-                Ok(()) => {
-                    if command_starts_playback(&snapshot) {
-                        player.started = true;
-                    }
+            let starts = command_starts_playback(&snapshot);
+            match session {
+                Some(session) => match session.dispatch(command) {
+                    Ok(()) => player.started = starts,
+                    Err(error) => player.error = Some(error),
+                },
+                None if player.dispatched.as_ref() != Some(&command) => {
+                    player.dispatched = Some(command.clone());
+                    pending_native_actions.push(NativeAction::CoreCommand { command });
+                    player.started = starts;
                 }
-                Err(error) => player.error = Some(error),
+                None => {}
             }
         }
     }
+    let Some(session) = session else {
+        load_resolved(player, video, gpu, settings, &snapshot);
+        if let Some(video) = video.as_mut() {
+            player.status = video.status();
+        }
+        player.episode_title = episode_title(&player.meta, &snapshot);
+        return;
+    };
     poll_torrent(player, session, &snapshot);
-    if player.loaded_url.is_none()
-        && let Some(url) = snapshot
-            .pointer("/player/resolvedUrl")
-            .and_then(Value::as_str)
-            .filter(|url| !url.is_empty())
-    {
-        match (video.as_mut(), gpu.as_ref()) {
-            (Some(video), Some(gpu)) => {
-                host_log(format!("loading player url: {url}"));
-                video.load(&gpu.instance, &gpu.device, url);
-                video.command(VideoCommand::Shaders(shader_chain(settings)));
-                player.loaded_url = Some(url.to_owned());
-            }
-            (None, _) => player.error = Some("No video backend on this platform".to_owned()),
-            _ => {}
-        }
-    }
+    load_resolved(player, video, gpu, settings, &snapshot);
     if let Some(video) = video.as_mut() {
         player.status = video.status();
         if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
@@ -313,6 +326,32 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     tick_warnings(player);
     tick_recommendations(player, session, settings, &snapshot);
+}
+
+fn load_resolved(
+    player: &mut PlayerSession,
+    video: &mut Option<Box<dyn VideoBackend>>,
+    gpu: &Option<crate::Gpu>,
+    settings: &SettingsModel,
+    snapshot: &Value,
+) {
+    if player.loaded_url.is_none()
+        && let Some(url) = snapshot
+            .pointer("/player/resolvedUrl")
+            .and_then(Value::as_str)
+            .filter(|url| !url.is_empty())
+    {
+        match (video.as_mut(), gpu.as_ref()) {
+            (Some(video), Some(gpu)) => {
+                host_log(format!("loading player url: {url}"));
+                video.load(&gpu.instance, &gpu.device, url);
+                video.command(VideoCommand::Shaders(shader_chain(settings)));
+                player.loaded_url = Some(url.to_owned());
+            }
+            (None, _) => player.error = Some("No video backend on this platform".to_owned()),
+            _ => {}
+        }
+    }
 }
 
 fn tick_recommendations(

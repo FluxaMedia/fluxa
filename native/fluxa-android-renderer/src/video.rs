@@ -1,0 +1,69 @@
+use std::sync::{Arc, Mutex};
+
+use fluxa_host::{VideoBackend, VideoCommand, VideoStatus};
+use serde_json::{Value, json};
+
+#[derive(Default)]
+pub(crate) struct Bridge {
+    requests: Vec<Value>,
+    status: VideoStatus,
+}
+
+impl Bridge {
+    pub(crate) fn take_requests(&mut self) -> Vec<Value> {
+        std::mem::take(&mut self.requests)
+    }
+
+    pub(crate) fn set_status(&mut self, status: VideoStatus) {
+        self.status = status;
+    }
+}
+
+pub(crate) struct AndroidVideo(pub(crate) Arc<Mutex<Bridge>>);
+
+impl AndroidVideo {
+    fn send(&self, request: Value) {
+        if let Ok(mut bridge) = self.0.lock() {
+            bridge.requests.push(request);
+        }
+    }
+}
+
+impl VideoBackend for AndroidVideo {
+    fn load(&mut self, _instance: &wgpu::Instance, _device: &wgpu::Device, url: &str) {
+        if let Ok(mut bridge) = self.0.lock() {
+            bridge.status = VideoStatus::default();
+        }
+        self.send(json!({"type": "load", "url": url}));
+    }
+
+    fn stop(&mut self) {
+        if let Ok(mut bridge) = self.0.lock() {
+            bridge.status = VideoStatus::default();
+        }
+        self.send(json!({"type": "stop"}));
+    }
+
+    fn command(&mut self, command: VideoCommand) {
+        let request = match command {
+            VideoCommand::TogglePause => json!({"type": "togglePause"}),
+            VideoCommand::Seek(delta) => json!({"type": "seek", "seconds": delta}),
+            VideoCommand::SeekTo(position) => json!({"type": "seekTo", "seconds": position}),
+            VideoCommand::ToggleMute => json!({"type": "toggleMute"}),
+            VideoCommand::Shaders(_) => return,
+        };
+        self.send(request);
+    }
+
+    fn render(&mut self, _device: &wgpu::Device) -> Option<wgpu::TextureView> {
+        None
+    }
+
+    fn status(&mut self) -> VideoStatus {
+        self.0.lock().map(|bridge| bridge.status.clone()).unwrap_or_default()
+    }
+
+    fn passthrough(&self) -> bool {
+        true
+    }
+}

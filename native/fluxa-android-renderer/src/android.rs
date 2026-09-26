@@ -2,14 +2,15 @@ use std::{
     ffi::{CString, c_char, c_void},
     path::PathBuf,
     ptr::NonNull,
+    sync::{Arc, Mutex, OnceLock},
 };
 
-use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
+use fluxa_host::{FluxaHost, VideoStatus, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
     JNIEnv,
     objects::{JClass, JObject, JString},
-    sys::{jfloat, jint, jlong},
+    sys::{jboolean, jdouble, jfloat, jint, jlong},
 };
 use raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawWindowHandle};
 
@@ -42,6 +43,11 @@ impl Drop for NativeWindowRef {
     fn drop(&mut self) {
         unsafe { ANativeWindow_release(self.0.as_ptr()) };
     }
+}
+
+fn video_bridge() -> &'static Arc<Mutex<crate::video::Bridge>> {
+    static BRIDGE: OnceLock<Arc<Mutex<crate::video::Bridge>>> = OnceLock::new();
+    BRIDGE.get_or_init(Default::default)
 }
 
 fn host(handle: jlong) -> Option<&'static FluxaHost> {
@@ -99,7 +105,50 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
 ) -> jlong {
     fluxa_host::set_logger(android_log);
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
-    Box::into_raw(Box::new(FluxaHost::new(density, artwork_cache_dir))) as jlong
+    let host = FluxaHost::new(density, artwork_cache_dir);
+    host.set_video_backend(Box::new(crate::video::AndroidVideo(video_bridge().clone())));
+    Box::into_raw(Box::new(host)) as jlong
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pollVideoNative(
+    env: JNIEnv<'_>,
+    _class: JClass<'_>,
+) -> jni::sys::jstring {
+    let requests = video_bridge()
+        .lock()
+        .map(|mut bridge| bridge.take_requests())
+        .unwrap_or_default();
+    java_string(&env, Some(serde_json::Value::from(requests).to_string()))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoStatusNative(
+    mut env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    position: jdouble,
+    duration: jdouble,
+    paused: jboolean,
+    muted: jboolean,
+    has_frame: jboolean,
+    buffering: jfloat,
+    error: JString<'_>,
+) {
+    let error = (!error.is_null()).then(|| string(&mut env, &error)).flatten();
+    let status = VideoStatus {
+        position,
+        duration,
+        paused: paused != 0,
+        muted: muted != 0,
+        volume: if muted != 0 { 0.0 } else { 100.0 },
+        has_frame: has_frame != 0,
+        error,
+        chapters: Vec::new(),
+        buffering: (buffering >= 0.0).then_some(buffering),
+    };
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_status(status);
+    }
 }
 
 #[unsafe(no_mangle)]

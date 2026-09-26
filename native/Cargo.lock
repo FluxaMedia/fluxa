@@ -1764,6 +1764,7 @@ dependencies = [
  "fluxa_core",
  "jni 0.21.1",
  "raw-window-handle",
+ "serde_json",
  "wgpu",
 ]
 

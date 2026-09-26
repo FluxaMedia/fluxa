@@ -14,4 +14,5 @@ fluxa-host = { path = "../fluxa-host" }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 jni = "0.21"
 raw-window-handle = "0.6"
+serde_json = "1"
 wgpu = { version = "29.0.3", default-features = false, features = ["gles", "vulkan", "wgsl"] }

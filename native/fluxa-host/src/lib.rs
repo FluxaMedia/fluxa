@@ -583,6 +583,17 @@ impl ArtworkLoader {
     }
 }
 
+fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::CompositeAlphaMode {
+    if cfg!(target_os = "android")
+        && let Some(mode) = [wgpu::CompositeAlphaMode::PreMultiplied, wgpu::CompositeAlphaMode::Inherit]
+            .into_iter()
+            .find(|mode| modes.contains(mode))
+    {
+        return mode;
+    }
+    modes.first().copied().unwrap_or(wgpu::CompositeAlphaMode::Auto)
+}
+
 struct Gpu {
     instance: wgpu::Instance,
     _surface: NativeSurface,
@@ -879,11 +890,7 @@ impl Gpu {
             } else {
                 wgpu::PresentMode::Fifo
             },
-            alpha_mode: capabilities
-                .alpha_modes
-                .first()
-                .copied()
-                .unwrap_or(wgpu::CompositeAlphaMode::Auto),
+            alpha_mode: surface_alpha_mode(&capabilities.alpha_modes),
             view_formats: vec![],
             desired_maximum_frame_latency: 2,
         };
@@ -1026,6 +1033,7 @@ impl Gpu {
         pre_present: Option<&PrePresent>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
+        let passthrough = player.is_some_and(|player| player.passthrough && player.recommendations.is_empty());
         self.artwork.poll(&self.egui_context);
         self.artwork.begin_frame();
         timer.mark("artwork");
@@ -1143,7 +1151,11 @@ impl Gpu {
                     depth_slice: None,
                     resolve_target: None,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(self.clear_color),
+                        load: wgpu::LoadOp::Clear(if passthrough {
+                            wgpu::Color::TRANSPARENT
+                        } else {
+                            self.clear_color
+                        }),
                         store: wgpu::StoreOp::Store,
                     },
                 })],
@@ -3544,6 +3556,7 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
 
 fn route_actions_to_session(state: &mut RendererState) {
     let Some(session) = state.session.as_ref() else {
+        start_playback_without_session(state);
         return;
     };
     if state.pending_native_actions.is_empty() {
@@ -3584,6 +3597,23 @@ fn route_actions_to_session(state: &mut RendererState) {
     if open_profiles {
         state.ui = UiTree::default();
         profiles::open(state);
+    }
+}
+
+fn start_playback_without_session(state: &mut RendererState) {
+    let profile = state
+        .core_snapshot
+        .as_ref()
+        .and_then(|snapshot| snapshot.pointer("/profile/active").cloned())
+        .unwrap_or(Value::Null);
+    for index in 0..state.pending_native_actions.len() {
+        let NativeAction::StartPlayback { item } = &state.pending_native_actions[index] else {
+            continue;
+        };
+        let command = player::direct_playback_command(item, &profile);
+        state.player = Some(player::PlayerSession::new(item.clone()));
+        state.ui = UiTree::default();
+        state.pending_native_actions[index] = NativeAction::CoreCommand { command };
     }
 }
 

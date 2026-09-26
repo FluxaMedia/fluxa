@@ -85,6 +85,7 @@ import com.google.gson.JsonObject
 import com.google.gson.Gson
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.ui.rust.FluxaNativeRendererView
+import com.fluxa.app.ui.rust.NativeVideoHost
 
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -383,6 +384,22 @@ class MainActivity : FragmentActivity() {
                             }.toString()
                         )
                     }
+                    val createMainPlayer = {
+                        MediaPlayerController.createExoPlayer(
+                            context,
+                            activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
+                            activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: "",
+                            (playerBufferTargets.cacheSizeBytes / 1_000_000L).toInt(),
+                            (playerBufferTargets.forwardBufferMs / 1_000L).toInt(),
+                            (playerBufferTargets.backBufferMs / 1_000L).toInt(),
+                            activeProfile?.safeTunneledPlayback == true,
+                            activeProfile?.safePlayerMinBufferSeconds ?: 8,
+                            activeProfile?.safePlayerPlaybackBufferMs ?: 1500,
+                            activeProfile?.safePlayerRebufferBufferMs ?: 2500,
+                            true,
+                            activeProfile?.safeAudioProcessingMode ?: "reference"
+                        )
+                    }
                     val mainPlayer = remember(
                         playerRequest != null,
                         activeProfile?.id,
@@ -400,20 +417,7 @@ class MainActivity : FragmentActivity() {
                         if (playerRequest == null) {
                             null
                         } else {
-                            MediaPlayerController.createExoPlayer(
-                                context,
-                                activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
-                                activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: "",
-                                (playerBufferTargets.cacheSizeBytes / 1_000_000L).toInt(),
-                                (playerBufferTargets.forwardBufferMs / 1_000L).toInt(),
-                                (playerBufferTargets.backBufferMs / 1_000L).toInt(),
-                                activeProfile?.safeTunneledPlayback == true,
-                                activeProfile?.safePlayerMinBufferSeconds ?: 8,
-                                activeProfile?.safePlayerPlaybackBufferMs ?: 1500,
-                                activeProfile?.safePlayerRebufferBufferMs ?: 2500,
-                                true,
-                                activeProfile?.safeAudioProcessingMode ?: "reference"
-                            )
+                            createMainPlayer()
                         }
                     }
                     DisposableEffect(mainPlayer) {
@@ -773,7 +777,9 @@ class MainActivity : FragmentActivity() {
                         ) {
                             AndroidView(
                                 factory = { viewContext ->
-                                    FluxaNativeRendererView(viewContext).also { view ->
+                                    NativeVideoHost(viewContext).also { host ->
+                                        host.createPlayer = createMainPlayer
+                                        val view = host.renderer
                                         nativeRendererView.value = view
                                         view.onNativeAction = handleNativeHomeAction
                                         view.onCoreCommand = dispatchNativeCoreCommand
@@ -792,7 +798,9 @@ class MainActivity : FragmentActivity() {
                                         }
                                     }
                                 },
-                                update = { view ->
+                                update = { host ->
+                                    host.createPlayer = createMainPlayer
+                                    val view = host.renderer
                                     nativeRendererView.value = view
                                     view.onNativeAction = handleNativeHomeAction
                                     view.onCoreCommand = dispatchNativeCoreCommand

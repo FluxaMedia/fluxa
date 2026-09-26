@@ -54,6 +54,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var accessibilityCardTitles = emptyList<String>()
     var onNativeAction: ((String) -> Unit)? = null
     var onCoreCommand: ((String) -> Unit)? = null
+    var onVideoRequest: ((String) -> Unit)? = null
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
     private val artworkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -74,6 +75,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             if (actions.isNotBlank() && actions != "[]") {
                 post { onNativeAction?.invoke(actions) }
             }
+            val videoRequests = NativeRenderer.pollVideoNative()
+            if (videoRequests != "[]") {
+                post { onVideoRequest?.invoke(videoRequests) }
+            }
             // Keep a 60 Hz cadence measured from frame start. Waiting a full
             // 16 ms after rendering compounded render cost (about 8 ms on a
             // mid-range phone) into ~24 ms frame intervals / ~42 FPS.
@@ -84,6 +89,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     init {
         holder.addCallback(this)
+        holder.setFormat(android.graphics.PixelFormat.TRANSLUCENT)
+        setZOrderMediaOverlay(true)
         ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
             safeBottomInsetPx = insets
                 .getInsets(WindowInsetsCompat.Type.navigationBars())
@@ -122,6 +129,18 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     fun setCoreSnapshotJson(json: String) {
         pendingCoreSnapshotJson = json
         publishCoreSnapshot()
+    }
+
+    fun reportVideoStatus(
+        position: Double,
+        duration: Double,
+        paused: Boolean,
+        muted: Boolean,
+        hasFrame: Boolean,
+        buffering: Float,
+        error: String?,
+    ) {
+        NativeRenderer.videoStatusNative(position, duration, paused, muted, hasFrame, buffering, error)
     }
 
     fun coreSnapshotJson(): String =
@@ -540,6 +559,16 @@ private object NativeRenderer {
     @JvmStatic external fun surfaceDestroyedNative(handle: Long)
     @JvmStatic external fun renderNative(handle: Long)
     @JvmStatic external fun pollActionsNative(handle: Long): String
+    @JvmStatic external fun pollVideoNative(): String
+    @JvmStatic external fun videoStatusNative(
+        position: Double,
+        duration: Double,
+        paused: Boolean,
+        muted: Boolean,
+        hasFrame: Boolean,
+        buffering: Float,
+        error: String?,
+    )
     @JvmStatic external fun focusNodeNative(handle: Long, node: Long)
     @JvmStatic external fun activateNodeNative(handle: Long, node: Long)
     @JvmStatic external fun pointerEventNative(handle: Long, action: Int, x: Float, y: Float)
