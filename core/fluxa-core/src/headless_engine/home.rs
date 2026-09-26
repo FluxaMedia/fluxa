@@ -271,7 +271,7 @@ pub(super) fn dispatch_catalog_page(
     remote_source: Option<Value>,
     profile: Option<Value>,
 ) -> Vec<EffectEnvelope> {
-    let generation = engine.bump_generation(GenerationKey::Home);
+    let generation = engine.bump_generation(GenerationKey::HomePaging);
     engine.state.home.paging = HomePaging {
         category_id: category_id.clone(),
         is_loading: true,
@@ -350,6 +350,7 @@ pub(super) fn complete(
                     .and_then(Value::as_array)
                     .cloned()
                     .unwrap_or_default();
+                let previous_len = current.len();
                 let mut appended = current;
                 for item in page {
                     let id = item.get("id").and_then(Value::as_str);
@@ -362,9 +363,10 @@ pub(super) fn complete(
                         appended.push(item.clone());
                     }
                 }
+                let grew = appended.len() > previous_len;
                 if let Some(object) = category.as_object_mut() {
                     object.insert("items".to_owned(), Value::Array(appended));
-                    object.insert("canLoadMore".to_owned(), Value::from(!page.is_empty()));
+                    object.insert("canLoadMore".to_owned(), Value::from(grew));
                 }
             }
             if engine.state.home.paging.category_id == category_id {
