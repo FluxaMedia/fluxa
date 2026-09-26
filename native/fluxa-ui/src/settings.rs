@@ -1995,34 +1995,11 @@ pub fn draw_settings(
                 .show(context, |ui| {
                     ui.set_min_size(value_rect.size());
                     ui.set_max_size(value_rect.size());
-                    style_settings_dropdown(ui, metrics);
-                    ui.spacing_mut().button_padding = Vec2::new(12.0, 7.0);
-                    let chevron = assets.icon("ChevronDown");
-                    let response = components::dropdown_frame()
-                        .show(ui, |ui| {
-                            egui::ComboBox::from_id_salt(("settings-choice", node))
-                                .width(value_width)
-                                .height(240.0)
-                                .popup_style(components::dropdown_popup_style(metrics))
-                                .selected_text(
-                                    RichText::new(selected_text)
-                                        .color(Color32::from_rgb(242, 243, 246))
-                                        .size(value_size)
-                                        .strong(),
-                                )
-                                .icon(move |ui, rect, visuals, _| {
-                                    if let Some(icon) = chevron {
-                                        ui.painter().image(
-                                            icon,
-                                            rect.shrink(2.0),
-                                            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                            visuals.fg_stroke.color,
-                                        );
-                                    }
-                                })
-                                .show_ui(ui, |ui| {
-                                    for option in setting.options {
-                                        let label = if setting.key == "accentColorArgb" {
+                    let choices = setting
+                        .options
+                        .iter()
+                        .map(|option| {
+                            let label = if setting.key == "accentColorArgb" {
                                             let key = match *option {
                                                 "#FFFFFF" => "auto.white",
                                                 "#E50914" => "auto.red",
@@ -2048,16 +2025,21 @@ pub fn draw_settings(
                                         } else {
                                             localized_or(&format!("settings.option.{option}"), option, language)
                                         };
-                                        ui.selectable_value(
-                                            &mut selected,
-                                            (*option).to_owned(),
-                                            label,
-                                        );
-                                    }
-                                })
+                            ((*option).to_owned(), label)
                         })
-                        .inner;
-                    layout.focusable.push((node, response.response.rect));
+                        .collect::<Vec<_>>();
+                    let response = components::choice_field(
+                        ui,
+                        Id::new(("settings-choice", node)),
+                        value_rect.size(),
+                        value_size,
+                        &selected_text,
+                        &choices,
+                        &mut selected,
+                        value_rect.width(),
+                        true,
+                    );
+                    layout.focusable.push((node, response.rect));
                 });
             if selected != raw_value {
                 layout.setting_change =
@@ -2139,30 +2121,6 @@ pub(super) fn parse_settings_color(value: &str) -> Option<Color32> {
         ((rgb >> 8) & 0xff) as u8,
         (rgb & 0xff) as u8,
     ))
-}
-
-fn style_settings_dropdown(ui: &mut egui::Ui, metrics: UiMetrics) {
-    let dropdown_surface = Color32::from_rgb(60, 60, 60);
-    let visuals = ui.visuals_mut();
-    visuals.window_fill = dropdown_surface;
-    visuals.widgets.noninteractive.bg_fill = dropdown_surface;
-    visuals.widgets.inactive.bg_fill = dropdown_surface;
-    visuals.widgets.hovered.bg_fill = Color32::from_rgb(43, 45, 53);
-    visuals.widgets.active.bg_fill = Color32::from_rgb(49, 51, 60);
-    visuals.widgets.open.bg_fill = dropdown_surface;
-    visuals.widgets.inactive.bg_stroke = egui::Stroke::new(1.0, Color32::from_white_alpha(28));
-    visuals.widgets.hovered.bg_stroke = egui::Stroke::new(1.0, Color32::from_white_alpha(58));
-    visuals.widgets.active.bg_stroke = egui::Stroke::new(1.0, Color32::from_white_alpha(72));
-    visuals.widgets.open.bg_stroke = egui::Stroke::new(1.0, metrics.accent);
-    visuals.widgets.open.fg_stroke.color = Color32::from_rgb(242, 243, 246);
-    visuals.selection.bg_fill = metrics.accent;
-    visuals.selection.stroke.color = metrics.accent_foreground;
-    visuals.widgets.inactive.corner_radius = egui::CornerRadius::same(9);
-    visuals.widgets.hovered.corner_radius = egui::CornerRadius::same(9);
-    visuals.widgets.active.corner_radius = egui::CornerRadius::same(9);
-    visuals.widgets.open.corner_radius = egui::CornerRadius::same(9);
-    ui.spacing_mut().icon_width = 18.0;
-    ui.spacing_mut().icon_spacing = 8.0;
 }
 
 fn accent_needs_dark_foreground(color: Color32) -> bool {
@@ -2459,45 +2417,29 @@ fn draw_account(
             .show(context, |ui| {
                 ui.set_min_size(value_rect.size());
                 ui.set_max_size(value_rect.size());
-                style_settings_dropdown(ui, metrics);
-                ui.spacing_mut().button_padding = Vec2::new(12.0, 7.0);
-                let chevron = assets.icon("ChevronDown");
-                let response = components::dropdown_frame()
-                    .show(ui, |ui| {
-                        egui::ComboBox::from_id_salt(("settings-account", *key))
-                            .width(value_rect.width())
-                            .height(240.0)
-                            .popup_style(components::dropdown_popup_style(metrics))
-                            .selected_text(
-                                RichText::new(localized_or(&format!("settings.option.{current}"), &current, language))
-                                .color(Color32::from_rgb(242, 243, 246))
-                                .size(metrics.settings_row_value_size_desktop)
-                                .strong(),
-                            )
-                            .icon(move |ui, rect, visuals, _| {
-                                if let Some(icon) = chevron {
-                                    ui.painter().image(
-                                        icon,
-                                        rect.shrink(2.0),
-                                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                        visuals.fg_stroke.color,
-                                    );
-                                }
-                            })
-                            .show_ui(ui, |ui| {
-                                for choice in &choices {
-                                    ui.selectable_value(
-                                        &mut selected,
-                                        (*choice).to_owned(),
-                                        localized_or(&format!("settings.option.{choice}"), choice, language),
-                                    );
-                                }
-                            })
+                let options = choices
+                    .iter()
+                    .map(|choice| {
+                        (
+                            (*choice).to_owned(),
+                            localized_or(&format!("settings.option.{choice}"), choice, language),
+                        )
                     })
-                    .inner;
+                    .collect::<Vec<_>>();
+                let response = components::choice_field(
+                    ui,
+                    Id::new(("settings-account", *key)),
+                    value_rect.size(),
+                    metrics.settings_row_value_size_desktop,
+                    &localized_or(&format!("settings.option.{current}"), &current, language),
+                    &options,
+                    &mut selected,
+                    value_rect.width(),
+                    true,
+                );
                 layout.focusable.push((
                     NODE_SETTINGS_ROW_BASE + 10_000 + index as u64,
-                    response.response.rect,
+                    response.rect,
                 ));
             });
         if selected != current {

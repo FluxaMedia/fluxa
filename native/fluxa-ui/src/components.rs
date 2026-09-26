@@ -5,7 +5,7 @@
 //! control implementation while allowing each host to provide a different
 //! viewport and input adapter.
 
-use egui::{Align2, Color32, FontId, Id, Painter, Rect, Response, RichText, Sense, Ui, Vec2};
+use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2};
 use std::hash::{Hash, Hasher};
 
 use super::{
@@ -526,53 +526,6 @@ pub(super) fn continue_card(
     );
 }
 
-/// Gives egui combo-box popups the same dark, rounded surface as their trigger.
-/// `ComboBox` otherwise creates its popup using the context's global style,
-/// which made settings menus look like unrelated native widgets.
-pub(super) fn dropdown_popup_style(metrics: UiMetrics) -> egui::style::StyleModifier {
-    egui::style::StyleModifier::new(move |style| {
-        let visuals = &mut style.visuals;
-        // Keep the popup visually attached to the trigger instead of falling
-        // back to egui's platform-default (blue) selection and gray menu.
-        let dropdown_surface = Color32::from_rgb(60, 60, 60);
-        visuals.window_fill = dropdown_surface;
-        visuals.window_stroke = egui::Stroke::new(1.0, Color32::from_white_alpha(34));
-        visuals.window_corner_radius = egui::CornerRadius::same(10);
-        visuals.widgets.noninteractive.bg_fill = dropdown_surface;
-        visuals.widgets.noninteractive.fg_stroke.color = Color32::from_rgb(232, 233, 236);
-        visuals.widgets.inactive.bg_fill = Color32::TRANSPARENT;
-        visuals.widgets.inactive.bg_stroke = egui::Stroke::NONE;
-        visuals.widgets.hovered.bg_fill = Color32::from_white_alpha(16);
-        visuals.widgets.hovered.bg_stroke = egui::Stroke::NONE;
-        visuals.widgets.active.bg_fill = metrics.accent;
-        visuals.widgets.active.fg_stroke.color = metrics.accent_foreground;
-        visuals.widgets.open.bg_fill = Color32::from_white_alpha(12);
-        visuals.widgets.open.bg_stroke = egui::Stroke::new(1.0, metrics.accent);
-        visuals.widgets.open.fg_stroke.color = Color32::from_rgb(245, 245, 247);
-        visuals.selection.bg_fill = metrics.accent;
-        visuals.selection.stroke.color = metrics.accent_foreground;
-        for widget in [
-            &mut visuals.widgets.inactive,
-            &mut visuals.widgets.hovered,
-            &mut visuals.widgets.active,
-            &mut visuals.widgets.open,
-        ] {
-            widget.corner_radius = egui::CornerRadius::same(7);
-        }
-        style.spacing.item_spacing.y = 3.0;
-        style.spacing.button_padding = egui::vec2(10.0, 7.0);
-    })
-}
-
-pub(super) fn dropdown_frame() -> egui::Frame {
-    egui::Frame::new()
-        .fill(Color32::from_rgb(60, 60, 60))
-        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(34)))
-        .corner_radius(9.0)
-        .inner_margin(0.0)
-        .shadow(egui::epaint::Shadow::NONE)
-}
-
 pub(super) fn dropdown_width_for_label(
     ui: &Ui,
     label: &str,
@@ -662,97 +615,147 @@ fn dropdown_inner(
     metrics: UiMetrics,
 ) -> (Response, Option<String>) {
     let height = metrics.screen_control_height.max(38.0);
-    let popup_id = Id::new(("fluxa-shared-dropdown-popup", id));
-    let sense = if enabled {
-        Sense::click()
-    } else {
-        Sense::hover()
-    };
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width.max(1.0), height), sense);
-    let is_open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
+    let mut value = selected.to_owned();
+    let response = choice_field(
+        ui,
+        Id::new(("fluxa-shared-dropdown", id)),
+        Vec2::new(width.max(1.0), height),
+        metrics.nav_label_size + 1.0,
+        selected_label,
+        options,
+        &mut value,
+        popup_width,
+        enabled,
+    );
+    let changed = value != selected;
+    (response, changed.then_some(value))
+}
+
+fn paint_chevron(painter: &Painter, center: Pos2, open: f32, color: Color32) {
+    let flip = 1.0 - 2.0 * open;
+    let stroke = egui::Stroke::new(1.6, color);
+    let tip = center + Vec2::new(0.0, 2.5 * flip);
+    painter.line_segment([center + Vec2::new(-4.5, -2.0 * flip), tip], stroke);
+    painter.line_segment([tip, center + Vec2::new(4.5, -2.0 * flip)], stroke);
+}
+
+pub(super) fn choice_field(
+    ui: &mut Ui,
+    id: Id,
+    size: Vec2,
+    text_size: f32,
+    current: &str,
+    choices: &[(String, String)],
+    selected: &mut String,
+    popup_width: f32,
+    enabled: bool,
+) -> Response {
+    let sense = if enabled { Sense::click() } else { Sense::hover() };
+    let (rect, response) = ui.allocate_exact_size(size, sense);
+    let popup_id = id.with("popup");
+    let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
+    let turn = ui.ctx().animate_bool_with_time(id.with("chevron"), open, 0.14);
+    let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
-        Color32::from_rgb(40, 40, 40)
-    } else if is_open || response.hovered() {
-        Color32::from_rgb(68, 68, 68)
+        Color32::from_white_alpha(5)
+    } else if open {
+        Color32::from_white_alpha(22)
+    } else if response.hovered() {
+        Color32::from_white_alpha(16)
     } else {
-        Color32::from_rgb(60, 60, 60)
+        Color32::from_white_alpha(10)
     };
-    ui.painter()
-        .rect_filled(rect, metrics.screen_control_radius, fill);
-    ui.painter().rect_stroke(
+    let painter = ui.painter();
+    painter.rect(
         rect,
-        metrics.screen_control_radius,
-        egui::Stroke::new(
-            1.0,
-            if is_open {
-                metrics.accent
-            } else {
-                Color32::from_white_alpha(if enabled { 28 } else { 15 })
-            },
-        ),
+        radius,
+        fill,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(if open { 70 } else { 26 })),
         egui::StrokeKind::Inside,
     );
+    let font = FontId::proportional(text_size);
     let text_color = if enabled {
-        Color32::from_rgb(244, 244, 246)
+        Color32::from_rgb(242, 243, 246)
     } else {
-        Color32::from_white_alpha(112)
+        Color32::from_white_alpha(110)
     };
-    let font = FontId::proportional(metrics.nav_label_size + 1.0);
-    ui.painter().text(
-        rect.left_center() + Vec2::new(metrics.control_gap, 0.0),
+    painter.text(
+        rect.left_center() + Vec2::new(14.0, 0.0),
         Align2::LEFT_CENTER,
-        truncate_to_width(
-            ui.painter(),
-            selected_label,
-            &font,
-            (rect.width() - metrics.control_gap * 3.0).max(1.0),
-        ),
-        font,
+        truncate_to_width(painter, current, &font, (rect.width() - 44.0).max(1.0)),
+        font.clone(),
         text_color,
     );
-    let chevron_center = rect.right_center() - Vec2::new(metrics.control_gap + 2.0, 0.0);
-    let chevron_color = if enabled {
-        Color32::from_white_alpha(190)
-    } else {
-        Color32::from_white_alpha(82)
-    };
-    ui.painter().line_segment(
-        [
-            chevron_center + Vec2::new(-4.0, -1.5),
-            chevron_center + Vec2::new(0.0, 2.5),
-        ],
-        egui::Stroke::new(1.6, chevron_color),
+    paint_chevron(
+        painter,
+        rect.right_center() - Vec2::new(18.0, 0.0),
+        turn,
+        Color32::from_white_alpha(if enabled { 190 } else { 80 }),
     );
-    ui.painter().line_segment(
-        [
-            chevron_center + Vec2::new(0.0, 2.5),
-            chevron_center + Vec2::new(4.0, -1.5),
-        ],
-        egui::Stroke::new(1.6, chevron_color),
-    );
-
-    let mut value = selected.to_owned();
-    let before = value.clone();
-    if enabled {
-        egui::Popup::menu(&response)
-            .id(popup_id)
-            .width(popup_width)
-            .style(dropdown_popup_style(metrics))
-            .frame(dropdown_frame())
-            .show(|ui| {
-                ui.set_min_width(popup_width - 2.0);
-                ui.spacing_mut().item_spacing.y = 3.0;
-                egui::ScrollArea::vertical()
-                    .max_height(280.0)
-                    .show(ui, |ui| {
-                        for (option, label) in options {
-                            let item = ui.selectable_label(option == selected, label);
-                            if item.clicked() {
-                                value.clone_from(option);
-                            }
-                        }
-                    });
-            });
+    if !enabled {
+        return response;
     }
-    (response, (value != before).then_some(value))
+    let row_height = (text_size + 18.0).max(34.0);
+    egui::Popup::from_toggle_button_response(&response)
+        .id(popup_id)
+        .gap(6.0)
+        .width(popup_width.max(rect.width()))
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .frame(
+            egui::Frame::new()
+                .fill(Color32::from_rgb(20, 22, 27))
+                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
+                .corner_radius(12.0)
+                .inner_margin(egui::Margin::same(5))
+                .shadow(egui::epaint::Shadow {
+                    offset: [0, 10],
+                    blur: 28,
+                    spread: 0,
+                    color: Color32::from_black_alpha(150),
+                }),
+        )
+        .show(|ui| {
+            egui::ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
+                ui.spacing_mut().item_spacing.y = 2.0;
+                for (value, label) in choices {
+                    let (row, row_response) = ui.allocate_exact_size(
+                        Vec2::new(ui.available_width(), row_height),
+                        Sense::click(),
+                    );
+                    let active = value == selected;
+                    if row_response.hovered() || active {
+                        ui.painter().rect_filled(
+                            row,
+                            8.0,
+                            Color32::from_white_alpha(if row_response.hovered() { 18 } else { 9 }),
+                        );
+                    }
+                    ui.painter().text(
+                        row.left_center() + Vec2::new(12.0, 0.0),
+                        Align2::LEFT_CENTER,
+                        truncate_to_width(ui.painter(), label, &font, (row.width() - 48.0).max(1.0)),
+                        font.clone(),
+                        if active {
+                            Color32::WHITE
+                        } else {
+                            Color32::from_white_alpha(195)
+                        },
+                    );
+                    if active {
+                        let c = row.right_center() - Vec2::new(18.0, 0.0);
+                        let stroke = egui::Stroke::new(1.8, Color32::WHITE);
+                        ui.painter()
+                            .line_segment([c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)], stroke);
+                        ui.painter()
+                            .line_segment([c + Vec2::new(-1.5, 3.5), c + Vec2::new(5.0, -3.5)], stroke);
+                    }
+                    if row_response.clicked() {
+                        selected.clone_from(value);
+                        egui::Popup::close_id(ui.ctx(), popup_id);
+                    }
+                }
+            });
+        });
+    response
 }
+
