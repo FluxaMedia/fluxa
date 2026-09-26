@@ -170,8 +170,8 @@ impl ApplicationHandler for App {
         let (Some(host), Some(window)) = (self.host.as_ref(), self.window.as_ref()) else {
             return;
         };
-        let now = Instant::now();
         let mut wake = host.next_redraw();
+        let now = Instant::now();
         if wake.is_some_and(|at| at <= now) {
             window.request_redraw();
             wake = None;
