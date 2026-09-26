@@ -361,10 +361,14 @@ impl FluxaRuntime {
                 }
             );
         }
-        let snapshot = FluxaCore::headless_engine_snapshot_json(self.handle)
-            .ok_or_else(|| "failed to read Fluxa core snapshot".to_owned())?;
-        let snapshot = serde_json::from_str(&snapshot).map_err(|error| error.to_string())?;
-        self.snapshot = Arc::new(snapshot);
+        if let Some(patch) = result.get("state").and_then(Value::as_object)
+            && !patch.is_empty()
+            && let Some(snapshot) = Arc::make_mut(&mut self.snapshot).as_object_mut()
+        {
+            for (key, value) in patch {
+                snapshot.insert(key.clone(), value.clone());
+            }
+        }
         self.revision = self.revision.wrapping_add(1);
         let effects = result
             .get("effects")
