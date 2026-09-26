@@ -310,8 +310,8 @@ pub fn draw_detail(
                 ui.label(RichText::new(error).color(Color32::from_white_alpha(150)));
             }
             ui.add_space(24.0);
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = 12.0;
+            ui.horizontal_wrapped(|ui| {
+                ui.spacing_mut().item_spacing = Vec2::new(12.0, 12.0);
                 let play_label = match play_target {
                     Some((_, episode)) if detail.is_series() => format!(
                         "{}  {}",
@@ -328,7 +328,12 @@ pub fn draw_detail(
                     .layout_no_wrap(play_label.clone(), font.clone(), Color32::BLACK)
                     .size()
                     .x;
-                let (rect, play) = ui.allocate_exact_size(Vec2::new(text_width + 70.0, 48.0), Sense::click());
+                let play_width = if compact {
+                    content_width
+                } else {
+                    text_width + 70.0
+                };
+                let (rect, play) = ui.allocate_exact_size(Vec2::new(play_width, 48.0), Sense::click());
                 ui.painter().rect_filled(
                     rect,
                     24.0,

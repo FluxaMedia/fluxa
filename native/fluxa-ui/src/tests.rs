@@ -762,10 +762,7 @@ fn detail_actions_wrap_inside_a_narrow_mobile_layout() {
         .find(|(id, _)| *id == NODE_DETAIL_BACK)
         .unwrap()
         .1;
-    assert!(
-        back.top() >= play.top(),
-        "wrapped detail action row must not overlap"
-    );
+    assert!(!back.intersects(play), "back button must not overlap the play action");
 }
 
 #[test]
