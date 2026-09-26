@@ -124,6 +124,7 @@ struct RendererState {
     pack_job: Option<profiles::PackJob>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
+    hero_plan_cache: Option<(Value, Option<Value>)>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -1563,18 +1564,23 @@ fn sync_home_from_core_snapshot(state: &mut RendererState) {
     // the selected catalog slides after profile ordering/toggles are applied;
     // projecting it into the snapshot means the shared Rust renderer owns the
     // carousel instead of Kotlin inventing a second hero selection.
-    let hero_plan = core_value(
-        "homeHeroPlan",
-        json!({
-            "categories": snapshot.pointer("/home/categories").cloned().unwrap_or_else(|| json!([])),
-            "billboard": snapshot.pointer("/home/billboard").cloned().unwrap_or(Value::Null),
-            "prefs": snapshot.pointer("/settings/values").cloned().unwrap_or_else(|| json!({})),
-            "fetchedTrailers": {},
-            "fetchedIds": [],
-            "fetchedLogos": {},
-            "fetchedLogoIds": [],
-        }),
-    );
+    let hero_inputs = json!({
+        "categories": snapshot.pointer("/home/categories").cloned().unwrap_or_else(|| json!([])),
+        "billboard": snapshot.pointer("/home/billboard").cloned().unwrap_or(Value::Null),
+        "prefs": snapshot.pointer("/settings/values").cloned().unwrap_or_else(|| json!({})),
+        "fetchedTrailers": {},
+        "fetchedIds": [],
+        "fetchedLogos": {},
+        "fetchedLogoIds": [],
+    });
+    let hero_plan = match &state.hero_plan_cache {
+        Some((inputs, plan)) if *inputs == hero_inputs => plan.clone(),
+        _ => {
+            let plan = core_value("homeHeroPlan", hero_inputs.clone());
+            state.hero_plan_cache = Some((hero_inputs, plan.clone()));
+            plan
+        }
+    };
     if let Some(hero_plan) = hero_plan
         && let Some(home_object) = snapshot.get_mut("home").and_then(Value::as_object_mut)
     {
@@ -2330,6 +2336,7 @@ impl FluxaHost {
             pack_job: None,
             picker_background: None,
             image_picker: None,
+            hero_plan_cache: None,
         })))
     }
 
