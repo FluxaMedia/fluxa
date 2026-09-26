@@ -18,11 +18,11 @@ pub(crate) fn normalized_continue_watching_source(value: Option<&str>) -> &'stat
 
 pub(crate) fn continue_watching_source_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let source = if args.get("nuvioConnected").and_then(Value::as_bool) == Some(true) {
-        "nuvio"
-    } else {
-        normalized_continue_watching_source(args.get("source").and_then(Value::as_str))
-    };
+    let source =
+        match normalized_continue_watching_source(args.get("source").and_then(Value::as_str)) {
+            "local" if args.get("nuvioConnected").and_then(Value::as_bool) == Some(true) => "nuvio",
+            source => source,
+        };
     let provider = match source {
         "local" => None,
         provider => Some(provider),

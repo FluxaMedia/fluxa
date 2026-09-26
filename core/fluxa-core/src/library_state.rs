@@ -62,6 +62,16 @@ mod tests {
     }
 
     #[test]
+    fn a_picked_tracker_beats_the_nuvio_login() {
+        let plan: Value = serde_json::from_str(
+            &continue_watching_source_plan_json(r#"{"source":"simkl","nuvioConnected":true}"#)
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(plan["source"], "simkl");
+    }
+
+    #[test]
     fn continue_watching_keeps_resolved_up_next_placeholders() {
         let progress = json!({
             "tt0760437": {

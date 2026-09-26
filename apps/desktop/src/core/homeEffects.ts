@@ -51,11 +51,14 @@ interface ContinueWatchingSourcePlan {
   provider: string | null;
 }
 
-async function selectedContinueWatchingSource(prefs: Record<string, unknown>): Promise<ContinueWatchingSourcePlan> {
+async function selectedContinueWatchingSource(
+  prefs: Record<string, unknown>,
+  nuvioConnected: boolean,
+): Promise<ContinueWatchingSourcePlan> {
   return (
     (await coreInvoke<ContinueWatchingSourcePlan>(
       'continueWatchingSourcePlan',
-      JSON.stringify({ source: prefs.continueWatchingSource }),
+      JSON.stringify({ source: prefs.continueWatchingSource, nuvioConnected }),
     )) ?? { source: 'local', provider: null }
   );
 }
@@ -173,10 +176,9 @@ export async function continueWatchingForSelectedSource(
   addons: AddonDescriptor[],
 ): Promise<Record<string, unknown>[]> {
   const profile = await loadActiveProfile();
-  const effectivePrefs = profile?.nuvioAccessToken ? { ...prefs, continueWatchingSource: 'nuvio' } : prefs;
-  const requestedSource = String(effectivePrefs.continueWatchingSource ?? 'local');
+  const requestedSource = String(prefs.continueWatchingSource ?? 'local');
   void invoke('debug_log', { msg: `cw-source: resolving plan source=${requestedSource}` });
-  const plan = await selectedContinueWatchingSource(effectivePrefs);
+  const plan = await selectedContinueWatchingSource(prefs, Boolean(profile?.nuvioAccessToken));
   const provider = plan.provider;
   void invoke('debug_log', { msg: `cw-source: resolved plan source=${plan.source} provider=${provider ?? 'local'}` });
 
