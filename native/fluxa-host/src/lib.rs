@@ -1262,6 +1262,7 @@ fn label_for_node(state: &RendererState, node: u64) -> String {
             fluxa_ui::localized("library.filter_placeholder", &state.library.language)
         }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => fluxa_ui::localized("settings.addon_url", "en"),
+        fluxa_ui::NODE_SETTINGS_SEARCH => fluxa_ui::localized("settings.search_placeholder", "en"),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => {
             fluxa_ui::localized("settings.plugin_url", "en")
         }
@@ -1511,6 +1512,7 @@ fn rebuild_ui_from_layout(
                 id,
                 if id == fluxa_ui::NODE_LIBRARY_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_ADDON_URL
+                    || id == fluxa_ui::NODE_SETTINGS_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
                     || fluxa_ui::poster_field(id).is_some()
                 {
@@ -1695,11 +1697,13 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     let settings_section = state.settings.active_section;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
+    let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     state.settings = projection.settings;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
+    state.settings.search = search;
     for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {
         if !typed.is_empty() {
             *field = typed;
@@ -2081,6 +2085,9 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
                 state.discover.query.push_str(value);
                 request_discover_search(state);
                 state.ui = UiTree::default();
+            } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_SEARCH {
+                state.settings.search.push_str(value);
+                state.ui = UiTree::default();
             } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_ADDON_URL {
                 state.settings.addon_url.push_str(value);
             } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_PLUGIN_URL {
@@ -2138,6 +2145,7 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
             {
                 state.settings.active_section =
                     (node - fluxa_ui::NODE_SETTINGS_SECTION_BASE) as usize;
+                state.settings.search.clear();
                 state.ui = UiTree::default();
                 continue;
             }
@@ -2993,6 +3001,11 @@ fn key_down(state: &mut RendererState, input: KeyInput) {
                 refresh_library_view(state);
                 return;
             }
+            Some(fluxa_ui::NODE_SETTINGS_SEARCH) if state.route == "settings" => {
+                state.settings.search.pop();
+                state.ui = UiTree::default();
+                return;
+            }
             Some(fluxa_ui::NODE_SETTINGS_ADDON_URL) if state.route == "settings" => {
                 state.settings.addon_url.pop();
                 return;
@@ -3337,6 +3350,7 @@ fn set_text_value(state: &mut RendererState, node: u64, value: &str) {
             request_discover_search(state);
         }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
+        fluxa_ui::NODE_SETTINGS_SEARCH => state.settings.search = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
         node => {
             if let Some(index) = fluxa_ui::poster_field(node) {

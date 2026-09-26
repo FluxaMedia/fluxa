@@ -2398,6 +2398,7 @@ pub const NODE_SETTINGS_ADDON_REFRESH: u64 = 472;
 pub const NODE_SETTINGS_POSTER_URL: u64 = 473;
 pub const NODE_SETTINGS_POSTER_URL_SAVE: u64 = 474;
 pub const NODE_SETTINGS_POSTER_URL_CLEAR: u64 = 475;
+pub const NODE_SETTINGS_SEARCH: u64 = 476;
 pub const NODE_SETTINGS_POSTER_TMDB_KEY: u64 = 482;
 pub const NODE_SETTINGS_POSTER_TMDB_KEY_SAVE: u64 = 483;
 pub const NODE_SETTINGS_POSTER_TMDB_KEY_CLEAR: u64 = 484;
@@ -3543,7 +3544,11 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
             + metrics.screen_control_height
     };
     let content_top = if viewport.is_compact() {
-        header_bottom + metrics.section_gap + metrics.screen_control_height + metrics.section_gap
+        header_bottom
+            + metrics.section_gap
+            + metrics.screen_control_height * 2.0
+            + metrics.control_gap
+            + metrics.section_gap
     } else {
         top
     };

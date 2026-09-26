@@ -2605,8 +2605,8 @@
   "settings.poster_url_template_hint": "https://…/poster?tmdb_id={tmdb_id}&type={type}",
   "settings.poster_url_save": "Save",
   "settings.poster_url_clear": "Clear",
-  "settings.poster_tmdb_help": "Shows the trending sash on posters.",
-  "settings.poster_mdblist_help": "Shows the MDBList score and age rating on posters.",
+  "settings.poster_tmdb_help": "Trending sash on posters and optional metadata features.",
+  "settings.poster_mdblist_help": "MDBList score and age rating on posters, plus extra ratings on detail pages.",
   "settings.option.top_left": "Top left",
   "settings.option.top_right": "Top right",
   "settings.option.bottom_left": "Bottom left",
@@ -2620,5 +2620,15 @@
   "poster.badge.upcoming": "Coming soon",
   "poster.badge.new_season": "New season",
   "poster.badge.new_episode": "New episode",
-  "poster.badge.new_release": "New"
+  "poster.badge.new_release": "New",
+  "settings.group.api_keys": "API keys",
+  "settings.group.cards": "Cards",
+  "settings.group.detail_page": "Detail page",
+  "settings.group.poster_overlays": "Overlays",
+  "settings.group.poster_rating": "Rating",
+  "settings.group.poster_badges": "Badges",
+  "settings.group.custom_poster": "Custom poster",
+  "settings.group.keyboard": "Keyboard",
+  "settings.group.controller": "Remote and controller",
+  "settings.search_results": "Search results"
 }

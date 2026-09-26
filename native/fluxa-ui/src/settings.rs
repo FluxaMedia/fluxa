@@ -14,7 +14,7 @@ pub struct SettingsSection {
     pub rows: &'static [SettingsRow],
 }
 
-const GENERAL_SETTINGS: [SettingsRow; 16] = [
+const GENERAL_SETTINGS: [SettingsRow; 10] = [
     SettingsRow {
         label: "Language",
         key: "language",
@@ -51,38 +51,8 @@ const GENERAL_SETTINGS: [SettingsRow; 16] = [
         options: &[],
     },
     SettingsRow {
-        label: "AMOLED black",
-        key: "amoledMode",
-        options: &[],
-    },
-    SettingsRow {
         label: "Content warnings",
         key: "contentWarningsEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Detail hero collapses",
-        key: "detailCollapsingHero",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Prefer clear logo",
-        key: "detailPreferClearlogo",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Show cast",
-        key: "detailShowCast",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Episode descriptions",
-        key: "detailShowEpisodeDescriptions",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Recommendations",
-        key: "detailShowRecommendations",
         options: &[],
     },
     SettingsRow {
@@ -318,7 +288,7 @@ const PLAYBACK_SETTINGS: [SettingsRow; 44] = [
         options: &[],
     },
 ];
-const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
+const APPEARANCE_SETTINGS: [SettingsRow; 42] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -335,8 +305,18 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         ],
     },
     SettingsRow {
+        label: "AMOLED black",
+        key: "amoledMode",
+        options: &[],
+    },
+    SettingsRow {
         label: "Animations",
         key: "animationsEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Reduced effects",
+        key: "reducedEffects",
         options: &[],
     },
     SettingsRow {
@@ -360,9 +340,19 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &["hover", "expanded", "collapsed"],
     },
     SettingsRow {
+        label: "Interface density",
+        key: "interfaceDensity",
+        options: &["small", "medium", "large"],
+    },
+    SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
         options: &["sharp", "classic", "soft", "rounded", "pill"],
+    },
+    SettingsRow {
+        label: "Card layout",
+        key: "cardLayout",
+        options: &["vertical", "horizontal"],
     },
     SettingsRow {
         label: "Poster width",
@@ -375,18 +365,8 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &[],
     },
     SettingsRow {
-        label: "Catalog type suffix",
-        key: "catalogTypeSuffixEnabled",
-        options: &[],
-    },
-    SettingsRow {
         label: "Hide poster titles",
         key: "posterHideTitles",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Reduced effects",
-        key: "reducedEffects",
         options: &[],
     },
     SettingsRow {
@@ -395,14 +375,14 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &[],
     },
     SettingsRow {
-        label: "Card layout",
-        key: "cardLayout",
-        options: &["vertical", "horizontal"],
+        label: "Catalog type suffix",
+        key: "catalogTypeSuffixEnabled",
+        options: &[],
     },
     SettingsRow {
-        label: "Interface density",
-        key: "interfaceDensity",
-        options: &["small", "medium", "large"],
+        label: "Continue Watching shelf",
+        key: "continueWatchingEnabled",
+        options: &[],
     },
     SettingsRow {
         label: "Continue Watching layout",
@@ -425,11 +405,6 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &["remaining", "watched"],
     },
     SettingsRow {
-        label: "Continue Watching shelf",
-        key: "continueWatchingEnabled",
-        options: &[],
-    },
-    SettingsRow {
         label: "Hide Continue Watching titles",
         key: "continueWatchingHideTitles",
         options: &[],
@@ -445,6 +420,11 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &[],
     },
     SettingsRow {
+        label: "Show hero section",
+        key: "showHeroSection",
+        options: &[],
+    },
+    SettingsRow {
         label: "Hero season posters",
         key: "homeSeasonPostersOnHero",
         options: &[],
@@ -452,6 +432,26 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
     SettingsRow {
         label: "Autoplay home hero trailer",
         key: "homeHeroAutoplayTrailer",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Home trailer delay",
+        key: "homeHeroAutoplayTrailerDelaySecs",
+        options: &["2", "4", "6", "10"],
+    },
+    SettingsRow {
+        label: "Detail hero collapses",
+        key: "detailCollapsingHero",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Prefer clear logo",
+        key: "detailPreferClearlogo",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Detail hero season posters",
+        key: "detailSeasonPostersOnHero",
         options: &[],
     },
     SettingsRow {
@@ -465,18 +465,23 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &[],
     },
     SettingsRow {
-        label: "Blur unwatched episodes",
-        key: "blurUnwatchedEpisodes",
+        label: "Detail trailer delay",
+        key: "detailHeroAutoplayTrailerDelaySecs",
+        options: &["2", "4", "6", "10"],
+    },
+    SettingsRow {
+        label: "Show cast",
+        key: "detailShowCast",
         options: &[],
     },
     SettingsRow {
-        label: "Hide episode info spoilers",
-        key: "spoilerHideEpisodeInfo",
+        label: "Episode descriptions",
+        key: "detailShowEpisodeDescriptions",
         options: &[],
     },
     SettingsRow {
-        label: "Detail hero season posters",
-        key: "detailSeasonPostersOnHero",
+        label: "Recommendations",
+        key: "detailShowRecommendations",
         options: &[],
     },
     SettingsRow {
@@ -490,14 +495,14 @@ const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
         options: &["standard", "wide", "compact", "horizontal"],
     },
     SettingsRow {
-        label: "Home trailer delay",
-        key: "homeHeroAutoplayTrailerDelaySecs",
-        options: &["2", "4", "6", "10"],
+        label: "Blur unwatched episodes",
+        key: "blurUnwatchedEpisodes",
+        options: &[],
     },
     SettingsRow {
-        label: "Detail trailer delay",
-        key: "detailHeroAutoplayTrailerDelaySecs",
-        options: &["2", "4", "6", "10"],
+        label: "Hide episode info spoilers",
+        key: "spoilerHideEpisodeInfo",
+        options: &[],
     },
 ];
 
@@ -519,18 +524,18 @@ fn settings_category_icon(
     }
 }
 
-const APPEARANCE_GROUPS: [(usize, usize, &str); 5] = [
-    (0, 4, "settings.group.color_and_motion"),
-    (4, 8, "settings.group.navigation"),
-    (8, 16, "settings.group.posters"),
-    (16, 24, "settings.group.continue_watching"),
-    (24, 35, "settings.group.home_and_detail"),
+const APPEARANCE_GROUPS: [(usize, usize, &str); 6] = [
+    (0, 6, "settings.group.color_and_motion"),
+    (6, 10, "settings.group.navigation"),
+    (10, 17, "settings.group.cards"),
+    (17, 25, "settings.group.continue_watching"),
+    (25, 29, "settings.group.home"),
+    (29, 42, "settings.group.detail_page"),
 ];
-const GENERAL_GROUPS: [(usize, usize, &str); 4] = [
+const GENERAL_GROUPS: [(usize, usize, &str); 3] = [
     (0, 2, "settings.group.general_startup"),
-    (2, 9, "settings.group.general_behavior"),
-    (9, 14, "settings.group.general_details"),
-    (14, 16, "settings.group.general_calendar"),
+    (2, 8, "settings.group.general_behavior"),
+    (8, 10, "settings.group.general_calendar"),
 ];
 const PLAYBACK_GROUPS: [(usize, usize, &str); 7] = [
     (0, 6, "settings.group.playback"),
@@ -541,15 +546,20 @@ const PLAYBACK_GROUPS: [(usize, usize, &str); 7] = [
     (23, 32, "settings.group.player_advanced"),
     (32, 44, "settings.group.subtitle_style"),
 ];
-const CONTENT_GROUPS: [(usize, usize, &str); 3] = [
-    (0, 1, "settings.group.home"),
-    (1, 14, "settings.group.metadata"),
-    (14, 19, "settings.group.discovery"),
+const CONTENT_GROUPS: [(usize, usize, &str); 2] = [
+    (0, 8, "settings.group.metadata"),
+    (8, 12, "settings.group.discovery"),
+];
+const POSTER_GROUPS: [(usize, usize, &str); 3] = [
+    (0, 4, "settings.group.poster_overlays"),
+    (4, 7, "settings.group.poster_rating"),
+    (7, 16, "settings.group.poster_badges"),
 ];
 const DOWNLOAD_GROUPS: [(usize, usize, &str); 1] = [(0, 5, "settings.group.downloads")];
 const APPEARANCE_PAGE_HEADER_HEIGHT: f32 = 66.0;
 const APPEARANCE_GROUP_HEADING_HEIGHT: f32 = 22.0;
 const APPEARANCE_GROUP_GAP: f32 = 22.0;
+const FIELD_HEIGHT: f32 = 118.0;
 
 fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
     metrics.settings_row_height
@@ -561,6 +571,7 @@ fn settings_groups(section: &str) -> Option<&'static [(usize, usize, &'static st
     match section {
         "General" => Some(&GENERAL_GROUPS),
         "Appearance" => Some(&APPEARANCE_GROUPS),
+        "Posters" => Some(&POSTER_GROUPS),
         "Playback" => Some(&PLAYBACK_GROUPS),
         "Content" => Some(&CONTENT_GROUPS),
         "Downloads" => Some(&DOWNLOAD_GROUPS),
@@ -568,59 +579,76 @@ fn settings_groups(section: &str) -> Option<&'static [(usize, usize, &'static st
     }
 }
 
-fn settings_groups_total_height(groups: &[(usize, usize, &str)], metrics: UiMetrics) -> f32 {
+fn section_label(title: &str, language: &str) -> String {
+    localized(&format!("settings.section.{}", title.to_lowercase()), language)
+}
+
+pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize>)> {
+    let language = settings.language();
+    let query = settings.search.trim().to_lowercase();
+    let mut offset = 0;
+    let mut groups = Vec::new();
+    if !query.is_empty() {
+        for section in &SETTINGS_SECTIONS {
+            let rows: Vec<usize> = section
+                .rows
+                .iter()
+                .enumerate()
+                .filter(|(_, row)| {
+                    settings_row_label(row, language).to_lowercase().contains(&query)
+                        || row.label.to_lowercase().contains(&query)
+                })
+                .map(|(index, _)| offset + index)
+                .collect();
+            if !rows.is_empty() {
+                groups.push((section_label(section.title, language), rows));
+            }
+            offset += section.rows.len();
+        }
+        return groups;
+    }
+    let active = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
+    offset = SETTINGS_SECTIONS[..active]
+        .iter()
+        .map(|section| section.rows.len())
+        .sum();
+    for &(start, end, key) in settings_groups(SETTINGS_SECTIONS[active].title).unwrap_or_default() {
+        groups.push((localized(key, language), (offset + start..offset + end).collect()));
+    }
+    groups
+}
+
+pub(super) fn group_cards(
+    rect: Rect,
+    groups: &[(String, Vec<usize>)],
+    metrics: UiMetrics,
+) -> Vec<Rect> {
+    let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+    groups
+        .iter()
+        .map(|(_, rows)| {
+            let card = Rect::from_min_size(
+                Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
+                Vec2::new(rect.width(), settings_group_card_height(rows.len(), metrics)),
+            );
+            top = card.bottom() + APPEARANCE_GROUP_GAP;
+            card
+        })
+        .collect()
+}
+
+fn groups_height(groups: &[(String, Vec<usize>)], metrics: UiMetrics) -> f32 {
     APPEARANCE_PAGE_HEADER_HEIGHT
         + groups
             .iter()
-            .map(|(start, end, _)| {
+            .map(|(_, rows)| {
                 APPEARANCE_GROUP_HEADING_HEIGHT
-                    + settings_group_card_height(end - start, metrics)
+                    + settings_group_card_height(rows.len(), metrics)
                     + APPEARANCE_GROUP_GAP
             })
             .sum::<f32>()
 }
-
-fn settings_group_layout(
-    index: usize,
-    rect: Rect,
-    metrics: UiMetrics,
-    groups: &[(usize, usize, &str)],
-) -> Option<(Rect, usize)> {
-    for (group_index, (start, end, _)) in groups.iter().enumerate() {
-        if (*start..*end).contains(&index) {
-            let mut heading_y = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
-            for (previous_start, previous_end, _) in groups.iter().take(group_index) {
-                heading_y += APPEARANCE_GROUP_HEADING_HEIGHT
-                    + settings_group_card_height(previous_end - previous_start, metrics)
-                    + APPEARANCE_GROUP_GAP;
-            }
-            let card_top = heading_y + APPEARANCE_GROUP_HEADING_HEIGHT;
-            let card = Rect::from_min_size(
-                Pos2::new(rect.left(), card_top),
-                Vec2::new(
-                    rect.width(),
-                    settings_group_card_height(end - start, metrics),
-                ),
-            );
-            return Some((card, index - start));
-        }
-    }
-    None
-}
-
-pub(super) fn appearance_group_layout(
-    index: usize,
-    rect: Rect,
-    metrics: UiMetrics,
-) -> Option<(Rect, usize)> {
-    settings_group_layout(index, rect, metrics, &APPEARANCE_GROUPS)
-}
-const CONTENT_SETTINGS: [SettingsRow; 19] = [
-    SettingsRow {
-        label: "Show hero section",
-        key: "showHeroSection",
-        options: &[],
-    },
+const CONTENT_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "TMDB artwork enrichment",
         key: "tmdbEnrichArtworkEnabled",
@@ -632,28 +660,8 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
     SettingsRow {
-        label: "Show TMDB ratings",
-        key: "tmdbRatingsEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB cast images",
-        key: "tmdbCastImagesEnabled",
-        options: &[],
-    },
-    SettingsRow {
         label: "TMDB descriptions",
         key: "tmdbEnrichDescriptionEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB genres and keywords",
-        key: "tmdbEnrichGenresKeywordsEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB logos and backdrops",
-        key: "tmdbLogosBackdropsEnabled",
         options: &[],
     },
     SettingsRow {
@@ -662,8 +670,13 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
     SettingsRow {
-        label: "TMDB networks",
-        key: "tmdbEnrichNetworkEnabled",
+        label: "TMDB episode stills",
+        key: "tmdbEpisodeImagesEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB trailers",
+        key: "tmdbTrailersEnabled",
         options: &[],
     },
     SettingsRow {
@@ -672,18 +685,13 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
     SettingsRow {
-        label: "TMDB status and schedule",
-        key: "tmdbEnrichStatusScheduleEnabled",
+        label: "TMDB watch providers",
+        key: "tmdbEnrichWatchProvidersEnabled",
         options: &[],
     },
     SettingsRow {
-        label: "TMDB original titles",
-        key: "tmdbEnrichOriginTitlesEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB episode stills",
-        key: "tmdbEpisodeImagesEnabled",
+        label: "Show TMDB ratings",
+        key: "tmdbRatingsEnabled",
         options: &[],
     },
     SettingsRow {
@@ -694,16 +702,6 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "TMDB similar titles",
         key: "tmdbSimilarResultsEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB trailers",
-        key: "tmdbTrailersEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB watch providers",
-        key: "tmdbEnrichWatchProvidersEnabled",
         options: &[],
     },
     SettingsRow {
@@ -719,9 +717,29 @@ const POSTER_SETTINGS: [SettingsRow; 16] = [
         options: &[],
     },
     SettingsRow {
+        label: "Badge size",
+        key: "posterBadgeSize",
+        options: &["default", "small", "large"],
+    },
+    SettingsRow {
+        label: "Tinted fade",
+        key: "posterFadeTint",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Fade strength",
+        key: "posterFadeStrength",
+        options: &["high", "medium", "low"],
+    },
+    SettingsRow {
         label: "Rating badge",
         key: "posterRatingBadge",
         options: &[],
+    },
+    SettingsRow {
+        label: "Rating source",
+        key: "posterRatingSource",
+        options: &["imdb", "mdblist"],
     },
     SettingsRow {
         label: "Rating position",
@@ -748,11 +766,6 @@ const POSTER_SETTINGS: [SettingsRow; 16] = [
         options: &["sash", "banner", "top_left", "top_right", "bottom_left", "bottom_right"],
     },
     SettingsRow {
-        label: "Badge size",
-        key: "posterBadgeSize",
-        options: &["default", "small", "large"],
-    },
-    SettingsRow {
         label: "Watched badge",
         key: "posterWatchedBadge",
         options: &[],
@@ -766,21 +779,6 @@ const POSTER_SETTINGS: [SettingsRow; 16] = [
         label: "Library badge",
         key: "posterSavedBadge",
         options: &[],
-    },
-    SettingsRow {
-        label: "Tinted fade",
-        key: "posterFadeTint",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Fade strength",
-        key: "posterFadeStrength",
-        options: &["high", "medium", "low"],
-    },
-    SettingsRow {
-        label: "Rating source",
-        key: "posterRatingSource",
-        options: &["imdb", "mdblist"],
     },
     SettingsRow {
         label: "Trending sash",
@@ -832,10 +830,10 @@ const STORAGE_SETTINGS: [SettingsRow; 5] = [
     },
 ];
 
-pub const SETTINGS_SECTIONS: [SettingsSection; 12] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 10] = [
     SettingsSection {
         title: "Account",
-        description: "Profile and connected services",
+        description: "Profile, connected services and API keys",
         rows: &EMPTY_SETTINGS,
     },
     SettingsSection {
@@ -859,24 +857,14 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 12] = [
         rows: &PLAYBACK_SETTINGS,
     },
     SettingsSection {
-        title: "Device",
-        description: "Renderer and playback device",
-        rows: &EMPTY_SETTINGS,
-    },
-    SettingsSection {
-        title: "Shortcuts",
-        description: "Keyboard shortcuts",
-        rows: &EMPTY_SETTINGS,
-    },
-    SettingsSection {
-        title: "Controller",
-        description: "Remote and gamepad navigation",
-        rows: &EMPTY_SETTINGS,
-    },
-    SettingsSection {
         title: "Content",
         description: "Catalog and metadata preferences",
         rows: &CONTENT_SETTINGS,
+    },
+    SettingsSection {
+        title: "Downloads",
+        description: "Torrent and download defaults",
+        rows: &STORAGE_SETTINGS,
     },
     SettingsSection {
         title: "Add-ons",
@@ -889,9 +877,9 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 12] = [
         rows: &EMPTY_SETTINGS,
     },
     SettingsSection {
-        title: "Downloads",
-        description: "Torrent and download defaults",
-        rows: &STORAGE_SETTINGS,
+        title: "Shortcuts",
+        description: "Keyboard and controller bindings",
+        rows: &EMPTY_SETTINGS,
     },
 ];
 
@@ -901,6 +889,25 @@ pub fn settings_row_by_index(index: usize) -> Option<&'static SettingsRow> {
         .flat_map(|section| section.rows.iter())
         .nth(index)
 }
+
+const KEYBOARD_SHORTCUTS: [(&str, &str); 8] = [
+    ("settings.shortcut_navigation", "1 / 2 / 3 / 4 / 5"),
+    ("settings.shortcut_search", "Ctrl + F"),
+    ("settings.shortcut_back", "Backspace / Escape"),
+    ("settings.shortcut_fullscreen", "F11"),
+    ("settings.shortcut_play_pause", "K / Space"),
+    ("settings.shortcut_seek", "← / →"),
+    ("settings.shortcut_volume", "↓ / ↑"),
+    ("settings.shortcut_mute", "M"),
+];
+const CONTROLLER_BINDINGS: [(&str, &str); 6] = [
+    ("settings.controller_navigate", "D-pad / left stick"),
+    ("settings.controller_select", "Enter / A"),
+    ("settings.controller_back", "Escape / Back / B"),
+    ("settings.controller_scroll", "D-pad / left stick"),
+    ("settings.controller_seek", "Left / Right"),
+    ("settings.controller_volume", "Up / Down"),
+];
 
 pub(super) fn settings_card_height(
     viewport: Viewport,
@@ -913,63 +920,54 @@ pub(super) fn settings_card_height(
     } else {
         metrics.settings_card_height_desktop
     };
-    let row_content = || {
-        metrics.settings_row_top
-            + section.rows.len().saturating_sub(1) as f32 * metrics.settings_row_spacing
-            + metrics.settings_row_height
-            + metrics.settings_card_padding * 2.0
-    };
     let line_spacing = if viewport.is_tv() {
         metrics.settings_extended_line_spacing_tv
     } else {
         metrics.settings_extended_line_spacing
     };
-    if section.title == "Account" {
-        return account_height(metrics);
+    let groups = visible_groups(settings);
+    if !settings.search.trim().is_empty() {
+        return base.max(groups_height(&groups, metrics));
     }
-    let extended_lines = match section.title {
-        "Device" => 6,
-        "Shortcuts" => 10,
-        "Controller" => 8,
-        "Add-ons" => {
-            1 + usize::from(settings.addon_error.is_some()) + settings.addons.len().min(6).max(1)
+    let content_height = match section.title {
+        "Account" => account_height(metrics),
+        "Shortcuts" => {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+                + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 2.0
+                + settings_group_card_height(KEYBOARD_SHORTCUTS.len(), metrics)
+                + settings_group_card_height(CONTROLLER_BINDINGS.len(), metrics)
         }
-        "Plugins" => {
-            settings
-                .plugins
-                .get("repositories")
-                .and_then(serde_json::Value::as_array)
-                .map_or(0, |items| items.len().min(4))
-                + settings
+        "Posters" => {
+            groups_height(&groups, metrics)
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + FIELD_HEIGHT
+                + APPEARANCE_GROUP_GAP
+        }
+        "Add-ons" | "Plugins" => {
+            let lines = if section.title == "Add-ons" {
+                1 + usize::from(settings.addon_error.is_some()) + settings.addons.len().min(6).max(1)
+            } else {
+                settings
                     .plugins
-                    .get("scrapers")
+                    .get("repositories")
                     .and_then(serde_json::Value::as_array)
                     .map_or(0, |items| items.len().min(4))
-                + 1
-        }
-        _ => 0,
-    };
-    let extended_controls = match section.title {
-        "Add-ons" | "Plugins" => {
-            metrics.settings_extended_input_height
+                    + settings
+                        .plugins
+                        .get("scrapers")
+                        .and_then(serde_json::Value::as_array)
+                        .map_or(0, |items| items.len().min(4))
+                    + 1
+            };
+            metrics.settings_extended_top
+                + lines as f32 * line_spacing
+                + metrics.settings_extended_input_height
                 + metrics.settings_extended_action_gap
                 + metrics.settings_extended_action_height
                 + metrics.control_gap
+                + metrics.settings_card_padding * 2.0
         }
-        _ => 0.0,
-    };
-    let extended_content = metrics.settings_extended_top
-        + extended_lines as f32 * line_spacing
-        + extended_controls
-        + metrics.settings_card_padding * 2.0;
-    let content_height = if section.title == "Posters" {
-        row_content() + poster_url_height(metrics, line_spacing) * POSTER_FIELDS.len() as f32
-    } else if section.rows.is_empty() {
-        extended_content
-    } else if let Some(groups) = settings_groups(section.title) {
-        settings_groups_total_height(groups, metrics)
-    } else {
-        row_content()
+        _ => groups_height(&groups, metrics),
     };
     base.max(content_height)
 }
@@ -986,9 +984,16 @@ pub struct SettingsModel {
     pub addon_url: String,
     pub plugin_url: String,
     pub poster_fields: [String; 3],
+    pub search: String,
 }
 
 impl SettingsModel {
+    fn language(&self) -> &str {
+        self.values
+            .get("language")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("en")
+    }
     fn value(&self, key: &str) -> Option<&serde_json::Value> {
         self.values
             .get(key)
@@ -1114,6 +1119,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
                 .unwrap_or_default()
                 .to_owned()
         }),
+        search: String::new(),
     }
 }
 
@@ -1388,20 +1394,56 @@ fn settings_panel_input(
     rect: Rect,
     value: &str,
     hint: impl AsRef<str>,
+    metrics: UiMetrics,
 ) {
-    layout.focusable.push((id, rect));
     let mut next_value = value.to_owned();
     egui::Area::new(Id::new(("fluxa-settings-panel-input", id)))
         .fixed_pos(rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            let response = ui.add_sized(
+            let response = components::text_field(
+                ui,
+                &mut next_value,
+                hint.as_ref(),
                 rect.size(),
-                egui::TextEdit::singleline(&mut next_value).hint_text(hint.as_ref()),
+                metrics.settings_row_value_size_desktop,
             );
+            layout.focusable.push((id, response.rect));
             if response.changed() {
                 layout.text_input = Some(next_value.clone());
                 layout.text_input_node = Some(id);
+            }
+        });
+}
+
+fn pill_button(
+    context: &egui::Context,
+    layout: &mut HomeLayout,
+    id: u64,
+    rect: Rect,
+    label: &str,
+    size: f32,
+) {
+    layout.focusable.push((id, rect));
+    egui::Area::new(Id::new(("fluxa-settings-pill", id)))
+        .fixed_pos(rect.min)
+        .order(egui::Order::Foreground)
+        .show(context, |ui| {
+            let (area, response) = ui.allocate_exact_size(rect.size(), Sense::click());
+            ui.painter().rect_filled(
+                area,
+                area.height() * 0.5,
+                Color32::from_white_alpha(if response.hovered() { 34 } else { 20 }),
+            );
+            ui.painter().text(
+                area.center(),
+                Align2::CENTER_CENTER,
+                label,
+                FontId::proportional(size),
+                Color32::WHITE,
+            );
+            if response.clicked() {
+                layout.activated = Some(id);
             }
         });
 }
@@ -1450,91 +1492,142 @@ pub fn poster_field(input: u64) -> Option<usize> {
     POSTER_FIELDS.iter().position(|field| field.input == input)
 }
 
-fn poster_url_height(metrics: UiMetrics, line_spacing: f32) -> f32 {
-    metrics.control_gap
-        + line_spacing * 2.0
-        + metrics.settings_extended_input_height
-        + metrics.settings_extended_action_gap
-        + metrics.settings_extended_action_height
-}
-
-fn draw_poster_url(
+fn draw_field(
     context: &egui::Context,
     settings: &SettingsModel,
-    language: &str,
-    rect: Rect,
-    rows: usize,
-    line_gap: f32,
+    index: usize,
+    area: Rect,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
+    let language = settings.language();
+    let field = &POSTER_FIELDS[index];
     let painter = context.layer_painter(egui::LayerId::background());
-    let left = rect.left() + metrics.settings_card_padding;
-    let right = rect.right() - metrics.settings_card_padding;
-    let mut y = rect.top()
-        + metrics.settings_row_top
-        + rows.saturating_sub(1) as f32 * metrics.settings_row_spacing
-        + metrics.settings_row_height
-        + metrics.control_gap;
-    for (field, value) in POSTER_FIELDS.iter().zip(&settings.poster_fields) {
-        settings_panel_line(
-            &painter,
-            rect,
-            y,
-            localized(field.label, language),
-            Color32::WHITE,
-            metrics,
-        );
-        y += line_gap;
-        settings_panel_line(
-            &painter,
-            rect,
-            y,
-            localized(field.help, language),
-            Color32::from_white_alpha(130),
-            metrics,
-        );
-        y += line_gap;
-        settings_panel_input(
+    let label_size = metrics.settings_row_label_size_desktop;
+    let inner = area.shrink2(Vec2::new(metrics.settings_row_inset + 4.0, 16.0));
+    painter.text(
+        inner.left_top(),
+        Align2::LEFT_TOP,
+        localized(field.label, language),
+        FontId::proportional(label_size),
+        Color32::from_white_alpha(230),
+    );
+    let help_font = FontId::proportional(metrics.screen_card_subtitle_size);
+    painter.text(
+        inner.left_top() + Vec2::new(0.0, label_size + 6.0),
+        Align2::LEFT_TOP,
+        truncate_to_width(&painter, &localized(field.help, language), &help_font, inner.width()),
+        help_font,
+        Color32::from_white_alpha(130),
+    );
+    let height = 36.0;
+    let button_width = 84.0;
+    let gap = 8.0;
+    let row_top = inner.bottom() - height;
+    let input = Rect::from_min_max(
+        Pos2::new(inner.left(), row_top),
+        Pos2::new(inner.right() - (button_width + gap) * 2.0, inner.bottom()),
+    );
+    settings_panel_input(
+        context,
+        layout,
+        field.input,
+        input,
+        &settings.poster_fields[index],
+        localized(field.hint, language),
+        metrics,
+    );
+    for (slot, (node, label)) in [
+        (field.save, "settings.poster_url_save"),
+        (field.clear, "settings.poster_url_clear"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        pill_button(
             context,
             layout,
-            field.input,
-            Rect::from_min_max(
-                Pos2::new(left, y),
-                Pos2::new(right, y + metrics.settings_extended_input_height),
+            node,
+            Rect::from_min_size(
+                Pos2::new(input.right() + gap + slot as f32 * (button_width + gap), row_top),
+                Vec2::new(button_width, height),
             ),
-            value,
-            localized(field.hint, language),
+            &localized(label, language),
+            label_size - 1.0,
         );
-        y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
-        let button_width = metrics
-            .settings_extended_addon_action_width
-            .min(((right - left) - metrics.settings_extended_action_gap) / 2.0);
-        for (index, (node, label)) in [
-            (field.save, "settings.poster_url_save"),
-            (field.clear, "settings.poster_url_clear"),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            settings_panel_button(
-                context,
-                layout,
-                node,
-                Rect::from_min_size(
-                    Pos2::new(
-                        left + index as f32 * (button_width + metrics.settings_extended_action_gap),
-                        y,
-                    ),
-                    Vec2::new(button_width, metrics.settings_extended_action_height),
-                ),
-                localized(label, language),
-                false,
-                metrics,
+    }
+}
+
+fn draw_field_group(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    rect: Rect,
+    top: f32,
+    title: &str,
+    fields: &[usize],
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) -> Rect {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let card = account_group(&painter, rect, top, fields.len() as f32 * FIELD_HEIGHT, title);
+    for (slot, &index) in fields.iter().enumerate() {
+        let area = Rect::from_min_size(
+            card.left_top() + Vec2::new(0.0, slot as f32 * FIELD_HEIGHT),
+            Vec2::new(card.width(), FIELD_HEIGHT),
+        );
+        if slot > 0 {
+            painter.line_segment(
+                [
+                    Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
+                    Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
+                ],
+                egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
             );
         }
-        y += metrics.settings_extended_action_height + metrics.control_gap;
+        draw_field(context, settings, index, area, metrics, layout);
     }
+    card
+}
+
+fn draw_binding_group(
+    painter: &egui::Painter,
+    rect: Rect,
+    top: f32,
+    title: &str,
+    rows: &[(&str, &str)],
+    language: &str,
+    metrics: UiMetrics,
+) -> Rect {
+    let card = account_group(
+        painter,
+        rect,
+        top,
+        settings_group_card_height(rows.len(), metrics),
+        title,
+    );
+    let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
+    let value_font = FontId::proportional(metrics.settings_row_value_size_desktop);
+    for (index, (action, keys)) in rows.iter().enumerate() {
+        let row = account_row(card, index, metrics);
+        if index > 0 {
+            account_divider(painter, row, metrics);
+        }
+        painter.text(
+            row.left_center() + Vec2::new(4.0, 0.0),
+            Align2::LEFT_CENTER,
+            localized(action, language),
+            label_font.clone(),
+            Color32::from_white_alpha(210),
+        );
+        painter.text(
+            row.right_center() - Vec2::new(6.0, 0.0),
+            Align2::RIGHT_CENTER,
+            *keys,
+            value_font.clone(),
+            Color32::from_white_alpha(150),
+        );
+    }
+    card
 }
 
 fn draw_settings_extended_section(
@@ -1560,159 +1653,43 @@ fn draw_settings_extended_section(
     let muted = Color32::from_white_alpha(165);
     match section {
         "Account" => draw_account(context, settings, assets, language, rect, metrics, layout),
-        "Device" => {
-            settings_panel_heading(
-                &painter,
-                rect,
-                y,
-                &localized(
-                    &format!("settings.section.{}", section.to_lowercase()),
-                    language,
-                )
-                .to_uppercase(),
-                metrics,
-            );
-            y += line_gap;
-            let form = match viewport.form_factor {
-                UiFormFactor::Mobile => "Mobile",
-                UiFormFactor::Tv => "TV",
-                UiFormFactor::Desktop => "Desktop",
-            };
-            let rows = [
-                ("settings.device_layout", form),
-                ("settings.ui_renderer", "Fluxa Rust · egui · wgpu"),
-                (
-                    "settings.playback_engine",
-                    settings
-                        .value("playerEngine")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or("mpv"),
-                ),
-                (
-                    "settings.video_output",
-                    settings
-                        .value("renderBackend")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or("Vulkan"),
-                ),
-                ("settings.device_reported_by_host", ""),
-            ];
-            let group =
-                settings_panel_group(&painter, rect, y, rows.len() as f32 * line_gap, metrics);
-            for (index, (label, value)) in rows.into_iter().enumerate() {
-                let value = if value.is_empty() {
-                    localized(label, language)
-                } else {
-                    value.to_owned()
-                };
-                settings_panel_line(
-                    &painter,
-                    group,
-                    y + index as f32 * line_gap,
-                    &format!("{}  ·  {value}", localized(label, language)),
-                    muted,
-                    metrics,
-                );
-            }
-        }
         "Shortcuts" => {
-            settings_panel_heading(
+            let card = draw_binding_group(
                 &painter,
                 rect,
-                y,
-                &localized(
-                    &format!("settings.section.{}", section.to_lowercase()),
-                    language,
-                )
-                .to_uppercase(),
+                rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
+                &localized("settings.group.keyboard", language),
+                &KEYBOARD_SHORTCUTS,
+                language,
                 metrics,
             );
-            y += line_gap;
-            let rows = [
-                ("settings.shortcut_navigation", "1 / 2 / 3 / 4 / 5"),
-                ("settings.shortcut_search", "Ctrl + F"),
-                ("settings.shortcut_back", "Backspace / Escape"),
-                ("settings.shortcut_fullscreen", "F11"),
-                ("settings.shortcut_play_pause", "K / Space"),
-                ("settings.shortcut_seek", "← / →"),
-                ("settings.shortcut_volume", "↓ / ↑"),
-                ("settings.shortcut_mute", "M"),
-            ];
-            let group =
-                settings_panel_group(&painter, rect, y, rows.len() as f32 * line_gap, metrics);
-            for (index, (action, keys)) in rows.into_iter().enumerate() {
-                settings_panel_line(
-                    &painter,
-                    group,
-                    y + index as f32 * line_gap,
-                    &format!("{}  ·  {keys}", localized(action, language)),
-                    muted,
-                    metrics,
-                );
-            }
-            y += 8.0 * line_gap;
-            settings_panel_line(
+            draw_binding_group(
                 &painter,
                 rect,
-                y,
-                localized("settings.bindings_shared", language),
-                Color32::from_white_alpha(115),
+                card.bottom() + APPEARANCE_GROUP_GAP,
+                &localized("settings.group.controller", language),
+                &CONTROLLER_BINDINGS,
+                language,
                 metrics,
             );
         }
-        "Controller" => {
-            settings_panel_heading(
-                &painter,
+        "Posters" => {
+            let top = group_cards(rect, &visible_groups(settings), metrics)
+                .last()
+                .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
+                    card.bottom() + APPEARANCE_GROUP_GAP
+                });
+            draw_field_group(
+                context,
+                settings,
                 rect,
-                y,
-                &localized(
-                    &format!("settings.section.{}", section.to_lowercase()),
-                    language,
-                )
-                .to_uppercase(),
+                top,
+                &localized("settings.group.custom_poster", language),
+                &[0],
                 metrics,
-            );
-            y += line_gap;
-            let rows = [
-                ("settings.controller_navigate", "D-pad / left stick"),
-                ("settings.controller_select", "Enter / A"),
-                ("settings.controller_back", "Escape / Back / B"),
-                ("settings.controller_scroll", "D-pad / left stick"),
-                ("settings.controller_seek", "Left / Right"),
-                ("settings.controller_volume", "Up / Down"),
-            ];
-            let group =
-                settings_panel_group(&painter, rect, y, rows.len() as f32 * line_gap, metrics);
-            for (index, (action, binding)) in rows.into_iter().enumerate() {
-                settings_panel_line(
-                    &painter,
-                    group,
-                    y + index as f32 * line_gap,
-                    &format!("{}  ·  {binding}", localized(action, language)),
-                    muted,
-                    metrics,
-                );
-            }
-            y += 6.0 * line_gap;
-            settings_panel_line(
-                &painter,
-                rect,
-                y,
-                localized("settings.controller_host_details", language),
-                Color32::from_white_alpha(115),
-                metrics,
+                layout,
             );
         }
-        "Posters" => draw_poster_url(
-            context,
-            settings,
-            language,
-            rect,
-            POSTER_SETTINGS.len(),
-            line_gap,
-            metrics,
-            layout,
-        ),
         "Add-ons" => {
             let input_rect = Rect::from_min_max(
                 Pos2::new(left, y),
@@ -1725,6 +1702,7 @@ fn draw_settings_extended_section(
                 input_rect,
                 &settings.addon_url,
                 localized("settings.addon_url", language),
+                metrics,
             );
             y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
             let button_width = metrics
@@ -1825,6 +1803,7 @@ fn draw_settings_extended_section(
                 input_rect,
                 &settings.plugin_url,
                 localized("settings.plugin_url", language),
+                metrics,
             );
             y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
             settings_panel_button(
@@ -2109,9 +2088,42 @@ pub fn draw_settings(
             metrics.settings_content_max_width_desktop
         })
         .max(1.0);
+    let searching = !settings.search.trim().is_empty();
+    let search_height = metrics.screen_control_height;
+    let search_field = |layout: &mut HomeLayout, rect: Rect| {
+        egui::Area::new(Id::new("fluxa-settings-search"))
+            .fixed_pos(rect.min)
+            .order(egui::Order::Foreground)
+            .show(context, |ui| {
+                let mut query = settings.search.clone();
+                let response = components::search_field(
+                    ui,
+                    &mut query,
+                    &localized("settings.search_placeholder", language),
+                    rect.width(),
+                    rect.height(),
+                    metrics,
+                );
+                layout.focusable.push((NODE_SETTINGS_SEARCH, response.rect));
+                if response.changed() {
+                    layout.text_input = Some(query);
+                    layout.text_input_node = Some(NODE_SETTINGS_SEARCH);
+                }
+            });
+    };
     if compact {
+        search_field(
+            &mut layout,
+            Rect::from_min_size(
+                Pos2::new(margin, section_top - scroll_y),
+                Vec2::new((viewport.width - margin * 2.0).max(1.0), search_height),
+            ),
+        );
         let nav_rect = Rect::from_min_size(
-            Pos2::new(margin, section_top - scroll_y),
+            Pos2::new(
+                margin,
+                section_top + search_height + metrics.control_gap - scroll_y,
+            ),
             Vec2::new(
                 (viewport.width - margin * 2.0).max(1.0),
                 metrics.screen_control_height,
@@ -2137,7 +2149,7 @@ pub fn draw_settings(
                                 let response = components::button_auto_width(
                                     ui,
                                     &label,
-                                    if index == active_section {
+                                    if index == active_section && !searching {
                                         components::ButtonKind::Selected
                                     } else {
                                         components::ButtonKind::Secondary
@@ -2202,7 +2214,15 @@ pub fn draw_settings(
                 Color32::WHITE,
             );
         }
-        let nav_top_inset = if desktop { 76.0 } else { metrics.control_gap };
+        let search_top = if desktop { 58.0 } else { metrics.control_gap };
+        search_field(
+            &mut layout,
+            Rect::from_min_size(
+                Pos2::new(margin + metrics.control_gap, section_top + search_top - scroll_y),
+                Vec2::new(nav_width - metrics.control_gap * 2.0, search_height),
+            ),
+        );
+        let nav_top_inset = search_top + search_height + metrics.control_gap * 1.5;
         for (index, section) in SETTINGS_SECTIONS.iter().enumerate() {
             let node = NODE_SETTINGS_SECTION_BASE + index as u64;
             let rect = Rect::from_min_size(
@@ -2219,7 +2239,8 @@ pub fn draw_settings(
                 .fixed_pos(rect.min)
                 .show(context, |ui| {
                     let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
-                    if index == active_section {
+                    let active = index == active_section && !searching;
+                    if active {
                         ui.painter().rect_filled(
                             item_rect,
                             metrics.screen_control_radius,
@@ -2234,26 +2255,12 @@ pub fn draw_settings(
                             metrics.accent,
                         );
                     }
-                    let icon_name = [
-                        "Account",
-                        "General",
-                        "Appearance",
-                        "Posters",
-                        "Playback",
-                        "Device",
-                        "Shortcuts",
-                        "Controller",
-                        "Content",
-                        "Add-ons",
-                        "Plugins",
-                        "Downloads",
-                    ][index];
                     settings_category_icon(
                         assets,
                         ui.painter(),
                         item_rect.left_center() + Vec2::new(22.0, 0.0),
-                        icon_name,
-                        if index == active_section {
+                        section.title,
+                        if active {
                             Color32::WHITE
                         } else {
                             Color32::from_white_alpha(150)
@@ -2267,7 +2274,7 @@ pub fn draw_settings(
                             language,
                         ),
                         FontId::proportional(metrics.nav_label_size + if tv { 0.0 } else { 2.0 }),
-                        if index == active_section {
+                        if active {
                             Color32::WHITE
                         } else {
                             Color32::from_white_alpha(185)
@@ -2281,7 +2288,11 @@ pub fn draw_settings(
         }
     }
     let nav_bottom = if compact {
-        section_top + metrics.screen_control_height + metrics.section_gap
+        section_top
+            + search_height
+            + metrics.control_gap
+            + metrics.screen_control_height
+            + metrics.section_gap
     } else {
         section_top
     };
@@ -2293,60 +2304,44 @@ pub fn draw_settings(
         Pos2::new(content_x, card_top),
         Vec2::new(card_width, card_height),
     );
-    if let Some(groups) = settings_groups(section.title) {
-        let mut heading_y = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
-        for &(start, end, title_key) in groups {
-            painter.text(
-                Pos2::new(rect.left() + 8.0, heading_y),
-                Align2::LEFT_TOP,
-                localized(title_key, language).to_uppercase(),
-                FontId::proportional(metrics.screen_card_subtitle_size),
-                Color32::from_white_alpha(145),
-            );
-            let group_rect = Rect::from_min_size(
-                Pos2::new(rect.left(), heading_y + APPEARANCE_GROUP_HEADING_HEIGHT),
-                Vec2::new(
-                    rect.width(),
-                    settings_group_card_height(end - start, metrics),
-                ),
-            );
-            painter.rect_filled(
-                group_rect,
-                metrics.card_radius,
-                Color32::from_rgb(19, 19, 19),
-            );
-            painter.rect_stroke(
-                group_rect,
-                metrics.card_radius,
-                egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
-                egui::StrokeKind::Inside,
-            );
-            heading_y = group_rect.bottom() + APPEARANCE_GROUP_GAP;
-        }
-    } else if section.title != "Account" {
-        painter.rect_filled(
-            rect,
-            metrics.card_radius,
-            if desktop {
-                Color32::from_rgb(16, 16, 16)
-            } else {
-                Color32::from_rgb(18, 19, 24)
-            },
+    let groups = visible_groups(settings);
+    let cards = group_cards(rect, &groups, metrics);
+    for ((title, _), card) in groups.iter().zip(&cards) {
+        painter.text(
+            Pos2::new(rect.left() + 8.0, card.top() - APPEARANCE_GROUP_HEADING_HEIGHT),
+            Align2::LEFT_TOP,
+            title.to_uppercase(),
+            FontId::proportional(metrics.screen_card_subtitle_size),
+            Color32::from_white_alpha(145),
         );
+        painter.rect_filled(*card, metrics.card_radius, Color32::from_rgb(19, 19, 19));
         painter.rect_stroke(
-            rect,
+            *card,
             metrics.card_radius,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(18)),
+            egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
             egui::StrokeKind::Inside,
         );
     }
+    if !searching && matches!(section.title, "Add-ons" | "Plugins") {
+        painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+        painter.rect_stroke(
+            rect,
+            metrics.card_radius,
+            egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let heading = if !searching {
+        section_label(section.title, language)
+    } else if groups.is_empty() {
+        localized("settings.search_no_results", language)
+    } else {
+        localized("settings.search_results", language)
+    };
     painter.text(
         rect.left_top() + Vec2::new(metrics.settings_card_padding, metrics.settings_title_top),
         Align2::LEFT_TOP,
-        localized(
-            &format!("settings.section.{}", section.title.to_lowercase()),
-            language,
-        ),
+        heading,
         FontId::proportional(if tv {
             metrics.screen_section_title_size_tv - metrics.control_gap
         } else if !compact {
@@ -2356,7 +2351,7 @@ pub fn draw_settings(
         }),
         Color32::WHITE,
     );
-    if !desktop {
+    if !desktop && !searching {
         painter.text(
             rect.left_top()
                 + Vec2::new(
@@ -2375,59 +2370,39 @@ pub fn draw_settings(
             Color32::from_white_alpha(130),
         );
     }
-    let preceding_rows: usize = SETTINGS_SECTIONS[..active_section]
-        .iter()
-        .map(|section| section.rows.len())
-        .sum();
-    draw_settings_extended_section(
-        context,
-        viewport,
-        settings,
-        assets,
-        &section.title,
-        language,
-        rect,
-        metrics,
-        &mut layout,
-    );
-    for (row_index, setting) in section.rows.iter().enumerate() {
-        let node = NODE_SETTINGS_ROW_BASE + (preceding_rows + row_index) as u64;
-        let (row_rect, group_row_index) = if let Some(groups) = settings_groups(section.title) {
-            let (group_rect, group_row_index) =
-                settings_group_layout(row_index, rect, metrics, groups)
-                    .expect("settings row group");
-            (
-                Rect::from_min_size(
-                    group_rect.left_top()
-                        + Vec2::new(
-                            metrics.settings_row_inset,
-                            6.0 + group_row_index as f32 * metrics.settings_row_spacing,
-                        ),
-                    Vec2::new(
-                        group_rect.width() - metrics.settings_row_inset * 2.0,
-                        metrics.settings_row_height,
-                    ),
-                ),
-                Some(group_row_index),
-            )
-        } else {
-            (
-                Rect::from_min_size(
-                    rect.left_top()
-                        + Vec2::new(
-                            metrics.settings_row_inset,
-                            metrics.settings_row_top
-                                + row_index as f32 * metrics.settings_row_spacing,
-                        ),
-                    Vec2::new(
-                        rect.width() - metrics.settings_row_inset * 2.0,
-                        metrics.settings_row_height,
-                    ),
-                ),
-                None,
-            )
+    if !searching {
+        draw_settings_extended_section(
+            context,
+            viewport,
+            settings,
+            assets,
+            section.title,
+            language,
+            rect,
+            metrics,
+            &mut layout,
+        );
+    }
+    let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
+        rows.iter().enumerate().map(move |(slot, &index)| (index, slot, *card))
+    });
+    for (index, slot, card) in rows {
+        let Some(setting) = settings_row_by_index(index) else {
+            continue;
         };
-        if group_row_index.unwrap_or(row_index) > 0 {
+        let node = NODE_SETTINGS_ROW_BASE + index as u64;
+        let row_rect = Rect::from_min_size(
+            card.left_top()
+                + Vec2::new(
+                    metrics.settings_row_inset,
+                    6.0 + slot as f32 * metrics.settings_row_spacing,
+                ),
+            Vec2::new(
+                card.width() - metrics.settings_row_inset * 2.0,
+                metrics.settings_row_height,
+            ),
+        );
+        if slot > 0 {
             let y =
                 row_rect.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
             painter.line_segment(
@@ -2696,10 +2671,11 @@ const ACCOUNT_SOURCES: [(&str, &str); 2] = [
 
 fn account_height(metrics: UiMetrics) -> f32 {
     APPEARANCE_PAGE_HEADER_HEIGHT
-        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
+        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 4.0
         + ACCOUNT_PROFILE_CARD_HEIGHT
         + settings_group_card_height(ACCOUNT_SERVICES.len(), metrics)
         + settings_group_card_height(ACCOUNT_SOURCES.len(), metrics)
+        + FIELD_HEIGHT * 2.0
 }
 
 fn account_group(painter: &egui::Painter, rect: Rect, top: f32, height: f32, title: &str) -> Rect {
@@ -2830,28 +2806,14 @@ fn draw_account(
         Pos2::new(card.right() - 20.0 - switch_width * 0.5, card.center().y),
         Vec2::new(switch_width, 36.0),
     );
-    layout.focusable.push((NODE_SETTINGS_SWITCH_PROFILE, switch_rect));
-    egui::Area::new(Id::new("fluxa-settings-account-switch"))
-        .fixed_pos(switch_rect.min)
-        .order(egui::Order::Foreground)
-        .show(context, |ui| {
-            let (area, response) = ui.allocate_exact_size(switch_rect.size(), Sense::click());
-            ui.painter().rect_filled(
-                area,
-                18.0,
-                Color32::from_white_alpha(if response.hovered() { 34 } else { 20 }),
-            );
-            ui.painter().text(
-                area.center(),
-                Align2::CENTER_CENTER,
-                &switch_label,
-                FontId::proportional(label_size),
-                Color32::WHITE,
-            );
-            if response.clicked() {
-                layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
-            }
-        });
+    pill_button(
+        context,
+        layout,
+        NODE_SETTINGS_SWITCH_PROFILE,
+        switch_rect,
+        &switch_label,
+        label_size,
+    );
 
     top = card.bottom() + APPEARANCE_GROUP_GAP;
     let card = account_group(
@@ -2999,4 +2961,16 @@ fn draw_account(
             layout.setting_change = Some(((*key).to_owned(), serde_json::Value::String(selected)));
         }
     }
+
+    draw_field_group(
+        context,
+        settings,
+        rect,
+        card.bottom() + APPEARANCE_GROUP_GAP,
+        &localized("settings.group.api_keys", language),
+        &[1, 2],
+        metrics,
+        layout,
+    );
 }
+

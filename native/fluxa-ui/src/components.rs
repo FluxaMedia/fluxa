@@ -174,6 +174,38 @@ pub(super) fn search_field(
     response
 }
 
+pub(super) fn text_field(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    size: Vec2,
+    font_size: f32,
+) -> Response {
+    let radius = size.y * 0.5;
+    let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
+    ui.painter()
+        .rect_filled(rect, radius, Color32::from_white_alpha(10));
+    let text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
+    let response = ui.put(
+        text_rect,
+        egui::TextEdit::singleline(value)
+            .frame(egui::Frame::NONE)
+            .font(FontId::proportional(font_size))
+            .vertical_align(egui::Align::Center)
+            .hint_text(RichText::new(hint).color(Color32::from_white_alpha(90)))
+            .text_color(Color32::WHITE)
+            .margin(Vec2::ZERO),
+    );
+    let stroke = if response.has_focus() {
+        egui::Stroke::new(1.0, Color32::from_white_alpha(120))
+    } else {
+        egui::Stroke::new(1.0, Color32::from_white_alpha(22))
+    };
+    ui.painter()
+        .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
+    response
+}
+
 pub(super) fn text_tabs(
     ui: &mut Ui,
     labels: &[String],

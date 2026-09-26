@@ -1195,28 +1195,41 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
 fn native_appearance_groups_are_separate_cards() {
     let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
-    let section = SETTINGS_SECTIONS
-        .iter()
-        .find(|section| section.title == "Appearance")
-        .unwrap();
+    let settings = SettingsModel {
+        active_section: 2,
+        ..Default::default()
+    };
     let height = super::settings::settings_card_height(
         viewport,
         metrics,
-        section,
-        &SettingsModel::default(),
+        &SETTINGS_SECTIONS[2],
+        &settings,
     );
     let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
-    let mut previous_bottom = 0.0;
-    for start in [0, 4, 8, 16, 24] {
-        let (card, _) = super::settings::appearance_group_layout(start, content, metrics).unwrap();
-        assert!(
-            card.top() > previous_bottom,
-            "appearance groups must have visible gaps"
-        );
-        previous_bottom = card.bottom();
+    let groups = super::settings::visible_groups(&settings);
+    let cards = super::settings::group_cards(content, &groups, metrics);
+    assert_eq!(cards.len(), 6);
+    for pair in cards.windows(2) {
+        assert!(pair[1].top() > pair[0].bottom(), "appearance groups must have visible gaps");
     }
-    let (last_card, _) = super::settings::appearance_group_layout(34, content, metrics).unwrap();
-    assert!(last_card.bottom() <= content.bottom());
+    assert!(cards.last().unwrap().bottom() <= content.bottom());
+}
+
+#[test]
+fn settings_search_spans_every_section() {
+    let settings = SettingsModel {
+        search: "subtitle".to_owned(),
+        ..Default::default()
+    };
+    let groups = super::settings::visible_groups(&settings);
+    let rows: Vec<_> = groups
+        .iter()
+        .flat_map(|(_, rows)| rows)
+        .map(|&index| settings_row_by_index(index).unwrap().key)
+        .collect();
+    assert!(rows.contains(&"subtitleSize"));
+    assert!(rows.contains(&"downloadSubtitleLanguage"));
+    assert!(!rows.contains(&"uiScale"));
 }
 
 #[test]
