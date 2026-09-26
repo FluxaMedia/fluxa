@@ -3577,7 +3577,7 @@ fn resolve_desktop_horizontal_scroll(
     offset
 }
 
-fn backdrop_target_size(width: f32, pixels_per_point: f32) -> [u32; 2] {
+pub fn backdrop_target_size(width: f32, pixels_per_point: f32) -> [u32; 2] {
     artwork_target_size(Vec2::new(width, width * 9.0 / 16.0), pixels_per_point)
 }
 

@@ -88,6 +88,7 @@ struct RendererState {
     rendered_layout: Option<(String, HomeLayout)>,
     last_actions: Vec<UiAction>,
     pending_native_actions: Vec<NativeAction>,
+    backdrop_prefetch: Option<String>,
     keyboard_focus_visible: bool,
     load_more_requested_counts: HashMap<String, usize>,
     touch_start: Option<[f32; 2]>,
@@ -2063,6 +2064,12 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
                 &state.settings,
                 &state.route,
             ) {
+                if let NativeAction::Detail { preview, .. } = &native_action {
+                    state.backdrop_prefetch = ["background", "poster"]
+                        .into_iter()
+                        .find_map(|key| preview.get(key).and_then(Value::as_str))
+                        .map(ToOwned::to_owned);
+                }
                 state.pending_native_actions.push(native_action);
             }
         }
@@ -2316,6 +2323,7 @@ impl FluxaHost {
             rendered_layout: None,
             last_actions: Vec::new(),
             pending_native_actions: Vec::new(),
+            backdrop_prefetch: None,
             keyboard_focus_visible: false,
             load_more_requested_counts: HashMap::new(),
             touch_start: None,
@@ -3040,6 +3048,14 @@ fn render_frame(state: &mut RendererState) {
         .copied()
         .unwrap_or(0.0);
     let scale = state.scale();
+    if let (Some(url), Some(gpu)) = (state.backdrop_prefetch.take(), state.gpu.as_mut()) {
+        let width = (gpu.config.width as f32 / scale).round().max(1.0);
+        gpu.artwork.texture_for_priority(
+            Some(&url),
+            fluxa_ui::backdrop_target_size(width, scale),
+            ArtworkFetchPriority::Hero,
+        );
+    }
     presence::update(current_presence(state));
     timer.mark("prepare");
     let render_result = {
