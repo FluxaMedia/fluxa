@@ -86,6 +86,7 @@ import com.google.gson.Gson
 import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
 import com.fluxa.app.ui.rust.FluxaNativeRendererView
 import com.fluxa.app.ui.rust.NativeVideoHost
+import com.fluxa.app.player.MpvEmbeddedPlayer
 
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
@@ -382,6 +383,13 @@ class MainActivity : FragmentActivity() {
                                 addProperty("backBufferSeconds", activeProfile?.safePlayerBackBufferSeconds ?: 30)
                                 addProperty("mobileDataUsage", activeProfile?.safeMobileDataUsage ?: "medium")
                             }.toString()
+                        )
+                    }
+                    val createNativePlayer = {
+                        MpvEmbeddedPlayer(
+                            context,
+                            activeProfile?.safeMpvCustomOptions.orEmpty(),
+                            activeProfile?.safeAudioProcessingMode ?: "reference",
                         )
                     }
                     val createMainPlayer = {
@@ -778,7 +786,8 @@ class MainActivity : FragmentActivity() {
                             AndroidView(
                                 factory = { viewContext ->
                                     NativeVideoHost(viewContext).also { host ->
-                                        host.createPlayer = createMainPlayer
+                                        host.createPlayer = createNativePlayer
+                                        host.audioLanguage = activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" }
                                         val view = host.renderer
                                         nativeRendererView.value = view
                                         view.onNativeAction = handleNativeHomeAction
@@ -799,7 +808,8 @@ class MainActivity : FragmentActivity() {
                                     }
                                 },
                                 update = { host ->
-                                    host.createPlayer = createMainPlayer
+                                    host.createPlayer = createNativePlayer
+                                    host.audioLanguage = activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" }
                                     val view = host.renderer
                                     nativeRendererView.value = view
                                     view.onNativeAction = handleNativeHomeAction
