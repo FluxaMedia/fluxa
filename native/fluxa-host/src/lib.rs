@@ -127,6 +127,19 @@ struct RendererState {
     hero_plan_cache: Option<(Value, Option<Value>)>,
 }
 
+impl RendererState {
+    fn scale(&self) -> f32 {
+        let fit = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop {
+            let width = self.size[0] as f32 / self.density;
+            let height = self.size[1] as f32 / self.density;
+            (width / 1920.0).min(height / 1080.0).clamp(1.0, 2.0)
+        } else {
+            1.0
+        };
+        self.density * fit * self.settings.ui_scale()
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 enum HomeScrollTarget {
     Vertical,
@@ -1146,8 +1159,8 @@ fn rebuild_home_ui(ui: &mut UiTree, [width, height]: [u32; 2], home: &HomeModel,
 
 fn logical_surface_size(state: &RendererState) -> [u32; 2] {
     [
-        (state.size[0] as f32 / state.density).round().max(1.0) as u32,
-        (state.size[1] as f32 / state.density).round().max(1.0) as u32,
+        (state.size[0] as f32 / state.scale()).round().max(1.0) as u32,
+        (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
     ]
 }
 
@@ -1518,8 +1531,8 @@ fn ensure_focused_visible(state: &mut RendererState) {
         return;
     }
     let viewport = Viewport::new(
-        (state.size[0] as f32 / state.density).round().max(1.0) as u32,
-        (state.size[1] as f32 / state.density).round().max(1.0) as u32,
+        (state.size[0] as f32 / state.scale()).round().max(1.0) as u32,
+        (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
         state.home.form_factor.into(),
     )
     .with_safe_bottom(state.safe_bottom);
@@ -2106,8 +2119,8 @@ fn advance_home_inertia(state: &mut RendererState) {
         return;
     }
     let viewport = Viewport::new(
-        (state.size[0] as f32 / state.density).round().max(1.0) as u32,
-        (state.size[1] as f32 / state.density).round().max(1.0) as u32,
+        (state.size[0] as f32 / state.scale()).round().max(1.0) as u32,
+        (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
         state.home.form_factor.into(),
     )
     .with_safe_bottom(state.safe_bottom);
@@ -2438,7 +2451,7 @@ impl FluxaHost {
 
     pub fn mouse_moved(&self, x: f32, y: f32) {
         self.with_state(|state| {
-            let position = Pos2::new(x, y);
+            let position = Pos2::new(x, y) * (state.density / state.scale());
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
             if let Some(player) = state.player.as_mut() {
@@ -2450,7 +2463,7 @@ impl FluxaHost {
 
     pub fn mouse_button(&self, button: MouseButton, pressed: bool, x: f32, y: f32) {
         self.with_state(|state| {
-            let position = Pos2::new(x, y);
+            let position = Pos2::new(x, y) * (state.density / state.scale());
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
             state.egui_events.push(egui::Event::PointerButton {
@@ -2543,7 +2556,10 @@ impl FluxaHost {
     }
 
     pub fn pointer(&self, phase: PointerPhase, x: f32, y: f32) {
-        self.with_state(|state| pointer_event(state, phase, [x, y]));
+        self.with_state(|state| {
+            let ratio = state.density / state.scale();
+            pointer_event(state, phase, [x * ratio, y * ratio])
+        });
     }
 
     pub fn key_down(&self, input: KeyInput) {
@@ -2680,8 +2696,8 @@ impl FluxaHost {
 
 fn logical_viewport(state: &RendererState) -> Viewport {
     Viewport::new(
-        (state.size[0] as f32 / state.density).round().max(1.0) as u32,
-        (state.size[1] as f32 / state.density).round().max(1.0) as u32,
+        (state.size[0] as f32 / state.scale()).round().max(1.0) as u32,
+        (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
         state.home.form_factor.into(),
     )
     .with_safe_bottom(state.safe_bottom)
@@ -2962,6 +2978,7 @@ fn render_frame(state: &mut RendererState) {
         .get(&route)
         .copied()
         .unwrap_or(0.0);
+    let scale = state.scale();
     let render_result = {
         let RendererState {
             gpu,
@@ -2980,6 +2997,7 @@ fn render_frame(state: &mut RendererState) {
         let events = std::mem::take(egui_events);
         let modifiers = *modifiers;
         gpu.as_mut().map(|gpu| {
+            gpu.density = scale;
             gpu.render(
                 &route,
                 home,

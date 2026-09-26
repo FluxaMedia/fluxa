@@ -729,6 +729,17 @@ impl SettingsModel {
             .or_else(|| setting_default(key))
     }
 
+    pub fn ui_scale(&self) -> f32 {
+        self.value("uiScale")
+            .and_then(|value| {
+                value
+                    .as_f64()
+                    .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+            })
+            .map(|percent| (percent as f32 / 100.0).clamp(0.5, 2.0))
+            .unwrap_or(1.0)
+    }
+
     pub fn bool_value(&self, key: &str) -> bool {
         self.value(key)
             .and_then(serde_json::Value::as_bool)
