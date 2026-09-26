@@ -51,6 +51,17 @@ mod tests {
     }
 
     #[test]
+    fn a_nuvio_login_overrides_local_progress() {
+        let plan: Value = serde_json::from_str(
+            &continue_watching_source_plan_json(r#"{"source":"local","nuvioConnected":true}"#)
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(plan["source"], "nuvio");
+        assert_eq!(plan["usesLocal"], false);
+    }
+
+    #[test]
     fn continue_watching_keeps_resolved_up_next_placeholders() {
         let progress = json!({
             "tt0760437": {

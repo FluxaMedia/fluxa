@@ -925,38 +925,38 @@ impl EffectExecutor {
         prefs: &Value,
         source: Option<&str>,
     ) -> Result<Value, String> {
-        let has_nuvio = profile
+        let nuvio_connected = profile
             .get("nuvioAccessToken")
             .and_then(Value::as_str)
             .is_some_and(|token| !token.is_empty());
-        let requested = if has_nuvio {
-            "nuvio"
-        } else {
-            source
-                .or_else(|| prefs.get("continueWatchingSource")?.as_str())
-                .unwrap_or("local")
-        };
-        let provider = core_value("continueWatchingSourcePlan", json!({"source": requested}))
-            .and_then(|plan| plan.get("provider")?.as_str().map(ToOwned::to_owned));
+        let requested = source
+            .or_else(|| prefs.get("continueWatchingSource")?.as_str())
+            .unwrap_or("local");
+        let provider = core_value(
+            "continueWatchingSourcePlan",
+            json!({"source": requested, "nuvioConnected": nuvio_connected}),
+        )
+        .and_then(|plan| plan.get("provider")?.as_str().map(ToOwned::to_owned));
         match provider.as_deref() {
-            Some("nuvio") => match self
-                .read_nuvio_library(profile_id, Some(profile).filter(|p| p.is_object()))
-                .await
-            {
-                Ok(Some(snapshot)) => {
-                    return Ok(snapshot
-                        .get("continueWatching")
-                        .cloned()
-                        .unwrap_or_else(|| json!([])));
-                }
-                Ok(None) => {}
-                Err(error) => {
-                    crate::log!("[fluxa-native] Nuvio continue watching failed: {error}")
-                }
-            },
-            Some(other) => crate::log!(
-                "[fluxa-native] continue watching source '{other}' has no native client yet, using local progress"
-            ),
+            Some("nuvio") => {
+                let snapshot = self
+                    .read_nuvio_library(profile_id, Some(profile).filter(|p| p.is_object()))
+                    .await
+                    .inspect_err(|error| {
+                        crate::log!("[fluxa-native] Nuvio continue watching failed: {error}")
+                    })
+                    .ok()
+                    .flatten();
+                return Ok(snapshot
+                    .and_then(|snapshot| snapshot.get("continueWatching").cloned())
+                    .unwrap_or_else(|| json!([])));
+            }
+            Some(other) => {
+                crate::log!(
+                    "[fluxa-native] continue watching source '{other}' has no native client yet"
+                );
+                return Ok(json!([]));
+            }
             None => {}
         }
         let library = self
