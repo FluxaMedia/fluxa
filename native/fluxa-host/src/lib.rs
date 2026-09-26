@@ -68,6 +68,8 @@ mod profiles;
 mod projection;
 pub use profiles::ImagePicker;
 
+pub type PrePresent = Box<dyn Fn() + Send>;
+
 pub use player::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
 
 static GPU_WAIT_LOGS: AtomicU32 = AtomicU32::new(0);
@@ -125,6 +127,7 @@ struct RendererState {
     pack_job: Option<profiles::PackJob>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
+    pre_present: Option<PrePresent>,
 }
 
 fn current_presence(state: &RendererState) -> presence::Presence {
@@ -854,8 +857,8 @@ impl Gpu {
         };
         surface.configure(&device, &config);
         host_log(format!(
-            "Surface configured: {:?}, {}x{}",
-            format, config.width, config.height
+            "Surface configured: {:?}, {}x{}, {:?} of {:?}",
+            format, config.width, config.height, config.present_mode, capabilities.present_modes
         ));
         let clear = fluxa_renderer::theme::theme("fluxa-dark")
             .and_then(|theme| theme.color("background"))
@@ -977,6 +980,7 @@ impl Gpu {
         scroll_y: f32,
         events: Vec<egui::Event>,
         modifiers: egui::Modifiers,
+        pre_present: Option<&PrePresent>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         self.artwork.poll(&self.egui_context);
@@ -1107,6 +1111,9 @@ impl Gpu {
                 .render(&mut pass.forget_lifetime(), &paint_jobs, &screen_descriptor);
         }
         self.queue.submit([encoder.finish()]);
+        if let Some(pre_present) = pre_present {
+            pre_present();
+        }
         frame.present();
         timer.mark("present");
         self.egui_renderer
@@ -2349,6 +2356,7 @@ impl FluxaHost {
             pack_job: None,
             picker_background: None,
             image_picker: None,
+            pre_present: None,
         })))
     }
 
@@ -2604,6 +2612,10 @@ impl FluxaHost {
 
     pub fn set_image_picker(&self, picker: ImagePicker) {
         self.with_state(|state| state.image_picker = Some(picker));
+    }
+
+    pub fn set_pre_present(&self, hook: PrePresent) {
+        self.with_state(|state| state.pre_present = Some(hook));
     }
 
     pub fn set_video_backend(&self, backend: Box<dyn VideoBackend>) {
@@ -3037,6 +3049,7 @@ fn render_frame(state: &mut RendererState) {
             picker_background,
             egui_events,
             modifiers,
+            pre_present,
             ..
         } = state;
         let events = std::mem::take(egui_events);
@@ -3060,6 +3073,7 @@ fn render_frame(state: &mut RendererState) {
                 scroll_y,
                 events,
                 modifiers,
+                pre_present.as_ref(),
                 &mut timer,
             )
         })

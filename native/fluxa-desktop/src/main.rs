@@ -139,6 +139,8 @@ impl ApplicationHandler for App {
         );
         host.set_form_factor("desktop");
         host.set_image_picker(Box::new(pick_image));
+        let notified = window.clone();
+        host.set_pre_present(Box::new(move || notified.pre_present_notify()));
         #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
         host.set_video_backend(Box::new(mpv::MpvBackend::new()));
         match data_dir {
