@@ -2202,7 +2202,7 @@ fn request_home_row_load_more(
     let max_offset = fluxa_ui::home_row_scroll_max(viewport, &state.home, scroll_index);
     let visible_width = (viewport.width * 0.9).max(1.0);
     let card_pitch = (max_offset + visible_width) / card_count as f32;
-    let threshold = (card_pitch * 2.0).min(max_offset);
+    let threshold = (visible_width * 2.0).max(card_pitch * 6.0).min(max_offset);
     let offset = state
         .home
         .row_scroll_offsets

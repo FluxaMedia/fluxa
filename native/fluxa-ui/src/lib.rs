@@ -4237,7 +4237,8 @@ fn draw_home_with_options(
         {
             let max_offset = row_scroll_max;
             let card_pitch = (card_width + metrics.horizontal_spacing).max(1.0);
-            if row_scroll_offset >= (max_offset - card_pitch * 2.0).max(0.0) {
+            let prefetch = (viewport.width * 2.0).max(card_pitch * 6.0);
+            if row_scroll_offset >= (max_offset - prefetch).max(0.0) {
                 let request_id = Id::new(("fluxa-home-load-more", row_id));
                 let already_requested = context.data_mut(|data| {
                     let previous = data.get_temp::<usize>(request_id).unwrap_or(0);

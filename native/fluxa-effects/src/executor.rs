@@ -563,7 +563,8 @@ impl EffectExecutor {
                 "items": items,
                 "addonName": label.split(" - ").next().unwrap_or(label),
                 "transportUrl": transport_url,
-                "catalogId": catalog_id
+                "catalogId": catalog_id,
+                "canLoadMore": true
             }));
         }
         crate::log!(
@@ -2087,6 +2088,11 @@ impl EffectExecutor {
         extra: &Value,
         parse_kind: &str,
     ) -> Result<Vec<Value>, String> {
+        if transport_url == "tmdb://builtin" {
+            return self
+                .fetch_builtin_tmdb_items(content_type, extra)
+                .await;
+        }
         let url = core_value(
             "buildResourceUrl",
             json!({
@@ -2107,6 +2113,64 @@ impl EffectExecutor {
         let (status_code, body) = fetch_text(&client, &url).await?;
         let items = parse_catalog_items(&url, status_code, body.as_deref(), parse_kind)?;
         annotate_catalog_items(&items, transport_url, content_type)
+    }
+
+    async fn fetch_builtin_tmdb_items(
+        &self,
+        content_type: &str,
+        extra: &Value,
+    ) -> Result<Vec<Value>, String> {
+        let active_id = self
+            .storage
+            .read_json("active_profile_id")?
+            .and_then(|value| value.as_str().map(ToOwned::to_owned))
+            .unwrap_or_default();
+        let prefs = self
+            .storage
+            .read_json(&Storage::prefs_key(&active_id))?
+            .or_else(|| self.storage.read_json("prefs").ok().flatten())
+            .unwrap_or_else(|| json!({}));
+        let api_key = prefs
+            .get("tmdbApiKey")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "TMDB API key is not configured".to_owned())?;
+        let language = self
+            .storage
+            .read_json("profiles")?
+            .and_then(|profiles| {
+                profiles.as_array()?.iter().find_map(|profile| {
+                    (profile.get("id").and_then(Value::as_str) == Some(active_id.as_str()))
+                        .then(|| profile.get("language")?.as_str().map(ToOwned::to_owned))
+                        .flatten()
+                })
+            })
+            .unwrap_or_else(|| "en".to_owned());
+        let url = core_value(
+            "tmdbBuiltinCatalogUrl",
+            json!({"contentType": content_type, "extra": extra, "apiKey": api_key, "language": language}),
+        )
+        .and_then(|value| value.as_str().map(ToOwned::to_owned))
+        .ok_or_else(|| "Fluxa Core could not build the TMDB catalog URL".to_owned())?;
+        let client = Client::builder()
+            .user_agent("Fluxa/1.0")
+            .native_timeout(Duration::from_secs(20))
+            .build()
+            .map_err(|error| error.to_string())?;
+        let response = fetch_json(&client, &url).await?;
+        let results = response
+            .get("results")
+            .cloned()
+            .unwrap_or_else(|| json!([]));
+        let metas = core_value(
+            "tmdbBulkMetas",
+            json!({"itemsJson": results.to_string(), "requestedType": content_type, "language": language}),
+        )
+        .unwrap_or_else(|| json!([]));
+        annotate_catalog_items(
+            metas.as_array().map(Vec::as_slice).unwrap_or_default(),
+            "tmdb://builtin",
+            content_type,
+        )
     }
 
     async fn fetch_addon_manifest(&self, payload: &Value) -> Result<Value, String> {
