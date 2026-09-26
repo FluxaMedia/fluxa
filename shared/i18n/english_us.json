@@ -2588,6 +2588,8 @@
   "settings.option.bottom_left": "Bottom left",
   "settings.option.bottom_right": "Bottom right",
   "settings.option.banner": "Banner",
+  "settings.option.bar": "Score bar",
+  "settings.option.sash": "Corner sash",
   "poster.badge.upcoming": "Coming soon",
   "poster.badge.new_season": "New season",
   "poster.badge.new_episode": "New episode",

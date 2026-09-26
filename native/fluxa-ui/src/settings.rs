@@ -726,7 +726,7 @@ const POSTER_SETTINGS: [SettingsRow; 6] = [
     SettingsRow {
         label: "Rating position",
         key: "posterRatingPosition",
-        options: &["top_left", "top_right", "bottom_left", "bottom_right"],
+        options: &["bar", "top_left", "top_right", "bottom_left", "bottom_right"],
     },
     SettingsRow {
         label: "Release status badge",
@@ -736,7 +736,7 @@ const POSTER_SETTINGS: [SettingsRow; 6] = [
     SettingsRow {
         label: "Status position",
         key: "posterStatusPosition",
-        options: &["banner", "top_left", "top_right", "bottom_left", "bottom_right"],
+        options: &["sash", "banner", "top_left", "top_right", "bottom_left", "bottom_right"],
     },
     SettingsRow {
         label: "Badge size",

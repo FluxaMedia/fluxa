@@ -1,4 +1,5 @@
-use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Vec2};
+use egui::epaint::{Mesh, TextShape};
+use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, Vec2};
 use std::sync::OnceLock;
 
 use super::{HomeCard, HomeRowKind, localized};
@@ -29,6 +30,7 @@ impl PosterStatus {
 pub struct PosterFacts {
     pub rating: Option<f32>,
     pub status: Option<PosterStatus>,
+    pub caption: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -38,6 +40,8 @@ pub enum Placement {
     BottomLeft,
     BottomRight,
     Banner,
+    Bar,
+    Sash,
 }
 
 impl Placement {
@@ -47,6 +51,8 @@ impl Placement {
             Some("bottom_left") => Placement::BottomLeft,
             Some("bottom_right") => Placement::BottomRight,
             Some("banner") => Placement::Banner,
+            Some("bar") => Placement::Bar,
+            Some("sash") => Placement::Sash,
             _ => Placement::TopLeft,
         }
     }
@@ -67,9 +73,9 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
             serde_json::json!({
                 "posterOverlaysEnabled": true,
                 "posterRatingBadge": true,
-                "posterRatingPosition": "top_left",
+                "posterRatingPosition": "bar",
                 "posterStatusBadge": true,
-                "posterStatusPosition": "banner",
+                "posterStatusPosition": "sash",
                 "posterBadgeSize": "default",
             })
         })
@@ -115,6 +121,7 @@ pub(super) fn poster_facts(item: &serde_json::Value) -> PosterFacts {
     PosterFacts {
         rating: rating(item),
         status: status(item, today()),
+        caption: caption(item),
     }
 }
 
@@ -135,6 +142,29 @@ fn rating(item: &serde_json::Value) -> Option<f32> {
     .find_map(|path| item.pointer(path).and_then(number))
     .filter(|value| *value > 0.0 && *value <= 10.0)
     .map(|value| value as f32)
+}
+
+fn caption(item: &serde_json::Value) -> String {
+    let genre = item
+        .get("genres")
+        .and_then(serde_json::Value::as_array)
+        .and_then(|genres| genres.iter().find_map(serde_json::Value::as_str));
+    let year = ["releaseInfo", "year", "released"].iter().find_map(|key| {
+        let value = item.get(*key)?;
+        let text = value
+            .as_str()
+            .map(str::to_owned)
+            .or_else(|| value.as_i64().map(|year| year.to_string()))?;
+        text.get(..4)
+            .filter(|year| year.bytes().all(|b| b.is_ascii_digit()))
+            .map(str::to_owned)
+    });
+    genre
+        .map(str::to_owned)
+        .into_iter()
+        .chain(year)
+        .collect::<Vec<_>>()
+        .join(" · ")
 }
 
 fn status(item: &serde_json::Value, today: i64) -> Option<PosterStatus> {
@@ -227,34 +257,63 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     else {
         return;
     };
+    let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
+    let facts = &card.overlay;
+    let mut stacks = [0.0f32; 4];
+
+    if overlays.rating == Some(Placement::Bar)
+        && (facts.rating.is_some() || !facts.caption.is_empty())
+    {
+        bottom_vignette(&painter, rect, radius);
+        score_bar(&painter, rect, facts, overlays.scale);
+        stacks[Placement::BottomLeft as usize] = rect.height() * 0.2;
+        stacks[Placement::BottomRight as usize] = rect.height() * 0.2;
+    }
+    if let (Some(Placement::Sash), Some(status)) = (overlays.status, facts.status) {
+        sash(
+            &painter,
+            rect,
+            status,
+            &localized(status.key(), &overlays.language),
+        );
+        stacks[Placement::TopRight as usize] = rect.width() * 0.34;
+    }
+
+    let mut badges = Vec::with_capacity(2);
+    if let (Some(placement), Some(value)) = (overlays.rating, facts.rating) {
+        badges.push((placement, format!("IMDb {value:.1}")));
+    }
+    if let (Some(placement), Some(status)) = (overlays.status, facts.status) {
+        badges.push((placement, localized(status.key(), &overlays.language)));
+    }
+    badges.retain(|(placement, _)| !matches!(placement, Placement::Bar | Placement::Sash));
+    badges.sort_by_key(|(placement, _)| *placement != Placement::Banner);
+
     let font_size = (rect.width() * 0.085).clamp(9.0, 15.0) * overlays.scale;
     let font = FontId::proportional(font_size);
     let pad = Vec2::new(font_size * 0.45, font_size * 0.2);
     let inset = (rect.width() * 0.04).max(4.0);
-    let mut stacks = [0.0f32; 4];
-
-    let mut badges = Vec::with_capacity(2);
-    if let (Some(placement), Some(value)) = (overlays.rating, card.overlay.rating) {
-        badges.push((placement, format!("IMDb {value:.1}")));
-    }
-    if let (Some(placement), Some(status)) = (overlays.status, card.overlay.status) {
-        badges.push((placement, localized(status.key(), &overlays.language)));
-    }
-    badges.sort_by_key(|(placement, _)| *placement != Placement::Banner);
-
     for (placement, text) in badges {
         let galley = painter.layout_no_wrap(text, font.clone(), Color32::WHITE);
         if placement == Placement::Banner {
             let height = galley.size().y + pad.y * 4.0;
-            let banner =
-                Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
+            let top = rect.bottom() - height - stacks[Placement::BottomLeft as usize];
+            let banner = Rect::from_min_max(
+                Pos2::new(rect.left(), top),
+                Pos2::new(rect.right(), top + height),
+            );
+            let corner = if stacks[Placement::BottomLeft as usize] > 0.0 {
+                0
+            } else {
+                radius as u8
+            };
             painter.rect_filled(
                 banner,
                 egui::CornerRadius {
                     nw: 0,
                     ne: 0,
-                    sw: radius as u8,
-                    se: radius as u8,
+                    sw: corner,
+                    se: corner,
                 },
                 Color32::from_black_alpha(190),
             );
@@ -263,8 +322,8 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
                 galley,
                 Color32::WHITE,
             );
-            stacks[Placement::BottomLeft as usize] = height;
-            stacks[Placement::BottomRight as usize] = height;
+            stacks[Placement::BottomLeft as usize] += height;
+            stacks[Placement::BottomRight as usize] += height;
             continue;
         }
         let size = galley.size() + pad * 2.0;
@@ -298,10 +357,175 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
         painter.rect_stroke(
             badge,
             size.y * 0.3,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(28)),
+            Stroke::new(1.0, Color32::from_white_alpha(28)),
             egui::StrokeKind::Inside,
         );
         painter.galley(badge.min + pad, galley, Color32::WHITE);
+    }
+}
+
+fn bottom_vignette(painter: &Painter, rect: Rect, radius: f32) {
+    const STEPS: usize = 12;
+    let max_alpha = 225.0;
+    let solid = radius.min(rect.height() * 0.1);
+    let top = rect.bottom() - rect.height() * 0.5;
+    let bottom = rect.bottom() - solid;
+    let mut mesh = Mesh::default();
+    for step in 0..=STEPS {
+        let t = step as f32 / STEPS as f32;
+        let y = top + (bottom - top) * t;
+        let color = Color32::from_black_alpha((max_alpha * t.powf(1.5)) as u8);
+        mesh.colored_vertex(Pos2::new(rect.left(), y), color);
+        mesh.colored_vertex(Pos2::new(rect.right(), y), color);
+        if step > 0 {
+            let base = (step as u32 - 1) * 2;
+            mesh.add_triangle(base, base + 1, base + 2);
+            mesh.add_triangle(base + 1, base + 3, base + 2);
+        }
+    }
+    painter.add(Shape::mesh(mesh));
+    let r = solid as u8;
+    painter.rect_filled(
+        Rect::from_min_max(Pos2::new(rect.left(), bottom), rect.max),
+        egui::CornerRadius {
+            nw: 0,
+            ne: 0,
+            sw: r,
+            se: r,
+        },
+        Color32::from_black_alpha(max_alpha as u8),
+    );
+}
+
+fn score_colors(score: f32) -> (Color32, Color32) {
+    let (left, right) = match score {
+        s if s < 5.0 => ([255, 80, 80], [160, 40, 40]),
+        s if s < 7.0 => ([255, 210, 90], [200, 150, 40]),
+        s if s < 8.5 => ([120, 255, 160], [40, 170, 90]),
+        _ => ([190, 140, 255], [186, 85, 211]),
+    };
+    let soft = |[r, g, b]: [u8; 3]| {
+        let mix = |c: u8| (c as f32 * 0.9 + 255.0 * 0.1) as u8;
+        Color32::from_rgba_unmultiplied(mix(r), mix(g), mix(b), 220)
+    };
+    (soft(left), soft(right))
+}
+
+fn score_bar(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) {
+    let width = rect.width();
+    let bar_height = (rect.height() * 0.012 * scale).max(3.0);
+    let side = width * 0.14;
+    let bottom = rect.bottom() - rect.height() * 0.04;
+    let track = Rect::from_min_max(
+        Pos2::new(rect.left() + side, bottom - bar_height),
+        Pos2::new(rect.right() - side, bottom),
+    );
+    if !facts.caption.is_empty() {
+        let size = (width * 0.08 * scale).clamp(8.0, 18.0);
+        let galley = painter.layout_no_wrap(
+            facts.caption.clone(),
+            FontId::proportional(size),
+            Color32::from_gray(200),
+        );
+        let center = Pos2::new(rect.center().x, track.top() - size * 0.95);
+        painter.galley(
+            center - galley.size() * 0.5,
+            galley,
+            Color32::from_gray(200),
+        );
+    }
+    let Some(score) = facts.rating else {
+        return;
+    };
+    let pill = bar_height * 0.5;
+    painter.rect_filled(track, pill, Color32::from_white_alpha(45));
+    let fill = Rect::from_min_size(
+        track.min,
+        Vec2::new(track.width() * score / 10.0, bar_height),
+    );
+    let (left, right) = score_colors(score);
+    let fill_painter = painter.with_clip_rect(fill.intersect(painter.clip_rect()));
+    let shape = Rect::from_min_size(fill.min, Vec2::new(fill.width() + pill, bar_height));
+    fill_painter.rect_filled(shape, pill, left);
+    let mut mesh = Mesh::default();
+    let fade = |c: Color32| Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), 0);
+    mesh.colored_vertex(Pos2::new(fill.left() + pill, fill.top()), fade(right));
+    mesh.colored_vertex(fill.right_top() + Vec2::X * pill, right);
+    mesh.colored_vertex(fill.right_bottom() + Vec2::X * pill, right);
+    mesh.colored_vertex(Pos2::new(fill.left() + pill, fill.bottom()), fade(right));
+    mesh.add_triangle(0, 1, 2);
+    mesh.add_triangle(0, 2, 3);
+    fill_painter.add(Shape::mesh(mesh));
+    fill_painter.line_segment(
+        [
+            Pos2::new(fill.left() + pill, fill.top() + 1.0),
+            Pos2::new(fill.right(), fill.top() + 1.0),
+        ],
+        Stroke::new(1.0, Color32::from_white_alpha(60)),
+    );
+}
+
+fn sash_colors(status: PosterStatus) -> (Color32, Color32) {
+    let ([r, g, b], [br, bg, bb]) = match status {
+        PosterStatus::NewSeason => ([30, 130, 120], [100, 220, 210]),
+        PosterStatus::NewEpisode => ([50, 110, 190], [160, 220, 255]),
+        PosterStatus::Upcoming => ([170, 100, 20], [255, 190, 90]),
+        PosterStatus::NewRelease => ([160, 130, 40], [212, 175, 55]),
+    };
+    (Color32::from_rgb(r, g, b), Color32::from_rgb(br, bg, bb))
+}
+
+fn sash(painter: &Painter, rect: Rect, status: PosterStatus, label: &str) {
+    let width = rect.width();
+    let length = width * 1.15;
+    let height = width * 0.12;
+    let center = Pos2::new(rect.right() - width * 0.162, rect.top() + width * 0.162);
+    let along = Vec2::new(1.0, 1.0).normalized();
+    let across = along.rot90();
+    let band = |inset: f32| {
+        let half = height * 0.5 - inset;
+        vec![
+            center - along * length * 0.5 - across * half,
+            center + along * length * 0.5 - across * half,
+            center + along * length * 0.5 + across * half,
+            center - along * length * 0.5 + across * half,
+        ]
+    };
+    let (inner, border) = sash_colors(status);
+    let shadow: Vec<Pos2> = band(0.0)
+        .into_iter()
+        .map(|p| p + Vec2::splat(height * 0.08))
+        .collect();
+    painter.add(Shape::convex_polygon(
+        shadow,
+        Color32::from_black_alpha(90),
+        Stroke::NONE,
+    ));
+    painter.add(Shape::convex_polygon(band(0.0), border, Stroke::NONE));
+    painter.add(Shape::convex_polygon(
+        band((height / 18.0).max(1.0)),
+        inner,
+        Stroke::NONE,
+    ));
+    painter.add(Shape::convex_polygon(
+        band(height * 0.12),
+        Color32::from_rgba_unmultiplied(8, 8, 8, 245),
+        Stroke::NONE,
+    ));
+
+    let size = (height * 0.4).min(height * 0.85 / (label.chars().count() as f32).powf(0.35));
+    let text = label.to_uppercase();
+    let font = FontId::proportional(size);
+    let angle = std::f32::consts::FRAC_PI_4;
+    for (offset, color) in [
+        (Vec2::splat(size * 0.08), Color32::from_black_alpha(180)),
+        (Vec2::ZERO, Color32::from_gray(225)),
+    ] {
+        let galley = painter.layout_no_wrap(text.clone(), font.clone(), color);
+        let pos = center + offset - galley.size() * 0.5;
+        painter.add(
+            TextShape::new(pos, galley, color).with_angle_and_anchor(angle, Align2::CENTER_CENTER),
+        );
     }
 }
 
