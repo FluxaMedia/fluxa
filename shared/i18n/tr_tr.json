@@ -2570,5 +2570,9 @@
   "settings.option.trakt": "Trakt",
   "settings.option.simkl": "Simkl",
   "settings.option.anilist": "AniList",
-  "settings.option.stremio": "Stremio"
+  "settings.option.stremio": "Stremio",
+  "settings.group.subtitle_style": "Altyazı stili",
+  "settings.group.upscaling_motion": "Ölçekleme ve hareket",
+  "settings.group.player_advanced": "Gelişmiş oynatma",
+  "settings.subtitle_text_opacity": "Metin saydamlığı"
 }

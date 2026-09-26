@@ -96,7 +96,7 @@ const GENERAL_SETTINGS: [SettingsRow; 16] = [
         options: &[],
     },
 ];
-const PLAYBACK_SETTINGS: [SettingsRow; 19] = [
+const PLAYBACK_SETTINGS: [SettingsRow; 44] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -191,6 +191,131 @@ const PLAYBACK_SETTINGS: [SettingsRow; 19] = [
         label: "Seek interval",
         key: "seekSeconds",
         options: &["5", "10", "15", "30"],
+    },
+    SettingsRow {
+        label: "Anime upscaling",
+        key: "animeUpscalingMode",
+        options: &["off", "auto"],
+    },
+    SettingsRow {
+        label: "Anime4K mode",
+        key: "animeUpscalingModePreset",
+        options: &["a", "b", "c"],
+    },
+    SettingsRow {
+        label: "Anime upscaling quality",
+        key: "animeUpscalingQuality",
+        options: &["anime4k_s", "anime4k_m", "anime4k_l"],
+    },
+    SettingsRow {
+        label: "Frame interpolation",
+        key: "frameInterpolationMode",
+        options: &["off", "display_resample", "smooth"],
+    },
+    SettingsRow {
+        label: "Hold speed",
+        key: "holdSpeed",
+        options: &["1.25", "1.5", "1.75", "2.0", "2.5", "3.0"],
+    },
+    SettingsRow {
+        label: "Countdown duration",
+        key: "autoPlayCountdownSecs",
+        options: &["5", "7", "10", "15"],
+    },
+    SettingsRow {
+        label: "Try binge group",
+        key: "tryBingeGroup",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Audio processing",
+        key: "audioProcessingMode",
+        options: &["reference", "balanced", "night"],
+    },
+    SettingsRow {
+        label: "Secondary audio",
+        key: "secondaryAudioLanguage",
+        options: &["none", "en", "tr"],
+    },
+    SettingsRow {
+        label: "Secondary subtitle",
+        key: "secondarySubtitleLanguage",
+        options: &["none", "en", "tr"],
+    },
+    SettingsRow {
+        label: "Buffer cache",
+        key: "playerBufferCacheMb",
+        options: &["100", "500", "1000", "2000", "-1"],
+    },
+    SettingsRow {
+        label: "Forward buffer",
+        key: "playerForwardBufferSeconds",
+        options: &["30", "60", "120", "300", "600"],
+    },
+    SettingsRow {
+        label: "Back buffer",
+        key: "playerBackBufferSeconds",
+        options: &["0", "15", "30", "60", "120", "300"],
+    },
+    SettingsRow {
+        label: "Subtitle position",
+        key: "subtitlePosition",
+        options: &["100", "90", "80", "70"],
+    },
+    SettingsRow {
+        label: "Subtitle size",
+        key: "subtitleSize",
+        options: &["50", "75", "100", "125", "150", "200"],
+    },
+    SettingsRow {
+        label: "Subtitle text",
+        key: "subtitleColor",
+        options: &["#FFFFFF", "#000000", "#FFE45C", "#FF5D5D", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC"],
+    },
+    SettingsRow {
+        label: "Text transparency",
+        key: "subtitleTextOpacity",
+        options: &["1.0", "0.75", "0.5", "0.25", "0.0"],
+    },
+    SettingsRow {
+        label: "Subtitle background",
+        key: "subtitleBackgroundColor",
+        options: &["#000000", "#FFFFFF", "#FFE45C", "#FF5D5D", "#3F7CFF"],
+    },
+    SettingsRow {
+        label: "Background transparency",
+        key: "subtitleBackgroundOpacity",
+        options: &["1.0", "0.75", "0.5", "0.25", "0.0"],
+    },
+    SettingsRow {
+        label: "Subtitle outline",
+        key: "subtitleOutlineColor",
+        options: &["#000000", "#FFFFFF", "#FFE45C", "#FF5D5D", "#3F7CFF"],
+    },
+    SettingsRow {
+        label: "Outline transparency",
+        key: "subtitleOutlineOpacity",
+        options: &["1.0", "0.75", "0.5", "0.25", "0.0"],
+    },
+    SettingsRow {
+        label: "Outline size",
+        key: "subtitleOutlineSize",
+        options: &["0", "1", "2", "3", "4", "5"],
+    },
+    SettingsRow {
+        label: "Bold subtitles",
+        key: "subtitleBold",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Subtitle shadow",
+        key: "subtitleShadow",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Force subtitle style",
+        key: "subtitleForceStyle",
+        options: &[],
     },
 ];
 const APPEARANCE_SETTINGS: [SettingsRow; 35] = [
@@ -407,16 +532,19 @@ const GENERAL_GROUPS: [(usize, usize, &str); 4] = [
     (9, 14, "settings.group.general_details"),
     (14, 16, "settings.group.general_calendar"),
 ];
-const PLAYBACK_GROUPS: [(usize, usize, &str); 4] = [
+const PLAYBACK_GROUPS: [(usize, usize, &str); 7] = [
     (0, 6, "settings.group.playback"),
     (6, 9, "settings.group.audio_subtitles"),
     (9, 12, "settings.group.sources_video"),
     (12, 19, "settings.group.skip_controls"),
+    (19, 23, "settings.group.upscaling_motion"),
+    (23, 32, "settings.group.player_advanced"),
+    (32, 44, "settings.group.subtitle_style"),
 ];
 const CONTENT_GROUPS: [(usize, usize, &str); 3] = [
     (0, 1, "settings.group.home"),
-    (1, 8, "settings.group.metadata"),
-    (8, 12, "settings.group.discovery"),
+    (1, 14, "settings.group.metadata"),
+    (14, 19, "settings.group.discovery"),
 ];
 const DOWNLOAD_GROUPS: [(usize, usize, &str); 1] = [(0, 5, "settings.group.downloads")];
 const APPEARANCE_PAGE_HEADER_HEIGHT: f32 = 66.0;
@@ -487,7 +615,7 @@ pub(super) fn appearance_group_layout(
 ) -> Option<(Rect, usize)> {
     settings_group_layout(index, rect, metrics, &APPEARANCE_GROUPS)
 }
-const CONTENT_SETTINGS: [SettingsRow; 12] = [
+const CONTENT_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "Show hero section",
         key: "showHeroSection",
@@ -529,6 +657,36 @@ const CONTENT_SETTINGS: [SettingsRow; 12] = [
         options: &[],
     },
     SettingsRow {
+        label: "TMDB cast and crew",
+        key: "tmdbEnrichCastCrewEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB networks",
+        key: "tmdbEnrichNetworkEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB collections",
+        key: "tmdbCollectionInfoEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB status and schedule",
+        key: "tmdbEnrichStatusScheduleEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB original titles",
+        key: "tmdbEnrichOriginTitlesEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB episode stills",
+        key: "tmdbEpisodeImagesEnabled",
+        options: &[],
+    },
+    SettingsRow {
         label: "TMDB recommendations",
         key: "tmdbRecommendationsEnabled",
         options: &[],
@@ -546,6 +704,11 @@ const CONTENT_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "TMDB watch providers",
         key: "tmdbEnrichWatchProvidersEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Trakt comments",
+        key: "traktCommentsEnabled",
         options: &[],
     },
 ];
@@ -957,6 +1120,72 @@ fn settings_panel_group(
     group
 }
 
+fn color_name(value: &str) -> Option<&'static str> {
+    Some(match value {
+        "#FFFFFF" => "auto.white",
+        "#000000" => "auto.black",
+        "#E50914" | "#FF5D5D" => "auto.red",
+        "#3F7CFF" => "auto.blue",
+        "#54D17A" => "auto.green",
+        "#FF8A3D" => "auto.orange",
+        "#C084FC" => "auto.purple",
+        "#FFE45C" => "auto.yellow",
+        _ => return None,
+    })
+}
+
+fn option_label(key: &str, value: &str, language: &str) -> String {
+    let named = match (key, value) {
+        (_, "off") => Some("settings.off"),
+        ("animeUpscalingMode", "auto") => Some("settings.auto"),
+        ("animeUpscalingQuality", _) => Some(match value {
+            "anime4k_s" => "settings.anime4k_s",
+            "anime4k_l" => "settings.anime4k_l",
+            _ => "settings.anime4k_m",
+        }),
+        ("animeUpscalingModePreset", "b") => Some("player.anime4k_mode_b"),
+        ("animeUpscalingModePreset", "c") => Some("player.anime4k_mode_c"),
+        ("animeUpscalingModePreset", _) => Some("player.anime4k_mode_a"),
+        ("frameInterpolationMode", "display_resample") => {
+            Some("settings.frame_interpolation_display_resample")
+        }
+        ("frameInterpolationMode", "smooth") => Some("settings.frame_interpolation_smooth"),
+        ("audioProcessingMode", _) => Some(match value {
+            "balanced" => "settings.audio_processing_balanced",
+            "night" => "settings.audio_processing_night",
+            _ => "settings.audio_processing_reference",
+        }),
+        ("playerBufferCacheMb", "-1") => Some("settings.buffer_cache_infinite"),
+        ("subtitlePosition", _) => Some(match value {
+            "90" => "settings.subtitle_position_low",
+            "80" => "settings.subtitle_position_middle",
+            "70" => "settings.subtitle_position_high",
+            _ => "settings.subtitle_position_bottom",
+        }),
+        ("accentColorArgb" | "subtitleColor" | "subtitleBackgroundColor" | "subtitleOutlineColor", _) => {
+            color_name(value)
+        }
+        _ => None,
+    };
+    if let Some(named) = named {
+        return localized(named, language);
+    }
+    match key {
+        "uiScale" | "subtitleSize" => format!("{value}%"),
+        "subtitleTextOpacity" | "subtitleBackgroundOpacity" | "subtitleOutlineOpacity" => {
+            format!("{}%", (value.parse::<f64>().unwrap_or(1.0) * 100.0).round())
+        }
+        "homeHeroAutoplayTrailerDelaySecs"
+        | "detailHeroAutoplayTrailerDelaySecs"
+        | "autoPlayCountdownSecs"
+        | "playerForwardBufferSeconds"
+        | "playerBackBufferSeconds" => format!("{value}s"),
+        "holdSpeed" => format!("{value}x"),
+        "playerBufferCacheMb" => format!("{value} MB"),
+        _ => localized_or(&format!("settings.option.{value}"), value, language),
+    }
+}
+
 pub(super) fn settings_row_label(setting: &SettingsRow, language: &str) -> String {
     let legacy_key = match setting.key {
         "autoSkipIntro" => "settings.auto_skip",
@@ -965,6 +1194,25 @@ pub(super) fn settings_row_label(setting: &SettingsRow, language: &str) -> Strin
         "holdToSpeedEnabled" => "settings.hold_to_speed",
         "playbackSpeed" => "auto.playback_speed",
         "discordRichPresenceEnabled" => "settings.discord_rich_presence_enable",
+        "animeUpscalingMode" => "settings.anime_upscaling",
+        "animeUpscalingModePreset" => "player.anime4k",
+        "frameInterpolationMode" => "settings.frame_interpolation",
+        "autoPlayCountdownSecs" => "settings.auto_play_countdown",
+        "playerBufferCacheMb" => "settings.buffer_cache",
+        "playerForwardBufferSeconds" => "settings.forward_buffer",
+        "playerBackBufferSeconds" => "settings.back_buffer",
+        "subtitleColor" => "settings.subtitle_text",
+        "subtitleBackgroundColor" => "settings.subtitle_background",
+        "subtitleBackgroundOpacity" => "auto.background_transparency",
+        "subtitleOutlineColor" => "settings.subtitle_outline",
+        "subtitleOutlineOpacity" => "settings.subtitle.outline_opacity",
+        "tmdbCollectionInfoEnabled" => "settings.tmdb_enrich_collection",
+        "tmdbEnrichCastCrewEnabled" => "settings.tmdb_enrich_cast_crew",
+        "tmdbEnrichNetworkEnabled" => "settings.tmdb_enrich_network",
+        "tmdbEnrichOriginTitlesEnabled" => "settings.tmdb_enrich_origin_titles",
+        "tmdbEnrichStatusScheduleEnabled" => "settings.tmdb_enrich_status_schedule",
+        "tmdbEpisodeImagesEnabled" => "settings.tmdb_enrich_episode_stills",
+        "traktCommentsEnabled" => "settings.trakt_comments",
         _ => "",
     };
     if !legacy_key.is_empty() {
@@ -2046,29 +2294,7 @@ pub fn draw_settings(
                 .value(setting.key)
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or(setting.options[0]);
-            let value = if setting.key == "uiScale" {
-                format!("{raw_value}%")
-            } else if matches!(
-                setting.key,
-                "homeHeroAutoplayTrailerDelaySecs" | "detailHeroAutoplayTrailerDelaySecs"
-            ) {
-                format!("{raw_value}s")
-            } else if setting.key == "accentColorArgb" {
-                let color_key = match raw_value {
-                    "#FFFFFF" => Some("auto.white"),
-                    "#E50914" => Some("auto.red"),
-                    "#3F7CFF" => Some("auto.blue"),
-                    "#54D17A" => Some("auto.green"),
-                    "#FF8A3D" => Some("auto.orange"),
-                    "#C084FC" => Some("auto.purple"),
-                    _ => None,
-                };
-                color_key
-                    .map(|key| localized(key, language))
-                    .unwrap_or_else(|| raw_value.to_owned())
-            } else {
-                localized_or(&format!("settings.option.{raw_value}"), &raw_value, language)
-            };
+            let value = option_label(setting.key, raw_value, language);
             let value_size = if !compact && !tv {
                 metrics.settings_row_value_size_desktop
             } else {
@@ -2095,32 +2321,7 @@ pub fn draw_settings(
                         .options
                         .iter()
                         .map(|option| {
-                            let label = if setting.key == "accentColorArgb" {
-                                            let key = match *option {
-                                                "#FFFFFF" => "auto.white",
-                                                "#E50914" => "auto.red",
-                                                "#3F7CFF" => "auto.blue",
-                                                "#54D17A" => "auto.green",
-                                                "#FF8A3D" => "auto.orange",
-                                                "#C084FC" => "auto.purple",
-                                                _ => "",
-                                            };
-                                            if key.is_empty() {
-                                                (*option).to_owned()
-                                            } else {
-                                                localized(key, language)
-                                            }
-                                        } else if setting.key == "uiScale" {
-                                            format!("{option}%")
-                                        } else if matches!(
-                                            setting.key,
-                                            "homeHeroAutoplayTrailerDelaySecs"
-                                                | "detailHeroAutoplayTrailerDelaySecs"
-                                        ) {
-                                            format!("{option}s")
-                                        } else {
-                                            localized_or(&format!("settings.option.{option}"), option, language)
-                                        };
+                            let label = option_label(setting.key, option, language);
                             ((*option).to_owned(), label)
                         })
                         .collect::<Vec<_>>();

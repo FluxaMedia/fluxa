@@ -542,11 +542,7 @@ fn cycle_upscaling(state: &mut RendererState) {
     };
     let mut changes = vec![(
         "animeUpscalingMode",
-        if next == "off" {
-            json!("off")
-        } else {
-            json!(state.settings.str_value("animeUpscalingQuality").unwrap_or("anime4k_m"))
-        },
+        json!(if next == "off" { "off" } else { "auto" }),
     )];
     if next != "off" {
         changes.push(("animeUpscalingModePreset", json!(next)));

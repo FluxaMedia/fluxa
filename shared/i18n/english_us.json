@@ -2570,5 +2570,9 @@
   "settings.option.trakt": "Trakt",
   "settings.option.simkl": "Simkl",
   "settings.option.anilist": "AniList",
-  "settings.option.stremio": "Stremio"
+  "settings.option.stremio": "Stremio",
+  "settings.group.subtitle_style": "Subtitle style",
+  "settings.group.upscaling_motion": "Upscaling and motion",
+  "settings.group.player_advanced": "Advanced playback",
+  "settings.subtitle_text_opacity": "Text transparency"
 }
