@@ -184,7 +184,7 @@ enum HomeScrollTarget {
 }
 
 #[derive(Clone, Debug, Serialize)]
-#[serde(tag = "type", rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum NativeAction {
     CoreCommand {
         command: Value,
