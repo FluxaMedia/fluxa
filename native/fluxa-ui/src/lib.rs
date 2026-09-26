@@ -1273,6 +1273,10 @@ pub fn calendar_model_from_core_snapshot(snapshot: &serde_json::Value) -> Calend
     }
 }
 
+pub fn poster_card_from_meta(item: &serde_json::Value) -> HomeCard {
+    core_home_card(item)
+}
+
 fn core_home_card(item: &serde_json::Value) -> HomeCard {
     core_home_card_for_kind(item, HomeRowKind::Poster)
 }
@@ -2231,6 +2235,9 @@ pub const NODE_PLAYER_FORWARD: u64 = 704;
 pub const NODE_PLAYER_MUTE: u64 = 705;
 pub const NODE_PLAYER_FULLSCREEN: u64 = 706;
 pub const NODE_PLAYER_UPSCALING: u64 = 707;
+pub const NODE_PLAYER_RECOMMENDATIONS_CLOSE: u64 = 708;
+pub const NODE_PLAYER_RECOMMENDATION_BASE: u64 = 720;
+pub const PLAYER_RECOMMENDATION_LIMIT: usize = 12;
 pub const NODE_LIBRARY_SORT: u64 = 81;
 pub const NODE_LIBRARY_SOURCE: u64 = 82;
 pub const NODE_DISCOVER_TYPE_BASE: u64 = 40;

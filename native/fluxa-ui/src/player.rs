@@ -22,6 +22,7 @@ pub struct PlayerModel {
     pub warnings_elapsed: Option<f32>,
     pub language: String,
     pub upscaling: String,
+    pub recommendations: Vec<HomeCard>,
 }
 
 const WARNING_BAR: f32 = 0.3;
@@ -304,6 +305,14 @@ pub fn draw_player(
                 layout.activated = Some(NODE_PLAYER_TOGGLE);
             }
         });
+    if !player.recommendations.is_empty() {
+        let bottom = if player.video.is_some() && player.controls_visible {
+            rect.bottom() - 116.0
+        } else {
+            rect.bottom() - 32.0
+        } - viewport.safe_bottom;
+        draw_recommendations(context, rect, margin, bottom, compact, player, assets, &mut layout);
+    }
     if let Some((_, rect)) = layout.focusable.iter().find(|(id, _)| Some(*id) == focused) {
         context
             .layer_painter(egui::LayerId::new(
@@ -318,6 +327,118 @@ pub fn draw_player(
             );
     }
     layout
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_recommendations(
+    context: &egui::Context,
+    rect: Rect,
+    margin: f32,
+    bottom: f32,
+    compact: bool,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+    layout: &mut HomeLayout,
+) {
+    let poster = if compact { Vec2::new(92.0, 138.0) } else { Vec2::new(128.0, 192.0) };
+    let label = 30.0;
+    let header = 40.0;
+    let top = bottom - poster.y - label - header;
+    let ppp = context.pixels_per_point();
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Middle,
+        Id::new("fluxa-player-recommendations-scrim"),
+    ));
+    let fade_top = top - 80.0;
+    let bands = 20;
+    let band = (rect.bottom() - fade_top) / bands as f32;
+    for index in 0..bands {
+        let strength = (index as f32 + 1.0) / bands as f32;
+        painter.rect_filled(
+            Rect::from_min_max(
+                Pos2::new(rect.left(), fade_top + index as f32 * band),
+                Pos2::new(rect.right(), fade_top + (index + 1) as f32 * band),
+            ),
+            0.0,
+            Color32::from_black_alpha((200.0 * strength.powf(1.4)).round() as u8),
+        );
+    }
+    egui::Area::new(Id::new("fluxa-player-recommendations"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(Pos2::new(margin, top))
+        .show(context, |ui| {
+            let width = rect.width() - margin * 2.0;
+            ui.set_max_width(width);
+            let painter = ui.painter().clone();
+            painter.text(
+                Pos2::new(margin, top + header * 0.5),
+                Align2::LEFT_CENTER,
+                localized("player.recommendations", &player.language),
+                FontId::proportional(if compact { 17.0 } else { 20.0 }),
+                Color32::WHITE,
+            );
+            let close = control(
+                ui,
+                &painter,
+                Rect::from_center_size(
+                    Pos2::new(margin + width - 18.0, top + header * 0.5),
+                    Vec2::splat(36.0),
+                ),
+                "close",
+                false,
+            );
+            layout.focusable.push((NODE_PLAYER_RECOMMENDATIONS_CLOSE, close.rect));
+            if close.clicked() {
+                layout.activated = Some(NODE_PLAYER_RECOMMENDATIONS_CLOSE);
+            }
+            ui.add_space(header);
+            egui::ScrollArea::horizontal()
+                .id_salt("fluxa-player-recommendations-scroll")
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = 14.0;
+                        for (index, card) in player.recommendations.iter().enumerate() {
+                            let (card_rect, response) = ui.allocate_exact_size(
+                                Vec2::new(poster.x, poster.y + label),
+                                Sense::click(),
+                            );
+                            let node = NODE_PLAYER_RECOMMENDATION_BASE + index as u64;
+                            layout.focusable.push((node, card_rect));
+                            if response.clicked() {
+                                layout.activated = Some(node);
+                            }
+                            if !ui.is_rect_visible(card_rect) {
+                                continue;
+                            }
+                            let painter = ui.painter();
+                            let lift = context.animate_bool_with_time(
+                                Id::new(("fluxa-player-recommendation-hover", index)),
+                                response.hovered(),
+                                0.15,
+                            );
+                            let image = Rect::from_min_size(card_rect.min, poster).expand(4.0 * lift);
+                            painter.rect_filled(image, 10.0, Color32::from_white_alpha(14));
+                            super::detail::rounded_art(
+                                painter,
+                                image,
+                                10.0,
+                                card.artwork_url.as_deref(),
+                                ppp,
+                                assets,
+                            );
+                            let font = FontId::proportional(13.0);
+                            painter.text(
+                                Pos2::new(card_rect.left(), card_rect.top() + poster.y + 9.0),
+                                Align2::LEFT_TOP,
+                                truncate_to_width(painter, &card.title, &font, poster.x),
+                                font,
+                                Color32::from_white_alpha(210),
+                            );
+                        }
+                    });
+                });
+        });
 }
 
 fn draw_seek_preview(

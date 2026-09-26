@@ -184,6 +184,40 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_similar(
+        &self,
+        item: Value,
+        api_key: String,
+        language: String,
+        endpoints: Vec<&'static str>,
+    ) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let task = async move {
+            let items = match Client::builder()
+                .native_timeout(Duration::from_secs(10))
+                .build()
+            {
+                Ok(client) => tmdb_similar(&client, &item, &api_key, &language, &endpoints)
+                    .await
+                    .unwrap_or_default(),
+                Err(_) => Vec::new(),
+            };
+            let _ = sender.send(items);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn(move || {
+            if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                runtime.block_on(task);
+            }
+        });
+        receiver
+    }
+
     pub fn spawn(&self, effect: Value, sender: Sender<EffectCompletion>) {
         let executor = self.clone();
         let task = async move {
@@ -2424,6 +2458,61 @@ fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
             Err(error) => crate::log!("[fluxa-native] torrent add failed: {error}"),
         }
     });
+}
+
+async fn tmdb_similar(
+    client: &Client,
+    item: &Value,
+    api_key: &str,
+    language: &str,
+    endpoints: &[&str],
+) -> Option<Vec<Value>> {
+    if api_key.trim().is_empty() || endpoints.is_empty() {
+        return None;
+    }
+    let content_type = item.get("type").and_then(Value::as_str).unwrap_or("movie");
+    let request = |extra: Value| {
+        let mut args = json!({
+            "contentType": content_type,
+            "contentId": item.get("id"),
+            "language": language,
+            "apiKey": api_key,
+            "endpoints": endpoints,
+        });
+        if let (Some(args), Some(extra)) = (args.as_object_mut(), extra.as_object()) {
+            args.extend(extra.clone());
+        }
+        args
+    };
+    let mut plan = core_value("tmdbDetailRequestPlan", request(json!({})))?;
+    if plan.get("urls").is_none() {
+        let find_url = plan.get("findUrl")?.as_str()?.to_owned();
+        let find = fetch_json(client, &find_url).await.ok()?;
+        plan = core_value("tmdbDetailRequestUrlsFromFind", request(json!({"find": find})))?;
+    }
+    for endpoint in endpoints {
+        let Some(url) = plan.pointer(&format!("/urls/{endpoint}")).and_then(Value::as_str) else {
+            continue;
+        };
+        let Ok(response) = fetch_json(client, url).await else {
+            continue;
+        };
+        let Some(results) = response.get("results").filter(|value| {
+            value.as_array().is_some_and(|items| !items.is_empty())
+        }) else {
+            continue;
+        };
+        let metas = core_value(
+            "tmdbBulkMetas",
+            json!({"itemsJson": results.to_string(), "requestedType": content_type, "language": language}),
+        )
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+        if !metas.is_empty() {
+            return Some(metas);
+        }
+    }
+    None
 }
 
 async fn tmdb_trailers(

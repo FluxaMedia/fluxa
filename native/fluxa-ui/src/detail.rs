@@ -58,7 +58,7 @@ pub fn detail_scroll_max(viewport: Viewport, detail: &DetailModel) -> f32 {
     (geometry.bottom - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
 }
 
-fn rounded_art(
+pub(super) fn rounded_art(
     painter: &egui::Painter,
     rect: Rect,
     radius: f32,

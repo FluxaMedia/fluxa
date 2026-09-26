@@ -84,6 +84,9 @@ pub(crate) struct PlayerSession {
     last_pump: Instant,
     thumbnail: Option<(f64, egui::TextureHandle)>,
     thumbnail_requested: Option<(f64, Instant)>,
+    outro_reached: bool,
+    recommendations_rx: Option<Receiver<Vec<Value>>>,
+    recommendations: Vec<Value>,
 }
 
 impl PlayerSession {
@@ -109,6 +112,9 @@ impl PlayerSession {
             last_pump: Instant::now(),
             thumbnail: None,
             thumbnail_requested: None,
+            outro_reached: false,
+            recommendations_rx: None,
+            recommendations: Vec::new(),
         }
     }
 
@@ -177,6 +183,11 @@ impl PlayerSession {
             warnings_elapsed: self.warnings_clock,
             language: self.language.clone(),
             upscaling: String::new(),
+            recommendations: self
+                .recommendations
+                .iter()
+                .map(fluxa_ui::poster_card_from_meta)
+                .collect(),
         }
     }
 }
@@ -275,6 +286,123 @@ pub(crate) fn pump(state: &mut RendererState) {
             .map(|url| session.fetch_json(url));
     }
     tick_warnings(player);
+    tick_recommendations(player, session, settings, &snapshot);
+}
+
+fn tick_recommendations(
+    player: &mut PlayerSession,
+    session: &fluxa_effects::SessionHandle,
+    settings: &SettingsModel,
+    snapshot: &Value,
+) {
+    if let Some(items) = player.recommendations_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        player.recommendations_rx = None;
+        player.recommendations = terminal_plan(&player.meta, items, snapshot);
+    }
+    if player.outro_reached || player.status.duration <= 0.0 {
+        return;
+    }
+    let series = player.meta.get("type").and_then(Value::as_str) == Some("series");
+    let threshold = settings
+        .values
+        .get(if series {
+            "seriesRecommendationOutroPercent"
+        } else {
+            "movieRecommendationOutroPercent"
+        })
+        .and_then(|value| value.as_f64().or_else(|| value.as_str()?.parse().ok()))
+        .unwrap_or(85.0);
+    let reached = core_value(
+        "recommendationOutroPlan",
+        json!({
+            "positionSeconds": player.status.position,
+            "durationSeconds": player.status.duration,
+            "thresholdPercent": threshold,
+            "alreadyShown": false,
+        }),
+    )
+    .and_then(|plan| plan.get("shouldShow").and_then(Value::as_bool))
+    .unwrap_or(false);
+    if !reached {
+        return;
+    }
+    player.outro_reached = true;
+    if series && !series_finished(&player.meta, snapshot) {
+        return;
+    }
+    let endpoints = [
+        ("recommendations", settings.bool_value("tmdbRecommendationsEnabled")),
+        ("similar", settings.bool_value("tmdbSimilarResultsEnabled")),
+    ]
+    .into_iter()
+    .filter_map(|(endpoint, on)| on.then_some(endpoint))
+    .collect();
+    let api_key = settings.str_value("tmdbApiKey").unwrap_or_default().to_owned();
+    player.recommendations_rx = Some(session.executor().fetch_similar(
+        player.meta.clone(),
+        api_key,
+        player.language.clone(),
+        endpoints,
+    ));
+}
+
+fn series_finished(meta: &Value, snapshot: &Value) -> bool {
+    let Some(videos) = meta.get("videos").and_then(Value::as_array) else {
+        return false;
+    };
+    let Some(current) = snapshot
+        .pointer("/player/currentVideoId")
+        .and_then(Value::as_str)
+        .and_then(|id| videos.iter().find(|video| video.get("id").and_then(Value::as_str) == Some(id)))
+    else {
+        return false;
+    };
+    let number = |key: &str| current.get(key).and_then(Value::as_i64);
+    core_value(
+        "terminalRecommendationEligibility",
+        json!({
+            "contentType": "series",
+            "videos": videos,
+            "currentSeason": number("season").unwrap_or(0),
+            "currentEpisode": number("episode").or_else(|| number("number")).unwrap_or(0),
+            "nowMs": web_time::SystemTime::now()
+                .duration_since(web_time::UNIX_EPOCH)
+                .map(|elapsed| elapsed.as_millis() as i64)
+                .unwrap_or(0),
+        }),
+    )
+    .and_then(|plan| plan.get("eligible").and_then(Value::as_bool))
+    .unwrap_or(false)
+}
+
+fn terminal_plan(meta: &Value, candidates: Vec<Value>, snapshot: &Value) -> Vec<Value> {
+    let watched: Vec<&str> = snapshot
+        .pointer("/library/watched")
+        .and_then(Value::as_object)
+        .map(|watched| {
+            watched
+                .iter()
+                .filter(|(_, value)| value.as_bool() == Some(true))
+                .map(|(id, _)| id.as_str())
+                .collect()
+        })
+        .unwrap_or_default();
+    let Some(plan) = core_value(
+        "terminalRecommendationPlan",
+        json!({
+            "current": {"id": meta.get("id"), "type": meta.get("type")},
+            "candidates": candidates,
+            "hasNextEpisode": false,
+            "watchedIds": watched,
+            "limit": fluxa_ui::PLAYER_RECOMMENDATION_LIMIT,
+        }),
+    ) else {
+        return Vec::new();
+    };
+    if plan.get("showRecommendations").and_then(Value::as_bool) != Some(true) {
+        return Vec::new();
+    }
+    plan.get("items").and_then(Value::as_array).cloned().unwrap_or_default()
 }
 
 fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
@@ -569,8 +697,41 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
         fluxa_ui::NODE_PLAYER_UPSCALING => cycle_upscaling(state),
+        fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => {
+            if let Some(player) = state.player.as_mut() {
+                player.recommendations.clear();
+            }
+        }
+        node if (fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE
+            ..fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE + fluxa_ui::PLAYER_RECOMMENDATION_LIMIT as u64)
+            .contains(&node) =>
+        {
+            open_recommendation(state, (node - fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE) as usize)
+        }
         _ => {}
     }
+}
+
+fn open_recommendation(state: &mut RendererState, index: usize) {
+    let Some(item) = state
+        .player
+        .as_ref()
+        .and_then(|player| player.recommendations.get(index))
+    else {
+        return;
+    };
+    let (Some(id), Some(item_type)) = (
+        item.get("id").and_then(Value::as_str),
+        item.get("type").and_then(Value::as_str),
+    ) else {
+        return;
+    };
+    let action = crate::NativeAction::Detail {
+        id: id.to_owned(),
+        item_type: item_type.to_owned(),
+    };
+    close(state);
+    state.pending_native_actions.push(action);
 }
 
 pub(crate) enum KeyOutcome {
@@ -592,7 +753,7 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
     let Some(player) = state.player.as_mut() else {
         return KeyOutcome::Focus;
     };
-    if player.controls_visible() {
+    if player.controls_visible() || !player.recommendations.is_empty() {
         player.touch();
         return KeyOutcome::Focus;
     }
