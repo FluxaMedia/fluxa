@@ -91,6 +91,7 @@ struct RendererState {
     backdrop_prefetch: Option<String>,
     keyboard_focus_visible: bool,
     load_more_requested_counts: HashMap<String, usize>,
+    discover_background_skip: Option<i64>,
     touch_start: Option<[f32; 2]>,
     touch_last: Option<[f32; 2]>,
     touch_last_at: Option<Instant>,
@@ -1672,6 +1673,31 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
     state.ui = UiTree::default();
+    request_discover_background_page(state);
+}
+
+const DISCOVER_BACKGROUND_LIMIT: usize = 400;
+
+fn request_discover_background_page(state: &mut RendererState) {
+    let discover = &state.discover;
+    if state.route == "discover"
+        || discover.is_loading
+        || !discover.query.is_empty()
+        || discover.results.len() >= DISCOVER_BACKGROUND_LIMIT
+    {
+        return;
+    }
+    let Some(request) = discover.next_page.as_ref() else {
+        return;
+    };
+    let skip = request.get("skip").and_then(Value::as_i64);
+    if skip.is_none() || skip == state.discover_background_skip {
+        return;
+    }
+    state.discover_background_skip = skip;
+    state.pending_native_actions.push(NativeAction::CoreCommand {
+        command: request.clone(),
+    });
 }
 
 fn sync_home_from_core_snapshot(state: &mut RendererState) {
@@ -2326,6 +2352,7 @@ impl FluxaHost {
             backdrop_prefetch: None,
             keyboard_focus_visible: false,
             load_more_requested_counts: HashMap::new(),
+            discover_background_skip: None,
             touch_start: None,
             touch_last: None,
             touch_last_at: None,
@@ -2607,6 +2634,8 @@ impl FluxaHost {
             "language": profile_language(&profile),
             "force": true,
         }))?;
+        session.dispatch(discover_command(&profile, "movie", "", "", "", true))?;
+        session.dispatch(json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}))?;
         let pick = profiles::should_pick_on_start(session.storage());
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
@@ -3392,6 +3421,14 @@ fn route_actions_to_session(state: &mut RendererState) {
         if let NativeAction::StartPlayback { item } = &action {
             state.player = Some(player::PlayerSession::new(item.clone()));
             state.ui = UiTree::default();
+        }
+        if matches!(&action, NativeAction::Navigate { destination } if destination == "discover")
+            && !state.discover.catalogs.is_empty()
+        {
+            if let Err(error) = session.dispatch(navigation("discover")) {
+                host_log(format!("core dispatch failed: {error}"));
+            }
+            continue;
         }
         match session_commands(&action, &profile) {
             Some(commands) => {
