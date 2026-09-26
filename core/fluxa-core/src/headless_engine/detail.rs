@@ -197,6 +197,7 @@ pub(super) fn dispatch_load(
     source_addon_transport_url: Option<String>,
     source_addon_catalog_type: Option<String>,
     profile: Option<Value>,
+    preview: Option<Value>,
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Detail);
     let language = language.unwrap_or_else(|| "en".to_string());
@@ -207,6 +208,7 @@ pub(super) fn dispatch_load(
         profile: profile.clone().unwrap_or(Value::Null),
         is_loading: true,
         generation,
+        meta: preview.filter(Value::is_object).unwrap_or_default(),
         ..DetailState::default()
     };
     vec![

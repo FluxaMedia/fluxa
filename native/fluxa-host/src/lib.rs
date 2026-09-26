@@ -191,6 +191,7 @@ enum NativeAction {
     Detail {
         id: String,
         item_type: String,
+        preview: Value,
     },
     Play {
         id: String,
@@ -1750,6 +1751,7 @@ fn native_action_for_node(
             return Some(NativeAction::Detail {
                 id: entry.card.id.clone()?,
                 item_type: entry.card.item_type.clone()?,
+                preview: entry.card.raw.clone(),
             });
         }
         if node == fluxa_ui::NODE_CALENDAR_PREV || node == fluxa_ui::NODE_CALENDAR_NEXT {
@@ -1840,22 +1842,23 @@ fn native_action_for_node(
             return Some(NativeAction::Detail {
                 id: card.id.as_ref()?.clone(),
                 item_type: card.item_type.as_ref()?.clone(),
+                preview: card.raw.clone(),
             });
         }
     }
-    let (id, item_type) = if route == "library" && node >= NODE_CARD_BASE {
+    let (id, item_type, preview) = if route == "library" && node >= NODE_CARD_BASE {
         let card = library
             .cards(library_tab)
             .get((node - NODE_CARD_BASE) as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else if route == "discover" && node >= NODE_CARD_BASE {
         let card = discover.results.get((node - NODE_CARD_BASE) as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else if node == NODE_PLAY || node == NODE_MORE_INFO {
-        (home.item_id.as_ref()?, home.item_type.as_ref()?)
+        (home.item_id.as_ref()?, home.item_type.as_ref()?, &Value::Null)
     } else if node >= NODE_CARD_BASE {
         let card = home.card_at((node - NODE_CARD_BASE) as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?)
+        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else {
         return None;
     };
@@ -1868,6 +1871,7 @@ fn native_action_for_node(
         Some(NativeAction::Detail {
             id: id.clone(),
             item_type: item_type.clone(),
+            preview: preview.clone(),
         })
     }
 }
@@ -3333,7 +3337,7 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
         NativeAction::CalendarMonth { year, month } => vec![
             json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
         ],
-        NativeAction::Detail { id, item_type } | NativeAction::Play { id, item_type } => vec![
+        NativeAction::Detail { id, item_type, .. } | NativeAction::Play { id, item_type } => vec![
             navigation("detail"),
             json!({
                 "type": "detailLoadRequested",
@@ -3341,6 +3345,10 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
                 "contentType": item_type,
                 "language": profile_language(profile),
                 "profile": profile,
+                "preview": match action {
+                    NativeAction::Detail { preview, .. } => preview.clone(),
+                    _ => Value::Null,
+                },
             }),
         ],
         NativeAction::ToggleWatchlist { item } => {
@@ -3411,6 +3419,7 @@ mod tests {
             &NativeAction::Detail {
                 id: "tt1".to_owned(),
                 item_type: "movie".to_owned(),
+                preview: Value::Null,
             },
             &profile,
         )

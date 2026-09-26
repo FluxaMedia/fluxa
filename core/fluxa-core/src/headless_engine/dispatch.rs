@@ -29,6 +29,7 @@ impl HeadlessEngine {
                 source_addon_transport_url,
                 source_addon_catalog_type,
                 profile,
+                preview,
             } => detail::dispatch_load(
                 self,
                 content_type,
@@ -37,6 +38,7 @@ impl HeadlessEngine {
                 source_addon_transport_url,
                 source_addon_catalog_type,
                 profile,
+                preview,
             ),
             AppAction::DetailLocalStateRequested {
                 primary_id,

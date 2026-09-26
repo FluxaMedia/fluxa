@@ -25,6 +25,7 @@ pub(super) enum AppAction {
         source_addon_transport_url: Option<String>,
         source_addon_catalog_type: Option<String>,
         profile: Option<Value>,
+        preview: Option<Value>,
     },
     #[serde(rename = "detailLocalStateRequested")]
     DetailLocalStateRequested {

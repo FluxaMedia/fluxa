@@ -765,6 +765,7 @@ fn open_recommendation(state: &mut RendererState, play: bool) {
         crate::NativeAction::Detail {
             id: id.to_owned(),
             item_type: item_type.to_owned(),
+            preview: item.clone(),
         }
     };
     close(state);
