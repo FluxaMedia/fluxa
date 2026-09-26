@@ -146,6 +146,44 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_trailers(
+        &self,
+        items: Vec<Value>,
+        api_key: String,
+        language: String,
+    ) -> std::sync::mpsc::Receiver<Vec<(String, Value)>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let task = async move {
+            let mut found = Vec::new();
+            if let Ok(client) = Client::builder()
+                .native_timeout(Duration::from_secs(10))
+                .build()
+            {
+                for item in items {
+                    let Some(id) = item.get("id").and_then(Value::as_str) else {
+                        continue;
+                    };
+                    let trailers =
+                        tmdb_trailers(&client, &item, &api_key, &language).await;
+                    found.push((id.to_owned(), trailers.unwrap_or_else(|| json!([]))));
+                }
+            }
+            let _ = sender.send(found);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        std::thread::spawn(move || {
+            if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+                .enable_all()
+                .build()
+            {
+                runtime.block_on(task);
+            }
+        });
+        receiver
+    }
+
     pub fn spawn(&self, effect: Value, sender: Sender<EffectCompletion>) {
         let executor = self.clone();
         let task = async move {
@@ -267,6 +305,11 @@ impl EffectExecutor {
                 self.read_calendar_month(&payload)
             }
             fluxa_core::runtime::EffectKind::WriteSettings => self.write_settings(&payload),
+            fluxa_core::runtime::EffectKind::FetchYoutubeTrailerWatchConfig
+            | fluxa_core::runtime::EffectKind::FetchYoutubeTrailerPlayer
+            | fluxa_core::runtime::EffectKind::FetchYoutubeTrailerPlayerScript => {
+                youtube_request(&payload).await
+            }
             _ => Err(format!(
                 "effect {effect_type} has no native implementation yet"
             )),
@@ -2381,6 +2424,73 @@ fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
             Err(error) => crate::log!("[fluxa-native] torrent add failed: {error}"),
         }
     });
+}
+
+async fn tmdb_trailers(
+    client: &Client,
+    item: &Value,
+    api_key: &str,
+    language: &str,
+) -> Option<Value> {
+    let request = |extra: Value| {
+        let mut args = json!({
+            "contentType": item.get("type"),
+            "contentId": item.get("id"),
+            "language": language,
+            "apiKey": api_key,
+            "endpoints": ["videos"],
+        });
+        if let (Some(args), Some(extra)) = (args.as_object_mut(), extra.as_object()) {
+            args.extend(extra.clone());
+        }
+        args
+    };
+    let mut plan = core_value("tmdbDetailRequestPlan", request(json!({})))?;
+    if plan.get("urls").is_none() {
+        let find_url = plan.get("findUrl")?.as_str()?.to_owned();
+        let find = fetch_json(client, &find_url).await.ok()?;
+        plan = core_value("tmdbDetailRequestUrlsFromFind", request(json!({"find": find})))?;
+    }
+    let url = plan.pointer("/urls/videos")?.as_str()?.to_owned();
+    let videos = fetch_json(client, &url).await.ok()?;
+    let results = videos.get("results").filter(|value| {
+        value.as_array().is_some_and(|items| !items.is_empty())
+    })?;
+    core_value("tmdbBulkVideosToTrailers", results.clone())
+}
+
+async fn youtube_request(payload: &Value) -> Result<Value, String> {
+    let url = payload
+        .get("url")
+        .and_then(Value::as_str)
+        .ok_or_else(|| "missing trailer request URL".to_owned())?;
+    let client = Client::builder()
+        .native_timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|error| error.to_string())?;
+    let mut request = match payload.get("method").and_then(Value::as_str) {
+        Some("POST") => client.post(url),
+        _ => client.get(url),
+    };
+    for (name, value) in payload
+        .get("headers")
+        .and_then(Value::as_object)
+        .into_iter()
+        .flatten()
+    {
+        if let Some(value) = value.as_str() {
+            request = request.header(name.as_str(), value);
+        }
+    }
+    if let Some(body) = payload.get("body").filter(|body| !body.is_null()) {
+        request = request
+            .header("Content-Type", "application/json")
+            .body(body.to_string());
+    }
+    let response = request.send().await.map_err(|error| error.to_string())?;
+    let status = response.status().as_u16();
+    let body = response.text().await.map_err(|error| error.to_string())?;
+    Ok(json!({"statusCode": status, "body": body}))
 }
 
 async fn fetch_json(client: &Client, url: &str) -> Result<Value, String> {
