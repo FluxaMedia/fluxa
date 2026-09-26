@@ -3967,41 +3967,7 @@ fn draw_home_with_options(
         {
             paint_trailer(context, &painter, texture, hero_visual_rect, hero.item_id.as_deref(), 210);
         }
-        if compact {
-            let gradient_rect = Rect::from_min_max(
-                Pos2::new(
-                    hero_visual_rect.left(),
-                    hero_visual_rect.top() + hero_height * 0.30,
-                ),
-                hero_visual_rect.right_bottom(),
-            );
-            paint_vertical_gradient(
-                &painter,
-                gradient_rect,
-                Color32::TRANSPARENT,
-                metrics.background,
-            );
-        } else {
-            paint_horizontal_gradient(
-                &painter,
-                hero_visual_rect,
-                Color32::from_black_alpha(232),
-                Color32::TRANSPARENT,
-            );
-            let gradient_rect = Rect::from_min_max(
-                Pos2::new(
-                    hero_visual_rect.left(),
-                    hero_visual_rect.top() + hero_height * 0.48,
-                ),
-                hero_visual_rect.right_bottom(),
-            );
-            paint_vertical_gradient(
-                &painter,
-                gradient_rect,
-                Color32::TRANSPARENT,
-                metrics.background,
-            );
-        }
+        paint_hero_scrim(&painter, hero_visual_rect, compact, metrics.background);
     }
     let margin = if compact {
         16.0
@@ -4752,6 +4718,30 @@ fn draw_loading_screen(
         egui::Stroke::new(stroke, Color32::from_white_alpha(220)),
     ));
     context.request_repaint();
+}
+
+fn paint_hero_scrim(painter: &egui::Painter, rect: Rect, compact: bool, background: Color32) {
+    if !compact {
+        paint_horizontal_gradient(
+            painter,
+            Rect::from_min_max(
+                rect.left_top(),
+                Pos2::new(rect.left() + rect.width() * 0.72, rect.bottom()),
+            ),
+            Color32::from_black_alpha(235),
+            Color32::TRANSPARENT,
+        );
+    }
+    let fade_from = if compact { 0.3 } else { 0.5 };
+    paint_vertical_gradient(
+        painter,
+        Rect::from_min_max(
+            Pos2::new(rect.left(), rect.top() + rect.height() * fade_from),
+            rect.right_bottom(),
+        ),
+        Color32::TRANSPARENT,
+        background,
+    );
 }
 
 fn paint_vertical_gradient(painter: &egui::Painter, rect: Rect, top: Color32, bottom: Color32) {

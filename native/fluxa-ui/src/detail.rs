@@ -138,41 +138,20 @@ pub fn draw_detail(
     );
     let backdrop = detail.background_url.as_deref().or(detail.poster_url.as_deref());
     let target = backdrop_target_size(viewport.width, ppp);
-    if let Some(texture) = assets.texture_for(backdrop, target, ArtworkPriority::Hero) {
-        let size = assets.texture_size(backdrop).unwrap_or(target);
-        let fade = context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.25);
-        painter.image(
-            texture,
-            hero,
-            cover_uv(size, hero),
-            Color32::from_white_alpha((225.0 * fade) as u8),
-        );
-    }
+    let fade = context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.25);
+    components::artwork_image(
+        &painter,
+        hero,
+        backdrop,
+        target,
+        ArtworkPriority::Hero,
+        Color32::from_white_alpha((225.0 * fade) as u8),
+        assets,
+    );
     if let Some(texture) = detail.trailer {
         crate::paint_trailer(context, &painter, texture, hero, Some(detail.id.as_str()), 225);
     }
-    let background = metrics.background;
-    if compact {
-        paint_vertical_gradient(
-            &painter,
-            Rect::from_min_max(Pos2::new(hero.left(), hero.top() + hero.height() * 0.25), hero.right_bottom()),
-            Color32::TRANSPARENT,
-            background,
-        );
-    } else {
-        paint_horizontal_gradient(
-            &painter,
-            Rect::from_min_max(hero.left_top(), Pos2::new(hero.left() + hero.width() * 0.72, hero.bottom())),
-            Color32::from_black_alpha(235),
-            Color32::TRANSPARENT,
-        );
-        paint_vertical_gradient(
-            &painter,
-            Rect::from_min_max(Pos2::new(hero.left(), hero.top() + hero.height() * 0.55), hero.right_bottom()),
-            Color32::TRANSPARENT,
-            background,
-        );
-    }
+    paint_hero_scrim(&painter, hero, compact, metrics.background);
     paint_vertical_gradient(
         &painter,
         Rect::from_min_size(hero.left_top(), Vec2::new(hero.width(), 120.0)),

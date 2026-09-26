@@ -487,13 +487,15 @@ fn draw_recommendations(
     );
     let url = hero.background_url.as_deref();
     let target = backdrop_target_size(rect.width(), context.pixels_per_point());
-    if let Some(texture) = assets.texture_for(url, target, ArtworkPriority::Visible) {
-        let uv = assets
-            .texture_size(url)
-            .map(|size| cover_uv(size, rect))
-            .unwrap_or_else(full_uv);
-        painter.image(texture, rect, uv, Color32::from_white_alpha((255.0 * reveal) as u8));
-    }
+    components::artwork_image(
+        &painter,
+        rect,
+        url,
+        target,
+        ArtworkPriority::Visible,
+        Color32::from_white_alpha((255.0 * reveal) as u8),
+        assets,
+    );
     let fade_top = rect.top() + rect.height() * 0.45;
     paint_vertical_gradient(
         &painter,
