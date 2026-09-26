@@ -17,6 +17,7 @@ pub(crate) struct Request {
     pub library_tab: LibraryTab,
     pub library_query: String,
     pub library_sort: String,
+    pub hero_trailers: Arc<Value>,
 }
 
 pub(crate) struct Projection {
@@ -28,6 +29,7 @@ pub(crate) struct Projection {
     pub calendar: CalendarModel,
     pub detail: DetailModel,
     pub settings: SettingsModel,
+    pub trailer_targets: Vec<Value>,
 }
 
 #[derive(Default)]
@@ -39,8 +41,8 @@ fn project(request: Request, hero_cache: &mut HeroCache) -> Projection {
         "categories": snapshot.pointer("/home/categories").cloned().unwrap_or_else(|| json!([])),
         "billboard": snapshot.pointer("/home/billboard").cloned().unwrap_or(Value::Null),
         "prefs": snapshot.pointer("/settings/values").cloned().unwrap_or_else(|| json!({})),
-        "fetchedTrailers": {},
-        "fetchedIds": [],
+        "fetchedTrailers": request.hero_trailers.get("fetched").cloned().unwrap_or_else(|| json!({})),
+        "fetchedIds": request.hero_trailers.get("ids").cloned().unwrap_or_else(|| json!([])),
         "fetchedLogos": {},
         "fetchedLogoIds": [],
     });
@@ -52,6 +54,12 @@ fn project(request: Request, hero_cache: &mut HeroCache) -> Projection {
             plan
         }
     };
+    let trailer_targets = hero_plan
+        .as_ref()
+        .and_then(|plan| plan.get("trailerTargets"))
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
     let home = match hero_plan {
         Some(hero_plan) if snapshot.get("home").is_some_and(Value::is_object) => {
             let mut home_snapshot = json!({});
@@ -112,6 +120,7 @@ fn project(request: Request, hero_cache: &mut HeroCache) -> Projection {
         calendar: fluxa_ui::calendar_model_from_core_snapshot(snapshot),
         detail: detail_model_from_core_snapshot(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
+        trailer_targets,
     }
 }
 

@@ -66,6 +66,7 @@ mod player;
 mod presence;
 mod profiles;
 mod projection;
+mod trailer;
 pub use profiles::ImagePicker;
 
 pub type PrePresent = Box<dyn Fn() + Send>;
@@ -128,6 +129,7 @@ struct RendererState {
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
+    trailers: trailer::Trailers,
 }
 
 fn current_presence(state: &RendererState) -> presence::Presence {
@@ -1617,6 +1619,7 @@ fn request_projection(state: &mut RendererState) {
         library_tab: state.library_tab,
         library_query: state.library_query.clone(),
         library_sort: state.library_sort.clone(),
+        hero_trailers: state.trailers.inputs(),
     });
 }
 
@@ -1658,6 +1661,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
         state.calendar.selected_day = selected_day;
     }
     state.detail = projection.detail;
+    state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
@@ -2357,6 +2361,7 @@ impl FluxaHost {
             picker_background: None,
             image_picker: None,
             pre_present: None,
+            trailers: trailer::Trailers::default(),
         })))
     }
 
@@ -2931,7 +2936,8 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .projector
         .pending()
         .then(|| now + Duration::from_millis(8));
-    let artwork = [artwork, projecting, animation, effects].into_iter().flatten().min();
+    let trailer = trailer::next_redraw(state, now);
+    let artwork = [artwork, projecting, animation, effects, trailer].into_iter().flatten().min();
     match (state.redraw_at, artwork) {
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),
@@ -2999,6 +3005,7 @@ fn render_frame(state: &mut RendererState) {
         gpu.resize(size);
     }
     sync_home_from_core_snapshot(state);
+    trailer::tick(state);
     timer.mark("sync");
     if state.route == "home"
         || matches!(state.active_scroll, Some(HomeScrollTarget::ScreenVertical))

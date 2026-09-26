@@ -30,6 +30,20 @@ impl MpvBackend {
             thumbnails: None,
         }
     }
+
+    fn start(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str, preview: bool) {
+        self.stop();
+        let (sender, receiver) = mpsc::channel();
+        let instance = instance.clone();
+        let device = device.clone();
+        let url = url.to_owned();
+        let target = url.clone();
+        std::thread::spawn(move || {
+            let _ = sender.send(MpvPlayer::new(&instance, &device, &target, preview));
+        });
+        self.url = Some(url.clone());
+        self.pending = Some(receiver);
+    }
 }
 
 impl VideoBackend for MpvBackend {
@@ -38,17 +52,11 @@ impl VideoBackend for MpvBackend {
     }
 
     fn load(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str) {
-        self.stop();
-        let (sender, receiver) = mpsc::channel();
-        let instance = instance.clone();
-        let device = device.clone();
-        let url = url.to_owned();
-        let target = url.clone();
-        std::thread::spawn(move || {
-            let _ = sender.send(MpvPlayer::new(&instance, &device, &target));
-        });
-        self.url = Some(url.clone());
-        self.pending = Some(receiver);
+        self.start(instance, device, url, false);
+    }
+
+    fn load_preview(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str) {
+        self.start(instance, device, url, true);
     }
 
     fn stop(&mut self) {
@@ -231,8 +239,15 @@ struct MpvPlayer {
 }
 
 impl MpvPlayer {
-    fn new(instance: &wgpu::Instance, device: &wgpu::Device, url: &str) -> Result<Self, String> {
-        let local = url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:");
+    fn new(
+        instance: &wgpu::Instance,
+        device: &wgpu::Device,
+        url: &str,
+        preview: bool,
+    ) -> Result<Self, String> {
+        let local = preview
+            || url.starts_with("http://127.0.0.1:")
+            || url.starts_with("http://localhost:");
         let (mut client, mut render) = if local {
             fluxa_mpv::MpvClientHandle::new_without_ytdl()?
         } else {
@@ -270,6 +285,13 @@ impl MpvPlayer {
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
         let sync = VulkanSync::new(device)?;
+        if preview {
+            client.apply_options(&[
+                ("mute".to_owned(), "yes".to_owned()),
+                ("loop-file".to_owned(), "inf".to_owned()),
+                ("sid".to_owned(), "no".to_owned()),
+            ])?;
+        }
         client.load(url, None)?;
         Ok(Self {
             render,

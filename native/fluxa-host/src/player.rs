@@ -49,6 +49,9 @@ pub trait VideoBackend: Send {
         None
     }
     fn load(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str);
+    fn load_preview(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str) {
+        self.load(instance, device, url);
+    }
     fn stop(&mut self);
     fn command(&mut self, command: VideoCommand);
     fn render(&mut self, device: &wgpu::Device) -> Option<wgpu::TextureView>;
