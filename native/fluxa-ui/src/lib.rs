@@ -19,7 +19,7 @@ mod settings;
 
 pub use calendar::draw_calendar;
 
-pub use detail::draw_detail;
+pub use detail::{detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
 pub use library::draw_library;
 pub use profiles::{
@@ -2217,6 +2217,9 @@ pub const NODE_DETAIL_COMPLETED: u64 = 73;
 pub const NODE_DETAIL_DROPPED: u64 = 74;
 pub const NODE_DETAIL_FAVORITE: u64 = 75;
 pub const NODE_DETAIL_SIMILAR_BASE: u64 = 300;
+pub const NODE_DETAIL_CAST_BASE: u64 = 1800;
+pub const NODE_DETAIL_SEASON_BASE: u64 = 1900;
+pub const NODE_DETAIL_EPISODE_BASE: u64 = 2000;
 pub const NODE_SETTINGS_BACK: u64 = 400;
 pub const NODE_SETTINGS_SWITCH_PROFILE: u64 = 401;
 pub const NODE_SETTINGS_ROW_BASE: u64 = 800;
@@ -2253,6 +2256,143 @@ pub struct DetailModel {
     pub error: Option<String>,
     pub streams_error: Option<String>,
     pub similar: Vec<HomeCard>,
+    pub logo_url: Option<String>,
+    pub facts: Vec<String>,
+    pub episodes: Vec<DetailEpisode>,
+    pub cast: Vec<DetailCastMember>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DetailEpisode {
+    pub id: String,
+    pub season: i64,
+    pub number: i64,
+    pub title: String,
+    pub overview: String,
+    pub thumbnail: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DetailCastMember {
+    pub name: String,
+    pub role: Option<String>,
+    pub photo: Option<String>,
+}
+
+impl DetailModel {
+    pub fn is_series(&self) -> bool {
+        matches!(self.content_type.as_str(), "series" | "tv" | "show") || !self.episodes.is_empty()
+    }
+
+    pub fn seasons(&self) -> Vec<i64> {
+        let mut seasons = self
+            .episodes
+            .iter()
+            .map(|episode| episode.season)
+            .collect::<Vec<_>>();
+        seasons.sort_unstable_by_key(|season| if *season == 0 { i64::MAX } else { *season });
+        seasons.dedup();
+        seasons
+    }
+}
+
+fn detail_episodes(meta: &serde_json::Value) -> Vec<DetailEpisode> {
+    let mut episodes = meta
+        .get("videos")
+        .and_then(serde_json::Value::as_array)
+        .map(|videos| {
+            videos
+                .iter()
+                .filter_map(|video| {
+                    let id = value_string(video, "id")?;
+                    let number = |key: &str| video.get(key).and_then(serde_json::Value::as_i64);
+                    let season = number("season").unwrap_or(1);
+                    let episode = number("episode").or_else(|| number("number")).unwrap_or(0);
+                    Some(DetailEpisode {
+                        id,
+                        season,
+                        number: episode,
+                        title: first_value_string(video, &["title", "name"]).unwrap_or_default(),
+                        overview: first_value_string(video, &["overview", "description"])
+                            .unwrap_or_default(),
+                        thumbnail: first_value_string(video, &["thumbnail", "still", "image"]),
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    episodes.sort_by_key(|episode| (episode.season, episode.number));
+    episodes
+}
+
+fn detail_cast(meta: &serde_json::Value) -> Vec<DetailCastMember> {
+    let mut cast = Vec::<DetailCastMember>::new();
+    let sources = [
+        meta.get("cast"),
+        meta.pointer("/app_extras/cast"),
+        meta.pointer("/appExtras/cast"),
+    ];
+    for item in sources
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_array)
+        .flatten()
+    {
+        let member = match item {
+            serde_json::Value::String(name) => DetailCastMember {
+                name: name.trim().to_owned(),
+                ..DetailCastMember::default()
+            },
+            _ => DetailCastMember {
+                name: first_value_string(item, &["name", "fullName", "actor"]).unwrap_or_default(),
+                role: first_value_string(item, &["character", "role", "as"]),
+                photo: first_value_string(
+                    item,
+                    &["profilePath", "profile_path", "photo", "profile", "image", "img"],
+                )
+                .map(|photo| {
+                    if photo.starts_with('/') {
+                        format!("https://image.tmdb.org/t/p/w185{photo}")
+                    } else {
+                        photo
+                    }
+                }),
+            },
+        };
+        if !member.name.is_empty()
+            && !cast
+                .iter()
+                .any(|known| known.name.eq_ignore_ascii_case(&member.name))
+        {
+            cast.push(member);
+        }
+    }
+    cast.truncate(20);
+    cast
+}
+
+fn detail_facts(meta: &serde_json::Value, episodes: &[DetailEpisode], language: &str) -> Vec<String> {
+    let mut facts = Vec::new();
+    if let Some(release) = first_value_string(meta, &["releaseInfo", "year"]).or_else(|| {
+        meta.get("year")
+            .and_then(serde_json::Value::as_i64)
+            .map(|year| year.to_string())
+    }) {
+        facts.push(release);
+    }
+    let mut seasons = episodes
+        .iter()
+        .map(|episode| episode.season)
+        .filter(|season| *season > 0)
+        .collect::<Vec<_>>();
+    seasons.dedup();
+    if !seasons.is_empty() {
+        facts.push(format!("{} {}", seasons.len(), localized("auto.seasons", language)));
+    }
+    if let Some(runtime) = value_string(meta, "runtime") {
+        facts.push(runtime);
+    }
+    facts
 }
 
 pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailModel {
@@ -2319,6 +2459,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             ratings.push(("Metacritic".to_owned(), value.to_owned()));
         }
     }
+    let episodes = detail_episodes(meta);
     DetailModel {
         item: meta.clone(),
         id: id.clone(),
@@ -2398,6 +2539,15 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             .and_then(serde_json::Value::as_array)
             .map(|items| items.iter().take(16).map(core_home_card).collect())
             .unwrap_or_default(),
+        logo_url: detail
+            .pointer("/fanartArtwork/hdLogo")
+            .and_then(serde_json::Value::as_str)
+            .filter(|url| !url.is_empty())
+            .map(ToOwned::to_owned)
+            .or_else(|| value_string(meta, "logo")),
+        facts: detail_facts(meta, &episodes, &snapshot_language(snapshot)),
+        cast: detail_cast(meta),
+        episodes,
     }
 }
 
@@ -3173,57 +3323,6 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
     .max(0.0)
 }
 
-pub fn detail_scroll_max(viewport: Viewport, detail: &DetailModel) -> f32 {
-    let metrics = UiMetrics::for_viewport(viewport);
-    let margin = screen_margin(viewport, metrics);
-    let top = if viewport.is_compact() {
-        metrics.detail_header_top_mobile
-    } else {
-        metrics.detail_header_top
-    };
-    let poster_width = if viewport.is_compact() {
-        metrics.detail_poster_width_mobile
-    } else if viewport.is_tv() {
-        metrics.detail_poster_width_tv
-    } else {
-        metrics.detail_poster_width_desktop
-    }
-    .min((viewport.width - margin * 2.0).max(1.0));
-    let poster_height = poster_width * metrics.poster_height_ratio;
-    let content_width = if viewport.is_compact() {
-        (viewport.width - margin * 2.0).max(1.0)
-    } else {
-        (viewport.width - margin * 2.0 - poster_width - metrics.detail_content_gap).max(1.0)
-    };
-    let description_lines = (detail.description.chars().count() as f32
-        / (content_width / (metrics.screen_body_size * 0.52).max(1.0)).max(1.0))
-    .ceil()
-    .max(1.0);
-    let similar_top = if viewport.is_compact() {
-        top + poster_height + metrics.detail_similar_top_mobile_offset
-    } else {
-        top + poster_height + metrics.detail_similar_top_offset
-    };
-    let similar_bottom = similar_top
-        + metrics.screen_section_title_size * 1.5
-        + metrics.horizontal_card_width * 0.34;
-    let text_bottom =
-        top + if viewport.is_compact() {
-            poster_height + metrics.detail_mobile_content_gap
-        } else {
-            0.0
-        } + metrics.screen_title_size * 1.5
-            + metrics.screen_body_size * 2.0
-            + description_lines * metrics.screen_body_size * 1.5
-            + metrics.section_gap * 2.0
-            + metrics.screen_control_height * 2.0;
-    let content_bottom = if detail.similar.is_empty() {
-        text_bottom
-    } else {
-        similar_bottom.max(text_bottom)
-    };
-    (content_bottom - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
-}
 
 fn resolve_screen_scroll(
     context: &egui::Context,

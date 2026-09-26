@@ -1810,7 +1810,19 @@ fn native_action_for_node(
                 });
             }
         }
-        if node >= fluxa_ui::NODE_DETAIL_SIMILAR_BASE {
+        if node >= fluxa_ui::NODE_DETAIL_EPISODE_BASE {
+            let episode = detail
+                .episodes
+                .get((node - fluxa_ui::NODE_DETAIL_EPISODE_BASE) as usize)?;
+            let mut item = detail.item.clone();
+            item.as_object_mut()?
+                .insert("lastVideoId".to_owned(), episode.id.clone().into());
+            return Some(NativeAction::StartPlayback { item });
+        }
+        if node >= fluxa_ui::NODE_DETAIL_SEASON_BASE {
+            return None;
+        }
+        if (fluxa_ui::NODE_DETAIL_SIMILAR_BASE..fluxa_ui::NODE_DETAIL_CAST_BASE).contains(&node) {
             let card = detail
                 .similar
                 .get((node - fluxa_ui::NODE_DETAIL_SIMILAR_BASE) as usize)?;

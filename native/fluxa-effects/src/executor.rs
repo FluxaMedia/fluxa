@@ -1432,8 +1432,10 @@ impl EffectExecutor {
             .ok_or_else(|| "direct playback is missing meta".to_owned())?;
         let content_type = meta.get("type").and_then(Value::as_str).unwrap_or("movie");
         let id = meta
-            .get("id")
+            .get("lastVideoId")
             .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+            .or_else(|| meta.get("id").and_then(Value::as_str))
             .or_else(|| meta.get("imdb_id").and_then(Value::as_str))
             .ok_or_else(|| "direct playback meta is missing id".to_owned())?;
         let request_ids = stream_request_ids(content_type, id, Some(meta))?;
