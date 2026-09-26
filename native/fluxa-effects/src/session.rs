@@ -1,5 +1,6 @@
 use std::sync::{
-    Arc,
+    Arc, Mutex,
+    atomic::{AtomicUsize, Ordering},
     mpsc::{self, Receiver, Sender},
 };
 
@@ -8,83 +9,73 @@ use serde_json::{Value, json};
 
 use crate::{EffectCompletion, EffectExecutor, Storage};
 
-pub struct AppSession {
+struct AppSession {
     runtime: FluxaRuntime,
     storage: Storage,
     persisted_addons: Value,
     executor: EffectExecutor,
     sender: Sender<EffectCompletion>,
-    receiver: Receiver<EffectCompletion>,
     outstanding: usize,
 }
 
 impl AppSession {
-    pub fn open(storage: Storage) -> Result<Self, String> {
+    fn open(storage: Storage, sender: Sender<EffectCompletion>) -> Result<Self, String> {
         let state = persisted_runtime_state(&storage, json!({}));
         let persisted_addons = state["addons"]["installed"].clone();
         let runtime = FluxaRuntime::new(state)?;
         let executor = EffectExecutor::new(storage.clone());
         executor.warm_torrent_engine();
-        let (sender, receiver) = mpsc::channel();
         Ok(Self {
             runtime,
             storage,
             persisted_addons,
             executor,
             sender,
-            receiver,
             outstanding: 0,
         })
     }
 
-    pub fn dispatch(&mut self, action: Value) -> Result<(), String> {
+    fn dispatch(&mut self, action: Value) -> Result<(), String> {
         let update = self.runtime.dispatch(action)?;
         self.persist_addons();
         self.schedule(update.effects);
         Ok(())
     }
 
-    pub fn pump(&mut self) -> bool {
-        let mut follow_ups = Vec::new();
-        let mut changed = false;
-        while let Ok(completion) = self.receiver.try_recv() {
-            changed = true;
-            self.outstanding = self.outstanding.saturating_sub(1);
-            if completion.status != "ok" {
-                crate::log!(
-                    "[fluxa-session] effect {} failed: {}",
-                    completion.effect_type,
-                    completion.error
-                );
-            }
-            let result = if completion.effect_type == "fetchDiscoverPage" {
-                self.runtime.complete_discover_page_result(
-                    &completion.effect_id,
-                    completion.status,
-                    completion.value,
-                    completion.error,
-                )
-            } else {
-                self.runtime.complete_effect_result(
-                    &completion.effect_id,
-                    completion.status,
-                    completion.value,
-                    completion.error,
-                )
-            };
-            match result {
-                Ok(update) => follow_ups.extend(update.effects),
-                Err(error) => crate::log!(
-                    "[fluxa-session] effect {} completion rejected: {error}",
-                    completion.effect_id
-                ),
-            }
+    fn complete(&mut self, completion: EffectCompletion) {
+        self.outstanding = self.outstanding.saturating_sub(1);
+        if completion.status != "ok" {
+            crate::log!(
+                "[fluxa-session] effect {} failed: {}",
+                completion.effect_type,
+                completion.error
+            );
         }
-        if changed {
-            self.persist_addons();
+        let result = if completion.effect_type == "fetchDiscoverPage" {
+            self.runtime.complete_discover_page_result(
+                &completion.effect_id,
+                completion.status,
+                completion.value,
+                completion.error,
+            )
+        } else {
+            self.runtime.complete_effect_result(
+                &completion.effect_id,
+                completion.status,
+                completion.value,
+                completion.error,
+            )
+        };
+        match result {
+            Ok(update) => {
+                self.persist_addons();
+                self.schedule(update.effects);
+            }
+            Err(error) => crate::log!(
+                "[fluxa-session] effect {} completion rejected: {error}",
+                completion.effect_id
+            ),
         }
-        self.schedule(follow_ups);
-        changed
     }
 
     fn persist_addons(&mut self) {
@@ -120,15 +111,116 @@ impl AppSession {
         }
     }
 
-    pub fn snapshot(&self) -> Arc<Value> {
+    fn snapshot(&self) -> Arc<Value> {
         self.runtime.snapshot_shared()
     }
 
-    pub fn poll_torrent_status(
-        &self,
-        link: String,
-        file_id: Option<usize>,
-    ) -> Receiver<Value> {
+    fn revision(&self) -> u64 {
+        self.runtime.revision()
+    }
+
+    fn has_outstanding_effects(&self) -> bool {
+        self.outstanding > 0
+    }
+
+    fn schedule(&mut self, effects: Vec<Value>) {
+        for effect in effects {
+            self.outstanding += 1;
+            self.executor.spawn(effect, self.sender.clone());
+        }
+    }
+}
+
+enum Command {
+    Dispatch(Value),
+    Completed(EffectCompletion),
+    Stop,
+}
+
+struct Published {
+    revision: u64,
+    snapshot: Arc<Value>,
+    outstanding: bool,
+}
+
+pub struct SessionHandle {
+    commands: Sender<Command>,
+    published: Arc<Mutex<Published>>,
+    queued: Arc<AtomicUsize>,
+    storage: Storage,
+    executor: EffectExecutor,
+}
+
+impl SessionHandle {
+    pub fn open(storage: Storage) -> Result<Self, String> {
+        let (completions_tx, completions) = mpsc::channel();
+        let session = AppSession::open(storage.clone(), completions_tx)?;
+        let executor = session.executor.clone();
+        let published = Arc::new(Mutex::new(Published {
+            revision: session.revision(),
+            snapshot: session.snapshot(),
+            outstanding: false,
+        }));
+        let queued = Arc::new(AtomicUsize::new(0));
+        let (commands, inbox) = mpsc::channel();
+        let forward = commands.clone();
+        std::thread::Builder::new()
+            .name("fluxa-session-effects".to_owned())
+            .spawn(move || {
+                for completion in completions {
+                    if forward.send(Command::Completed(completion)).is_err() {
+                        break;
+                    }
+                }
+            })
+            .map_err(|error| error.to_string())?;
+        let shared = published.clone();
+        let pending = queued.clone();
+        std::thread::Builder::new()
+            .name("fluxa-session".to_owned())
+            .spawn(move || run(session, inbox, shared, pending))
+            .map_err(|error| error.to_string())?;
+        Ok(Self {
+            commands,
+            published,
+            queued,
+            storage,
+            executor,
+        })
+    }
+
+    pub fn dispatch(&self, action: Value) -> Result<(), String> {
+        self.queued.fetch_add(1, Ordering::AcqRel);
+        self.commands.send(Command::Dispatch(action)).map_err(|_| {
+            self.queued.fetch_sub(1, Ordering::AcqRel);
+            "session stopped".to_owned()
+        })
+    }
+
+    pub fn snapshot(&self) -> Arc<Value> {
+        self.published.lock().map(|published| published.snapshot.clone()).unwrap_or_default()
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.published.lock().map_or(0, |published| published.revision)
+    }
+
+    pub fn active_profile(&self) -> Value {
+        self.snapshot()
+            .pointer("/profile/active")
+            .cloned()
+            .unwrap_or(Value::Null)
+    }
+
+    pub fn has_queued_dispatches(&self) -> bool {
+        self.queued.load(Ordering::Acquire) > 0
+    }
+
+    pub fn has_outstanding_effects(&self) -> bool {
+        self.published.lock().is_ok_and(|published| published.outstanding)
+    }
+
+    pub fn poll_torrent_status(&self, link: String, file_id: Option<usize>) -> Receiver<Value> {
         self.executor.poll_torrent_status(link, file_id)
     }
 
@@ -143,28 +235,45 @@ impl AppSession {
     pub fn storage(&self) -> &Storage {
         &self.storage
     }
+}
 
-    pub fn revision(&self) -> u64 {
-        self.runtime.revision()
+impl Drop for SessionHandle {
+    fn drop(&mut self) {
+        let _ = self.commands.send(Command::Stop);
     }
+}
 
-    pub fn active_profile(&self) -> Value {
-        self.runtime
-            .snapshot()
-            .pointer("/profile/active")
-            .cloned()
-            .unwrap_or(Value::Null)
-    }
-
-    pub fn has_outstanding_effects(&self) -> bool {
-        self.outstanding > 0
-    }
-
-    fn schedule(&mut self, effects: Vec<Value>) {
-        for effect in effects {
-            self.outstanding += 1;
-            self.executor.spawn(effect, self.sender.clone());
+fn run(
+    mut session: AppSession,
+    inbox: Receiver<Command>,
+    published: Arc<Mutex<Published>>,
+    queued: Arc<AtomicUsize>,
+) {
+    while let Ok(command) = inbox.recv() {
+        let mut dispatched = 0;
+        let mut next = Some(command);
+        while let Some(command) = next.take() {
+            match command {
+                Command::Dispatch(action) => {
+                    dispatched += 1;
+                    if let Err(error) = session.dispatch(action) {
+                        crate::log!("[fluxa-session] dispatch failed: {error}");
+                    }
+                }
+                Command::Completed(completion) => session.complete(completion),
+                Command::Stop => return,
+            }
+            next = inbox.try_recv().ok();
         }
+        if let Ok(mut published) = published.lock() {
+            let revision = session.revision();
+            if revision != published.revision {
+                published.revision = revision;
+                published.snapshot = session.snapshot();
+            }
+            published.outstanding = session.has_outstanding_effects();
+        }
+        queued.fetch_sub(dispatched, Ordering::AcqRel);
     }
 }
 

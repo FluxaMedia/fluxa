@@ -13,7 +13,7 @@ use web_time::Instant;
 pub use egui;
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
-use fluxa_effects::{AppSession, Storage};
+use fluxa_effects::{SessionHandle, Storage};
 use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
 use fluxa_renderer::platform::{GraphicsBackend, backends_for};
 use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, rasterize_svg};
@@ -112,7 +112,7 @@ struct RendererState {
     projector: projection::Projector,
     core_snapshot_revision: u64,
     last_snapshot_revision: Option<u64>,
-    session: Option<AppSession>,
+    session: Option<SessionHandle>,
     session_revision: Option<u64>,
     egui_events: Vec<egui::Event>,
     modifiers: egui::Modifiers,
@@ -2590,7 +2590,7 @@ impl FluxaHost {
     }
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
-        let mut session = AppSession::open(Storage::open(data_dir)?)?;
+        let session = SessionHandle::open(Storage::open(data_dir)?)?;
         let profile = session.active_profile();
         session.dispatch(json!({
             "type": "homeLoadRequested",
@@ -2906,12 +2906,12 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     if busy {
         return Some(now);
     }
-    let revision = state.session.as_mut().map(|session| {
-        session.pump();
-        session.revision()
-    });
+    let revision = state.session.as_ref().map(SessionHandle::revision);
     if revision.is_some() && revision != state.session_revision {
         return Some(now);
+    }
+    if state.session.as_ref().is_some_and(SessionHandle::has_queued_dispatches) {
+        return Some(now + Duration::from_millis(4));
     }
     let effects = state
         .session
@@ -3208,10 +3208,9 @@ fn profile_language(profile: &Value) -> String {
 }
 
 fn pull_session_snapshot(state: &mut RendererState) {
-    let Some(session) = state.session.as_mut() else {
+    let Some(session) = state.session.as_ref() else {
         return;
     };
-    session.pump();
     let revision = session.revision();
     if state.session_revision == Some(revision) {
         return;
@@ -3349,7 +3348,7 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
 }
 
 fn route_actions_to_session(state: &mut RendererState) {
-    let Some(session) = state.session.as_mut() else {
+    let Some(session) = state.session.as_ref() else {
         return;
     };
     if state.pending_native_actions.is_empty() {

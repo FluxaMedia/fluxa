@@ -193,11 +193,11 @@ pub(crate) fn pump(state: &mut RendererState) {
         gpu,
         ..
     } = state;
-    let (Some(player), Some(session)) = (player.as_mut(), session.as_mut()) else {
+    let (Some(player), Some(session)) = (player.as_mut(), session.as_ref()) else {
         return;
     };
     let snapshot = session.snapshot();
-    if !player.started {
+    if !player.started && !session.has_queued_dispatches() {
         if let Some(command) = resolution_command(&snapshot, player) {
             match session.dispatch(command) {
                 Ok(()) => {
@@ -454,7 +454,7 @@ fn playback_url(stream: &Value, meta: &Value) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
-fn poll_torrent(player: &mut PlayerSession, session: &fluxa_effects::AppSession, snapshot: &Value) {
+fn poll_torrent(player: &mut PlayerSession, session: &fluxa_effects::SessionHandle, snapshot: &Value) {
     while let Some(status) = player.torrent_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
         player.torrent_status = Some(status);
     }

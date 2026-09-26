@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
 
-use fluxa_effects::{AppSession, EffectExecutor, Storage};
+use fluxa_effects::{EffectExecutor, SessionHandle, Storage};
 use fluxa_ui::{
     PinPrompt, PinPurpose, ProfileAvatarPack, ProfileEntry, ProfilePickerSettings, ProfilesMode,
     ProfilesModel, ProfilesRequest, localized,
@@ -287,8 +287,8 @@ fn new_profile_id() -> String {
 
 fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     write(storage, "active_profile_id", &json!(id));
-    match AppSession::open(storage.clone()) {
-        Ok(mut session) => {
+    match SessionHandle::open(storage.clone()) {
+        Ok(session) => {
             let profile = session.active_profile();
             if let Err(error) = session.dispatch(json!({
                 "type": "homeLoadRequested",
