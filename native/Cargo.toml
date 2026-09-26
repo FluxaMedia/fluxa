@@ -19,6 +19,15 @@ opt-level = 3
 [profile.dev.package.fluxa-artwork]
 opt-level = 3
 
+[profile.dev.package.fluxa_core]
+opt-level = 3
+
+[profile.dev.package.fluxa-app]
+opt-level = 3
+
+[profile.dev.package.serde_json]
+opt-level = 3
+
 [profile.dev.package.zune-jpeg]
 opt-level = 3
 
