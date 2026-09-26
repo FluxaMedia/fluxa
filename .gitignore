@@ -3,24 +3,12 @@ AGENTS.md
 node_modules/
 dist/
 dist-web/
-dist-webos/
 build/
-installer/dist/
-installer/node_modules/
-installer/src-tauri/target/
-installer/src-tauri/gen/
-src-tauri/target/
-src-tauri/gen/
 .env
 *.log
 
 # mpv/FFmpeg binaries — fetched by CI, not stored in repo
 native/fluxa-mpv/lib/
-**/src-tauri/lib/*.so
-**/src-tauri/lib/*.so.*
-**/src-tauri/lib/*.dll
-**/src-tauri/lib/*.dylib
-**/src-tauri/lib/*.jar
 
 # Monorepo-wide generated and local state
 **/target/
@@ -28,12 +16,9 @@ native/fluxa-mpv/lib/
 **/.gradle/
 **/.kotlin/
 /.idea/
-**/src-tauri/gen/
-**/src-tauri/lib/
 **/node_modules/
 **/dist/
 **/dist-web/
-**/dist-webos/
 **/.env
 **/.env.*
 !**/.env.example
@@ -48,6 +33,3 @@ native/fluxa-mpv/lib/
 **/CLAUDE.md
 **/GEMINI.md
 
-# Legacy Desktop checkout paths left outside the monorepo layout
-/src/
-/src-tauri/

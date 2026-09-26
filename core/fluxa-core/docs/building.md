@@ -6,7 +6,7 @@
 |---|---|
 | `native` (default) | Full Android/native surface: JNI bindings, Dolby Vision RPU, UniFFI Kotlin bindings |
 | `full-api` | Complete domain/helper API surface used by JNI, `core_invoke`, UniFFI, WASM, and desktop |
-| `desktop` | Named alias for the full desktop/Tauri-compatible API surface |
+| `desktop` | Named alias for the full desktop API surface |
 | `streaming-shared` | Minimal `FluxaCore` stream policy facade used by `fluxa-streaming-engine` |
 | `uniffi-bindings` | UniFFI runtime support (pulled in by `native`) |
 | `uniffi-cli` | Adds the `uniffi-bindgen` binary for generating Kotlin/Swift source |
@@ -58,7 +58,7 @@ The Android project (`apps/android`) picks up the resulting `.so` files from `ta
 
 ## Partial API builds
 
-Non-native consumers intentionally compile partial API surfaces: desktop uses direct Rust/Tauri calls plus `core_invoke`, WASM exposes a small JS bridge, and `fluxa-streaming-engine` only needs stream policy helpers. These builds suppress dead-code noise from API functions that are only reachable through Android/JNI.
+Non-native consumers intentionally compile partial API surfaces: desktop uses direct Rust calls plus `core_invoke`, WASM exposes a small JS bridge, and `fluxa-streaming-engine` only needs stream policy helpers. These builds suppress dead-code noise from API functions that are only reachable through Android/JNI.
 
 The default `native` build keeps normal dead-code checking because it compiles the exhaustive Android JNI surface.
 

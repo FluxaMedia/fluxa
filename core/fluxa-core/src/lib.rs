@@ -1,5 +1,5 @@
 // Non-native consumers intentionally compile partial API surfaces: desktop uses
-// Rust/Tauri calls plus core_invoke, WASM exposes a small JS bridge, and the
+// direct Rust calls plus core_invoke, WASM exposes a small JS bridge, and the
 // streaming engine uses only stream policy helpers. The Android/native build is
 // the exhaustive JNI surface, so keep dead-code checking strict there and avoid
 // warning noise for the partial compatibility builds.

@@ -6,13 +6,12 @@ const requiredPaths = [
   "apps/android/settings.gradle.kts",
   "apps/android/gradlew",
   "apps/apple/project.yml",
-  "apps/desktop/package.json",
-  "apps/desktop/src-tauri/Cargo.toml",
   "core/fluxa-core/Cargo.toml",
   "shared/contracts/headless-effects.json",
   "shared/contracts/headless-actions.json",
   "shared/i18n/english_us.json",
   "shared/i18n/tr_tr.json",
+  "native/Cargo.toml",
   ".github/workflows",
   ".github/PULL_REQUEST_TEMPLATE.md",
   ".github/ISSUE_TEMPLATE/bug_report.yml",
@@ -38,7 +37,6 @@ if (fs.existsSync(workflowRoot)) {
       "repository: FluxaMedia/fluxa-core",
       "path: fluxa-core",
       "working-directory: fluxa-core",
-      "workspaces: src-tauri",
     ];
     for (const token of forbidden) {
       if (source.includes(token))
@@ -51,7 +49,6 @@ if (fs.existsSync(workflowRoot)) {
 
 for (const nested of [
   "apps/android/.github/workflows",
-  "apps/desktop/.github/workflows",
   "core/fluxa-core/.github/workflows",
 ]) {
   if (fs.existsSync(path.join(root, nested)))
@@ -61,7 +58,6 @@ for (const nested of [
 for (const nested of [
   "apps/android/CONTRIBUTING.md",
   "apps/apple/CONTRIBUTING.md",
-  "apps/desktop/CONTRIBUTING.md",
   "core/fluxa-core/CONTRIBUTING.md",
 ]) {
   if (fs.existsSync(path.join(root, nested)))
@@ -70,8 +66,6 @@ for (const nested of [
 
 for (const legacy of [
   "apps/android/core/src/commonMain/resources/i18n",
-  "apps/desktop/src/i18n/english_us.json",
-  "apps/desktop/src/i18n/tr_tr.json",
 ]) {
   if (fs.existsSync(path.join(root, legacy)))
     failures.push(`i18n must use shared/i18n: ${legacy}`);

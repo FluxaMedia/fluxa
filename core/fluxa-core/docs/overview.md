@@ -27,7 +27,7 @@ The core never initiates anything. Every state transition begins with the platfo
 
 | Mechanism | Used by | File |
 |---|---|---|
-| `FluxaCore` struct | Desktop (Tauri) | `src/core_api.rs` |
+| `FluxaCore` struct | Desktop (native) | `src/core_api.rs` |
 | `core_invoke(method, args_json)` | Desktop + Swift | `src/ffi.rs` |
 | JNI externs | Android | `src/bindings/jni.rs` |
 

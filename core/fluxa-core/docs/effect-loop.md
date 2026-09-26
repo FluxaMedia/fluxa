@@ -96,7 +96,7 @@ All action types are defined in `src/headless_engine/contracts.rs` (`AppAction` 
 
 The headless engine is accessed through an integer handle. Multiple engine instances can coexist (though typically one exists per app session).
 
-### Via `FluxaCore` (desktop/Tauri)
+### Via `FluxaCore` (desktop)
 
 ```rust
 let handle = FluxaCore::create_headless_engine(initial_json);

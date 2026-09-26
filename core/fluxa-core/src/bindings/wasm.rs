@@ -12,9 +12,7 @@ pub fn fluxa_core_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
 }
 
-// Mirrors the engine_init/engine_dispatch/engine_complete_effect/engine_snapshot
-// Tauri commands in apps/desktop/src-tauri/src/lib.rs so the JS engine.ts glue
-// is identical between desktop and web. Handles fit in f64 (JS has no u64).
+// Handles fit in f64 (JS has no u64).
 #[wasm_bindgen]
 pub fn engine_init(initial_json: &str) -> f64 {
     FluxaCore::create_headless_engine(initial_json) as f64

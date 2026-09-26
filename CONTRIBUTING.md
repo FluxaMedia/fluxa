@@ -7,7 +7,7 @@ Fluxa is a media hub with shared Rust application logic and platform shells for 
 ```text
 apps/android   Android and Android TV shell plus shared KMP modules
 apps/apple     iOS and tvOS host code
-apps/desktop   Desktop, web, and webOS shell
+native/        Rust renderer and shells for desktop, web, and webOS
 core/          Shared Rust domain logic and streaming engine
 shared/i18n    Shared English and Turkish application strings
 ```
@@ -28,23 +28,13 @@ The generated headless contract snapshots live in `shared/contracts`. Platform-s
 
 ## Local checks
 
-For Desktop checks, install the already-declared dependencies from the app lockfile:
-
-```bash
-npm --prefix apps/desktop ci
-```
-
-Do this only when you have a suitable connection; the checks themselves are offline.
-
 ```bash
 npm run check:structure
 npm run check:contracts
 npm run check:i18n
-npm run check:desktop
-npm run test:desktop
+npm run check:native
 npm run check:core
 npm run check:wasm
-npm run verify:core-consumers
 npm run check:android
 npm run check:apple
 ```

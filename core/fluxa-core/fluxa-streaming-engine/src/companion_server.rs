@@ -1,8 +1,6 @@
 /// fluxa-web's local companion process: torrent streaming, ffmpeg
 /// remux/transcode for browser playback, and OAuth token exchange (holds the
-/// client_secret so it never ships to the browser). Mirrors the equivalent
-/// Tauri commands in apps/desktop/src-tauri/src/lib.rs and oauth.rs, just
-/// exposed over HTTP instead of IPC. Used by both the standalone
+/// client_secret so it never ships to the browser). Used by both the standalone
 /// `companion_server` binary and the `fluxa-companion` tray app.
 use axum::extract::{Request, State};
 use axum::http::{HeaderMap, HeaderValue, Method, StatusCode, header};

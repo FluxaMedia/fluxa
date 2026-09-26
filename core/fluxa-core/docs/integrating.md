@@ -25,10 +25,10 @@ Add a new `string_fn!` (or equivalent) entry to `src/bindings/jni.rs`. If the sa
 
 ## Desktop (Linux / macOS / Windows)
 
-**How it links:** Plain Rust path dependency in `apps/desktop` (a Tauri app):
+**How it links:** Plain Rust path dependency from the native workspace (`native/fluxa-app`, `native/fluxa-effects`, `native/fluxa-host`):
 
 ```toml
-fluxa_core = { path = "../../../core/fluxa-core" }
+fluxa_core = { path = "../../core/fluxa-core" }
 ```
 
 No FFI marshaling — it calls Rust functions directly.
@@ -43,7 +43,7 @@ No FFI marshaling — it calls Rust functions directly.
 
 If desktop needs it via `core_invoke`: add a route arm to the appropriate `route_*` function in `src/ffi.rs`.
 
-If desktop needs a direct `FluxaCore` method (unusual — only do this if `core_invoke` is genuinely not suitable): add it to `src/core_api.rs` and confirm there's a real call site in `apps/desktop/src-tauri/src/` before adding.
+If desktop needs a direct `FluxaCore` method (unusual — only do this if `core_invoke` is genuinely not suitable): add it to `src/core_api.rs` and confirm there's a real call site in `native/` before adding.
 
 ---
 

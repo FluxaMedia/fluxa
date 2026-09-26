@@ -6,8 +6,7 @@ use axum::{Json, Router};
 use serde::Deserialize;
 use std::time::Duration;
 
-// Mirrors apps/desktop/src-tauri/src/oauth.rs's token exchange — the
-// client_secret can't ship in browser code, so the companion server holds it
+// The client_secret can't ship in browser code, so the companion server holds it
 // and the browser only ever sees the authorization code.
 fn env_or_empty(key: &str) -> String {
     std::env::var(key).unwrap_or_default()

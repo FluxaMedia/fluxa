@@ -1,8 +1,8 @@
 # Fluxa Native Desktop
 
-This is the native desktop shell for Fluxa. It owns the Winit window lifecycle and rewrites the structure of `apps/desktop/src/components/AppShell.tsx`, `NavSidebar.tsx`, `HeroSection.tsx`, `HomeScreen.tsx`, `ContinueCard.tsx`, and `MovieCard.tsx` as an interactive egui surface on WGPU. The current slice follows the shared Fluxa dark theme, floating navigation rail, global search/profile controls, hero treatment, Continue Watching cards, poster shelves, page navigation, and keyboard focus movement.
+This is the native desktop shell for Fluxa. It owns the Winit window lifecycle and renders the app as an interactive egui surface on WGPU. The current slice follows the shared Fluxa dark theme, floating navigation rail, global search/profile controls, hero treatment, Continue Watching cards, poster shelves, page navigation, and keyboard focus movement.
 
-The UI reads its home model from the native `fluxa_core` snapshot through `FluxaRuntime`; the desktop crate has no Tauri dependency. The startup `readHomeBootstrap` effect is executed by the Rust effect executor, which reads the existing encrypted Fluxa KV store, serves cached home data, builds catalog requests through Fluxa Core, performs the HTTP requests natively, and completes the effect back into Fluxa Core. Artwork URLs from the returned metadata are loaded asynchronously into WGPU textures. No catalog content is fabricated by the renderer.
+The UI reads its home model from the native `fluxa_core` snapshot through `FluxaRuntime`. The startup `readHomeBootstrap` effect is executed by the Rust effect executor, which reads the existing encrypted Fluxa KV store, serves cached home data, builds catalog requests through Fluxa Core, performs the HTTP requests natively, and completes the effect back into Fluxa Core. Artwork URLs from the returned metadata are loaded asynchronously into WGPU textures. No catalog content is fabricated by the renderer.
 
 The artwork loader accepts PNG/JPEG/WebP and SVG from HTTP(S), `file://`, or
 local relative/absolute paths. SVG is rasterized off the UI thread with

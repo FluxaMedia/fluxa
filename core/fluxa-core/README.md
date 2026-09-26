@@ -43,9 +43,9 @@ Dolby Vision / HDR10+ stream rewriting.
 | Platform | Repo | How it links |
 | --- | --- | --- |
 | Android (mobile + TV) | `apps/android` | JNI (primary) + a small UniFFI surface |
-| Desktop (Linux/macOS/Windows) | `apps/desktop` | Plain Rust dependency — calls `FluxaCore`/`core_invoke` directly, no FFI marshaling |
+| Desktop (Linux/macOS/Windows) | `native/fluxa-desktop` | Plain Rust dependency — calls `FluxaCore`/`core_invoke` directly, no FFI marshaling |
 | iOS / tvOS | `apps/apple` plus KMP Apple source sets | UniFFI and shared KMP contracts |
-| Web / webOS | `apps/desktop` | WASM (`bindings/wasm.rs`, `wasm` feature) |
+| Web / webOS | `native/fluxa-web` | WASM (`bindings/wasm.rs`, `wasm` feature) |
 
 See [`docs/integrating.md`](docs/integrating.md) for how each platform actually wires
 this crate in, including how to add a new capability for a given platform.
