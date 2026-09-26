@@ -2901,6 +2901,11 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     if revision.is_some() && revision != state.session_revision {
         return Some(now);
     }
+    let effects = state
+        .session
+        .as_ref()
+        .is_some_and(|session| session.has_outstanding_effects())
+        .then(|| now + Duration::from_millis(50));
     let artwork = state
         .gpu
         .as_ref()
@@ -2914,7 +2919,7 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .projector
         .pending()
         .then(|| now + Duration::from_millis(8));
-    let artwork = [artwork, projecting, animation].into_iter().flatten().min();
+    let artwork = [artwork, projecting, animation, effects].into_iter().flatten().min();
     match (state.redraw_at, artwork) {
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),

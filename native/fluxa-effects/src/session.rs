@@ -15,6 +15,7 @@ pub struct AppSession {
     executor: EffectExecutor,
     sender: Sender<EffectCompletion>,
     receiver: Receiver<EffectCompletion>,
+    outstanding: usize,
 }
 
 impl AppSession {
@@ -32,6 +33,7 @@ impl AppSession {
             executor,
             sender,
             receiver,
+            outstanding: 0,
         })
     }
 
@@ -47,6 +49,7 @@ impl AppSession {
         let mut changed = false;
         while let Ok(completion) = self.receiver.try_recv() {
             changed = true;
+            self.outstanding = self.outstanding.saturating_sub(1);
             if completion.status != "ok" {
                 crate::log!(
                     "[fluxa-session] effect {} failed: {}",
@@ -153,8 +156,13 @@ impl AppSession {
             .unwrap_or(Value::Null)
     }
 
-    fn schedule(&self, effects: Vec<Value>) {
+    pub fn has_outstanding_effects(&self) -> bool {
+        self.outstanding > 0
+    }
+
+    fn schedule(&mut self, effects: Vec<Value>) {
         for effect in effects {
+            self.outstanding += 1;
             self.executor.spawn(effect, self.sender.clone());
         }
     }
