@@ -283,6 +283,15 @@ impl ArtworkLoader {
             // Artwork is premultiplied before upload. Passing it through the
             // straight-alpha constructor applies alpha a second time and
             // creates the dark/bright fringe visible around transparent logos.
+            let max_side = context.input(|input| input.max_texture_side) as u32;
+            if image_pixels.width() > max_side || image_pixels.height() > max_side {
+                host_log(format!(
+                    "Artwork skipped: {}x{} exceeds {max_side}",
+                    image_pixels.width(),
+                    image_pixels.height()
+                ));
+                continue;
+            }
             let image = egui::ColorImage::from_rgba_premultiplied(
                 [
                     image_pixels.width() as usize,
@@ -821,7 +830,11 @@ impl Gpu {
             format,
             width: size[0].max(1),
             height: size[1].max(1),
-            present_mode: wgpu::PresentMode::Fifo,
+            present_mode: if capabilities.present_modes.contains(&wgpu::PresentMode::Mailbox) {
+                wgpu::PresentMode::Mailbox
+            } else {
+                wgpu::PresentMode::Fifo
+            },
             alpha_mode: capabilities
                 .alpha_modes
                 .first()
@@ -964,6 +977,7 @@ impl Gpu {
             (screen_size[1] as f32 / self.density).round().max(1.0) as u32,
         ];
         let raw_input = egui::RawInput {
+            max_texture_side: Some(self.device.limits().max_texture_dimension_2d as usize),
             viewports: std::iter::once((
                 egui::ViewportId::ROOT,
                 egui::ViewportInfo {
