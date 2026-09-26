@@ -1,8 +1,8 @@
 use crate::storage::{Storage, sanitize_key};
 use reqwest::{Client, ClientBuilder};
 use serde_json::{Value, json};
-use std::sync::mpsc::Sender;
 use std::sync::OnceLock;
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 
 trait NativeTimeout {
@@ -163,8 +163,7 @@ impl EffectExecutor {
                     let Some(id) = item.get("id").and_then(Value::as_str) else {
                         continue;
                     };
-                    let trailers =
-                        tmdb_trailers(&client, &item, &api_key, &language).await;
+                    let trailers = tmdb_trailers(&client, &item, &api_key, &language).await;
                     found.push((id.to_owned(), trailers.unwrap_or_else(|| json!([]))));
                 }
             }
@@ -276,7 +275,7 @@ impl EffectExecutor {
                 self.read_home_bootstrap(&payload).await
             }
             fluxa_core::runtime::EffectKind::RefreshContinueWatching => {
-                self.refresh_continue_watching(&payload)
+                self.refresh_continue_watching(&payload).await
             }
             fluxa_core::runtime::EffectKind::ReadLibraryState => {
                 self.read_library_state(&payload).await
@@ -644,16 +643,9 @@ impl EffectExecutor {
                 .cloned()
                 .unwrap_or_default(),
         );
-        let library = self
-            .storage
-            .read_json(&Storage::library_key(&active_id))?
-            .unwrap_or_else(|| json!({}));
-        let progress = library
-            .get("progress")
-            .cloned()
-            .unwrap_or_else(|| json!({}));
-        let continue_watching =
-            core_value("buildContinueWatchingFromProgress", progress).unwrap_or_else(|| json!([]));
+        let continue_watching = self
+            .continue_watching_for_source(&active_id, &profile, &prefs, None)
+            .await?;
         let billboard = all_categories.iter().find_map(|category| {
             category
                 .get("items")
@@ -883,7 +875,8 @@ impl EffectExecutor {
         let file_id = runtime.get("selectedFileIdx").and_then(Value::as_i64);
         crate::log!(
             "[fluxa-native] torrent stream ready base={} url={}",
-            base_url, stream_url
+            base_url,
+            stream_url
         );
         start_torrent_add(base_url.to_owned(), normalized_link, file_id);
         Ok(json!({
@@ -894,11 +887,78 @@ impl EffectExecutor {
         }))
     }
 
-    fn refresh_continue_watching(&self, payload: &Value) -> Result<Value, String> {
+    async fn refresh_continue_watching(&self, payload: &Value) -> Result<Value, String> {
         let profile_id = payload
             .get("profileId")
             .and_then(Value::as_str)
             .unwrap_or("guest");
+        let profile = match payload.get("profile").filter(|profile| profile.is_object()) {
+            Some(profile) => profile.clone(),
+            None => self
+                .storage
+                .read_json("profiles")?
+                .and_then(|profiles| {
+                    profiles
+                        .as_array()?
+                        .iter()
+                        .find(|item| item.get("id").and_then(Value::as_str) == Some(profile_id))
+                        .cloned()
+                })
+                .unwrap_or_else(|| json!({})),
+        };
+        let prefs = self
+            .storage
+            .read_json(&Storage::prefs_key(profile_id))?
+            .or_else(|| self.storage.read_json("prefs").ok().flatten())
+            .unwrap_or_else(|| json!({}));
+        let source = payload.get("source").and_then(Value::as_str);
+        let items = self
+            .continue_watching_for_source(profile_id, &profile, &prefs, source)
+            .await?;
+        Ok(json!({"continueWatching": items}))
+    }
+
+    async fn continue_watching_for_source(
+        &self,
+        profile_id: &str,
+        profile: &Value,
+        prefs: &Value,
+        source: Option<&str>,
+    ) -> Result<Value, String> {
+        let has_nuvio = profile
+            .get("nuvioAccessToken")
+            .and_then(Value::as_str)
+            .is_some_and(|token| !token.is_empty());
+        let requested = if has_nuvio {
+            "nuvio"
+        } else {
+            source
+                .or_else(|| prefs.get("continueWatchingSource")?.as_str())
+                .unwrap_or("local")
+        };
+        let provider = core_value("continueWatchingSourcePlan", json!({"source": requested}))
+            .and_then(|plan| plan.get("provider")?.as_str().map(ToOwned::to_owned));
+        match provider.as_deref() {
+            Some("nuvio") => match self
+                .read_nuvio_library(profile_id, Some(profile).filter(|p| p.is_object()))
+                .await
+            {
+                Ok(Some(snapshot)) => {
+                    return Ok(snapshot
+                        .get("continueWatching")
+                        .cloned()
+                        .unwrap_or_else(|| json!([])));
+                }
+                Ok(None) => {}
+                Err(error) => {
+                    crate::log!("[fluxa-native] Nuvio continue watching failed: {error}")
+                }
+            },
+            Some(other) => crate::log!(
+                "[fluxa-native] continue watching source '{other}' has no native client yet, using local progress"
+            ),
+            None => {}
+        }
         let library = self
             .storage
             .read_json(&Storage::library_key(profile_id))?
@@ -907,9 +967,7 @@ impl EffectExecutor {
             .get("progress")
             .cloned()
             .unwrap_or_else(|| json!({}));
-        let items =
-            core_value("buildContinueWatchingFromProgress", progress).unwrap_or_else(|| json!([]));
-        Ok(json!({"continueWatching": items}))
+        Ok(core_value("buildContinueWatchingFromProgress", progress).unwrap_or_else(|| json!([])))
     }
 
     async fn read_library_state(&self, payload: &Value) -> Result<Value, String> {
@@ -2112,9 +2170,7 @@ impl EffectExecutor {
         parse_kind: &str,
     ) -> Result<Vec<Value>, String> {
         if transport_url == "tmdb://builtin" {
-            return self
-                .fetch_builtin_tmdb_items(content_type, extra)
-                .await;
+            return self.fetch_builtin_tmdb_items(content_type, extra).await;
         }
         let url = core_value(
             "buildResourceUrl",
@@ -2511,7 +2567,9 @@ fn start_torrent_add(base_url: String, link: String, file_id: Option<i64>) {
                     .collect::<String>()
             })
             .unwrap_or_default();
-        crate::log!("[fluxa-native] torrent metadata add started hash={info_hash} file={file_id:?}");
+        crate::log!(
+            "[fluxa-native] torrent metadata add started hash={info_hash} file={file_id:?}"
+        );
         let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -2575,18 +2633,25 @@ async fn tmdb_similar(
     if plan.get("urls").is_none() {
         let find_url = plan.get("findUrl")?.as_str()?.to_owned();
         let find = fetch_json(client, &find_url).await.ok()?;
-        plan = core_value("tmdbDetailRequestUrlsFromFind", request(json!({"find": find})))?;
+        plan = core_value(
+            "tmdbDetailRequestUrlsFromFind",
+            request(json!({"find": find})),
+        )?;
     }
     for endpoint in endpoints {
-        let Some(url) = plan.pointer(&format!("/urls/{endpoint}")).and_then(Value::as_str) else {
+        let Some(url) = plan
+            .pointer(&format!("/urls/{endpoint}"))
+            .and_then(Value::as_str)
+        else {
             continue;
         };
         let Ok(response) = fetch_json(client, url).await else {
             continue;
         };
-        let Some(results) = response.get("results").filter(|value| {
-            value.as_array().is_some_and(|items| !items.is_empty())
-        }) else {
+        let Some(results) = response
+            .get("results")
+            .filter(|value| value.as_array().is_some_and(|items| !items.is_empty()))
+        else {
             continue;
         };
         let metas = core_value(
@@ -2625,13 +2690,16 @@ async fn tmdb_trailers(
     if plan.get("urls").is_none() {
         let find_url = plan.get("findUrl")?.as_str()?.to_owned();
         let find = fetch_json(client, &find_url).await.ok()?;
-        plan = core_value("tmdbDetailRequestUrlsFromFind", request(json!({"find": find})))?;
+        plan = core_value(
+            "tmdbDetailRequestUrlsFromFind",
+            request(json!({"find": find})),
+        )?;
     }
     let url = plan.pointer("/urls/videos")?.as_str()?.to_owned();
     let videos = fetch_json(client, &url).await.ok()?;
-    let results = videos.get("results").filter(|value| {
-        value.as_array().is_some_and(|items| !items.is_empty())
-    })?;
+    let results = videos
+        .get("results")
+        .filter(|value| value.as_array().is_some_and(|items| !items.is_empty()))?;
     core_value("tmdbBulkVideosToTrailers", results.clone())
 }
 
