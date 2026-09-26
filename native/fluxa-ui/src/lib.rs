@@ -1470,6 +1470,14 @@ fn metrics_for_assets(viewport: Viewport, assets: &impl HomeAssets) -> UiMetrics
     metrics
 }
 
+#[derive(Clone, Debug, Default)]
+struct HeroFade {
+    key: String,
+    from: Option<(TextureId, [u32; 2])>,
+    current: Option<(TextureId, [u32; 2])>,
+    started: f64,
+}
+
 #[derive(Clone)]
 struct LastReadyHeroTexture {
     texture: TextureId,
@@ -3472,38 +3480,9 @@ fn draw_home_with_options(
         hero_rect.min,
         Vec2::new(viewport.width, hero_height + hero_fade_height),
     );
-    let hero_transition = if home.hero_slides.len() > 1 {
-        let carousel_state = context
-            .data(|data| {
-                let signature = home
-                    .hero_slides
-                    .iter()
-                    .map(|slide| {
-                        slide
-                            .item_id
-                            .as_deref()
-                            .or(slide.background_url.as_deref())
-                            .unwrap_or(slide.title.as_str())
-                    })
-                    .collect::<Vec<_>>();
-                data.get_temp::<HeroCarouselState>(Id::new(("fluxa-home-hero-carousel", signature)))
-            })
-            .unwrap_or_default();
-        let progress = context.animate_bool_with_time(
-            Id::new(("fluxa-home-hero-transition", carousel_state.generation)),
-            true,
-            0.95,
-        );
-        progress
-    } else {
-        1.0
-    };
-    let mut hero_slide_offset = if home.hero_slides.len() > 1 {
-        viewport.width * (1.0 - hero_transition)
-    } else {
-        0.0
-    };
-    let mut hero_image_rect = hero_visual_rect.translate(Vec2::new(hero_slide_offset, 0.0));
+    let mut hero_slide_offset = 0.0;
+    let mut hero_opacity = 1.0;
+    let mut hero_image_rect = hero_visual_rect;
     let prefetch_home_artwork = should_prefetch_home_artwork(context, home);
     if prefetch_home_artwork {
         let full_target = artwork_target_size(hero_image_rect.size(), context.pixels_per_point());
@@ -3562,13 +3541,54 @@ fn draw_home_with_options(
         } else {
             (None, full_target)
         };
-        if let Some(hero_texture) = hero_texture {
-            let uv = cover_uv(hero_size, hero_image_rect);
+        let fade_id = Id::new("fluxa-home-hero-fade");
+        let now = context.input(|input| input.time);
+        let key = hero
+            .item_id
+            .clone()
+            .or_else(|| hero.background_url.clone())
+            .unwrap_or_else(|| hero.title.clone());
+        let mut fade = context
+            .data(|data| data.get_temp::<HeroFade>(fade_id))
+            .unwrap_or_default();
+        let current = hero_texture.map(|texture| (texture, hero_size));
+        if fade.key != key {
+            fade.from = if fade.key.is_empty() { None } else { fade.current };
+            fade.key = key;
+            fade.started = now;
+        }
+        fade.current = current;
+        context.data_mut(|data| data.insert_temp(fade_id, fade.clone()));
+        let linear = ((now - fade.started) / 0.8).clamp(0.0, 1.0) as f32;
+        let t = 1.0 - (1.0 - linear).powi(3);
+        if linear < 1.0 {
+            context.request_repaint();
+        }
+        if fade.from.is_some() {
+            hero_slide_offset = 28.0 * (1.0 - t);
+            hero_opacity = t;
+        }
+        if let Some((texture, size)) = fade.from.filter(|_| linear < 1.0) {
             painter.image(
+                texture,
+                hero_visual_rect,
+                cover_uv(size, hero_visual_rect),
+                Color32::from_white_alpha(210),
+            );
+        }
+        if let Some(hero_texture) = hero_texture {
+            let zoom = if fade.from.is_some() { 1.0 + 0.035 * (1.0 - t) } else { 1.0 };
+            hero_image_rect = Rect::from_center_size(
+                hero_visual_rect.center(),
+                hero_visual_rect.size() * zoom,
+            );
+            let uv = cover_uv(hero_size, hero_image_rect);
+            let alpha = if fade.from.is_some() { t } else { 1.0 };
+            painter.with_clip_rect(hero_visual_rect).image(
                 hero_texture,
                 hero_image_rect,
                 uv,
-                Color32::from_white_alpha(210),
+                Color32::from_white_alpha((210.0 * alpha) as u8),
             );
         }
         if compact {
@@ -3762,6 +3782,7 @@ fn draw_home_with_options(
                 // label/control to that slide so long metadata cannot paint
                 // over the next shelf.
                 ui.set_clip_rect(ui.clip_rect().intersect(hero_rect).intersect(screen));
+                ui.multiply_opacity(hero_opacity);
                 ui.set_min_width(hero_width);
                 ui.set_max_width(hero_width);
                 // Keep the widget column left-anchored and calculate every
