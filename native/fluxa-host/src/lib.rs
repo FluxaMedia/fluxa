@@ -1967,15 +1967,7 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
                 refresh_library_view(state);
             } else if state.route == "discover" && *node == fluxa_ui::NODE_DISCOVER_SEARCH {
                 state.discover.query.push_str(value);
-                state
-                    .pending_native_actions
-                    .push(NativeAction::DiscoverFilters {
-                        content_type: state.discover.content_type.clone(),
-                        catalog_key: state.discover.selected_catalog_key.clone(),
-                        query: state.discover.query.clone(),
-                        extra_name: state.discover.selected_extra_name.clone(),
-                        extra_value: state.discover.selected_extra_value.clone(),
-                    });
+                request_discover_search(state);
                 state.ui = UiTree::default();
             } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_ADDON_URL {
                 state.settings.addon_url.push_str(value);
@@ -3196,20 +3188,27 @@ fn set_text_value(state: &mut RendererState, node: u64, value: &str) {
         }
         fluxa_ui::NODE_DISCOVER_SEARCH if state.discover.query != value => {
             state.discover.query = value.to_owned();
-            state
-                .pending_native_actions
-                .push(NativeAction::DiscoverFilters {
-                    content_type: state.discover.content_type.clone(),
-                    catalog_key: state.discover.selected_catalog_key.clone(),
-                    query: state.discover.query.clone(),
-                    extra_name: state.discover.selected_extra_name.clone(),
-                    extra_value: state.discover.selected_extra_value.clone(),
-                });
+            request_discover_search(state);
         }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
         _ => {}
     }
+}
+
+fn request_discover_search(state: &mut RendererState) {
+    let query = state.discover.query.trim();
+    if query.chars().count() == 1 {
+        return;
+    }
+    let command = json!({
+        "type": "searchRequested",
+        "query": query,
+        "language": state.discover.language,
+    });
+    state
+        .pending_native_actions
+        .push(NativeAction::CoreCommand { command });
 }
 
 fn profile_language(profile: &Value) -> String {
@@ -3241,15 +3240,11 @@ fn discover_command(
     catalog_key: &str,
     extra_name: &str,
     extra_value: &str,
-    query: &str,
     load_catalog_filters: bool,
 ) -> Value {
     let mut extra = serde_json::Map::new();
     if !extra_name.is_empty() && !extra_value.is_empty() {
         extra.insert(extra_name.to_owned(), json!(extra_value));
-    }
-    if !query.is_empty() {
-        extra.insert("search".to_owned(), json!(query));
     }
     json!({
         "type": "discoverRequested",
@@ -3289,7 +3284,7 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
             ],
             "discover" => vec![
                 navigation("discover"),
-                discover_command(profile, "movie", "", "", "", "", true),
+                discover_command(profile, "movie", "", "", "", true),
             ],
             "calendar" => {
                 let (year, month) = current_year_month();
@@ -3308,7 +3303,6 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
                 "",
                 "",
                 "",
-                "",
                 true,
             )]
         }
@@ -3317,21 +3311,20 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
             catalog_key,
             extra_name,
             extra_value,
-            query,
+            ..
         }
         | NativeAction::DiscoverFilters {
             content_type,
             catalog_key,
             extra_name,
             extra_value,
-            query,
+            ..
         } => vec![discover_command(
             profile,
             content_type,
             catalog_key,
             extra_name,
             extra_value,
-            query,
             false,
         )],
         NativeAction::CalendarMonth { year, month } => vec![
@@ -3427,14 +3420,6 @@ mod tests {
         assert_eq!(commands[0]["route"], "detail");
         assert_eq!(commands[1]["type"], "detailLoadRequested");
         assert_eq!(commands[1]["language"], "tr");
-    }
-
-    #[test]
-    fn discover_search_goes_into_extra_filters() {
-        let command = discover_command(&Value::Null, "series", "top", "", "", "dune", false);
-        assert_eq!(command["filters"]["extra"]["search"], "dune");
-        assert_eq!(command["filters"]["catalogKey"], "top");
-        assert_eq!(command["language"], "en");
     }
 
     #[test]

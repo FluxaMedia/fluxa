@@ -969,6 +969,35 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
 }
 
 pub fn discover_model_from_core_snapshot(snapshot: &serde_json::Value) -> DiscoverModel {
+    let mut model = discover_catalog_model(snapshot);
+    let search = snapshot.get("search").unwrap_or(&serde_json::Value::Null);
+    let query = value_string(search, "query").unwrap_or_default();
+    if !query.trim().is_empty() {
+        model.results = search
+            .get("results")
+            .and_then(serde_json::Value::as_array)
+            .map(|items| items.iter().map(core_home_card).collect())
+            .unwrap_or_default();
+        model.is_loading = search
+            .get("isLoading")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
+        model.error = search
+            .get("error")
+            .and_then(serde_json::Value::as_str)
+            .map(ToOwned::to_owned);
+        model.next_page = None;
+        model.generation = search
+            .get("generation")
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0)
+            | 1 << 63;
+        model.query = query;
+    }
+    model
+}
+
+fn discover_catalog_model(snapshot: &serde_json::Value) -> DiscoverModel {
     let discover = snapshot.get("discover").unwrap_or(&serde_json::Value::Null);
     let filters = discover.get("filters").unwrap_or(&serde_json::Value::Null);
     let paging = discover.get("paging").unwrap_or(&serde_json::Value::Null);
@@ -1131,6 +1160,9 @@ pub fn refresh_discover_model_from_core_snapshot(
         .get("catalogKey")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
+    if !model.query.is_empty() {
+        return false;
+    }
     let Some(items) = discover
         .get("results")
         .and_then(serde_json::Value::as_array)

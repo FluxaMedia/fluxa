@@ -203,10 +203,7 @@ pub fn draw_discover(
                         genre_placeholder.as_str()
                     }
                 });
-            let (type_width, catalog_width, genre_width) = if compact {
-                let width = ((available - metrics.control_gap * 2.0) / 3.0).max(72.0);
-                (width, width, width)
-            } else {
+            let (type_width, catalog_width, genre_width) = {
                 let gap = metrics.control_gap * 2.0;
                 let target = (available - gap).max(1.0);
                 let preferred = [
@@ -222,7 +219,7 @@ pub fn draw_discover(
                         selected_catalog_label,
                         metrics,
                         88.0,
-                        (available * 0.52).min(460.0),
+                        if compact { available } else { available * 0.52 }.min(460.0),
                     ),
                     components::dropdown_width_for_label(
                         ui,
@@ -234,7 +231,11 @@ pub fn draw_discover(
                 ];
                 // Text determines each control's natural width; only compress
                 // when the complete filter row cannot fit the current window.
-                let scale = (target / preferred.iter().sum::<f32>()).min(1.0);
+                let scale = if compact {
+                    1.0
+                } else {
+                    (target / preferred.iter().sum::<f32>()).min(1.0)
+                };
                 (
                     preferred[0] * scale,
                     preferred[1] * scale,
@@ -311,10 +312,15 @@ pub fn draw_discover(
                     layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
                 }
             };
-            ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                draw_filter_controls(ui);
-            });
+            egui::ScrollArea::horizontal()
+                .id_salt("discover-filters")
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                        draw_filter_controls(ui);
+                    });
+                });
         });
 
     let results_width = page.width;
