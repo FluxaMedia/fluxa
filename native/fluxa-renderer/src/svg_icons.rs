@@ -25,6 +25,10 @@ pub const ICONS: &[(&str, &str)] = &[
         r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><circle cx="13.5" cy="6.5" r=".8" fill="white"/><circle cx="17.5" cy="10.5" r=".8" fill="white"/><circle cx="8.5" cy="7.5" r=".8" fill="white"/><circle cx="6.5" cy="12.5" r=".8" fill="white"/><path d="M12 22a10 10 0 1 1 10-10c0 1.7-1.3 3-3 3h-1.8a1.5 1.5 0 0 0-1.1 2.5l.3.3A3 3 0 0 1 14.3 23H12Z" fill="none" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg>"#,
     ),
     (
+        "Posters",
+        r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="2" width="16" height="20" rx="2" fill="none" stroke="white" stroke-width="1.8"/><path d="M7 6h5" fill="none" stroke="white" stroke-width="1.8" stroke-linecap="round"/><path d="M4 17h16" fill="none" stroke="white" stroke-width="1.8"/></svg>"#,
+    ),
+    (
         "Playback",
         r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="m7 4 13 8-13 8V4Z" fill="none" stroke="white" stroke-width="1.8" stroke-linejoin="round"/></svg>"#,
     ),

@@ -712,6 +712,38 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
+const POSTER_SETTINGS: [SettingsRow; 6] = [
+    SettingsRow {
+        label: "Poster overlays",
+        key: "posterOverlaysEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Rating badge",
+        key: "posterRatingBadge",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Rating position",
+        key: "posterRatingPosition",
+        options: &["top_left", "top_right", "bottom_left", "bottom_right"],
+    },
+    SettingsRow {
+        label: "Release status badge",
+        key: "posterStatusBadge",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Status position",
+        key: "posterStatusPosition",
+        options: &["banner", "top_left", "top_right", "bottom_left", "bottom_right"],
+    },
+    SettingsRow {
+        label: "Badge size",
+        key: "posterBadgeSize",
+        options: &["default", "small", "large"],
+    },
+];
 const EMPTY_SETTINGS: [SettingsRow; 0] = [];
 const STORAGE_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
@@ -741,7 +773,7 @@ const STORAGE_SETTINGS: [SettingsRow; 5] = [
     },
 ];
 
-pub const SETTINGS_SECTIONS: [SettingsSection; 11] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 12] = [
     SettingsSection {
         title: "Account",
         description: "Profile and connected services",
@@ -756,6 +788,11 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 11] = [
         title: "Appearance",
         description: "Visual preferences",
         rows: &APPEARANCE_SETTINGS,
+    },
+    SettingsSection {
+        title: "Posters",
+        description: "Badges drawn on top of poster artwork",
+        rows: &POSTER_SETTINGS,
     },
     SettingsSection {
         title: "Playback",
@@ -895,6 +932,7 @@ impl SettingsModel {
             .get(key)
             .filter(|value| !value.is_null())
             .or_else(|| setting_default(key))
+            .or_else(|| poster_overlay::setting_default(key))
     }
 
     pub fn ui_scale(&self) -> f32 {
@@ -1990,6 +2028,7 @@ pub fn draw_settings(
                         "Account",
                         "General",
                         "Appearance",
+                        "Posters",
                         "Playback",
                         "Device",
                         "Shortcuts",

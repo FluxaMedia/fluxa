@@ -1016,6 +1016,7 @@ impl Gpu {
             focused: true,
             ..Default::default()
         };
+        fluxa_ui::set_poster_overlays(&self.egui_context, settings.poster_overlays());
         let mut rendered_layout = HomeLayout::default();
         let output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {

@@ -2574,5 +2574,22 @@
   "settings.group.subtitle_style": "Altyazı stili",
   "settings.group.upscaling_motion": "Ölçekleme ve hareket",
   "settings.group.player_advanced": "Gelişmiş oynatma",
-  "settings.subtitle_text_opacity": "Metin saydamlığı"
+  "settings.subtitle_text_opacity": "Metin saydamlığı",
+  "settings.section.posters": "Posterler",
+  "settings.section.posters.description": "Poster görsellerinin üzerine çizilen rozetler",
+  "settings.poster_overlays_enabled": "Poster katmanları",
+  "settings.poster_rating_badge": "Puan rozeti",
+  "settings.poster_rating_position": "Puan konumu",
+  "settings.poster_status_badge": "Yayın durumu rozeti",
+  "settings.poster_status_position": "Durum konumu",
+  "settings.poster_badge_size": "Rozet boyutu",
+  "settings.option.top_left": "Sol üst",
+  "settings.option.top_right": "Sağ üst",
+  "settings.option.bottom_left": "Sol alt",
+  "settings.option.bottom_right": "Sağ alt",
+  "settings.option.banner": "Şerit",
+  "poster.badge.upcoming": "Yakında",
+  "poster.badge.new_season": "Yeni sezon",
+  "poster.badge.new_episode": "Yeni bölüm",
+  "poster.badge.new_release": "Yeni"
 }

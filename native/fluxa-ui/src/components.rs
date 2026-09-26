@@ -378,6 +378,7 @@ pub(super) fn poster_card(
         );
         texture_image(painter, animated.texture, rect, uv, Color32::WHITE);
     }
+    super::poster_overlay::paint(painter, rect, card, metrics.card_radius);
 
     if card.hide_title && card.row_kind == super::HomeRowKind::Collection {
         return;

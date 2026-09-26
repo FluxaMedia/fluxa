@@ -2574,5 +2574,22 @@
   "settings.group.subtitle_style": "Subtitle style",
   "settings.group.upscaling_motion": "Upscaling and motion",
   "settings.group.player_advanced": "Advanced playback",
-  "settings.subtitle_text_opacity": "Text transparency"
+  "settings.subtitle_text_opacity": "Text transparency",
+  "settings.section.posters": "Posters",
+  "settings.section.posters.description": "Badges drawn on top of poster artwork",
+  "settings.poster_overlays_enabled": "Poster overlays",
+  "settings.poster_rating_badge": "Rating badge",
+  "settings.poster_rating_position": "Rating position",
+  "settings.poster_status_badge": "Release status badge",
+  "settings.poster_status_position": "Status position",
+  "settings.poster_badge_size": "Badge size",
+  "settings.option.top_left": "Top left",
+  "settings.option.top_right": "Top right",
+  "settings.option.bottom_left": "Bottom left",
+  "settings.option.bottom_right": "Bottom right",
+  "settings.option.banner": "Banner",
+  "poster.badge.upcoming": "Coming soon",
+  "poster.badge.new_season": "New season",
+  "poster.badge.new_episode": "New episode",
+  "poster.badge.new_release": "New"
 }

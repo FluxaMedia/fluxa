@@ -14,10 +14,12 @@ mod detail;
 mod discover;
 mod library;
 mod player;
+mod poster_overlay;
 mod profiles;
 mod settings;
 
 pub use calendar::draw_calendar;
+pub use poster_overlay::{PosterOverlays, set_poster_overlays};
 
 pub use detail::{detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
@@ -572,6 +574,8 @@ pub struct HomeCard {
 impl HomeModel {
     pub fn content_rows(&self) -> Vec<(&str, &[HomeCard])> {
         self.content_rows_with_kind()
+    #[serde(skip)]
+    pub overlay: poster_overlay::PosterFacts,
             .into_iter()
             .map(|(title, cards, _)| (title, cards))
             .collect()
@@ -1457,6 +1461,11 @@ fn hero_meta_line(value: &serde_json::Value, language: &str) -> String {
         .map(|year| year.to_string())
         .or_else(|| value_string(value, "year"));
     let runtime = value_string(value, "runtime").or_else(|| {
+        overlay: if matches!(kind, HomeRowKind::Poster) {
+            poster_overlay::poster_facts(item)
+        } else {
+            Default::default()
+        },
         value
             .get("duration")
             .and_then(serde_json::Value::as_i64)
