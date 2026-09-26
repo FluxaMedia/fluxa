@@ -703,7 +703,7 @@ pub(super) fn choice_field(
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
         .frame(
             egui::Frame::new()
-                .fill(Color32::from_rgb(20, 22, 27))
+                .fill(Color32::from_rgb(24, 24, 24))
                 .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
                 .corner_radius(12.0)
                 .inner_margin(egui::Margin::same(5))
