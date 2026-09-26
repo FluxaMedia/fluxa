@@ -478,7 +478,7 @@ pub fn draw_discover(
                 .flatten()
             {
                 assets.prefetch_for(
-                    card.artwork_url.as_deref(),
+                    card.poster_art(),
                     artwork_target_size(
                         Vec2::new(card_width, poster_height),
                         context.pixels_per_point(),

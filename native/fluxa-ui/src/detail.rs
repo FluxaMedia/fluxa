@@ -7,7 +7,14 @@ const EPISODE_WIDTH: f32 = 300.0;
 const EPISODE_TEXT: f32 = 74.0;
 const CAST_SIZE: f32 = 92.0;
 const CAST_TEXT: f32 = 48.0;
-const SIMILAR_WIDTH: f32 = 150.0;
+
+fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
+    let poster = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
+    let text = metrics.control_gap * 2.0
+        + metrics.screen_card_title_size
+        + metrics.screen_card_subtitle_size;
+    (poster, poster.y + text)
+}
 
 struct DetailGeometry {
     margin: f32,
@@ -40,7 +47,7 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     });
     let similar_top = (!detail.similar.is_empty()).then(|| {
         let top = y;
-        y += SECTION_TITLE + SIMILAR_WIDTH * 1.5 + 36.0 + SECTION_GAP;
+        y += SECTION_TITLE + similar_size(metrics).1 + SECTION_GAP;
         top
     });
     DetailGeometry {
@@ -588,7 +595,7 @@ pub fn draw_detail(
     if let Some(top) = geometry.similar_top {
         let top = top - scroll_y;
         section_title(&painter, Pos2::new(margin, top), &t("player.recommendations"), title_size);
-        let poster = Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5);
+        let (poster, slot_height) = similar_size(metrics);
         egui::Area::new(Id::new("fluxa-detail-similar"))
             .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
@@ -603,7 +610,7 @@ pub fn draw_detail(
                             ui.spacing_mut().item_spacing.x = 14.0;
                             for (index, card) in detail.similar.iter().enumerate() {
                                 let (rect, response) =
-                                    ui.allocate_exact_size(Vec2::new(poster.x, poster.y + 36.0), Sense::click());
+                                    ui.allocate_exact_size(Vec2::new(poster.x, slot_height), Sense::click());
                                 let node = NODE_DETAIL_SIMILAR_BASE + index as u64;
                                 layout.focusable.push((node, rect));
                                 if response.clicked() {
@@ -612,24 +619,15 @@ pub fn draw_detail(
                                 if !ui.is_rect_visible(rect) {
                                     continue;
                                 }
-                                let painter = ui.painter();
-                                let image = Rect::from_min_size(rect.min, poster);
-                                let lift = context.animate_bool_with_time(
-                                    Id::new(("fluxa-detail-similar-hover", index)),
-                                    response.hovered(),
-                                    0.15,
-                                );
-                                let image = image.expand(4.0 * lift);
-                                painter.rect_filled(image, 10.0, Color32::from_white_alpha(14));
-                                let url = card.artwork_url.as_deref();
-                                rounded_art(painter, image, 10.0, url, ppp, assets);
-                                let font = FontId::proportional(13.5);
-                                painter.text(
-                                    Pos2::new(rect.left(), rect.top() + poster.y + 10.0),
-                                    Align2::LEFT_TOP,
-                                    truncate_to_width(painter, &card.title, &font, poster.x),
-                                    font,
-                                    Color32::from_white_alpha(200),
+                                components::poster_card(
+                                    ui.painter(),
+                                    Rect::from_min_size(rect.min, poster),
+                                    card,
+                                    index,
+                                    viewport,
+                                    metrics,
+                                    assets,
+                                    false,
                                 );
                             }
                         });

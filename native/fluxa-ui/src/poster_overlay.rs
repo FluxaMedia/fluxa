@@ -123,6 +123,10 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
 }
 
 impl super::SettingsModel {
+    pub fn poster_landscape(&self) -> bool {
+        self.bool_value("posterLandscapeMode")
+    }
+
     pub fn poster_overlays(&self) -> Option<PosterOverlays> {
         let template = self
             .str_value("posterUrlTemplate")
@@ -184,6 +188,16 @@ impl super::SettingsModel {
             template,
         })
     }
+}
+
+static LANDSCAPE: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_poster_landscape(on: bool) {
+    LANDSCAPE.store(on, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(super) fn landscape() -> bool {
+    LANDSCAPE.load(std::sync::atomic::Ordering::Relaxed)
 }
 
 fn logos_id() -> Id {
@@ -339,7 +353,7 @@ pub(super) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<Str
     let overlays = current(context)?;
     let template = overlays.template.as_deref()?;
     let id = card.id.as_deref()?;
-    let shape = if card.row_kind == HomeRowKind::Landscape {
+    let shape = if landscape() {
         "landscape"
     } else {
         "poster"

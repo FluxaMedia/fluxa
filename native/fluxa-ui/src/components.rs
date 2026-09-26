@@ -362,13 +362,15 @@ pub(super) fn poster_card(
 ) {
     painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(28, 28, 34));
 
+    let landscape = card.is_landscape();
+    let artwork = card.poster_art();
     // Show the ordinary poster as soon as it is ready. Animated artwork can
     // take substantially longer to prepare, so don't let its decode leave a
     // blank tile or occupy the first artwork requests for an entire row.
     let has_static_artwork = artwork_image(
         painter,
         rect,
-        card.artwork_url.as_deref(),
+        artwork,
         artwork_target_size(
             Vec2::new(rect.width(), rect.height()),
             painter.ctx().pixels_per_point(),
@@ -427,7 +429,7 @@ pub(super) fn poster_card(
         );
         texture_image(painter, animated.texture, rect, uv, Color32::WHITE);
     }
-    if card.row_kind == super::HomeRowKind::Landscape {
+    if landscape {
         if super::poster_overlay::custom_url(painter.ctx(), card).is_none() {
             landscape_logo(painter, rect, card, assets);
         }

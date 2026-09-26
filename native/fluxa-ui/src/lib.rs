@@ -20,8 +20,8 @@ mod settings;
 
 pub use calendar::draw_calendar;
 pub use poster_overlay::{
-    Enrichment, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_overlays,
-    set_poster_personal, set_rating_logos,
+    Enrichment, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_landscape,
+    set_poster_overlays, set_poster_personal, set_rating_logos,
 };
 
 pub use detail::{detail_scroll_max, draw_detail};
@@ -545,7 +545,6 @@ pub enum HomeRowKind {
     Continue,
     #[default]
     Poster,
-    Landscape,
     Collection,
 }
 
@@ -583,6 +582,21 @@ pub struct HomeCard {
     pub overlay: poster_overlay::PosterFacts,
     #[serde(skip)]
     pub logo_url: Option<String>,
+    #[serde(skip)]
+    pub backdrop_url: Option<String>,
+}
+
+impl HomeCard {
+    fn is_landscape(&self) -> bool {
+        poster_overlay::landscape() && self.row_kind != HomeRowKind::Collection
+    }
+
+    fn poster_art(&self) -> Option<&str> {
+        match self.is_landscape() {
+            true => self.backdrop_url.as_deref().or(self.artwork_url.as_deref()),
+            false => self.artwork_url.as_deref(),
+        }
+    }
 }
 
 impl HomeModel {
@@ -768,10 +782,6 @@ pub fn home_model_from_core_snapshot(
                 .map(|item| core_home_card_for_kind(item, HomeRowKind::Continue))
                 .collect();
         }
-        let landscape = snapshot
-            .pointer("/settings/values/posterLandscapeMode")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false);
         model.rows = categories
             .iter()
             .enumerate()
@@ -795,7 +805,6 @@ pub fn home_model_from_core_snapshot(
                     (Some("continue_watching" | "upcoming"), _)
                     | (_, Some("continue_watching" | "upcoming")) => HomeRowKind::Continue,
                     (_, Some("collection" | "collection_folder")) => HomeRowKind::Collection,
-                    _ if landscape => HomeRowKind::Landscape,
                     _ => HomeRowKind::Poster,
                 };
                 Some(HomeRow {
@@ -1425,20 +1434,7 @@ fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKind) -> HomeC
             .or_else(|| value_display(item, "year"))
             .unwrap_or_default(),
         progress,
-        artwork_url: if matches!(kind, HomeRowKind::Landscape) {
-            first_value_string(
-                item,
-                &[
-                    "background",
-                    "backgroundUrl",
-                    "backdrop",
-                    "backdropUrl",
-                    "poster",
-                    "posterUrl",
-                    "artworkUrl",
-                ],
-            )
-        } else if matches!(kind, HomeRowKind::Continue) {
+        artwork_url: if matches!(kind, HomeRowKind::Continue) {
             first_value_string(
                 item,
                 &[
@@ -1493,6 +1489,10 @@ fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKind) -> HomeC
             poster_overlay::poster_facts(item)
         },
         logo_url: first_value_string(item, &["logo", "logoUrl", "clearLogo"]),
+        backdrop_url: first_value_string(
+            item,
+            &["background", "backgroundUrl", "backdrop", "backdropUrl"],
+        ),
         raw: item.clone(),
         row_kind: kind,
     }
@@ -1918,7 +1918,7 @@ impl UiMetrics {
                 })
                 .unwrap_or(fallback)
         };
-        Self {
+        let mut metrics = Self {
             background: color("background", Color32::from_rgb(7, 7, 9)),
             surface: color("surface", Color32::from_rgb(20, 20, 22)),
             surface_raised: color("surfaceRaised", Color32::from_rgb(28, 28, 31)),
@@ -2129,7 +2129,12 @@ impl UiMetrics {
                 0.56,
             ),
             focused_scale: number(&["common", "number", "cardFocusedScale"], 1.12),
+        };
+        if poster_overlay::landscape() {
+            metrics.poster_card_width = metrics.home_continue_card_width;
+            metrics.poster_card_height = metrics.poster_card_width * 0.5625;
         }
+        metrics
     }
 
     pub fn navigation_label_size(self, tv: bool) -> f32 {
@@ -2204,15 +2209,6 @@ fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32, f32, f32)
             metrics.home_continue_card_width,
             metrics.home_continue_card_height,
             metrics.home_continue_card_height,
-        ),
-        HomeRowKind::Landscape => (
-            metrics.home_continue_card_width,
-            metrics.home_continue_card_height,
-            metrics.home_continue_card_height
-                + metrics.control_gap
-                + metrics.screen_card_title_size
-                + metrics.screen_card_subtitle_size
-                + metrics.control_gap,
         ),
         HomeRowKind::Poster => (
             metrics.poster_card_width,
@@ -4363,7 +4359,7 @@ fn draw_home_with_options(
         if prefetch_home_artwork {
             for card in cards {
                 assets.prefetch_for(
-                    card.artwork_url.as_deref(),
+                    card.poster_art(),
                     artwork_target_size(
                         Vec2::new(
                             if kind == HomeRowKind::Collection {

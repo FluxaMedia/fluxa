@@ -1062,6 +1062,7 @@ impl Gpu {
             focused: true,
             ..Default::default()
         };
+        fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_poster_overlays(&self.egui_context, settings.poster_overlays());
         fluxa_ui::set_poster_personal(&self.egui_context, library.personal.clone());
         let mut rendered_layout = HomeLayout::default();
