@@ -1,3 +1,4 @@
+mod anime4k;
 mod audio_channels;
 mod audio_tracks;
 mod backend_selection;
@@ -10,6 +11,7 @@ mod source_sidebar;
 mod torrent_fallback;
 
 pub(crate) use self::dolby_vision::*;
+pub(crate) use anime4k::anime4k_shader_chain_json;
 pub(crate) use audio_channels::audio_pcm_channel_count_json;
 pub(crate) use audio_tracks::select_audio_track_json;
 pub(crate) use backend_selection::player_backend_selection_json;

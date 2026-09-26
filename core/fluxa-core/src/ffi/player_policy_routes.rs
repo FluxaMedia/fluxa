@@ -10,6 +10,7 @@ pub(super) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         "playerBackendSelection" => {
             opt_json(player_policy::player_backend_selection_json(args_json))
         }
+        "anime4kShaderChain" => opt_json(player_policy::anime4k_shader_chain_json(args_json)),
         "playerBufferTargets" => opt_json(player_policy::player_buffer_targets_json(args_json)),
         "audioPcmChannelCount" => opt_json(player_policy::audio_pcm_channel_count_json(args_json)),
         "selectAudioTrack" => opt_json(player_policy::select_audio_track_json(args_json)),
