@@ -421,6 +421,7 @@ pub fn draw_detail(
         let top = top - scroll_y;
         section_title(&painter, Pos2::new(margin, top), &t("auto.episodes"), title_size);
         egui::Area::new(Id::new("fluxa-detail-seasons"))
+            .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
             .show(context, |ui| {
                 ui.set_clip_rect(visible);
@@ -460,6 +461,7 @@ pub fn draw_detail(
             });
         let thumb = Vec2::new(EPISODE_WIDTH, EPISODE_WIDTH * 9.0 / 16.0);
         egui::Area::new(Id::new("fluxa-detail-episodes"))
+            .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE + SEASON_ROW))
             .show(context, |ui| {
                 ui.set_clip_rect(visible);
@@ -537,6 +539,7 @@ pub fn draw_detail(
         let top = top - scroll_y;
         section_title(&painter, Pos2::new(margin, top), &t("auto.cast"), title_size);
         egui::Area::new(Id::new("fluxa-detail-cast"))
+            .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
             .show(context, |ui| {
                 ui.set_clip_rect(visible);
@@ -605,6 +608,7 @@ pub fn draw_detail(
         section_title(&painter, Pos2::new(margin, top), &t("player.recommendations"), title_size);
         let poster = Vec2::new(SIMILAR_WIDTH, SIMILAR_WIDTH * 1.5);
         egui::Area::new(Id::new("fluxa-detail-similar"))
+            .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
             .show(context, |ui| {
                 ui.set_clip_rect(visible);
