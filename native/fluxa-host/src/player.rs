@@ -87,6 +87,7 @@ pub(crate) struct PlayerSession {
     outro_reached: bool,
     recommendations_rx: Option<Receiver<Vec<Value>>>,
     recommendations: Vec<Value>,
+    recommendation_index: usize,
 }
 
 impl PlayerSession {
@@ -115,6 +116,7 @@ impl PlayerSession {
             outro_reached: false,
             recommendations_rx: None,
             recommendations: Vec::new(),
+            recommendation_index: 0,
         }
     }
 
@@ -186,8 +188,9 @@ impl PlayerSession {
             recommendations: self
                 .recommendations
                 .iter()
-                .map(fluxa_ui::poster_card_from_meta)
+                .map(|item| fluxa_ui::hero_from_meta(item, &self.language))
                 .collect(),
+            recommendation_index: self.recommendation_index,
         }
     }
 }
@@ -697,26 +700,33 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
         fluxa_ui::NODE_PLAYER_UPSCALING => cycle_upscaling(state),
-        fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => {
-            if let Some(player) = state.player.as_mut() {
-                player.recommendations.clear();
-            }
-        }
+        fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => dismiss_recommendations(state),
+        fluxa_ui::NODE_PLAYER_RECOMMENDATION_PLAY => open_recommendation(state, true),
+        fluxa_ui::NODE_PLAYER_RECOMMENDATION_DETAILS => open_recommendation(state, false),
         node if (fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE
             ..fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE + fluxa_ui::PLAYER_RECOMMENDATION_LIMIT as u64)
             .contains(&node) =>
         {
-            open_recommendation(state, (node - fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE) as usize)
+            if let Some(player) = state.player.as_mut() {
+                player.recommendation_index = (node - fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE) as usize;
+            }
         }
         _ => {}
     }
 }
 
-fn open_recommendation(state: &mut RendererState, index: usize) {
+fn dismiss_recommendations(state: &mut RendererState) {
+    if let Some(player) = state.player.as_mut() {
+        player.recommendations.clear();
+        player.touch();
+    }
+}
+
+fn open_recommendation(state: &mut RendererState, play: bool) {
     let Some(item) = state
         .player
         .as_ref()
-        .and_then(|player| player.recommendations.get(index))
+        .and_then(|player| player.recommendations.get(player.recommendation_index))
     else {
         return;
     };
@@ -726,9 +736,13 @@ fn open_recommendation(state: &mut RendererState, index: usize) {
     ) else {
         return;
     };
-    let action = crate::NativeAction::Detail {
-        id: id.to_owned(),
-        item_type: item_type.to_owned(),
+    let action = if play {
+        crate::NativeAction::StartPlayback { item: item.clone() }
+    } else {
+        crate::NativeAction::Detail {
+            id: id.to_owned(),
+            item_type: item_type.to_owned(),
+        }
     };
     close(state);
     state.pending_native_actions.push(action);
@@ -746,14 +760,25 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
         input,
         KeyInput::Key(Key::Back | Key::Escape) | KeyInput::Gamepad(GamepadButton::East)
     );
+    let recommending = state
+        .player
+        .as_ref()
+        .is_some_and(|player| !player.recommendations.is_empty());
     if closes {
-        close(state);
+        if recommending {
+            dismiss_recommendations(state);
+        } else {
+            close(state);
+        }
         return KeyOutcome::Handled;
+    }
+    if recommending {
+        return KeyOutcome::Focus;
     }
     let Some(player) = state.player.as_mut() else {
         return KeyOutcome::Focus;
     };
-    if player.controls_visible() || !player.recommendations.is_empty() {
+    if player.controls_visible() {
         player.touch();
         return KeyOutcome::Focus;
     }
