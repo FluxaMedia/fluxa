@@ -24,6 +24,8 @@ pub struct PlayerModel {
     pub upscaling: String,
     pub recommendations: Vec<HomeHero>,
     pub recommendation_index: usize,
+    pub background: Option<String>,
+    pub load_progress: Option<f32>,
 }
 
 const WARNING_BAR: f32 = 0.3;
@@ -67,12 +69,7 @@ pub fn draw_player(
             painter.rect_filled(rect, 0.0, Color32::BLACK);
             painter.image(texture, rect, full_uv(), Color32::WHITE);
         }
-        None => {
-            painter.rect_filled(rect, 0.0, Color32::from_rgb(8, 8, 10));
-        }
-    }
-    if player.video.is_none() {
-        draw_status(&painter, rect, player);
+        None => draw_loading(context, &painter, rect, player, assets),
     }
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);
@@ -814,41 +811,120 @@ fn draw_warnings(context: &egui::Context, origin: Pos2, player: &PlayerModel, el
     }
 }
 
-fn draw_status(painter: &egui::Painter, rect: Rect, player: &PlayerModel) {
-    let center = rect.center();
-    painter.text(
-        center - Vec2::new(0.0, 28.0),
-        Align2::CENTER_CENTER,
-        &player.title,
-        FontId::proportional(26.0),
-        Color32::WHITE,
-    );
-    let (headline, detail) = player.status.clone().unwrap_or_else(|| {
-        (
-            "Preparing player…".to_owned(),
-            "Waiting for the first video frame".to_owned(),
-        )
-    });
-    painter.text(
-        center + Vec2::new(0.0, 14.0),
-        Align2::CENTER_CENTER,
-        player.error.as_deref().unwrap_or(&headline),
-        FontId::proportional(15.0),
-        if player.error.is_some() {
-            Color32::from_rgb(255, 130, 110)
-        } else {
-            Color32::from_white_alpha(180)
-        },
-    );
-    if player.error.is_none() {
-        painter.text(
-            center + Vec2::new(0.0, 42.0),
-            Align2::CENTER_CENTER,
-            detail,
-            FontId::proportional(13.0),
-            Color32::from_white_alpha(145),
-        );
+fn draw_loading(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    rect: Rect,
+    player: &PlayerModel,
+    assets: &mut impl HomeAssets,
+) {
+    painter.rect_filled(rect, 0.0, Color32::BLACK);
+    let url = player.background.as_deref();
+    let target = artwork_target_size(rect.size(), context.pixels_per_point());
+    if let Some(texture) = assets.texture_for(url, target, ArtworkPriority::Visible) {
+        let uv = assets
+            .texture_size(url)
+            .map(|size| cover_uv(size, rect))
+            .unwrap_or_else(full_uv);
+        painter.image(texture, rect, uv, Color32::from_white_alpha(89));
     }
+    paint_vertical_gradient(
+        painter,
+        rect,
+        Color32::from_black_alpha(26),
+        Color32::from_black_alpha(166),
+    );
+
+    let center = rect.center();
+    let logo_box = Vec2::new(480.0_f32.min(rect.width() - 32.0), 160.0);
+    let logo = player.logo.as_deref();
+    let logo_target = artwork_target_size(logo_box, context.pixels_per_point());
+    let logo_texture = logo.and_then(|url| {
+        Some((
+            assets.texture_for(Some(url), logo_target, ArtworkPriority::Visible)?,
+            assets.texture_size(Some(url))?,
+        ))
+    });
+    let mut below = center.y + 36.0;
+    if player.error.is_none() {
+        match logo_texture {
+            Some((texture, size)) => {
+                let fitted = contain_size(size, logo_box);
+                let logo_rect = Rect::from_center_size(center, fitted);
+                match player.load_progress {
+                    Some(progress) => {
+                        let shown = context.animate_value_with_time(
+                            Id::new("fluxa-player-load-progress"),
+                            progress,
+                            0.42,
+                        );
+                        painter.image(texture, logo_rect, full_uv(), Color32::from_rgba_unmultiplied(184, 184, 184, 89));
+                        let mut lit = logo_rect;
+                        lit.set_right(logo_rect.left() + logo_rect.width() * shown);
+                        painter.with_clip_rect(lit).image(texture, logo_rect, full_uv(), Color32::WHITE);
+                    }
+                    None => {
+                        let time = context.input(|input| input.time) as f32;
+                        let phase = 0.5 - 0.5 * (time * std::f32::consts::PI / 1.08).cos();
+                        let alpha = 0.38 + 0.48 * phase;
+                        let scaled = Rect::from_center_size(center, fitted * (0.992 + 0.02 * phase));
+                        painter.image(texture, scaled, full_uv(), Color32::from_white_alpha((255.0 * alpha) as u8));
+                        context.request_repaint();
+                    }
+                }
+                below = logo_rect.bottom() + 28.0;
+            }
+            None => {
+                painter.text(
+                    center,
+                    Align2::CENTER_CENTER,
+                    &player.title,
+                    FontId::proportional(40.0),
+                    Color32::WHITE,
+                );
+            }
+        }
+    }
+
+    if let Some(error) = player.error.as_deref() {
+        painter.text(
+            center - Vec2::new(0.0, 16.0),
+            Align2::CENTER_CENTER,
+            localized("player.playback_error", &player.language),
+            FontId::proportional(22.0),
+            Color32::WHITE,
+        );
+        painter.text(
+            center + Vec2::new(0.0, 16.0),
+            Align2::CENTER_CENTER,
+            truncate_to_width(painter, error, &FontId::proportional(14.0), rect.width() - 64.0),
+            FontId::proportional(14.0),
+            Color32::from_white_alpha(170),
+        );
+        return;
+    }
+    if let Some(episode) = player.episode_title.as_deref() {
+        painter.text(
+            Pos2::new(center.x, below),
+            Align2::CENTER_CENTER,
+            episode,
+            FontId::proportional(16.0),
+            Color32::from_white_alpha(210),
+        );
+        below += 28.0;
+    }
+    let status = player
+        .status
+        .as_ref()
+        .map(|(headline, _)| headline.clone())
+        .unwrap_or_else(|| localized("player.status_starting_playback", &player.language));
+    painter.text(
+        Pos2::new(center.x, below),
+        Align2::CENTER_CENTER,
+        status,
+        FontId::proportional(14.0),
+        Color32::from_white_alpha(150),
+    );
 }
 
 fn scrims(painter: &egui::Painter, rect: Rect) {

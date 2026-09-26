@@ -22,6 +22,7 @@ pub struct VideoStatus {
     pub has_frame: bool,
     pub error: Option<String>,
     pub chapters: Vec<(f64, String)>,
+    pub buffering: Option<f32>,
 }
 
 pub struct Thumbnail {
@@ -88,6 +89,7 @@ pub(crate) struct PlayerSession {
     recommendations_rx: Option<Receiver<Vec<Value>>>,
     recommendations: Vec<Value>,
     recommendation_index: usize,
+    load_progress: f32,
 }
 
 impl PlayerSession {
@@ -117,6 +119,7 @@ impl PlayerSession {
             recommendations_rx: None,
             recommendations: Vec::new(),
             recommendation_index: 0,
+            load_progress: 0.0,
         }
     }
 
@@ -191,6 +194,13 @@ impl PlayerSession {
                 .map(|item| fluxa_ui::hero_from_meta(item, &self.language))
                 .collect(),
             recommendation_index: self.recommendation_index,
+            background: self
+                .meta
+                .get("background")
+                .and_then(Value::as_str)
+                .filter(|url| !url.trim().is_empty())
+                .map(ToOwned::to_owned),
+            load_progress: (self.load_progress > 0.0).then_some(self.load_progress),
         }
     }
 }
@@ -267,6 +277,19 @@ pub(crate) fn pump(state: &mut RendererState) {
                     ))
                 }
             }
+        }
+    }
+    if !player.status.has_frame {
+        let preload = player
+            .torrent_link
+            .as_ref()
+            .and(player.torrent_status.as_ref())
+            .and_then(|status| status.get("preload"))
+            .and_then(Value::as_f64)
+            .filter(|percent| *percent > 0.0)
+            .map(|percent| (percent / 100.0) as f32);
+        if let Some(progress) = preload.or(player.status.buffering) {
+            player.load_progress = player.load_progress.max(progress.clamp(0.045, 1.0));
         }
     }
     player.episode_title = episode_title(&player.meta, &snapshot);

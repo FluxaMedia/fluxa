@@ -156,6 +156,7 @@ impl VideoBackend for MpvBackend {
             has_frame: player.first_frame,
             error: self.error.clone(),
             chapters: player.chapters().to_vec(),
+            buffering: buffering(&position),
         }
     }
 
@@ -555,4 +556,16 @@ fn open_shared_device(
     .map_err(|error| format!("open Vulkan device: {error}"))?;
     unsafe { adapter.create_device_from_hal(hal_device, descriptor) }
         .map_err(|error| format!("create wgpu device: {error}"))
+}
+
+fn buffering(position: &fluxa_mpv::PlayerPositionStatus) -> Option<f32> {
+    let number = |value: Option<&String>| value.and_then(|value| value.parse::<f32>().ok());
+    if position.paused_for_cache.as_deref() == Some("yes")
+        && let Some(state) = number(position.cache_buffering_state.as_ref())
+    {
+        return Some(state / 100.0);
+    }
+    number(position.demuxer_cache_duration.as_ref())
+        .filter(|seconds| *seconds > 0.0)
+        .map(|seconds| (seconds / 5.0).min(1.0))
 }
