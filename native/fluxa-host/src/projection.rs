@@ -4,7 +4,7 @@ use fluxa_ui::{
     CalendarModel, DetailModel, DiscoverModel, HomeModel, LibraryModel, LibraryTab, SettingsModel,
     UiFormFactorJson, detail_model_from_core_snapshot, discover_model_from_core_snapshot,
     home_model_from_core_snapshot, library_model_from_core_snapshot,
-    settings_model_from_core_snapshot,
+    refresh_discover_model_from_core_snapshot, settings_model_from_core_snapshot,
 };
 use serde_json::{Value, json};
 
@@ -35,7 +35,27 @@ pub(crate) struct Projection {
 #[derive(Default)]
 struct HeroCache(Option<(Value, Option<Value>)>);
 
-fn project(request: Request, hero_cache: &mut HeroCache) -> Projection {
+#[derive(Default)]
+struct DiscoverCache(Option<DiscoverModel>);
+
+impl DiscoverCache {
+    fn project(&mut self, snapshot: &Value) -> DiscoverModel {
+        let refreshed = self
+            .0
+            .as_mut()
+            .is_some_and(|model| refresh_discover_model_from_core_snapshot(snapshot, model));
+        if !refreshed {
+            self.0 = Some(discover_model_from_core_snapshot(snapshot));
+        }
+        self.0.clone().unwrap_or_default()
+    }
+}
+
+fn project(
+    request: Request,
+    hero_cache: &mut HeroCache,
+    discover_cache: &mut DiscoverCache,
+) -> Projection {
     let snapshot = &request.snapshot;
     let hero_inputs = json!({
         "categories": snapshot.pointer("/home/categories").cloned().unwrap_or_else(|| json!([])),
@@ -116,7 +136,7 @@ fn project(request: Request, hero_cache: &mut HeroCache) -> Projection {
         route,
         home,
         library,
-        discover: discover_model_from_core_snapshot(snapshot),
+        discover: discover_cache.project(snapshot),
         calendar: fluxa_ui::calendar_model_from_core_snapshot(snapshot),
         detail: detail_model_from_core_snapshot(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
@@ -140,11 +160,12 @@ impl Projector {
             .name("fluxa-projector".to_owned())
             .spawn(move || {
                 let mut hero_cache = HeroCache::default();
+                let mut discover_cache = DiscoverCache::default();
                 while let Ok(mut request) = request_rx.recv() {
                     while let Ok(newer) = request_rx.try_recv() {
                         request = newer;
                     }
-                    if result_tx.send(project(request, &mut hero_cache)).is_err() {
+                    if result_tx.send(project(request, &mut hero_cache, &mut discover_cache)).is_err() {
                         break;
                     }
                 }
@@ -183,6 +204,7 @@ impl Projector {
 #[cfg(target_arch = "wasm32")]
 pub(crate) struct Projector {
     hero_cache: HeroCache,
+    discover_cache: DiscoverCache,
     ready: Option<Projection>,
 }
 
@@ -191,12 +213,13 @@ impl Projector {
     pub fn new() -> Self {
         Self {
             hero_cache: HeroCache::default(),
+            discover_cache: DiscoverCache::default(),
             ready: None,
         }
     }
 
     pub fn submit(&mut self, request: Request) {
-        self.ready = Some(project(request, &mut self.hero_cache));
+        self.ready = Some(project(request, &mut self.hero_cache, &mut self.discover_cache));
     }
 
     pub fn take(&mut self) -> Option<Projection> {

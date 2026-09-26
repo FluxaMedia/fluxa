@@ -1160,7 +1160,11 @@ pub fn refresh_discover_model_from_core_snapshot(
         .get("catalogKey")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
-    if !model.query.is_empty() {
+    let searching = snapshot
+        .pointer("/search/query")
+        .and_then(serde_json::Value::as_str)
+        .is_some_and(|query| !query.trim().is_empty());
+    if searching || !model.query.is_empty() {
         return false;
     }
     let Some(items) = discover
@@ -1185,12 +1189,10 @@ pub fn refresh_discover_model_from_core_snapshot(
         return false;
     }
 
-    // Result projection is performed by the desktop host on its worker thread.
-    // Until that batch is merged, don't expose another page request: otherwise
-    // a fast scroll can queue an unbounded chain of pages while cards are still
-    // being prepared for the UI.
-    model.next_page = if items.len() == model.results.len()
-        && paging.get("hasMore").and_then(serde_json::Value::as_bool) == Some(true)
+    model
+        .results
+        .extend(items[model.results.len()..].iter().map(core_home_card));
+    model.next_page = if paging.get("hasMore").and_then(serde_json::Value::as_bool) == Some(true)
         && paging.get("isLoading").and_then(serde_json::Value::as_bool) != Some(true)
         && paging.get("error").is_none_or(serde_json::Value::is_null)
     {
