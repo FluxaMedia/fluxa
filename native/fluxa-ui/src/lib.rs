@@ -33,8 +33,8 @@ pub use player::{
 };
 use settings::settings_card_height;
 pub use settings::{
-    SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, draw_settings,
-    settings_model_from_core_snapshot, settings_row_by_index,
+    POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, draw_settings,
+    poster_field, settings_model_from_core_snapshot, settings_row_by_index,
 };
 
 pub fn localized(key: &str, language: &str) -> String {
@@ -2392,6 +2392,12 @@ pub const NODE_SETTINGS_ADDON_REFRESH: u64 = 472;
 pub const NODE_SETTINGS_POSTER_URL: u64 = 473;
 pub const NODE_SETTINGS_POSTER_URL_SAVE: u64 = 474;
 pub const NODE_SETTINGS_POSTER_URL_CLEAR: u64 = 475;
+pub const NODE_SETTINGS_POSTER_TMDB_KEY: u64 = 482;
+pub const NODE_SETTINGS_POSTER_TMDB_KEY_SAVE: u64 = 483;
+pub const NODE_SETTINGS_POSTER_TMDB_KEY_CLEAR: u64 = 484;
+pub const NODE_SETTINGS_POSTER_MDBLIST_KEY: u64 = 485;
+pub const NODE_SETTINGS_POSTER_MDBLIST_KEY_SAVE: u64 = 486;
+pub const NODE_SETTINGS_POSTER_MDBLIST_KEY_CLEAR: u64 = 487;
 pub const NODE_SETTINGS_PLUGIN_URL: u64 = 480;
 pub const NODE_SETTINGS_PLUGIN_INSTALL: u64 = 481;
 pub const NODE_SETTINGS_PLUGIN_REPOSITORY_BASE: u64 = 490;

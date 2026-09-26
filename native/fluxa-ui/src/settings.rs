@@ -938,7 +938,7 @@ pub(super) fn settings_card_height(
         + extended_controls
         + metrics.settings_card_padding * 2.0;
     let content_height = if section.title == "Posters" {
-        row_content() + poster_url_height(metrics, line_spacing)
+        row_content() + poster_url_height(metrics, line_spacing) * POSTER_FIELDS.len() as f32
     } else if section.rows.is_empty() {
         extended_content
     } else if let Some(groups) = settings_groups(section.title) {
@@ -960,7 +960,7 @@ pub struct SettingsModel {
     pub plugins: serde_json::Value,
     pub addon_url: String,
     pub plugin_url: String,
-    pub poster_url: String,
+    pub poster_fields: [String; 3],
 }
 
 impl SettingsModel {
@@ -1082,11 +1082,13 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .unwrap_or(serde_json::Value::Null),
         addon_url: String::new(),
         plugin_url: String::new(),
-        poster_url: settings
-            .pointer("/values/posterUrlTemplate")
-            .and_then(serde_json::Value::as_str)
-            .unwrap_or_default()
-            .to_owned(),
+        poster_fields: POSTER_FIELDS.map(|field| {
+            settings
+                .pointer(&format!("/values/{}", field.key))
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or_default()
+                .to_owned()
+        }),
     }
 }
 
@@ -1379,6 +1381,50 @@ fn settings_panel_input(
         });
 }
 
+pub struct PosterField {
+    pub key: &'static str,
+    pub label: &'static str,
+    help: &'static str,
+    hint: &'static str,
+    pub input: u64,
+    pub save: u64,
+    pub clear: u64,
+}
+
+pub const POSTER_FIELDS: [PosterField; 3] = [
+    PosterField {
+        key: "posterUrlTemplate",
+        label: "settings.poster_url_template",
+        help: "settings.poster_url_template_help",
+        hint: "settings.poster_url_template_hint",
+        input: NODE_SETTINGS_POSTER_URL,
+        save: NODE_SETTINGS_POSTER_URL_SAVE,
+        clear: NODE_SETTINGS_POSTER_URL_CLEAR,
+    },
+    PosterField {
+        key: "tmdbApiKey",
+        label: "settings.tmdb_api_key",
+        help: "settings.poster_tmdb_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_POSTER_TMDB_KEY,
+        save: NODE_SETTINGS_POSTER_TMDB_KEY_SAVE,
+        clear: NODE_SETTINGS_POSTER_TMDB_KEY_CLEAR,
+    },
+    PosterField {
+        key: "mdblistApiKey",
+        label: "settings.mdblist_api_key",
+        help: "settings.poster_mdblist_help",
+        hint: "settings.mdblist_api_key_placeholder",
+        input: NODE_SETTINGS_POSTER_MDBLIST_KEY,
+        save: NODE_SETTINGS_POSTER_MDBLIST_KEY_SAVE,
+        clear: NODE_SETTINGS_POSTER_MDBLIST_KEY_CLEAR,
+    },
+];
+
+pub fn poster_field(input: u64) -> Option<usize> {
+    POSTER_FIELDS.iter().position(|field| field.input == input)
+}
+
 fn poster_url_height(metrics: UiMetrics, line_spacing: f32) -> f32 {
     metrics.control_gap
         + line_spacing * 2.0
@@ -1405,61 +1451,64 @@ fn draw_poster_url(
         + rows.saturating_sub(1) as f32 * metrics.settings_row_spacing
         + metrics.settings_row_height
         + metrics.control_gap;
-    settings_panel_line(
-        &painter,
-        rect,
-        y,
-        localized("settings.poster_url_template", language),
-        Color32::WHITE,
-        metrics,
-    );
-    y += line_gap;
-    settings_panel_line(
-        &painter,
-        rect,
-        y,
-        localized("settings.poster_url_template_help", language),
-        Color32::from_white_alpha(130),
-        metrics,
-    );
-    y += line_gap;
-    settings_panel_input(
-        context,
-        layout,
-        NODE_SETTINGS_POSTER_URL,
-        Rect::from_min_max(
-            Pos2::new(left, y),
-            Pos2::new(right, y + metrics.settings_extended_input_height),
-        ),
-        &settings.poster_url,
-        localized("settings.poster_url_template_hint", language),
-    );
-    y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
-    let button_width = metrics
-        .settings_extended_addon_action_width
-        .min(((right - left) - metrics.settings_extended_action_gap) / 2.0);
-    for (index, (node, label)) in [
-        (NODE_SETTINGS_POSTER_URL_SAVE, "settings.poster_url_save"),
-        (NODE_SETTINGS_POSTER_URL_CLEAR, "settings.poster_url_clear"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
-        settings_panel_button(
-            context,
-            layout,
-            node,
-            Rect::from_min_size(
-                Pos2::new(
-                    left + index as f32 * (button_width + metrics.settings_extended_action_gap),
-                    y,
-                ),
-                Vec2::new(button_width, metrics.settings_extended_action_height),
-            ),
-            localized(label, language),
-            false,
+    for (field, value) in POSTER_FIELDS.iter().zip(&settings.poster_fields) {
+        settings_panel_line(
+            &painter,
+            rect,
+            y,
+            localized(field.label, language),
+            Color32::WHITE,
             metrics,
         );
+        y += line_gap;
+        settings_panel_line(
+            &painter,
+            rect,
+            y,
+            localized(field.help, language),
+            Color32::from_white_alpha(130),
+            metrics,
+        );
+        y += line_gap;
+        settings_panel_input(
+            context,
+            layout,
+            field.input,
+            Rect::from_min_max(
+                Pos2::new(left, y),
+                Pos2::new(right, y + metrics.settings_extended_input_height),
+            ),
+            value,
+            localized(field.hint, language),
+        );
+        y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
+        let button_width = metrics
+            .settings_extended_addon_action_width
+            .min(((right - left) - metrics.settings_extended_action_gap) / 2.0);
+        for (index, (node, label)) in [
+            (field.save, "settings.poster_url_save"),
+            (field.clear, "settings.poster_url_clear"),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            settings_panel_button(
+                context,
+                layout,
+                node,
+                Rect::from_min_size(
+                    Pos2::new(
+                        left + index as f32 * (button_width + metrics.settings_extended_action_gap),
+                        y,
+                    ),
+                    Vec2::new(button_width, metrics.settings_extended_action_height),
+                ),
+                localized(label, language),
+                false,
+                metrics,
+            );
+        }
+        y += metrics.settings_extended_action_height + metrics.control_gap;
     }
 }
 

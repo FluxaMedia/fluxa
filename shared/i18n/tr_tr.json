@@ -2595,6 +2595,8 @@
   "settings.poster_url_template_hint": "https://…/poster?tmdb_id={tmdb_id}&type={type}",
   "settings.poster_url_save": "Kaydet",
   "settings.poster_url_clear": "Temizle",
+  "settings.poster_tmdb_help": "Afişlerde trend şeridini gösterir.",
+  "settings.poster_mdblist_help": "Afişlerde MDBList puanını ve yaş sınırını gösterir.",
   "settings.option.top_left": "Sol üst",
   "settings.option.top_right": "Sağ üst",
   "settings.option.bottom_left": "Sol alt",
