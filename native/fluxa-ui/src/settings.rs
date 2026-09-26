@@ -390,30 +390,30 @@ fn settings_category_icon(
 }
 
 const APPEARANCE_GROUPS: [(usize, usize, &str); 5] = [
-    (0, 4, "native.settings.group.color_and_motion"),
-    (4, 8, "native.settings.group.navigation"),
-    (8, 16, "native.settings.group.posters"),
-    (16, 24, "native.settings.group.continue_watching"),
-    (24, 35, "native.settings.group.home_and_detail"),
+    (0, 4, "settings.group.color_and_motion"),
+    (4, 8, "settings.group.navigation"),
+    (8, 16, "settings.group.posters"),
+    (16, 24, "settings.group.continue_watching"),
+    (24, 35, "settings.group.home_and_detail"),
 ];
 const GENERAL_GROUPS: [(usize, usize, &str); 4] = [
-    (0, 2, "native.settings.group.general_startup"),
-    (2, 8, "native.settings.group.general_behavior"),
-    (8, 13, "native.settings.group.general_details"),
-    (13, 15, "native.settings.group.general_calendar"),
+    (0, 2, "settings.group.general_startup"),
+    (2, 8, "settings.group.general_behavior"),
+    (8, 13, "settings.group.general_details"),
+    (13, 15, "settings.group.general_calendar"),
 ];
 const PLAYBACK_GROUPS: [(usize, usize, &str); 4] = [
-    (0, 6, "native.settings.group.playback"),
-    (6, 9, "native.settings.group.audio_subtitles"),
-    (9, 12, "native.settings.group.sources_video"),
-    (12, 19, "native.settings.group.skip_controls"),
+    (0, 6, "settings.group.playback"),
+    (6, 9, "settings.group.audio_subtitles"),
+    (9, 12, "settings.group.sources_video"),
+    (12, 19, "settings.group.skip_controls"),
 ];
 const CONTENT_GROUPS: [(usize, usize, &str); 3] = [
-    (0, 1, "native.settings.group.home"),
-    (1, 8, "native.settings.group.metadata"),
-    (8, 12, "native.settings.group.discovery"),
+    (0, 1, "settings.group.home"),
+    (1, 8, "settings.group.metadata"),
+    (8, 12, "settings.group.discovery"),
 ];
-const DOWNLOAD_GROUPS: [(usize, usize, &str); 1] = [(0, 5, "native.settings.group.downloads")];
+const DOWNLOAD_GROUPS: [(usize, usize, &str); 1] = [(0, 5, "settings.group.downloads")];
 const APPEARANCE_PAGE_HEADER_HEIGHT: f32 = 66.0;
 const APPEARANCE_GROUP_HEADING_HEIGHT: f32 = 22.0;
 const APPEARANCE_GROUP_GAP: f32 = 22.0;
@@ -1051,7 +1051,7 @@ fn draw_settings_extended_section(
                 rect,
                 y,
                 &localized(
-                    &format!("native.settings.section.{}", section.to_lowercase()),
+                    &format!("settings.section.{}", section.to_lowercase()),
                     language,
                 )
                 .to_uppercase(),
@@ -1064,23 +1064,23 @@ fn draw_settings_extended_section(
                 UiFormFactor::Desktop => "Desktop",
             };
             let rows = [
-                ("native.settings.device_layout", form),
-                ("native.settings.ui_renderer", "Fluxa Rust · egui · wgpu"),
+                ("settings.device_layout", form),
+                ("settings.ui_renderer", "Fluxa Rust · egui · wgpu"),
                 (
-                    "native.settings.playback_engine",
+                    "settings.playback_engine",
                     settings
                         .value("playerEngine")
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or("mpv"),
                 ),
                 (
-                    "native.settings.video_output",
+                    "settings.video_output",
                     settings
                         .value("renderBackend")
                         .and_then(serde_json::Value::as_str)
                         .unwrap_or("Vulkan"),
                 ),
-                ("native.settings.device_reported_by_host", ""),
+                ("settings.device_reported_by_host", ""),
             ];
             let group =
                 settings_panel_group(&painter, rect, y, rows.len() as f32 * line_gap, metrics);
@@ -1106,7 +1106,7 @@ fn draw_settings_extended_section(
                 rect,
                 y,
                 &localized(
-                    &format!("native.settings.section.{}", section.to_lowercase()),
+                    &format!("settings.section.{}", section.to_lowercase()),
                     language,
                 )
                 .to_uppercase(),
@@ -1114,14 +1114,14 @@ fn draw_settings_extended_section(
             );
             y += line_gap;
             let rows = [
-                ("native.settings.shortcut_navigation", "1 / 2 / 3 / 4 / 5"),
-                ("native.settings.shortcut_search", "Ctrl + F"),
-                ("native.settings.shortcut_back", "Backspace / Escape"),
-                ("native.settings.shortcut_fullscreen", "F11"),
-                ("native.settings.shortcut_play_pause", "K / Space"),
-                ("native.settings.shortcut_seek", "← / →"),
-                ("native.settings.shortcut_volume", "↓ / ↑"),
-                ("native.settings.shortcut_mute", "M"),
+                ("settings.shortcut_navigation", "1 / 2 / 3 / 4 / 5"),
+                ("settings.shortcut_search", "Ctrl + F"),
+                ("settings.shortcut_back", "Backspace / Escape"),
+                ("settings.shortcut_fullscreen", "F11"),
+                ("settings.shortcut_play_pause", "K / Space"),
+                ("settings.shortcut_seek", "← / →"),
+                ("settings.shortcut_volume", "↓ / ↑"),
+                ("settings.shortcut_mute", "M"),
             ];
             let group =
                 settings_panel_group(&painter, rect, y, rows.len() as f32 * line_gap, metrics);
@@ -1140,7 +1140,7 @@ fn draw_settings_extended_section(
                 &painter,
                 rect,
                 y,
-                localized("native.settings.bindings_shared", language),
+                localized("settings.bindings_shared", language),
                 Color32::from_white_alpha(115),
                 metrics,
             );
@@ -1151,7 +1151,7 @@ fn draw_settings_extended_section(
                 rect,
                 y,
                 &localized(
-                    &format!("native.settings.section.{}", section.to_lowercase()),
+                    &format!("settings.section.{}", section.to_lowercase()),
                     language,
                 )
                 .to_uppercase(),
@@ -1159,12 +1159,12 @@ fn draw_settings_extended_section(
             );
             y += line_gap;
             let rows = [
-                ("native.settings.controller_navigate", "D-pad / left stick"),
-                ("native.settings.controller_select", "Enter / A"),
-                ("native.settings.controller_back", "Escape / Back / B"),
-                ("native.settings.controller_scroll", "D-pad / left stick"),
-                ("native.settings.controller_seek", "Left / Right"),
-                ("native.settings.controller_volume", "Up / Down"),
+                ("settings.controller_navigate", "D-pad / left stick"),
+                ("settings.controller_select", "Enter / A"),
+                ("settings.controller_back", "Escape / Back / B"),
+                ("settings.controller_scroll", "D-pad / left stick"),
+                ("settings.controller_seek", "Left / Right"),
+                ("settings.controller_volume", "Up / Down"),
             ];
             let group =
                 settings_panel_group(&painter, rect, y, rows.len() as f32 * line_gap, metrics);
@@ -1183,7 +1183,7 @@ fn draw_settings_extended_section(
                 &painter,
                 rect,
                 y,
-                localized("native.settings.controller_host_details", language),
+                localized("settings.controller_host_details", language),
                 Color32::from_white_alpha(115),
                 metrics,
             );
@@ -1199,7 +1199,7 @@ fn draw_settings_extended_section(
                 NODE_SETTINGS_ADDON_URL,
                 input_rect,
                 &settings.addon_url,
-                localized("native.settings.addon_url", language),
+                localized("settings.addon_url", language),
             );
             y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
             let button_width = metrics
@@ -1213,7 +1213,7 @@ fn draw_settings_extended_section(
                     Pos2::new(left, y),
                     Vec2::new(button_width, metrics.settings_extended_action_height),
                 ),
-                localized("native.settings.addon_install", language),
+                localized("settings.addon_install", language),
                 false,
                 metrics,
             );
@@ -1228,7 +1228,7 @@ fn draw_settings_extended_section(
                     ),
                     Vec2::new(button_width, metrics.settings_extended_action_height),
                 ),
-                localized("native.settings.addon_refresh", language),
+                localized("settings.addon_refresh", language),
                 false,
                 metrics,
             );
@@ -1246,7 +1246,7 @@ fn draw_settings_extended_section(
                 &painter,
                 group,
                 y,
-                &localized("native.settings.section.add-ons", language).to_uppercase(),
+                &localized("settings.section.add-ons", language).to_uppercase(),
                 metrics,
             );
             y += line_gap;
@@ -1266,7 +1266,7 @@ fn draw_settings_extended_section(
                     &painter,
                     group,
                     y,
-                    localized("native.settings.addon_empty", language),
+                    localized("settings.addon_empty", language),
                     muted,
                     metrics,
                 );
@@ -1299,7 +1299,7 @@ fn draw_settings_extended_section(
                 NODE_SETTINGS_PLUGIN_URL,
                 input_rect,
                 &settings.plugin_url,
-                localized("native.settings.plugin_url", language),
+                localized("settings.plugin_url", language),
             );
             y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
             settings_panel_button(
@@ -1313,7 +1313,7 @@ fn draw_settings_extended_section(
                         metrics.settings_extended_action_height,
                     ),
                 ),
-                localized("native.settings.plugin_add", language),
+                localized("settings.plugin_add", language),
                 false,
                 metrics,
             );
@@ -1379,7 +1379,7 @@ fn draw_settings_extended_section(
                             metrics.settings_extended_small_action_height,
                         ),
                     ),
-                    localized("native.settings.plugin_refresh", language),
+                    localized("settings.plugin_refresh", language),
                     false,
                     metrics,
                 );
@@ -1394,7 +1394,7 @@ fn draw_settings_extended_section(
                             metrics.settings_extended_small_action_height,
                         ),
                     ),
-                    localized("native.settings.plugin_remove", language),
+                    localized("settings.plugin_remove", language),
                     false,
                     metrics,
                 );
@@ -1431,9 +1431,9 @@ fn draw_settings_extended_section(
                     ),
                     localized(
                         if enabled {
-                            "native.settings.plugin_enabled"
+                            "settings.plugin_enabled"
                         } else {
-                            "native.settings.plugin_disabled"
+                            "settings.plugin_disabled"
                         },
                         language,
                     ),
@@ -1447,7 +1447,7 @@ fn draw_settings_extended_section(
                     &painter,
                     rect,
                     y,
-                    localized("native.settings.plugin_empty", language),
+                    localized("settings.plugin_empty", language),
                     muted,
                     metrics,
                 );
@@ -1529,7 +1529,7 @@ pub fn draw_settings(
                 );
                 ui.add_space(metrics.control_gap);
                 ui.label(
-                    RichText::new(localized("native.settings.description", language))
+                    RichText::new(localized("settings.description", language))
                         .size(if tv {
                             metrics.screen_body_size_tv
                         } else {
@@ -1604,7 +1604,7 @@ pub fn draw_settings(
                                 let node = NODE_SETTINGS_SECTION_BASE + index as u64;
                                 let label = localized(
                                     &format!(
-                                        "native.settings.section.{}",
+                                        "settings.section.{}",
                                         section.title.to_lowercase()
                                     ),
                                     language,
@@ -1737,7 +1737,7 @@ pub fn draw_settings(
                         item_rect.left_center() + Vec2::new(42.0, 0.0),
                         Align2::LEFT_CENTER,
                         localized(
-                            &format!("native.settings.section.{}", section.title.to_lowercase()),
+                            &format!("settings.section.{}", section.title.to_lowercase()),
                             language,
                         ),
                         FontId::proportional(metrics.nav_label_size + if tv { 0.0 } else { 2.0 }),
@@ -1818,7 +1818,7 @@ pub fn draw_settings(
         rect.left_top() + Vec2::new(metrics.settings_card_padding, metrics.settings_title_top),
         Align2::LEFT_TOP,
         localized(
-            &format!("native.settings.section.{}", section.title.to_lowercase()),
+            &format!("settings.section.{}", section.title.to_lowercase()),
             language,
         ),
         FontId::proportional(if tv {
@@ -1840,7 +1840,7 @@ pub fn draw_settings(
             Align2::LEFT_TOP,
             localized(
                 &format!(
-                    "native.settings.section.{}.description",
+                    "settings.section.{}.description",
                     section.title.to_lowercase()
                 ),
                 language,
@@ -1967,7 +1967,7 @@ pub fn draw_settings(
                     .map(|key| localized(key, language))
                     .unwrap_or_else(|| raw_value.to_owned())
             } else {
-                localized(&format!("native.settings.option.{raw_value}"), language)
+                localized_or(&format!("settings.option.{raw_value}"), &raw_value, language)
             };
             let value_size = if !compact && !tv {
                 metrics.settings_row_value_size_desktop
@@ -2046,10 +2046,7 @@ pub fn draw_settings(
                                         ) {
                                             format!("{option}s")
                                         } else {
-                                            localized(
-                                                &format!("native.settings.option.{}", option),
-                                                language,
-                                            )
+                                            localized_or(&format!("settings.option.{option}"), option, language)
                                         };
                                         ui.selectable_value(
                                             &mut selected,
@@ -2270,7 +2267,7 @@ fn draw_account(
         rect,
         top,
         ACCOUNT_PROFILE_CARD_HEIGHT,
-        &localized("native.settings.group.account_profile", language),
+        &localized("settings.group.account_profile", language),
     );
     let name = settings
         .profile
@@ -2278,7 +2275,7 @@ fn draw_account(
         .or_else(|| settings.profile.get("displayName"))
         .and_then(serde_json::Value::as_str)
         .map(ToOwned::to_owned)
-        .unwrap_or_else(|| localized("native.settings.account_empty", language));
+        .unwrap_or_else(|| localized("settings.account_empty", language));
     let avatar = Rect::from_center_size(
         Pos2::new(card.left() + 22.0 + 26.0, card.center().y),
         Vec2::splat(52.0),
@@ -2358,7 +2355,7 @@ fn draw_account(
         rect,
         top,
         settings_group_card_height(ACCOUNT_SERVICES.len(), metrics),
-        &localized("native.settings.group.account_services", language),
+        &localized("settings.group.account_services", language),
     );
     for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
         let row = account_row(card, index, metrics);
@@ -2375,9 +2372,9 @@ fn draw_account(
         let on = connected(key);
         let status = localized(
             if on {
-                "native.settings.connected"
+                "settings.connected"
             } else {
-                "native.settings.not_connected"
+                "settings.not_connected"
             },
             language,
         );
@@ -2420,7 +2417,7 @@ fn draw_account(
         rect,
         top,
         settings_group_card_height(ACCOUNT_SOURCES.len(), metrics),
-        &localized("native.settings.group.account_sync", language),
+        &localized("settings.group.account_sync", language),
     );
     for (index, (label_key, key)) in ACCOUNT_SOURCES.iter().enumerate() {
         let row = account_row(card, index, metrics);
@@ -2472,10 +2469,7 @@ fn draw_account(
                             .height(240.0)
                             .popup_style(components::dropdown_popup_style(metrics))
                             .selected_text(
-                                RichText::new(localized(
-                                    &format!("native.settings.option.{current}"),
-                                    language,
-                                ))
+                                RichText::new(localized_or(&format!("settings.option.{current}"), &current, language))
                                 .color(Color32::from_rgb(242, 243, 246))
                                 .size(metrics.settings_row_value_size_desktop)
                                 .strong(),
@@ -2495,10 +2489,7 @@ fn draw_account(
                                     ui.selectable_value(
                                         &mut selected,
                                         (*choice).to_owned(),
-                                        localized(
-                                            &format!("native.settings.option.{choice}"),
-                                            language,
-                                        ),
+                                        localized_or(&format!("settings.option.{choice}"), choice, language),
                                     );
                                 }
                             })

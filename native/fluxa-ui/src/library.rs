@@ -238,9 +238,9 @@ pub fn draw_library(
             ),
         );
         let title = if library.is_loading {
-            localized("native.library.loading", &library.language)
+            localized("library.loading", &library.language)
         } else if library.error.is_some() {
-            localized("native.library.error", &library.language)
+            localized("library.error", &library.language)
         } else {
             localized("library.empty", &library.language)
         };

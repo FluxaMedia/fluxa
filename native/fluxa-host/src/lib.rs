@@ -1187,30 +1187,30 @@ fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_LIBRARY_SEARCH => {
             fluxa_ui::localized("library.filter_placeholder", &state.library.language)
         }
-        fluxa_ui::NODE_SETTINGS_ADDON_URL => fluxa_ui::localized("native.settings.addon_url", "en"),
+        fluxa_ui::NODE_SETTINGS_ADDON_URL => fluxa_ui::localized("settings.addon_url", "en"),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => {
-            fluxa_ui::localized("native.settings.plugin_url", "en")
+            fluxa_ui::localized("settings.plugin_url", "en")
         }
         fluxa_ui::NODE_SETTINGS_ADDON_INSTALL => {
-            fluxa_ui::localized("native.settings.addon_install", "en")
+            fluxa_ui::localized("settings.addon_install", "en")
         }
         fluxa_ui::NODE_SETTINGS_ADDON_REFRESH => {
-            fluxa_ui::localized("native.settings.addon_refresh", "en")
+            fluxa_ui::localized("settings.addon_refresh", "en")
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL => {
-            fluxa_ui::localized("native.settings.plugin_add", "en")
+            fluxa_ui::localized("settings.plugin_add", "en")
         }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE
             ..fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE + 4)
             .contains(&id) =>
         {
-            fluxa_ui::localized("native.settings.plugin_remove", "en")
+            fluxa_ui::localized("settings.plugin_remove", "en")
         }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE
             ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 4)
             .contains(&id) =>
         {
-            fluxa_ui::localized("native.settings.plugin_refresh", "en")
+            fluxa_ui::localized("settings.plugin_refresh", "en")
         }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE
             ..fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE + 4)
@@ -1228,9 +1228,9 @@ fn label_for_node(state: &RendererState, node: u64) -> String {
                 .unwrap_or(false);
             fluxa_ui::localized(
                 if enabled {
-                    "native.settings.plugin_enabled"
+                    "settings.plugin_enabled"
                 } else {
-                    "native.settings.plugin_disabled"
+                    "settings.plugin_disabled"
                 },
                 "en",
             )

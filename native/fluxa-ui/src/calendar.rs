@@ -145,7 +145,7 @@ pub fn draw_calendar(
             );
             ui.add_space(metrics.control_gap);
             ui.label(
-                RichText::new(localized("native.calendar.description", &calendar.language))
+                RichText::new(localized("calendar.description", &calendar.language))
                     .size(body_size(viewport, metrics))
                     .color(Color32::from_white_alpha(150)),
             );
@@ -210,7 +210,7 @@ pub fn draw_calendar(
                         if calendar.is_loading {
                             ui.label(
                                 RichText::new(localized(
-                                    "native.calendar.loading",
+                                    "calendar.loading",
                                     &calendar.language,
                                 ))
                                 .size(metrics.screen_card_subtitle_size)
@@ -236,7 +236,7 @@ pub fn draw_calendar(
         let origin = Pos2::new(grid.margin, grid.grid_top - scroll_y);
         for (column, weekday) in weekdays.iter().enumerate() {
             let label = localized(
-                &format!("native.calendar.weekday.{}", weekday.to_lowercase()),
+                &format!("calendar.weekday.{}", weekday.to_lowercase()),
                 &calendar.language,
             );
             grid_painter.text(

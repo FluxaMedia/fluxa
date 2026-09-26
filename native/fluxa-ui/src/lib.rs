@@ -36,6 +36,10 @@ pub use settings::{
 };
 
 pub fn localized(key: &str, language: &str) -> String {
+    localized_or(key, key, language)
+}
+
+pub fn localized_or(key: &str, fallback: &str, language: &str) -> String {
     static ENGLISH: OnceLock<serde_json::Value> = OnceLock::new();
     static TURKISH: OnceLock<serde_json::Value> = OnceLock::new();
     let english = ENGLISH.get_or_init(|| {
@@ -54,7 +58,7 @@ pub fn localized(key: &str, language: &str) -> String {
         .get(key)
         .or_else(|| english.get(key))
         .and_then(serde_json::Value::as_str)
-        .unwrap_or(key)
+        .unwrap_or(fallback)
         .to_owned()
 }
 
