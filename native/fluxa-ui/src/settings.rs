@@ -2687,9 +2687,7 @@ fn accent_needs_dark_foreground(color: Color32) -> bool {
 }
 
 const ACCOUNT_PROFILE_CARD_HEIGHT: f32 = 92.0;
-const ACCOUNT_SERVICES: [(&str, &str); 5] = [
-    ("Stremio", "stremioAuthKey"),
-    ("Nuvio", "nuvioAccessToken"),
+const ACCOUNT_SERVICES: [(&str, &str); 3] = [
     ("Trakt", "traktAccessToken"),
     ("Simkl", "simklAccessToken"),
     ("AniList", "anilistAccessToken"),
@@ -2885,36 +2883,12 @@ fn draw_account(
             },
             language,
         );
-        let font = FontId::proportional(metrics.screen_card_subtitle_size);
-        let width = painter
-            .layout_no_wrap(status.clone(), font.clone(), Color32::WHITE)
-            .size()
-            .x;
-        let pill = Rect::from_center_size(
-            row.right_center() - Vec2::new(width * 0.5 + 24.0, 0.0),
-            Vec2::new(width + 40.0, 28.0),
-        );
-        painter.rect_stroke(
-            pill,
-            14.0,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(if on { 40 } else { 16 })),
-            egui::StrokeKind::Inside,
-        );
-        painter.circle_filled(
-            Pos2::new(pill.left() + 14.0, pill.center().y),
-            3.5,
-            if on {
-                Color32::WHITE
-            } else {
-                Color32::from_white_alpha(60)
-            },
-        );
         painter.text(
-            Pos2::new(pill.left() + 24.0, pill.center().y),
-            Align2::LEFT_CENTER,
+            row.right_center() - Vec2::new(8.0, 0.0),
+            Align2::RIGHT_CENTER,
             status,
-            font,
-            Color32::from_white_alpha(if on { 230 } else { 130 }),
+            FontId::proportional(metrics.screen_card_subtitle_size),
+            Color32::from_white_alpha(if on { 200 } else { 110 }),
         );
     }
 
