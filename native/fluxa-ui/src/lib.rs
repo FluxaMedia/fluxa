@@ -19,7 +19,10 @@ mod profiles;
 mod settings;
 
 pub use calendar::draw_calendar;
-pub use poster_overlay::{PersonalIndex, PosterOverlays, set_poster_overlays, set_poster_personal};
+pub use poster_overlay::{
+    Enrichment, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_overlays,
+    set_poster_personal,
+};
 
 pub use detail::{detail_scroll_max, draw_detail};
 pub use discover::draw_discover;

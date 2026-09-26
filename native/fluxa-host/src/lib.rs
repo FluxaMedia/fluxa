@@ -63,6 +63,7 @@ impl NativeSurface {
 }
 
 mod player;
+mod poster_data;
 mod presence;
 mod profiles;
 mod projection;
@@ -132,6 +133,7 @@ struct RendererState {
     image_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
+    poster_data: poster_data::PosterData,
 }
 
 fn current_presence(state: &RendererState) -> presence::Presence {
@@ -2484,6 +2486,7 @@ impl FluxaHost {
             image_picker: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
+            poster_data: poster_data::PosterData::default(),
         })))
     }
 
@@ -3136,6 +3139,7 @@ fn render_frame(state: &mut RendererState) {
     }
     sync_home_from_core_snapshot(state);
     trailer::tick(state);
+    poster_data::tick(state);
     timer.mark("sync");
     if state.route == "home"
         || matches!(state.active_scroll, Some(HomeScrollTarget::ScreenVertical))

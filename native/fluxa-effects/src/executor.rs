@@ -217,6 +217,62 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_trending(&self, api_key: String) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        detached(async move {
+            let Ok(client) = Client::builder().native_timeout(Duration::from_secs(10)).build() else {
+                return Vec::new();
+            };
+            let mut results = Vec::new();
+            for page in 1..=2 {
+                let url = format!(
+                    "https://api.themoviedb.org/3/trending/all/week?api_key={api_key}&page={page}"
+                );
+                let Ok(body) = fetch_json(&client, &url).await else {
+                    break;
+                };
+                results.extend(body.get("results").and_then(Value::as_array).cloned().unwrap_or_default());
+            }
+            results
+        })
+    }
+
+    pub fn fetch_mdblist_media(
+        &self,
+        api_key: String,
+        media_type: &'static str,
+        ids: Vec<String>,
+    ) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        detached(async move {
+            let Some(plan) = core_value(
+                "mdblistMediaInfoBatchPlan",
+                json!({"provider": "imdb", "mediaType": media_type, "ids": ids}),
+            ) else {
+                return Vec::new();
+            };
+            let Some(url) = plan.get("url").and_then(Value::as_str) else {
+                return Vec::new();
+            };
+            let Ok(client) = Client::builder().native_timeout(Duration::from_secs(15)).build() else {
+                return Vec::new();
+            };
+            let response = client
+                .post(format!("{url}?apikey={api_key}"))
+                .header("Content-Type", "application/json")
+                .body(plan.get("body").cloned().unwrap_or_default().to_string())
+                .send()
+                .await;
+            let Ok(response) = response.and_then(|response| response.error_for_status()) else {
+                return Vec::new();
+            };
+            response
+                .json::<Value>()
+                .await
+                .ok()
+                .and_then(|body| body.as_array().cloned())
+                .unwrap_or_default()
+        })
+    }
+
     pub fn spawn(&self, effect: Value, sender: Sender<EffectCompletion>) {
         let executor = self.clone();
         let task = async move {
@@ -2735,6 +2791,33 @@ async fn youtube_request(payload: &Value) -> Result<Value, String> {
     let status = response.status().as_u16();
     let body = response.text().await.map_err(|error| error.to_string())?;
     Ok(json!({"statusCode": status, "body": body}))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn detached<T: Send + 'static>(
+    task: impl std::future::Future<Output = T> + Send + 'static,
+) -> std::sync::mpsc::Receiver<T> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+        {
+            let _ = sender.send(runtime.block_on(task));
+        }
+    });
+    receiver
+}
+
+#[cfg(target_arch = "wasm32")]
+fn detached<T: 'static>(
+    task: impl std::future::Future<Output = T> + 'static,
+) -> std::sync::mpsc::Receiver<T> {
+    let (sender, receiver) = std::sync::mpsc::channel();
+    wasm_bindgen_futures::spawn_local(async move {
+        let _ = sender.send(task.await);
+    });
+    receiver
 }
 
 async fn fetch_json(client: &Client, url: &str) -> Result<Value, String> {

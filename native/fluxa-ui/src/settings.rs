@@ -712,7 +712,7 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
-const POSTER_SETTINGS: [SettingsRow; 11] = [
+const POSTER_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
@@ -776,6 +776,21 @@ const POSTER_SETTINGS: [SettingsRow; 11] = [
         label: "Fade strength",
         key: "posterFadeStrength",
         options: &["high", "medium", "low"],
+    },
+    SettingsRow {
+        label: "Rating source",
+        key: "posterRatingSource",
+        options: &["imdb", "mdblist"],
+    },
+    SettingsRow {
+        label: "Trending sash",
+        key: "posterTrendingBadge",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Age rating",
+        key: "posterAgeRating",
+        options: &[],
     },
 ];
 const EMPTY_SETTINGS: [SettingsRow; 0] = [];

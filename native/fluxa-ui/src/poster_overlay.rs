@@ -33,6 +33,9 @@ pub struct PosterFacts {
     pub rating: Option<f32>,
     pub status: Option<PosterStatus>,
     pub caption: String,
+    pub imdb: Option<String>,
+    pub tmdb: Option<u64>,
+    pub title_key: String,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,6 +79,10 @@ pub struct PosterOverlays {
     pub progress: bool,
     pub saved: bool,
     pub fade: Fade,
+    pub trending: bool,
+    pub age: bool,
+    pub mdblist_score: bool,
+    pub trending_label: String,
     pub template: Option<String>,
 }
 
@@ -102,6 +109,9 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterSavedBadge": false,
                 "posterFadeTint": false,
                 "posterFadeStrength": "high",
+                "posterTrendingBadge": true,
+                "posterAgeRating": true,
+                "posterRatingSource": "imdb",
             })
         })
         .get(key)
@@ -142,6 +152,13 @@ impl super::SettingsModel {
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
+            trending: enabled && self.bool_value("posterTrendingBadge"),
+            age: enabled && self.bool_value("posterAgeRating"),
+            mdblist_score: self.str_value("posterRatingSource") == Some("mdblist"),
+            trending_label: localized(
+                "poster.badge.trending",
+                self.str_value("language").unwrap_or("en"),
+            ),
             fade: Fade {
                 tint: self.bool_value("posterFadeTint"),
                 reach: match self.str_value("posterFadeStrength") {
@@ -331,6 +348,32 @@ pub(super) fn poster_facts(item: &serde_json::Value) -> PosterFacts {
         rating: rating(item),
         status: status(item, today()),
         caption: caption(item),
+        imdb: item
+            .get("imdb_id")
+            .or_else(|| item.get("id"))
+            .and_then(serde_json::Value::as_str)
+            .map(|id| id.split(':').next().unwrap_or(id))
+            .filter(|id| id.starts_with("tt"))
+            .map(str::to_owned),
+        tmdb: ["tmdb_id", "tmdbId", "moviedb_id"]
+            .iter()
+            .find_map(|key| item.get(*key).and_then(number))
+            .map(|id| id as u64)
+            .or_else(|| {
+                item.get("id")
+                    .and_then(serde_json::Value::as_str)?
+                    .strip_prefix("tmdb:")?
+                    .split(':')
+                    .next()?
+                    .parse()
+                    .ok()
+            }),
+        title_key: item
+            .get("name")
+            .and_then(serde_json::Value::as_str)
+            .zip(year(item))
+            .map(|(name, year)| title_key(name, &year))
+            .unwrap_or_default(),
     }
 }
 
@@ -358,7 +401,17 @@ fn caption(item: &serde_json::Value) -> String {
         .get("genres")
         .and_then(serde_json::Value::as_array)
         .and_then(|genres| genres.iter().find_map(serde_json::Value::as_str));
-    let year = ["releaseInfo", "year", "released"].iter().find_map(|key| {
+    let year = year(item);
+    genre
+        .map(str::to_owned)
+        .into_iter()
+        .chain(year)
+        .collect::<Vec<_>>()
+        .join(" · ")
+}
+
+fn year(item: &serde_json::Value) -> Option<String> {
+    ["releaseInfo", "year", "released"].iter().find_map(|key| {
         let value = item.get(*key)?;
         let text = value
             .as_str()
@@ -367,13 +420,117 @@ fn caption(item: &serde_json::Value) -> String {
         text.get(..4)
             .filter(|year| year.bytes().all(|b| b.is_ascii_digit()))
             .map(str::to_owned)
+    })
+}
+
+fn title_key(title: &str, year: &str) -> String {
+    let mut key: String = title
+        .chars()
+        .filter(|c| c.is_alphanumeric())
+        .flat_map(char::to_lowercase)
+        .collect();
+    key.push(':');
+    key.push_str(year);
+    key
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Graded {
+    score: Option<f32>,
+    certification: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Enrichment {
+    trending_ids: HashMap<u64, u32>,
+    trending_titles: HashMap<String, u32>,
+    graded: HashMap<String, Graded>,
+}
+
+impl Enrichment {
+    pub fn set_trending(&mut self, results: &[serde_json::Value]) {
+        self.trending_ids.clear();
+        self.trending_titles.clear();
+        for (rank, item) in results.iter().enumerate() {
+            let rank = rank as u32 + 1;
+            if let Some(id) = item.get("id").and_then(serde_json::Value::as_u64) {
+                self.trending_ids.entry(id).or_insert(rank);
+            }
+            let title = item
+                .get("title")
+                .or_else(|| item.get("name"))
+                .and_then(serde_json::Value::as_str);
+            let year = item
+                .get("release_date")
+                .or_else(|| item.get("first_air_date"))
+                .and_then(serde_json::Value::as_str)
+                .and_then(|date| date.get(..4));
+            if let (Some(title), Some(year)) = (title, year) {
+                self.trending_titles
+                    .entry(title_key(title, year))
+                    .or_insert(rank);
+            }
+        }
+    }
+
+    pub fn add_mdblist(&mut self, items: &[serde_json::Value]) {
+        for item in items {
+            let Some(imdb) = item
+                .pointer("/ids/imdb")
+                .or_else(|| item.get("imdbid"))
+                .and_then(serde_json::Value::as_str)
+            else {
+                continue;
+            };
+            let score = item
+                .get("score")
+                .and_then(number)
+                .filter(|score| *score > 0.0)
+                .map(|score| (score / 10.0) as f32);
+            let certification = item
+                .get("certification")
+                .and_then(serde_json::Value::as_str)
+                .map(str::trim)
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned);
+            self.graded.insert(
+                imdb.to_owned(),
+                Graded {
+                    score,
+                    certification,
+                },
+            );
+        }
+    }
+
+    pub fn has_graded(&self, imdb: &str) -> bool {
+        self.graded.contains_key(imdb)
+    }
+
+    fn trending(&self, facts: &PosterFacts) -> Option<u32> {
+        facts
+            .tmdb
+            .and_then(|id| self.trending_ids.get(&id))
+            .or_else(|| self.trending_titles.get(&facts.title_key))
+            .copied()
+    }
+
+    fn graded(&self, facts: &PosterFacts) -> Option<&Graded> {
+        self.graded.get(facts.imdb.as_deref()?)
+    }
+}
+
+fn enrichment_id() -> Id {
+    Id::new("fluxa-poster-enrichment")
+}
+
+pub fn set_poster_enrichment(context: &egui::Context, enrichment: Arc<Enrichment>) {
+    context.data_mut(|data| {
+        let current = data.get_temp::<Arc<Enrichment>>(enrichment_id());
+        if !current.is_some_and(|current| Arc::ptr_eq(&current, &enrichment)) {
+            data.insert_temp(enrichment_id(), enrichment);
+        }
     });
-    genre
-        .map(str::to_owned)
-        .into_iter()
-        .chain(year)
-        .collect::<Vec<_>>()
-        .join(" · ")
 }
 
 fn status(item: &serde_json::Value, today: i64) -> Option<PosterStatus> {
@@ -471,6 +628,16 @@ pub(super) fn paint(
     };
     let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
     let facts = &card.overlay;
+    let enrichment = painter
+        .ctx()
+        .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()));
+    let graded = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.graded(facts));
+    let rating = graded
+        .and_then(|graded| graded.score)
+        .filter(|_| overlays.mdblist_score)
+        .or(facts.rating);
     let shade = match tones.filter(|_| overlays.fade.tint) {
         Some([_, [r, g, b]]) => {
             let dim = |c: u8| (c as f32 * 0.3) as u8;
@@ -518,41 +685,96 @@ pub(super) fn paint(
         saved_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
         corner.x += mark + 3.0;
     }
+    if let Some(certification) = graded
+        .and_then(|graded| graded.certification.as_deref())
+        .filter(|_| overlays.age)
+    {
+        let size = mark * 0.5;
+        let galley = painter.layout_no_wrap(
+            certification.to_owned(),
+            FontId::proportional(size),
+            Color32::WHITE,
+        );
+        let badge = Rect::from_min_size(
+            Pos2::new(corner.x, corner.y + (mark - size * 1.6) * 0.5),
+            Vec2::new(galley.size().x + size * 0.7, size * 1.6),
+        );
+        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(180));
+        painter.rect_stroke(
+            badge,
+            3.0,
+            Stroke::new(1.0, Color32::from_white_alpha(170)),
+            egui::StrokeKind::Inside,
+        );
+        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        corner.x += badge.width() + 3.0;
+    }
     if corner.x > rect.left() + inset {
         stacks[Placement::TopLeft as usize] = mark + 3.0;
     }
 
-    if facts.rating.is_some() || !facts.caption.is_empty() {
+    if rating.is_some() || !facts.caption.is_empty() {
         let reserved = match overlays.rating {
             Some(Placement::Bar) => {
                 vignette(&painter);
-                score_bar(&painter, rect, facts, overlays.scale);
+                score_bar(&painter, rect, rating, &facts.caption, overlays.scale);
                 0.2
             }
             Some(Placement::Number) => {
                 vignette(&painter);
-                score_number(&painter, rect, facts, overlays.scale)
+                score_number(&painter, rect, rating, &facts.caption, overlays.scale)
             }
             Some(Placement::Minimal) => {
                 vignette(&painter);
-                score_minimal(&painter, rect, facts, overlays.scale)
+                score_minimal(&painter, rect, rating, &facts.caption, overlays.scale)
             }
-            Some(Placement::Frosted) => {
-                score_frosted(&painter, rect, facts, overlays.scale, radius)
-            }
+            Some(Placement::Frosted) => score_frosted(
+                &painter,
+                rect,
+                rating,
+                &facts.caption,
+                overlays.scale,
+                radius,
+            ),
             _ => 0.0,
         };
         stacks[Placement::BottomLeft as usize] = rect.height() * reserved;
         stacks[Placement::BottomRight as usize] = rect.height() * reserved;
     }
+    let trending = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.trending(facts))
+        .filter(|_| overlays.trending);
     if let (Some(Placement::Sash), Some(status)) = (overlays.status, facts.status) {
-        sash(&painter, rect, status, &overlays.labels[status as usize]);
+        sash(
+            &painter,
+            rect,
+            sash_colors(status),
+            &overlays.labels[status as usize],
+        );
+        stacks[Placement::TopRight as usize] = rect.width() * 0.34;
+    } else if let Some(rank) = trending {
+        let label = format!("#{rank} {}", overlays.trending_label);
+        sash(
+            &painter,
+            rect,
+            (
+                Color32::from_rgb(150, 30, 40),
+                Color32::from_rgb(235, 90, 90),
+            ),
+            &label,
+        );
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     }
 
     let mut badges = Vec::with_capacity(2);
-    if let (Some(placement), Some(value)) = (overlays.rating, facts.rating) {
-        badges.push((placement, format!("IMDb {value:.1}")));
+    if let (Some(placement), Some(value)) = (overlays.rating, rating) {
+        let source = if rating == facts.rating {
+            "IMDb"
+        } else {
+            "★"
+        };
+        badges.push((placement, format!("{source} {value:.1}")));
     }
     if let (Some(placement), Some(status)) = (overlays.status, facts.status) {
         badges.push((placement, overlays.labels[status as usize].clone()));
@@ -728,7 +950,7 @@ fn score_colors(score: f32) -> (Color32, Color32) {
     (soft(left), soft(right))
 }
 
-fn score_bar(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) {
+fn score_bar(painter: &Painter, rect: Rect, rating: Option<f32>, caption: &str, scale: f32) {
     let width = rect.width();
     let bar_height = (rect.height() * 0.012 * scale).max(3.0);
     let side = width * 0.14;
@@ -737,10 +959,10 @@ fn score_bar(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) {
         Pos2::new(rect.left() + side, bottom - bar_height),
         Pos2::new(rect.right() - side, bottom),
     );
-    if !facts.caption.is_empty() {
+    if !caption.is_empty() {
         let size = (width * 0.08 * scale).clamp(8.0, 18.0);
         let galley = painter.layout_no_wrap(
-            facts.caption.clone(),
+            caption.to_owned(),
             FontId::proportional(size),
             Color32::from_gray(200),
         );
@@ -751,7 +973,7 @@ fn score_bar(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) {
             Color32::from_gray(200),
         );
     }
-    let Some(score) = facts.rating else {
+    let Some(score) = rating else {
         return;
     };
     let pill = bar_height * 0.5;
@@ -782,21 +1004,27 @@ fn score_bar(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) {
     );
 }
 
-fn score_number(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) -> f32 {
+fn score_number(
+    painter: &Painter,
+    rect: Rect,
+    rating: Option<f32>,
+    caption: &str,
+    scale: f32,
+) -> f32 {
     let width = rect.width();
     let left = rect.left() + width * 0.07;
     let mut bottom = rect.bottom() - rect.height() * 0.04;
-    if !facts.caption.is_empty() {
+    if !caption.is_empty() {
         let size = (width * 0.07 * scale).clamp(8.0, 16.0);
         let galley = painter.layout_no_wrap(
-            facts.caption.clone(),
+            caption.to_owned(),
             FontId::proportional(size),
             Color32::from_gray(200),
         );
         bottom -= galley.size().y;
         painter.galley(Pos2::new(left, bottom), galley, Color32::from_gray(200));
     }
-    if let Some(score) = facts.rating {
+    if let Some(score) = rating {
         let size = (width * 0.2 * scale).clamp(16.0, 56.0);
         let galley = painter.layout_no_wrap(
             format!("{score:.1}"),
@@ -809,14 +1037,15 @@ fn score_number(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) 
     (rect.bottom() - bottom) / rect.height() + 0.02
 }
 
-fn score_minimal(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) -> f32 {
-    let year = facts
-        .caption
-        .rsplit(" · ")
-        .next()
-        .filter(|year| year.len() == 4);
-    let text = facts
-        .rating
+fn score_minimal(
+    painter: &Painter,
+    rect: Rect,
+    rating: Option<f32>,
+    caption: &str,
+    scale: f32,
+) -> f32 {
+    let year = caption.rsplit(" · ").next().filter(|year| year.len() == 4);
+    let text = rating
         .map(|score| format!("★ {score:.1}"))
         .into_iter()
         .chain(year.map(str::to_owned))
@@ -839,7 +1068,8 @@ fn score_minimal(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32)
 fn score_frosted(
     painter: &Painter,
     rect: Rect,
-    facts: &PosterFacts,
+    rating: Option<f32>,
+    caption: &str,
     scale: f32,
     radius: f32,
 ) -> f32 {
@@ -862,7 +1092,7 @@ fn score_frosted(
     );
     let size = height * 0.45;
     let pad = rect.width() * 0.05;
-    if let Some(score) = facts.rating {
+    if let Some(score) = rating {
         let galley = painter.layout_no_wrap(
             format!("★ {score:.1}"),
             FontId::proportional(size),
@@ -874,9 +1104,9 @@ fn score_frosted(
             Color32::WHITE,
         );
     }
-    if !facts.caption.is_empty() {
+    if !caption.is_empty() {
         let galley = painter.layout_no_wrap(
-            facts.caption.clone(),
+            caption.to_owned(),
             FontId::proportional(size * 0.8),
             Color32::from_gray(190),
         );
@@ -899,7 +1129,7 @@ fn sash_colors(status: PosterStatus) -> (Color32, Color32) {
     (Color32::from_rgb(r, g, b), Color32::from_rgb(br, bg, bb))
 }
 
-fn sash(painter: &Painter, rect: Rect, status: PosterStatus, label: &str) {
+fn sash(painter: &Painter, rect: Rect, (inner, border): (Color32, Color32), label: &str) {
     let width = rect.width();
     let length = width * 1.15;
     let height = width * 0.12;
@@ -915,7 +1145,6 @@ fn sash(painter: &Painter, rect: Rect, status: PosterStatus, label: &str) {
             center - along * length * 0.5 + across * half,
         ]
     };
-    let (inner, border) = sash_colors(status);
     let shadow: Vec<Pos2> = band(0.0)
         .into_iter()
         .map(|p| p + Vec2::splat(height * 0.08))
@@ -1018,4 +1247,26 @@ mod tests {
         assert!(index.0["tt2"].saved);
         assert_eq!(index.0["tt2"].progress, 0.25);
     }
+
+    #[test]
+    fn imdb_only_card_matches_trending_by_title_and_year() {
+        let facts = poster_facts(&serde_json::json!({
+            "id": "tt0903747",
+            "name": "Breaking Bad!",
+            "releaseInfo": "2008–2013",
+        }));
+        let mut enrichment = Enrichment::default();
+        enrichment.set_trending(&[
+            serde_json::json!({"id": 1, "title": "Other", "release_date": "2024-01-01"}),
+            serde_json::json!({"id": 1396, "name": "Breaking Bad", "first_air_date": "2008-01-20"}),
+        ]);
+        enrichment.add_mdblist(&[serde_json::json!({
+            "ids": {"imdb": "tt0903747"}, "score": 95, "certification": "TV-MA",
+        })]);
+        assert_eq!(enrichment.trending(&facts), Some(2));
+        let graded = enrichment.graded(&facts).unwrap();
+        assert_eq!(graded.score, Some(9.5));
+        assert_eq!(graded.certification.as_deref(), Some("TV-MA"));
+    }
+
 }
