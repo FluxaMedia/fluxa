@@ -43,6 +43,9 @@ pub enum Placement {
     BottomRight,
     Banner,
     Bar,
+    Number,
+    Minimal,
+    Frosted,
     Sash,
 }
 
@@ -54,6 +57,9 @@ impl Placement {
             Some("bottom_right") => Placement::BottomRight,
             Some("banner") => Placement::Banner,
             Some("bar") => Placement::Bar,
+            Some("number") => Placement::Number,
+            Some("minimal") => Placement::Minimal,
+            Some("frosted") => Placement::Frosted,
             Some("sash") => Placement::Sash,
             _ => Placement::TopLeft,
         }
@@ -175,7 +181,10 @@ pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
     for id in ids("watchlist").into_iter().chain(ids("liked")) {
         index.entry(id).or_default().saved = true;
     }
-    if let Some(progress) = library.get("progress").and_then(serde_json::Value::as_object) {
+    if let Some(progress) = library
+        .get("progress")
+        .and_then(serde_json::Value::as_object)
+    {
         for (key, entry) in progress {
             let offset = entry.get("timeOffset").and_then(number).unwrap_or(0.0);
             let duration = entry.get("duration").and_then(number).unwrap_or(0.0);
@@ -186,7 +195,8 @@ pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
                 .pointer("/meta/id")
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or(key);
-            index.entry(id.to_owned()).or_default().progress = (offset / duration).clamp(0.0, 1.0) as f32;
+            index.entry(id.to_owned()).or_default().progress =
+                (offset / duration).clamp(0.0, 1.0) as f32;
         }
     }
     PersonalIndex(index)
@@ -436,15 +446,26 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     let personal = card
         .id
         .as_deref()
-        .zip(painter.ctx().data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id())))
+        .zip(
+            painter
+                .ctx()
+                .data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id())),
+        )
         .and_then(|(id, index)| index.0.get(id).copied())
         .unwrap_or_default();
-    if overlays.progress && card.progress <= 0.0 && !personal.watched && (0.02..0.95).contains(&personal.progress) {
+    if overlays.progress
+        && card.progress <= 0.0
+        && !personal.watched
+        && (0.02..0.95).contains(&personal.progress)
+    {
         let height = (rect.height() * 0.018).max(3.0);
         let track = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
         painter.rect_filled(track, 0.0, Color32::from_black_alpha(160));
         painter.rect_filled(
-            Rect::from_min_size(track.min, Vec2::new(track.width() * personal.progress, height)),
+            Rect::from_min_size(
+                track.min,
+                Vec2::new(track.width() * personal.progress, height),
+            ),
             0.0,
             Color32::from_gray(235),
         );
@@ -464,21 +485,31 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
         stacks[Placement::TopLeft as usize] = mark + 3.0;
     }
 
-    if overlays.rating == Some(Placement::Bar)
-        && (facts.rating.is_some() || !facts.caption.is_empty())
-    {
-        bottom_vignette(&painter, rect, radius);
-        score_bar(&painter, rect, facts, overlays.scale);
-        stacks[Placement::BottomLeft as usize] = rect.height() * 0.2;
-        stacks[Placement::BottomRight as usize] = rect.height() * 0.2;
+    if facts.rating.is_some() || !facts.caption.is_empty() {
+        let reserved = match overlays.rating {
+            Some(Placement::Bar) => {
+                bottom_vignette(&painter, rect, radius);
+                score_bar(&painter, rect, facts, overlays.scale);
+                0.2
+            }
+            Some(Placement::Number) => {
+                bottom_vignette(&painter, rect, radius);
+                score_number(&painter, rect, facts, overlays.scale)
+            }
+            Some(Placement::Minimal) => {
+                bottom_vignette(&painter, rect, radius);
+                score_minimal(&painter, rect, facts, overlays.scale)
+            }
+            Some(Placement::Frosted) => {
+                score_frosted(&painter, rect, facts, overlays.scale, radius)
+            }
+            _ => 0.0,
+        };
+        stacks[Placement::BottomLeft as usize] = rect.height() * reserved;
+        stacks[Placement::BottomRight as usize] = rect.height() * reserved;
     }
     if let (Some(Placement::Sash), Some(status)) = (overlays.status, facts.status) {
-        sash(
-            &painter,
-            rect,
-            status,
-            &overlays.labels[status as usize],
-        );
+        sash(&painter, rect, status, &overlays.labels[status as usize]);
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     }
 
@@ -489,7 +520,16 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     if let (Some(placement), Some(status)) = (overlays.status, facts.status) {
         badges.push((placement, overlays.labels[status as usize].clone()));
     }
-    badges.retain(|(placement, _)| !matches!(placement, Placement::Bar | Placement::Sash));
+    badges.retain(|(placement, _)| {
+        !matches!(
+            placement,
+            Placement::Bar
+                | Placement::Number
+                | Placement::Minimal
+                | Placement::Frosted
+                | Placement::Sash
+        )
+    });
     badges.sort_by_key(|(placement, _)| *placement != Placement::Banner);
 
     let font_size = (rect.width() * 0.085).clamp(9.0, 15.0) * overlays.scale;
@@ -568,7 +608,11 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
 }
 
 fn watched_mark(painter: &Painter, rect: Rect) {
-    painter.circle_filled(rect.center(), rect.width() * 0.5, Color32::from_black_alpha(190));
+    painter.circle_filled(
+        rect.center(),
+        rect.width() * 0.5,
+        Color32::from_black_alpha(190),
+    );
     let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
     painter.line(
         vec![at(0.28, 0.52), at(0.44, 0.67), at(0.73, 0.36)],
@@ -577,10 +621,19 @@ fn watched_mark(painter: &Painter, rect: Rect) {
 }
 
 fn saved_mark(painter: &Painter, rect: Rect) {
-    painter.circle_filled(rect.center(), rect.width() * 0.5, Color32::from_black_alpha(190));
+    painter.circle_filled(
+        rect.center(),
+        rect.width() * 0.5,
+        Color32::from_black_alpha(190),
+    );
     let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
     painter.add(Shape::convex_polygon(
-        vec![at(0.34, 0.26), at(0.66, 0.26), at(0.66, 0.74), at(0.5, 0.62)],
+        vec![
+            at(0.34, 0.26),
+            at(0.66, 0.26),
+            at(0.66, 0.74),
+            at(0.5, 0.62),
+        ],
         Color32::WHITE,
         Stroke::NONE,
     ));
@@ -690,6 +743,113 @@ fn score_bar(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) {
         ],
         Stroke::new(1.0, Color32::from_white_alpha(60)),
     );
+}
+
+fn score_number(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) -> f32 {
+    let width = rect.width();
+    let left = rect.left() + width * 0.07;
+    let mut bottom = rect.bottom() - rect.height() * 0.04;
+    if !facts.caption.is_empty() {
+        let size = (width * 0.07 * scale).clamp(8.0, 16.0);
+        let galley = painter.layout_no_wrap(
+            facts.caption.clone(),
+            FontId::proportional(size),
+            Color32::from_gray(200),
+        );
+        bottom -= galley.size().y;
+        painter.galley(Pos2::new(left, bottom), galley, Color32::from_gray(200));
+    }
+    if let Some(score) = facts.rating {
+        let size = (width * 0.2 * scale).clamp(16.0, 56.0);
+        let galley = painter.layout_no_wrap(
+            format!("{score:.1}"),
+            FontId::proportional(size),
+            score_colors(score).0,
+        );
+        bottom -= galley.size().y * 0.9;
+        painter.galley(Pos2::new(left, bottom), galley, Color32::WHITE);
+    }
+    (rect.bottom() - bottom) / rect.height() + 0.02
+}
+
+fn score_minimal(painter: &Painter, rect: Rect, facts: &PosterFacts, scale: f32) -> f32 {
+    let year = facts
+        .caption
+        .rsplit(" · ")
+        .next()
+        .filter(|year| year.len() == 4);
+    let text = facts
+        .rating
+        .map(|score| format!("★ {score:.1}"))
+        .into_iter()
+        .chain(year.map(str::to_owned))
+        .collect::<Vec<_>>()
+        .join(" · ");
+    if text.is_empty() {
+        return 0.0;
+    }
+    let size = (rect.width() * 0.075 * scale).clamp(9.0, 18.0);
+    let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::from_gray(235));
+    let top = rect.bottom() - rect.height() * 0.05 - galley.size().y;
+    painter.galley(
+        Pos2::new(rect.left() + rect.width() * 0.06, top),
+        galley,
+        Color32::from_gray(235),
+    );
+    (rect.bottom() - top) / rect.height() + 0.02
+}
+
+fn score_frosted(
+    painter: &Painter,
+    rect: Rect,
+    facts: &PosterFacts,
+    scale: f32,
+    radius: f32,
+) -> f32 {
+    let height = (rect.height() * 0.09 * scale).max(18.0);
+    let bar = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
+    let r = radius as u8;
+    painter.rect_filled(
+        bar,
+        egui::CornerRadius {
+            nw: 0,
+            ne: 0,
+            sw: r,
+            se: r,
+        },
+        Color32::from_black_alpha(165),
+    );
+    painter.line_segment(
+        [bar.left_top(), bar.right_top()],
+        Stroke::new(1.0, Color32::from_white_alpha(35)),
+    );
+    let size = height * 0.45;
+    let pad = rect.width() * 0.05;
+    if let Some(score) = facts.rating {
+        let galley = painter.layout_no_wrap(
+            format!("★ {score:.1}"),
+            FontId::proportional(size),
+            Color32::WHITE,
+        );
+        painter.galley(
+            Pos2::new(bar.left() + pad, bar.center().y - galley.size().y * 0.5),
+            galley,
+            Color32::WHITE,
+        );
+    }
+    if !facts.caption.is_empty() {
+        let galley = painter.layout_no_wrap(
+            facts.caption.clone(),
+            FontId::proportional(size * 0.8),
+            Color32::from_gray(190),
+        );
+        let pos = Pos2::new(
+            bar.right() - pad - galley.size().x,
+            bar.center().y - galley.size().y * 0.5,
+        );
+        painter.galley(pos, galley, Color32::from_gray(190));
+    }
+    height / rect.height()
 }
 
 fn sash_colors(status: PosterStatus) -> (Color32, Color32) {
@@ -821,5 +981,4 @@ mod tests {
         assert!(index.0["tt2"].saved);
         assert_eq!(index.0["tt2"].progress, 0.25);
     }
-
 }

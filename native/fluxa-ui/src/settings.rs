@@ -726,7 +726,16 @@ const POSTER_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {
         label: "Rating position",
         key: "posterRatingPosition",
-        options: &["bar", "top_left", "top_right", "bottom_left", "bottom_right"],
+        options: &[
+            "bar",
+            "number",
+            "minimal",
+            "frosted",
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right",
+        ],
     },
     SettingsRow {
         label: "Release status badge",
