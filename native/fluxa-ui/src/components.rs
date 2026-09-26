@@ -116,6 +116,35 @@ pub(super) fn title_logo(
     Some((texture, size))
 }
 
+pub(super) fn avatar(
+    painter: &Painter,
+    assets: &mut impl HomeAssets,
+    center: egui::Pos2,
+    radius: f32,
+    name: &str,
+    url: Option<&str>,
+) {
+    let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
+    let target = artwork_target_size(rect.size(), painter.ctx().pixels_per_point());
+    if rounded_artwork(painter, rect, radius, url, target, ArtworkPriority::Visible, Color32::WHITE, assets) {
+        return;
+    }
+    let initials = name
+        .split_whitespace()
+        .take(2)
+        .filter_map(|word| word.chars().next())
+        .flat_map(char::to_uppercase)
+        .collect::<String>();
+    painter.circle_filled(center, radius, Color32::from_rgb(44, 44, 44));
+    painter.text(
+        center,
+        Align2::CENTER_CENTER,
+        initials,
+        FontId::proportional(radius * 0.72),
+        Color32::from_white_alpha(220),
+    );
+}
+
 pub(super) fn wrapped_text(
     painter: &Painter,
     text: &str,

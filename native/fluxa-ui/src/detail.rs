@@ -513,22 +513,7 @@ pub fn draw_detail(
                                     Pos2::new(rect.center().x, rect.top() + CAST_SIZE * 0.5),
                                     Vec2::splat(CAST_SIZE),
                                 );
-                                painter.circle_filled(circle.center(), CAST_SIZE * 0.5, Color32::from_white_alpha(18));
-                                if !components::rounded_artwork(painter, circle, CAST_SIZE * 0.5, member.photo.as_deref(), artwork_target_size(circle.size(), ppp), ArtworkPriority::Visible, Color32::WHITE, assets) {
-                                    let initials = member
-                                        .name
-                                        .split_whitespace()
-                                        .take(2)
-                                        .filter_map(|word| word.chars().next())
-                                        .collect::<String>();
-                                    painter.text(
-                                        circle.center(),
-                                        Align2::CENTER_CENTER,
-                                        initials,
-                                        FontId::proportional(24.0),
-                                        Color32::from_white_alpha(160),
-                                    );
-                                }
+                                components::avatar(painter, assets, circle.center(), CAST_SIZE * 0.5, &member.name, member.photo.as_deref());
                                 let font = FontId::proportional(13.5);
                                 painter.text(
                                     Pos2::new(rect.center().x, circle.bottom() + 10.0),

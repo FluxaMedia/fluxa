@@ -283,38 +283,6 @@ pub(crate) fn paint_custom_background(
     paint_backdrop(context, painter, screen, assets);
 }
 
-fn initials(name: &str) -> String {
-    name.split_whitespace()
-        .take(2)
-        .filter_map(|word| word.chars().next())
-        .flat_map(char::to_uppercase)
-        .collect()
-}
-
-fn paint_avatar(
-    painter: &egui::Painter,
-    assets: &mut impl HomeAssets,
-    center: Pos2,
-    radius: f32,
-    name: &str,
-    url: Option<&str>,
-) {
-    let side = (radius * 4.0) as u32;
-    match assets.texture_for(url, [side, side], ArtworkPriority::Visible) {
-        Some(texture) => paint_circle_texture(painter, texture, center, radius),
-        None => {
-            painter.circle_filled(center, radius, Color32::from_rgb(44, 44, 44));
-            painter.text(
-                center,
-                Align2::CENTER_CENTER,
-                initials(name),
-                FontId::proportional(radius * 0.72),
-                Color32::from_white_alpha(220),
-            );
-        }
-    }
-}
-
 fn centered_column(ui: &mut egui::Ui, width: f32, add: impl FnOnce(&mut egui::Ui)) {
     let available = ui.available_width();
     let inset = ((available - width) * 0.5).max(16.0);
@@ -470,7 +438,7 @@ fn draw_select(
         let response = ui.interact(hit, Id::new(("fluxa-profile", &profile.id)), Sense::click());
         let card_hovered = ui.rect_contains_pointer(Rect::from_min_size(origin, cell));
         let r = if response.hovered() { radius * 1.04 } else { radius };
-        paint_avatar(ui.painter(), assets, avatar_center, r, &profile.name, profile.avatar_url.as_deref());
+        components::avatar(ui.painter(), assets, avatar_center, r, &profile.name, profile.avatar_url.as_deref());
         if !response.hovered() {
             ui.painter().circle_filled(avatar_center, r, Color32::from_black_alpha(30));
         }
@@ -774,7 +742,7 @@ fn form_details(
                     } else {
                         model.draft.name.trim().to_owned()
                     };
-                    paint_avatar(
+                    components::avatar(
                         ui.painter(),
                         assets,
                         rect.center(),
@@ -949,7 +917,7 @@ fn form_images(
                                 let (rect, response) =
                                     ui.allocate_exact_size(Vec2::new(tile, tile + 20.0), Sense::click());
                                 let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
-                                paint_avatar(ui.painter(), assets, center, tile * 0.5, &avatar.name, Some(&avatar.url));
+                                components::avatar(ui.painter(), assets, center, tile * 0.5, &avatar.name, Some(&avatar.url));
                                 let selected = model.draft.avatar_url.as_deref() == Some(avatar.url.as_str());
                                 if selected || response.hovered() {
                                     ui.painter().circle_stroke(
@@ -1085,7 +1053,7 @@ fn draw_picker_settings(
                             for (index, avatar) in pack.avatars.iter().take(previews).enumerate() {
                                 let center = Pos2::new(rect.left() + 24.0 + index as f32 * 32.0, rect.center().y);
                                 ui.painter().circle_filled(center, 24.5, Color32::from_rgb(20, 20, 20));
-                                paint_avatar(ui.painter(), assets, center, 23.0, &avatar.name, Some(&avatar.url));
+                                components::avatar(ui.painter(), assets, center, 23.0, &avatar.name, Some(&avatar.url));
                             }
                             ui.add_space(8.0);
                             ui.label(
@@ -1168,7 +1136,7 @@ fn draw_pin_prompt(
     modal(context, screen, "fluxa-profiles-pin", |ui| {
         ui.vertical_centered(|ui| {
             let (rect, _) = ui.allocate_exact_size(Vec2::splat(72.0), Sense::hover());
-            paint_avatar(ui.painter(), assets, rect.center(), 36.0, &profile.name, profile.avatar_url.as_deref());
+            components::avatar(ui.painter(), assets, rect.center(), 36.0, &profile.name, profile.avatar_url.as_deref());
             ui.add_space(12.0);
             ui.label(RichText::new(&profile.name).size(18.0).strong().color(Color32::WHITE));
             ui.add_space(4.0);
