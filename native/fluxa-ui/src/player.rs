@@ -349,7 +349,7 @@ fn draw_recommendations(
         0.35,
     );
     let url = hero.background_url.as_deref();
-    let target = artwork_target_size(rect.size(), context.pixels_per_point());
+    let target = backdrop_target_size(rect.width(), context.pixels_per_point());
     if let Some(texture) = assets.texture_for(url, target, ArtworkPriority::Visible) {
         let uv = assets
             .texture_size(url)
@@ -820,7 +820,7 @@ fn draw_loading(
 ) {
     painter.rect_filled(rect, 0.0, Color32::BLACK);
     let url = player.background.as_deref();
-    let target = artwork_target_size(rect.size(), context.pixels_per_point());
+    let target = backdrop_target_size(rect.width(), context.pixels_per_point());
     if let Some(texture) = assets.texture_for(url, target, ArtworkPriority::Visible) {
         let uv = assets
             .texture_size(url)

@@ -166,7 +166,7 @@ pub fn draw_detail(
         Vec2::new(viewport.width, geometry.hero_height),
     );
     let backdrop = detail.background_url.as_deref().or(detail.poster_url.as_deref());
-    let target = artwork_target_size(hero.size(), ppp);
+    let target = backdrop_target_size(viewport.width, ppp);
     if let Some(texture) = assets.texture_for(backdrop, target, ArtworkPriority::Hero) {
         let size = assets.texture_size(backdrop).unwrap_or(target);
         let fade = context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.6);

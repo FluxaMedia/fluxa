@@ -3543,6 +3543,10 @@ fn resolve_desktop_horizontal_scroll(
     offset
 }
 
+fn backdrop_target_size(width: f32, pixels_per_point: f32) -> [u32; 2] {
+    artwork_target_size(Vec2::new(width, width * 9.0 / 16.0), pixels_per_point)
+}
+
 fn artwork_target_size(size: Vec2, pixels_per_point: f32) -> [u32; 2] {
     let scale = if pixels_per_point.is_finite() {
         pixels_per_point.max(0.25)
@@ -3619,7 +3623,7 @@ fn draw_home_with_options(
     let mut hero_image_rect = hero_visual_rect;
     let prefetch_home_artwork = should_prefetch_home_artwork(context, home);
     if prefetch_home_artwork {
-        let full_target = artwork_target_size(hero_image_rect.size(), context.pixels_per_point());
+        let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
         assets.prefetch_for(
             hero.background_url.as_deref(),
             full_target,
@@ -3634,7 +3638,7 @@ fn draw_home_with_options(
         }
     }
     if show_hero {
-        let full_target = artwork_target_size(hero_image_rect.size(), context.pixels_per_point());
+        let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
         let full_texture = assets.texture_for(
             hero.background_url.as_deref(),
             full_target,
