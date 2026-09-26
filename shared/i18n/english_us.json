@@ -2565,5 +2565,10 @@
   "settings.device_capabilities_desc": "Shows the real audio and video output capabilities of this device.",
   "settings.option.off": "Off",
   "settings.option.none": "None",
-  "settings.option.preferred": "Preferred"
+  "settings.option.preferred": "Preferred",
+  "settings.option.nuvio": "Nuvio Sync",
+  "settings.option.trakt": "Trakt",
+  "settings.option.simkl": "Simkl",
+  "settings.option.anilist": "AniList",
+  "settings.option.stremio": "Stremio"
 }

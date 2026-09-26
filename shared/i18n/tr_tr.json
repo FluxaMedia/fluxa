@@ -2565,5 +2565,10 @@
   "settings.device_capabilities_desc": "Bu cihazın ses ve video çıkışının gerçek yeteneklerini gösterir.",
   "settings.option.off": "Kapalı",
   "settings.option.none": "Yok",
-  "settings.option.preferred": "Tercih edilen"
+  "settings.option.preferred": "Tercih edilen",
+  "settings.option.nuvio": "Nuvio Senkronizasyonu",
+  "settings.option.trakt": "Trakt",
+  "settings.option.simkl": "Simkl",
+  "settings.option.anilist": "AniList",
+  "settings.option.stremio": "Stremio"
 }

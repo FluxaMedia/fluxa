@@ -1952,7 +1952,78 @@ pub fn draw_settings(
             FontId::proportional(row_label_size),
             Color32::from_white_alpha(210),
         );
-        if !is_toggle {
+        if setting.key == "accentColorArgb" {
+            let current = settings
+                .value(setting.key)
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or(setting.options[0])
+                .to_ascii_uppercase();
+            let size = 28.0;
+            let gap = 12.0;
+            let count = setting.options.len() as f32;
+            let strip = Rect::from_min_max(
+                Pos2::new(
+                    row_rect.right() - 6.0 - count * size - (count - 1.0) * gap,
+                    row_rect.center().y - size * 0.5,
+                ),
+                Pos2::new(row_rect.right() - 6.0, row_rect.center().y + size * 0.5),
+            );
+            layout.focusable.push((node, strip.expand(6.0)));
+            egui::Area::new(Id::new(("fluxa-settings-swatches", node)))
+                .fixed_pos(strip.min)
+                .order(egui::Order::Foreground)
+                .show(context, |ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    ui.horizontal(|ui| {
+                        for option in setting.options {
+                            let (rect, response) =
+                                ui.allocate_exact_size(Vec2::splat(size), Sense::click());
+                            let color = Color32::from_hex(option).unwrap_or(Color32::WHITE);
+                            let active = option.eq_ignore_ascii_case(&current);
+                            let grow = ui.ctx().animate_bool_with_time(
+                                Id::new(("fluxa-swatch", *option)),
+                                active || response.hovered(),
+                                0.12,
+                            );
+                            let center = rect.center();
+                            ui.painter().circle_filled(center, size * 0.5 - 4.0 + 2.0 * grow, color);
+                            if active {
+                                ui.painter().circle_stroke(
+                                    center,
+                                    size * 0.5,
+                                    egui::Stroke::new(2.0, Color32::WHITE),
+                                );
+                            } else if response.hovered() {
+                                ui.painter().circle_stroke(
+                                    center,
+                                    size * 0.5,
+                                    egui::Stroke::new(1.0, Color32::from_white_alpha(90)),
+                                );
+                            }
+                            let name = match *option {
+                                "#FFFFFF" => "auto.white",
+                                "#E50914" => "auto.red",
+                                "#3F7CFF" => "auto.blue",
+                                "#54D17A" => "auto.green",
+                                "#FF8A3D" => "auto.orange",
+                                "#C084FC" => "auto.purple",
+                                _ => "",
+                            };
+                            let response = if name.is_empty() {
+                                response
+                            } else {
+                                response.on_hover_text(localized(name, language))
+                            };
+                            if response.clicked() && !active {
+                                layout.setting_change = Some((
+                                    setting.key.to_owned(),
+                                    serde_json::Value::String((*option).to_owned()),
+                                ));
+                            }
+                        }
+                    });
+                });
+        } else if !is_toggle {
             let raw_value = settings
                 .value(setting.key)
                 .and_then(serde_json::Value::as_str)
@@ -1994,11 +2065,7 @@ pub fn draw_settings(
                     metrics.screen_control_height.min(row_rect.height() - 4.0),
                 ),
             );
-            let selected_text = if setting.key == "accentColorArgb" {
-                format!("●  {value}")
-            } else {
-                value
-            };
+            let selected_text = value;
             let mut selected = raw_value.to_owned();
             egui::Area::new(Id::new(("fluxa-settings-dropdown", node)))
                 .fixed_pos(value_rect.min)
@@ -2400,7 +2467,7 @@ fn draw_account(
             FontId::proportional(label_size),
             Color32::from_white_alpha(210),
         );
-        let mut choices = vec!["local"];
+        let mut choices = Vec::new();
         for (source, token_key) in [
             ("nuvio", "nuvioAccessToken"),
             ("trakt", "traktAccessToken"),
@@ -2415,9 +2482,16 @@ fn draw_account(
         let current = settings
             .value(key)
             .and_then(serde_json::Value::as_str)
-            .unwrap_or("local")
+            .unwrap_or_default()
             .to_owned();
         let mut selected = current.clone();
+        let current_label = if choices.contains(&current.as_str()) {
+            localized_or(&format!("settings.option.{current}"), &current, language)
+        } else if choices.is_empty() {
+            localized("settings.not_connected", language)
+        } else {
+            localized("settings.option.none", language)
+        };
         let value_rect = Rect::from_center_size(
             row.right_center() - Vec2::new(90.0, 0.0),
             Vec2::new(176.0, metrics.screen_control_height.min(row.height() - 4.0)),
@@ -2442,11 +2516,11 @@ fn draw_account(
                     Id::new(("settings-account", *key)),
                     value_rect.size(),
                     metrics.settings_row_value_size_desktop,
-                    &localized_or(&format!("settings.option.{current}"), &current, language),
+                    &current_label,
                     &options,
                     &mut selected,
                     value_rect.width(),
-                    true,
+                    !options.is_empty(),
                 );
                 layout.focusable.push((
                     NODE_SETTINGS_ROW_BASE + 10_000 + index as u64,
