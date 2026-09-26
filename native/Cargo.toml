@@ -19,6 +19,24 @@ opt-level = 3
 [profile.dev.package.fluxa-artwork]
 opt-level = 3
 
+[profile.dev.package.zune-jpeg]
+opt-level = 3
+
+[profile.dev.package.zune-core]
+opt-level = 3
+
+[profile.dev.package.png]
+opt-level = 3
+
+[profile.dev.package.fdeflate]
+opt-level = 3
+
+[profile.dev.package.miniz_oxide]
+opt-level = 3
+
+[profile.dev.package.simd-adler32]
+opt-level = 3
+
 # The Android Rust UI is exercised from debug APKs during development. Keep
 # Kotlin/Java debuggable, but compile the frame-critical Rust UI and its egui
 # drawing stack with release-like optimization so device profiling reflects
