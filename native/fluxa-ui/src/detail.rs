@@ -65,26 +65,6 @@ pub fn detail_scroll_max(viewport: Viewport, detail: &DetailModel) -> f32 {
     (geometry.bottom - (viewport.height - mobile_scroll_reserve(viewport))).max(0.0)
 }
 
-pub(super) fn rounded_art(
-    painter: &egui::Painter,
-    rect: Rect,
-    radius: f32,
-    url: Option<&str>,
-    ppp: f32,
-    assets: &mut impl HomeAssets,
-) -> bool {
-    let target = artwork_target_size(rect.size(), ppp);
-    let Some(texture) = assets.texture_for(url, target, ArtworkPriority::Visible) else {
-        return false;
-    };
-    let uv = assets
-        .texture_size(url)
-        .map(|size| cover_uv(size, rect))
-        .unwrap_or(Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)));
-    painter.add(egui::epaint::RectShape::filled(rect, radius, Color32::WHITE).with_texture(texture, uv));
-    true
-}
-
 fn icon_button(
     ui: &mut egui::Ui,
     icon: Option<TextureId>,
@@ -125,22 +105,6 @@ fn section_title(painter: &egui::Painter, pos: Pos2, text: &str, size: f32) {
         FontId::proportional(size),
         Color32::WHITE,
     );
-}
-
-fn wrapped(
-    painter: &egui::Painter,
-    pos: Pos2,
-    text: &str,
-    size: f32,
-    width: f32,
-    rows: usize,
-    color: Color32,
-) {
-    let mut job = egui::text::LayoutJob::simple(text.to_owned(), FontId::proportional(size), color, width);
-    job.wrap.max_rows = rows;
-    job.wrap.break_anywhere = false;
-    let galley = painter.layout_job(job);
-    painter.galley(pos, galley, color);
 }
 
 pub fn draw_detail(
@@ -477,7 +441,7 @@ pub fn draw_detail(
                                 let painter = ui.painter();
                                 let image = Rect::from_min_size(rect.min, thumb);
                                 painter.rect_filled(image, 10.0, Color32::from_white_alpha(14));
-                                if !rounded_art(painter, image, 10.0, episode.thumbnail.as_deref(), ppp, assets) {
+                                if !components::rounded_artwork(painter, image, 10.0, episode.thumbnail.as_deref(), artwork_target_size(image.size(), ppp), ArtworkPriority::Visible, Color32::WHITE, assets) {
                                     painter.text(
                                         image.center(),
                                         Align2::CENTER_CENTER,
@@ -509,13 +473,17 @@ pub fn draw_detail(
                                     FontId::proportional(15.0),
                                     Color32::WHITE,
                                 );
-                                wrapped(
+                                let overview = components::wrapped_text(
                                     painter,
-                                    Pos2::new(rect.left(), image.bottom() + 34.0),
                                     &episode.overview,
                                     13.0,
+                                    Color32::from_white_alpha(140),
                                     EPISODE_WIDTH,
                                     2,
+                                );
+                                painter.galley(
+                                    Pos2::new(rect.left(), image.bottom() + 34.0),
+                                    overview,
                                     Color32::from_white_alpha(140),
                                 );
                             }
@@ -553,7 +521,7 @@ pub fn draw_detail(
                                     Vec2::splat(CAST_SIZE),
                                 );
                                 painter.circle_filled(circle.center(), CAST_SIZE * 0.5, Color32::from_white_alpha(18));
-                                if !rounded_art(painter, circle, CAST_SIZE * 0.5, member.photo.as_deref(), ppp, assets) {
+                                if !components::rounded_artwork(painter, circle, CAST_SIZE * 0.5, member.photo.as_deref(), artwork_target_size(circle.size(), ppp), ArtworkPriority::Visible, Color32::WHITE, assets) {
                                     let initials = member
                                         .name
                                         .split_whitespace()

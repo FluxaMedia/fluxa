@@ -261,28 +261,16 @@ fn paint_backdrop(
     paint_ambient(painter, screen, assets);
     let url = assets.custom_background_url().map(ToOwned::to_owned);
     let size = artwork_target_size(screen.size(), context.pixels_per_point());
-    if let Some(texture) = assets.texture_for(url.as_deref(), size, ArtworkPriority::Hero) {
-        let image_size = assets
-            .texture_size(url.as_deref())
-            .map(|[w, h]| Vec2::new(w as f32, h as f32))
-            .unwrap_or(screen.size());
-        painter.image(texture, screen, cover_uv(image_size, screen.size()), Color32::WHITE);
+    if components::artwork_image(
+        painter,
+        screen,
+        url.as_deref(),
+        size,
+        ArtworkPriority::Hero,
+        Color32::WHITE,
+        assets,
+    ) {
         painter.rect_filled(screen, 0.0, Color32::from_rgba_unmultiplied(12, 12, 12, 210));
-    }
-}
-
-fn cover_uv(image: Vec2, target: Vec2) -> Rect {
-    if image.x <= 0.0 || image.y <= 0.0 {
-        return full_uv();
-    }
-    let image_aspect = image.x / image.y;
-    let target_aspect = target.x / target.y.max(1.0);
-    if image_aspect > target_aspect {
-        let width = target_aspect / image_aspect;
-        Rect::from_min_max(Pos2::new(0.5 - width * 0.5, 0.0), Pos2::new(0.5 + width * 0.5, 1.0))
-    } else {
-        let height = image_aspect / target_aspect;
-        Rect::from_min_max(Pos2::new(0.0, 0.5 - height * 0.5), Pos2::new(1.0, 0.5 + height * 0.5))
     }
 }
 

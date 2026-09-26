@@ -68,6 +68,20 @@ pub(super) fn artwork_image(
     tint: Color32,
     assets: &mut impl HomeAssets,
 ) -> bool {
+    rounded_artwork(painter, rect, 0.0, url, target_size, priority, tint, assets)
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn rounded_artwork(
+    painter: &Painter,
+    rect: Rect,
+    radius: f32,
+    url: Option<&str>,
+    target_size: [u32; 2],
+    priority: ArtworkPriority,
+    tint: Color32,
+    assets: &mut impl HomeAssets,
+) -> bool {
     let Some(texture) = assets.texture_for(url, target_size, priority) else {
         return false;
     };
@@ -75,8 +89,26 @@ pub(super) fn artwork_image(
         .texture_size(url)
         .map(|size| cover_uv(size, rect))
         .unwrap_or_else(full_uv);
-    texture_image(painter, texture, rect, uv, tint);
+    if radius > 0.0 {
+        painter.add(egui::epaint::RectShape::filled(rect, radius, tint).with_texture(texture, uv));
+    } else {
+        texture_image(painter, texture, rect, uv, tint);
+    }
     true
+}
+
+pub(super) fn wrapped_text(
+    painter: &Painter,
+    text: &str,
+    size: f32,
+    color: Color32,
+    width: f32,
+    rows: usize,
+) -> std::sync::Arc<egui::Galley> {
+    let mut job =
+        egui::text::LayoutJob::simple(text.to_owned(), FontId::proportional(size), color, width);
+    job.wrap.max_rows = rows;
+    painter.layout_job(job)
 }
 
 pub(super) fn texture_image(

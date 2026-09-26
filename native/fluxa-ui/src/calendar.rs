@@ -446,15 +446,16 @@ fn draw_calendar_cell(
             (rect.width() * 1.5).ceil() as u32,
             (rect.height() * 1.5).ceil() as u32,
         ];
-        if let Some(texture) = assets.texture_for(url, size, ArtworkPriority::Visible) {
-            let uv = assets
-                .texture_size(url)
-                .map(|size| cover_uv(size, rect))
-                .unwrap_or_else(full_uv);
-            painter.add(egui::Shape::Rect(
-                egui::epaint::RectShape::filled(rect, radius, Color32::WHITE)
-                    .with_texture(texture, uv),
-            ));
+        if components::rounded_artwork(
+            &painter,
+            rect,
+            radius,
+            url,
+            size,
+            ArtworkPriority::Visible,
+            Color32::WHITE,
+            assets,
+        ) {
             has_art = true;
         }
     }

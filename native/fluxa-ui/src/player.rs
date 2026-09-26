@@ -843,7 +843,7 @@ fn draw_pause_info(
             }),
         )),
         None => {
-            let galley = wrapped(painter, &player.title, 40.0, Color32::WHITE, width, 2);
+            let galley = components::wrapped_text(painter, &player.title, 40.0, Color32::WHITE, width, 2);
             blocks.push((
                 galley.size().y + 12.0,
                 Box::new(move |painter, y| {
@@ -864,7 +864,7 @@ fn draw_pause_info(
             continue;
         };
         let rows = if size == 16.0 { 5 } else { 1 };
-        let galley = wrapped(painter, &text, size, muted, width, rows);
+        let galley = components::wrapped_text(painter, &text, size, muted, width, rows);
         blocks.push((
             galley.size().y + 10.0,
             Box::new(move |painter, y| painter.galley(Pos2::new(left, y), galley.clone(), muted)),
@@ -876,19 +876,6 @@ fn draw_pause_info(
         draw(painter, y);
         y += height;
     }
-}
-
-fn wrapped(
-    painter: &egui::Painter,
-    text: &str,
-    size: f32,
-    color: Color32,
-    width: f32,
-    rows: usize,
-) -> std::sync::Arc<egui::Galley> {
-    let mut job = egui::text::LayoutJob::simple(text.to_owned(), FontId::proportional(size), color, width);
-    job.wrap.max_rows = rows;
-    painter.layout_job(job)
 }
 
 fn draw_warnings(context: &egui::Context, origin: Pos2, player: &PlayerModel, elapsed: f32) {
@@ -958,13 +945,15 @@ fn draw_loading(
     painter.rect_filled(rect, 0.0, Color32::BLACK);
     let url = player.background.as_deref();
     let target = backdrop_target_size(rect.width(), context.pixels_per_point());
-    if let Some(texture) = assets.texture_for(url, target, ArtworkPriority::Visible) {
-        let uv = assets
-            .texture_size(url)
-            .map(|size| cover_uv(size, rect))
-            .unwrap_or_else(full_uv);
-        painter.image(texture, rect, uv, Color32::from_white_alpha(89));
-    }
+    components::artwork_image(
+        painter,
+        rect,
+        url,
+        target,
+        ArtworkPriority::Visible,
+        Color32::from_white_alpha(89),
+        assets,
+    );
     paint_vertical_gradient(
         painter,
         rect,
