@@ -26,3 +26,6 @@ pollster = "0.4"
 chrono = { version = "0.4.45", default-features = false, features = ["clock", "wasmbind"] }
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["wasm"] }
 wasm-bindgen-futures = "0.4"
+
+[target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+discord-rich-presence = "1"

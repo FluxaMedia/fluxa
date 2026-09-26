@@ -65,6 +65,7 @@ impl NativeSurface {
 }
 
 mod player;
+mod presence;
 mod profiles;
 pub use profiles::ImagePicker;
 
@@ -125,6 +126,33 @@ struct RendererState {
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
     hero_plan_cache: Option<(Value, Option<Value>)>,
+}
+
+fn current_presence(state: &RendererState) -> presence::Presence {
+    if !state.settings.bool_value("discordRichPresenceEnabled") {
+        return presence::Presence::Off;
+    }
+    if let Some(player) = state.player.as_ref() {
+        return player.presence();
+    }
+    if state.route == "detail" && !state.detail.title.is_empty() {
+        return presence::Presence::Viewing {
+            title: state.detail.title.clone(),
+            poster: state
+                .detail
+                .poster_url
+                .clone()
+                .filter(|url| url.starts_with("http")),
+        };
+    }
+    let label = match state.route.as_str() {
+        "library" => "Browsing the library",
+        "discover" => "Discovering",
+        "calendar" => "Checking the calendar",
+        "settings" => "In settings",
+        _ => "Browsing",
+    };
+    presence::Presence::Browsing(label.to_owned())
 }
 
 impl RendererState {
@@ -2993,6 +3021,7 @@ fn render_frame(state: &mut RendererState) {
         .copied()
         .unwrap_or(0.0);
     let scale = state.scale();
+    presence::update(current_presence(state));
     let render_result = {
         let RendererState {
             gpu,

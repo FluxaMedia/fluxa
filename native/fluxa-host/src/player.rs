@@ -125,6 +125,22 @@ impl PlayerSession {
         self.last_activity = Instant::now();
     }
 
+    pub(crate) fn presence(&self) -> crate::presence::Presence {
+        crate::presence::Presence::Playing {
+            title: self.title(),
+            detail: self.episode_title.clone(),
+            paused: self.status.paused,
+            position: self.status.position,
+            duration: self.status.duration,
+            poster: self
+                .meta
+                .get("poster")
+                .and_then(Value::as_str)
+                .filter(|url| url.starts_with("http"))
+                .map(ToOwned::to_owned),
+        }
+    }
+
     pub(crate) fn model(&self) -> PlayerModel {
         let status = (self.texture.is_none() && self.torrent_link.is_some())
             .then(|| fluxa_ui::torrent_status_lines(self.torrent_status.as_ref()));

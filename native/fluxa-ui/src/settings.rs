@@ -14,7 +14,7 @@ pub struct SettingsSection {
     pub rows: &'static [SettingsRow],
 }
 
-const GENERAL_SETTINGS: [SettingsRow; 15] = [
+const GENERAL_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "Language",
         key: "language",
@@ -33,6 +33,11 @@ const GENERAL_SETTINGS: [SettingsRow; 15] = [
     SettingsRow {
         label: "Background playback",
         key: "backgroundPlayback",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Discord Rich Presence",
+        key: "discordRichPresenceEnabled",
         options: &[],
     },
     SettingsRow {
@@ -398,9 +403,9 @@ const APPEARANCE_GROUPS: [(usize, usize, &str); 5] = [
 ];
 const GENERAL_GROUPS: [(usize, usize, &str); 4] = [
     (0, 2, "settings.group.general_startup"),
-    (2, 8, "settings.group.general_behavior"),
-    (8, 13, "settings.group.general_details"),
-    (13, 15, "settings.group.general_calendar"),
+    (2, 9, "settings.group.general_behavior"),
+    (9, 14, "settings.group.general_details"),
+    (14, 16, "settings.group.general_calendar"),
 ];
 const PLAYBACK_GROUPS: [(usize, usize, &str); 4] = [
     (0, 6, "settings.group.playback"),
@@ -947,6 +952,7 @@ pub(super) fn settings_row_label(setting: &SettingsRow, language: &str) -> Strin
         "seekThumbnailEnabled" => "settings.seek_thumbnails",
         "holdToSpeedEnabled" => "settings.hold_to_speed",
         "playbackSpeed" => "auto.playback_speed",
+        "discordRichPresenceEnabled" => "settings.discord_rich_presence_enable",
         _ => "",
     };
     if !legacy_key.is_empty() {
