@@ -353,62 +353,76 @@ pub fn draw_discover(
             // Keep the filters visible while results scroll below them. Clip
             // both paint and hit targets so cards cannot bleed into controls.
             ui.set_clip_rect(ui.clip_rect().intersect(results_clip));
-            let grid_top = row_top;
             let columns = grid.columns;
             let row_stride = card_height + grid.row_gap;
-            let total_rows = discover.results.len().div_ceil(columns);
-            let first_row = ((results_clip.top() - grid_top) / row_stride)
-                .floor()
-                .max(0.0) as usize;
-            let end_row = ((results_clip.bottom() - grid_top) / row_stride)
-                .ceil()
-                .max(0.0) as usize;
-            let visible_rows = first_row.min(total_rows)..end_row.min(total_rows);
-            let grid_height = if total_rows == 0 {
-                0.0
-            } else {
-                grid.height(discover.results.len())
-            };
-
-            // The document uses an explicit scroll offset, so ordinary wrapped
-            // layout would still allocate and measure every result on each
-            // frame. Place only rows that intersect the viewport; this keeps
-            // dropdown interaction cheap even when a catalog has thousands of
-            // entries.
-            for row in visible_rows {
-                for column in 0..columns {
-                    let index = row * columns + column;
-                    let Some(card) = discover.results.get(index) else {
-                        break;
-                    };
-                    let rect = Rect::from_min_size(
-                        Pos2::new(
-                            margin + column as f32 * (card_width + grid.gap),
-                            grid_top + row as f32 * row_stride,
-                        ),
-                        Vec2::new(card_width, card_height),
+            let blocks = discover_blocks(&grid, metrics, discover);
+            let grid_height = blocks.last().map_or(0.0, |block| block.top + block.height);
+            let mut end_index = 0;
+            for block in &blocks {
+                let block_top = row_top + block.top;
+                if block_top > results_clip.bottom() {
+                    break;
+                }
+                if block_top + block.height < results_clip.top() {
+                    continue;
+                }
+                if let Some(title) = block.title {
+                    ui.painter().text(
+                        Pos2::new(margin, block_top + block.header * 0.5),
+                        egui::Align2::LEFT_CENTER,
+                        title,
+                        egui::FontId::proportional(metrics.screen_section_title_size),
+                        Color32::WHITE,
                     );
-                    let node_id = NODE_CARD_BASE + index as u64;
-                    let response =
-                        ui.interact(rect, Id::new(("discover-card", index)), Sense::click());
-                    let poster_rect =
-                        Rect::from_min_size(rect.min, Vec2::new(card_width, poster_height));
-                    let visible_rect = poster_rect.intersect(results_clip);
-                    if visible_rect.is_positive() {
-                        layout.focusable.push((node_id, visible_rect));
-                        components::poster_card(
-                            ui.painter(),
-                            poster_rect,
-                            card,
-                            column,
-                            viewport,
-                            metrics,
-                            assets,
-                            false,
+                }
+                let grid_top = block_top + block.header;
+                let total_rows = block.len.div_ceil(columns);
+                let first_row = ((results_clip.top() - grid_top) / row_stride)
+                    .floor()
+                    .max(0.0) as usize;
+                let end_row = ((results_clip.bottom() - grid_top) / row_stride)
+                    .ceil()
+                    .max(0.0) as usize;
+                for row in first_row.min(total_rows)..end_row.min(total_rows) {
+                    for column in 0..columns {
+                        let local = row * columns + column;
+                        if local >= block.len {
+                            break;
+                        }
+                        let index = block.start + local;
+                        let Some(card) = discover.results.get(index) else {
+                            break;
+                        };
+                        end_index = end_index.max(index + 1);
+                        let rect = Rect::from_min_size(
+                            Pos2::new(
+                                margin + column as f32 * (card_width + grid.gap),
+                                grid_top + row as f32 * row_stride,
+                            ),
+                            Vec2::new(card_width, card_height),
                         );
-                    }
-                    if response.clicked() {
-                        layout.activated = Some(node_id);
+                        let node_id = NODE_CARD_BASE + index as u64;
+                        let response =
+                            ui.interact(rect, Id::new(("discover-card", index)), Sense::click());
+                        let poster_rect =
+                            Rect::from_min_size(rect.min, Vec2::new(card_width, poster_height));
+                        let visible_rect = poster_rect.intersect(results_clip);
+                        if visible_rect.is_positive() {
+                            layout.focusable.push((node_id, visible_rect));
+                            components::poster_card(
+                                ui.painter(),
+                                poster_rect,
+                                card,
+                                column,
+                                viewport,
+                                metrics,
+                                assets,
+                                false,
+                            );
+                        }
+                        if response.clicked() {
+                            layout.activated = Some(node_id);
+                        }
                     }
                 }
             }
@@ -416,35 +430,34 @@ pub fn draw_discover(
             // scrolling doesn't make each newly revealed row wait for network
             // fetch + decode. Keep this incremental and low-priority; visible
             // artwork always wins in the shared fetcher.
-            let prefetch_end_row = (end_row + 3).min(total_rows);
+            let prefetch_end = (end_index + columns * 3).min(discover.results.len());
             let prefetch_cursor_id = Id::new("fluxa-discover-artwork-prefetch").with((
                 discover.generation,
                 &discover.content_type,
                 &discover.selected_catalog_key,
                 &discover.query,
             ));
-            let prefetch_start_row = context.data_mut(|data| {
+            let prefetch_start = context.data_mut(|data| {
                 let previous_end = data
                     .get_temp::<usize>(prefetch_cursor_id)
-                    .unwrap_or(end_row.min(total_rows));
-                data.insert_temp(prefetch_cursor_id, prefetch_end_row.max(previous_end));
-                previous_end.max(end_row.min(total_rows))
+                    .unwrap_or(end_index);
+                data.insert_temp(prefetch_cursor_id, prefetch_end.max(previous_end));
+                previous_end.max(end_index)
             });
-            for row in prefetch_start_row..prefetch_end_row {
-                for column in 0..columns {
-                    let index = row * columns + column;
-                    let Some(card) = discover.results.get(index) else {
-                        break;
-                    };
-                    assets.prefetch_for(
-                        card.artwork_url.as_deref(),
-                        artwork_target_size(
-                            Vec2::new(card_width, poster_height),
-                            context.pixels_per_point(),
-                        ),
-                        ArtworkPriority::Prefetch,
-                    );
-                }
+            for card in discover
+                .results
+                .get(prefetch_start..prefetch_end)
+                .into_iter()
+                .flatten()
+            {
+                assets.prefetch_for(
+                    card.artwork_url.as_deref(),
+                    artwork_target_size(
+                        Vec2::new(card_width, poster_height),
+                        context.pixels_per_point(),
+                    ),
+                    ArtworkPriority::Prefetch,
+                );
             }
             // Keep the Area's full content extent even though only visible
             // rows were materialized above; scroll bounds and clipping must

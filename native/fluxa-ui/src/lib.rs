@@ -456,6 +456,14 @@ pub struct DiscoverModel {
     pub is_loading: bool,
     pub catalogs_loading: bool,
     pub error: Option<String>,
+    pub sections: Vec<DiscoverSection>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DiscoverSection {
+    pub title: String,
+    pub start: usize,
+    pub len: usize,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -973,11 +981,38 @@ pub fn discover_model_from_core_snapshot(snapshot: &serde_json::Value) -> Discov
     let search = snapshot.get("search").unwrap_or(&serde_json::Value::Null);
     let query = value_string(search, "query").unwrap_or_default();
     if !query.trim().is_empty() {
-        model.results = search
-            .get("results")
+        model.results.clear();
+        model.sections.clear();
+        for category in search
+            .get("categories")
             .and_then(serde_json::Value::as_array)
-            .map(|items| items.iter().map(core_home_card).collect())
-            .unwrap_or_default();
+            .into_iter()
+            .flatten()
+        {
+            let items = category
+                .get("items")
+                .and_then(serde_json::Value::as_array)
+                .map(Vec::as_slice)
+                .unwrap_or_default();
+            if items.is_empty() {
+                continue;
+            }
+            let name = value_string(category, "name").unwrap_or_default();
+            let addon = value_string(category, "addonName").unwrap_or_default();
+            let title = if addon.is_empty() || name.contains(&addon) {
+                name
+            } else if name.is_empty() {
+                addon
+            } else {
+                format!("{name} · {addon}")
+            };
+            model.sections.push(DiscoverSection {
+                title,
+                start: model.results.len(),
+                len: items.len(),
+            });
+            model.results.extend(items.iter().map(core_home_card));
+        }
         model.is_loading = search
             .get("isLoading")
             .and_then(serde_json::Value::as_bool)
@@ -1138,6 +1173,7 @@ fn discover_catalog_model(snapshot: &serde_json::Value) -> DiscoverModel {
             .get("error")
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned),
+        sections: Vec::new(),
     }
 }
 
@@ -3316,7 +3352,63 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
 }
 
 pub fn discover_scroll_max(viewport: Viewport, discover: &DiscoverModel) -> f32 {
-    discover_scroll_max_for_result_count(viewport, discover.results.len())
+    if discover.sections.is_empty() {
+        return discover_scroll_max_for_result_count(viewport, discover.results.len());
+    }
+    let metrics = UiMetrics::for_viewport(viewport);
+    let page = PageLayout::new(viewport, metrics, false);
+    let grid = PosterGrid::new(page.width, metrics);
+    let height = discover_blocks(&grid, metrics, discover)
+        .last()
+        .map_or(0.0, |block| block.top + block.height);
+    (page.content_top + height + metrics.section_gap
+        - (viewport.height - mobile_scroll_reserve(viewport)))
+    .max(0.0)
+}
+
+pub(crate) struct DiscoverBlock<'a> {
+    pub title: Option<&'a str>,
+    pub start: usize,
+    pub len: usize,
+    pub top: f32,
+    pub header: f32,
+    pub height: f32,
+}
+
+pub(crate) fn discover_blocks<'a>(
+    grid: &PosterGrid,
+    metrics: UiMetrics,
+    discover: &'a DiscoverModel,
+) -> Vec<DiscoverBlock<'a>> {
+    if discover.sections.is_empty() {
+        return vec![DiscoverBlock {
+            title: None,
+            start: 0,
+            len: discover.results.len(),
+            top: 0.0,
+            header: 0.0,
+            height: grid.height(discover.results.len()),
+        }];
+    }
+    let header = metrics.screen_section_title_size + metrics.control_gap * 2.0;
+    let mut top = 0.0;
+    discover
+        .sections
+        .iter()
+        .map(|section| {
+            let height = header + grid.height(section.len);
+            let block = DiscoverBlock {
+                title: Some(section.title.as_str()),
+                start: section.start,
+                len: section.len,
+                top,
+                header,
+                height,
+            };
+            top += height + metrics.section_gap;
+            block
+        })
+        .collect()
 }
 
 pub fn discover_scroll_max_for_result_count(viewport: Viewport, result_count: usize) -> f32 {
