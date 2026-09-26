@@ -21,7 +21,7 @@ mod settings;
 pub use calendar::draw_calendar;
 pub use poster_overlay::{
     Enrichment, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_overlays,
-    set_poster_personal,
+    set_poster_personal, set_rating_logos,
 };
 
 pub use detail::{detail_scroll_max, draw_detail};
@@ -1595,6 +1595,9 @@ pub trait HomeAssets {
     /// Hosts upload the same SVG bytes; the UI never substitutes glyphs or
     /// hand-drawn approximations when an icon is requested.
     fn icon(&self, _name: &str) -> Option<TextureId> {
+        None
+    }
+    fn logo(&self, _name: &str) -> Option<(TextureId, Vec2)> {
         None
     }
     fn active_profile_name(&self) -> Option<&str> {
@@ -4823,3 +4826,30 @@ fn cover_uv(size: [u32; 2], destination: Rect) -> Rect {
 
 #[cfg(test)]
 mod tests;
+
+pub(crate) fn rating_logo(source: &str, score: &str) -> Option<&'static str> {
+    let percent = score
+        .trim_end_matches('%')
+        .trim()
+        .parse::<f32>()
+        .ok();
+    Some(match source {
+        "IMDb" => "imdb",
+        "TMDB" => "tmdb",
+        "Trakt" => "trakt",
+        "Letterboxd" => "letterboxd",
+        "MyAnimeList" => "mal",
+        "MDBList" => "mdblist",
+        "Metacritic" | "Metacritic Users" => "metacritic",
+        "Rotten Tomatoes" => match percent {
+            Some(value) if value >= 60.0 => "rt-tomato-fresh",
+            Some(_) => "rt-tomato-rotten",
+            None => "rt-tomato-empty",
+        },
+        "Audience" => match percent {
+            Some(value) if value < 60.0 => "rt-popcorn-spilled",
+            _ => "rt-popcorn-full",
+        },
+        _ => return None,
+    })
+}

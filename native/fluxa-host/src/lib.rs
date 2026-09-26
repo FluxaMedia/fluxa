@@ -16,7 +16,7 @@ use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
 use fluxa_effects::{SessionHandle, Storage};
 use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
 use fluxa_renderer::platform::{GraphicsBackend, backends_for};
-use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, rasterize_svg};
+use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, rasterize_svg};
 pub use fluxa_renderer::ui::{GamepadButton, Key};
 use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, UiTree};
 use fluxa_ui::{
@@ -723,6 +723,11 @@ impl HomeAssets for HostAssets<'_> {
     fn icon(&self, name: &str) -> Option<egui::TextureId> {
         self.icons.texture(name)
     }
+    fn logo(&self, name: &str) -> Option<(egui::TextureId, egui::Vec2)> {
+        let texture = self.icons.textures.get(name)?;
+        let [width, height] = texture.size();
+        Some((texture.id(), egui::vec2(width as f32 / height as f32, 1.0)))
+    }
 }
 
 struct SvgIconRegistry {
@@ -732,9 +737,13 @@ struct SvgIconRegistry {
 impl SvgIconRegistry {
     fn new(context: &egui::Context) -> Self {
         let mut textures = HashMap::new();
-        for (name, svg) in ICONS {
+        let sized = ICONS
+            .iter()
+            .map(|(name, svg)| (name, svg, ICON_SIZE))
+            .chain(LOGOS.iter().map(|(name, svg)| (name, svg, LOGO_SIZE)));
+        for (name, svg, size) in sized {
             host_log(format!("Preparing SVG icon: {name}"));
-            let Ok(image) = rasterize_svg(svg.as_bytes(), ICON_SIZE) else {
+            let Ok(image) = rasterize_svg(svg.as_bytes(), size) else {
                 host_log(format!("failed to rasterize shared SVG icon {name}"));
                 continue;
             };
@@ -954,6 +963,17 @@ impl Gpu {
         let egui_renderer = EguiWgpuBackend::new(&device, format);
         host_log("egui renderer created");
         let icons = SvgIconRegistry::new(&egui_context);
+        fluxa_ui::set_rating_logos(
+            &egui_context,
+            ["imdb", "mdblist"]
+                .into_iter()
+                .filter_map(|name| {
+                    let texture = icons.textures.get(name)?;
+                    let [width, height] = texture.size();
+                    Some((name, texture.id(), egui::vec2(width as f32 / height as f32, 1.0)))
+                })
+                .collect(),
+        );
         host_log(format!(
             "Shared SVG icons uploaded: {}",
             icons.textures.len()

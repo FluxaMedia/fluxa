@@ -279,12 +279,21 @@ pub fn draw_detail(
                         .corner_radius(6.0)
                         .inner_margin(egui::Margin::symmetric(8, 3))
                         .show(ui, |ui| {
-                            ui.label(
-                                RichText::new(format!("{source}  {score}"))
-                                    .size(12.5)
-                                    .strong()
-                                    .color(Color32::WHITE),
-                            );
+                            let logo = crate::rating_logo(source, score)
+                                .and_then(|name| assets.logo(name));
+                            let Some((texture, aspect)) = logo else {
+                                ui.label(
+                                    RichText::new(format!("{source}  {score}"))
+                                        .size(12.5)
+                                        .strong()
+                                        .color(Color32::WHITE),
+                                );
+                                return;
+                            };
+                            ui.spacing_mut().item_spacing.x = 6.0;
+                            ui.add(egui::Image::new((texture, aspect * 16.0)))
+                                .on_hover_text(source.as_str());
+                            ui.label(RichText::new(score).size(12.5).strong().color(Color32::WHITE));
                         });
                 }
             });

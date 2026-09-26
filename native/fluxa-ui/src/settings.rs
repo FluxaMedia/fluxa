@@ -2858,8 +2858,19 @@ fn draw_account(
         if index > 0 {
             account_divider(&painter, row, metrics);
         }
+        let mut label_left = 4.0;
+        if let Some((texture, aspect)) = assets.logo(&label.to_lowercase()) {
+            let size = aspect * 22.0;
+            painter.image(
+                texture,
+                Rect::from_min_size(row.left_center() + Vec2::new(4.0, -11.0), size),
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
+            );
+            label_left += size.x + 12.0;
+        }
         painter.text(
-            row.left_center() + Vec2::new(4.0, 0.0),
+            row.left_center() + Vec2::new(label_left, 0.0),
             Align2::LEFT_CENTER,
             *label,
             FontId::proportional(label_size),

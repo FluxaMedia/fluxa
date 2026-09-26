@@ -1,5 +1,5 @@
 use egui::epaint::{Mesh, TextShape};
-use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, Vec2};
+use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Shape, Stroke, TextureId, Vec2};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
@@ -184,6 +184,36 @@ impl super::SettingsModel {
             template,
         })
     }
+}
+
+fn logos_id() -> Id {
+    Id::new("fluxa-poster-logos")
+}
+
+pub fn set_rating_logos(context: &egui::Context, logos: Vec<(&'static str, TextureId, Vec2)>) {
+    context.data_mut(|data| data.insert_temp(logos_id(), Arc::new(logos)));
+}
+
+fn rating_logo(context: &egui::Context, name: &str) -> Option<(TextureId, Vec2)> {
+    context
+        .data(|data| data.get_temp::<Arc<Vec<(&'static str, TextureId, Vec2)>>>(logos_id()))?
+        .iter()
+        .find(|(key, ..)| *key == name)
+        .map(|(_, texture, aspect)| (*texture, *aspect))
+}
+
+fn draw_logo(painter: &Painter, logo: Option<(TextureId, Vec2)>, left_center: Pos2, height: f32) -> f32 {
+    let Some((texture, aspect)) = logo else {
+        return 0.0;
+    };
+    let size = aspect * height;
+    painter.image(
+        texture,
+        Rect::from_min_size(left_center - Vec2::new(0.0, height * 0.5), size),
+        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+        Color32::WHITE,
+    );
+    size.x
 }
 
 fn overlays_id() -> Id {
@@ -849,17 +879,22 @@ pub(super) fn paint(
 
     let mut badges = Vec::with_capacity(2);
     if let (Some(placement), Some(value)) = (overlays.rating, rating) {
-        let source = if rating == facts.rating {
-            "IMDb"
+        let (source, name) = if rating == facts.rating {
+            ("IMDb", "imdb")
         } else {
-            "★"
+            ("★", "mdblist")
         };
-        badges.push((placement, format!("{source} {value:.1}")));
+        let logo = rating_logo(painter.ctx(), name);
+        let text = match logo {
+            Some(_) => format!("{value:.1}"),
+            None => format!("{source} {value:.1}"),
+        };
+        badges.push((placement, text, logo));
     }
     if let (Some(placement), Some(status)) = (overlays.status, facts.status) {
-        badges.push((placement, overlays.labels[status as usize].clone()));
+        badges.push((placement, overlays.labels[status as usize].clone(), None));
     }
-    badges.retain(|(placement, _)| {
+    badges.retain(|(placement, ..)| {
         !matches!(
             placement,
             Placement::Bar
@@ -869,14 +904,15 @@ pub(super) fn paint(
                 | Placement::Sash
         )
     });
-    badges.sort_by_key(|(placement, _)| *placement != Placement::Banner);
+    badges.sort_by_key(|(placement, ..)| *placement != Placement::Banner);
 
     let font_size = (rect.width() * 0.085).clamp(9.0, 15.0) * overlays.scale;
     let font = FontId::proportional(font_size);
     let pad = Vec2::new(font_size * 0.45, font_size * 0.2);
     let inset = (rect.width() * 0.04).max(4.0);
-    for (placement, text) in badges {
+    for (placement, text, logo) in badges {
         let galley = painter.layout_no_wrap(text, font.clone(), Color32::WHITE);
+        let logo_width = logo.map_or(0.0, |(_, aspect)| aspect.x * galley.size().y + pad.x * 0.8);
         if placement == Placement::Banner {
             let height = galley.size().y + pad.y * 4.0;
             let top = rect.bottom() - height - stacks[Placement::BottomLeft as usize];
@@ -908,7 +944,7 @@ pub(super) fn paint(
             stacks[Placement::BottomRight as usize] += height;
             continue;
         }
-        let size = galley.size() + pad * 2.0;
+        let size = galley.size() + pad * 2.0 + Vec2::new(logo_width, 0.0);
         let slot = placement as usize;
         let offset = stacks[slot];
         stacks[slot] += size.y + 3.0;
@@ -942,7 +978,9 @@ pub(super) fn paint(
             Stroke::new(1.0, Color32::from_white_alpha(28)),
             egui::StrokeKind::Inside,
         );
-        painter.galley(badge.min + pad, galley, Color32::WHITE);
+        let height = galley.size().y;
+        draw_logo(&painter, logo, Pos2::new(badge.left() + pad.x, badge.center().y), height);
+        painter.galley(badge.min + pad + Vec2::new(logo_width, 0.0), galley, Color32::WHITE);
     }
 }
 
@@ -985,24 +1023,32 @@ pub(super) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
         .and_then(|enrichment| enrichment.graded(facts).and_then(|graded| graded.score));
     let rating = graded.filter(|_| overlays.mdblist_score).or(facts.rating);
     if let (true, Some(value)) = (overlays.rating.is_some(), rating) {
-        let source = if rating == facts.rating {
-            "IMDb"
+        let (source, name) = if rating == facts.rating {
+            ("IMDb", "imdb")
         } else {
-            "★"
+            ("★", "mdblist")
         };
-        let galley = painter.layout_no_wrap(
-            format!("{source} {value:.1}"),
-            FontId::proportional(size),
-            Color32::WHITE,
-        );
+        let logo = rating_logo(painter.ctx(), name);
+        let text = match logo {
+            Some(_) => format!("{value:.1}"),
+            None => format!("{source} {value:.1}"),
+        };
+        let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::WHITE);
+        let logo_width = logo.map_or(0.0, |(_, aspect)| aspect.x * galley.size().y + size * 0.35);
         let (fill, _) = score_colors(value);
         let badge = Rect::from_min_size(
             rect.left_top() + Vec2::splat(inset),
-            galley.size() + Vec2::new(size * 0.9, size * 0.5),
+            galley.size() + Vec2::new(size * 0.9 + logo_width, size * 0.5),
         );
         painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
         painter.rect_stroke(badge, 3.0, Stroke::new(1.0, fill), egui::StrokeKind::Inside);
-        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        let height = galley.size().y;
+        draw_logo(&painter, logo, Pos2::new(badge.left() + size * 0.45, badge.center().y), height);
+        painter.galley(
+            badge.center() - galley.size() * 0.5 + Vec2::new(logo_width * 0.5, 0.0),
+            galley,
+            Color32::WHITE,
+        );
     }
     if overlays.quality {
         let quality = card

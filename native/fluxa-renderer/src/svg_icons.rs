@@ -150,6 +150,26 @@ pub const ICONS: &[(&str, &str)] = &[
     ),
 ];
 
+pub const LOGO_SIZE: u32 = 96;
+
+pub const LOGOS: &[(&str, &str)] = &[
+    ("anilist", include_str!("../assets/logos/anilist.svg")),
+    ("imdb", include_str!("../assets/logos/imdb.svg")),
+    ("letterboxd", include_str!("../assets/logos/letterboxd.svg")),
+    ("mal", include_str!("../assets/logos/mal.svg")),
+    ("mdblist", include_str!("../assets/logos/mdblist.svg")),
+    ("metacritic", include_str!("../assets/logos/metacritic.svg")),
+    ("rt-popcorn-full", include_str!("../assets/logos/rt-popcorn-full.svg")),
+    ("rt-popcorn-spilled", include_str!("../assets/logos/rt-popcorn-spilled.svg")),
+    ("rt-tomato-empty", include_str!("../assets/logos/rt-tomato-empty.svg")),
+    ("rt-tomato-fresh", include_str!("../assets/logos/rt-tomato-fresh.svg")),
+    ("rt-tomato-rotten", include_str!("../assets/logos/rt-tomato-rotten.svg")),
+    ("simkl", include_str!("../assets/logos/simkl.svg")),
+    ("stremio", include_str!("../assets/logos/stremio.svg")),
+    ("tmdb", include_str!("../assets/logos/tmdb.svg")),
+    ("trakt", include_str!("../assets/logos/trakt.svg")),
+];
+
 pub fn source(name: &str) -> Option<&'static str> {
     ICONS
         .iter()
@@ -178,11 +198,11 @@ pub fn rasterize_svg(source: &[u8], max_side: u32) -> Result<image::RgbaImage, S
 
 #[cfg(test)]
 mod tests {
-    use super::{ICONS, rasterize_svg};
+    use super::{ICONS, LOGOS, rasterize_svg};
 
     #[test]
     fn all_shared_lucide_svg_icons_rasterize() {
-        for (name, source) in ICONS {
+        for (name, source) in ICONS.iter().chain(LOGOS) {
             let image = rasterize_svg(source.as_bytes(), 32)
                 .unwrap_or_else(|error| panic!("{name} SVG should rasterize: {error}"));
             assert!(
