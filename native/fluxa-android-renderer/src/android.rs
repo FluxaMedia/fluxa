@@ -305,6 +305,15 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedN
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_isPlayingNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jboolean {
+    host(handle).is_some_and(|host| host.is_playing()) as jni::sys::jboolean
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusNodeNative(
     _env: JNIEnv<'_>,
     _class: JClass<'_>,

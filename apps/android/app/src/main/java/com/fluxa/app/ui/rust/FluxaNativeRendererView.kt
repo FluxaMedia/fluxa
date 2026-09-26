@@ -497,6 +497,12 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         return Rect(x.toInt(), y.toInt(), (x + cardWidth).toInt(), (y + cardHeight).toInt())
     }
 
+    fun closePlayer(): Boolean {
+        if (nativeHandle == 0L || !NativeRenderer.isPlayingNative(nativeHandle)) return false
+        NativeRenderer.keyDownNative(nativeHandle, KeyEvent.KEYCODE_BACK, 0)
+        return true
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (nativeHandle != 0L && NativeRenderer.isNavigationKey(keyCode)) {
             NativeRenderer.keyDownNative(nativeHandle, keyCode, if (event.isShiftPressed) 1 else 0)
@@ -559,6 +565,7 @@ private object NativeRenderer {
     @JvmStatic external fun surfaceDestroyedNative(handle: Long)
     @JvmStatic external fun renderNative(handle: Long)
     @JvmStatic external fun pollActionsNative(handle: Long): String
+    @JvmStatic external fun isPlayingNative(handle: Long): Boolean
     @JvmStatic external fun pollVideoNative(): String
     @JvmStatic external fun videoStatusNative(
         position: Double,

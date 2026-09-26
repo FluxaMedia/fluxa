@@ -764,7 +764,8 @@ class MainActivity : FragmentActivity() {
                     }
 
                     BackHandler(enabled = playerRequest == null) {
-                        if (canPopSettings) {
+                        if (nativeRendererView.value?.closePlayer() == true) {
+                        } else if (canPopSettings) {
                             settingsPopRequestId++
                         } else if (hasOpenOverlay) {
                             overlayPopRequestId++
