@@ -264,6 +264,7 @@ struct ArtworkLoader {
     latest_keys: HashMap<String, String>,
     texture_last_used: HashMap<String, u64>,
     transparent_pixel_ratio: HashMap<String, f32>,
+    tones: HashMap<String, [[u8; 3]; 2]>,
     access_counter: u64,
     disabled: bool,
 }
@@ -287,6 +288,7 @@ impl ArtworkLoader {
             latest_keys: HashMap::new(),
             texture_last_used: HashMap::new(),
             transparent_pixel_ratio: HashMap::new(),
+            tones: HashMap::new(),
             access_counter: 0,
             disabled: std::env::var_os("FLUXA_NATIVE_DISABLE_ARTWORK").is_some(),
         }
@@ -328,6 +330,7 @@ impl ArtworkLoader {
                 image_pixels.as_raw(),
             );
             let transparent_ratio = prepared.transparent_ratio;
+            let tones = prepared.tones;
             let texture = context.load_texture(
                 format!("fluxa-native-artwork-{key}"),
                 image,
@@ -344,6 +347,7 @@ impl ArtworkLoader {
                 .insert(key.clone(), self.access_counter);
             self.transparent_pixel_ratio
                 .insert(key.clone(), transparent_ratio);
+            self.tones.insert(key.clone(), tones);
             self.textures.insert(key.clone(), texture);
             if let Some(atlas) = animation_atlas.filter(|atlas| atlas.frames.len() > 1) {
                 self.animations.insert(
@@ -368,6 +372,7 @@ impl ArtworkLoader {
                 self.textures.remove(&oldest);
                 self.texture_last_used.remove(&oldest);
                 self.transparent_pixel_ratio.remove(&oldest);
+                self.tones.remove(&oldest);
                 self.animations.remove(&oldest);
                 self.animation_checked.remove(&oldest);
             }
@@ -547,6 +552,14 @@ impl ArtworkLoader {
             .map(|texture| texture.size().map(|side| side as u32))
     }
 
+    fn tones(&self, url: Option<&str>) -> Option<[[u8; 3]; 2]> {
+        let url = fluxa_artwork::normalize_url(url?)?;
+        self.latest_keys
+            .get(&url)
+            .and_then(|key| self.tones.get(key))
+            .copied()
+    }
+
     fn cached_texture(&self, url: Option<&str>) -> Option<egui::TextureId> {
         let url = fluxa_artwork::normalize_url(url?)?;
         self.latest_keys
@@ -695,6 +708,9 @@ impl HomeAssets for HostAssets<'_> {
                 ArtworkPriority::Prefetch => ArtworkFetchPriority::Prefetch,
             },
         );
+    }
+    fn artwork_tones(&self, url: Option<&str>) -> Option<[[u8; 3]; 2]> {
+        self.artwork.tones(url)
     }
     fn texture_size(&self, url: Option<&str>) -> Option<[u32; 2]> {
         self.artwork.size(url)

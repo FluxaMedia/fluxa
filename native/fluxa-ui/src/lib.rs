@@ -1571,6 +1571,9 @@ pub trait HomeAssets {
     fn texture_size(&self, _url: Option<&str>) -> Option<[u32; 2]> {
         None
     }
+    fn artwork_tones(&self, _url: Option<&str>) -> Option<[[u8; 3]; 2]> {
+        None
+    }
     fn animated_texture_for(
         &mut self,
         _url: Option<&str>,

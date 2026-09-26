@@ -109,6 +109,7 @@ pub struct PreparedArtwork {
     pub animation_requested: bool,
     pub animation_started_at: Option<Instant>,
     pub transparent_ratio: f32,
+    pub tones: [[u8; 3]; 2],
 }
 
 #[derive(Clone, Debug)]
@@ -180,14 +181,14 @@ pub struct ArtworkFetcher {
         [u32; 2],
         bool,
         Option<Instant>,
-        Result<(PreparedImage, f32), String>,
+        Result<(PreparedImage, f32, [[u8; 3]; 2]), String>,
     )>,
     receiver: Receiver<(
         String,
         [u32; 2],
         bool,
         Option<Instant>,
-        Result<(PreparedImage, f32), String>,
+        Result<(PreparedImage, f32, [[u8; 3]; 2]), String>,
     )>,
     /// Covers both queued and active work, so repeated immediate-mode draws
     /// coalesce into one fetch instead of filling the queue with duplicates.
@@ -487,7 +488,8 @@ impl ArtworkFetcher {
                         .as_ref()
                         .map_or(&prepared.image, |atlas| &atlas.image),
                 );
-                (prepared, ratio)
+                let tones = edge_tones(&prepared.image);
+                (prepared, ratio, tones)
             });
             let _ = sender.send((
                 source_url,
@@ -517,7 +519,7 @@ impl ArtworkFetcher {
             self.in_flight.remove(&key);
             self.in_flight_prefetch.remove(&key);
             match result {
-                Ok((image, transparent_ratio)) => {
+                Ok((image, transparent_ratio, tones)) => {
                     self.failed.remove(&key);
                     ready.push(PreparedArtwork {
                         source_url,
@@ -525,6 +527,7 @@ impl ArtworkFetcher {
                         image: image.image,
                         animation_atlas: image.animation_atlas,
                         transparent_ratio,
+                        tones,
                         animation_requested: animated,
                         animation_started_at,
                     });
@@ -1172,6 +1175,28 @@ fn atlas_frame(
 fn transparent_ratio(image: &RgbaImage) -> f32 {
     let pixels = image.pixels().len().max(1);
     image.pixels().filter(|pixel| pixel.0[3] < 250).count() as f32 / pixels as f32
+}
+
+fn edge_tones(image: &RgbaImage) -> [[u8; 3]; 2] {
+    let (width, height) = image.dimensions();
+    let average = |rows: std::ops::Range<u32>| {
+        let mut sum = [0u64; 4];
+        for y in rows.step_by(4) {
+            for x in (0..width).step_by(4) {
+                let [r, g, b, a] = image.get_pixel(x, y).0;
+                sum[0] += r as u64;
+                sum[1] += g as u64;
+                sum[2] += b as u64;
+                sum[3] += a as u64;
+            }
+        }
+        let alpha = sum[3].max(1);
+        [0, 1, 2].map(|channel| (sum[channel] * 255 / alpha).min(255) as u8)
+    };
+    [
+        average(0..height / 4),
+        average(height - height * 3 / 10..height),
+    ]
 }
 
 fn pack_animation_atlas(

@@ -712,7 +712,7 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
-const POSTER_SETTINGS: [SettingsRow; 9] = [
+const POSTER_SETTINGS: [SettingsRow; 11] = [
     SettingsRow {
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
@@ -766,6 +766,16 @@ const POSTER_SETTINGS: [SettingsRow; 9] = [
         label: "Library badge",
         key: "posterSavedBadge",
         options: &[],
+    },
+    SettingsRow {
+        label: "Tinted fade",
+        key: "posterFadeTint",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Fade strength",
+        key: "posterFadeStrength",
+        options: &["high", "medium", "low"],
     },
 ];
 const EMPTY_SETTINGS: [SettingsRow; 0] = [];

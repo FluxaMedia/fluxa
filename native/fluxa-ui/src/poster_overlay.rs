@@ -75,7 +75,15 @@ pub struct PosterOverlays {
     pub watched: bool,
     pub progress: bool,
     pub saved: bool,
+    pub fade: Fade,
     pub template: Option<String>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Fade {
+    pub tint: bool,
+    pub reach: f32,
+    pub alpha: f32,
 }
 
 pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
@@ -92,6 +100,8 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterWatchedBadge": true,
                 "posterProgressBar": true,
                 "posterSavedBadge": false,
+                "posterFadeTint": false,
+                "posterFadeStrength": "high",
             })
         })
         .get(key)
@@ -132,6 +142,19 @@ impl super::SettingsModel {
             watched: enabled && self.bool_value("posterWatchedBadge"),
             progress: enabled && self.bool_value("posterProgressBar"),
             saved: enabled && self.bool_value("posterSavedBadge"),
+            fade: Fade {
+                tint: self.bool_value("posterFadeTint"),
+                reach: match self.str_value("posterFadeStrength") {
+                    Some("low") => 0.3,
+                    Some("medium") => 0.4,
+                    _ => 0.5,
+                },
+                alpha: match self.str_value("posterFadeStrength") {
+                    Some("low") => 180.0,
+                    Some("medium") => 210.0,
+                    _ => 225.0,
+                },
+            },
             template,
         })
     }
@@ -433,7 +456,13 @@ fn today() -> i64 {
         .unwrap_or(0)
 }
 
-pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32) {
+pub(super) fn paint(
+    painter: &Painter,
+    rect: Rect,
+    card: &HomeCard,
+    radius: f32,
+    tones: Option<[[u8; 3]; 2]>,
+) {
     if card.row_kind == HomeRowKind::Collection {
         return;
     }
@@ -442,6 +471,14 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     };
     let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
     let facts = &card.overlay;
+    let shade = match tones.filter(|_| overlays.fade.tint) {
+        Some([_, [r, g, b]]) => {
+            let dim = |c: u8| (c as f32 * 0.3) as u8;
+            [dim(r), dim(g), dim(b)]
+        }
+        None => [0, 0, 0],
+    };
+    let vignette = |painter: &Painter| bottom_vignette(painter, rect, radius, overlays.fade, shade);
     let mut stacks = [0.0f32; 4];
     let personal = card
         .id
@@ -488,16 +525,16 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     if facts.rating.is_some() || !facts.caption.is_empty() {
         let reserved = match overlays.rating {
             Some(Placement::Bar) => {
-                bottom_vignette(&painter, rect, radius);
+                vignette(&painter);
                 score_bar(&painter, rect, facts, overlays.scale);
                 0.2
             }
             Some(Placement::Number) => {
-                bottom_vignette(&painter, rect, radius);
+                vignette(&painter);
                 score_number(&painter, rect, facts, overlays.scale)
             }
             Some(Placement::Minimal) => {
-                bottom_vignette(&painter, rect, radius);
+                vignette(&painter);
                 score_minimal(&painter, rect, facts, overlays.scale)
             }
             Some(Placement::Frosted) => {
@@ -644,17 +681,17 @@ fn saved_mark(painter: &Painter, rect: Rect) {
     ));
 }
 
-fn bottom_vignette(painter: &Painter, rect: Rect, radius: f32) {
+fn bottom_vignette(painter: &Painter, rect: Rect, radius: f32, fade: Fade, [r, g, b]: [u8; 3]) {
     const STEPS: usize = 12;
-    let max_alpha = 225.0;
     let solid = radius.min(rect.height() * 0.1);
-    let top = rect.bottom() - rect.height() * 0.5;
+    let top = rect.bottom() - rect.height() * fade.reach;
     let bottom = rect.bottom() - solid;
+    let shade = |alpha: f32| Color32::from_rgba_unmultiplied(r, g, b, alpha as u8);
     let mut mesh = Mesh::default();
     for step in 0..=STEPS {
         let t = step as f32 / STEPS as f32;
         let y = top + (bottom - top) * t;
-        let color = Color32::from_black_alpha((max_alpha * t.powf(1.5)) as u8);
+        let color = shade(fade.alpha * t.powf(1.5));
         mesh.colored_vertex(Pos2::new(rect.left(), y), color);
         mesh.colored_vertex(Pos2::new(rect.right(), y), color);
         if step > 0 {
@@ -664,16 +701,16 @@ fn bottom_vignette(painter: &Painter, rect: Rect, radius: f32) {
         }
     }
     painter.add(Shape::mesh(mesh));
-    let r = solid as u8;
+    let corner = solid as u8;
     painter.rect_filled(
         Rect::from_min_max(Pos2::new(rect.left(), bottom), rect.max),
         egui::CornerRadius {
             nw: 0,
             ne: 0,
-            sw: r,
-            se: r,
+            sw: corner,
+            se: corner,
         },
-        Color32::from_black_alpha(max_alpha as u8),
+        shade(fade.alpha),
     );
 }
 
