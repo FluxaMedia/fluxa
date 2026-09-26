@@ -376,6 +376,27 @@ pub fn draw_discover(
                     );
                 }
                 let grid_top = block_top + block.header;
+                let (columns, x_offset) = if block.title.is_some() {
+                    let row_rect = Rect::from_min_max(
+                        Pos2::new(margin, grid_top),
+                        Pos2::new(results_clip.right(), grid_top + card_height),
+                    );
+                    let scroll_id = Id::new(("discover-section-scroll", block.start, block.title));
+                    let max_offset = (block.len as f32 * (card_width + grid.gap) - grid.gap
+                        - page.width)
+                        .max(0.0);
+                    let mut offset = context
+                        .data(|data| data.get_temp::<f32>(scroll_id))
+                        .unwrap_or(0.0);
+                    if ui.rect_contains_pointer(row_rect) {
+                        let delta = ui.input(|input| input.smooth_scroll_delta.x);
+                        offset = (offset - delta).clamp(0.0, max_offset);
+                    }
+                    context.data_mut(|data| data.insert_temp(scroll_id, offset));
+                    (block.len.max(1), offset)
+                } else {
+                    (columns, 0.0)
+                };
                 let total_rows = block.len.div_ceil(columns);
                 let first_row = ((results_clip.top() - grid_top) / row_stride)
                     .floor()
@@ -396,11 +417,17 @@ pub fn draw_discover(
                         end_index = end_index.max(index + 1);
                         let rect = Rect::from_min_size(
                             Pos2::new(
-                                margin + column as f32 * (card_width + grid.gap),
+                                margin + column as f32 * (card_width + grid.gap) - x_offset,
                                 grid_top + row as f32 * row_stride,
                             ),
                             Vec2::new(card_width, card_height),
                         );
+                        if rect.right() < results_clip.left() {
+                            continue;
+                        }
+                        if rect.left() > results_clip.right() {
+                            break;
+                        }
                         let node_id = NODE_CARD_BASE + index as u64;
                         let response =
                             ui.interact(rect, Id::new(("discover-card", index)), Sense::click());

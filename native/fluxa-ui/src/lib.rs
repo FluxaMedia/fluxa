@@ -3396,7 +3396,7 @@ pub(crate) fn discover_blocks<'a>(
         .sections
         .iter()
         .map(|section| {
-            let height = header + grid.height(section.len);
+            let height = header + grid.card_height;
             let block = DiscoverBlock {
                 title: Some(section.title.as_str()),
                 start: section.start,
