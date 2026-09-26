@@ -712,7 +712,7 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
-const POSTER_SETTINGS: [SettingsRow; 6] = [
+const POSTER_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
@@ -742,6 +742,21 @@ const POSTER_SETTINGS: [SettingsRow; 6] = [
         label: "Badge size",
         key: "posterBadgeSize",
         options: &["default", "small", "large"],
+    },
+    SettingsRow {
+        label: "Watched badge",
+        key: "posterWatchedBadge",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Progress bar",
+        key: "posterProgressBar",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Library badge",
+        key: "posterSavedBadge",
+        options: &[],
     },
 ];
 const EMPTY_SETTINGS: [SettingsRow; 0] = [];

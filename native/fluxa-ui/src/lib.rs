@@ -19,7 +19,7 @@ mod profiles;
 mod settings;
 
 pub use calendar::draw_calendar;
-pub use poster_overlay::{PosterOverlays, set_poster_overlays};
+pub use poster_overlay::{PersonalIndex, PosterOverlays, set_poster_overlays, set_poster_personal};
 
 pub use detail::{detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
@@ -395,6 +395,7 @@ pub struct LibraryModel {
     pub completed: Vec<HomeCard>,
     pub dropped: Vec<HomeCard>,
     pub liked: Vec<HomeCard>,
+    pub personal: std::sync::Arc<PersonalIndex>,
     pub airing: Vec<HomeCard>,
     pub rated: Vec<HomeCard>,
     pub history: Vec<HomeCard>,
@@ -929,6 +930,7 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
             .unwrap_or_default()
     };
     LibraryModel {
+        personal: std::sync::Arc::new(poster_overlay::personal_index(library)),
         language: language.clone(),
         query: String::new(),
         sort_by: "recent".to_owned(),

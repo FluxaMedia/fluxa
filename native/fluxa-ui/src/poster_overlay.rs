@@ -66,6 +66,9 @@ pub struct PosterOverlays {
     pub status: Option<Placement>,
     pub scale: f32,
     pub labels: [String; 4],
+    pub watched: bool,
+    pub progress: bool,
+    pub saved: bool,
     pub template: Option<String>,
 }
 
@@ -80,6 +83,9 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterStatusBadge": true,
                 "posterStatusPosition": "sash",
                 "posterBadgeSize": "default",
+                "posterWatchedBadge": true,
+                "posterProgressBar": true,
+                "posterSavedBadge": false,
             })
         })
         .get(key)
@@ -117,6 +123,9 @@ impl super::SettingsModel {
                 ]
                 .map(|status| localized(status.key(), language))
             },
+            watched: enabled && self.bool_value("posterWatchedBadge"),
+            progress: enabled && self.bool_value("posterProgressBar"),
+            saved: enabled && self.bool_value("posterSavedBadge"),
             template,
         })
     }
@@ -136,6 +145,64 @@ pub fn set_poster_overlays(context: &egui::Context, overlays: Option<PosterOverl
         }
         None => data.remove::<Arc<PosterOverlays>>(overlays_id()),
     });
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Personal {
+    pub watched: bool,
+    pub saved: bool,
+    pub progress: f32,
+}
+
+#[derive(Debug, Default, PartialEq)]
+pub struct PersonalIndex(HashMap<String, Personal>);
+
+pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
+    let mut index = HashMap::<String, Personal>::new();
+    let ids = |key: &str| {
+        library
+            .get(key)
+            .and_then(serde_json::Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|item| item.get("id").and_then(serde_json::Value::as_str))
+            .map(str::to_owned)
+            .collect::<Vec<_>>()
+    };
+    for id in ids("completed") {
+        index.entry(id).or_default().watched = true;
+    }
+    for id in ids("watchlist").into_iter().chain(ids("liked")) {
+        index.entry(id).or_default().saved = true;
+    }
+    if let Some(progress) = library.get("progress").and_then(serde_json::Value::as_object) {
+        for (key, entry) in progress {
+            let offset = entry.get("timeOffset").and_then(number).unwrap_or(0.0);
+            let duration = entry.get("duration").and_then(number).unwrap_or(0.0);
+            if duration <= 0.0 {
+                continue;
+            }
+            let id = entry
+                .pointer("/meta/id")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or(key);
+            index.entry(id.to_owned()).or_default().progress = (offset / duration).clamp(0.0, 1.0) as f32;
+        }
+    }
+    PersonalIndex(index)
+}
+
+pub fn set_poster_personal(context: &egui::Context, index: Arc<PersonalIndex>) {
+    context.data_mut(|data| {
+        let current = data.get_temp::<Arc<PersonalIndex>>(personal_id());
+        if !current.is_some_and(|current| Arc::ptr_eq(&current, &index)) {
+            data.insert_temp(personal_id(), index);
+        }
+    });
+}
+
+fn personal_id() -> Id {
+    Id::new("fluxa-poster-personal")
 }
 
 fn current(context: &egui::Context) -> Option<Arc<PosterOverlays>> {
@@ -366,6 +433,36 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
     let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
     let facts = &card.overlay;
     let mut stacks = [0.0f32; 4];
+    let personal = card
+        .id
+        .as_deref()
+        .zip(painter.ctx().data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id())))
+        .and_then(|(id, index)| index.0.get(id).copied())
+        .unwrap_or_default();
+    if overlays.progress && card.progress <= 0.0 && !personal.watched && (0.02..0.95).contains(&personal.progress) {
+        let height = (rect.height() * 0.018).max(3.0);
+        let track = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
+        painter.rect_filled(track, 0.0, Color32::from_black_alpha(160));
+        painter.rect_filled(
+            Rect::from_min_size(track.min, Vec2::new(track.width() * personal.progress, height)),
+            0.0,
+            Color32::from_gray(235),
+        );
+    }
+    let mark = (rect.width() * 0.13).clamp(14.0, 28.0) * overlays.scale;
+    let inset = (rect.width() * 0.04).max(4.0);
+    let mut corner = Pos2::new(rect.left() + inset, rect.top() + inset);
+    if overlays.watched && personal.watched {
+        watched_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
+        corner.x += mark + 3.0;
+    }
+    if overlays.saved && personal.saved {
+        saved_mark(&painter, Rect::from_min_size(corner, Vec2::splat(mark)));
+        corner.x += mark + 3.0;
+    }
+    if corner.x > rect.left() + inset {
+        stacks[Placement::TopLeft as usize] = mark + 3.0;
+    }
 
     if overlays.rating == Some(Placement::Bar)
         && (facts.rating.is_some() || !facts.caption.is_empty())
@@ -468,6 +565,30 @@ pub(super) fn paint(painter: &Painter, rect: Rect, card: &HomeCard, radius: f32)
         );
         painter.galley(badge.min + pad, galley, Color32::WHITE);
     }
+}
+
+fn watched_mark(painter: &Painter, rect: Rect) {
+    painter.circle_filled(rect.center(), rect.width() * 0.5, Color32::from_black_alpha(190));
+    let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
+    painter.line(
+        vec![at(0.28, 0.52), at(0.44, 0.67), at(0.73, 0.36)],
+        Stroke::new(rect.width() * 0.11, Color32::WHITE),
+    );
+}
+
+fn saved_mark(painter: &Painter, rect: Rect) {
+    painter.circle_filled(rect.center(), rect.width() * 0.5, Color32::from_black_alpha(190));
+    let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
+    painter.add(Shape::convex_polygon(
+        vec![at(0.34, 0.26), at(0.66, 0.26), at(0.66, 0.74), at(0.5, 0.62)],
+        Color32::WHITE,
+        Stroke::NONE,
+    ));
+    painter.add(Shape::convex_polygon(
+        vec![at(0.34, 0.26), at(0.5, 0.62), at(0.34, 0.74)],
+        Color32::WHITE,
+        Stroke::NONE,
+    ));
 }
 
 fn bottom_vignette(painter: &Painter, rect: Rect, radius: f32) {
@@ -688,4 +809,17 @@ mod tests {
         assert_eq!(status(&item, today), Some(PosterStatus::Upcoming));
         assert_eq!(rating(&item), Some(7.4));
     }
+
+    #[test]
+    fn progress_is_keyed_by_meta_id_and_completed_counts_as_watched() {
+        let index = personal_index(&serde_json::json!({
+            "completed": [{"id": "tt1"}],
+            "watchlist": [{"id": "tt2"}],
+            "progress": {"series:tt2": {"timeOffset": 30, "duration": 120, "meta": {"id": "tt2"}}},
+        }));
+        assert!(index.0["tt1"].watched);
+        assert!(index.0["tt2"].saved);
+        assert_eq!(index.0["tt2"].progress, 0.25);
+    }
+
 }
