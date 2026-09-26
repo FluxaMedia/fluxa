@@ -712,7 +712,7 @@ const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
-const POSTER_SETTINGS: [SettingsRow; 15] = [
+const POSTER_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "Poster overlays",
         key: "posterOverlaysEnabled",
@@ -795,6 +795,11 @@ const POSTER_SETTINGS: [SettingsRow; 15] = [
     SettingsRow {
         label: "Quality badges",
         key: "posterQualityBadges",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Award sash",
+        key: "posterAwardBadge",
         options: &[],
     },
 ];

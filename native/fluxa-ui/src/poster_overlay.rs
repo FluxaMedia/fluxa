@@ -82,8 +82,10 @@ pub struct PosterOverlays {
     pub trending: bool,
     pub quality: bool,
     pub age: bool,
+    pub awards: bool,
     pub mdblist_score: bool,
     pub trending_label: String,
+    pub award_labels: [String; 2],
     pub template: Option<String>,
 }
 
@@ -113,6 +115,7 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterTrendingBadge": true,
                 "posterQualityBadges": true,
                 "posterAgeRating": true,
+                "posterAwardBadge": true,
                 "posterRatingSource": "imdb",
             })
         })
@@ -157,11 +160,14 @@ impl super::SettingsModel {
             trending: enabled && self.bool_value("posterTrendingBadge"),
             quality: enabled && self.bool_value("posterQualityBadges"),
             age: enabled && self.bool_value("posterAgeRating"),
+            awards: enabled && self.bool_value("posterAwardBadge"),
             mdblist_score: self.str_value("posterRatingSource") == Some("mdblist"),
             trending_label: localized(
                 "poster.badge.trending",
                 self.str_value("language").unwrap_or("en"),
             ),
+            award_labels: ["poster.badge.oscar_winner", "poster.badge.oscar_nominee"]
+                .map(|key| localized(key, self.str_value("language").unwrap_or("en"))),
             fade: Fade {
                 tint: self.bool_value("posterFadeTint"),
                 reach: match self.str_value("posterFadeStrength") {
@@ -466,6 +472,7 @@ fn title_key(title: &str, year: &str) -> String {
 struct Graded {
     score: Option<f32>,
     certification: Option<String>,
+    oscar: Option<bool>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -521,11 +528,26 @@ impl Enrichment {
                 .map(str::trim)
                 .filter(|value| !value.is_empty())
                 .map(str::to_owned);
+            let keywords: Vec<&str> = item
+                .get("keywords")
+                .and_then(serde_json::Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(|keyword| keyword.get("name")?.as_str())
+                .collect();
+            let oscar = if keywords.contains(&"best-picture-winner") {
+                Some(true)
+            } else if keywords.contains(&"best-picture-nominated") {
+                Some(false)
+            } else {
+                None
+            };
             self.graded.insert(
                 imdb.to_owned(),
                 Graded {
                     score,
                     certification,
+                    oscar,
                 },
             );
         }
@@ -791,6 +813,29 @@ pub(super) fn paint(
                 Color32::from_rgb(235, 90, 90),
             ),
             &label,
+        );
+        stacks[Placement::TopRight as usize] = rect.width() * 0.34;
+    } else if let Some(won) = enrichment
+        .as_deref()
+        .and_then(|enrichment| enrichment.graded(facts)?.oscar)
+        .filter(|_| overlays.awards)
+    {
+        let colors = if won {
+            (
+                Color32::from_rgb(150, 115, 30),
+                Color32::from_rgb(235, 200, 90),
+            )
+        } else {
+            (
+                Color32::from_rgb(70, 70, 75),
+                Color32::from_rgb(190, 190, 195),
+            )
+        };
+        sash(
+            &painter,
+            rect,
+            colors,
+            &overlays.award_labels[usize::from(!won)],
         );
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     }
@@ -1304,6 +1349,17 @@ mod tests {
         assert!(index.0["tt1"].watched);
         assert!(index.0["tt2"].saved);
         assert_eq!(index.0["tt2"].progress, 0.25);
+    }
+
+    #[test]
+    fn best_picture_keywords_mark_oscar_win_over_nomination() {
+        let mut enrichment = Enrichment::default();
+        enrichment.add_mdblist(&[
+            serde_json::json!({"ids": {"imdb": "tt1"}, "keywords": [{"name": "best-picture-nominated"}, {"name": "best-picture-winner"}]}),
+            serde_json::json!({"ids": {"imdb": "tt2"}, "keywords": [{"name": "best-picture-nominated"}]}),
+        ]);
+        assert_eq!(enrichment.graded["tt1"].oscar, Some(true));
+        assert_eq!(enrichment.graded["tt2"].oscar, Some(false));
     }
 
     #[test]
