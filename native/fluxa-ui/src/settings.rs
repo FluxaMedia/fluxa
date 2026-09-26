@@ -745,6 +745,14 @@ impl SettingsModel {
             .unwrap_or(1.0)
     }
 
+    pub fn number_value(&self, key: &str) -> Option<f64> {
+        self.value(key).and_then(|value| {
+            value
+                .as_f64()
+                .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+        })
+    }
+
     pub fn bool_value(&self, key: &str) -> bool {
         self.value(key)
             .and_then(serde_json::Value::as_bool)

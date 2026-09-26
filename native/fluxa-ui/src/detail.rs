@@ -177,6 +177,9 @@ pub fn draw_detail(
             Color32::from_white_alpha((225.0 * fade) as u8),
         );
     }
+    if let Some(texture) = detail.trailer {
+        crate::paint_trailer(context, &painter, texture, hero, Some(detail.id.as_str()), 225);
+    }
     let background = metrics.background;
     if compact {
         paint_vertical_gradient(

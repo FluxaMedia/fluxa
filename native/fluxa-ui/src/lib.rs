@@ -214,6 +214,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub row_scroll_offsets: Vec<f32>,
     #[serde(skip)]
+    pub trailer: Option<HeroTrailer>,
+    #[serde(skip)]
     artwork_signature: OnceLock<u64>,
 }
 
@@ -231,6 +233,13 @@ pub struct HomeHero {
     pub item_id: Option<String>,
     #[serde(rename = "itemType")]
     pub item_type: Option<String>,
+    pub trailers: Vec<String>,
+}
+
+#[derive(Clone, Debug)]
+pub struct HeroTrailer {
+    pub item_id: String,
+    pub texture: Option<egui::TextureId>,
 }
 
 impl Default for HomeModel {
@@ -281,6 +290,7 @@ impl HomeModel {
             form_factor: UiFormFactorJson::Desktop,
             scroll_offset: 0.0,
             row_scroll_offsets: Vec::new(),
+            trailer: None,
             artwork_signature: OnceLock::new(),
         }
     }
@@ -803,7 +813,21 @@ fn core_home_hero(item: &serde_json::Value, language: &str) -> HomeHero {
         logo_url: first_value_string(item, &["logo", "logoUrl", "clearLogo"]),
         item_id: value_string(item, "id"),
         item_type: value_string(item, "type"),
+        trailers: trailer_urls(item),
     }
+}
+
+fn trailer_urls(item: &serde_json::Value) -> Vec<String> {
+    item.get("trailers")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| first_value_string(item, &["url", "link"]))
+                .take(6)
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -834,7 +858,11 @@ fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usize {
     let mut state = context
         .data_mut(|data| data.get_temp::<HeroCarouselState>(id))
         .unwrap_or_default();
-    if state.next_at <= 0.0 {
+    let holding = home.trailer.as_ref().is_some_and(|trailer| {
+        home.hero_slides.get(state.index % count).and_then(|slide| slide.item_id.as_deref())
+            == Some(trailer.item_id.as_str())
+    });
+    if state.next_at <= 0.0 || holding {
         state.next_at = now + 6.5;
     }
     if now >= state.next_at {
@@ -2257,6 +2285,7 @@ pub struct DetailModel {
     pub ratings: Vec<(String, String)>,
     pub genres: Vec<String>,
     pub trailers: Vec<String>,
+    pub trailer: Option<egui::TextureId>,
     pub error: Option<String>,
     pub streams_error: Option<String>,
     pub similar: Vec<HomeCard>,
@@ -2519,17 +2548,8 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
                     .collect()
             })
             .unwrap_or_default(),
-        trailers: detail
-            .get("trailers")
-            .and_then(serde_json::Value::as_array)
-            .map(|items| {
-                items
-                    .iter()
-                    .filter_map(|item| first_value_string(item, &["url", "link"]))
-                    .take(6)
-                    .collect()
-            })
-            .unwrap_or_default(),
+        trailers: trailer_urls(detail),
+        trailer: None,
         error: detail
             .get("error")
             .and_then(serde_json::Value::as_str)
@@ -3559,6 +3579,7 @@ fn draw_home_with_options(
         logo_url: home.logo_url.clone(),
         item_id: home.item_id.clone(),
         item_type: home.item_type.clone(),
+        trailers: Vec::new(),
     };
     let mut hero = home
         .hero_slides
@@ -3693,6 +3714,14 @@ fn draw_home_with_options(
                 uv,
                 Color32::from_white_alpha((210.0 * alpha) as u8),
             );
+        }
+        if let Some(texture) = home
+            .trailer
+            .as_ref()
+            .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
+            .and_then(|trailer| trailer.texture)
+        {
+            paint_trailer(context, &painter, texture, hero_visual_rect, hero.item_id.as_deref(), 210);
         }
         if compact {
             let gradient_rect = Rect::from_min_max(
@@ -4518,6 +4547,23 @@ fn paint_circle_texture(painter: &egui::Painter, texture: TextureId, center: Pos
         mesh.indices.extend([0, current, next]);
     }
     painter.add(egui::Shape::mesh(mesh));
+}
+
+pub(crate) fn paint_trailer(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    texture: egui::TextureId,
+    rect: Rect,
+    key: Option<&str>,
+    alpha: u8,
+) {
+    let fade = context.animate_bool_with_time(Id::new(("fluxa-trailer-fade", key, texture)), true, 0.6);
+    painter.with_clip_rect(rect).image(
+        texture,
+        rect,
+        cover_uv([1920, 1080], rect),
+        Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
+    );
 }
 
 fn cover_uv(size: [u32; 2], destination: Rect) -> Rect {
