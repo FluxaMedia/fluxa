@@ -569,13 +569,13 @@ pub struct HomeCard {
     pub raw: serde_json::Value,
     #[serde(skip)]
     pub row_kind: HomeRowKind,
+    #[serde(skip)]
+    pub overlay: poster_overlay::PosterFacts,
 }
 
 impl HomeModel {
     pub fn content_rows(&self) -> Vec<(&str, &[HomeCard])> {
         self.content_rows_with_kind()
-    #[serde(skip)]
-    pub overlay: poster_overlay::PosterFacts,
             .into_iter()
             .map(|(title, cards, _)| (title, cards))
             .collect()
@@ -1425,6 +1425,11 @@ fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKind) -> HomeC
             .get("focusGifEnabled")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(true),
+        overlay: if matches!(kind, HomeRowKind::Poster) {
+            poster_overlay::poster_facts(item)
+        } else {
+            Default::default()
+        },
         raw: item.clone(),
         row_kind: kind,
     }
@@ -1461,11 +1466,6 @@ fn hero_meta_line(value: &serde_json::Value, language: &str) -> String {
         .map(|year| year.to_string())
         .or_else(|| value_string(value, "year"));
     let runtime = value_string(value, "runtime").or_else(|| {
-        overlay: if matches!(kind, HomeRowKind::Poster) {
-            poster_overlay::poster_facts(item)
-        } else {
-            Default::default()
-        },
         value
             .get("duration")
             .and_then(serde_json::Value::as_i64)
