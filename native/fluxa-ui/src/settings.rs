@@ -660,8 +660,10 @@ pub(super) fn settings_card_height(
     } else {
         metrics.settings_extended_line_spacing
     };
+    if section.title == "Account" {
+        return account_height(metrics);
+    }
     let extended_lines = match section.title {
-        "Account" => 9,
         "Device" => 6,
         "Shortcuts" => 10,
         "Controller" => 8,
@@ -1042,161 +1044,7 @@ fn draw_settings_extended_section(
     };
     let muted = Color32::from_white_alpha(165);
     match section {
-        "Account" => {
-            settings_panel_heading(
-                &painter,
-                rect,
-                y,
-                &localized(
-                    &format!("native.settings.section.{}", section.to_lowercase()),
-                    language,
-                )
-                .to_uppercase(),
-                metrics,
-            );
-            y += line_gap;
-            let profile_name = settings
-                .profile
-                .get("name")
-                .or_else(|| settings.profile.get("displayName"))
-                .and_then(serde_json::Value::as_str)
-                .map(ToOwned::to_owned)
-                .unwrap_or_else(|| localized("native.settings.account_empty", language));
-            settings_panel_line(
-                &painter,
-                rect,
-                y,
-                &format!("Profile  ·  {profile_name}"),
-                Color32::WHITE,
-                metrics,
-            );
-            y += line_gap;
-            for (label, key) in [
-                ("Stremio", "stremioAuthKey"),
-                ("Nuvio", "nuvioAccessToken"),
-                ("Trakt", "traktAccessToken"),
-                ("Simkl", "simklAccessToken"),
-                ("AniList", "anilistAccessToken"),
-            ] {
-                let connected = settings
-                    .profile
-                    .get(key)
-                    .and_then(serde_json::Value::as_str)
-                    .is_some_and(|v| !v.is_empty());
-                let status = if connected {
-                    "native.settings.connected"
-                } else {
-                    "native.settings.not_connected"
-                };
-                settings_panel_line(
-                    &painter,
-                    rect,
-                    y,
-                    &format!("{label}  ·  {}", localized(status, language)),
-                    muted,
-                    metrics,
-                );
-                y += line_gap;
-            }
-            for (label, key) in [
-                ("Library source", "integrationLibrarySource"),
-                ("Continue watching source", "continueWatchingSource"),
-            ] {
-                settings_panel_line(&painter, rect, y + line_gap * 0.5, label, muted, metrics);
-                let mut choices = vec!["local"];
-                for (source, token_key) in [
-                    ("nuvio", "nuvioAccessToken"),
-                    ("trakt", "traktAccessToken"),
-                    ("simkl", "simklAccessToken"),
-                    ("anilist", "anilistAccessToken"),
-                    ("stremio", "stremioAuthKey"),
-                ] {
-                    if settings
-                        .profile
-                        .get(token_key)
-                        .and_then(serde_json::Value::as_str)
-                        .is_some_and(|token| !token.is_empty())
-                    {
-                        choices.push(source);
-                    }
-                }
-                let mut selected = settings
-                    .value(key)
-                    .and_then(serde_json::Value::as_str)
-                    .unwrap_or("local")
-                    .to_owned();
-                let value_rect = Rect::from_min_size(
-                    Pos2::new(right - (right - left).min(240.0).max(140.0), y + 2.0),
-                    Vec2::new(
-                        (right - left).min(240.0).max(140.0),
-                        (line_gap - 4.0).min(metrics.screen_control_height),
-                    ),
-                );
-                egui::Area::new(Id::new(("fluxa-settings-account-choice", key)))
-                    .fixed_pos(value_rect.min)
-                    .order(egui::Order::Foreground)
-                    .show(context, |ui| {
-                        ui.set_min_size(value_rect.size());
-                        ui.set_max_size(value_rect.size());
-                        style_settings_dropdown(ui, metrics);
-                        ui.spacing_mut().button_padding = Vec2::new(12.0, 7.0);
-                        let chevron = assets.icon("ChevronDown");
-                        let response = components::dropdown_frame()
-                            .show(ui, |ui| {
-                                egui::ComboBox::from_id_salt(("settings-account", key))
-                                    .width(value_rect.width())
-                                    .height(240.0)
-                                    .popup_style(components::dropdown_popup_style(metrics))
-                                    .selected_text(
-                                        RichText::new(selected.replace('_', " "))
-                                            .color(Color32::from_rgb(242, 243, 246))
-                                            .size(metrics.settings_row_value_size_desktop)
-                                            .strong(),
-                                    )
-                                    .icon(move |ui, rect, visuals, _| {
-                                        if let Some(icon) = chevron {
-                                            ui.painter().image(
-                                                icon,
-                                                rect.shrink(2.0),
-                                                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                                visuals.fg_stroke.color,
-                                            );
-                                        }
-                                    })
-                                    .show_ui(ui, |ui| {
-                                        for choice in choices {
-                                            ui.selectable_value(
-                                                &mut selected,
-                                                choice.to_owned(),
-                                                localized(
-                                                    &format!("native.settings.option.{choice}"),
-                                                    language,
-                                                ),
-                                            );
-                                        }
-                                    })
-                            })
-                            .inner;
-                        layout.focusable.push((
-                            NODE_SETTINGS_ROW_BASE
-                                + 10_000
-                                + if key == "integrationLibrarySource" {
-                                    0
-                                } else {
-                                    1
-                                },
-                            response.response.rect,
-                        ));
-                    });
-                if settings.value(key).and_then(serde_json::Value::as_str)
-                    != Some(selected.as_str())
-                {
-                    layout.setting_change =
-                        Some((key.to_owned(), serde_json::Value::String(selected)));
-                }
-                y += line_gap;
-            }
-        }
+        "Account" => draw_account(context, settings, assets, language, rect, metrics, layout),
         "Device" => {
             settings_panel_heading(
                 &painter,
@@ -1658,7 +1506,7 @@ pub fn draw_settings(
     let top = if compact {
         metrics.detail_header_top_mobile
     } else if desktop {
-        margin
+        margin.max(64.0)
     } else {
         metrics.content_header_top
     };
@@ -1905,43 +1753,6 @@ pub fn draw_settings(
                 layout.activated = Some(node);
             }
         }
-        if desktop {
-            let rect = Rect::from_min_size(
-                Pos2::new(
-                    margin + metrics.control_gap,
-                    section_top
-                        + nav_top_inset
-                        + SETTINGS_SECTIONS.len() as f32 * (nav_item_height + nav_item_gap)
-                        + nav_item_gap * 2.0
-                        - scroll_y,
-                ),
-                Vec2::new(nav_width - metrics.control_gap * 2.0, nav_item_height),
-            );
-            layout.focusable.push((NODE_SETTINGS_SWITCH_PROFILE, rect));
-            let switch = egui::Area::new(Id::new("fluxa-settings-switch-profile"))
-                .fixed_pos(rect.min)
-                .show(context, |ui| {
-                    let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
-                    if response.hovered() {
-                        ui.painter().rect_filled(
-                            item_rect,
-                            metrics.screen_control_radius,
-                            Color32::from_white_alpha(8),
-                        );
-                    }
-                    ui.painter().text(
-                        item_rect.left_center() + Vec2::new(42.0, 0.0),
-                        Align2::LEFT_CENTER,
-                        localized("settings.switch_profiles", language),
-                        FontId::proportional(metrics.nav_label_size + 2.0),
-                        Color32::from_white_alpha(185),
-                    );
-                    response.clicked()
-                });
-            if switch.inner {
-                layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
-            }
-        }
     }
     let nav_bottom = if compact {
         section_top + metrics.screen_control_height + metrics.section_gap
@@ -1986,7 +1797,7 @@ pub fn draw_settings(
             );
             heading_y = group_rect.bottom() + APPEARANCE_GROUP_GAP;
         }
-    } else {
+    } else if section.title != "Account" {
         painter.rect_filled(
             rect,
             metrics.card_radius,
@@ -2367,4 +2178,339 @@ fn accent_needs_dark_foreground(color: Color32) -> bool {
         }
     };
     0.2126 * linear(color.r()) + 0.7152 * linear(color.g()) + 0.0722 * linear(color.b()) > 0.55
+}
+
+const ACCOUNT_PROFILE_CARD_HEIGHT: f32 = 92.0;
+const ACCOUNT_SERVICES: [(&str, &str); 5] = [
+    ("Stremio", "stremioAuthKey"),
+    ("Nuvio", "nuvioAccessToken"),
+    ("Trakt", "traktAccessToken"),
+    ("Simkl", "simklAccessToken"),
+    ("AniList", "anilistAccessToken"),
+];
+const ACCOUNT_SOURCES: [(&str, &str); 2] = [
+    ("settings.integration_library_source", "integrationLibrarySource"),
+    ("settings.continue_watching_source", "continueWatchingSource"),
+];
+
+fn account_height(metrics: UiMetrics) -> f32 {
+    APPEARANCE_PAGE_HEADER_HEIGHT
+        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
+        + ACCOUNT_PROFILE_CARD_HEIGHT
+        + settings_group_card_height(ACCOUNT_SERVICES.len(), metrics)
+        + settings_group_card_height(ACCOUNT_SOURCES.len(), metrics)
+}
+
+fn account_group(painter: &egui::Painter, rect: Rect, top: f32, height: f32, title: &str) -> Rect {
+    painter.text(
+        Pos2::new(rect.left() + 8.0, top),
+        Align2::LEFT_TOP,
+        title.to_uppercase(),
+        FontId::proportional(13.0),
+        Color32::from_white_alpha(145),
+    );
+    let card = Rect::from_min_size(
+        Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
+        Vec2::new(rect.width(), height),
+    );
+    painter.rect_filled(card, 12.0, Color32::from_rgb(19, 19, 19));
+    painter.rect_stroke(
+        card,
+        12.0,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        egui::StrokeKind::Inside,
+    );
+    card
+}
+
+fn account_row(card: Rect, index: usize, metrics: UiMetrics) -> Rect {
+    Rect::from_min_size(
+        card.left_top()
+            + Vec2::new(
+                metrics.settings_row_inset,
+                6.0 + index as f32 * metrics.settings_row_spacing,
+            ),
+        Vec2::new(
+            card.width() - metrics.settings_row_inset * 2.0,
+            metrics.settings_row_height,
+        ),
+    )
+}
+
+fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMetrics) {
+    let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
+    painter.line_segment(
+        [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
+        egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+    );
+}
+
+fn draw_account(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    assets: &impl HomeAssets,
+    language: &str,
+    rect: Rect,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let label_size = metrics.settings_row_label_size_desktop;
+    let connected = |key: &str| {
+        settings
+            .profile
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .is_some_and(|token| !token.is_empty())
+    };
+
+    let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        ACCOUNT_PROFILE_CARD_HEIGHT,
+        &localized("native.settings.group.account_profile", language),
+    );
+    let name = settings
+        .profile
+        .get("name")
+        .or_else(|| settings.profile.get("displayName"))
+        .and_then(serde_json::Value::as_str)
+        .map(ToOwned::to_owned)
+        .unwrap_or_else(|| localized("native.settings.account_empty", language));
+    let avatar = Rect::from_center_size(
+        Pos2::new(card.left() + 22.0 + 26.0, card.center().y),
+        Vec2::splat(52.0),
+    );
+    let avatar_url = settings
+        .profile
+        .get("avatarUrl")
+        .and_then(serde_json::Value::as_str)
+        .filter(|url| !url.starts_with("data:"));
+    match assets.cached_texture(avatar_url) {
+        Some(texture) => {
+            painter.add(
+                egui::epaint::RectShape::filled(avatar, 26.0, Color32::WHITE)
+                    .with_texture(texture, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))),
+            );
+        }
+        None => {
+            painter.circle_filled(avatar.center(), 26.0, Color32::from_white_alpha(22));
+            let initials = name
+                .split_whitespace()
+                .take(2)
+                .filter_map(|word| word.chars().next())
+                .flat_map(char::to_uppercase)
+                .collect::<String>();
+            painter.text(
+                avatar.center(),
+                Align2::CENTER_CENTER,
+                initials,
+                FontId::proportional(20.0),
+                Color32::WHITE,
+            );
+        }
+    }
+    painter.text(
+        Pos2::new(avatar.right() + 16.0, card.center().y),
+        Align2::LEFT_CENTER,
+        &name,
+        FontId::proportional(label_size + 4.0),
+        Color32::WHITE,
+    );
+    let switch_label = localized("settings.switch_profiles", language);
+    let switch_width = painter
+        .layout_no_wrap(switch_label.clone(), FontId::proportional(label_size), Color32::WHITE)
+        .size()
+        .x
+        + 32.0;
+    let switch_rect = Rect::from_center_size(
+        Pos2::new(card.right() - 20.0 - switch_width * 0.5, card.center().y),
+        Vec2::new(switch_width, 36.0),
+    );
+    layout.focusable.push((NODE_SETTINGS_SWITCH_PROFILE, switch_rect));
+    egui::Area::new(Id::new("fluxa-settings-account-switch"))
+        .fixed_pos(switch_rect.min)
+        .order(egui::Order::Foreground)
+        .show(context, |ui| {
+            let (area, response) = ui.allocate_exact_size(switch_rect.size(), Sense::click());
+            ui.painter().rect_filled(
+                area,
+                18.0,
+                Color32::from_white_alpha(if response.hovered() { 34 } else { 20 }),
+            );
+            ui.painter().text(
+                area.center(),
+                Align2::CENTER_CENTER,
+                &switch_label,
+                FontId::proportional(label_size),
+                Color32::WHITE,
+            );
+            if response.clicked() {
+                layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
+            }
+        });
+
+    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        settings_group_card_height(ACCOUNT_SERVICES.len(), metrics),
+        &localized("native.settings.group.account_services", language),
+    );
+    for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
+        let row = account_row(card, index, metrics);
+        if index > 0 {
+            account_divider(&painter, row, metrics);
+        }
+        painter.text(
+            row.left_center() + Vec2::new(4.0, 0.0),
+            Align2::LEFT_CENTER,
+            *label,
+            FontId::proportional(label_size),
+            Color32::from_white_alpha(210),
+        );
+        let on = connected(key);
+        let status = localized(
+            if on {
+                "native.settings.connected"
+            } else {
+                "native.settings.not_connected"
+            },
+            language,
+        );
+        let font = FontId::proportional(metrics.screen_card_subtitle_size);
+        let width = painter
+            .layout_no_wrap(status.clone(), font.clone(), Color32::WHITE)
+            .size()
+            .x;
+        let pill = Rect::from_center_size(
+            row.right_center() - Vec2::new(width * 0.5 + 24.0, 0.0),
+            Vec2::new(width + 40.0, 28.0),
+        );
+        painter.rect_stroke(
+            pill,
+            14.0,
+            egui::Stroke::new(1.0, Color32::from_white_alpha(if on { 40 } else { 16 })),
+            egui::StrokeKind::Inside,
+        );
+        painter.circle_filled(
+            Pos2::new(pill.left() + 14.0, pill.center().y),
+            3.5,
+            if on {
+                Color32::WHITE
+            } else {
+                Color32::from_white_alpha(60)
+            },
+        );
+        painter.text(
+            Pos2::new(pill.left() + 24.0, pill.center().y),
+            Align2::LEFT_CENTER,
+            status,
+            font,
+            Color32::from_white_alpha(if on { 230 } else { 130 }),
+        );
+    }
+
+    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        settings_group_card_height(ACCOUNT_SOURCES.len(), metrics),
+        &localized("native.settings.group.account_sync", language),
+    );
+    for (index, (label_key, key)) in ACCOUNT_SOURCES.iter().enumerate() {
+        let row = account_row(card, index, metrics);
+        if index > 0 {
+            account_divider(&painter, row, metrics);
+        }
+        painter.text(
+            row.left_center() + Vec2::new(4.0, 0.0),
+            Align2::LEFT_CENTER,
+            localized(label_key, language),
+            FontId::proportional(label_size),
+            Color32::from_white_alpha(210),
+        );
+        let mut choices = vec!["local"];
+        for (source, token_key) in [
+            ("nuvio", "nuvioAccessToken"),
+            ("trakt", "traktAccessToken"),
+            ("simkl", "simklAccessToken"),
+            ("anilist", "anilistAccessToken"),
+            ("stremio", "stremioAuthKey"),
+        ] {
+            if connected(token_key) {
+                choices.push(source);
+            }
+        }
+        let current = settings
+            .value(key)
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("local")
+            .to_owned();
+        let mut selected = current.clone();
+        let value_rect = Rect::from_center_size(
+            row.right_center() - Vec2::new(90.0, 0.0),
+            Vec2::new(176.0, metrics.screen_control_height.min(row.height() - 4.0)),
+        );
+        egui::Area::new(Id::new(("fluxa-settings-account-choice", *key)))
+            .fixed_pos(value_rect.min)
+            .order(egui::Order::Foreground)
+            .show(context, |ui| {
+                ui.set_min_size(value_rect.size());
+                ui.set_max_size(value_rect.size());
+                style_settings_dropdown(ui, metrics);
+                ui.spacing_mut().button_padding = Vec2::new(12.0, 7.0);
+                let chevron = assets.icon("ChevronDown");
+                let response = components::dropdown_frame()
+                    .show(ui, |ui| {
+                        egui::ComboBox::from_id_salt(("settings-account", *key))
+                            .width(value_rect.width())
+                            .height(240.0)
+                            .popup_style(components::dropdown_popup_style(metrics))
+                            .selected_text(
+                                RichText::new(localized(
+                                    &format!("native.settings.option.{current}"),
+                                    language,
+                                ))
+                                .color(Color32::from_rgb(242, 243, 246))
+                                .size(metrics.settings_row_value_size_desktop)
+                                .strong(),
+                            )
+                            .icon(move |ui, rect, visuals, _| {
+                                if let Some(icon) = chevron {
+                                    ui.painter().image(
+                                        icon,
+                                        rect.shrink(2.0),
+                                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                                        visuals.fg_stroke.color,
+                                    );
+                                }
+                            })
+                            .show_ui(ui, |ui| {
+                                for choice in &choices {
+                                    ui.selectable_value(
+                                        &mut selected,
+                                        (*choice).to_owned(),
+                                        localized(
+                                            &format!("native.settings.option.{choice}"),
+                                            language,
+                                        ),
+                                    );
+                                }
+                            })
+                    })
+                    .inner;
+                layout.focusable.push((
+                    NODE_SETTINGS_ROW_BASE + 10_000 + index as u64,
+                    response.response.rect,
+                ));
+            });
+        if selected != current {
+            layout.setting_change = Some(((*key).to_owned(), serde_json::Value::String(selected)));
+        }
+    }
 }
