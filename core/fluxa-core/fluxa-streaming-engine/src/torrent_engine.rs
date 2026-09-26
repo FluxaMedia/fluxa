@@ -440,20 +440,9 @@ async fn torrents(
                         // player only issues once buffering has already progressed.
                         // Starting one that is already initializing restarts its
                         // storage check and leaves the torrent in Error.
-                        let paused = matches!(
-                            state
-                                .api
-                                .api_stats_v1(TorrentIdOrHash::Id(id))
-                                .ok()
-                                .map(|stats| stats.state),
-                            Some(TorrentStatsState::Paused)
-                        );
-                        if paused {
+                        if is_paused(&state, id) {
                             activate_torrent(&state, id).await;
-                            let _ = state
-                                .api
-                                .api_torrent_action_start(TorrentIdOrHash::Id(id))
-                                .await;
+                            resume_if_paused(&state, id).await;
                         }
                     } else {
                         let delayed_state = state.clone();
@@ -599,10 +588,7 @@ async fn stream_fname(
     ));
     prioritize_stream_file(&state, id, file_id, query.role).await;
     activate_torrent(&state, id).await;
-    let _ = state
-        .api
-        .api_torrent_action_start(TorrentIdOrHash::Id(id))
-        .await;
+    resume_if_paused(&state, id).await;
 
     // Wait for rqbit to leave Initializing state before attempting to stream.
     // api_stream fails immediately with "invalid state: initializing" until this
@@ -717,6 +703,26 @@ async fn stream_fname(
             ));
             error_response(StatusCode::NOT_FOUND, format!("{e:#}"))
         }
+    }
+}
+
+fn is_paused(state: &EngineState, id: usize) -> bool {
+    matches!(
+        state
+            .api
+            .api_stats_v1(TorrentIdOrHash::Id(id))
+            .ok()
+            .map(|stats| stats.state),
+        Some(TorrentStatsState::Paused)
+    )
+}
+
+async fn resume_if_paused(state: &EngineState, id: usize) {
+    if is_paused(state, id) {
+        let _ = state
+            .api
+            .api_torrent_action_start(TorrentIdOrHash::Id(id))
+            .await;
     }
 }
 
