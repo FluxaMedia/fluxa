@@ -172,6 +172,7 @@ pub struct ArtworkFetcher {
     #[cfg(not(target_arch = "wasm32"))]
     runtime: tokio::runtime::Runtime,
     decode_slots: Arc<Semaphore>,
+    hero_decode_slots: Arc<Semaphore>,
     animation_decode_slots: Arc<Semaphore>,
     prefetch_decode_slots: Arc<Semaphore>,
     sender: Sender<(
@@ -226,7 +227,7 @@ impl ArtworkFetcher {
         #[cfg(not(target_arch = "wasm32"))]
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(worker_threads.max(1))
-            .max_blocking_threads(decode_concurrency)
+            .max_blocking_threads(decode_concurrency + 1)
             .enable_all()
             .thread_name("fluxa-artwork")
             .build()
@@ -236,6 +237,7 @@ impl ArtworkFetcher {
             #[cfg(not(target_arch = "wasm32"))]
             runtime,
             decode_slots: Arc::new(Semaphore::new(decode_concurrency)),
+            hero_decode_slots: Arc::new(Semaphore::new(1)),
             animation_decode_slots: Arc::new(Semaphore::new(MAX_ANIMATION_DECODE_IN_FLIGHT)),
             prefetch_decode_slots: Arc::new(Semaphore::new(MAX_PREFETCH_DECODE_IN_FLIGHT)),
             sender,
@@ -348,7 +350,11 @@ impl ArtworkFetcher {
         let sender = self.sender.clone();
         let client = self.client.clone();
         let cache_dir = self.cache_dir.clone();
-        let decode_slots = Arc::clone(&self.decode_slots);
+        let decode_slots = Arc::clone(if request.priority == Priority::Hero {
+            &self.hero_decode_slots
+        } else {
+            &self.decode_slots
+        });
         let animation_decode_slots = Arc::clone(&self.animation_decode_slots);
         let prefetch_decode_slots = Arc::clone(&self.prefetch_decode_slots);
         let key_for_task = request.key;
