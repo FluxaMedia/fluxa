@@ -108,6 +108,7 @@ pub struct PreparedArtwork {
     pub animation_atlas: Option<AnimatedAtlas>,
     pub animation_requested: bool,
     pub animation_started_at: Option<Instant>,
+    pub transparent_ratio: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -178,14 +179,14 @@ pub struct ArtworkFetcher {
         [u32; 2],
         bool,
         Option<Instant>,
-        Result<PreparedImage, String>,
+        Result<(PreparedImage, f32), String>,
     )>,
     receiver: Receiver<(
         String,
         [u32; 2],
         bool,
         Option<Instant>,
-        Result<PreparedImage, String>,
+        Result<(PreparedImage, f32), String>,
     )>,
     /// Covers both queued and active work, so repeated immediate-mode draws
     /// coalesce into one fetch instead of filling the queue with duplicates.
@@ -473,6 +474,15 @@ impl ArtworkFetcher {
                     Err(error) => Err(error),
                 }
             };
+            let result = result.map(|prepared| {
+                let ratio = transparent_ratio(
+                    prepared
+                        .animation_atlas
+                        .as_ref()
+                        .map_or(&prepared.image, |atlas| &atlas.image),
+                );
+                (prepared, ratio)
+            });
             let _ = sender.send((
                 source_url,
                 target_size,
@@ -501,13 +511,14 @@ impl ArtworkFetcher {
             self.in_flight.remove(&key);
             self.in_flight_prefetch.remove(&key);
             match result {
-                Ok(image) => {
+                Ok((image, transparent_ratio)) => {
                     self.failed.remove(&key);
                     ready.push(PreparedArtwork {
                         source_url,
                         target_size,
                         image: image.image,
                         animation_atlas: image.animation_atlas,
+                        transparent_ratio,
                         animation_requested: animated,
                         animation_started_at,
                     });
@@ -1150,6 +1161,11 @@ fn atlas_frame(
         image_size: size,
         duration,
     }
+}
+
+fn transparent_ratio(image: &RgbaImage) -> f32 {
+    let pixels = image.pixels().len().max(1);
+    image.pixels().filter(|pixel| pixel.0[3] < 250).count() as f32 / pixels as f32
 }
 
 fn pack_animation_atlas(
