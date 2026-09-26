@@ -345,6 +345,23 @@ pub(super) fn poster_card(
         Color32::from_white_alpha(235),
         assets,
     );
+    let has_static_artwork = match super::poster_overlay::custom_url(painter.ctx(), card) {
+        Some(url) => {
+            artwork_image(
+                painter,
+                rect,
+                Some(&url),
+                artwork_target_size(
+                    Vec2::new(rect.width(), rect.height()),
+                    painter.ctx().pixels_per_point(),
+                ),
+                ArtworkPriority::Visible,
+                Color32::from_white_alpha(235),
+                assets,
+            ) || has_static_artwork
+        }
+        None => has_static_artwork,
+    };
     let motion_texture = if motion_active
         && (has_static_artwork || card.artwork_url.is_none())
         && let Some(url) = card.motion_url.as_deref()

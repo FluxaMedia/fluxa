@@ -64,6 +64,7 @@ pub struct PosterOverlays {
     pub status: Option<Placement>,
     pub scale: f32,
     pub language: String,
+    pub template: Option<String>,
 }
 
 pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
@@ -84,12 +85,17 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
 
 impl super::SettingsModel {
     pub fn poster_overlays(&self) -> Option<PosterOverlays> {
-        if !self.bool_value("posterOverlaysEnabled") {
+        let template = self
+            .str_value("posterUrlTemplate")
+            .map(str::trim)
+            .filter(|template| !template.is_empty())
+            .map(str::to_owned);
+        let enabled = template.is_none() && self.bool_value("posterOverlaysEnabled");
+        if !enabled && template.is_none() {
             return None;
         }
         let placement = |toggle: &str, position: &str| {
-            self.bool_value(toggle)
-                .then(|| Placement::parse(self.str_value(position)))
+            (enabled && self.bool_value(toggle)).then(|| Placement::parse(self.str_value(position)))
         };
         Some(PosterOverlays {
             rating: placement("posterRatingBadge", "posterRatingPosition"),
@@ -100,6 +106,7 @@ impl super::SettingsModel {
                 _ => 1.0,
             },
             language: self.str_value("language").unwrap_or("en").to_owned(),
+            template,
         })
     }
 }
@@ -115,6 +122,76 @@ pub fn set_poster_overlays(context: &egui::Context, overlays: Option<PosterOverl
         }
         None => data.remove::<PosterOverlays>(overlays_id()),
     });
+}
+
+pub(super) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<String> {
+    if card.row_kind == HomeRowKind::Collection {
+        return None;
+    }
+    let template = context
+        .data(|data| data.get_temp::<PosterOverlays>(overlays_id()))?
+        .template?;
+    fill_template(
+        &template,
+        card.id.as_deref()?,
+        card.item_type.as_deref().unwrap_or_default(),
+        &card.raw,
+    )
+}
+
+fn fill_template(
+    template: &str,
+    id: &str,
+    item_type: &str,
+    raw: &serde_json::Value,
+) -> Option<String> {
+    let field = |keys: &[&str]| {
+        keys.iter().find_map(|key| {
+            let value = raw.get(*key)?;
+            value
+                .as_str()
+                .map(str::to_owned)
+                .or_else(|| value.as_i64().map(|number| number.to_string()))
+                .filter(|value| !value.is_empty())
+        })
+    };
+    let prefixed = |prefix: &str| {
+        id.strip_prefix(prefix)
+            .map(|rest| rest.split(':').next().unwrap_or(rest).to_owned())
+    };
+    let lookup = |name: &str| match name {
+        "imdb_id" => field(&["imdb_id", "imdbId"]).or_else(|| {
+            id.starts_with("tt")
+                .then(|| id.split(':').next().unwrap_or(id).to_owned())
+        }),
+        "tmdb_id" => field(&["tmdb_id", "tmdbId", "moviedb_id"]).or_else(|| prefixed("tmdb:")),
+        "anilist_id" => prefixed("anilist:"),
+        "kitsu_id" => prefixed("kitsu:"),
+        "type" => Some(match item_type {
+            "series" | "tv" | "show" => "series".to_owned(),
+            _ => "movie".to_owned(),
+        }),
+        "id" => Some(id.to_owned()),
+        _ => None,
+    };
+    let mut url = String::with_capacity(template.len() + 16);
+    let mut rest = template;
+    while let Some(start) = rest.find('{') {
+        url.push_str(&rest[..start]);
+        let end = rest[start..].find('}')? + start;
+        let name = &rest[start + 1..end];
+        let (name, optional) = name
+            .strip_suffix('?')
+            .map_or((name, false), |name| (name, true));
+        match lookup(name) {
+            Some(value) => url.push_str(&value),
+            None if optional => {}
+            None => return None,
+        }
+        rest = &rest[end + 1..];
+    }
+    url.push_str(rest);
+    Some(url)
 }
 
 pub(super) fn poster_facts(item: &serde_json::Value) -> PosterFacts {
@@ -533,6 +610,19 @@ fn sash(painter: &Painter, rect: Rect, status: PosterStatus, label: &str) {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn postersplus_template_uses_tmdb_prefix_and_skips_missing_optional() {
+        let template = "https://pp.example/poster?tmdb_id={tmdb_id}&type={type}&imdb={imdb_id?}";
+        assert_eq!(
+            fill_template(template, "tmdb:1399", "tv", &json!({})).as_deref(),
+            Some("https://pp.example/poster?tmdb_id=1399&type=series&imdb=")
+        );
+        assert_eq!(
+            fill_template(template, "tt0944947", "series", &json!({})),
+            None
+        );
+    }
 
     #[test]
     fn day_number_matches_unix_epoch() {

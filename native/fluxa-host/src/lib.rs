@@ -1246,6 +1246,9 @@ fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => {
             fluxa_ui::localized("settings.plugin_url", "en")
         }
+        fluxa_ui::NODE_SETTINGS_POSTER_URL => {
+            fluxa_ui::localized("settings.poster_url_template", "en")
+        }
         fluxa_ui::NODE_SETTINGS_ADDON_INSTALL => {
             fluxa_ui::localized("settings.addon_install", "en")
         }
@@ -1490,6 +1493,7 @@ fn rebuild_ui_from_layout(
                 if id == fluxa_ui::NODE_LIBRARY_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
+                    || id == fluxa_ui::NODE_SETTINGS_POSTER_URL
                 {
                     UiNodeKind::Input
                 } else {
@@ -1672,10 +1676,14 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     let settings_section = state.settings.active_section;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
+    let poster_url = std::mem::take(&mut state.settings.poster_url);
     state.settings = projection.settings;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
+    if !poster_url.is_empty() {
+        state.settings.poster_url = poster_url;
+    }
     state.ui = UiTree::default();
     request_discover_background_page(state);
 }
@@ -1990,6 +1998,13 @@ fn settings_action_json(node: u64, settings: &SettingsModel) -> Option<Value> {
             json!({"type":"addonsRefreshRequested", "profile":settings.profile, "forceRefresh":true}),
         );
     }
+    if node == fluxa_ui::NODE_SETTINGS_POSTER_URL_SAVE {
+        let url = settings.poster_url.trim();
+        return Some(json!({"type":"settingsChanged", "key":"posterUrlTemplate", "value":url}));
+    }
+    if node == fluxa_ui::NODE_SETTINGS_POSTER_URL_CLEAR {
+        return Some(json!({"type":"settingsChanged", "key":"posterUrlTemplate", "value":""}));
+    }
     if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
         let url = settings.plugin_url.trim();
         return (!url.is_empty())
@@ -2048,6 +2063,8 @@ fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
                 state.settings.addon_url.push_str(value);
             } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_PLUGIN_URL {
                 state.settings.plugin_url.push_str(value);
+            } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_POSTER_URL {
+                state.settings.poster_url.push_str(value);
             }
             continue;
         }
@@ -2959,6 +2976,10 @@ fn key_down(state: &mut RendererState, input: KeyInput) {
                 state.settings.plugin_url.pop();
                 return;
             }
+            Some(fluxa_ui::NODE_SETTINGS_POSTER_URL) if state.route == "settings" => {
+                state.settings.poster_url.pop();
+                return;
+            }
             _ => {}
         }
     }
@@ -3289,6 +3310,7 @@ fn set_text_value(state: &mut RendererState, node: u64, value: &str) {
         }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
+        fluxa_ui::NODE_SETTINGS_POSTER_URL => state.settings.poster_url = value.to_owned(),
         _ => {}
     }
 }

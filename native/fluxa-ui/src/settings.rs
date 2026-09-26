@@ -903,7 +903,9 @@ pub(super) fn settings_card_height(
         + extended_lines as f32 * line_spacing
         + extended_controls
         + metrics.settings_card_padding * 2.0;
-    let content_height = if section.rows.is_empty() {
+    let content_height = if section.title == "Posters" {
+        row_content() + poster_url_height(metrics, line_spacing)
+    } else if section.rows.is_empty() {
         extended_content
     } else if let Some(groups) = settings_groups(section.title) {
         settings_groups_total_height(groups, metrics)
@@ -924,6 +926,7 @@ pub struct SettingsModel {
     pub plugins: serde_json::Value,
     pub addon_url: String,
     pub plugin_url: String,
+    pub poster_url: String,
 }
 
 impl SettingsModel {
@@ -1045,6 +1048,11 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .unwrap_or(serde_json::Value::Null),
         addon_url: String::new(),
         plugin_url: String::new(),
+        poster_url: settings
+            .pointer("/values/posterUrlTemplate")
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or_default()
+            .to_owned(),
     }
 }
 
@@ -1337,6 +1345,90 @@ fn settings_panel_input(
         });
 }
 
+fn poster_url_height(metrics: UiMetrics, line_spacing: f32) -> f32 {
+    metrics.control_gap
+        + line_spacing * 2.0
+        + metrics.settings_extended_input_height
+        + metrics.settings_extended_action_gap
+        + metrics.settings_extended_action_height
+}
+
+fn draw_poster_url(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    language: &str,
+    rect: Rect,
+    rows: usize,
+    line_gap: f32,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let left = rect.left() + metrics.settings_card_padding;
+    let right = rect.right() - metrics.settings_card_padding;
+    let mut y = rect.top()
+        + metrics.settings_row_top
+        + rows.saturating_sub(1) as f32 * metrics.settings_row_spacing
+        + metrics.settings_row_height
+        + metrics.control_gap;
+    settings_panel_line(
+        &painter,
+        rect,
+        y,
+        localized("settings.poster_url_template", language),
+        Color32::WHITE,
+        metrics,
+    );
+    y += line_gap;
+    settings_panel_line(
+        &painter,
+        rect,
+        y,
+        localized("settings.poster_url_template_help", language),
+        Color32::from_white_alpha(130),
+        metrics,
+    );
+    y += line_gap;
+    settings_panel_input(
+        context,
+        layout,
+        NODE_SETTINGS_POSTER_URL,
+        Rect::from_min_max(
+            Pos2::new(left, y),
+            Pos2::new(right, y + metrics.settings_extended_input_height),
+        ),
+        &settings.poster_url,
+        localized("settings.poster_url_template_hint", language),
+    );
+    y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
+    let button_width = metrics
+        .settings_extended_addon_action_width
+        .min(((right - left) - metrics.settings_extended_action_gap) / 2.0);
+    for (index, (node, label)) in [
+        (NODE_SETTINGS_POSTER_URL_SAVE, "settings.poster_url_save"),
+        (NODE_SETTINGS_POSTER_URL_CLEAR, "settings.poster_url_clear"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        settings_panel_button(
+            context,
+            layout,
+            node,
+            Rect::from_min_size(
+                Pos2::new(
+                    left + index as f32 * (button_width + metrics.settings_extended_action_gap),
+                    y,
+                ),
+                Vec2::new(button_width, metrics.settings_extended_action_height),
+            ),
+            localized(label, language),
+            false,
+            metrics,
+        );
+    }
+}
+
 fn draw_settings_extended_section(
     context: &egui::Context,
     viewport: Viewport,
@@ -1503,6 +1595,16 @@ fn draw_settings_extended_section(
                 metrics,
             );
         }
+        "Posters" => draw_poster_url(
+            context,
+            settings,
+            language,
+            rect,
+            POSTER_SETTINGS.len(),
+            line_gap,
+            metrics,
+            layout,
+        ),
         "Add-ons" => {
             let input_rect = Rect::from_min_max(
                 Pos2::new(left, y),
