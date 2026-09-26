@@ -492,10 +492,7 @@ pub fn draw_discover(
             );
         }
     }
-    // Keep at least one results viewport buffered ahead. This starts fetching
-    // subsequent catalog pages before the user reaches the tail, while poster
-    // artwork remains viewport/lazy loaded by the artwork scheduler.
-    let prefetch_distance = (results_clip.height() * 2.5).max(card_height * 2.0);
+    let prefetch_distance = (results_clip.height() * 6.0).max(card_height * 12.0);
     if let Some(request) = discover.next_page.as_ref()
         && scroll_y >= (scroll_max - prefetch_distance).max(0.0)
         && let Some(skip) = request.get("skip").and_then(serde_json::Value::as_i64)
