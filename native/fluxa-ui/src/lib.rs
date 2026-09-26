@@ -545,6 +545,7 @@ pub enum HomeRowKind {
     Continue,
     #[default]
     Poster,
+    Landscape,
     Collection,
 }
 
@@ -767,6 +768,10 @@ pub fn home_model_from_core_snapshot(
                 .map(|item| core_home_card_for_kind(item, HomeRowKind::Continue))
                 .collect();
         }
+        let landscape = snapshot
+            .pointer("/settings/values/posterLandscapeMode")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false);
         model.rows = categories
             .iter()
             .enumerate()
@@ -790,6 +795,7 @@ pub fn home_model_from_core_snapshot(
                     (Some("continue_watching" | "upcoming"), _)
                     | (_, Some("continue_watching" | "upcoming")) => HomeRowKind::Continue,
                     (_, Some("collection" | "collection_folder")) => HomeRowKind::Collection,
+                    _ if landscape => HomeRowKind::Landscape,
                     _ => HomeRowKind::Poster,
                 };
                 Some(HomeRow {
@@ -1419,7 +1425,20 @@ fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKind) -> HomeC
             .or_else(|| value_display(item, "year"))
             .unwrap_or_default(),
         progress,
-        artwork_url: if matches!(kind, HomeRowKind::Continue) {
+        artwork_url: if matches!(kind, HomeRowKind::Landscape) {
+            first_value_string(
+                item,
+                &[
+                    "background",
+                    "backgroundUrl",
+                    "backdrop",
+                    "backdropUrl",
+                    "poster",
+                    "posterUrl",
+                    "artworkUrl",
+                ],
+            )
+        } else if matches!(kind, HomeRowKind::Continue) {
             first_value_string(
                 item,
                 &[
@@ -2185,6 +2204,15 @@ fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32, f32, f32)
             metrics.home_continue_card_width,
             metrics.home_continue_card_height,
             metrics.home_continue_card_height,
+        ),
+        HomeRowKind::Landscape => (
+            metrics.home_continue_card_width,
+            metrics.home_continue_card_height,
+            metrics.home_continue_card_height
+                + metrics.control_gap
+                + metrics.screen_card_title_size
+                + metrics.screen_card_subtitle_size
+                + metrics.control_gap,
         ),
         HomeRowKind::Poster => (
             metrics.poster_card_width,

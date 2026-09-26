@@ -427,8 +427,15 @@ pub(super) fn poster_card(
         );
         texture_image(painter, animated.texture, rect, uv, Color32::WHITE);
     }
-    let tones = assets.artwork_tones(card.artwork_url.as_deref());
-    super::poster_overlay::paint(painter, rect, card, metrics.card_radius, tones);
+    if card.row_kind == super::HomeRowKind::Landscape {
+        if super::poster_overlay::custom_url(painter.ctx(), card).is_none() {
+            landscape_logo(painter, rect, card, assets);
+        }
+        super::poster_overlay::paint_landscape_band(painter, rect, card);
+    } else {
+        let tones = assets.artwork_tones(card.artwork_url.as_deref());
+        super::poster_overlay::paint(painter, rect, card, metrics.card_radius, tones);
+    }
 
     if card.hide_title && card.row_kind == super::HomeRowKind::Collection {
         return;
@@ -455,6 +462,34 @@ pub(super) fn poster_card(
         subtitle_font,
         rect.width(),
         Color32::from_white_alpha(185),
+    );
+}
+
+fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
+    let logo_box = Vec2::new(rect.width() * 0.5, rect.height() * 0.3);
+    let Some((texture, size)) = assets
+        .texture_for(
+            card.logo_url.as_deref(),
+            artwork_target_size(logo_box, painter.ctx().pixels_per_point()),
+            ArtworkPriority::Visible,
+        )
+        .zip(assets.texture_size(card.logo_url.as_deref()))
+    else {
+        return;
+    };
+    let aspect = size[0] as f32 / size[1].max(1) as f32;
+    let logo_size = if logo_box.y * aspect > logo_box.x {
+        Vec2::new(logo_box.x, logo_box.x / aspect)
+    } else {
+        Vec2::new(logo_box.y * aspect, logo_box.y)
+    };
+    let center = egui::Pos2::new(rect.center().x, rect.top() + rect.height() * 0.5);
+    texture_image(
+        painter,
+        texture,
+        Rect::from_center_size(center, logo_size),
+        Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
+        Color32::WHITE,
     );
 }
 

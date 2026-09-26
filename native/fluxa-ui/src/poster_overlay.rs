@@ -202,7 +202,12 @@ fn rating_logo(context: &egui::Context, name: &str) -> Option<(TextureId, Vec2)>
         .map(|(_, texture, aspect)| (*texture, *aspect))
 }
 
-fn draw_logo(painter: &Painter, logo: Option<(TextureId, Vec2)>, left_center: Pos2, height: f32) -> f32 {
+fn draw_logo(
+    painter: &Painter,
+    logo: Option<(TextureId, Vec2)>,
+    left_center: Pos2,
+    height: f32,
+) -> f32 {
     let Some((texture, aspect)) = logo else {
         return 0.0;
     };
@@ -334,17 +339,23 @@ pub(super) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<Str
     let overlays = current(context)?;
     let template = overlays.template.as_deref()?;
     let id = card.id.as_deref()?;
+    let shape = if card.row_kind == HomeRowKind::Landscape {
+        "landscape"
+    } else {
+        "poster"
+    };
     URLS.with_borrow_mut(|(cached, urls)| {
         if cached != template {
             *cached = template.to_owned();
             urls.clear();
         }
-        urls.entry(id.to_owned())
+        urls.entry(format!("{shape}:{id}"))
             .or_insert_with(|| {
                 fill_template(
                     template,
                     id,
                     card.item_type.as_deref().unwrap_or_default(),
+                    shape,
                     &card.raw,
                 )
             })
@@ -356,6 +367,7 @@ fn fill_template(
     template: &str,
     id: &str,
     item_type: &str,
+    shape: &str,
     raw: &serde_json::Value,
 ) -> Option<String> {
     let field = |keys: &[&str]| {
@@ -385,6 +397,7 @@ fn fill_template(
             _ => "movie".to_owned(),
         }),
         "id" => Some(id.to_owned()),
+        "shape" => Some(shape.to_owned()),
         _ => None,
     };
     let mut url = String::with_capacity(template.len() + 16);
@@ -979,8 +992,17 @@ pub(super) fn paint(
             egui::StrokeKind::Inside,
         );
         let height = galley.size().y;
-        draw_logo(&painter, logo, Pos2::new(badge.left() + pad.x, badge.center().y), height);
-        painter.galley(badge.min + pad + Vec2::new(logo_width, 0.0), galley, Color32::WHITE);
+        draw_logo(
+            &painter,
+            logo,
+            Pos2::new(badge.left() + pad.x, badge.center().y),
+            height,
+        );
+        painter.galley(
+            badge.min + pad + Vec2::new(logo_width, 0.0),
+            galley,
+            Color32::WHITE,
+        );
     }
 }
 
@@ -1043,7 +1065,12 @@ pub(super) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
         painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
         painter.rect_stroke(badge, 3.0, Stroke::new(1.0, fill), egui::StrokeKind::Inside);
         let height = galley.size().y;
-        draw_logo(&painter, logo, Pos2::new(badge.left() + size * 0.45, badge.center().y), height);
+        draw_logo(
+            &painter,
+            logo,
+            Pos2::new(badge.left() + size * 0.45, badge.center().y),
+            height,
+        );
         painter.galley(
             badge.center() - galley.size() * 0.5 + Vec2::new(logo_width * 0.5, 0.0),
             galley,
@@ -1069,6 +1096,48 @@ pub(super) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
             quality,
         );
     }
+}
+
+pub(super) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCard) {
+    let Some(overlays) = current(painter.ctx()) else {
+        return;
+    };
+    let painter = painter.with_clip_rect(rect.intersect(painter.clip_rect()));
+    let facts = &card.overlay;
+    let size = (rect.height() * 0.08).clamp(8.0, 13.0) * overlays.scale;
+    let rating = overlays.rating.and(
+        painter
+            .ctx()
+            .data(|data| data.get_temp::<Arc<Enrichment>>(enrichment_id()))
+            .and_then(|enrichment| enrichment.graded(facts).and_then(|graded| graded.score))
+            .filter(|_| overlays.mdblist_score)
+            .or(facts.rating),
+    );
+    let text = [
+        (!facts.caption.is_empty()).then(|| facts.caption.clone()),
+        rating.map(|value| format!("★ {value:.1}")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" · ");
+    if text.is_empty() {
+        return;
+    }
+    let band = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - size * 2.4), rect.max);
+    super::paint_vertical_gradient(
+        &painter,
+        Rect::from_min_max(Pos2::new(rect.left(), band.top() - size * 2.0), rect.max),
+        Color32::TRANSPARENT,
+        Color32::from_black_alpha(200),
+    );
+    let inset = size * 0.8;
+    let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::WHITE);
+    painter.galley(
+        Pos2::new(band.left() + inset, band.center().y - galley.size().y * 0.5),
+        galley,
+        Color32::WHITE,
+    );
 }
 
 fn watched_mark(painter: &Painter, rect: Rect) {
@@ -1396,12 +1465,21 @@ mod tests {
     fn postersplus_template_uses_tmdb_prefix_and_skips_missing_optional() {
         let template = "https://pp.example/poster?tmdb_id={tmdb_id}&type={type}&imdb={imdb_id?}";
         assert_eq!(
-            fill_template(template, "tmdb:1399", "tv", &json!({})).as_deref(),
+            fill_template(template, "tmdb:1399", "tv", "poster", &json!({})).as_deref(),
             Some("https://pp.example/poster?tmdb_id=1399&type=series&imdb=")
         );
         assert_eq!(
-            fill_template(template, "tt0944947", "series", &json!({})),
+            fill_template(template, "tt0944947", "series", "poster", &json!({})),
             None
+        );
+    }
+
+    #[test]
+    fn shape_placeholder_follows_card_shape() {
+        let template = "https://pp.example/{shape}/{id}.jpg";
+        assert_eq!(
+            fill_template(template, "tt1", "movie", "landscape", &json!({})).as_deref(),
+            Some("https://pp.example/landscape/tt1.jpg")
         );
     }
 
