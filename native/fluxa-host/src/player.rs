@@ -68,6 +68,7 @@ pub trait VideoBackend: Send {
 }
 
 pub(crate) struct PlayerSession {
+    pub(crate) stale: Option<Value>,
     meta: Value,
     started: bool,
     loaded_url: Option<String>,
@@ -100,6 +101,7 @@ pub(crate) struct PlayerSession {
 impl PlayerSession {
     pub(crate) fn new(meta: Value) -> Self {
         Self {
+            stale: None,
             meta,
             started: false,
             loaded_url: None,
@@ -243,6 +245,12 @@ pub(crate) fn pump(state: &mut RendererState) {
         (None, None) => return,
     };
     player.passthrough = video.as_ref().is_some_and(|video| video.passthrough());
+    if player.stale.is_some() {
+        if player.stale.as_ref() == snapshot.get("player") {
+            return;
+        }
+        player.stale = None;
+    }
     if !player.started && !session.is_some_and(|session| session.has_queued_dispatches()) {
         if let Some(command) = resolution_command(&snapshot, player) {
             let starts = command_starts_playback(&snapshot);
@@ -569,7 +577,7 @@ fn command_starts_playback(snapshot: &Value) -> bool {
     snapshot
         .pointer("/player/currentStreams")
         .and_then(Value::as_array)
-        .is_some()
+        .is_some_and(|streams| !streams.is_empty())
 }
 
 fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -> Option<Value> {
@@ -577,6 +585,7 @@ fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -> Option<Va
     if let Some(streams) = snapshot
         .pointer("/player/currentStreams")
         .and_then(Value::as_array)
+        .filter(|streams| !streams.is_empty())
     {
         let index = snapshot
             .pointer("/player/currentStreamIndex")

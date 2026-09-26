@@ -3611,7 +3611,13 @@ fn start_playback_without_session(state: &mut RendererState) {
             continue;
         };
         let command = player::direct_playback_command(item, &profile);
-        state.player = Some(player::PlayerSession::new(item.clone()));
+        let mut player = player::PlayerSession::new(item.clone());
+        player.stale = state
+            .core_snapshot
+            .as_ref()
+            .and_then(|snapshot| snapshot.get("player"))
+            .cloned();
+        state.player = Some(player);
         state.ui = UiTree::default();
         state.pending_native_actions[index] = NativeAction::CoreCommand { command };
     }
