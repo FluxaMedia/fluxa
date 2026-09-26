@@ -547,8 +547,8 @@ const PLAYBACK_GROUPS: [(usize, usize, &str); 7] = [
     (32, 44, "settings.group.subtitle_style"),
 ];
 const CONTENT_GROUPS: [(usize, usize, &str); 2] = [
-    (0, 8, "settings.group.metadata"),
-    (8, 12, "settings.group.discovery"),
+    (0, 14, "settings.group.metadata"),
+    (14, 18, "settings.group.discovery"),
 ];
 const POSTER_GROUPS: [(usize, usize, &str); 3] = [
     (0, 4, "settings.group.poster_overlays"),
@@ -648,10 +648,15 @@ fn groups_height(groups: &[(String, Vec<usize>)], metrics: UiMetrics) -> f32 {
             })
             .sum::<f32>()
 }
-const CONTENT_SETTINGS: [SettingsRow; 12] = [
+const CONTENT_SETTINGS: [SettingsRow; 18] = [
     SettingsRow {
         label: "TMDB artwork enrichment",
         key: "tmdbEnrichArtworkEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB logos and backdrops",
+        key: "tmdbLogosBackdropsEnabled",
         options: &[],
     },
     SettingsRow {
@@ -665,8 +670,18 @@ const CONTENT_SETTINGS: [SettingsRow; 12] = [
         options: &[],
     },
     SettingsRow {
+        label: "TMDB genres and keywords",
+        key: "tmdbEnrichGenresKeywordsEnabled",
+        options: &[],
+    },
+    SettingsRow {
         label: "TMDB cast and crew",
         key: "tmdbEnrichCastCrewEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB cast images",
+        key: "tmdbCastImagesEnabled",
         options: &[],
     },
     SettingsRow {
@@ -682,6 +697,21 @@ const CONTENT_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "TMDB collections",
         key: "tmdbCollectionInfoEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB networks",
+        key: "tmdbEnrichNetworkEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB status and schedule",
+        key: "tmdbEnrichStatusScheduleEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB original titles",
+        key: "tmdbEnrichOriginTitlesEnabled",
         options: &[],
     },
     SettingsRow {
