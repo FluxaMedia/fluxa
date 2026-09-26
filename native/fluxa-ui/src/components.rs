@@ -97,6 +97,25 @@ pub(super) fn rounded_artwork(
     true
 }
 
+pub(super) fn title_logo(
+    ppp: f32,
+    url: Option<&str>,
+    bounds: Vec2,
+    priority: ArtworkPriority,
+    assets: &mut impl HomeAssets,
+) -> Option<(egui::TextureId, Vec2)> {
+    let url = url.filter(|url| !url.trim().is_empty());
+    let texture = assets.texture_for(url, artwork_target_size(bounds, ppp), priority)?;
+    let [width, height] = assets.texture_size(url)?;
+    let aspect = width as f32 / height.max(1) as f32;
+    let size = if bounds.y * aspect > bounds.x {
+        Vec2::new(bounds.x, bounds.x / aspect)
+    } else {
+        Vec2::new(bounds.y * aspect, bounds.y)
+    };
+    Some((texture, size))
+}
+
 pub(super) fn wrapped_text(
     painter: &Painter,
     text: &str,
@@ -500,22 +519,14 @@ pub(super) fn poster_card(
 }
 
 fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
-    let logo_box = Vec2::new(rect.width() * 0.5, rect.height() * 0.3);
-    let Some((texture, size)) = assets
-        .texture_for(
-            card.logo_url.as_deref(),
-            artwork_target_size(logo_box, painter.ctx().pixels_per_point()),
-            ArtworkPriority::Visible,
-        )
-        .zip(assets.texture_size(card.logo_url.as_deref()))
-    else {
+    let Some((texture, logo_size)) = title_logo(
+        painter.ctx().pixels_per_point(),
+        card.logo_url.as_deref(),
+        Vec2::new(rect.width() * 0.5, rect.height() * 0.3),
+        ArtworkPriority::Visible,
+        assets,
+    ) else {
         return;
-    };
-    let aspect = size[0] as f32 / size[1].max(1) as f32;
-    let logo_size = if logo_box.y * aspect > logo_box.x {
-        Vec2::new(logo_box.x, logo_box.x / aspect)
-    } else {
-        Vec2::new(logo_box.y * aspect, logo_box.y)
     };
     let center = egui::Pos2::new(rect.center().x, rect.top() + rect.height() * 0.5);
     texture_image(
@@ -612,20 +623,14 @@ pub(super) fn continue_card(
     let subtitle_top = bar_top - metrics.control_gap * 0.5 - subtitle_height;
     let title_top = subtitle_top - metrics.control_gap * 0.35 - title_height;
     let logo_box = Vec2::new(content_width * 0.6, title_height * 1.6);
-    let logo = assets
-        .texture_for(
-            card.logo_url.as_deref(),
-            artwork_target_size(logo_box, painter.ctx().pixels_per_point()),
-            ArtworkPriority::Visible,
-        )
-        .zip(assets.texture_size(card.logo_url.as_deref()));
-    if let Some((texture, size)) = logo {
-        let aspect = size[0] as f32 / size[1].max(1) as f32;
-        let logo_size = if logo_box.y * aspect > logo_box.x {
-            Vec2::new(logo_box.x, logo_box.x / aspect)
-        } else {
-            Vec2::new(logo_box.y * aspect, logo_box.y)
-        };
+    let logo = title_logo(
+        painter.ctx().pixels_per_point(),
+        card.logo_url.as_deref(),
+        logo_box,
+        ArtworkPriority::Visible,
+        assets,
+    );
+    if let Some((texture, logo_size)) = logo {
         let logo_rect = Rect::from_min_size(
             egui::Pos2::new(
                 rect.left() + metrics.card_content_padding,

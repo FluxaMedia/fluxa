@@ -566,16 +566,14 @@ fn draw_recommendations(
             }
             let logo_box = Vec2::new(panel_width * 0.7, if compact { 72.0 } else { 120.0 });
             let logo = hero.logo_url.as_deref().filter(|url| !url.trim().is_empty());
-            let logo_target = artwork_target_size(logo_box, context.pixels_per_point());
-            let logo_texture = logo.and_then(|url| {
-                Some((
-                    assets.texture_for(Some(url), logo_target, ArtworkPriority::Visible)?,
-                    assets.texture_size(Some(url))?,
-                ))
-            });
-            match logo_texture {
-                Some((texture, size)) => {
-                    let fitted = contain_size(size, logo_box);
+            match components::title_logo(
+                context.pixels_per_point(),
+                logo,
+                logo_box,
+                ArtworkPriority::Visible,
+                assets,
+            ) {
+                Some((texture, fitted)) => {
                     painter.image(
                         texture,
                         Rect::from_min_size(Pos2::new(panel_left + slide, cursor - fitted.y), fitted),
@@ -818,18 +816,13 @@ fn draw_pause_info(
         }),
     ));
     let max_logo = Vec2::new(width.min(420.0), 96.0);
-    let logo = player.logo.as_deref().and_then(|url| {
-        let texture = assets.texture_for(
-            Some(url),
-            artwork_target_size(max_logo, context.pixels_per_point()),
-            ArtworkPriority::Hero,
-        )?;
-        let size = assets
-            .texture_size(Some(url))
-            .map(|size| contain_size(size, max_logo))
-            .unwrap_or(max_logo);
-        Some((texture, size))
-    });
+    let logo = components::title_logo(
+        context.pixels_per_point(),
+        player.logo.as_deref(),
+        max_logo,
+        ArtworkPriority::Hero,
+        assets,
+    );
     match logo {
         Some((texture, size)) => blocks.push((
             size.y + 16.0,
@@ -964,18 +957,17 @@ fn draw_loading(
     let center = rect.center();
     let logo_box = Vec2::new(480.0_f32.min(rect.width() - 32.0), 160.0);
     let logo = player.logo.as_deref();
-    let logo_target = artwork_target_size(logo_box, context.pixels_per_point());
-    let logo_texture = logo.and_then(|url| {
-        Some((
-            assets.texture_for(Some(url), logo_target, ArtworkPriority::Visible)?,
-            assets.texture_size(Some(url))?,
-        ))
-    });
+    let logo_texture = components::title_logo(
+        context.pixels_per_point(),
+        logo,
+        logo_box,
+        ArtworkPriority::Visible,
+        assets,
+    );
     let mut below = center.y + 36.0;
     if player.error.is_none() {
         match logo_texture {
-            Some((texture, size)) => {
-                let fitted = contain_size(size, logo_box);
+            Some((texture, fitted)) => {
                 let logo_rect = Rect::from_center_size(center, fitted);
                 match player.load_progress {
                     Some(progress) => {

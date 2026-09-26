@@ -214,15 +214,8 @@ pub fn draw_detail(
             ui.set_max_width(content_width);
             ui.spacing_mut().item_spacing = Vec2::new(10.0, 0.0);
             let logo_box = Vec2::new(content_width.min(if compact { 260.0 } else { 440.0 }), if compact { 96.0 } else { 150.0 });
-            let logo = assets
-                .texture_for(detail.logo_url.as_deref(), artwork_target_size(logo_box, ppp), ArtworkPriority::Hero)
-                .zip(assets.texture_size(detail.logo_url.as_deref()));
-            if let Some((texture, size)) = logo {
-                let aspect = size[0] as f32 / size[1].max(1) as f32;
-                let mut logo_size = Vec2::new(logo_box.y * aspect, logo_box.y);
-                if logo_size.x > logo_box.x {
-                    logo_size = Vec2::new(logo_box.x, logo_box.x / aspect);
-                }
+            let logo = components::title_logo(ppp, detail.logo_url.as_deref(), logo_box, ArtworkPriority::Hero, assets);
+            if let Some((texture, logo_size)) = logo {
                 ui.add(egui::Image::new((texture, logo_size)));
             } else {
                 ui.label(

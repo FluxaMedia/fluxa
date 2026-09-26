@@ -4206,17 +4206,13 @@ fn draw_home_with_options(
                         egui::Align2::LEFT_TOP
                     };
                     if has_logo {
-                        if let Some(url) = hero.logo_url.as_deref()
-                            && let Some(texture) = assets.texture_for(
-                                Some(url),
-                                artwork_target_size(max_logo_size, context.pixels_per_point()),
-                                ArtworkPriority::Hero,
-                            )
-                        {
-                            let size = assets
-                                .texture_size(Some(url))
-                                .map(|[width, height]| contain_size([width, height], max_logo_size))
-                                .unwrap_or(max_logo_size);
+                        if let Some((texture, size)) = components::title_logo(
+                            context.pixels_per_point(),
+                            hero.logo_url.as_deref(),
+                            max_logo_size,
+                            ArtworkPriority::Hero,
+                            assets,
+                        ) {
                             let logo_x = if compact {
                                 title_rect.center().x - size.x * 0.5
                             } else {
@@ -4675,13 +4671,6 @@ fn truncate_to_width(painter: &egui::Painter, text: &str, font: &FontId, max_wid
     } else {
         format!("{}{ellipsis}", &text[..boundaries[prefix_len]])
     }
-}
-
-fn contain_size(source: [u32; 2], bounds: Vec2) -> Vec2 {
-    let width = source[0].max(1) as f32;
-    let height = source[1].max(1) as f32;
-    let scale = (bounds.x / width).min(bounds.y / height).min(1.0);
-    Vec2::new(width * scale, height * scale)
 }
 
 fn accent_from_value(value: &serde_json::Value) -> Option<Color32> {
