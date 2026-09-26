@@ -65,6 +65,8 @@ impl NativeSurface {
 }
 
 mod player;
+mod profiles;
+pub use profiles::ImagePicker;
 
 pub use player::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
 
@@ -118,6 +120,10 @@ struct RendererState {
     player: Option<player::PlayerSession>,
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
+    profiles: Option<fluxa_ui::ProfilesModel>,
+    pack_job: Option<profiles::PackJob>,
+    picker_background: Option<String>,
+    image_picker: Option<ImagePicker>,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -558,6 +564,7 @@ struct HostAssets<'a> {
     icons: &'a SvgIconRegistry,
     profile_name: Option<&'a str>,
     profile_avatar_url: Option<&'a str>,
+    custom_background: Option<&'a str>,
 }
 
 impl HomeAssets for HostAssets<'_> {
@@ -575,6 +582,9 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn accent_color(&self) -> Option<egui::Color32> {
         self.accent
+    }
+    fn custom_background_url(&self) -> Option<&str> {
+        self.custom_background
     }
     fn active_profile_avatar_url(&self) -> Option<&str> {
         self.profile_avatar_url
@@ -923,6 +933,8 @@ impl Gpu {
         calendar: &CalendarModel,
         detail: &DetailModel,
         settings: &SettingsModel,
+        mut profiles: Option<&mut fluxa_ui::ProfilesModel>,
+        custom_background: Option<&str>,
         player: Option<&PlayerModel>,
         focused: Option<u64>,
         safe_bottom: f32,
@@ -967,11 +979,14 @@ impl Gpu {
                 icons: &self.icons,
                 profile_name: home.profile_name.as_deref(),
                 profile_avatar_url: home.profile_avatar_url.as_deref(),
+                custom_background,
             };
             let viewport = Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
-            if let Some(player) = player {
+            if let Some(profiles) = profiles.as_deref_mut() {
+                rendered_layout = fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
+            } else if let Some(player) = player {
                 rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
             } else if route == "library" {
                 rendered_layout = draw_library(
@@ -1155,7 +1170,7 @@ fn rebuild_current_ui(state: &mut RendererState) {
         rebuild_ui_from_layout(state, &layout, size);
         return;
     }
-    if state.route != "home" || state.player.is_some() {
+    if state.route != "home" || state.player.is_some() || state.profiles.is_some() {
         return;
     }
     rebuild_home_ui(&mut state.ui, size, &state.home, state.safe_bottom);
@@ -1230,6 +1245,7 @@ fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_CALENDAR_PREV => "Previous month".to_owned(),
         fluxa_ui::NODE_CALENDAR_NEXT => "Next month".to_owned(),
         fluxa_ui::NODE_DETAIL_BACK | fluxa_ui::NODE_SETTINGS_BACK => "Back".to_owned(),
+        fluxa_ui::NODE_SETTINGS_SWITCH_PROFILE => "Switch profiles".to_owned(),
         fluxa_ui::NODE_DETAIL_PLAY => "Play".to_owned(),
         fluxa_ui::NODE_DETAIL_WATCHLIST => {
             if state.detail.in_watchlist {
@@ -1741,6 +1757,11 @@ fn native_action_for_node(
         if node == fluxa_ui::NODE_SETTINGS_BACK {
             return Some(NativeAction::Navigate {
                 destination: "home".to_owned(),
+            });
+        }
+        if node == fluxa_ui::NODE_SETTINGS_SWITCH_PROFILE {
+            return Some(NativeAction::Navigate {
+                destination: "profiles".to_owned(),
             });
         }
         if (fluxa_ui::NODE_SETTINGS_SECTION_BASE
@@ -2305,6 +2326,10 @@ impl FluxaHost {
             player: None,
             video: None,
             fullscreen_toggle: false,
+            profiles: None,
+            pack_job: None,
+            picker_background: None,
+            image_picker: None,
         })))
     }
 
@@ -2543,8 +2568,20 @@ impl FluxaHost {
             "language": profile_language(&profile),
             "force": true,
         }))?;
-        self.with_state(|state| state.session = Some(session));
+        let pick = profiles::should_pick_on_start(session.storage());
+        let background = profiles::picker_settings(session.storage()).background_url;
+        self.with_state(|state| {
+            state.session = Some(session);
+            state.picker_background = background;
+            if pick {
+                profiles::open(state);
+            }
+        });
         Ok(())
+    }
+
+    pub fn set_image_picker(&self, picker: ImagePicker) {
+        self.with_state(|state| state.image_picker = Some(picker));
     }
 
     pub fn set_video_backend(&self, backend: Box<dyn VideoBackend>) {
@@ -2814,7 +2851,9 @@ fn key_down(state: &mut RendererState, input: KeyInput) {
 }
 
 fn active_route(state: &RendererState) -> String {
-    if state.player.is_some() {
+    if state.profiles.is_some() {
+        "profiles".to_owned()
+    } else if state.player.is_some() {
         "player".to_owned()
     } else {
         state.route.clone()
@@ -2827,6 +2866,7 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         || state.player.is_some()
         || state.touch_start.is_some()
         || state.scroll_velocity != 0.0
+        || state.pack_job.is_some()
         || !state.pending_native_actions.is_empty()
         || state.pending_resize.is_some();
     if busy {
@@ -2853,6 +2893,7 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
 fn render_frame(state: &mut RendererState) {
     route_actions_to_session(state);
     pull_session_snapshot(state);
+    profiles::poll(state);
     player::pump(state);
     player::upload_frame(state);
     if state.gpu.is_none() {
@@ -2911,6 +2952,8 @@ fn render_frame(state: &mut RendererState) {
             calendar,
             detail,
             settings,
+            profiles,
+            picker_background,
             egui_events,
             modifiers,
             ..
@@ -2927,6 +2970,8 @@ fn render_frame(state: &mut RendererState) {
                 calendar,
                 detail,
                 settings,
+                profiles.as_mut(),
+                picker_background.as_deref(),
                 player_model.as_ref(),
                 focused,
                 safe_bottom,
@@ -2942,7 +2987,10 @@ fn render_frame(state: &mut RendererState) {
                 state.cursor = frame.cursor;
                 state.wants_keyboard = frame.wants_keyboard;
                 state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
-                let layout = frame.layout;
+                let mut layout = frame.layout;
+                if let Some(request) = layout.profiles.take() {
+                    profiles::handle(state, request);
+                }
                 if let Some(position) = layout.seek_to {
                     player::command(state, VideoCommand::SeekTo(position));
                 }
@@ -3211,7 +3259,12 @@ fn route_actions_to_session(state: &mut RendererState) {
     }
     let profile = session.active_profile();
     let mut unhandled = Vec::new();
+    let mut open_profiles = false;
     for action in std::mem::take(&mut state.pending_native_actions) {
+        if matches!(&action, NativeAction::Navigate { destination } if destination == "profiles") {
+            open_profiles = true;
+            continue;
+        }
         if let NativeAction::StartPlayback { item } = &action {
             state.player = Some(player::PlayerSession::new(item.clone()));
             state.ui = UiTree::default();
@@ -3228,6 +3281,10 @@ fn route_actions_to_session(state: &mut RendererState) {
         }
     }
     state.pending_native_actions = unhandled;
+    if open_profiles {
+        state.ui = UiTree::default();
+        profiles::open(state);
+    }
 }
 
 fn current_year_month() -> (i32, u32) {

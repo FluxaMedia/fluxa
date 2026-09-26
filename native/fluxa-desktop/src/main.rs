@@ -138,6 +138,7 @@ impl ApplicationHandler for App {
             data_dir.as_ref().map(|directory| directory.join("artwork-cache")),
         );
         host.set_form_factor("desktop");
+        host.set_image_picker(Box::new(pick_image));
         #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
         host.set_video_backend(Box::new(mpv::MpvBackend::new()));
         match data_dir {
@@ -347,4 +348,30 @@ fn main() -> Result<(), winit::error::EventLoopError> {
         );
     });
     EventLoop::new()?.run_app(&mut App::new())
+}
+
+fn pick_image() -> Option<std::path::PathBuf> {
+    #[cfg(target_os = "macos")]
+    let output = std::process::Command::new("osascript")
+        .args([
+            "-e",
+            "POSIX path of (choose file of type {\"public.image\"})",
+        ])
+        .output();
+    #[cfg(not(target_os = "macos"))]
+    let output = std::process::Command::new("zenity")
+        .args([
+            "--file-selection",
+            "--file-filter=Images | *.png *.jpg *.jpeg *.webp *.gif",
+        ])
+        .output()
+        .or_else(|_| {
+            std::process::Command::new("kdialog")
+                .args(["--getopenfilename", ".", "*.png *.jpg *.jpeg *.webp *.gif"])
+                .output()
+        });
+    let output = output.ok().filter(|output| output.status.success())?;
+    let path = String::from_utf8(output.stdout).ok()?;
+    let path = path.trim();
+    (!path.is_empty()).then(|| path.into())
 }

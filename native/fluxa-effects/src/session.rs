@@ -133,6 +133,14 @@ impl AppSession {
         self.executor.fetch_json(url)
     }
 
+    pub fn executor(&self) -> EffectExecutor {
+        self.executor.clone()
+    }
+
+    pub fn storage(&self) -> &Storage {
+        &self.storage
+    }
+
     pub fn revision(&self) -> u64 {
         self.runtime.revision()
     }

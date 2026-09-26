@@ -14,6 +14,7 @@ mod detail;
 mod discover;
 mod library;
 mod player;
+mod profiles;
 mod settings;
 
 pub use calendar::draw_calendar;
@@ -21,6 +22,10 @@ pub use calendar::draw_calendar;
 pub use detail::draw_detail;
 pub use discover::draw_discover;
 pub use library::draw_library;
+pub use profiles::{
+    PinPurpose, PinPrompt, ProfileAvatar, ProfileAvatarPack, ProfileDraft, ProfileEntry,
+    ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest, draw_profiles,
+};
 pub use player::{
     PlayerModel, content_warning_duration, draw_player, format_time, torrent_status_lines,
 };
@@ -1439,6 +1444,9 @@ pub trait HomeAssets {
     fn ambient_glow(&self) -> Option<TextureId> {
         None
     }
+    fn custom_background_url(&self) -> Option<&str> {
+        None
+    }
     fn active_profile_avatar_url(&self) -> Option<&str> {
         None
     }
@@ -2163,6 +2171,7 @@ pub struct HomeLayout {
     pub load_more: Vec<serde_json::Value>,
     pub seek_to: Option<f64>,
     pub seek_hover: Option<f64>,
+    pub profiles: Option<ProfilesRequest>,
 }
 
 pub const NODE_HOME: u64 = 10;
@@ -2201,6 +2210,7 @@ pub const NODE_DETAIL_DROPPED: u64 = 74;
 pub const NODE_DETAIL_FAVORITE: u64 = 75;
 pub const NODE_DETAIL_SIMILAR_BASE: u64 = 300;
 pub const NODE_SETTINGS_BACK: u64 = 400;
+pub const NODE_SETTINGS_SWITCH_PROFILE: u64 = 401;
 pub const NODE_SETTINGS_ROW_BASE: u64 = 800;
 pub const NODE_SETTINGS_SECTION_BASE: u64 = 450;
 pub const NODE_SETTINGS_ADDON_URL: u64 = 470;
@@ -4279,9 +4289,9 @@ fn draw_loading_screen(
     context: &egui::Context,
     painter: &egui::Painter,
     screen: Rect,
-    assets: &impl HomeAssets,
+    assets: &mut impl HomeAssets,
 ) {
-    paint_ambient(painter, screen, assets);
+    profiles::paint_custom_background(context, painter, screen, assets);
     let time = context.input(|input| input.time) as f32;
     let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();

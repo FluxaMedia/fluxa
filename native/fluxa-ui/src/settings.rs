@@ -1690,17 +1690,31 @@ pub fn draw_settings(
                         .color(Color32::from_white_alpha(165)),
                 );
                 ui.add_space(metrics.section_gap);
-                let back = components::button_auto_width(
-                    ui,
-                    &format!("‹  {}", localized("common.back", language)),
-                    components::ButtonKind::Secondary,
-                    metrics.nav_label_size + 2.0,
-                    metrics,
-                );
-                layout.focusable.push((NODE_SETTINGS_BACK, back.rect));
-                if back.clicked() {
-                    layout.activated = Some(NODE_SETTINGS_BACK);
-                }
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = metrics.control_gap;
+                    let back = components::button_auto_width(
+                        ui,
+                        &format!("‹  {}", localized("common.back", language)),
+                        components::ButtonKind::Secondary,
+                        metrics.nav_label_size + 2.0,
+                        metrics,
+                    );
+                    layout.focusable.push((NODE_SETTINGS_BACK, back.rect));
+                    if back.clicked() {
+                        layout.activated = Some(NODE_SETTINGS_BACK);
+                    }
+                    let switch = components::button_auto_width(
+                        ui,
+                        &localized("settings.switch_profiles", language),
+                        components::ButtonKind::Secondary,
+                        metrics.nav_label_size + 2.0,
+                        metrics,
+                    );
+                    layout.focusable.push((NODE_SETTINGS_SWITCH_PROFILE, switch.rect));
+                    if switch.clicked() {
+                        layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
+                    }
+                });
                 header_bottom = ui.min_rect().bottom();
             });
     }
@@ -1889,6 +1903,43 @@ pub fn draw_settings(
                 });
             if clicked {
                 layout.activated = Some(node);
+            }
+        }
+        if desktop {
+            let rect = Rect::from_min_size(
+                Pos2::new(
+                    margin + metrics.control_gap,
+                    section_top
+                        + nav_top_inset
+                        + SETTINGS_SECTIONS.len() as f32 * (nav_item_height + nav_item_gap)
+                        + nav_item_gap * 2.0
+                        - scroll_y,
+                ),
+                Vec2::new(nav_width - metrics.control_gap * 2.0, nav_item_height),
+            );
+            layout.focusable.push((NODE_SETTINGS_SWITCH_PROFILE, rect));
+            let switch = egui::Area::new(Id::new("fluxa-settings-switch-profile"))
+                .fixed_pos(rect.min)
+                .show(context, |ui| {
+                    let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
+                    if response.hovered() {
+                        ui.painter().rect_filled(
+                            item_rect,
+                            metrics.screen_control_radius,
+                            Color32::from_white_alpha(8),
+                        );
+                    }
+                    ui.painter().text(
+                        item_rect.left_center() + Vec2::new(42.0, 0.0),
+                        Align2::LEFT_CENTER,
+                        localized("settings.switch_profiles", language),
+                        FontId::proportional(metrics.nav_label_size + 2.0),
+                        Color32::from_white_alpha(185),
+                    );
+                    response.clicked()
+                });
+            if switch.inner {
+                layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
             }
         }
     }

@@ -122,6 +122,7 @@ impl EffectExecutor {
                     .native_timeout(Duration::from_secs(10))
                     .build()?
                     .get(&url)
+                    .header("User-Agent", "Fluxa")
                     .send()
                     .await?
                     .error_for_status()?
