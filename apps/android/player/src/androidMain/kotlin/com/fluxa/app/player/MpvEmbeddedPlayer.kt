@@ -185,6 +185,7 @@ class MpvEmbeddedPlayer(
                     }
                     MPVLib.MpvEvent.MPV_EVENT_FILE_LOADED -> {
                         hasLoadedCurrentFile = true
+                        activeLoad?.let(::startHardwareWatchdog)
                         addExternalSubtitlesOnce()
                         _state.value = _state.value.copy(isBuffering = true, error = null)
                     }
@@ -385,8 +386,9 @@ class MpvEmbeddedPlayer(
             runCatching { mpv.setOptionString("vo", voInUse) }
         }
         runCatching { mpv.setOptionString("hwdec", if (load.allowHardwareDecode) "auto-safe" else "no") }
-        startHardwareWatchdog(load)
+        hardwareWatchdogJob?.cancel()
         val options = buildList {
+            if (load.url.startsWith("http://127.0.0.1:")) add("network-timeout=90")
             add("force-media-title=${load.stream?.effectiveFilename ?: load.url.substringAfterLast('/').ifBlank { "Fluxa" }}")
             if (load.startPositionMs > 0L) add("start=${String.format(Locale.US, "%.3f", load.startPositionMs / 1000.0)}")
         }.joinToString(",")
