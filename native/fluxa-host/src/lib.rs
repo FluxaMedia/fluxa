@@ -253,7 +253,6 @@ struct ArtworkLoader {
     animation_checked: HashSet<String>,
     active_animations: HashSet<String>,
     animation_slots: HashSet<String>,
-    animation_start_times: HashMap<String, Instant>,
     latest_keys: HashMap<String, String>,
     texture_last_used: HashMap<String, u64>,
     transparent_pixel_ratio: HashMap<String, f32>,
@@ -277,7 +276,6 @@ impl ArtworkLoader {
             animation_checked: HashSet::new(),
             active_animations: HashSet::new(),
             animation_slots: HashSet::new(),
-            animation_start_times: HashMap::new(),
             latest_keys: HashMap::new(),
             texture_last_used: HashMap::new(),
             transparent_pixel_ratio: HashMap::new(),
@@ -291,7 +289,6 @@ impl ArtworkLoader {
             let url = prepared.source_url;
             let target_size = prepared.target_size;
             let animation_requested = prepared.animation_requested;
-            let animation_started_at = prepared.animation_started_at;
             let animation_atlas = prepared.animation_atlas;
             let image_pixels = animation_atlas
                 .as_ref()
@@ -303,10 +300,6 @@ impl ArtworkLoader {
             } else {
                 base_key
             };
-            let animation_started_at = self
-                .animation_start_times
-                .remove(&key)
-                .or(animation_started_at);
             // Artwork is premultiplied before upload. Passing it through the
             // straight-alpha constructor applies alpha a second time and
             // creates the dark/bright fringe visible around transparent logos.
@@ -345,20 +338,13 @@ impl ArtworkLoader {
                 .insert(key.clone(), transparent_ratio);
             self.textures.insert(key.clone(), texture);
             if let Some(atlas) = animation_atlas.filter(|atlas| atlas.frames.len() > 1) {
-                let frames = atlas.frames;
-                let now = Instant::now();
-                let (frame_index, next_frame_at) = animation_started_at
-                    .and_then(|started_at| {
-                        fluxa_artwork::animation_frame_at(&frames, started_at, now)
-                    })
-                    .unwrap_or((0, now + frames[0].duration.max(Duration::from_millis(1))));
                 self.animations.insert(
                     key,
                     ArtworkAnimation {
-                        frames,
-                        frame_index,
-                        started_at: animation_started_at,
-                        next_frame_at,
+                        frames: atlas.frames,
+                        frame_index: 0,
+                        started_at: None,
+                        next_frame_at: Instant::now(),
                     },
                 );
             }
@@ -376,7 +362,6 @@ impl ArtworkLoader {
                 self.transparent_pixel_ratio.remove(&oldest);
                 self.animations.remove(&oldest);
                 self.animation_checked.remove(&oldest);
-                self.animation_start_times.remove(&oldest);
             }
             context.request_repaint();
         }
@@ -405,6 +390,14 @@ impl ArtworkLoader {
         if let Some(wait) = next_frame_in {
             context.request_repaint_after(wait.max(Duration::from_millis(1)));
         }
+    }
+
+    fn next_animation_frame(&self) -> Option<Instant> {
+        self.active_animations
+            .iter()
+            .filter_map(|key| self.animations.get(key))
+            .map(|animation| animation.next_frame_at)
+            .min()
     }
 
     fn begin_frame(&mut self) {
@@ -446,15 +439,9 @@ impl ArtworkLoader {
                 .insert(key.clone(), self.access_counter);
         }
         if self.animations.contains_key(&key) {
-            let started_at = self
-                .animations
-                .get(&key)
-                .and_then(|animation| animation.started_at)
-                .or_else(|| self.animation_start_times.remove(&key))
-                .unwrap_or_else(Instant::now);
             let now = Instant::now();
             let animation = self.animations.get_mut(&key)?;
-            animation.started_at.get_or_insert(started_at);
+            animation.started_at.get_or_insert(now);
             let (frame_index, next_frame_at) =
                 fluxa_artwork::animation_frame_at(&animation.frames, animation.started_at?, now)?;
             animation.frame_index = frame_index;
@@ -474,9 +461,6 @@ impl ArtworkLoader {
         if self.animation_checked.contains(&key) {
             return None;
         }
-        self.animation_start_times
-            .entry(key.clone())
-            .or_insert_with(Instant::now);
         let _ = self
             .fetcher
             .request_animated(Some(&source_url), target_size, priority);
@@ -2922,14 +2906,15 @@ fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .as_ref()
         .is_some_and(|gpu| gpu.artwork.fetcher.has_pending())
         .then(|| now + Duration::from_millis(50));
+    let animation = state
+        .gpu
+        .as_ref()
+        .and_then(|gpu| gpu.artwork.next_animation_frame());
     let projecting = state
         .projector
         .pending()
         .then(|| now + Duration::from_millis(8));
-    let artwork = match (artwork, projecting) {
-        (Some(a), Some(b)) => Some(a.min(b)),
-        (a, b) => a.or(b),
-    };
+    let artwork = [artwork, projecting, animation].into_iter().flatten().min();
     match (state.redraw_at, artwork) {
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),
