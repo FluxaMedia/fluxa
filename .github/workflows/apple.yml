@@ -5,30 +5,14 @@ on:
     paths:
       - ".github/workflows/apple.yml"
       - "apps/apple/**"
-      - "apps/android/build-logic/**"
-      - "apps/android/core/**"
-      - "apps/android/data/**"
-      - "apps/android/player/**"
-      - "apps/android/shared/**"
-      - "apps/android/gradle/**"
-      - "apps/android/gradle.properties"
-      - "apps/android/settings.gradle.kts"
-      - "apps/android/build.gradle.kts"
+      - "native/**"
       - "core/fluxa-core/**"
   push:
     branches: [master]
     paths:
       - ".github/workflows/apple.yml"
       - "apps/apple/**"
-      - "apps/android/build-logic/**"
-      - "apps/android/core/**"
-      - "apps/android/data/**"
-      - "apps/android/player/**"
-      - "apps/android/shared/**"
-      - "apps/android/gradle/**"
-      - "apps/android/gradle.properties"
-      - "apps/android/settings.gradle.kts"
-      - "apps/android/build.gradle.kts"
+      - "native/**"
       - "core/fluxa-core/**"
   workflow_dispatch:
 
@@ -36,33 +20,26 @@ permissions:
   contents: read
 
 concurrency:
-  # Delayed push events from an older SHA must not cancel an explicit
-  # validation run for the current master.
   group: apple-${{ github.ref }}-${{ github.event_name }}
   cancel-in-progress: true
 
 jobs:
-  rust-core:
-    name: Rust core artifact
-    needs: [ffmpeg]
+  build:
+    name: ${{ matrix.scheme }}
     runs-on: macos-latest
-    timeout-minutes: 45
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - scheme: FluxaIos
+            sdk: iphonesimulator
+            destination: generic/platform=iOS Simulator
+          - scheme: FluxaTvos
+            sdk: appletvsimulator
+            destination: generic/platform=tvOS Simulator
     steps:
       - uses: actions/checkout@v4
-
-      - name: Download FFmpeg adaptation artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: apple-ffmpeg-adaptation
-          path: apps/apple
-
-      - name: Verify FFmpeg bridge C source
-        run: >-
-          clang -std=c11 -Wall -Wextra -Wpedantic -Werror
-          -Iapps/apple/Generated/ffmpeg-bridge/include
-          -Icore/fluxa-core/fluxa-streaming-engine/bridge
-          -fsyntax-only
-          core/fluxa-core/fluxa-streaming-engine/bridge/fluxa_ffmpeg_remux.c
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -73,201 +50,32 @@ jobs:
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          workspaces: core/fluxa-core
+          workspaces: native
           cache-on-failure: true
 
-      - name: Build Rust core XCFramework
-        env:
-          FLUXA_BUILD_STREAMING_ENGINE: "1"
+      - name: Build Rust renderer
         run: apps/apple/scripts/build-rust-core-xcframework.sh
 
-      - name: Verify Apple streaming bridge
-        working-directory: core/fluxa-core
-        run: cargo test -p fluxa_streaming_engine --no-default-features --features apple --lib
-
-      - name: Upload Rust core artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: apple-rust-core
-          path: apps/apple/Generated
-          if-no-files-found: error
-
-  ffmpeg:
-    name: FFmpeg static adaptation artifact
-    runs-on: macos-latest
-    timeout-minutes: 120
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Cache FFmpeg build
-        uses: actions/cache@v4
-        with:
-          path: |
-            apps/apple/FluxaPlayerKit/Vendor/CFFmpeg.xcframework
-            apps/apple/Generated/ffmpeg
-            apps/apple/Generated/ffmpeg-bridge
-          key: cffmpeg-${{ runner.os }}-${{ hashFiles('apps/apple/scripts/build-ffmpeg-xcframework.sh') }}
-
-      - name: Build FFmpeg static libraries
-        run: apps/apple/scripts/build-ffmpeg-xcframework.sh
-
-      - name: Upload FFmpeg adaptation artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: apple-ffmpeg-adaptation
-          path: |
-            apps/apple/Generated/ffmpeg-bridge
-            apps/apple/FluxaPlayerKit/Vendor/CFFmpeg.xcframework
-          if-no-files-found: error
-
-  macos-bridge:
-    name: macOS FFmpeg bridge
-    needs: [ffmpeg]
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download FFmpeg adaptation artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: apple-ffmpeg-adaptation
-          path: apps/apple
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: stable
-
-      - name: Build and test macOS bridge
-        working-directory: core/fluxa-core
-        run: |
-          case "$(uname -m)" in
-            arm64)
-              rust_target="aarch64-apple-darwin"
-              ffmpeg_slice="macos-arm64"
-              ;;
-            x86_64)
-              rust_target="x86_64-apple-darwin"
-              ffmpeg_slice="macos-x86_64"
-              ;;
-            *)
-              echo "Unsupported macOS runner architecture: $(uname -m)" >&2
-              exit 1
-              ;;
-          esac
-          rustup target add "$rust_target"
-          FLUXA_FFMPEG_BRIDGE_INCLUDE="$GITHUB_WORKSPACE/apps/apple/Generated/ffmpeg-bridge/include" \
-          FLUXA_FFMPEG_BRIDGE_LIB="$GITHUB_WORKSPACE/apps/apple/Generated/ffmpeg-bridge/$ffmpeg_slice" \
-          cargo test --target "$rust_target" -p fluxa_streaming_engine \
-            --no-default-features --features apple --lib -- --test-threads=1
-
-  ios:
-    name: iOS simulator
-    needs: [rust-core, ffmpeg]
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download Rust core artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: apple-rust-core
-          path: apps/apple/Generated
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - uses: gradle/actions/setup-gradle@v4
+      - name: Fetch libmpv
+        run: apps/apple/scripts/fetch-libmpv.sh
 
       - name: Set up XcodeGen
-        run: |
-          if ! command -v xcodegen >/dev/null; then
-            brew untap aws/tap || true
-            brew install xcodegen
-          fi
-
-      - name: Verify iOS shared code
-        run: >-
-          ./apps/android/gradlew --no-daemon -p apps/android
-          :core:linkIosSimulatorArm64
-          :data:compileIosMainKotlinMetadata
-          :player:iosSimulatorArm64MainKlibrary
+        run: command -v xcodegen >/dev/null || brew install xcodegen
 
       - name: Generate Apple host project
         working-directory: apps/apple
         run: xcodegen generate
 
-      - name: Build iOS host
+      - name: Build host
         env:
           FLUXA_SKIP_RUST_CORE_BUILD: "1"
         working-directory: apps/apple
         run: >-
           xcodebuild
           -project FluxaApple.xcodeproj
-          -scheme FluxaIos
-          -sdk iphonesimulator
-          -destination 'generic/platform=iOS Simulator'
-          ARCHS=arm64
-          CODE_SIGNING_ALLOWED=NO
-          build
-
-  tvos:
-    name: tvOS simulator
-    needs: [rust-core]
-    runs-on: macos-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download Rust core artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: apple-rust-core
-          path: apps/apple/Generated
-
-      - uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "17"
-
-      - uses: gradle/actions/setup-gradle@v4
-
-      - name: Set up XcodeGen
-        run: |
-          if ! command -v xcodegen >/dev/null; then
-            brew untap aws/tap || true
-            brew install xcodegen
-          fi
-
-      - name: Verify tvOS shared code
-        run: >-
-          ./apps/android/gradlew --no-daemon -p apps/android
-          checkAppleTvosKmpBoundary
-          :core:linkDebugFrameworkTvosSimulatorArm64
-          :data:linkDebugFrameworkTvosSimulatorArm64
-          :player:linkDebugFrameworkTvosSimulatorArm64
-          :core:tvosSimulatorArm64Test
-          :data:tvosSimulatorArm64Test
-          :player:tvosSimulatorArm64Test
-
-      - name: Generate Apple host project
-        working-directory: apps/apple
-        run: xcodegen generate
-
-      - name: Build tvOS host
-        env:
-          FLUXA_SKIP_RUST_CORE_BUILD: "1"
-        working-directory: apps/apple
-        run: >-
-          xcodebuild
-          -project FluxaApple.xcodeproj
-          -scheme FluxaTvos
-          -sdk appletvsimulator
-          -destination 'generic/platform=tvOS Simulator'
+          -scheme ${{ matrix.scheme }}
+          -sdk ${{ matrix.sdk }}
+          -destination '${{ matrix.destination }}'
           ARCHS=arm64
           CODE_SIGNING_ALLOWED=NO
           build

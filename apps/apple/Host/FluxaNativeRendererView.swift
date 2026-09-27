@@ -137,11 +137,13 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     }
 
     private func installIndirectInput() {
+        #if os(iOS)
         let scroll = UIPanGestureRecognizer(target: self, action: #selector(indirectScroll))
         scroll.allowedScrollTypesMask = .all
         scroll.allowedTouchTypes = []
         addGestureRecognizer(scroll)
         addGestureRecognizer(UIHoverGestureRecognizer(target: self, action: #selector(hover)))
+        #endif
     }
 
     @objc private func indirectScroll(_ gesture: UIPanGestureRecognizer) {
@@ -150,10 +152,12 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         fluxa_renderer_scroll(renderer, Float(-delta.y))
     }
 
+    #if os(iOS)
     @objc private func hover(_ gesture: UIHoverGestureRecognizer) {
         let point = gesture.location(in: self)
         fluxa_renderer_pointer(renderer, FLUXA_POINTER_MOVE, Float(point.x), Float(point.y))
     }
+    #endif
 
     override var canBecomeFirstResponder: Bool { true }
 

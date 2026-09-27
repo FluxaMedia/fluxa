@@ -1,6 +1,6 @@
 # Apple hosts
 
-`FluxaIos` hosts the Rust renderer. `FluxaTvos` is a native SwiftUI host that loads its catalog through the Rust headless action/effect flow over UniFFI (`Generated/FluxaRustCore.swift`); no Kotlin frameworks are involved.
+`FluxaIos` and `FluxaTvos` are the same thin UIKit host (`Host/`) over the Rust renderer in `native/fluxa-apple-renderer`. Rust draws the UI into a `CAMetalLayer`; video plays through libmpv from [KhooLy/mpv](https://github.com/KhooLy/mpv) into a second `CAMetalLayer` behind it.
 
 On macOS, install XcodeGen and generate the project:
 
@@ -10,10 +10,4 @@ xcodegen generate
 open FluxaApple.xcodeproj
 ```
 
-The Xcode build phase builds the Rust core for the active SDK and architecture. Both targets bundle the shared English and Turkish i18n files from `shared/i18n`.
-
-## FluxaPlayerKit
-
-`FluxaPlayerKit` is a local Swift package holding the shared playback stack for iOS and tvOS. `FluxaPlayer` is the only type callers touch, and `FluxaAVFoundationEngine` backed by AVPlayer is the sole playback engine.
-
-FFmpeg is not a second renderer or a software video-player fallback. The Rust streaming layer uses FFmpeg/libavformat only as an AVPlayer compatibility filter: it probes sources, remuxes containers when necessary, repairs stream signaling, and performs selective elementary-stream conversion only when AVPlayer cannot consume that stream. Streams that AVPlayer already supports are copied without re-encoding, preserving the system HDR, Dolby Vision, VideoToolbox, Atmos, AirPlay and PiP pipeline.
+The build phases fetch `Libmpv.xcframework` from the fork's `libmpv-apple.xcframework.zip` release asset into `Vendor/` and build the Rust renderer for the active SDK. Both targets bundle the shared i18n files from `shared/i18n`.

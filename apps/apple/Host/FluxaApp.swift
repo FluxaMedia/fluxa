@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 @main
-struct FluxaIosApp: App {
+struct FluxaApp: App {
     var body: some Scene {
         WindowGroup {
             FluxaRootView()

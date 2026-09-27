@@ -6,218 +6,40 @@ if [[ "${FLUXA_SKIP_RUST_CORE_BUILD:-0}" == "1" ]]; then
 fi
 
 project_dir="$(cd "$(dirname "$0")/.." && pwd)"
-rust_dir="$(cd "$project_dir/../../core/fluxa-core" && pwd)"
 native_dir="$(cd "$project_dir/../../native" && pwd)"
 output_dir="$project_dir/Generated"
-headers_dir="$output_dir/FluxaRustCoreFFI"
-profile="${CONFIGURATION:-Debug}"
+profile="release"
+[[ "${CONFIGURATION:-Debug}" == "Release" ]] || profile="debug"
 
-if [[ "$profile" == "Release" ]]; then
-    cargo_profile="release"
-else
-    cargo_profile="debug"
-fi
-
-apple_sdk_for_rust_target() {
+sdk_for() {
     case "$1" in
-        aarch64-apple-ios) echo "iphoneos" ;;
-        aarch64-apple-ios-sim | x86_64-apple-ios) echo "iphonesimulator" ;;
-        aarch64-apple-tvos) echo "appletvos" ;;
-        aarch64-apple-tvos-sim) echo "appletvsimulator" ;;
-        *) echo "" ;;
+        aarch64-apple-ios) echo iphoneos ;;
+        aarch64-apple-ios-sim | x86_64-apple-ios) echo iphonesimulator ;;
+        aarch64-apple-tvos) echo appletvos ;;
+        aarch64-apple-tvos-sim) echo appletvsimulator ;;
     esac
 }
 
-apple_clang_triple_for_rust_target() {
-    case "$1" in
-        aarch64-apple-ios) echo "arm64-apple-ios" ;;
-        aarch64-apple-ios-sim) echo "arm64-apple-ios-simulator" ;;
-        x86_64-apple-ios) echo "x86_64-apple-ios-simulator" ;;
-        aarch64-apple-tvos) echo "arm64-apple-tvos" ;;
-        aarch64-apple-tvos-sim) echo "arm64-apple-tvos-simulator" ;;
-        *) echo "" ;;
-    esac
-}
-
-build_rust_core() {
-    local rust_target=""
-    local prev_was_target_flag=0
-    for arg in "$@"; do
-        if [[ "$prev_was_target_flag" == "1" ]]; then
-            rust_target="$arg"
-            break
-        fi
-        [[ "$arg" == "--target" ]] && prev_was_target_flag=1 || prev_was_target_flag=0
-    done
-
-    local bindgen_env=()
-    local deployment_env=()
-    local sdkroot_env=()
-    if [[ -n "$rust_target" ]]; then
-        local sdk clang_triple sdk_path
-        sdk="$(apple_sdk_for_rust_target "$rust_target")"
-        clang_triple="$(apple_clang_triple_for_rust_target "$rust_target")"
-        if [[ -n "$sdk" && -n "$clang_triple" ]]; then
-            sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
-            bindgen_env=(
-                "LIBCLANG_PATH=$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib"
-                "BINDGEN_EXTRA_CLANG_ARGS=--target=$clang_triple --sysroot=$sdk_path -isysroot $sdk_path"
-            )
-            sdkroot_env=("SDKROOT=$sdk_path")
-        fi
-        case "$sdk" in
-            iphoneos | iphonesimulator)
-                deployment_env=("IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET:-18.5}")
-                ;;
-            appletvos | appletvsimulator)
-                deployment_env=("TVOS_DEPLOYMENT_TARGET=${TVOS_DEPLOYMENT_TARGET:-18.5}")
-                ;;
-        esac
-    fi
-
-    local cargo_cmd=(cargo build --no-default-features --features ios "$@")
-    [[ "$profile" == "Release" ]] && cargo_cmd+=(--release)
-
-    local env_args=()
-    [[ ${#bindgen_env[@]} -gt 0 ]] && env_args+=("${bindgen_env[@]}")
-    [[ ${#deployment_env[@]} -gt 0 ]] && env_args+=("${deployment_env[@]}")
-    [[ ${#sdkroot_env[@]} -gt 0 ]] && env_args+=("${sdkroot_env[@]}")
-    if [[ ${#env_args[@]} -gt 0 ]]; then
-        env "${env_args[@]}" "${cargo_cmd[@]}"
-    else
-        "${cargo_cmd[@]}"
-    fi
-}
-
-build_streaming_engine() {
-    local target="${2:-}"
-    local deployment_var="IPHONEOS_DEPLOYMENT_TARGET"
-    local deployment_target="${IPHONEOS_DEPLOYMENT_TARGET:-18.5}"
-    if [[ "$target" == *apple-tvos* ]]; then
-        deployment_var="TVOS_DEPLOYMENT_TARGET"
-        deployment_target="${TVOS_DEPLOYMENT_TARGET:-17.0}"
-    fi
-    local deployment_env="${deployment_var}=${deployment_target}"
-    local ffmpeg_slice
-    case "$target" in
-        aarch64-apple-ios) ffmpeg_slice="ios-device" ;;
-        aarch64-apple-ios-sim) ffmpeg_slice="ios-sim-arm64" ;;
-        x86_64-apple-ios) ffmpeg_slice="ios-sim-x86_64" ;;
-        aarch64-apple-tvos) ffmpeg_slice="tvos-device" ;;
-        aarch64-apple-tvos-sim) ffmpeg_slice="tvos-sim" ;;
-        *) echo "Unknown Apple FFmpeg slice for $target" >&2; return 1 ;;
-    esac
-    local ffmpeg_include="$project_dir/Generated/ffmpeg-bridge/include"
-    local ffmpeg_lib="$project_dir/Generated/ffmpeg-bridge/$ffmpeg_slice"
-
-    if [[ "$profile" == "Release" ]]; then
-        env "$deployment_env" \
-            "FLUXA_FFMPEG_BRIDGE_INCLUDE=$ffmpeg_include" \
-            "FLUXA_FFMPEG_BRIDGE_LIB=$ffmpeg_lib" \
-            cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@" --release
-    else
-        env "$deployment_env" \
-            "FLUXA_FFMPEG_BRIDGE_INCLUDE=$ffmpeg_include" \
-            "FLUXA_FFMPEG_BRIDGE_LIB=$ffmpeg_lib" \
-            cargo build -p fluxa_streaming_engine --no-default-features --features apple "$@"
-    fi
-}
-
-should_build_streaming_engine() {
-    [[ "${FLUXA_BUILD_STREAMING_ENGINE:-0}" == "1" ]] ||
-        [[ "${PLATFORM_NAME:-}" == "iphoneos" ]] ||
-        [[ "${PLATFORM_NAME:-}" == "iphonesimulator" ]] ||
-        [[ "${PLATFORM_NAME:-}" == "appletvos" ]] ||
-        [[ "${PLATFORM_NAME:-}" == "appletvsimulator" ]]
-}
-
-targets=(
-    aarch64-apple-ios
-    aarch64-apple-ios-sim
-    x86_64-apple-ios
-    aarch64-apple-tvos
-    aarch64-apple-tvos-sim
-)
-
-installed_targets="$(rustup target list --installed)"
-for target in "${targets[@]}"; do
-    if ! grep -qx "$target" <<< "$installed_targets"; then
-        echo "Missing Rust target: $target"
-        echo "Install it with: rustup target add $target"
-        exit 1
-    fi
-done
-
-mkdir -p "$output_dir" "$headers_dir"
-rm -rf "$output_dir/FluxaRustCore.xcframework"
-
-pushd "$rust_dir" >/dev/null
-build_rust_core
-cargo run --no-default-features --features uniffi-cli --bin uniffi-bindgen generate \
-    --library "target/$cargo_profile/libfluxa_core.dylib" \
-    --language swift \
-    --config uniffi.toml \
-    --out-dir "$output_dir"
-
-for target in "${targets[@]}"; do
-    build_rust_core --target "$target"
-done
-
-build_apple_renderer() {
-    local target="$1"
-    local sdk clang_triple sdk_path
-    sdk="$(apple_sdk_for_rust_target "$target")"
-    clang_triple="$(apple_clang_triple_for_rust_target "$target")"
-    sdk_path="$(xcrun --sdk "$sdk" --show-sdk-path)"
-    local cargo_cmd=(cargo build -p fluxa-apple-renderer --target "$target")
-    [[ "$profile" == "Release" ]] && cargo_cmd+=(--release)
+build() {
+    local target="$1" sdk_path
+    sdk_path="$(xcrun --sdk "$(sdk_for "$target")" --show-sdk-path)"
+    local cmd=(cargo build -p fluxa-apple-renderer --target "$target")
+    [[ "$profile" == "release" ]] && cmd+=(--release)
     (cd "$native_dir" && env \
         "IPHONEOS_DEPLOYMENT_TARGET=${IPHONEOS_DEPLOYMENT_TARGET:-18.5}" \
+        "TVOS_DEPLOYMENT_TARGET=${TVOS_DEPLOYMENT_TARGET:-17.0}" \
         "SDKROOT=$sdk_path" \
-        "LIBCLANG_PATH=$(xcode-select -p)/Toolchains/XcodeDefault.xctoolchain/usr/lib" \
-        "BINDGEN_EXTRA_CLANG_ARGS=--target=$clang_triple --sysroot=$sdk_path -isysroot $sdk_path" \
-        "${cargo_cmd[@]}")
+        "${cmd[@]}")
 }
 
-for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios; do
-    build_apple_renderer "$target"
+targets=(aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-tvos aarch64-apple-tvos-sim)
+for target in "${targets[@]}"; do
+    build "$target"
 done
 
-if should_build_streaming_engine; then
-    for target in aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios \
-        aarch64-apple-tvos aarch64-apple-tvos-sim; do
-        build_streaming_engine --target "$target"
-    done
-fi
-
-lipo -create \
-    "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_core.a" \
-    "target/x86_64-apple-ios/$cargo_profile/libfluxa_core.a" \
-    -output "$output_dir/libfluxa_core-ios-simulator.a"
-cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-ios.a"
-lipo -create \
-    "$native_dir/target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_apple_renderer.a" \
-    "$native_dir/target/x86_64-apple-ios/$cargo_profile/libfluxa_apple_renderer.a" \
-    -output "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
-cp "$native_dir/target/aarch64-apple-ios/$cargo_profile/libfluxa_apple_renderer.a" "$output_dir/libfluxa_apple_renderer-ios.a"
-cp "target/aarch64-apple-tvos/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos.a"
-cp "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" "$output_dir/libfluxa_core-tvos-simulator.a"
-if should_build_streaming_engine; then
-    lipo -create \
-        "target/aarch64-apple-ios-sim/$cargo_profile/libfluxa_streaming_engine.a" \
-        "target/x86_64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" \
-        -output "$output_dir/libfluxa_streaming_engine-ios-simulator.a"
-    cp "target/aarch64-apple-ios/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-ios.a"
-    cp "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-tvos-simulator.a"
-    cp "target/aarch64-apple-tvos/$cargo_profile/libfluxa_streaming_engine.a" "$output_dir/libfluxa_streaming_engine-tvos.a"
-fi
-cp "$output_dir/FluxaRustCoreFFI.h" "$headers_dir/FluxaRustCoreFFI.h"
-cp "$output_dir/FluxaRustCoreFFI.modulemap" "$headers_dir/module.modulemap"
-
-xcodebuild -create-xcframework \
-    -library "target/aarch64-apple-ios/$cargo_profile/libfluxa_core.a" -headers "$headers_dir" \
-    -library "$output_dir/libfluxa_core-ios-simulator.a" -headers "$headers_dir" \
-    -library "target/aarch64-apple-tvos/$cargo_profile/libfluxa_core.a" -headers "$headers_dir" \
-    -library "target/aarch64-apple-tvos-sim/$cargo_profile/libfluxa_core.a" -headers "$headers_dir" \
-    -output "$output_dir/FluxaRustCore.xcframework"
-popd >/dev/null
+lib() { echo "$native_dir/target/$1/$profile/libfluxa_apple_renderer.a"; }
+mkdir -p "$output_dir"
+lipo -create "$(lib aarch64-apple-ios-sim)" "$(lib x86_64-apple-ios)" -output "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
+cp "$(lib aarch64-apple-ios)" "$output_dir/libfluxa_apple_renderer-ios.a"
+cp "$(lib aarch64-apple-tvos)" "$output_dir/libfluxa_apple_renderer-tvos.a"
+cp "$(lib aarch64-apple-tvos-sim)" "$output_dir/libfluxa_apple_renderer-tvos-simulator.a"

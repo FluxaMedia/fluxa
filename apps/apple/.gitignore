@@ -1,4 +1,4 @@
 FluxaApple.xcodeproj
 Generated/*
 !Generated/.gitkeep
-!Generated/FluxaRustCore.swift
+Vendor/

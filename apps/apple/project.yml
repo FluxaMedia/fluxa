@@ -7,33 +7,24 @@ options:
 settings:
   base:
     GENERATE_INFOPLIST_FILE: YES
-    HEADER_SEARCH_PATHS: "$(SRCROOT)/Generated/FluxaRustCoreFFI"
+    SWIFT_INCLUDE_PATHS: "$(SRCROOT)/../../native/fluxa-apple-renderer/include"
     LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Generated"
-    OTHER_LDFLAGS[sdk=iphoneos*]: "-lfluxa_apple_renderer-ios -lfluxa_streaming_engine-ios"
-    OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_apple_renderer-ios-simulator -lfluxa_streaming_engine-ios-simulator"
-    OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos -lfluxa_streaming_engine-tvos"
-    OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator -lfluxa_streaming_engine-tvos-simulator"
-packages:
-  FluxaPlayerKit:
-    path: FluxaPlayerKit
-targets:
-  FluxaIos:
+    OTHER_LDFLAGS[sdk=iphoneos*]: "-lfluxa_apple_renderer-ios"
+    OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_apple_renderer-ios-simulator"
+    OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_apple_renderer-tvos"
+    OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_apple_renderer-tvos-simulator"
+targetTemplates:
+  FluxaHost:
     type: application
-    platform: iOS
-    settings:
-      base:
-        SWIFT_INCLUDE_PATHS: "$(SRCROOT)/../../native/fluxa-apple-renderer/include"
     info:
-      path: Generated/FluxaIos-Info.plist
+      path: Generated/${target_name}-Info.plist
       properties:
         CFBundleURLTypes:
           - CFBundleURLName: FluxaApple
             CFBundleURLSchemes:
               - fluxaapple
     sources:
-      - path: iOS/FluxaIosApp.swift
-      - path: iOS/FluxaNativeRendererView.swift
-      - path: iOS/FluxaNativeVideo.swift
+      - path: Host
     resources:
       - path: ../../shared/i18n
     dependencies:
@@ -43,27 +34,13 @@ targets:
       - sdk: GameController.framework
       - sdk: AVFoundation.framework
     preBuildScripts:
-      - name: Build Fluxa Rust Core
+      - name: Build Fluxa Rust renderer
         script: scripts/build-rust-core-xcframework.sh
         basedOnDependencyAnalysis: false
+targets:
+  FluxaIos:
+    templates: [FluxaHost]
+    platform: iOS
   FluxaTvos:
-    type: application
+    templates: [FluxaHost]
     platform: tvOS
-    sources:
-      - path: Shared/FluxaAppleCustomPlayerViewController.swift
-      - path: Shared/FluxaAppleAVPlayerStreamAdapter.swift
-      - path: AppleCore
-        excludes:
-          - FluxaAppleAddonStoreManager.swift
-          - FluxaAppleDownloadManager.swift
-          - FluxaApplePluginRepositoryManager.swift
-      - path: tvOS
-      - path: Generated/FluxaRustCore.swift
-    resources:
-      - path: ../../shared/i18n
-    dependencies:
-      - package: FluxaPlayerKit
-    preBuildScripts:
-      - name: Build Fluxa Rust Core
-        script: scripts/build-rust-core-xcframework.sh
-        basedOnDependencyAnalysis: false
