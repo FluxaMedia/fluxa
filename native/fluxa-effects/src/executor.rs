@@ -5,6 +5,8 @@ use std::sync::OnceLock;
 use std::sync::mpsc::Sender;
 use std::time::Duration;
 
+mod providers;
+
 trait NativeTimeout {
     fn native_timeout(self, timeout: Duration) -> Self;
 }
@@ -337,8 +339,19 @@ impl EffectExecutor {
                 self.read_library_state(&payload).await
             }
             fluxa_core::runtime::EffectKind::WriteLibraryCommand => {
-                self.write_library_command(&payload)
+                self.write_library_command(&payload).await
             }
+            fluxa_core::runtime::EffectKind::RunAuthFlow => self.run_auth_flow(&payload).await,
+            fluxa_core::runtime::EffectKind::ExchangeAuthCode => {
+                self.exchange_auth_code(&payload).await
+            }
+            fluxa_core::runtime::EffectKind::RefreshAuthToken => {
+                self.refresh_auth_token(&payload).await
+            }
+            fluxa_core::runtime::EffectKind::SyncWatchedState => {
+                self.sync_watched_state(&payload).await
+            }
+            fluxa_core::runtime::EffectKind::EnqueueTraktScrobble => self.scrobble(&payload).await,
             fluxa_core::runtime::EffectKind::ReadPlaybackProgress => {
                 self.read_playback_progress(&payload).await
             }
@@ -1007,6 +1020,18 @@ impl EffectExecutor {
                     .and_then(|snapshot| snapshot.get("continueWatching").cloned())
                     .unwrap_or_else(|| json!([])));
             }
+            Some(other) if providers::is_provider(other) => {
+                let snapshot = self
+                    .read_provider_library(other, profile_id, profile)
+                    .await
+                    .inspect_err(|error| {
+                        crate::log!("[fluxa-native] {other} continue watching failed: {error}")
+                    })
+                    .ok();
+                return Ok(snapshot
+                    .and_then(|snapshot| snapshot.get("continueWatching").cloned())
+                    .unwrap_or_else(|| json!([])));
+            }
             Some(other) => {
                 crate::log!(
                     "[fluxa-native] continue watching source '{other}' has no native client yet"
@@ -1044,6 +1069,15 @@ impl EffectExecutor {
                 .await?
                 .ok_or_else(|| "Nuvio account is not connected to the active profile".to_owned());
         }
+        if providers::is_provider(source) {
+            let profile = match effect_profile {
+                Some(profile) => profile.clone(),
+                None => self.stored_profile(profile_id),
+            };
+            let snapshot = self.read_provider_library(source, profile_id, &profile).await?;
+            return core_value("normalizeLibraryDocument", snapshot)
+                .ok_or_else(|| "Fluxa Core could not normalize the library document".to_owned());
+        }
         let stored_library = self
             .storage
             .read_json(&Storage::library_key(profile_id))?
@@ -1068,7 +1102,22 @@ impl EffectExecutor {
         Ok(library)
     }
 
-    fn write_library_command(&self, payload: &Value) -> Result<Value, String> {
+    fn stored_profile(&self, profile_id: &str) -> Value {
+        self.storage
+            .read_json("profiles")
+            .ok()
+            .flatten()
+            .and_then(|profiles| {
+                profiles
+                    .as_array()?
+                    .iter()
+                    .find(|item| item.get("id").and_then(Value::as_str) == Some(profile_id))
+                    .cloned()
+            })
+            .unwrap_or_else(|| json!({}))
+    }
+
+    async fn write_library_command(&self, payload: &Value) -> Result<Value, String> {
         let profile_id = payload
             .get("profileId")
             .and_then(Value::as_str)
@@ -1077,11 +1126,11 @@ impl EffectExecutor {
         let source = payload
             .get("source")
             .and_then(Value::as_str)
-            .unwrap_or("local");
-        if !matches!(
-            source.trim().to_lowercase().as_str(),
-            "" | "local" | "fluxa"
-        ) {
+            .unwrap_or("local")
+            .trim()
+            .to_lowercase();
+        let provider = providers::is_provider(&source).then_some(source.as_str());
+        if provider.is_none() && !matches!(source.as_str(), "" | "local" | "fluxa") {
             return Err(format!(
                 "desktop library writes for provider '{source}' are not implemented"
             ));
@@ -1091,11 +1140,18 @@ impl EffectExecutor {
             .filter(|value| value.is_object())
             .ok_or_else(|| "library command is missing".to_owned())?;
         let key = Storage::library_key(profile_id);
-        let library = self
-            .storage
-            .read_json(&key)?
-            .or_else(|| self.storage.read_json("library").ok().flatten())
-            .unwrap_or_else(|| json!({}));
+        let profile = self.stored_profile(profile_id);
+        let library = match provider {
+            Some(provider) => match self.cached_provider_library(provider, profile_id) {
+                Some(library) => library,
+                None => self.read_provider_library(provider, profile_id, &profile).await?,
+            },
+            None => self
+                .storage
+                .read_json(&key)?
+                .or_else(|| self.storage.read_json("library").ok().flatten())
+                .unwrap_or_else(|| json!({})),
+        };
         let library = core_value("normalizeLibraryDocument", library)
             .ok_or_else(|| "Fluxa Core could not normalize the library document".to_owned())?;
         let plan = core_value(
@@ -1112,7 +1168,17 @@ impl EffectExecutor {
             .filter(|value| value.is_object())
             .cloned()
             .ok_or_else(|| "Fluxa Core returned an invalid library command plan".to_owned())?;
-        self.storage.write_json(&key, &updated)?;
+        match provider {
+            Some(provider) => {
+                let mut remote = command.clone();
+                if let Some(id) = command.pointer("/item/id").and_then(Value::as_str) {
+                    remote["remove"] = json!(!in_watchlist(&updated, id));
+                }
+                self.push_provider_command(provider, &profile, &remote).await?;
+                self.store_provider_library(provider, profile_id, &updated);
+            }
+            None => self.storage.write_json(&key, &updated)?,
+        }
         let kind = command
             .get("type")
             .and_then(Value::as_str)
@@ -1123,14 +1189,7 @@ impl EffectExecutor {
                     .pointer("/item/id")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
-                let is_in_watchlist = updated
-                    .get("watchlist")
-                    .and_then(Value::as_array)
-                    .is_some_and(|items| {
-                        items
-                            .iter()
-                            .any(|item| item.get("id").and_then(Value::as_str) == Some(id))
-                    });
+                let is_in_watchlist = in_watchlist(&updated, id);
                 json!({
                     "watchlist": updated.get("watchlist").cloned().unwrap_or_else(|| json!([])),
                     "isInWatchlist": is_in_watchlist,
@@ -2561,6 +2620,17 @@ impl EffectExecutor {
         }
         Ok(settings)
     }
+}
+
+fn in_watchlist(library: &Value, id: &str) -> bool {
+    library
+        .get("watchlist")
+        .and_then(Value::as_array)
+        .is_some_and(|items| {
+            items
+                .iter()
+                .any(|item| item.get("id").and_then(Value::as_str) == Some(id))
+        })
 }
 
 fn progress_meta(progress: &Value) -> Value {
