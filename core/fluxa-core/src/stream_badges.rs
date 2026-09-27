@@ -387,10 +387,14 @@ fn badge_match_candidates(stream: &Stream) -> Vec<String> {
     candidates
 }
 
-fn matches_any_candidate(filter: &CompiledFilter, candidates: &[String]) -> bool {
-    candidates.iter().any(|candidate| {
+fn matches_any_candidate(
+    filter: &CompiledFilter,
+    candidates: &[String],
+    lowered: &[String],
+) -> bool {
+    candidates.iter().zip(lowered).any(|(candidate, lowered)| {
         if let Some(hint) = &filter.literal_hint
-            && !candidate.to_ascii_lowercase().contains(hint.as_str())
+            && !lowered.contains(hint.as_str())
         {
             return false;
         }
@@ -429,14 +433,18 @@ pub fn match_stream_badges_json(stream_json: &str, rules_json: &str) -> String {
         return "[]".to_string();
     }
 
-    let mut matched: Vec<StreamBadge> = Vec::new();
+    let lowered = candidates
+        .iter()
+        .map(|candidate| candidate.to_ascii_lowercase())
+        .collect::<Vec<_>>();
+    let mut matched: Vec<&StreamBadge> = Vec::new();
     for filter in filters.iter() {
-        if matches_any_candidate(filter, &candidates)
+        if matches_any_candidate(filter, &candidates, &lowered)
             && !matched
                 .iter()
                 .any(|existing| existing.dedupe_key() == filter.badge.dedupe_key())
         {
-            matched.push(filter.badge.clone());
+            matched.push(&filter.badge);
         }
     }
     serde_json::to_string(&matched).unwrap_or_else(|_| "[]".to_string())
