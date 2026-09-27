@@ -3024,36 +3024,10 @@ fn url_without_query(url: &str) -> &str {
     url.split_once('?').map_or(url, |(base, _)| base)
 }
 
-fn core_value(method: &str, args: Value) -> Option<Value> {
-    let raw = fluxa_core::ffi::core_invoke(method, &args.to_string());
-    let envelope: Value = match serde_json::from_str(&raw) {
-        Ok(envelope) => envelope,
-        Err(error) => {
-            crate::log!("[fluxa-native] core method `{method}` returned invalid JSON: {error}");
-            return None;
-        }
-    };
-    if envelope.get("ok").and_then(Value::as_bool) != Some(true) {
-        let error = envelope.get("error");
-        let kind = error
-            .and_then(|value| value.get("kind"))
-            .and_then(Value::as_str)
-            .unwrap_or("error");
-        let message = error
-            .and_then(|value| value.get("message"))
-            .and_then(Value::as_str)
-            .unwrap_or("");
-        crate::log!(
-            "[fluxa-native] core method `{method}` failed: {kind}{}",
-            if message.is_empty() {
-                String::new()
-            } else {
-                format!(": {message}")
-            }
-        );
-        return None;
-    }
-    envelope.get("value").cloned()
+pub fn core_value(method: &str, args: Value) -> Option<Value> {
+    fluxa_core::ffi::call(method, &args)
+        .map_err(|error| crate::log!("[fluxa-native] core method `{method}` failed: {error}"))
+        .ok()
 }
 
 fn normalize_enabled_addons(addons: Value) -> Result<Value, String> {

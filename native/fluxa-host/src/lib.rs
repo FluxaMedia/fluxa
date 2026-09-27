@@ -13,7 +13,7 @@ use web_time::Instant;
 pub use egui;
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
-use fluxa_effects::{SessionHandle, Storage};
+use fluxa_effects::{SessionHandle, Storage, core_value};
 use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
 use fluxa_renderer::platform::{GraphicsBackend, backends_for};
 use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, rasterize_svg};
@@ -1783,14 +1783,6 @@ fn sync_home_from_core_snapshot(state: &mut RendererState) {
     if let Some(projection) = state.projector.take() {
         apply_projection(state, projection);
     }
-}
-
-fn core_value(method: &str, args: Value) -> Option<Value> {
-    let raw = fluxa_core::ffi::core_invoke(method, &args.to_string());
-    let envelope = serde_json::from_str::<Value>(&raw).ok()?;
-    (envelope.get("ok").and_then(Value::as_bool) == Some(true))
-        .then(|| envelope.get("value").cloned())
-        .flatten()
 }
 
 fn native_action_for_node(
