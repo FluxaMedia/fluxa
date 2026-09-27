@@ -25,7 +25,7 @@ mod youtube_cipher;
 
 use crate::core_error::{CoreError, LogAndDiscard};
 use crate::runtime::{EffectEnvelope, EffectKind};
-use contracts::{AppAction, DispatchResult, StatePatch};
+use contracts::{AppAction, DispatchResult};
 use serde::Serialize;
 use state::EngineState;
 use std::collections::{HashMap, HashSet};
@@ -36,10 +36,7 @@ use web_time::Instant;
 
 pub(crate) use contracts::EffectResultInput;
 
-// If the platform never calls complete_effect for an effect (a transient IPC failure on
-// the completion call, a swallowed exception, etc.), it would otherwise sit in
-// pending_effects/delivered_effect_ids forever for the life of the engine instance.
-// Anything genuinely still in flight completes well within this window.
+// Drops effects the platform never completed; real in-flight work finishes well inside it.
 const EFFECT_EXPIRY: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Default)]
@@ -47,39 +44,189 @@ struct HeadlessEngine {
     state: EngineState,
     next_effect_id: u64,
     revision: u64,
-    // Ids handed to the platform at least once, awaiting their complete_effect call.
-    // Never serialized — purely tracks delivery so the "drain the queue" fallback in
-    // resolve_visible_effects doesn't hand out an effect that's already in flight as
-    // if it were fresh work (which used to make an unrelated dispatch while a slow
-    // effect was still running re-trigger a full duplicate execution of it).
+    // Keeps the drain fallback in resolve_visible_effects from re-running in-flight effects.
     delivered_effect_ids: HashSet<String>,
-    // When each pending effect was created, for expire_stale_pending_effects. Never
-    // serialized — Instant isn't a portable wall-clock value, just an internal timer.
     effect_created_at: HashMap<String, Instant>,
     // Runtime-only effect registry. Effect payloads can contain credentials and must never
     // be included in a UI state snapshot or StatePatch.
     pending_effects: Vec<EffectEnvelope>,
 }
 
+pub struct Engine(HeadlessEngine);
+
+pub struct Update {
+    pub revision: u64,
+    pub state: serde_json::Map<String, serde_json::Value>,
+    pub effects: Vec<EffectEnvelope>,
+}
+
+pub struct PageUpdate {
+    pub revision: u64,
+    pub delta: serde_json::Value,
+    pub effects: Vec<EffectEnvelope>,
+}
+
+impl Engine {
+    pub fn new(initial: serde_json::Value) -> Result<Self, String> {
+        serde_json::from_value(initial)
+            .map(|state| Self(HeadlessEngine::new(state)))
+            .map_err(|error| error.to_string())
+    }
+
+    pub fn snapshot(&self) -> serde_json::Value {
+        serde_json::to_value(&self.0.state).unwrap_or_default()
+    }
+
+    pub fn dispatch(&mut self, action: serde_json::Value) -> Result<Update, String> {
+        let action = serde_json::from_value(action).map_err(|error| error.to_string())?;
+        Ok(Update::from(self.0.apply(action)))
+    }
+
+    pub fn dispatch_page_request(
+        &mut self,
+        action: serde_json::Value,
+    ) -> Result<(u64, Vec<EffectEnvelope>), String> {
+        let action = serde_json::from_value(action).map_err(|error| error.to_string())?;
+        self.0.apply_page_request(action)
+    }
+
+    pub fn complete(&mut self, result: serde_json::Value) -> Result<Update, String> {
+        let result = serde_json::from_value(result).map_err(|error| error.to_string())?;
+        Ok(Update::from(self.0.complete(result)))
+    }
+
+    pub fn complete_page(&mut self, result: serde_json::Value) -> Result<PageUpdate, String> {
+        let result = serde_json::from_value(result).map_err(|error| error.to_string())?;
+        let page = self.0.complete_page(result)?;
+        Ok(PageUpdate {
+            revision: page.revision,
+            delta: serde_json::to_value(&page.delta).unwrap_or_default(),
+            effects: page.effects,
+        })
+    }
+}
+
+impl From<DispatchResult> for Update {
+    fn from(result: DispatchResult) -> Self {
+        let state = match serde_json::to_value(&result.state) {
+            Ok(serde_json::Value::Object(state)) => state,
+            _ => serde_json::Map::new(),
+        };
+        Self {
+            revision: result.revision,
+            state,
+            effects: result.effects,
+        }
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct EffectsOnlyResult {
+    revision: u64,
+    effects: Vec<EffectEnvelope>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PageCompletionResult {
+    revision: u64,
+    delta: discover::DiscoverPageDelta,
+    effects: Vec<EffectEnvelope>,
+}
+
+impl HeadlessEngine {
+    fn new(state: EngineState) -> Self {
+        Self {
+            state,
+            next_effect_id: 1,
+            ..Self::default()
+        }
+    }
+
+    fn step<T>(&mut self, run: impl FnOnce(&mut Self) -> T) -> (u64, T) {
+        self.expire_stale_pending_effects(Instant::now());
+        let value = run(self);
+        self.revision = self.revision.saturating_add(1);
+        (self.revision, value)
+    }
+
+    fn apply(&mut self, action: AppAction) -> DispatchResult {
+        let (revision, (state, effects)) = self.step(|engine| {
+            let effects = engine.dispatch(action);
+            let effects = engine.resolve_visible_effects(effects);
+            (engine.state.diff_dirty(), effects)
+        });
+        DispatchResult {
+            revision,
+            state,
+            effects,
+        }
+    }
+
+    fn apply_page_request(
+        &mut self,
+        action: AppAction,
+    ) -> Result<(u64, Vec<EffectEnvelope>), String> {
+        if !matches!(&action, AppAction::DiscoverPageRequested { .. }) {
+            return Err("effects-only dispatch is reserved for Discover page requests".to_owned());
+        }
+        Ok(self.step(|engine| {
+            let effects = engine.dispatch(action);
+            let effects = engine.resolve_visible_effects(effects);
+            drop(engine.state.diff_dirty());
+            effects
+        }))
+    }
+
+    fn complete(&mut self, result: EffectResultInput) -> DispatchResult {
+        let (revision, (state, effects)) = self.step(|engine| {
+            let effects = engine.complete_effect(result);
+            let effects = engine.resolve_visible_effects(effects);
+            (engine.state.diff_dirty(), effects)
+        });
+        DispatchResult {
+            revision,
+            state,
+            effects,
+        }
+    }
+
+    fn complete_page(&mut self, result: EffectResultInput) -> Result<PageCompletionResult, String> {
+        self.expire_stale_pending_effects(Instant::now());
+        if !self.pending_effects.iter().any(|effect| {
+            effect.id == result.effect_id && effect.kind == EffectKind::FetchDiscoverPage
+        }) {
+            return Err("effect id is not a pending Discover page request".to_owned());
+        }
+        let (revision, (delta, effects)) = self.step(|engine| {
+            let effects = engine.complete_effect(result);
+            let effects = engine.resolve_visible_effects(effects);
+            let delta = discover::take_page_delta(engine);
+            drop(engine.state.diff_dirty());
+            (delta, effects)
+        });
+        Ok(PageCompletionResult {
+            revision,
+            delta,
+            effects,
+        })
+    }
+}
+
 static ENGINE_COUNTER: AtomicU64 = AtomicU64::new(1);
 static ENGINES: OnceLock<Mutex<HashMap<u64, Arc<Mutex<HeadlessEngine>>>>> = OnceLock::new();
 
 pub fn create_headless_engine(initial_json: &str) -> u64 {
-    let mut engine = HeadlessEngine {
-        next_effect_id: 1,
-        ..HeadlessEngine::default()
-    };
-    let initial_state = match serde_json::from_str::<EngineState>(initial_json) {
+    let state = match serde_json::from_str::<EngineState>(initial_json) {
         Ok(state) => state,
         Err(error) => {
             crate::log_sink::record("create_headless_engine", &error.to_string());
             return 0;
         }
     };
-    engine.state = initial_state;
-    let mut map = lock_engines();
     let handle = ENGINE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    map.insert(handle, Arc::new(Mutex::new(engine)));
+    lock_engines().insert(handle, Arc::new(Mutex::new(HeadlessEngine::new(state))));
     handle
 }
 
@@ -88,61 +235,29 @@ pub fn destroy_headless_engine(handle: u64) -> bool {
 }
 
 pub fn headless_engine_snapshot_json(handle: u64) -> Option<String> {
-    let state = {
-        let map = lock_engines();
-        map.get(&handle)?.clone()
-    };
-    let state = lock_engine(&state)?.state.clone();
+    let state = with_engine(handle, "headless_engine_snapshot_json", |engine| {
+        engine.state.clone()
+    })?;
     serde_json::to_string(&state).ok()
 }
 
 pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<String> {
-    let action: AppAction = serde_json::from_str(action_json)
-        .map_err(|e| CoreError::BadInput {
-            context: "headless_engine_dispatch_json",
-            detail: e.to_string(),
-        })
-        .log_discard()?;
-    let (revision, (patch, visible_effects)) =
-        with_engine(handle, "headless_engine_dispatch_json", |engine| {
-            let effects = engine.dispatch(action);
-            let visible_effects = engine.resolve_visible_effects(effects);
-            Some((engine.state.diff_dirty(), visible_effects))
-        })?;
-    result_patch_json(revision, patch, visible_effects)
+    const CONTEXT: &str = "headless_engine_dispatch_json";
+    let action: AppAction = parse(CONTEXT, action_json)?;
+    let result = with_engine(handle, CONTEXT, |engine| engine.apply(action))?;
+    serde_json::to_string(&result).ok()
 }
 
-/// Dispatch a Discover paging action without serializing the entire Discover
-/// state back to the host. Page requests only need their effect envelopes;
-/// serializing the full accumulated results array on every scroll-triggered
-/// request makes the UI cost grow with every page already loaded.
 pub fn headless_engine_dispatch_effects_json(handle: u64, action_json: &str) -> Option<String> {
-    let action: AppAction = serde_json::from_str(action_json)
-        .map_err(|e| CoreError::BadInput {
-            context: "headless_engine_dispatch_effects_json",
-            detail: e.to_string(),
-        })
-        .log_discard()?;
-    if !matches!(&action, AppAction::DiscoverPageRequested { .. }) {
-        return CoreError::BadInput {
-            context: "headless_engine_dispatch_effects_json",
-            detail: "effects-only dispatch is reserved for Discover page requests".to_owned(),
-        }
-        .log_and_none();
-    }
+    const CONTEXT: &str = "headless_engine_dispatch_effects_json";
+    let action: AppAction = parse(CONTEXT, action_json)?;
     let (revision, effects) =
-        with_engine(handle, "headless_engine_dispatch_effects_json", |engine| {
-            let effects = engine.dispatch(action);
-            let effects = engine.resolve_visible_effects(effects);
-            drop(engine.state.diff_dirty());
-            Some(effects)
-        })?;
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct EffectsOnlyResult {
-        revision: u64,
-        effects: Vec<EffectEnvelope>,
-    }
+        with_engine(handle, CONTEXT, |engine| engine.apply_page_request(action))?
+            .map_err(|detail| CoreError::BadInput {
+                context: CONTEXT,
+                detail,
+            })
+            .log_discard()?;
     serde_json::to_string(&EffectsOnlyResult { revision, effects }).ok()
 }
 
@@ -161,132 +276,64 @@ pub fn headless_engine_set_player_position(handle: u64, position_ms: i64) -> boo
 }
 
 fn update_player(handle: u64, update: impl FnOnce(&mut HeadlessEngine)) -> bool {
-    let Some(engine) = lock_engines().get(&handle).cloned() else {
-        return false;
-    };
-    let Some(mut engine) = lock_engine(&engine) else {
-        return false;
-    };
-    update(&mut engine);
-    true
+    with_engine(handle, "headless_engine_update_player", update).is_some()
 }
 
 pub fn headless_engine_complete_effect_json(handle: u64, result_json: &str) -> Option<String> {
-    let result: EffectResultInput = serde_json::from_str(result_json)
-        .map_err(|e| CoreError::BadInput {
-            context: "headless_engine_complete_effect_json",
-            detail: e.to_string(),
-        })
-        .log_discard()?;
-    let (revision, (patch, visible_effects)) =
-        with_engine(handle, "headless_engine_complete_effect_json", |engine| {
-            let effects = engine.complete_effect(result);
-            let visible_effects = engine.resolve_visible_effects(effects);
-            Some((engine.state.diff_dirty(), visible_effects))
-        })?;
-    result_patch_json(revision, patch, visible_effects)
+    const CONTEXT: &str = "headless_engine_complete_effect_json";
+    let result: EffectResultInput = parse(CONTEXT, result_json)?;
+    let result = with_engine(handle, CONTEXT, |engine| engine.complete(result))?;
+    serde_json::to_string(&result).ok()
 }
 
-/// Complete a Discover page effect and return only the newly appended items,
-/// their source metadata, paging flags, and follow-up effects. The generic
-/// completion response serializes the entire Discover state, whose results
-/// array grows with every page and was stalling desktop scroll frames.
 pub fn headless_engine_complete_discover_page_json(
     handle: u64,
     result_json: &str,
 ) -> Option<String> {
-    let result: EffectResultInput = serde_json::from_str(result_json)
-        .map_err(|e| CoreError::BadInput {
-            context: "headless_engine_complete_discover_page_json",
-            detail: e.to_string(),
+    const CONTEXT: &str = "headless_engine_complete_discover_page_json";
+    let result: EffectResultInput = parse(CONTEXT, result_json)?;
+    let page = with_engine(handle, CONTEXT, |engine| engine.complete_page(result))?
+        .map_err(|detail| CoreError::BadInput {
+            context: CONTEXT,
+            detail,
         })
         .log_discard()?;
-    let (revision, (delta, effects)) = with_engine(
-        handle,
-        "headless_engine_complete_discover_page_json",
-        |engine| {
-            if !engine.pending_effects.iter().any(|effect| {
-                effect.id == result.effect_id && effect.kind == EffectKind::FetchDiscoverPage
-            }) {
-                return CoreError::BadInput {
-                    context: "headless_engine_complete_discover_page_json",
-                    detail: "effect id is not a pending Discover page request".to_owned(),
-                }
-                .log_and_none();
-            }
-            let effects = engine.complete_effect(result);
-            let effects = engine.resolve_visible_effects(effects);
-            let delta = discover::take_page_delta(engine);
-            drop(engine.state.diff_dirty());
-            Some((delta, effects))
-        },
-    )?;
-    #[derive(Serialize)]
-    #[serde(rename_all = "camelCase")]
-    struct PageCompletionResult {
-        revision: u64,
-        delta: discover::DiscoverPageDelta,
-        effects: Vec<EffectEnvelope>,
-    }
-    serde_json::to_string(&PageCompletionResult {
-        revision,
-        delta,
-        effects,
-    })
-    .ok()
+    serde_json::to_string(&page).ok()
 }
 
-// Deliberately takes owned before/after snapshots rather than a reference to the locked
-// engine: diffing and serializing a large state (e.g. a big discover catalog) can take
-// over a second. Callers clone what they need and drop the per-engine lock before calling
-// this, so unrelated engine handles continue to make progress.
-fn result_patch_json(
-    revision: u64,
-    state: StatePatch,
-    effects: Vec<EffectEnvelope>,
-) -> Option<String> {
-    serde_json::to_string(&DispatchResult {
-        revision,
-        state,
-        effects,
-    })
-    .ok()
+fn parse<T: serde::de::DeserializeOwned>(context: &'static str, json: &str) -> Option<T> {
+    serde_json::from_str(json)
+        .map_err(|error| CoreError::BadInput {
+            context,
+            detail: error.to_string(),
+        })
+        .log_discard()
 }
 
 fn with_engine<T>(
     handle: u64,
     context: &'static str,
-    run: impl FnOnce(&mut HeadlessEngine) -> Option<T>,
-) -> Option<(u64, T)> {
+    run: impl FnOnce(&mut HeadlessEngine) -> T,
+) -> Option<T> {
     let Some(engine) = lock_engines().get(&handle).cloned() else {
         return CoreError::NotFound { context }.log_and_none();
     };
-    let mut engine = lock_engine(&engine)?;
-    engine.expire_stale_pending_effects(Instant::now());
-    let value = run(&mut engine)?;
-    engine.revision = engine.revision.saturating_add(1);
-    Some((engine.revision, value))
+    let mut engine = match engine.lock() {
+        Ok(engine) => engine,
+        Err(_) => {
+            crate::log_sink::record(context, "poisoned handle; recreate the engine");
+            return None;
+        }
+    };
+    Some(run(&mut engine))
 }
 
+// A panic while a request held the registry lock poisons it; recover so a caught panic
+// does not make every handle inaccessible.
 fn engines() -> &'static Mutex<HashMap<u64, Arc<Mutex<HeadlessEngine>>>> {
     ENGINES.get_or_init(|| Mutex::new(HashMap::new()))
 }
 
-fn lock_engine(
-    engine: &Arc<Mutex<HeadlessEngine>>,
-) -> Option<std::sync::MutexGuard<'_, HeadlessEngine>> {
-    match engine.lock() {
-        Ok(guard) => Some(guard),
-        Err(_) => {
-            crate::log_sink::record("headless_engine", "poisoned handle; recreate the engine");
-            None
-        }
-    }
-}
-
-// A panic while a request held the registry lock poisons it; recover so a caught panic
-// does not make every handle inaccessible. A poisoned engine itself is isolated to its
-// own per-handle lock.
 fn lock_engines() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<Mutex<HeadlessEngine>>>> {
     engines()
         .lock()

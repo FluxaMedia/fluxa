@@ -7,7 +7,7 @@ use std::sync::{
 use fluxa_app::FluxaRuntime;
 use serde_json::{Value, json};
 
-use crate::{EffectCompletion, EffectExecutor, Storage};
+use crate::{EffectCompletion, EffectExecutor, Storage, executor::core_value};
 
 struct AppSession {
     runtime: FluxaRuntime,
@@ -344,11 +344,4 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
         "profile": {"active": active_profile, "activeProfileId": active_id},
         "addons": {"installed": addons},
     })
-}
-
-fn core_value(method: &str, args: Value) -> Option<Value> {
-    let response = fluxa_core::ffi::core_invoke(method, &args.to_string());
-    let envelope: Value = serde_json::from_str(&response).ok()?;
-    (envelope.get("ok").and_then(Value::as_bool) == Some(true))
-        .then(|| envelope.get("value").cloned().unwrap_or(Value::Null))
 }

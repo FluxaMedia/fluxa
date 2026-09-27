@@ -174,7 +174,12 @@ pub(crate) fn search_result_grouping_json(request_json: &str) -> Option<String> 
 /// builtin batches) into the flat results list and category descriptors the search
 /// screen renders — dropping empty sources rather than surfacing zero-result categories.
 pub(crate) fn merge_search_sources_json(sources_json: &str) -> Option<String> {
-    let sources: Vec<Value> = serde_json::from_str(sources_json).ok()?;
+    let sources = serde_json::from_str::<Value>(sources_json).ok()?;
+    serde_json::to_string(&merge_search_sources(&sources)?).ok()
+}
+
+pub(crate) fn merge_search_sources(sources: &Value) -> Option<Value> {
+    let sources = sources.as_array()?;
     let mut categories: Vec<Value> = Vec::new();
     let mut results: Vec<Value> = Vec::new();
     for source in sources {
@@ -198,7 +203,7 @@ pub(crate) fn merge_search_sources_json(sources_json: &str) -> Option<String> {
             "items": items,
         }));
     }
-    serde_json::to_string(&json!({ "results": results, "categories": categories })).ok()
+    Some(json!({ "results": results, "categories": categories }))
 }
 
 pub(crate) fn recent_searches_plan_json(request_json: &str) -> Option<String> {

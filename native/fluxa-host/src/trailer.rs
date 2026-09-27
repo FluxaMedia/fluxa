@@ -5,7 +5,7 @@ use fluxa_ui::HeroTrailer;
 use serde_json::{Map, Value, json};
 use web_time::Instant;
 
-use crate::{RendererState, core_value, profile_language};
+use crate::{RendererState, Route, core_value, profile_language};
 
 #[derive(Default)]
 pub(crate) struct Trailers {
@@ -58,8 +58,8 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     }
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
-    match state.route.as_str() {
-        "home" if settings.bool_value("homeHeroAutoplayTrailer") && state.home.show_hero_section => {
+    match state.route {
+        Route::Home if settings.bool_value("homeHeroAutoplayTrailer") && state.home.show_hero_section => {
             let context = &state.gpu.as_ref()?.egui_context;
             let hero = fluxa_ui::active_home_hero(context, &state.home)?;
             Some(Wanted {
@@ -68,7 +68,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 delay: delay("homeHeroAutoplayTrailerDelaySecs"),
             })
         }
-        "detail" if settings.bool_value("detailHeroAutoplayTrailer") && !state.detail.id.is_empty() => {
+        Route::Detail if settings.bool_value("detailHeroAutoplayTrailer") && !state.detail.id.is_empty() => {
             Some(Wanted {
                 key: state.detail.id.clone(),
                 urls: state.detail.trailers.clone(),
@@ -280,13 +280,13 @@ fn play(state: &mut RendererState) {
 fn publish(state: &mut RendererState) {
     let active = state.trailers.active.as_ref().filter(|active| !active.failed);
     state.home.trailer = active
-        .filter(|_| state.route == "home")
+        .filter(|_| state.route == Route::Home)
         .map(|active| HeroTrailer {
             item_id: active.key.clone(),
             texture: active.texture,
         });
     state.detail.trailer = active
-        .filter(|active| state.route == "detail" && active.key == state.detail.id)
+        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
         .and_then(|active| active.texture);
 }
 

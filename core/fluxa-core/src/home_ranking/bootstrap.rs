@@ -107,62 +107,46 @@ pub(crate) fn home_hero_episode_plan_json(request_json: &str) -> Option<String> 
 
 pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
-    let prefs = request.get("prefs").cloned().unwrap_or_else(|| json!({}));
-    let safe: Value = crate::profile_prefs::profile_safe_prefs_json(&prefs.to_string())
-        .and_then(|value| serde_json::from_str(&value).ok())
-        .unwrap_or_else(|| json!({}));
-    let categories = request
+    serde_json::to_string(&home_hero_plan(&request)).ok()
+}
+
+pub fn home_hero_plan(request: &Value) -> Value {
+    let empty = json!({});
+    let prefs = request
+        .get("prefs")
+        .filter(|p| p.is_object())
+        .unwrap_or(&empty);
+    let show_hero = prefs
+        .get("showHeroSection")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    let mut categories = request
         .get("categories")
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
-        .map(|category| {
-            let mut category = category.clone();
-            if !category.get("items").is_some_and(Value::is_array)
-                && let Some(fields) = category.as_object_mut()
-            {
-                fields.insert("items".to_string(), json!([]));
-            }
-            category
-        })
-        .collect::<Vec<_>>();
-    let mut content_categories = categories
-        .iter()
         .filter(|category| {
             !matches!(
                 category.get("type").and_then(Value::as_str),
                 Some("collection" | "collection_folder")
             )
         })
-        .cloned()
         .collect::<Vec<_>>();
-    let hero_toggles = prefs
-        .get("heroFeedToggles")
-        .and_then(Value::as_array)
-        .map(|values| {
-            values
-                .iter()
-                .filter_map(Value::as_str)
-                .collect::<HashSet<_>>()
-        })
-        .unwrap_or_default();
-    if !hero_toggles.is_empty() {
-        let selected_categories = content_categories
+    let id_of = |category: &Value| {
+        category
+            .get("id")
+            .and_then(Value::as_str)
+            .map(str::to_owned)
+    };
+    let hero_toggles = str_set(prefs.get("heroFeedToggles"));
+    if !hero_toggles.is_empty()
+        && categories
             .iter()
-            .filter(|category| {
-                category
-                    .get("id")
-                    .and_then(Value::as_str)
-                    .is_some_and(|id| hero_toggles.contains(id))
-            })
-            .cloned()
-            .collect::<Vec<_>>();
-        // Feed keys can change when add-ons are reinstalled or refreshed.
-        // Don't strand the hero on an empty plan if every saved selection is
-        // stale; fall back to the currently available catalog feeds.
-        if !selected_categories.is_empty() {
-            content_categories = selected_categories;
-        }
+            .any(|category| id_of(category).is_some_and(|id| hero_toggles.contains(id.as_str())))
+    {
+        categories.retain(|category| {
+            id_of(category).is_some_and(|id| hero_toggles.contains(id.as_str()))
+        });
     }
     let hero_order = prefs
         .get("heroFeedOrder")
@@ -174,7 +158,7 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
         .map(|(index, key)| (key, index))
         .collect::<HashMap<_, _>>();
     if !hero_order.is_empty() {
-        content_categories.sort_by_key(|category| {
+        categories.sort_by_key(|category| {
             category
                 .get("id")
                 .and_then(Value::as_str)
@@ -182,129 +166,71 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
                 .unwrap_or(usize::MAX)
         });
     }
-    if hero_toggles.is_empty() {
-        content_categories.truncate(2);
-    } else if content_categories.len() > 2 {
-        content_categories.truncate(2);
-    }
-    let billboard = content_categories
+    categories.truncate(2);
+    let billboard = categories
         .first()
-        .and_then(|category| category.get("items"))
-        .and_then(Value::as_array)
-        .and_then(|items| items.first())
-        .cloned();
+        .and_then(|category| items_of(category).first());
     let mut seen = HashSet::new();
-    let mut slides = billboard
-        .iter()
-        .chain(content_categories.iter().flat_map(|category| {
-            category
-                .get("items")
-                .and_then(Value::as_array)
-                .into_iter()
-                .flatten()
-        }))
+    let slides = billboard
+        .into_iter()
+        .chain(categories.iter().flat_map(|category| items_of(category)))
         .filter(|item| {
-            (item
-                .get("background")
-                .and_then(Value::as_str)
-                .is_some_and(|value| !value.is_empty())
-                || item
-                    .get("poster")
-                    .and_then(Value::as_str)
-                    .is_some_and(|value| !value.is_empty()))
+            (non_empty(item, "background") || non_empty(item, "poster"))
                 && seen.insert(
                     item.get("id")
                         .or_else(|| item.get("name"))
                         .and_then(Value::as_str)
-                        .unwrap_or("")
-                        .to_string(),
+                        .unwrap_or(""),
                 )
         })
-        .take(8)
-        .cloned()
-        .collect::<Vec<_>>();
+        .take(8);
     let fetched_trailers = request.get("fetchedTrailers").and_then(Value::as_object);
-    let has_playable = |item: &Value| {
-        item.get("trailers")
-            .and_then(Value::as_array)
-            .is_some_and(|trailers| {
-                trailers.iter().any(|trailer| {
-                    trailer
-                        .get("url")
-                        .and_then(Value::as_str)
-                        .is_some_and(|url| url.contains("youtube.com") || url.contains("youtu.be"))
-                })
-            })
-    };
-    let merge_trailers = |mut item: Value| {
-        if !has_playable(&item)
-            && let Some(trailers) = item
-                .get("id")
-                .and_then(Value::as_str)
-                .and_then(|id| fetched_trailers.and_then(|values| values.get(id)))
-                .filter(|value| value.as_array().is_some_and(|items| !items.is_empty()))
-            && let Some(fields) = item.as_object_mut()
-        {
-            fields.insert("trailers".to_string(), trailers.clone());
-        }
-        item
-    };
     let fetched_logos = request.get("fetchedLogos").and_then(Value::as_object);
-    let has_logo = |item: &Value| {
-        item.get("logo")
-            .and_then(Value::as_str)
-            .is_some_and(|value| !value.is_empty())
-    };
-    let merge_logos = |mut item: Value| {
-        if !has_logo(&item)
-            && let Some(logo) = item
-                .get("id")
-                .and_then(Value::as_str)
-                .and_then(|id| fetched_logos.and_then(|values| values.get(id)))
-                .filter(|value| value.as_str().is_some_and(|s| !s.is_empty()))
-            && let Some(fields) = item.as_object_mut()
+    let prepare = |item: &Value| {
+        let mut item = item.clone();
+        let id = item.get("id").and_then(Value::as_str).map(str::to_owned);
+        let Some(fields) = item.as_object_mut() else {
+            return item;
+        };
+        if !has_playable_trailer(fields.get("trailers"))
+            && let Some(trailers) = id
+                .as_deref()
+                .and_then(|id| fetched_trailers?.get(id))
+                .filter(|value| value.as_array().is_some_and(|items| !items.is_empty()))
         {
-            fields.insert("logo".to_string(), logo.clone());
+            fields.insert("trailers".to_owned(), trailers.clone());
         }
-        item
-    };
-    let shorten_description = |mut item: Value| {
-        let shortened = item
+        if !fields
+            .get("logo")
+            .and_then(Value::as_str)
+            .is_some_and(|v| !v.is_empty())
+            && let Some(logo) = id
+                .as_deref()
+                .and_then(|id| fetched_logos?.get(id))
+                .filter(|value| value.as_str().is_some_and(|s| !s.is_empty()))
+        {
+            fields.insert("logo".to_owned(), logo.clone());
+        }
+        if let Some(shortened) = fields
             .get("description")
             .and_then(Value::as_str)
             .filter(|value| !value.trim().is_empty())
-            .map(crate::content_identity::shorten_synopsis);
-        if let Some(shortened) = shortened
-            && let Some(fields) = item.as_object_mut()
+            .map(crate::content_identity::shorten_synopsis)
         {
-            fields.insert("description".to_string(), Value::String(shortened));
+            fields.insert("description".to_owned(), Value::String(shortened));
         }
-        item
-    };
-    let merge_hero_episode = |mut item: Value| {
-        if item.get("heroEpisode").is_none()
+        if !fields.contains_key("heroEpisode")
             && let Some(plan) = hero_episode_plan_value(&json!({
-                "type": item.get("type"),
-                "videos": item.get("videos"),
+                "type": fields.get("type"),
+                "videos": fields.get("videos"),
             }))
-            && let Some(fields) = item.as_object_mut()
         {
-            fields.insert("heroEpisode".to_string(), plan["episode"].clone());
+            fields.insert("heroEpisode".to_owned(), plan["episode"].clone());
         }
         item
     };
-    let billboard = billboard
-        .map(&merge_trailers)
-        .map(&merge_logos)
-        .map(&shorten_description)
-        .map(&merge_hero_episode);
-    slides = slides
-        .into_iter()
-        .map(&merge_trailers)
-        .map(&merge_logos)
-        .map(&shorten_description)
-        .map(&merge_hero_episode)
-        .collect();
+    let billboard = billboard.map(&prepare);
+    let slides = slides.map(&prepare).collect::<Vec<_>>();
     let autoplay = prefs
         .get("homeHeroAutoplayTrailer")
         .and_then(Value::as_bool)
@@ -318,52 +244,70 @@ pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
             .get("tmdbApiKey")
             .and_then(Value::as_str)
             .is_some_and(|value| !value.trim().is_empty());
-    let fetched_ids = request
-        .get("fetchedIds")
+    let targets = |fetched: HashSet<&str>, missing: &dyn Fn(&Value) -> bool| {
+        let mut seen = HashSet::new();
+        billboard
+            .iter()
+            .chain(slides.iter())
+            .filter(|item| {
+                let id = item.get("id").and_then(Value::as_str).unwrap_or("");
+                !id.is_empty() && missing(item) && !fetched.contains(id) && seen.insert(id)
+            })
+            .cloned()
+            .collect::<Vec<_>>()
+    };
+    let trailer_targets = if trailer_fetch_enabled {
+        targets(str_set(request.get("fetchedIds")), &|item| {
+            !has_playable_trailer(item.get("trailers"))
+        })
+    } else {
+        Vec::new()
+    };
+    let logo_targets = targets(str_set(request.get("fetchedLogoIds")), &|item| {
+        !non_empty(item, "logo")
+    });
+    json!({
+        "billboard": billboard,
+        "slides": slides,
+        "trailerTargets": trailer_targets,
+        "logoTargets": logo_targets,
+        "showHero": show_hero,
+        "autoplayTrailer": autoplay,
+    })
+}
+
+fn items_of(category: &Value) -> &[Value] {
+    category
+        .get("items")
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default()
+}
+
+fn str_set(value: Option<&Value>) -> HashSet<&str> {
+    value
         .and_then(Value::as_array)
         .into_iter()
         .flatten()
         .filter_map(Value::as_str)
-        .collect::<HashSet<_>>();
-    let mut target_seen = HashSet::new();
-    let trailer_targets = billboard
-        .iter()
-        .chain(slides.iter())
-        .filter(|item| {
-            let id = item.get("id").and_then(Value::as_str).unwrap_or("");
-            trailer_fetch_enabled
-                && !id.is_empty()
-                && !has_playable(item)
-                && !fetched_ids.contains(id)
-                && target_seen.insert(id)
+        .collect()
+}
+
+fn non_empty(item: &Value, key: &str) -> bool {
+    item.get(key)
+        .and_then(Value::as_str)
+        .is_some_and(|value| !value.is_empty())
+}
+
+fn has_playable_trailer(trailers: Option<&Value>) -> bool {
+    trailers.and_then(Value::as_array).is_some_and(|trailers| {
+        trailers.iter().any(|trailer| {
+            trailer
+                .get("url")
+                .and_then(Value::as_str)
+                .is_some_and(|url| url.contains("youtube.com") || url.contains("youtu.be"))
         })
-        .cloned()
-        .collect::<Vec<_>>();
-    let fetched_logo_ids = request
-        .get("fetchedLogoIds")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-        .filter_map(Value::as_str)
-        .collect::<HashSet<_>>();
-    let mut logo_target_seen = HashSet::new();
-    let logo_targets = billboard
-        .iter()
-        .chain(slides.iter())
-        .filter(|item| {
-            let id = item.get("id").and_then(Value::as_str).unwrap_or("");
-            !id.is_empty()
-                && !has_logo(item)
-                && !fetched_logo_ids.contains(id)
-                && logo_target_seen.insert(id)
-        })
-        .cloned()
-        .collect::<Vec<_>>();
-    serde_json::to_string(&json!({
-        "categories": categories, "contentCategories": content_categories, "billboard": billboard, "slides": slides,
-        "trailerTargets": trailer_targets, "logoTargets": logo_targets,
-        "showHero": safe.get("showHeroSection").and_then(Value::as_bool).unwrap_or(true), "autoplayTrailer": autoplay
-    })).ok()
+    })
 }
 
 #[expect(

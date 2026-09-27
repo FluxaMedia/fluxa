@@ -51,11 +51,11 @@ fn resolve_category_severity(category: &ParentsGuideCategory) -> Option<String> 
     let breakdowns = &category.severity_breakdowns;
     let dominant = breakdowns
         .iter()
-        .filter(|breakdown| breakdown.severity_level.to_lowercase() != "none")
+        .filter(|breakdown| !breakdown.severity_level.eq_ignore_ascii_case("none"))
         .max_by_key(|breakdown| breakdown.vote_count)?;
     let none_votes = breakdowns
         .iter()
-        .find(|breakdown| breakdown.severity_level.to_lowercase() == "none")
+        .find(|breakdown| breakdown.severity_level.eq_ignore_ascii_case("none"))
         .map(|breakdown| breakdown.vote_count)
         .unwrap_or(0);
     if dominant.vote_count <= none_votes {

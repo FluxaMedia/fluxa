@@ -53,7 +53,12 @@ pub(crate) fn is_up_next_item(item: &Value) -> bool {
 }
 
 pub(crate) fn build_continue_watching_from_progress_json(progress_json: &str) -> Option<String> {
-    let progress: serde_json::Map<String, Value> = serde_json::from_str(progress_json).ok()?;
+    let progress = serde_json::from_str::<Value>(progress_json).ok()?;
+    serde_json::to_string(&build_continue_watching_from_progress(&progress)?).ok()
+}
+
+pub(crate) fn build_continue_watching_from_progress(progress: &Value) -> Option<Value> {
+    let progress = progress.as_object()?;
     let mut items: Vec<Value> = progress.values()
         .filter_map(|entry| {
             let offset = entry.get("timeOffset").and_then(Value::as_f64).unwrap_or(0.0);
@@ -99,7 +104,7 @@ pub(crate) fn build_continue_watching_from_progress_json(progress_json: &str) ->
         let b = b.get("savedAt").and_then(Value::as_str).unwrap_or("");
         b.cmp(a)
     });
-    serde_json::to_string(&items).ok()
+    Some(Value::Array(items))
 }
 
 pub(crate) fn compute_continue_watching_badges_json(
