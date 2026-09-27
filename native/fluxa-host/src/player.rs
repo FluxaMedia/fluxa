@@ -6,7 +6,7 @@ use fluxa_ui::{PlayerModel, SettingsModel};
 use serde_json::{Value, json};
 use web_time::Instant;
 
-use crate::{NativeAction, RendererState, UiTree, core_value, host_log, profile_language};
+use crate::{NativeAction, RendererState, SessionHandle, UiTree, core_value, host_log, profile_language};
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const SEEK_STEP: f64 = 10.0;
@@ -52,6 +52,7 @@ pub trait VideoBackend: Send {
         None
     }
     fn load(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str);
+    fn configure(&mut self, _settings: &Value) {}
     fn load_preview(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str) {
         self.load(instance, device, url);
     }
@@ -99,6 +100,7 @@ pub(crate) struct PlayerSession {
     scrub_streak: u32,
     passthrough: bool,
     dispatched: Option<Value>,
+    scrobbled: Option<bool>,
 }
 
 impl PlayerSession {
@@ -134,6 +136,7 @@ impl PlayerSession {
             load_progress: 0.0,
             scrub: None,
             scrub_streak: 0,
+            scrobbled: None,
         }
     }
 
@@ -312,6 +315,11 @@ pub(crate) fn pump(state: &mut RendererState) {
     load_resolved(player, video, gpu, settings, &snapshot);
     if let Some(video) = video.as_mut() {
         player.status = video.status();
+        if player.status.has_frame && player.scrobbled != Some(player.status.paused) {
+            player.scrobbled = Some(player.status.paused);
+            let action = if player.status.paused { "pause" } else { "start" };
+            scrobble(session, player, &snapshot, action);
+        }
         if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
             let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
             match player.thumbnail.as_mut() {
@@ -384,6 +392,7 @@ fn load_resolved(
         match (video.as_mut(), gpu.as_ref()) {
             (Some(video), Some(gpu)) => {
                 host_log(format!("loading player url: {url}"));
+                video.configure(&settings.values);
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
                 player.loaded_url = Some(url.to_owned());
@@ -728,6 +737,11 @@ pub(crate) fn close(state: &mut RendererState) {
     let Some(player) = state.player.take() else {
         return;
     };
+    if let Some(session) = state.session.as_ref()
+        && player.scrobbled.is_some()
+    {
+        scrobble(session, &player, &session.snapshot(), "stop");
+    }
     if let Some(video) = state.video.as_mut() {
         video.stop();
     }
@@ -735,6 +749,29 @@ pub(crate) fn close(state: &mut RendererState) {
         gpu.egui_renderer.free_texture(&texture);
     }
     state.ui = UiTree::default();
+}
+
+fn scrobble(session: &SessionHandle, player: &PlayerSession, snapshot: &Value, action: &str) {
+    let item_id = snapshot
+        .pointer("/player/currentVideoId")
+        .or_else(|| player.meta.get("id"))
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    if item_id.is_empty() || player.status.duration <= 0.0 {
+        return;
+    }
+    let command = json!({
+        "type": "scrobbleRequested",
+        "token": "",
+        "metaType": player.meta.get("type").and_then(Value::as_str).unwrap_or("movie"),
+        "itemId": item_id,
+        "progress": player.status.position / player.status.duration * 100.0,
+        "actionName": action,
+        "profile": session.active_profile(),
+    });
+    if let Err(error) = session.dispatch(command) {
+        host_log(format!("core dispatch failed: {error}"));
+    }
 }
 
 pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
