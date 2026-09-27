@@ -2,6 +2,10 @@ use std::io::Read;
 use std::time::{Duration, Instant};
 
 fn main() {
+    tracing_subscriber::fmt()
+        .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
+        .with_writer(std::io::stderr)
+        .init();
     let magnet = std::env::args().nth(1).expect("usage: startup_bench <magnet> [file_index]");
     let index = std::env::args().nth(2).unwrap_or_else(|| "0".into());
     let cache = std::env::temp_dir().join(format!("fluxa-bench-{}", std::process::id()));
@@ -12,6 +16,32 @@ fn main() {
 
     let client = reqwest::blocking::Client::builder().timeout(Duration::from_secs(600)).build().unwrap();
     let start = Instant::now();
+    let status_url = format!("{base}/torrents");
+    let status_magnet = magnet.clone();
+    std::thread::spawn(move || {
+        let client = reqwest::blocking::Client::new();
+        loop {
+            std::thread::sleep(Duration::from_secs(1));
+            let Ok(res) = client
+                .post(&status_url)
+                .json(&serde_json::json!({ "action": "get", "link": status_magnet }))
+                .send()
+            else {
+                continue;
+            };
+            let Ok(s) = res.json::<serde_json::Value>() else { continue };
+            eprintln!(
+                "{:5.1} {} seen={} connecting={} live={} speed={:.0}KB/s loaded={}",
+                start.elapsed().as_secs_f64(),
+                s["stat_string"].as_str().unwrap_or("?"),
+                s["total_peers"],
+                s["connecting_peers"],
+                s["active_peers"],
+                s["download_speed"].as_f64().unwrap_or(0.0) / 1024.0,
+                s["loaded_size"],
+            );
+        }
+    });
     let mut out = serde_json::Map::new();
     let mut body = client
         .get(format!("{base}/stream/fname?link={link}&index={index}&play"))
