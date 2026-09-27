@@ -52,7 +52,6 @@ use intro_plugins_routes::{route_intro_segments, route_plugins};
 use library_routes::route_library_state;
 use local_media_routes::route_local_media;
 use mdblist_routes::route_mdblist;
-use provider_library_routes::route_provider_library;
 #[cfg(feature = "dv-codec")]
 use plan_misc_routes::route_dolby_vision_rpu;
 use plan_misc_routes::{
@@ -62,6 +61,7 @@ use plan_misc_routes::{
 use player_policy_routes::route_player_policy;
 use player_scrobble_routes::route_player_scrobble;
 use profile_routes::{route_profile_contract, route_profile_prefs};
+use provider_library_routes::route_provider_library;
 use publicmetadb_routes::route_publicmetadb;
 use resource_plan_routes::route_resource_plan;
 use search_plan_routes::route_search_plan;
@@ -192,12 +192,7 @@ fn raw_dispatch(method: &str, args_json: &str) -> Result<String, CallError> {
             format!("`{method}` produced no result"),
         )
     })?;
-    serde_json::from_str::<&serde_json::value::RawValue>(&value).map_err(|error| {
-        fail(
-            ErrorKind::Internal,
-            format!("core produced invalid JSON: {error}"),
-        )
-    })?;
+    debug_assert!(serde_json::from_str::<&serde_json::value::RawValue>(&value).is_ok());
     Ok(value)
 }
 
