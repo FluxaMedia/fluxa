@@ -164,6 +164,8 @@ pub mod types;
 pub mod bindings;
 
 pub use core_api::FluxaCore;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+pub use headless_engine::{Engine, PageUpdate, Update};
 
 // Re-exports internal parsing functions for the `fuzz/` crate only. These stay
 // pub(crate) for real consumers — this exists purely so libFuzzer can call
