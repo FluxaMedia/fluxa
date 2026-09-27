@@ -28,12 +28,16 @@ targetTemplates:
     resources:
       - path: ../../shared/i18n
     dependencies:
+      - framework: Vendor/Libmpv.xcframework
       - sdk: UIKit.framework
       - sdk: Metal.framework
       - sdk: QuartzCore.framework
       - sdk: GameController.framework
       - sdk: AVFoundation.framework
     preBuildScripts:
+      - name: Fetch libmpv
+        script: scripts/fetch-libmpv.sh
+        basedOnDependencyAnalysis: false
       - name: Build Fluxa Rust renderer
         script: scripts/build-rust-core-xcframework.sh
         basedOnDependencyAnalysis: false
