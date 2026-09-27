@@ -8,7 +8,8 @@ import com.fluxa.app.data.remote.Video
 import com.fluxa.app.ui.catalog.HomeCategory
 import com.fluxa.app.domain.discovery.buildCs3MetadataFeedOptions
 import com.fluxa.app.domain.discovery.buildMetadataFeedOptions
-import com.fluxa.app.ui.catalog.toCs3CatalogFeedDescriptors
+import com.fluxa.app.domain.discovery.Cs3CatalogFeedDescriptor
+import com.lagradost.cloudstream3.MainAPI
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -295,3 +296,14 @@ internal suspend fun FluxaAndroidHeadlessEnvironment.writeFeedback(effect: Nativ
     }
     return ok(effect, mapOf("feedback" to value, "provider" to selectedProvider?.key))
 }
+
+private fun List<MainAPI>.toCs3CatalogFeedDescriptors(): List<Cs3CatalogFeedDescriptor> =
+    filter { it.hasMainPage }.flatMap { api ->
+        api.mainPage.mapIndexed { index, page ->
+            Cs3CatalogFeedDescriptor(
+                pluginName = api.name,
+                catalogName = page.name.takeIf { it.isNotBlank() } ?: api.name,
+                catalogIndex = index,
+            )
+        }
+    }
