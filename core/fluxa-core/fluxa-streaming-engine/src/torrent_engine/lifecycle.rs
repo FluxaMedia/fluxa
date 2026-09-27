@@ -413,7 +413,7 @@ pub(super) fn playback_phase(
     window: Option<PlaybackWindow>,
 ) -> &'static str {
     match stats.map(|stats| stats.state) {
-        None | Some(TorrentStatsState::Initializing) => "resolving_metadata",
+        None | Some(TorrentStatsState::Initializing { .. }) => "resolving_metadata",
         Some(TorrentStatsState::Error) => "error",
         Some(TorrentStatsState::Paused) => "stalled",
         Some(TorrentStatsState::Live)

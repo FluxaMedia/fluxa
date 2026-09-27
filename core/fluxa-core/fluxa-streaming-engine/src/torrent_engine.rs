@@ -5,10 +5,10 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use librqbit::api::{ApiTorrentListOpts, TorrentDetailsResponse, TorrentIdOrHash};
-use librqbit::dht::PersistentDhtConfig;
+use librqbit::dht::{DhtPersistenceConfig, Id20};
 use librqbit::{
-    AddTorrent, AddTorrentOptions, Api, PeerConnectionOptions, Session, SessionOptions,
-    SessionPersistenceConfig, TorrentStatsState,
+    AddTorrent, AddTorrentOptions, Api, DhtSessionConfig, ListenerMode, ListenerOptions,
+    MagnetResolveSnapshot, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig, TorrentStatsState,
 };
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -157,11 +157,12 @@ pub fn start_torrent_server(
 
     let cache_dir = PathBuf::from(cache_dir);
     std::fs::create_dir_all(&cache_dir).ok()?;
-    let dht_config = PersistentDhtConfig {
+    let dht_config = DhtPersistenceConfig {
         dump_interval: Some(Duration::from_secs(60)),
         config_filename: Some(cache_dir.parent()?.join("torrent-dht.json")),
     };
     let bind_port = preferred_port.clamp(0, u16::MAX as i32) as u16;
+    let peer_port = stable_peer_port(&cache_dir.parent()?.join("torrent-peer-port"));
     let (stop_tx, stop_rx) = oneshot::channel::<()>();
     let (ready_tx, ready_rx) = std::sync::mpsc::channel::<Result<u16, String>>();
     let thread_cache_dir = cache_dir.clone();
@@ -185,25 +186,29 @@ pub fn start_torrent_server(
 
         runtime.block_on(async move {
             let options = SessionOptions {
-                disable_dht_persistence: false,
-                dht_config: Some(thread_dht_config),
+                dht: Some(DhtSessionConfig {
+                    persistence: Some(thread_dht_config),
+                    ..Default::default()
+                }),
                 fastresume: true,
                 persistence: Some(SessionPersistenceConfig::Json {
                     folder: Some(thread_cache_dir.join("session")),
                 }),
-                defer_writes_up_to: Some(64),
-                listen_port_range: Some(49152..65535),
-                enable_upnp_port_forwarding: true,
+                listen: Some(ListenerOptions {
+                    mode: ListenerMode::TcpAndUtp,
+                    listen_addr: (std::net::Ipv6Addr::UNSPECIFIED, peer_port).into(),
+                    enable_upnp_port_forwarding: true,
+                    ..Default::default()
+                }),
+                peer_limit: Some(200),
                 disable_upload: true,
                 concurrent_init_limit: Some(concurrent_init_limit),
                 trackers: [
                     "udp://tracker.opentrackr.org:1337/announce",
                     "udp://open.demonii.com:1337/announce",
-                    "udp://tracker.openbittorrent.com:80/announce",
                     "udp://exodus.desync.com:6969/announce",
                     "udp://open.stealth.si:80/announce",
                     "udp://tracker.torrent.eu.org:451/announce",
-                    "udp://tracker.tiny-vps.com:6969/announce",
                 ]
                 .iter()
                 .filter_map(|s| s.parse().ok())
@@ -476,11 +481,8 @@ async fn torrents(
             {
                 Some(id) => id,
                 None => {
-                    let resolving = match request.link.as_deref() {
-                        Some(link) => add_is_pending(&state, link),
-                        None => false,
-                    };
-                    return Json(empty_status_json(resolving)).into_response();
+                    return Json(pending_status_json(&state, request.link.as_deref()))
+                        .into_response();
                 }
             };
             if let Some(file_id) = request.file_id {
@@ -557,7 +559,7 @@ async fn stream_fname(
                 .await
                 .into_response();
         }
-        return Json(empty_status_json(add_is_pending(&state, &query.link))).into_response();
+        return Json(pending_status_json(&state, Some(&query.link))).into_response();
     }
 
     // Stream request: ensure_torrent does its own add+lookup. Calling it
@@ -604,7 +606,7 @@ async fn stream_fname(
         return error_response(StatusCode::SERVICE_UNAVAILABLE, "torrent init timed out");
     }
 
-    match state.api.api_stream(TorrentIdOrHash::Id(id), file_id) {
+    match state.api.api_stream(TorrentIdOrHash::Id(id), file_id).await {
         Ok(mut stream) => {
             let mut status = StatusCode::OK;
             let mut output_headers = HeaderMap::new();
@@ -807,7 +809,7 @@ async fn ensure_torrent(
         overwrite: true,
         output_folder: Some(state.output_dir.to_string_lossy().into_owned()),
         peer_opts: Some(PeerConnectionOptions {
-            connect_timeout: Some(Duration::from_millis(2500)),
+            connect_timeout: Some(Duration::from_secs(4)),
             read_write_timeout: Some(Duration::from_secs(20)),
             ..Default::default()
         }),
@@ -859,13 +861,41 @@ async fn ensure_torrent(
     Ok((id, response.details))
 }
 
-fn empty_status_json(resolving: bool) -> Value {
+fn stable_peer_port(path: &std::path::Path) -> u16 {
+    let bind = |port| std::net::TcpListener::bind((std::net::Ipv6Addr::UNSPECIFIED, port));
+    let saved = std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| s.trim().parse::<u16>().ok())
+        .filter(|&port| port != 0 && bind(port).is_ok());
+    if let Some(port) = saved {
+        return port;
+    }
+    let port = bind(0)
+        .and_then(|listener| listener.local_addr())
+        .map(|addr| addr.port())
+        .unwrap_or(0);
+    let _ = std::fs::write(path, port.to_string());
+    port
+}
+
+fn pending_status_json(state: &EngineState, link: Option<&str>) -> Value {
+    let resolving = link.is_some_and(|link| add_is_pending(state, link));
+    let progress = link
+        .filter(|_| resolving)
+        .and_then(magnet_info_hash)
+        .and_then(|hash| hash.parse::<Id20>().ok())
+        .and_then(|hash| state.api.session().magnet_resolve_progress(&hash));
+    empty_status_json(resolving, progress)
+}
+
+fn empty_status_json(resolving: bool, progress: Option<MagnetResolveSnapshot>) -> Value {
     json!({
         "hash": "",
         "title": "",
         "download_speed": 0.0,
         "active_peers": 0,
-        "total_peers": 0,
+        "total_peers": progress.map(|p| p.seen).unwrap_or(0),
+        "connecting_peers": progress.map(|p| p.connecting).unwrap_or(0),
         "progress": 0.0,
         "stat": 0,
         "stat_string": if resolving { "resolving" } else { "initializing" },
@@ -1029,7 +1059,7 @@ async fn status_response(
             3
         }
         Some(TorrentStatsState::Live) => 2,
-        Some(TorrentStatsState::Initializing) => 0,
+        Some(TorrentStatsState::Initializing { .. }) => 0,
         Some(TorrentStatsState::Paused) => 1,
         Some(TorrentStatsState::Error) => -1,
         None => 0,
