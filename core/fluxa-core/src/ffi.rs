@@ -23,6 +23,7 @@ mod plan_misc_routes;
 mod player_policy_routes;
 mod player_scrobble_routes;
 mod profile_routes;
+mod provider_library_routes;
 mod publicmetadb_routes;
 mod resource_plan_routes;
 mod search_plan_routes;
@@ -51,6 +52,7 @@ use intro_plugins_routes::{route_intro_segments, route_plugins};
 use library_routes::route_library_state;
 use local_media_routes::route_local_media;
 use mdblist_routes::route_mdblist;
+use provider_library_routes::route_provider_library;
 #[cfg(feature = "dv-codec")]
 use plan_misc_routes::route_dolby_vision_rpu;
 use plan_misc_routes::{
@@ -225,6 +227,7 @@ const ROUTERS: &[fn(&str, &str) -> Outcome] = &[
     route_external_sync_simkl,
     route_external_sync_anilist,
     route_mdblist,
+    route_provider_library,
     route_publicmetadb,
     route_anime_detection,
     route_library_state,
