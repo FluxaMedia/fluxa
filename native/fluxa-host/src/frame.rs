@@ -121,7 +121,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     trailer::tick(state);
     poster_data::tick(state);
     timer.mark("sync");
-    if state.route == "home"
+    if state.route == Route::Home
         || matches!(state.active_scroll, Some(HomeScrollTarget::ScreenVertical))
     {
         advance_home_inertia(state);
@@ -140,7 +140,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         .flatten();
     let safe_bottom = state.safe_bottom;
     let logical_size = logical_surface_size(state);
-    if route != "home" && route != "player" {
+    if route != Route::Home && route != Route::Player {
         let viewport = Viewport::new(
             logical_size[0],
             logical_size[1],
@@ -189,7 +189,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         gpu.as_mut().map(|gpu| {
             gpu.density = scale;
             gpu.render(
-                &route,
+                route,
                 home,
                 library,
                 library_tab,
@@ -224,8 +224,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     player::command(state, VideoCommand::SeekTo(position));
                 }
                 player::hover_seek(state, layout.seek_hover);
-                apply_pointer_results(state, &route, &layout);
-                if route == "discover" {
+                apply_pointer_results(state, route, &layout);
+                if route == Route::Discover {
                     for request in &layout.load_more {
                         state
                             .pending_native_actions
@@ -234,7 +234,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                             });
                     }
                 }
-                if route == "discover"
+                if route == Route::Discover
                     && let Some((key, value)) = layout.filter_change.as_ref()
                 {
                     match key.as_str() {
@@ -278,5 +278,5 @@ pub(super) fn render_frame(state: &mut RendererState) {
         }
     }
     timer.mark("layout");
-    timer.report(&format!("frame on {}", state.route));
+    timer.report(&format!("frame on {}", state.route.as_str()));
 }

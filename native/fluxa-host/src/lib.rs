@@ -102,7 +102,7 @@ struct RendererState {
     pending_resize: Option<[u32; 2]>,
     gpu: Option<Gpu>,
     ui: UiTree,
-    rendered_layout: Option<(String, HomeLayout)>,
+    rendered_layout: Option<(Route, HomeLayout)>,
     last_actions: Vec<UiAction>,
     pending_native_actions: Vec<NativeAction>,
     backdrop_prefetch: Option<String>,
@@ -117,8 +117,8 @@ struct RendererState {
     active_scroll: Option<HomeScrollTarget>,
     scroll_velocity: f32,
     scroll_animation_at: Instant,
-    route: String,
-    screen_scroll_offsets: HashMap<String, f32>,
+    route: Route,
+    screen_scroll_offsets: HashMap<Route, f32>,
     home: HomeModel,
     library: LibraryModel,
     library_tab: LibraryTab,
@@ -160,7 +160,7 @@ fn current_presence(state: &RendererState) -> presence::Presence {
     if let Some(player) = state.player.as_ref() {
         return player.presence();
     }
-    if state.route == "detail" && !state.detail.title.is_empty() {
+    if state.route == Route::Detail && !state.detail.title.is_empty() {
         return presence::Presence::Viewing {
             title: state.detail.title.clone(),
             poster: state
@@ -170,11 +170,11 @@ fn current_presence(state: &RendererState) -> presence::Presence {
                 .filter(|url| url.starts_with("http")),
         };
     }
-    let label = match state.route.as_str() {
-        "library" => "Browsing the library",
-        "discover" => "Discovering",
-        "calendar" => "Checking the calendar",
-        "settings" => "In settings",
+    let label = match state.route {
+        Route::Library => "Browsing the library",
+        Route::Discover => "Discovering",
+        Route::Calendar => "Checking the calendar",
+        Route::Settings => "In settings",
         _ => "Browsing",
     };
     presence::Presence::Browsing(label.to_owned())
@@ -200,6 +200,48 @@ enum HomeScrollTarget {
     ScreenVertical,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
+#[serde(rename_all = "lowercase")]
+enum Route {
+    #[default]
+    Home,
+    Library,
+    Discover,
+    Calendar,
+    Detail,
+    Settings,
+    Profiles,
+    Player,
+}
+
+impl Route {
+    fn parse(route: &str) -> Self {
+        match route {
+            "library" => Self::Library,
+            "discover" => Self::Discover,
+            "calendar" => Self::Calendar,
+            "detail" => Self::Detail,
+            "settings" => Self::Settings,
+            "profiles" => Self::Profiles,
+            "player" => Self::Player,
+            _ => Self::Home,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Home => "home",
+            Self::Library => "library",
+            Self::Discover => "discover",
+            Self::Calendar => "calendar",
+            Self::Detail => "detail",
+            Self::Settings => "settings",
+            Self::Profiles => "profiles",
+            Self::Player => "player",
+        }
+    }
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(
     tag = "type",
@@ -211,7 +253,7 @@ enum NativeAction {
         command: Value,
     },
     Navigate {
-        destination: String,
+        destination: Route,
     },
     Detail {
         id: String,
@@ -362,7 +404,7 @@ const DISCOVER_BACKGROUND_LIMIT: usize = 400;
 
 fn request_discover_background_page(state: &mut RendererState) {
     let discover = &state.discover;
-    if state.route == "discover"
+    if state.route == Route::Discover
         || discover.is_loading
         || !discover.query.is_empty()
         || discover.results.len() >= DISCOVER_BACKGROUND_LIMIT
@@ -446,7 +488,7 @@ impl FluxaHost {
             active_scroll: None,
             scroll_velocity: 0.0,
             scroll_animation_at: Instant::now(),
-            route: "home".to_owned(),
+            route: Route::Home,
             screen_scroll_offsets: HashMap::new(),
             home: HomeModel::default(),
             library: LibraryModel::default(),
@@ -558,7 +600,7 @@ impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
             let viewport = logical_viewport(state);
-            if state.route == "home" {
+            if state.route == Route::Home {
                 let max = fluxa_ui::home_scroll_max(viewport, &state.home);
                 state.home.scroll_offset = (state.home.scroll_offset + delta_y).clamp(0.0, max);
             } else {
@@ -618,7 +660,7 @@ impl FluxaHost {
                 modifiers: state.modifiers,
             });
             let viewport = logical_viewport(state);
-            if state.route == "home" {
+            if state.route == Route::Home {
                 if delta_x != 0.0
                     && let Some(row) = state.mouse_position.and_then(|position| {
                         fluxa_ui::home_row_at_y(viewport, &state.home, position.y)
@@ -686,7 +728,7 @@ impl FluxaHost {
 
     pub fn back(&self) -> bool {
         self.with_state(|state| {
-            if state.player.is_none() && state.profiles.is_none() && state.route == "home" {
+            if state.player.is_none() && state.profiles.is_none() && state.route == Route::Home {
                 return false;
             }
             key_down(state, KeyInput::Key(Key::Back));
@@ -858,7 +900,7 @@ mod tests {
     fn profile_button_opens_settings() {
         let commands = session_commands(
             &NativeAction::Navigate {
-                destination: "settings".to_owned(),
+                destination: Route::Settings,
             },
             &Value::Null,
         )

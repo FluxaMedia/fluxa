@@ -296,7 +296,7 @@ fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
             state.session_revision = None;
             state.last_snapshot_revision = None;
             state.core_snapshot = None;
-            state.route = "home".to_owned();
+            state.route = crate::Route::Home;
             state.profiles = None;
             state.pack_job = None;
         }

@@ -444,7 +444,7 @@ impl Gpu {
 
     pub(super) fn render(
         &mut self,
-        route: &str,
+        route: Route,
         home: &HomeModel,
         library: &LibraryModel,
         library_tab: LibraryTab,
@@ -517,7 +517,7 @@ impl Gpu {
                     fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
             } else if let Some(player) = player {
                 rendered_layout = draw_player(ui.ctx(), viewport, player, &mut assets, focused);
-            } else if route == "library" {
+            } else if route == Route::Library {
                 rendered_layout = draw_library(
                     ui.ctx(),
                     viewport,
@@ -526,13 +526,13 @@ impl Gpu {
                     &mut assets,
                     focused,
                 );
-            } else if route == "discover" {
+            } else if route == Route::Discover {
                 rendered_layout = draw_discover(ui.ctx(), viewport, discover, &mut assets, focused);
-            } else if route == "calendar" {
+            } else if route == Route::Calendar {
                 rendered_layout = draw_calendar(ui.ctx(), viewport, calendar, &mut assets, focused);
-            } else if route == "detail" {
+            } else if route == Route::Detail {
                 rendered_layout = draw_detail(ui.ctx(), viewport, detail, &mut assets, focused);
-            } else if route == "settings" {
+            } else if route == Route::Settings {
                 rendered_layout = draw_settings(ui.ctx(), viewport, settings, &assets, focused);
             } else {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);

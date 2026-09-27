@@ -8,7 +8,7 @@ use fluxa_ui::{
 };
 use serde_json::{Value, json};
 
-use crate::core_value;
+use crate::{Route, core_value};
 
 pub(crate) struct Request {
     pub revision: u64,
@@ -22,7 +22,7 @@ pub(crate) struct Request {
 
 pub(crate) struct Projection {
     pub revision: u64,
-    pub route: String,
+    pub route: Route,
     pub home: HomeModel,
     pub library: LibraryModel,
     pub discover: DiscoverModel,
@@ -129,12 +129,11 @@ fn project(
     let route = snapshot
         .pointer("/navigation/route")
         .and_then(Value::as_str)
-        .unwrap_or("home")
-        .to_owned();
+        .map_or(Route::Home, Route::parse);
     let mut library = library_model_from_core_snapshot(snapshot);
     library.query = request.library_query.clone();
     library.sort_by = request.library_sort.clone();
-    if route == "library" {
+    if route == Route::Library {
         let source = snapshot
             .get("library")
             .cloned()

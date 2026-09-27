@@ -47,10 +47,7 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
         }
         Some(HomeScrollTarget::ScreenVertical) => {
             let max_offset = screen_scroll_max(state, viewport);
-            let offset = state
-                .screen_scroll_offsets
-                .entry(state.route.clone())
-                .or_default();
+            let offset = state.screen_scroll_offsets.entry(state.route).or_default();
             let next = (*offset + movement).clamp(0.0, max_offset);
             if (next - *offset).abs() < 0.01 {
                 state.scroll_velocity = 0.0;
@@ -73,7 +70,7 @@ pub(super) fn request_home_row_load_more(
     content_row_index: usize,
     viewport: Viewport,
 ) {
-    if state.route != "home" {
+    if state.route != Route::Home {
         return;
     }
     let has_continue_row = !state.home.cards.is_empty();
@@ -156,22 +153,19 @@ pub(super) fn request_home_row_load_more(
 }
 
 pub(super) fn screen_scroll_max(state: &RendererState, viewport: Viewport) -> f32 {
-    match state.route.as_str() {
-        "library" => fluxa_ui::library_scroll_max(viewport, &state.library, state.library_tab),
-        "discover" => fluxa_ui::discover_scroll_max(viewport, &state.discover),
-        "calendar" => fluxa_ui::calendar_scroll_max(viewport, &state.calendar),
-        "detail" => fluxa_ui::detail_scroll_max(viewport, &state.detail),
-        "settings" => fluxa_ui::settings_scroll_max(viewport, &state.settings),
+    match state.route {
+        Route::Library => fluxa_ui::library_scroll_max(viewport, &state.library, state.library_tab),
+        Route::Discover => fluxa_ui::discover_scroll_max(viewport, &state.discover),
+        Route::Calendar => fluxa_ui::calendar_scroll_max(viewport, &state.calendar),
+        Route::Detail => fluxa_ui::detail_scroll_max(viewport, &state.detail),
+        Route::Settings => fluxa_ui::settings_scroll_max(viewport, &state.settings),
         _ => 0.0,
     }
 }
 
 pub(super) fn update_screen_scroll(state: &mut RendererState, delta: f32, viewport: Viewport) {
     let max_offset = screen_scroll_max(state, viewport);
-    let offset = state
-        .screen_scroll_offsets
-        .entry(state.route.clone())
-        .or_default();
+    let offset = state.screen_scroll_offsets.entry(state.route).or_default();
     *offset = (*offset + delta).clamp(0.0, max_offset);
 }
 
@@ -207,7 +201,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
             }
             if state.active_scroll.is_none() && state.touch_scrolled {
                 let viewport = logical_viewport(state);
-                if state.route == "home" {
+                if state.route == Route::Home {
                     if total_x.abs() > total_y.abs() * 1.15 {
                         state.active_scroll =
                             fluxa_ui::home_row_at_y(viewport, &state.home, start[1])
@@ -336,25 +330,27 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     rebuild_current_ui(state);
     if matches!(input, KeyInput::Backspace) {
         match state.ui.focused() {
-            Some(fluxa_ui::NODE_LIBRARY_SEARCH) if state.route == "library" => {
+            Some(fluxa_ui::NODE_LIBRARY_SEARCH) if state.route == Route::Library => {
                 state.library_query.pop();
                 refresh_library_view(state);
                 return;
             }
-            Some(fluxa_ui::NODE_SETTINGS_SEARCH) if state.route == "settings" => {
+            Some(fluxa_ui::NODE_SETTINGS_SEARCH) if state.route == Route::Settings => {
                 state.settings.search.pop();
                 state.ui = UiTree::default();
                 return;
             }
-            Some(fluxa_ui::NODE_SETTINGS_ADDON_URL) if state.route == "settings" => {
+            Some(fluxa_ui::NODE_SETTINGS_ADDON_URL) if state.route == Route::Settings => {
                 state.settings.addon_url.pop();
                 return;
             }
-            Some(fluxa_ui::NODE_SETTINGS_PLUGIN_URL) if state.route == "settings" => {
+            Some(fluxa_ui::NODE_SETTINGS_PLUGIN_URL) if state.route == Route::Settings => {
                 state.settings.plugin_url.pop();
                 return;
             }
-            Some(node) if state.route == "settings" && fluxa_ui::poster_field(node).is_some() => {
+            Some(node)
+                if state.route == Route::Settings && fluxa_ui::poster_field(node).is_some() =>
+            {
                 if let Some(index) = fluxa_ui::poster_field(node) {
                     state.settings.poster_fields[index].pop();
                 }
@@ -375,23 +371,23 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     ensure_focused_visible(state);
 }
 
-pub(super) fn active_route(state: &RendererState) -> String {
+pub(super) fn active_route(state: &RendererState) -> Route {
     if state.profiles.is_some() {
-        "profiles".to_owned()
+        Route::Profiles
     } else if state.player.is_some() {
-        "player".to_owned()
+        Route::Player
     } else {
-        state.route.clone()
+        state.route
     }
 }
 
-pub(super) fn apply_pointer_results(state: &mut RendererState, route: &str, layout: &HomeLayout) {
+pub(super) fn apply_pointer_results(state: &mut RendererState, route: Route, layout: &HomeLayout) {
     if let (Some(node), Some(value)) = (layout.text_input_node, layout.text_input.as_ref()) {
         set_text_value(state, node, value);
     }
     if let Some((key, value)) = layout.filter_change.as_ref()
         && key == "librarySort"
-        && route == "library"
+        && route == Route::Library
     {
         state.library_sort = value.clone();
         refresh_library_view(state);

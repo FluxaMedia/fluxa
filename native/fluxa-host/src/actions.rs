@@ -9,23 +9,21 @@ pub(super) fn native_action_for_node(
     calendar: &CalendarModel,
     detail: &DetailModel,
     settings: &SettingsModel,
-    route: &str,
+    route: Route,
     hero: Option<&HomeHero>,
 ) -> Option<NativeAction> {
     let destination = match node {
-        NODE_HOME => Some("home"),
-        NODE_LIBRARY => Some("library"),
-        NODE_DISCOVER => Some("discover"),
-        NODE_CALENDAR => Some("calendar"),
-        NODE_PROFILE => Some("settings"),
+        NODE_HOME => Some(Route::Home),
+        NODE_LIBRARY => Some(Route::Library),
+        NODE_DISCOVER => Some(Route::Discover),
+        NODE_CALENDAR => Some(Route::Calendar),
+        NODE_PROFILE => Some(Route::Settings),
         _ => None,
     };
     if let Some(destination) = destination {
-        return Some(NativeAction::Navigate {
-            destination: destination.to_owned(),
-        });
+        return Some(NativeAction::Navigate { destination });
     }
-    if route == "discover" {
+    if route == Route::Discover {
         if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
             return Some(NativeAction::DiscoverType {
                 content_type: if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
@@ -53,7 +51,7 @@ pub(super) fn native_action_for_node(
             }
         }
     }
-    if route == "calendar" {
+    if route == Route::Calendar {
         if (fluxa_ui::NODE_CALENDAR_EVENT_BASE..fluxa_ui::NODE_CALENDAR_EVENT_BASE + 10)
             .contains(&node)
         {
@@ -85,15 +83,15 @@ pub(super) fn native_action_for_node(
             return Some(NativeAction::CalendarMonth { year, month });
         }
     }
-    if route == "settings" {
+    if route == Route::Settings {
         if node == fluxa_ui::NODE_SETTINGS_BACK {
             return Some(NativeAction::Navigate {
-                destination: "home".to_owned(),
+                destination: Route::Home,
             });
         }
         if node == fluxa_ui::NODE_SETTINGS_SWITCH_PROFILE {
             return Some(NativeAction::Navigate {
-                destination: "profiles".to_owned(),
+                destination: Route::Profiles,
             });
         }
         if let Some(provider) = node
@@ -128,7 +126,7 @@ pub(super) fn native_action_for_node(
             });
         }
     }
-    if route == "detail" {
+    if route == Route::Detail {
         if node == fluxa_ui::NODE_DETAIL_BACK {
             return Some(NativeAction::Back);
         }
@@ -173,12 +171,12 @@ pub(super) fn native_action_for_node(
             });
         }
     }
-    let (id, item_type, preview) = if route == "library" && node >= NODE_CARD_BASE {
+    let (id, item_type, preview) = if route == Route::Library && node >= NODE_CARD_BASE {
         let card = library
             .cards(library_tab)
             .get((node - NODE_CARD_BASE) as usize)?;
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
-    } else if route == "discover" && node >= NODE_CARD_BASE {
+    } else if route == Route::Discover && node >= NODE_CARD_BASE {
         let card = discover.results.get((node - NODE_CARD_BASE) as usize)?;
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else if node == NODE_PLAY || node == NODE_MORE_INFO {
@@ -346,21 +344,22 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
     }
     for action in &actions {
         if let UiAction::TextInput { node, value } = action {
-            if state.route == "library" && *node == fluxa_ui::NODE_LIBRARY_SEARCH {
+            if state.route == Route::Library && *node == fluxa_ui::NODE_LIBRARY_SEARCH {
                 state.library_query.push_str(value);
                 refresh_library_view(state);
-            } else if state.route == "discover" && *node == fluxa_ui::NODE_DISCOVER_SEARCH {
+            } else if state.route == Route::Discover && *node == fluxa_ui::NODE_DISCOVER_SEARCH {
                 state.discover.query.push_str(value);
                 request_discover_search(state);
                 state.ui = UiTree::default();
-            } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_SEARCH {
+            } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_SEARCH {
                 state.settings.search.push_str(value);
                 state.ui = UiTree::default();
-            } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_ADDON_URL {
+            } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_ADDON_URL {
                 state.settings.addon_url.push_str(value);
-            } else if state.route == "settings" && *node == fluxa_ui::NODE_SETTINGS_PLUGIN_URL {
+            } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
+            {
                 state.settings.plugin_url.push_str(value);
-            } else if state.route == "settings"
+            } else if state.route == Route::Settings
                 && let Some(index) = fluxa_ui::poster_field(*node)
             {
                 state.settings.poster_fields[index].push_str(value);
@@ -380,7 +379,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             continue;
         }
         if let Some(node) = node {
-            if state.route == "library" && node == fluxa_ui::NODE_LIBRARY_SORT {
+            if state.route == Route::Library && node == fluxa_ui::NODE_LIBRARY_SORT {
                 state.library_sort = match state.library_sort.as_str() {
                     "recent" => "title",
                     "title" => "rating",
@@ -390,7 +389,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 refresh_library_view(state);
                 continue;
             }
-            if state.route == "calendar" {
+            if state.route == Route::Calendar {
                 if node == fluxa_ui::NODE_CALENDAR_CLOSE_DAY {
                     state.calendar.selected_day = None;
                     state.ui = UiTree::default();
@@ -405,7 +404,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     continue;
                 }
             }
-            if state.route == "settings"
+            if state.route == Route::Settings
                 && (fluxa_ui::NODE_SETTINGS_SECTION_BASE
                     ..fluxa_ui::NODE_SETTINGS_SECTION_BASE
                         + fluxa_ui::SETTINGS_SECTIONS.len() as u64)
@@ -417,7 +416,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.ui = UiTree::default();
                 continue;
             }
-            if state.route == "settings"
+            if state.route == Route::Settings
                 && let Some(action_json) = settings_action_json(node, &state.settings)
             {
                 if node == fluxa_ui::NODE_SETTINGS_ADDON_INSTALL {
@@ -433,7 +432,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.ui = UiTree::default();
                 continue;
             }
-            if state.route == "library"
+            if state.route == Route::Library
                 && (fluxa_ui::NODE_LIBRARY_TAB_BASE
                     ..fluxa_ui::NODE_LIBRARY_TAB_BASE + LibraryTab::ALL.len() as u64)
                     .contains(&node)
@@ -453,7 +452,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 &state.calendar,
                 &state.detail,
                 &state.settings,
-                &state.route,
+                state.route,
                 state
                     .gpu
                     .as_ref()
@@ -469,7 +468,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             }
         }
         if matches!(action, UiAction::Back) {
-            if state.route == "calendar" && state.calendar.selected_day.is_some() {
+            if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
                 state.calendar.selected_day = None;
                 state.ui = UiTree::default();
             } else {
@@ -548,18 +547,18 @@ pub(super) fn discover_command(
     })
 }
 
-pub(super) fn navigation(route: &str) -> Value {
-    json!({"type": "navigationRequested", "route": route, "params": {}})
+pub(super) fn navigation(route: Route) -> Value {
+    json!({"type": "navigationRequested", "route": route.as_str(), "params": {}})
 }
 
 pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>> {
     let commands = match action {
         NativeAction::CoreCommand { command } => vec![command.clone()],
         NativeAction::LoadMore { .. } => Vec::new(),
-        NativeAction::Back => vec![navigation("home")],
-        NativeAction::Navigate { destination } => match destination.as_str() {
-            "home" => vec![
-                navigation("home"),
+        NativeAction::Back => vec![navigation(Route::Home)],
+        NativeAction::Navigate { destination } => match destination {
+            Route::Home => vec![
+                navigation(Route::Home),
                 json!({
                     "type": "refreshContinueWatchingRequested",
                     "profile": profile,
@@ -567,22 +566,22 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
                     "source": "navigation",
                 }),
             ],
-            "library" => vec![
-                navigation("library"),
+            Route::Library => vec![
+                navigation(Route::Library),
                 json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}),
             ],
-            "discover" => vec![
-                navigation("discover"),
+            Route::Discover => vec![
+                navigation(Route::Discover),
                 discover_command(profile, "movie", "", "", "", true),
             ],
-            "calendar" => {
+            Route::Calendar => {
                 let (year, month) = current_year_month();
                 vec![
-                    navigation("calendar"),
+                    navigation(Route::Calendar),
                     json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
                 ]
             }
-            "profile" | "settings" => vec![navigation("settings")],
+            Route::Settings => vec![navigation(Route::Settings)],
             _ => return None,
         },
         NativeAction::DiscoverType { content_type } => {
@@ -613,7 +612,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
             json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
         ],
         NativeAction::Detail { id, item_type, .. } | NativeAction::Play { id, item_type } => vec![
-            navigation("detail"),
+            navigation(Route::Detail),
             json!({
                 "type": "detailLoadRequested",
                 "id": id,
@@ -657,7 +656,8 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             toggles.push(provider);
             continue;
         }
-        if matches!(&action, NativeAction::Navigate { destination } if destination == "profiles") {
+        if matches!(&action, NativeAction::Navigate { destination } if *destination == Route::Profiles)
+        {
             open_profiles = true;
             continue;
         }
@@ -665,10 +665,10 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             state.player = Some(player::PlayerSession::new(item.clone()));
             state.ui = UiTree::default();
         }
-        if matches!(&action, NativeAction::Navigate { destination } if destination == "discover")
+        if matches!(&action, NativeAction::Navigate { destination } if *destination == Route::Discover)
             && !state.discover.catalogs.is_empty()
         {
-            if let Err(error) = session.dispatch(navigation("discover")) {
+            if let Err(error) = session.dispatch(navigation(Route::Discover)) {
                 host_log(format!("core dispatch failed: {error}"));
             }
             continue;

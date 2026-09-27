@@ -92,7 +92,7 @@ pub(super) fn rebuild_current_ui(state: &mut RendererState) {
         rebuild_ui_from_layout(state, &layout, size);
         return;
     }
-    if state.route != "home" || state.player.is_some() || state.profiles.is_some() {
+    if state.route != Route::Home || state.player.is_some() || state.profiles.is_some() {
         return;
     }
     rebuild_home_ui(&mut state.ui, size, &state.home, state.safe_bottom);
@@ -253,9 +253,9 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         }
         id if id >= NODE_CARD_BASE => {
             let index = (id - NODE_CARD_BASE) as usize;
-            let card = match state.route.as_str() {
-                "library" => state.library.cards(state.library_tab).get(index),
-                "discover" => state.discover.results.get(index),
+            let card = match state.route {
+                Route::Library => state.library.cards(state.library_tab).get(index),
+                Route::Discover => state.discover.results.get(index),
                 _ => state.home.card_at(index),
             };
             card.map(|card| card.title.clone())
@@ -388,28 +388,28 @@ pub(super) fn rebuild_ui_from_layout(
             }
         }
     }
-    let fallback = match state.route.as_str() {
-        "library" => state
+    let fallback = match state.route {
+        Route::Library => state
             .library
             .cards(state.library_tab)
             .first()
             .map(|_| NODE_CARD_BASE)
             .unwrap_or(fluxa_ui::NODE_LIBRARY_TAB_BASE),
-        "discover" => state
+        Route::Discover => state
             .discover
             .results
             .first()
             .map(|_| NODE_CARD_BASE)
             .unwrap_or(fluxa_ui::NODE_DISCOVER_TYPE_BASE),
-        "calendar" => {
+        Route::Calendar => {
             if state.calendar.selected_day.is_some() {
                 fluxa_ui::NODE_CALENDAR_CLOSE_DAY
             } else {
                 fluxa_ui::NODE_CALENDAR_PREV
             }
         }
-        "detail" => fluxa_ui::NODE_DETAIL_PLAY,
-        "settings" => fluxa_ui::NODE_SETTINGS_BACK,
+        Route::Detail => fluxa_ui::NODE_DETAIL_PLAY,
+        Route::Settings => fluxa_ui::NODE_SETTINGS_BACK,
         _ if state.home.item_id.is_some() => fluxa_ui::NODE_PLAY,
         _ => fluxa_ui::NODE_HOME,
     };
@@ -462,11 +462,11 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     if delta.abs() < 0.5 {
         return;
     }
-    if state.route == "home" {
+    if state.route == Route::Home {
         let max_offset = fluxa_ui::home_scroll_max(viewport, &state.home);
         state.home.scroll_offset = (state.home.scroll_offset + delta).clamp(0.0, max_offset);
     } else {
-        let route = state.route.clone();
+        let route = state.route;
         let max_offset = screen_scroll_max(state, viewport);
         let offset = state.screen_scroll_offsets.entry(route).or_default();
         *offset = (*offset + delta).clamp(0.0, max_offset);
