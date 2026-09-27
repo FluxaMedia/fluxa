@@ -6,7 +6,7 @@ import UIKit
 
 @MainActor
 final class FluxaNativeVideo {
-    let layer = CAMetalLayer()
+    let layer = AVSampleBufferDisplayLayer()
     var onPlayingChanged: ((Bool) -> Void)?
 
     private var mpv: OpaquePointer?
@@ -19,6 +19,7 @@ final class FluxaNativeVideo {
 
     init() {
         layer.backgroundColor = UIColor.black.cgColor
+        layer.videoGravity = .resizeAspect
         layer.isHidden = true
     }
 
@@ -64,22 +65,15 @@ final class FluxaNativeVideo {
         guard let mpv = mpv_create() else { return nil }
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("mpv")
-        let cache = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0]
-            .appendingPathComponent("mpv")
         try? FileManager.default.createDirectory(at: support, withIntermediateDirectories: true)
-        try? FileManager.default.createDirectory(at: cache, withIntermediateDirectories: true)
         var wid = Int64(Int(bitPattern: Unmanaged.passUnretained(layer).toOpaque()))
         mpv_set_option(mpv, "wid", MPV_FORMAT_INT64, &wid)
         let options = [
-            ("vo", "gpu-next"),
-            ("gpu-api", "vulkan"),
-            ("gpu-context", "moltenvk"),
+            ("vo", "apple_native"),
             ("hwdec", "videotoolbox"),
             ("ao", "audiounit"),
             ("config", "yes"),
             ("config-dir", support.path),
-            ("gpu-shader-cache-dir", cache.path),
-            ("icc-cache-dir", cache.path),
             ("video-sync", "audio"),
             ("cache", "yes"),
             ("cache-secs", "60"),
@@ -109,7 +103,6 @@ final class FluxaNativeVideo {
             mpv_terminate_destroy(mpv)
             return nil
         }
-        mpv_request_log_messages(mpv, "error")
         return mpv
     }
 
@@ -121,8 +114,6 @@ final class FluxaNativeVideo {
             error = "libmpv could not be created"
             return
         }
-        try? AVAudioSession.sharedInstance().setCategory(.playback, mode: .moviePlayback)
-        try? AVAudioSession.sharedInstance().setActive(true)
         mpv_set_property_string(mpv, "alang", audioLanguage)
         mpv_set_property_string(mpv, "slang", subtitleLanguage)
         if url.hasPrefix("http://127.0.0.1:") {
@@ -161,19 +152,11 @@ final class FluxaNativeVideo {
     private func drainEvents() {
         guard let mpv else { return }
         while let event = mpv_wait_event(mpv, 0), event.pointee.event_id != MPV_EVENT_NONE {
-            switch event.pointee.event_id {
-            case MPV_EVENT_LOG_MESSAGE:
-                let message = event.pointee.data.assumingMemoryBound(to: mpv_event_log_message.self).pointee
-                if String(cString: message.prefix) == "cplayer" {
-                    error = String(String(cString: message.text).trimmingCharacters(in: .whitespacesAndNewlines).prefix(180))
-                }
-            case MPV_EVENT_END_FILE:
-                let end = event.pointee.data.assumingMemoryBound(to: mpv_event_end_file.self).pointee
-                if end.reason == MPV_END_FILE_REASON_ERROR {
-                    error = String(cString: mpv_error_string(end.error))
-                }
-            default:
-                break
+            guard event.pointee.event_id == MPV_EVENT_END_FILE else { continue }
+            let end = event.pointee.data.assumingMemoryBound(to: mpv_event_end_file.self).pointee
+            if end.reason == MPV_END_FILE_REASON_ERROR {
+                let message = string("last-error/message") ?? string("last-error/error") ?? String(cString: mpv_error_string(end.error))
+                error = String(message.trimmingCharacters(in: .whitespacesAndNewlines).prefix(180))
             }
         }
     }
@@ -182,6 +165,12 @@ final class FluxaNativeVideo {
         var value = 0.0
         guard let mpv, mpv_get_property(mpv, name, MPV_FORMAT_DOUBLE, &value) >= 0 else { return 0 }
         return value
+    }
+
+    private func string(_ name: String) -> String? {
+        guard let mpv, let value = mpv_get_property_string(mpv, name) else { return nil }
+        defer { mpv_free(value) }
+        return String(cString: value)
     }
 
     private func flag(_ name: String) -> Bool {
