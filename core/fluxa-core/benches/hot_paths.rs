@@ -39,7 +39,7 @@ fn hot_paths(c: &mut Criterion) {
     });
 
     let filters = (0..60)
-        .map(|i| json!({"name": format!("B{i}"), "pattern": format!("tag{i}|4k"), "imageURL": format!("https://img.example/{i}.png")}))
+        .map(|i| json!({"name": format!("B{i}"), "pattern": format!(r"\btag{i}\b"), "imageURL": format!("https://img.example/{i}.png")}))
         .collect::<Vec<_>>();
     let import = call(
         "parseStreamBadgeImport",
