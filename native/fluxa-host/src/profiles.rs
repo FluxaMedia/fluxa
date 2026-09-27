@@ -304,6 +304,16 @@ fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     }
 }
 
+pub(crate) fn save_profile(storage: &Storage, profile: &Value) {
+    let profiles = stored_profiles(storage);
+    if let Some(next) = core_value(
+        "profileMutationPlan",
+        json!({"operation": "save", "profiles": profiles, "profile": profile}),
+    ) {
+        write(storage, "profiles", &next);
+    }
+}
+
 pub(crate) fn load_profile(session: &SessionHandle) -> Result<(), String> {
     let profile = session.active_profile();
     session.dispatch(json!({

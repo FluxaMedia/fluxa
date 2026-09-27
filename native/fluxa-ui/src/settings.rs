@@ -1015,6 +1015,14 @@ pub struct SettingsModel {
     pub plugin_url: String,
     pub poster_fields: [String; 3],
     pub search: String,
+    pub account_auth: Option<AccountPrompt>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AccountPrompt {
+    pub provider: String,
+    pub code: String,
+    pub url: String,
 }
 
 impl SettingsModel {
@@ -1150,6 +1158,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
                 .to_owned()
         }),
         search: String::new(),
+        account_auth: None,
     }
 }
 
@@ -2687,11 +2696,13 @@ fn accent_needs_dark_foreground(color: Color32) -> bool {
 }
 
 const ACCOUNT_PROFILE_CARD_HEIGHT: f32 = 92.0;
-const ACCOUNT_SERVICES: [(&str, &str); 3] = [
+const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),
     ("Simkl", "simklAccessToken"),
     ("AniList", "anilistAccessToken"),
+    ("MDBList", "mdblistApiKey"),
 ];
+pub const ACCOUNT_PROVIDERS: [&str; 2] = ["trakt", "simkl"];
 const ACCOUNT_SOURCES: [(&str, &str); 2] = [
     ("settings.integration_library_source", "integrationLibrarySource"),
     ("settings.continue_watching_source", "continueWatchingSource"),
@@ -2750,6 +2761,13 @@ fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMetrics) {
     );
 }
 
+fn source_label(source: &str, language: &str) -> String {
+    match source {
+        "mdblist" => localized("settings.service.mdblist", language),
+        _ => localized_or(&format!("settings.option.{source}"), source, language),
+    }
+}
+
 fn draw_account(
     context: &egui::Context,
     settings: &SettingsModel,
@@ -2765,6 +2783,7 @@ fn draw_account(
         settings
             .profile
             .get(key)
+            .or_else(|| settings.value(key))
             .and_then(serde_json::Value::as_str)
             .is_some_and(|token| !token.is_empty())
     };
@@ -2875,16 +2894,58 @@ fn draw_account(
             Color32::from_white_alpha(210),
         );
         let on = connected(key);
-        let status = localized(
-            if on {
-                "settings.connected"
-            } else {
-                "settings.not_connected"
-            },
-            language,
-        );
+        let provider = label.to_lowercase();
+        let prompt = settings
+            .account_auth
+            .as_ref()
+            .filter(|prompt| prompt.provider == provider);
+        let status = match prompt {
+            Some(prompt) => format!(
+                "{} {}  ·  {}",
+                localized("trakt.device.enter_code", language),
+                prompt.code,
+                prompt.url
+            ),
+            None => localized(
+                if on {
+                    "settings.connected"
+                } else {
+                    "settings.not_connected"
+                },
+                language,
+            ),
+        };
+        let mut status_right = 8.0;
+        if let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider) {
+            let action = localized(
+                if on {
+                    "settings.account_disconnect"
+                } else {
+                    "settings.account_connect"
+                },
+                language,
+            );
+            let width = painter
+                .layout_no_wrap(action.clone(), FontId::proportional(label_size), Color32::WHITE)
+                .size()
+                .x
+                + 32.0;
+            let button = Rect::from_center_size(
+                Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
+                Vec2::new(width, 32.0_f32.min(row.height() - 4.0)),
+            );
+            pill_button(
+                context,
+                layout,
+                NODE_SETTINGS_ACCOUNT_BASE + slot as u64,
+                button,
+                &action,
+                label_size,
+            );
+            status_right += width + 12.0;
+        }
         painter.text(
-            row.right_center() - Vec2::new(8.0, 0.0),
+            row.right_center() - Vec2::new(status_right, 0.0),
             Align2::RIGHT_CENTER,
             status,
             FontId::proportional(metrics.screen_card_subtitle_size),
@@ -2919,6 +2980,7 @@ fn draw_account(
             ("simkl", "simklAccessToken"),
             ("anilist", "anilistAccessToken"),
             ("stremio", "stremioAuthKey"),
+            ("mdblist", "mdblistApiKey"),
         ] {
             if connected(token_key) {
                 choices.push(source);
@@ -2931,7 +2993,7 @@ fn draw_account(
             .to_owned();
         let mut selected = current.clone();
         let current_label = if choices.contains(&current.as_str()) {
-            localized_or(&format!("settings.option.{current}"), &current, language)
+            source_label(&current, language)
         } else if choices.is_empty() {
             localized("settings.not_connected", language)
         } else {
@@ -2952,7 +3014,7 @@ fn draw_account(
                     .map(|choice| {
                         (
                             (*choice).to_owned(),
-                            localized_or(&format!("settings.option.{choice}"), choice, language),
+                            source_label(choice, language),
                         )
                     })
                     .collect::<Vec<_>>();

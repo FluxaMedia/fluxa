@@ -36,7 +36,7 @@ pub use player::{
 };
 use settings::settings_card_height;
 pub use settings::{
-    POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, draw_settings,
+    ACCOUNT_PROVIDERS, AccountPrompt, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, draw_settings,
     poster_field, settings_model_from_core_snapshot, settings_row_by_index,
 };
 
@@ -2419,6 +2419,7 @@ pub const NODE_DETAIL_SEASON_BASE: u64 = 1900;
 pub const NODE_DETAIL_EPISODE_BASE: u64 = 2000;
 pub const NODE_SETTINGS_BACK: u64 = 400;
 pub const NODE_SETTINGS_SWITCH_PROFILE: u64 = 401;
+pub const NODE_SETTINGS_ACCOUNT_BASE: u64 = 402;
 pub const NODE_SETTINGS_ROW_BASE: u64 = 800;
 pub const NODE_SETTINGS_SECTION_BASE: u64 = 450;
 pub const NODE_SETTINGS_ADDON_URL: u64 = 470;

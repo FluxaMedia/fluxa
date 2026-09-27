@@ -62,6 +62,7 @@ impl NativeSurface {
     }
 }
 
+mod accounts;
 mod player;
 mod poster_data;
 mod presence;
@@ -128,6 +129,7 @@ struct RendererState {
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
     profiles: Option<fluxa_ui::ProfilesModel>,
+    account_auth: Option<accounts::AccountAuth>,
     pack_job: Option<profiles::PackJob>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
@@ -214,6 +216,9 @@ enum NativeAction {
     },
     SettingsSection {
         index: usize,
+    },
+    AccountToggle {
+        provider: String,
     },
     DiscoverType {
         content_type: String,
@@ -1882,6 +1887,14 @@ fn native_action_for_node(
                 destination: "profiles".to_owned(),
             });
         }
+        if let Some(provider) = node
+            .checked_sub(fluxa_ui::NODE_SETTINGS_ACCOUNT_BASE)
+            .and_then(|slot| fluxa_ui::ACCOUNT_PROVIDERS.get(slot as usize))
+        {
+            return Some(NativeAction::AccountToggle {
+                provider: (*provider).to_owned(),
+            });
+        }
         if (fluxa_ui::NODE_SETTINGS_SECTION_BASE
             ..fluxa_ui::NODE_SETTINGS_SECTION_BASE + fluxa_ui::SETTINGS_SECTIONS.len() as u64)
             .contains(&node)
@@ -2523,6 +2536,7 @@ impl FluxaHost {
             video: None,
             fullscreen_toggle: false,
             profiles: None,
+            account_auth: None,
             pack_job: None,
             picker_background: None,
             image_picker: None,
@@ -3165,6 +3179,7 @@ fn render_frame(state: &mut RendererState) {
     pull_session_snapshot(state);
     timer.mark("snapshot");
     profiles::poll(state);
+    accounts::poll(state);
     player::pump(state);
     player::upload_frame(state);
     timer.mark("player");
@@ -3549,7 +3564,7 @@ fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>
         NativeAction::StartPlayback { item } => {
             vec![player::direct_playback_command(item, profile)]
         }
-        NativeAction::SettingsSection { .. } => return None,
+        NativeAction::SettingsSection { .. } | NativeAction::AccountToggle { .. } => return None,
     };
     Some(commands)
 }
@@ -3565,7 +3580,12 @@ fn route_actions_to_session(state: &mut RendererState) {
     let profile = session.active_profile();
     let mut unhandled = Vec::new();
     let mut open_profiles = false;
+    let mut toggles = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
+        if let NativeAction::AccountToggle { provider } = action {
+            toggles.push(provider);
+            continue;
+        }
         if matches!(&action, NativeAction::Navigate { destination } if destination == "profiles") {
             open_profiles = true;
             continue;
@@ -3594,6 +3614,9 @@ fn route_actions_to_session(state: &mut RendererState) {
         }
     }
     state.pending_native_actions = unhandled;
+    for provider in toggles {
+        accounts::toggle(state, &provider);
+    }
     if open_profiles {
         state.ui = UiTree::default();
         profiles::open(state);
