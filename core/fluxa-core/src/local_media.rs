@@ -36,7 +36,7 @@ fn episode_only() -> &'static Regex {
 fn anime_absolute() -> &'static Regex {
     static RE: OnceLock<Regex> = OnceLock::new();
     RE.get_or_init(|| {
-        Regex::new(r"(?i)(?:^|[ ._\-])-?[ ._]*(\d{1,4})(?:v\d+)?(?=[ ._\-]*(?:\[|\(|$))").unwrap()
+        Regex::new(r"(?i)(?:^|[ ._\-])-?[ ._]*(\d{1,4})(?:v\d+)?(?:[ ._\-]*(?:\[|\(|$))").unwrap()
     })
 }
 
@@ -428,6 +428,19 @@ mod tests {
         assert_eq!(value["year"], 2024);
         assert_eq!(value["season"], 1);
         assert_eq!(value["episode"], 2);
+    }
+
+    #[test]
+    fn anime_absolute_episode_before_release_tag() {
+        let value = route(
+            "localMediaParseFilename",
+            &json!({
+                "fileName": "[SubsPlease] Frieren - 17 [1080p].mkv",
+                "parentHints": [], "kind": "anime"
+            }),
+        )
+        .unwrap();
+        assert_eq!(value["absoluteEpisode"], 17);
     }
 
     #[test]
