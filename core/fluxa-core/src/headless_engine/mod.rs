@@ -103,28 +103,12 @@ pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<S
             detail: e.to_string(),
         })
         .log_discard()?;
-    let (revision, patch, visible_effects) = {
-        let engine = match lock_engines().get(&handle) {
-            Some(engine) => Arc::clone(engine),
-            None => {
-                return CoreError::NotFound {
-                    context: "headless_engine_dispatch_json",
-                }
-                .log_and_none();
-            }
-        };
-        let mut engine = lock_engine(&engine).or_else(|| {
-            CoreError::NotFound {
-                context: "headless_engine_dispatch_json (poisoned handle)",
-            }
-            .log_and_none()
+    let (revision, (patch, visible_effects)) =
+        with_engine(handle, "headless_engine_dispatch_json", |engine| {
+            let effects = engine.dispatch(action);
+            let visible_effects = engine.resolve_visible_effects(effects);
+            Some((engine.state.diff_dirty(), visible_effects))
         })?;
-        engine.expire_stale_pending_effects(Instant::now());
-        let effects = engine.dispatch(action);
-        let visible_effects = engine.resolve_visible_effects(effects);
-        engine.revision = engine.revision.saturating_add(1);
-        (engine.revision, engine.state.diff_dirty(), visible_effects)
-    };
     result_patch_json(revision, patch, visible_effects)
 }
 
@@ -146,32 +130,13 @@ pub fn headless_engine_dispatch_effects_json(handle: u64, action_json: &str) -> 
         }
         .log_and_none();
     }
-    let (revision, effects) = {
-        let engine = match lock_engines().get(&handle) {
-            Some(engine) => Arc::clone(engine),
-            None => {
-                return CoreError::NotFound {
-                    context: "headless_engine_dispatch_effects_json",
-                }
-                .log_and_none();
-            }
-        };
-        let mut engine = lock_engine(&engine).or_else(|| {
-            CoreError::NotFound {
-                context: "headless_engine_dispatch_effects_json (poisoned handle)",
-            }
-            .log_and_none()
+    let (revision, effects) =
+        with_engine(handle, "headless_engine_dispatch_effects_json", |engine| {
+            let effects = engine.dispatch(action);
+            let effects = engine.resolve_visible_effects(effects);
+            drop(engine.state.diff_dirty());
+            Some(effects)
         })?;
-        engine.expire_stale_pending_effects(Instant::now());
-        let effects = engine.dispatch(action);
-        let effects = engine.resolve_visible_effects(effects);
-        engine.revision = engine.revision.saturating_add(1);
-        // Keep dirty tracking coherent for the next full state-bearing action,
-        // but intentionally drop the patch instead of serializing its large
-        // Discover.results payload.
-        drop(engine.state.diff_dirty());
-        (engine.revision, effects)
-    };
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct EffectsOnlyResult {
@@ -213,28 +178,12 @@ pub fn headless_engine_complete_effect_json(handle: u64, result_json: &str) -> O
             detail: e.to_string(),
         })
         .log_discard()?;
-    let (revision, patch, visible_effects) = {
-        let engine = match lock_engines().get(&handle) {
-            Some(engine) => Arc::clone(engine),
-            None => {
-                return CoreError::NotFound {
-                    context: "headless_engine_complete_effect_json",
-                }
-                .log_and_none();
-            }
-        };
-        let mut engine = lock_engine(&engine).or_else(|| {
-            CoreError::NotFound {
-                context: "headless_engine_complete_effect_json (poisoned handle)",
-            }
-            .log_and_none()
+    let (revision, (patch, visible_effects)) =
+        with_engine(handle, "headless_engine_complete_effect_json", |engine| {
+            let effects = engine.complete_effect(result);
+            let visible_effects = engine.resolve_visible_effects(effects);
+            Some((engine.state.diff_dirty(), visible_effects))
         })?;
-        engine.expire_stale_pending_effects(Instant::now());
-        let effects = engine.complete_effect(result);
-        let visible_effects = engine.resolve_visible_effects(effects);
-        engine.revision = engine.revision.saturating_add(1);
-        (engine.revision, engine.state.diff_dirty(), visible_effects)
-    };
     result_patch_json(revision, patch, visible_effects)
 }
 
@@ -252,40 +201,26 @@ pub fn headless_engine_complete_discover_page_json(
             detail: e.to_string(),
         })
         .log_discard()?;
-    let (revision, delta, effects) = {
-        let engine = match lock_engines().get(&handle) {
-            Some(engine) => Arc::clone(engine),
-            None => {
-                return CoreError::NotFound {
+    let (revision, (delta, effects)) = with_engine(
+        handle,
+        "headless_engine_complete_discover_page_json",
+        |engine| {
+            if !engine.pending_effects.iter().any(|effect| {
+                effect.id == result.effect_id && effect.kind == EffectKind::FetchDiscoverPage
+            }) {
+                return CoreError::BadInput {
                     context: "headless_engine_complete_discover_page_json",
+                    detail: "effect id is not a pending Discover page request".to_owned(),
                 }
                 .log_and_none();
             }
-        };
-        let mut engine = lock_engine(&engine).or_else(|| {
-            CoreError::NotFound {
-                context: "headless_engine_complete_discover_page_json (poisoned handle)",
-            }
-            .log_and_none()
-        })?;
-        engine.expire_stale_pending_effects(Instant::now());
-        if !engine.pending_effects.iter().any(|effect| {
-            effect.id == result.effect_id && effect.kind == EffectKind::FetchDiscoverPage
-        }) {
-            return CoreError::BadInput {
-                context: "headless_engine_complete_discover_page_json",
-                detail: "effect id is not a pending Discover page request".to_owned(),
-            }
-            .log_and_none();
-        }
-        let effects = engine.complete_effect(result);
-        let effects = engine.resolve_visible_effects(effects);
-        engine.revision = engine.revision.saturating_add(1);
-        let delta = discover::take_page_delta(&mut engine);
-        // Clear dirty tracking without creating or serializing a full-state patch.
-        drop(engine.state.diff_dirty());
-        (engine.revision, delta, effects)
-    };
+            let effects = engine.complete_effect(result);
+            let effects = engine.resolve_visible_effects(effects);
+            let delta = discover::take_page_delta(engine);
+            drop(engine.state.diff_dirty());
+            Some((delta, effects))
+        },
+    )?;
     #[derive(Serialize)]
     #[serde(rename_all = "camelCase")]
     struct PageCompletionResult {
@@ -316,6 +251,21 @@ fn result_patch_json(
         effects,
     })
     .ok()
+}
+
+fn with_engine<T>(
+    handle: u64,
+    context: &'static str,
+    run: impl FnOnce(&mut HeadlessEngine) -> Option<T>,
+) -> Option<(u64, T)> {
+    let Some(engine) = lock_engines().get(&handle).cloned() else {
+        return CoreError::NotFound { context }.log_and_none();
+    };
+    let mut engine = lock_engine(&engine)?;
+    engine.expire_stale_pending_effects(Instant::now());
+    let value = run(&mut engine)?;
+    engine.revision = engine.revision.saturating_add(1);
+    Some((engine.revision, value))
 }
 
 fn engines() -> &'static Mutex<HashMap<u64, Arc<Mutex<HeadlessEngine>>>> {
