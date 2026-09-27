@@ -1,141 +1,72 @@
-import FluxaCore
-import FluxaShared
 import SwiftUI
+import UIKit
 
 @main
 struct FluxaIosApp: App {
-    private let coreVersion: String
-    private let headlessRuntime: FluxaAppleHeadlessRuntime
-    private let appRuntime: FluxaAppleAppRuntime
-    private let catalogStartup: FluxaAppleCatalogStartup
-    private let pluginsManager: FluxaApplePluginRepositoryManager
-    private let pluginsStartup: FluxaApplePluginsStartup
-    private let addonStoreManager: FluxaAppleAddonStoreManager
-    private let addonStoreStartup: FluxaAppleAddonStoreStartup
-
-    init() {
-        let runtime = requireFluxaAppleHeadlessRuntime()
-        coreVersion = FluxaRustCoreRuntime.version()
-        headlessRuntime = runtime
-        let runtimeApp = FluxaAppleAppRuntime(runtime: runtime)
-        appRuntime = runtimeApp
-        let catalogStartup = FluxaAppleCatalogStartup(coordinator: runtimeApp.coordinator)
-        self.catalogStartup = catalogStartup
-        let detailStartup = FluxaAppleDetailStartup(coordinator: runtimeApp.coordinator)
-        let searchStartup = FluxaAppleSearchStartup(coordinator: runtimeApp.coordinator)
-        let discoverStartup = FluxaAppleDiscoverStartup(coordinator: runtimeApp.coordinator)
-        let calendarStartup = FluxaAppleCalendarStartup(coordinator: runtimeApp.coordinator)
-        let libraryStartup = FluxaAppleLibraryStartup(coordinator: runtimeApp.coordinator)
-        let authStartup = FluxaAppleAuthStartup()
-        let pluginsManager = FluxaApplePluginRepositoryManager(
-            runtime: runtime,
-            coordinator: runtimeApp.coordinator
-        )
-        self.pluginsManager = pluginsManager
-        let pluginsStartup = FluxaApplePluginsStartup(manager: pluginsManager)
-        self.pluginsStartup = pluginsStartup
-        let addonStoreManager = FluxaAppleAddonStoreManager()
-        self.addonStoreManager = addonStoreManager
-        let addonStoreStartup = FluxaAppleAddonStoreStartup(manager: addonStoreManager)
-        self.addonStoreStartup = addonStoreStartup
-        FluxaApple.shared.setCatalogHomeRefreshHandler {
-            Task { @MainActor in
-                await catalogStartup.refresh()
-            }
-        }
-        FluxaApple.shared.setSearchHandler { query in
-            Task { @MainActor in
-                await searchStartup.search(query: query)
-            }
-        }
-        FluxaApple.shared.setDiscoverHandler { request in
-            Task { @MainActor in
-                await discoverStartup.discover(request: request)
-            }
-        }
-        FluxaApple.shared.setCalendarMonthHandler { year, month in
-            Task { @MainActor in
-                await calendarStartup.load(year: year.intValue, month: month.intValue)
-            }
-        }
-        FluxaApple.shared.setAuthSubmitHandler { request in
-            Task { @MainActor in
-                await authStartup.submit(request: request)
-            }
-        }
-        FluxaApple.shared.setLibraryRefreshHandler {
-            Task { @MainActor in
-                await libraryStartup.refresh()
-            }
-        }
-        FluxaApple.shared.setDetailHandlers(
-            load: { request in
-                Task { @MainActor in
-                    await detailStartup.load(request: request)
-                }
-            },
-            watchlist: { request in
-                Task { @MainActor in
-                    await detailStartup.toggleWatchlist(request: request)
-                }
-            },
-            season: { request in
-                Task { @MainActor in
-                    detailStartup.selectSeason(request: request)
-                }
-            },
-            streams: { request in
-                Task { @MainActor in
-                    await detailStartup.loadSources(request: request)
-                }
-            },
-            addonFilter: { _ in },
-            downloadEpisode: { request in
-                Task { @MainActor in
-                    await detailStartup.downloadEpisode(request: request)
-                }
-            },
-            downloadSeason: { request in
-                Task { @MainActor in
-                    await detailStartup.downloadSeason(request: request)
-                }
-            }
-        )
-        FluxaApple.shared.setCancelDownloadHandler { id in
-            Task { @MainActor in
-                FluxaAppleDownloadManager.shared.cancel(id: id)
-            }
-        }
-        FluxaApple.shared.setPlaybackHandler { request in
-            Task { @MainActor in
-                FluxaApplePlaybackPresenter.shared.present(request: request)
-            }
-        }
-        FluxaApple.shared.setPluginsActionHandler { action in
-            Task { @MainActor in
-                await pluginsStartup.handle(action)
-            }
-        }
-        Task { @MainActor in
-            await pluginsStartup.start()
-        }
-        FluxaApple.shared.setAddonStoreActionHandler { action in
-            Task { @MainActor in
-                await addonStoreStartup.handle(action)
-            }
-        }
-        Task { @MainActor in
-            await addonStoreStartup.start()
-        }
-    }
-
     var body: some Scene {
         WindowGroup {
             FluxaRootView()
                 .ignoresSafeArea()
-                .onOpenURL { url in
-                    FluxaApplePlaybackPresenter.shared.handleOpenURL(url)
-                }
+                .onOpenURL { NotificationCenter.default.post(name: FluxaHostView.openURL, object: $0) }
         }
+    }
+}
+
+struct FluxaRootView: UIViewRepresentable {
+    func makeUIView(context: Context) -> FluxaHostView {
+        FluxaHostView()
+    }
+
+    func updateUIView(_ view: FluxaHostView, context: Context) {}
+}
+
+@MainActor
+final class FluxaHostView: UIView {
+    private let renderer = FluxaNativeRendererView()
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        backgroundColor = .black
+        layer.addSublayer(renderer.video.layer)
+        addSubview(renderer)
+        renderer.video.onPlayingChanged = { playing in
+            UIApplication.shared.isIdleTimerDisabled = playing
+        }
+        renderer.onActions = { print("Unhandled native actions: \($0)") }
+        let dataDir = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("fluxa-native")
+        try? FileManager.default.createDirectory(at: dataDir, withIntermediateDirectories: true)
+        renderer.startSession(dataDir: dataDir.path)
+        NotificationCenter.default.addObserver(
+            forName: FluxaHostView.openURL,
+            object: nil,
+            queue: .main
+        ) { [weak self] note in
+            guard let url = note.object as? URL else { return }
+            MainActor.assumeIsolated { self?.open(url) }
+        }
+    }
+
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) is not supported")
+    }
+
+    static let openURL = Notification.Name("FluxaOpenURL")
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        renderer.frame = bounds
+        renderer.video.layer.frame = bounds
+    }
+
+    private func open(_ url: URL) {
+        let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let value = { (name: String) in items.first { $0.name == name }?.value ?? "" }
+        let id = value("id")
+        let type = value("type")
+        guard !id.isEmpty, !type.isEmpty,
+              let data = try? JSONSerialization.data(withJSONObject: ["type": "detail", "id": id, "itemType": type]),
+              let json = String(data: data, encoding: .utf8) else { return }
+        renderer.pushAction(json)
     }
 }

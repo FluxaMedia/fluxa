@@ -8,6 +8,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     override class var layerClass: AnyClass { CAMetalLayer.self }
 
     var onActions: ((String) -> Void)?
+    let video = FluxaNativeVideo()
 
     nonisolated(unsafe) private let renderer: OpaquePointer
     private var displayLink: CADisplayLink?
@@ -23,7 +24,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         renderer = fluxa_renderer_create(Float(UIScreen.main.scale), cacheDir)!
         super.init(frame: frame)
         isMultipleTouchEnabled = false
-        metalLayer.isOpaque = true
+        metalLayer.isOpaque = false
         metalLayer.pixelFormat = .bgra8Unorm_srgb
         fluxa_renderer_set_form_factor(
             renderer,
@@ -43,16 +44,16 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         fluxa_renderer_destroy(renderer)
     }
 
-    func setCoreSnapshot(_ json: String) {
-        fluxa_renderer_set_core_snapshot(renderer, json)
+    func startSession(dataDir: String) {
+        fluxa_renderer_start_session(renderer, dataDir)
     }
 
-    func setHomeState(_ json: String) {
-        fluxa_renderer_set_home_state(renderer, json)
+    func pushAction(_ json: String) {
+        fluxa_renderer_push_action(renderer, json)
     }
 
-    func snapshot() -> String? {
-        take(fluxa_renderer_snapshot(renderer))
+    func back() -> Bool {
+        fluxa_renderer_back(renderer)
     }
 
     override func didMoveToWindow() {
@@ -96,6 +97,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     }
 
     @objc private func tick() {
+        video.tick()
         fluxa_renderer_render(renderer)
         if let actions = take(fluxa_renderer_poll_actions(renderer)), actions != "[]" {
             onActions?(actions)

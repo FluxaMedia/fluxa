@@ -13,7 +13,6 @@ settings:
     OTHER_LDFLAGS[sdk=iphonesimulator*]: "-lfluxa_apple_renderer-ios-simulator -lfluxa_streaming_engine-ios-simulator"
     OTHER_LDFLAGS[sdk=appletvos*]: "-lfluxa_core-tvos -lfluxa_streaming_engine-tvos"
     OTHER_LDFLAGS[sdk=appletvsimulator*]: "-lfluxa_core-tvos-simulator -lfluxa_streaming_engine-tvos-simulator"
-    SWIFT_OBJC_BRIDGING_HEADER: "$(SRCROOT)/iOS/FluxaAppleDiscordPresence.h"
 packages:
   FluxaPlayerKit:
     path: FluxaPlayerKit
@@ -27,21 +26,14 @@ targets:
     info:
       path: Generated/FluxaIos-Info.plist
       properties:
-        LSApplicationQueriesSchemes:
-          - infuse
-          - discord
         CFBundleURLTypes:
           - CFBundleURLName: FluxaApple
             CFBundleURLSchemes:
               - fluxaapple
-          - CFBundleURLName: DiscordSocialSDK
-            CFBundleURLSchemes:
-              - discord-1518004842860122174
     sources:
-      - path: Shared
-      - path: AppleCore
-      - path: iOS
-      - path: Generated/FluxaRustCore.swift
+      - path: iOS/FluxaIosApp.swift
+      - path: iOS/FluxaNativeRendererView.swift
+      - path: iOS/FluxaNativeVideo.swift
     resources:
       - path: ../../shared/i18n
     dependencies:
@@ -50,18 +42,9 @@ targets:
       - sdk: QuartzCore.framework
       - sdk: GameController.framework
       - sdk: AVFoundation.framework
-      - sdk: AVKit.framework
-      - framework: Frameworks/discord_partner_sdk.xcframework
-      - package: FluxaPlayerKit
     preBuildScripts:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh
-        basedOnDependencyAnalysis: false
-      - name: Build FluxaCore
-        script: ../android/gradlew -p ../android :core:embedAndSignAppleFrameworkForXcode
-        basedOnDependencyAnalysis: false
-      - name: Build FluxaShared
-        script: ../android/gradlew -p ../android :shared:embedAndSignAppleFrameworkForXcode
         basedOnDependencyAnalysis: false
   FluxaTvos:
     type: application
