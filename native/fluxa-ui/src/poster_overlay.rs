@@ -292,7 +292,14 @@ pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
             .map(str::to_owned)
             .collect::<Vec<_>>()
     };
-    for id in ids("completed") {
+    let watched = library
+        .get("watched")
+        .and_then(serde_json::Value::as_object)
+        .into_iter()
+        .flatten()
+        .filter(|(_, value)| value.as_bool() == Some(true))
+        .map(|(id, _)| id.clone());
+    for id in ids("completed").into_iter().chain(watched) {
         index.entry(id).or_default().watched = true;
     }
     for id in ids("watchlist").into_iter().chain(ids("liked")) {
@@ -303,7 +310,6 @@ pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
         .and_then(serde_json::Value::as_object)
     {
         for (key, entry) in progress {
-            let offset = entry.get("timeOffset").and_then(number).unwrap_or(0.0);
             let duration = entry.get("duration").and_then(number).unwrap_or(0.0);
             if duration <= 0.0 {
                 continue;
@@ -313,13 +319,34 @@ pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or(key);
             let personal = index.entry(id.to_owned()).or_default();
-            personal.progress = (offset / duration).clamp(0.0, 1.0) as f32;
             let stream = ["lastStreamTitle", "lastStreamUrl"]
                 .iter()
                 .filter_map(|key| entry.get(*key).and_then(serde_json::Value::as_str))
                 .collect::<Vec<_>>()
                 .join(" ");
             personal.quality = stream_quality(&stream);
+        }
+    }
+    for item in library
+        .get("continueWatching")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let Some(id) = item.get("id").and_then(serde_json::Value::as_str) else {
+            continue;
+        };
+        let percent = item
+            .get("resumeProgressPercent")
+            .and_then(number)
+            .map(|percent| percent / 100.0)
+            .or_else(|| {
+                let offset = item.get("timeOffset").and_then(number)?;
+                let duration = item.get("duration").and_then(number)?;
+                (duration > 0.0).then(|| offset / duration)
+            });
+        if let Some(percent) = percent {
+            index.entry(id.to_owned()).or_default().progress = percent.clamp(0.0, 1.0) as f32;
         }
     }
     PersonalIndex(index)
@@ -1534,15 +1561,19 @@ mod tests {
     }
 
     #[test]
-    fn progress_is_keyed_by_meta_id_and_completed_counts_as_watched() {
+    fn progress_follows_continue_watching_and_watched_follows_library() {
         let index = personal_index(&serde_json::json!({
             "completed": [{"id": "tt1"}],
+            "watched": {"tt3": true},
             "watchlist": [{"id": "tt2"}],
-            "progress": {"series:tt2": {"timeOffset": 30, "duration": 120, "meta": {"id": "tt2"}}},
+            "continueWatching": [{"id": "tt2", "resumeProgressPercent": 25.0}],
+            "progress": {"movie:tt4": {"timeOffset": 30, "duration": 120, "meta": {"id": "tt4"}}},
         }));
         assert!(index.0["tt1"].watched);
+        assert!(index.0["tt3"].watched);
         assert!(index.0["tt2"].saved);
         assert_eq!(index.0["tt2"].progress, 0.25);
+        assert_eq!(index.0["tt4"].progress, 0.0);
     }
 
     #[test]
