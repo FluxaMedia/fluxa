@@ -585,7 +585,6 @@ pub(crate) fn draw_home_with_options(
     );
     let mut hero_slide_offset = 0.0;
     let mut hero_opacity = 1.0;
-    let mut hero_image_rect = hero_visual_rect;
     let prefetch_home_artwork = should_prefetch_home_artwork(context, home);
     if prefetch_home_artwork {
         let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
@@ -639,7 +638,6 @@ pub(crate) fn draw_home_with_options(
             // content until the next image finished loading.
             hero = last_ready.hero;
             hero_slide_offset = 0.0;
-            hero_image_rect = hero_visual_rect;
             (Some(last_ready.texture), last_ready.size)
         } else {
             (None, full_target)
@@ -689,7 +687,7 @@ pub(crate) fn draw_home_with_options(
             } else {
                 1.0
             };
-            hero_image_rect =
+            let hero_image_rect =
                 Rect::from_center_size(hero_visual_rect.center(), hero_visual_rect.size() * zoom);
             let uv = cover_uv(hero_size, hero_image_rect);
             let alpha = if fade.from.is_some() { t } else { 1.0 };
