@@ -36,10 +36,7 @@ use web_time::Instant;
 
 pub(crate) use contracts::EffectResultInput;
 
-// If the platform never calls complete_effect for an effect (a transient IPC failure on
-// the completion call, a swallowed exception, etc.), it would otherwise sit in
-// pending_effects/delivered_effect_ids forever for the life of the engine instance.
-// Anything genuinely still in flight completes well within this window.
+// Drops effects the platform never completed; real in-flight work finishes well inside it.
 const EFFECT_EXPIRY: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Default)]
@@ -47,14 +44,8 @@ struct HeadlessEngine {
     state: EngineState,
     next_effect_id: u64,
     revision: u64,
-    // Ids handed to the platform at least once, awaiting their complete_effect call.
-    // Never serialized — purely tracks delivery so the "drain the queue" fallback in
-    // resolve_visible_effects doesn't hand out an effect that's already in flight as
-    // if it were fresh work (which used to make an unrelated dispatch while a slow
-    // effect was still running re-trigger a full duplicate execution of it).
+    // Keeps the drain fallback in resolve_visible_effects from re-running in-flight effects.
     delivered_effect_ids: HashSet<String>,
-    // When each pending effect was created, for expire_stale_pending_effects. Never
-    // serialized — Instant isn't a portable wall-clock value, just an internal timer.
     effect_created_at: HashMap<String, Instant>,
     // Runtime-only effect registry. Effect payloads can contain credentials and must never
     // be included in a UI state snapshot or StatePatch.

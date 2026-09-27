@@ -676,14 +676,7 @@ mod tests {
         );
     }
 
-    // tests/wire/core_invoke_methods.txt is a checked-in list of every method
-    // name core_invoke routes. It exists so renaming or removing one shows up
-    // as a failure in this repo (a diff in this fixture is the review
-    // artifact for an intentional rename) instead of as a runtime
-    // "no such method" discovered on a platform we can't see from here. This
-    // doesn't verify each method's business logic — just that the name is
-    // still recognized rather than falling through every router to
-    // UnknownMethod.
+    // Renaming or removing a routed method must show up as a diff in this fixture.
     #[test]
     fn every_known_core_invoke_method_still_routes() {
         let fixture_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
