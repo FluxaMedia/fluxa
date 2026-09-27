@@ -35,13 +35,22 @@ android {
         targetSdk = 36
         versionCode = 700
         versionName = appVersionName
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        }
+    }
+
+    externalNativeBuild {
+        cmake {
+            path = file("src/main/cpp/CMakeLists.txt")
+        }
     }
 
     splits {
         abi {
             isEnable = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
             reset()
-            include("arm64-v8a", "armeabi-v7a", "x86", "x86_64")
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = false
         }
     }
@@ -124,6 +133,7 @@ android {
     sourceSets {
         getByName("main") {
             jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs"))
+            jniLibs.srcDir("libmpv/jni")
         }
     }
 }
@@ -149,5 +159,11 @@ dependencies {
     implementation(libs.bundles.coroutines)
     implementation(libs.okhttp)
     implementation(libs.gson)
-    implementation(libs.mpv)
 }
+
+val fetchLibmpv by tasks.registering(Exec::class) {
+    commandLine(rootProject.file("scripts/fetch-libmpv.sh").absolutePath)
+    onlyIf { !file("libmpv/jni").isDirectory }
+}
+
+tasks.named("preBuild") { dependsOn(fetchLibmpv) }

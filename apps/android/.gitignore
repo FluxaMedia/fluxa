@@ -8,6 +8,7 @@
 **/build/
 **/.cxx/
 /app/src/main/jniLibs/
+/app/libmpv/
 /rust/**/target/
 /local.properties
 /gradle/gradle-daemon-jvm.properties

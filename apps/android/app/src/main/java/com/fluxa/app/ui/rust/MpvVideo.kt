@@ -7,12 +7,12 @@ import android.media.AudioManager
 import android.os.Build
 import android.view.SurfaceHolder
 import android.view.SurfaceView
-import dev.jdtech.mpv.MPVLib
+import com.fluxa.app.BuildConfig
 
 class MpvVideo(context: Context, options: String, audioProcessingMode: String) {
     private val appContext = context.applicationContext
-    private val mpv = requireNotNull(MPVLib.create(appContext)) { "libmpv could not be created" }
-    private var surfaceAttached = false
+    private val mpv = Mpv.create().also { require(it != 0L) { "libmpv could not be created" } }
+    private var surface = 0L
     private var pendingUrl: String? = null
     private var loaded = false
     var error: String? = null
@@ -20,18 +20,14 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String) {
 
     init {
         val configDir = appContext.filesDir.resolve("mpv").apply { mkdirs() }
-        val cacheDir = appContext.cacheDir.resolve("mpv").apply { mkdirs() }
         val lowRam = (appContext.getSystemService(Context.ACTIVITY_SERVICE) as? android.app.ActivityManager)?.isLowRamDevice == true
         mapOf(
-            "vo" to "gpu",
+            "vo" to "mediacodec_embed",
+            "hwdec" to "mediacodec",
             "ao" to "audiotrack",
-            "gpu-api" to "opengl",
-            "gpu-context" to "android",
-            "hwdec" to "auto-safe",
+            "android-frame-rate-switch" to if (BuildConfig.IS_TV) "always" else "seamless",
             "config" to "yes",
             "config-dir" to configDir.absolutePath,
-            "gpu-shader-cache-dir" to cacheDir.absolutePath,
-            "icc-cache-dir" to cacheDir.absolutePath,
             "video-sync" to "audio",
             "cache" to "yes",
             "cache-secs" to if (lowRam) "30" else "60",
@@ -43,81 +39,88 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String) {
             "sub-ass" to "yes",
             "sub-ass-override" to "scale",
             "audio-display" to "no",
-        ).forEach { (key, value) -> runCatching { mpv.setOptionString(key, value) } }
+            "idle" to "once",
+        ).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
         options.lines().map(String::trim).filter { it.isNotEmpty() && !it.startsWith('#') }.forEach { line ->
             val key = line.substringBefore('=', "").trim()
             if (key.isNotEmpty() && key !in routeOwnedAudioOptions) {
-                runCatching { mpv.setOptionString(key, line.substringAfter('=').trim()) }
+                Mpv.setOption(mpv, key, line.substringAfter('=').trim())
             }
         }
-        if (audioProcessingMode == "reference") spdif()?.let { runCatching { mpv.setOptionString("audio-spdif", it) } }
-        filters[audioProcessingMode]?.let { runCatching { mpv.setOptionString("af", it) } }
-        mpv.init()
-        runCatching { mpv.setOptionString("force-window", "no") }
-        runCatching { mpv.setOptionString("idle", "once") }
-        mpv.addLogObserver(object : MPVLib.LogObserver {
-            override fun logMessage(prefix: String, level: Int, text: String) {
-                if (level <= 20 && prefix == "cplayer") error = text.trim().take(180)
-            }
-        })
+        if (audioProcessingMode == "reference") spdif()?.let { Mpv.setOption(mpv, "audio-spdif", it) }
+        filters[audioProcessingMode]?.let { Mpv.setOption(mpv, "af", it) }
+        check(Mpv.initialize(mpv) >= 0) { "libmpv could not be initialized" }
     }
 
-    val position get() = mpv.getPropertyDouble("time-pos") ?: 0.0
-    val duration get() = mpv.getPropertyDouble("duration") ?: 0.0
-    val paused get() = mpv.getPropertyBoolean("pause") ?: false
-    val buffering get() = mpv.getPropertyBoolean("paused-for-cache") == true || (loaded && mpv.getPropertyBoolean("core-idle") == true && !paused)
-    val hasFrame get() = (mpv.getPropertyInt("video-params/w") ?: 0) > 0
+    val position get() = double("time-pos")
+    val duration get() = double("duration")
+    val paused get() = Mpv.getProperty(mpv, "pause") == "yes"
+    val buffering get() = Mpv.getProperty(mpv, "paused-for-cache") == "yes" || (loaded && Mpv.getProperty(mpv, "core-idle") == "yes" && !paused)
+    val hasFrame get() = double("video-params/w") > 0
+    val displayModeHint: DisplayModeHint?
+        get() {
+            val width = double("display-mode-hint/width").toInt()
+            val height = double("display-mode-hint/height").toInt()
+            val rate = double("display-mode-hint/refresh-rate").toFloat()
+            return if (width > 0 && height > 0 && rate > 0f) DisplayModeHint(width, height, rate) else null
+        }
+
+    private fun double(name: String) = Mpv.getProperty(mpv, name)?.toDoubleOrNull() ?: 0.0
+
+    fun poll() {
+        if (Mpv.drain(mpv)) {
+            error = (Mpv.getProperty(mpv, "last-error/message") ?: Mpv.getProperty(mpv, "last-error/error"))?.trim()?.take(180)
+        }
+    }
 
     fun load(url: String, audioLanguage: String?, subtitleLanguage: String?) {
-        runCatching { mpv.setOptionString("alang", audioLanguage.orEmpty()) }
-        runCatching { mpv.setOptionString("slang", subtitleLanguage.orEmpty()) }
-        if (url.startsWith("http://127.0.0.1:")) runCatching { mpv.setOptionString("network-timeout", "90") }
-        if (surfaceAttached) start(url) else pendingUrl = url
+        Mpv.setProperty(mpv, "alang", audioLanguage.orEmpty())
+        Mpv.setProperty(mpv, "slang", subtitleLanguage.orEmpty())
+        if (url.startsWith("http://127.0.0.1:")) Mpv.setProperty(mpv, "network-timeout", "90")
+        if (surface != 0L) start(url) else pendingUrl = url
     }
 
     private fun start(url: String) {
         loaded = true
         error = null
-        mpv.command(arrayOf("loadfile", url, "replace"))
+        Mpv.command(mpv, arrayOf("loadfile", url, "replace"))
         setPaused(false)
     }
 
     fun setPaused(paused: Boolean) {
-        runCatching { mpv.setPropertyBoolean("pause", paused) }
+        Mpv.setProperty(mpv, "pause", if (paused) "yes" else "no")
     }
 
     fun seekTo(seconds: Double) {
-        runCatching { mpv.command(arrayOf("seek", seconds.coerceAtLeast(0.0).toString(), "absolute")) }
+        Mpv.command(mpv, arrayOf("seek", seconds.coerceAtLeast(0.0).toString(), "absolute"))
     }
 
     fun toggleMute() {
-        runCatching { mpv.command(arrayOf("cycle", "mute")) }
+        Mpv.command(mpv, arrayOf("cycle", "mute"))
     }
 
     fun attach(holder: SurfaceHolder, width: Int, height: Int) {
-        runCatching { mpv.attachSurface(holder.surface) }
-        surfaceAttached = true
-        runCatching { mpv.setOptionString("force-window", "yes") }
-        runCatching { mpv.setOptionString("vo", "gpu") }
+        if (surface != 0L) return
+        surface = Mpv.attach(mpv, holder.surface)
         resize(width, height)
+        Mpv.setProperty(mpv, "vo", "mediacodec_embed")
         pendingUrl?.let { pendingUrl = null; start(it) }
     }
 
     fun resize(width: Int, height: Int) {
-        if (width > 0 && height > 0) runCatching { mpv.setPropertyString("android-surface-size", "${width}x$height") }
+        if (width > 0 && height > 0) Mpv.setProperty(mpv, "android-surface-size", "${width}x$height")
     }
 
     fun detach() {
-        if (!surfaceAttached) return
-        surfaceAttached = false
-        runCatching { mpv.setOptionString("vo", "null") }
-        runCatching { mpv.setOptionString("force-window", "no") }
-        runCatching { mpv.detachSurface() }
+        if (surface == 0L) return
+        Mpv.setProperty(mpv, "vo", "null")
+        Mpv.detach(mpv, surface)
+        surface = 0L
     }
 
     fun release() {
         detach()
-        runCatching { mpv.destroy() }
+        Mpv.destroy(mpv)
     }
 
     private fun spdif(): String? {
@@ -162,6 +165,8 @@ class MpvSurface(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
         video?.detach()
     }
 }
+
+data class DisplayModeHint(val width: Int, val height: Int, val refreshRate: Float)
 
 private val routeOwnedAudioOptions = setOf("audio-spdif", "audio-channels", "af")
 

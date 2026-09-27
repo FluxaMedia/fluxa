@@ -6,4 +6,4 @@
 }
 
 -keep class com.fluxa.app.ui.rust.NativeRenderer { *; }
--keep class dev.jdtech.mpv.** { *; }
+-keep class com.fluxa.app.ui.rust.Mpv { *; }

@@ -1,11 +1,15 @@
 package com.fluxa.app.ui.rust
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.os.Handler
 import android.os.Looper
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import com.fluxa.app.BuildConfig
 import org.json.JSONArray
+import kotlin.math.abs
 
 class NativeVideoHost(context: Context) : FrameLayout(context) {
     val renderer = FluxaNativeRendererView(context)
@@ -16,11 +20,14 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var audioProcessingMode = "reference"
     private var audioLanguage: String? = null
     private var subtitleLanguage: String? = null
+    private var displayMode: DisplayModeHint? = null
     var onPlayingChanged: ((Boolean) -> Unit)? = null
 
     private val reportStatus = object : Runnable {
         override fun run() {
             val player = player ?: return
+            player.poll()
+            if (BuildConfig.IS_TV) applyDisplayMode(player.displayModeHint)
             renderer.reportVideoStatus(
                 player.position,
                 player.duration,
@@ -80,6 +87,35 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         videoSurface.video = null
         player?.release()
         player = null
+        applyDisplayMode(null)
+    }
+
+    private fun applyDisplayMode(hint: DisplayModeHint?) {
+        if (hint == displayMode) return
+        displayMode = hint
+        val window = activity()?.window ?: return
+        val modes = display?.supportedModes.orEmpty()
+        val current = display?.mode
+        val mode = hint?.let {
+            modes.filter { m -> m.physicalWidth >= it.width && m.physicalHeight >= it.height }
+                .filter { m -> rateMatches(m.refreshRate, it.refreshRate) }
+                .minWithOrNull(compareBy({ m -> m.physicalWidth != current?.physicalWidth }, { m -> m.physicalWidth }, { m -> m.refreshRate }))
+        }
+        window.attributes = window.attributes.apply { preferredDisplayModeId = mode?.modeId ?: 0 }
+    }
+
+    private fun rateMatches(display: Float, content: Float): Boolean {
+        val ratio = display / content
+        return ratio >= 0.99f && abs(ratio - Math.round(ratio)) < 0.01f
+    }
+
+    private fun activity(): Activity? {
+        var ctx = context
+        while (ctx is ContextWrapper) {
+            if (ctx is Activity) return ctx
+            ctx = ctx.baseContext
+        }
+        return null
     }
 
     override fun onDetachedFromWindow() {

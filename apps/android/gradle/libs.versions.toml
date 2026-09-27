@@ -3,7 +3,6 @@ androidGradlePlugin = "8.13.2"
 kotlin = "2.3.20"
 coreKtx = "1.18.0"
 coroutines = "1.11.0"
-mpv = "1.0.0"
 okhttp = "5.4.0"
 benchmark = "1.4.1"
 uiautomator = "2.4.0"
@@ -17,7 +16,6 @@ kotlin-gradlePlugin = { group = "org.jetbrains.kotlin", name = "kotlin-gradle-pl
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "coroutines" }
-mpv = { group = "dev.jdtech.mpv", name = "libmpv", version.ref = "mpv" }
 okhttp = { group = "com.squareup.okhttp3", name = "okhttp", version.ref = "okhttp" }
 gson = { group = "com.google.code.gson", name = "gson", version = "2.13.1" }
 
