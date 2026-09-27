@@ -1,6 +1,5 @@
 package com.fluxa.app.plugins
 
-import com.fluxa.app.shared.feature.plugins.enabledManifestUrls
 import com.fluxa.app.core.rust.FluxaAndroidHeadlessEnvironment
 import com.fluxa.app.core.rust.PluginHttpClientImpl
 import com.fluxa.app.data.platform.PlatformKeyValueStore
@@ -98,3 +97,10 @@ class PluginRepositoryManager @Inject constructor(
         scraper: PluginScraperUiModel,
     ): List<PluginSettingsFieldUiModel> = delegate.getSettingsLayout(scraper)
 }
+
+private fun List<NuvioPluginDto>.enabledManifestUrls(): List<String> = asSequence()
+    .filter { it.enabled }
+    .sortedBy { it.sortOrder }
+    .mapNotNull { it.manifestUrl?.takeIf(String::isNotBlank) }
+    .distinct()
+    .toList()

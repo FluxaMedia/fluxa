@@ -55,14 +55,11 @@ jobs:
         run: >-
           ./gradlew --no-daemon
           checkKotlinFileSize
-          checkSharedUiBoundary
           checkKmpCommonBoundary
           checkSharedTransportModels
           checkLegacySourceSets
-          checkAppleTypedCatalogBridge
           checkAppleTvosKmpBoundary
           checkRustCoreBoundary
-          checkSharedPlayerBoundary
           testDebugUnitTest
           lint
           assembleMobileDebug
@@ -70,7 +67,6 @@ jobs:
           :core:compileDebugKotlinAndroid
           :data:compileDebugKotlinAndroid
           :player:compileDebugKotlinAndroid
-          :shared:compileDebugKotlinAndroid
           :app:compileTvDebugKotlin
 
   release-smoke:

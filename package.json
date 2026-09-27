@@ -15,7 +15,7 @@
     "test:audio": "./apps/android/gradlew --offline -p apps/android :player:testDebugUnitTest --tests 'com.fluxa.app.shared.feature.player.Audio*Test'",
     "check:android": "./apps/android/gradlew --offline -p apps/android qualityCheck",
     "test:android": "./apps/android/gradlew --offline -p apps/android testDebugUnitTest",
-    "check:apple": "./apps/android/gradlew --offline -p apps/android checkAppleTypedCatalogBridge checkAppleTvosKmpBoundary",
+    "check:apple": "./apps/android/gradlew --offline -p apps/android checkAppleTvosKmpBoundary",
     "check:core": "cargo test --manifest-path core/fluxa-core/Cargo.toml --lib --offline",
     "check:wasm": "cargo check --manifest-path core/fluxa-core/Cargo.toml --offline --no-default-features --features wasm"
   }

@@ -193,12 +193,9 @@ jobs:
       - name: Verify iOS shared code
         run: >-
           ./apps/android/gradlew --no-daemon -p apps/android
-          checkAppleTypedCatalogBridge
-          checkSharedPlayerBoundary
           :core:linkIosSimulatorArm64
           :data:compileIosMainKotlinMetadata
           :player:iosSimulatorArm64MainKlibrary
-          :shared:iosSimulatorArm64Test
 
       - name: Generate Apple host project
         working-directory: apps/apple
@@ -250,7 +247,6 @@ jobs:
         run: >-
           ./apps/android/gradlew --no-daemon -p apps/android
           checkAppleTvosKmpBoundary
-          checkSharedPlayerBoundary
           :core:linkDebugFrameworkTvosSimulatorArm64
           :data:linkDebugFrameworkTvosSimulatorArm64
           :player:linkDebugFrameworkTvosSimulatorArm64
