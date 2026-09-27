@@ -52,6 +52,9 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var safeBottomInsetPx = 0
     private var accessibilityHeroTitle = "Recommended"
     private var accessibilityCardTitles = emptyList<String>()
+    var sessionDataDir: String? = null
+    var legacyProfilesJson: (() -> String)? = null
+    private val pendingActions = mutableListOf<String>()
     var onNativeAction: ((String) -> Unit)? = null
     var onCoreCommand: ((String) -> Unit)? = null
     var onVideoRequest: ((String) -> Unit)? = null
@@ -126,6 +129,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         onCoreCommand?.invoke(json)
     }
 
+    fun pushAction(json: String) {
+        val handle = nativeHandle
+        if (handle == 0L) pendingActions += json else NativeRenderer.pushActionNative(handle, json)
+    }
+
     fun setCoreSnapshotJson(json: String) {
         pendingCoreSnapshotJson = json
         publishCoreSnapshot()
@@ -154,6 +162,12 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 resources.displayMetrics.density,
                 context.cacheDir.resolve("native-artwork").absolutePath,
             )
+            sessionDataDir?.let { dir ->
+                legacyProfilesJson?.invoke()?.let { NativeRenderer.importLegacyNative(dir, it) }
+                NativeRenderer.startSessionNative(nativeHandle, dir)
+            }
+            pendingActions.forEach { NativeRenderer.pushActionNative(nativeHandle, it) }
+            pendingActions.clear()
         }
         requestApplyInsets()
         syncSafeInsets()
@@ -497,11 +511,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         return Rect(x.toInt(), y.toInt(), (x + cardWidth).toInt(), (y + cardHeight).toInt())
     }
 
-    fun closePlayer(): Boolean {
-        if (nativeHandle == 0L || !NativeRenderer.isPlayingNative(nativeHandle)) return false
-        NativeRenderer.keyDownNative(nativeHandle, KeyEvent.KEYCODE_BACK, 0)
-        return true
-    }
+    fun back(): Boolean = nativeHandle != 0L && NativeRenderer.backNative(nativeHandle)
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
         if (nativeHandle != 0L && NativeRenderer.isNavigationKey(keyCode)) {
@@ -559,12 +569,16 @@ private object NativeRenderer {
     @JvmStatic external fun setFormFactorNative(handle: Long, formFactor: String)
     @JvmStatic external fun setCoreSnapshotNative(handle: Long, snapshot: String)
     @JvmStatic external fun snapshotNative(handle: Long): String
+    @JvmStatic external fun startSessionNative(handle: Long, dataDir: String): Boolean
+    @JvmStatic external fun importLegacyNative(dataDir: String, legacy: String): Boolean
+    @JvmStatic external fun pushActionNative(handle: Long, action: String)
     @JvmStatic external fun destroyNative(handle: Long)
     @JvmStatic external fun surfaceCreatedNative(handle: Long, surface: android.view.Surface, width: Int, height: Int)
     @JvmStatic external fun surfaceChangedNative(handle: Long, width: Int, height: Int)
     @JvmStatic external fun surfaceDestroyedNative(handle: Long)
     @JvmStatic external fun renderNative(handle: Long)
     @JvmStatic external fun pollActionsNative(handle: Long): String
+    @JvmStatic external fun backNative(handle: Long): Boolean
     @JvmStatic external fun isPlayingNative(handle: Long): Boolean
     @JvmStatic external fun pollVideoNative(): String
     @JvmStatic external fun videoStatusNative(

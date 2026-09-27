@@ -1,93 +1,20 @@
-@file:androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-@file:OptIn(androidx.tv.material3.ExperimentalTvMaterial3Api::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.fluxa.app.ui
 
-import com.fluxa.app.data.local.*
-import com.fluxa.app.data.remote.*
-import com.fluxa.app.data.repository.*
-import com.fluxa.app.domain.discovery.*
-import com.fluxa.app.shared.FluxaDestination
-import com.fluxa.app.shared.FluxaSplashScreen
-import com.fluxa.app.shared.feature.settings.SettingsUpdateCheckState
-import com.fluxa.app.shared.feature.watchtogether.JvmWatchTogetherTransport
-import com.fluxa.app.shared.feature.watchtogether.WatchTogetherManager
-import com.fluxa.app.shared.feature.watchtogether.WatchTogetherCorrection
-import com.fluxa.app.core.rust.FluxaCoreNative
-import com.fluxa.app.core.rust.FluxaHeadlessAppRuntime
-import com.fluxa.app.ui.catalog.FluxaIcons
-import com.fluxa.app.ui.catalog.CONTINUE_WATCHING_CATEGORY_ID
-import com.fluxa.app.ui.routes.AppRoutesHost
-import com.fluxa.app.plugins.PluginManager
-import com.fluxa.app.data.remote.StremioService
-
-import android.content.pm.ActivityInfo
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
-import com.lagradost.cloudstream3.CommonActivity
-import androidx.fragment.app.FragmentActivity
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.setContent
-import androidx.compose.animation.*
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Icon
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalContext
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.view.WindowInsetsCompat
+import android.view.WindowManager
+import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
+import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewModelScope
-import coil3.compose.AsyncImage
-import androidx.compose.ui.layout.ContentScale
-import com.fluxa.app.ui.catalog.*
-import com.fluxa.app.common.AppStrings
-import com.fluxa.app.player.MediaPlayerController
-import com.fluxa.app.player.DiscordPresenceNative
-import com.fluxa.app.R
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.flow.MutableStateFlow
-import com.google.gson.JsonObject
-import com.google.gson.Gson
-import com.fluxa.app.shared.feature.catalog.CatalogHomeUiState
-import com.fluxa.app.ui.rust.FluxaNativeRendererView
+import androidx.fragment.app.FragmentActivity
+import com.fluxa.app.data.local.ProfileManager
+import com.fluxa.app.data.local.ProfilePickerSettingsStore
+import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.ui.rust.NativeVideoHost
-import com.fluxa.app.player.MpvEmbeddedPlayer
-
+import com.google.gson.Gson
+import com.lagradost.cloudstream3.CommonActivity
 import dagger.hilt.android.AndroidEntryPoint
 import javax.inject.Inject
 
@@ -95,997 +22,101 @@ import javax.inject.Inject
 class MainActivity : FragmentActivity() {
 
     @Inject lateinit var profileManager: ProfileManager
-    @Inject lateinit var profilePickerSettingsStore: com.fluxa.app.data.local.ProfilePickerSettingsStore
-    @Inject lateinit var pluginManager: PluginManager
-    @Inject lateinit var pluginRepositoryManager: com.fluxa.app.plugins.PluginRepositoryManager
-    @Inject lateinit var stremioRepository: StremioRepository
-    @Inject lateinit var addonRepository: AddonRepository
-    @Inject lateinit var platformSecureStore: com.fluxa.app.data.platform.PlatformSecureStore
-    @Inject lateinit var authService: StremioService
-    @Inject lateinit var nuvioService: com.fluxa.app.data.remote.NuvioService
-    @Inject lateinit var fluxaSyncService: com.fluxa.app.data.remote.FluxaSyncService
-    @Inject lateinit var nuvioImportCoordinator: com.fluxa.app.data.repository.NuvioAccountImportCoordinator
-    @Inject lateinit var nuvioSyncCoordinator: com.fluxa.app.data.repository.NuvioSyncCoordinator
-    @Inject lateinit var watchlistStore: com.fluxa.app.data.local.WatchlistStore
-    @Inject lateinit var thirdPartyProviderRepository: com.fluxa.app.data.repository.library.ThirdPartyProviderRepository
-    @Inject lateinit var headlessAppRuntime: FluxaHeadlessAppRuntime
+    @Inject lateinit var profilePickerSettingsStore: ProfilePickerSettingsStore
 
-    private val searchIntentFlow = kotlinx.coroutines.flow.MutableSharedFlow<String>(extraBufferCapacity = 1)
-    private val playbackDeepLinkFlow = MutableStateFlow<PlaybackDeepLink?>(null)
-    private var playbackDeepLinkRevision = 0
-    private val oauthRedirectHandler = OAuthRedirectHandler()
-
-    override fun onNewIntent(intent: android.content.Intent) {
-        super.onNewIntent(intent)
-        handleIntent(intent)
-    }
-
-    private fun handleIntent(intent: android.content.Intent?) {
-        if (intent == null) return
-        val query = intent.getStringExtra(android.app.SearchManager.QUERY)
-            ?: intent.getStringExtra("query")
-            
-        if (intent.action == android.content.Intent.ACTION_SEARCH ||
-            intent.action == "com.google.android.gms.actions.SEARCH_ACTION" ||
-            intent.action == "com.google.android.gms.actions.SEARCH_AND_PLAY" ||
-            intent.action == "android.media.action.MEDIA_PLAY_FROM_SEARCH") {
-            query?.let { searchIntentFlow.tryEmit(it) }
-        }
-
-        oauthRedirectHandler.handle(intent)
-
-        val data = intent.data
-        if (intent.action == android.content.Intent.ACTION_VIEW &&
-            data?.scheme == "app" &&
-            data.host == "play"
-        ) {
-            val id = data.getQueryParameter("id")?.takeIf(String::isNotBlank)
-            val type = data.getQueryParameter("type")?.takeIf(String::isNotBlank)
-            if (id != null && type != null) {
-                playbackDeepLinkRevision += 1
-                playbackDeepLinkFlow.value = PlaybackDeepLink(
-                    revision = playbackDeepLinkRevision,
-                    id = id,
-                    type = type,
-                    videoId = data.getQueryParameter("videoId"),
-                    positionMs = data.getQueryParameter("positionMs")?.toLongOrNull()?.coerceAtLeast(0L) ?: 0L,
-                    streamUrl = data.getQueryParameter("streamUrl"),
-                    streamTitle = data.getQueryParameter("streamTitle"),
-                )
-            }
-        }
-    }
-
-    override fun onDestroy() {
-        CommonActivity.activity = null
-        com.fluxa.app.player.TorrentStreamManager.getInstance().shutdown()
-        super.onDestroy()
-    }
+    private lateinit var host: NativeVideoHost
+    private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CommonActivity.activity = this
-        WatchTogetherManager.installTransportFactory { JvmWatchTogetherTransport() }
-        WatchTogetherManager.installDriftPolicy { local, expected, hostPlaying, speedActive ->
-            val correction = FluxaCoreNative.watchTogetherDriftCorrection(local, expected, hostPlaying, speedActive)
-            when (correction["type"] as? String) {
-                "seek" -> WatchTogetherCorrection.Seek((correction["positionMs"] as? Number)?.toLong() ?: expected)
-                "speed" -> WatchTogetherCorrection.Speed((correction["value"] as? Number)?.toFloat() ?: 1f)
-                "resetSpeed" -> WatchTogetherCorrection.ResetSpeed
-                else -> WatchTogetherCorrection.None
-            }
-        }
-        WindowCompat.setDecorFitsSystemWindows(window, false)
+        WindowCompat.setDecorFitsSystemWindows(window, com.fluxa.app.BuildConfig.IS_TV)
         if (!com.fluxa.app.BuildConfig.IS_TV && android.os.Build.VERSION.SDK_INT >= 33 &&
             androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
         ) {
             androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1007)
         }
-        
-        handleIntent(intent)
 
-        setContent {
-            AppTheme {
-                val context = LocalContext.current
-                val deviceType = remember { if (com.fluxa.app.BuildConfig.IS_TV) DeviceType.TV else DeviceType.Mobile }
-                
-                CompositionLocalProvider(LocalDeviceType provides deviceType) {
-                    var loadedInitialProfile by remember { mutableStateOf<UserProfile?>(null) }
-                    var profilesReady by remember { mutableStateOf(false) }
+        host = NativeVideoHost(this)
+        host.onPlayingChanged = ::setPlaying
+        host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
+        host.renderer.legacyProfilesJson = ::legacyProfilesJson
+        host.renderer.onNativeAction = { Log.i("FluxaNativeRenderer", "Unhandled native actions: $it") }
+        host.renderer.dispatchCoreCommand(
+            gson.toJson(mapOf("formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile"))
+        )
+        setContentView(host)
+        host.renderer.requestFocus()
 
-                    LaunchedEffect(deviceType) {
-                        val profile = withContext(Dispatchers.IO) {
-                            initialProfileForDevice(profileManager, deviceType)
-                        }
-                        profile?.avatarUrl?.takeIf(String::isNotBlank)?.let { avatarUrl ->
-                            val request = coil3.request.ImageRequest.Builder(this@MainActivity)
-                                .data(com.fluxa.app.shared.image.sanitizeImageUrl(avatarUrl))
-                                .memoryCacheKey("profile-avatar:$avatarUrl")
-                                .diskCacheKey("profile-avatar:$avatarUrl")
-                                .build()
-                            coil3.SingletonImageLoader.get(this@MainActivity).execute(request)
-                        }
-                        loadedInitialProfile = profile
-                        profilesReady = true
-                    }
-
-                    if (!profilesReady) {
-                        FluxaSplashScreen(backgroundUrl = profilePickerSettingsStore.get().backgroundUrl)
-                        return@CompositionLocalProvider
-                    }
-
-                    val initialProfile = loadedInitialProfile
-                    val initialDestination = remember(initialProfile, deviceType) {
-                        if (profileManager.getProfiles().isEmpty()) FluxaDestination.Auth
-                        else initialDestinationForProfile(initialProfile)
-                    }
-                    var currentDestination by remember { mutableStateOf(initialDestination) }
-                    var previousDestination by remember { mutableStateOf<FluxaDestination?>(null) }
-                    var authStartOnNuvio by remember { mutableStateOf(false) }
-                    var playerRequest by remember { mutableStateOf<PlayerLaunchRequest?>(null) }
-                    var terminalDetailRequest by remember { mutableStateOf<com.fluxa.app.shared.feature.detail.DetailRequestUiModel?>(null) }
-                    val navigateToDestination = { destination: FluxaDestination, clearStack: Boolean ->
-                        previousDestination = if (clearStack || destination == currentDestination) null else currentDestination
-                        currentDestination = destination
-                    }
-
-                    var activeProfile by remember { mutableStateOf<UserProfile?>(initialProfile) }
-                    var profileSplashPending by remember(initialProfile?.id) { mutableStateOf(initialProfile != null) }
-                    var profiles by remember { mutableStateOf(profileManager.getProfiles()) }
-                    var traktDeviceAuth by remember { mutableStateOf<TraktDeviceAuthUiState?>(null) }
-                    var showTraktSheet by remember { mutableStateOf(false) }
-                    var isTraktSyncing by remember { mutableStateOf(false) }
-                    var showSimklSheet by remember { mutableStateOf(false) }
-                    val coroutineScope = rememberCoroutineScope()
-
-                    LaunchedEffect(activeProfile?.id, activeProfile?.discordRichPresenceEnabled) {
-                        DiscordPresenceNative.initialize(
-                            activity = this@MainActivity,
-                            enabled = activeProfile?.let { it.discordRichPresenceEnabled != false } == true,
-                        )
-                    }
-                    
-
-                    var updateInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
-                    var latestReleaseInfo by remember { mutableStateOf<UpdateManager.UpdateInfo?>(null) }
-                    var releaseHistory by remember { mutableStateOf<List<UpdateManager.UpdateInfo>>(emptyList()) }
-                    var updateCheckState by remember { mutableStateOf(SettingsUpdateCheckState.Idle) }
-                    var downloadProgress by remember { mutableFloatStateOf(0f) }
-                    var isDownloading by remember { mutableStateOf(false) }
-
-                    val homeViewModel: HomeViewModel = hiltViewModel()
-                    val sharedDetailViewModel: com.fluxa.app.ui.catalog.DetailViewModel =
-                        hiltViewModel(key = "SharedMobileDetailViewModel")
-                    val offlineDownloadManager = remember(context) { OfflineDownloadManager.getInstance(context) }
-                    val tvLauncherPublisher = remember(context) { AndroidTvLauncherPublisher(context) }
-                    val tvLauncherCategories by homeViewModel.categories.collectAsStateWithLifecycle()
-                    val tvLauncherBillboardItems by homeViewModel.billboardPool.collectAsStateWithLifecycle()
-                    val tvLauncherWatchlist by homeViewModel.watchlist.collectAsStateWithLifecycle()
-                    val hasLoadedHome by homeViewModel.hasLoadedHome.collectAsStateWithLifecycle()
-
-                    val handleActiveProfileChanged: (UserProfile?) -> Unit = { updated ->
-                        if (updated != null && activeProfile?.id != updated.id) profileSplashPending = true
-                        activeProfile = updated
-                    }
-
-                    LaunchedEffect(profileSplashPending, hasLoadedHome) {
-                        // Native Core owns the home-data load in the Rust path, so the
-                        // legacy Compose HomeViewModel flag never becomes true there.
-                        // Waiting for it leaves the profile splash above the native
-                        // renderer forever.
-                        if (profileSplashPending &&
-                            (hasLoadedHome || com.fluxa.app.BuildConfig.FLUXA_NATIVE_CORE_RUNTIME)
-                        ) {
-                            profileSplashPending = false
-                        }
-                    }
-
-                    NuvioHealthSyncEffect(
-                        profile = activeProfile,
-                        homeViewModel = homeViewModel,
-                        onProfileUpdated = { updated ->
-                            handleActiveProfileChanged(updated)
-                            profileManager.saveProfile(updated)
-                            profileManager.setLastActiveProfile(updated)
-                            homeViewModel.applyUpdatedProfile(updated, refreshHomeSideEffects = true)
-                        }
-                    )
-                    val isDirectLoading by homeViewModel.isDirectLoading.collectAsStateWithLifecycle()
-                    val traktContinueWatchingLastUpdatedAt by homeViewModel.traktContinueWatchingLastUpdatedAt.collectAsStateWithLifecycle()
-                    val isNetworkAvailable by remember(context) {
-                        context.observeNetworkAvailable()
-                    }.collectAsStateWithLifecycle(initialValue = context.isNetworkAvailableNow())
-                    var previousNetworkAvailable by remember { mutableStateOf<Boolean?>(null) }
-
-                    LaunchedEffect(initialProfile) {
-                        initialProfile?.let { profileManager.setLastActiveProfile(it) }
-                    }
-
-                    LaunchedEffect(
-                        tvLauncherCategories,
-                        tvLauncherBillboardItems,
-                        tvLauncherWatchlist,
-                        activeProfile?.safeLanguage,
-                    ) {
-                        if (com.fluxa.app.BuildConfig.IS_TV) {
-                            withContext(Dispatchers.IO) {
-                                tvLauncherPublisher.publish(
-                                    categories = tvLauncherCategories,
-                                    billboardItems = tvLauncherBillboardItems,
-                                    watchlist = tvLauncherWatchlist,
-                                    language = activeProfile?.safeLanguage,
-                                )
-                            }
-                        }
-                    }
-
-                    DisposableEffect(Unit) {
-                        val listener = { profiles = profileManager.getProfiles() }
-                        profileManager.addChangeListener(listener)
-                        profiles = profileManager.getProfiles()
-                        onDispose { profileManager.removeChangeListener(listener) }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        searchIntentFlow.collect { query ->
-                            if (activeProfile == null) {
-                                val profiles = profileManager.getProfiles()
-                                activeProfile = profiles.firstOrNull()
-                            }
-                            if (activeProfile != null) {
-                                navigateToDestination(FluxaDestination.Discover, false)
-                                homeViewModel.search(query)
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        playbackDeepLinkFlow.collect { link ->
-                            if (link == null) return@collect
-                            terminalDetailRequest = com.fluxa.app.shared.feature.detail.DetailRequestUiModel(
-                                id = link.id,
-                                type = link.type,
-                                initialProgress = link.positionMs,
-                                lastVideoId = link.videoId,
-                                autoPlay = true,
-                                lastStreamUrl = link.streamUrl,
-                                lastStreamTitle = link.streamTitle,
-                            )
-                        }
-                    }
-
-                    OAuthRedirectEffect(
-                        redirectHandler = oauthRedirectHandler,
-                        context = context,
-                        homeViewModel = homeViewModel,
-                        profileManager = profileManager,
-                        activeProfile = activeProfile,
-                        onProfileUpdated = { activeProfile = it },
-                        onTraktSyncingChanged = { isTraktSyncing = it }
-                    )
-
-                    TraktDeviceAuthDialog(
-                        state = traktDeviceAuth,
-                        lang = activeProfile?.safeLanguage,
-                        onDismiss = { traktDeviceAuth = null }
-                    )
-
-                    val playerBufferTargets = remember(
-                        activeProfile?.safePlayerBufferCacheMb,
-                        activeProfile?.safePlayerForwardBufferSeconds,
-                        activeProfile?.safePlayerBackBufferSeconds,
-                        activeProfile?.safeMobileDataUsage
-                    ) {
-                        FluxaCoreNative.playerBufferTargets(
-                            JsonObject().apply {
-                                addProperty("cacheSizeMb", activeProfile?.safePlayerBufferCacheMb ?: 100)
-                                addProperty("forwardBufferSeconds", activeProfile?.safePlayerForwardBufferSeconds ?: 30)
-                                addProperty("backBufferSeconds", activeProfile?.safePlayerBackBufferSeconds ?: 30)
-                                addProperty("mobileDataUsage", activeProfile?.safeMobileDataUsage ?: "medium")
-                            }.toString()
-                        )
-                    }
-                    val createNativePlayer = {
-                        MpvEmbeddedPlayer(
-                            context,
-                            activeProfile?.safeMpvCustomOptions.orEmpty(),
-                            activeProfile?.safeAudioProcessingMode ?: "reference",
-                        )
-                    }
-                    val createMainPlayer = {
-                        MediaPlayerController.createExoPlayer(
-                            context,
-                            activeProfile?.safeAudioDecoderMode ?: "hw_prefer",
-                            activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" } ?: "",
-                            (playerBufferTargets.cacheSizeBytes / 1_000_000L).toInt(),
-                            (playerBufferTargets.forwardBufferMs / 1_000L).toInt(),
-                            (playerBufferTargets.backBufferMs / 1_000L).toInt(),
-                            activeProfile?.safeTunneledPlayback == true,
-                            activeProfile?.safePlayerMinBufferSeconds ?: 8,
-                            activeProfile?.safePlayerPlaybackBufferMs ?: 1500,
-                            activeProfile?.safePlayerRebufferBufferMs ?: 2500,
-                            true,
-                            activeProfile?.safeAudioProcessingMode ?: "reference"
-                        )
-                    }
-                    val mainPlayer = remember(
-                        playerRequest != null,
-                        activeProfile?.id,
-                        activeProfile?.safeAudioDecoderMode,
-                        activeProfile?.safeAudioProcessingMode,
-                        activeProfile?.preferredAudioLanguage,
-                        playerBufferTargets.cacheSizeBytes,
-                        playerBufferTargets.forwardBufferMs,
-                        playerBufferTargets.backBufferMs,
-                        activeProfile?.tunneledPlayback,
-                        activeProfile?.playerMinBufferSeconds,
-                        activeProfile?.playerPlaybackBufferMs,
-                        activeProfile?.playerRebufferBufferMs
-                    ) {
-                        if (playerRequest == null) {
-                            null
-                        } else {
-                            createMainPlayer()
-                        }
-                    }
-                    DisposableEffect(mainPlayer) {
-                        onDispose { mainPlayer?.let(MediaPlayerController::releaseExoPlayer) }
-                    }
-                    val androidFluxaPlatformServices = remember(deviceType, homeViewModel, sharedDetailViewModel, profileManager, profilePickerSettingsStore) {
-                        AndroidFluxaPlatformServices(
-                            context = context,
-                            homeViewModel = homeViewModel,
-                            detailViewModel = sharedDetailViewModel,
-                            profileManager = profileManager,
-                            profilePickerSettingsStore = profilePickerSettingsStore,
-                            activeProfile = { activeProfile },
-                            onActiveProfileChanged = { updated -> activeProfile = updated },
-                            offlineDownloadManager = offlineDownloadManager,
-                            watchlistStore = watchlistStore,
-                            repository = stremioRepository,
-                            addonRepository = addonRepository,
-                            secureStore = platformSecureStore,
-                            pluginRepositoryManager = pluginRepositoryManager,
-                            pluginManager = pluginManager,
-                            nuvioService = nuvioService,
-                            fluxaSyncService = fluxaSyncService,
-                            nuvioImportCoordinator = nuvioImportCoordinator,
-                            nuvioSyncCoordinator = nuvioSyncCoordinator,
-                            thirdPartyProviderRepository = thirdPartyProviderRepository,
-                            appVersionLabel = "v${com.fluxa.app.BuildConfig.VERSION_NAME}",
-                            deviceType = deviceType,
-                        )
-                    }
-
-                    DisposableEffect(androidFluxaPlatformServices) {
-                        onDispose { androidFluxaPlatformServices.close() }
-                    }
-
-                    val nativeHomeEnabled = com.fluxa.app.BuildConfig.FLUXA_NATIVE_HOME
-                    val nativeCoreRuntimeEnabled = com.fluxa.app.BuildConfig.FLUXA_NATIVE_CORE_RUNTIME
-                    var nativeHomeStateJson by remember {
-                        mutableStateOf(
-                            encodeNativeHomeState(
-                                CatalogHomeUiState(isLoading = true),
-                                activeProfile?.avatarUrl,
-                            )
-                        )
-                    }
-                    val nativeRendererView = remember { mutableStateOf<FluxaNativeRendererView?>(null) }
-                    val dispatchNativeCoreCommand: (String) -> Unit = { commandJson ->
-                        val targetView = nativeRendererView.value
-                        lifecycleScope.launch {
-                            runCatching {
-                                val command = com.google.gson.JsonParser.parseString(commandJson).asJsonObject
-                                headlessAppRuntime.dispatch(command)
-                                targetView?.setCoreSnapshotJson(headlessAppRuntime.snapshotJson())
-                            }.onFailure { error ->
-                                Log.e("FluxaNativeRenderer", "Shared Core dispatch failed", error)
-                            }
-                        }
-                    }
-                    LaunchedEffect(
-                        nativeHomeEnabled,
-                        nativeCoreRuntimeEnabled,
-                        androidFluxaPlatformServices,
-                        activeProfile?.id,
-                    ) {
-                        if (!nativeHomeEnabled || nativeCoreRuntimeEnabled) return@LaunchedEffect
-                        androidFluxaPlatformServices.catalogHomeDataSource.observeHome().collect { state ->
-                            nativeHomeStateJson = encodeNativeHomeState(state, activeProfile?.avatarUrl)
-                        }
-                    }
-                    val handleNativeHomeAction: (String) -> Unit = { rawJson ->
-                        runCatching {
-                            com.google.gson.JsonParser.parseString(rawJson).asJsonArray.forEach { rawAction ->
-                                val action = rawAction.asJsonObject
-                                when (action.get("type")?.asString) {
-                                    "coreCommand" -> {
-                                        action.getAsJsonObject("command")?.toString()?.let { command ->
-                                            nativeRendererView.value?.dispatchCoreCommand(command)
-                                        }
-                                    }
-                                    "loadMore" -> if (!nativeCoreRuntimeEnabled) {
-                                        action.get("rowId")?.asString
-                                            ?.takeIf(String::isNotBlank)
-                                            ?.let(homeViewModel::loadMore)
-                                    }
-                                    "back" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeNavigationCommandJson("home")
-                                        )
-                                    } else {
-                                        this@MainActivity.onBackPressedDispatcher.onBackPressed()
-                                    }
-                                    "navigate" -> when (action.get("destination")?.asString) {
-                                        "home" -> if (nativeCoreRuntimeEnabled) {
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeNavigationCommandJson("home")
-                                            )
-                                        } else {
-                                            navigateToDestination(FluxaDestination.Home, true)
-                                        }
-                                        "library" -> if (nativeCoreRuntimeEnabled) {
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeNavigationCommandJson("library")
-                                            )
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeLibraryHydrateCommandJson(activeProfile?.id)
-                                            )
-                                        } else {
-                                            navigateToDestination(FluxaDestination.Library, false)
-                                        }
-                                        "discover" -> if (nativeCoreRuntimeEnabled) {
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeNavigationCommandJson("discover")
-                                            )
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeDiscoverRequestedCommandJson(
-                                                    "movie", "", "", "", "", activeProfile,
-                                                    loadCatalogFilters = true,
-                                                )
-                                            )
-                                        } else {
-                                            navigateToDestination(FluxaDestination.Discover, false)
-                                        }
-                                        "calendar" -> if (nativeCoreRuntimeEnabled) {
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeNavigationCommandJson("calendar")
-                                            )
-                                            nativeRendererView.value?.dispatchCoreCommand(
-                                                nativeCalendarMonthCommandJson(activeProfile)
-                                            )
-                                        } else {
-                                            navigateToDestination(FluxaDestination.Calendar, false)
-                                        }
-                                        "profile" -> if (nativeCoreRuntimeEnabled) {
-                                            nativeRendererView.value?.dispatchCoreCommand(nativeNavigationCommandJson("settings"))
-                                        } else {
-                                            navigateToDestination(FluxaDestination.ProfileList, false)
-                                        }
-                                    }
-                                    "discoverType" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeDiscoverRequestedCommandJson(
-                                                action.get("contentType")?.asString ?: "movie",
-                                                "", "", "", "", activeProfile,
-                                                loadCatalogFilters = true,
-                                            )
-                                        )
-                                    }
-                                    "discoverCatalog" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeDiscoverRequestedCommandJson(
-                                                action.get("contentType")?.asString ?: "movie",
-                                                action.get("catalogKey")?.asString.orEmpty(),
-                                                action.get("extraName")?.asString.orEmpty(),
-                                                action.get("extraValue")?.asString.orEmpty(),
-                                                action.get("query")?.asString.orEmpty(),
-                                                activeProfile,
-                                            )
-                                        )
-                                    }
-                                    "discoverFilters" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeDiscoverRequestedCommandJson(
-                                                action.get("contentType")?.asString ?: "movie",
-                                                action.get("catalogKey")?.asString.orEmpty(),
-                                                action.get("extraName")?.asString.orEmpty(),
-                                                action.get("extraValue")?.asString.orEmpty(),
-                                                action.get("query")?.asString.orEmpty(),
-                                                activeProfile,
-                                            )
-                                        )
-                                    }
-                                    "calendarMonth" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeCalendarMonthCommandJson(
-                                                action.get("year")?.asInt,
-                                                action.get("month")?.asInt,
-                                                activeProfile,
-                                            )
-                                        )
-                                    }
-                                    "detail", "play" -> {
-                                        val id = action.get("id")?.asString?.takeIf(String::isNotBlank)
-                                        val itemType = action.get("itemType")?.asString?.takeIf(String::isNotBlank)
-                                        if (id != null && itemType != null) {
-                                            if (nativeCoreRuntimeEnabled) {
-                                                nativeRendererView.value?.dispatchCoreCommand(
-                                                    nativeNavigationCommandJson("detail")
-                                                )
-                                                nativeRendererView.value?.dispatchCoreCommand(
-                                                    nativeDetailLoadCommandJson(id, itemType, activeProfile)
-                                                )
-                                            } else {
-                                                terminalDetailRequest = com.fluxa.app.shared.feature.detail.DetailRequestUiModel(
-                                                    id = id,
-                                                    type = itemType,
-                                                    autoPlay = action.get("type")?.asString == "play",
-                                                )
-                                            }
-                                        }
-                                    }
-                                    "toggleWatchlist" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeToggleWatchlistCommandJson(action.get("item"), activeProfile)
-                                        )
-                                    }
-                                    "settingsChange" -> if (nativeCoreRuntimeEnabled) {
-                                        nativeRendererView.value?.dispatchCoreCommand(
-                                            nativeSettingsChangedCommandJson(
-                                                action.get("key")?.asString.orEmpty(),
-                                                action.get("value"),
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }.onFailure { error ->
-                            Log.w("FluxaNativeRenderer", "Invalid native action payload", error)
-                        }
-                    }
-
-                    PlayerLifecycleEffect(
-                        isPlayerActive = playerRequest != null,
-                        activeProfile = activeProfile,
-                        mainPlayer = mainPlayer,
-                        homeViewModel = homeViewModel,
-                        enterPictureInPicture = {
-                            this@MainActivity.enterPictureInPictureMode()
-                        }
-                    )
-
-                    LaunchedEffect(Unit) {
-                        if (initialProfile == null && !nativeCoreRuntimeEnabled) {
-                            homeViewModel.loadInitialData(null)
-                        }
-                        val releases = UpdateManager.fetchReleaseHistory()
-                        releaseHistory = releases
-                        latestReleaseInfo = releases.firstOrNull()
-                    }
-
-                    AppUpdateCheckEffect(
-                        automaticUpdatesEnabled = activeProfile?.safeAutomaticUpdates != false,
-                        isDebugBuild = com.fluxa.app.BuildConfig.DEBUG,
-                        onUpdateFound = {
-                            updateInfo = it
-                            latestReleaseInfo = it
-                            releaseHistory = listOf(it) + releaseHistory.filterNot { release -> release.versionName == it.versionName }
-                            updateCheckState = SettingsUpdateCheckState.Available
-                        }
-                    )
-
-                    LaunchedEffect(activeProfile?.id) {
-                        activeProfile?.let { profile ->
-                            if (!nativeCoreRuntimeEnabled) {
-                                homeViewModel.refreshTraktTokenIfNeeded(profile) { updated ->
-                                    activeProfile = updated
-                                    profileManager.saveProfile(updated)
-                                    profileManager.setLastActiveProfile(updated)
-                                }
-                                homeViewModel.loadInitialData(profile)
-                                if (!profile.traktAccessToken.isNullOrBlank()) {
-                                    isTraktSyncing = true
-                                    homeViewModel.syncTraktIntegration(
-                                        profile = profile,
-                                        onProfileUpdated = { updated ->
-                                            activeProfile = updated
-                                            profileManager.saveProfile(updated)
-                                            profileManager.setLastActiveProfile(updated)
-                                        }
-                                    ) { isTraktSyncing = false }
-                                }
-                                if (!profile.simklAccessToken.isNullOrBlank() || !profile.anilistAccessToken.isNullOrBlank()) {
-                                    homeViewModel.loadLibraryItems(profile)
-                                }
-                            }
-                        }
-                    }
-
-                    LaunchedEffect(isNetworkAvailable, activeProfile?.id) {
-                        if (!nativeCoreRuntimeEnabled && previousNetworkAvailable == false && isNetworkAvailable) {
-                            activeProfile?.let { homeViewModel.loadInitialData(it, force = true) }
-                        }
-                        previousNetworkAvailable = isNetworkAvailable
-                    }
-
-                    LaunchedEffect(playerRequest != null) {
-                        if (playerRequest != null) window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                        else window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-                    }
-
-                    DisposableEffect(playerRequest != null, deviceType) {
-                        val controller = WindowInsetsControllerCompat(window, window.decorView)
-                        if (deviceType == DeviceType.Mobile) {
-                            WindowCompat.setDecorFitsSystemWindows(window, false)
-                            if (playerRequest != null) {
-                                controller.systemBarsBehavior =
-                                    WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-                                controller.hide(WindowInsetsCompat.Type.systemBars())
-                            } else {
-                                controller.show(WindowInsetsCompat.Type.systemBars())
-                            }
-                        } else {
-                            WindowCompat.setDecorFitsSystemWindows(window, true)
-                            controller.show(WindowInsetsCompat.Type.systemBars())
-                        }
-                        onDispose {
-                            if (deviceType == DeviceType.Mobile) {
-                                WindowCompat.setDecorFitsSystemWindows(window, false)
-                            }
-                            controller.show(WindowInsetsCompat.Type.systemBars())
-                        }
-                    }
-
-                    var canPopSettings by remember { mutableStateOf(false) }
-                    var settingsPopRequestId by remember { mutableStateOf(0) }
-                    var hasOpenOverlay by remember { mutableStateOf(false) }
-                    var overlayPopRequestId by remember { mutableStateOf(0) }
-
-                    val navigateBackSafely: () -> Unit = {
-                        if (playerRequest != null) {
-                            playerRequest = null
-                        } else if (nativeCoreRuntimeEnabled && activeProfile != null) {
-                            nativeRendererView.value?.dispatchCoreCommand(
-                                nativeNavigationCommandJson("home")
-                            )
-                        } else if (deviceType == DeviceType.Mobile && activeProfile == null && profileManager.getProfiles().isEmpty()) {
-                            navigateToDestination(FluxaDestination.Auth, true)
-                            authStartOnNuvio = false
-                        } else if (activeProfile != null && previousDestination == null && currentDestination != FluxaDestination.Home) {
-                            navigateToDestination(FluxaDestination.Home, true)
-                        } else if (previousDestination != null) {
-                            currentDestination = previousDestination!!
-                            previousDestination = null
-                        } else if (deviceType == DeviceType.TV) {
-                            this@MainActivity.moveTaskToBack(true)
-                        }
-                    }
-
-                    BackHandler(enabled = playerRequest == null) {
-                        if (nativeRendererView.value?.closePlayer() == true) {
-                        } else if (canPopSettings) {
-                            settingsPopRequestId++
-                        } else if (hasOpenOverlay) {
-                            overlayPopRequestId++
-                        } else {
-                            navigateBackSafely()
-                        }
-                    }
-
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        if (profileSplashPending && activeProfile != null) {
-                            FluxaSplashScreen(backgroundUrl = profilePickerSettingsStore.get().backgroundUrl)
-                        } else if (
-                            nativeHomeEnabled &&
-                            (nativeCoreRuntimeEnabled || currentDestination == FluxaDestination.Home) &&
-                            playerRequest == null &&
-                            terminalDetailRequest == null &&
-                            activeProfile != null
-                        ) {
-                            AndroidView(
-                                factory = { viewContext ->
-                                    NativeVideoHost(viewContext).also { host ->
-                                        host.createPlayer = createNativePlayer
-                                        host.audioLanguage = activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" }
-                                        val view = host.renderer
-                                        nativeRendererView.value = view
-                                        view.onNativeAction = handleNativeHomeAction
-                                        view.onCoreCommand = dispatchNativeCoreCommand
-                                        if (nativeCoreRuntimeEnabled) {
-                                            view.setCoreSnapshotJson(headlessAppRuntime.snapshotJson())
-                                        } else {
-                                            view.setHomeStateJson(nativeHomeStateJson)
-                                        }
-                                        if (nativeCoreRuntimeEnabled) {
-                                            view.dispatchCoreCommand(
-                                                nativeHomeCoreLoadCommandJson(
-                                                    activeProfile,
-                                                    if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
-                                                )
-                                            )
-                                        }
-                                    }
-                                },
-                                update = { host ->
-                                    host.createPlayer = createNativePlayer
-                                    host.audioLanguage = activeProfile?.preferredAudioLanguage?.takeUnless { it == "none" }
-                                    val view = host.renderer
-                                    nativeRendererView.value = view
-                                    view.onNativeAction = handleNativeHomeAction
-                                    view.onCoreCommand = dispatchNativeCoreCommand
-                                    if (!nativeCoreRuntimeEnabled) {
-                                        view.setHomeStateJson(nativeHomeStateJson)
-                                    } else {
-                                        view.setCoreSnapshotJson(headlessAppRuntime.snapshotJson())
-                                        view.dispatchCoreCommand(
-                                            nativeHomeCoreLoadCommandJson(
-                                                activeProfile,
-                                                if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
-                                            )
-                                        )
-                                    }
-                                },
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        } else {
-                        AppRoutesHost(
-                            context = context,
-                            currentDestination = currentDestination,
-                            authStartOnNuvio = authStartOnNuvio,
-                            playerRequest = playerRequest,
-                            terminalDetailRequest = terminalDetailRequest,
-                            deviceType = deviceType,
-                            androidFluxaPlatformServices = androidFluxaPlatformServices,
-                            activeProfile = activeProfile,
-                            onActiveProfileChanged = handleActiveProfileChanged,
-                            settingsPopRequestId = settingsPopRequestId,
-                            onSettingsCanPopChanged = { canPopSettings = it },
-                            overlayPopRequestId = overlayPopRequestId,
-                            onOverlayOpenChanged = { hasOpenOverlay = it },
-                            onNavigateToDestination = { destination -> navigateToDestination(destination, false) },
-                            onDestinationChanged = { destination -> currentDestination = destination },
-                            onPlayerRequestChanged = { playerRequest = it },
-                            onOpenTerminalDetail = { request -> terminalDetailRequest = request },
-                            profileManager = profileManager,
-                            homeViewModel = homeViewModel,
-                            mainPlayer = mainPlayer,
-                            coroutineScope = coroutineScope,
-                            offlineDownloadManager = offlineDownloadManager,
-                            onShowTraktSheet = { showTraktSheet = true },
-                            onShowSimklSheet = { showSimklSheet = true },
-                            onTraktDeviceAuthChanged = { traktDeviceAuth = it },
-                            onUpdateInfoChanged = {
-                                updateInfo = it
-                                updateCheckState = if (it == null) SettingsUpdateCheckState.Idle else SettingsUpdateCheckState.Available
-                            },
-                            updateInfo = updateInfo,
-                            latestReleaseInfo = latestReleaseInfo,
-                            onLatestReleaseInfoChanged = { latestReleaseInfo = it },
-                            releaseHistory = releaseHistory,
-                            onReleaseHistoryChanged = { releaseHistory = it },
-                            updateCheckState = updateCheckState,
-                            onUpdateCheckStateChanged = { updateCheckState = it },
-                            navigateBackSafely = navigateBackSafely
-                        )
-
-                        AppChromeOverlays(
-                            context = context,
-                            applicationContext = applicationContext,
-                            deviceType = deviceType,
-                            activeProfile = activeProfile,
-                            onActiveProfileChanged = handleActiveProfileChanged,
-                            profileManager = profileManager,
-                            homeViewModel = homeViewModel,
-                            updateInfo = updateInfo,
-                            isDownloading = isDownloading,
-                            downloadProgress = downloadProgress,
-                            isDirectLoading = isDirectLoading,
-                            showTraktSheet = showTraktSheet,
-                            isTraktSyncing = isTraktSyncing,
-                            traktContinueWatchingLastUpdatedAt = traktContinueWatchingLastUpdatedAt,
-                            showSimklSheet = showSimklSheet,
-                            onUpdateInfoChanged = { updateInfo = it },
-                            onDownloadingChanged = { isDownloading = it },
-                            onDownloadProgressChanged = { downloadProgress = it },
-                            onShowTraktSheetChanged = { showTraktSheet = it },
-                            onTraktSyncingChanged = { isTraktSyncing = it },
-                            onShowSimklSheetChanged = { showSimklSheet = it }
-                        )
-                        }
-                    }
-                }
+        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
+            override fun handleOnBackPressed() {
+                if (!host.renderer.back()) moveTaskToBack(true)
             }
+        })
+        handleIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    override fun onDestroy() {
+        CommonActivity.activity = null
+        TorrentStreamManager.getInstance().shutdown()
+        super.onDestroy()
+    }
+
+    private fun legacyProfilesJson(): String = gson.toJson(
+        mapOf(
+            "profiles" to profileManager.getProfiles(),
+            "activeProfileId" to profileManager.getLastActiveProfileId(),
+            "pickerSettings" to profilePickerSettingsStore.get(),
+        )
+    )
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent == null) return
+        val query = intent.getStringExtra(android.app.SearchManager.QUERY) ?: intent.getStringExtra("query")
+        if (query != null && intent.action in searchActions) {
+            host.renderer.pushAction(
+                gson.toJson(
+                    mapOf(
+                        "type" to "discoverCatalog",
+                        "contentType" to "movie",
+                        "catalogKey" to "",
+                        "extraName" to "",
+                        "extraValue" to "",
+                        "query" to query,
+                    )
+                )
+            )
+        }
+        val data = intent.data
+        if (intent.action == Intent.ACTION_VIEW && data?.scheme == "app" && data.host == "play") {
+            val id = data.getQueryParameter("id")?.takeIf(String::isNotBlank) ?: return
+            val type = data.getQueryParameter("type")?.takeIf(String::isNotBlank) ?: return
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "detail", "id" to id, "itemType" to type)))
+        }
+    }
+
+    private fun setPlaying(playing: Boolean) {
+        if (playing) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        if (com.fluxa.app.BuildConfig.IS_TV) return
+        val controller = WindowInsetsControllerCompat(window, window.decorView)
+        if (playing) {
+            controller.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            controller.hide(WindowInsetsCompat.Type.systemBars())
+        } else {
+            controller.show(WindowInsetsCompat.Type.systemBars())
         }
     }
 }
 
-private val nativeHomeGson = Gson()
-
-private fun nativeNavigationCommandJson(destination: String): String = nativeHomeGson.toJson(
-    mapOf(
-        "type" to "navigationRequested",
-        "route" to destination,
-        "params" to emptyMap<String, Any>(),
-    ),
-)
-
-private fun nativeLibraryHydrateCommandJson(profileId: String?): String = nativeHomeGson.toJson(
-    mapOf(
-        "type" to "libraryHydrateRequested",
-        "profileId" to profileId,
-    ),
-)
-
-private fun nativeDiscoverRequestedCommandJson(
-    contentType: String,
-    catalogKey: String,
-    extraName: String,
-    extraValue: String,
-    query: String,
-    profile: UserProfile?,
-    loadCatalogFilters: Boolean = false,
-): String = nativeHomeGson.toJson(
-    mapOf(
-        "type" to "discoverRequested",
-        "loadCatalogFilters" to loadCatalogFilters,
-        "contentType" to contentType,
-        "filters" to mapOf(
-            "catalogKey" to catalogKey.takeIf(String::isNotBlank),
-            "extra" to buildMap {
-                if (extraName.isNotBlank() && extraValue.isNotBlank()) put(extraName, extraValue)
-                if (query.isNotBlank()) put("search", query)
-            },
-        ),
-        "profile" to profile,
-        "language" to (profile?.safeLanguage ?: "en"),
-    ),
-)
-
-private fun nativeCalendarMonthCommandJson(profile: UserProfile?): String =
-    nativeCalendarMonthCommandJson(null, null, profile)
-
-private fun nativeCalendarMonthCommandJson(
-    year: Int?,
-    month: Int?,
-    profile: UserProfile?,
-): String {
-    val now = java.util.Calendar.getInstance()
-    val resolvedYear = year ?: now.get(java.util.Calendar.YEAR)
-    val resolvedMonth = month ?: now.get(java.util.Calendar.MONTH) + 1
-    return nativeHomeGson.toJson(
-        mapOf(
-            "type" to "calendarMonthRequested",
-            "profile" to profile,
-            "year" to resolvedYear,
-            "month" to resolvedMonth,
-            "plannedItems" to emptyList<Any>(),
-        ),
-    )
-}
-
-private fun nativeDetailLoadCommandJson(
-    id: String,
-    contentType: String,
-    profile: UserProfile?,
-): String = nativeHomeGson.toJson(
-    mapOf(
-        "type" to "detailLoadRequested",
-        "id" to id,
-        "contentType" to contentType,
-        "language" to (profile?.safeLanguage ?: "en"),
-        "profile" to profile,
-    ),
-)
-
-private fun nativeToggleWatchlistCommandJson(
-    item: com.google.gson.JsonElement?,
-    profile: UserProfile?,
-): String = nativeHomeGson.toJson(
-    mapOf(
-        "type" to "toggleWatchlistRequested",
-        "item" to (item ?: com.google.gson.JsonObject()),
-        "profile" to profile,
-    ),
-)
-
-private fun nativeSettingsChangedCommandJson(key: String, value: com.google.gson.JsonElement?): String =
-    com.google.gson.JsonObject().apply {
-        addProperty("type", "settingsChanged")
-        addProperty("key", key)
-        add("value", value ?: com.google.gson.JsonNull.INSTANCE)
-    }.toString()
-
-private fun nativeHomeCoreLoadCommandJson(profile: UserProfile?, formFactor: String): String =
-    nativeHomeGson.toJson(
-        mapOf(
-            "type" to "homeLoadRequested",
-            "profile" to profile,
-            "language" to (profile?.safeLanguage ?: "en"),
-            "force" to true,
-            "formFactor" to formFactor,
-        ),
-    )
-
-private fun nativeHomeLoadingStateJson(): String = nativeHomeGson.toJson(
-    mapOf(
-        "isLoading" to true,
-        "title" to "Recommended",
-        "eyebrow" to "Featured title",
-        "description" to "Loading home data…",
-        "formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
-        "cards" to emptyList<Any>(),
-        "rows" to emptyList<Any>(),
-    ),
-)
-
-private fun encodeNativeHomeState(state: CatalogHomeUiState, profileAvatarUrl: String?): String {
-    val billboard = state.billboard?.item
-    val continueWatchingRow = state.rows.firstOrNull { it.id == CONTINUE_WATCHING_CATEGORY_ID }
-    val cards = continueWatchingRow?.items
-        .orEmpty()
-        .asSequence()
-        .distinctBy { item -> "${item.type}:${item.id}" }
-        .map { item ->
-            mapOf(
-                "id" to item.id,
-                "itemType" to item.type,
-                "title" to item.card.title,
-                "subtitle" to item.card.subtitle,
-                "progress" to item.card.progress.coerceIn(0f, 1f),
-                "artworkUrl" to (item.card.artworkUrl ?: item.posterUrl ?: item.backdropUrl),
-            )
-        }
-        .toList()
-    val rows = state.rows
-        .filterNot { it.id == CONTINUE_WATCHING_CATEGORY_ID }
-        .map { row ->
-            mapOf(
-                "id" to row.id,
-                "title" to row.title,
-                "canLoadMore" to row.canLoadMore,
-                "cards" to row.items.map { item ->
-                    mapOf(
-                        "id" to item.id,
-                        "itemType" to item.type,
-                        "title" to item.card.title,
-                        // Poster shelves show release metadata; the card model's
-                        // generic progress fallback belongs only to Continue Watching.
-                        "subtitle" to (item.releaseLabel?.takeIf { it.isNotBlank() }
-                            ?: item.card.subtitle.takeUnless {
-                                it.equals("Continue watching", ignoreCase = true)
-                            }.orEmpty()),
-                        "progress" to item.card.progress.coerceIn(0f, 1f),
-                        "artworkUrl" to (item.card.artworkUrl ?: item.posterUrl ?: item.backdropUrl),
-                    )
-                },
-            )
-        }
-    return nativeHomeGson.toJson(
-        mapOf(
-            "title" to (billboard?.card?.title ?: "Recommended"),
-            "eyebrow" to (billboard?.releaseLabel ?: "Featured title"),
-            "description" to (billboard?.description ?: "Your connected catalogs will appear here."),
-            "backgroundUrl" to (billboard?.backdropUrl ?: billboard?.posterUrl),
-            "logoUrl" to state.billboard?.logoUrl,
-            "profileAvatarUrl" to profileAvatarUrl,
-            "itemId" to billboard?.id,
-            "itemType" to billboard?.type,
-            "showHeroSection" to state.showHeroSection,
-            "formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile",
-            "cards" to cards,
-            "rows" to rows,
-        ),
-    )
-}
-
-private data class PlaybackDeepLink(
-    val revision: Int,
-    val id: String,
-    val type: String,
-    val videoId: String?,
-    val positionMs: Long,
-    val streamUrl: String?,
-    val streamTitle: String?,
+private val searchActions = setOf(
+    Intent.ACTION_SEARCH,
+    "com.google.android.gms.actions.SEARCH_ACTION",
+    "com.google.android.gms.actions.SEARCH_AND_PLAY",
+    "android.media.action.MEDIA_PLAY_FROM_SEARCH",
 )

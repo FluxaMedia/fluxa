@@ -547,12 +547,6 @@ class HomeViewModel @Inject constructor(
 
     init {
         watchlistFlowBinder.bind()
-        // Native Rust Home owns bootstrap/billboard state in this mode. The
-        // legacy cloud-stream binder eagerly wires billboardRuntime, which in
-        // turn would materialize another headless Core engine.
-        if (!com.fluxa.app.BuildConfig.FLUXA_NATIVE_CORE_RUNTIME) {
-            cloudStreamCoordinator.bind()
-        }
     }
 
     private fun scheduleCs3Refresh() {

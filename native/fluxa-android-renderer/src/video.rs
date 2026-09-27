@@ -30,6 +30,17 @@ impl AndroidVideo {
 }
 
 impl VideoBackend for AndroidVideo {
+    fn configure(&mut self, settings: &Value) {
+        let text = |key: &str| settings.get(key).and_then(Value::as_str).unwrap_or_default();
+        self.send(json!({
+            "type": "configure",
+            "mpvOptions": text("mpvCustomOptions"),
+            "audioProcessingMode": text("audioProcessingMode"),
+            "audioLanguage": text("preferredAudioLanguage"),
+            "subtitleLanguage": text("preferredSubtitleLanguage"),
+        }));
+    }
+
     fn load(&mut self, _instance: &wgpu::Instance, _device: &wgpu::Device, url: &str) {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();

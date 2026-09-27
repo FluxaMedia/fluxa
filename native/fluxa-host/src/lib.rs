@@ -2747,6 +2747,17 @@ impl FluxaHost {
         self.with_state(|state| key_down(state, input));
     }
 
+    pub fn back(&self) -> bool {
+        self.with_state(|state| {
+            if state.player.is_none() && state.profiles.is_none() && state.route == "home" {
+                return false;
+            }
+            key_down(state, KeyInput::Key(Key::Back));
+            true
+        })
+        .unwrap_or(false)
+    }
+
     pub fn focused_node(&self) -> Option<u64> {
         self.with_state(|state| state.ui.focused()).flatten()
     }

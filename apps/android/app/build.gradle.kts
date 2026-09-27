@@ -47,16 +47,6 @@ android {
         buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL")}\"")
         buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
         buildConfigField("String", "FLUXA_SYNC_BASE_URL", "\"${secret("FLUXA_SYNC_BASE_URL")}\"")
-        buildConfigField(
-            "Boolean",
-            "FLUXA_NATIVE_HOME",
-            providers.gradleProperty("fluxaNativeHome").orNull?.toBoolean()?.toString() ?: "true",
-        )
-        buildConfigField(
-            "Boolean",
-            "FLUXA_NATIVE_CORE_RUNTIME",
-            providers.gradleProperty("fluxaNativeCoreRuntime").orNull?.toBoolean()?.toString() ?: "true",
-        )
 
     }
 

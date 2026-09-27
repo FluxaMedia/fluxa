@@ -447,3 +447,12 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pushActi
         android_log(&format!("invalid native action: {error}"));
     }
 }
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_backNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jboolean {
+    host(handle).is_some_and(|host| host.back()) as jni::sys::jboolean
+}

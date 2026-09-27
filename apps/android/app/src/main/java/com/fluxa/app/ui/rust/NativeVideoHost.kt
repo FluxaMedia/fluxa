@@ -14,9 +14,11 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private val videoSurface = MpvAndroidSurfaceView(context)
     private val handler = Handler(Looper.getMainLooper())
     private var player: MpvEmbeddedPlayer? = null
-    var createPlayer: (() -> MpvEmbeddedPlayer)? = null
-    var audioLanguage: String? = null
-    var subtitleLanguage: String? = null
+    private var mpvOptions = ""
+    private var audioProcessingMode = "reference"
+    private var audioLanguage: String? = null
+    private var subtitleLanguage: String? = null
+    var onPlayingChanged: ((Boolean) -> Unit)? = null
 
     private val reportStatus = object : Runnable {
         override fun run() {
@@ -47,6 +49,12 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
             val request = requests.optJSONObject(index) ?: continue
             val player = player
             when (request.optString("type")) {
+                "configure" -> {
+                    mpvOptions = request.optString("mpvOptions")
+                    audioProcessingMode = request.optString("audioProcessingMode").ifBlank { "reference" }
+                    audioLanguage = request.optString("audioLanguage").takeUnless { it.isBlank() || it == "none" }
+                    subtitleLanguage = request.optString("subtitleLanguage").takeUnless { it.isBlank() || it == "none" }
+                }
                 "load" -> load(request.optString("url"))
                 "stop" -> stop()
                 "togglePause" -> player?.let { it.setPaused(it.state.value.isPlaying) }
@@ -61,14 +69,16 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private fun load(url: String) {
         if (url.isBlank()) return
         stop()
-        val player = runCatching { createPlayer?.invoke() }.getOrNull() ?: return
+        val player = runCatching { MpvEmbeddedPlayer(context, mpvOptions, audioProcessingMode) }.getOrNull() ?: return
         this.player = player
+        onPlayingChanged?.invoke(true)
         videoSurface.bind(player)
         player.prepareAndPlay(url, null, emptyList(), 0L, audioLanguage, subtitleLanguage)
         handler.post(reportStatus)
     }
 
     fun stop() {
+        if (player != null) onPlayingChanged?.invoke(false)
         handler.removeCallbacks(reportStatus)
         videoSurface.bind(null)
         player?.release()
