@@ -3737,6 +3737,27 @@ mod tests {
     }
 
     #[test]
+    fn android_prefs_import_merges_credentials_and_addons() {
+        let dir = std::env::temp_dir().join(format!("fluxa-prefs-{}", std::process::id()));
+        let legacy = json!({
+            "prefs": {
+                "profiles_list": json!([{"id": "p1", "email": "a@b", "name": "A"}]).to_string(),
+                "local_addons_p1": json!(["https://a/manifest.json"]).to_string(),
+                "last_active_profile_id": "p1",
+            },
+            "credentials": {"p1": json!({"authKey": "k", "tmdbApiKey": null}).to_string()},
+        })
+        .to_string();
+        assert!(import_legacy(dir.clone(), &legacy).unwrap());
+        let storage = fluxa_effects::Storage::open(dir.clone()).unwrap();
+        let profiles = storage.read_json("profiles").unwrap().unwrap();
+        assert_eq!(profiles[0]["authKey"], "k");
+        assert_eq!(storage.read_json("legacy_addons_p1").unwrap(), Some(json!(["https://a/manifest.json"])));
+        assert_eq!(storage.read_json("active_profile_id").unwrap(), Some(json!("p1")));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
     fn back_closes_player_instead_of_navigating() {
         let host = FluxaHost::new(1.0, None);
         host.with_state(|state| state.player = Some(player::PlayerSession::new(json!({}))));

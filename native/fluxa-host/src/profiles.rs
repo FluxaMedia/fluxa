@@ -352,6 +352,7 @@ pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
         return Ok(false);
     }
     let legacy: Value = serde_json::from_str(legacy).map_err(|error| error.to_string())?;
+    let legacy = if legacy.get("prefs").is_some() { from_android_prefs(&legacy) } else { legacy };
     let profiles = legacy
         .get("profiles")
         .and_then(Value::as_array)
@@ -370,7 +371,7 @@ pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
     if let Some(active) = legacy.get("activeProfileId").filter(|id| id.is_string()) {
         storage.write_json("active_profile_id", active)?;
     }
-    if let Some(mut picker) = legacy.get("pickerSettings").cloned() {
+    if let Some(mut picker) = legacy.get("pickerSettings").filter(|picker| picker.is_object()).cloned() {
         for pack in picker
             .get_mut("avatarPacks")
             .and_then(Value::as_array_mut)
@@ -385,6 +386,38 @@ pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
         storage.write_json("profile_picker_settings", &picker)?;
     }
     Ok(true)
+}
+
+fn from_android_prefs(raw: &Value) -> Value {
+    let prefs = &raw["prefs"];
+    let text = |value: &Value| value.as_str().and_then(|text| serde_json::from_str::<Value>(text).ok());
+    let profiles = text(&prefs["profiles_list"])
+        .and_then(|list| list.as_array().cloned())
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|profile| {
+            let schema = profile.get("schemaVersion").and_then(Value::as_i64).unwrap_or(0);
+            let mut profile = core_value("profileSettingsMigrationPlan", json!({"raw": profile, "schemaVersion": schema}))
+                .and_then(|plan| plan.get("migratedProfile").cloned())
+                .filter(Value::is_object)?;
+            let id = profile.get("id").and_then(Value::as_str).unwrap_or_default().to_string();
+            if let Some(Value::Object(credentials)) = text(&raw["credentials"][&id]) {
+                for (key, value) in credentials.into_iter().filter(|(_, value)| !value.is_null()) {
+                    profile[key] = value;
+                }
+            }
+            let key = core_value("profileLocalAddonsKey", profile.clone());
+            if let Some(addons) = key.as_ref().and_then(Value::as_str).and_then(|key| text(&prefs[key])) {
+                profile["localAddons"] = addons;
+            }
+            Some(profile)
+        })
+        .collect::<Vec<_>>();
+    json!({
+        "profiles": profiles,
+        "activeProfileId": prefs["last_active_profile_id"],
+        "pickerSettings": text(&raw["picker"]),
+    })
 }
 
 fn pick_image(state: &mut RendererState, storage: &Storage) -> Option<String> {
