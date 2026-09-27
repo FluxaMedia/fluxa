@@ -11,4 +11,5 @@ crate-type = ["staticlib", "rlib"]
 fluxa-host = { path = "../fluxa-host" }
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["ios"] }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
+serde_json = "1"
 wgpu = { version = "29.0.3", default-features = false, features = ["metal", "wgsl"] }

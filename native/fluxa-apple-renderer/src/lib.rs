@@ -2,9 +2,13 @@ use std::{
     ffi::{CStr, CString, c_char, c_void},
     path::PathBuf,
     ptr::NonNull,
+    sync::{Arc, Mutex, OnceLock},
 };
 
-use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
+use fluxa_host::{
+    BridgeVideo, FluxaHost, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase, VideoBridge,
+    VideoStatus,
+};
 use fluxa_renderer::platform::APPLE_BACKEND_ORDER;
 
 pub type FluxaRenderer = FluxaHost;
@@ -73,7 +77,60 @@ pub unsafe extern "C" fn fluxa_renderer_create(
     artwork_cache_dir: *const c_char,
 ) -> *mut FluxaRenderer {
     let cache = unsafe { text(artwork_cache_dir) }.map(PathBuf::from);
-    Box::into_raw(Box::new(FluxaHost::new(density, cache)))
+    let host = FluxaHost::new(density, cache);
+    host.set_video_backend(Box::new(BridgeVideo(video_bridge().clone())));
+    Box::into_raw(Box::new(host))
+}
+
+fn video_bridge() -> &'static Arc<Mutex<VideoBridge>> {
+    static BRIDGE: OnceLock<Arc<Mutex<VideoBridge>>> = OnceLock::new();
+    BRIDGE.get_or_init(Default::default)
+}
+
+#[unsafe(no_mangle)]
+pub extern "C" fn fluxa_renderer_poll_video() -> *mut c_char {
+    let requests = video_bridge()
+        .lock()
+        .map(|mut bridge| bridge.take_requests())
+        .unwrap_or_default();
+    owned(Some(serde_json::Value::from(requests).to_string()))
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_video_status(
+    position: f64,
+    duration: f64,
+    paused: bool,
+    has_frame: bool,
+    buffering: f32,
+    error: *const c_char,
+) {
+    let status = VideoStatus {
+        position,
+        duration,
+        paused,
+        muted: false,
+        volume: 100.0,
+        has_frame,
+        error: unsafe { text(error) },
+        chapters: Vec::new(),
+        buffering: (buffering >= 0.0).then_some(buffering),
+    };
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_status(status);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_push_action(renderer: *const FluxaRenderer, json: *const c_char) {
+    if let (Some(renderer), Some(json)) = (unsafe { renderer.as_ref() }, unsafe { text(json) }) {
+        let _ = renderer.push_action_json(&json);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_back(renderer: *const FluxaRenderer) -> bool {
+    unsafe { renderer.as_ref() }.is_some_and(FluxaHost::back)
 }
 
 #[unsafe(no_mangle)]

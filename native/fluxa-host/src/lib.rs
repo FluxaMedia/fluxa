@@ -63,12 +63,14 @@ impl NativeSurface {
 }
 
 mod accounts;
+mod bridge_video;
 mod player;
 mod poster_data;
 mod presence;
 mod profiles;
 mod projection;
 mod trailer;
+pub use bridge_video::{BridgeVideo, VideoBridge};
 pub use profiles::{ImagePicker, import_legacy};
 
 pub type PrePresent = Box<dyn Fn() + Send>;

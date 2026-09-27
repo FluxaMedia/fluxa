@@ -45,8 +45,8 @@ impl Drop for NativeWindowRef {
     }
 }
 
-fn video_bridge() -> &'static Arc<Mutex<crate::video::Bridge>> {
-    static BRIDGE: OnceLock<Arc<Mutex<crate::video::Bridge>>> = OnceLock::new();
+fn video_bridge() -> &'static Arc<Mutex<fluxa_host::VideoBridge>> {
+    static BRIDGE: OnceLock<Arc<Mutex<fluxa_host::VideoBridge>>> = OnceLock::new();
     BRIDGE.get_or_init(Default::default)
 }
 
@@ -106,7 +106,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
     fluxa_host::set_logger(android_log);
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
     let host = FluxaHost::new(density, artwork_cache_dir);
-    host.set_video_backend(Box::new(crate::video::AndroidVideo(video_bridge().clone())));
+    host.set_video_backend(Box::new(fluxa_host::BridgeVideo(video_bridge().clone())));
     Box::into_raw(Box::new(host)) as jlong
 }
 

@@ -1,27 +1,27 @@
 use std::sync::{Arc, Mutex};
 
-use fluxa_host::{VideoBackend, VideoCommand, VideoStatus};
+use crate::{VideoBackend, VideoCommand, VideoStatus};
 use serde_json::{Value, json};
 
 #[derive(Default)]
-pub(crate) struct Bridge {
+pub struct VideoBridge {
     requests: Vec<Value>,
     status: VideoStatus,
 }
 
-impl Bridge {
-    pub(crate) fn take_requests(&mut self) -> Vec<Value> {
+impl VideoBridge {
+    pub fn take_requests(&mut self) -> Vec<Value> {
         std::mem::take(&mut self.requests)
     }
 
-    pub(crate) fn set_status(&mut self, status: VideoStatus) {
+    pub fn set_status(&mut self, status: VideoStatus) {
         self.status = status;
     }
 }
 
-pub(crate) struct AndroidVideo(pub(crate) Arc<Mutex<Bridge>>);
+pub struct BridgeVideo(pub Arc<Mutex<VideoBridge>>);
 
-impl AndroidVideo {
+impl BridgeVideo {
     fn send(&self, request: Value) {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.requests.push(request);
@@ -29,7 +29,7 @@ impl AndroidVideo {
     }
 }
 
-impl VideoBackend for AndroidVideo {
+impl VideoBackend for BridgeVideo {
     fn configure(&mut self, settings: &Value) {
         let text = |key: &str| settings.get(key).and_then(Value::as_str).unwrap_or_default();
         self.send(json!({

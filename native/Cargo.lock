@@ -1832,6 +1832,7 @@ dependencies = [
  "fluxa-host",
  "fluxa-renderer",
  "fluxa_core",
+ "serde_json",
  "wgpu",
 ]
 

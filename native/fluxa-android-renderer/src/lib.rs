@@ -2,8 +2,6 @@
 
 #[cfg(target_os = "android")]
 mod android;
-#[cfg(target_os = "android")]
-mod video;
 
 /// The JNI library is only meaningful on Android. Keeping a host-side symbol
 /// makes workspace checks and editor tooling work without an Android linker.
