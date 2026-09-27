@@ -35,6 +35,44 @@ pub(crate) struct Projection {
 #[derive(Default)]
 struct HeroCache(Option<(Value, Option<Value>)>);
 
+impl HeroCache {
+    fn plan(&mut self, snapshot: &Value, trailers: &Value) -> Option<Value> {
+        let inputs = [
+            ("categories", snapshot.pointer("/home/categories")),
+            ("billboard", snapshot.pointer("/home/billboard")),
+            ("prefs", snapshot.pointer("/settings/values")),
+            ("fetchedTrailers", trailers.get("fetched")),
+            ("fetchedIds", trailers.get("ids")),
+        ];
+        if let Some((cached, plan)) = &self.0
+            && inputs
+                .iter()
+                .all(|(key, value)| cached.get(key) == Some(value.unwrap_or(&Value::Null)))
+        {
+            return plan.clone();
+        }
+        let request = Value::Object(
+            inputs
+                .into_iter()
+                .map(|(key, value)| (key.to_owned(), value.cloned().unwrap_or(Value::Null)))
+                .collect(),
+        );
+        let plan = plan_hero(&request);
+        self.0 = Some((request, plan.clone()));
+        plan
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn plan_hero(request: &Value) -> Option<Value> {
+    Some(fluxa_core::home_hero_plan(request))
+}
+
+#[cfg(target_arch = "wasm32")]
+fn plan_hero(request: &Value) -> Option<Value> {
+    core_value("homeHeroPlan", request.clone())
+}
+
 #[derive(Default)]
 struct DiscoverCache(Option<DiscoverModel>);
 
@@ -57,23 +95,7 @@ fn project(
     discover_cache: &mut DiscoverCache,
 ) -> Projection {
     let snapshot = &request.snapshot;
-    let hero_inputs = json!({
-        "categories": snapshot.pointer("/home/categories").cloned().unwrap_or_else(|| json!([])),
-        "billboard": snapshot.pointer("/home/billboard").cloned().unwrap_or(Value::Null),
-        "prefs": snapshot.pointer("/settings/values").cloned().unwrap_or_else(|| json!({})),
-        "fetchedTrailers": request.hero_trailers.get("fetched").cloned().unwrap_or_else(|| json!({})),
-        "fetchedIds": request.hero_trailers.get("ids").cloned().unwrap_or_else(|| json!([])),
-        "fetchedLogos": {},
-        "fetchedLogoIds": [],
-    });
-    let hero_plan = match &hero_cache.0 {
-        Some((inputs, plan)) if *inputs == hero_inputs => plan.clone(),
-        _ => {
-            let plan = core_value("homeHeroPlan", hero_inputs.clone());
-            hero_cache.0 = Some((hero_inputs, plan.clone()));
-            plan
-        }
-    };
+    let hero_plan = hero_cache.plan(snapshot, &request.hero_trailers);
     let trailer_targets = hero_plan
         .as_ref()
         .and_then(|plan| plan.get("trailerTargets"))
@@ -113,7 +135,10 @@ fn project(
     library.query = request.library_query.clone();
     library.sort_by = request.library_sort.clone();
     if route == "library" {
-        let source = snapshot.get("library").cloned().unwrap_or_else(|| json!({}));
+        let source = snapshot
+            .get("library")
+            .cloned()
+            .unwrap_or_else(|| json!({}));
         if let Some(plan) = core_value(
             "libraryViewPlan",
             json!({
@@ -165,7 +190,10 @@ impl Projector {
                     while let Ok(newer) = request_rx.try_recv() {
                         request = newer;
                     }
-                    if result_tx.send(project(request, &mut hero_cache, &mut discover_cache)).is_err() {
+                    if result_tx
+                        .send(project(request, &mut hero_cache, &mut discover_cache))
+                        .is_err()
+                    {
                         break;
                     }
                 }
@@ -219,7 +247,11 @@ impl Projector {
     }
 
     pub fn submit(&mut self, request: Request) {
-        self.ready = Some(project(request, &mut self.hero_cache, &mut self.discover_cache));
+        self.ready = Some(project(
+            request,
+            &mut self.hero_cache,
+            &mut self.discover_cache,
+        ));
     }
 
     pub fn take(&mut self) -> Option<Projection> {

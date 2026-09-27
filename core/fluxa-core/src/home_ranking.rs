@@ -11,6 +11,7 @@ pub(crate) use billboard::{
     billboard_has_backdrop_json, billboard_identity_key_json, billboard_normalized_title,
     billboard_visual_score_json, build_billboard_pool_json, normalize_home_catalog_items_json,
 };
+pub use bootstrap::home_hero_plan;
 pub(crate) use bootstrap::{
     home_hero_episode_plan_json, home_hero_plan_json, home_metadata_feed_plan_json,
 };
