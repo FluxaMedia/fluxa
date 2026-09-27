@@ -192,7 +192,9 @@ impl MpvClientHandle {
                                 }
                             }
                         }
-                        let mut message = base_message;
+                        let mut message = self
+                            .get_string_property("last-error/message")
+                            .unwrap_or(base_message);
                         if !details.is_empty() {
                             message.push('\n');
                             message.push_str(&details.join("\n"));

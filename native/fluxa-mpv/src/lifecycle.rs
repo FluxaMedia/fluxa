@@ -75,7 +75,7 @@ impl MpvClientHandle {
                 // XWayland/X11 native embedding: let mpv own its Vulkan
                 // swapchain for the real X11 window instead of routing every
                 // frame through Fluxa's experimental render bridge.
-                client.set_option("vo", "gpu")?;
+                client.set_option("vo", "gpu-next")?;
                 let x11_opengl = std::env::var_os("FLUXA_NATIVE_AUTOTEST_X11_OPENGL").is_some();
                 client.set_option("gpu-api", if x11_opengl { "opengl" } else { "vulkan" })?;
                 // Let mpv select the X11 Vulkan context from the actual
