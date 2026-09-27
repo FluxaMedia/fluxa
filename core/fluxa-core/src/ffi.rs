@@ -1,6 +1,4 @@
 use serde_json::{Value, json};
-use std::collections::HashMap;
-use std::sync::{Mutex, OnceLock};
 
 mod addon_protocol_routes;
 mod addon_resource_routes;
@@ -19,6 +17,7 @@ mod intro_plugins_routes;
 mod library_routes;
 mod local_media_routes;
 mod mdblist_routes;
+mod methods;
 mod plan_misc_routes;
 mod player_policy_routes;
 mod player_scrobble_routes;
@@ -198,146 +197,19 @@ fn raw_dispatch(method: &str, args_json: &str) -> Result<String, CallError> {
     Ok(value)
 }
 
-// Each route_* function owns one domain's method names. `route` tries them in
-// turn and moves to the next as long as a function reports the method isn't
-// one of its own (signaled by the UnknownMethod error its catch-all arm
-// produces) — so every method is still handled by exactly one place, just
-// grouped by domain instead of one 500+ line match.
-const ROUTERS: &[fn(&str, &str) -> Outcome] = &[
-    route_engine_lifecycle,
-    route_addon_protocol,
-    route_addon_uptime,
-    route_addon_resource,
-    route_resource_plan,
-    route_stream_policy,
-    route_stream_badges,
-    route_search_plan,
-    route_player_policy,
-    route_watchlist,
-    route_offline,
-    route_content_identity,
-    route_discord_presence,
-    route_device_auth,
-    route_content_warnings,
-    route_calendar,
-    route_external_sync_trakt,
-    route_external_sync_simkl,
-    route_external_sync_anilist,
-    route_mdblist,
-    route_provider_library,
-    route_publicmetadb,
-    route_anime_detection,
-    route_library_state,
-    route_local_media,
-    route_nuvio_sync,
-    route_nuvio_pin,
-    route_tmdb,
-    route_intro_segments,
-    route_core_contract,
-    route_plugins,
-    route_addon_store,
-    route_profile_avatar_pack,
-    route_profile_contract,
-    route_profile_prefs,
-    route_headless_adapter_plan,
-    route_discovery_plan,
-    route_data_policy,
-    route_device_resource,
-    #[cfg(feature = "dv-codec")]
-    route_dolby_vision_rpu,
-    route_player_flow,
-    route_player_scrobble,
-    route_trailer_subtitles,
-    route_version_policy,
-    route_watch_together,
-    route_fluxa_sync,
-];
-
-static ROUTE_CACHE: OnceLock<Mutex<HashMap<String, Option<usize>>>> = OnceLock::new();
-
 fn route(method: &str, args_json: &str) -> Outcome {
-    if matches!(
-        method,
-        "pluginManifestParse"
-            | "pluginExecutionPlan"
-            | "pluginUpdatePlan"
-            | "pluginStreamResultsParse"
-            | "pluginStreamResultsToStreams"
-    ) {
-        return route_plugins(method, args_json);
-    }
     match method {
-        "engine.dispatch"
-        | "engine.completeEffect"
-        | "app.dispatch"
-        | "app.dispatchDelta"
-        | "streamPlaybackInfo"
-        | "torrentRuntimeInfo"
-        | "torrentStatusInfo"
-        | "playerTrackState"
-        | "curateHomeItems"
-        | "prioritizeHomeRows"
-        | "optimizeHomeRows" => {
-            return match method {
-                "engine.dispatch"
-                | "engine.completeEffect"
-                | "app.dispatch"
-                | "app.dispatchDelta" => route_engine_lifecycle(method, args_json),
-                "streamPlaybackInfo" | "torrentRuntimeInfo" | "torrentStatusInfo"
-                | "playerTrackState" => route_stream_policy(method, args_json),
-                _ => route_library_state(method, args_json),
-            };
-        }
-        _ => {}
+        "subtitleCueList" => opt_json(subtitle_sync::subtitle_cue_list_json(args_json)),
+        "subtitleSyncCapture" => opt_json(subtitle_sync::subtitle_sync_capture_json(args_json)),
+        "subtitleSyncApply" => opt_json(subtitle_sync::subtitle_sync_apply_json(args_json)),
+        _ => match methods::router_for(method) {
+            Some(router) => router(method, args_json),
+            None => Err(fail(
+                ErrorKind::UnknownMethod,
+                format!("no such method `{method}`"),
+            )),
+        },
     }
-    let cache = ROUTE_CACHE.get_or_init(|| Mutex::new(HashMap::new()));
-    match method {
-        "subtitleCueList" => {
-            return opt_json(subtitle_sync::subtitle_cue_list_json(args_json));
-        }
-        "subtitleSyncCapture" => {
-            return opt_json(subtitle_sync::subtitle_sync_capture_json(args_json));
-        }
-        "subtitleSyncApply" => {
-            return opt_json(subtitle_sync::subtitle_sync_apply_json(args_json));
-        }
-        _ => {}
-    }
-    if let Some(index) = cache
-        .lock()
-        .ok()
-        .and_then(|routes| routes.get(method).copied())
-    {
-        return index
-            .map(|index| ROUTERS[index](method, args_json))
-            .unwrap_or_else(|| {
-                Err(fail(
-                    ErrorKind::UnknownMethod,
-                    format!("no such method `{method}`"),
-                ))
-            });
-    }
-    for (index, router) in ROUTERS.iter().enumerate() {
-        match router(method, args_json) {
-            Err(CallError {
-                kind: ErrorKind::UnknownMethod,
-                ..
-            }) => continue,
-            result => {
-                if let Ok(mut routes) = cache.lock() {
-                    routes.insert(method.to_string(), Some(index));
-                }
-                return result;
-            }
-        }
-    }
-    if let Ok(mut routes) = cache.lock() {
-        routes.insert(method.to_string(), None);
-    }
-    Err(fail(
-        ErrorKind::UnknownMethod,
-        format!("no such method `{method}`"),
-    ))
 }
 
 fn opt_str(value: Option<String>) -> Outcome {
