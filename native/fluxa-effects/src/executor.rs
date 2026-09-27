@@ -1,8 +1,8 @@
-use crate::storage::{Storage, sanitize_key};
+use crate::storage::{sanitize_key, Storage};
 use reqwest::{Client, ClientBuilder};
-use serde_json::{Value, json};
-use std::sync::OnceLock;
+use serde_json::{json, Value};
 use std::sync::mpsc::Sender;
+use std::sync::OnceLock;
 use std::time::Duration;
 
 mod addons;
@@ -92,15 +92,7 @@ impl EffectExecutor {
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(task);
         #[cfg(not(target_arch = "wasm32"))]
-        std::thread::spawn(move || {
-            match tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                Ok(runtime) => runtime.block_on(task),
-                Err(error) => crate::log!("[fluxa-effects] tokio runtime failed: {error}"),
-            }
-        });
+        runtime().spawn(task);
     }
 
     async fn execute(&self, effect: &Value) -> Result<Value, String> {
@@ -311,15 +303,23 @@ fn detached<T: Send + 'static>(
     task: impl std::future::Future<Output = T> + Send + 'static,
 ) -> std::sync::mpsc::Receiver<T> {
     let (sender, receiver) = std::sync::mpsc::channel();
-    std::thread::spawn(move || {
-        if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-        {
-            let _ = sender.send(runtime.block_on(task));
-        }
+    runtime().spawn(async move {
+        let _ = sender.send(task.await);
     });
     receiver
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub(crate) fn runtime() -> &'static tokio::runtime::Runtime {
+    static RUNTIME: std::sync::OnceLock<tokio::runtime::Runtime> = std::sync::OnceLock::new();
+    RUNTIME.get_or_init(|| {
+        tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(4)
+            .thread_name("fluxa-effects")
+            .enable_all()
+            .build()
+            .expect("tokio runtime")
+    })
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -515,12 +515,10 @@ mod tests {
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0]["catalogType"], "movie");
         assert_eq!(requests[0]["catalogId"], "quick_search");
-        assert!(
-            requests[0]["url"]
-                .as_str()
-                .unwrap_or_default()
-                .contains("search=matrix")
-        );
+        assert!(requests[0]["url"]
+            .as_str()
+            .unwrap_or_default()
+            .contains("search=matrix"));
     }
 
     #[test]
@@ -587,11 +585,9 @@ mod tests {
             .expect("read persisted library")
             .expect("library should be stored");
         assert_eq!(persisted["completed"][0]["id"], "tt-local");
-        assert!(
-            persisted["completed"][0]["statusChangedAt"]
-                .as_str()
-                .is_some()
-        );
+        assert!(persisted["completed"][0]["statusChangedAt"]
+            .as_str()
+            .is_some());
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -618,12 +614,10 @@ mod tests {
             })))
             .expect_err("remote writes must not silently become local-only");
         assert!(error.contains("provider 'nuvio'"));
-        assert!(
-            storage
-                .read_json(&Storage::library_key("guest"))
-                .expect("read library")
-                .is_none()
-        );
+        assert!(storage
+            .read_json(&Storage::library_key("guest"))
+            .expect("read library")
+            .is_none());
         let _ = std::fs::remove_dir_all(directory);
     }
 

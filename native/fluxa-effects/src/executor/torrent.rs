@@ -36,12 +36,7 @@ impl EffectExecutor {
                 return;
             };
             let url = format!("{}/torrents", base_url.trim_end_matches('/'));
-            let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            else {
-                return;
-            };
+            let runtime = super::runtime();
             let client = Client::new();
             loop {
                 let response: Result<Value, String> = runtime
@@ -181,12 +176,7 @@ pub(super) fn start_torrent_add(base_url: String, link: String, file_id: Option<
         crate::log!(
             "[fluxa-native] torrent metadata add started hash={info_hash} file={file_id:?}"
         );
-        let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-        else {
-            return;
-        };
+        let runtime = super::runtime();
         let result: Result<Value, String> = runtime.block_on(async {
             let response = Client::new()
                 .post(format!("{}/torrents", base_url.trim_end_matches('/')))

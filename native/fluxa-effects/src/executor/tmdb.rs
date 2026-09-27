@@ -22,14 +22,7 @@ impl EffectExecutor {
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(task);
         #[cfg(not(target_arch = "wasm32"))]
-        std::thread::spawn(move || {
-            if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                runtime.block_on(task);
-            }
-        });
+        super::runtime().spawn(task);
         receiver
     }
 
@@ -59,14 +52,7 @@ impl EffectExecutor {
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(task);
         #[cfg(not(target_arch = "wasm32"))]
-        std::thread::spawn(move || {
-            if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                runtime.block_on(task);
-            }
-        });
+        super::runtime().spawn(task);
         receiver
     }
 
@@ -93,14 +79,7 @@ impl EffectExecutor {
         #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(task);
         #[cfg(not(target_arch = "wasm32"))]
-        std::thread::spawn(move || {
-            if let Ok(runtime) = tokio::runtime::Builder::new_current_thread()
-                .enable_all()
-                .build()
-            {
-                runtime.block_on(task);
-            }
-        });
+        super::runtime().spawn(task);
         receiver
     }
 
