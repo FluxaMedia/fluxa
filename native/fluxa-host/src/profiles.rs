@@ -8,7 +8,7 @@ use fluxa_ui::{
 };
 use serde_json::{Value, json};
 
-use crate::{RendererState, core_value, host_log, profile_language};
+use crate::{RendererState, core_value, discover_command, host_log, profile_language};
 
 pub type ImagePicker = Box<dyn Fn() -> Option<PathBuf> + Send>;
 
@@ -289,14 +289,8 @@ fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     write(storage, "active_profile_id", &json!(id));
     match SessionHandle::open(storage.clone()) {
         Ok(session) => {
-            let profile = session.active_profile();
-            if let Err(error) = session.dispatch(json!({
-                "type": "homeLoadRequested",
-                "profile": profile,
-                "language": profile_language(&profile),
-                "force": true,
-            })) {
-                host_log(format!("Home load failed: {error}"));
+            if let Err(error) = load_profile(&session) {
+                host_log(format!("Profile load failed: {error}"));
             }
             state.session = Some(session);
             state.session_revision = None;
@@ -308,6 +302,79 @@ fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
         }
         Err(error) => host_log(format!("Profile switch failed: {error}")),
     }
+}
+
+pub(crate) fn load_profile(session: &SessionHandle) -> Result<(), String> {
+    let profile = session.active_profile();
+    session.dispatch(json!({
+        "type": "homeLoadRequested",
+        "profile": profile,
+        "language": profile_language(&profile),
+        "force": true,
+    }))?;
+    session.dispatch(discover_command(&profile, "movie", "", "", "", true))?;
+    session.dispatch(json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}))?;
+    let Some(id) = profile.get("id").and_then(Value::as_str) else {
+        return Ok(());
+    };
+    let key = legacy_addons_key(id);
+    let storage = session.storage();
+    let urls = read(storage, &key)
+        .and_then(|value| value.as_array().cloned())
+        .unwrap_or_default();
+    if urls.is_empty() {
+        return Ok(());
+    }
+    for url in urls.iter().filter_map(Value::as_str) {
+        session.dispatch(json!({"type": "addonInstallRequested", "transportUrl": url, "forceRefresh": true}))?;
+    }
+    write(storage, &key, &json!([]));
+    Ok(())
+}
+
+fn legacy_addons_key(profile_id: &str) -> String {
+    format!("legacy_addons_{profile_id}")
+}
+
+pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
+    let storage = Storage::open(data_dir)?;
+    if storage.read_json("profiles")?.is_some() {
+        return Ok(false);
+    }
+    let legacy: Value = serde_json::from_str(legacy).map_err(|error| error.to_string())?;
+    let profiles = legacy
+        .get("profiles")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    for profile in &profiles {
+        let (Some(id), Some(addons)) = (
+            profile.get("id").and_then(Value::as_str),
+            profile.get("localAddons").filter(|addons| addons.is_array()),
+        ) else {
+            continue;
+        };
+        storage.write_json(&legacy_addons_key(id), addons)?;
+    }
+    storage.write_json("profiles", &Value::Array(profiles))?;
+    if let Some(active) = legacy.get("activeProfileId").filter(|id| id.is_string()) {
+        storage.write_json("active_profile_id", active)?;
+    }
+    if let Some(mut picker) = legacy.get("pickerSettings").cloned() {
+        for pack in picker
+            .get_mut("avatarPacks")
+            .and_then(Value::as_array_mut)
+            .into_iter()
+            .flatten()
+        {
+            if pack.get("manifestUrl").is_none() {
+                let id = pack.get("id").cloned().unwrap_or_default();
+                pack["manifestUrl"] = id;
+            }
+        }
+        storage.write_json("profile_picker_settings", &picker)?;
+    }
+    Ok(true)
 }
 
 fn pick_image(state: &mut RendererState, storage: &Storage) -> Option<String> {

@@ -25,7 +25,7 @@ use fluxa_ui::{
     draw_calendar, draw_detail, PlayerModel, draw_discover, draw_home, draw_library, draw_player,
     draw_settings,
 };
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 type SharedRenderer = Arc<Mutex<RendererState>>;
@@ -68,7 +68,7 @@ mod presence;
 mod profiles;
 mod projection;
 mod trailer;
-pub use profiles::ImagePicker;
+pub use profiles::{ImagePicker, import_legacy};
 
 pub type PrePresent = Box<dyn Fn() + Send>;
 
@@ -183,7 +183,7 @@ enum HomeScrollTarget {
     ScreenVertical,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum NativeAction {
     CoreCommand {
@@ -195,6 +195,7 @@ enum NativeAction {
     Detail {
         id: String,
         item_type: String,
+        #[serde(default)]
         preview: Value,
     },
     Play {
@@ -2762,15 +2763,7 @@ impl FluxaHost {
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
         let session = SessionHandle::open(Storage::open(data_dir)?)?;
-        let profile = session.active_profile();
-        session.dispatch(json!({
-            "type": "homeLoadRequested",
-            "profile": profile,
-            "language": profile_language(&profile),
-            "force": true,
-        }))?;
-        session.dispatch(discover_command(&profile, "movie", "", "", "", true))?;
-        session.dispatch(json!({"type": "libraryHydrateRequested", "profileId": profile.get("id")}))?;
+        profiles::load_profile(&session)?;
         let pick = profiles::should_pick_on_start(session.storage());
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
@@ -2780,6 +2773,12 @@ impl FluxaHost {
                 profiles::open(state);
             }
         });
+        Ok(())
+    }
+
+    pub fn push_action_json(&self, json: &str) -> Result<(), String> {
+        let action: NativeAction = serde_json::from_str(json).map_err(|error| error.to_string())?;
+        self.with_state(|state| state.pending_native_actions.push(action));
         Ok(())
     }
 
@@ -3682,6 +3681,23 @@ mod tests {
         assert_eq!(commands[0]["type"], "directPlaybackRequested");
         assert_eq!(commands[0]["meta"], item);
         assert_eq!(commands[0]["language"], "tr");
+    }
+
+    #[test]
+    fn legacy_import_runs_once_and_keeps_packs_loadable() {
+        let dir = std::env::temp_dir().join(format!("fluxa-legacy-{}", std::process::id()));
+        let legacy = json!({
+            "profiles": [{"id": "p1", "name": "A", "localAddons": ["https://a/manifest.json"]}],
+            "activeProfileId": "p1",
+            "pickerSettings": {"avatarPacks": [{"id": "https://pack", "repositoryUrl": "r", "title": "t", "avatars": []}]},
+        })
+        .to_string();
+        assert!(import_legacy(dir.clone(), &legacy).unwrap());
+        assert!(!import_legacy(dir.clone(), &legacy).unwrap());
+        let storage = fluxa_effects::Storage::open(dir.clone()).unwrap();
+        assert_eq!(storage.read_json("legacy_addons_p1").unwrap(), Some(json!(["https://a/manifest.json"])));
+        assert_eq!(profiles::picker_settings(&storage).avatar_packs[0].manifest_url, "https://pack");
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]

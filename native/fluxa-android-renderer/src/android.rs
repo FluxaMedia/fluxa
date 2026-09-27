@@ -413,3 +413,37 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_renderNa
         host.render();
     }
 }
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_importLegacyNative(
+    mut env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    data_dir: JString<'_>,
+    legacy: JString<'_>,
+) -> jni::sys::jboolean {
+    let (Some(dir), Some(legacy)) = (string(&mut env, &data_dir), string(&mut env, &legacy)) else {
+        return 0;
+    };
+    match fluxa_host::import_legacy(PathBuf::from(dir), &legacy) {
+        Ok(imported) => imported as jni::sys::jboolean,
+        Err(error) => {
+            android_log(&format!("legacy import failed: {error}"));
+            0
+        }
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pushActionNative(
+    mut env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    action: JString<'_>,
+) {
+    let (Some(host), Some(action)) = (host(handle), string(&mut env, &action)) else {
+        return;
+    };
+    if let Err(error) = host.push_action_json(&action) {
+        android_log(&format!("invalid native action: {error}"));
+    }
+}
