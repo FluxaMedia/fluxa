@@ -1,5 +1,4 @@
 import Foundation
-import FluxaCore
 import SwiftUI
 
 @MainActor

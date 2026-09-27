@@ -1,5 +1,4 @@
 import Foundation
-import FluxaCore
 
 final class FluxaAppleCatalogService {
     private let resolver: FluxaAppleAddonCatalogResolver
@@ -13,7 +12,7 @@ final class FluxaAppleCatalogService {
         self.loader = loader
     }
 
-    func loadHomeRows(addonUrls: [String]) async throws -> [FluxaCore.AppleCatalogRowSnapshot] {
+    func loadHomeRows(addonUrls: [String]) async throws -> [AppleCatalogRowSnapshot] {
         let requests = try await resolver.resolveRequests(localAddonUrls: addonUrls)
         return try await loader.loadRows(requests: requests)
     }
@@ -22,14 +21,14 @@ final class FluxaAppleCatalogService {
         try await resolver.loadAddonDescriptors(localAddonUrls: addonUrls)
     }
 
-    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [FluxaCore.AppleCatalogRowSnapshot] {
+    func loadRows(requests: [FluxaAppleCatalogRequest]) async throws -> [AppleCatalogRowSnapshot] {
         try await loader.loadRows(requests: requests)
     }
 
     func loadSearchItems(
         addonUrls: [String],
         query: String
-    ) async throws -> [FluxaCore.AppleCatalogItemSnapshot] {
+    ) async throws -> [AppleCatalogItemSnapshot] {
         let requests = try await resolver.resolveSearchRequests(localAddonUrls: addonUrls, query: query)
         return try await loader.loadSearchItems(requests: requests)
     }

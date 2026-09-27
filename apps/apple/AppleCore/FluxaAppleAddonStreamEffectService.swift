@@ -1,5 +1,4 @@
 import Foundation
-import FluxaCore
 
 final class FluxaAppleAddonStreamEffectService {
     private let configurationStore: FluxaAppleAddonConfigurationStore
@@ -161,7 +160,7 @@ final class FluxaAppleAddonStreamEffectService {
     }
 
     private func streamValue(
-        _ stream: FluxaCore.AppleDetailStreamSnapshot,
+        _ stream: AppleDetailStreamSnapshot,
         subtitleUrls: [String]
     ) -> FluxaAppleJsonValue {
         .object([

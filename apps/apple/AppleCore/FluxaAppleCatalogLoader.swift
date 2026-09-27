@@ -1,5 +1,4 @@
 import Foundation
-import FluxaCore
 
 struct FluxaAppleCatalogRequest: Sendable {
     let id: String

@@ -1,5 +1,4 @@
 import Foundation
-import FluxaCore
 
 final class FluxaAppleAddonResourceLoader {
     private let resolver: FluxaAppleAddonCatalogResolver

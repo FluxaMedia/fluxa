@@ -67,12 +67,3 @@ targets:
       - name: Build Fluxa Rust Core
         script: scripts/build-rust-core-xcframework.sh
         basedOnDependencyAnalysis: false
-      - name: Build FluxaCore
-        script: ../android/gradlew -p ../android :core:embedAndSignAppleFrameworkForXcode
-        basedOnDependencyAnalysis: false
-      - name: Build FluxaData
-        script: ../android/gradlew -p ../android :data:embedAndSignAppleFrameworkForXcode
-        basedOnDependencyAnalysis: false
-      - name: Build FluxaPlayer
-        script: ../android/gradlew -p ../android :player:embedAndSignAppleFrameworkForXcode
-        basedOnDependencyAnalysis: false

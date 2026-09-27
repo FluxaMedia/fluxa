@@ -36,13 +36,6 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 
-/**
- * Minimal Android host for the Rust renderer.
- *
- * The view is opt-in from MainActivity while the migration is in progress.
- * Activity/lifecycle stays Android, while the visible Home frame belongs to
- * Rust. Its state is a small JSON projection, not a Compose tree.
- */
 class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceHolder.Callback {
     @Volatile private var nativeHandle: Long = 0L
     private var pendingHomeStateJson: String? = null

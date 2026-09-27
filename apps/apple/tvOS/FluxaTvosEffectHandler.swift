@@ -1,5 +1,4 @@
 import Foundation
-import FluxaCore
 
 final class FluxaTvosEffectHandler: FluxaApplePlatformEffectHandler {
     private let configurationStore: FluxaAppleAddonConfigurationStore
@@ -64,7 +63,7 @@ final class FluxaTvosEffectHandler: FluxaApplePlatformEffectHandler {
         }
     }
 
-    private func category(_ row: FluxaCore.AppleCatalogRowSnapshot) -> FluxaAppleJsonValue {
+    private func category(_ row: AppleCatalogRowSnapshot) -> FluxaAppleJsonValue {
         .object([
             "id": .string(row.id),
             "name": .string(row.title),

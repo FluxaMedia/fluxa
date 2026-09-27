@@ -1,5 +1,3 @@
-import FluxaCore
-import FluxaPlayer
 import SwiftUI
 
 @main
@@ -20,7 +18,7 @@ struct FluxaTvosApp: App {
             NavigationStack {
                 ScrollView {
                     VStack(alignment: .leading, spacing: compactLayout ? 24 : 36) {
-                        Text(FluxaTvos.shared.homeTitle())
+                        Text(FluxaTvosStrings.text("nav.home"))
                             .font(.largeTitle.bold())
                             .foregroundStyle(Color(themeHex: theme.colors.textPrimary, fallback: .white))
                         if homeModel.isLoading && homeModel.rows.isEmpty {

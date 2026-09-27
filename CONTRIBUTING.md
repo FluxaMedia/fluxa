@@ -5,7 +5,7 @@ Fluxa is a media hub with shared Rust application logic and platform shells for 
 ## Repository layout
 
 ```text
-apps/android   Android and Android TV shell plus shared KMP modules
+apps/android   Android and Android TV shell
 apps/apple     iOS and tvOS host code
 native/        Rust renderer and shells for desktop, web, and webOS
 core/          Shared Rust domain logic and streaming engine
