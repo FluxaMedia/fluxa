@@ -199,7 +199,7 @@ impl ArtworkLoader {
             self.animation_slots.insert(key.clone());
         }
         self.access_counter = self.access_counter.wrapping_add(1);
-        if let Some(texture) = self.textures.get(&key) {
+        if self.textures.contains_key(&key) {
             self.texture_last_used
                 .insert(key.clone(), self.access_counter);
         }
