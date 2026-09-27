@@ -82,7 +82,9 @@ mod tests {
             "stream",
             "https://addon.example/stream/movie/tt1.json",
             200,
-            Some(r#"{"streams":[{"name":"4K DV","title":"Legacy details","url":"https://video.example/4k"}]}"#),
+            Some(
+                r#"{"streams":[{"name":"4K DV","title":"Legacy details","url":"https://video.example/4k"}]}"#,
+            ),
             "streams",
             Some("Torrentio"),
             None,
@@ -217,10 +219,12 @@ mod tests {
         assert_eq!(candidate["contentType"], "movie");
         assert_eq!(candidate["id"], "tt42");
         assert_eq!(candidate["stopOnFirstResult"], true);
-        assert!(candidate["url"]
-            .as_str()
-            .unwrap()
-            .contains("/meta/movie/tt42.json"));
+        assert!(
+            candidate["url"]
+                .as_str()
+                .unwrap()
+                .contains("/meta/movie/tt42.json")
+        );
     }
 
     #[test]
@@ -285,11 +289,13 @@ mod tests {
         assert_eq!(policy["concurrency"], 12);
         assert_eq!(policy["requests"][0]["addonName"], "first");
         assert_eq!(policy["requests"][1]["addonName"], "second");
-        assert!(policy["requests"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .all(|request| request["stopOnFirstResult"] == true));
+        assert!(
+            policy["requests"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .all(|request| request["stopOnFirstResult"] == true)
+        );
     }
 
     #[test]

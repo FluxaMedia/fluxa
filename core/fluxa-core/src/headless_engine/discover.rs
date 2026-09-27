@@ -139,9 +139,10 @@ fn resolve_required_discover_extras(filters: &mut Value, catalogs: &Value) {
     let Some(extra_filters) = extra_filters.as_object_mut() else {
         return;
     };
-    for extra in extras.iter().filter(|extra| {
-        extra.get("isRequired").and_then(Value::as_bool) == Some(true)
-    }) {
+    for extra in extras
+        .iter()
+        .filter(|extra| extra.get("isRequired").and_then(Value::as_bool) == Some(true))
+    {
         let Some(name) = extra.get("name").and_then(Value::as_str) else {
             continue;
         };
@@ -164,10 +165,7 @@ fn resolve_required_discover_extras(filters: &mut Value, catalogs: &Value) {
             .get("default")
             .and_then(Value::as_str)
             .filter(|value| is_valid_option(value));
-        let first = options
-            .into_iter()
-            .flatten()
-            .find_map(Value::as_str);
+        let first = options.into_iter().flatten().find_map(Value::as_str);
         if let Some(value) = default.or(first) {
             extra_filters.insert(name.to_owned(), Value::String(value.to_owned()));
         }
@@ -382,7 +380,10 @@ pub(super) fn complete(
                         .unwrap_or_else(|| serde_json::json!({}));
                     engine.state.discover.error = Value::Null;
                     let filters = &engine.state.discover.filters;
-                    let has_source = filters.get("transportUrl").and_then(Value::as_str).is_some()
+                    let has_source = filters
+                        .get("transportUrl")
+                        .and_then(Value::as_str)
+                        .is_some()
                         && filters.get("catalogId").and_then(Value::as_str).is_some();
                     let result_count = engine.state.discover.results.as_array().map_or(0, Vec::len);
                     engine.state.discover.paging.next_skip = result_count as i32;
@@ -520,7 +521,9 @@ pub(super) fn complete(
                     if let Some(sources) = engine.state.discover.result_sources.as_object_mut() {
                         for item in &appended {
                             if let Some(id) = item.get("id").and_then(Value::as_str) {
-                                let item_type = item.get("type").and_then(Value::as_str)
+                                let item_type = item
+                                    .get("type")
+                                    .and_then(Value::as_str)
                                     .unwrap_or(&content_type);
                                 let typed_id = format!("{item_type}:{id}");
                                 sources.entry(typed_id.clone()).or_insert(source.clone());
@@ -532,7 +535,11 @@ pub(super) fn complete(
                     }
                     engine.state.discover.last_page_appended = appended;
                     engine.state.discover.last_page_sources = Value::Object(page_sources);
-                    engine.state.discover.paging.next_skip = engine.state.discover.paging.requested_skip
+                    engine.state.discover.paging.next_skip = engine
+                        .state
+                        .discover
+                        .paging
+                        .requested_skip
                         .saturating_add(page_items.len() as i32);
                     engine.state.discover.paging.has_more = !page_items.is_empty();
                 } else {

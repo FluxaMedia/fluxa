@@ -145,7 +145,10 @@ mod tests {
             "Olive Smith, a biology PhD candidate, and Dr. Adam Carlsen fake a relationship."
         );
         let text = "A reclusive author named J. R. Hartley returns home. Nobody is pleased.";
-        assert_eq!(shorten_synopsis(text), "A reclusive author named J. R. Hartley returns home.");
+        assert_eq!(
+            shorten_synopsis(text),
+            "A reclusive author named J. R. Hartley returns home."
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
 use crate::repository_flow::addon_streams_with_provider_json;
 use serde::Deserialize;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]

@@ -167,44 +167,62 @@ fn discover_pages_continue_until_the_catalog_returns_no_new_items() {
     assert!(first_page["effects"].as_array().unwrap().is_empty());
     assert_eq!(first_page["state"]["discover"]["paging"]["nextSkip"], 1);
     assert_eq!(first_page["state"]["discover"]["paging"]["hasMore"], true);
-    let page_request = |skip| json!({
-        "type": "discoverPageRequested",
-        "transportUrl": "https://addon.example/manifest.json",
-        "contentType": "movie",
-        "catalogId": "top",
-        "skip": skip,
-        "genre": "action",
-    });
-    let second_request: Value = serde_json::from_str(&headless_engine_dispatch_json(
-        handle, &page_request(1).to_string(),
-    ).unwrap()).unwrap();
+    let page_request = |skip| {
+        json!({
+            "type": "discoverPageRequested",
+            "transportUrl": "https://addon.example/manifest.json",
+            "contentType": "movie",
+            "catalogId": "top",
+            "skip": skip,
+            "genre": "action",
+        })
+    };
+    let second_request: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(handle, &page_request(1).to_string()).unwrap(),
+    )
+    .unwrap();
     assert_eq!(second_request["effects"][0]["payload"]["skip"], 1);
-    let duplicate: Value = serde_json::from_str(&headless_engine_dispatch_json(
-        handle, &page_request(1).to_string(),
-    ).unwrap()).unwrap();
+    let duplicate: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(handle, &page_request(1).to_string()).unwrap(),
+    )
+    .unwrap();
     assert!(duplicate["effects"].as_array().unwrap().is_empty());
     let second_page: Value = serde_json::from_str(&headless_engine_complete_effect_json(
         handle,
         &json!({"effectId": second_request["effects"][0]["id"], "status":"ok", "value":{"items":[{"id":"tt2"}]}}).to_string(),
     ).unwrap()).unwrap();
-    assert_eq!(second_page["state"]["discover"]["results"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        second_page["state"]["discover"]["results"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     assert_eq!(second_page["state"]["discover"]["paging"]["nextSkip"], 2);
     assert_eq!(
         second_page["state"]["discover"]["resultSources"]["movie:tt2"]["catalogId"],
         "top"
     );
-    let third_request: Value = serde_json::from_str(&headless_engine_dispatch_json(
-        handle, &page_request(2).to_string(),
-    ).unwrap()).unwrap();
+    let third_request: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(handle, &page_request(2).to_string()).unwrap(),
+    )
+    .unwrap();
     let third_page: Value = serde_json::from_str(&headless_engine_complete_effect_json(
         handle,
         &json!({"effectId": third_request["effects"][0]["id"], "status":"ok", "value":{"items":[]}}).to_string(),
     ).unwrap()).unwrap();
-    assert_eq!(third_page["state"]["discover"]["results"].as_array().unwrap().len(), 2);
+    assert_eq!(
+        third_page["state"]["discover"]["results"]
+            .as_array()
+            .unwrap()
+            .len(),
+        2
+    );
     assert_eq!(third_page["state"]["discover"]["paging"]["hasMore"], false);
-    let finished: Value = serde_json::from_str(&headless_engine_dispatch_json(
-        handle, &page_request(2).to_string(),
-    ).unwrap()).unwrap();
+    let finished: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(handle, &page_request(2).to_string()).unwrap(),
+    )
+    .unwrap();
     assert!(finished["effects"].as_array().unwrap().is_empty());
     assert!(destroy_headless_engine(handle));
 }
@@ -362,15 +380,25 @@ fn empty_discover_content_type_defaults_to_movie_and_loads_catalogs() {
         r#"{"type":"discoverRequested","loadCatalogFilters":true,"contentType":"","filters":{"catalogKey":null,"extra":{}}}"#,
     ).unwrap()).unwrap();
     assert_eq!(requested["state"]["discover"]["contentType"], "movie");
-    let completed: Value = serde_json::from_str(&headless_engine_complete_effect_json(
-        handle,
-        &json!({
-            "effectId": requested["effects"][0]["id"],
-            "status": "ok",
-            "value": {"addons": addons}
-        }).to_string(),
-    ).unwrap()).unwrap();
-    assert_eq!(completed["state"]["discover"]["catalogs"].as_array().map(Vec::len), Some(1));
+    let completed: Value = serde_json::from_str(
+        &headless_engine_complete_effect_json(
+            handle,
+            &json!({
+                "effectId": requested["effects"][0]["id"],
+                "status": "ok",
+                "value": {"addons": addons}
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(
+        completed["state"]["discover"]["catalogs"]
+            .as_array()
+            .map(Vec::len),
+        Some(1)
+    );
     assert_eq!(completed["effects"][0]["type"], "runDiscover");
     assert!(destroy_headless_engine(handle));
 }
