@@ -42,9 +42,9 @@ Dolby Vision / HDR10+ stream rewriting.
 
 | Platform | Repo | How it links |
 | --- | --- | --- |
-| Android (mobile + TV) | `apps/android` | JNI (primary) + a small UniFFI surface |
+| Android (mobile + TV) | `apps/android` | Rust dependency of `native/fluxa-android-renderer` |
 | Desktop (Linux/macOS/Windows) | `native/fluxa-desktop` | Plain Rust dependency — calls `FluxaCore`/`core_invoke` directly, no FFI marshaling |
-| iOS / tvOS | `apps/apple` | UniFFI |
+| iOS / tvOS | `apps/apple` | Rust dependency of `native/fluxa-apple-renderer` |
 | Web / webOS | `native/fluxa-web` | WASM (`bindings/wasm.rs`, `wasm` feature) |
 
 See [`docs/integrating.md`](docs/integrating.md) for how each platform actually wires
@@ -55,11 +55,9 @@ this crate in, including how to add a new capability for a given platform.
 - **`headless_engine/`** — the primary state machine. State is a typed `EngineState`
   struct made of per-feature sub-structs (home, detail, player, library, search, ...);
   cross-module writes go through `pub(super)` setters, never raw field access.
-- **`app_state.rs`** — a second, simpler engine for overlapping concerns, used by
-  Android via UniFFI. The split is intentional, not duplication to be cleaned up.
-- Three uncoordinated exposure mechanisms, one per platform's needs: `core_api::FluxaCore`
-  (minimal, desktop-only), `ffi::core_invoke` (string-routed dispatcher, desktop + Swift),
-  and `bindings/jni.rs` (Android, no equivalent elsewhere).
+- **`app_state.rs`** — a second, simpler engine for overlapping concerns. The split is intentional, not duplication to be cleaned up.
+- Two exposure mechanisms: `core_api::FluxaCore` (minimal) and `ffi::core_invoke`
+  (string-routed dispatcher).
 
 Full architecture notes, the effect catalog, and the wire-format reference live in
 [`docs/`](docs/):
@@ -103,7 +101,7 @@ docs/                   architecture, effects reference, integration guide
 
 ## Stack
 
-[Rust](https://www.rust-lang.org/) · [JNI](https://docs.rs/jni) · [UniFFI](https://mozilla.github.io/uniffi-rs/) · [wasm-bindgen](https://rustwasm.github.io/wasm-bindgen/) · [axum](https://github.com/tokio-rs/axum) · [tokio](https://tokio.rs/) · [librqbit](https://github.com/ikatson/rqbit) · [dolby_vision](https://github.com/quietvoid/dovi_tool) · [serde](https://serde.rs/)
+[Rust](https://www.rust-lang.org/) · [wasm-bindgen](https://rustwasm.github.io/wasm-bindgen/) · [axum](https://github.com/tokio-rs/axum) · [tokio](https://tokio.rs/) · [librqbit](https://github.com/ikatson/rqbit) · [dolby_vision](https://github.com/quietvoid/dovi_tool) · [serde](https://serde.rs/)
 
 ---
 

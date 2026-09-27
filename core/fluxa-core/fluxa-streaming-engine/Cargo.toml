@@ -19,7 +19,6 @@ native = [
     "dep:tokio-util",
     "dep:tower-http",
     "dep:url",
-    "dep:jni",
 ]
 
 [dependencies]
@@ -29,7 +28,6 @@ futures-util = { version = "0.3", optional = true }
 tower-http = { version = "0.6", features = ["cors"], optional = true }
 dolby_vision = { workspace = true }
 fluxa_core = { workspace = true, features = ["streaming-shared"], optional = true }
-jni = { workspace = true, optional = true }
 memchr = "2"
 librqbit = { git = "https://github.com/KhooLy/rqbit.git", rev = "aba97d45", package = "librqbit", default-features = false, features = ["rust-tls", "disable-upload"], optional = true }
 reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "form", "rustls", "stream"], optional = true }

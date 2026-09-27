@@ -2,24 +2,9 @@
 
 fluxa-core ships as a compiled native library. Each platform links against it differently.
 
-## Android
+## Android, iOS, tvOS
 
-**How it links:** Two paths, both real.
-
-**Primary path — JNI (`bindings/jni.rs`):** ~157 hand-written `extern "system"` functions called directly from `FluxaCoreNative.kt`. This covers most of the crate's surface area, including the headless engine, stream selection, DV policy, calendar, watchlist, and more.
-
-**Secondary path — UniFFI:** A small subset of functions in `bindings/uniffi.rs` marked `#[uniffi::export]` generate Kotlin bindings (`FluxaCoreUniFfi.kt`). This covers headless engine lifecycle, `coreCapabilities`, and version.
-
-### Setup
-
-1. Build `.so` files for each ABI (see [building.md](building.md)).
-2. Place them in `src/main/jniLibs/<abi>/libfluxa_core.so` in the Android project.
-3. `System.loadLibrary("fluxa_core")` in your `Application` class or via the generated UniFFI loader.
-4. Call `FluxaCoreNative.createHeadlessEngine(initialJson)` to get a handle, then dispatch actions and complete effects through `FluxaCoreNative.*` methods.
-
-### Adding a new capability for Android
-
-Add a new `string_fn!` (or equivalent) entry to `src/bindings/jni.rs`. If the same capability also needs to reach desktop or Swift, add a route to `src/ffi.rs::route_*` too. There is no shared registration — you wire each platform separately.
+**How it links:** Plain Rust dependency of the platform renderer crates (`native/fluxa-android-renderer`, `native/fluxa-apple-renderer`). The Kotlin and Swift hosts only talk to the renderer, never to fluxa-core directly.
 
 ---
 
@@ -44,14 +29,6 @@ No FFI marshaling — it calls Rust functions directly.
 If desktop needs it via `core_invoke`: add a route arm to the appropriate `route_*` function in `src/ffi.rs`.
 
 If desktop needs a direct `FluxaCore` method (unusual — only do this if `core_invoke` is genuinely not suitable): add it to `src/core_api.rs` and confirm there's a real call site in `native/` before adding.
-
----
-
-## iOS / tvOS
-
-**How it links:** Via UniFFI-generated Swift bindings. `src/bindings/uniffi.rs::core_invoke` is the intended entry point — Swift calls it instead of binding each helper individually.
-
-Build the crate with `--features uniffi-bindings`, generate Swift source with `uniffi-bindgen`, and link the resulting `.xcframework` into the Xcode project.
 
 ---
 

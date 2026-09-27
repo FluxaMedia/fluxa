@@ -29,21 +29,18 @@ The core never initiates anything. Every state transition begins with the platfo
 |---|---|---|
 | `FluxaCore` struct | Desktop (native) | `src/core_api.rs` |
 | `core_invoke(method, args_json)` | Desktop + Swift | `src/ffi.rs` |
-| JNI externs | Android | `src/bindings/jni.rs` |
 
-`FluxaCore` is intentionally minimal and contains only methods with verified desktop callers. Everything else goes through `core_invoke` (for desktop/Swift) or raw JNI bindings (for Android). `coreContractManifest` exposes the shared lifecycle/effect contract for generated bindings and drift checks.
+`FluxaCore` is intentionally minimal and contains only methods with verified desktop callers. Everything else goes through `core_invoke`. `coreContractManifest` exposes the shared lifecycle/effect contract for generated bindings and drift checks.
 
 ## Module map
 
 | Module | Responsibility |
 |---|---|
 | `headless_engine` | Primary state machine — typed `EngineState`, action dispatch, effect emission |
-| `app_state` | Secondary state engine, Android/UniFFI only |
+| `app_state` | Secondary state engine |
 | `core_api` | `FluxaCore` struct, 8 methods, desktop only |
 | `ffi` | `core_invoke` string-routed dispatcher (~115 methods) |
 | `runtime` | `EffectKind` / `EffectEnvelope` types |
-| `bindings/jni` | ~157 JNI externs for Android |
-| `bindings/uniffi` | UniFFI exports (headless engine lifecycle, `coreCapabilities`, version) |
 | `bindings/wasm` | WASM exports for webOS |
 | `addon_protocol` | Manifest URL normalisation, resource URL construction, manifest merging |
 | `addon_store` | Addon search policy, CloudStream/plugin repo URL normalisation |
@@ -61,7 +58,7 @@ The core never initiates anything. Every state transition begins with the platfo
 | `calendar_plan` | Calendar item filtering, widget rows, release notifications |
 | `external_sync` | Trakt and Simkl API response parsing and history mapping |
 | `intro_segments` | introdb.app and AniSkip segment parsing, deduplication |
-| `dolby_vision_rpu` | Dolby Vision RPU metadata extraction (`native` feature, JNI-only) |
+| `dolby_vision_rpu` | Dolby Vision RPU metadata extraction (`native` feature) |
 | `platform_plan` | Season/episode navigation planning |
 | `tmdb_plan` | TMDB ID resolution hints, trailer mapping |
 | `watchlist_plan` | Watchlist toggle, offline grouping, progress merging |
@@ -70,4 +67,4 @@ The core never initiates anything. Every state transition begins with the platfo
 
 ## Companion crate
 
-`fluxa-streaming-engine/` lives in the same repo. It handles the runtime streaming side — torrent via librqbit, HTTP proxying via axum, Dolby Vision bitstream rewriting. It exposes its own JNI bindings (`bindings/jni.rs`) and three CLI tools (`torrent_bench`, `torrent_serve`, `companion_server`).
+`fluxa-streaming-engine/` lives in the same repo. It handles the runtime streaming side — torrent via librqbit, HTTP proxying via axum, Dolby Vision bitstream rewriting. It has three CLI tools (`torrent_bench`, `torrent_serve`, `companion_server`).

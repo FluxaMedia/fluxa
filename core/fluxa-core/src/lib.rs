@@ -14,9 +14,6 @@
     )
 )]
 
-#[cfg(feature = "uniffi-bindings")]
-uniffi::setup_scaffolding!();
-
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod action_contract;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]

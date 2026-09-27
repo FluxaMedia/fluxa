@@ -124,10 +124,6 @@ core_invoke("engine.completeEffect", { "handle": 1, "result": { "effectId": "fx-
 core_invoke("engine.destroy", 1)
 ```
 
-### Via JNI (Android)
-
-Android calls the corresponding `Java_com_fluxa_app_core_rust_FluxaCoreNative_*` native methods from `FluxaCoreNative.kt`. The JNI functions wrap the same underlying `headless_engine::*` functions.
-
 ## Error envelope
 
 `core_invoke` always returns a string. On failure:

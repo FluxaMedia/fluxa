@@ -191,7 +191,6 @@ pub fn plugin_http_request_error(request: &PluginHttpRequest) -> Option<&'static
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(feature = "uniffi-bindings", derive(uniffi::Record))]
 #[serde(rename_all = "camelCase")]
 pub struct PluginHttpRequest {
     pub method: String,
@@ -202,7 +201,6 @@ pub struct PluginHttpRequest {
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-#[cfg_attr(feature = "uniffi-bindings", derive(uniffi::Record))]
 #[serde(rename_all = "camelCase")]
 pub struct PluginHttpResponse {
     pub status: u16,
@@ -213,7 +211,6 @@ pub struct PluginHttpResponse {
     pub error: Option<String>,
 }
 
-#[cfg_attr(feature = "uniffi-bindings", uniffi::export(callback_interface))]
 pub trait PluginHttpClient: Send + Sync {
     /// Before every connection, resolve the requested host and reject every
     /// loopback, private, link-local, or unspecified A/AAAA result. Apply the
