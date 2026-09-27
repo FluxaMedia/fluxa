@@ -1,4 +1,3 @@
-#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
 use crate::ffmpeg_locator;
 use serde_json::json;
 use std::collections::HashMap;
@@ -6,7 +5,6 @@ use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 use std::io::{BufRead, BufReader, Write};
 use std::net::{TcpListener, TcpStream};
-#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -15,7 +13,6 @@ use std::time::Duration;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpListener as TokioTcpListener;
 use tokio::net::TcpStream as TokioTcpStream;
-#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
 use tokio::process::Command;
 
 const PROXY_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
@@ -370,69 +367,6 @@ async fn handle_async_local_stream(
     }
 }
 
-#[cfg(all(feature = "apple", fluxa_ffmpeg_bridge))]
-async fn handle_ffmpeg_remux(
-    stream: &mut TokioTcpStream,
-    config: &LocalStreamConfig,
-    request: &ParsedLocalRequest,
-    query: &str,
-) {
-    if request.method == "HEAD" {
-        let _ = stream
-            .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n")
-            .await;
-        return;
-    }
-
-    let headers = config
-        .headers
-        .iter()
-        .map(|(name, value)| format!("{name}: {value}\r\n"))
-        .collect::<String>();
-    let start_microseconds = query
-        .split('&')
-        .find_map(|item| {
-            let (name, value) = item.split_once('=')?;
-            (name == "start")
-                .then(|| value.parse::<f64>().ok())
-                .flatten()
-        })
-        .filter(|seconds| *seconds > 0.0)
-        .map(|seconds| (seconds * 1_000_000.0) as i64)
-        .unwrap_or(0);
-    let mut output =
-        crate::apple_ffmpeg::start_remux(config.target_url.clone(), headers, start_microseconds);
-    let Some(crate::apple_ffmpeg::RemuxMessage::Chunk(first_chunk)) = output.recv().await else {
-        let _ = stream
-            .write_all(
-                b"HTTP/1.1 415 Unsupported Media Type\r\nConnection: close\r\n\r\nsource cannot be adapted to fMP4",
-            )
-            .await;
-        return;
-    };
-    if stream
-        .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: video/mp4\r\nConnection: close\r\n\r\n")
-        .await
-        .is_err()
-    {
-        return;
-    }
-    if stream.write_all(&first_chunk).await.is_err() {
-        return;
-    }
-    while let Some(message) = output.recv().await {
-        match message {
-            crate::apple_ffmpeg::RemuxMessage::Chunk(chunk) => {
-                if stream.write_all(&chunk).await.is_err() {
-                    return;
-                }
-            }
-            crate::apple_ffmpeg::RemuxMessage::Finished(_) => return,
-        }
-    }
-}
-
-#[cfg(not(all(feature = "apple", fluxa_ffmpeg_bridge)))]
 async fn handle_ffmpeg_remux(
     stream: &mut TokioTcpStream,
     config: &LocalStreamConfig,

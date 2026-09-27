@@ -8,7 +8,7 @@ crate-type = ["cdylib", "staticlib", "rlib"]
 
 [features]
 default = ["native"]
-engine = [
+native = [
     "dep:axum",
     "dep:bytes",
     "dep:fluxa_core",
@@ -19,9 +19,8 @@ engine = [
     "dep:tokio-util",
     "dep:tower-http",
     "dep:url",
+    "dep:jni",
 ]
-native = ["engine", "dep:jni"]
-apple = ["engine"]
 
 [dependencies]
 axum = { version = "0.8", optional = true }
@@ -39,9 +38,6 @@ serde_json = { workspace = true }
 tokio = { version = "1", features = ["rt-multi-thread", "net", "time", "io-util", "sync", "process", "fs", "macros"], optional = true }
 tokio-util = { version = "0.7", features = ["io", "rt"], optional = true }
 url = { version = "2", optional = true }
-
-[build-dependencies]
-cc = "1.2"
 
 [dev-dependencies]
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
