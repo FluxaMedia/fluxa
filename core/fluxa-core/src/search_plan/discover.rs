@@ -46,7 +46,11 @@ pub(crate) fn merge_discover_pages_json(request_json: &str) -> Option<String> {
 /// Merge Discover's per-catalog batches once in Core so every host preserves
 /// the same source identity and deduplication order for a selected catalog.
 pub(crate) fn merge_discover_sources_json(request_json: &str) -> Option<String> {
-    let request: Value = serde_json::from_str(request_json).ok()?;
+    let request = serde_json::from_str::<Value>(request_json).ok()?;
+    serde_json::to_string(&merge_discover_sources(&request)?).ok()
+}
+
+pub(crate) fn merge_discover_sources(request: &Value) -> Option<Value> {
     let sources = request.get("sources")?.as_array()?;
     let mut results = Vec::new();
     let mut result_sources = serde_json::Map::new();
@@ -79,7 +83,7 @@ pub(crate) fn merge_discover_sources_json(request_json: &str) -> Option<String> 
                 .or_insert(identity.clone());
         }
     }
-    serde_json::to_string(&json!({"results": results, "resultSources": result_sources})).ok()
+    Some(json!({"results": results, "resultSources": result_sources}))
 }
 
 /// Resolve the concrete catalog requests for a Discover effect in one place.

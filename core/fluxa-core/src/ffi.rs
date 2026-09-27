@@ -159,10 +159,28 @@ pub fn core_invoke(method: &str, args_json: &str) -> String {
 }
 
 pub fn call(method: &str, args: &Value) -> Result<Value, String> {
+    let direct =
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| call_direct(method, args)));
+    if let Ok(Some(value)) = direct {
+        return Ok(value);
+    }
     guarded_route(method, &args.to_string()).map_err(|e| match e.message.is_empty() {
         true => e.kind.as_str().to_owned(),
         false => format!("{}: {}", e.kind.as_str(), e.message),
     })
+}
+
+fn call_direct(method: &str, args: &Value) -> Option<Value> {
+    match method {
+        "homeHeroPlan" => Some(crate::home_ranking::home_hero_plan(args)),
+        "normalizeLibraryDocument" => Some(crate::library_state::normalize_library_document(args)),
+        "buildContinueWatchingFromProgress" => {
+            crate::library_state::build_continue_watching_from_progress(args)
+        }
+        "mergeSearchSources" => crate::search_plan::merge_search_sources(args),
+        "mergeDiscoverSources" => crate::search_plan::merge_discover_sources(args),
+        _ => None,
+    }
 }
 
 fn guarded_route(method: &str, args_json: &str) -> Outcome {
@@ -322,6 +340,39 @@ mod tests {
 
     fn parse(s: &str) -> Value {
         serde_json::from_str(s).unwrap()
+    }
+
+    #[test]
+    fn direct_calls_match_the_string_route() {
+        let item =
+            json!({"id": "tt1", "type": "movie", "name": "A", "poster": "p", "background": "b"});
+        let cases = [
+            (
+                "homeHeroPlan",
+                json!({"categories": [{"id": "c", "type": "movie", "items": [item]}], "prefs": {}}),
+            ),
+            (
+                "normalizeLibraryDocument",
+                json!({"watchlist": [item], "progress": []}),
+            ),
+            (
+                "buildContinueWatchingFromProgress",
+                json!({"tt1": {"timeOffset": 10, "duration": 100, "meta": item}}),
+            ),
+            (
+                "mergeSearchSources",
+                json!([{"id": "s", "name": "S", "items": [item]}]),
+            ),
+            (
+                "mergeDiscoverSources",
+                json!({"sources": [{"type": "movie", "items": [item, item]}]}),
+            ),
+        ];
+        for (method, args) in cases {
+            let direct = call_direct(method, &args).unwrap();
+            let routed = route(method, &args.to_string()).ok().unwrap();
+            assert_eq!(direct, routed, "{method}");
+        }
     }
 
     #[test]

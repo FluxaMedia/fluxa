@@ -163,7 +163,12 @@ pub(crate) fn watched_video_ids_json(items_json: &str, imdb_id: &str) -> Option<
 }
 
 pub(crate) fn normalize_library_document_json(json: &str) -> String {
-    let mut lib: serde_json::Map<String, Value> = serde_json::from_str(json).unwrap_or_default();
+    let lib = serde_json::from_str(json).unwrap_or(Value::Null);
+    serde_json::to_string(&normalize_library_document(&lib)).unwrap_or_else(|_| "{}".to_string())
+}
+
+pub(crate) fn normalize_library_document(lib: &Value) -> Value {
+    let mut lib = lib.as_object().cloned().unwrap_or_default();
     lib.insert("schemaVersion".to_string(), json!(2));
     if !lib.get("watchlist").map(Value::is_array).unwrap_or(false) {
         lib.insert("watchlist".to_string(), json!([]));
@@ -201,7 +206,7 @@ pub(crate) fn normalize_library_document_json(json: &str) -> String {
     if !lib.get("completed").map(Value::is_array).unwrap_or(false) {
         lib.insert("completed".to_string(), json!([]));
     }
-    serde_json::to_string(&Value::Object(lib)).unwrap_or_else(|_| "{}".to_string())
+    Value::Object(lib)
 }
 
 pub(crate) fn normalize_library_read_result_json(json: &str) -> String {

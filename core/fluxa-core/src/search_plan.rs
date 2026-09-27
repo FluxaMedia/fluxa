@@ -16,11 +16,11 @@ pub(crate) use detail_nav::{
 pub(crate) use discover::{discover_catalog_candidates_json, discover_source_requests_json};
 pub(crate) use discover::{
     discover_selection_plan_json, discover_sort_plan_json, merge_discover_pages_json,
-    merge_discover_sources_json,
+    merge_discover_sources, merge_discover_sources_json,
 };
 pub(crate) use library_sort::library_sort_plan_json;
 pub(crate) use search::{
-    merge_search_sources_json, recent_searches_plan_json, search_result_grouping_json,
+    merge_search_sources, merge_search_sources_json, recent_searches_plan_json, search_result_grouping_json,
     search_screen_plan_json, search_suggestions_plan_json,
 };
 #[cfg(test)]
