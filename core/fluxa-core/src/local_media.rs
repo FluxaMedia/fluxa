@@ -62,6 +62,25 @@ fn bracket_group() -> &'static Regex {
     RE.get_or_init(|| Regex::new(r"^\[[^]]+][ ._\-]*").unwrap())
 }
 
+fn generic_folder() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| Regex::new(r"(?i)^(?:movies?|films?|tv(?:[ ._-]*shows?)?|series|shows?|anime|media|season[ ._-]*\d+|s\d+)$").unwrap())
+}
+
+fn title_cleanup() -> &'static [Regex; 5] {
+    static RE: OnceLock<[Regex; 5]> = OnceLock::new();
+    RE.get_or_init(|| {
+        [
+            r"(?i)[ ._\-]+S\d{1,3}[ ._\-]*E\d{1,4}.*$",
+            r"(?i)[ ._\-]+\d{1,2}x\d{1,4}.*$",
+            r"[._]+",
+            r"\s+-\s+\d{1,4}.*$",
+            r"\s+",
+        ]
+        .map(|pattern| Regex::new(pattern).unwrap())
+    })
+}
+
 fn is_video_file(name: &str) -> bool {
     let extension = name
         .rsplit_once('.')
@@ -128,26 +147,12 @@ fn clean_title(raw: &str, year: Option<i64>, episode_start: Option<usize>) -> St
         value = value.replace(&year.to_string(), " ");
     }
     value = release_noise().replace_all(&value, " ").into_owned();
-    value = Regex::new(r"(?i)[ ._\-]+S\d{1,3}[ ._\-]*E\d{1,4}.*$")
-        .unwrap()
-        .replace(&value, "")
-        .into_owned();
-    value = Regex::new(r"(?i)[ ._\-]+\d{1,2}x\d{1,4}.*$")
-        .unwrap()
-        .replace(&value, "")
-        .into_owned();
-    value = Regex::new(r"[._]+")
-        .unwrap()
-        .replace_all(&value, " ")
-        .into_owned();
-    value = Regex::new(r"\s+-\s+\d{1,4}.*$")
-        .unwrap()
-        .replace(&value, "")
-        .into_owned();
-    value = Regex::new(r"\s+")
-        .unwrap()
-        .replace_all(&value, " ")
-        .into_owned();
+    let [season_tail, cross_tail, separators, dash_tail, spaces] = title_cleanup();
+    value = season_tail.replace(&value, "").into_owned();
+    value = cross_tail.replace(&value, "").into_owned();
+    value = separators.replace_all(&value, " ").into_owned();
+    value = dash_tail.replace(&value, "").into_owned();
+    value = spaces.replace_all(&value, " ").into_owned();
     value.trim_matches([' ', '-', '_', '.']).to_string()
 }
 
@@ -222,7 +227,7 @@ fn parse_filename(args: &Value) -> Option<Value> {
                     .and_then(|c| c.get(1)?.as_str().parse::<i64>().ok())
             })
         });
-    let generic_folder = Regex::new(r"(?i)^(?:movies?|films?|tv(?:[ ._-]*shows?)?|series|shows?|anime|media|season[ ._-]*\d+|s\d+)$").unwrap();
+    let generic_folder = generic_folder();
     let parent_title = if kind.eq_ignore_ascii_case("movies") {
         None
     } else {

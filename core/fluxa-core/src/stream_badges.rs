@@ -2,6 +2,7 @@ use crate::types::resource::Stream;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::{Arc, Mutex};
 
 pub const STREAM_BADGE_IMPORT_LIMIT: usize = 3;
 
@@ -397,6 +398,21 @@ fn matches_any_candidate(filter: &CompiledFilter, candidates: &[String]) -> bool
     })
 }
 
+fn cached_filters(rules_json: &str) -> Arc<Vec<CompiledFilter>> {
+    static CACHE: Mutex<Option<(String, Arc<Vec<CompiledFilter>>)>> = Mutex::new(None);
+    let mut cache = CACHE
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if let Some((key, filters)) = cache.as_ref()
+        && key == rules_json
+    {
+        return Arc::clone(filters);
+    }
+    let filters = Arc::new(compile_active_filters(&rules_from_json(rules_json)));
+    *cache = Some((rules_json.to_owned(), Arc::clone(&filters)));
+    filters
+}
+
 /// Matches a stream against the active import's enabled filters, returning
 /// the matched [`StreamBadge`] list deduped by image URL (falling back to
 /// name) in first-match order.
@@ -404,8 +420,7 @@ pub fn match_stream_badges_json(stream_json: &str, rules_json: &str) -> String {
     let Ok(stream) = serde_json::from_str::<Stream>(stream_json) else {
         return "[]".to_string();
     };
-    let rules = rules_from_json(rules_json);
-    let filters = compile_active_filters(&rules);
+    let filters = cached_filters(rules_json);
     if filters.is_empty() {
         return "[]".to_string();
     }
@@ -415,7 +430,7 @@ pub fn match_stream_badges_json(stream_json: &str, rules_json: &str) -> String {
     }
 
     let mut matched: Vec<StreamBadge> = Vec::new();
-    for filter in &filters {
+    for filter in filters.iter() {
         if matches_any_candidate(filter, &candidates)
             && !matched
                 .iter()
