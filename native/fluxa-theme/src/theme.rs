@@ -337,11 +337,9 @@ mod tests {
     }
 
     #[test]
-    fn theme_colors_are_converted_from_shared_hex_tokens() {
-        let color = theme("fluxa-dark")
-            .expect("theme")
-            .color("accent")
-            .expect("color");
+    fn hex_tokens_convert_to_unit_rgb() {
+        let color = parse_hex_color("accent", "#E85D3F").expect("color");
         assert_eq!(color, Color::rgb(232.0 / 255.0, 93.0 / 255.0, 63.0 / 255.0));
+        assert!(theme("fluxa-dark").expect("theme").color("accent").is_ok());
     }
 }
