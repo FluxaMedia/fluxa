@@ -28,8 +28,8 @@ jobs:
       - uses: actions/checkout@v7
       - name: Check repository structure
         run: node scripts/check-monorepo.mjs
-      - name: Check Android i18n output
-        run: node scripts/generate-android-i18n.mjs --check
+      - name: Check shared i18n keys
+        run: node scripts/check-i18n.mjs
       - name: Check generated headless contracts
         run: node scripts/generate-headless-contracts.mjs --check
 

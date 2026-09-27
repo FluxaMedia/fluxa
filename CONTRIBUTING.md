@@ -41,7 +41,7 @@ npm run check:apple
 
 For Android or Apple changes, run the relevant Gradle tasks from `apps/android` on a machine with the required SDKs. Avoid dependency downloads unless you are on Wi-Fi; use offline mode where possible.
 
-When changing user-facing copy, edit `shared/i18n` and run `npm run generate:i18n` so Android's generated resources stay synchronized.
+When changing user-facing copy, edit `shared/i18n` and add the key to both language files.
 
 ## Pull requests
 
