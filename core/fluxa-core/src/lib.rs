@@ -98,6 +98,7 @@ mod nuvio_pin;
 mod nuvio_sync;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod oauth_plan;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod provider_library;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod offline_download;
