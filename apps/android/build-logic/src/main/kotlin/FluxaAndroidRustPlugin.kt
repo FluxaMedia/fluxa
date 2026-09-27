@@ -3,20 +3,14 @@ import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.tasks.Exec
-import org.gradle.api.tasks.testing.Test
 import org.gradle.kotlin.dsl.configure
 import org.gradle.kotlin.dsl.register
-import org.gradle.kotlin.dsl.withType
 import java.io.File
 import java.util.concurrent.TimeUnit
 
 class FluxaAndroidRustPlugin : Plugin<Project> {
     override fun apply(target: Project) {
         with(target) {
-        val rustCoreDir = rootProject.layout.projectDirectory.asFile
-            .resolve("../../core/fluxa-core")
-            .canonicalFile
-        val streamingDir = rustCoreDir.resolve("fluxa-streaming-engine")
         val rendererDir = rootProject.layout.projectDirectory.asFile
             .resolve("../../native")
             .canonicalFile
@@ -111,59 +105,6 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
             }
         }
 
-        val coreTasks = selectedTargets.map { target ->
-            tasks.register<Exec>("buildFluxaCore${target.taskSuffix}") {
-                group = "build"
-                description = "Builds the Fluxa Rust core for ${target.abi}."
-                workingDir = rustCoreDir
-                commandLine("cargo", "build", "--target", target.triple, *cargoProfileArgs.toTypedArray())
-                inputs.files(fileTree(rustCoreDir) {
-                    exclude("target/**", ".git/**", ".agents/**", ".codex/**", "fluxa-streaming-engine/target/**")
-                })
-                outputs.file(outputDir.map { it.file("${target.abi}/libfluxa_core.so") })
-                configureToolchain(this, target)
-                doLast {
-                    copyLibrary(
-                        rustCoreDir,
-                        target,
-                        profile,
-                        "libfluxa_core.so",
-                        outputDir.get().dir(target.abi).asFile,
-                    )
-                }
-            }
-        }
-        tasks.register("buildFluxaCore") {
-            group = "build"
-            description = "Builds the Fluxa Rust core for selected Android ABIs."
-            dependsOn(coreTasks)
-        }
-
-        val streamingTasks = selectedTargets.map { target ->
-            tasks.register<Exec>("buildFluxaStreamingEngine${target.taskSuffix}") {
-                group = "build"
-                description = "Builds the Fluxa streaming engine for ${target.abi}."
-                workingDir = streamingDir
-                commandLine("cargo", "build", "--target", target.triple, *cargoProfileArgs.toTypedArray())
-                inputs.files(fileTree(streamingDir) { exclude("target/**", ".git/**", ".agents/**", ".codex/**") })
-                outputs.file(outputDir.map { it.file("${target.abi}/libfluxa_streaming_engine.so") })
-                configureToolchain(this, target)
-                doLast {
-                    copyLibrary(
-                        rustCoreDir,
-                        target,
-                        profile,
-                        "libfluxa_streaming_engine.so",
-                        outputDir.get().dir(target.abi).asFile,
-                    )
-                }
-            }
-        }
-        tasks.register("buildFluxaStreamingEngine") {
-            group = "build"
-            description = "Builds the Fluxa streaming engine for selected Android ABIs."
-            dependsOn(streamingTasks)
-        }
         val rendererTasks = selectedTargets.map { target ->
             tasks.register<Exec>("buildFluxaAndroidRenderer${target.taskSuffix}") {
                 group = "build"
@@ -204,14 +145,7 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
         }
         tasks.matching { it.name == "preBuild" }.configureEach {
             dependsOn(cleanUnselectedRustJniLibs)
-            dependsOn("buildFluxaCore", "buildFluxaStreamingEngine", "buildFluxaAndroidRenderer")
-        }
-        tasks.withType<Test>().configureEach {
-            dependsOn(rootProject.tasks.named("buildFluxaCoreHost"))
-            dependsOn(rootProject.tasks.named("buildFluxaStreamingEngineHost"))
-            jvmArgs("-Djava.library.path=${rustCoreDir.resolve("target/debug").absolutePath}")
-            systemProperty("jna.library.path", rustCoreDir.resolve("target/debug").absolutePath)
-            systemProperty("fluxa.core.library.path", rustCoreDir.resolve("target/debug/libfluxa_core.so").absolutePath)
+            dependsOn("buildFluxaAndroidRenderer")
         }
         }
     }

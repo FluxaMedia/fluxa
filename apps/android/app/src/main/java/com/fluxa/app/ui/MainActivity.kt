@@ -1,46 +1,30 @@
 package com.fluxa.app.ui
 
+import android.app.Activity
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import android.view.WindowManager
-import androidx.activity.OnBackPressedCallback
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
-import androidx.fragment.app.FragmentActivity
-import com.fluxa.app.data.local.ProfileManager
-import com.fluxa.app.data.local.ProfilePickerSettingsStore
-import com.fluxa.app.player.TorrentStreamManager
 import com.fluxa.app.ui.rust.NativeVideoHost
 import com.google.gson.Gson
-import com.lagradost.cloudstream3.CommonActivity
-import dagger.hilt.android.AndroidEntryPoint
-import javax.inject.Inject
 
-@AndroidEntryPoint
-class MainActivity : FragmentActivity() {
-
-    @Inject lateinit var profileManager: ProfileManager
-    @Inject lateinit var profilePickerSettingsStore: ProfilePickerSettingsStore
+class MainActivity : Activity() {
 
     private lateinit var host: NativeVideoHost
     private val gson = Gson()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        CommonActivity.activity = this
         WindowCompat.setDecorFitsSystemWindows(window, com.fluxa.app.BuildConfig.IS_TV)
-        if (!com.fluxa.app.BuildConfig.IS_TV && android.os.Build.VERSION.SDK_INT >= 33 &&
-            androidx.core.content.ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED
-        ) {
-            androidx.core.app.ActivityCompat.requestPermissions(this, arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1007)
-        }
 
         host = NativeVideoHost(this)
         host.onPlayingChanged = ::setPlaying
         host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
-        host.renderer.legacyProfilesJson = ::legacyProfilesJson
+        host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
         host.renderer.onNativeAction = { Log.i("FluxaNativeRenderer", "Unhandled native actions: $it") }
         host.renderer.dispatchCoreCommand(
             gson.toJson(mapOf("formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile"))
@@ -48,32 +32,23 @@ class MainActivity : FragmentActivity() {
         setContentView(host)
         host.renderer.requestFocus()
 
-        onBackPressedDispatcher.addCallback(this, object : OnBackPressedCallback(true) {
-            override fun handleOnBackPressed() {
-                if (!host.renderer.back()) moveTaskToBack(true)
-            }
-        })
+        if (Build.VERSION.SDK_INT >= 33) {
+            onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, ::back)
+        }
         handleIntent(intent)
+    }
+
+    @Deprecated("Replaced by OnBackInvokedCallback on API 33+")
+    override fun onBackPressed() = back()
+
+    private fun back() {
+        if (!host.renderer.back()) moveTaskToBack(true)
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleIntent(intent)
     }
-
-    override fun onDestroy() {
-        CommonActivity.activity = null
-        TorrentStreamManager.getInstance().shutdown()
-        super.onDestroy()
-    }
-
-    private fun legacyProfilesJson(): String = gson.toJson(
-        mapOf(
-            "profiles" to profileManager.getProfiles(),
-            "activeProfileId" to profileManager.getLastActiveProfileId(),
-            "pickerSettings" to profilePickerSettingsStore.get(),
-        )
-    )
 
     private fun handleIntent(intent: Intent?) {
         if (intent == null) return

@@ -17,9 +17,6 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Fluxa"
-include(":core")
-include(":data")
-include(":player")
 include(":app")
 include(":tvBenchmark")
 include(":mobileBenchmark")

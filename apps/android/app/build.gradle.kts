@@ -3,10 +3,7 @@ import org.gradle.api.GradleException
 
 plugins {
     alias(libs.plugins.fluxa.android.application)
-    alias(libs.plugins.fluxa.android.compose)
-    alias(libs.plugins.fluxa.android.hilt)
     alias(libs.plugins.fluxa.android.rust)
-    alias(libs.plugins.ksp)
 }
 
 
@@ -38,20 +35,6 @@ android {
         targetSdk = 36
         versionCode = 700
         versionName = appVersionName
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        buildConfigField("String", "TRAKT_CLIENT_ID", "\"${secret("TRAKT_CLIENT_ID")}\"")
-        buildConfigField("String", "TRAKT_CLIENT_SECRET", "\"${secret("TRAKT_CLIENT_SECRET")}\"")
-        buildConfigField("String", "SIMKL_CLIENT_ID", "\"${secret("SIMKL_CLIENT_ID")}\"")
-        buildConfigField("String", "ANILIST_CLIENT_ID", "\"${secret("ANILIST_CLIENT_ID")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_URL", "\"${secret("FLUXA_NUVIO_SUPABASE_URL")}\"")
-        buildConfigField("String", "NUVIO_SUPABASE_KEY", "\"${secret("FLUXA_NUVIO_SUPABASE_KEY")}\"")
-        buildConfigField("String", "FLUXA_SYNC_BASE_URL", "\"${secret("FLUXA_SYNC_BASE_URL")}\"")
-
-    }
-
-    testOptions {
-        unitTests.isReturnDefaultValues = true
     }
 
     splits {
@@ -162,70 +145,9 @@ if (requiresSignedRelease && !listOf(
 }
 
 dependencies {
-    // Submodules
-    implementation(project(":core"))
-    implementation(project(":data"))
-    implementation(project(":player"))
-
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.documentfile)
-    testImplementation(libs.jna)
-    testImplementation(libs.okhttp.mockwebserver)
-    implementation(libs.androidx.activity.compose)
     implementation(libs.bundles.coroutines)
-    implementation(libs.bundles.lifecycle)
-    implementation(libs.androidx.work.runtime)
-    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.hilt.work)
-    ksp(libs.androidx.hilt.compiler)
-
-    // Compose
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.material3)
-    implementation(libs.androidx.compose.foundation)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.runtime.tracing)
-
-    // TV
-    implementation(libs.androidx.tv.material)
-
-    // Image loading
-    implementation(libs.bundles.coil3)
-
-    // Room
-    implementation(libs.androidx.room.runtime)
-
-    // Media3 (for ExoPlayer access and @UnstableApi)
-    implementation(libs.bundles.media3)
-    implementation(libs.media3.session)
-
-    // Serialization / networking
-    implementation(libs.retrofit.gson)
-    implementation(libs.okhttp.logging)
-
-    // CloudStream plugin host
-    implementation(libs.cloudstream) {
-        exclude(group = "org.mozilla", module = "rhino")
-        exclude(group = "com.github.AmarullisVFX", module = "newpipeextractor")
-        exclude(group = "com.github.AmaryllisVFX", module = "newpipeextractor")
-        exclude(group = "com.github.AmaryllisVFX.newpipeextractor")
-        exclude(group = "info.debatty", module = "java-string-similarity")
-    }
-    implementation(libs.jackson.databind)
-    implementation(libs.jackson.module.kotlin)
-
-    // Misc
-    implementation(libs.zxing)
-    implementation(libs.androidx.palette)
-    implementation(libs.androidx.profileinstaller)
-    implementation(libs.androidx.biometric)
-    implementation(libs.androidx.browser)
-
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.androidx.test.junit)
+    implementation(libs.okhttp)
+    implementation(libs.gson)
+    implementation(libs.mpv)
 }
