@@ -149,24 +149,26 @@ pub fn core_invoke(method: &str, args_json: &str) -> String {
             .to_string(),
         };
     }
-    // A panic anywhere in route()/the domain modules must not take the host
-    // process down with it — catch it here and hand back the same error
-    // envelope shape callers already handle for any other failure.
-    let outcome =
-        std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(method, args_json)));
-    match outcome {
-        Ok(Ok(value)) => json!({ "ok": true, "value": value }).to_string(),
-        Ok(Err(e)) => json!({
+    match guarded_route(method, args_json) {
+        Ok(value) => json!({ "ok": true, "value": value }).to_string(),
+        Err(e) => json!({
             "ok": false,
             "error": { "kind": e.kind.as_str(), "message": e.message, "method": method },
         })
         .to_string(),
-        Err(_) => json!({
-            "ok": false,
-            "error": { "kind": ErrorKind::Internal.as_str(), "message": "internal panic", "method": method },
-        })
-        .to_string(),
     }
+}
+
+pub fn call(method: &str, args: &Value) -> Result<Value, String> {
+    guarded_route(method, &args.to_string()).map_err(|e| match e.message.is_empty() {
+        true => e.kind.as_str().to_owned(),
+        false => format!("{}: {}", e.kind.as_str(), e.message),
+    })
+}
+
+fn guarded_route(method: &str, args_json: &str) -> Outcome {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(method, args_json)))
+        .unwrap_or_else(|_| Err(fail(ErrorKind::Internal, "internal panic")))
 }
 
 fn raw_dispatch(method: &str, args_json: &str) -> Result<String, CallError> {
