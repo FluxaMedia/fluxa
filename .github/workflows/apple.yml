@@ -45,7 +45,13 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios,aarch64-apple-tvos,aarch64-apple-tvos-sim
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Set up nightly Rust for tvOS
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rust-src
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2

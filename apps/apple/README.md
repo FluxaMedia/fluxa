@@ -10,4 +10,4 @@ xcodegen generate
 open FluxaApple.xcodeproj
 ```
 
-The build phases fetch `Libmpv.xcframework` from the fork's `libmpv-apple.xcframework.zip` release asset into `Vendor/` and build the Rust renderer for the active SDK. Both targets bundle the shared i18n files from `shared/i18n`.
+The build phases fetch `Libmpv.xcframework` from the fork's `libmpv-apple.xcframework.zip` release asset into `Vendor/` and build the Rust renderer. tvOS is a tier 3 Rust target, so it builds with nightly and `-Zbuild-std` (`rustup toolchain install nightly --component rust-src`). Both targets bundle the shared i18n files from `shared/i18n`.
