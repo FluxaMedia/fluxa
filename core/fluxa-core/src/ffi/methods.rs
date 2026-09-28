@@ -520,6 +520,7 @@ static METHODS: &[(&str, Router)] = &[
     ("sha256VerificationStatus", route_addon_store),
     ("shortenSynopsis", route_content_identity),
     ("shouldAttemptAnimeTracking", route_anime_detection),
+    ("shuffleEpisodePick", route_player_policy),
     ("simklHistoryRequest", route_external_sync_simkl),
     ("simklLibraryToItems", route_external_sync_simkl),
     ("simklLookupIdForType", route_external_sync_simkl),

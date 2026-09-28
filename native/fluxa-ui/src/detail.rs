@@ -97,6 +97,7 @@ pub fn draw_detail(
     let ppp = context.pixels_per_point();
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
+    let shuffle = detail.episodes.len() > 1;
     let language = detail.language.as_str();
     let t = |key: &str| localized(key, language);
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
@@ -300,7 +301,7 @@ pub fn draw_detail(
                     ui.add_space(space::LG);
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::ZERO;
-                        for (node, icon, active, label) in [
+                        let mut actions = vec![
                             (
                                 NODE_DETAIL_WATCHLIST,
                                 if detail.in_watchlist { "Check" } else { "Plus" },
@@ -315,12 +316,17 @@ pub fn draw_detail(
                                 detail.favorite,
                                 t("library.favorites"),
                             ),
-                        ] {
+                        ];
+                        if shuffle {
+                            actions.push((NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")));
+                        }
+                        let width = content_width / actions.len() as f32;
+                        for (node, icon, active, label) in actions {
                             let response = components::labeled_action(
                                 ui,
                                 assets.icon(icon),
                                 &label,
-                                content_width / 4.0,
+                                width,
                                 metrics.text.label,
                                 active,
                             );
@@ -472,6 +478,7 @@ pub fn draw_detail(
                     layout.activated = Some(NODE_DETAIL_WATCHLIST);
                 }
                 let icons = [
+                    (NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")),
                     (NODE_DETAIL_COMPLETED, "CircleCheck", detail.completed, t("library.completed")),
                     (NODE_DETAIL_DROPPED, "Ban", detail.dropped, t("library.dropped")),
                     (
@@ -481,7 +488,10 @@ pub fn draw_detail(
                         t("library.favorites"),
                     ),
                 ];
-                for (node, icon, active, hint) in icons {
+                for (node, icon, active, hint) in icons
+                    .into_iter()
+                    .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
+                {
                     let response = components::icon_button_sized(
                         ui,
                         assets.icon(icon),

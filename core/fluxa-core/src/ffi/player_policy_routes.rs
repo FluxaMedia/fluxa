@@ -25,6 +25,7 @@ pub(super) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         "playerSourceSidebarPlan" => {
             opt_json(player_policy::player_source_sidebar_plan_json(args_json))
         }
+        "shuffleEpisodePick" => opt_json(player_policy::shuffle_episode_pick_json(args_json)),
         "streamSubtitlesResult" => opt_json(player_policy::stream_subtitles_result_json(args_json)),
         "canPrefetchNextEpisode" => {
             let args = object(args_json)?;

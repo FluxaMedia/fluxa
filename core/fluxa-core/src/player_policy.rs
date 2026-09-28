@@ -7,6 +7,7 @@ mod dolby_vision;
 mod next_episode;
 mod playback_close;
 mod retry_and_ordering;
+mod shuffle;
 mod source_sidebar;
 mod torrent_fallback;
 
@@ -22,6 +23,7 @@ pub(crate) use retry_and_ordering::{
     next_retry_source_plan_json, order_streams_plan_json, player_retry_policy_json,
     stream_shell_plan_json,
 };
+pub(crate) use shuffle::shuffle_episode_pick_json;
 pub use source_sidebar::player_source_sidebar_plan_json;
 pub(crate) use torrent_fallback::torrent_fallback_file_policy_json;
 

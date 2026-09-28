@@ -454,6 +454,12 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.ui = UiTree::default();
                 continue;
             }
+            if state.route == Route::Detail && node == fluxa_ui::NODE_DETAIL_SHUFFLE {
+                if let Some(item) = player::start_shuffle(state) {
+                    state.pending_native_actions.push(NativeAction::StartPlayback { item });
+                }
+                continue;
+            }
             if let Some(native_action) = native_action_for_node(
                 node,
                 &state.home,
@@ -675,6 +681,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             continue;
         }
         if let NativeAction::StartPlayback { item } = &action {
+            player::keep_shuffle_for(&mut state.shuffle, item);
             state.player = Some(player::PlayerSession::new(item.clone()));
             state.ui = UiTree::default();
         }
@@ -717,6 +724,7 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
         let NativeAction::StartPlayback { item } = &state.pending_native_actions[index] else {
             continue;
         };
+        player::keep_shuffle_for(&mut state.shuffle, item);
         let command = player::direct_playback_command(item, &profile);
         let mut player = player::PlayerSession::new(item.clone());
         player.stale = state
