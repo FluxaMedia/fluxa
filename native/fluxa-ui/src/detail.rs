@@ -32,7 +32,7 @@ fn compact_image_height(viewport: Viewport) -> f32 {
 fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     let metrics = UiMetrics::for_viewport(viewport);
     let compact = viewport.is_compact();
-    let margin = screen_margin(viewport, metrics);
+    let margin = screen_margin(metrics);
     let hero_height = if compact {
         compact_image_height(viewport) + 250.0
     } else {
@@ -237,14 +237,14 @@ pub fn draw_detail(
                                 } else {
                                     detail.title.clone()
                                 })
-                                .size(28.0)
+                                .size(metrics.text.display)
                                 .strong()
                                 .color(Color32::WHITE),
                             )
                             .halign(egui::Align::Center),
                         );
                     }
-                    ui.add_space(14.0);
+                    ui.add_space(space::MD);
                     let facts = detail
                         .facts
                         .iter()
@@ -260,10 +260,10 @@ pub fn draw_detail(
                         .collect::<Vec<_>>()
                         .join("  ·  ");
                     ui.add(
-                        egui::Label::new(RichText::new(facts).size(13.5).color(Color32::WHITE))
+                        egui::Label::new(RichText::new(facts).size(metrics.text.meta).color(Color32::WHITE))
                             .halign(egui::Align::Center),
                     );
-                    ui.add_space(18.0);
+                    ui.add_space(space::LG);
                     let resume = detail.resume.as_ref();
                     let label = crate::play_label(
                         language,
@@ -278,7 +278,7 @@ pub fn draw_detail(
                         &label,
                         Some(content_width),
                         48.0,
-                        16.0,
+                        metrics.text.subtitle,
                         resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
                     );
                     action_rects.push((NODE_DETAIL_PLAY, play.rect));
@@ -291,7 +291,7 @@ pub fn draw_detail(
                             _ => NODE_DETAIL_PLAY,
                         });
                     }
-                    ui.add_space(16.0);
+                    ui.add_space(space::LG);
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::ZERO;
                         for (node, icon, active, label) in [
@@ -315,6 +315,7 @@ pub fn draw_detail(
                                 assets.icon(icon),
                                 &label,
                                 content_width / 4.0,
+                                metrics.text.label,
                                 active,
                             );
                             action_rects.push((node, response.rect));
@@ -324,7 +325,7 @@ pub fn draw_detail(
                         }
                     });
                 });
-                ui.add_space(18.0);
+                ui.add_space(space::LG);
                 let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
                 let expanded = context.data(|data| data.get_temp::<bool>(expanded_id)).unwrap_or(false);
                 let limit = 150;
@@ -340,8 +341,8 @@ pub fn draw_detail(
                 let synopsis = ui.add(
                     egui::Label::new(
                         RichText::new(text)
-                            .size(14.5)
-                            .line_height(Some(21.0))
+                            .size(metrics.text.body)
+                            .line_height(Some(metrics.text.body * 1.45))
                             .color(Color32::from_white_alpha(230)),
                     )
                     .sense(Sense::click()),
@@ -350,8 +351,8 @@ pub fn draw_detail(
                     context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
                 }
                 if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref()) {
-                    ui.add_space(10.0);
-                    ui.label(RichText::new(error).size(13.0).color(Color32::from_white_alpha(170)));
+                    ui.add_space(space::SM);
+                    ui.label(RichText::new(error).size(metrics.text.meta).color(Color32::from_white_alpha(170)));
                 }
                 return;
             }

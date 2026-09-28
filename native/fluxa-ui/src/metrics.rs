@@ -161,6 +161,28 @@ pub struct UiMetrics {
     pub poster_height_ratio: f32,
     pub horizontal_card_height_ratio: f32,
     pub focused_scale: f32,
+    pub gutter: f32,
+    pub text: TypeScale,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct TypeScale {
+    pub display: f32,
+    pub title: f32,
+    pub subtitle: f32,
+    pub body: f32,
+    pub meta: f32,
+    pub label: f32,
+}
+
+pub mod space {
+    pub const XS: f32 = 4.0;
+    pub const SM: f32 = 8.0;
+    pub const MD: f32 = 12.0;
+    pub const LG: f32 = 16.0;
+    pub const XL: f32 = 24.0;
+    pub const XXL: f32 = 32.0;
+    pub const XXXL: f32 = 48.0;
 }
 
 impl UiMetrics {
@@ -196,6 +218,7 @@ impl UiMetrics {
         let common_dp = |key, fallback| number(&["common", "dp", key], fallback);
         let common_sp = |key, fallback| number(&["common", "sp", key], fallback);
         let platform_dp = |key, fallback| number(&["platforms", platform, "dp", key], fallback);
+        let platform_sp = |key, fallback| number(&["platforms", platform, "sp", key], fallback);
         let window_dp =
             |key, fallback| number(&["windowClasses", window_class, "dp", key], fallback);
         let window_sp =
@@ -423,6 +446,15 @@ impl UiMetrics {
                 0.56,
             ),
             focused_scale: number(&["common", "number", "cardFocusedScale"], 1.12),
+            gutter: platform_dp("gutter", 16.0),
+            text: TypeScale {
+                display: platform_sp("display", 28.0),
+                title: platform_sp("title", 20.0),
+                subtitle: platform_sp("subtitle", 16.0),
+                body: platform_sp("body", 14.5),
+                meta: platform_sp("meta", 13.0),
+                label: platform_sp("label", 12.0),
+            },
             home_collection_scale: if viewport.is_compact() { 0.75 } else { 1.0 },
         };
         if poster_overlay::landscape() {

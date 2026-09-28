@@ -1,13 +1,7 @@
 use super::*;
 
-pub(crate) fn screen_margin(viewport: Viewport, metrics: UiMetrics) -> f32 {
-    if viewport.is_compact() {
-        metrics.page_padding
-    } else if viewport.is_tv() {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics.screen_padding
-    }
+pub(crate) fn screen_margin(metrics: UiMetrics) -> f32 {
+    metrics.gutter
 }
 
 pub(crate) const LIBRARY_CARD_LIMIT: usize = 240;
@@ -50,7 +44,7 @@ pub(crate) struct PageLayout {
 impl PageLayout {
     pub fn new(viewport: Viewport, metrics: UiMetrics, second_row: bool) -> Self {
         let compact = viewport.is_compact();
-        let margin = screen_margin(viewport, metrics);
+        let margin = screen_margin(metrics);
         let width = (viewport.width - margin * 2.0).max(1.0);
         let top = if compact {
             metrics.content_header_top_mobile
@@ -155,7 +149,7 @@ impl PosterGrid {
 }
 
 pub(crate) fn library_needs_second_row(viewport: Viewport, metrics: UiMetrics) -> bool {
-    viewport.is_compact() || viewport.width - screen_margin(viewport, metrics) * 2.0 < 1240.0
+    viewport.is_compact() || viewport.width - screen_margin(metrics) * 2.0 < 1240.0
 }
 
 pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: LibraryTab) -> f32 {

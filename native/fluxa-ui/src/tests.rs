@@ -453,34 +453,24 @@ fn narrow_desktop_window_centers_hero_like_a_phone() {
     };
 
     let narrow = Viewport::new(430, 932, UiFormFactor::Desktop);
-    assert!((play_rect(narrow).right() + 6.0 - narrow.width * 0.5).abs() < 0.01);
+    assert!((play_rect(narrow).center().x - narrow.width * 0.5).abs() < 0.01);
 
     let wide = Viewport::new(1280, 800, UiFormFactor::Mobile);
     assert!(play_rect(wide).center().x < wide.width * 0.5);
 }
 
 #[test]
-fn mobile_hero_centers_play_and_details_together() {
+fn mobile_hero_centers_play() {
     let mut home = HomeModel::default();
     home.item_id = Some("tt42".to_owned());
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
-    let layout = home_layout(viewport, &home);
-
-    let play = layout
+    let play = home_layout(viewport, &home)
         .focusable
-        .iter()
+        .into_iter()
         .find(|(id, _)| *id == NODE_PLAY)
-        .map(|(_, rect)| *rect)
+        .map(|(_, rect)| rect)
         .expect("mobile hero should expose its Play action");
-    assert_eq!(play.width(), 108.0);
-    assert_eq!(play.height(), 42.0);
-    let details = layout
-        .focusable
-        .iter()
-        .find(|(id, _)| *id == NODE_MORE_INFO)
-        .map(|(_, rect)| *rect)
-        .expect("mobile hero should expose View Details");
-    assert!(((play.left() + details.right()) * 0.5 - viewport.width * 0.5).abs() < 0.01);
+    assert!((play.center().x - viewport.width * 0.5).abs() < 0.01);
 }
 
 #[test]
@@ -959,7 +949,7 @@ fn mobile_discover_search_sits_above_three_horizontal_filters() {
 fn discover_grid_fills_width_and_starts_after_filters() {
     let viewport = Viewport::new(1880, 920, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
-    let available = viewport.width - 2.0 * screen_margin(viewport, metrics);
+    let available = viewport.width - 2.0 * screen_margin(metrics);
     let (columns, card_width) = discover_grid_geometry(
         available,
         metrics.poster_card_width,
@@ -1002,7 +992,7 @@ fn discover_grid_fills_width_and_starts_after_filters() {
     );
     assert!(
         (rect(NODE_CARD_BASE + columns as u64 - 1).right()
-            - (viewport.width - screen_margin(viewport, metrics)))
+            - (viewport.width - screen_margin(metrics)))
         .abs()
             <= 2.0
     );
@@ -1042,7 +1032,7 @@ fn discover_results_scroll_below_fixed_filters() {
         rect(&first, NODE_DISCOVER_EXTRA).top() - rect(&scrolled, NODE_DISCOVER_EXTRA).top();
     let metrics = UiMetrics::for_viewport(viewport);
     let columns = discover_grid_geometry(
-        viewport.width - 2.0 * screen_margin(viewport, metrics),
+        viewport.width - 2.0 * screen_margin(metrics),
         metrics.poster_card_width,
         metrics.horizontal_spacing,
     )

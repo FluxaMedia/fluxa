@@ -290,7 +290,16 @@
           "episodeCardHeight": 148,
           "posterCardWidth": 136,
           "posterCardHeight": 204,
-          "horizontalCardBase": 196
+          "horizontalCardBase": 196,
+          "gutter": 16
+        },
+        "sp": {
+          "display": 28,
+          "title": 20,
+          "subtitle": 16,
+          "body": 14.5,
+          "meta": 13,
+          "label": 12
         }
       },
       "desktop": {
@@ -299,7 +308,16 @@
           "episodeCardHeight": 180,
           "posterCardWidth": 160,
           "posterCardHeight": 240,
-          "horizontalCardBase": 220
+          "horizontalCardBase": 220,
+          "gutter": 48
+        },
+        "sp": {
+          "display": 44,
+          "title": 26,
+          "subtitle": 18,
+          "body": 16,
+          "meta": 14,
+          "label": 13
         }
       },
       "tv": {
@@ -308,7 +326,16 @@
           "episodeCardHeight": 208,
           "posterCardWidth": 136,
           "posterCardHeight": 204,
-          "horizontalCardBase": 260
+          "horizontalCardBase": 260,
+          "gutter": 64
+        },
+        "sp": {
+          "display": 52,
+          "title": 32,
+          "subtitle": 22,
+          "body": 19,
+          "meta": 17,
+          "label": 15
         }
       }
     },

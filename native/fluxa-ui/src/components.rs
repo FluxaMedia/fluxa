@@ -228,9 +228,10 @@ pub(super) fn labeled_action(
     icon: Option<egui::TextureId>,
     label: &str,
     width: f32,
+    text_size: f32,
     active: bool,
 ) -> Response {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 52.0), Sense::click());
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 40.0 + text_size), Sense::click());
     let painter = ui.painter();
     let center = Pos2::new(rect.center().x, rect.top() + 18.0);
     if active {
@@ -250,7 +251,7 @@ pub(super) fn labeled_action(
         Pos2::new(rect.center().x, rect.bottom()),
         Align2::CENTER_BOTTOM,
         label,
-        FontId::proportional(12.0),
+        FontId::proportional(text_size),
         Color32::WHITE,
     );
     response
