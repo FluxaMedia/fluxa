@@ -45,9 +45,9 @@
     "common": {
         "dp": {
           "mobileBillboardHeight": 540,
-          "contentHeaderTopMobile": 86,
+          "contentHeaderTopMobile": 48,
           "contentHeaderTop": 110,
-          "detailHeaderTopMobile": 82,
+          "detailHeaderTopMobile": 48,
           "detailHeaderTop": 116,
           "detailPosterWidthMobile": 132,
           "detailPosterWidthDesktop": 220,
