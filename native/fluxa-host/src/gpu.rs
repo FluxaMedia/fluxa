@@ -595,6 +595,11 @@ impl Gpu {
             &mut encoder,
             &paint_jobs,
             &screen_descriptor,
+        let _ = self.artwork.texture_for_priority(
+            home.profile_avatar_url.as_deref(),
+            [96, 96],
+            ArtworkFetchPriority::Visible,
+        );
         );
         {
             let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
