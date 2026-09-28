@@ -290,7 +290,7 @@ const PLAYBACK_SETTINGS: [SettingsRow; 44] = [
         options: &[],
     },
 ];
-const APPEARANCE_SETTINGS: [SettingsRow; 45] = [
+const APPEARANCE_SETTINGS: [SettingsRow; 46] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -324,6 +324,11 @@ const APPEARANCE_SETTINGS: [SettingsRow; 45] = [
     SettingsRow {
         label: "GIF autoplay",
         key: "gifAutoplayEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Show catalog type",
+        key: "showCatalogType",
         options: &[],
     },
     SettingsRow {

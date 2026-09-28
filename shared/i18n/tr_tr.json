@@ -1,4 +1,8 @@
 {
+  "settings.addon_type.movie": "Filmler",
+  "settings.addon_type.series": "Diziler",
+  "settings.showCatalogType": "Katalog türünü göster",
+  "settings.row.showCatalogType.description": "Ana sayfadaki katalog adlarının yanına Filmler veya Diziler ekler",
   "menu.play": "Oynat",
   "menu.resume": "Devam et",
   "menu.details": "Ayrıntılar",

@@ -438,6 +438,8 @@ pub struct HomeRow {
     /// depending on a platform-specific Home implementation.
     #[serde(skip)]
     pub catalog_page: Option<serde_json::Value>,
+    #[serde(rename = "typeLabel")]
+    pub type_label: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -685,6 +687,11 @@ pub fn home_model_from_core_snapshot(
                 .map(|item| core_home_card_for_kind(item, HomeRowKind::Continue))
                 .collect();
         }
+        let language = model.language.clone();
+        let show_catalog_type = snapshot
+            .pointer("/settings/values/showCatalogType")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true);
         model.rows = categories
             .iter()
             .enumerate()
@@ -713,6 +720,16 @@ pub fn home_model_from_core_snapshot(
                 Some(HomeRow {
                     id: value_string(category, "id"),
                     catalog_page: Some(category.clone()),
+                    type_label: show_catalog_type
+                        .then(|| category.get("type"))
+                        .flatten()
+                        .and_then(serde_json::Value::as_str)
+                        .and_then(|kind| match kind {
+                            "movie" => Some("settings.addon_type.movie"),
+                            "series" => Some("settings.addon_type.series"),
+                            _ => None,
+                        })
+                        .map(|key| crate::localized(key, &language)),
                     title: first_value_string(
                         category,
                         &["homeTitle", "name", "label", "title", "id"],

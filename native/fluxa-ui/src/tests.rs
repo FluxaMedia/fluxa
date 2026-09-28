@@ -234,6 +234,7 @@ fn home_scroll_moves_content_but_keeps_navigation_fixed() {
     home.rows = vec![HomeRow {
         id: Some("popular".to_owned()),
         title: "Popular".to_owned(),
+        type_label: None,
         cards: vec![HomeCard {
             title: "Example".to_owned(),
             ..Default::default()
@@ -277,6 +278,7 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
     home.rows.push(HomeRow {
         id: Some("popular".to_owned()),
         title: "TMDB Popular".to_owned(),
+        type_label: None,
         cards: vec![HomeCard {
             title: "Popular item".to_owned(),
             ..Default::default()

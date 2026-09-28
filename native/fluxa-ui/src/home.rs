@@ -1127,6 +1127,10 @@ pub(crate) fn draw_home_with_options(
             continue;
         }
         let heading_height = home_row_heading_height(metrics, tv);
+        let type_label = row_index
+            .checked_sub(usize::from(!home.cards.is_empty()))
+            .and_then(|index| home.rows.get(index))
+            .and_then(|row| row.type_label.as_deref());
         egui::Area::new(Id::new(format!("fluxa-shared-row-heading-{row_index}")))
             .fixed_pos(Pos2::new(margin, visible_y))
             // Catalog shelves are part of a scrolling document, not floating
@@ -1135,15 +1139,16 @@ pub(crate) fn draw_home_with_options(
             .constrain(false)
             .show(context, |ui| {
                 ui.set_clip_rect(ui.clip_rect().intersect(screen));
-                ui.label(
-                    RichText::new(title)
-                        .size(if tv {
-                            metrics.catalog_title_size
-                        } else {
-                            metrics.catalog_title_size - 4.0
-                        })
-                        .strong(),
-                );
+                let title_size = if tv {
+                    metrics.catalog_title_size
+                } else {
+                    metrics.catalog_title_size - 4.0
+                };
+                let title = match type_label {
+                    Some(label) => format!("{title} - {label}"),
+                    None => title.to_owned(),
+                };
+                ui.label(RichText::new(title).size(title_size).strong());
                 ui.add_space(metrics.control_gap);
             });
         let row_clip = Rect::from_min_max(

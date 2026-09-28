@@ -1,4 +1,8 @@
 {
+  "settings.addon_type.movie": "Movies",
+  "settings.addon_type.series": "Series",
+  "settings.showCatalogType": "Show catalog type",
+  "settings.row.showCatalogType.description": "Add Movies or Series after catalog names on Home",
   "menu.play": "Play",
   "menu.resume": "Resume",
   "menu.details": "Details",
