@@ -473,7 +473,7 @@ impl UiMetrics {
     }
 
     pub fn navigation_item_width(self, label: &str, tv: bool) -> f32 {
-        28.0 + self.navigation_icon_size(tv)
+        44.0 + self.navigation_icon_size(tv)
             + 8.0
             + estimated_navigation_text_width(label, self.navigation_label_size(tv))
     }
