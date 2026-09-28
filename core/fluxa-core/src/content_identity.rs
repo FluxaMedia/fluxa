@@ -46,7 +46,7 @@ pub(crate) use merge_keys::{
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub(crate) use playback_plan::{
     direct_playback_plan_json, playback_intro_lookup_content_id, playback_stream_request_ids_json,
-    stream_discovery_episode_context_json, stream_request_ids,
+    split_channel_schedule, stream_discovery_episode_context_json, stream_request_ids,
 };
 // unused outside the `fuzzing`-feature build: fuzz_targets (lib.rs) is the only
 // consumer of this path, and default builds don't enable that feature.
@@ -225,6 +225,38 @@ mod tests {
         assert_eq!(plan["targetVideoId"], "tt1:2:3");
         assert_eq!(plan["lookupId"], "tt1:2:3");
         assert_eq!(plan["meta"]["name"], "Movie");
+    }
+
+    #[test]
+    fn direct_playback_plan_opens_the_addon_default_video() {
+        let plan = direct_playback_plan_json(
+            r#"{"id":"yt:chan","type":"movie"}"#,
+            Some(
+                r#"{"id":"yt:chan","type":"movie","behaviorHints":{"defaultVideoId":"yt:abc"},"videos":[{"id":"yt:abc"}]}"#,
+            ),
+            "2026-05-21",
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("plan");
+
+        assert_eq!(plan["targetVideoId"], "yt:abc");
+        assert_eq!(plan["lookupId"], "yt:abc");
+    }
+
+    #[test]
+    fn live_channel_plays_the_channel_not_a_programme() {
+        let plan = direct_playback_plan_json(
+            r#"{"id":"epg:bbc1","type":"series","lastVideoId":"epg:bbc1:prog"}"#,
+            Some(
+                r#"{"id":"epg:bbc1","type":"series","behaviorHints":{"hasScheduledVideos":true,"defaultVideoId":"epg:bbc1:prog"},"videos":[{"id":"epg:bbc1:prog","season":1,"number":1}]}"#,
+            ),
+            "2026-05-21",
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .expect("plan");
+
+        assert!(plan["targetVideoId"].is_null());
+        assert_eq!(plan["lookupId"], "epg:bbc1");
     }
 
     #[test]

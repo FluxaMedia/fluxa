@@ -103,8 +103,17 @@ pub(crate) fn direct_playback_plan_json(
     } else {
         meta.clone()
     };
-    let target_video_id = string_field(&meta, "lastVideoId")
-        .or_else(|| select_direct_playback_video_id(&detail, today_iso));
+    let target_video_id = if is_live_channel(&detail) || is_live_channel(&meta) {
+        None
+    } else {
+        string_field(&meta, "lastVideoId")
+            .or_else(|| {
+                detail
+                    .get("behaviorHints")
+                    .and_then(|hints| string_field(hints, "defaultVideoId"))
+            })
+            .or_else(|| select_direct_playback_video_id(&detail, today_iso))
+    };
     let lookup_id = target_video_id
         .clone()
         .or_else(|| string_field(&detail, "id"))
@@ -203,6 +212,30 @@ fn insert_detail_or_fallback(
             .cloned()
             .unwrap_or_else(|| fallback.get(key).cloned().unwrap_or(Value::Null)),
     );
+}
+
+pub(crate) fn is_live_channel(meta: &Value) -> bool {
+    let hint = |key| {
+        meta.get("behaviorHints")
+            .and_then(|hints| hints.get(key))
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+    };
+    meta.get("type").and_then(Value::as_str) == Some("tv")
+        || hint("isLive")
+        || hint("hasScheduledVideos")
+}
+
+pub(crate) fn split_channel_schedule(mut meta: Value) -> Value {
+    if !is_live_channel(&meta) {
+        return meta;
+    }
+    if let Some(object) = meta.as_object_mut()
+        && let Some(videos) = object.remove("videos")
+    {
+        object.insert("schedule".to_string(), videos);
+    }
+    meta
 }
 
 fn select_direct_playback_video_id(detail: &Value, today_iso: &str) -> Option<String> {
