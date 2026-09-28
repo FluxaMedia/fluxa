@@ -1211,7 +1211,7 @@ fn native_appearance_groups_are_separate_cards() {
     let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
     let groups = super::settings::visible_groups(&settings, viewport);
     let cards = super::settings::group_cards(content, &groups, metrics);
-    assert_eq!(cards.len(), 6);
+    assert_eq!(cards.len(), 7);
     for pair in cards.windows(2) {
         assert!(
             pair[1].top() > pair[0].bottom(),

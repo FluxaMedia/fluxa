@@ -102,6 +102,18 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         if let actions = take(fluxa_renderer_poll_actions(renderer)), actions != "[]" {
             onActions?(actions)
         }
+        if let icon = take(fluxa_renderer_take_app_icon(renderer)) {
+            applyAppIcon(icon)
+        }
+    }
+
+    private func applyAppIcon(_ id: String) {
+        #if os(iOS)
+        let name = id == "ember" ? nil : "AppIcon-\(id)"
+        guard UIApplication.shared.supportsAlternateIcons,
+              UIApplication.shared.alternateIconName != name else { return }
+        UIApplication.shared.setAlternateIconName(name)
+        #endif
     }
 
     private func take(_ value: UnsafeMutablePointer<CChar>?) -> String? {

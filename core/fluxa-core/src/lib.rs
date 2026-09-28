@@ -16,6 +16,7 @@
 
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod action_contract;
+pub mod app_icon;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod addon_protocol;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]

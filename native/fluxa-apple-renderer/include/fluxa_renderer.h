@@ -50,6 +50,7 @@ void fluxa_renderer_set_home_state(const FluxaRenderer *renderer, const char *js
 void fluxa_renderer_set_core_snapshot(const FluxaRenderer *renderer, const char *json);
 char *fluxa_renderer_snapshot(const FluxaRenderer *renderer);
 char *fluxa_renderer_poll_actions(const FluxaRenderer *renderer);
+char *fluxa_renderer_take_app_icon(const FluxaRenderer *renderer);
 
 void fluxa_renderer_scroll(const FluxaRenderer *renderer, float delta_y);
 void fluxa_renderer_pointer(const FluxaRenderer *renderer, uint32_t phase, float x, float y);

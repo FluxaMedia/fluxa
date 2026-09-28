@@ -28,6 +28,7 @@ class MainActivity : Activity() {
         host.onPlayingChanged = ::setPlaying
         host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
         host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
+        host.renderer.onAppIcon = { AppIcons.apply(this, it) }
         host.renderer.onNativeAction = { Log.i("FluxaNativeRenderer", "Unhandled native actions: $it") }
         host.renderer.dispatchCoreCommand(
             gson.toJson(mapOf("formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile"))

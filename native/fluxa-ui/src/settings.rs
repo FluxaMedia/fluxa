@@ -290,7 +290,7 @@ const PLAYBACK_SETTINGS: [SettingsRow; 44] = [
         options: &[],
     },
 ];
-const APPEARANCE_SETTINGS: [SettingsRow; 44] = [
+const APPEARANCE_SETTINGS: [SettingsRow; 45] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -516,6 +516,14 @@ const APPEARANCE_SETTINGS: [SettingsRow; 44] = [
         key: "spoilerHideEpisodeInfo",
         options: &[],
     },
+    SettingsRow {
+        label: "App icon",
+        key: "appIcon",
+        options: &[
+            "ember", "sunset", "ocean", "dusk", "lagoon", "ruby", "citrus", "peach", "lime",
+            "aurora", "neon", "flare", "ice", "rose", "silver", "gold", "jade", "blaze", "orange",
+        ],
+    },
 ];
 
 fn settings_category_icon(
@@ -536,13 +544,14 @@ fn settings_category_icon(
     }
 }
 
-const APPEARANCE_GROUPS: [(usize, usize, &str); 6] = [
+const APPEARANCE_GROUPS: [(usize, usize, &str); 7] = [
     (0, 6, "settings.group.color_and_motion"),
     (6, 10, "settings.group.navigation"),
     (10, 17, "settings.group.cards"),
     (17, 25, "settings.group.continue_watching"),
     (25, 29, "settings.group.home"),
     (29, 42, "settings.group.detail_page"),
+    (44, 45, "settings.group.app_icon"),
 ];
 const GENERAL_GROUPS: [(usize, usize, &str); 3] = [
     (0, 2, "settings.group.general_startup"),
@@ -1099,6 +1108,10 @@ impl SettingsModel {
             .filter(|value| !value.is_null())
             .or_else(|| setting_default(key))
             .or_else(|| poster_overlay::setting_default(key))
+    }
+
+    pub fn app_icon(&self) -> Option<&str> {
+        self.value("appIcon").and_then(|value| value.as_str())
     }
 
     pub fn ui_scale(&self) -> f32 {

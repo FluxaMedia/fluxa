@@ -248,6 +248,15 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pollActi
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeAppIconNative(
+    env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jstring {
+    java_string(&env, host(handle).and_then(FluxaHost::take_app_icon))
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_scrollNative(
     _env: JNIEnv<'_>,
     _class: JClass<'_>,

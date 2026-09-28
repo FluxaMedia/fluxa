@@ -72,6 +72,13 @@
       "category": "playback"
     },
     {
+      "key": "appIcon",
+      "type": "string",
+      "default": "ember",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "audioDecoderMode",
       "type": "string",
       "default": null,

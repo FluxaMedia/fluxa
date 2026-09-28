@@ -262,6 +262,13 @@ pub unsafe extern "C" fn fluxa_renderer_poll_actions(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_take_app_icon(
+    renderer: *const FluxaRenderer,
+) -> *mut c_char {
+    owned(unsafe { renderer.as_ref() }.and_then(FluxaHost::take_app_icon))
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_scroll(renderer: *const FluxaRenderer, delta_y: f32) {
     if let Some(renderer) = unsafe { renderer.as_ref() } {
         renderer.scroll(delta_y);

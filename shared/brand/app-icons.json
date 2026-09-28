@@ -1,0 +1,24 @@
+{
+  "default": "ember",
+  "icons": [
+    { "id": "ember", "from": "#FF7A2F", "to": "#FF2E63" },
+    { "id": "sunset", "from": "#FFB23F", "to": "#FF4D1F" },
+    { "id": "ocean", "from": "#4FA8FF", "to": "#6A4DFF" },
+    { "id": "dusk", "from": "#8C6BFF", "to": "#FF4FA3" },
+    { "id": "lagoon", "from": "#3DF2C0", "to": "#1C9BFF" },
+    { "id": "ruby", "from": "#FF3B3B", "to": "#B81D5C" },
+    { "id": "citrus", "from": "#FFE14D", "to": "#FF8A00" },
+    { "id": "peach", "from": "#FFD36E", "to": "#FF5E7E" },
+    { "id": "lime", "from": "#C6FF4D", "to": "#1FD17A" },
+    { "id": "aurora", "from": "#00E0FF", "to": "#7A5CFF" },
+    { "id": "neon", "from": "#FF6AD5", "to": "#8A3DFF" },
+    { "id": "flare", "from": "#FF8A5C", "to": "#8B3DFF" },
+    { "id": "ice", "from": "#5CF0FF", "to": "#2F6BFF" },
+    { "id": "rose", "from": "#FFB3C7", "to": "#FF3D6E" },
+    { "id": "silver", "from": "#F5F5F5", "to": "#8A8A8A" },
+    { "id": "gold", "from": "#FFD27A", "to": "#B8862E" },
+    { "id": "jade", "from": "#2EE6A8", "to": "#0B8F8F" },
+    { "id": "blaze", "from": "#FF4F4F", "to": "#FF9F2E" },
+    { "id": "orange", "from": "#FF5A1F", "to": "#FF5A1F" }
+  ]
+}

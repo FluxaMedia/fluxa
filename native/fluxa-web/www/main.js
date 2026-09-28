@@ -31,6 +31,10 @@ const tick = () => {
       for (const handler of actionHandlers) handler(action);
     }
   }
+  const iconSvg = app.take_app_icon_svg();
+  if (iconSvg) {
+    document.querySelector("link[rel=icon]").href = `data:image/svg+xml,${encodeURIComponent(iconSvg)}`;
+  }
   requestAnimationFrame(tick);
 };
 requestAnimationFrame(tick);

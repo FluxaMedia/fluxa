@@ -25,6 +25,7 @@ targetTemplates:
               - fluxaapple
     sources:
       - path: Host
+      - path: Assets.xcassets
     resources:
       - path: ../../shared/i18n
     dependencies:
@@ -45,6 +46,11 @@ targets:
   FluxaIos:
     templates: [FluxaHost]
     platform: iOS
+    settings:
+      ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+      ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
   FluxaTvos:
     templates: [FluxaHost]
     platform: tvOS
+    settings:
+      ASSETCATALOG_COMPILER_APPICON_NAME: TvAppIcon

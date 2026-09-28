@@ -151,6 +151,7 @@ struct RendererState {
     shuffle: Option<player::Shuffle>,
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
+    applied_app_icon: Option<String>,
     profiles: Option<fluxa_ui::ProfilesModel>,
     account_auth: Option<accounts::AccountAuth>,
     pack_job: Option<profiles::PackJob>,
@@ -467,6 +468,14 @@ pub enum KeyInput {
 #[derive(Clone)]
 pub struct FluxaHost(SharedRenderer);
 
+pub fn app_icon_svg(id: &str) -> String {
+    fluxa_core::app_icon::app_icon_svg(fluxa_core::app_icon::resolve_app_icon(Some(id)))
+}
+
+pub fn app_icon_rgba(id: &str, size: u32) -> Option<image::RgbaImage> {
+    fluxa_renderer::svg_icons::rasterize_svg(app_icon_svg(id).as_bytes(), size).ok()
+}
+
 impl FluxaHost {
     pub fn new(density: f32, artwork_cache_dir: Option<PathBuf>) -> Self {
         let density = if density.is_finite() && density > 0.0 {
@@ -531,6 +540,7 @@ impl FluxaHost {
             shuffle: None,
             video: None,
             fullscreen_toggle: false,
+            applied_app_icon: None,
             profiles: None,
             account_auth: None,
             pack_job: None,
@@ -861,6 +871,18 @@ impl FluxaHost {
             .unwrap_or(false)
     }
 
+    pub fn take_app_icon(&self) -> Option<String> {
+        self.with_state(|state| {
+            let icon = fluxa_core::app_icon::resolve_app_icon(state.settings.app_icon());
+            if state.applied_app_icon.as_deref() == Some(icon.id.as_str()) {
+                return None;
+            }
+            state.applied_app_icon = Some(icon.id.clone());
+            Some(icon.id.clone())
+        })
+        .flatten()
+    }
+
     pub fn surface_created(&self, surface: NativeSurface, width: u32, height: u32) {
         let size = [width.max(1), height.max(1)];
         host_log(format!("Surface created: {}x{}", size[0], size[1]));
@@ -931,6 +953,19 @@ fn current_year_month() -> (i32, u32) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn app_icon_setting_lists_every_icon() {
+        let row = (0..)
+            .map_while(fluxa_ui::settings_row_by_index)
+            .find(|row| row.key == "appIcon")
+            .unwrap();
+        let ids: Vec<_> = fluxa_core::app_icon::app_icons()
+            .iter()
+            .map(|icon| icon.id.as_str())
+            .collect();
+        assert_eq!(row.options, ids.as_slice());
+    }
 
     #[test]
     fn opening_detail_navigates_then_loads_in_profile_language() {

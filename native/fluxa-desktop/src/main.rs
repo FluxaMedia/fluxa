@@ -9,7 +9,7 @@ use winit::{
     event::{ElementState, MouseScrollDelta, WindowEvent},
     event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
     keyboard::{Key as WinitKey, ModifiersState, NamedKey},
-    window::{CursorIcon, Fullscreen, Window, WindowId},
+    window::{CursorIcon, Fullscreen, Icon, Window, WindowId},
 };
 
 #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
@@ -103,6 +103,12 @@ impl App {
         if host.take_fullscreen_toggle() {
             let fullscreen = window.fullscreen().is_none().then_some(Fullscreen::Borderless(None));
             window.set_fullscreen(fullscreen);
+        }
+        if let Some(id) = host.take_app_icon() {
+            let icon = fluxa_host::app_icon_rgba(&id, 256).and_then(|image| {
+                Icon::from_rgba(image.to_vec(), image.width(), image.height()).ok()
+            });
+            window.set_window_icon(icon);
         }
         let cursor = host.cursor();
         if cursor != self.cursor {

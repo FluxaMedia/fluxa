@@ -51,6 +51,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     var onNativeAction: ((String) -> Unit)? = null
     var onCoreCommand: ((String) -> Unit)? = null
     var onVideoRequest: ((String) -> Unit)? = null
+    var onAppIcon: ((String) -> Unit)? = null
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
     private val artworkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -70,6 +71,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             val actions = NativeRenderer.pollActionsNative(nativeHandle)
             if (actions.isNotBlank() && actions != "[]") {
                 post { onNativeAction?.invoke(actions) }
+            }
+            val appIcon = NativeRenderer.takeAppIconNative(nativeHandle)
+            if (!appIcon.isNullOrEmpty()) {
+                post { onAppIcon?.invoke(appIcon) }
             }
             val videoRequests = NativeRenderer.pollVideoNative()
             if (videoRequests != "[]") {
@@ -674,6 +679,7 @@ private object NativeRenderer {
     @JvmStatic external fun surfaceDestroyedNative(handle: Long)
     @JvmStatic external fun renderNative(handle: Long)
     @JvmStatic external fun pollActionsNative(handle: Long): String
+    @JvmStatic external fun takeAppIconNative(handle: Long): String?
     @JvmStatic external fun backNative(handle: Long): Boolean
     @JvmStatic external fun isPlayingNative(handle: Long): Boolean
     @JvmStatic external fun pollVideoNative(): String
