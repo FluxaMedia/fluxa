@@ -134,6 +134,7 @@ pub fn draw_calendar(
         String::new()
     };
     egui::Area::new(Id::new("fluxa-shared-calendar-header"))
+        .constrain(false)
         .fixed_pos(Pos2::new(grid.margin, grid.top - scroll_y))
         .show(context, |ui| {
             ui.spacing_mut().item_spacing = Vec2::ZERO;
@@ -168,6 +169,7 @@ pub fn draw_calendar(
             )
         };
         egui::Area::new(Id::new("fluxa-shared-calendar-month"))
+            .constrain(false)
             .fixed_pos(nav_pos)
             .show(context, |ui| {
                 ui.set_width(if compact {
@@ -257,6 +259,7 @@ pub fn draw_calendar(
         }
         let total = days_in_month(calendar.year, calendar.month) as u32;
         egui::Area::new(Id::new("fluxa-shared-calendar-cells"))
+            .constrain(false)
             .fixed_pos(origin + Vec2::new(0.0, grid.weekday_height))
             .show(context, |ui| {
                 for day in 1..=total {
@@ -274,6 +277,7 @@ pub fn draw_calendar(
             });
     } else {
         egui::Area::new(Id::new("fluxa-shared-calendar-empty"))
+            .constrain(false)
             .fixed_pos(Pos2::new(
                 grid.margin,
                 grid.top + metrics.calendar_empty_offset,
@@ -313,6 +317,7 @@ pub fn draw_calendar(
             grid.top
         };
         egui::Area::new(Id::new("fluxa-calendar-day-panel"))
+            .constrain(false)
             .fixed_pos(Pos2::new(panel_x, panel_top))
             .order(egui::Order::Foreground)
             .show(context, |ui| {

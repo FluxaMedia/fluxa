@@ -154,6 +154,7 @@ pub fn draw_detail(
     let mut action_rects = Vec::new();
     let reveal = context.animate_bool_with_time(Id::new(("fluxa-detail-reveal", &detail.id)), true, 0.45);
     egui::Area::new(Id::new("fluxa-detail-hero-content"))
+        .constrain(false)
         .pivot(Align2::LEFT_BOTTOM)
         .fixed_pos(Pos2::new(margin, hero.bottom() - if compact { 24.0 } else { 56.0 } + 16.0 * (1.0 - reveal)))
         .show(context, |ui| {
@@ -241,7 +242,7 @@ pub fn draw_detail(
                     resume,
                     play_target
                         .filter(|_| detail.is_series())
-                        .map(|(_, episode)| (episode.season, episode.number)),
+                        .map(|(_, episode)| (episode.season, episode.number, Some(episode.title.as_str()))),
                 );
                 let play = components::play_button(
                     ui,
@@ -294,8 +295,9 @@ pub fn draw_detail(
         });
     layout.focusable.extend(action_rects);
 
-    let back_rect = Rect::from_min_size(Pos2::new(margin, if compact { 12.0 } else { 14.0 }), Vec2::splat(40.0));
+    let back_rect = Rect::from_min_size(Pos2::new(margin, if compact { 12.0 } else { 14.0 } - scroll_y), Vec2::splat(40.0));
     egui::Area::new(Id::new("fluxa-detail-back"))
+        .constrain(false)
         .fixed_pos(back_rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {

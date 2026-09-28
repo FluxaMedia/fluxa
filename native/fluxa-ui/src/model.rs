@@ -1298,7 +1298,7 @@ pub fn resume_episode(card: &HomeCard) -> Option<(i64, i64)> {
 pub fn play_label(
     language: &str,
     resume: Option<&HomeCard>,
-    episode: Option<(i64, i64)>,
+    episode: Option<(i64, i64, Option<&str>)>,
 ) -> String {
     let action = localized(
         if resume.is_some() {
@@ -1308,14 +1308,20 @@ pub fn play_label(
         },
         language,
     );
-    match resume.and_then(resume_episode).or(episode) {
-        Some((season, number)) => format!(
-            "{action}  {}",
-            localized("format.season_episode_short", language)
-                .replacen("%s", &season.to_string(), 1)
-                .replacen("%s", &number.to_string(), 1)
-        ),
-        None => action,
+    let resumed = resume.and_then(|card| {
+        let (season, number) = resume_episode(card)?;
+        Some((season, number, card.raw.get("lastEpisodeName").and_then(|v| v.as_str())))
+    });
+    let Some((season, number, name)) = resumed.or(episode) else {
+        return action;
+    };
+    let label = localized("format.play_episode", language)
+        .replacen("%s", &action, 1)
+        .replacen("%s", &season.to_string(), 1)
+        .replacen("%s", &number.to_string(), 1);
+    match name.map(str::trim).filter(|name| !name.is_empty()) {
+        Some(name) => format!("{label}: {name}"),
+        None => label,
     }
 }
 

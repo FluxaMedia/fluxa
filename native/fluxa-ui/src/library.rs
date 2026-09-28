@@ -27,6 +27,7 @@ pub fn draw_library(
     let cards = library.cards(tab);
 
     egui::Area::new(Id::new("fluxa-shared-library-title"))
+        .constrain(false)
         .fixed_pos(Pos2::new(page.margin, page.top))
         .show(context, |ui| {
             ui.horizontal(|ui| {
@@ -55,6 +56,7 @@ pub fn draw_library(
         });
 
     egui::Area::new(Id::new("fluxa-shared-library-search"))
+        .constrain(false)
         .fixed_pos(page.search.min)
         .show(context, |ui| {
             let mut query = library.query.clone();
@@ -82,6 +84,7 @@ pub fn draw_library(
         .position(|candidate| *candidate == tab)
         .unwrap_or_default();
     egui::Area::new(Id::new("fluxa-shared-library-tabs"))
+        .constrain(false)
         .fixed_pos(Pos2::new(page.margin, page.filters_top))
         .show(context, |ui| {
             let tabs_width = if split {
@@ -137,6 +140,7 @@ pub fn draw_library(
         None => Pos2::new(page.margin + page.width - controls_width, page.filters_top),
     };
     egui::Area::new(Id::new("fluxa-shared-library-controls"))
+        .constrain(false)
         .fixed_pos(controls_pos)
         .show(context, |ui| {
             ui.horizontal(|ui| {
@@ -186,6 +190,7 @@ pub fn draw_library(
         ),
     );
     egui::Area::new(Id::new("fluxa-shared-library-grid"))
+        .constrain(false)
         .fixed_pos(origin)
         .show(context, |ui| {
             ui.set_clip_rect(ui.clip_rect().intersect(clip));

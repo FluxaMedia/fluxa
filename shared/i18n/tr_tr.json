@@ -1758,6 +1758,7 @@
   "home.folder_load_failed_body": "Bu kataloğu sağlayan addon herhangi bir sonuç döndürmedi. Addon ayarlarından yapılandırma veya kimlik doğrulama gerekebilir (örneğin bir Trakt hesabı bağlamak).",
   "format.season_abbrev": "S",
   "format.episode_abbrev": "B",
+  "format.play_episode": "%s: %s. Sezon, %s. Bölüm",
   "format.season_episode_short": "%s. S %s. B",
   "format.continue_episode": "Devam et: %s",
   "format.play_episode": "Oynat: %s",

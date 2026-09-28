@@ -1758,6 +1758,7 @@
   "home.folder_load_failed_body": "The addon providing this catalog didn't return any results. It may need to be configured or authenticated (e.g. connecting a Trakt account) in the addon's settings.",
   "format.season_abbrev": "S",
   "format.episode_abbrev": "E",
+  "format.play_episode": "%s: S%s, E%s",
   "format.season_episode_short": "S%s E%s",
   "format.continue_episode": "Continue: %s",
   "format.play_episode": "Play: %s",

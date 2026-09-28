@@ -57,6 +57,7 @@ pub fn draw_discover(
         .iter()
         .any(|catalog| catalog.content_type == discover.content_type);
     egui::Area::new(Id::new("fluxa-shared-discover-title"))
+        .constrain(false)
         .fixed_pos(Pos2::new(margin, page.top))
         .show(context, |ui| {
             ui.horizontal(|ui| {
@@ -76,6 +77,7 @@ pub fn draw_discover(
             });
         });
     egui::Area::new(Id::new("fluxa-shared-discover-search"))
+        .constrain(false)
         .order(egui::Order::Foreground)
         .fixed_pos(page.search.min)
         .show(context, |ui| {
@@ -95,6 +97,7 @@ pub fn draw_discover(
             }
         });
     egui::Area::new(Id::new("fluxa-shared-discover-header"))
+        .constrain(false)
         .order(egui::Order::Foreground)
         .fixed_pos(Pos2::new(margin, page.filters_top))
         .show(context, |ui| {
@@ -343,6 +346,7 @@ pub fn draw_discover(
     );
     let row_top = results_view_top - scroll_y;
     egui::Area::new(Id::new("fluxa-shared-discover-results"))
+        .constrain(false)
         .fixed_pos(Pos2::new(margin, row_top))
         .show(context, |ui| {
             // An Area otherwise sizes itself to its contents. Explicitly bind

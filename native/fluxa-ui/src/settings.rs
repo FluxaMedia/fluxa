@@ -1430,6 +1430,7 @@ fn settings_panel_button(
 ) {
     layout.focusable.push((id, rect));
     egui::Area::new(Id::new(("fluxa-settings-panel-action", id)))
+        .constrain(false)
         .fixed_pos(rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
@@ -1462,6 +1463,7 @@ fn settings_panel_input(
 ) {
     let mut next_value = value.to_owned();
     egui::Area::new(Id::new(("fluxa-settings-panel-input", id)))
+        .constrain(false)
         .fixed_pos(rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
@@ -1490,6 +1492,7 @@ fn pill_button(
 ) {
     layout.focusable.push((id, rect));
     egui::Area::new(Id::new(("fluxa-settings-pill", id)))
+        .constrain(false)
         .fixed_pos(rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
@@ -2104,6 +2107,7 @@ pub fn draw_settings(
     let mut header_bottom = top;
     if !desktop {
         egui::Area::new(Id::new("fluxa-shared-settings-header"))
+            .constrain(false)
             .fixed_pos(Pos2::new(margin, top - scroll_y))
             .show(context, |ui| {
                 ui.label(
@@ -2181,6 +2185,7 @@ pub fn draw_settings(
     let search_height = metrics.screen_control_height;
     let search_field = |layout: &mut HomeLayout, rect: Rect| {
         egui::Area::new(Id::new("fluxa-settings-search"))
+            .constrain(false)
             .fixed_pos(rect.min)
             .order(egui::Order::Foreground)
             .show(context, |ui| {
@@ -2219,6 +2224,7 @@ pub fn draw_settings(
             ),
         );
         egui::Area::new(Id::new("fluxa-settings-category-strip"))
+            .constrain(false)
             .fixed_pos(nav_rect.min)
             .show(context, |ui| {
                 egui::ScrollArea::horizontal()
@@ -2325,6 +2331,7 @@ pub fn draw_settings(
             layout.focusable.push((node, rect));
             let mut clicked = false;
             egui::Area::new(Id::new(("fluxa-settings-category", node)))
+                .constrain(false)
                 .fixed_pos(rect.min)
                 .show(context, |ui| {
                     let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
@@ -2512,6 +2519,7 @@ pub fn draw_settings(
         if is_toggle {
             layout.focusable.push((node, row_rect));
             egui::Area::new(Id::new(("fluxa-settings-row", node)))
+                .constrain(false)
                 .fixed_pos(row_rect.min)
                 .order(egui::Order::Foreground)
                 .show(context, |ui| {
@@ -2554,6 +2562,7 @@ pub fn draw_settings(
             );
             layout.focusable.push((node, strip.expand(6.0)));
             egui::Area::new(Id::new(("fluxa-settings-swatches", node)))
+                .constrain(false)
                 .fixed_pos(strip.min)
                 .order(egui::Order::Foreground)
                 .show(context, |ui| {
@@ -2634,6 +2643,7 @@ pub fn draw_settings(
             let selected_text = value;
             let mut selected = raw_value.to_owned();
             egui::Area::new(Id::new(("fluxa-settings-dropdown", node)))
+                .constrain(false)
                 .fixed_pos(value_rect.min)
                 .order(egui::Order::Foreground)
                 .show(context, |ui| {
@@ -3102,6 +3112,7 @@ fn draw_account(
             -metrics.screen_control_height.min(row.height() - 4.0) * 0.5,
         ));
         egui::Area::new(Id::new(("fluxa-settings-account-choice", *key)))
+            .constrain(false)
             .fixed_pos(value_rect.min)
             .order(egui::Order::Foreground)
             .show(context, |ui| {
