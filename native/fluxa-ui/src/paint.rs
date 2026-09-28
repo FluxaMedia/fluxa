@@ -186,9 +186,9 @@ pub(crate) fn paint_hero_scrim(
             Color32::TRANSPARENT,
         );
     }
-    let fade_from = rect.top() + rect.height() * if compact { 0.25 } else { 0.35 };
-    let dark_at = rect.top() + rect.height() * 0.85;
-    let scrim = Color32::from_black_alpha(220);
+    let fade_from = rect.top() + rect.height() * if compact { 0.1 } else { 0.3 };
+    let dark_at = rect.top() + rect.height() * if compact { 0.6 } else { 0.8 };
+    let scrim = Color32::from_black_alpha(235);
     paint_vertical_gradient(
         painter,
         Rect::from_min_max(Pos2::new(rect.left(), fade_from), Pos2::new(rect.right(), dark_at)),

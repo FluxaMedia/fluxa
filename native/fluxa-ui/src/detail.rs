@@ -214,12 +214,13 @@ pub fn draw_detail(
                 ui.label(
                     RichText::new(detail.genres.join("  ·  "))
                         .size(14.0)
-                        .color(Color32::from_white_alpha(165)),
+                        .color(Color32::WHITE),
                 );
             }
             ui.add_space(16.0);
-            let description = if detail.description.chars().count() > 360 {
-                format!("{}…", detail.description.chars().take(357).collect::<String>().trim_end())
+            let limit = if compact { 200 } else { 360 };
+            let description = if detail.description.chars().count() > limit {
+                format!("{}…", detail.description.chars().take(limit - 3).collect::<String>().trim_end())
             } else {
                 detail.description.clone()
             };
@@ -227,7 +228,7 @@ pub fn draw_detail(
                 RichText::new(description)
                     .size(if tv { 19.0 } else { 16.0 })
                     .line_height(Some(if tv { 28.0 } else { 24.0 }))
-                    .color(Color32::from_white_alpha(200)),
+                    .color(Color32::WHITE),
             );
             if let Some(error) = detail.error.as_deref() {
                 ui.add_space(10.0);
@@ -248,7 +249,7 @@ pub fn draw_detail(
                     ui,
                     assets,
                     &play_label,
-                    compact.then_some(content_width),
+                    None,
                     48.0,
                     17.0,
                     resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
