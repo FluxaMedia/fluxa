@@ -94,6 +94,27 @@ pub(crate) fn accent_from_value(value: &serde_json::Value) -> Option<Color32> {
     ))
 }
 
+fn accent_is_neutral(assets: &impl HomeAssets) -> bool {
+    assets.accent_color().is_none_or(|accent| {
+        let [r, g, b, _] = accent.to_array();
+        r.max(g).max(b) - r.min(g).min(b) < 24
+    })
+}
+
+pub(crate) fn paint_brand_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
+    paint_ambient(painter, screen, assets);
+    if !accent_is_neutral(assets) {
+        return;
+    }
+    let (Some(glow), Some([from, to])) = (assets.ambient_glow(), assets.brand_colors()) else {
+        return;
+    };
+    let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+    painter.image(glow, screen, uv, from.gamma_multiply_u8(70));
+    let flipped = Rect::from_min_max(Pos2::new(1.0, 1.0), Pos2::ZERO);
+    painter.image(glow, screen, flipped, to.gamma_multiply_u8(50));
+}
+
 pub(crate) fn paint_ambient(painter: &egui::Painter, screen: Rect, assets: &impl HomeAssets) {
     let uv = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
     painter.image(assets.background(), screen, uv, Color32::WHITE);
@@ -126,27 +147,16 @@ pub(crate) fn draw_loading_screen(
     let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
     let alpha = (0.72 + 0.28 * breathe) * 255.0;
-    let tint = Color32::from_white_alpha(alpha as u8);
     let mark_size = 64.0 * unit;
-    let gap = 14.0 * unit;
-    let galley =
-        painter.layout_no_wrap("fluxa".to_owned(), FontId::proportional(52.0 * unit), tint);
-    let brand_width = mark_size + gap + galley.size().x;
     let center = screen.center() - Vec2::new(0.0, 24.0 * unit);
-    let left = center.x - brand_width * 0.5;
-    if let Some(mark) = assets.brand_mark() {
-        painter.image(
-            mark,
-            Rect::from_center_size(
-                Pos2::new(left + mark_size * 0.5, center.y),
-                Vec2::splat(mark_size),
-            ),
-            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            tint,
-        );
-    }
-    let text_pos = Pos2::new(left + mark_size + gap, center.y - galley.size().y * 0.5);
-    painter.galley(text_pos, galley, tint);
+    components::brand_lockup(
+        painter,
+        center,
+        mark_size,
+        52.0 * unit,
+        alpha as u8,
+        assets,
+    );
     let radius = 12.0 * unit;
     let spinner_center = center + Vec2::new(0.0, mark_size * 0.5 + 44.0 * unit);
     let stroke = 3.0 * unit;

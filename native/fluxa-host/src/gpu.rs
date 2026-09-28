@@ -30,6 +30,7 @@ pub(super) struct Gpu {
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
     brand_mark: Option<egui::TextureHandle>,
+    brand_icon: &'static fluxa_core::app_icon::AppIcon,
     ambient_glow: egui::TextureHandle,
     pub(super) artwork: ArtworkLoader,
     started_at: Instant,
@@ -48,6 +49,7 @@ pub(super) struct FrameOutput {
 pub(super) struct HostAssets<'a> {
     background: egui::TextureId,
     brand_mark: Option<egui::TextureId>,
+    brand_colors: Option<[egui::Color32; 2]>,
     ambient_glow: egui::TextureId,
     accent: Option<egui::Color32>,
     pub(super) artwork: &'a mut ArtworkLoader,
@@ -66,6 +68,9 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn brand_mark(&self) -> Option<egui::TextureId> {
         self.brand_mark
+    }
+    fn brand_colors(&self) -> Option<[egui::Color32; 2]> {
+        self.brand_colors
     }
     fn ambient_glow(&self) -> Option<egui::TextureId> {
         Some(self.ambient_glow)
@@ -482,6 +487,7 @@ impl Gpu {
             icons,
             background_texture,
             brand_mark,
+            brand_icon: fluxa_core::app_icon::default_app_icon(),
             ambient_glow,
             artwork: ArtworkLoader::new(artwork_cache_dir),
             started_at: Instant::now(),
@@ -548,6 +554,20 @@ impl Gpu {
             focused: true,
             ..Default::default()
         };
+        let brand_icon = fluxa_core::app_icon::resolve_app_icon(settings.app_icon());
+        if brand_icon.id != self.brand_icon.id {
+            self.brand_icon = brand_icon;
+            if let Some(image) = crate::app_icon_rgba(&brand_icon.id, 512) {
+                self.brand_mark = Some(self.egui_context.load_texture(
+                    "fluxa-brand-mark",
+                    egui::ColorImage::from_rgba_premultiplied(
+                        [image.width() as usize, image.height() as usize],
+                        image.as_raw(),
+                    ),
+                    egui::TextureOptions::LINEAR,
+                ));
+            }
+        }
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_mobile_nav_style(
             settings.bool_value("navFloating"),
@@ -566,6 +586,7 @@ impl Gpu {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
                 brand_mark: self.brand_mark.as_ref().map(egui::TextureHandle::id),
+                brand_colors: Some([hex_color(&self.brand_icon.from), hex_color(&self.brand_icon.to)]),
                 ambient_glow: self.ambient_glow.id(),
                 accent: home.accent,
                 artwork: &mut self.artwork,
@@ -706,3 +727,8 @@ impl Gpu {
 }
 
 pub(super) const BRAND_MARK_BYTES: &[u8] = include_bytes!("../assets/fluxa.png");
+
+fn hex_color(hex: &str) -> egui::Color32 {
+    let value = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0xFFFFFF);
+    egui::Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
+}

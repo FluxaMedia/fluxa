@@ -258,7 +258,7 @@ fn paint_backdrop(
     screen: Rect,
     assets: &mut impl HomeAssets,
 ) {
-    paint_ambient(painter, screen, assets);
+    paint_brand_ambient(painter, screen, assets);
     let url = assets.custom_background_url().map(ToOwned::to_owned);
     let size = artwork_target_size(screen.size(), context.pixels_per_point());
     if components::artwork_image(
@@ -343,26 +343,14 @@ fn draw_select(
     ui.add_space(top);
 
     let width = ui.available_width();
-    let brand_font = FontId::proportional(32.0);
-    let brand = ui
-        .painter()
-        .layout_no_wrap("fluxa".to_owned(), brand_font, Color32::WHITE);
-    let mark = 40.0;
-    let brand_width = mark + 10.0 + brand.size().x;
     let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, 60.0), Sense::hover());
-    let left = brand_rect.center().x - brand_width * 0.5;
-    if let Some(texture) = assets.brand_mark() {
-        ui.painter().image(
-            texture,
-            Rect::from_center_size(Pos2::new(left + mark * 0.5, brand_rect.center().y), Vec2::splat(mark)),
-            full_uv(),
-            Color32::WHITE,
-        );
-    }
-    ui.painter().galley(
-        Pos2::new(left + mark + 10.0, brand_rect.center().y - brand.size().y * 0.5),
-        brand,
-        Color32::WHITE,
+    components::brand_lockup(
+        ui.painter(),
+        brand_rect.center(),
+        40.0,
+        32.0,
+        255,
+        assets,
     );
     ui.add_space(24.0);
 

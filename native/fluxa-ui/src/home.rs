@@ -69,6 +69,9 @@ pub trait HomeAssets {
     fn brand_mark(&self) -> Option<TextureId> {
         None
     }
+    fn brand_colors(&self) -> Option<[Color32; 2]> {
+        None
+    }
     fn ambient_glow(&self) -> Option<TextureId> {
         None
     }

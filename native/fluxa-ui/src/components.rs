@@ -1490,6 +1490,31 @@ pub fn draw_action_menu(
     outcome
 }
 
+pub(crate) fn brand_lockup(
+    painter: &Painter,
+    center: Pos2,
+    mark_size: f32,
+    font_size: f32,
+    alpha: u8,
+    assets: &impl HomeAssets,
+) {
+    let gap = mark_size * 0.22;
+    let galley = painter.layout_no_wrap("fluxa".to_owned(), FontId::proportional(font_size), Color32::WHITE);
+    let width = mark_size + gap + galley.size().x;
+    let left = center.x - width * 0.5;
+    let tint = Color32::from_white_alpha(alpha);
+    if let Some(mark) = assets.brand_mark() {
+        painter.image(
+            mark,
+            Rect::from_center_size(Pos2::new(left + mark_size * 0.5, center.y), Vec2::splat(mark_size)),
+            full_uv(),
+            tint,
+        );
+    }
+    let text_pos = Pos2::new(left + mark_size + gap, center.y - galley.size().y * 0.5);
+    painter.galley(text_pos, galley, tint);
+}
+
 pub(super) fn toggle(
     context: &egui::Context,
     painter: &Painter,
