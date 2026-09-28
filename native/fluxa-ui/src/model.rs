@@ -1525,6 +1525,8 @@ pub struct DetailModel {
     pub episodes: Vec<DetailEpisode>,
     pub cast: Vec<DetailCastMember>,
     pub resume: Option<HomeCard>,
+    pub row_scroll_offsets: [f32; 4],
+    pub selected_season: Option<i64>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1820,5 +1822,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
         cast: detail_cast(meta),
         resume: None,
         episodes,
+        row_scroll_offsets: [0.0; 4],
+        selected_season: None,
     }
 }

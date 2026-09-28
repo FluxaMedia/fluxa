@@ -1446,3 +1446,27 @@ fn clicking_library_search_then_typing_reports_the_query() {
     }
     assert_eq!(typed.as_deref(), Some("du"));
 }
+
+#[test]
+fn scrolled_detail_swipe_lands_on_episode_row() {
+    let detail = DetailModel {
+        content_type: "series".to_owned(),
+        episodes: (1..=8)
+            .map(|number| DetailEpisode {
+                id: format!("tt1:1:{number}"),
+                season: 1,
+                number,
+                ..Default::default()
+            })
+            .collect(),
+        ..Default::default()
+    };
+    let viewport = Viewport::new(412, 915, UiFormFactor::Mobile);
+    let scroll = detail_scroll_max(viewport, &detail);
+    let viewport = viewport.with_scroll_y(scroll);
+    let rows = (0..915)
+        .step_by(4)
+        .filter_map(|y| detail_row_at_y(viewport, &detail, y as f32))
+        .collect::<std::collections::BTreeSet<_>>();
+    assert!(rows.contains(&1));
+}

@@ -488,6 +488,15 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 reset_ui(state);
                 continue;
             }
+            if state.route == Route::Detail
+                && (fluxa_ui::NODE_DETAIL_SEASON_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE)
+                    .contains(&node)
+            {
+                state.detail.selected_season = Some((node - fluxa_ui::NODE_DETAIL_SEASON_BASE) as i64);
+                state.detail.row_scroll_offsets[1] = 0.0;
+                reset_ui(state);
+                continue;
+            }
             if state.route == Route::Detail && node == fluxa_ui::NODE_DETAIL_SHUFFLE {
                 if let Some(item) = player::start_shuffle(state) {
                     state.pending_native_actions.push(NativeAction::StartPlayback { item });

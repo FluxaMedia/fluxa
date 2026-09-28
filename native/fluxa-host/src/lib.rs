@@ -207,6 +207,7 @@ enum HomeScrollTarget {
     Vertical,
     Horizontal(usize),
     ScreenVertical,
+    DetailRow(usize),
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -387,7 +388,14 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     if previous_month == (state.calendar.year, state.calendar.month) {
         state.calendar.selected_day = selected_day;
     }
+    let row_scroll_offsets = state.detail.row_scroll_offsets;
+    let selected_season = state.detail.selected_season;
+    let same_detail = state.detail.id == projection.detail.id;
     state.detail = projection.detail;
+    if same_detail {
+        state.detail.row_scroll_offsets = row_scroll_offsets;
+        state.detail.selected_season = selected_season;
+    }
     state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;

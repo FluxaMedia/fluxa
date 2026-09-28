@@ -55,6 +55,15 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
                 *offset = next;
             }
         }
+        Some(HomeScrollTarget::DetailRow(row)) => {
+            let offset = &mut state.detail.row_scroll_offsets[row];
+            let next = (*offset + movement).clamp(0.0, fluxa_ui::detail_row_scroll_max(row));
+            if (next - *offset).abs() < 0.01 {
+                state.scroll_velocity = 0.0;
+            } else {
+                *offset = next;
+            }
+        }
         None => state.scroll_velocity = 0.0,
     }
     // Exponential friction produces a predictable inertial tail independent
@@ -262,7 +271,23 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                         state.active_scroll = Some(HomeScrollTarget::Vertical);
                     }
                 } else {
-                    state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
+                    if state.route == Route::Detail && total_x.abs() > total_y.abs() * 1.15 {
+                        state.active_scroll = fluxa_ui::detail_row_at_y(
+                            viewport.with_scroll_y(
+                                state
+                                    .screen_scroll_offsets
+                                    .get(&Route::Detail)
+                                    .copied()
+                                    .unwrap_or(0.0),
+                            ),
+                            &state.detail,
+                            start[1],
+                        )
+                        .map(HomeScrollTarget::DetailRow);
+                    }
+                    if state.active_scroll.is_none() {
+                        state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
+                    }
                 }
             }
             let sample_seconds = state
@@ -272,7 +297,9 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                 .clamp(1.0 / 240.0, 0.08);
             let delta = match state.active_scroll {
                 Some(HomeScrollTarget::Vertical) => last[1] - position[1],
-                Some(HomeScrollTarget::Horizontal(_)) => last[0] - position[0],
+                Some(HomeScrollTarget::Horizontal(_) | HomeScrollTarget::DetailRow(_)) => {
+                    last[0] - position[0]
+                }
                 Some(HomeScrollTarget::ScreenVertical) => last[1] - position[1],
                 None => 0.0,
             };
@@ -295,6 +322,11 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                     }
                     Some(HomeScrollTarget::ScreenVertical) => {
                         update_screen_scroll(state, delta, viewport);
+                    }
+                    Some(HomeScrollTarget::DetailRow(row)) => {
+                        let offset = &mut state.detail.row_scroll_offsets[row];
+                        *offset =
+                            (*offset + delta).clamp(0.0, fluxa_ui::detail_row_scroll_max(row));
                     }
                     None => {}
                 }
@@ -320,9 +352,10 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                         let seconds = last_at.duration_since(*first_at).as_secs_f32();
                         if seconds > 0.001 {
                             match state.active_scroll {
-                                Some(HomeScrollTarget::Horizontal(_)) => {
-                                    (first[0] - last[0]) / seconds
-                                }
+                                Some(
+                                    HomeScrollTarget::Horizontal(_)
+                                    | HomeScrollTarget::DetailRow(_),
+                                ) => (first[0] - last[0]) / seconds,
                                 Some(
                                     HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical,
                                 ) => (first[1] - last[1]) / seconds,

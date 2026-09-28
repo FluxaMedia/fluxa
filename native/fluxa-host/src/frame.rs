@@ -128,7 +128,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
     poster_data::tick(state);
     timer.mark("sync");
     if state.route == Route::Home
-        || matches!(state.active_scroll, Some(HomeScrollTarget::ScreenVertical))
+        || matches!(
+            state.active_scroll,
+            Some(HomeScrollTarget::ScreenVertical | HomeScrollTarget::DetailRow(_))
+        )
     {
         advance_home_inertia(state);
     }

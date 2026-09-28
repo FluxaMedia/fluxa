@@ -45,7 +45,7 @@ pub use poster_overlay::{
     set_poster_overlays, set_poster_personal, set_rating_logos,
 };
 
-pub use detail::{detail_scroll_max, draw_detail};
+pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
 pub use library::draw_library;
 pub use player::{
