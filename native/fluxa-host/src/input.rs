@@ -326,7 +326,9 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if state.player.is_some() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
         return;
     }
-    state.keyboard_focus_visible = true;
+    if !matches!(input, KeyInput::Key(Key::Back | Key::Escape)) {
+        state.keyboard_focus_visible = true;
+    }
     rebuild_current_ui(state);
     if matches!(input, KeyInput::Backspace) {
         match state.ui.focused() {
