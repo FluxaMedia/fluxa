@@ -185,9 +185,6 @@ pub(crate) fn draw_navigation_bar_with_profile(
     activated
 }
 
-/// Compact Android uses the same bottom navigation as Compose. The native
-/// renderer used to draw the desktop top bar on every form factor, which made
-/// the compact build look like a cropped desktop screen.
 pub(crate) fn draw_mobile_navigation_bar(
     context: &egui::Context,
     viewport: Viewport,
@@ -198,92 +195,79 @@ pub(crate) fn draw_mobile_navigation_bar(
 ) -> Option<u64> {
     let height = 64.0;
     let slot_width = ((viewport.width - 16.0) / 5.0).max(1.0);
-    // Match Compose's safeDrawing bottom inset. In three-button mode this is
-    // taller than the gesture inset, so do not guess a fixed 24dp here.
     let y = (viewport.height - viewport.safe_bottom - height).max(0.0);
+    let bar = Rect::from_min_max(
+        Pos2::new(0.0, y),
+        Pos2::new(viewport.width, viewport.height),
+    );
+    let [r, g, b, _] = metrics.background.to_array();
+    let solid = Color32::from_rgb(r, g, b);
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-bottom-bar"))
-        .fixed_pos(Pos2::new(0.0, y))
+        .fixed_pos(Pos2::new(8.0, y))
         .order(egui::Order::Tooltip)
         .show(context, |ui| {
-            ui.set_width(viewport.width);
-            ui.set_height(height);
-            egui::Frame::NONE
-                .fill(Color32::from_rgb(17, 17, 17))
-                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(18)))
-                .inner_margin(egui::Margin::symmetric(8, 4))
-                .show(ui, |ui| {
-                    ui.set_min_size(Vec2::new(viewport.width - 16.0, height - 8.0));
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 0.0;
-                        for (index, (label, icon, node)) in [
-                            ("Home", "Home", NODE_HOME),
-                            ("Library", "Library", NODE_LIBRARY),
-                            ("Discover", "Discover", NODE_DISCOVER),
-                            ("Calendar", "Calendar", NODE_CALENDAR),
-                            ("Profile", "Account", NODE_PROFILE),
-                        ]
-                        .into_iter()
-                        .enumerate()
-                        {
-                            let active = index == active_route || (index == 4 && active_route == 4);
-                            let response = ui.add_sized(
-                                [slot_width, height - 16.0],
-                                egui::Button::new(
-                                    RichText::new("").size(metrics.nav_icon_size.max(25.0)),
-                                )
-                                .fill(Color32::TRANSPARENT)
-                                .corner_radius(18.0),
+            let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
+            paint_vertical_gradient(
+                &painter,
+                Rect::from_min_max(Pos2::new(0.0, y - 48.0), Pos2::new(viewport.width, y + 8.0)),
+                Color32::TRANSPARENT,
+                solid,
+            );
+            painter.rect_filled(Rect::from_min_max(Pos2::new(0.0, y + 8.0), bar.max), 0.0, solid);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 0.0;
+                for (index, (label, icon, node)) in [
+                    ("Home", "Home", NODE_HOME),
+                    ("Library", "Library", NODE_LIBRARY),
+                    ("Discover", "Discover", NODE_DISCOVER),
+                    ("Calendar", "Calendar", NODE_CALENDAR),
+                    ("Profile", "Account", NODE_PROFILE),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    let active = index == active_route;
+                    let (rect, response) =
+                        ui.allocate_exact_size(Vec2::new(slot_width, height), Sense::click());
+                    let color = if active {
+                        Color32::WHITE
+                    } else {
+                        Color32::from_white_alpha(120)
+                    };
+                    let center = rect.center() - Vec2::new(0.0, 9.0);
+                    let avatar = (index == 4)
+                        .then(|| assets.cached_texture(profile_avatar_url))
+                        .flatten();
+                    if let Some(avatar) = avatar {
+                        paint_circle_texture(ui.painter(), avatar, center, 12.0);
+                        if active {
+                            ui.painter().circle_stroke(
+                                center,
+                                13.5,
+                                egui::Stroke::new(1.5, Color32::WHITE),
                             );
-                            let avatar_id = (index == 4)
-                                .then(|| assets.cached_texture(profile_avatar_url))
-                                .flatten();
-                            if let Some(avatar_id) = avatar_id {
-                                paint_circle_texture(
-                                    ui.painter(),
-                                    avatar_id,
-                                    response.rect.center() - Vec2::new(0.0, 8.0),
-                                    13.0,
-                                );
-                                ui.painter().circle_stroke(
-                                    response.rect.center() - Vec2::new(0.0, 8.0),
-                                    13.0,
-                                    egui::Stroke::new(1.0, Color32::from_white_alpha(130)),
-                                );
-                            } else if let Some(icon_id) = assets.icon(icon) {
-                                let icon_rect = Rect::from_center_size(
-                                    response.rect.center() - Vec2::new(0.0, 8.0),
-                                    Vec2::splat(25.0),
-                                );
-                                ui.painter().image(
-                                    icon_id,
-                                    icon_rect,
-                                    Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                    if active {
-                                        Color32::WHITE
-                                    } else {
-                                        Color32::from_white_alpha(155)
-                                    },
-                                );
-                            }
-                            let label = if index == 4 { "Profile" } else { label };
-                            ui.painter().text(
-                                Pos2::new(response.rect.center().x, response.rect.bottom() - 5.0),
-                                Align2::CENTER_BOTTOM,
-                                label,
-                                FontId::proportional(9.0),
-                                if active {
-                                    Color32::WHITE
-                                } else {
-                                    Color32::from_white_alpha(155)
-                                },
-                            );
-                            if response.clicked() {
-                                activated = Some(node);
-                            }
                         }
-                    });
-                });
+                    } else if let Some(icon) = assets.icon(icon) {
+                        ui.painter().image(
+                            icon,
+                            Rect::from_center_size(center, Vec2::splat(22.0)),
+                            full_uv(),
+                            color,
+                        );
+                    }
+                    ui.painter().text(
+                        Pos2::new(rect.center().x, rect.center().y + 14.0),
+                        Align2::CENTER_CENTER,
+                        label,
+                        FontId::proportional(metrics.text.label - 1.0),
+                        color,
+                    );
+                    if response.clicked() {
+                        activated = Some(node);
+                    }
+                }
+            });
         });
     activated
 }
