@@ -348,7 +348,7 @@ fn legacy_addons_key(profile_id: &str) -> String {
 
 pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
     let storage = Storage::open(data_dir)?;
-    if storage.read_json("profiles")?.is_some() {
+    if storage.read_json("profiles")?.is_some_and(|profiles| profiles.is_array()) {
         return Ok(false);
     }
     let legacy: Value = serde_json::from_str(legacy).map_err(|error| error.to_string())?;

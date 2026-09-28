@@ -587,7 +587,9 @@ impl EffectExecutor {
                 "nuvioProfiles": remote,
                 "avatarCatalog": catalog,
             }),
-        ) {
+        )
+        .filter(Value::is_array)
+        {
             let _ = self.storage.write_json("profiles", &next);
         }
     }
