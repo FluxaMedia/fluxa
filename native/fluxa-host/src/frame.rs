@@ -253,6 +253,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     player::command(state, VideoCommand::SeekTo(position));
                 }
                 player::hover_seek(state, layout.seek_hover);
+                if let (Some(max), Some(player)) = (layout.scroll_max, state.player.as_mut()) {
+                    player.sources_scroll_max = max;
+                }
                 apply_pointer_results(state, route, &layout);
                 if route == Route::Discover {
                     for request in &layout.load_more {

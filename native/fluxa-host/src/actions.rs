@@ -725,7 +725,10 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         }
         if let NativeAction::StartPlayback { item } = &action {
             player::keep_shuffle_for(&mut state.shuffle, item);
-            state.player = Some(player::PlayerSession::new(item.clone()));
+            let mut player = player::PlayerSession::new(item.clone());
+            player.pick_manually(state.core_snapshot.as_deref());
+            state.player = Some(player);
+            state.screen_scroll_offsets.remove(&Route::Player);
             state.ui = UiTree::default();
         }
         if matches!(&action, NativeAction::Navigate { destination } if *destination == Route::Discover)
@@ -770,12 +773,14 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
         player::keep_shuffle_for(&mut state.shuffle, item);
         let command = player::direct_playback_command(item, &profile);
         let mut player = player::PlayerSession::new(item.clone());
+        player.pick_manually(state.core_snapshot.as_deref());
         player.stale = state
             .core_snapshot
             .as_ref()
             .and_then(|snapshot| snapshot.get("player"))
             .cloned();
         state.player = Some(player);
+        state.screen_scroll_offsets.remove(&Route::Player);
         reset_ui(state);
         state.pending_native_actions[index] = NativeAction::CoreCommand { command };
     }

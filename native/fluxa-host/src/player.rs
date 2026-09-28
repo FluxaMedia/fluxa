@@ -6,7 +6,10 @@ use fluxa_ui::{PlayerModel, SettingsModel};
 use serde_json::{Value, json};
 use web_time::Instant;
 
-use crate::{NativeAction, RendererState, SessionHandle, UiTree, core_value, host_log, profile_language};
+use crate::{
+    NativeAction, RendererState, Route, SessionHandle, UiTree, core_value, host_log,
+    profile_language,
+};
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const SEEK_STEP: f64 = 10.0;
@@ -101,6 +104,11 @@ pub(crate) struct PlayerSession {
     passthrough: bool,
     dispatched: Option<Value>,
     scrobbled: Option<bool>,
+    sources: Option<Vec<Value>>,
+    chosen: Option<usize>,
+    source_filter: Option<String>,
+    pub(crate) sources_scroll_max: f32,
+    manual: bool,
 }
 
 impl PlayerSession {
@@ -134,6 +142,11 @@ impl PlayerSession {
             dispatched: None,
             recommendation_index: 0,
             load_progress: 0.0,
+            sources: None,
+            chosen: None,
+            source_filter: None,
+            sources_scroll_max: 0.0,
+            manual: false,
             scrub: None,
             scrub_streak: 0,
             scrobbled: None,
@@ -192,6 +205,14 @@ impl PlayerSession {
         }
     }
 
+    pub(crate) fn pick_manually(&mut self, snapshot: Option<&Value>) {
+        self.manual = snapshot
+            .and_then(|snapshot| snapshot.pointer("/profile/active/streamSourceSelectionMode"))
+            .and_then(Value::as_str)
+            .unwrap_or("manual")
+            == "manual";
+    }
+
     pub(crate) fn model(&self) -> PlayerModel {
         let status = (self.texture.is_none() && self.torrent_link.is_some())
             .then(|| fluxa_ui::torrent_status_lines(self.torrent_status.as_ref()));
@@ -239,7 +260,50 @@ impl PlayerSession {
                 .map(ToOwned::to_owned),
             load_progress: (self.load_progress > 0.0).then_some(self.load_progress),
             scrub: self.scrub.map(|(time, _)| time),
+            sources: match &self.sources {
+                Some(streams) => Some(streams.iter().map(source_row).collect()),
+                None if self.manual && self.chosen.is_none() && self.error.is_none() => {
+                    Some(Vec::new())
+                }
+                None => None,
+            },
+            sources_loading: self.sources.is_none(),
+            source_filter: self.source_filter.clone(),
         }
+    }
+}
+
+fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
+    let lines = |key: &str| {
+        stream
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>()
+            .join(" · ")
+    };
+    let text = |key: &str| {
+        stream
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect::<Vec<_>>()
+            .join("\n")
+    };
+    let mut detail = text("description");
+    if detail.is_empty() {
+        detail = text("title");
+    }
+    fluxa_ui::PlayerSource {
+        addon: lines("addonName"),
+        name: lines("name"),
+        detail,
     }
 }
 
@@ -760,6 +824,23 @@ fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -> Option<Va
         .pointer("/profile/active")
         .cloned()
         .unwrap_or(Value::Null);
+    let mode = profile
+        .get("streamSourceSelectionMode")
+        .and_then(Value::as_str)
+        .unwrap_or("manual");
+    if mode == "manual" && player.chosen.is_none() {
+        if player.sources.is_none() {
+            player.sources = Some(streams.clone());
+        }
+        return None;
+    }
+    let (initial_index, saved_url) = match player.chosen {
+        Some(index) => (json!(index), Value::Null),
+        None => (
+            meta.get("lastStreamIndex").cloned().unwrap_or(json!(0)),
+            meta.get("lastStreamUrl").cloned().unwrap_or(Value::Null),
+        ),
+    };
     Some(json!({
         "type": "playerLoadStreamsRequested",
         "contentType": meta.get("type").and_then(Value::as_str).unwrap_or("movie"),
@@ -767,10 +848,10 @@ fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -> Option<Va
         "currentVideoId": video_id,
         "initialVideoId": video_id,
         "initialStreams": streams,
-        "initialStreamIndex": meta.get("lastStreamIndex").cloned().unwrap_or(json!(0)),
-        "savedUrl": meta.get("lastStreamUrl").cloned().unwrap_or(Value::Null),
+        "initialStreamIndex": initial_index,
+        "savedUrl": saved_url,
         "savedTitle": meta.get("lastStreamTitle").cloned().unwrap_or(Value::Null),
-        "sourceSelectionMode": profile.get("streamSourceSelectionMode").and_then(Value::as_str).unwrap_or("manual"),
+        "sourceSelectionMode": mode,
         "regexPattern": profile.get("streamSourceRegexPattern"),
         "title": meta.get("name").or_else(|| meta.get("title")),
         "originalName": meta.get("originalName"),
@@ -959,8 +1040,25 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => dismiss_recommendations(state),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_PLAY => open_recommendation(state, true),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_DETAILS => open_recommendation(state, false),
+        node if node >= fluxa_ui::NODE_PLAYER_SOURCE_BASE => {
+            if let Some(player) = state.player.as_mut() {
+                player.chosen = Some((node - fluxa_ui::NODE_PLAYER_SOURCE_BASE) as usize);
+                player.sources = None;
+            }
+        }
+        node if node >= fluxa_ui::NODE_PLAYER_SOURCE_FILTER_BASE => {
+            if let Some(player) = state.player.as_mut() {
+                let index = (node - fluxa_ui::NODE_PLAYER_SOURCE_FILTER_BASE) as usize;
+                let filter = index.checked_sub(1).and_then(|index| {
+                    player.model().addons().get(index).map(|addon| addon.to_string())
+                });
+                player.source_filter = filter;
+            }
+            state.screen_scroll_offsets.remove(&Route::Player);
+        }
         node if (fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE
-            ..fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE + fluxa_ui::PLAYER_RECOMMENDATION_LIMIT as u64)
+            ..fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE
+                + fluxa_ui::PLAYER_RECOMMENDATION_LIMIT as u64)
             .contains(&node) =>
         {
             if let Some(player) = state.player.as_mut() {

@@ -1588,3 +1588,66 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_PLUGIN_URL
     ) || super::poster_field(node).is_some()
 }
+
+pub(super) fn stream_row(
+    ui: &mut Ui,
+    source: &crate::PlayerSource,
+    show_addon: bool,
+    width: f32,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+) -> Response {
+    let pad = 16.0;
+    let text_width = (width - pad * 2.0).max(1.0);
+    let painter = ui.painter().clone();
+    let addon = (show_addon && !source.name.starts_with(&source.addon)).then(|| {
+        painter.layout_no_wrap(
+            source.addon.clone(),
+            crate::fonts::regular(metrics.screen_card_subtitle_size - 2.0),
+            Color32::from_white_alpha(120),
+        )
+    });
+    let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0);
+    let mut name_job = crate::emoji::job(
+        &source.name,
+        FontId::proportional(metrics.screen_card_title_size),
+        Color32::WHITE,
+        text_width - addon_width,
+    );
+    name_job.wrap.max_rows = 3;
+    let name = painter.layout_job(name_job);
+    let detail = (!source.detail.is_empty()).then(|| {
+        painter.layout_job(crate::emoji::job(
+            &source.detail,
+            crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
+            Color32::from_white_alpha(165),
+            text_width,
+        ))
+    });
+    let detail_height = detail.as_ref().map_or(0.0, |galley| galley.size().y + 8.0);
+    let height = pad * 2.0 + name.size().y + detail_height;
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
+    let fill = if response.is_pointer_button_down_on() {
+        Color32::from_rgb(0x1c, 0x1c, 0x1c)
+    } else {
+        Color32::from_rgb(0x13, 0x13, 0x13)
+    };
+    painter.rect_filled(rect, 14.0, fill);
+    painter.rect_stroke(
+        rect,
+        14.0,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        egui::StrokeKind::Inside,
+    );
+    let origin = rect.min + Vec2::splat(pad);
+    let name_height = name.size().y;
+    crate::emoji::paint(&painter, origin, name, assets);
+    if let Some(addon) = addon {
+        let pos = egui::Pos2::new(rect.right() - pad - addon.size().x, origin.y + 2.0);
+        painter.galley(pos, addon, Color32::WHITE);
+    }
+    if let Some(detail) = detail {
+        crate::emoji::paint(&painter, origin + Vec2::new(0.0, name_height + 8.0), detail, assets);
+    }
+    response
+}

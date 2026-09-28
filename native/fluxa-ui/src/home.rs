@@ -40,6 +40,12 @@ pub trait HomeAssets {
     fn texture_size(&self, _url: Option<&str>) -> Option<[u32; 2]> {
         None
     }
+    fn has_native_emoji(&self) -> bool {
+        false
+    }
+    fn emoji(&mut self, _cluster: &str) -> Option<TextureId> {
+        None
+    }
     fn artwork_tones(&self, _url: Option<&str>) -> Option<[[u8; 3]; 2]> {
         None
     }
@@ -342,6 +348,7 @@ pub struct HomeLayout {
     pub seek_to: Option<f64>,
     pub seek_hover: Option<f64>,
     pub profiles: Option<ProfilesRequest>,
+    pub scroll_max: Option<f32>,
 }
 
 /// consume the same responsive rectangles as the painter.

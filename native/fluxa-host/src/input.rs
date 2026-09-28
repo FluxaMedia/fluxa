@@ -47,7 +47,7 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
         }
         Some(HomeScrollTarget::ScreenVertical) => {
             let max_offset = screen_scroll_max(state, viewport);
-            let offset = state.screen_scroll_offsets.entry(state.route).or_default();
+            let offset = state.screen_scroll_offsets.entry(active_route(state)).or_default();
             let next = (*offset + movement).clamp(0.0, max_offset);
             if (next - *offset).abs() < 0.01 {
                 state.scroll_velocity = 0.0;
@@ -162,7 +162,8 @@ pub(super) fn request_home_row_load_more(
 }
 
 pub(super) fn screen_scroll_max(state: &RendererState, viewport: Viewport) -> f32 {
-    match state.route {
+    match active_route(state) {
+        Route::Player => state.player.as_ref().map_or(0.0, |player| player.sources_scroll_max),
         Route::Library => fluxa_ui::library_scroll_max(viewport, &state.library, state.library_tab),
         Route::Discover => fluxa_ui::discover_scroll_max(viewport, &state.discover),
         Route::Calendar => fluxa_ui::calendar_scroll_max(viewport, &state.calendar),
@@ -174,7 +175,7 @@ pub(super) fn screen_scroll_max(state: &RendererState, viewport: Viewport) -> f3
 
 pub(super) fn update_screen_scroll(state: &mut RendererState, delta: f32, viewport: Viewport) {
     let max_offset = screen_scroll_max(state, viewport);
-    let offset = state.screen_scroll_offsets.entry(state.route).or_default();
+    let offset = state.screen_scroll_offsets.entry(active_route(state)).or_default();
     *offset = (*offset + delta).clamp(0.0, max_offset);
 }
 
@@ -271,7 +272,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                         state.active_scroll = Some(HomeScrollTarget::Vertical);
                     }
                 } else {
-                    if state.route == Route::Detail && total_x.abs() > total_y.abs() * 1.15 {
+                    if state.player.is_none() && state.route == Route::Detail && total_x.abs() > total_y.abs() * 1.15 {
                         state.active_scroll = fluxa_ui::detail_row_at_y(
                             viewport.with_scroll_y(
                                 state
