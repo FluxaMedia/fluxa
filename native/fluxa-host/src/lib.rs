@@ -146,6 +146,7 @@ struct RendererState {
     cursor: egui::CursorIcon,
     wants_keyboard: bool,
     redraw_at: Option<Instant>,
+    focus_hint: Option<(Route, u64)>,
     player: Option<player::PlayerSession>,
     shuffle: Option<player::Shuffle>,
     video: Option<Box<dyn VideoBackend>>,
@@ -405,7 +406,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
             *field = typed;
         }
     }
-    state.ui = UiTree::default();
+    reset_ui(state);
     request_discover_background_page(state);
 }
 
@@ -525,6 +526,7 @@ impl FluxaHost {
             cursor: egui::CursorIcon::Default,
             wants_keyboard: false,
             redraw_at: Some(Instant::now()),
+            focus_hint: None,
             player: None,
             shuffle: None,
             video: None,
@@ -563,7 +565,7 @@ impl FluxaHost {
         };
         self.with_state(|state| {
             state.home.form_factor = form_factor;
-            state.ui = UiTree::default();
+            reset_ui(state);
         });
     }
 
@@ -578,7 +580,7 @@ impl FluxaHost {
             state.home = home;
             state.home.scroll_offset = scroll_offset;
             state.home.row_scroll_offsets = row_scroll_offsets;
-            state.ui = UiTree::default();
+            reset_ui(state);
         });
     }
 
@@ -591,7 +593,7 @@ impl FluxaHost {
             state.core_snapshot = Some(Arc::new(snapshot));
             state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
             sync_home_from_core_snapshot(state);
-            state.ui = UiTree::default();
+            reset_ui(state);
         });
     }
 
@@ -770,6 +772,16 @@ impl FluxaHost {
         .unwrap_or(false)
     }
 
+    pub fn blur_text_input(&self) {
+        self.with_state(|state| {
+            state.focus_hint = None;
+            if state.ui.focused().and_then(|node| state.ui.node(node)).is_some_and(|node| node.kind == UiNodeKind::Input) {
+                let actions = state.ui.set_focus(None).into_iter().collect();
+                remember_actions(state, actions);
+            }
+        });
+    }
+
     pub fn focus_node(&self, node: u64) {
         self.with_state(|state| {
             state.keyboard_focus_visible = true;
@@ -784,6 +796,18 @@ impl FluxaHost {
         self.with_state(|state| {
             rebuild_current_ui(state);
             remember_actions(state, vec![UiAction::Activated(node)]);
+        });
+    }
+
+    pub fn focused_text(&self) -> Option<String> {
+        self.with_state(|state| actions::focused_text(state)).flatten()
+    }
+
+    pub fn set_focused_text(&self, text: &str) {
+        self.with_state(|state| {
+            if let Some(node) = state.ui.focused() {
+                actions::edit_text(state, node, |value| *value = text.to_owned());
+            }
         });
     }
 

@@ -92,6 +92,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 .getInsets(WindowInsetsCompat.Type.navigationBars())
                 .bottom
             syncSafeInsets()
+            val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
+            if (imeShown && !imeVisible && nativeHandle != 0L) {
+                NativeRenderer.blurTextInputNative(nativeHandle)
+            }
+            imeShown = imeVisible
             insets
         }
         isFocusable = true
@@ -526,6 +531,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     private var selectLongPressed = false
+    private var imeShown = false
 
     private fun syncSoftKeyboard() {
         val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager ?: return
@@ -570,22 +576,81 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         outAttrs.inputType = android.text.InputType.TYPE_CLASS_TEXT
         outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE
-        return object : BaseInputConnection(this, true) {
-            override fun commitText(text: CharSequence, newCursorPosition: Int): Boolean {
+        val connection = object : BaseInputConnection(this, true) {
+            private fun sync(result: Boolean): Boolean {
                 if (nativeHandle != 0L) {
-                    NativeRenderer.textInputNative(nativeHandle, text.toString())
+                    NativeRenderer.setFocusedTextNative(nativeHandle, editable.toString())
                 }
-                return true
+                return result
             }
 
-            override fun deleteSurroundingText(beforeLength: Int, afterLength: Int): Boolean {
-                if (nativeHandle != 0L && beforeLength > 0) {
-                    NativeRenderer.keyDownNative(nativeHandle, KeyEvent.KEYCODE_DEL, 0)
-                }
-                return true
+            override fun commitText(text: CharSequence, newCursorPosition: Int) =
+                sync(super.commitText(text, newCursorPosition))
+
+            override fun setComposingText(text: CharSequence, newCursorPosition: Int) =
+                sync(super.setComposingText(text, newCursorPosition))
+
+            override fun finishComposingText() = sync(super.finishComposingText())
+
+            override fun deleteSurroundingText(beforeLength: Int, afterLength: Int) =
+                sync(super.deleteSurroundingText(beforeLength, afterLength))
+
+            private var batch = 0
+
+            override fun beginBatchEdit(): Boolean {
+                batch++
+                return super.beginBatchEdit()
             }
 
+            override fun endBatchEdit(): Boolean {
+                batch = (batch - 1).coerceAtLeast(0)
+                return sync(super.endBatchEdit())
+            }
+
+            override fun setComposingRegion(start: Int, end: Int) =
+                sync(super.setComposingRegion(start, end))
+
+            override fun setSelection(start: Int, end: Int) =
+                sync(super.setSelection(start, end))
+
+            override fun commitCompletion(text: android.view.inputmethod.CompletionInfo) =
+                sync(super.commitCompletion(text))
+
+            override fun commitCorrection(correctionInfo: android.view.inputmethod.CorrectionInfo) =
+                sync(super.commitCorrection(correctionInfo))
+
+            override fun replaceText(
+                start: Int,
+                end: Int,
+                text: CharSequence,
+                newCursorPosition: Int,
+                textAttribute: android.view.inputmethod.TextAttribute?,
+            ) = sync(super.replaceText(start, end, text, newCursorPosition, textAttribute))
+
+            override fun sendKeyEvent(event: KeyEvent): Boolean {
+                if (event.keyCode == KeyEvent.KEYCODE_DEL) {
+                    if (event.action == KeyEvent.ACTION_DOWN) {
+                        val text = editable ?: return true
+                        val end = android.text.Selection.getSelectionEnd(text).takeIf { it > 0 } ?: text.length
+                        val start = android.text.Selection.getSelectionStart(text).coerceIn(0, end)
+                        if (start != end) text.delete(start, end) else if (end > 0) text.delete(end - 1, end)
+                        sync(true)
+                    }
+                    return true
+                }
+                return super.sendKeyEvent(event)
+            }
         }
+        if (nativeHandle != 0L) {
+            val current = NativeRenderer.focusedTextNative(nativeHandle)
+            connection.editable?.let {
+                it.append(current)
+                android.text.Selection.setSelection(it, it.length)
+            }
+            outAttrs.initialSelStart = current.length
+            outAttrs.initialSelEnd = current.length
+        }
+        return connection
     }
 }
 
@@ -628,7 +693,10 @@ private object NativeRenderer {
     @JvmStatic external fun keyDownNative(handle: Long, keyCode: Int, shift: Int)
     @JvmStatic external fun focusedNodeNative(handle: Long): Long
     @JvmStatic external fun textInputFocusedNative(handle: Long): Boolean
+    @JvmStatic external fun blurTextInputNative(handle: Long)
     @JvmStatic external fun textInputNative(handle: Long, text: String)
+    @JvmStatic external fun focusedTextNative(handle: Long): String
+    @JvmStatic external fun setFocusedTextNative(handle: Long, text: String)
 
     fun isNavigationKey(keyCode: Int): Boolean = when (keyCode) {
         KeyEvent.KEYCODE_DPAD_UP,

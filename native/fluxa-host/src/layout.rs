@@ -265,6 +265,13 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
     }
 }
 
+pub(super) fn reset_ui(state: &mut RendererState) {
+    if let (Some((route, _)), Some(node)) = (state.rendered_layout.as_ref(), state.ui.focused()) {
+        state.focus_hint = Some((*route, node));
+    }
+    state.ui = UiTree::default();
+}
+
 pub(super) fn rebuild_ui_from_layout(
     state: &mut RendererState,
     layout: &HomeLayout,
@@ -331,13 +338,18 @@ pub(super) fn rebuild_ui_from_layout(
                 .then_some((*id, *bounds))
         })
         .collect::<Vec<_>>();
-    let previous_focus = state.ui.focused();
+    let route = active_route(state);
+    let hint = state.focus_hint.take().filter(|(built, _)| *built == route);
+    let previous_focus = state.ui.focused().or(hint.map(|(_, node)| node));
     let retained_focus = targets
         .iter()
         .any(|(id, _)| Some(*id) == previous_focus)
         .then_some(previous_focus)
         .flatten();
-    let first_target = targets.first().map(|(id, _)| *id);
+    let first_target = targets
+        .iter()
+        .map(|(id, _)| *id)
+        .find(|id| !fluxa_ui::is_text_node(*id));
     let mut ui = UiTree::default();
     let root = ui.root();
     if let Some(node) = ui.node_mut(root) {

@@ -465,3 +465,38 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_backNati
 ) -> jni::sys::jboolean {
     host(handle).is_some_and(|host| host.back()) as jni::sys::jboolean
 }
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedTextNative<'local>(
+    env: JNIEnv<'local>,
+    _class: JClass<'local>,
+    handle: jlong,
+) -> jni::sys::jstring {
+    let text = host(handle).and_then(FluxaHost::focused_text).unwrap_or_default();
+    env.new_string(text)
+        .map(|value| value.into_raw())
+        .unwrap_or(std::ptr::null_mut())
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFocusedTextNative(
+    mut env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    text: JString<'_>,
+) {
+    if let (Some(host), Some(text)) = (host(handle), string(&mut env, &text)) {
+        host.set_focused_text(&text);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_blurTextInputNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) {
+    if let Some(host) = host(handle) {
+        host.blur_text_input();
+    }
+}

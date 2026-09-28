@@ -342,30 +342,53 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
     None
 }
 
+pub(super) fn edit_text(state: &mut RendererState, node: u64, edit: impl FnOnce(&mut String)) -> bool {
+    let route = state.route;
+    let text = match node {
+        fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => &mut state.library_query,
+        fluxa_ui::NODE_DISCOVER_SEARCH if route == Route::Discover => &mut state.discover.query,
+        fluxa_ui::NODE_SETTINGS_SEARCH if route == Route::Settings => &mut state.settings.search,
+        fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => &mut state.settings.addon_url,
+        fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => &mut state.settings.plugin_url,
+        _ if route == Route::Settings && fluxa_ui::poster_field(node).is_some() => {
+            &mut state.settings.poster_fields[fluxa_ui::poster_field(node).unwrap_or_default()]
+        }
+        _ => return false,
+    };
+    let before = text.clone();
+    edit(text);
+    if *text == before {
+        return true;
+    }
+    match node {
+        fluxa_ui::NODE_LIBRARY_SEARCH => refresh_library_view(state),
+        fluxa_ui::NODE_DISCOVER_SEARCH => request_discover_search(state),
+        _ => {}
+    }
+    true
+}
+
+pub(super) fn focused_text(state: &RendererState) -> Option<String> {
+    let node = state.ui.focused()?;
+    let route = state.route;
+    Some(match node {
+        fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => state.library_query.clone(),
+        fluxa_ui::NODE_DISCOVER_SEARCH if route == Route::Discover => state.discover.query.clone(),
+        fluxa_ui::NODE_SETTINGS_SEARCH if route == Route::Settings => state.settings.search.clone(),
+        fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => state.settings.addon_url.clone(),
+        fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => state.settings.plugin_url.clone(),
+        _ if route == Route::Settings => state.settings.poster_fields[fluxa_ui::poster_field(node)?].clone(),
+        _ => return None,
+    })
+}
+
 pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
     if actions.is_empty() {
         return;
     }
     for action in &actions {
         if let UiAction::TextInput { node, value } = action {
-            if state.route == Route::Library && *node == fluxa_ui::NODE_LIBRARY_SEARCH {
-                state.library_query.push_str(value);
-                refresh_library_view(state);
-            } else if state.route == Route::Discover && *node == fluxa_ui::NODE_DISCOVER_SEARCH {
-                state.discover.query.push_str(value);
-                request_discover_search(state);
-            } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_SEARCH {
-                state.settings.search.push_str(value);
-            } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_ADDON_URL {
-                state.settings.addon_url.push_str(value);
-            } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
-            {
-                state.settings.plugin_url.push_str(value);
-            } else if state.route == Route::Settings
-                && let Some(index) = fluxa_ui::poster_field(*node)
-            {
-                state.settings.poster_fields[index].push_str(value);
-            }
+            edit_text(state, *node, |text| text.push_str(value));
             continue;
         }
         let node = match action {
@@ -394,7 +417,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             if state.route == Route::Calendar {
                 if node == fluxa_ui::NODE_CALENDAR_CLOSE_DAY {
                     state.calendar.selected_day = None;
-                    state.ui = UiTree::default();
+                    reset_ui(state);
                     continue;
                 }
                 if (fluxa_ui::NODE_CALENDAR_DAY_BASE..fluxa_ui::NODE_CALENDAR_DAY_BASE + 32)
@@ -402,7 +425,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 {
                     state.calendar.selected_day =
                         Some((node - fluxa_ui::NODE_CALENDAR_DAY_BASE) as u32);
-                    state.ui = UiTree::default();
+                    reset_ui(state);
                     continue;
                 }
             }
@@ -435,7 +458,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.settings.section_open = true;
                 state.settings.search.clear();
                 state.screen_scroll_offsets.remove(&Route::Settings);
-                state.ui = UiTree::default();
+                reset_ui(state);
                 continue;
             }
             if state.route == Route::Settings
@@ -451,7 +474,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     .push(NativeAction::CoreCommand {
                         command: action_json,
                     });
-                state.ui = UiTree::default();
+                reset_ui(state);
                 continue;
             }
             if state.route == Route::Library
@@ -462,7 +485,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.library_tab =
                     LibraryTab::ALL[(node - fluxa_ui::NODE_LIBRARY_TAB_BASE) as usize];
                 refresh_library_view(state);
-                state.ui = UiTree::default();
+                reset_ui(state);
                 continue;
             }
             if state.route == Route::Detail && node == fluxa_ui::NODE_DETAIL_SHUFFLE {
@@ -498,7 +521,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         if matches!(action, UiAction::Back) {
             if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
                 state.calendar.selected_day = None;
-                state.ui = UiTree::default();
+                reset_ui(state);
             } else if state.route == Route::Settings && state.settings.section_open {
                 close_settings_section(state);
             } else {
@@ -720,7 +743,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         accounts::toggle(state, &provider);
     }
     if open_profiles {
-        state.ui = UiTree::default();
+        reset_ui(state);
         profiles::open(state);
     }
 }
@@ -744,7 +767,7 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
             .and_then(|snapshot| snapshot.get("player"))
             .cloned();
         state.player = Some(player);
-        state.ui = UiTree::default();
+        reset_ui(state);
         state.pending_native_actions[index] = NativeAction::CoreCommand { command };
     }
 }
@@ -752,5 +775,5 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
 fn close_settings_section(state: &mut RendererState) {
     state.settings.section_open = false;
     state.screen_scroll_offsets.remove(&Route::Settings);
-    state.ui = UiTree::default();
+    reset_ui(state);
 }

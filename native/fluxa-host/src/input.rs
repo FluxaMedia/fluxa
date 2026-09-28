@@ -390,36 +390,13 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
         state.keyboard_focus_visible = true;
     }
     rebuild_current_ui(state);
-    if matches!(input, KeyInput::Backspace) {
-        match state.ui.focused() {
-            Some(fluxa_ui::NODE_LIBRARY_SEARCH) if state.route == Route::Library => {
-                state.library_query.pop();
-                refresh_library_view(state);
-                return;
-            }
-            Some(fluxa_ui::NODE_SETTINGS_SEARCH) if state.route == Route::Settings => {
-                state.settings.search.pop();
-                state.ui = UiTree::default();
-                return;
-            }
-            Some(fluxa_ui::NODE_SETTINGS_ADDON_URL) if state.route == Route::Settings => {
-                state.settings.addon_url.pop();
-                return;
-            }
-            Some(fluxa_ui::NODE_SETTINGS_PLUGIN_URL) if state.route == Route::Settings => {
-                state.settings.plugin_url.pop();
-                return;
-            }
-            Some(node)
-                if state.route == Route::Settings && fluxa_ui::poster_field(node).is_some() =>
-            {
-                if let Some(index) = fluxa_ui::poster_field(node) {
-                    state.settings.poster_fields[index].pop();
-                }
-                return;
-            }
-            _ => {}
-        }
+    if matches!(input, KeyInput::Backspace)
+        && let Some(node) = state.ui.focused()
+        && edit_text(state, node, |text| {
+            text.pop();
+        })
+    {
+        return;
     }
     let actions = match input {
         KeyInput::Gamepad(button) => state.ui.dispatch(UiEvent::GamepadButton {

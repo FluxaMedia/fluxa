@@ -836,7 +836,7 @@ pub(crate) fn close(state: &mut RendererState) {
     if let (Some(texture), Some(gpu)) = (player.texture, state.gpu.as_mut()) {
         gpu.egui_renderer.free_texture(&texture);
     }
-    state.ui = UiTree::default();
+    crate::reset_ui(state);
 }
 
 fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Value) {
