@@ -175,8 +175,8 @@ pub(crate) fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32
     }
 }
 
-pub(crate) fn home_collection_card_dimensions(card: &HomeCard) -> (f32, f32) {
-    match card
+pub(crate) fn home_collection_card_dimensions(metrics: UiMetrics, card: &HomeCard) -> (f32, f32) {
+    let (width, height) = match card
         .collection_shape
         .as_deref()
         .unwrap_or("poster")
@@ -186,7 +186,11 @@ pub(crate) fn home_collection_card_dimensions(card: &HomeCard) -> (f32, f32) {
         "wide" | "landscape" => (280.0, 158.0),
         "square" => (150.0, 150.0),
         _ => (156.0, 234.0),
-    }
+    };
+    (
+        width * metrics.home_collection_scale,
+        height * metrics.home_collection_scale,
+    )
 }
 
 pub(crate) fn home_row_body_height(
@@ -199,7 +203,7 @@ pub(crate) fn home_row_body_height(
     }
     let max_tile_height = cards
         .iter()
-        .map(home_collection_card_dimensions)
+        .map(|card| home_collection_card_dimensions(metrics, card))
         .map(|(_, height)| height)
         .fold(0.0_f32, f32::max);
     max_tile_height + metrics.control_gap + metrics.screen_card_title_size
@@ -208,8 +212,8 @@ pub(crate) fn home_row_body_height(
 pub(crate) fn home_metrics(viewport: Viewport) -> UiMetrics {
     let mut metrics = UiMetrics::for_viewport(viewport);
     if viewport.is_compact() {
-        metrics.home_continue_card_width *= 1.14;
-        metrics.home_continue_card_height *= 1.14;
+        metrics.home_continue_card_width *= 1.15;
+        metrics.home_continue_card_height *= 1.15;
     } else if !viewport.is_tv() {
         metrics.home_continue_card_width *= 1.10;
         metrics.home_continue_card_height *= 1.10;
@@ -395,7 +399,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         let mut card_x = margin - row_scroll;
         for card in cards {
             let (item_width, item_height) = if kind == HomeRowKind::Collection {
-                home_collection_card_dimensions(card)
+                home_collection_card_dimensions(metrics, card)
             } else {
                 (card_width, card_height)
             };
@@ -471,7 +475,7 @@ pub(crate) fn home_row_scroll_max_for_cards(
     let content_width = if kind == HomeRowKind::Collection {
         cards
             .iter()
-            .map(home_collection_card_dimensions)
+            .map(|card| home_collection_card_dimensions(metrics, card))
             .map(|(width, _)| width + metrics.horizontal_spacing)
             .sum::<f32>()
             - metrics.horizontal_spacing
@@ -534,7 +538,10 @@ pub(crate) fn draw_home_with_options(
     let mut metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
-    if !compact && !tv {
+    if compact {
+        metrics.home_continue_card_width *= 1.15;
+        metrics.home_continue_card_height *= 1.15;
+    } else if !tv {
         metrics.home_continue_card_width *= 1.10;
         metrics.home_continue_card_height *= 1.10;
     }
@@ -723,7 +730,7 @@ pub(crate) fn draw_home_with_options(
         metrics.screen_padding
     };
     let mut activated = None;
-    let mut hero_actions: Option<(Rect, Rect)> = None;
+    let mut hero_actions: Option<(Rect, Option<Rect>)> = None;
     if draw_top_bar {
         let profile_avatar_url = home
             .profile_avatar_url
@@ -1015,12 +1022,13 @@ pub(crate) fn draw_home_with_options(
                                 .x
                         };
                         let play_width = measure(ui, &label) + 70.0;
-                        let details_width = measure(ui, &details_label) + metrics.control_gap * 2.0;
+                        let details_width = if compact {
+                            0.0
+                        } else {
+                            measure(ui, &details_label) + metrics.control_gap * 2.0
+                        };
                         if compact {
-                            ui.add_space(
-                                ((ui.available_width() - play_width - details_width - 12.0) * 0.5)
-                                    .max(0.0),
-                            );
+                            ui.add_space(((ui.available_width() - play_width) * 0.5).max(0.0));
                         }
                         let play = components::play_button(
                             ui,
@@ -1033,19 +1041,21 @@ pub(crate) fn draw_home_with_options(
                                 .map(|card| card.progress)
                                 .filter(|progress| *progress > 0.0),
                         );
-                        let details = components::button(
-                            ui,
-                            &details_label,
-                            details_width,
-                            play_height,
-                            components::ButtonKind::Secondary,
-                            metrics,
-                        );
-                        hero_actions = Some((play.rect, details.rect));
+                        let details = (!compact).then(|| {
+                            components::button(
+                                ui,
+                                &details_label,
+                                details_width,
+                                play_height,
+                                components::ButtonKind::Secondary,
+                                metrics,
+                            )
+                        });
+                        hero_actions = Some((play.rect, details.as_ref().map(|d| d.rect)));
                         if play.clicked() {
                             activated = Some(NODE_PLAY);
                         }
-                        if details.clicked() {
+                        if details.is_some_and(|d| d.clicked()) {
                             activated = Some(NODE_MORE_INFO);
                         }
                     });
@@ -1082,12 +1092,12 @@ pub(crate) fn draw_home_with_options(
                     artwork_target_size(
                         Vec2::new(
                             if kind == HomeRowKind::Collection {
-                                home_collection_card_dimensions(card).0
+                                home_collection_card_dimensions(metrics, card).0
                             } else {
                                 card_width
                             },
                             if kind == HomeRowKind::Collection {
-                                home_collection_card_dimensions(card).1
+                                home_collection_card_dimensions(metrics, card).1
                             } else {
                                 card_height
                             },
@@ -1102,7 +1112,7 @@ pub(crate) fn draw_home_with_options(
                     && !row_is_visible
                     && let Some(url) = card.motion_url.as_deref()
                 {
-                    let (width, height) = home_collection_card_dimensions(card);
+                    let (width, height) = home_collection_card_dimensions(metrics, card);
                     assets.prefetch_animated_for(
                         Some(url),
                         fluxa_artwork::animation_target_size(artwork_target_size(
@@ -1219,7 +1229,7 @@ pub(crate) fn draw_home_with_options(
                     for (column_index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
                         let (item_width, item_height) = if kind == HomeRowKind::Collection {
-                            home_collection_card_dimensions(card)
+                            home_collection_card_dimensions(metrics, card)
                         } else {
                             (card_width, card_height)
                         };
@@ -1249,7 +1259,7 @@ pub(crate) fn draw_home_with_options(
                                     card.motion_enabled
                                         && card.motion_url.is_some()
                                         && ((home.gif_autoplay_enabled
-                                            && screen.intersect(row_clip).contains_rect(rect))
+                                            && mostly_visible(rect, screen.intersect(row_clip)))
                                             || focused == Some(node_id)
                                             || response
                                                 .as_ref()
@@ -1277,9 +1287,16 @@ pub(crate) fn draw_home_with_options(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
+    if compact && show_hero {
+        layout
+            .focusable
+            .push((NODE_MORE_INFO, hero_rect.intersect(screen)));
+    }
     if let Some((play, details)) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));
-        layout.focusable.push((NODE_MORE_INFO, details));
+        if let Some(details) = details {
+            layout.focusable.push((NODE_MORE_INFO, details));
+        }
     } else if show_hero {
         let play_y = hero_height - if compact { 92.0 } else { 194.0 } - scroll_offset;
         layout.focusable.push((
@@ -1317,4 +1334,9 @@ pub(crate) fn draw_home_with_options(
         );
     }
     layout
+}
+
+fn mostly_visible(rect: Rect, viewport: Rect) -> bool {
+    let visible = rect.intersect(viewport);
+    visible.is_positive() && visible.area() >= rect.area() * 0.6
 }

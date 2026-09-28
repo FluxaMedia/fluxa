@@ -164,11 +164,17 @@ fn collection_shelves_keep_web_tile_shapes_and_hide_title_metadata() {
     let collection = &model.rows[0];
     assert_eq!(collection.kind, HomeRowKind::Collection);
     assert_eq!(
-        home_collection_card_dimensions(&collection.cards[0]),
+        home_collection_card_dimensions(
+            UiMetrics::for_viewport(Viewport::new(1280, 720, UiFormFactor::Desktop)),
+            &collection.cards[0]
+        ),
         (150.0, 150.0)
     );
     assert_eq!(
-        home_collection_card_dimensions(&collection.cards[1]),
+        home_collection_card_dimensions(
+            UiMetrics::for_viewport(Viewport::new(1280, 720, UiFormFactor::Desktop)),
+            &collection.cards[1]
+        ),
         (280.0, 158.0)
     );
     assert!(collection.cards[0].hide_title);
@@ -767,7 +773,10 @@ fn detail_actions_wrap_inside_a_narrow_mobile_layout() {
         .find(|(id, _)| *id == NODE_DETAIL_BACK)
         .unwrap()
         .1;
-    assert!(!back.intersects(play), "back button must not overlap the play action");
+    assert!(
+        !back.intersects(play),
+        "back button must not overlap the play action"
+    );
 }
 
 #[test]
@@ -1199,18 +1208,17 @@ fn native_appearance_groups_are_separate_cards() {
         active_section: 2,
         ..Default::default()
     };
-    let height = super::settings::settings_card_height(
-        viewport,
-        metrics,
-        &SETTINGS_SECTIONS[2],
-        &settings,
-    );
+    let height =
+        super::settings::settings_card_height(viewport, metrics, &SETTINGS_SECTIONS[2], &settings);
     let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
     let groups = super::settings::visible_groups(&settings);
     let cards = super::settings::group_cards(content, &groups, metrics);
     assert_eq!(cards.len(), 6);
     for pair in cards.windows(2) {
-        assert!(pair[1].top() > pair[0].bottom(), "appearance groups must have visible gaps");
+        assert!(
+            pair[1].top() > pair[0].bottom(),
+            "appearance groups must have visible gaps"
+        );
     }
     assert!(cards.last().unwrap().bottom() <= content.bottom());
 }

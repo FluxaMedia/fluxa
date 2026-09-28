@@ -132,6 +132,7 @@ pub struct UiMetrics {
     pub horizontal_card_width: f32,
     pub horizontal_card_height: f32,
     pub home_continue_card_width: f32,
+    pub home_collection_scale: f32,
     pub home_continue_card_height: f32,
     pub poster_card_width: f32,
     pub poster_card_height: f32,
@@ -422,6 +423,7 @@ impl UiMetrics {
                 0.56,
             ),
             focused_scale: number(&["common", "number", "cardFocusedScale"], 1.12),
+            home_collection_scale: if viewport.is_compact() { 0.75 } else { 1.0 },
         };
         if poster_overlay::landscape() {
             metrics.poster_card_width = metrics.home_continue_card_width;

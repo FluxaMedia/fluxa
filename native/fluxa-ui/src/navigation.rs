@@ -204,7 +204,7 @@ pub(crate) fn draw_mobile_navigation_bar(
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-bottom-bar"))
         .fixed_pos(Pos2::new(0.0, y))
-        .order(egui::Order::Foreground)
+        .order(egui::Order::Tooltip)
         .show(context, |ui| {
             ui.set_width(viewport.width);
             ui.set_height(height);
