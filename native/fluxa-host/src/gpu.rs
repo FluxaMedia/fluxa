@@ -87,6 +87,12 @@ impl HomeAssets for HostAssets<'_> {
     fn texture(&mut self, url: Option<&str>) -> Option<egui::TextureId> {
         self.artwork.texture(url)
     }
+    fn has_native_emoji(&self) -> bool {
+        crate::EMOJI_RASTERIZER.get().is_some()
+    }
+    fn emoji(&mut self, cluster: &str) -> Option<egui::TextureId> {
+        self.artwork.emoji(cluster)
+    }
     fn texture_for(
         &mut self,
         url: Option<&str>,

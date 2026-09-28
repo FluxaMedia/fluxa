@@ -9,6 +9,8 @@ pub(super) const MAX_ARTWORK_TEXTURES: usize = 128;
 pub(super) struct ArtworkLoader {
     pub(super) fetcher: ArtworkFetcher,
     textures: HashMap<String, egui::TextureHandle>,
+    emoji: HashMap<String, Option<egui::TextureHandle>>,
+    emoji_pending: Vec<String>,
     animations: HashMap<String, ArtworkAnimation>,
     animation_checked: HashSet<String>,
     active_animations: HashSet<String>,
@@ -33,6 +35,8 @@ impl ArtworkLoader {
         Self {
             fetcher: ArtworkFetcher::new(cache_dir, 4),
             textures: HashMap::new(),
+            emoji: HashMap::new(),
+            emoji_pending: Vec::new(),
             animations: HashMap::new(),
             animation_checked: HashSet::new(),
             active_animations: HashSet::new(),
@@ -46,7 +50,40 @@ impl ArtworkLoader {
         }
     }
 
+    pub(super) fn emoji(&mut self, cluster: &str) -> Option<egui::TextureId> {
+        match self.emoji.get(cluster) {
+            Some(texture) => texture.as_ref().map(|texture| texture.id()),
+            None => {
+                if !self.emoji_pending.iter().any(|pending| pending == cluster) {
+                    self.emoji_pending.push(cluster.to_owned());
+                }
+                None
+            }
+        }
+    }
+
+    fn rasterize_emoji(&mut self, context: &egui::Context) {
+        let Some(rasterize) = crate::EMOJI_RASTERIZER.get() else {
+            return;
+        };
+        let pending = std::mem::take(&mut self.emoji_pending);
+        if !pending.is_empty() {
+            context.request_repaint();
+        }
+        for cluster in pending {
+            let texture = rasterize(&cluster, 96).map(|(width, height, rgba)| {
+                let image = egui::ColorImage::from_rgba_unmultiplied(
+                    [width as usize, height as usize],
+                    &rgba,
+                );
+                context.load_texture(format!("emoji:{cluster}"), image, egui::TextureOptions::LINEAR)
+            });
+            self.emoji.insert(cluster, texture);
+        }
+    }
+
     pub(super) fn poll(&mut self, context: &egui::Context) {
+        self.rasterize_emoji(context);
         for prepared in self.fetcher.poll(2) {
             let url = prepared.source_url;
             let target_size = prepared.target_size;

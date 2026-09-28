@@ -8,8 +8,8 @@ use std::{
 use fluxa_host::{FluxaHost, VideoStatus, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
-    JNIEnv,
-    objects::{JClass, JObject, JString},
+    JNIEnv, JavaVM,
+    objects::{GlobalRef, JClass, JIntArray, JObject, JString, JValue},
     sys::{jboolean, jdouble, jfloat, jint, jlong},
 };
 use raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawWindowHandle};
@@ -96,6 +96,44 @@ fn android_key(key_code: jint, shift: bool) -> Option<KeyInput> {
     Some(KeyInput::Key(key))
 }
 
+static EMOJI: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+
+fn rasterize_emoji(text: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
+    let (vm, class) = EMOJI.get()?;
+    let mut env = vm.attach_current_thread().ok()?;
+    let text = env.new_string(text).ok()?;
+    let result = env
+        .call_static_method(
+            <&JClass>::from(class.as_obj()),
+            "render",
+            "(Ljava/lang/String;I)[I",
+            &[JValue::Object(&text), JValue::Int(size as i32)],
+        )
+        .and_then(|value| value.l());
+    let array = match result {
+        Ok(array) if !array.is_null() => JIntArray::from(array),
+        _ => {
+            let _ = env.exception_clear();
+            return None;
+        }
+    };
+    let len = env.get_array_length(&array).ok()? as usize;
+    if len < 2 {
+        return None;
+    }
+    let mut pixels = vec![0i32; len];
+    env.get_int_array_region(&array, 0, &mut pixels).ok()?;
+    let (width, height) = (pixels[0] as u32, pixels[1] as u32);
+    let rgba = pixels[2..]
+        .iter()
+        .flat_map(|&argb| {
+            let [a, r, g, b] = (argb as u32).to_be_bytes();
+            [r, g, b, a]
+        })
+        .collect();
+    Some((width, height, rgba))
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNative(
     mut env: JNIEnv<'_>,
@@ -104,8 +142,17 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
     artwork_cache_dir: JString<'_>,
 ) -> jlong {
     fluxa_host::set_logger(android_log);
+    if let (Ok(vm), Ok(class)) = (
+        env.get_java_vm(),
+        env.find_class("com/fluxa/app/ui/rust/EmojiRasterizer"),
+    ) && let Ok(class) = env.new_global_ref(class)
+    {
+        let _ = EMOJI.set((vm, class));
+        fluxa_host::set_emoji_rasterizer(rasterize_emoji);
+    }
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
     let host = FluxaHost::new(density, artwork_cache_dir);
+    host.set_platform("android");
     host.set_video_backend(Box::new(fluxa_host::BridgeVideo(video_bridge().clone())));
     Box::into_raw(Box::new(host)) as jlong
 }

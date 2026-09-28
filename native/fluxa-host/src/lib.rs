@@ -31,6 +31,13 @@ use serde_json::{Value, json};
 type SharedRenderer = Arc<Mutex<RendererState>>;
 
 static LOGGER: OnceLock<fn(&str)> = OnceLock::new();
+pub(crate) static EMOJI_RASTERIZER: OnceLock<EmojiRasterizer> = OnceLock::new();
+
+pub type EmojiRasterizer = fn(&str, u32) -> Option<(u32, u32, Vec<u8>)>;
+
+pub fn set_emoji_rasterizer(rasterizer: EmojiRasterizer) {
+    let _ = EMOJI_RASTERIZER.set(rasterizer);
+}
 
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
