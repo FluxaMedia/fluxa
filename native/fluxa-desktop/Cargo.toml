@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 license = "MIT"
 description = "Native desktop shell for Fluxa's Rust renderer migration."
-build = "build.rs"
 
 [dependencies]
 egui = "0.34.2"
@@ -21,5 +20,3 @@ wgpu = { version = "29.0.3", default-features = false, features = ["dx12", "gles
 
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
 ash = "0.38"
-
-[build-dependencies]
