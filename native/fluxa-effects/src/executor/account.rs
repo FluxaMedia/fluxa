@@ -416,6 +416,85 @@ impl EffectExecutor {
             .ok_or_else(|| format!("Fluxa Core could not apply the Nuvio {resource} delta"))
     }
 
+    pub(super) async fn nuvio_rows(
+        &self,
+        session: &NuvioSession,
+        profile: &Value,
+        entity: &str,
+        rpc: &str,
+        body: Value,
+    ) -> Result<Value, String> {
+        let source = account_source(profile, entity);
+        let key = source
+            .get("snapshotKey")
+            .and_then(Value::as_str)
+            .ok_or_else(|| format!("no Nuvio snapshot for {entity}"))?;
+        let state = self.storage.read_json(key)?.unwrap_or(Value::Null);
+        let checked_at = state
+            .get("checkedAt")
+            .and_then(Value::as_i64)
+            .unwrap_or_default();
+        if chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS {
+            return Ok(state["rows"].clone());
+        }
+        let pulled = async {
+            session
+                .rpc(rpc)
+                .json(&body)
+                .send()
+                .await
+                .and_then(reqwest::Response::error_for_status)
+                .map_err(|error| format!("Nuvio {rpc} failed: {error}"))?
+                .json::<Value>()
+                .await
+                .map_err(|error| format!("Nuvio {rpc} response was invalid: {error}"))
+        }
+        .await;
+        match pulled {
+            Ok(rows) => {
+                self.storage.write_json(
+                    key,
+                    &json!({"checkedAt": chrono_unix_seconds(), "rows": rows}),
+                )?;
+                Ok(rows)
+            }
+            Err(error) if state.get("rows").is_some() => {
+                crate::log!("[fluxa-native] Nuvio {entity} refresh failed: {error}");
+                Ok(state["rows"].clone())
+            }
+            Err(error) => Err(error),
+        }
+    }
+
+    pub(super) async fn nuvio_home_catalog_items(
+        &self,
+        session: &NuvioSession,
+        profile: &Value,
+    ) -> Option<Value> {
+        for platform in ["mobile", "tv"] {
+            let rows = self
+                .nuvio_rows(
+                    session,
+                    profile,
+                    &format!("home_catalogs_{platform}"),
+                    "sync_pull_home_catalog_settings",
+                    json!({"p_profile_id": session.profile_index, "p_platform": platform}),
+                )
+                .await
+                .inspect_err(|error| crate::log!("[fluxa-native] {error}"))
+                .ok()?;
+            if let Some(items) = rows
+                .as_array()
+                .and_then(|rows| rows.first())
+                .and_then(|row| row.get("settings_json")?.get("items"))
+                .filter(|items| items.as_array().is_some_and(|items| !items.is_empty()))
+            {
+                return Some(items.clone());
+            }
+        }
+        None
+    }
+
     async fn nuvio_addons_profile_index(&self, session: &NuvioSession) -> i64 {
         if session.profile_index == 1 {
             return 1;

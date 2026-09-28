@@ -57,6 +57,7 @@ nuvioAddonState
 nuvioAddonReconciliationPlan
 nuvioCollectionRequest
 nuvioEffectiveProfileScopes
+nuvioHomeLayout
 nuvioLibraryMutationPlan
 nuvioLibraryItemRequest
 nuvioPlaybackProgressRequest

@@ -3,6 +3,7 @@ mod collections;
 mod delta_state;
 mod export_push;
 mod helpers;
+mod home_layout;
 mod plugin_content;
 mod profiles;
 mod progress_sync;
@@ -21,6 +22,7 @@ pub(crate) use export_push::{
     playback_progress_request_json, watched_items_request_json,
 };
 pub(crate) use helpers::canonical_content_type;
+pub(crate) use home_layout::home_layout_json;
 pub(crate) use plugin_content::{candidate_content_types, plugin_content_id, plugin_content_type};
 pub(crate) use profiles::{build_local_profiles_json, effective_profile_scopes_json};
 pub(crate) use progress_sync::{
@@ -152,6 +154,35 @@ mod tests {
         assert_eq!(snapshot["continueWatching"][0]["lastEpisodeThumbnail"], "e2.jpg");
         assert_eq!(snapshot["continueWatching"][0]["lastEpisodeName"], "Two");
         assert_eq!(snapshot["continueWatching"][0]["lastEpisodeNumber"], 2);
+    }
+
+    #[test]
+    fn home_rows_follow_nuvio_order_and_drop_disabled_catalogs() {
+        let layout: Value = serde_json::from_str(
+            &home_layout_json(
+                &json!({
+                    "addons": [{"transportUrl": "https://c/manifest.json", "manifest": {"id": "cinemeta"}}],
+                    "categories": [
+                        {"id": "k1", "type": "movie", "catalogId": "top", "transportUrl": "https://c/manifest.json", "name": "Top"},
+                        {"id": "k2", "type": "series", "catalogId": "top", "transportUrl": "https://c/manifest.json", "name": "Top"},
+                        {"id": "col-a", "type": "collection", "name": "Studios"},
+                        {"id": "other", "type": "movie", "catalogId": "x", "transportUrl": "https://x", "name": "X"}
+                    ],
+                    "items": [
+                        {"order": 1, "enabled": true, "addon_id": "cinemeta", "type": "movie", "catalog_id": "top", "custom_title": "Popular", "is_collection": false},
+                        {"order": 0, "enabled": true, "collection_id": "col-a", "is_collection": true},
+                        {"order": 2, "enabled": false, "addon_id": "cinemeta", "type": "series", "catalog_id": "top", "is_collection": false}
+                    ]
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        let ids: Vec<&str> = layout.as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap()).collect();
+        assert_eq!(ids, ["col-a", "k1", "other"]);
+        assert_eq!(layout[1]["name"], "Popular");
     }
 
     #[test]

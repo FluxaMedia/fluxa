@@ -202,13 +202,15 @@ impl EffectExecutor {
 
         let mut collection_profile = profile.clone();
         if let Ok(Some(session)) = self.nuvio_session(&profile).await
-            && let Ok(response) = session
-                .rpc("sync_pull_collections")
-                .json(&json!({"p_profile_id": session.profile_index}))
-                .send()
+            && let Ok(rows) = self
+                .nuvio_rows(
+                    &session,
+                    &profile,
+                    "collections",
+                    "sync_pull_collections",
+                    json!({"p_profile_id": session.profile_index}),
+                )
                 .await
-                .and_then(reqwest::Response::error_for_status)
-            && let Ok(rows) = response.json::<Value>().await
             && let Some(collections) = rows
                 .as_array()
                 .and_then(|rows| rows.first())
@@ -249,6 +251,15 @@ impl EffectExecutor {
                 .cloned()
                 .unwrap_or_default(),
         );
+        if let Ok(Some(session)) = self.nuvio_session(&profile).await
+            && let Some(items) = self.nuvio_home_catalog_items(&session, &profile).await
+            && let Some(Value::Array(ordered)) = core_value(
+                "nuvioHomeLayout",
+                json!({"categories": all_categories, "addons": addons, "items": items}),
+            )
+        {
+            all_categories = ordered;
+        }
         let continue_watching = self
             .continue_watching_for_source(&active_id, &profile, &prefs, None)
             .await?;

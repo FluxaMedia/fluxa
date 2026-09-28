@@ -315,6 +315,7 @@ static METHODS: &[(&str, Router)] = &[
     ("nuvioDeltaSyncRequestPlan", route_nuvio_sync),
     ("nuvioEffectiveProfileScopes", route_nuvio_sync),
     ("nuvioExportPushPlan", route_nuvio_sync),
+    ("nuvioHomeLayout", route_nuvio_sync),
     ("nuvioImportMergePlan", route_nuvio_sync),
     ("nuvioLibraryItemRequest", route_nuvio_sync),
     ("nuvioLibraryMutationPlan", route_nuvio_sync),
