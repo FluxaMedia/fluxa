@@ -676,7 +676,7 @@ pub(crate) fn draw_home_with_options(
                 texture,
                 hero_visual_rect,
                 cover_uv(size, hero_visual_rect),
-                Color32::from_white_alpha(210),
+                Color32::from_white_alpha((210.0 * (1.0 - t)) as u8),
             );
         }
         if let Some(hero_texture) = hero_texture {
