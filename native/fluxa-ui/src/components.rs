@@ -577,12 +577,12 @@ pub(super) fn button_with_text_size(
     metrics: UiMetrics,
 ) -> Response {
     let fill = match kind {
-        ButtonKind::Primary => metrics.accent,
+        ButtonKind::Primary => Color32::WHITE,
         ButtonKind::Secondary => Color32::from_white_alpha(52),
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent,
     };
     let text_color = match kind {
-        ButtonKind::Primary => metrics.accent_foreground,
+        ButtonKind::Primary => Color32::from_rgb(10, 10, 10),
         ButtonKind::Secondary => Color32::WHITE,
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent_foreground,
     };
