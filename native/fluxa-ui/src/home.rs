@@ -1256,6 +1256,20 @@ pub(crate) fn draw_home_with_options(
             });
         row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
     }
+    let hero_click = context.input(|input| {
+        input
+            .pointer
+            .primary_clicked()
+            .then(|| input.pointer.interact_pos())
+            .flatten()
+    });
+    if activated.is_none()
+        && show_hero
+        && !compact
+        && hero_click.is_some_and(|pos| pos.y > 80.0 && hero_rect.intersect(screen).contains(pos))
+    {
+        activated = Some(NODE_MORE_INFO);
+    }
     layout.activated = activated;
     layout
         .focusable
