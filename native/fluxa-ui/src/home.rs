@@ -732,7 +732,9 @@ pub(crate) fn draw_home_with_options(
     let mut activated = None;
     let mut hero_actions: Option<Rect> = None;
     let mut hero_watchlist: Option<Rect> = None;
-    if draw_top_bar {
+    let has_home_content = show_hero || !home.cards.is_empty() || !home.rows.is_empty();
+    let loading_screen = !has_home_content && home.is_loading;
+    if draw_top_bar && !loading_screen {
         let profile_avatar_url = home
             .profile_avatar_url
             .clone()
@@ -754,10 +756,13 @@ pub(crate) fn draw_home_with_options(
             &profile_name,
         );
     }
-    let has_home_content = show_hero || !home.cards.is_empty() || !home.rows.is_empty();
     if !has_home_content {
         let layout = HomeLayout {
-            focusable: navigation_focus_rects(viewport, metrics),
+            focusable: if loading_screen {
+                Vec::new()
+            } else {
+                navigation_focus_rects(viewport, metrics)
+            },
             activated,
             text_input: None,
             text_input_node: None,
@@ -766,7 +771,7 @@ pub(crate) fn draw_home_with_options(
             load_more: Vec::new(),
             ..HomeLayout::default()
         };
-        if home.is_loading {
+        if loading_screen {
             draw_loading_screen(context, &painter, screen, assets);
         } else {
             painter.text(
