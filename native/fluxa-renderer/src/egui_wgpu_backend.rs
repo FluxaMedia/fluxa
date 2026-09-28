@@ -66,6 +66,24 @@ impl EguiWgpuBackend {
         self.renderer.register_native_texture(device, view, filter)
     }
 
+    pub fn register_mipmapped_texture(
+        &mut self,
+        device: &wgpu::Device,
+        view: &wgpu::TextureView,
+    ) -> TextureId {
+        self.renderer.register_native_texture_with_sampler_options(
+            device,
+            view,
+            wgpu::SamplerDescriptor {
+                label: Some("fluxa-mipmapped"),
+                mag_filter: wgpu::FilterMode::Linear,
+                min_filter: wgpu::FilterMode::Linear,
+                mipmap_filter: wgpu::MipmapFilterMode::Linear,
+                ..Default::default()
+            },
+        )
+    }
+
     pub fn apply_texture_deltas(
         &mut self,
         device: &wgpu::Device,
