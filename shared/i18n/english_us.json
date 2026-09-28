@@ -1761,7 +1761,6 @@
   "format.play_episode": "%s: S%s, E%s",
   "format.season_episode_short": "S%s E%s",
   "format.continue_episode": "Continue: %s",
-  "format.play_episode": "Play: %s",
   "format.hero_episode": "S%s, E%s: %s",
   "format.hero_episode_code": "S%s, E%s",
   "format.hero_continue_episode": "Continue %s",

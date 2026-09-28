@@ -1761,7 +1761,6 @@
   "format.play_episode": "%s: %s. Sezon, %s. Bölüm",
   "format.season_episode_short": "%s. S %s. B",
   "format.continue_episode": "Devam et: %s",
-  "format.play_episode": "Oynat: %s",
   "format.hero_episode": "S%s, E%s: %s",
   "format.hero_episode_code": "S%s, E%s",
   "format.hero_continue_episode": "Devam et %s",
