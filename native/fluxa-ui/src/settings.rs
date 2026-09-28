@@ -1046,6 +1046,7 @@ pub struct SettingsModel {
     pub plugin_url: String,
     pub poster_fields: [String; 3],
     pub search: String,
+    pub section_open: bool,
     pub account_auth: Option<AccountPrompt>,
 }
 
@@ -1161,6 +1162,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned),
         active_section: 0,
+        section_open: false,
         profile: snapshot
             .pointer("/profile/active")
             .cloned()
@@ -2061,6 +2063,130 @@ fn draw_settings_extended_section(
     }
 }
 
+pub const COMPACT_SETTINGS_ROW: f32 = 56.0;
+
+pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
+    let top = metrics.detail_header_top_mobile;
+    if settings.section_open && settings.search.trim().is_empty() {
+        top + 40.0 + metrics.section_gap
+    } else {
+        top + metrics.screen_title_size_mobile
+            + metrics.section_gap
+            + metrics.screen_control_height
+            + metrics.section_gap
+    }
+}
+
+pub fn compact_settings_list_height(metrics: UiMetrics) -> f32 {
+    (SETTINGS_SECTIONS.len() + 1) as f32 * COMPACT_SETTINGS_ROW + metrics.section_gap
+}
+
+fn draw_compact_settings_list(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    assets: &impl HomeAssets,
+    language: &str,
+    metrics: UiMetrics,
+    anchor: Rect,
+    layout: &mut HomeLayout,
+) {
+    let entries: Vec<(u64, &str, String)> = SETTINGS_SECTIONS
+        .iter()
+        .enumerate()
+        .map(|(index, section)| {
+            (
+                NODE_SETTINGS_SECTION_BASE + index as u64,
+                section.title,
+                localized(
+                    &format!("settings.section.{}", section.title.to_lowercase()),
+                    language,
+                ),
+            )
+        })
+        .chain(std::iter::once((
+            NODE_SETTINGS_SWITCH_PROFILE,
+            "Profile",
+            localized("settings.switch_profiles", language),
+        )))
+        .collect();
+    let sections = SETTINGS_SECTIONS.len();
+    let group = |top: f32, count: usize| {
+        let card = Rect::from_min_size(
+            Pos2::new(anchor.left(), top),
+            Vec2::new(anchor.width(), count as f32 * COMPACT_SETTINGS_ROW),
+        );
+        painter.rect_filled(card, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+        painter.rect_stroke(
+            card,
+            metrics.card_radius,
+            egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+            egui::StrokeKind::Inside,
+        );
+    };
+    group(anchor.top(), sections);
+    let profile_top = anchor.top() + sections as f32 * COMPACT_SETTINGS_ROW + metrics.section_gap;
+    group(profile_top, 1);
+    for (index, (node, icon, label)) in entries.into_iter().enumerate() {
+        let top = if index < sections {
+            anchor.top() + index as f32 * COMPACT_SETTINGS_ROW
+        } else {
+            profile_top
+        };
+        let rect = Rect::from_min_size(
+            Pos2::new(anchor.left(), top),
+            Vec2::new(anchor.width(), COMPACT_SETTINGS_ROW),
+        );
+        if index > 0 && index < sections {
+            painter.line_segment(
+                [
+                    Pos2::new(rect.left() + 52.0, rect.top()),
+                    Pos2::new(rect.right(), rect.top()),
+                ],
+                egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+            );
+        }
+        let mut clicked = false;
+        egui::Area::new(Id::new(("fluxa-settings-compact-row", node)))
+            .constrain(false)
+            .fixed_pos(rect.min)
+            .show(context, |ui| {
+                let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
+                if response.is_pointer_button_down_on() {
+                    ui.painter().rect_filled(
+                        row,
+                        metrics.card_radius,
+                        Color32::from_white_alpha(10),
+                    );
+                }
+                settings_category_icon(
+                    assets,
+                    ui.painter(),
+                    row.left_center() + Vec2::new(26.0, 0.0),
+                    icon,
+                    Color32::WHITE,
+                );
+                ui.painter().text(
+                    row.left_center() + Vec2::new(52.0, 0.0),
+                    Align2::LEFT_CENTER,
+                    label,
+                    FontId::proportional(metrics.nav_label_size + 3.0),
+                    Color32::WHITE,
+                );
+                let tip = row.right_center() - Vec2::new(20.0, 0.0);
+                let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(120));
+                ui.painter()
+                    .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
+                ui.painter()
+                    .line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+                clicked = response.clicked();
+            });
+        layout.focusable.push((node, rect));
+        if clicked {
+            layout.activated = Some(node);
+        }
+    }
+}
+
 pub fn draw_settings(
     context: &egui::Context,
     viewport: Viewport,
@@ -2115,7 +2241,7 @@ pub fn draw_settings(
         metrics.content_header_top
     };
     let mut header_bottom = top;
-    if !desktop {
+    if tv {
         egui::Area::new(Id::new("fluxa-shared-settings-header"))
             .constrain(false)
             .fixed_pos(Pos2::new(margin, top - scroll_y))
@@ -2176,6 +2302,8 @@ pub fn draw_settings(
     let active_section = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
     let section_top = if desktop {
         top
+    } else if compact {
+        compact_settings_content_top(metrics, settings)
     } else {
         header_bottom + metrics.section_gap
     };
@@ -2216,61 +2344,71 @@ pub fn draw_settings(
             });
     };
     if compact {
-        search_field(
-            &mut layout,
-            Rect::from_min_size(
-                Pos2::new(margin, section_top - scroll_y),
-                Vec2::new((viewport.width - margin * 2.0).max(1.0), search_height),
-            ),
-        );
-        let nav_rect = Rect::from_min_size(
-            Pos2::new(
-                margin,
-                section_top + search_height + metrics.control_gap - scroll_y,
-            ),
-            Vec2::new(
-                (viewport.width - margin * 2.0).max(1.0),
-                metrics.screen_control_height,
-            ),
-        );
-        egui::Area::new(Id::new("fluxa-settings-category-strip"))
-            .constrain(false)
-            .fixed_pos(nav_rect.min)
-            .show(context, |ui| {
-                egui::ScrollArea::horizontal()
-                    .id_salt("fluxa-settings-category-scroll")
-                    .auto_shrink([false, true])
-                    .show(ui, |ui| {
-                        ui.horizontal(|ui| {
-                            for (index, section) in SETTINGS_SECTIONS.iter().enumerate() {
-                                let node = NODE_SETTINGS_SECTION_BASE + index as u64;
-                                let label = localized(
-                                    &format!("settings.section.{}", section.title.to_lowercase()),
-                                    language,
-                                );
-                                let response = components::button_auto_width(
-                                    ui,
-                                    &label,
-                                    if index == active_section && !searching {
-                                        components::ButtonKind::Selected
-                                    } else {
-                                        components::ButtonKind::Secondary
-                                    },
-                                    metrics.nav_label_size,
-                                    metrics,
-                                );
-                                if response.rect.intersects(nav_rect) {
-                                    layout
-                                        .focusable
-                                        .push((node, response.rect.intersect(nav_rect)));
-                                }
-                                if response.clicked() {
-                                    layout.activated = Some(node);
-                                }
-                            }
-                        });
-                    });
-            });
+        let width = (viewport.width - margin * 2.0).max(1.0);
+        let root = !settings.section_open || searching;
+        if root {
+            painter.text(
+                Pos2::new(margin, top - scroll_y),
+                Align2::LEFT_TOP,
+                localized("nav.settings", language),
+                FontId::proportional(metrics.screen_title_size_mobile),
+                Color32::WHITE,
+            );
+            search_field(
+                &mut layout,
+                Rect::from_min_size(
+                    Pos2::new(
+                        margin,
+                        top + metrics.screen_title_size_mobile + metrics.section_gap - scroll_y,
+                    ),
+                    Vec2::new(width, search_height),
+                ),
+            );
+        } else {
+            let back_rect =
+                Rect::from_min_size(Pos2::new(margin - 8.0, top - scroll_y), Vec2::splat(40.0));
+            egui::Area::new(Id::new("fluxa-settings-back"))
+                .constrain(false)
+                .fixed_pos(back_rect.min)
+                .order(egui::Order::Foreground)
+                .show(context, |ui| {
+                    let response = components::icon_button(
+                        ui,
+                        assets.icon("ArrowLeft"),
+                        40.0,
+                        Color32::WHITE,
+                        true,
+                        false,
+                        true,
+                    );
+                    if response.clicked() {
+                        layout.activated = Some(NODE_SETTINGS_BACK);
+                    }
+                });
+            layout.focusable.push((NODE_SETTINGS_BACK, back_rect));
+            painter.text(
+                back_rect.right_center() + Vec2::new(6.0, 0.0),
+                Align2::LEFT_CENTER,
+                localized("nav.settings", language),
+                FontId::proportional(metrics.nav_label_size + 2.0),
+                Color32::from_white_alpha(185),
+            );
+        }
+        if !settings.section_open && !searching {
+            draw_compact_settings_list(
+                context,
+                &painter,
+                assets,
+                language,
+                metrics,
+                Rect::from_min_size(
+                    Pos2::new(margin, section_top - scroll_y),
+                    Vec2::new(width, 0.0),
+                ),
+                &mut layout,
+            );
+            return layout;
+        }
     } else {
         let nav_width = metrics
             .settings_nav_width
@@ -2393,15 +2531,7 @@ pub fn draw_settings(
             }
         }
     }
-    let nav_bottom = if compact {
-        section_top
-            + search_height
-            + metrics.control_gap
-            + metrics.screen_control_height
-            + metrics.section_gap
-    } else {
-        section_top
-    };
+    let nav_bottom = section_top;
     let card_top = nav_bottom - scroll_y;
     let card_width = content_width;
     let section = &SETTINGS_SECTIONS[active_section];

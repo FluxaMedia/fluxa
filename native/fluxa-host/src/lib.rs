@@ -388,12 +388,14 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;
+    let section_open = state.settings.section_open;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
     let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     state.settings = projection.settings;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
+    state.settings.section_open = section_open;
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
     state.settings.search = search;

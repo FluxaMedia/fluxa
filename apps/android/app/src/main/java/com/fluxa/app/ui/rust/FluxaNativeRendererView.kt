@@ -511,7 +511,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             }
             return true
         }
-        if (nativeHandle != 0L && NativeRenderer.isNavigationKey(keyCode)) {
+        if (nativeHandle != 0L && keyCode != KeyEvent.KEYCODE_BACK && NativeRenderer.isNavigationKey(keyCode)) {
             NativeRenderer.keyDownNative(nativeHandle, keyCode, if (event.isShiftPressed) 1 else 0)
             return true
         }

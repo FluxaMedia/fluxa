@@ -114,7 +114,11 @@ pub(crate) struct PosterGrid {
 impl PosterGrid {
     pub fn new(width: f32, metrics: UiMetrics) -> Self {
         let compact = width < 600.0;
-        let gap = if compact { metrics.horizontal_spacing.min(10.0) } else { metrics.horizontal_spacing };
+        let gap = if compact {
+            metrics.horizontal_spacing.min(10.0)
+        } else {
+            metrics.horizontal_spacing
+        };
         let preferred = if compact {
             metrics.poster_card_width.min((width - gap * 2.0) / 3.0)
         } else {
@@ -261,6 +265,23 @@ pub fn calendar_scroll_max(viewport: Viewport, calendar: &CalendarModel) -> f32 
 
 pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
+    if viewport.is_compact() {
+        let content_top = crate::settings::compact_settings_content_top(metrics, settings);
+        let content_height = if settings.section_open || !settings.search.trim().is_empty() {
+            let section_index = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
+            settings_card_height(
+                viewport,
+                metrics,
+                &SETTINGS_SECTIONS[section_index],
+                settings,
+            )
+        } else {
+            crate::settings::compact_settings_list_height(metrics)
+        };
+        return (content_top + content_height + metrics.page_padding
+            - (viewport.height - mobile_scroll_reserve(viewport)))
+        .max(0.0);
+    }
     let desktop = !viewport.is_compact() && !viewport.is_tv();
     let top = if viewport.is_compact() {
         metrics.detail_header_top_mobile

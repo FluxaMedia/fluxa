@@ -407,6 +407,13 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 }
             }
             if state.route == Route::Settings
+                && node == fluxa_ui::NODE_SETTINGS_BACK
+                && state.settings.section_open
+            {
+                close_settings_section(state);
+                continue;
+            }
+            if state.route == Route::Settings
                 && (fluxa_ui::NODE_SETTINGS_SECTION_BASE
                     ..fluxa_ui::NODE_SETTINGS_SECTION_BASE
                         + fluxa_ui::SETTINGS_SECTIONS.len() as u64)
@@ -414,7 +421,9 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             {
                 state.settings.active_section =
                     (node - fluxa_ui::NODE_SETTINGS_SECTION_BASE) as usize;
+                state.settings.section_open = true;
                 state.settings.search.clear();
+                state.screen_scroll_offsets.remove(&Route::Settings);
                 state.ui = UiTree::default();
                 continue;
             }
@@ -473,6 +482,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
                 state.calendar.selected_day = None;
                 state.ui = UiTree::default();
+            } else if state.route == Route::Settings && state.settings.section_open {
+                close_settings_section(state);
             } else {
                 state.pending_native_actions.push(NativeAction::Back);
             }
@@ -717,4 +728,10 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
         state.ui = UiTree::default();
         state.pending_native_actions[index] = NativeAction::CoreCommand { command };
     }
+}
+
+fn close_settings_section(state: &mut RendererState) {
+    state.settings.section_open = false;
+    state.screen_scroll_offsets.remove(&Route::Settings);
+    state.ui = UiTree::default();
 }
