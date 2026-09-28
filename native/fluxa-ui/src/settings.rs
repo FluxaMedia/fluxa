@@ -240,7 +240,9 @@ const PLAYBACK_SETTINGS: [SettingsRow; 44] = [
     SettingsRow {
         label: "Subtitle text",
         key: "subtitleColor",
-        options: &["#FFFFFF", "#000000", "#FFE45C", "#FF5D5D", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC"],
+        options: &[
+            "#FFFFFF", "#000000", "#FFE45C", "#FF5D5D", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
+        ],
     },
     SettingsRow {
         label: "Text transparency",
@@ -580,7 +582,10 @@ fn settings_groups(section: &str) -> Option<&'static [(usize, usize, &'static st
 }
 
 fn section_label(title: &str, language: &str) -> String {
-    localized(&format!("settings.section.{}", title.to_lowercase()), language)
+    localized(
+        &format!("settings.section.{}", title.to_lowercase()),
+        language,
+    )
 }
 
 pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize>)> {
@@ -595,7 +600,9 @@ pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize
                 .iter()
                 .enumerate()
                 .filter(|(_, row)| {
-                    settings_row_label(row, language).to_lowercase().contains(&query)
+                    settings_row_label(row, language)
+                        .to_lowercase()
+                        .contains(&query)
                         || row.label.to_lowercase().contains(&query)
                 })
                 .map(|(index, _)| offset + index)
@@ -613,7 +620,10 @@ pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize
         .map(|section| section.rows.len())
         .sum();
     for &(start, end, key) in settings_groups(SETTINGS_SECTIONS[active].title).unwrap_or_default() {
-        groups.push((localized(key, language), (offset + start..offset + end).collect()));
+        groups.push((
+            localized(key, language),
+            (offset + start..offset + end).collect(),
+        ));
     }
     groups
 }
@@ -629,7 +639,10 @@ pub(super) fn group_cards(
         .map(|(_, rows)| {
             let card = Rect::from_min_size(
                 Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
-                Vec2::new(rect.width(), settings_group_card_height(rows.len(), metrics)),
+                Vec2::new(
+                    rect.width(),
+                    settings_group_card_height(rows.len(), metrics),
+                ),
             );
             top = card.bottom() + APPEARANCE_GROUP_GAP;
             card
@@ -793,7 +806,14 @@ const POSTER_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "Status position",
         key: "posterStatusPosition",
-        options: &["sash", "banner", "top_left", "top_right", "bottom_left", "bottom_right"],
+        options: &[
+            "sash",
+            "banner",
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right",
+        ],
     },
     SettingsRow {
         label: "Watched badge",
@@ -975,7 +995,8 @@ pub(super) fn settings_card_height(
         }
         "Add-ons" | "Plugins" => {
             let lines = if section.title == "Add-ons" {
-                1 + usize::from(settings.addon_error.is_some()) + settings.addons.len().min(6).max(1)
+                1 + usize::from(settings.addon_error.is_some())
+                    + settings.addons.len().min(6).max(1)
             } else {
                 settings
                     .plugins
@@ -1314,9 +1335,13 @@ fn option_label(key: &str, value: &str, language: &str) -> String {
             "70" => "settings.subtitle_position_high",
             _ => "settings.subtitle_position_bottom",
         }),
-        ("accentColorArgb" | "subtitleColor" | "subtitleBackgroundColor" | "subtitleOutlineColor", _) => {
-            color_name(value)
-        }
+        (
+            "accentColorArgb"
+            | "subtitleColor"
+            | "subtitleBackgroundColor"
+            | "subtitleOutlineColor",
+            _,
+        ) => color_name(value),
         _ => None,
     };
     if let Some(named) = named {
@@ -1555,7 +1580,12 @@ fn draw_field(
     painter.text(
         inner.left_top() + Vec2::new(0.0, label_size + 6.0),
         Align2::LEFT_TOP,
-        truncate_to_width(&painter, &localized(field.help, language), &help_font, inner.width()),
+        truncate_to_width(
+            &painter,
+            &localized(field.help, language),
+            &help_font,
+            inner.width(),
+        ),
         help_font,
         Color32::from_white_alpha(130),
     );
@@ -1588,7 +1618,10 @@ fn draw_field(
             layout,
             node,
             Rect::from_min_size(
-                Pos2::new(input.right() + gap + slot as f32 * (button_width + gap), row_top),
+                Pos2::new(
+                    input.right() + gap + slot as f32 * (button_width + gap),
+                    row_top,
+                ),
                 Vec2::new(button_width, height),
             ),
             &localized(label, language),
@@ -1608,7 +1641,13 @@ fn draw_field_group(
     layout: &mut HomeLayout,
 ) -> Rect {
     let painter = context.layer_painter(egui::LayerId::background());
-    let card = account_group(&painter, rect, top, fields.len() as f32 * FIELD_HEIGHT, title);
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        fields.len() as f32 * FIELD_HEIGHT,
+        title,
+    );
     for (slot, &index) in fields.iter().enumerate() {
         let area = Rect::from_min_size(
             card.left_top() + Vec2::new(0.0, slot as f32 * FIELD_HEIGHT),
@@ -1691,7 +1730,16 @@ fn draw_settings_extended_section(
     };
     let muted = Color32::from_white_alpha(165);
     match section {
-        "Account" => draw_account(context, settings, assets, language, rect, metrics, layout),
+        "Account" => draw_account(
+            context,
+            settings,
+            assets,
+            language,
+            rect,
+            metrics,
+            viewport.is_compact(),
+            layout,
+        ),
         "Shortcuts" => {
             let card = draw_binding_group(
                 &painter,
@@ -2056,7 +2104,7 @@ pub fn draw_settings(
     let mut header_bottom = top;
     if !desktop {
         egui::Area::new(Id::new("fluxa-shared-settings-header"))
-            .fixed_pos(Pos2::new(margin, top))
+            .fixed_pos(Pos2::new(margin, top - scroll_y))
             .show(context, |ui| {
                 ui.label(
                     RichText::new(localized("nav.settings", language))
@@ -2101,12 +2149,14 @@ pub fn draw_settings(
                         metrics.nav_label_size + 2.0,
                         metrics,
                     );
-                    layout.focusable.push((NODE_SETTINGS_SWITCH_PROFILE, switch.rect));
+                    layout
+                        .focusable
+                        .push((NODE_SETTINGS_SWITCH_PROFILE, switch.rect));
                     if switch.clicked() {
                         layout.activated = Some(NODE_SETTINGS_SWITCH_PROFILE);
                     }
                 });
-                header_bottom = ui.min_rect().bottom();
+                header_bottom = ui.min_rect().bottom() + scroll_y;
             });
     }
     let active_section = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
@@ -2179,10 +2229,7 @@ pub fn draw_settings(
                             for (index, section) in SETTINGS_SECTIONS.iter().enumerate() {
                                 let node = NODE_SETTINGS_SECTION_BASE + index as u64;
                                 let label = localized(
-                                    &format!(
-                                        "settings.section.{}",
-                                        section.title.to_lowercase()
-                                    ),
+                                    &format!("settings.section.{}", section.title.to_lowercase()),
                                     language,
                                 );
                                 let response = components::button_auto_width(
@@ -2257,7 +2304,10 @@ pub fn draw_settings(
         search_field(
             &mut layout,
             Rect::from_min_size(
-                Pos2::new(margin + metrics.control_gap, section_top + search_top - scroll_y),
+                Pos2::new(
+                    margin + metrics.control_gap,
+                    section_top + search_top - scroll_y,
+                ),
                 Vec2::new(nav_width - metrics.control_gap * 2.0, search_height),
             ),
         );
@@ -2347,7 +2397,10 @@ pub fn draw_settings(
     let cards = group_cards(rect, &groups, metrics);
     for ((title, _), card) in groups.iter().zip(&cards) {
         painter.text(
-            Pos2::new(rect.left() + 8.0, card.top() - APPEARANCE_GROUP_HEADING_HEIGHT),
+            Pos2::new(
+                rect.left() + 8.0,
+                card.top() - APPEARANCE_GROUP_HEADING_HEIGHT,
+            ),
             Align2::LEFT_TOP,
             title.to_uppercase(),
             FontId::proportional(metrics.screen_card_subtitle_size),
@@ -2423,7 +2476,9 @@ pub fn draw_settings(
         );
     }
     let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
-        rows.iter().enumerate().map(move |(slot, &index)| (index, slot, *card))
+        rows.iter()
+            .enumerate()
+            .map(move |(slot, &index)| (index, slot, *card))
     });
     for (index, slot, card) in rows {
         let Some(setting) = settings_row_by_index(index) else {
@@ -2515,7 +2570,11 @@ pub fn draw_settings(
                                 0.12,
                             );
                             let center = rect.center();
-                            ui.painter().circle_filled(center, size * 0.5 - 4.0 + 2.0 * grow, color);
+                            ui.painter().circle_filled(
+                                center,
+                                size * 0.5 - 4.0 + 2.0 * grow,
+                                color,
+                            );
                             if active {
                                 ui.painter().circle_stroke(
                                     center,
@@ -2704,8 +2763,14 @@ const ACCOUNT_SERVICES: [(&str, &str); 4] = [
 ];
 pub const ACCOUNT_PROVIDERS: [&str; 2] = ["trakt", "simkl"];
 const ACCOUNT_SOURCES: [(&str, &str); 2] = [
-    ("settings.integration_library_source", "integrationLibrarySource"),
-    ("settings.continue_watching_source", "continueWatchingSource"),
+    (
+        "settings.integration_library_source",
+        "integrationLibrarySource",
+    ),
+    (
+        "settings.continue_watching_source",
+        "continueWatchingSource",
+    ),
 ];
 
 fn account_height(metrics: UiMetrics) -> f32 {
@@ -2775,10 +2840,15 @@ fn draw_account(
     language: &str,
     rect: Rect,
     metrics: UiMetrics,
+    compact: bool,
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let label_size = metrics.settings_row_label_size_desktop;
+    let label_size = if compact {
+        metrics.screen_body_size
+    } else {
+        metrics.settings_row_label_size_desktop
+    };
     let connected = |key: &str| {
         settings
             .profile
@@ -2836,16 +2906,15 @@ fn draw_account(
             );
         }
     }
-    painter.text(
-        Pos2::new(avatar.right() + 16.0, card.center().y),
-        Align2::LEFT_CENTER,
-        &name,
-        FontId::proportional(label_size + 4.0),
-        Color32::WHITE,
-    );
+    let name_left = avatar.right() + 16.0;
+    let mut name_right = card.right() - 20.0;
     let switch_label = localized("settings.switch_profiles", language);
     let switch_width = painter
-        .layout_no_wrap(switch_label.clone(), FontId::proportional(label_size), Color32::WHITE)
+        .layout_no_wrap(
+            switch_label.clone(),
+            FontId::proportional(label_size),
+            Color32::WHITE,
+        )
         .size()
         .x
         + 32.0;
@@ -2853,13 +2922,30 @@ fn draw_account(
         Pos2::new(card.right() - 20.0 - switch_width * 0.5, card.center().y),
         Vec2::new(switch_width, 36.0),
     );
-    pill_button(
-        context,
-        layout,
-        NODE_SETTINGS_SWITCH_PROFILE,
-        switch_rect,
-        &switch_label,
-        label_size,
+    if !compact {
+        pill_button(
+            context,
+            layout,
+            NODE_SETTINGS_SWITCH_PROFILE,
+            switch_rect,
+            &switch_label,
+            label_size,
+        );
+        name_right = switch_rect.left() - 12.0;
+    }
+    let mut name_job = egui::text::LayoutJob::simple_singleline(
+        name,
+        FontId::proportional(label_size + 4.0),
+        Color32::WHITE,
+    );
+    name_job.wrap.max_width = (name_right - name_left).max(1.0);
+    name_job.wrap.max_rows = 1;
+    name_job.wrap.break_anywhere = true;
+    let name_galley = painter.layout_job(name_job);
+    painter.galley(
+        Pos2::new(name_left, card.center().y - name_galley.size().y * 0.5),
+        name_galley,
+        Color32::WHITE,
     );
 
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -2926,7 +3012,11 @@ fn draw_account(
                 language,
             );
             let width = painter
-                .layout_no_wrap(action.clone(), FontId::proportional(label_size), Color32::WHITE)
+                .layout_no_wrap(
+                    action.clone(),
+                    FontId::proportional(label_size),
+                    Color32::WHITE,
+                )
                 .size()
                 .x
                 + 32.0;
@@ -2999,10 +3089,18 @@ fn draw_account(
         } else {
             localized("settings.option.none", language)
         };
-        let value_rect = Rect::from_center_size(
-            row.right_center() - Vec2::new(90.0, 0.0),
-            Vec2::new(176.0, metrics.screen_control_height.min(row.height() - 4.0)),
-        );
+        let value_width = if compact { 132.0 } else { 176.0 };
+        let value_rect = Rect::from_min_size(
+            Pos2::new(row.right() - 2.0 - value_width, row.center().y),
+            Vec2::new(
+                value_width,
+                metrics.screen_control_height.min(row.height() - 4.0),
+            ),
+        )
+        .translate(Vec2::new(
+            0.0,
+            -metrics.screen_control_height.min(row.height() - 4.0) * 0.5,
+        ));
         egui::Area::new(Id::new(("fluxa-settings-account-choice", *key)))
             .fixed_pos(value_rect.min)
             .order(egui::Order::Foreground)
@@ -3011,12 +3109,7 @@ fn draw_account(
                 ui.set_max_size(value_rect.size());
                 let options = choices
                     .iter()
-                    .map(|choice| {
-                        (
-                            (*choice).to_owned(),
-                            source_label(choice, language),
-                        )
-                    })
+                    .map(|choice| ((*choice).to_owned(), source_label(choice, language)))
                     .collect::<Vec<_>>();
                 let response = components::choice_field(
                     ui,
@@ -3050,4 +3143,3 @@ fn draw_account(
         layout,
     );
 }
-
