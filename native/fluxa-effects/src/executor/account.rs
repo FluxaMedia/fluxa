@@ -543,6 +543,55 @@ impl EffectExecutor {
         None
     }
 
+    pub(super) async fn refresh_nuvio_profiles(&self, session: &NuvioSession, profile: &Value) {
+        let checked_at = self
+            .storage
+            .read_json("nuvio_profiles_checked_at")
+            .ok()
+            .flatten()
+            .and_then(|value| value.as_i64())
+            .unwrap_or_default();
+        if chrono_unix_seconds() - checked_at < 600 {
+            return;
+        }
+        let _ = self
+            .storage
+            .write_json("nuvio_profiles_checked_at", &json!(chrono_unix_seconds()));
+        let remote = match session
+            .rpc("sync_pull_profiles")
+            .json(&json!({}))
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status)
+        {
+            Ok(response) => response.json::<Value>().await.unwrap_or(Value::Null),
+            Err(error) => {
+                crate::log!("[fluxa-native] Nuvio profiles request failed: {error}");
+                return;
+            }
+        };
+        let catalog = match session.rpc("get_avatar_catalog").json(&json!({})).send().await {
+            Ok(response) if response.status().is_success() => {
+                response.json::<Value>().await.unwrap_or(Value::Null)
+            }
+            _ => Value::Null,
+        };
+        let Ok(Some(profiles)) = self.storage.read_json("profiles") else {
+            return;
+        };
+        if let Some(next) = core_value(
+            "nuvioApplyRemoteProfiles",
+            json!({
+                "sessionProfile": profile,
+                "profiles": profiles,
+                "nuvioProfiles": remote,
+                "avatarCatalog": catalog,
+            }),
+        ) {
+            let _ = self.storage.write_json("profiles", &next);
+        }
+    }
+
     async fn nuvio_addons_profile_index(&self, session: &NuvioSession) -> i64 {
         if session.profile_index == 1 {
             return 1;

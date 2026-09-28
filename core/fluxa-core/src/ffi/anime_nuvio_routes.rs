@@ -29,6 +29,7 @@ pub(super) fn route_anime_detection(method: &str, args_json: &str) -> Outcome {
 pub(super) fn route_nuvio_sync(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object
+        "nuvioApplyRemoteProfiles" => opt_json(nuvio_sync::apply_remote_profiles_json(args_json)),
         "nuvioBuildLocalProfiles" => opt_json(nuvio_sync::build_local_profiles_json(args_json)),
         "nuvioEffectiveProfileScopes" => {
             opt_json(nuvio_sync::effective_profile_scopes_json(args_json))

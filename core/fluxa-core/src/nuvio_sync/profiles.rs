@@ -166,6 +166,57 @@ pub(crate) fn build_local_profiles_json(args_json: &str) -> Option<String> {
     Some(Value::Array(result).to_string())
 }
 
+pub(crate) fn apply_remote_profiles_json(args_json: &str) -> Option<String> {
+    let args = parse(args_json)?;
+    let session = args.get("sessionProfile")?;
+    let remote = args.get("nuvioProfiles").and_then(Value::as_array)?;
+    let avatar_catalog = args
+        .get("avatarCatalog")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let mut profiles = args.get("profiles").and_then(Value::as_array)?.clone();
+    let account = |profile: &Value| {
+        ["nuvioUserId", "nuvioEmail", "email"]
+            .iter()
+            .find_map(|key| str_field(profile, key).filter(|s| !s.is_empty()).map(str::to_owned))
+    };
+    let owner = account(session)?;
+    let mut changed = false;
+    for profile in &mut profiles {
+        if account(profile).as_deref() != Some(owner.as_str()) {
+            continue;
+        }
+        let index = profile
+            .get("nuvioProfileIndex")
+            .and_then(Value::as_i64)
+            .unwrap_or(1);
+        let Some(source) = remote
+            .iter()
+            .find(|entry| entry.get("profile_index").and_then(Value::as_i64) == Some(index))
+        else {
+            continue;
+        };
+        let Some(fields) = profile.as_object_mut() else {
+            continue;
+        };
+        let mut set = |key: &str, value: Value| {
+            if fields.get(key) != Some(&value) {
+                fields.insert(key.into(), value);
+                changed = true;
+            }
+        };
+        if let Some(name) = str_field(source, "name").filter(|s| !s.trim().is_empty()) {
+            set("name", Value::String(name.trim().to_owned()));
+        }
+        if let Some(url) = avatar_url_for(source, &avatar_catalog) {
+            set("avatarUrl", Value::String(url));
+        }
+        set("nuvioProfileIndex", json!(index));
+    }
+    changed.then(|| Value::Array(profiles).to_string())
+}
+
 pub(crate) fn effective_profile_scopes_json(args_json: &str) -> Option<String> {
     let args = parse(args_json)?;
     let profile_index = args

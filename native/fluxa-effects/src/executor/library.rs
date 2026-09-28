@@ -461,6 +461,7 @@ impl EffectExecutor {
         let session = self.nuvio_session(profile).await?.ok_or_else(|| {
             "Nuvio library is selected, but this profile has no Nuvio session".to_owned()
         })?;
+        self.refresh_nuvio_profiles(&session, profile).await;
         let (library, progress, history) = futures::try_join!(
             self.nuvio_synced(&session, profile, "library"),
             self.nuvio_synced(&session, profile, "progress"),

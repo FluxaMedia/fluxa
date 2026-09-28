@@ -25,7 +25,9 @@ pub(crate) use export_push::{
 pub(crate) use helpers::canonical_content_type;
 pub(crate) use home_layout::home_layout_json;
 pub(crate) use plugin_content::{candidate_content_types, plugin_content_id, plugin_content_type};
-pub(crate) use profiles::{build_local_profiles_json, effective_profile_scopes_json};
+pub(crate) use profiles::{
+    apply_remote_profiles_json, build_local_profiles_json, effective_profile_scopes_json,
+};
 pub(crate) use progress_sync::{
     import_merge_plan_json, library_to_watchlist_json, progress_meta_needs_json,
     progress_presentation_json, provider_library_snapshot_json, resolve_continue_watching_json,
@@ -567,6 +569,22 @@ mod tests {
         assert_eq!(plan["deleteIds"], json!(["old"]));
         assert_eq!(plan["updates"][0]["payload"]["enabled"], false);
         assert_eq!(plan["creates"][0]["profile_id"], 2);
+    }
+
+    #[test]
+    fn nameless_imported_profiles_take_their_nuvio_names() {
+        let result: Value = serde_json::from_str(&apply_remote_profiles_json(&json!({
+            "sessionProfile": {"id":"a","email":"me@example.com"},
+            "profiles": [
+                {"id":"a","email":"me@example.com"},
+                {"id":"b","email":"me@example.com","nuvioProfileIndex":2},
+                {"id":"c","email":"other@example.com"},
+            ],
+            "nuvioProfiles": [{"profile_index":1,"name":"Kerem"},{"profile_index":2,"name":"Kids"}],
+        }).to_string()).unwrap()).unwrap();
+        assert_eq!(result[0]["name"], "Kerem");
+        assert_eq!(result[1]["name"], "Kids");
+        assert!(result[2].get("name").is_none());
     }
 
     #[test]
