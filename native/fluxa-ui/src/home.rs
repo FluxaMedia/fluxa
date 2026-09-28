@@ -355,7 +355,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         let play = Rect::from_min_size(
             Pos2::new(
                 if compact {
-                    (viewport.width - size.x * 2.0 - 12.0) * 0.5
+                    (viewport.width - size.x) * 0.5
                 } else {
                     margin
                 },
@@ -364,10 +364,6 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             size,
         );
         layout.focusable.push((NODE_PLAY, play));
-        layout.focusable.push((
-            NODE_MORE_INFO,
-            play.translate(Vec2::new(size.x + 12.0, 0.0)),
-        ));
     }
     let row_start = home_row_start(viewport, metrics, hero_height, show_hero);
     let mut flat = 0;
@@ -725,7 +721,7 @@ pub(crate) fn draw_home_with_options(
         metrics.screen_padding
     };
     let mut activated = None;
-    let mut hero_actions: Option<(Rect, Option<Rect>)> = None;
+    let mut hero_actions: Option<Rect> = None;
     if draw_top_bar {
         let profile_avatar_url = home
             .profile_avatar_url
@@ -1005,7 +1001,6 @@ pub(crate) fn draw_home_with_options(
                         let series =
                             matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
                         let label = play_label(&home.language, resume, series.then_some((1, 1, None)));
-                        let details_label = localized("home.view_details", &home.language);
                         let text_size = metrics.nav_label_size + 2.0;
                         let measure = |ui: &egui::Ui, text: &str| {
                             ui.painter()
@@ -1018,11 +1013,6 @@ pub(crate) fn draw_home_with_options(
                                 .x
                         };
                         let play_width = measure(ui, &label) + 70.0;
-                        let details_width = if compact {
-                            0.0
-                        } else {
-                            measure(ui, &details_label) + metrics.control_gap * 2.0
-                        };
                         if compact {
                             ui.add_space(((ui.available_width() - play_width) * 0.5).max(0.0));
                         }
@@ -1037,22 +1027,9 @@ pub(crate) fn draw_home_with_options(
                                 .map(|card| card.progress)
                                 .filter(|progress| *progress > 0.0),
                         );
-                        let details = (!compact).then(|| {
-                            components::button(
-                                ui,
-                                &details_label,
-                                details_width,
-                                play_height,
-                                components::ButtonKind::Secondary,
-                                metrics,
-                            )
-                        });
-                        hero_actions = Some((play.rect, details.as_ref().map(|d| d.rect)));
+                        hero_actions = Some(play.rect);
                         if play.clicked() {
                             activated = Some(NODE_PLAY);
-                        }
-                        if details.is_some_and(|d| d.clicked()) {
-                            activated = Some(NODE_MORE_INFO);
                         }
                     });
                 });
@@ -1283,16 +1260,13 @@ pub(crate) fn draw_home_with_options(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if compact && show_hero {
+    if show_hero {
         layout
             .focusable
             .push((NODE_MORE_INFO, hero_rect.intersect(screen)));
     }
-    if let Some((play, details)) = hero_actions {
+    if let Some(play) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));
-        if let Some(details) = details {
-            layout.focusable.push((NODE_MORE_INFO, details));
-        }
     } else if show_hero {
         let play_y = hero_height - if compact { 92.0 } else { 194.0 } - scroll_offset;
         layout.focusable.push((
