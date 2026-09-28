@@ -233,11 +233,6 @@ pub(crate) fn home_row_heading_height(metrics: UiMetrics, tv: bool) -> f32 {
     title_size * 1.25 + metrics.control_gap
 }
 
-pub(crate) fn home_row_total_height(metrics: UiMetrics, kind: HomeRowKind, tv: bool) -> f32 {
-    let (_, _, body_height) = home_row_dimensions(metrics, kind);
-    home_row_heading_height(metrics, tv) + body_height
-}
-
 pub(crate) fn home_artwork_signature(home: &HomeModel) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     home.background_url.hash(&mut hasher);
@@ -493,12 +488,12 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     let hero_height = home_hero_height(viewport);
     let mut content_height = home_row_start(viewport, metrics, hero_height, show_hero);
     for (_, cards, kind) in home.content_rows_with_kind().into_iter().take(64) {
-        if cards.is_empty() {
-            continue;
-        }
-        let row_height = home_row_total_height(metrics, kind, viewport.is_tv());
-        content_height += row_height + metrics.section_gap + metrics.vertical_spacing;
+        content_height += home_row_heading_height(metrics, viewport.is_tv())
+            + home_row_body_height(metrics, cards, kind)
+            + metrics.section_gap
+            + metrics.vertical_spacing;
     }
+    content_height -= metrics.section_gap + metrics.vertical_spacing;
     let bottom_navigation_reserve = if compact {
         64.0 + viewport.safe_bottom
     } else {
@@ -872,6 +867,7 @@ pub(crate) fn draw_home_with_options(
         }) - scroll_offset
             + hero_slide_offset;
         egui::Area::new(Id::new("fluxa-shared-hero"))
+            .constrain(false)
             .fixed_pos(Pos2::new(margin, content_top))
             .show(context, |ui| {
                 // The Compose hero owns a fixed 3:4/12:5 slide. Clip every
@@ -1008,7 +1004,7 @@ pub(crate) fn draw_home_with_options(
                         let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
                         let series =
                             matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
-                        let label = play_label(&home.language, resume, series.then_some((1, 1)));
+                        let label = play_label(&home.language, resume, series.then_some((1, 1, None)));
                         let details_label = localized("home.view_details", &home.language);
                         let text_size = metrics.nav_label_size + 2.0;
                         let measure = |ui: &egui::Ui, text: &str| {
