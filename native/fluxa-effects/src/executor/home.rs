@@ -263,13 +263,16 @@ impl EffectExecutor {
         let continue_watching = self
             .continue_watching_for_source(&active_id, &profile, &prefs, None)
             .await?;
-        let billboard = all_categories.iter().find_map(|category| {
-            category
-                .get("items")
-                .and_then(Value::as_array)
-                .and_then(|items| items.first())
-                .cloned()
-        });
+        let billboard = all_categories
+            .iter()
+            .filter(|category| category.get("type").and_then(Value::as_str) != Some("collection"))
+            .find_map(|category| {
+                category
+                    .get("items")
+                    .and_then(Value::as_array)
+                    .and_then(|items| items.first())
+                    .cloned()
+            });
         if all_categories.is_empty() {
             if let Some(Value::Object(mut cached)) = self.storage.read_json(&cache_key)? {
                 cached.insert("stale".to_owned(), Value::Bool(false));
