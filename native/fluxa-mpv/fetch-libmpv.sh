@@ -14,7 +14,7 @@ LIB_DIR="$SCRIPT_DIR/lib"
 
 case "$(uname -s)" in
     Linux*)  ASSET="libmpv-linux-x86_64.zip" ;;
-    Darwin*) ASSET="libmpv-macos-universal.zip" ;;
+    Darwin*) ASSET="libmpv-macos-$(uname -m | sed s/aarch64/arm64/).zip" ;;
     MINGW*|MSYS*|CYGWIN*) ASSET="libmpv-windows-x86_64.zip" ;;
     *) echo "unrecognized platform $(uname -s)" >&2; exit 1 ;;
 esac
