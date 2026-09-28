@@ -295,22 +295,22 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
         .ok()
         .flatten()
         .unwrap_or_else(|| json!([]));
-    let active_id = storage
+    let stored_active_id = storage
         .read_json("active_profile_id")
         .ok()
         .flatten()
-        .and_then(|value| value.as_str().map(ToOwned::to_owned))
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| "guest".to_owned());
-    let active_profile = profiles
-        .as_array()
-        .and_then(|items| {
-            items.iter().find(|profile| {
-                profile.get("id").and_then(Value::as_str) == Some(active_id.as_str())
-            })
-        })
-        .cloned()
-        .unwrap_or(Value::Null);
+        .and_then(|value| value.as_str().map(ToOwned::to_owned));
+    let plan = core_value(
+        "activeProfilePlan",
+        json!({"profiles": profiles, "storedActiveId": stored_active_id}),
+    )
+    .unwrap_or(Value::Null);
+    let active_id = plan
+        .get("activeId")
+        .and_then(Value::as_str)
+        .unwrap_or("guest")
+        .to_owned();
+    let active_profile = plan.get("activeProfile").cloned().unwrap_or(Value::Null);
     let mut prefs = storage
         .read_json(&Storage::prefs_key(&active_id))
         .ok()
