@@ -37,7 +37,7 @@ pub(super) fn calendar_release_row(
     let text_width = (rect.width() - thumb.width() - metrics.control_gap * 3.0).max(1.0);
     let text_x = thumb.right() + metrics.control_gap;
     let title_font = FontId::proportional(metrics.screen_card_title_size);
-    let subtitle_font = FontId::proportional(metrics.screen_card_subtitle_size);
+    let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     ui.painter().text(
         egui::Pos2::new(text_x, rect.top() + metrics.control_gap),
         Align2::LEFT_TOP,
@@ -292,7 +292,7 @@ pub(super) fn empty_state(
     let center = rect.center();
     let icon_size = 36.0;
     let title_font = FontId::proportional(metrics.screen_section_title_size);
-    let description_font = FontId::proportional(metrics.screen_body_size);
+    let description_font = crate::fonts::regular(metrics.screen_body_size);
     let mut y = center.y - (icon_size + metrics.section_gap + title_font.size * 2.6) * 0.5;
     if let Some(icon) = icon {
         let icon_rect = Rect::from_min_size(
@@ -385,7 +385,7 @@ pub(super) fn search_field(
         text_rect,
         egui::TextEdit::singleline(query)
             .frame(egui::Frame::NONE)
-            .font(FontId::proportional(metrics.screen_body_size + 1.0))
+            .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(Color32::from_white_alpha(110)))
             .text_color(Color32::WHITE)
@@ -396,7 +396,7 @@ pub(super) fn search_field(
         rect,
         text_rect,
         query,
-        FontId::proportional(metrics.screen_body_size + 1.0),
+        crate::fonts::regular(metrics.screen_body_size + 1.0),
     );
     let stroke = if response.has_focus() {
         egui::Stroke::new(1.0, Color32::from_white_alpha(120))
@@ -622,6 +622,20 @@ pub(super) fn poster_card(
     assets: &mut impl HomeAssets,
     motion_active: bool,
 ) {
+    crate::motion::press_scale(painter, rect, || {
+        poster_card_body(painter, rect, card, viewport, metrics, assets, motion_active)
+    });
+}
+
+fn poster_card_body(
+    painter: &Painter,
+    rect: Rect,
+    card: &HomeCard,
+    viewport: Viewport,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+    motion_active: bool,
+) {
     painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(28, 28, 34));
 
     let landscape = card.is_landscape();
@@ -709,7 +723,7 @@ pub(super) fn poster_card(
     } else {
         metrics.screen_card_title_size
     });
-    let subtitle_font = FontId::proportional(metrics.screen_card_subtitle_size);
+    let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let label_y = rect.bottom() + metrics.control_gap;
     paint_elided_text(
         painter,
@@ -795,6 +809,19 @@ pub(super) fn continue_card(
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
+    crate::motion::press_scale(painter, rect, || {
+        continue_card_body(painter, rect, card, viewport, metrics, assets)
+    });
+}
+
+fn continue_card_body(
+    painter: &Painter,
+    rect: Rect,
+    card: &HomeCard,
+    viewport: Viewport,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+) {
     painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(28, 28, 34));
 
     artwork_image(
@@ -821,7 +848,7 @@ pub(super) fn continue_card(
     } else {
         metrics.screen_card_title_size
     });
-    let subtitle_font = FontId::proportional(metrics.screen_card_subtitle_size);
+    let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let content_width = (rect.width() - metrics.card_content_padding * 2.0).max(1.0);
     super::poster_overlay::paint_landscape(painter, rect, card);
     let bar_top = rect.bottom() - metrics.card_content_padding - metrics.card_progress_height;
@@ -1194,44 +1221,46 @@ pub(super) fn pill_button(
     let inset = (width - natural) * 0.5;
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
-    let (fill, ink) = match (primary, response.hovered()) {
-        (true, false) => (Color32::WHITE, Color32::BLACK),
-        (true, true) => (Color32::from_gray(225), Color32::BLACK),
-        (false, false) => (Color32::from_white_alpha(28), Color32::WHITE),
-        (false, true) => (Color32::from_white_alpha(46), Color32::WHITE),
-    };
-    painter.rect_filled(rect, height * 0.5, fill);
-    let lift = if progress.is_some() { 4.0 } else { 0.0 };
-    if let Some(icon) = icon {
-        painter.image(
-            icon,
-            Rect::from_center_size(rect.left_center() + Vec2::new(inset + 28.0, 0.0), Vec2::splat(18.0)),
-            full_uv(),
+    crate::motion::press_scale(painter, rect, || {
+        let (fill, ink) = match (primary, response.hovered()) {
+            (true, false) => (Color32::WHITE, Color32::BLACK),
+            (true, true) => (Color32::from_gray(225), Color32::BLACK),
+            (false, false) => (Color32::from_white_alpha(28), Color32::WHITE),
+            (false, true) => (Color32::from_white_alpha(46), Color32::WHITE),
+        };
+        painter.rect_filled(rect, height * 0.5, fill);
+        let lift = if progress.is_some() { 4.0 } else { 0.0 };
+        if let Some(icon) = icon {
+            painter.image(
+                icon,
+                Rect::from_center_size(rect.left_center() + Vec2::new(inset + 28.0, 0.0), Vec2::splat(18.0)),
+                full_uv(),
+                ink,
+            );
+        }
+        painter.text(
+            rect.left_center() + Vec2::new(inset + 44.0, -lift),
+            Align2::LEFT_CENTER,
+            label,
+            font,
             ink,
         );
-    }
-    painter.text(
-        rect.left_center() + Vec2::new(inset + 44.0, -lift),
-        Align2::LEFT_CENTER,
-        label,
-        font,
-        ink,
-    );
-    if let Some(progress) = progress {
-        let track = Rect::from_min_max(
-            Pos2::new(rect.left() + 44.0, rect.center().y + text_size * 0.5 + 2.0),
-            Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
-        );
-        painter.rect_filled(track, 1.5, ink.gamma_multiply(0.16));
-        painter.rect_filled(
-            Rect::from_min_size(
-                track.min,
-                Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height()),
-            ),
-            1.5,
-            ink,
-        );
-    }
+        if let Some(progress) = progress {
+            let track = Rect::from_min_max(
+                Pos2::new(rect.left() + 44.0, rect.center().y + text_size * 0.5 + 2.0),
+                Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
+            );
+            painter.rect_filled(track, 1.5, ink.gamma_multiply(0.16));
+            painter.rect_filled(
+                Rect::from_min_size(
+                    track.min,
+                    Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height()),
+                ),
+                1.5,
+                ink,
+            );
+        }
+    });
     response
 }
 
@@ -1459,4 +1488,78 @@ pub fn draw_action_menu(
         context.request_repaint();
     }
     outcome
+}
+
+pub(super) fn toggle(
+    context: &egui::Context,
+    painter: &Painter,
+    id: Id,
+    track: Rect,
+    on: bool,
+    metrics: UiMetrics,
+) {
+    let t = context.animate_bool_with_time_and_easing(id, on, 0.22, egui::emath::easing::cubic_out);
+    let off_track = Color32::from_rgb(54, 56, 59);
+    painter.rect_filled(track, track.height() * 0.5, lerp_color(off_track, metrics.accent, t));
+    let radius = metrics
+        .settings_toggle_knob_radius
+        .min(track.height() * 0.5 - 2.0);
+    let travel = track.width() - (radius + 2.0) * 2.0;
+    let stretch = (t * (1.0 - t) * 4.0) * radius * 0.5;
+    let x = track.left() + radius + 2.0 + travel * t;
+    let knob = Rect::from_center_size(
+        Pos2::new(x, track.center().y),
+        Vec2::new(radius * 2.0 + stretch, radius * 2.0),
+    );
+    let knob_color = lerp_color(
+        Color32::from_rgb(168, 172, 178),
+        if metrics.accent_foreground == Color32::WHITE {
+            Color32::WHITE
+        } else {
+            Color32::from_rgb(24, 25, 28)
+        },
+        t,
+    );
+    painter.rect_filled(knob, radius, knob_color);
+}
+
+fn lerp_color(a: Color32, b: Color32, t: f32) -> Color32 {
+    let mix = |x: u8, y: u8| (x as f32 + (y as f32 - x as f32) * t).round() as u8;
+    Color32::from_rgba_unmultiplied(
+        mix(a.r(), b.r()),
+        mix(a.g(), b.g()),
+        mix(a.b(), b.b()),
+        mix(a.a(), b.a()),
+    )
+}
+
+pub(super) fn focus_ring(
+    painter: &Painter,
+    focusable: &[(u64, Rect)],
+    focused: Option<u64>,
+    viewport: Viewport,
+    metrics: UiMetrics,
+) {
+    if viewport.is_compact() || focused.is_some_and(is_text_node) {
+        return;
+    }
+    if let Some((_, rect)) = focusable.iter().find(|(id, _)| Some(*id) == focused) {
+        painter.rect_stroke(
+            rect.expand(metrics.focus_ring_expand),
+            metrics.focus_ring_radius,
+            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
+            egui::StrokeKind::Outside,
+        );
+    }
+}
+
+pub fn is_text_node(node: u64) -> bool {
+    matches!(
+        node,
+        super::NODE_LIBRARY_SEARCH
+            | super::NODE_DISCOVER_SEARCH
+            | super::NODE_SETTINGS_SEARCH
+            | super::NODE_SETTINGS_ADDON_URL
+            | super::NODE_SETTINGS_PLUGIN_URL
+    ) || super::poster_field(node).is_some()
 }

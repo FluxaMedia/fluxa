@@ -412,25 +412,7 @@ impl Gpu {
                 a: 1.0,
             });
         let egui_context = egui::Context::default();
-        let mut fonts = egui::FontDefinitions::default();
-        fonts.font_data.insert(
-            "archivo".to_owned(),
-            egui::FontData::from_static(include_bytes!(
-                "../../../apps/android/app/src/main/res/font/archivo.ttf"
-            ))
-            .into(),
-        );
-        fonts
-            .families
-            .entry(egui::FontFamily::Proportional)
-            .or_default()
-            .splice(0..0, ["archivo".to_owned()]);
-        fonts
-            .families
-            .entry(egui::FontFamily::Name("archivo".into()))
-            .or_default()
-            .splice(0..0, ["archivo".to_owned()]);
-        egui_context.set_fonts(fonts);
+        egui_context.set_fonts(fluxa_ui::fonts::definitions());
         let background_image = {
             let image = fluxa_renderer::ambient_background();
             egui::ColorImage::from_rgba_unmultiplied(
@@ -620,6 +602,12 @@ impl Gpu {
             } else {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
             }
+            let page = if profiles.is_some() { 100 } else if player.is_some() { 101 } else { route as u64 };
+            fluxa_ui::page_transition(
+                ui.ctx(),
+                page,
+                &[egui::Id::new("fluxa-shared-bottom-bar")],
+            );
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     ui.ctx(),

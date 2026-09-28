@@ -777,18 +777,13 @@ pub(crate) fn draw_home_with_options(
                 metrics.text_primary,
             );
         }
-        if let Some((_, rect)) = layout
-            .focusable
-            .iter()
-            .find(|(id, _)| Some(*id) == focused && !is_navigation_node(*id))
-        {
-            painter.rect_stroke(
-                rect.expand(metrics.focus_ring_expand),
-                metrics.focus_ring_radius,
-                egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
-                egui::StrokeKind::Outside,
-            );
-        }
+        components::focus_ring(
+            &painter,
+            &layout.focusable,
+            focused.filter(|id| !is_navigation_node(*id)),
+            viewport,
+            metrics,
+        );
         return layout;
     }
     let hero_width = if compact {
@@ -844,7 +839,7 @@ pub(crate) fn draw_home_with_options(
         } else {
             let mut job = egui::text::LayoutJob::simple(
                 hero.description.clone(),
-                egui::FontId::proportional(synopsis_size),
+                crate::fonts::regular(synopsis_size),
                 synopsis_color,
                 synopsis_width,
             );
@@ -1326,18 +1321,13 @@ pub(crate) fn draw_home_with_options(
             ),
         ));
     }
-    if let Some((_, rect)) = layout
-        .focusable
-        .iter()
-        .find(|(id, _)| Some(*id) == focused && !is_navigation_node(*id))
-    {
-        painter.rect_stroke(
-            rect.expand(metrics.focus_ring_expand),
-            metrics.focus_ring_radius,
-            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
-            egui::StrokeKind::Outside,
-        );
-    }
+    components::focus_ring(
+        &painter,
+        &layout.focusable,
+        focused.filter(|id| !is_navigation_node(*id)),
+        viewport,
+        metrics,
+    );
     layout
 }
 

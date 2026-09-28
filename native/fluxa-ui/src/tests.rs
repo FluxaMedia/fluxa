@@ -33,6 +33,7 @@ fn draw_test_frame(
     mut draw: impl FnMut(&egui::Context, &mut EmptyHomeAssets) -> HomeLayout,
 ) -> HomeLayout {
     let context = egui::Context::default();
+    context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut layout = HomeLayout::default();
     let _ = context.run_ui(
@@ -288,6 +289,7 @@ fn home_shelf_heading_and_spacing_prevent_adjacent_row_overlap() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let metrics = UiMetrics::for_viewport(viewport);
     let context = egui::Context::default();
+    context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let mut rendered_layout = None;
     let _ = context.run_ui(
@@ -1119,13 +1121,14 @@ fn responsive_metrics_are_loaded_from_shared_token_contract() {
     assert_eq!(desktop.settings_row_height, 44.0);
     assert_eq!(desktop.settings_row_label_size_desktop, 18.0);
     assert_eq!(mobile.settings_nav_width, 196.0);
-    assert_eq!(mobile.settings_row_height, 32.0);
+    assert_eq!(mobile.settings_row_height, 46.0);
 }
 
 #[test]
 fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
     let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
     let context = egui::Context::default();
+    context.set_fonts(crate::fonts::definitions());
     let settings = SettingsModel::default();
     let assets = EmptyHomeAssets;
     let _ = context.run_ui(
@@ -1270,6 +1273,7 @@ fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
     let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
     let context = egui::Context::default();
+    context.set_fonts(crate::fonts::definitions());
     let mut heights = Vec::new();
     let _ = context.run_ui(
         egui::RawInput {
@@ -1391,6 +1395,7 @@ fn settings_row_labels_reuse_existing_web_translations() {
 fn clicking_library_search_then_typing_reports_the_query() {
     let viewport = Viewport::new(1600, 900, UiFormFactor::Desktop);
     let context = egui::Context::default();
+    context.set_fonts(crate::fonts::definitions());
     let mut assets = EmptyHomeAssets;
     let library = LibraryModel::default();
     let page = PageLayout::new(viewport, UiMetrics::for_viewport(viewport), false);

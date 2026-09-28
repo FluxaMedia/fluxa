@@ -266,13 +266,6 @@ pub fn draw_library(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if let Some((_, rect)) = layout.focusable.iter().find(|(id, _)| Some(*id) == focused) {
-        painter.rect_stroke(
-            rect.expand(metrics.focus_ring_expand),
-            metrics.focus_ring_radius,
-            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
-            egui::StrokeKind::Outside,
-        );
-    }
+    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }

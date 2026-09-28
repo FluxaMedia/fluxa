@@ -1236,7 +1236,7 @@ fn settings_panel_line(
     metrics: UiMetrics,
 ) {
     let text = text.as_ref();
-    let font = FontId::proportional(metrics.screen_body_size);
+    let font = crate::fonts::regular(metrics.screen_body_size);
     let row_left = rect.left() + metrics.settings_extended_line_inset;
     let row_right = rect.right() - metrics.settings_extended_line_inset;
     let baseline_y = y + metrics.settings_extended_line_spacing * 0.5;
@@ -1248,7 +1248,7 @@ fn settings_panel_line(
             font.clone(),
             color,
         );
-        let value_font = FontId::proportional(metrics.screen_card_subtitle_size);
+        let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
         let value_width = painter
             .layout_no_wrap(value.to_owned(), value_font.clone(), Color32::WHITE)
             .size()
@@ -1308,7 +1308,7 @@ fn settings_panel_heading(
         ),
         Align2::LEFT_CENTER,
         label,
-        FontId::proportional(metrics.screen_card_subtitle_size),
+        crate::fonts::regular(metrics.screen_card_subtitle_size),
         Color32::from_white_alpha(132),
     );
 }
@@ -1620,7 +1620,7 @@ fn draw_field(
         FontId::proportional(label_size),
         Color32::from_white_alpha(230),
     );
-    let help_font = FontId::proportional(metrics.screen_card_subtitle_size);
+    let help_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     painter.text(
         inner.left_top() + Vec2::new(0.0, label_size + 6.0),
         Align2::LEFT_TOP,
@@ -1728,7 +1728,7 @@ fn draw_binding_group(
         title,
     );
     let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
-    let value_font = FontId::proportional(metrics.settings_row_value_size_desktop);
+    let value_font = crate::fonts::regular(metrics.settings_row_value_size_desktop);
     for (index, (action, keys)) in rows.iter().enumerate() {
         let row = account_row(card, index, metrics);
         if index > 0 {
@@ -2406,7 +2406,7 @@ pub fn draw_settings(
                         assets.icon("ArrowLeft"),
                         40.0,
                         Color32::WHITE,
-                        true,
+                        false,
                         false,
                         true,
                     );
@@ -2574,29 +2574,39 @@ pub fn draw_settings(
     let rect = if results {
         rect.translate(Vec2::new(0.0, -APPEARANCE_PAGE_HEADER_HEIGHT))
     } else if compact && !groups.is_empty() {
-        rect.translate(Vec2::new(0.0, 8.0 - APPEARANCE_PAGE_HEADER_HEIGHT))
+        let lead = if groups[0].0 == section_label(section.title, language) {
+            APPEARANCE_GROUP_HEADING_HEIGHT
+        } else {
+            0.0
+        };
+        rect.translate(Vec2::new(0.0, 8.0 - APPEARANCE_PAGE_HEADER_HEIGHT - lead))
     } else {
         rect
     };
     let cards = group_cards(rect, &groups, described(metrics));
+    let page_title = section_label(section.title, language);
     for ((title, _), card) in groups.iter().zip(&cards) {
-        painter.text(
-            Pos2::new(
-                rect.left() + 8.0,
-                card.top() - APPEARANCE_GROUP_HEADING_HEIGHT,
-            ),
-            Align2::LEFT_TOP,
-            title.to_uppercase(),
-            FontId::proportional(metrics.screen_card_subtitle_size),
-            Color32::from_white_alpha(145),
-        );
+        if !(compact && !searching && *title == page_title) {
+            painter.text(
+                Pos2::new(
+                    rect.left() + if compact { 16.0 } else { 8.0 },
+                    card.top() - APPEARANCE_GROUP_HEADING_HEIGHT,
+                ),
+                Align2::LEFT_TOP,
+                if compact { title.clone() } else { title.to_uppercase() },
+                crate::fonts::regular(metrics.screen_card_subtitle_size + if compact { 1.0 } else { 0.0 }),
+                Color32::from_white_alpha(if compact { 120 } else { 145 }),
+            );
+        }
         painter.rect_filled(*card, metrics.card_radius, Color32::from_rgb(19, 19, 19));
-        painter.rect_stroke(
-            *card,
-            metrics.card_radius,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
-            egui::StrokeKind::Inside,
-        );
+        if !compact {
+            painter.rect_stroke(
+                *card,
+                metrics.card_radius,
+                egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+                egui::StrokeKind::Inside,
+            );
+        }
     }
     if !searching && matches!(section.title, "Add-ons" | "Plugins") {
         painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(19, 19, 19));
@@ -2644,7 +2654,7 @@ pub fn draw_settings(
                 ),
                 language,
             ),
-            FontId::proportional(metrics.screen_card_subtitle_size),
+            crate::fonts::regular(metrics.screen_card_subtitle_size),
             Color32::from_white_alpha(130),
         );
     }
@@ -2731,7 +2741,7 @@ pub fn draw_settings(
                 .unwrap_or(setting.options[0])
         });
         let value = raw_value.map(|raw| option_label(setting.key, raw, language));
-        let value_font = FontId::proportional(value_size);
+        let value_font = crate::fonts::regular(value_size);
         let value_width = if sheet_row {
             value.as_deref().map_or(0.0, |value| {
                 painter
@@ -2769,7 +2779,7 @@ pub fn draw_settings(
         };
         let text_width = (row_rect.width() - control_width - 16.0).max(1.0);
         let label_font = FontId::proportional(row_label_size);
-        let subtitle_font = FontId::proportional(metrics.screen_card_subtitle_size);
+        let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
         let text_height = row_label_size + 4.0 + metrics.screen_card_subtitle_size;
         let text_top = row_rect.center().y - text_height * 0.5;
         painter.text(
@@ -2797,7 +2807,7 @@ pub fn draw_settings(
                 text_width,
             ),
             subtitle_font,
-            Color32::from_white_alpha(120),
+            Color32::from_white_alpha(if compact { 100 } else { 120 }),
         );
         if is_swatches {
             let current = raw_value.unwrap_or_default().to_ascii_uppercase();
@@ -2938,33 +2948,13 @@ pub fn draw_settings(
                     metrics.settings_toggle_height,
                 ),
             );
-            painter.rect_filled(
+            components::toggle(
+                context,
+                &painter,
+                Id::new(("fluxa-settings-toggle", node)),
                 track_rect,
-                metrics.settings_toggle_height / 2.0,
-                if enabled {
-                    metrics.accent
-                } else {
-                    Color32::from_rgb(54, 56, 59)
-                },
-            );
-            let knob_x = if enabled {
-                track_rect.right() - metrics.settings_toggle_knob_radius - 2.0
-            } else {
-                track_rect.left() + metrics.settings_toggle_knob_radius + 2.0
-            };
-            let knob_color = if enabled && accent_needs_dark_foreground(metrics.accent) {
-                Color32::from_rgb(24, 25, 28)
-            } else if enabled {
-                Color32::WHITE
-            } else {
-                Color32::from_rgb(168, 172, 178)
-            };
-            painter.circle_filled(
-                Pos2::new(knob_x, track_rect.center().y),
-                metrics
-                    .settings_toggle_knob_radius
-                    .min(metrics.settings_toggle_height * 0.5 - 2.0),
-                knob_color,
+                enabled,
+                metrics,
             );
         }
         if clicked {
@@ -2983,14 +2973,7 @@ pub fn draw_settings(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if let Some((_, rect)) = layout.focusable.iter().find(|(id, _)| Some(*id) == focused) {
-        painter.rect_stroke(
-            rect.expand(metrics.focus_ring_expand),
-            metrics.focus_ring_radius,
-            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
-            egui::StrokeKind::Outside,
-        );
-    }
+    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 
@@ -3303,7 +3286,7 @@ fn draw_account(
             row.right_center() - Vec2::new(status_right, 0.0),
             Align2::RIGHT_CENTER,
             status,
-            FontId::proportional(metrics.screen_card_subtitle_size),
+            crate::fonts::regular(metrics.screen_card_subtitle_size),
             Color32::from_white_alpha(if on { 200 } else { 110 }),
         );
     }

@@ -386,9 +386,9 @@ pub fn draw_discover(
                         Pos2::new(results_clip.right(), grid_top + card_height),
                     );
                     let scroll_id = Id::new(("discover-section-scroll", block.start, block.title));
-                    let max_offset = (block.len as f32 * (card_width + grid.gap) - grid.gap
-                        - page.width)
-                        .max(0.0);
+                    let max_offset =
+                        (block.len as f32 * (card_width + grid.gap) - grid.gap - page.width)
+                            .max(0.0);
                     let mut offset = context
                         .data(|data| data.get_temp::<f32>(scroll_id))
                         .unwrap_or(0.0);
@@ -567,13 +567,6 @@ pub fn draw_discover(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if let Some((_, rect)) = layout.focusable.iter().find(|(id, _)| Some(*id) == focused) {
-        painter.rect_stroke(
-            rect.expand(metrics.focus_ring_expand),
-            metrics.focus_ring_radius,
-            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
-            egui::StrokeKind::Outside,
-        );
-    }
+    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }

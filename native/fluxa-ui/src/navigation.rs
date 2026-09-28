@@ -326,11 +326,19 @@ pub(crate) fn draw_mobile_navigation_bar(
                 paint_vertical_gradient(
                     &painter,
                     Rect::from_min_max(
-                        Pos2::new(0.0, bar.top() - 32.0),
-                        Pos2::new(viewport.width, viewport.height),
+                        Pos2::new(0.0, bar.top() - 64.0),
+                        Pos2::new(viewport.width, bar.top() + 4.0),
                     ),
                     Color32::TRANSPARENT,
-                    solid.gamma_multiply(0.85),
+                    solid,
+                );
+                painter.rect_filled(
+                    Rect::from_min_max(
+                        Pos2::new(0.0, bar.top() + 4.0),
+                        Pos2::new(viewport.width, viewport.height),
+                    ),
+                    0.0,
+                    solid,
                 );
                 painter.rect_filled(bar, bar.height() * 0.5, Color32::from_rgba_unmultiplied(22, 22, 24, 242));
                 painter.rect_stroke(

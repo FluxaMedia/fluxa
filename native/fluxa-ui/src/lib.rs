@@ -12,11 +12,13 @@ mod calendar;
 mod components;
 mod detail;
 mod discover;
+pub mod fonts;
 mod home;
 mod layout;
 mod library;
 mod metrics;
 mod model;
+mod motion;
 mod navigation;
 mod nodes;
 mod paint;
@@ -34,7 +36,8 @@ pub use nodes::*;
 use paint::*;
 
 pub use calendar::draw_calendar;
-pub use components::{set_input_caret, 
+pub use motion::page_transition;
+pub use components::{is_text_node, set_input_caret, 
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, action_menu_layout, draw_action_menu,
 };
 pub use poster_overlay::{

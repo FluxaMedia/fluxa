@@ -211,12 +211,9 @@ pub fn draw_calendar(
                         }
                         if calendar.is_loading {
                             ui.label(
-                                RichText::new(localized(
-                                    "calendar.loading",
-                                    &calendar.language,
-                                ))
-                                .size(metrics.screen_card_subtitle_size)
-                                .color(Color32::from_white_alpha(120)),
+                                RichText::new(localized("calendar.loading", &calendar.language))
+                                    .size(metrics.screen_card_subtitle_size)
+                                    .color(Color32::from_white_alpha(120)),
                             );
                         }
                         layout.focusable.push((NODE_CALENDAR_PREV, previous.rect));
@@ -253,7 +250,7 @@ pub fn draw_calendar(
                 } else {
                     label.to_uppercase()
                 },
-                FontId::proportional(metrics.screen_card_subtitle_size - 1.0),
+                crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
                 Color32::from_white_alpha(110),
             );
         }
@@ -408,14 +405,7 @@ pub fn draw_calendar(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if let Some((_, rect)) = layout.focusable.iter().find(|(id, _)| Some(*id) == focused) {
-        painter.rect_stroke(
-            rect.expand(metrics.focus_ring_expand),
-            metrics.focus_ring_radius,
-            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
-            egui::StrokeKind::Outside,
-        );
-    }
+    components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
 }
 
@@ -526,7 +516,7 @@ fn draw_calendar_cell(
     }
     let text_width = rect.width() - padding * 2.0;
     if entries.len() > 1 {
-        let more_font = FontId::proportional(metrics.screen_card_subtitle_size - 1.0);
+        let more_font = crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0);
         let label = format!("+{}", entries.len() - 1);
         let galley = painter.layout_no_wrap(label, more_font, Color32::WHITE);
         let pill = Rect::from_min_size(
@@ -545,8 +535,8 @@ fn draw_calendar_cell(
     if text_width < 90.0 {
         return;
     }
-    let title_font = FontId::proportional(metrics.screen_card_subtitle_size + 1.0);
-    let episode_font = FontId::proportional(metrics.screen_card_subtitle_size - 1.0);
+    let title_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 1.0);
+    let episode_font = crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0);
     let mut baseline = rect.bottom() - padding;
     if !entry.episode.is_empty() {
         painter.text(
