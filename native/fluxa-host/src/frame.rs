@@ -42,7 +42,13 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .pending()
         .then(|| now + Duration::from_millis(8));
     let trailer = trailer::next_redraw(state, now);
-    let artwork = [artwork, projecting, animation, effects, trailer]
+    let caret = state
+        .ui
+        .focused()
+        .and_then(|node| state.ui.node(node))
+        .is_some_and(|node| node.kind == UiNodeKind::Input)
+        .then(|| now + Duration::from_millis(265));
+    let artwork = [artwork, projecting, animation, effects, trailer, caret]
         .into_iter()
         .flatten()
         .min();
@@ -170,6 +176,20 @@ pub(super) fn render_frame(state: &mut RendererState) {
     presence::update(current_presence(state));
     timer.mark("prepare");
     let menu = card_menu::view(state);
+    let caret = state
+        .ui
+        .focused()
+        .and_then(|node| state.ui.node(node))
+        .filter(|node| node.kind == UiNodeKind::Input)
+        .map(|node| {
+            egui::Rect::from_min_size(
+                egui::pos2(node.bounds.x, node.bounds.y),
+                egui::vec2(node.bounds.width, node.bounds.height),
+            )
+        });
+    if let Some(gpu) = state.gpu.as_ref() {
+        fluxa_ui::set_input_caret(&gpu.egui_context, caret);
+    }
     let render_result = {
         let RendererState {
             gpu,

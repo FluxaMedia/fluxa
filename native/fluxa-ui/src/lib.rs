@@ -34,7 +34,7 @@ pub use nodes::*;
 use paint::*;
 
 pub use calendar::draw_calendar;
-pub use components::{
+pub use components::{set_input_caret, 
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, action_menu_layout, draw_action_menu,
 };
 pub use poster_overlay::{

@@ -319,6 +319,41 @@ pub(super) fn empty_state(
     );
 }
 
+pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
+    context.data_mut(|data| data.insert_temp(Id::new("fluxa-input-caret"), rect));
+}
+
+fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) {
+    let focused = ui
+        .ctx()
+        .data(|data| data.get_temp::<Option<Rect>>(Id::new("fluxa-input-caret")))
+        .flatten()
+        .is_some_and(|rect| field.contains(rect.center()));
+    if !focused {
+        return;
+    }
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_millis());
+    if millis / 530 % 2 == 1 {
+        return;
+    }
+    let width = ui
+        .painter()
+        .layout_no_wrap(text.to_owned(), font.clone(), Color32::WHITE)
+        .size()
+        .x;
+    let x = (text_rect.left() + width + 1.0).min(text_rect.right());
+    let half = font.size * 0.62;
+    ui.painter().line_segment(
+        [
+            egui::Pos2::new(x, text_rect.center().y - half),
+            egui::Pos2::new(x, text_rect.center().y + half),
+        ],
+        egui::Stroke::new(1.6, Color32::WHITE),
+    );
+}
+
 pub(super) fn search_field(
     ui: &mut Ui,
     query: &mut String,
@@ -355,6 +390,13 @@ pub(super) fn search_field(
             .hint_text(RichText::new(hint).color(Color32::from_white_alpha(110)))
             .text_color(Color32::WHITE)
             .margin(Vec2::ZERO),
+    );
+    paint_caret(
+        ui,
+        rect,
+        text_rect,
+        query,
+        FontId::proportional(metrics.screen_body_size + 1.0),
     );
     let stroke = if response.has_focus() {
         egui::Stroke::new(1.0, Color32::from_white_alpha(120))
@@ -410,6 +452,12 @@ fn text_edit(
             .text_color(Color32::WHITE)
             .margin(Vec2::ZERO),
     );
+    let shown = if password {
+        "\u{2022}".repeat(value.chars().count())
+    } else {
+        value.clone()
+    };
+    paint_caret(ui, rect, text_rect, &shown, FontId::proportional(font_size));
     let stroke = if response.has_focus() {
         egui::Stroke::new(1.0, Color32::from_white_alpha(120))
     } else {
