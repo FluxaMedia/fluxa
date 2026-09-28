@@ -193,6 +193,25 @@ pub(crate) fn home_collection_card_dimensions(metrics: UiMetrics, card: &HomeCar
     )
 }
 
+pub(crate) fn home_card_dimensions(
+    metrics: UiMetrics,
+    card: &HomeCard,
+    kind: HomeRowKind,
+) -> (f32, f32) {
+    if kind == HomeRowKind::Collection {
+        return home_collection_card_dimensions(metrics, card);
+    }
+    let (width, height, _) = home_row_dimensions(metrics, kind);
+    if kind != HomeRowKind::Poster || card.is_landscape() {
+        return (width, height);
+    }
+    match card.poster_shape.as_deref() {
+        Some("landscape") => (height * 16.0 / 9.0, height),
+        Some("square") => (height, height),
+        _ => (width, height),
+    }
+}
+
 pub(crate) fn home_row_body_height(
     metrics: UiMetrics,
     cards: &[HomeCard],
@@ -374,7 +393,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         .enumerate()
         .take(64)
     {
-        let (card_width, card_height, body_height) = home_row_dimensions(metrics, kind);
+        let (_, _, body_height) = home_row_dimensions(metrics, kind);
         let row_height = home_row_heading_height(metrics, viewport.is_tv()) + body_height;
         let visible_y = row_y - home.scroll_offset;
         if visible_y + row_height < 0.0 || visible_y > viewport.height {
@@ -389,11 +408,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             .unwrap_or(0.0);
         let mut card_x = margin - row_scroll;
         for card in cards {
-            let (item_width, item_height) = if kind == HomeRowKind::Collection {
-                home_collection_card_dimensions(metrics, card)
-            } else {
-                (card_width, card_height)
-            };
+            let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
             layout.focusable.push((
                 NODE_CARD_BASE + flat as u64,
                 Rect::from_min_size(
@@ -455,7 +470,6 @@ pub(crate) fn home_row_scroll_max_for_cards(
     cards: &[HomeCard],
     kind: HomeRowKind,
 ) -> f32 {
-    let (card_width, _, _) = home_row_dimensions(metrics, kind);
     let margin = if viewport.is_compact() {
         metrics.page_padding
     } else if viewport.is_tv() {
@@ -463,16 +477,11 @@ pub(crate) fn home_row_scroll_max_for_cards(
     } else {
         metrics.screen_padding
     };
-    let content_width = if kind == HomeRowKind::Collection {
-        cards
-            .iter()
-            .map(|card| home_collection_card_dimensions(metrics, card))
-            .map(|(width, _)| width + metrics.horizontal_spacing)
-            .sum::<f32>()
-            - metrics.horizontal_spacing
-    } else {
-        cards.len() as f32 * (card_width + metrics.horizontal_spacing) - metrics.horizontal_spacing
-    };
+    let content_width = cards
+        .iter()
+        .map(|card| home_card_dimensions(metrics, card, kind).0 + metrics.horizontal_spacing)
+        .sum::<f32>()
+        - metrics.horizontal_spacing;
     (content_width - (viewport.width - margin * 2.0)).max(0.0)
 }
 
@@ -1086,18 +1095,7 @@ pub(crate) fn draw_home_with_options(
                 assets.prefetch_for(
                     card.poster_art(),
                     artwork_target_size(
-                        Vec2::new(
-                            if kind == HomeRowKind::Collection {
-                                home_collection_card_dimensions(metrics, card).0
-                            } else {
-                                card_width
-                            },
-                            if kind == HomeRowKind::Collection {
-                                home_collection_card_dimensions(metrics, card).1
-                            } else {
-                                card_height
-                            },
-                        ),
+                        Vec2::from(home_card_dimensions(metrics, card, kind)),
                         context.pixels_per_point(),
                     ),
                     ArtworkPriority::Prefetch,
@@ -1224,11 +1222,8 @@ pub(crate) fn draw_home_with_options(
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
                     for (column_index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
-                        let (item_width, item_height) = if kind == HomeRowKind::Collection {
-                            home_collection_card_dimensions(metrics, card)
-                        } else {
-                            (card_width, card_height)
-                        };
+                        let (item_width, item_height) =
+                            home_card_dimensions(metrics, card, kind);
                         let slot_height = if is_poster { body_height } else { card_height };
                         let (widget_id, slot_rect) =
                             ui.allocate_space(Vec2::new(item_width, slot_height));

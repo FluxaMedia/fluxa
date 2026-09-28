@@ -485,6 +485,8 @@ pub struct HomeCard {
     pub logo_url: Option<String>,
     #[serde(skip)]
     pub backdrop_url: Option<String>,
+    #[serde(skip)]
+    pub poster_shape: Option<String>,
 }
 
 impl HomeCard {
@@ -1413,6 +1415,7 @@ pub(crate) fn core_home_card_for_kind(item: &serde_json::Value, kind: HomeRowKin
             item,
             &["background", "backgroundUrl", "backdrop", "backdropUrl"],
         ),
+        poster_shape: value_string(item, "posterShape"),
         raw: item.clone(),
         row_kind: kind,
     }
