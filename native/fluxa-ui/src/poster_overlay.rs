@@ -280,6 +280,12 @@ fn stream_quality(text: &str) -> [bool; 4] {
 #[derive(Debug, Default, PartialEq)]
 pub struct PersonalIndex(HashMap<String, Personal>);
 
+impl PersonalIndex {
+    pub fn get(&self, id: &str) -> Option<Personal> {
+        self.0.get(id).copied()
+    }
+}
+
 pub(super) fn personal_index(library: &serde_json::Value) -> PersonalIndex {
     let mut index = HashMap::<String, Personal>::new();
     let ids = |key: &str| {

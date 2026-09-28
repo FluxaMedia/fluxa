@@ -66,6 +66,7 @@ mod accounts;
 mod actions;
 mod artwork;
 mod bridge_video;
+mod card_menu;
 mod frame;
 mod gpu;
 mod input;
@@ -115,6 +116,10 @@ struct RendererState {
     touch_velocity_samples: VecDeque<(Instant, [f32; 2])>,
     touch_scrolled: bool,
     nav_dragging: bool,
+    touch_down_at: Option<Instant>,
+    touch_menu_opened: bool,
+    card_menu: Option<card_menu::CardMenu>,
+    menu_serial: u64,
     active_scroll: Option<HomeScrollTarget>,
     scroll_velocity: f32,
     scroll_animation_at: Instant,
@@ -487,6 +492,10 @@ impl FluxaHost {
             touch_velocity_samples: VecDeque::new(),
             touch_scrolled: false,
             nav_dragging: false,
+            touch_down_at: None,
+            touch_menu_opened: false,
+            card_menu: None,
+            menu_serial: 0,
             active_scroll: None,
             scroll_velocity: 0.0,
             scroll_animation_at: Instant::now(),
@@ -628,6 +637,13 @@ impl FluxaHost {
             let position = Pos2::new(x, y) * (state.density / state.scale());
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
+            if pressed
+                && matches!(button, MouseButton::Secondary)
+                && state.card_menu.is_none()
+                && card_menu::open_at(state, position)
+            {
+                return;
+            }
             state.egui_events.push(egui::Event::PointerButton {
                 pos: position,
                 button: match button {

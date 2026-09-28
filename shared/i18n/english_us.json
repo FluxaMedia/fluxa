@@ -1,4 +1,12 @@
 {
+  "menu.play": "Play",
+  "menu.resume": "Resume",
+  "menu.details": "Details",
+  "menu.add_watchlist": "Add to Watchlist",
+  "menu.remove_watchlist": "Remove from Watchlist",
+  "menu.mark_watched": "Mark as watched",
+  "menu.mark_unwatched": "Mark as unwatched",
+  "menu.remove_continue": "Remove from Continue Watching",
   "common.app_name": "Fluxa",
   "nav.home": "Home",
   "auto.detail_metadata_separator": " · ",

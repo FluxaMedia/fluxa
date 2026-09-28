@@ -83,7 +83,7 @@ pub trait HomeAssets {
     }
 }
 
-pub(crate) fn metrics_for_assets(viewport: Viewport, assets: &impl HomeAssets) -> UiMetrics {
+pub fn metrics_for_assets(viewport: Viewport, assets: &impl HomeAssets) -> UiMetrics {
     let mut metrics = UiMetrics::for_viewport(viewport);
     if let Some(accent) = assets.accent_color() {
         metrics.accent = accent;

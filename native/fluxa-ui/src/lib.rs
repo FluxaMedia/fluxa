@@ -34,8 +34,11 @@ pub use nodes::*;
 use paint::*;
 
 pub use calendar::draw_calendar;
+pub use components::{
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, action_menu_layout, draw_action_menu,
+};
 pub use poster_overlay::{
-    Enrichment, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_landscape,
+    Enrichment, Personal, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_landscape,
     set_poster_overlays, set_poster_personal, set_rating_logos,
 };
 

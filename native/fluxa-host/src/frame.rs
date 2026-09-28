@@ -126,6 +126,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     {
         advance_home_inertia(state);
     }
+    card_menu::tick(state);
     rebuild_current_ui(state);
     timer.mark("rebuild");
     let route = active_route(state);
@@ -168,6 +169,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     }
     presence::update(current_presence(state));
     timer.mark("prepare");
+    let menu = card_menu::view(state);
     let render_result = {
         let RendererState {
             gpu,
@@ -206,6 +208,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 events,
                 modifiers,
                 pre_present.as_ref(),
+                menu.as_ref(),
                 &mut timer,
             )
         })
@@ -217,6 +220,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 state.wants_keyboard = frame.wants_keyboard;
                 state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
                 let mut layout = frame.layout;
+                if let Some(outcome) = frame.menu_outcome {
+                    card_menu::apply(state, outcome);
+                }
                 if let Some(request) = layout.profiles.take() {
                     profiles::handle(state, request);
                 }

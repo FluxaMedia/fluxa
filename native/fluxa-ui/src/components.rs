@@ -1186,3 +1186,225 @@ pub(super) fn pill_button(
     }
     response
 }
+
+pub struct ActionMenuItem {
+    pub icon: &'static str,
+    pub label: String,
+}
+
+pub enum ActionMenuOutcome {
+    Pick(usize),
+    Dismiss,
+}
+
+pub struct ActionMenuLayout {
+    pub panel: Rect,
+    pub rows: Vec<Rect>,
+    header: Option<Rect>,
+}
+
+pub fn action_menu_layout(
+    viewport: Viewport,
+    count: usize,
+    anchor: Pos2,
+) -> ActionMenuLayout {
+    let count = count as f32;
+    if viewport.is_compact() {
+        let (header, row) = (60.0, 56.0);
+        let height = 20.0 + header + row * count + viewport.safe_bottom + 12.0;
+        let panel = Rect::from_min_size(
+            Pos2::new(0.0, viewport.height - height),
+            Vec2::new(viewport.width, height),
+        );
+        let top = panel.top() + 20.0 + header;
+        ActionMenuLayout {
+            panel,
+            header: Some(Rect::from_min_size(
+                Pos2::new(panel.left(), panel.top() + 20.0),
+                Vec2::new(panel.width(), header),
+            )),
+            rows: (0..count as usize)
+                .map(|index| {
+                    Rect::from_min_size(
+                        Pos2::new(8.0, top + row * index as f32),
+                        Vec2::new(viewport.width - 16.0, row),
+                    )
+                })
+                .collect(),
+        }
+    } else if viewport.is_tv() {
+        let (header, row, pad, width) = (72.0, 60.0, 16.0, 520.0);
+        let height = header + row * count + pad * 2.0;
+        let panel = Rect::from_center_size(
+            Pos2::new(viewport.width * 0.5, viewport.height * 0.5),
+            Vec2::new(width, height),
+        );
+        ActionMenuLayout {
+            panel,
+            header: Some(Rect::from_min_size(
+                Pos2::new(panel.left() + pad, panel.top() + pad),
+                Vec2::new(width - pad * 2.0, header),
+            )),
+            rows: (0..count as usize)
+                .map(|index| {
+                    Rect::from_min_size(
+                        Pos2::new(panel.left() + pad, panel.top() + pad + header + row * index as f32),
+                        Vec2::new(width - pad * 2.0, row),
+                    )
+                })
+                .collect(),
+        }
+    } else {
+        let (row, pad, width) = (40.0, 6.0, 240.0);
+        let height = row * count + pad * 2.0;
+        let x = if anchor.x + width > viewport.width - 8.0 {
+            anchor.x - width
+        } else {
+            anchor.x
+        };
+        let y = if anchor.y + height > viewport.height - 8.0 {
+            anchor.y - height
+        } else {
+            anchor.y
+        };
+        let panel = Rect::from_min_size(Pos2::new(x.max(8.0), y.max(8.0)), Vec2::new(width, height));
+        ActionMenuLayout {
+            panel,
+            header: None,
+            rows: (0..count as usize)
+                .map(|index| {
+                    Rect::from_min_size(
+                        Pos2::new(panel.left() + pad, panel.top() + pad + row * index as f32),
+                        Vec2::new(width - pad * 2.0, row),
+                    )
+                })
+                .collect(),
+        }
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn draw_action_menu(
+    context: &egui::Context,
+    viewport: Viewport,
+    metrics: UiMetrics,
+    assets: &impl HomeAssets,
+    title: &str,
+    items: &[ActionMenuItem],
+    selected: Option<usize>,
+    anchor: Pos2,
+    serial: u64,
+) -> Option<ActionMenuOutcome> {
+    let layout = action_menu_layout(viewport, items.len(), anchor);
+    let compact = viewport.is_compact();
+    let tv = viewport.is_tv();
+    if context.data(|data| data.get_temp::<u64>(Id::new("fluxa-action-menu-serial"))) != Some(serial) {
+        context.data_mut(|data| data.insert_temp(Id::new("fluxa-action-menu-serial"), serial));
+        context.animate_bool_with_time(Id::new(("fluxa-action-menu", serial)), false, 0.0);
+    }
+    let reveal = context.animate_bool_with_time(Id::new(("fluxa-action-menu", serial)), true, 0.25);
+    let eased = 1.0 - (1.0 - reveal).powi(3);
+    let offset = if compact {
+        Vec2::new(0.0, (1.0 - eased) * layout.panel.height())
+    } else {
+        Vec2::ZERO
+    };
+    let mut outcome = None;
+    egui::Area::new(Id::new("fluxa-action-menu-area"))
+        .fixed_pos(Pos2::ZERO)
+        .order(egui::Order::Debug)
+        .show(context, |ui| {
+            let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+            let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
+            let backdrop = ui.interact(screen, Id::new("fluxa-action-menu-backdrop"), Sense::click());
+            if compact || tv {
+                painter.rect_filled(screen, 0.0, Color32::from_black_alpha((150.0 * eased) as u8));
+            }
+            let panel = layout.panel.translate(offset);
+            let fill = Color32::from_rgb(20, 20, 22);
+            let border = egui::Stroke::new(1.0, Color32::from_white_alpha(20));
+            if compact {
+                painter.rect(
+                    panel.with_max_y(panel.max.y + 40.0),
+                    egui::CornerRadius { nw: 20, ne: 20, sw: 0, se: 0 },
+                    fill,
+                    border,
+                    egui::StrokeKind::Inside,
+                );
+                painter.rect_filled(
+                    Rect::from_center_size(Pos2::new(panel.center().x, panel.top() + 10.0), Vec2::new(36.0, 4.0)),
+                    2.0,
+                    Color32::from_white_alpha(60),
+                );
+            } else {
+                painter.rect(panel, 12.0, fill, border, egui::StrokeKind::Inside);
+            }
+            if let Some(header) = layout.header.map(|header| header.translate(offset)) {
+                let inset = if compact { 24.0 } else { 12.0 };
+                painter.text(
+                    Pos2::new(header.left() + inset, header.center().y),
+                    Align2::LEFT_CENTER,
+                    truncate_to_width(
+                        &painter,
+                        title,
+                        &FontId::proportional(metrics.text.title),
+                        header.width() - inset * 2.0,
+                    ),
+                    FontId::proportional(metrics.text.title),
+                    Color32::WHITE,
+                );
+                painter.hline(
+                    panel.x_range().shrink(if compact { 0.0 } else { 16.0 }),
+                    header.bottom() - 0.5,
+                    egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+                );
+            }
+            let label_size = if compact || tv { metrics.text.subtitle } else { metrics.text.body };
+            let icon_size = if compact || tv { 24.0 } else { 18.0 };
+            for (index, (item, row)) in items.iter().zip(&layout.rows).enumerate() {
+                let row = row.translate(offset);
+                let response = ui.interact(row, Id::new(("fluxa-action-menu-row", index)), Sense::click());
+                let focused = selected == Some(index);
+                let (bg, ink) = if tv && focused {
+                    (Color32::WHITE, Color32::BLACK)
+                } else if focused || response.hovered() {
+                    (Color32::from_white_alpha(18), Color32::WHITE)
+                } else {
+                    (Color32::TRANSPARENT, Color32::WHITE)
+                };
+                painter.rect_filled(row, if compact { 12.0 } else { 8.0 }, bg);
+                let inset = if compact { 16.0 } else { 12.0 };
+                if let Some(icon) = assets.icon(item.icon) {
+                    painter.image(
+                        icon,
+                        Rect::from_center_size(
+                            Pos2::new(row.left() + inset + icon_size * 0.5, row.center().y),
+                            Vec2::splat(icon_size),
+                        ),
+                        full_uv(),
+                        ink,
+                    );
+                }
+                painter.text(
+                    Pos2::new(row.left() + inset * 2.0 + icon_size, row.center().y),
+                    Align2::LEFT_CENTER,
+                    &item.label,
+                    FontId::proportional(label_size),
+                    ink,
+                );
+                if response.clicked() {
+                    outcome = Some(ActionMenuOutcome::Pick(index));
+                }
+            }
+            if outcome.is_none()
+                && (backdrop.clicked() || backdrop.secondary_clicked())
+                && !panel.contains(backdrop.interact_pointer_pos().unwrap_or(panel.center()))
+            {
+                outcome = Some(ActionMenuOutcome::Dismiss);
+            }
+        });
+    if reveal < 1.0 {
+        context.request_repaint();
+    }
+    outcome
+}

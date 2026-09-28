@@ -507,14 +507,15 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     fun back(): Boolean = nativeHandle != 0L && NativeRenderer.backNative(nativeHandle)
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
+        if (nativeHandle != 0L && isSelectKey(keyCode)) {
+            if (event.repeatCount == 0) {
+                selectLongPressed = false
+                event.startTracking()
+            }
+            return true
+        }
         if (nativeHandle != 0L && NativeRenderer.isNavigationKey(keyCode)) {
             NativeRenderer.keyDownNative(nativeHandle, keyCode, if (event.isShiftPressed) 1 else 0)
-            if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                if (isNativeTextInput(NativeRenderer.focusedNodeNative(nativeHandle))) {
-                    (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                        ?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                }
-            }
             return true
         }
         if (nativeHandle != 0L && isNativeTextInput(NativeRenderer.focusedNodeNative(nativeHandle))) {
@@ -525,6 +526,35 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    private var selectLongPressed = false
+
+    private fun isSelectKey(keyCode: Int) =
+        keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent): Boolean {
+        if (nativeHandle != 0L && isSelectKey(keyCode)) {
+            selectLongPressed = true
+            NativeRenderer.keyDownNative(nativeHandle, KeyEvent.KEYCODE_MENU, 0)
+            return true
+        }
+        return super.onKeyLongPress(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
+        if (nativeHandle != 0L && isSelectKey(keyCode)) {
+            if (!selectLongPressed && !event.isCanceled) {
+                NativeRenderer.keyDownNative(nativeHandle, keyCode, 0)
+                if (isNativeTextInput(NativeRenderer.focusedNodeNative(nativeHandle))) {
+                    (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                        ?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+                }
+            }
+            selectLongPressed = false
+            return true
+        }
+        return super.onKeyUp(keyCode, event)
     }
 
     override fun onCheckIsTextEditor(): Boolean = true
@@ -601,6 +631,7 @@ private object NativeRenderer {
         KeyEvent.KEYCODE_BACK,
         KeyEvent.KEYCODE_ESCAPE,
         KeyEvent.KEYCODE_TAB,
+        KeyEvent.KEYCODE_MENU,
         KeyEvent.KEYCODE_DEL,
         KeyEvent.KEYCODE_BUTTON_A,
         KeyEvent.KEYCODE_BUTTON_B,

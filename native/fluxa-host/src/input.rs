@@ -179,6 +179,15 @@ pub(super) fn logical_viewport(state: &RendererState) -> Viewport {
 }
 
 pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
+    if card_menu::pointer(state, phase, position) {
+        if phase == PointerPhase::Up {
+            state.touch_start = None;
+            state.touch_last = None;
+            state.touch_down_at = None;
+            state.touch_scrolled = false;
+        }
+        return;
+    }
     let viewport = logical_viewport(state);
     if phase == PointerPhase::Down
         && state.player.is_none()
@@ -208,6 +217,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         state.keyboard_focus_visible = false;
         let now = Instant::now();
         state.touch_start = Some(position);
+        state.touch_down_at = Some(now);
         state.touch_last = Some(position);
         state.touch_last_at = Some(now);
         state.touch_velocity_samples.clear();
@@ -323,6 +333,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     }
     if phase == PointerPhase::Up {
         let was_scroll = state.touch_scrolled;
+        state.touch_down_at = None;
         state.touch_start = None;
         state.touch_last = None;
         state.touch_last_at = None;
@@ -349,6 +360,14 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
 
 pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if state.player.is_some() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
+        return;
+    }
+    if card_menu::key(state, input) {
+        return;
+    }
+    if matches!(input, KeyInput::Gamepad(GamepadButton::West)) {
+        state.keyboard_focus_visible = true;
+        card_menu::open_from_focus(state);
         return;
     }
     if !matches!(input, KeyInput::Key(Key::Back | Key::Escape)) {
@@ -427,7 +446,9 @@ pub(super) fn apply_pointer_results(state: &mut RendererState, route: Route, lay
                 value: value.clone(),
             });
     }
-    if let Some(node) = layout.activated {
+    if let Some(node) = layout.activated
+        && state.card_menu.is_none()
+    {
         rebuild_current_ui(state);
         remember_actions(state, vec![UiAction::Activated(node)]);
     }

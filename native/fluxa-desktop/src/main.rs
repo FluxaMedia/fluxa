@@ -282,6 +282,7 @@ fn key_input(key: &WinitKey, shift: bool) -> Option<KeyInput> {
         NamedKey::ArrowRight => Key::Right,
         NamedKey::Enter => Key::Enter,
         NamedKey::Escape => Key::Escape,
+        NamedKey::ContextMenu => return Some(KeyInput::Gamepad(GamepadButton::West)),
         NamedKey::BrowserBack | NamedKey::GoBack => Key::Back,
         NamedKey::Tab if shift => Key::ShiftTab,
         NamedKey::Tab => Key::Tab,

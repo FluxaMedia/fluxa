@@ -1,4 +1,12 @@
 {
+  "menu.play": "Oynat",
+  "menu.resume": "Devam et",
+  "menu.details": "Ayrıntılar",
+  "menu.add_watchlist": "İzleme listesine ekle",
+  "menu.remove_watchlist": "İzleme listesinden çıkar",
+  "menu.mark_watched": "İzlendi olarak işaretle",
+  "menu.mark_unwatched": "İzlenmedi olarak işaretle",
+  "menu.remove_continue": "İzlemeye devam et'ten kaldır",
   "common.app_name": "Fluxa",
   "nav.home": "Ana Sayfa",
   "auto.detail_metadata_separator": " · ",

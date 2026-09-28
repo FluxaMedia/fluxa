@@ -71,7 +71,7 @@ fn android_key(key_code: jint, shift: bool) -> Option<KeyInput> {
     let gamepad = match key_code {
         96 => Some(GamepadButton::South),
         97 => Some(GamepadButton::East),
-        99 => Some(GamepadButton::West),
+        99 | 82 => Some(GamepadButton::West),
         100 => Some(GamepadButton::North),
         19 => Some(GamepadButton::DPadUp),
         20 => Some(GamepadButton::DPadDown),

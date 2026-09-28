@@ -42,6 +42,7 @@ pub(super) struct FrameOutput {
     pub(super) cursor: egui::CursorIcon,
     pub(super) wants_keyboard: bool,
     pub(super) repaint_delay: Duration,
+    pub(super) menu_outcome: Option<fluxa_ui::ActionMenuOutcome>,
 }
 
 pub(super) struct HostAssets<'a> {
@@ -461,6 +462,7 @@ impl Gpu {
         events: Vec<egui::Event>,
         modifiers: egui::Modifiers,
         pre_present: Option<&PrePresent>,
+        menu: Option<&card_menu::MenuView>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         let passthrough =
@@ -501,6 +503,7 @@ impl Gpu {
         fluxa_ui::set_poster_overlays(&self.egui_context, settings.poster_overlays());
         fluxa_ui::set_poster_personal(&self.egui_context, library.personal.clone());
         let mut rendered_layout = HomeLayout::default();
+        let mut menu_outcome = None;
         let output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
@@ -540,6 +543,19 @@ impl Gpu {
                 rendered_layout = draw_settings(ui.ctx(), viewport, settings, &assets, focused);
             } else {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
+            }
+            if let Some(menu) = menu {
+                menu_outcome = fluxa_ui::draw_action_menu(
+                    ui.ctx(),
+                    viewport,
+                    fluxa_ui::metrics_for_assets(viewport, &assets),
+                    &assets,
+                    &menu.title,
+                    &menu.items,
+                    menu.selected,
+                    menu.anchor,
+                    menu.serial,
+                );
             }
         });
         timer.mark("draw");
@@ -620,6 +636,7 @@ impl Gpu {
                 .viewport_output
                 .get(&egui::ViewportId::ROOT)
                 .map_or(Duration::ZERO, |viewport| viewport.repaint_delay),
+            menu_outcome,
         })
     }
 }

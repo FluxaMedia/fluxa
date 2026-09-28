@@ -1057,7 +1057,7 @@ pub struct AccountPrompt {
 }
 
 impl SettingsModel {
-    fn language(&self) -> &str {
+    pub fn language(&self) -> &str {
         self.values
             .get("language")
             .and_then(serde_json::Value::as_str)
