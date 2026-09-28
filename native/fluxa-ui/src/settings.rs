@@ -290,7 +290,7 @@ const PLAYBACK_SETTINGS: [SettingsRow; 44] = [
         options: &[],
     },
 ];
-const APPEARANCE_SETTINGS: [SettingsRow; 42] = [
+const APPEARANCE_SETTINGS: [SettingsRow; 44] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -360,6 +360,16 @@ const APPEARANCE_SETTINGS: [SettingsRow; 42] = [
         label: "Poster width",
         key: "posterWidthPreset",
         options: &["xsmall", "small", "medium", "large", "xlarge"],
+    },
+    SettingsRow {
+        label: "Floating navigation bar",
+        key: "navFloating",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Navigation labels",
+        key: "navLabels",
+        options: &[],
     },
     SettingsRow {
         label: "Landscape posters",

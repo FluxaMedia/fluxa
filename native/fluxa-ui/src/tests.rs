@@ -374,7 +374,7 @@ fn mobile_home_navigation_respects_real_system_bottom_inset() {
 }
 
 #[test]
-fn mobile_home_bottom_navigation_uses_five_equal_full_width_slots() {
+fn mobile_bottom_navigation_splits_the_floating_bar_into_five_slots() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let metrics = UiMetrics::for_viewport(viewport);
     let navigation = navigation_focus_rects(viewport, metrics);
@@ -394,8 +394,8 @@ fn mobile_home_bottom_navigation_uses_five_equal_full_width_slots() {
     });
     let width = slots[0].width();
 
-    assert!((slots[0].left() - 8.0).abs() < 0.01);
-    assert!((slots[4].right() - (viewport.width - 8.0)).abs() < 0.01);
+    assert!((slots[0].left() - 16.0).abs() < 0.01);
+    assert!((slots[4].right() - (viewport.width - 16.0)).abs() < 0.01);
     assert!(slots.iter().all(|rect| (rect.width() - width).abs() < 0.01));
 }
 

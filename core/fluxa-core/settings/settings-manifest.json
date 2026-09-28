@@ -716,6 +716,20 @@
       "category": "appearance"
     },
     {
+      "key": "navFloating",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "navLabels",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "posterLandscapeMode",
       "type": "boolean",
       "default": false,

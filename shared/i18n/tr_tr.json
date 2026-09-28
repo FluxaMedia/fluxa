@@ -73,6 +73,8 @@
   "settings.navSidebarMode": "Kenar çubuğu davranışı",
   "settings.cardCornerPreset": "Kart köşeleri",
   "settings.posterWidthPreset": "Poster genişliği",
+  "settings.navFloating": "Yüzen gezinme çubuğu",
+  "settings.navLabels": "Gezinme etiketleri",
   "settings.posterLandscapeMode": "Yatay posterler",
   "settings.catalogTypeSuffixEnabled": "Katalog türü etiketleri",
   "settings.continueWatchingLayout": "İzlemeye Devam Düzeni",

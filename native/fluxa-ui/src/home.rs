@@ -491,7 +491,7 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     }
     content_height -= metrics.section_gap + metrics.vertical_spacing;
     let bottom_navigation_reserve = if compact {
-        64.0 + viewport.safe_bottom
+        mobile_nav_reserve(viewport)
     } else {
         0.0
     };

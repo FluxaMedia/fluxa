@@ -73,6 +73,8 @@
   "settings.navSidebarMode": "Sidebar behavior",
   "settings.cardCornerPreset": "Card corners",
   "settings.posterWidthPreset": "Poster width",
+  "settings.navFloating": "Floating navigation bar",
+  "settings.navLabels": "Navigation labels",
   "settings.posterLandscapeMode": "Landscape posters",
   "settings.catalogTypeSuffixEnabled": "Catalog type labels",
   "settings.continueWatchingLayout": "Continue Watching layout",

@@ -24,7 +24,7 @@ pub(crate) fn discover_grid_geometry(
 
 pub(crate) fn mobile_scroll_reserve(viewport: Viewport) -> f32 {
     if viewport.is_compact() {
-        64.0 + viewport.safe_bottom
+        mobile_nav_reserve(viewport)
     } else {
         0.0
     }
