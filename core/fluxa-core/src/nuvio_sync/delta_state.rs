@@ -89,7 +89,7 @@ fn deduplicate(items: Vec<Value>) -> Vec<Value> {
     values
 }
 
-fn projection(items: &[Value]) -> Vec<Value> {
+pub(super) fn projection(items: &[Value]) -> Vec<Value> {
     let mut latest = Map::new();
     for item in items {
         let id = item

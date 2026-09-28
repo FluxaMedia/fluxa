@@ -46,25 +46,9 @@ impl EffectExecutor {
             .read_json(&Storage::prefs_key(&active_id))?
             .or_else(|| self.storage.read_json("prefs").ok().flatten())
             .unwrap_or_else(|| json!({}));
-        let profiles_request = json!({"profiles": profiles, "activeProfileId": active_id});
-        let owner = core_value("effectiveAddonsOwnerId", profiles_request)
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| active_id.clone());
         let mut addons = self
-            .storage
-            .read_json(&Storage::addons_key(&owner))?
-            .or_else(|| {
-                self.storage
-                    .read_json(&Storage::addons_key(&active_id))
-                    .ok()
-                    .flatten()
-            })
-            .unwrap_or_else(|| json!([]));
-        if !addons.is_array() {
-            addons = json!([]);
-        }
-        addons = normalize_enabled_addons(addons)?;
+            .addons_for_profile(&profiles, &active_id, &profile)
+            .await?;
         if let Some(api_key) = prefs
             .get("tmdbApiKey")
             .and_then(Value::as_str)
@@ -85,13 +69,6 @@ impl EffectExecutor {
                 }
             }
         }
-
-        // Discover already resolves add-ons from the signed-in Nuvio account,
-        // but Home used only the local add-on cache. Consequently the user's
-        // collection shelves loaded while their catalog shelves (and catalog-
-        // sourced hero candidates) silently vanished. Merge the same remote
-        // manifests into this bootstrap before deriving metadata feeds.
-        self.merge_nuvio_addons(&profile, &mut addons).await;
 
         let addon_json = addons.to_string();
         let feeds =
@@ -223,50 +200,27 @@ impl EffectExecutor {
             categories.len()
         );
 
-        // The Web home pipeline hydrates Nuvio's cloud collections before
-        // asking Core to build collection shelves. Do the same here instead
-        // of silently rendering the profile's stale local copy.
         let mut collection_profile = profile.clone();
-        if let (Some(base_url), Some(api_key), Some(token)) = (
-            option_env!("FLUXA_NUVIO_SUPABASE_URL"),
-            option_env!("FLUXA_NUVIO_SUPABASE_KEY"),
-            profile
-                .get("nuvioAccessToken")
-                .and_then(Value::as_str)
-                .filter(|token| !token.is_empty()),
-        ) {
-            let profile_index = profile
-                .get("nuvioProfileIndex")
-                .and_then(Value::as_i64)
-                .filter(|index| *index > 0)
-                .unwrap_or(1);
-            let endpoint = format!(
-                "{}/rest/v1/rpc/sync_pull_collections",
-                base_url.trim_end_matches('/')
-            );
-            let remote = client
-                .post(endpoint)
-                .header("apikey", api_key)
-                .bearer_auth(token)
-                .json(&json!({"p_profile_id": profile_index}))
+        if let Ok(Some(session)) = self.nuvio_session(&profile).await
+            && let Ok(response) = session
+                .rpc("sync_pull_collections")
+                .json(&json!({"p_profile_id": session.profile_index}))
                 .send()
                 .await
-                .and_then(reqwest::Response::error_for_status);
-            if let Ok(response) = remote
-                && let Ok(rows) = response.json::<Value>().await
-                && let Some(collections) = rows
-                    .as_array()
-                    .and_then(|rows| rows.first())
-                    .and_then(|row| row.get("collections_json"))
-                    .and_then(Value::as_array)
-                && let Some(mapped) = core_value(
-                    "nuvioMapCollections",
-                    json!({"collections": collections, "profileIndex": profile_index}),
-                )
-                && let Some(fields) = collection_profile.as_object_mut()
-            {
-                fields.insert("libraryCollections".to_owned(), mapped);
-            }
+                .and_then(reqwest::Response::error_for_status)
+            && let Ok(rows) = response.json::<Value>().await
+            && let Some(collections) = rows
+                .as_array()
+                .and_then(|rows| rows.first())
+                .and_then(|row| row.get("collections_json"))
+                .and_then(Value::as_array)
+            && let Some(mapped) = core_value(
+                "nuvioMapCollections",
+                json!({"collections": collections, "profileIndex": session.profile_index}),
+            )
+            && let Some(fields) = collection_profile.as_object_mut()
+        {
+            fields.insert("libraryCollections".to_owned(), mapped);
         }
         let shelves = core_value(
             "buildHomeCollectionShelves",
@@ -319,161 +273,5 @@ impl EffectExecutor {
         });
         self.storage.write_json(&cache_key, &bootstrap)?;
         Ok(bootstrap)
-    }
-
-    pub(super) async fn nuvio_addons_profile_index(
-        &self,
-        client: &Client,
-        base_url: &str,
-        api_key: &str,
-        token: &str,
-        profile_index: i64,
-    ) -> i64 {
-        if profile_index == 1 {
-            return 1;
-        }
-        let response = client
-            .post(format!(
-                "{}/rest/v1/rpc/sync_pull_profiles",
-                base_url.trim_end_matches('/')
-            ))
-            .header("apikey", api_key)
-            .bearer_auth(token)
-            .json(&json!({}))
-            .send()
-            .await;
-        let remote_profiles = match response {
-            Ok(response) if response.status().is_success() => {
-                match response.json::<Vec<Value>>().await {
-                    Ok(profiles) => profiles,
-                    Err(error) => {
-                        crate::log!("[fluxa-native] Nuvio profile scopes decode failed: {error}");
-                        return profile_index;
-                    }
-                }
-            }
-            Ok(response) => {
-                crate::log!(
-                    "[fluxa-native] Nuvio profile scopes request failed: HTTP {}",
-                    response.status()
-                );
-                return profile_index;
-            }
-            Err(error) => {
-                crate::log!("[fluxa-native] Nuvio profile scopes request failed: {error}");
-                return profile_index;
-            }
-        };
-        core_value(
-            "nuvioEffectiveProfileScopes",
-            json!({"profileIndex": profile_index, "profiles": remote_profiles}),
-        )
-        .and_then(|scopes| scopes.get("addons").and_then(Value::as_i64))
-        .unwrap_or(profile_index)
-    }
-
-    pub(super) async fn merge_nuvio_addons(&self, profile: &Value, addons: &mut Value) {
-        let (Some(base_url), Some(api_key), Some(token)) = (
-            option_env!("FLUXA_NUVIO_SUPABASE_URL"),
-            option_env!("FLUXA_NUVIO_SUPABASE_KEY"),
-            profile
-                .get("nuvioAccessToken")
-                .and_then(Value::as_str)
-                .filter(|token| !token.is_empty()),
-        ) else {
-            return;
-        };
-        let profile_index = profile
-            .get("nuvioProfileIndex")
-            .and_then(Value::as_i64)
-            .filter(|index| *index > 0)
-            .unwrap_or(1);
-        let client = match Client::builder()
-            .user_agent("Fluxa/1.0")
-            .native_timeout(Duration::from_secs(12))
-            .build()
-        {
-            Ok(client) => client,
-            Err(error) => {
-                crate::log!("[fluxa-native] Nuvio add-on client unavailable: {error}");
-                return;
-            }
-        };
-        let addon_profile_index = self
-            .nuvio_addons_profile_index(&client, base_url, api_key, token, profile_index)
-            .await;
-        let endpoint = format!(
-            "{}/rest/v1/addons?select=*&profile_id=eq.{}&order=sort_order",
-            base_url.trim_end_matches('/'),
-            addon_profile_index
-        );
-        let remote_addons = match client
-            .get(endpoint)
-            .header("apikey", api_key)
-            .bearer_auth(token)
-            .send()
-            .await
-            .and_then(reqwest::Response::error_for_status)
-        {
-            Ok(response) => match response.json::<Vec<Value>>().await {
-                Ok(addons) => addons,
-                Err(error) => {
-                    crate::log!("[fluxa-native] Nuvio add-on list response invalid: {error}");
-                    return;
-                }
-            },
-            Err(error) => {
-                crate::log!("[fluxa-native] Nuvio add-on list request failed: {error}");
-                return;
-            }
-        };
-        let Some(items) = addons.as_array_mut() else {
-            return;
-        };
-        for remote in remote_addons {
-            if remote.get("enabled").and_then(Value::as_bool) == Some(false) {
-                continue;
-            }
-            let Some(url) = remote.get("url").and_then(Value::as_str) else {
-                continue;
-            };
-            if items
-                .iter()
-                .any(|item| item.get("transportUrl").and_then(Value::as_str) == Some(url))
-            {
-                continue;
-            }
-            let manifest = match client.get(url).send().await {
-                Ok(response) => match response.error_for_status() {
-                    Ok(response) => match response.json::<Value>().await {
-                        Ok(manifest) => manifest,
-                        Err(error) => {
-                            crate::log!("[fluxa-native] Nuvio add-on manifest invalid: {error}");
-                            continue;
-                        }
-                    },
-                    Err(error) => {
-                        crate::log!("[fluxa-native] Nuvio add-on manifest request failed: {error}");
-                        continue;
-                    }
-                },
-                Err(error) => {
-                    crate::log!("[fluxa-native] Nuvio add-on manifest request failed: {error}");
-                    continue;
-                }
-            };
-            let descriptor = json!({
-                "transportUrl": url,
-                "manifest": manifest,
-                "name": remote.get("name").cloned().unwrap_or(Value::Null),
-                "enabled": true,
-            });
-            if let Some(descriptor) = core_value(
-                "normalizeAddonDescriptor",
-                json!({"addonJson": descriptor.to_string()}),
-            ) {
-                items.push(descriptor);
-            }
-        }
     }
 }

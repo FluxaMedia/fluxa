@@ -57,6 +57,7 @@ pub(super) fn route_nuvio_sync(method: &str, args_json: &str) -> Outcome {
         "nuvioSortAddonsByPriority" => {
             opt_json(nuvio_sync::sort_addons_by_priority_json(args_json))
         }
+        "nuvioAddonSnapshotPlan" => opt_json(nuvio_sync::addon_snapshot_plan_json(args_json)),
         "nuvioAddonState" => opt_json(nuvio_sync::addon_state_json(args_json)),
         "nuvioAddonReconciliationPlan" => {
             opt_json(nuvio_sync::addon_reconciliation_plan_json(args_json))

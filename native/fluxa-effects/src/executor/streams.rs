@@ -20,7 +20,7 @@ impl EffectExecutor {
             "resource": "stream",
             "contentType": content_type,
             "requestIds": request_ids,
-            "addons": self.load_enabled_addons()?,
+            "addons": self.account_addons().await?,
         });
         request["detail"] = meta.clone();
         let streams = self.fetch_streams(&request).await?;
@@ -67,7 +67,7 @@ impl EffectExecutor {
                 "resource": "stream",
                 "contentType": content_type,
                 "requestIds": request_ids,
-                "addons": self.load_enabled_addons()?,
+                "addons": self.account_addons().await?,
             }))
             .await?;
         Ok(Value::Array(streams))
@@ -93,66 +93,10 @@ impl EffectExecutor {
                 "resource": "stream",
                 "contentType": content_type,
                 "requestIds": request_ids,
-                "addons": self.load_enabled_addons()?,
+                "addons": self.account_addons().await?,
             }))
             .await?;
         Ok(json!({ "streams": streams }))
-    }
-
-    pub(super) fn load_enabled_addons(&self) -> Result<Value, String> {
-        let profiles = self
-            .storage
-            .read_json("profiles")?
-            .unwrap_or_else(|| json!([]));
-        let active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "guest".to_owned());
-        let owner = core_value(
-            "effectiveAddonsOwnerId",
-            json!({"profiles": profiles, "activeProfileId": active_id}),
-        )
-        .and_then(|value| value.as_str().map(ToOwned::to_owned))
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| active_id.clone());
-        let mut addons = self
-            .storage
-            .read_json(&Storage::addons_key(&owner))?
-            .or_else(|| {
-                self.storage
-                    .read_json(&Storage::addons_key(&active_id))
-                    .ok()
-                    .flatten()
-            })
-            .or_else(|| self.storage.read_json("addons").ok().flatten())
-            .unwrap_or_else(|| json!([]));
-        if !addons.is_array() {
-            addons = json!([]);
-        }
-        addons = core_value(
-            "filterEnabledAddons",
-            json!({"addons": addons, "disabledKeys": []}),
-        )
-        .ok_or_else(|| "Fluxa Core could not filter disabled addons".to_owned())?;
-        if let Some(items) = addons.as_array_mut() {
-            for item in items {
-                if item
-                    .get("manifest")
-                    .and_then(|manifest| manifest.get("id"))
-                    .and_then(Value::as_str)
-                    .is_none()
-                    && let Some(normalized) = core_value(
-                        "normalizeAddonDescriptor",
-                        json!({"addonJson": item.to_string()}),
-                    )
-                {
-                    *item = normalized;
-                }
-            }
-        }
-        Ok(addons)
     }
 
     pub(super) async fn fetch_streams(&self, request: &Value) -> Result<Vec<Value>, String> {
@@ -254,7 +198,7 @@ impl EffectExecutor {
             .filter_map(Value::as_str)
             .filter(|id| !id.trim().is_empty())
             .collect::<Vec<_>>();
-        let addons = self.load_enabled_addons()?;
+        let addons = self.account_addons().await?;
         let provider_plan = core_value(
             "providerAvailabilityPlan",
             json!({"addons": addons.clone(), "pluginNames": []}),

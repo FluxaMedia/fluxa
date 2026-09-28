@@ -10,7 +10,10 @@ impl EffectExecutor {
             .get("id")
             .and_then(Value::as_str)
             .ok_or_else(|| "meta detail request is missing id".to_owned())?;
-        let addons = self.load_enabled_addons()?;
+        let addons = match payload.get("addons") {
+            Some(addons) => addons.clone(),
+            None => self.account_addons().await?,
+        };
         let plan = core_value(
             "resourceFetchPlan",
             json!({

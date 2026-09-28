@@ -1,10 +1,11 @@
-use crate::storage::{sanitize_key, Storage};
+use crate::storage::{Storage, sanitize_key};
 use reqwest::{Client, ClientBuilder};
-use serde_json::{json, Value};
-use std::sync::mpsc::Sender;
+use serde_json::{Value, json};
 use std::sync::OnceLock;
+use std::sync::mpsc::Sender;
 use std::time::Duration;
 
+pub(crate) mod account;
 mod addons;
 mod catalog;
 mod home;
@@ -14,6 +15,7 @@ mod streams;
 mod tmdb;
 mod torrent;
 
+use account::*;
 use addons::*;
 use catalog::*;
 use tmdb::*;
@@ -515,10 +517,12 @@ mod tests {
         assert_eq!(requests.len(), 1);
         assert_eq!(requests[0]["catalogType"], "movie");
         assert_eq!(requests[0]["catalogId"], "quick_search");
-        assert!(requests[0]["url"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("search=matrix"));
+        assert!(
+            requests[0]["url"]
+                .as_str()
+                .unwrap_or_default()
+                .contains("search=matrix")
+        );
     }
 
     #[test]
@@ -585,9 +589,11 @@ mod tests {
             .expect("read persisted library")
             .expect("library should be stored");
         assert_eq!(persisted["completed"][0]["id"], "tt-local");
-        assert!(persisted["completed"][0]["statusChangedAt"]
-            .as_str()
-            .is_some());
+        assert!(
+            persisted["completed"][0]["statusChangedAt"]
+                .as_str()
+                .is_some()
+        );
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -614,10 +620,12 @@ mod tests {
             })))
             .expect_err("remote writes must not silently become local-only");
         assert!(error.contains("provider 'nuvio'"));
-        assert!(storage
-            .read_json(&Storage::library_key("guest"))
-            .expect("read library")
-            .is_none());
+        assert!(
+            storage
+                .read_json(&Storage::library_key("guest"))
+                .expect("read library")
+                .is_none()
+        );
         let _ = std::fs::remove_dir_all(directory);
     }
 

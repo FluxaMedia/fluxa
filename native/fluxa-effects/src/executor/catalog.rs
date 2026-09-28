@@ -43,151 +43,18 @@ impl EffectExecutor {
                 items.push(profile.clone());
             }
         }
-        let owner = core_value(
-            "effectiveAddonsOwnerId",
-            json!({"profiles": profiles, "activeProfileId": active_id}),
-        )
-        .and_then(|value| value.as_str().map(ToOwned::to_owned))
-        .filter(|value| !value.is_empty())
-        .unwrap_or_else(|| profile_id.to_owned());
-        let mut addons = payload
+        let profile = find_profile(&profiles, &active_id);
+        let local = account_source(&profile, "addons")["backend"] == "local";
+        let addons = match payload
             .get("addons")
-            .filter(|value| value.as_array().is_some_and(|items| !items.is_empty()))
-            .cloned()
-            .or(self
-                .storage
-                .read_json(&Storage::addons_key(&owner))?
-                .or_else(|| {
-                    self.storage
-                        .read_json(&Storage::addons_key(profile_id))
-                        .ok()
-                        .flatten()
-                })
-                .or_else(|| self.storage.read_json("addons").ok().flatten()))
-            .unwrap_or_else(|| json!([]));
-        if !addons.is_array() {
-            addons = json!([]);
-        }
-        // Home normalizes cached/legacy descriptors before deriving catalog
-        // feeds. Discover must use the same Core-normalized input or installed
-        // addons can appear on Home while this screen has no selectable catalogs.
-        addons = normalize_enabled_addons(addons)?;
-        let cached_addon_count = addons.as_array().map_or(0, Vec::len);
-
-        // Home and Discover must use the same effective add-on inventory.
-        // Refresh a stale Nuvio token here, then reuse Home's single remote
-        // profile/add-on/manifest hydration path instead of maintaining a
-        // second implementation that could silently produce an empty list.
-        if let Some(profile) = profiles.as_array().and_then(|items| {
-            items.iter().find(|item| {
-                item.get("id").and_then(Value::as_str) == Some(active_id.as_str())
-                    || item.get("id").and_then(Value::as_str) == Some(profile_id)
-            })
-        }) {
-            let mut profile_for_addons = profile.clone();
-            let mut session = profile
-                .get("nuvioAccessToken")
-                .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
-                .map(ToOwned::to_owned);
-            if let (Some(base_url), Some(api_key)) = (
-                option_env!("FLUXA_NUVIO_SUPABASE_URL"),
-                option_env!("FLUXA_NUVIO_SUPABASE_KEY"),
-            ) {
-                let client = Client::builder()
-                    .user_agent("Fluxa/1.0")
-                    .native_timeout(Duration::from_secs(12))
-                    .build()
-                    .map_err(|error| error.to_string())?;
-                let expires_at = profile
-                    .get("nuvioTokenExpiresAt")
-                    .and_then(Value::as_i64)
-                    .unwrap_or_default();
-                if expires_at <= chrono_unix_seconds() + 60
-                    && let Some(refresh_token) = profile
-                        .get("nuvioRefreshToken")
-                        .and_then(Value::as_str)
-                        .filter(|value| !value.is_empty())
-                    && let Ok(response) = client
-                        .post(format!(
-                            "{}/auth/v1/token?grant_type=refresh_token",
-                            base_url.trim_end_matches('/')
-                        ))
-                        .header("apikey", api_key)
-                        .json(&json!({"refresh_token": refresh_token}))
-                        .send()
-                        .await
-                        .and_then(reqwest::Response::error_for_status)
-                    && let Ok(refreshed) = response.json::<Value>().await
-                    && let Some(access_token) =
-                        refreshed.get("access_token").and_then(Value::as_str)
-                {
-                    session = Some(access_token.to_owned());
-                    let mut updated_profile = profile.clone();
-                    if let Some(object) = updated_profile.as_object_mut() {
-                        object.insert("nuvioAccessToken".into(), json!(access_token));
-                        if let Some(refresh) = refreshed.get("refresh_token") {
-                            object.insert("nuvioRefreshToken".into(), refresh.clone());
-                        }
-                        let expires_in = refreshed
-                            .get("expires_in")
-                            .and_then(Value::as_i64)
-                            .unwrap_or(3600);
-                        object.insert(
-                            "nuvioTokenExpiresAt".into(),
-                            json!(chrono_unix_seconds() + expires_in),
-                        );
-                    }
-                    profile_for_addons = updated_profile.clone();
-                    if let Some(items) = profiles.as_array() {
-                        let updated = items
-                            .iter()
-                            .map(|item| {
-                                if item.get("id").and_then(Value::as_str)
-                                    == profile.get("id").and_then(Value::as_str)
-                                {
-                                    updated_profile.clone()
-                                } else {
-                                    item.clone()
-                                }
-                            })
-                            .collect::<Vec<_>>();
-                        self.storage.write_json("profiles", &json!(updated))?;
-                    }
-                }
-                if let Some(session) = session {
-                    if let Some(object) = profile_for_addons.as_object_mut() {
-                        object.insert("nuvioAccessToken".into(), json!(session));
-                    }
-                }
+            .filter(|value| local && value.as_array().is_some_and(|items| !items.is_empty()))
+        {
+            Some(addons) => normalize_enabled_addons(addons.clone())?,
+            None => {
+                self.addons_for_profile(&profiles, &active_id, &profile)
+                    .await?
             }
-            self.merge_nuvio_addons(&profile_for_addons, &mut addons)
-                .await;
-        }
-        crate::log!(
-            "[fluxa-native] Discover catalogs: cached_addons={} hydrated_remote_addons={}",
-            cached_addon_count,
-            addons
-                .as_array()
-                .map_or(0, Vec::len)
-                .saturating_sub(cached_addon_count)
-        );
-        if let Some(items) = addons.as_array_mut() {
-            for item in items {
-                if item
-                    .get("manifest")
-                    .and_then(|manifest| manifest.get("id"))
-                    .and_then(Value::as_str)
-                    .is_none()
-                    && let Some(normalized) = core_value(
-                        "normalizeAddonDescriptor",
-                        json!({"addonJson": item.to_string()}),
-                    )
-                {
-                    *item = normalized;
-                }
-            }
-        }
+        };
         Ok(json!({"addons": addons}))
     }
 
@@ -245,7 +112,7 @@ impl EffectExecutor {
             }}));
         }
 
-        let addons = self.load_enabled_addons()?;
+        let addons = self.account_addons().await?;
         let plan = core_value(
             "resourceFetchPlan",
             json!({"kind": "search", "query": query, "addons": addons}),

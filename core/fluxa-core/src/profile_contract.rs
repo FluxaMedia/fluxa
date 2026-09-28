@@ -470,10 +470,63 @@ pub(crate) fn profile_connection_state_json(profile_json: &str, now_epoch_second
     json!({"trakt": trakt, "simkl": simkl}).to_string()
 }
 
+pub(crate) fn account_source_json(request_json: &str) -> Option<String> {
+    let request: Value = serde_json::from_str(request_json).ok()?;
+    let profile = request.get("profile").unwrap_or(&Value::Null);
+    let entity = request
+        .get("entity")
+        .and_then(Value::as_str)
+        .unwrap_or("addons");
+    let text = |key: &str| {
+        profile
+            .get(key)
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+    };
+    let source = match text("nuvioAccessToken") {
+        Some(_) => {
+            let account = text("nuvioUserId").or_else(|| text("nuvioEmail"))?;
+            let index = profile
+                .get("nuvioProfileIndex")
+                .and_then(Value::as_i64)
+                .filter(|index| *index > 0)
+                .unwrap_or(1);
+            let account: String = account
+                .chars()
+                .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
+                .collect();
+            json!({
+                "backend": "nuvio",
+                "profileIndex": index,
+                "snapshotKey": format!("remote_{entity}_nuvio_{account}_{index}"),
+            })
+        }
+        None => json!({"backend": "local"}),
+    };
+    Some(source.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use serde_json::Value;
+
+    #[test]
+    fn nuvio_snapshots_are_scoped_to_account_and_profile() {
+        let source = |profile: serde_json::Value| {
+            serde_json::from_str::<Value>(
+                &account_source_json(&json!({"profile": profile, "entity": "addons"}).to_string())
+                    .unwrap(),
+            )
+            .unwrap()
+        };
+        let nuvio =
+            source(json!({"nuvioAccessToken": "t", "nuvioUserId": "u-1", "nuvioProfileIndex": 2}));
+        assert_eq!(nuvio["backend"], "nuvio");
+        assert_eq!(nuvio["snapshotKey"], "remote_addons_nuvio_u_1_2");
+        assert_eq!(source(json!({"nuvioUserId": "u-1"}))["backend"], "local");
+    }
 
     #[test]
     fn active_profile_plan_returns_first_when_no_stored_id() {

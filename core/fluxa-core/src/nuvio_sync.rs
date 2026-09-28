@@ -8,7 +8,9 @@ mod profiles;
 mod progress_sync;
 mod reconciliation;
 
-pub(crate) use addon_priority::{addon_state_json, sort_addons_by_priority_json};
+pub(crate) use addon_priority::{
+    addon_snapshot_plan_json, addon_state_json, sort_addons_by_priority_json,
+};
 pub(crate) use collections::map_collections_json;
 pub(crate) use delta_state::{
     apply_delta_sync_json, apply_progress_sync_json, delta_sync_request_plan_json,
@@ -39,6 +41,36 @@ mod tests {
         }
         assert_eq!(canonical_content_type("movie"), "movie");
         assert_eq!(canonical_content_type(""), "movie");
+    }
+
+    #[test]
+    fn addon_snapshot_fetches_only_new_manifests_in_server_order() {
+        let rows = json!([
+            {"url": "https://b/manifest.json", "enabled": false, "sort_order": 1},
+            {"url": "https://a/manifest.json", "enabled": true, "sort_order": 0}
+        ]);
+        let cached = json!({"rows": [], "addons": [{"transportUrl": "https://b/manifest.json", "manifest": {"id": "b"}}]});
+        let plan: Value = serde_json::from_str(
+            &addon_snapshot_plan_json(&json!({"rows": rows, "snapshot": cached}).to_string())
+                .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(plan["changed"], true);
+        assert_eq!(plan["fetch"], json!(["https://a/manifest.json"]));
+        assert_eq!(plan["addons"][0]["enabled"], false);
+
+        let settled = json!({"rows": plan["rows"], "addons": plan["addons"]});
+        let manifests = json!({"https://a/manifest.json": {"id": "a"}});
+        let plan: Value = serde_json::from_str(
+            &addon_snapshot_plan_json(
+                &json!({"rows": rows, "snapshot": settled, "manifests": manifests}).to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(plan["changed"], false);
+        assert_eq!(plan["fetch"], json!([]));
+        assert_eq!(plan["addons"][0]["manifest"]["id"], "a");
     }
 
     #[test]
@@ -89,6 +121,83 @@ mod tests {
         assert_eq!(snapshot["continueWatching"][0]["videoId"], "tt1:1:2");
         assert_eq!(snapshot["continueWatching"][0]["timeOffset"], 120);
         assert_eq!(snapshot["continueWatching"][0]["duration"], 600);
+    }
+
+    #[test]
+    fn series_episodes_collapse_to_the_latest_with_its_thumbnail() {
+        let episode = |number: i64, at: i64| {
+            json!({
+                "content_id": "tt3", "content_type": "series", "video_id": format!("tt3:1:{number}"),
+                "season": 1, "episode": number, "position": 60_000, "duration": 600_000,
+                "last_watched": at
+            })
+        };
+        let snapshot: Value = serde_json::from_str(
+            &provider_library_snapshot_json(
+                &json!({
+                    "library": [],
+                    "progress": [episode(1, 100), episode(2, 300), episode(3, 200)],
+                    "metas": {"tt3": {"name": "Show", "videos": [
+                        {"id": "tt3:1:2", "season": 1, "episode": 2, "name": "Two", "thumbnail": "e2.jpg"}
+                    ]}}
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(snapshot["continueWatching"].as_array().unwrap().len(), 1);
+        assert_eq!(snapshot["continueWatching"][0]["videoId"], "tt3:1:2");
+        assert_eq!(snapshot["continueWatching"][0]["lastEpisodeThumbnail"], "e2.jpg");
+        assert_eq!(snapshot["continueWatching"][0]["lastEpisodeName"], "Two");
+        assert_eq!(snapshot["continueWatching"][0]["lastEpisodeNumber"], 2);
+    }
+
+    #[test]
+    fn watched_history_marks_movies_and_single_episodes() {
+        let snapshot: Value = serde_json::from_str(
+            &provider_library_snapshot_json(
+                &json!({
+                    "library": [],
+                    "progress": [],
+                    "watched": [
+                        {"content_id": "tt1", "content_type": "movie"},
+                        {"content_id": "tt2", "content_type": "series", "season": 1, "episode": 3}
+                    ]
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(snapshot["watched"]["tt1"], true);
+        assert_eq!(snapshot["watched"]["tt2:1:3"], true);
+        assert!(snapshot["watched"].get("tt2").is_none());
+    }
+
+    #[test]
+    fn progress_outside_the_library_takes_its_title_from_fetched_metas() {
+        let snapshot: Value = serde_json::from_str(
+            &provider_library_snapshot_json(
+                &json!({
+                    "library": [],
+                    "progress": [{
+                        "content_id": "tt2", "content_type": "movie",
+                        "position": 60_000, "duration": 600_000,
+                        "last_watched": 1_700_000_000_000i64
+                    }],
+                    "metas": {"tt2": {"name": "Film", "poster": "film.jpg"}}
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+
+        assert_eq!(snapshot["continueWatching"][0]["name"], "Film");
+        assert_eq!(snapshot["continueWatching"][0]["poster"], "film.jpg");
     }
 
     fn merge(args: Value) -> Value {

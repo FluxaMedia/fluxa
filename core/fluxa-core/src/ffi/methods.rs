@@ -10,6 +10,7 @@ pub(super) fn router_for(method: &str) -> Option<Router> {
 }
 
 static METHODS: &[(&str, Router)] = &[
+    ("accountSource", route_profile_contract),
     ("activeProfilePlan", route_profile_contract),
     ("addonCollectionMutationPlan", route_resource_plan),
     ("addonProfileMutationPlan", route_addon_store),
@@ -303,6 +304,7 @@ static METHODS: &[(&str, Router)] = &[
     ("normalizeStreamBadgeRules", route_stream_badges),
     ("normalizeTrailerSubtitleUrl", route_trailer_subtitles),
     ("nuvioAddonReconciliationPlan", route_nuvio_sync),
+    ("nuvioAddonSnapshotPlan", route_nuvio_sync),
     ("nuvioAddonState", route_nuvio_sync),
     ("nuvioApplyDeltaSync", route_nuvio_sync),
     ("nuvioApplyProgressSync", route_nuvio_sync),

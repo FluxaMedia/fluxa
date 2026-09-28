@@ -350,7 +350,7 @@ impl EffectExecutor {
         } else {
             Vec::new()
         };
-        let addons = self.load_enabled_addons()?;
+        let addons = self.account_addons().await?;
         let provider_availability = core_value(
             "providerAvailabilityPlan",
             json!({"addons": addons.clone(), "pluginNames": []}),
@@ -397,12 +397,6 @@ impl EffectExecutor {
         profile_id: &str,
         effect_profile: Option<&Value>,
     ) -> Result<Option<Value>, String> {
-        let Some(base_url) = option_env!("FLUXA_NUVIO_SUPABASE_URL") else {
-            return Err("Nuvio API is not configured in this native build".to_owned());
-        };
-        let Some(api_key) = option_env!("FLUXA_NUVIO_SUPABASE_KEY") else {
-            return Err("Nuvio API is not configured in this native build".to_owned());
-        };
         let profiles = self
             .storage
             .read_json("profiles")?
@@ -417,127 +411,84 @@ impl EffectExecutor {
                 "Nuvio library could not find the active profile ({profile_id})"
             ));
         };
-        let Some(mut token) = profile
-            .get("nuvioAccessToken")
-            .and_then(Value::as_str)
-            .filter(|value| !value.is_empty())
-            .map(ToOwned::to_owned)
-        else {
-            return Err(
-                "Nuvio library is selected, but this profile has no Nuvio session".to_owned(),
-            );
-        };
-
-        let client = Client::builder()
-            .native_timeout(Duration::from_secs(20))
-            .build()
-            .map_err(|error| error.to_string())?;
-        let expires_at = profile
-            .get("nuvioTokenExpiresAt")
-            .and_then(Value::as_i64)
-            .unwrap_or_default();
-        if expires_at <= chrono_unix_seconds() + 60 {
-            if let Some(refresh_token) = profile
-                .get("nuvioRefreshToken")
-                .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
-            {
-                let refreshed = client
-                    .post(format!(
-                        "{}/auth/v1/token?grant_type=refresh_token",
-                        base_url.trim_end_matches('/')
-                    ))
-                    .header("apikey", api_key)
-                    .json(&json!({"refresh_token": refresh_token}))
-                    .send()
-                    .await
-                    .map_err(|error| format!("Nuvio session refresh failed: {error}"))?
-                    .error_for_status()
-                    .map_err(|error| format!("Nuvio session refresh failed: {error}"))?
-                    .json::<Value>()
-                    .await
-                    .map_err(|error| {
-                        format!("Nuvio session refresh response was invalid: {error}")
-                    })?;
-                if let Some(access_token) = refreshed.get("access_token").and_then(Value::as_str) {
-                    token = access_token.to_owned();
-                    let mut updated_profile = profile.clone();
-                    if let Some(object) = updated_profile.as_object_mut() {
-                        object.insert("nuvioAccessToken".into(), json!(access_token));
-                        if let Some(refresh) = refreshed.get("refresh_token") {
-                            object.insert("nuvioRefreshToken".into(), refresh.clone());
-                        }
-                        let expires_in = refreshed
-                            .get("expires_in")
-                            .and_then(Value::as_i64)
-                            .unwrap_or(3600);
-                        object.insert(
-                            "nuvioTokenExpiresAt".into(),
-                            json!(chrono_unix_seconds() + expires_in),
-                        );
-                    }
-                    if let Some(items) = profiles.as_array() {
-                        let updated = items
-                            .iter()
-                            .map(|item| {
-                                if item.get("id").and_then(Value::as_str) == Some(profile_id) {
-                                    updated_profile.clone()
-                                } else {
-                                    item.clone()
-                                }
-                            })
-                            .collect::<Vec<_>>();
-                        self.storage.write_json("profiles", &json!(updated))?;
-                    }
-                }
-            }
-        }
-        let nuvio_profile_id = profile
-            .get("nuvioProfileIndex")
-            .and_then(Value::as_i64)
-            .filter(|value| *value > 0)
-            .unwrap_or(1);
-        let endpoint = format!("{}/rest/v1/rpc/", base_url.trim_end_matches('/'));
-        let headers = |request: reqwest::RequestBuilder| {
-            request.header("apikey", api_key).bearer_auth(&token)
-        };
-        let (library, progress) = futures::try_join!(
-            async {
-                headers(client.post(format!("{endpoint}sync_pull_library")))
-                    .json(&json!({"p_profile_id": nuvio_profile_id, "p_limit": 500, "p_offset": 0}))
-                    .send()
-                    .await
-                    .map_err(|error| format!("Nuvio library request failed: {error}"))?
-                    .error_for_status()
-                    .map_err(|error| format!("Nuvio library request failed: {error}"))?
-                    .json::<Value>()
-                    .await
-                    .map_err(|error| format!("Nuvio library response was invalid: {error}"))
-            },
-            async {
-                headers(client.post(format!("{endpoint}sync_pull_watch_progress")))
-                    .json(&json!({"p_profile_id": nuvio_profile_id, "p_limit": 1000}))
-                    .send()
-                    .await
-                    .map_err(|error| format!("Nuvio watch progress request failed: {error}"))?
-                    .error_for_status()
-                    .map_err(|error| format!("Nuvio watch progress request failed: {error}"))?
-                    .json::<Value>()
-                    .await
-                    .map_err(|error| format!("Nuvio watch progress response was invalid: {error}"))
-            }
+        let session = self.nuvio_session(profile).await?.ok_or_else(|| {
+            "Nuvio library is selected, but this profile has no Nuvio session".to_owned()
+        })?;
+        let (library, progress, history) = futures::try_join!(
+            self.nuvio_synced(&session, profile, "library"),
+            self.nuvio_synced(&session, profile, "progress"),
+            self.nuvio_synced(&session, profile, "history"),
         )?;
+        let library = library.get("items").cloned().unwrap_or_else(|| json!([]));
+        let progress = progress.get("items").cloned().unwrap_or_else(|| json!([]));
+        let watched = history.get("items").cloned().unwrap_or_else(|| json!([]));
         crate::log!(
             "[fluxa-native] Nuvio library sync: library_rows={} progress_rows={}",
             library.as_array().map_or(0, Vec::len),
             progress.as_array().map_or(0, Vec::len)
         );
+        let metas = self.nuvio_progress_metas(&library, &progress).await;
         core_value(
             "nuvioProviderLibrarySnapshot",
-            json!({"library": library, "progress": progress}),
+            json!({"library": library, "progress": progress, "watched": watched, "metas": metas}),
         )
         .map(Some)
         .ok_or_else(|| "Fluxa Core could not build the Nuvio library snapshot".to_owned())
+    }
+}
+
+impl EffectExecutor {
+    async fn nuvio_progress_metas(&self, library: &Value, progress: &Value) -> Value {
+        let mut cache = self
+            .storage
+            .read_json("nuvio_progress_metas")
+            .ok()
+            .flatten()
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}));
+        let needs = core_value(
+            "nuvioProgressMetaNeeds",
+            json!({"watchProgress": progress, "library": library}),
+        )
+        .and_then(|needs| needs.as_array().cloned())
+        .unwrap_or_default();
+        let missing = needs
+            .iter()
+            .filter_map(|need| {
+                let id = need.get("contentId")?.as_str()?;
+                let content_type = need.get("contentType")?.as_str()?;
+                cache
+                    .get(id)
+                    .is_none()
+                    .then(|| (id.to_owned(), content_type.to_owned()))
+            })
+            .collect::<Vec<_>>();
+        if missing.is_empty() {
+            return cache;
+        }
+        let addons = self.account_addons().await.unwrap_or_else(|_| json!([]));
+        let addons = &addons;
+        let fetched =
+            futures::future::join_all(missing.iter().map(|(id, content_type)| async move {
+                self.fetch_meta_detail(
+                    &json!({"id": id, "contentType": content_type, "addons": addons}),
+                )
+                .await
+            }))
+            .await;
+        let mut changed = false;
+        for ((id, _), meta) in missing.into_iter().zip(fetched) {
+            if let Ok(meta) = meta
+                && meta.is_object()
+            {
+                cache[id] = meta;
+                changed = true;
+            }
+        }
+        if changed {
+            let _ = self.storage.write_json("nuvio_progress_metas", &cache);
+        }
+        cache
     }
 }
 

@@ -3,6 +3,7 @@ use super::*;
 pub(super) fn route_profile_contract(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object for all of these
+        "accountSource" => opt_json(profile_contract::account_source_json(args_json)),
         "activeProfilePlan" => opt_json(profile_contract::active_profile_plan_json(args_json)),
         "tokenMergePlan" => opt_json(profile_contract::token_merge_plan_json(args_json)),
         "profileSyncMergePlan" => {

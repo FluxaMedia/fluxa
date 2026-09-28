@@ -80,7 +80,9 @@ impl AppSession {
 
     fn persist_addons(&mut self) {
         let snapshot = self.runtime.snapshot();
-        let Some(installed) = snapshot.pointer("/addons/installed").filter(|value| value.is_array())
+        let Some(installed) = snapshot
+            .pointer("/addons/installed")
+            .filter(|value| value.is_array())
         else {
             return;
         };
@@ -105,7 +107,10 @@ impl AppSession {
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .unwrap_or(active_id);
         let installed = installed.clone();
-        match self.storage.write_json(&Storage::addons_key(&owner), &installed) {
+        match self
+            .storage
+            .write_json(&Storage::addons_key(&owner), &installed)
+        {
             Ok(()) => self.persisted_addons = installed,
             Err(error) => crate::log!("[fluxa-session] saving add-ons failed: {error}"),
         }
@@ -198,11 +203,16 @@ impl SessionHandle {
     }
 
     pub fn snapshot(&self) -> Arc<Value> {
-        self.published.lock().map(|published| published.snapshot.clone()).unwrap_or_default()
+        self.published
+            .lock()
+            .map(|published| published.snapshot.clone())
+            .unwrap_or_default()
     }
 
     pub fn revision(&self) -> u64 {
-        self.published.lock().map_or(0, |published| published.revision)
+        self.published
+            .lock()
+            .map_or(0, |published| published.revision)
     }
 
     pub fn active_profile(&self) -> Value {
@@ -217,7 +227,9 @@ impl SessionHandle {
     }
 
     pub fn has_outstanding_effects(&self) -> bool {
-        self.published.lock().is_ok_and(|published| published.outstanding)
+        self.published
+            .lock()
+            .is_ok_and(|published| published.outstanding)
     }
 
     pub fn poll_torrent_status(&self, link: String, file_id: Option<usize>) -> Receiver<Value> {
@@ -326,19 +338,27 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
     )
     .and_then(|value| value.as_str().map(ToOwned::to_owned))
     .unwrap_or_else(|| active_id.clone());
-    let addons = storage
-        .read_json(&Storage::addons_key(&owner))
-        .ok()
-        .flatten()
-        .or_else(|| {
-            storage
-                .read_json(&Storage::addons_key(&active_id))
-                .ok()
-                .flatten()
-        })
-        .or_else(|| storage.read_json("addons").ok().flatten())
-        .filter(Value::is_array)
-        .unwrap_or_else(|| json!([]));
+    let addons = match crate::executor::account::account_source(&active_profile, "addons")
+        .get("snapshotKey")
+        .and_then(Value::as_str)
+    {
+        Some(key) => crate::executor::account::snapshot_addons(
+            &storage.read_json(key).ok().flatten().unwrap_or(Value::Null),
+        ),
+        None => storage
+            .read_json(&Storage::addons_key(&owner))
+            .ok()
+            .flatten()
+            .or_else(|| {
+                storage
+                    .read_json(&Storage::addons_key(&active_id))
+                    .ok()
+                    .flatten()
+            })
+            .or_else(|| storage.read_json("addons").ok().flatten())
+            .filter(Value::is_array)
+            .unwrap_or_else(|| json!([])),
+    };
     json!({
         "settings": {"values": prefs},
         "profile": {"active": active_profile, "activeProfileId": active_id},

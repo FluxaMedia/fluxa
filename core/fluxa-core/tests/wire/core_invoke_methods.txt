@@ -1,3 +1,4 @@
+accountSource
 activeProfilePlan
 addonCollectionMutationPlan
 addonResourceRequestPlan
@@ -51,6 +52,7 @@ normalizeAddonDescriptor
 normalizeTrailerSubtitleUrl
 orderStreamsPlan
 nuvioExportPushPlan
+nuvioAddonSnapshotPlan
 nuvioAddonState
 nuvioAddonReconciliationPlan
 nuvioCollectionRequest
