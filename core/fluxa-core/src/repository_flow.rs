@@ -120,9 +120,30 @@ pub(crate) fn addon_streams_with_provider_json(streams_json: &str, addon_name: &
     let streams = serde_json::from_str::<Vec<Value>>(streams_json)
         .unwrap_or_default()
         .into_iter()
+        .filter(|stream| !is_unsupported_source(stream))
         .map(|stream| normalize_stream(stream, addon_name))
         .collect::<Vec<_>>();
     Value::Array(streams).to_string()
+}
+
+pub(crate) fn is_unsupported_source(stream: &Value) -> bool {
+    let has = |key| stream.get(key).is_some_and(|value| !value.is_null());
+    let archive_only = [
+        "nzbUrl", "rarUrls", "zipUrls", "7zipUrls", "tgzUrls", "tarUrls",
+    ]
+    .into_iter()
+    .any(has);
+    archive_only
+        && ![
+            "url",
+            "ytId",
+            "yt_ID",
+            "infoHash",
+            "externalUrl",
+            "playerFrameUrl",
+        ]
+        .into_iter()
+        .any(has)
 }
 
 pub(crate) fn normalize_stream(mut stream: Value, addon_name: &str) -> Value {
@@ -305,6 +326,16 @@ mod tests {
             Some("https://hdfilmizle.example/")
         );
         assert_eq!(value[1]["title"].as_str(), Some("B"));
+    }
+
+    #[test]
+    fn usenet_and_archive_only_streams_are_dropped() {
+        let value: Value = serde_json::from_str(&addon_streams_with_provider_json(
+            r#"[{"nzbUrl":"https://x/a.nzb","servers":["nntps://h"]},{"rarUrls":[{"url":"https://x/a.rar"}]},{"url":"https://x/a.mkv","rarUrls":[]},{"infoHash":"abc"}]"#,
+            "Addon",
+        ))
+        .unwrap();
+        assert_eq!(value.as_array().unwrap().len(), 2);
     }
 
     #[test]

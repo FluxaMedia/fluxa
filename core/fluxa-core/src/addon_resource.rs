@@ -1,5 +1,5 @@
 use crate::addon_protocol;
-use crate::repository_flow::normalize_stream;
+use crate::repository_flow::{is_unsupported_source, normalize_stream};
 use serde_json::{Value, json};
 
 fn resource_payload(resource: &str, root: &Value) -> Option<Value> {
@@ -134,6 +134,7 @@ pub(crate) fn parse_addon_stream_result_json(
             let streams = match payload {
                 Value::Array(items) => items
                     .into_iter()
+                    .filter(|stream| !is_unsupported_source(stream))
                     .map(|stream| normalize_stream(stream, addon_name))
                     .collect(),
                 other => vec![normalize_stream(other, addon_name)],
