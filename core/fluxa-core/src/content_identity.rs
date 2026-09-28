@@ -260,6 +260,19 @@ mod tests {
     }
 
     #[test]
+    fn cinemeta_series_keeps_its_episodes() {
+        let meta = serde_json::json!({
+            "id": "tt0903747",
+            "type": "series",
+            "behaviorHints": {"defaultVideoId": null, "hasScheduledVideos": true},
+            "videos": [{"id": "tt0903747:1:1", "season": 1, "episode": 1}]
+        });
+        let split = split_channel_schedule(meta);
+        assert_eq!(split["videos"][0]["id"], "tt0903747:1:1");
+        assert!(split.get("schedule").is_none());
+    }
+
+    #[test]
     fn effective_metadata_feed_selection_preserves_explicit_empty_selection() {
         assert_eq!(
             effective_metadata_feed_selection_json("null", r#"["a","b"]"#),
