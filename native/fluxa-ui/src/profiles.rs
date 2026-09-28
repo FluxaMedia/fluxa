@@ -325,7 +325,17 @@ fn draw_select(
     let cell = Vec2::new(150.0, 222.0);
     let gap = 40.0;
     let count = model.profiles.len() + 1;
-    let per_row = (((viewport.width - 80.0 + gap) / (cell.x + gap)).floor() as usize).clamp(1, count);
+    let (radius, cell, gap) = if viewport.is_compact() {
+        let gap = 18.0;
+        let cell_width = ((viewport.width - 32.0 - gap * 2.0) / 3.0).min(150.0);
+        let radius = (cell_width * 0.43).min(65.0);
+        (radius, Vec2::new(cell_width, radius * 2.0 + 64.0), gap)
+    } else {
+        (65.0, Vec2::new(150.0, 222.0), 40.0)
+    };
+    let side = if viewport.is_compact() { 32.0 } else { 80.0 };
+    let per_row =
+        (((viewport.width - side + gap) / (cell.x + gap)).floor() as usize).clamp(1, count);
     let rows = count.div_ceil(per_row);
     let grid_height = rows as f32 * cell.y + (rows - 1) as f32 * gap;
     let content_height = 60.0 + 24.0 + 46.0 + 52.0 + grid_height;
@@ -358,7 +368,7 @@ fn draw_select(
 
     let title = ui.painter().layout_no_wrap(
         t("profiles.who_watching"),
-        FontId::proportional(38.0),
+        FontId::proportional(if viewport.is_compact() { 28.0 } else { 38.0 }),
         Color32::WHITE,
     );
     let (title_rect, _) = ui.allocate_exact_size(Vec2::new(width, 46.0), Sense::hover());
