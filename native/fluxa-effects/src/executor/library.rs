@@ -289,6 +289,44 @@ impl EffectExecutor {
         Ok(result)
     }
 
+    pub(super) async fn write_playback_progress(&self, payload: &Value) -> Result<Value, String> {
+        let profile_id = payload
+            .get("profileId")
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            .unwrap_or("guest");
+        let profile = payload
+            .get("profile")
+            .filter(|value| value.is_object())
+            .cloned()
+            .unwrap_or_else(|| self.stored_profile(profile_id));
+        let key = Storage::library_key(profile_id);
+        let library = self.storage.read_json(&key)?.unwrap_or_else(|| json!({}));
+        let plan = core_value(
+            "playbackProgressWritePlan",
+            json!({
+                "library": library,
+                "progress": payload.get("progress"),
+                "nowIso": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
+                "nowMs": chrono::Utc::now().timestamp_millis(),
+            }),
+        )
+        .ok_or_else(|| "Fluxa Core could not plan the progress write".to_owned())?;
+        if let Some(external) = plan
+            .get("externalProgress")
+            .filter(|value| value.is_object())
+            && self.nuvio_session(&profile).await?.is_some()
+        {
+            let mut action = external.clone();
+            action["kind"] = json!("progress");
+            self.push_nuvio_write(&profile, &action).await?;
+        }
+        if let Some(updated) = plan.get("library").filter(|value| value.is_object()) {
+            self.storage.write_json(&key, updated)?;
+        }
+        Ok(plan.get("entry").cloned().unwrap_or(Value::Null))
+    }
+
     pub(super) async fn read_playback_progress(&self, payload: &Value) -> Result<Value, String> {
         let id = payload
             .get("id")

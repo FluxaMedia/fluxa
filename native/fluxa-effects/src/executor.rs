@@ -184,6 +184,9 @@ impl EffectExecutor {
                 self.read_calendar_month(&payload)
             }
             fluxa_core::runtime::EffectKind::WriteSettings => self.write_settings(&payload),
+            fluxa_core::runtime::EffectKind::WritePlaybackProgress => {
+                self.write_playback_progress(&payload).await
+            }
             fluxa_core::runtime::EffectKind::FetchYoutubeTrailerWatchConfig
             | fluxa_core::runtime::EffectKind::FetchYoutubeTrailerPlayer
             | fluxa_core::runtime::EffectKind::FetchYoutubeTrailerPlayerScript => {

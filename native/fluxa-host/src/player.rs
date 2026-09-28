@@ -737,10 +737,12 @@ pub(crate) fn close(state: &mut RendererState) {
     let Some(player) = state.player.take() else {
         return;
     };
-    if let Some(session) = state.session.as_ref()
-        && player.scrobbled.is_some()
-    {
-        scrobble(session, &player, &session.snapshot(), "stop");
+    if let Some(session) = state.session.as_ref() {
+        let snapshot = session.snapshot();
+        if player.scrobbled.is_some() {
+            scrobble(session, &player, &snapshot, "stop");
+        }
+        save_progress(session, &player, &snapshot);
     }
     if let Some(video) = state.video.as_mut() {
         video.stop();
@@ -749,6 +751,24 @@ pub(crate) fn close(state: &mut RendererState) {
         gpu.egui_renderer.free_texture(&texture);
     }
     state.ui = UiTree::default();
+}
+
+fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Value) {
+    if player.status.duration <= 0.0 || player.status.position < 5.0 {
+        return;
+    }
+    let command = json!({
+        "type": "savePlaybackProgressRequested",
+        "profile": session.active_profile(),
+        "meta": player.meta,
+        "timeOffset": player.status.position as i64,
+        "duration": player.status.duration as i64,
+        "lastVideoId": snapshot.pointer("/player/currentVideoId"),
+        "lastEpisodeName": player.episode_title,
+    });
+    if let Err(error) = session.dispatch(command) {
+        host_log(format!("core dispatch failed: {error}"));
+    }
 }
 
 fn scrobble(session: &SessionHandle, player: &PlayerSession, snapshot: &Value, action: &str) {

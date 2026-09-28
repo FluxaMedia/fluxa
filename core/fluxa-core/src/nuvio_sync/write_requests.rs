@@ -29,6 +29,23 @@ pub(crate) fn write_requests_json(args_json: &str) -> Option<String> {
             }
         }
         Some("watched") => watched_requests(action, &profile, now)?,
+        Some("progress") => {
+            let ms = |field: &str| {
+                (action.get(field).and_then(Value::as_f64).unwrap_or(0.0) * 1000.0).round() as i64
+            };
+            vec![
+                json!({"rpc": "sync_push_watch_progress", "body": {"p_profile_id": profile, "p_entries": [{
+                    "content_id": action.get("contentId"),
+                    "content_type": action.get("contentType"),
+                    "video_id": action.get("videoId"),
+                    "season": action.get("season"),
+                    "episode": action.get("episode"),
+                    "position": ms("positionSeconds"),
+                    "duration": ms("durationSeconds"),
+                    "last_watched": action.get("lastWatched").and_then(Value::as_i64).unwrap_or(now),
+                }]}}),
+            ]
+        }
         _ => Vec::new(),
     };
     serde_json::to_string(&requests).ok()
