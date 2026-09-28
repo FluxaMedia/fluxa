@@ -2,7 +2,7 @@ use super::*;
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 pub(crate) const NAV_BAR_TOP: f32 = 14.0;
-pub(crate) const NAV_ITEM_HEIGHT: f32 = 40.0;
+pub(crate) const NAV_ITEM_HEIGHT: f32 = 44.0;
 pub(crate) const NAV_BAR_PADDING: f32 = 6.0;
 pub(crate) const NAV_ITEM_GAP: f32 = 2.0;
 pub(crate) const NAV_AVATAR_RADIUS: f32 = 13.5;
@@ -73,13 +73,15 @@ pub(crate) fn draw_navigation_bar_with_profile(
         .order(egui::Order::Foreground)
         .show(context, |ui| {
             egui::Frame::NONE
-                .fill(Color32::from_black_alpha(190))
-                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(22)))
+                .fill(Color32::from_rgba_unmultiplied(22, 22, 24, 242))
+                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(20)))
                 .corner_radius(NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING)
                 .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = NAV_ITEM_GAP;
+                        let pill = ui.painter().add(egui::Shape::Noop);
+                        let mut slots = [Rect::NOTHING; 5];
                         for (index, label) in ["Home", "Library", "Discover", "Calendar"]
                             .into_iter()
                             .enumerate()
@@ -90,9 +92,8 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 Vec2::new(width, NAV_ITEM_HEIGHT),
                                 Sense::click(),
                             );
-                            let fill = if active {
-                                Color32::from_white_alpha(28)
-                            } else if response.hovered() {
+                            slots[index] = rect;
+                            let fill = if response.hovered() && !active {
                                 Color32::from_white_alpha(12)
                             } else {
                                 Color32::TRANSPARENT
@@ -135,14 +136,38 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             Vec2::new(profile_width, NAV_ITEM_HEIGHT),
                             Sense::click(),
                         );
+                        slots[4] = rect;
                         let profile_active = active_route == 4;
-                        if profile_active || response.hovered() {
+                        if !profile_active && response.hovered() {
                             ui.painter().rect_filled(
                                 rect,
                                 NAV_ITEM_HEIGHT * 0.5,
-                                Color32::from_white_alpha(if profile_active { 28 } else { 12 }),
+                                Color32::from_white_alpha(12),
                             );
                         }
+                        let target = slots[active_route.min(4)];
+                        let x = ui.ctx().animate_value_with_time(
+                            Id::new("fluxa-top-bar-indicator-x"),
+                            target.center().x,
+                            0.22,
+                        );
+                        let width = ui.ctx().animate_value_with_time(
+                            Id::new("fluxa-top-bar-indicator-w"),
+                            target.width(),
+                            0.22,
+                        );
+                        let stretch = (target.center().x - x).abs().min(target.width() * 0.5);
+                        ui.painter().set(
+                            pill,
+                            egui::epaint::RectShape::filled(
+                                Rect::from_center_size(
+                                    Pos2::new(x, target.center().y),
+                                    Vec2::new(width + stretch, NAV_ITEM_HEIGHT),
+                                ),
+                                NAV_ITEM_HEIGHT * 0.5,
+                                Color32::from_white_alpha(18),
+                            ),
+                        );
                         let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
                         if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);

@@ -469,7 +469,7 @@ impl UiMetrics {
     }
 
     pub fn navigation_icon_size(self, tv: bool) -> f32 {
-        if tv { 25.0 } else { 19.0 }
+        if tv { 25.0 } else { 20.0 }
     }
 
     pub fn navigation_item_width(self, label: &str, tv: bool) -> f32 {
@@ -479,7 +479,7 @@ impl UiMetrics {
     }
 
     pub fn navigation_profile_width(self, profile_name: &str, tv: bool) -> f32 {
-        (26.0
+        (36.0
             + NAV_AVATAR_RADIUS * 2.0
             + 8.0
             + estimated_navigation_text_width(profile_name, self.navigation_label_size(tv)))
