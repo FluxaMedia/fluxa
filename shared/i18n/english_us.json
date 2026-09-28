@@ -2642,6 +2642,5 @@
   "settings.group.poster_badges": "Badges",
   "settings.group.custom_poster": "Custom poster",
   "settings.group.keyboard": "Keyboard",
-  "settings.group.controller": "Remote and controller",
-  "settings.search_results": "Search results"
+  "settings.group.controller": "Remote and controller"
 }

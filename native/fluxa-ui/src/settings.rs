@@ -2541,6 +2541,12 @@ pub fn draw_settings(
         Vec2::new(card_width, card_height),
     );
     let groups = visible_groups(settings);
+    let results = searching && !groups.is_empty();
+    let rect = if results {
+        rect.translate(Vec2::new(0.0, -APPEARANCE_PAGE_HEADER_HEIGHT))
+    } else {
+        rect
+    };
     let cards = group_cards(rect, &groups, metrics);
     for ((title, _), card) in groups.iter().zip(&cards) {
         painter.text(
@@ -2575,7 +2581,7 @@ pub fn draw_settings(
     } else if groups.is_empty() {
         localized("settings.search_no_results", language)
     } else {
-        localized("settings.search_results", language)
+        String::new()
     };
     painter.text(
         rect.left_top() + Vec2::new(metrics.settings_card_padding, metrics.settings_title_top),
