@@ -722,6 +722,7 @@ pub(crate) fn draw_home_with_options(
     };
     let mut activated = None;
     let mut hero_actions: Option<Rect> = None;
+    let mut hero_watchlist: Option<Rect> = None;
     if draw_top_bar {
         let profile_avatar_url = home
             .profile_avatar_url
@@ -829,7 +830,7 @@ pub(crate) fn draw_home_with_options(
             (hero_width * 0.55).clamp(420.0, 720.0).min(hero_width)
         };
         let synopsis_color = Color32::from_white_alpha(240);
-        let synopsis_galley = if hero.description.is_empty() {
+        let synopsis_galley = if compact || hero.description.is_empty() {
             None
         } else {
             let mut job = egui::text::LayoutJob::simple(
@@ -1013,8 +1014,11 @@ pub(crate) fn draw_home_with_options(
                                 .x
                         };
                         let play_width = measure(ui, &label) + 70.0;
+                        let watchlist_label = localized("library.watchlist", &home.language);
+                        let watchlist_width = measure(ui, &watchlist_label) + 70.0;
                         if compact {
-                            ui.add_space(((ui.available_width() - play_width) * 0.5).max(0.0));
+                            let total = play_width + 12.0 + watchlist_width;
+                            ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
                         }
                         let play = components::play_button(
                             ui,
@@ -1030,6 +1034,25 @@ pub(crate) fn draw_home_with_options(
                         hero_actions = Some(play.rect);
                         if play.clicked() {
                             activated = Some(NODE_PLAY);
+                        }
+                        let saved = hero
+                            .item_id
+                            .as_deref()
+                            .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
+                            .is_some_and(|personal| personal.saved);
+                        let watchlist = components::pill_button(
+                            ui,
+                            assets.icon(if saved { "Check" } else { "Plus" }),
+                            &watchlist_label,
+                            Some(watchlist_width),
+                            play_height,
+                            text_size,
+                            false,
+                            None,
+                        );
+                        hero_watchlist = Some(watchlist.rect);
+                        if watchlist.clicked() {
+                            activated = Some(NODE_HERO_WATCHLIST);
                         }
                     });
                 });
@@ -1278,6 +1301,9 @@ pub(crate) fn draw_home_with_options(
         layout
             .focusable
             .push((NODE_MORE_INFO, hero_rect.intersect(screen)));
+    }
+    if let Some(watchlist) = hero_watchlist {
+        layout.focusable.push((NODE_HERO_WATCHLIST, watchlist));
     }
     if let Some(play) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));

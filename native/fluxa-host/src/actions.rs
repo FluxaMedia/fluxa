@@ -179,6 +179,10 @@ pub(super) fn native_action_for_node(
     } else if route == Route::Discover && node >= NODE_CARD_BASE {
         let card = discover.results.get((node - NODE_CARD_BASE) as usize)?;
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
+    } else if node == fluxa_ui::NODE_HERO_WATCHLIST {
+        return Some(NativeAction::ToggleWatchlist {
+            item: hero?.raw.clone(),
+        });
     } else if node == NODE_PLAY || node == NODE_MORE_INFO {
         if let Some(hero) = hero
             && let (Some(id), Some(item_type)) = (hero.item_id.as_ref(), hero.item_type.as_ref())

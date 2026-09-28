@@ -5,6 +5,7 @@ pub const NODE_CALENDAR: u64 = 13;
 pub const NODE_PROFILE: u64 = 14;
 pub const NODE_PLAY: u64 = 20;
 pub const NODE_MORE_INFO: u64 = 21;
+pub const NODE_HERO_WATCHLIST: u64 = 22;
 pub const NODE_LIBRARY_TAB_BASE: u64 = 30;
 pub const NODE_LIBRARY_SEARCH: u64 = 80;
 pub const NODE_PLAYER_CLOSE: u64 = 700;

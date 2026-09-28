@@ -367,6 +367,12 @@ pub fn set_poster_personal(context: &egui::Context, index: Arc<PersonalIndex>) {
     });
 }
 
+pub(super) fn personal_for(context: &egui::Context, id: &str) -> Option<Personal> {
+    context
+        .data(|data| data.get_temp::<Arc<PersonalIndex>>(personal_id()))?
+        .get(id)
+}
+
 fn personal_id() -> Id {
     Id::new("fluxa-poster-personal")
 }
