@@ -169,6 +169,12 @@ pub fn draw_detail(
         );
     } else {
         paint_hero_scrim(&painter, hero, compact, metrics.background);
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), 200.0)),
+            metrics.background,
+            Color32::TRANSPARENT,
+        );
     }
     paint_vertical_gradient(
         &painter,
@@ -201,7 +207,7 @@ pub fn draw_detail(
     let content_width = if compact {
         viewport.width - margin * 2.0
     } else {
-        (viewport.width * 0.46).clamp(420.0, 720.0)
+        (viewport.width * 0.42).clamp(420.0, 560.0)
     };
     let mut action_rects = Vec::new();
     let reveal =
@@ -356,15 +362,12 @@ pub fn draw_detail(
                 }
                 return;
             }
-            ui.spacing_mut().item_spacing = Vec2::new(10.0, 0.0);
-            let logo_box = Vec2::new(
-                content_width.min(if compact { 260.0 } else { 440.0 }),
-                if compact { 96.0 } else { 150.0 },
-            );
+            ui.set_max_width(content_width);
+            ui.spacing_mut().item_spacing = Vec2::new(space::SM, 0.0);
             let logo = components::title_logo(
                 ppp,
                 detail.logo_url.as_deref(),
-                logo_box,
+                Vec2::new(content_width.min(440.0), 150.0),
                 ArtworkPriority::Hero,
                 assets,
             );
@@ -377,111 +380,55 @@ pub fn draw_detail(
                     } else {
                         detail.title.clone()
                     })
-                    .size(if compact {
-                        30.0
-                    } else if tv {
-                        54.0
-                    } else {
-                        46.0
-                    })
+                    .size(metrics.text.display)
                     .strong()
                     .color(Color32::WHITE),
                 );
             }
-            let draw_synopsis = |ui: &mut egui::Ui| {
-                let limit = if compact { 200 } else { 360 };
-                let description = if detail.description.chars().count() > limit {
-                    format!(
-                        "{}…",
-                        detail
-                            .description
-                            .chars()
-                            .take(limit - 3)
-                            .collect::<String>()
-                            .trim_end()
-                    )
-                } else {
-                    detail.description.clone()
-                };
-                ui.label(
-                    RichText::new(description)
-                        .size(if tv { 19.0 } else { 16.0 })
-                        .line_height(Some(if tv { 28.0 } else { 24.0 }))
-                        .color(Color32::WHITE),
-                );
-                if let Some(error) = detail.error.as_deref() {
-                    ui.add_space(10.0);
-                    ui.label(RichText::new(error).color(Color32::from_white_alpha(150)));
-                }
-            };
-            ui.add_space(16.0);
+            ui.add_space(space::XL);
             ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(8.0, 8.0);
+                ui.spacing_mut().item_spacing = Vec2::new(space::SM, space::SM);
                 for fact in &detail.facts {
                     ui.label(
                         RichText::new(fact)
-                            .size(15.0)
+                            .size(metrics.text.meta)
                             .strong()
                             .color(Color32::from_white_alpha(225)),
                     );
                     ui.label(
                         RichText::new("·")
-                            .size(15.0)
+                            .size(metrics.text.meta)
                             .color(Color32::from_white_alpha(120)),
                     );
                 }
                 for (source, score) in detail.ratings.iter().take(4) {
-                    egui::Frame::new()
-                        .fill(Color32::from_white_alpha(16))
-                        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(30)))
-                        .corner_radius(6.0)
-                        .inner_margin(egui::Margin::symmetric(8, 3))
-                        .show(ui, |ui| {
-                            let logo = crate::rating_logo(source, score)
-                                .and_then(|name| assets.logo(name));
-                            let Some((texture, aspect)) = logo else {
-                                ui.label(
-                                    RichText::new(format!("{source}  {score}"))
-                                        .size(12.5)
-                                        .strong()
-                                        .color(Color32::WHITE),
-                                );
-                                return;
-                            };
-                            ui.spacing_mut().item_spacing.x = 6.0;
-                            ui.add(egui::Image::new((texture, aspect * 16.0)))
-                                .on_hover_text(source.as_str());
-                            ui.label(
-                                RichText::new(score)
-                                    .size(12.5)
-                                    .strong()
-                                    .color(Color32::WHITE),
-                            );
-                        });
+                    let logo = crate::rating_logo(source, score).and_then(|name| assets.logo(name));
+                    if let Some((texture, aspect)) = logo {
+                        ui.add(egui::Image::new((texture, aspect * 16.0)))
+                            .on_hover_text(source.as_str());
+                    } else {
+                        ui.label(RichText::new(source).size(metrics.text.meta).color(Color32::from_white_alpha(180)));
+                    }
+                    ui.label(
+                        RichText::new(score)
+                            .size(metrics.text.meta)
+                            .strong()
+                            .color(Color32::WHITE),
+                    );
+                    ui.add_space(space::XS);
                 }
             });
             if !detail.genres.is_empty() {
-                ui.add_space(10.0);
+                ui.add_space(space::SM);
                 ui.label(
                     RichText::new(detail.genres.join("  ·  "))
-                        .size(14.0)
-                        .color(Color32::WHITE),
+                        .size(metrics.text.meta)
+                        .color(Color32::from_white_alpha(200)),
                 );
             }
-            if !compact {
-                ui.add_space(16.0);
-                draw_synopsis(ui);
-            }
-            ui.add_space(24.0);
-            let layout_actions = |ui: &mut egui::Ui, add: &mut dyn FnMut(&mut egui::Ui)| {
-                if compact {
-                    ui.vertical(|ui| add(ui));
-                } else {
-                    ui.horizontal_wrapped(|ui| add(ui));
-                }
-            };
-            layout_actions(ui, &mut |ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(12.0, 12.0);
+            ui.add_space(space::XL);
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing = Vec2::new(space::MD, 0.0);
                 let resume = detail.resume.as_ref();
                 let play_label = crate::play_label(
                     language,
@@ -490,19 +437,17 @@ pub fn draw_detail(
                         .filter(|_| detail.is_series())
                         .map(|(_, episode)| (episode.season, episode.number, Some(episode.title.as_str()))),
                 );
+                let height = if tv { 52.0 } else { 48.0 };
                 let play = components::play_button(
                     ui,
                     assets,
                     &play_label,
-                    compact.then_some(content_width),
-                    48.0,
-                    17.0,
-                    resume
-                        .map(|card| card.progress)
-                        .filter(|progress| *progress > 0.0),
+                    None,
+                    height,
+                    metrics.text.subtitle,
+                    resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
                 );
-                let rect = play.rect;
-                action_rects.push((NODE_DETAIL_PLAY, rect));
+                action_rects.push((NODE_DETAIL_PLAY, play.rect));
                 if play.clicked() {
                     layout.activated = Some(match play_target {
                         _ if resume.is_some() => NODE_DETAIL_PLAY,
@@ -512,41 +457,35 @@ pub fn draw_detail(
                         _ => NODE_DETAIL_PLAY,
                     });
                 }
+                let watchlist = components::pill_button(
+                    ui,
+                    assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
+                    &t("library.watchlist"),
+                    None,
+                    height,
+                    metrics.text.subtitle,
+                    false,
+                    None,
+                );
+                action_rects.push((NODE_DETAIL_WATCHLIST, watchlist.rect));
+                if watchlist.clicked() {
+                    layout.activated = Some(NODE_DETAIL_WATCHLIST);
+                }
                 let icons = [
-                    (
-                        NODE_DETAIL_WATCHLIST,
-                        if detail.in_watchlist { "Check" } else { "Plus" },
-                        detail.in_watchlist,
-                        t("library.watchlist"),
-                    ),
-                    (
-                        NODE_DETAIL_COMPLETED,
-                        "CircleCheck",
-                        detail.completed,
-                        t("library.completed"),
-                    ),
-                    (
-                        NODE_DETAIL_DROPPED,
-                        "Ban",
-                        detail.dropped,
-                        t("library.dropped"),
-                    ),
+                    (NODE_DETAIL_COMPLETED, "CircleCheck", detail.completed, t("library.completed")),
+                    (NODE_DETAIL_DROPPED, "Ban", detail.dropped, t("library.dropped")),
                     (
                         NODE_DETAIL_FAVORITE,
-                        if detail.favorite {
-                            "HeartFilled"
-                        } else {
-                            "Heart"
-                        },
+                        if detail.favorite { "HeartFilled" } else { "Heart" },
                         detail.favorite,
                         t("library.favorites"),
                     ),
                 ];
-                let mut row = |ui: &mut egui::Ui| for (node, icon, active, hint) in icons.clone() {
+                for (node, icon, active, hint) in icons {
                     let response = components::icon_button_sized(
                         ui,
                         assets.icon(icon),
-                        Vec2::new(if compact { (content_width - 36.0) / 4.0 } else { 48.0 }, 48.0),
+                        Vec2::splat(height),
                         Color32::WHITE,
                         true,
                         active,
@@ -557,31 +496,47 @@ pub fn draw_detail(
                     if response.clicked() {
                         layout.activated = Some(node);
                     }
-                };
-                if compact {
-                    ui.horizontal(|ui| {
-                        row(ui);
-                    });
-                } else {
-                    row(ui);
                 }
             });
-            if compact {
-                ui.add_space(20.0);
-                draw_synopsis(ui);
+            if !detail.description.is_empty() {
+                ui.add_space(space::XL);
+                let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
+                let expanded = context.data(|data| data.get_temp::<bool>(expanded_id).unwrap_or(false));
+                let limit = 320;
+                let long = detail.description.chars().count() > limit;
+                let text = if long && !expanded {
+                    format!(
+                        "{}…",
+                        detail.description.chars().take(limit - 1).collect::<String>().trim_end()
+                    )
+                } else {
+                    detail.description.clone()
+                };
+                let synopsis = ui.add(
+                    egui::Label::new(
+                        RichText::new(text)
+                            .size(metrics.text.body)
+                            .line_height(Some(metrics.text.body * 1.5))
+                            .color(Color32::from_white_alpha(230)),
+                    )
+                    .sense(if long { Sense::click() } else { Sense::hover() }),
+                );
+                if long && synopsis.clicked() {
+                    context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
+                }
             }
             if detail.is_loading_streams {
-                ui.add_space(12.0);
+                ui.add_space(space::MD);
                 ui.label(
                     RichText::new(t("common.loading"))
-                        .size(14.0)
+                        .size(metrics.text.meta)
                         .color(Color32::from_white_alpha(150)),
                 );
-            } else if let Some(error) = detail.streams_error.as_deref() {
-                ui.add_space(12.0);
+            } else if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref()) {
+                ui.add_space(space::MD);
                 ui.label(
                     RichText::new(error)
-                        .size(14.0)
+                        .size(metrics.text.meta)
                         .color(Color32::from_white_alpha(150)),
                 );
             }

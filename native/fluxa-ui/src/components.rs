@@ -1113,6 +1113,28 @@ pub(super) fn play_button(
     text_size: f32,
     progress: Option<f32>,
 ) -> Response {
+    pill_button(
+        ui,
+        assets.icon("PlayFilled"),
+        label,
+        width,
+        height,
+        text_size,
+        true,
+        progress,
+    )
+}
+
+pub(super) fn pill_button(
+    ui: &mut Ui,
+    icon: Option<egui::TextureId>,
+    label: &str,
+    width: Option<f32>,
+    height: f32,
+    text_size: f32,
+    primary: bool,
+    progress: Option<f32>,
+) -> Response {
     let font = FontId::proportional(text_size);
     let natural = ui
         .painter()
@@ -1124,22 +1146,20 @@ pub(super) fn play_button(
     let inset = (width - natural) * 0.5;
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
-    painter.rect_filled(
-        rect,
-        height * 0.5,
-        if response.hovered() {
-            Color32::from_gray(225)
-        } else {
-            Color32::WHITE
-        },
-    );
+    let (fill, ink) = match (primary, response.hovered()) {
+        (true, false) => (Color32::WHITE, Color32::BLACK),
+        (true, true) => (Color32::from_gray(225), Color32::BLACK),
+        (false, false) => (Color32::from_white_alpha(28), Color32::WHITE),
+        (false, true) => (Color32::from_white_alpha(46), Color32::WHITE),
+    };
+    painter.rect_filled(rect, height * 0.5, fill);
     let lift = if progress.is_some() { 4.0 } else { 0.0 };
-    if let Some(icon) = assets.icon("PlayFilled") {
+    if let Some(icon) = icon {
         painter.image(
             icon,
             Rect::from_center_size(rect.left_center() + Vec2::new(inset + 28.0, 0.0), Vec2::splat(18.0)),
             full_uv(),
-            Color32::BLACK,
+            ink,
         );
     }
     painter.text(
@@ -1147,21 +1167,21 @@ pub(super) fn play_button(
         Align2::LEFT_CENTER,
         label,
         font,
-        Color32::BLACK,
+        ink,
     );
     if let Some(progress) = progress {
         let track = Rect::from_min_max(
             Pos2::new(rect.left() + 44.0, rect.center().y + text_size * 0.5 + 2.0),
             Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
         );
-        painter.rect_filled(track, 1.5, Color32::from_black_alpha(40));
+        painter.rect_filled(track, 1.5, ink.gamma_multiply(0.16));
         painter.rect_filled(
             Rect::from_min_size(
                 track.min,
                 Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height()),
             ),
             1.5,
-            Color32::BLACK,
+            ink,
         );
     }
     response
