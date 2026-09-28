@@ -354,16 +354,13 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             MotionEvent.ACTION_DOWN -> {
                 requestFocus()
                 NativeRenderer.pointerEventNative(nativeHandle, POINTER_DOWN, logicalX(event.x), logicalY(event.y))
-                if (isNativeTextInput(NativeRenderer.focusedNodeNative(nativeHandle))) {
-                    (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                        ?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                }
             }
             MotionEvent.ACTION_MOVE ->
                 NativeRenderer.pointerEventNative(nativeHandle, POINTER_MOVE, logicalX(event.x), logicalY(event.y))
             MotionEvent.ACTION_UP -> {
                 NativeRenderer.pointerEventNative(nativeHandle, POINTER_UP, logicalX(event.x), logicalY(event.y))
                 performClick()
+                syncSoftKeyboard()
             }
             MotionEvent.ACTION_CANCEL -> {
                 NativeRenderer.pointerEventNative(nativeHandle, POINTER_UP, logicalX(event.x), logicalY(event.y))
@@ -518,7 +515,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             NativeRenderer.keyDownNative(nativeHandle, keyCode, if (event.isShiftPressed) 1 else 0)
             return true
         }
-        if (nativeHandle != 0L && isNativeTextInput(NativeRenderer.focusedNodeNative(nativeHandle))) {
+        if (nativeHandle != 0L && NativeRenderer.textInputFocusedNative(nativeHandle)) {
             val codePoint = event.unicodeChar
             if (codePoint > 0 && !event.isCtrlPressed && !event.isAltPressed) {
                 NativeRenderer.textInputNative(nativeHandle, String(Character.toChars(codePoint)))
@@ -529,6 +526,20 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     private var selectLongPressed = false
+
+    private fun syncSoftKeyboard() {
+        val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager ?: return
+        post {
+            if (nativeHandle == 0L) return@post
+            if (NativeRenderer.textInputFocusedNative(nativeHandle)) {
+                requestFocus()
+                input.restartInput(this)
+                input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            } else {
+                input.hideSoftInputFromWindow(windowToken, 0)
+            }
+        }
+    }
 
     private fun isSelectKey(keyCode: Int) =
         keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
@@ -546,10 +557,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         if (nativeHandle != 0L && isSelectKey(keyCode)) {
             if (!selectLongPressed && !event.isCanceled) {
                 NativeRenderer.keyDownNative(nativeHandle, keyCode, 0)
-                if (isNativeTextInput(NativeRenderer.focusedNodeNative(nativeHandle))) {
-                    (context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
-                        ?.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-                }
+                syncSoftKeyboard()
             }
             selectLongPressed = false
             return true
@@ -619,6 +627,7 @@ private object NativeRenderer {
     @JvmStatic external fun scrollNative(handle: Long, deltaY: Float)
     @JvmStatic external fun keyDownNative(handle: Long, keyCode: Int, shift: Int)
     @JvmStatic external fun focusedNodeNative(handle: Long): Long
+    @JvmStatic external fun textInputFocusedNative(handle: Long): Boolean
     @JvmStatic external fun textInputNative(handle: Long, text: String)
 
     fun isNavigationKey(keyCode: Int): Boolean = when (keyCode) {
@@ -646,13 +655,6 @@ private object NativeRenderer {
 private const val POINTER_MOVE = 0
 private const val POINTER_DOWN = 1
 private const val POINTER_UP = 2
-private const val NODE_LIBRARY_SEARCH = 80L
-private const val NODE_DISCOVER_SEARCH = 91L
-private const val NODE_SETTINGS_ADDON_URL = 470L
-private const val NODE_SETTINGS_PLUGIN_URL = 480L
-private fun isNativeTextInput(node: Long): Boolean =
-    node == NODE_LIBRARY_SEARCH || node == NODE_DISCOVER_SEARCH ||
-        node == NODE_SETTINGS_ADDON_URL || node == NODE_SETTINGS_PLUGIN_URL
 private const val HOST_VIEW_ID = -1
 private const val MAX_ARTWORK_URLS = 96
 private const val MAX_ARTWORK_BYTES = 16L * 1024L * 1024L

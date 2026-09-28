@@ -354,6 +354,7 @@ pub(super) fn rebuild_ui_from_layout(
             UiNode::new(
                 id,
                 if id == fluxa_ui::NODE_LIBRARY_SEARCH
+                    || id == fluxa_ui::NODE_DISCOVER_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL

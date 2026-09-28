@@ -759,6 +759,13 @@ impl FluxaHost {
         self.with_state(|state| state.ui.focused()).flatten()
     }
 
+    pub fn text_input_focused(&self) -> bool {
+        self.with_state(|state| {
+            state.ui.focused().and_then(|node| state.ui.node(node)).is_some_and(|node| node.kind == UiNodeKind::Input)
+        })
+        .unwrap_or(false)
+    }
+
     pub fn focus_node(&self, node: u64) {
         self.with_state(|state| {
             state.keyboard_focus_visible = true;

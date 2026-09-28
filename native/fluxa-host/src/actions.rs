@@ -350,10 +350,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             } else if state.route == Route::Discover && *node == fluxa_ui::NODE_DISCOVER_SEARCH {
                 state.discover.query.push_str(value);
                 request_discover_search(state);
-                state.ui = UiTree::default();
             } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_SEARCH {
                 state.settings.search.push_str(value);
-                state.ui = UiTree::default();
             } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_ADDON_URL {
                 state.settings.addon_url.push_str(value);
             } else if state.route == Route::Settings && *node == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
