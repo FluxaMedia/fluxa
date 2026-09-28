@@ -216,7 +216,7 @@ const MOBILE_NODES: [u64; 5] = [
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let height = 64.0;
     if NAV_FLOATING.load(Ordering::Relaxed) {
-        let width = (viewport.width - 32.0).min(420.0);
+        let width = (viewport.width - 20.0).min(560.0);
         let bottom = viewport.height - viewport.safe_bottom - 10.0;
         Rect::from_min_size(
             Pos2::new((viewport.width - width) * 0.5, (bottom - height).max(0.0)),
@@ -310,7 +310,7 @@ pub(crate) fn draw_mobile_navigation_bar(
             let indicator_height = bar.height() - 8.0;
             let indicator = Rect::from_center_size(
                 Pos2::new(indicator_x, bar.center().y),
-                Vec2::new(slot_width + stretch, indicator_height - stretch * 0.12),
+                Vec2::new(slot_width * 1.2 + stretch, indicator_height - stretch * 0.12),
             )
             .intersect(bar.shrink(4.0));
             painter.rect_filled(indicator, indicator.height() * 0.5, Color32::from_white_alpha(18));

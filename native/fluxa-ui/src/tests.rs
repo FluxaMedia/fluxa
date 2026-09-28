@@ -394,8 +394,8 @@ fn mobile_bottom_navigation_splits_the_floating_bar_into_five_slots() {
     });
     let width = slots[0].width();
 
-    assert!((slots[0].left() - 16.0).abs() < 0.01);
-    assert!((slots[4].right() - (viewport.width - 16.0)).abs() < 0.01);
+    assert!((slots[0].left() - 10.0).abs() < 0.01);
+    assert!((slots[4].right() - (viewport.width - 10.0)).abs() < 0.01);
     assert!(slots.iter().all(|rect| (rect.width() - width).abs() < 0.01));
 }
 
