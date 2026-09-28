@@ -166,41 +166,112 @@ impl HomeAssets for HostAssets<'_> {
 }
 
 pub(super) struct SvgIconRegistry {
+    icons: HashMap<&'static str, egui::TextureId>,
     textures: HashMap<&'static str, egui::TextureHandle>,
 }
 
 impl SvgIconRegistry {
-    pub(super) fn new(context: &egui::Context) -> Self {
-        let mut textures = HashMap::new();
-        let sized = ICONS
-            .iter()
-            .map(|(name, svg)| (name, svg, ICON_SIZE))
-            .chain(LOGOS.iter().map(|(name, svg)| (name, svg, LOGO_SIZE)));
-        for (name, svg, size) in sized {
-            host_log(format!("Preparing SVG icon: {name}"));
-            let Ok(image) = rasterize_svg(svg.as_bytes(), size) else {
+    pub(super) fn new(
+        context: &egui::Context,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        renderer: &mut EguiWgpuBackend,
+    ) -> Self {
+        let mut icons = HashMap::new();
+        for (name, svg) in ICONS {
+            let Ok(image) = rasterize_svg(svg.as_bytes(), ICON_SIZE) else {
                 host_log(format!("failed to rasterize shared SVG icon {name}"));
                 continue;
             };
-            host_log(format!("Rasterized SVG icon: {name}"));
+            icons.insert(*name, upload_mipmapped(device, queue, renderer, image));
+        }
+        let mut textures = HashMap::new();
+        for (name, svg) in LOGOS {
+            let Ok(image) = rasterize_svg(svg.as_bytes(), LOGO_SIZE) else {
+                host_log(format!("failed to rasterize shared SVG logo {name}"));
+                continue;
+            };
             let image = egui::ColorImage::from_rgba_premultiplied(
                 [image.width() as usize, image.height() as usize],
                 image.as_raw(),
             );
             let texture = context.load_texture(
-                format!("fluxa-shared-svg-icon-{name}"),
+                format!("fluxa-shared-svg-logo-{name}"),
                 image,
                 egui::TextureOptions::LINEAR,
             );
             textures.insert(*name, texture);
-            host_log(format!("Uploaded SVG icon: {name}"));
         }
-        Self { textures }
+        Self { icons, textures }
     }
 
     pub(super) fn texture(&self, name: &str) -> Option<egui::TextureId> {
-        self.textures.get(name).map(egui::TextureHandle::id)
+        self.icons
+            .get(name)
+            .copied()
+            .or_else(|| self.textures.get(name).map(egui::TextureHandle::id))
     }
+}
+
+fn upload_mipmapped(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    renderer: &mut EguiWgpuBackend,
+    image: image::RgbaImage,
+) -> egui::TextureId {
+    let mut levels = vec![image];
+    while levels.last().is_some_and(|level| level.width() > 1 && level.height() > 1) {
+        let prev = levels.last().unwrap();
+        let (width, height) = (prev.width() / 2, prev.height() / 2);
+        let next = image::RgbaImage::from_fn(width, height, |x, y| {
+            let mut sum = [0u32; 4];
+            for (dx, dy) in [(0, 0), (1, 0), (0, 1), (1, 1)] {
+                let pixel = prev.get_pixel(x * 2 + dx, y * 2 + dy);
+                for channel in 0..4 {
+                    sum[channel] += pixel[channel] as u32;
+                }
+            }
+            image::Rgba(sum.map(|value| ((value + 2) / 4) as u8))
+        });
+        levels.push(next);
+    }
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("fluxa-svg-icon"),
+        size: wgpu::Extent3d {
+            width: levels[0].width(),
+            height: levels[0].height(),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: levels.len() as u32,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    for (mip, level) in levels.iter().enumerate() {
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &texture,
+                mip_level: mip as u32,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            level.as_raw(),
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(level.width() * 4),
+                rows_per_image: Some(level.height()),
+            },
+            wgpu::Extent3d {
+                width: level.width(),
+                height: level.height(),
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+    renderer.register_mipmapped_texture(device, &view)
 }
 
 impl Gpu {
@@ -394,9 +465,9 @@ impl Gpu {
                 egui::TextureOptions::LINEAR,
             )
         };
-        let egui_renderer = EguiWgpuBackend::new(&device, format);
+        let mut egui_renderer = EguiWgpuBackend::new(&device, format);
         host_log("egui renderer created");
-        let icons = SvgIconRegistry::new(&egui_context);
+        let icons = SvgIconRegistry::new(&egui_context, &device, &queue, &mut egui_renderer);
         fluxa_ui::set_rating_logos(
             &egui_context,
             ["imdb", "mdblist"]
@@ -504,6 +575,11 @@ impl Gpu {
         fluxa_ui::set_poster_personal(&self.egui_context, library.personal.clone());
         let mut rendered_layout = HomeLayout::default();
         let mut menu_outcome = None;
+        let _ = self.artwork.texture_for_priority(
+            home.profile_avatar_url.as_deref(),
+            [96, 96],
+            ArtworkFetchPriority::Visible,
+        );
         let output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
@@ -595,11 +671,6 @@ impl Gpu {
             &mut encoder,
             &paint_jobs,
             &screen_descriptor,
-        let _ = self.artwork.texture_for_priority(
-            home.profile_avatar_url.as_deref(),
-            [96, 96],
-            ArtworkFetchPriority::Visible,
-        );
         );
         {
             let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
