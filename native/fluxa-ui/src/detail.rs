@@ -25,12 +25,16 @@ struct DetailGeometry {
     bottom: f32,
 }
 
+fn compact_image_height(viewport: Viewport) -> f32 {
+    (viewport.height * 0.56).max(380.0)
+}
+
 fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     let metrics = UiMetrics::for_viewport(viewport);
     let compact = viewport.is_compact();
     let margin = screen_margin(viewport, metrics);
     let hero_height = if compact {
-        (viewport.height * 0.78).max(520.0)
+        compact_image_height(viewport) + 250.0
     } else {
         (viewport.height * 0.84).clamp(480.0, 980.0)
     };
@@ -104,12 +108,21 @@ pub fn draw_detail(
         Pos2::new(0.0, -scroll_y),
         Vec2::new(viewport.width, geometry.hero_height),
     );
-    let backdrop = detail.background_url.as_deref().or(detail.poster_url.as_deref());
+    let backdrop = detail
+        .background_url
+        .as_deref()
+        .or(detail.poster_url.as_deref());
     let target = backdrop_target_size(viewport.width, ppp);
-    let fade = context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.25);
+    let fade =
+        context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.25);
+    let image = if compact {
+        Rect::from_min_size(hero.min, Vec2::new(hero.width(), compact_image_height(viewport)))
+    } else {
+        hero
+    };
     components::artwork_image(
         &painter,
-        hero,
+        image,
         backdrop,
         target,
         ArtworkPriority::Hero,
@@ -117,9 +130,46 @@ pub fn draw_detail(
         assets,
     );
     if let Some(texture) = detail.trailer {
-        crate::paint_trailer(context, &painter, texture, hero, Some(detail.id.as_str()), 225);
+        crate::paint_trailer(
+            context,
+            &painter,
+            texture,
+            image,
+            Some(detail.id.as_str()),
+            225,
+        );
     }
-    paint_hero_scrim(&painter, hero, compact, metrics.background);
+    if compact {
+        let mid = image.top() + image.height() * 0.7;
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_max(
+                Pos2::new(image.left(), image.top() + image.height() * 0.3),
+                Pos2::new(image.right(), mid),
+            ),
+            Color32::TRANSPARENT,
+            metrics.background.gamma_multiply(0.9),
+        );
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_max(Pos2::new(image.left(), mid), image.right_bottom()),
+            metrics.background.gamma_multiply(0.9),
+            metrics.background,
+        );
+        painter.rect_filled(
+            Rect::from_min_max(image.left_bottom(), hero.right_bottom()),
+            0.0,
+            metrics.background,
+        );
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_size(hero.left_bottom(), Vec2::new(hero.width(), 80.0)),
+            metrics.background,
+            Color32::TRANSPARENT,
+        );
+    } else {
+        paint_hero_scrim(&painter, hero, compact, metrics.background);
+    }
     paint_vertical_gradient(
         &painter,
         Rect::from_min_size(hero.left_top(), Vec2::new(hero.width(), 120.0)),
@@ -144,7 +194,9 @@ pub fn draw_detail(
         .enumerate()
         .filter(|(_, episode)| episode.season == selected_season)
         .collect::<Vec<_>>();
-    let play_target = season_episodes.first().map(|(index, episode)| (*index, *episode));
+    let play_target = season_episodes
+        .first()
+        .map(|(index, episode)| (*index, *episode));
 
     let content_width = if compact {
         viewport.width - margin * 2.0
@@ -152,17 +204,169 @@ pub fn draw_detail(
         (viewport.width * 0.46).clamp(420.0, 720.0)
     };
     let mut action_rects = Vec::new();
-    let reveal = context.animate_bool_with_time(Id::new(("fluxa-detail-reveal", &detail.id)), true, 0.45);
+    let reveal =
+        context.animate_bool_with_time(Id::new(("fluxa-detail-reveal", &detail.id)), true, 0.45);
     egui::Area::new(Id::new("fluxa-detail-hero-content"))
         .constrain(false)
         .pivot(Align2::LEFT_BOTTOM)
-        .fixed_pos(Pos2::new(margin, hero.bottom() - if compact { 24.0 } else { 56.0 } + 16.0 * (1.0 - reveal)))
+        .fixed_pos(Pos2::new(
+            margin,
+            hero.bottom() - if compact { 24.0 } else { 56.0 } + 16.0 * (1.0 - reveal),
+        ))
         .show(context, |ui| {
             ui.multiply_opacity(reveal);
             ui.set_max_width(content_width);
+            if compact {
+                ui.set_min_width(content_width);
+                ui.vertical_centered(|ui| {
+                    ui.spacing_mut().item_spacing = Vec2::ZERO;
+                    let logo = components::title_logo(
+                        ppp,
+                        detail.logo_url.as_deref(),
+                        Vec2::new(content_width.min(260.0), 96.0),
+                        ArtworkPriority::Hero,
+                        assets,
+                    );
+                    if let Some((texture, logo_size)) = logo {
+                        ui.add(egui::Image::new((texture, logo_size)));
+                    } else {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(if detail.is_loading && detail.title.is_empty() {
+                                    t("common.loading")
+                                } else {
+                                    detail.title.clone()
+                                })
+                                .size(28.0)
+                                .strong()
+                                .color(Color32::WHITE),
+                            )
+                            .halign(egui::Align::Center),
+                        );
+                    }
+                    ui.add_space(14.0);
+                    let facts = detail
+                        .facts
+                        .iter()
+                        .cloned()
+                        .chain(
+                            detail
+                                .ratings
+                                .iter()
+                                .take(1)
+                                .map(|(source, score)| format!("{source} {score}")),
+                        )
+                        .chain(detail.genres.iter().take(2).cloned())
+                        .collect::<Vec<_>>()
+                        .join("  ·  ");
+                    ui.add(
+                        egui::Label::new(RichText::new(facts).size(13.5).color(Color32::WHITE))
+                            .halign(egui::Align::Center),
+                    );
+                    ui.add_space(18.0);
+                    let resume = detail.resume.as_ref();
+                    let label = crate::play_label(
+                        language,
+                        resume,
+                        play_target.filter(|_| detail.is_series()).map(|(_, episode)| {
+                            (episode.season, episode.number, Some(episode.title.as_str()))
+                        }),
+                    );
+                    let play = components::play_button(
+                        ui,
+                        assets,
+                        &label,
+                        Some(content_width),
+                        48.0,
+                        16.0,
+                        resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
+                    );
+                    action_rects.push((NODE_DETAIL_PLAY, play.rect));
+                    if play.clicked() {
+                        layout.activated = Some(match play_target {
+                            _ if resume.is_some() => NODE_DETAIL_PLAY,
+                            Some((index, _)) if detail.is_series() => {
+                                NODE_DETAIL_EPISODE_BASE + index as u64
+                            }
+                            _ => NODE_DETAIL_PLAY,
+                        });
+                    }
+                    ui.add_space(16.0);
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing = Vec2::ZERO;
+                        for (node, icon, active, label) in [
+                            (
+                                NODE_DETAIL_WATCHLIST,
+                                if detail.in_watchlist { "Check" } else { "Plus" },
+                                detail.in_watchlist,
+                                t("library.watchlist"),
+                            ),
+                            (NODE_DETAIL_COMPLETED, "CircleCheck", detail.completed, t("library.completed")),
+                            (NODE_DETAIL_DROPPED, "Ban", detail.dropped, t("library.dropped")),
+                            (
+                                NODE_DETAIL_FAVORITE,
+                                if detail.favorite { "HeartFilled" } else { "Heart" },
+                                detail.favorite,
+                                t("library.favorites"),
+                            ),
+                        ] {
+                            let response = components::labeled_action(
+                                ui,
+                                assets.icon(icon),
+                                &label,
+                                content_width / 4.0,
+                                active,
+                            );
+                            action_rects.push((node, response.rect));
+                            if response.clicked() {
+                                layout.activated = Some(node);
+                            }
+                        }
+                    });
+                });
+                ui.add_space(18.0);
+                let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
+                let expanded = context.data(|data| data.get_temp::<bool>(expanded_id)).unwrap_or(false);
+                let limit = 150;
+                let long = detail.description.chars().count() > limit;
+                let text = if long && !expanded {
+                    format!(
+                        "{}…",
+                        detail.description.chars().take(limit).collect::<String>().trim_end()
+                    )
+                } else {
+                    detail.description.clone()
+                };
+                let synopsis = ui.add(
+                    egui::Label::new(
+                        RichText::new(text)
+                            .size(14.5)
+                            .line_height(Some(21.0))
+                            .color(Color32::from_white_alpha(230)),
+                    )
+                    .sense(Sense::click()),
+                );
+                if long && synopsis.clicked() {
+                    context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
+                }
+                if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref()) {
+                    ui.add_space(10.0);
+                    ui.label(RichText::new(error).size(13.0).color(Color32::from_white_alpha(170)));
+                }
+                return;
+            }
             ui.spacing_mut().item_spacing = Vec2::new(10.0, 0.0);
-            let logo_box = Vec2::new(content_width.min(if compact { 260.0 } else { 440.0 }), if compact { 96.0 } else { 150.0 });
-            let logo = components::title_logo(ppp, detail.logo_url.as_deref(), logo_box, ArtworkPriority::Hero, assets);
+            let logo_box = Vec2::new(
+                content_width.min(if compact { 260.0 } else { 440.0 }),
+                if compact { 96.0 } else { 150.0 },
+            );
+            let logo = components::title_logo(
+                ppp,
+                detail.logo_url.as_deref(),
+                logo_box,
+                ArtworkPriority::Hero,
+                assets,
+            );
             if let Some((texture, logo_size)) = logo {
                 ui.add(egui::Image::new((texture, logo_size)));
             } else {
@@ -172,17 +376,58 @@ pub fn draw_detail(
                     } else {
                         detail.title.clone()
                     })
-                    .size(if compact { 30.0 } else if tv { 54.0 } else { 46.0 })
+                    .size(if compact {
+                        30.0
+                    } else if tv {
+                        54.0
+                    } else {
+                        46.0
+                    })
                     .strong()
                     .color(Color32::WHITE),
                 );
             }
+            let draw_synopsis = |ui: &mut egui::Ui| {
+                let limit = if compact { 200 } else { 360 };
+                let description = if detail.description.chars().count() > limit {
+                    format!(
+                        "{}…",
+                        detail
+                            .description
+                            .chars()
+                            .take(limit - 3)
+                            .collect::<String>()
+                            .trim_end()
+                    )
+                } else {
+                    detail.description.clone()
+                };
+                ui.label(
+                    RichText::new(description)
+                        .size(if tv { 19.0 } else { 16.0 })
+                        .line_height(Some(if tv { 28.0 } else { 24.0 }))
+                        .color(Color32::WHITE),
+                );
+                if let Some(error) = detail.error.as_deref() {
+                    ui.add_space(10.0);
+                    ui.label(RichText::new(error).color(Color32::from_white_alpha(150)));
+                }
+            };
             ui.add_space(16.0);
             ui.horizontal_wrapped(|ui| {
                 ui.spacing_mut().item_spacing = Vec2::new(8.0, 8.0);
                 for fact in &detail.facts {
-                    ui.label(RichText::new(fact).size(15.0).strong().color(Color32::from_white_alpha(225)));
-                    ui.label(RichText::new("·").size(15.0).color(Color32::from_white_alpha(120)));
+                    ui.label(
+                        RichText::new(fact)
+                            .size(15.0)
+                            .strong()
+                            .color(Color32::from_white_alpha(225)),
+                    );
+                    ui.label(
+                        RichText::new("·")
+                            .size(15.0)
+                            .color(Color32::from_white_alpha(120)),
+                    );
                 }
                 for (source, score) in detail.ratings.iter().take(4) {
                     egui::Frame::new()
@@ -205,7 +450,12 @@ pub fn draw_detail(
                             ui.spacing_mut().item_spacing.x = 6.0;
                             ui.add(egui::Image::new((texture, aspect * 16.0)))
                                 .on_hover_text(source.as_str());
-                            ui.label(RichText::new(score).size(12.5).strong().color(Color32::WHITE));
+                            ui.label(
+                                RichText::new(score)
+                                    .size(12.5)
+                                    .strong()
+                                    .color(Color32::WHITE),
+                            );
                         });
                 }
             });
@@ -217,25 +467,19 @@ pub fn draw_detail(
                         .color(Color32::WHITE),
                 );
             }
-            ui.add_space(16.0);
-            let limit = if compact { 200 } else { 360 };
-            let description = if detail.description.chars().count() > limit {
-                format!("{}…", detail.description.chars().take(limit - 3).collect::<String>().trim_end())
-            } else {
-                detail.description.clone()
-            };
-            ui.label(
-                RichText::new(description)
-                    .size(if tv { 19.0 } else { 16.0 })
-                    .line_height(Some(if tv { 28.0 } else { 24.0 }))
-                    .color(Color32::WHITE),
-            );
-            if let Some(error) = detail.error.as_deref() {
-                ui.add_space(10.0);
-                ui.label(RichText::new(error).color(Color32::from_white_alpha(150)));
+            if !compact {
+                ui.add_space(16.0);
+                draw_synopsis(ui);
             }
             ui.add_space(24.0);
-            ui.horizontal_wrapped(|ui| {
+            let layout_actions = |ui: &mut egui::Ui, add: &mut dyn FnMut(&mut egui::Ui)| {
+                if compact {
+                    ui.vertical(|ui| add(ui));
+                } else {
+                    ui.horizontal_wrapped(|ui| add(ui));
+                }
+            };
+            layout_actions(ui, &mut |ui| {
                 ui.spacing_mut().item_spacing = Vec2::new(12.0, 12.0);
                 let resume = detail.resume.as_ref();
                 let play_label = crate::play_label(
@@ -249,60 +493,119 @@ pub fn draw_detail(
                     ui,
                     assets,
                     &play_label,
-                    None,
+                    compact.then_some(content_width),
                     48.0,
                     17.0,
-                    resume.map(|card| card.progress).filter(|progress| *progress > 0.0),
+                    resume
+                        .map(|card| card.progress)
+                        .filter(|progress| *progress > 0.0),
                 );
                 let rect = play.rect;
                 action_rects.push((NODE_DETAIL_PLAY, rect));
                 if play.clicked() {
                     layout.activated = Some(match play_target {
                         _ if resume.is_some() => NODE_DETAIL_PLAY,
-                        Some((index, _)) if detail.is_series() => NODE_DETAIL_EPISODE_BASE + index as u64,
+                        Some((index, _)) if detail.is_series() => {
+                            NODE_DETAIL_EPISODE_BASE + index as u64
+                        }
                         _ => NODE_DETAIL_PLAY,
                     });
                 }
-                for (node, icon, active, hint) in [
+                let icons = [
                     (
                         NODE_DETAIL_WATCHLIST,
                         if detail.in_watchlist { "Check" } else { "Plus" },
                         detail.in_watchlist,
                         t("library.watchlist"),
                     ),
-                    (NODE_DETAIL_COMPLETED, "CircleCheck", detail.completed, t("library.completed")),
-                    (NODE_DETAIL_DROPPED, "Ban", detail.dropped, t("library.dropped")),
+                    (
+                        NODE_DETAIL_COMPLETED,
+                        "CircleCheck",
+                        detail.completed,
+                        t("library.completed"),
+                    ),
+                    (
+                        NODE_DETAIL_DROPPED,
+                        "Ban",
+                        detail.dropped,
+                        t("library.dropped"),
+                    ),
                     (
                         NODE_DETAIL_FAVORITE,
-                        if detail.favorite { "HeartFilled" } else { "Heart" },
+                        if detail.favorite {
+                            "HeartFilled"
+                        } else {
+                            "Heart"
+                        },
                         detail.favorite,
                         t("library.favorites"),
                     ),
-                ] {
-                    let response = components::icon_button(ui, assets.icon(icon), 48.0, Color32::WHITE, true, active, true).on_hover_text(&hint);
+                ];
+                let mut row = |ui: &mut egui::Ui| for (node, icon, active, hint) in icons.clone() {
+                    let response = components::icon_button_sized(
+                        ui,
+                        assets.icon(icon),
+                        Vec2::new(if compact { (content_width - 36.0) / 4.0 } else { 48.0 }, 48.0),
+                        Color32::WHITE,
+                        true,
+                        active,
+                        true,
+                    )
+                    .on_hover_text(&hint);
                     action_rects.push((node, response.rect));
                     if response.clicked() {
                         layout.activated = Some(node);
                     }
+                };
+                if compact {
+                    ui.horizontal(|ui| {
+                        row(ui);
+                    });
+                } else {
+                    row(ui);
                 }
             });
+            if compact {
+                ui.add_space(20.0);
+                draw_synopsis(ui);
+            }
             if detail.is_loading_streams {
                 ui.add_space(12.0);
-                ui.label(RichText::new(t("common.loading")).size(14.0).color(Color32::from_white_alpha(150)));
+                ui.label(
+                    RichText::new(t("common.loading"))
+                        .size(14.0)
+                        .color(Color32::from_white_alpha(150)),
+                );
             } else if let Some(error) = detail.streams_error.as_deref() {
                 ui.add_space(12.0);
-                ui.label(RichText::new(error).size(14.0).color(Color32::from_white_alpha(150)));
+                ui.label(
+                    RichText::new(error)
+                        .size(14.0)
+                        .color(Color32::from_white_alpha(150)),
+                );
             }
         });
     layout.focusable.extend(action_rects);
 
-    let back_rect = Rect::from_min_size(Pos2::new(margin, if compact { 12.0 } else { 14.0 } - scroll_y), Vec2::splat(40.0));
+    let back_rect = Rect::from_min_size(
+        Pos2::new(margin, if compact { 12.0 } else { 14.0 } - scroll_y),
+        Vec2::splat(40.0),
+    );
     egui::Area::new(Id::new("fluxa-detail-back"))
         .constrain(false)
         .fixed_pos(back_rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            let response = components::icon_button(ui, assets.icon("ArrowLeft"), 40.0, Color32::WHITE, true, false, true).on_hover_text(t("auto.back"));
+            let response = components::icon_button(
+                ui,
+                assets.icon("ArrowLeft"),
+                40.0,
+                Color32::WHITE,
+                true,
+                false,
+                true,
+            )
+            .on_hover_text(t("auto.back"));
             if response.clicked() {
                 layout.activated = Some(NODE_DETAIL_BACK);
             }
@@ -311,11 +614,22 @@ pub fn draw_detail(
 
     let title_size = if tv { 26.0 } else { 21.0 };
     let row_width = viewport.width - margin;
-    let visible = Rect::from_min_max(Pos2::new(0.0, 0.0), Pos2::new(viewport.width, viewport.height - mobile_scroll_reserve(viewport)));
+    let visible = Rect::from_min_max(
+        Pos2::new(0.0, 0.0),
+        Pos2::new(
+            viewport.width,
+            viewport.height - mobile_scroll_reserve(viewport),
+        ),
+    );
 
     if let Some(top) = geometry.episodes_top {
         let top = top - scroll_y;
-        section_title(&painter, Pos2::new(margin, top), &t("auto.episodes"), title_size);
+        section_title(
+            &painter,
+            Pos2::new(margin, top),
+            &t("auto.episodes"),
+            title_size,
+        );
         egui::Area::new(Id::new("fluxa-detail-seasons"))
             .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
@@ -345,9 +659,10 @@ pub fn draw_detail(
                                     metrics.nav_label_size,
                                     metrics,
                                 );
-                                layout
-                                    .focusable
-                                    .push((NODE_DETAIL_SEASON_BASE + (*season).clamp(0, 99) as u64, response.rect));
+                                layout.focusable.push((
+                                    NODE_DETAIL_SEASON_BASE + (*season).clamp(0, 99) as u64,
+                                    response.rect,
+                                ));
                                 if response.clicked() {
                                     context.data_mut(|data| data.insert_temp(season_id, *season));
                                 }
@@ -384,7 +699,16 @@ pub fn draw_detail(
                                 let painter = ui.painter();
                                 let image = Rect::from_min_size(rect.min, thumb);
                                 painter.rect_filled(image, 10.0, Color32::from_white_alpha(14));
-                                if !components::rounded_artwork(painter, image, 10.0, episode.thumbnail.as_deref(), artwork_target_size(image.size(), ppp), ArtworkPriority::Visible, Color32::WHITE, assets) {
+                                if !components::rounded_artwork(
+                                    painter,
+                                    image,
+                                    10.0,
+                                    episode.thumbnail.as_deref(),
+                                    artwork_target_size(image.size(), ppp),
+                                    ArtworkPriority::Visible,
+                                    Color32::WHITE,
+                                    assets,
+                                ) {
                                     painter.text(
                                         image.center(),
                                         Align2::CENTER_CENTER,
@@ -398,7 +722,10 @@ pub fn draw_detail(
                                     if let Some(icon) = assets.icon("PlayFilled") {
                                         painter.image(
                                             icon,
-                                            Rect::from_center_size(image.center(), Vec2::splat(34.0)),
+                                            Rect::from_center_size(
+                                                image.center(),
+                                                Vec2::splat(34.0),
+                                            ),
                                             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                                             Color32::WHITE,
                                         );
@@ -412,7 +739,12 @@ pub fn draw_detail(
                                 painter.text(
                                     Pos2::new(rect.left(), image.bottom() + 12.0),
                                     Align2::LEFT_TOP,
-                                    truncate_to_width(painter, &title, &FontId::proportional(15.0), EPISODE_WIDTH),
+                                    truncate_to_width(
+                                        painter,
+                                        &title,
+                                        &FontId::proportional(15.0),
+                                        EPISODE_WIDTH,
+                                    ),
                                     FontId::proportional(15.0),
                                     Color32::WHITE,
                                 );
@@ -437,7 +769,12 @@ pub fn draw_detail(
 
     if let Some(top) = geometry.cast_top {
         let top = top - scroll_y;
-        section_title(&painter, Pos2::new(margin, top), &t("auto.cast"), title_size);
+        section_title(
+            &painter,
+            Pos2::new(margin, top),
+            &t("auto.cast"),
+            title_size,
+        );
         egui::Area::new(Id::new("fluxa-detail-cast"))
             .constrain(false)
             .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
@@ -463,7 +800,14 @@ pub fn draw_detail(
                                     Pos2::new(rect.center().x, rect.top() + CAST_SIZE * 0.5),
                                     Vec2::splat(CAST_SIZE),
                                 );
-                                components::avatar(painter, assets, circle.center(), CAST_SIZE * 0.5, &member.name, member.photo.as_deref());
+                                components::avatar(
+                                    painter,
+                                    assets,
+                                    circle.center(),
+                                    CAST_SIZE * 0.5,
+                                    &member.name,
+                                    member.photo.as_deref(),
+                                );
                                 let font = FontId::proportional(13.5);
                                 painter.text(
                                     Pos2::new(rect.center().x, circle.bottom() + 10.0),
@@ -490,7 +834,12 @@ pub fn draw_detail(
 
     if let Some(top) = geometry.similar_top {
         let top = top - scroll_y;
-        section_title(&painter, Pos2::new(margin, top), &t("player.recommendations"), title_size);
+        section_title(
+            &painter,
+            Pos2::new(margin, top),
+            &t("player.recommendations"),
+            title_size,
+        );
         let (poster, slot_height) = similar_size(metrics);
         egui::Area::new(Id::new("fluxa-detail-similar"))
             .constrain(false)
@@ -505,8 +854,10 @@ pub fn draw_detail(
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 14.0;
                             for (index, card) in detail.similar.iter().enumerate() {
-                                let (rect, response) =
-                                    ui.allocate_exact_size(Vec2::new(poster.x, slot_height), Sense::click());
+                                let (rect, response) = ui.allocate_exact_size(
+                                    Vec2::new(poster.x, slot_height),
+                                    Sense::click(),
+                                );
                                 let node = NODE_DETAIL_SIMILAR_BASE + index as u64;
                                 layout.focusable.push((node, rect));
                                 if response.clicked() {

@@ -126,7 +126,16 @@ pub(super) fn avatar(
 ) {
     let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
     let target = artwork_target_size(rect.size(), painter.ctx().pixels_per_point());
-    if rounded_artwork(painter, rect, radius, url, target, ArtworkPriority::Visible, Color32::WHITE, assets) {
+    if rounded_artwork(
+        painter,
+        rect,
+        radius,
+        url,
+        target,
+        ArtworkPriority::Visible,
+        Color32::WHITE,
+        assets,
+    ) {
         return;
     }
     let initials = name
@@ -154,9 +163,26 @@ pub(super) fn icon_button(
     active: bool,
     enabled: bool,
 ) -> Response {
+    icon_button_sized(ui, icon, Vec2::splat(size), color, framed, active, enabled)
+}
+
+pub(super) fn icon_button_sized(
+    ui: &mut Ui,
+    icon: Option<egui::TextureId>,
+    size: Vec2,
+    color: Color32,
+    framed: bool,
+    active: bool,
+    enabled: bool,
+) -> Response {
+    let radius = size.y * 0.5;
     let (rect, response) = ui.allocate_exact_size(
-        Vec2::splat(size),
-        if enabled { Sense::click() } else { Sense::hover() },
+        size,
+        if enabled {
+            Sense::click()
+        } else {
+            Sense::hover()
+        },
     );
     let hovered = enabled && response.hovered();
     if framed {
@@ -168,15 +194,16 @@ pub(super) fn icon_button(
             18
         };
         ui.painter()
-            .circle_filled(rect.center(), size * 0.5, Color32::from_white_alpha(fill));
-        ui.painter().circle_stroke(
-            rect.center(),
-            size * 0.5 - 0.5,
+            .rect_filled(rect, radius, Color32::from_white_alpha(fill));
+        ui.painter().rect_stroke(
+            rect.shrink(0.5),
+            radius,
             egui::Stroke::new(1.0, Color32::from_white_alpha(if active { 90 } else { 36 })),
+            egui::StrokeKind::Inside,
         );
     } else if hovered {
         ui.painter()
-            .circle_filled(rect.center(), size * 0.5, Color32::from_white_alpha(18));
+            .rect_filled(rect, radius, Color32::from_white_alpha(18));
     }
     let tint = if !enabled {
         color.gamma_multiply(0.4)
@@ -188,11 +215,44 @@ pub(super) fn icon_button(
     if let Some(icon) = icon {
         ui.painter().image(
             icon,
-            Rect::from_center_size(rect.center(), Vec2::splat(size * 0.44)),
+            Rect::from_center_size(rect.center(), Vec2::splat(size.y * 0.44)),
             full_uv(),
             tint,
         );
     }
+    response
+}
+
+pub(super) fn labeled_action(
+    ui: &mut Ui,
+    icon: Option<egui::TextureId>,
+    label: &str,
+    width: f32,
+    active: bool,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 52.0), Sense::click());
+    let painter = ui.painter();
+    let center = Pos2::new(rect.center().x, rect.top() + 18.0);
+    if active {
+        painter.circle_filled(center, 18.0, Color32::WHITE);
+    } else if response.hovered() {
+        painter.circle_filled(center, 18.0, Color32::from_white_alpha(24));
+    }
+    if let Some(icon) = icon {
+        painter.image(
+            icon,
+            Rect::from_center_size(center, Vec2::splat(20.0)),
+            full_uv(),
+            if active { Color32::BLACK } else { Color32::WHITE },
+        );
+    }
+    painter.text(
+        Pos2::new(rect.center().x, rect.bottom()),
+        Align2::CENTER_BOTTOM,
+        label,
+        FontId::proportional(12.0),
+        Color32::WHITE,
+    );
     response
 }
 
@@ -908,11 +968,17 @@ pub(super) fn choice_field(
     popup_width: f32,
     enabled: bool,
 ) -> Response {
-    let sense = if enabled { Sense::click() } else { Sense::hover() };
+    let sense = if enabled {
+        Sense::click()
+    } else {
+        Sense::hover()
+    };
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let popup_id = id.with("popup");
     let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
-    let turn = ui.ctx().animate_bool_with_time(id.with("chevron"), open, 0.14);
+    let turn = ui
+        .ctx()
+        .animate_bool_with_time(id.with("chevron"), open, 0.14);
     let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
         Color32::from_white_alpha(5)
@@ -940,7 +1006,12 @@ pub(super) fn choice_field(
     painter.text(
         rect.left_center() + Vec2::new(14.0, 0.0),
         Align2::LEFT_CENTER,
-        truncate_to_width(painter, current, &font, (rect.width() - DROPDOWN_CHROME).max(1.0)),
+        truncate_to_width(
+            painter,
+            current,
+            &font,
+            (rect.width() - DROPDOWN_CHROME).max(1.0),
+        ),
         font.clone(),
         text_color,
     );
@@ -973,50 +1044,64 @@ pub(super) fn choice_field(
                 }),
         )
         .show(|ui| {
-            egui::ScrollArea::vertical().max_height(300.0).show(ui, |ui| {
-                ui.spacing_mut().item_spacing.y = 2.0;
-                for (value, label) in choices {
-                    let (row, row_response) = ui.allocate_exact_size(
-                        Vec2::new(ui.available_width(), row_height),
-                        Sense::click(),
-                    );
-                    let active = value == selected;
-                    if row_response.hovered() || active {
-                        ui.painter().rect_filled(
-                            row,
-                            8.0,
-                            Color32::from_white_alpha(if row_response.hovered() { 18 } else { 9 }),
+            egui::ScrollArea::vertical()
+                .max_height(300.0)
+                .show(ui, |ui| {
+                    ui.spacing_mut().item_spacing.y = 2.0;
+                    for (value, label) in choices {
+                        let (row, row_response) = ui.allocate_exact_size(
+                            Vec2::new(ui.available_width(), row_height),
+                            Sense::click(),
                         );
-                    }
-                    ui.painter().text(
-                        row.left_center() + Vec2::new(12.0, 0.0),
-                        Align2::LEFT_CENTER,
-                        truncate_to_width(ui.painter(), label, &font, (row.width() - 48.0).max(1.0)),
-                        font.clone(),
+                        let active = value == selected;
+                        if row_response.hovered() || active {
+                            ui.painter().rect_filled(
+                                row,
+                                8.0,
+                                Color32::from_white_alpha(if row_response.hovered() {
+                                    18
+                                } else {
+                                    9
+                                }),
+                            );
+                        }
+                        ui.painter().text(
+                            row.left_center() + Vec2::new(12.0, 0.0),
+                            Align2::LEFT_CENTER,
+                            truncate_to_width(
+                                ui.painter(),
+                                label,
+                                &font,
+                                (row.width() - 48.0).max(1.0),
+                            ),
+                            font.clone(),
+                            if active {
+                                Color32::WHITE
+                            } else {
+                                Color32::from_white_alpha(195)
+                            },
+                        );
                         if active {
-                            Color32::WHITE
-                        } else {
-                            Color32::from_white_alpha(195)
-                        },
-                    );
-                    if active {
-                        let c = row.right_center() - Vec2::new(18.0, 0.0);
-                        let stroke = egui::Stroke::new(1.8, Color32::WHITE);
-                        ui.painter()
-                            .line_segment([c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)], stroke);
-                        ui.painter()
-                            .line_segment([c + Vec2::new(-1.5, 3.5), c + Vec2::new(5.0, -3.5)], stroke);
+                            let c = row.right_center() - Vec2::new(18.0, 0.0);
+                            let stroke = egui::Stroke::new(1.8, Color32::WHITE);
+                            ui.painter().line_segment(
+                                [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
+                                stroke,
+                            );
+                            ui.painter().line_segment(
+                                [c + Vec2::new(-1.5, 3.5), c + Vec2::new(5.0, -3.5)],
+                                stroke,
+                            );
+                        }
+                        if row_response.clicked() {
+                            selected.clone_from(value);
+                            egui::Popup::close_id(ui.ctx(), popup_id);
+                        }
                     }
-                    if row_response.clicked() {
-                        selected.clone_from(value);
-                        egui::Popup::close_id(ui.ctx(), popup_id);
-                    }
-                }
-            });
+                });
         });
     response
 }
-
 
 pub(super) fn play_button(
     ui: &mut Ui,
@@ -1028,13 +1113,14 @@ pub(super) fn play_button(
     progress: Option<f32>,
 ) -> Response {
     let font = FontId::proportional(text_size);
-    let width = width.unwrap_or_else(|| {
-        ui.painter()
-            .layout_no_wrap(label.to_owned(), font.clone(), Color32::BLACK)
-            .size()
-            .x
-            + 70.0
-    });
+    let natural = ui
+        .painter()
+        .layout_no_wrap(label.to_owned(), font.clone(), Color32::BLACK)
+        .size()
+        .x
+        + 70.0;
+    let width = width.unwrap_or(natural).max(natural);
+    let inset = (width - natural) * 0.5;
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
     painter.rect_filled(
@@ -1050,13 +1136,13 @@ pub(super) fn play_button(
     if let Some(icon) = assets.icon("PlayFilled") {
         painter.image(
             icon,
-            Rect::from_center_size(rect.left_center() + Vec2::new(28.0, 0.0), Vec2::splat(18.0)),
+            Rect::from_center_size(rect.left_center() + Vec2::new(inset + 28.0, 0.0), Vec2::splat(18.0)),
             full_uv(),
             Color32::BLACK,
         );
     }
     painter.text(
-        rect.left_center() + Vec2::new(44.0, -lift),
+        rect.left_center() + Vec2::new(inset + 44.0, -lift),
         Align2::LEFT_CENTER,
         label,
         font,
@@ -1069,7 +1155,10 @@ pub(super) fn play_button(
         );
         painter.rect_filled(track, 1.5, Color32::from_black_alpha(40));
         painter.rect_filled(
-            Rect::from_min_size(track.min, Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height())),
+            Rect::from_min_size(
+                track.min,
+                Vec2::new(track.width() * progress.clamp(0.0, 1.0), track.height()),
+            ),
             1.5,
             Color32::BLACK,
         );
