@@ -58,6 +58,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
             metrics,
             assets,
             profile_avatar_url,
+            profile_name,
         );
     }
     let label_size = metrics.navigation_label_size(tv);
@@ -245,6 +246,7 @@ pub(crate) fn draw_mobile_navigation_bar(
     metrics: UiMetrics,
     assets: &impl HomeAssets,
     profile_avatar_url: Option<&str>,
+    profile_name: &str,
 ) -> Option<u64> {
     let floating = NAV_FLOATING.load(Ordering::Relaxed);
     let labels = NAV_LABELS.load(Ordering::Relaxed);
@@ -305,15 +307,13 @@ pub(crate) fn draw_mobile_navigation_bar(
                     solid,
                 );
             }
-            let indicator_height = if labels { bar.height() - 12.0 } else { 44.0 };
+            let indicator_height = bar.height() - 8.0;
             let indicator = Rect::from_center_size(
                 Pos2::new(indicator_x, bar.center().y),
-                Vec2::new(
-                    (slot_width - 8.0).min(76.0) + stretch,
-                    indicator_height - stretch * 0.12,
-                ),
-            );
-            painter.rect_filled(indicator, indicator.height() * 0.5, Color32::from_white_alpha(26));
+                Vec2::new(slot_width + stretch, indicator_height - stretch * 0.12),
+            )
+            .intersect(bar.shrink(4.0));
+            painter.rect_filled(indicator, indicator.height() * 0.5, Color32::from_white_alpha(18));
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
                 for (index, (label, icon, node)) in [
@@ -321,7 +321,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     ("Library", "Library", NODE_LIBRARY),
                     ("Discover", "Discover", NODE_DISCOVER),
                     ("Calendar", "Calendar", NODE_CALENDAR),
-                    ("Profile", "Account", NODE_PROFILE),
+                    (profile_name, "Account", NODE_PROFILE),
                 ]
                 .into_iter()
                 .enumerate()
@@ -360,11 +360,18 @@ pub(crate) fn draw_mobile_navigation_bar(
                         );
                     }
                     if labels {
-                        ui.painter().text(
-                            Pos2::new(rect.center().x, rect.center().y + 15.0),
-                            Align2::CENTER_CENTER,
-                            label,
-                            FontId::proportional(metrics.text.label - 1.0),
+                        let galley = ui.painter().layout_job(egui::text::LayoutJob {
+                            wrap: egui::text::TextWrapping::truncate_at_width(slot_width - 8.0),
+                            ..egui::text::LayoutJob::simple_singleline(
+                                label.to_owned(),
+                                FontId::proportional(metrics.text.label - 1.0),
+                                color,
+                            )
+                        });
+                        let width = galley.size().x;
+                        ui.painter().galley(
+                            Pos2::new(rect.center().x - width * 0.5, rect.center().y + 15.0 - galley.size().y * 0.5),
+                            galley,
                             color,
                         );
                     }
