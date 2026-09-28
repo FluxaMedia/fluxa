@@ -177,7 +177,8 @@ impl EffectExecutor {
             .trim()
             .to_lowercase();
         let provider = providers::is_provider(&source).then_some(source.as_str());
-        if provider.is_none() && !matches!(source.as_str(), "" | "local" | "fluxa") {
+        let nuvio = source == "nuvio";
+        if provider.is_none() && !nuvio && !matches!(source.as_str(), "" | "local" | "fluxa") {
             return Err(format!(
                 "desktop library writes for provider '{source}' are not implemented"
             ));
@@ -189,6 +190,10 @@ impl EffectExecutor {
         let key = Storage::library_key(profile_id);
         let profile = self.stored_profile(profile_id);
         let library = match provider {
+            None if nuvio => self
+                .read_nuvio_library(profile_id, Some(&profile))
+                .await?
+                .unwrap_or_else(|| json!({})),
             Some(provider) => match self.cached_provider_library(provider, profile_id) {
                 Some(library) => library,
                 None => {
@@ -219,6 +224,10 @@ impl EffectExecutor {
             .cloned()
             .ok_or_else(|| "Fluxa Core returned an invalid library command plan".to_owned())?;
         match provider {
+            None if nuvio => {
+                self.push_nuvio_write(&profile, plan.get("externalAction").unwrap_or(&Value::Null))
+                    .await?
+            }
             Some(provider) => {
                 let mut remote = command.clone();
                 if let Some(id) = command.pointer("/item/id").and_then(Value::as_str) {

@@ -53,6 +53,7 @@ pub(super) fn route_nuvio_sync(method: &str, args_json: &str) -> Outcome {
         "nuvioImportMergePlan" => opt_json(nuvio_sync::import_merge_plan_json(args_json)),
         "nuvioExportPushPlan" => opt_json(nuvio_sync::export_push_plan_json(args_json)),
         "nuvioLibraryMutationPlan" => opt_json(nuvio_sync::library_mutation_plan_json(args_json)),
+        "nuvioWriteRequests" => opt_json(nuvio_sync::write_requests_json(args_json)),
         "nuvioHomeLayout" => opt_json(nuvio_sync::home_layout_json(args_json)),
         "nuvioMapCollections" => opt_json(nuvio_sync::map_collections_json(args_json)),
         "nuvioSortAddonsByPriority" => {

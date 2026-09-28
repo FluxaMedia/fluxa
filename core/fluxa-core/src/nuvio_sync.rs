@@ -8,6 +8,7 @@ mod plugin_content;
 mod profiles;
 mod progress_sync;
 mod reconciliation;
+mod write_requests;
 
 pub(crate) use addon_priority::{
     addon_snapshot_plan_json, addon_state_json, sort_addons_by_priority_json,
@@ -30,6 +31,7 @@ pub(crate) use progress_sync::{
     progress_presentation_json, provider_library_snapshot_json, resolve_continue_watching_json,
 };
 pub(crate) use reconciliation::{addon_reconciliation_plan_json, library_mutation_plan_json};
+pub(crate) use write_requests::write_requests_json;
 #[cfg(test)]
 mod tests {
     use super::helpers::{canonical_content_type, iso_from_ms};
@@ -151,9 +153,28 @@ mod tests {
 
         assert_eq!(snapshot["continueWatching"].as_array().unwrap().len(), 1);
         assert_eq!(snapshot["continueWatching"][0]["videoId"], "tt3:1:2");
-        assert_eq!(snapshot["continueWatching"][0]["lastEpisodeThumbnail"], "e2.jpg");
+        assert_eq!(
+            snapshot["continueWatching"][0]["lastEpisodeThumbnail"],
+            "e2.jpg"
+        );
         assert_eq!(snapshot["continueWatching"][0]["lastEpisodeName"], "Two");
         assert_eq!(snapshot["continueWatching"][0]["lastEpisodeNumber"], 2);
+    }
+
+    #[test]
+    fn unwatching_an_episode_deletes_its_season_key() {
+        let requests: Value = serde_json::from_str(
+            &write_requests_json(
+                &json!({"profileIndex": 2, "nowMs": 5, "action": {"kind": "watched", "watched": false, "seriesId": "tt3", "meta": {"type": "series"}, "episodeInfos": [{"season": 1, "episode": 4}]}}).to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(requests[0]["rpc"], "sync_delete_watched_items");
+        assert_eq!(
+            requests[0]["body"]["p_keys"],
+            json!([{"content_id": "tt3", "season": 1, "episode": 4}])
+        );
     }
 
     #[test]
@@ -180,7 +201,12 @@ mod tests {
         )
         .unwrap();
 
-        let ids: Vec<&str> = layout.as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap()).collect();
+        let ids: Vec<&str> = layout
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|c| c["id"].as_str().unwrap())
+            .collect();
         assert_eq!(ids, ["col-a", "k1", "other"]);
         assert_eq!(layout[1]["name"], "Popular");
     }

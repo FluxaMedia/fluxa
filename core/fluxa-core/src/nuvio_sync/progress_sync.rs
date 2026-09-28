@@ -221,15 +221,12 @@ fn episode_video<'a>(meta: &'a Value, entry: &Value) -> Option<&'a Value> {
     let video_id = entry.get("video_id").and_then(Value::as_str);
     let season = entry.get("season").and_then(Value::as_i64);
     let episode = entry.get("episode").and_then(Value::as_i64);
-    meta.get("videos")?
-        .as_array()?
-        .iter()
-        .find(|video| {
-            video_id.is_some() && video.get("id").and_then(Value::as_str) == video_id
-                || season.is_some()
-                    && video.get("season").and_then(Value::as_i64) == season
-                    && video_episode_number(video) == episode
-        })
+    meta.get("videos")?.as_array()?.iter().find(|video| {
+        video_id.is_some() && video.get("id").and_then(Value::as_str) == video_id
+            || season.is_some()
+                && video.get("season").and_then(Value::as_i64) == season
+                && video_episode_number(video) == episode
+    })
 }
 
 pub(crate) fn progress_meta_needs_json(args_json: &str) -> Option<String> {

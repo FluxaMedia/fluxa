@@ -334,6 +334,7 @@ static METHODS: &[(&str, Router)] = &[
     ("nuvioResolveContinueWatching", route_nuvio_sync),
     ("nuvioSortAddonsByPriority", route_nuvio_sync),
     ("nuvioWatchedItemsRequest", route_nuvio_sync),
+    ("nuvioWriteRequests", route_nuvio_sync),
     ("offlineDownloadPlan", route_offline),
     ("optimizeHomeRows", route_library_state),
     ("orderStreamsPlan", route_player_policy),

@@ -58,6 +58,7 @@ nuvioAddonReconciliationPlan
 nuvioCollectionRequest
 nuvioEffectiveProfileScopes
 nuvioHomeLayout
+nuvioWriteRequests
 nuvioLibraryMutationPlan
 nuvioLibraryItemRequest
 nuvioPlaybackProgressRequest

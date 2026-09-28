@@ -316,6 +316,54 @@ impl EffectExecutor {
         }
     }
 
+    pub(super) async fn push_nuvio_write(
+        &self,
+        profile: &Value,
+        action: &Value,
+    ) -> Result<(), String> {
+        let session = self
+            .nuvio_session(profile)
+            .await?
+            .ok_or_else(|| "Nuvio is not connected to the active profile".to_owned())?;
+        let requests = core_value(
+            "nuvioWriteRequests",
+            json!({
+                "profileIndex": session.profile_index,
+                "action": action,
+                "nowMs": chrono::Utc::now().timestamp_millis(),
+            }),
+        )
+        .unwrap_or_else(|| json!([]));
+        for request in requests.as_array().into_iter().flatten() {
+            let rpc = request
+                .get("rpc")
+                .and_then(Value::as_str)
+                .unwrap_or_default();
+            let response = session
+                .rpc(rpc)
+                .json(request.get("body").unwrap_or(&Value::Null))
+                .send()
+                .await
+                .map_err(|error| error.to_string())?;
+            let status = response.status();
+            if !status.is_success() {
+                let body = response.text().await.unwrap_or_default();
+                return Err(format!("Nuvio rejected the change ({status}): {body}"));
+            }
+        }
+        for resource in ["library", "progress", "history"] {
+            if let Some(key) = account_source(profile, resource)
+                .get("snapshotKey")
+                .and_then(Value::as_str)
+                && let Some(mut state) = self.storage.read_json(key)?
+            {
+                state["checkedAt"] = json!(0);
+                self.storage.write_json(key, &state)?;
+            }
+        }
+        Ok(())
+    }
+
     async fn pull_nuvio_delta(
         &self,
         session: &NuvioSession,

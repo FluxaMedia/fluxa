@@ -25,7 +25,11 @@ pub(crate) fn home_layout_json(args_json: &str) -> Option<String> {
         .and_then(Value::as_array)
         .map(|items| items.iter().collect())
         .unwrap_or_default();
-    items.sort_by_key(|item| item.get("order").and_then(Value::as_i64).unwrap_or(i64::MAX));
+    items.sort_by_key(|item| {
+        item.get("order")
+            .and_then(Value::as_i64)
+            .unwrap_or(i64::MAX)
+    });
     let ranks: HashMap<String, (usize, bool, &str)> = items
         .iter()
         .enumerate()
