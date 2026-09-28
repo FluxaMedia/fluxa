@@ -200,6 +200,30 @@ pub fn set_mobile_nav_drag(x: Option<f32>) {
     NAV_DRAG.store(x.map_or(u32::MAX, f32::to_bits), Ordering::Relaxed);
 }
 
+static NAV_PENDING: AtomicU32 = AtomicU32::new(u32::MAX);
+
+pub fn set_mobile_nav_pending(x: f32) {
+    NAV_PENDING.store(60, Ordering::Relaxed);
+    NAV_DRAG.store(u32::MAX, Ordering::Relaxed);
+    PENDING_X.store(x.to_bits(), Ordering::Relaxed);
+}
+
+static PENDING_X: AtomicU32 = AtomicU32::new(0);
+
+fn mobile_nav_pending(active_x: f32) -> Option<f32> {
+    let frames = NAV_PENDING.load(Ordering::Relaxed);
+    if frames == u32::MAX {
+        return None;
+    }
+    let x = f32::from_bits(PENDING_X.load(Ordering::Relaxed));
+    if frames == 0 || (x - active_x).abs() < 1.0 {
+        NAV_PENDING.store(u32::MAX, Ordering::Relaxed);
+        return None;
+    }
+    NAV_PENDING.store(frames - 1, Ordering::Relaxed);
+    Some(x)
+}
+
 fn mobile_nav_drag() -> Option<f32> {
     let bits = NAV_DRAG.load(Ordering::Relaxed);
     (bits != u32::MAX).then(|| f32::from_bits(bits))
@@ -255,9 +279,11 @@ pub(crate) fn draw_mobile_navigation_bar(
     let [r, g, b, _] = metrics.background.to_array();
     let solid = Color32::from_rgb(r, g, b);
     let drag = mobile_nav_drag();
+    let active_x = bar.left() + slot_width * (active_route.min(4) as f32 + 0.5);
     let target = drag
         .map(|x| x.clamp(bar.left() + slot_width * 0.5, bar.right() - slot_width * 0.5))
-        .unwrap_or(bar.left() + slot_width * (active_route.min(4) as f32 + 0.5));
+        .or_else(|| mobile_nav_pending(active_x))
+        .unwrap_or(active_x);
     let indicator_x =
         context.animate_value_with_time(Id::new("fluxa-bottom-bar-indicator"), target, 0.22);
     let stretch = (target - indicator_x).abs().min(slot_width * 0.6);

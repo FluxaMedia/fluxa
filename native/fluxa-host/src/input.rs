@@ -197,15 +197,31 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     {
         state.keyboard_focus_visible = false;
         state.nav_dragging = true;
-        fluxa_ui::set_mobile_nav_drag(Some(position[0]));
+        let bar = fluxa_ui::mobile_nav_rect(viewport);
+        let slot = bar.width() / 5.0;
+        let center = bar.left() + slot * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5);
+        fluxa_ui::set_mobile_nav_drag(Some(center));
+        state.touch_start = Some(position);
         return;
     }
     if state.nav_dragging {
         match phase {
-            PointerPhase::Move => fluxa_ui::set_mobile_nav_drag(Some(position[0])),
+            PointerPhase::Move => {
+                if state.touch_start.is_some_and(|start| (position[0] - start[0]).abs() > 12.0) {
+                    state.touch_start = None;
+                }
+                if state.touch_start.is_none() {
+                    fluxa_ui::set_mobile_nav_drag(Some(position[0]));
+                }
+            }
             _ => {
                 state.nav_dragging = false;
-                fluxa_ui::set_mobile_nav_drag(None);
+                state.touch_start = None;
+                let bar = fluxa_ui::mobile_nav_rect(viewport);
+                let slot = bar.width() / 5.0;
+                fluxa_ui::set_mobile_nav_pending(
+                    bar.left() + slot * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5),
+                );
                 let node = fluxa_ui::mobile_nav_node_at(viewport, position[0]);
                 rebuild_current_ui(state);
                 remember_actions(state, vec![UiAction::Activated(node)]);
