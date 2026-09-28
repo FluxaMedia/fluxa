@@ -579,6 +579,26 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
         + metrics.settings_card_padding
 }
 
+const ROW_SUBTITLE_EXTRA: f32 = 18.0;
+
+fn described(mut metrics: UiMetrics) -> UiMetrics {
+    metrics.settings_row_height += ROW_SUBTITLE_EXTRA;
+    metrics.settings_row_spacing += ROW_SUBTITLE_EXTRA;
+    metrics
+}
+
+pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
+    let compact = viewport.is_compact();
+    let desktop = !compact && !viewport.is_tv();
+    match key {
+        "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "navFloating"
+        | "navLabels" | "posterHoverPreview" => !compact,
+        "discordRichPresenceEnabled" | "automaticUpdates" => desktop,
+        "backgroundPlayback" | "pictureInPicture" | "torrentWifiOnly" => !desktop,
+        _ => true,
+    }
+}
+
 fn settings_groups(section: &str) -> Option<&'static [(usize, usize, &'static str)]> {
     match section {
         "General" => Some(&GENERAL_GROUPS),
@@ -598,7 +618,10 @@ fn section_label(title: &str, language: &str) -> String {
     )
 }
 
-pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize>)> {
+pub(super) fn visible_groups(
+    settings: &SettingsModel,
+    viewport: Viewport,
+) -> Vec<(String, Vec<usize>)> {
     let language = settings.language();
     let query = settings.search.trim().to_lowercase();
     let mut offset = 0;
@@ -609,6 +632,7 @@ pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize
                 .rows
                 .iter()
                 .enumerate()
+                .filter(|(_, row)| row_applies(row.key, viewport))
                 .filter(|(_, row)| {
                     settings_row_label(row, language)
                         .to_lowercase()
@@ -629,11 +653,15 @@ pub(super) fn visible_groups(settings: &SettingsModel) -> Vec<(String, Vec<usize
         .iter()
         .map(|section| section.rows.len())
         .sum();
+    let rows = SETTINGS_SECTIONS[active].rows;
     for &(start, end, key) in settings_groups(SETTINGS_SECTIONS[active].title).unwrap_or_default() {
-        groups.push((
-            localized(key, language),
-            (offset + start..offset + end).collect(),
-        ));
+        let visible: Vec<usize> = (start..end)
+            .filter(|&index| row_applies(rows[index].key, viewport))
+            .map(|index| offset + index)
+            .collect();
+        if !visible.is_empty() {
+            groups.push((localized(key, language), visible));
+        }
     }
     groups
 }
@@ -985,9 +1013,10 @@ pub(super) fn settings_card_height(
     } else {
         metrics.settings_extended_line_spacing
     };
-    let groups = visible_groups(settings);
+    let groups = visible_groups(settings, viewport);
+    let rows_metrics = described(metrics);
     if !settings.search.trim().is_empty() {
-        return base.max(groups_height(&groups, metrics));
+        return base.max(groups_height(&groups, rows_metrics));
     }
     let content_height = match section.title {
         "Account" => account_height(metrics),
@@ -998,7 +1027,7 @@ pub(super) fn settings_card_height(
                 + settings_group_card_height(CONTROLLER_BINDINGS.len(), metrics)
         }
         "Posters" => {
-            groups_height(&groups, metrics)
+            groups_height(&groups, rows_metrics)
                 + APPEARANCE_GROUP_HEADING_HEIGHT
                 + FIELD_HEIGHT
                 + APPEARANCE_GROUP_GAP
@@ -1028,7 +1057,7 @@ pub(super) fn settings_card_height(
                 + metrics.control_gap
                 + metrics.settings_card_padding * 2.0
         }
-        _ => groups_height(&groups, metrics),
+        _ => groups_height(&groups, rows_metrics),
     };
     base.max(content_height)
 }
@@ -1064,7 +1093,7 @@ impl SettingsModel {
             .and_then(serde_json::Value::as_str)
             .unwrap_or("en")
     }
-    fn value(&self, key: &str) -> Option<&serde_json::Value> {
+    pub fn value(&self, key: &str) -> Option<&serde_json::Value> {
         self.values
             .get(key)
             .filter(|value| !value.is_null())
@@ -1319,7 +1348,7 @@ fn color_name(value: &str) -> Option<&'static str> {
     })
 }
 
-fn option_label(key: &str, value: &str, language: &str) -> String {
+pub fn option_label(key: &str, value: &str, language: &str) -> String {
     let named = match (key, value) {
         (_, "off") => Some("settings.off"),
         ("animeUpscalingMode", "auto") => Some("settings.auto"),
@@ -1375,7 +1404,7 @@ fn option_label(key: &str, value: &str, language: &str) -> String {
     }
 }
 
-pub(super) fn settings_row_label(setting: &SettingsRow, language: &str) -> String {
+pub fn settings_row_label(setting: &SettingsRow, language: &str) -> String {
     let legacy_key = match setting.key {
         "autoSkipIntro" => "settings.auto_skip",
         "useAnimeSkip" => "settings.use_animeskip",
@@ -1776,7 +1805,7 @@ fn draw_settings_extended_section(
             );
         }
         "Posters" => {
-            let top = group_cards(rect, &visible_groups(settings), metrics)
+            let top = group_cards(rect, &visible_groups(settings, viewport), described(metrics))
                 .last()
                 .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
                     card.bottom() + APPEARANCE_GROUP_GAP
@@ -2387,11 +2416,11 @@ pub fn draw_settings(
                 });
             layout.focusable.push((NODE_SETTINGS_BACK, back_rect));
             painter.text(
-                back_rect.right_center() + Vec2::new(6.0, 0.0),
+                back_rect.right_center() + Vec2::new(4.0, 0.0),
                 Align2::LEFT_CENTER,
-                localized("nav.settings", language),
-                FontId::proportional(metrics.nav_label_size + 2.0),
-                Color32::from_white_alpha(185),
+                section_label(SETTINGS_SECTIONS[active_section].title, language),
+                FontId::proportional(metrics.text.title),
+                Color32::WHITE,
             );
         }
         if !settings.section_open && !searching {
@@ -2540,14 +2569,16 @@ pub fn draw_settings(
         Pos2::new(content_x, card_top),
         Vec2::new(card_width, card_height),
     );
-    let groups = visible_groups(settings);
+    let groups = visible_groups(settings, viewport);
     let results = searching && !groups.is_empty();
     let rect = if results {
         rect.translate(Vec2::new(0.0, -APPEARANCE_PAGE_HEADER_HEIGHT))
+    } else if compact && !groups.is_empty() {
+        rect.translate(Vec2::new(0.0, 8.0 - APPEARANCE_PAGE_HEADER_HEIGHT))
     } else {
         rect
     };
-    let cards = group_cards(rect, &groups, metrics);
+    let cards = group_cards(rect, &groups, described(metrics));
     for ((title, _), card) in groups.iter().zip(&cards) {
         painter.text(
             Pos2::new(
@@ -2576,7 +2607,9 @@ pub fn draw_settings(
             egui::StrokeKind::Inside,
         );
     }
-    let heading = if !searching {
+    let heading = if compact && !searching {
+        String::new()
+    } else if !searching {
         section_label(section.title, language)
     } else if groups.is_empty() {
         localized("settings.search_no_results", language)
@@ -2596,7 +2629,7 @@ pub fn draw_settings(
         }),
         Color32::WHITE,
     );
-    if !desktop && !searching {
+    if tv && !searching {
         painter.text(
             rect.left_top()
                 + Vec2::new(
@@ -2628,6 +2661,7 @@ pub fn draw_settings(
             &mut layout,
         );
     }
+    let row_metrics = described(metrics);
     let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
         rows.iter()
             .enumerate()
@@ -2642,16 +2676,16 @@ pub fn draw_settings(
             card.left_top()
                 + Vec2::new(
                     metrics.settings_row_inset,
-                    6.0 + slot as f32 * metrics.settings_row_spacing,
+                    6.0 + slot as f32 * row_metrics.settings_row_spacing,
                 ),
             Vec2::new(
                 card.width() - metrics.settings_row_inset * 2.0,
-                metrics.settings_row_height,
+                row_metrics.settings_row_height,
             ),
         );
         if slot > 0 {
-            let y =
-                row_rect.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
+            let y = row_rect.top()
+                - (row_metrics.settings_row_spacing - row_metrics.settings_row_height) * 0.5;
             painter.line_segment(
                 [
                     Pos2::new(row_rect.left(), y),
@@ -2661,7 +2695,12 @@ pub fn draw_settings(
             );
         }
         let is_toggle = setting.options.is_empty();
+        let is_swatches = setting.key == "accentColorArgb";
+        let sheet_row = compact && !is_toggle && !is_swatches;
         let mut clicked = false;
+        if sheet_row {
+            layout.focusable.push((node, row_rect));
+        }
         if is_toggle {
             layout.focusable.push((node, row_rect));
             egui::Area::new(Id::new(("fluxa-settings-row", node)))
@@ -2676,28 +2715,94 @@ pub fn draw_settings(
         let row_label_size = if !compact && !tv {
             metrics.settings_row_label_size_desktop
         } else {
-            metrics.nav_label_size
+            metrics.nav_label_size + 1.0
         };
-        painter.text(
-            row_rect.left_center() + Vec2::new(4.0, 0.0),
-            Align2::LEFT_CENTER,
-            truncate_to_width(
-                &painter,
-                &settings_row_label(setting, language),
-                &FontId::proportional(row_label_size),
-                row_rect.width() * if is_toggle { 0.72 } else { 0.55 },
-            ),
-            FontId::proportional(row_label_size),
-            Color32::from_white_alpha(210),
-        );
-        if setting.key == "accentColorArgb" {
-            let current = settings
+        let value_size = if !compact && !tv {
+            metrics.settings_row_value_size_desktop
+        } else {
+            metrics.screen_card_subtitle_size + 1.0
+        };
+        let swatch_size = if compact { 22.0 } else { 28.0 };
+        let swatch_gap = if compact { 8.0 } else { 12.0 };
+        let raw_value = (!is_toggle).then(|| {
+            settings
                 .value(setting.key)
                 .and_then(serde_json::Value::as_str)
                 .unwrap_or(setting.options[0])
-                .to_ascii_uppercase();
-            let size = 28.0;
-            let gap = 12.0;
+        });
+        let value = raw_value.map(|raw| option_label(setting.key, raw, language));
+        let value_font = FontId::proportional(value_size);
+        let value_width = if sheet_row {
+            value.as_deref().map_or(0.0, |value| {
+                painter
+                    .layout_no_wrap(value.to_owned(), value_font.clone(), Color32::WHITE)
+                    .size()
+                    .x
+                    .min(row_rect.width() * 0.4)
+            }) + 22.0
+        } else {
+            setting
+                .options
+                .iter()
+                .map(|option| {
+                    painter
+                        .layout_no_wrap(
+                            option_label(setting.key, option, language),
+                            value_font.clone(),
+                            Color32::WHITE,
+                        )
+                        .size()
+                        .x
+                })
+                .fold(0.0, f32::max)
+                + 50.0
+        }
+        .clamp(0.0, row_rect.width() * 0.5)
+        .max(if sheet_row { 0.0 } else { 92.0 });
+        let control_width = if is_swatches {
+            let count = setting.options.len() as f32;
+            count * swatch_size + (count - 1.0) * swatch_gap + 6.0
+        } else if is_toggle {
+            metrics.settings_toggle_width + 3.0
+        } else {
+            value_width + 2.0
+        };
+        let text_width = (row_rect.width() - control_width - 16.0).max(1.0);
+        let label_font = FontId::proportional(row_label_size);
+        let subtitle_font = FontId::proportional(metrics.screen_card_subtitle_size);
+        let text_height = row_label_size + 4.0 + metrics.screen_card_subtitle_size;
+        let text_top = row_rect.center().y - text_height * 0.5;
+        painter.text(
+            Pos2::new(row_rect.left() + 4.0, text_top),
+            Align2::LEFT_TOP,
+            truncate_to_width(
+                &painter,
+                &settings_row_label(setting, language),
+                &label_font,
+                text_width,
+            ),
+            label_font.clone(),
+            Color32::from_white_alpha(225),
+        );
+        painter.text(
+            Pos2::new(row_rect.left() + 4.0, text_top + row_label_size + 4.0),
+            Align2::LEFT_TOP,
+            truncate_to_width(
+                &painter,
+                &localized(
+                    &format!("settings.row.{}.description", setting.key),
+                    language,
+                ),
+                &subtitle_font,
+                text_width,
+            ),
+            subtitle_font,
+            Color32::from_white_alpha(120),
+        );
+        if is_swatches {
+            let current = raw_value.unwrap_or_default().to_ascii_uppercase();
+            let size = swatch_size;
+            let gap = swatch_gap;
             let count = setting.options.len() as f32;
             let strip = Rect::from_min_max(
                 Pos2::new(
@@ -2766,19 +2871,24 @@ pub fn draw_settings(
                         }
                     });
                 });
-        } else if !is_toggle {
-            let raw_value = settings
-                .value(setting.key)
-                .and_then(serde_json::Value::as_str)
-                .unwrap_or(setting.options[0]);
-            let value = option_label(setting.key, raw_value, language);
-            let value_size = if !compact && !tv {
-                metrics.settings_row_value_size_desktop
-            } else {
-                metrics.screen_card_subtitle_size
-            };
-            let value_width =
-                (value.chars().count() as f32 * value_size * 0.56 + 28.0).clamp(92.0, 188.0);
+        } else if sheet_row {
+            let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
+            let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(110));
+            painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
+            painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+            painter.text(
+                tip - Vec2::new(16.0, 0.0),
+                Align2::RIGHT_CENTER,
+                truncate_to_width(
+                    &painter,
+                    value.as_deref().unwrap_or_default(),
+                    &value_font,
+                    row_rect.width() * 0.4,
+                ),
+                value_font,
+                Color32::from_white_alpha(140),
+            );
+        } else if let (Some(raw_value), Some(value)) = (raw_value, value) {
             let value_rect = Rect::from_center_size(
                 row_rect.right_center() - Vec2::new(value_width * 0.5 + 2.0, 0.0),
                 Vec2::new(
@@ -2786,7 +2896,6 @@ pub fn draw_settings(
                     metrics.screen_control_height.min(row_rect.height() - 4.0),
                 ),
             );
-            let selected_text = value;
             let mut selected = raw_value.to_owned();
             egui::Area::new(Id::new(("fluxa-settings-dropdown", node)))
                 .constrain(false)
@@ -2808,7 +2917,7 @@ pub fn draw_settings(
                         Id::new(("settings-choice", node)),
                         value_rect.size(),
                         value_size,
-                        &selected_text,
+                        &value,
                         &choices,
                         &mut selected,
                         value_rect.width(),

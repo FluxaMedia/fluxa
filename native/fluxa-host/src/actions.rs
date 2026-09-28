@@ -407,6 +407,17 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 }
             }
             if state.route == Route::Settings
+                && logical_viewport(state).is_compact()
+                && let Some(row) = node
+                    .checked_sub(fluxa_ui::NODE_SETTINGS_ROW_BASE)
+                    .and_then(|index| fluxa_ui::settings_row_by_index(index as usize))
+                && !row.options.is_empty()
+                && row.key != "accentColorArgb"
+            {
+                card_menu::open_setting(state, row);
+                continue;
+            }
+            if state.route == Route::Settings
                 && node == fluxa_ui::NODE_SETTINGS_BACK
                 && state.settings.section_open
             {

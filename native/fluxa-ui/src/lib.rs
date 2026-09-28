@@ -55,8 +55,8 @@ pub use profiles::{
 use settings::settings_card_height;
 pub use settings::{
     ACCOUNT_PROVIDERS, AccountPrompt, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
-    SettingsSection, draw_settings, poster_field, settings_model_from_core_snapshot,
-    settings_row_by_index,
+    SettingsSection, draw_settings, option_label, poster_field, settings_model_from_core_snapshot,
+    settings_row_by_index, settings_row_label,
 };
 
 pub fn localized(key: &str, language: &str) -> String {

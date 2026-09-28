@@ -1259,7 +1259,10 @@ pub fn action_menu_layout(
     let count = count as f32;
     if viewport.is_compact() {
         let (header, row) = (60.0, 56.0);
-        let height = 20.0 + header + row * count + viewport.safe_bottom + 12.0;
+        let columns = if count > 8.0 { 2 } else { 1 };
+        let lines = (count / columns as f32).ceil();
+        let column_width = (viewport.width - 16.0) / columns as f32;
+        let height = 20.0 + header + row * lines + viewport.safe_bottom + 12.0;
         let panel = Rect::from_min_size(
             Pos2::new(0.0, viewport.height - height),
             Vec2::new(viewport.width, height),
@@ -1273,9 +1276,10 @@ pub fn action_menu_layout(
             )),
             rows: (0..count as usize)
                 .map(|index| {
+                    let (line, column) = (index / columns, index % columns);
                     Rect::from_min_size(
-                        Pos2::new(8.0, top + row * index as f32),
-                        Vec2::new(viewport.width - 16.0, row),
+                        Pos2::new(8.0 + column_width * column as f32, top + row * line as f32),
+                        Vec2::new(column_width, row),
                     )
                 })
                 .collect(),

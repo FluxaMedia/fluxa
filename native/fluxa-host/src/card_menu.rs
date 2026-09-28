@@ -12,9 +12,22 @@ enum Entry {
     ClearProgress,
 }
 
+enum Target {
+    Card { card: HomeCard, entries: Vec<Entry> },
+    Setting(&'static fluxa_ui::SettingsRow),
+}
+
+impl Target {
+    fn len(&self) -> usize {
+        match self {
+            Target::Card { entries, .. } => entries.len(),
+            Target::Setting(row) => row.options.len(),
+        }
+    }
+}
+
 pub(super) struct CardMenu {
-    card: HomeCard,
-    entries: Vec<Entry>,
+    target: Target,
     selected: Option<usize>,
     anchor: Pos2,
     serial: u64,
@@ -73,8 +86,7 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     }
     state.menu_serial += 1;
     state.card_menu = Some(CardMenu {
-        card,
-        entries,
+        target: Target::Card { card, entries },
         selected: keyboard.then_some(0),
         anchor,
         serial: state.menu_serial,
@@ -82,12 +94,46 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     true
 }
 
+pub(super) fn open_setting(state: &mut RendererState, row: &'static fluxa_ui::SettingsRow) {
+    state.menu_serial += 1;
+    let current = state
+        .settings
+        .value(row.key)
+        .and_then(Value::as_str)
+        .and_then(|value| row.options.iter().position(|option| *option == value));
+    state.card_menu = Some(CardMenu {
+        target: Target::Setting(row),
+        selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
+        anchor: Pos2::ZERO,
+        serial: state.menu_serial,
+    });
+}
+
 pub(super) fn view(state: &RendererState) -> Option<MenuView> {
     let menu = state.card_menu.as_ref()?;
     let language = state.settings.language();
-    let resume = menu.card.progress > 0.0;
-    let items = menu
-        .entries
+    let (card, entries) = match &menu.target {
+        Target::Card { card, entries } => (card, entries),
+        Target::Setting(row) => {
+            let current = state.settings.value(row.key).and_then(Value::as_str);
+            return Some(MenuView {
+                title: fluxa_ui::settings_row_label(row, language),
+                items: row
+                    .options
+                    .iter()
+                    .map(|option| ActionMenuItem {
+                        icon: if current == Some(*option) { "Check" } else { "" },
+                        label: fluxa_ui::option_label(row.key, option, language),
+                    })
+                    .collect(),
+                selected: menu.selected,
+                anchor: menu.anchor,
+                serial: menu.serial,
+            });
+        }
+    };
+    let resume = card.progress > 0.0;
+    let items = entries
         .iter()
         .map(|entry| {
             let (icon, key) = match entry {
@@ -107,7 +153,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
         })
         .collect();
     Some(MenuView {
-        title: menu.card.title.clone(),
+        title: card.title.clone(),
         items,
         selected: menu.selected,
         anchor: menu.anchor,
@@ -126,10 +172,21 @@ fn pick(state: &mut RendererState, index: usize) {
     let Some(menu) = state.card_menu.take() else {
         return;
     };
-    let Some(entry) = menu.entries.get(index).copied() else {
+    let (card, entries) = match menu.target {
+        Target::Card { card, entries } => (card, entries),
+        Target::Setting(row) => {
+            if let Some(option) = row.options.get(index) {
+                state.pending_native_actions.push(NativeAction::SettingsChange {
+                    key: row.key.to_owned(),
+                    value: Value::String((*option).to_owned()),
+                });
+            }
+            return;
+        }
+    };
+    let Some(entry) = entries.get(index).copied() else {
         return;
     };
-    let card = menu.card;
     let id = card.id.clone().unwrap_or_default();
     let item_type = card.item_type.clone().unwrap_or_default();
     let action = match entry {
@@ -163,7 +220,7 @@ pub(super) fn key(state: &mut RendererState, input: KeyInput) -> bool {
     let Some(menu) = state.card_menu.as_mut() else {
         return false;
     };
-    let count = menu.entries.len();
+    let count = menu.target.len();
     let selected = menu.selected.unwrap_or(0);
     match input {
         KeyInput::Key(Key::Up) | KeyInput::Gamepad(GamepadButton::DPadUp) | KeyInput::Key(Key::ShiftTab) => {
@@ -223,7 +280,7 @@ pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: 
     let Some(menu) = state.card_menu.as_ref() else {
         return true;
     };
-    let layout = fluxa_ui::action_menu_layout(viewport, menu.entries.len(), menu.anchor);
+    let layout = fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor);
     let position = Pos2::new(position[0], position[1]);
     match layout.rows.iter().position(|row| row.contains(position)) {
         Some(index) => pick(state, index),

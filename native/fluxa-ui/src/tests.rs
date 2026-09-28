@@ -651,6 +651,7 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
         });
         let mut settings = SettingsModel::default();
         settings.active_section = 1;
+        settings.section_open = true;
         let settings_layout = draw_test_frame(viewport, |context, assets| {
             draw_settings(context, viewport, &settings, assets, None)
         });
@@ -683,7 +684,11 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
                                 .map(|section| section.rows.len())
                                 .sum::<usize>() as u64)
                 .count(),
-            SETTINGS_SECTIONS[settings.active_section].rows.len()
+            SETTINGS_SECTIONS[settings.active_section]
+                .rows
+                .iter()
+                .filter(|row| super::settings::row_applies(row.key, viewport))
+                .count()
         );
     }
 }
@@ -1201,7 +1206,7 @@ fn native_appearance_groups_are_separate_cards() {
     let height =
         super::settings::settings_card_height(viewport, metrics, &SETTINGS_SECTIONS[2], &settings);
     let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
-    let groups = super::settings::visible_groups(&settings);
+    let groups = super::settings::visible_groups(&settings, viewport);
     let cards = super::settings::group_cards(content, &groups, metrics);
     assert_eq!(cards.len(), 6);
     for pair in cards.windows(2) {
@@ -1219,7 +1224,8 @@ fn settings_search_spans_every_section() {
         search: "subtitle".to_owned(),
         ..Default::default()
     };
-    let groups = super::settings::visible_groups(&settings);
+    let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
+    let groups = super::settings::visible_groups(&settings, viewport);
     let rows: Vec<_> = groups
         .iter()
         .flat_map(|(_, rows)| rows)
