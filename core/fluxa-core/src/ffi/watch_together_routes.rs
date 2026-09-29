@@ -1,24 +1,23 @@
 use super::*;
-use crate::watch_together;
+use crate::player;
 
 pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
     let args = object(args_json)?;
     match method {
-        "watchTogetherCreate" => Ok(watch_together::WatchTogetherProtocol::create(field_str(
-            &args,
-            "displayName",
-        )?)),
-        "watchTogetherJoin" => Ok(watch_together::WatchTogetherProtocol::join(
+        "watchTogetherCreate" => Ok(player::watch_together::WatchTogetherProtocol::create(
+            field_str(&args, "displayName")?,
+        )),
+        "watchTogetherJoin" => Ok(player::watch_together::WatchTogetherProtocol::join(
             field_str(&args, "roomCode")?,
             field_str(&args, "displayName")?,
         )),
-        "watchTogetherLeave" => Ok(watch_together::WatchTogetherProtocol::leave()),
-        "watchTogetherPing" => Ok(watch_together::WatchTogetherProtocol::ping(
+        "watchTogetherLeave" => Ok(player::watch_together::WatchTogetherProtocol::leave()),
+        "watchTogetherPing" => Ok(player::watch_together::WatchTogetherProtocol::ping(
             field(&args, "clientTimeMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "clientTimeMs must be a number"))?,
         )),
-        "watchTogetherBuffering" => Ok(watch_together::WatchTogetherProtocol::buffering(
+        "watchTogetherBuffering" => Ok(player::watch_together::WatchTogetherProtocol::buffering(
             field(&args, "buffering")?
                 .as_bool()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "buffering must be a boolean"))?,
@@ -26,7 +25,9 @@ pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
         "watchTogetherContent" => {
             let content = serde_json::from_value(field(&args, "content")?.clone())
                 .map_err(|_| fail(ErrorKind::InvalidArgs, "content is invalid"))?;
-            Ok(watch_together::WatchTogetherProtocol::content(&content))
+            Ok(player::watch_together::WatchTogetherProtocol::content(
+                &content,
+            ))
         }
         "watchTogetherPlaybackState" => {
             let snapshot = serde_json::from_value(field(&args, "snapshot")?.clone())
@@ -38,14 +39,16 @@ pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                         .map_err(|_| fail(ErrorKind::InvalidArgs, "content is invalid"))
                 })
                 .transpose()?;
-            Ok(watch_together::WatchTogetherProtocol::playback_state(
-                &snapshot,
-                content.as_ref(),
-            ))
+            Ok(
+                player::watch_together::WatchTogetherProtocol::playback_state(
+                    &snapshot,
+                    content.as_ref(),
+                ),
+            )
         }
         "watchTogetherRoomCodeSpec" => Ok(json!({
-            "alphabet": watch_together::WatchTogetherProtocol::ROOM_CODE_ALPHABET,
-            "length": watch_together::WatchTogetherProtocol::ROOM_CODE_LENGTH,
+            "alphabet": player::watch_together::WatchTogetherProtocol::ROOM_CODE_ALPHABET,
+            "length": player::watch_together::WatchTogetherProtocol::ROOM_CODE_LENGTH,
         })),
         "watchTogetherDecode" => {
             let text = field_str(&args, "text")?;
@@ -61,13 +64,15 @@ pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                 Ok(value) => value,
                 Err(_) => serde_json::Value::Null,
             };
-            let decoded =
-                watch_together::WatchTogetherProtocol::decode(&value, local_content.as_ref());
+            let decoded = player::watch_together::WatchTogetherProtocol::decode(
+                &value,
+                local_content.as_ref(),
+            );
             serde_json::to_value(decoded)
                 .map_err(|_| fail(ErrorKind::Internal, "failed to encode decoded message"))
         }
         "watchTogetherDriftCorrection" => {
-            let correction = watch_together::WatchTogetherDriftPolicy::correction(
+            let correction = player::watch_together::WatchTogetherDriftPolicy::correction(
                 field(&args, "localPositionMs")?.as_i64().ok_or_else(|| {
                     fail(ErrorKind::InvalidArgs, "localPositionMs must be a number")
                 })?,
@@ -92,14 +97,14 @@ pub(super) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                     })?,
             );
             Ok(match correction {
-                watch_together::WatchTogetherCorrection::None => json!({"type": "none"}),
-                watch_together::WatchTogetherCorrection::Seek(position_ms) => {
+                player::watch_together::WatchTogetherCorrection::None => json!({"type": "none"}),
+                player::watch_together::WatchTogetherCorrection::Seek(position_ms) => {
                     json!({"type": "seek", "positionMs": position_ms})
                 }
-                watch_together::WatchTogetherCorrection::Speed(speed) => {
+                player::watch_together::WatchTogetherCorrection::Speed(speed) => {
                     json!({"type": "speed", "value": speed})
                 }
-                watch_together::WatchTogetherCorrection::ResetSpeed => {
+                player::watch_together::WatchTogetherCorrection::ResetSpeed => {
                     json!({"type": "resetSpeed"})
                 }
             })

@@ -684,7 +684,7 @@ mod tests {
         include_str!("version_policy_routes.rs"),
         include_str!("watch_together_routes.rs"),
         include_str!("watchlist_offline_routes.rs"),
-        include_str!("../local_media.rs"),
+        include_str!("../library/local_media.rs"),
     ];
 
     fn arm_methods(line: &str) -> Vec<&str> {

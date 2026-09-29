@@ -1,8 +1,4 @@
-use crate::stream_policy;
-use crate::{
-    cast_protocol, desktop_playback, device_resource, headless_engine, library_persistence,
-    oauth_plan, offline_download, player_policy, subtitle_sync,
-};
+use crate::{accounts, headless_engine, library, player, settings};
 
 pub struct FluxaCore;
 
@@ -14,12 +10,14 @@ fn guard<T>(default: T, f: impl FnOnce() -> T) -> T {
 
 impl FluxaCore {
     pub fn oauth_request_plan_json(request_json: &str) -> Option<String> {
-        guard(None, || oauth_plan::oauth_request_plan_json(request_json))
+        guard(None, || {
+            accounts::oauth::oauth_request_plan_json(request_json)
+        })
     }
 
     pub fn oauth_response_outcome(service: &str, operation: &str, status: u16) -> &'static str {
         guard("error", || {
-            oauth_plan::oauth_response_outcome(service, operation, status)
+            accounts::oauth::oauth_response_outcome(service, operation, status)
         })
     }
     pub fn create_headless_engine(initial_json: &str) -> u64 {
@@ -65,127 +63,131 @@ impl FluxaCore {
 
     pub fn stream_playback_info_json(stream_json: &str) -> Option<String> {
         guard(None, || {
-            stream_policy::stream_playback_info_json(stream_json)
+            player::stream_policy::stream_playback_info_json(stream_json)
         })
     }
 
     pub fn torrent_runtime_info_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            stream_policy::torrent_runtime_info_json(request_json)
+            player::stream_policy::torrent_runtime_info_json(request_json)
         })
     }
 
     pub fn stream_magnet_link_json(stream_json: &str) -> Option<String> {
-        guard(None, || stream_policy::stream_magnet_link_json(stream_json))
+        guard(None, || {
+            player::stream_policy::stream_magnet_link_json(stream_json)
+        })
     }
 
     pub fn torrent_cache_limit_mb(preset: Option<&str>, platform: &str) -> u64 {
         guard(5 * 1024, || {
-            device_resource::torrent_cache_limit_mb(preset, platform)
+            settings::device_resource::torrent_cache_limit_mb(preset, platform)
         })
     }
 
     pub fn torrent_sibling_subtitle_matches_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            stream_policy::torrent_sibling_subtitle_matches_json(request_json)
+            player::stream_policy::torrent_sibling_subtitle_matches_json(request_json)
         })
     }
 
     pub fn player_buffer_targets_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            player_policy::player_buffer_targets_json(request_json)
+            player::policy::player_buffer_targets_json(request_json)
         })
     }
 
     pub fn should_play_next_episode(has_next_episode: bool, auto_play: bool) -> bool {
         guard(false, || {
-            desktop_playback::should_play_next_episode(has_next_episode, auto_play)
+            player::desktop::should_play_next_episode(has_next_episode, auto_play)
         })
     }
 
     pub fn chapter_skip_segments_json(chapters_json: &str, duration_ms: i64) -> String {
         guard("[]".to_string(), || {
-            desktop_playback::chapter_skip_segments_json(chapters_json, duration_ms)
+            player::desktop::chapter_skip_segments_json(chapters_json, duration_ms)
         })
     }
 
     pub fn library_progress_entries_json(document_json: &str) -> String {
         guard("[]".to_string(), || {
-            library_persistence::progress_entries_json(document_json)
+            library::persistence::progress_entries_json(document_json)
         })
     }
 
     pub fn library_items_json(document_json: &str) -> String {
         guard("[]".to_string(), || {
-            library_persistence::library_items_json(document_json)
+            library::persistence::library_items_json(document_json)
         })
     }
 
     pub fn library_watched_video_ids_json(document_json: &str) -> String {
         guard("[]".to_string(), || {
-            library_persistence::watched_video_ids_json(document_json)
+            library::persistence::watched_video_ids_json(document_json)
         })
     }
 
     pub fn library_last_watched_entries_json(document_json: &str) -> String {
         guard("[]".to_string(), || {
-            library_persistence::last_watched_entries_json(document_json)
+            library::persistence::last_watched_entries_json(document_json)
         })
     }
 
     pub fn library_continue_watching_entries_json(document_json: &str) -> String {
         guard("[]".to_string(), || {
-            library_persistence::continue_watching_entries_json(document_json)
+            library::persistence::continue_watching_entries_json(document_json)
         })
     }
 
     pub fn subtitle_sync_estimate_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            subtitle_sync::estimate_subtitle_delay_json(request_json)
+            player::subtitle_sync::estimate_subtitle_delay_json(request_json)
         })
     }
 
     pub fn subtitle_cues_around_time_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            subtitle_sync::subtitle_cues_around_time_json(request_json)
+            player::subtitle_sync::subtitle_cues_around_time_json(request_json)
         })
     }
 
     pub fn subtitle_sync_capture_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            subtitle_sync::subtitle_sync_capture_json(request_json)
+            player::subtitle_sync::subtitle_sync_capture_json(request_json)
         })
     }
 
     pub fn subtitle_sync_apply_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            subtitle_sync::subtitle_sync_apply_json(request_json)
+            player::subtitle_sync::subtitle_sync_apply_json(request_json)
         })
     }
 
     pub fn subtitle_cue_list_json(request_json: &str) -> Option<String> {
-        guard(None, || subtitle_sync::subtitle_cue_list_json(request_json))
+        guard(None, || {
+            player::subtitle_sync::subtitle_cue_list_json(request_json)
+        })
     }
 
     pub fn offline_download_plan_json(request_json: &str) -> Option<String> {
         guard(None, || {
-            offline_download::offline_download_plan_json(request_json)
+            library::offline_download::offline_download_plan_json(request_json)
         })
     }
 
     pub fn validate_stream_url(url: &str) -> bool {
-        guard(false, || cast_protocol::validate_stream_url(url))
+        guard(false, || player::cast::validate_stream_url(url))
     }
 
     pub fn dlna_parse_device_description(xml: &str, base_url: &str) -> Option<String> {
         guard(None, || {
-            cast_protocol::dlna_parse_device_description_json(xml, base_url)
+            player::cast::dlna_parse_device_description_json(xml, base_url)
         })
     }
 
     pub fn dlna_soap_action_body(urn: &str, action: &str, args: &str) -> String {
         guard(String::new(), || {
-            cast_protocol::soap_action_body(urn, action, args)
+            player::cast::soap_action_body(urn, action, args)
         })
     }
 
@@ -195,29 +197,29 @@ impl FluxaCore {
         subtitle_url: Option<&str>,
     ) -> Option<String> {
         guard(None, || {
-            cast_protocol::dlna_set_av_transport_args(media_url, title, subtitle_url)
+            player::cast::dlna_set_av_transport_args(media_url, title, subtitle_url)
         })
     }
 
     pub fn dlna_seek_args(position_secs: f64) -> String {
         guard(String::new(), || {
-            cast_protocol::dlna_seek_args(position_secs)
+            player::cast::dlna_seek_args(position_secs)
         })
     }
 
     pub fn dlna_set_volume_args(level: f64) -> String {
-        guard(String::new(), || cast_protocol::dlna_set_volume_args(level))
+        guard(String::new(), || player::cast::dlna_set_volume_args(level))
     }
 
     pub fn dlna_resolve_loopback_url(stream_url: &str, lan_ip: &str) -> String {
         guard(stream_url.to_string(), || {
-            cast_protocol::resolve_loopback_url(stream_url, lan_ip)
+            player::cast::resolve_loopback_url(stream_url, lan_ip)
         })
     }
 
     pub fn chromecast_guess_content_type(media_url: &str) -> String {
         guard("video/mp4".to_string(), || {
-            cast_protocol::guess_cast_content_type(media_url).to_string()
+            player::cast::guess_cast_content_type(media_url).to_string()
         })
     }
 
@@ -228,77 +230,75 @@ impl FluxaCore {
         payload_utf8: &str,
     ) -> Vec<u8> {
         guard(Vec::new(), || {
-            cast_protocol::encode_cast_message(source_id, destination_id, namespace, payload_utf8)
+            player::cast::encode_cast_message(source_id, destination_id, namespace, payload_utf8)
         })
     }
 
     pub fn chromecast_decode_message(buf: &[u8]) -> Option<(String, String)> {
         guard(None, || {
-            cast_protocol::decode_cast_message(buf).map(|m| (m.namespace, m.payload_utf8))
+            player::cast::decode_cast_message(buf).map(|m| (m.namespace, m.payload_utf8))
         })
     }
 
-    pub const FCAST_OP_PLAY: u8 = cast_protocol::FCAST_OP_PLAY;
-    pub const FCAST_OP_PAUSE: u8 = cast_protocol::FCAST_OP_PAUSE;
-    pub const FCAST_OP_RESUME: u8 = cast_protocol::FCAST_OP_RESUME;
-    pub const FCAST_OP_STOP: u8 = cast_protocol::FCAST_OP_STOP;
-    pub const FCAST_OP_SEEK: u8 = cast_protocol::FCAST_OP_SEEK;
-    pub const FCAST_OP_PLAYBACK_UPDATE: u8 = cast_protocol::FCAST_OP_PLAYBACK_UPDATE;
-    pub const FCAST_OP_VOLUME_UPDATE: u8 = cast_protocol::FCAST_OP_VOLUME_UPDATE;
-    pub const FCAST_OP_SET_VOLUME: u8 = cast_protocol::FCAST_OP_SET_VOLUME;
-    pub const FCAST_OP_PLAYBACK_ERROR: u8 = cast_protocol::FCAST_OP_PLAYBACK_ERROR;
-    pub const FCAST_OP_SET_SPEED: u8 = cast_protocol::FCAST_OP_SET_SPEED;
-    pub const FCAST_OP_VERSION: u8 = cast_protocol::FCAST_OP_VERSION;
-    pub const FCAST_OP_PING: u8 = cast_protocol::FCAST_OP_PING;
-    pub const FCAST_OP_PONG: u8 = cast_protocol::FCAST_OP_PONG;
-    pub const FCAST_MAX_MESSAGE_BYTES: usize = cast_protocol::FCAST_MAX_MESSAGE_BYTES;
+    pub const FCAST_OP_PLAY: u8 = player::cast::FCAST_OP_PLAY;
+    pub const FCAST_OP_PAUSE: u8 = player::cast::FCAST_OP_PAUSE;
+    pub const FCAST_OP_RESUME: u8 = player::cast::FCAST_OP_RESUME;
+    pub const FCAST_OP_STOP: u8 = player::cast::FCAST_OP_STOP;
+    pub const FCAST_OP_SEEK: u8 = player::cast::FCAST_OP_SEEK;
+    pub const FCAST_OP_PLAYBACK_UPDATE: u8 = player::cast::FCAST_OP_PLAYBACK_UPDATE;
+    pub const FCAST_OP_VOLUME_UPDATE: u8 = player::cast::FCAST_OP_VOLUME_UPDATE;
+    pub const FCAST_OP_SET_VOLUME: u8 = player::cast::FCAST_OP_SET_VOLUME;
+    pub const FCAST_OP_PLAYBACK_ERROR: u8 = player::cast::FCAST_OP_PLAYBACK_ERROR;
+    pub const FCAST_OP_SET_SPEED: u8 = player::cast::FCAST_OP_SET_SPEED;
+    pub const FCAST_OP_VERSION: u8 = player::cast::FCAST_OP_VERSION;
+    pub const FCAST_OP_PING: u8 = player::cast::FCAST_OP_PING;
+    pub const FCAST_OP_PONG: u8 = player::cast::FCAST_OP_PONG;
+    pub const FCAST_MAX_MESSAGE_BYTES: usize = player::cast::FCAST_MAX_MESSAGE_BYTES;
 
     pub fn fcast_encode_message(opcode: u8, body_json: &str) -> Option<Vec<u8>> {
         guard(None, || {
-            cast_protocol::fcast_encode_message(opcode, body_json)
+            player::cast::fcast_encode_message(opcode, body_json)
         })
     }
 
     pub fn fcast_decode_message(buf: &[u8]) -> Option<(u8, String)> {
-        guard(None, || cast_protocol::fcast_decode_message(buf))
+        guard(None, || player::cast::fcast_decode_message(buf))
     }
 
     pub fn fcast_play_body(media_url: &str, resume_position_secs: f64) -> Option<String> {
         guard(None, || {
-            cast_protocol::fcast_play_body(media_url, resume_position_secs)
+            player::cast::fcast_play_body(media_url, resume_position_secs)
         })
     }
 
     pub fn fcast_seek_body(position_secs: f64) -> String {
         guard(String::new(), || {
-            cast_protocol::fcast_seek_body(position_secs)
+            player::cast::fcast_seek_body(position_secs)
         })
     }
 
     pub fn fcast_set_volume_body(level: f64) -> String {
-        guard(String::new(), || {
-            cast_protocol::fcast_set_volume_body(level)
-        })
+        guard(String::new(), || player::cast::fcast_set_volume_body(level))
     }
 
     pub fn fcast_set_speed_body(speed: f64) -> String {
-        guard(String::new(), || cast_protocol::fcast_set_speed_body(speed))
+        guard(String::new(), || player::cast::fcast_set_speed_body(speed))
     }
 
     pub fn fcast_version_body(version: u32) -> String {
-        guard(String::new(), || cast_protocol::fcast_version_body(version))
+        guard(String::new(), || player::cast::fcast_version_body(version))
     }
 
     pub fn fcast_playback_update(body_json: &str) -> Option<(u8, f64, f64, f64)> {
-        guard(None, || cast_protocol::fcast_playback_update(body_json))
+        guard(None, || player::cast::fcast_playback_update(body_json))
     }
 
     pub fn fcast_error_message(body_json: &str) -> Option<String> {
-        guard(None, || cast_protocol::fcast_error_message(body_json))
+        guard(None, || player::cast::fcast_error_message(body_json))
     }
 
     pub fn roku_device_name(xml: &str) -> Option<String> {
-        guard(None, || cast_protocol::roku_device_name(xml))
+        guard(None, || player::cast::roku_device_name(xml))
     }
 
     pub fn roku_launch_url(
@@ -307,16 +307,16 @@ impl FluxaCore {
         subtitle_url: Option<&str>,
     ) -> Option<String> {
         guard(None, || {
-            cast_protocol::roku_launch_url(host, media_url, subtitle_url)
+            player::cast::roku_launch_url(host, media_url, subtitle_url)
         })
     }
 
     pub fn airplay_volume_db(level: f64) -> f64 {
-        guard(-30.0, || cast_protocol::airplay_volume_db(level))
+        guard(-30.0, || player::cast::airplay_volume_db(level))
     }
 
     pub fn airplay_play_body(media_url: &str) -> Option<String> {
-        guard(None, || cast_protocol::airplay_play_body(media_url))
+        guard(None, || player::cast::airplay_play_body(media_url))
     }
 }
 

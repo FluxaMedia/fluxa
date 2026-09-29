@@ -3,7 +3,7 @@ use crate::headless_engine::HeadlessEngine;
 use crate::headless_engine::home;
 use crate::headless_engine::library;
 use crate::headless_engine::state::GenerationKey;
-use crate::player_flow::{self, PlayerFlowAction};
+use crate::player::flow::{self, PlayerFlowAction};
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -186,7 +186,7 @@ pub(in crate::headless_engine) fn dispatch_load_streams(
         initial_stream_index,
     };
     let mut flow_state = engine.state.player.to_flow_state();
-    let effects = player_flow::dispatch(&mut flow_state, action);
+    let effects = flow::dispatch(&mut flow_state, action);
     *engine.state.player = PlayerState::from_flow_state(flow_state);
 
     let pending = PendingStreamLoad {
@@ -368,7 +368,7 @@ pub(in crate::headless_engine) fn dispatch_streams_loaded(
         preferred_binge_group,
     };
     let mut flow_state = engine.state.player.to_flow_state();
-    let _ = player_flow::dispatch(&mut flow_state, action);
+    let _ = flow::dispatch(&mut flow_state, action);
     *engine.state.player = PlayerState::from_flow_state(flow_state);
     engine.state.player.generation = generation;
     vec![]
@@ -382,7 +382,7 @@ pub(in crate::headless_engine) fn dispatch_streams_failed(
         error_code: err_code,
     };
     let mut flow_state = engine.state.player.to_flow_state();
-    let _ = player_flow::dispatch(&mut flow_state, action);
+    let _ = flow::dispatch(&mut flow_state, action);
     *engine.state.player = PlayerState::from_flow_state(flow_state);
     vec![]
 }

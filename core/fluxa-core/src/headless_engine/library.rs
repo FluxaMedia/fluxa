@@ -393,7 +393,7 @@ pub(super) fn complete(
                 engine.state.library.is_loading = false;
                 if result.status.is_ok() {
                     let library_result = serde_json::from_str::<Value>(
-                        &crate::library_state::normalize_library_read_result_json(
+                        &crate::library::state::normalize_library_read_result_json(
                             &result.value.to_string(),
                         ),
                     )

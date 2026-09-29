@@ -119,7 +119,7 @@ fn add_continue_watching_episode_labels(mut items: Value) -> Value {
         return items;
     };
     for item in items.iter_mut() {
-        let label = crate::library_state::format_episode_line_json(
+        let label = crate::library::state::format_episode_line_json(
             item.get("lastEpisodeName").and_then(Value::as_str),
             item.get("lastEpisodeSeason").and_then(Value::as_i64),
             item.get("lastEpisodeNumber").and_then(Value::as_i64),

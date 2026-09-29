@@ -2,31 +2,33 @@ use super::*;
 
 pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
     match method {
-        "contentImdbId" => Ok(json!(content_identity::imdb_id(&arg_str(args_json, "id")?))),
-        "contentBaseId" => Ok(Value::String(content_identity::base_content_id(&arg_str(
+        "contentImdbId" => Ok(json!(catalog::identity::imdb_id(&arg_str(
+            args_json, "id"
+        )?))),
+        "contentBaseId" => Ok(Value::String(catalog::identity::base_content_id(&arg_str(
             args_json, "id",
         )?))),
         "normalizeSeriesLookupId" => Ok(Value::String(
-            content_identity::normalize_series_lookup_id(&arg_str(args_json, "id")?),
+            catalog::identity::normalize_series_lookup_id(&arg_str(args_json, "id")?),
         )),
-        "isTmdbLikeContentId" => Ok(json!(content_identity::is_tmdb_like_content_id(&arg_str(
+        "isTmdbLikeContentId" => Ok(json!(catalog::identity::is_tmdb_like_content_id(&arg_str(
             args_json, "id"
         )?))),
-        "tmdbNumericId" => Ok(json!(content_identity::tmdb_numeric_id(&arg_str(
+        "tmdbNumericId" => Ok(json!(catalog::identity::tmdb_numeric_id(&arg_str(
             args_json, "id"
         )?))),
-        "parseVideoId" => into_json(content_identity::parse_video_id_json(&arg_str(
+        "parseVideoId" => into_json(catalog::identity::parse_video_id_json(&arg_str(
             args_json, "id",
         )?)),
-        "buildTraktIds" => opt_json(content_identity::build_trakt_ids_json(&arg_str(
+        "buildTraktIds" => opt_json(catalog::identity::build_trakt_ids_json(&arg_str(
             args_json, "id",
         )?)),
         "playbackIntroLookupContentId" => Ok(Value::String(
-            content_identity::playback_intro_lookup_content_id(&arg_str(args_json, "id")?),
+            catalog::identity::playback_intro_lookup_content_id(&arg_str(args_json, "id")?),
         )),
         "effectiveMetadataFeedSelection" => {
             let args = object(args_json)?;
-            opt_json(content_identity::effective_metadata_feed_selection_json(
+            opt_json(catalog::identity::effective_metadata_feed_selection_json(
                 field_str(&args, "selectedKeys")?,
                 field_str(&args, "availableKeys")?,
             ))
@@ -37,7 +39,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "maxEnabled must be a number"))?
                 as i32;
-            opt_json(content_identity::toggle_metadata_feed_limited_json(
+            opt_json(catalog::identity::toggle_metadata_feed_limited_json(
                 field_str(&args, "selectedKeys")?,
                 field_str(&args, "availableKeys")?,
                 field_str(&args, "key")?,
@@ -50,7 +52,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
             let current_series_lookup_id =
                 args.get("currentSeriesLookupId").and_then(Value::as_str);
             let canonical_base_id = args.get("canonicalBaseId").and_then(Value::as_str);
-            Ok(json!(content_identity::stream_request_ids(
+            Ok(json!(catalog::identity::stream_request_ids(
                 field_str(&args, "contentType")?,
                 field_str(&args, "id")?,
                 detail_id,
@@ -68,7 +70,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "episode must be a number"))?
                 as i32;
-            Ok(json!(content_identity::text_matches_episode(
+            Ok(json!(catalog::identity::text_matches_episode(
                 field_str(&args, "text")?,
                 season,
                 episode,
@@ -98,39 +100,39 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
                     .unwrap_or("")
                     .to_string(),
             ];
-            Ok(json!(content_identity::stream_matches_episode(
+            Ok(json!(catalog::identity::stream_matches_episode(
                 field_str(&args, "videoId")?,
                 &fields,
             )))
         }
-        "contentTraktKeysBatch" => opt_json(content_identity::content_trakt_keys_batch(&arg_str(
+        "contentTraktKeysBatch" => opt_json(catalog::identity::content_trakt_keys_batch(&arg_str(
             args_json,
             "metasJson",
         )?)),
-        "contentWatchedKeysBatch" => opt_json(content_identity::content_watched_keys_batch(
+        "contentWatchedKeysBatch" => opt_json(catalog::identity::content_watched_keys_batch(
             &arg_str(args_json, "metasJson")?,
         )),
-        "contentMergeKeys" => opt_json(content_identity::content_keys_json(
+        "contentMergeKeys" => opt_json(catalog::identity::content_keys_json(
             &arg_str(args_json, "metaJson")?,
             false,
         )),
         "episodeFilenameCandidate" => {
             let args = object(args_json)?;
-            opt_json(content_identity::episode_filename_candidate(
+            opt_json(catalog::identity::episode_filename_candidate(
                 field_str(&args, "streamJson")?,
                 field_str(&args, "videoId")?,
             ))
         }
         "streamDiscoveryCacheKey" => {
-            opt_str(content_identity::stream_discovery_cache_key(args_json))
+            opt_str(catalog::identity::stream_discovery_cache_key(args_json))
         }
         "discoverCatalogCacheKey" => {
-            opt_str(content_identity::discover_catalog_cache_key(args_json))
+            opt_str(catalog::identity::discover_catalog_cache_key(args_json))
         }
-        "stableFeedPart" => Ok(Value::String(content_identity::stable_feed_part(&arg_str(
-            args_json, "value",
-        )?))),
-        "cs3PluginFeedKey" => Ok(Value::String(content_identity::cs3_plugin_feed_key(
+        "stableFeedPart" => Ok(Value::String(catalog::identity::stable_feed_part(
+            &arg_str(args_json, "value")?,
+        ))),
+        "cs3PluginFeedKey" => Ok(Value::String(catalog::identity::cs3_plugin_feed_key(
             &arg_str(args_json, "apiName")?,
         ))),
         "cs3CatalogFeedKey" => {
@@ -138,41 +140,41 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
             let catalog_index = field(&args, "catalogIndex")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "catalogIndex must be a number"))?;
-            Ok(Value::String(content_identity::cs3_catalog_feed_key(
+            Ok(Value::String(catalog::identity::cs3_catalog_feed_key(
                 field_str(&args, "pluginName")?,
                 field_str(&args, "catalogName")?,
                 catalog_index as i32,
             )))
         }
         "cs3MetadataFeedOptions" => {
-            opt_json(content_identity::cs3_metadata_feed_options_json(args_json))
+            opt_json(catalog::identity::cs3_metadata_feed_options_json(args_json))
         }
-        "shortenSynopsis" => Ok(Value::String(content_identity::shorten_synopsis(&arg_str(
-            args_json, "text",
-        )?))),
-        "normalizeContentType" => Ok(json!(content_identity::normalize_content_type(&arg_str(
+        "shortenSynopsis" => Ok(Value::String(catalog::identity::shorten_synopsis(
+            &arg_str(args_json, "text")?,
+        ))),
+        "normalizeContentType" => Ok(json!(catalog::identity::normalize_content_type(&arg_str(
             args_json, "value",
         )?))),
-        "isSeriesContentType" => Ok(json!(content_identity::is_series_content_type(&arg_str(
+        "isSeriesContentType" => Ok(json!(catalog::identity::is_series_content_type(&arg_str(
             args_json, "value"
         )?,))),
-        "normalizeCatalogType" => Ok(Value::String(content_identity::normalize_catalog_type(
+        "normalizeCatalogType" => Ok(Value::String(catalog::identity::normalize_catalog_type(
             &arg_str(args_json, "value")?,
         ))),
-        "contentMatchesFilter" => Ok(json!(content_identity::content_matches_filter(
+        "contentMatchesFilter" => Ok(json!(catalog::identity::content_matches_filter(
             &arg_str(args_json, "contentType")?,
             &arg_str(args_json, "filter")?,
         ))),
         "releaseDateUpcoming" => {
             let args = object(args_json)?;
-            Ok(json!(crate::release_date::is_upcoming(
+            Ok(json!(crate::library::release_date::is_upcoming(
                 field_str(&args, "released")?,
                 field_str(&args, "todayIso")?,
             )))
         }
         "releaseDateIsReleased" => {
             let args = object(args_json)?;
-            Ok(json!(crate::release_date::is_released(
+            Ok(json!(crate::library::release_date::is_released(
                 field_str(&args, "released")?,
                 field_str(&args, "todayIso")?,
             )))
@@ -182,16 +184,16 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
             let window_days = field(&args, "windowDays")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "windowDays must be a number"))?;
-            Ok(json!(crate::release_date::is_recently_released(
+            Ok(json!(crate::library::release_date::is_recently_released(
                 field_str(&args, "released")?,
                 field_str(&args, "todayIso")?,
                 window_days,
             )))
         }
-        "parseExtraArgs" => opt_json(content_identity::parse_extra_args_json(&arg_str(
+        "parseExtraArgs" => opt_json(catalog::identity::parse_extra_args_json(&arg_str(
             args_json, "extra",
         )?)),
-        "providerSearchTerms" => Ok(json!(content_identity::provider_search_terms(&arg_str(
+        "providerSearchTerms" => Ok(json!(catalog::identity::provider_search_terms(&arg_str(
             args_json, "provider",
         )?))),
         "filterDiscoverResults" => {
@@ -199,7 +201,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
             let year = args.get("year").and_then(Value::as_str);
             let rating = args.get("rating").and_then(Value::as_f64).map(|v| v as f32);
             let region = args.get("region").and_then(Value::as_str);
-            opt_json(content_identity::filter_discover_results_json(
+            opt_json(catalog::identity::filter_discover_results_json(
                 field_str(&args, "itemsJson")?,
                 year,
                 rating,
@@ -209,7 +211,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         "directPlaybackPlan" => {
             let args = object(args_json)?;
             let detail_json = args.get("detailJson").and_then(Value::as_str);
-            opt_json(content_identity::direct_playback_plan_json(
+            opt_json(catalog::identity::direct_playback_plan_json(
                 field_str(&args, "metaJson")?,
                 detail_json,
                 field_str(&args, "todayIso")?,
@@ -218,7 +220,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         "streamDiscoveryEpisodeContext" => {
             let args = object(args_json)?;
             let detail_json = args.get("detailJson").and_then(Value::as_str);
-            opt_json(content_identity::stream_discovery_episode_context_json(
+            opt_json(catalog::identity::stream_discovery_episode_context_json(
                 field_str(&args, "contentType")?,
                 field_str(&args, "requestId")?,
                 detail_json,
@@ -227,7 +229,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         }
         "parseEpisodeLocator" => {
             let raw = arg_str(args_json, "input")?;
-            match content_identity::parse_episode_locator(&raw) {
+            match catalog::identity::parse_episode_locator(&raw) {
                 Some((base_id, season, episode)) => Ok(json!({
                     "baseId": base_id,
                     "season": season,
@@ -239,7 +241,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         "playbackStreamRequestIds" => {
             let args = object(args_json)?;
             let detail_id = args.get("detailId").and_then(Value::as_str);
-            opt_json(content_identity::playback_stream_request_ids_json(
+            opt_json(catalog::identity::playback_stream_request_ids_json(
                 field_str(&args, "contentType")?,
                 field_str(&args, "id")?,
                 detail_id,
@@ -247,7 +249,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         }
         "toggleMetadataFeed" => {
             let args = object(args_json)?;
-            opt_json(content_identity::toggle_metadata_feed_json(
+            opt_json(catalog::identity::toggle_metadata_feed_json(
                 field_str(&args, "selectedKeys")?,
                 field_str(&args, "availableKeys")?,
                 field_str(&args, "key")?,
@@ -258,7 +260,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
             let enabled = field(&args, "enabled")?
                 .as_bool()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "enabled must be a bool"))?;
-            opt_json(content_identity::set_metadata_feed_group_enabled_json(
+            opt_json(catalog::identity::set_metadata_feed_group_enabled_json(
                 field_str(&args, "selectedKeys")?,
                 field_str(&args, "availableKeys")?,
                 field_str(&args, "groupKeys")?,
@@ -267,7 +269,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
         }
         "orderedMetadataFeedKeys" => {
             let args = object(args_json)?;
-            opt_json(content_identity::ordered_metadata_feed_keys(
+            opt_json(catalog::identity::ordered_metadata_feed_keys(
                 field_str(&args, "optionKeys")?,
                 field_str(&args, "order")?,
             ))
@@ -278,7 +280,7 @@ pub(super) fn route_content_identity(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "delta must be a number"))?
                 as i32;
-            opt_json(content_identity::move_metadata_feed_order_json(
+            opt_json(catalog::identity::move_metadata_feed_order_json(
                 field_str(&args, "optionKeys")?,
                 field_str(&args, "currentOrder")?,
                 field_str(&args, "key")?,

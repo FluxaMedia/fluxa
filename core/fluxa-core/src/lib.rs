@@ -8,72 +8,23 @@
     )
 )]
 
+mod accounts;
 mod action_contract;
-mod addon_protocol;
-mod addon_resource;
-mod addon_store;
-mod addon_uptime;
-mod anime_detection;
+pub mod addons;
 pub mod app_icon;
 mod app_state;
-mod calendar_plan;
-mod cast_protocol;
-mod checksum_policy;
+mod catalog;
 mod constants;
-mod content_identity;
-mod content_warnings;
-mod continue_watching;
 pub mod core_api;
 pub mod core_contract;
 mod core_error;
-mod data_policy;
-mod desktop_playback;
-mod device_auth;
-mod device_resource;
-mod discord_presence;
-mod discovery_plan;
-pub mod dolby_vision_plan;
-mod external_sync;
-mod fluxa_sync;
-mod headless_adapter_plan;
 mod headless_engine;
-mod home_ranking;
-mod integration_settings;
-mod intro_segments;
-mod library_persistence;
-mod library_state;
-mod local_media;
+mod home;
+mod library;
 pub mod log_sink;
-mod mdblist_plan;
-mod nuvio_pin;
-mod nuvio_sync;
-mod oauth_plan;
-mod offline_download;
-mod platform_plan;
-mod player_flow;
-mod player_policy;
-mod player_scrobble;
-pub mod plugin_network_policy;
-mod plugins;
-mod profile_avatar_pack;
-mod profile_contract;
-mod profile_prefs;
-mod provider_library;
-mod publicmetadb_plan;
-mod recommendation_policy;
-mod release_date;
-mod repository_flow;
-mod runtime_label;
-mod search_plan;
-mod settings_contract;
-mod stream_badges;
-mod stream_policy;
-mod subtitle_sync;
-mod tmdb_plan;
-mod trailer_subtitles;
-mod version_policy;
-pub mod watch_together;
-mod watchlist_plan;
+pub mod player;
+mod profile;
+mod settings;
 
 pub mod env;
 pub mod ffi;
@@ -84,7 +35,7 @@ pub mod bindings;
 
 pub use core_api::FluxaCore;
 pub use headless_engine::{Engine, PageUpdate, Update};
-pub use home_ranking::home_hero_plan;
+pub use home::ranking::home_hero_plan;
 
 // Re-exports internal parsing functions for the `fuzz/` crate only. These stay
 // pub(crate) for real consumers — this exists purely so libFuzzer can call
@@ -92,8 +43,8 @@ pub use home_ranking::home_hero_plan;
 // which would otherwise swallow the exact panics fuzzing is trying to find.
 #[cfg(feature = "fuzzing")]
 pub mod fuzz_targets {
-    pub use crate::addon_protocol::parse_manifest;
-    pub use crate::content_identity::{
+    pub use crate::addons::protocol::parse_manifest;
+    pub use crate::catalog::identity::{
         contains_compact_episode, contains_spaced_episode, parse_episode_locator,
         percent_decode_component,
     };
@@ -105,12 +56,12 @@ pub mod fuzz_targets {
 
 #[cfg(test)]
 mod tests {
-    use crate::addon_protocol::{
+    use crate::addons::protocol::{
         catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra,
     };
-    use crate::content_identity::stream_request_ids;
-    use crate::home_ranking::optimize_home_rows_json;
-    use crate::stream_policy::{
+    use crate::catalog::identity::stream_request_ids;
+    use crate::home::ranking::optimize_home_rows_json;
+    use crate::player::stream_policy::{
         stream_playback_info_json, stream_request_headers_json, stream_request_referer,
         torrent_runtime_info_json, torrent_status_info_json,
     };

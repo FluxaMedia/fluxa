@@ -462,7 +462,7 @@ pub(super) fn complete(
             if generation == engine.state.runtime.get(GenerationKey::Detail) {
                 engine.state.detail.is_loading = false;
                 if result.status.is_ok() {
-                    let meta = crate::content_identity::split_channel_schedule(
+                    let meta = crate::catalog::identity::split_channel_schedule(
                         result.value.get("meta").cloned().unwrap_or(Value::Null),
                     );
                     engine.state.detail.trailers = normalize_meta_trailers(&meta);

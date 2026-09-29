@@ -3,14 +3,14 @@ use super::*;
 pub(super) fn route_resource_plan(method: &str, args_json: &str) -> Outcome {
     match method {
         // Repository / resource flow — args_json IS the request object
-        "addonResourceRequestPlan" => {
-            opt_json(repository_flow::addon_resource_request_plan_json(args_json))
-        }
-        "repositoryMetaDetailPlan" => {
-            opt_json(repository_flow::repository_meta_detail_plan_json(args_json))
-        }
+        "addonResourceRequestPlan" => opt_json(
+            addons::repository::addon_resource_request_plan_json(args_json),
+        ),
+        "repositoryMetaDetailPlan" => opt_json(
+            addons::repository::repository_meta_detail_plan_json(args_json),
+        ),
         "manifestFetchDecision" => {
-            opt_json(repository_flow::manifest_fetch_decision_json(args_json))
+            opt_json(addons::repository::manifest_fetch_decision_json(args_json))
         }
         "repositorySeasonVideos" => {
             let args = object(args_json)?;
@@ -18,45 +18,47 @@ pub(super) fn route_resource_plan(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "seasonNumber must be a number"))?
                 as i32;
-            into_json(repository_flow::repository_season_videos_json(
+            into_json(addons::repository::repository_season_videos_json(
                 field_str(&args, "metaDetailJson")?,
                 season_number,
             ))
         }
         "addonStreamsWithProvider" => {
             let args = object(args_json)?;
-            into_json(repository_flow::addon_streams_with_provider_json(
+            into_json(addons::repository::addon_streams_with_provider_json(
                 field_str(&args, "streamsJson")?,
                 field_str(&args, "addonName")?,
             ))
         }
-        "resourceFetchPlan" => opt_json(platform_plan::resource_fetch_plan_json(args_json)),
+        "resourceFetchPlan" => opt_json(addons::platform::resource_fetch_plan_json(args_json)),
         "resourceFetchExecutionPolicy" => opt_json(
-            platform_plan::resource_fetch_execution_policy_json(args_json),
+            addons::platform::resource_fetch_execution_policy_json(args_json),
         ),
-        "resourceParsePlan" => opt_json(platform_plan::resource_parse_plan_json(args_json)),
+        "resourceParsePlan" => opt_json(addons::platform::resource_parse_plan_json(args_json)),
 
         // Platform plan — args_json IS the request object
-        "playbackPreparePlan" => opt_json(platform_plan::playback_prepare_plan_json(args_json)),
+        "playbackPreparePlan" => opt_json(addons::platform::playback_prepare_plan_json(args_json)),
         "libraryLocalStatePlan" => {
-            opt_json(platform_plan::library_local_state_plan_json(args_json))
+            opt_json(addons::platform::library_local_state_plan_json(args_json))
         }
-        "preferencesSchema" => into_json(platform_plan::preferences_schema_json()),
-        "applyPreferenceUpdate" => opt_json(platform_plan::apply_preference_update_json(args_json)),
+        "preferencesSchema" => into_json(addons::platform::preferences_schema_json()),
+        "applyPreferenceUpdate" => {
+            opt_json(addons::platform::apply_preference_update_json(args_json))
+        }
         "integrationSettingsPlan" => opt_json(
-            integration_settings::integration_settings_plan_json(args_json),
+            accounts::integrations::integration_settings_plan_json(args_json),
         ),
         "addonCollectionMutationPlan" => opt_json(
-            platform_plan::addon_collection_mutation_plan_json(args_json),
+            addons::platform::addon_collection_mutation_plan_json(args_json),
         ),
-        "detailEpisodePlan" => opt_json(platform_plan::detail_episode_plan_json(args_json)),
-        "seasonWatchedPlan" => opt_json(platform_plan::season_watched_plan_json(args_json)),
+        "detailEpisodePlan" => opt_json(addons::platform::detail_episode_plan_json(args_json)),
+        "seasonWatchedPlan" => opt_json(addons::platform::season_watched_plan_json(args_json)),
         "markSeasonsActionPlan" => {
-            opt_json(platform_plan::mark_seasons_action_plan_json(args_json))
+            opt_json(addons::platform::mark_seasons_action_plan_json(args_json))
         }
         "resourceKindToResource" => {
             let args = object(args_json)?;
-            Ok(Value::String(platform_plan::resource_kind_to_resource(
+            Ok(Value::String(addons::platform::resource_kind_to_resource(
                 field_str(&args, "kind")?,
                 args.get("requestResource").and_then(Value::as_str),
                 args.get("itemResource").and_then(Value::as_str),
@@ -74,7 +76,7 @@ pub(super) fn route_resource_plan(method: &str, args_json: &str) -> Outcome {
                 .and_then(Value::as_str)
                 .map(str::to_string);
             let season = args.get("season").and_then(Value::as_i64);
-            into_json(platform_plan::parse_and_plan_addon_resource_json(
+            into_json(addons::platform::parse_and_plan_addon_resource_json(
                 field_str(&args, "resource")?,
                 field_str(&args, "url")?,
                 status_code,

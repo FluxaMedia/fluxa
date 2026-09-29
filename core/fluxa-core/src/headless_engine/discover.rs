@@ -404,14 +404,14 @@ pub(super) fn complete(
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
                     let addons_json = addons.to_string();
-                    let catalogs = crate::search_plan::discover_catalog_options_json(
+                    let catalogs = crate::catalog::search::discover_catalog_options_json(
                         &addons_json,
                         &engine.state.discover.content_type,
                     )
                     .and_then(|raw| serde_json::from_str(&raw).ok())
                     .unwrap_or_else(|| serde_json::json!([]));
                     let content_types =
-                        crate::search_plan::discover_content_types_json(&addons_json)
+                        crate::catalog::search::discover_content_types_json(&addons_json)
                             .and_then(|raw| serde_json::from_str(&raw).ok())
                             .unwrap_or_else(|| serde_json::json!(["movie", "series"]));
                     engine.state.discover.catalogs = catalogs.clone();

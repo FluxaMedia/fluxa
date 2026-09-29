@@ -9,7 +9,7 @@ pub(super) fn route_addon_resource(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "statusCode must be a number"))?
                 as i32;
-            into_json(addon_resource::parse_addon_resource_result_json(
+            into_json(addons::resource::parse_addon_resource_result_json(
                 field_str(&args, "resource")?,
                 field_str(&args, "url")?,
                 status_code,
@@ -23,7 +23,7 @@ pub(super) fn route_addon_resource(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "statusCode must be a number"))?
                 as i32;
-            into_json(addon_resource::parse_addon_stream_result_json(
+            into_json(addons::resource::parse_addon_stream_result_json(
                 field_str(&args, "url")?,
                 status_code,
                 body.as_deref(),
@@ -32,17 +32,17 @@ pub(super) fn route_addon_resource(method: &str, args_json: &str) -> Outcome {
         }
         "normalizeAddonSubtitles" => {
             let args = object(args_json)?;
-            into_json(addon_resource::normalize_addon_subtitles_json(
+            into_json(addons::resource::normalize_addon_subtitles_json(
                 field_str(&args, "subtitles")?,
                 field_str(&args, "resourceUrl")?,
             ))
         }
-        "subtitleTracks" => opt_json(addon_resource::subtitle_tracks_json(args_json)),
-        "parseCatalogItems" => opt_json(addon_resource::parse_catalog_items_json(
+        "subtitleTracks" => opt_json(addons::resource::subtitle_tracks_json(args_json)),
+        "parseCatalogItems" => opt_json(addons::resource::parse_catalog_items_json(
             &arg_str(args_json, "body")?,
             &arg_str(args_json, "fallbackType")?,
         )),
-        "parseDirectStreams" => opt_json(addon_resource::parse_direct_streams_json(&arg_str(
+        "parseDirectStreams" => opt_json(addons::resource::parse_direct_streams_json(&arg_str(
             args_json, "body",
         )?)),
         _ => Err(unknown_method()),

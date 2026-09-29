@@ -1,7 +1,7 @@
 use crate::headless_engine::HeadlessEngine;
 use crate::headless_engine::state::GenerationKey;
+use crate::player;
 use crate::runtime::{EffectEnvelope, EffectKind};
-use crate::stream_policy;
 use serde::Serialize;
 use serde_json::Value;
 
@@ -60,7 +60,7 @@ pub(in crate::headless_engine) fn dispatch_resolve_playback(
     engine.state.player.is_buffering = true;
     engine.state.player.is_video_rendered = false;
     engine.state.player.player_error = Value::Null;
-    if stream_policy::is_torrent_playback_url(&url) {
+    if player::stream_policy::is_torrent_playback_url(&url) {
         let stream_value = stream.unwrap_or(Value::Null);
         let file_idx = stream_value.get("fileIdx").and_then(Value::as_i64);
         let preferred_filename = stream_value

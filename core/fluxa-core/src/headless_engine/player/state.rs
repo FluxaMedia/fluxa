@@ -1,4 +1,4 @@
-use crate::player_flow::PlayerFlowState;
+use crate::player::flow::PlayerFlowState;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

@@ -3,9 +3,11 @@ use super::*;
 pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
     match method {
         "playerScrobbleLifecycleAction" => {
-            opt_json(player_scrobble::lifecycle_action_json(args_json))
+            opt_json(player::scrobble::lifecycle_action_json(args_json))
         }
-        "scrobbleMediaContext" => opt_json(player_scrobble::scrobble_media_context_json(args_json)),
+        "scrobbleMediaContext" => {
+            opt_json(player::scrobble::scrobble_media_context_json(args_json))
+        }
         "scrobbleCloseAction" => {
             let args = object(args_json)?;
             let time_pos = field(&args, "timePosSec")?
@@ -15,7 +17,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "durationSec must be a number"))?;
             Ok(Value::String(
-                player_scrobble::scrobble_close_action(time_pos, duration).to_string(),
+                player::scrobble::scrobble_close_action(time_pos, duration).to_string(),
             ))
         }
         "playerProgressPercent" => {
@@ -26,7 +28,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let duration_ms = field(&args, "durationMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "durationMs must be a number"))?;
-            Ok(json!(player_scrobble::progress_percent(
+            Ok(json!(player::scrobble::progress_percent(
                 position_ms,
                 duration_ms,
             )))
@@ -44,7 +46,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progress must be a number"))?
                 as f32;
-            Ok(json!(player_scrobble::should_send_start(
+            Ok(json!(player::scrobble::should_send_start(
                 token,
                 is_playing,
                 has_scrobbled_start,
@@ -60,7 +62,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progress must be a number"))?
                 as f32;
-            Ok(json!(player_scrobble::should_mark_stopped(
+            Ok(json!(player::scrobble::should_mark_stopped(
                 has_scrobbled_stop,
                 progress,
             )))
@@ -77,7 +79,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let has_scrobbled_stop = field(&args, "hasScrobbledStop")?
                 .as_bool()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "hasScrobbledStop must be bool"))?;
-            Ok(json!(player_scrobble::should_queue_pause(
+            Ok(json!(player::scrobble::should_queue_pause(
                 token,
                 was_play_when_ready,
                 has_scrobbled_start,
@@ -91,7 +93,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progress must be a number"))?
                 as f32;
-            Ok(json!(player_scrobble::should_enqueue_durable(
+            Ok(json!(player::scrobble::should_enqueue_durable(
                 field_str(&args, "action")?,
                 token,
                 progress,
@@ -108,7 +110,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let last_saved_at_ms = field(&args, "lastSavedAtMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "lastSavedAtMs must be a number"))?;
-            Ok(json!(player_scrobble::should_save_periodic_progress(
+            Ok(json!(player::scrobble::should_save_periodic_progress(
                 is_playing,
                 now_ms,
                 last_saved_at_ms,
@@ -122,7 +124,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let last_saved_at_ms = field(&args, "lastSavedAtMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "lastSavedAtMs must be a number"))?;
-            Ok(json!(player_scrobble::should_save_event_progress(
+            Ok(json!(player::scrobble::should_save_event_progress(
                 now_ms,
                 last_saved_at_ms,
             )))
@@ -132,7 +134,7 @@ pub(super) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let position_ms = field(&args, "positionMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "positionMs must be a number"))?;
-            Ok(json!(player_scrobble::should_save_on_dispose(position_ms)))
+            Ok(json!(player::scrobble::should_save_on_dispose(position_ms)))
         }
 
         _ => Err(unknown_method()),

@@ -5,8 +5,8 @@ mod scraper_exec;
 mod settings_layout;
 mod web_compat;
 
-use fluxa_core::plugin_network_policy::is_public_plugin_host;
-pub use fluxa_core::plugin_network_policy::{
+use fluxa_core::addons::plugin_network::is_public_plugin_host;
+pub use fluxa_core::addons::plugin_network::{
     plugin_network_address_allowed, plugin_network_address_bytes_allowed, plugin_url_allowed,
 };
 use scraper_exec::run;

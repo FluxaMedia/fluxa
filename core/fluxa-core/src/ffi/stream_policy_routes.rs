@@ -3,38 +3,44 @@ use super::*;
 pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the stream/request JSON
-        "streamPlaybackInfo" => opt_json(stream_policy::stream_playback_info_json(args_json)),
+        "streamPlaybackInfo" => {
+            opt_json(player::stream_policy::stream_playback_info_json(args_json))
+        }
         "cloudstreamQualityScore" => {
             let args = object(args_json)?;
-            Ok(json!(stream_policy::cloudstream_quality_score(field_str(
-                &args, "quality"
-            )?)))
+            Ok(json!(player::stream_policy::cloudstream_quality_score(
+                field_str(&args, "quality")?
+            )))
         }
         "cloudstreamQualityLabel" => {
             let args = object(args_json)?;
-            opt_str(stream_policy::cloudstream_quality_label(field_str(
+            opt_str(player::stream_policy::cloudstream_quality_label(field_str(
                 &args, "quality",
             )?))
         }
         "cloudstreamContentType" => {
             let args = object(args_json)?;
             Ok(Value::String(
-                stream_policy::cloudstream_content_type(field_str(&args, "type")?).to_string(),
+                player::stream_policy::cloudstream_content_type(field_str(&args, "type")?)
+                    .to_string(),
             ))
         }
-        "cloudstreamMatchScore" => opt_json(stream_policy::cloudstream_match_score_json(args_json)),
-        "cloudstreamStreamOrder" => {
-            opt_json(stream_policy::cloudstream_stream_order_json(args_json))
-        }
-        "torrentRuntimeInfo" => opt_json(stream_policy::torrent_runtime_info_json(args_json)),
-        "torrentStatusInfo" => opt_json(stream_policy::torrent_status_info_json(args_json)),
-        "torrentReadyBudget" => into_json(stream_policy::torrent_ready_budget_json()),
-        "torrentRetryPlan" => opt_json(stream_policy::torrent_retry_plan_json(args_json)),
-        "streamRequestHeaders" => opt_json(stream_policy::stream_request_headers_json(&arg_str(
+        "cloudstreamMatchScore" => opt_json(player::stream_policy::cloudstream_match_score_json(
             args_json,
-            "headersJson",
-        )?)),
-        "streamRequestReferer" => opt_str(stream_policy::stream_request_referer(&arg_str(
+        )),
+        "cloudstreamStreamOrder" => opt_json(player::stream_policy::cloudstream_stream_order_json(
+            args_json,
+        )),
+        "torrentRuntimeInfo" => {
+            opt_json(player::stream_policy::torrent_runtime_info_json(args_json))
+        }
+        "torrentStatusInfo" => opt_json(player::stream_policy::torrent_status_info_json(args_json)),
+        "torrentReadyBudget" => into_json(player::stream_policy::torrent_ready_budget_json()),
+        "torrentRetryPlan" => opt_json(player::stream_policy::torrent_retry_plan_json(args_json)),
+        "streamRequestHeaders" => opt_json(player::stream_policy::stream_request_headers_json(
+            &arg_str(args_json, "headersJson")?,
+        )),
+        "streamRequestReferer" => opt_str(player::stream_policy::stream_request_referer(&arg_str(
             args_json, "url",
         )?)),
         "selectStreamIndex" => {
@@ -43,7 +49,7 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
             let saved_title = args.get("savedTitle").and_then(Value::as_str);
             let regex_pattern = args.get("regexPattern").and_then(Value::as_str);
             let preferred_binge_group = args.get("preferredBingeGroup").and_then(Value::as_str);
-            Ok(json!(stream_policy::select_stream_index(
+            Ok(json!(player::stream_policy::select_stream_index(
                 field_str(&args, "streamsJson")?,
                 field_str(&args, "currentVideoId")?,
                 field(&args, "initialStreamIndex")?
@@ -59,21 +65,23 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
                 preferred_binge_group,
             )))
         }
-        "playerTrackState" => opt_json(stream_policy::player_track_state_json(args_json)),
-        "externalAudioOptions" => opt_json(stream_policy::external_audio_options_json(args_json)),
+        "playerTrackState" => opt_json(player::stream_policy::player_track_state_json(args_json)),
+        "externalAudioOptions" => opt_json(player::stream_policy::external_audio_options_json(
+            args_json,
+        )),
         "resolvePreferredAudioLanguage" => {
             let args = object(args_json)?;
             let last = args.get("lastAudioLanguage").and_then(Value::as_str);
             let preferred = args.get("preferredAudioLanguage").and_then(Value::as_str);
             let original = args.get("originalLanguage").and_then(Value::as_str);
             Ok(Value::String(
-                stream_policy::resolve_preferred_audio_language(last, preferred, original),
+                player::stream_policy::resolve_preferred_audio_language(last, preferred, original),
             ))
         }
         "subtitleLanguageMatches" => {
             let args = object(args_json)?;
             let language = args.get("language").and_then(Value::as_str);
-            Ok(json!(stream_policy::subtitle_language_matches(
+            Ok(json!(player::stream_policy::subtitle_language_matches(
                 field_str(&args, "label")?,
                 language,
                 field_str(&args, "preferredLanguage")?,
@@ -93,7 +101,7 @@ pub(super) fn route_stream_policy(method: &str, args_json: &str) -> Outcome {
                 .get("secondarySubtitleLanguage")
                 .and_then(Value::as_str)
                 .map(str::to_string);
-            Ok(json!(stream_policy::find_preferred_subtitle_index(
+            Ok(json!(player::stream_policy::find_preferred_subtitle_index(
                 field_str(&args, "tracks")?,
                 last.as_deref(),
                 preferred.as_deref(),

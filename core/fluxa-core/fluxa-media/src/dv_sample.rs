@@ -1,7 +1,7 @@
-use fluxa_core::dolby_vision_plan::{DvPlaybackPlan, SampleExecutionPlan};
 use ::dolby_vision::rpu::dovi_rpu::DoviRpu;
 use ::dolby_vision::rpu::rpu_data_nlq::DoviELType;
 use base64::{Engine as _, engine::general_purpose::STANDARD as BASE64};
+use fluxa_core::player::dolby_vision::{DvPlaybackPlan, SampleExecutionPlan};
 use serde::{Deserialize, Serialize};
 
 const RPU_NAL_TYPE: u8 = 62;
@@ -666,7 +666,7 @@ mod tests {
 
     #[test]
     fn process_dv_sample_executes_a_convert_to_dv81_plan() {
-        use fluxa_core::dolby_vision_plan::{
+        use fluxa_core::player::dolby_vision::{
             DvContainer, DvFallbackMode, DvProfile, build_dv_playback_plan,
         };
 
@@ -696,7 +696,7 @@ mod tests {
 
     #[test]
     fn process_dv_sample_executes_a_strip_to_hdr10_plan_by_dropping_the_rpu() {
-        use fluxa_core::dolby_vision_plan::{
+        use fluxa_core::player::dolby_vision::{
             DvContainer, DvFallbackMode, DvProfile, build_dv_playback_plan,
         };
 

@@ -70,15 +70,8 @@ use watch_together_routes::route_watch_together;
 use watchlist_offline_routes::{route_offline, route_watchlist};
 
 use crate::{
-    addon_protocol, addon_resource, addon_store, addon_uptime, anime_detection, app_state,
-    calendar_plan, content_identity, content_warnings, core_contract, data_policy,
-    desktop_playback, device_resource, discovery_plan, external_sync, fluxa_sync,
-    headless_adapter_plan, headless_engine, home_ranking, integration_settings, intro_segments,
-    library_persistence, library_state, mdblist_plan, nuvio_sync, offline_download, platform_plan,
-    player_flow, player_policy, player_scrobble, plugin_network_policy, plugins,
-    profile_avatar_pack, profile_contract, profile_prefs, publicmetadb_plan, recommendation_policy,
-    repository_flow, runtime_label, search_plan, stream_badges, stream_policy, subtitle_sync,
-    tmdb_plan, trailer_subtitles, watchlist_plan,
+    accounts, addons, app_state, catalog, core_contract, headless_engine, home, library, player,
+    profile, settings,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -166,13 +159,13 @@ pub fn call(method: &str, args: &Value) -> Result<Value, String> {
 
 fn call_direct(method: &str, args: &Value) -> Option<Value> {
     match method {
-        "homeHeroPlan" => Some(crate::home_ranking::home_hero_plan(args)),
-        "normalizeLibraryDocument" => Some(crate::library_state::normalize_library_document(args)),
+        "homeHeroPlan" => Some(crate::home::ranking::home_hero_plan(args)),
+        "normalizeLibraryDocument" => Some(crate::library::state::normalize_library_document(args)),
         "buildContinueWatchingFromProgress" => {
-            crate::library_state::build_continue_watching_from_progress(args)
+            crate::library::state::build_continue_watching_from_progress(args)
         }
-        "mergeSearchSources" => crate::search_plan::merge_search_sources(args),
-        "mergeDiscoverSources" => crate::search_plan::merge_discover_sources(args),
+        "mergeSearchSources" => crate::catalog::search::merge_search_sources(args),
+        "mergeDiscoverSources" => crate::catalog::search::merge_discover_sources(args),
         _ => None,
     }
 }
@@ -211,9 +204,11 @@ fn raw_dispatch(method: &str, args_json: &str) -> Result<String, CallError> {
 
 fn route(method: &str, args_json: &str) -> Outcome {
     match method {
-        "subtitleCueList" => opt_json(subtitle_sync::subtitle_cue_list_json(args_json)),
-        "subtitleSyncCapture" => opt_json(subtitle_sync::subtitle_sync_capture_json(args_json)),
-        "subtitleSyncApply" => opt_json(subtitle_sync::subtitle_sync_apply_json(args_json)),
+        "subtitleCueList" => opt_json(player::subtitle_sync::subtitle_cue_list_json(args_json)),
+        "subtitleSyncCapture" => {
+            opt_json(player::subtitle_sync::subtitle_sync_capture_json(args_json))
+        }
+        "subtitleSyncApply" => opt_json(player::subtitle_sync::subtitle_sync_apply_json(args_json)),
         _ => match methods::router_for(method) {
             Some(router) => router(method, args_json),
             None => Err(fail(
