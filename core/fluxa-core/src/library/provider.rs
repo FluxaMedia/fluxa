@@ -544,6 +544,34 @@ fn content_type(item: &Value) -> &str {
     }
 }
 
+pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let year = args.get("year")?.as_i64()? as i32;
+    let month = args.get("month")?.as_u64()? as u32;
+    let start = chrono::NaiveDate::from_ymd_opt(year, month, 1)?;
+    let next = if month == 12 {
+        chrono::NaiveDate::from_ymd_opt(year + 1, 1, 1)?
+    } else {
+        chrono::NaiveDate::from_ymd_opt(year, month + 1, 1)?
+    };
+    let days = (next - start).num_days();
+    let requests: Vec<Value> = ["shows", "movies"]
+        .into_iter()
+        .map(|kind| {
+            let mut plan = request(
+                "trakt",
+                &args,
+                "GET",
+                format!("{TRAKT_API}/calendars/my/{kind}/{start}/{days}?extended=full,images"),
+                Value::Null,
+            );
+            plan["key"] = json!(kind);
+            plan
+        })
+        .collect();
+    serde_json::to_string(&requests).ok()
+}
+
 pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let provider = str_field(&args, "provider");
@@ -785,6 +813,18 @@ mod tests {
 
     fn value(json: Option<String>) -> Value {
         serde_json::from_str(&json.unwrap()).unwrap()
+    }
+
+    #[test]
+    fn trakt_calendar_plan_covers_the_whole_month() {
+        let plan = value(trakt_calendar_plan_json(
+            &json!({"token": "t", "clientId": "c", "year": 2026, "month": 2}).to_string(),
+        ));
+        assert_eq!(
+            plan[0]["url"],
+            "https://api.trakt.tv/calendars/my/shows/2026-02-01/28?extended=full,images"
+        );
+        assert_eq!(plan[1]["key"], "movies");
     }
 
     #[test]

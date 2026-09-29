@@ -602,6 +602,7 @@ static METHODS: &[(&str, Router)] = &[
     ("trailerYoutubeVideoIds", route_trailer_subtitles),
     ("traktActivityDiff", route_external_sync_trakt),
     ("traktBearer", route_external_sync_trakt),
+    ("traktCalendarPlan", route_provider_library),
     ("traktCollectionBody", route_external_sync_trakt),
     ("traktCommentsRequest", route_external_sync_trakt),
     ("traktContentIdFromIds", route_external_sync_trakt),

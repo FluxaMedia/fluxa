@@ -517,6 +517,72 @@ impl EffectExecutor {
         core_value("providerCalendarItems", Value::Object(args)).unwrap_or_else(|| json!([]))
     }
 
+    pub(super) async fn trakt_calendar_items(
+        &self,
+        profile: &Value,
+        year: i64,
+        month: i64,
+    ) -> Value {
+        let Some(mut credentials) = self.provider_credentials("trakt", profile) else {
+            return json!([]);
+        };
+        credentials["year"] = json!(year);
+        credentials["month"] = json!(month);
+        let Some(plan) = core_value("traktCalendarPlan", credentials) else {
+            return json!([]);
+        };
+        let cache_key = format!(
+            "trakt_calendar_{}_{year}_{month}",
+            sanitize_key(str_field(profile, "id"))
+        );
+        let cached = self.storage.read_json(&cache_key).ok().flatten();
+        let fresh = cached.as_ref().is_some_and(|cached| {
+            chrono_unix_seconds() - cached["fetchedAt"].as_i64().unwrap_or(0) < 3 * 60 * 60
+        });
+        let mut responses = cached
+            .as_ref()
+            .map(|cached| cached["responses"].clone())
+            .filter(|_| fresh);
+        if responses.is_none() {
+            let mut fetched = Map::new();
+            if let Ok(client) = http_client() {
+                for request in plan.as_array().into_iter().flatten() {
+                    match Self::provider_get(&client, request, "Trakt").await {
+                        Ok(body) => {
+                            fetched.insert(str_field(request, "key").to_owned(), body);
+                        }
+                        Err(error) => {
+                            crate::log!("[fluxa-native] trakt calendar failed: {error}");
+                            break;
+                        }
+                    }
+                }
+            }
+            responses = if fetched.len() == 2 {
+                let fetched = Value::Object(fetched);
+                let _ = self.storage.write_json(
+                    &cache_key,
+                    &json!({"fetchedAt": chrono_unix_seconds(), "responses": fetched}),
+                );
+                Some(fetched)
+            } else {
+                cached.map(|cached| cached["responses"].clone())
+            };
+        }
+        let Some(responses) = responses else {
+            return json!([]);
+        };
+        core_value(
+            "providerCalendarItems",
+            json!({
+                "provider": "trakt",
+                "shows": responses["shows"],
+                "movies": responses["movies"],
+            }),
+        )
+        .unwrap_or_else(|| json!([]))
+    }
+
     async fn read_simkl_library(
         &self,
         profile_id: &str,
