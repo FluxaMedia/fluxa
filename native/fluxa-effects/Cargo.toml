@@ -28,3 +28,13 @@ fluxa_core = { path = "../../core/fluxa-core", default-features = false, feature
 reqwest = { version = "0.12", default-features = false, features = ["json"] }
 wasm-bindgen-futures = "0.4"
 web-sys = { version = "0.3", features = ["Window", "Storage"] }
+
+[dev-dependencies]
+bytes = "1"
+http-body-util = "0.1"
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "net", "io-util", "sync"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+url = "2"

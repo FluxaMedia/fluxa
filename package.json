@@ -12,6 +12,7 @@
     "check:web": "RUSTFLAGS='--cfg getrandom_backend=\"wasm_js\"' cargo check --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown --offline",
     "check:android": "./apps/android/gradlew --offline -p apps/android qualityCheck",
     "test:android": "./apps/android/gradlew --offline -p apps/android testDebugUnitTest",
+    "check:scenarios": "FLUXA_TRAKT_CLIENT_ID=test-trakt FLUXA_SIMKL_CLIENT_ID=test-simkl FLUXA_MDBLIST_CLIENT_ID=test-mdblist FLUXA_ANILIST_CLIENT_ID=test-anilist cargo test --manifest-path native/Cargo.toml -p fluxa-effects --test scenarios --offline",
     "check:core": "cargo test --manifest-path core/fluxa-core/Cargo.toml -p fluxa_core -p fluxa_media -p fluxa_plugin_runtime --lib --offline",
     "check:wasm": "cargo check --manifest-path core/fluxa-core/Cargo.toml --offline -p fluxa_core -p fluxa_media --no-default-features --features wasm"
   }

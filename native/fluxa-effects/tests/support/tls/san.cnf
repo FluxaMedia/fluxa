@@ -1,0 +1,30 @@
+[req]
+distinguished_name = dn
+req_extensions = ext
+prompt = no
+[dn]
+CN = fluxa-mock-server
+[ext]
+subjectAltName = @alt
+extendedKeyUsage = serverAuth
+[alt]
+DNS.1 = *.test
+DNS.2 = *.example
+DNS.3 = api.trakt.tv
+DNS.4 = api.simkl.com
+DNS.5 = data.simkl.in
+DNS.6 = api.mdblist.com
+DNS.7 = anilist.co
+DNS.8 = graphql.anilist.co
+DNS.9 = api.themoviedb.org
+DNS.10 = image.tmdb.org
+DNS.11 = v3-cinemeta.strem.io
+DNS.12 = api.nuvio.tv
+DNS.13 = api.github.com
+DNS.14 = api.introdb.app
+DNS.15 = api.theintrodb.org
+DNS.16 = api.aniskip.com
+DNS.17 = api.skipdb.tv
+DNS.18 = api.anime-skip.com
+DNS.19 = api.tiffara.com
+DNS.20 = aiometadata.elfhosted.com

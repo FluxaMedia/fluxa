@@ -1500,15 +1500,22 @@ name = "fluxa-effects"
 version = "0.1.0"
 dependencies = [
  "aes-gcm",
+ "bytes",
  "chrono",
  "fluxa-app",
  "fluxa_core",
  "fluxa_streaming_engine",
  "futures",
+ "http-body-util",
+ "hyper",
+ "hyper-util",
  "reqwest 0.12.28",
  "rusqlite",
+ "rustls",
  "serde_json",
  "tokio",
+ "tokio-rustls",
+ "url",
  "wasm-bindgen-futures",
  "web-sys",
 ]
