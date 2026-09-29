@@ -152,3 +152,22 @@ pub(crate) fn anilist_mark_watched(args: &Value, change: &WatchedChange) -> Opti
     };
     anilist_save(args, change.series_id, fields)
 }
+
+pub(crate) fn anilist_auth_request(args: &Value, operation: &str) -> Option<Value> {
+    if operation != "exchange" {
+        return None;
+    }
+    Some(request(
+        "anilist",
+        args,
+        "POST",
+        "https://anilist.co/api/v2/oauth/token".to_owned(),
+        json!({
+            "grant_type": "authorization_code",
+            "client_id": str_field(args, "clientId"),
+            "client_secret": str_field(args, "clientSecret"),
+            "redirect_uri": ANILIST_REDIRECT_URI,
+            "code": str_field(args, "code"),
+        }),
+    ))
+}

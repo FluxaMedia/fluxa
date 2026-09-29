@@ -281,3 +281,35 @@ pub(crate) fn mdblist_mark_watched(args: &Value, change: &WatchedChange) -> Opti
     };
     from_mdblist_plan(args, plan)
 }
+
+pub(crate) fn mdblist_auth_request(args: &Value, operation: &str) -> Option<Value> {
+    let (path, mut body) = match operation {
+        "start" => ("device-authorization", json!({"scope": "write"})),
+        "poll" => (
+            "token",
+            json!({
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                "device_code": str_field(args, "code"),
+                "scope": "write",
+            }),
+        ),
+        "refresh" => (
+            "token",
+            json!({
+                "grant_type": "refresh_token",
+                "refresh_token": str_field(args, "refreshToken"),
+            }),
+        ),
+        _ => return None,
+    };
+    body["client_id"] = json!(str_field(args, "clientId"));
+    Some(json!({
+        "method": "POST",
+        "url": format!("{MDBLIST_API}/oauth/{path}/"),
+        "headers": {
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": SIMKL_USER_AGENT,
+        },
+        "body": body,
+    }))
+}

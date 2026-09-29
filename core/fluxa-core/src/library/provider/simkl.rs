@@ -117,3 +117,44 @@ pub(crate) fn simkl_mark_watched(args: &Value, change: &WatchedChange) -> Option
         .ok()?,
     ))
 }
+
+pub(crate) fn simkl_auth_request(args: &Value, operation: &str) -> Option<Value> {
+    let client_id = str_field(args, "clientId");
+    let (path, body) = match operation {
+        "start" => ("device", json!({"client_id": client_id, "scope": SIMKL_SCOPE})),
+        "exchange" => (
+            "token",
+            json!({
+                "grant_type": "authorization_code",
+                "code": str_field(args, "code"),
+                "code_verifier": str_field(args, "codeVerifier"),
+                "redirect_uri": SIMKL_REDIRECT_URI,
+                "client_id": client_id,
+            }),
+        ),
+        "poll" => (
+            "token",
+            json!({
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                "device_code": str_field(args, "code"),
+                "client_id": client_id,
+            }),
+        ),
+        "refresh" => (
+            "token",
+            json!({
+                "grant_type": "refresh_token",
+                "refresh_token": str_field(args, "refreshToken"),
+                "client_id": client_id,
+            }),
+        ),
+        _ => return None,
+    };
+    Some(request(
+        "simkl",
+        args,
+        "POST",
+        format!("{SIMKL_API}/oauth2/{path}"),
+        body,
+    ))
+}

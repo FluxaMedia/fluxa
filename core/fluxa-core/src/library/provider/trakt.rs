@@ -200,3 +200,26 @@ pub(crate) fn trakt_mark_watched(args: &Value, change: &WatchedChange) -> Option
         .ok()?,
     ))
 }
+
+pub(crate) fn trakt_auth_request(args: &Value, operation: &str) -> Option<Value> {
+    let operation = match operation {
+        "start" => "device_start",
+        "poll" => "device_poll",
+        "refresh" => "refresh",
+        _ => return None,
+    };
+    let mut oauth = args.clone();
+    oauth["service"] = json!("trakt");
+    oauth["operation"] = json!(operation);
+    let plan: Value = serde_json::from_str(
+        &crate::accounts::oauth::oauth_request_plan_json(&oauth.to_string())?,
+    )
+    .ok()?;
+    Some(request(
+        "trakt",
+        &json!({"clientId": str_field(args, "clientId")}),
+        "POST",
+        str_field(&plan, "url").to_string(),
+        plan["body"].clone(),
+    ))
+}
