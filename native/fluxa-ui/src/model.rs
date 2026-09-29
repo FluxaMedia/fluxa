@@ -934,14 +934,7 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
                 "local".to_owned(),
                 localized("library.source_local", &language),
             )];
-            for (source, token_key) in [
-                ("nuvio", "nuvioAccessToken"),
-                ("trakt", "traktAccessToken"),
-                ("simkl", "simklAccessToken"),
-                ("anilist", "anilistAccessToken"),
-                ("mdblist", "mdblistAccessToken"),
-                ("stremio", "stremioAuthKey"),
-            ] {
+            for (source, token_key) in crate::settings::SOURCE_TOKENS {
                 if profile
                     .get(token_key)
                     .and_then(serde_json::Value::as_str)

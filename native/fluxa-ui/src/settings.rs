@@ -2991,6 +2991,15 @@ const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("AniList", "anilistAccessToken"),
     ("MDBList", "mdblistAccessToken"),
 ];
+pub const SOURCE_TOKENS: [(&str, &str); 6] = [
+    ("nuvio", "nuvioAccessToken"),
+    ("trakt", "traktAccessToken"),
+    ("simkl", "simklAccessToken"),
+    ("anilist", "anilistAccessToken"),
+    ("mdblist", "mdblistAccessToken"),
+    ("stremio", "stremioAuthKey"),
+];
+
 pub const ACCOUNT_PROVIDERS: [&str; 4] = ["trakt", "simkl", "mdblist", "anilist"];
 const ACCOUNT_SOURCES: [(&str, &str); 2] = [
     (
@@ -3085,18 +3094,11 @@ pub fn account_source_state(
     key: &str,
 ) -> (Vec<(String, String)>, String, String) {
     let language = settings.language();
-    let options = [
-        ("nuvio", "nuvioAccessToken"),
-        ("trakt", "traktAccessToken"),
-        ("simkl", "simklAccessToken"),
-        ("anilist", "anilistAccessToken"),
-        ("stremio", "stremioAuthKey"),
-        ("mdblist", "mdblistAccessToken"),
-    ]
-    .into_iter()
-    .filter(|(_, token_key)| account_connected(settings, token_key))
-    .map(|(source, _)| (source.to_owned(), source_label(source, language)))
-    .collect::<Vec<_>>();
+    let options = SOURCE_TOKENS
+        .into_iter()
+        .filter(|(_, token_key)| account_connected(settings, token_key))
+        .map(|(source, _)| (source.to_owned(), source_label(source, language)))
+        .collect::<Vec<_>>();
     let current = settings
         .value(key)
         .and_then(serde_json::Value::as_str)
