@@ -8,6 +8,6 @@ mod nuvio;
 mod playback;
 mod providers;
 mod simkl;
-mod trakt;
 mod support;
 mod tmdb;
+mod trakt;

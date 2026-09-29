@@ -29,7 +29,9 @@ pub fn serve(world: &World) -> FakeTrakt {
     let list = watchlist.clone();
     world.on(HOST, "POST", "/sync/watchlist", move |request| {
         for movie in request.json()["movies"].as_array().into_iter().flatten() {
-            list.lock().unwrap().push(json!({"type": "movie", "movie": movie}));
+            list.lock()
+                .unwrap()
+                .push(json!({"type": "movie", "movie": movie}));
         }
         Reply::json(201, json!({"added": {"movies": 1}}))
     });
@@ -41,9 +43,17 @@ pub fn serve(world: &World) -> FakeTrakt {
             .flatten()
             .map(|movie| movie["ids"]["imdb"].clone())
             .collect();
-        list.lock().unwrap().retain(|entry| !ids.contains(&entry["movie"]["ids"]["imdb"]));
+        list.lock()
+            .unwrap()
+            .retain(|entry| !ids.contains(&entry["movie"]["ids"]["imdb"]));
         Reply::json(200, json!({"deleted": {"movies": 1}}))
     });
-    world.respond(HOST, "POST", "/sync/history", 201, json!({"added": {"movies": 1}}));
+    world.respond(
+        HOST,
+        "POST",
+        "/sync/history",
+        201,
+        json!({"added": {"movies": 1}}),
+    );
     FakeTrakt { watchlist }
 }

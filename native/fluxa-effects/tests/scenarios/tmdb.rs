@@ -9,8 +9,20 @@ fn popular(name: &str, id: i64) -> Value {
 #[test]
 fn tmdb_key_adds_the_builtin_catalogs_to_home() {
     let scenario = Scenario::start();
-    scenario.world.respond("api.themoviedb.org", "GET", "/3/movie/popular", 200, popular("Movie Pop", 11));
-    scenario.world.respond("api.themoviedb.org", "GET", "/3/tv/popular", 200, popular("Show Pop", 22));
+    scenario.world.respond(
+        "api.themoviedb.org",
+        "GET",
+        "/3/movie/popular",
+        200,
+        popular("Movie Pop", 11),
+    );
+    scenario.world.respond(
+        "api.themoviedb.org",
+        "GET",
+        "/3/tv/popular",
+        200,
+        popular("Show Pop", 22),
+    );
     let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me"}));
     app.dispatch(json!({"type": "settingsChanged", "key": "tmdbApiKey", "value": "k123"}));
 
@@ -24,16 +36,31 @@ fn tmdb_key_adds_the_builtin_catalogs_to_home() {
         .flat_map(|category| category["items"].as_array().cloned().unwrap_or_default())
         .filter_map(|item| item["name"].as_str().map(str::to_owned))
         .collect();
-    assert!(names.contains(&"Movie Pop".to_owned()) && names.contains(&"Show Pop".to_owned()), "{categories}");
-    let call = &scenario.world.calls("api.themoviedb.org", "GET", "/3/movie/popular")[0];
+    assert!(
+        names.contains(&"Movie Pop".to_owned()) && names.contains(&"Show Pop".to_owned()),
+        "{categories}"
+    );
+    let call = &scenario
+        .world
+        .calls("api.themoviedb.org", "GET", "/3/movie/popular")[0];
     assert_eq!(call.query_param("api_key").as_deref(), Some("k123"));
 }
 
 #[test]
 fn a_failing_tmdb_catalog_does_not_break_the_other() {
     let scenario = Scenario::start();
-    scenario.world.respond("api.themoviedb.org", "GET", "/3/movie/popular", 401, json!({"status_message": "Invalid API key"}));
-    scenario.world.on("api.themoviedb.org", "GET", "/3/tv/popular", |_| Reply::json(200, popular("Show Pop", 22)));
+    scenario.world.respond(
+        "api.themoviedb.org",
+        "GET",
+        "/3/movie/popular",
+        401,
+        json!({"status_message": "Invalid API key"}),
+    );
+    scenario
+        .world
+        .on("api.themoviedb.org", "GET", "/3/tv/popular", |_| {
+            Reply::json(200, popular("Show Pop", 22))
+        });
     let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me"}));
     app.dispatch(json!({"type": "settingsChanged", "key": "tmdbApiKey", "value": "bad"}));
 

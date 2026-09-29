@@ -13,10 +13,16 @@ fn exchange(provider: &str, profile: Value) -> Value {
 #[test]
 fn trakt_device_flow_signs_the_profile_in() {
     let scenario = Scenario::start();
-    scenario.world.respond(trakt::HOST, "POST", "/oauth/device/code", 200, json!({
-        "device_code": "dc", "user_code": "ABCD",
-        "verification_url": "https://trakt.tv/activate", "expires_in": 600, "interval": 5
-    }));
+    scenario.world.respond(
+        trakt::HOST,
+        "POST",
+        "/oauth/device/code",
+        200,
+        json!({
+            "device_code": "dc", "user_code": "ABCD",
+            "verification_url": "https://trakt.tv/activate", "expires_in": 600, "interval": 5
+        }),
+    );
     scenario.world.respond(trakt::HOST, "POST", "/oauth/device/token", 200, json!({
         "access_token": "new", "refresh_token": "ref", "expires_in": 7200, "created_at": 1_700_000_000
     }));
@@ -31,7 +37,9 @@ fn trakt_device_flow_signs_the_profile_in() {
     assert_eq!(app.at("/profile/active/traktAccessToken"), "new");
     assert_eq!(app.at("/profile/active/traktRefreshToken"), "ref");
     assert_eq!(app.at("/profile/active/traktTokenExpiresAt"), 1_700_007_200);
-    let poll = &scenario.world.calls(trakt::HOST, "POST", "/oauth/device/token")[0];
+    let poll = &scenario
+        .world
+        .calls(trakt::HOST, "POST", "/oauth/device/token")[0];
     assert_eq!(poll.json()["client_id"], "test-trakt");
     assert_eq!(poll.json()["code"], "dc");
 }
@@ -42,7 +50,8 @@ fn trakt_refresh_swaps_in_the_new_tokens() {
     scenario.world.respond(trakt::HOST, "POST", "/oauth/token", 200, json!({
         "access_token": "fresh", "refresh_token": "ref2", "expires_in": 7200, "created_at": 1_700_000_000
     }));
-    let profile = json!({"id": "p1", "name": "Me", "traktAccessToken": "old", "traktRefreshToken": "ref"});
+    let profile =
+        json!({"id": "p1", "name": "Me", "traktAccessToken": "old", "traktRefreshToken": "ref"});
     let app = scenario.app_with_profile(profile.clone());
 
     app.dispatch(json!({"type": "authRefreshRequested", "provider": "trakt", "profile": profile}));
@@ -56,8 +65,15 @@ fn trakt_refresh_swaps_in_the_new_tokens() {
 #[test]
 fn rejected_refresh_keeps_the_old_token_and_reports_an_error() {
     let scenario = Scenario::start();
-    scenario.world.respond(trakt::HOST, "POST", "/oauth/token", 401, json!({"error": "invalid_grant"}));
-    let profile = json!({"id": "p1", "name": "Me", "traktAccessToken": "old", "traktRefreshToken": "ref"});
+    scenario.world.respond(
+        trakt::HOST,
+        "POST",
+        "/oauth/token",
+        401,
+        json!({"error": "invalid_grant"}),
+    );
+    let profile =
+        json!({"id": "p1", "name": "Me", "traktAccessToken": "old", "traktRefreshToken": "ref"});
     let app = scenario.app_with_profile(profile.clone());
 
     app.dispatch(json!({"type": "authRefreshRequested", "provider": "trakt", "profile": profile}));
@@ -69,33 +85,64 @@ fn rejected_refresh_keeps_the_old_token_and_reports_an_error() {
 #[test]
 fn simkl_device_flow_signs_the_profile_in() {
     let scenario = Scenario::start();
-    scenario.world.respond(simkl::HOST, "POST", "/oauth2/device", 200, json!({
-        "device_code": "dc", "user_code": "WXYZ",
-        "verification_uri": "https://simkl.com/pin", "expires_in": 600, "interval": 5
-    }));
-    scenario.world.respond(simkl::HOST, "POST", "/oauth2/token", 200, json!({
-        "access_token": "stok", "refresh_token": "sref", "expires_in": 3600
-    }));
+    scenario.world.respond(
+        simkl::HOST,
+        "POST",
+        "/oauth2/device",
+        200,
+        json!({
+            "device_code": "dc", "user_code": "WXYZ",
+            "verification_uri": "https://simkl.com/pin", "expires_in": 600, "interval": 5
+        }),
+    );
+    scenario.world.respond(
+        simkl::HOST,
+        "POST",
+        "/oauth2/token",
+        200,
+        json!({
+            "access_token": "stok", "refresh_token": "sref", "expires_in": 3600
+        }),
+    );
     let app = scenario.app_with_profile(guest());
 
     app.dispatch(json!({"type": "authFlowRequested", "provider": "simkl", "mode": "device"}));
-    assert_eq!(app.at("/auth/result/device/verificationUrl"), "https://simkl.com/pin");
+    assert_eq!(
+        app.at("/auth/result/device/verificationUrl"),
+        "https://simkl.com/pin"
+    );
 
     app.dispatch(exchange("simkl", guest()));
     assert_eq!(app.at("/profile/active/simklAccessToken"), "stok");
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }
 
 #[test]
 fn mdblist_device_flow_signs_the_profile_in() {
     let scenario = Scenario::start();
-    scenario.world.respond("api.mdblist.com", "POST", "/oauth/device-authorization/", 200, json!({
-        "device_code": "dc", "user_code": "MDB1",
-        "verification_uri": "https://mdblist.com/activate", "expires_in": 600, "interval": 5
-    }));
-    scenario.world.respond("api.mdblist.com", "POST", "/oauth/token/", 200, json!({
-        "access_token": "mtok", "refresh_token": "mref", "expires_in": 3600
-    }));
+    scenario.world.respond(
+        "api.mdblist.com",
+        "POST",
+        "/oauth/device-authorization/",
+        200,
+        json!({
+            "device_code": "dc", "user_code": "MDB1",
+            "verification_uri": "https://mdblist.com/activate", "expires_in": 600, "interval": 5
+        }),
+    );
+    scenario.world.respond(
+        "api.mdblist.com",
+        "POST",
+        "/oauth/token/",
+        200,
+        json!({
+            "access_token": "mtok", "refresh_token": "mref", "expires_in": 3600
+        }),
+    );
     let app = scenario.app_with_profile(guest());
 
     app.dispatch(json!({"type": "authFlowRequested", "provider": "mdblist", "mode": "device"}));

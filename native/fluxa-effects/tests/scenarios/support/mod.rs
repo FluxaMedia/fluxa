@@ -43,7 +43,9 @@ pub struct Scenario {
 
 impl Scenario {
     pub fn start() -> Self {
-        let serial = SERIAL.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let serial = SERIAL
+            .lock()
+            .unwrap_or_else(|poisoned| poisoned.into_inner());
         let world = world();
         world.reset();
         Self {
@@ -57,14 +59,21 @@ impl Scenario {
     }
 
     pub fn app_with_profile(&self, profile: Value) -> App {
-        let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
-            .join(format!("app-{}-{}", std::process::id(), APPS.fetch_add(1, Ordering::Relaxed)));
+        let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!(
+            "app-{}-{}",
+            std::process::id(),
+            APPS.fetch_add(1, Ordering::Relaxed)
+        ));
         let _ = std::fs::remove_dir_all(&dir);
         let storage = Storage::open(dir.clone()).expect("storage");
         if profile.is_object() {
             let id = profile["id"].as_str().unwrap_or("guest").to_owned();
-            storage.write_json("profiles", &json!([profile])).expect("profiles");
-            storage.write_json("active_profile_id", &json!(id)).expect("active profile");
+            storage
+                .write_json("profiles", &json!([profile]))
+                .expect("profiles");
+            storage
+                .write_json("active_profile_id", &json!(id))
+                .expect("active profile");
         }
         App {
             session: SessionHandle::open(storage).expect("session"),
@@ -116,7 +125,10 @@ impl App {
     }
 
     pub fn at(&self, pointer: &str) -> Value {
-        self.state().pointer(pointer).cloned().unwrap_or(Value::Null)
+        self.state()
+            .pointer(pointer)
+            .cloned()
+            .unwrap_or(Value::Null)
     }
 }
 

@@ -11,7 +11,10 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_rustls::TlsAcceptor;
 
-pub const CA_PEM: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/tests/scenarios/support/tls/ca.pem");
+pub const CA_PEM: &str = concat!(
+    env!("CARGO_MANIFEST_DIR"),
+    "/tests/scenarios/support/tls/ca.pem"
+);
 const SERVER_CERT: &[u8] = include_bytes!("tls/server.pem");
 const SERVER_KEY: &[u8] = include_bytes!("tls/server.pk8.pem");
 
@@ -138,8 +141,13 @@ fn decode(path: &str) -> String {
     let mut out = Vec::with_capacity(bytes.len());
     let mut i = 0;
     while i < bytes.len() {
-        let hex = bytes.get(i + 1..i + 3).and_then(|pair| std::str::from_utf8(pair).ok());
-        match (bytes[i], hex.and_then(|pair| u8::from_str_radix(pair, 16).ok())) {
+        let hex = bytes
+            .get(i + 1..i + 3)
+            .and_then(|pair| std::str::from_utf8(pair).ok());
+        match (
+            bytes[i],
+            hex.and_then(|pair| u8::from_str_radix(pair, 16).ok()),
+        ) {
             (b'%', Some(byte)) => {
                 out.push(byte);
                 i += 3;

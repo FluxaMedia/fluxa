@@ -3,46 +3,92 @@ use super::support::Scenario;
 use serde_json::{Value, json};
 
 fn month(app: &super::support::App, profile: Value) -> Value {
-    app.dispatch(json!({"type": "calendarMonthRequested", "profile": profile, "year": 2026, "month": 9}));
+    app.dispatch(
+        json!({"type": "calendarMonthRequested", "profile": profile, "year": 2026, "month": 9}),
+    );
     app.at("/calendar/externalItems")
 }
 
 #[test]
 fn trakt_calendar_lists_the_shows_and_movies_airing_that_month() {
     let scenario = Scenario::start();
-    scenario.world.respond("api.trakt.tv", "GET", "/calendars/my/shows/2026-09-01/30", 200, json!([{
-        "first_aired": "2026-09-10T01:00:00.000Z",
-        "episode": {"season": 2, "number": 4, "title": "Fourth"},
-        "show": {"title": "Show One", "ids": {"imdb": "tt111", "trakt": 1}}
-    }]));
-    scenario.world.respond("api.trakt.tv", "GET", "/calendars/my/movies/2026-09-01/30", 200, json!([{
-        "released": "2026-09-20",
-        "movie": {"title": "Movie One", "ids": {"imdb": "tt222", "trakt": 2}}
-    }]));
+    scenario.world.respond(
+        "api.trakt.tv",
+        "GET",
+        "/calendars/my/shows/2026-09-01/30",
+        200,
+        json!([{
+            "first_aired": "2026-09-10T01:00:00.000Z",
+            "episode": {"season": 2, "number": 4, "title": "Fourth"},
+            "show": {"title": "Show One", "ids": {"imdb": "tt111", "trakt": 1}}
+        }]),
+    );
+    scenario.world.respond(
+        "api.trakt.tv",
+        "GET",
+        "/calendars/my/movies/2026-09-01/30",
+        200,
+        json!([{
+            "released": "2026-09-20",
+            "movie": {"title": "Movie One", "ids": {"imdb": "tt222", "trakt": 2}}
+        }]),
+    );
     let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me", "traktAccessToken": "tok", "integrationLibrarySource": "trakt"}));
 
     let items = month(&app, app.at("/profile/active"));
 
-    let ids: Vec<&str> = items.as_array().unwrap().iter().filter_map(|item| item["contentId"].as_str()).collect();
+    let ids: Vec<&str> = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item["contentId"].as_str())
+        .collect();
     assert!(ids.contains(&"tt111"), "{items}");
     assert!(ids.contains(&"tt222"), "{items}");
-    let episode = items.as_array().unwrap().iter().find(|item| item["contentId"] == "tt111").unwrap();
+    let episode = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|item| item["contentId"] == "tt111")
+        .unwrap();
     assert_eq!(episode["seasonNumber"], 2);
     assert_eq!(episode["episodeNumber"], 4);
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }
 
 #[test]
 fn trakt_calendar_is_cached_for_a_second_open() {
     let scenario = Scenario::start();
-    scenario.world.respond("api.trakt.tv", "GET", "/calendars/my/shows/2026-09-01/30", 200, json!([]));
-    scenario.world.respond("api.trakt.tv", "GET", "/calendars/my/movies/2026-09-01/30", 200, json!([]));
+    scenario.world.respond(
+        "api.trakt.tv",
+        "GET",
+        "/calendars/my/shows/2026-09-01/30",
+        200,
+        json!([]),
+    );
+    scenario.world.respond(
+        "api.trakt.tv",
+        "GET",
+        "/calendars/my/movies/2026-09-01/30",
+        200,
+        json!([]),
+    );
     let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me", "traktAccessToken": "tok", "integrationLibrarySource": "trakt"}));
 
     month(&app, app.at("/profile/active"));
     month(&app, app.at("/profile/active"));
 
-    assert_eq!(scenario.world.calls("api.trakt.tv", "GET", "/calendars/my/shows/2026-09-01/30").len(), 1);
+    assert_eq!(
+        scenario
+            .world
+            .calls("api.trakt.tv", "GET", "/calendars/my/shows/2026-09-01/30")
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -53,8 +99,20 @@ fn simkl_calendar_only_shows_titles_on_the_users_lists() {
         "status": "plantowatch",
         "movie": {"title": "Listed Movie", "year": 2026, "ids": {"simkl": 11, "imdb": "tt11"}}
     }));
-    scenario.world.respond("data.simkl.in", "GET", "/calendar/v2/2026/9/tv.json", 200, json!({"metadata": {}, "calendar": []}));
-    scenario.world.respond("data.simkl.in", "GET", "/calendar/v2/2026/9/anime.json", 200, json!({"metadata": {}, "calendar": []}));
+    scenario.world.respond(
+        "data.simkl.in",
+        "GET",
+        "/calendar/v2/2026/9/tv.json",
+        200,
+        json!({"metadata": {}, "calendar": []}),
+    );
+    scenario.world.respond(
+        "data.simkl.in",
+        "GET",
+        "/calendar/v2/2026/9/anime.json",
+        200,
+        json!({"metadata": {}, "calendar": []}),
+    );
     scenario.world.respond("data.simkl.in", "GET", "/calendar/v2/2026/9/movie_release.json", 200, json!({
         "metadata": {
             "11": {"title": "Listed Movie", "poster": "ab/cd", "ids": {"simkl": 11, "imdb": "tt11"}},
@@ -71,7 +129,12 @@ fn simkl_calendar_only_shows_titles_on_the_users_lists() {
 
     let items = month(&app, profile);
 
-    let ids: Vec<&str> = items.as_array().unwrap().iter().filter_map(|item| item["contentId"].as_str()).collect();
+    let ids: Vec<&str> = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item["contentId"].as_str())
+        .collect();
     assert_eq!(ids, vec!["tt11"], "{items}");
 }
 
@@ -88,9 +151,19 @@ fn mdblist_calendar_maps_episodes_and_movies() {
 
     let items = month(&app, profile);
 
-    let ids: Vec<&str> = items.as_array().unwrap().iter().filter_map(|item| item["contentId"].as_str()).collect();
-    assert!(ids.contains(&"tmdb:500") && ids.contains(&"tmdb:600"), "{items}");
-    let call = &scenario.world.calls("api.mdblist.com", "GET", "/calendar/events")[0];
+    let ids: Vec<&str> = items
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter_map(|item| item["contentId"].as_str())
+        .collect();
+    assert!(
+        ids.contains(&"tmdb:500") && ids.contains(&"tmdb:600"),
+        "{items}"
+    );
+    let call = &scenario
+        .world
+        .calls("api.mdblist.com", "GET", "/calendar/events")[0];
     assert_eq!(call.query_param("start").as_deref(), Some("2026-09-01"));
     assert_eq!(call.query_param("end").as_deref(), Some("2026-09-30"));
 }

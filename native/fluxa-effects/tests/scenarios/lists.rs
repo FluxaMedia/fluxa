@@ -34,30 +34,53 @@ fn anilist_lists() -> Value {
 #[test]
 fn anilist_library_is_read_with_the_user_id_from_the_token() {
     let scenario = Scenario::start();
-    scenario.world.on("graphql.anilist.co", "POST", "/", |request| {
-        assert_eq!(request.json()["variables"]["userId"], 42);
-        assert_eq!(request.header("authorization"), Some(&format!("Bearer {ANILIST_TOKEN}")[..]));
-        if request.json()["variables"]["chunk"] == 1 {
-            Reply::json(200, anilist_lists())
-        } else {
-            Reply::json(200, json!({"data": {"MediaListCollection": {"lists": []}}}))
-        }
-    });
+    scenario
+        .world
+        .on("graphql.anilist.co", "POST", "/", |request| {
+            assert_eq!(request.json()["variables"]["userId"], 42);
+            assert_eq!(
+                request.header("authorization"),
+                Some(&format!("Bearer {ANILIST_TOKEN}")[..])
+            );
+            if request.json()["variables"]["chunk"] == 1 {
+                Reply::json(200, anilist_lists())
+            } else {
+                Reply::json(200, json!({"data": {"MediaListCollection": {"lists": []}}}))
+            }
+        });
     let app = scenario.app_with_profile(anilist_profile());
 
     app.dispatch(json!({"type": "libraryHydrateRequested"}));
 
     assert_eq!(app.at("/library/error"), Value::Null);
-    assert_eq!(app.at("/library/watchlist").as_array().map(Vec::len), Some(1));
-    assert_eq!(app.at("/library/continueWatching").as_array().map(Vec::len), Some(1));
-    assert_eq!(scenario.world.calls("graphql.anilist.co", "POST", "/").len(), 3);
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert_eq!(
+        app.at("/library/watchlist").as_array().map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(
+        app.at("/library/continueWatching").as_array().map(Vec::len),
+        Some(1)
+    );
+    assert_eq!(
+        scenario
+            .world
+            .calls("graphql.anilist.co", "POST", "/")
+            .len(),
+        3
+    );
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }
 
 #[test]
 fn anilist_mark_watched_saves_the_episode_progress() {
     let scenario = Scenario::start();
-    scenario.world.respond("graphql.anilist.co", "POST", "/", 200, anilist_lists());
+    scenario
+        .world
+        .respond("graphql.anilist.co", "POST", "/", 200, anilist_lists());
     let app = scenario.app_with_profile(anilist_profile());
 
     app.dispatch(json!({
@@ -72,7 +95,17 @@ fn anilist_mark_watched_saves_the_episode_progress() {
         .into_iter()
         .filter(|call| call.body.contains("SaveMediaListEntry"))
         .collect();
-    assert_eq!(saves.len(), 1, "{:?}", scenario.world.requests_all().iter().map(|r| r.body.clone()).collect::<Vec<_>>());
+    assert_eq!(
+        saves.len(),
+        1,
+        "{:?}",
+        scenario
+            .world
+            .requests_all()
+            .iter()
+            .map(|r| r.body.clone())
+            .collect::<Vec<_>>()
+    );
     assert_eq!(saves[0].json()["variables"]["progress"], 5);
 }
 
@@ -84,16 +117,35 @@ fn mdblist_library_is_assembled_from_its_endpoints() {
         "movies": [{"id": 1, "title": "Movie One", "imdb_id": "tt1", "mediatype": "movie", "release_year": 2020}],
         "shows": []
     }));
-    scenario.world.respond(host, "GET", "/sync/watched", 200, json!({"movies": [], "episodes": []}));
-    scenario.world.respond(host, "GET", "/sync/dropped", 200, json!([]));
-    scenario.world.respond(host, "GET", "/sync/playback", 200, json!([]));
-    scenario.world.respond(host, "GET", "/upnext", 200, json!([]));
+    scenario.world.respond(
+        host,
+        "GET",
+        "/sync/watched",
+        200,
+        json!({"movies": [], "episodes": []}),
+    );
+    scenario
+        .world
+        .respond(host, "GET", "/sync/dropped", 200, json!([]));
+    scenario
+        .world
+        .respond(host, "GET", "/sync/playback", 200, json!([]));
+    scenario
+        .world
+        .respond(host, "GET", "/upnext", 200, json!([]));
     let app = scenario.app_with_profile(mdblist_profile());
 
     app.dispatch(json!({"type": "libraryHydrateRequested"}));
 
     assert_eq!(app.at("/library/error"), Value::Null);
     assert_eq!(app.at("/library/watchlist/0/id"), "tt1");
-    assert_eq!(scenario.world.calls(host, "GET", "/watchlist/items")[0].header("authorization"), Some("Bearer mtok"));
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert_eq!(
+        scenario.world.calls(host, "GET", "/watchlist/items")[0].header("authorization"),
+        Some("Bearer mtok")
+    );
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }

@@ -9,9 +9,11 @@ fn trakt_profile() -> serde_json::Value {
 #[test]
 fn trakt_scrobble_pause_reaches_the_trakt_api() {
     let scenario = Scenario::start();
-    scenario.world.on("api.trakt.tv", "POST", "/scrobble/pause", |_| {
-        Reply::json(201, json!({"action": "pause"}))
-    });
+    scenario
+        .world
+        .on("api.trakt.tv", "POST", "/scrobble/pause", |_| {
+            Reply::json(201, json!({"action": "pause"}))
+        });
     let app = scenario.app_with_profile(trakt_profile());
 
     app.dispatch(json!({
@@ -19,8 +21,15 @@ fn trakt_scrobble_pause_reaches_the_trakt_api() {
         "itemId": "tt1", "progress": 42.5, "actionName": "pause", "profile": null
     }));
 
-    let calls = scenario.world.calls("api.trakt.tv", "POST", "/scrobble/pause");
-    assert_eq!(calls.len(), 1, "unmatched: {:?}", scenario.world.unmatched());
+    let calls = scenario
+        .world
+        .calls("api.trakt.tv", "POST", "/scrobble/pause");
+    assert_eq!(
+        calls.len(),
+        1,
+        "unmatched: {:?}",
+        scenario.world.unmatched()
+    );
     assert_eq!(calls[0].header("authorization"), Some("Bearer tok"));
     assert_eq!(calls[0].header("trakt-api-key"), Some("test-trakt"));
     assert_eq!(calls[0].json()["progress"], 42.5);
@@ -30,7 +39,9 @@ fn trakt_scrobble_pause_reaches_the_trakt_api() {
 #[test]
 fn trakt_scrobble_is_not_retried_when_the_server_fails() {
     let scenario = Scenario::start();
-    scenario.world.respond("api.trakt.tv", "POST", "/scrobble/start", 500, json!({}));
+    scenario
+        .world
+        .respond("api.trakt.tv", "POST", "/scrobble/start", 500, json!({}));
     let app = scenario.app_with_profile(trakt_profile());
 
     app.dispatch(json!({
@@ -38,7 +49,13 @@ fn trakt_scrobble_is_not_retried_when_the_server_fails() {
         "itemId": "tt1", "progress": 1.0, "actionName": "start", "profile": null
     }));
 
-    assert_eq!(scenario.world.calls("api.trakt.tv", "POST", "/scrobble/start").len(), 1);
+    assert_eq!(
+        scenario
+            .world
+            .calls("api.trakt.tv", "POST", "/scrobble/start")
+            .len(),
+        1
+    );
 }
 
 #[test]
@@ -75,9 +92,19 @@ fn watchlist_toggle_adds_then_removes_on_trakt() {
     assert_eq!(trakt.watchlist.lock().unwrap().len(), 1);
 
     app.dispatch(json!({"type": "toggleWatchlistRequested", "item": movie(), "profile": null}));
-    assert_eq!(scenario.world.calls(trakt::HOST, "POST", "/sync/watchlist/remove").len(), 1);
+    assert_eq!(
+        scenario
+            .world
+            .calls(trakt::HOST, "POST", "/sync/watchlist/remove")
+            .len(),
+        1
+    );
     assert!(trakt.watchlist.lock().unwrap().is_empty());
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }
 
 #[test]
@@ -109,14 +136,20 @@ fn simkl_watchlist_toggle_lands_in_plan_to_watch() {
     app.dispatch(json!({"type": "libraryHydrateRequested"}));
     app.dispatch(json!({"type": "toggleWatchlistRequested", "item": movie(), "profile": null}));
 
-    let calls = scenario.world.calls(simkl::HOST, "POST", "/sync/add-to-list");
+    let calls = scenario
+        .world
+        .calls(simkl::HOST, "POST", "/sync/add-to-list");
     assert_eq!(calls.len(), 1);
     assert_eq!(calls[0].json()["movies"][0]["ids"]["imdb"], "tt1");
     assert_eq!(calls[0].json()["movies"][0]["to"], "plantowatch");
     assert_eq!(calls[0].header("authorization"), Some("Bearer stok"));
     assert_eq!(calls[0].header("simkl-api-key"), Some("test-simkl"));
     assert_eq!(simkl.plantowatch.lock().unwrap().len(), 1);
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }
 
 #[test]
@@ -148,13 +181,15 @@ fn rate_limited_library_read_is_retried_until_it_succeeds() {
     trakt::serve(&scenario.world);
     let hits = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let counter = hits.clone();
-    scenario.world.on(trakt::HOST, "GET", "/sync/watchlist/movies", move |_| {
-        if counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
-            Reply::status(429)
-        } else {
-            Reply::json(200, json!([]))
-        }
-    });
+    scenario
+        .world
+        .on(trakt::HOST, "GET", "/sync/watchlist/movies", move |_| {
+            if counter.fetch_add(1, std::sync::atomic::Ordering::SeqCst) == 0 {
+                Reply::status(429)
+            } else {
+                Reply::json(200, json!([]))
+            }
+        });
     let app = scenario.app_with_profile(trakt_library_profile());
 
     app.dispatch(json!({"type": "libraryHydrateRequested"}));
@@ -167,11 +202,19 @@ fn rate_limited_library_read_is_retried_until_it_succeeds() {
 fn revoked_trakt_token_fails_the_library_read_without_retrying() {
     let scenario = Scenario::start();
     trakt::serve(&scenario.world);
-    scenario.world.respond(trakt::HOST, "GET", "/sync/watchlist/movies", 401, json!({}));
+    scenario
+        .world
+        .respond(trakt::HOST, "GET", "/sync/watchlist/movies", 401, json!({}));
     let app = scenario.app_with_profile(trakt_library_profile());
 
     app.dispatch(json!({"type": "libraryHydrateRequested"}));
 
-    assert_eq!(scenario.world.calls(trakt::HOST, "GET", "/sync/watchlist/movies").len(), 1);
+    assert_eq!(
+        scenario
+            .world
+            .calls(trakt::HOST, "GET", "/sync/watchlist/movies")
+            .len(),
+        1
+    );
     assert_ne!(app.at("/library/error"), serde_json::Value::Null);
 }

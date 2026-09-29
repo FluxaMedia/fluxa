@@ -11,7 +11,9 @@ fn movie_addon(id: &str) -> Value {
 }
 
 fn serve_movie_addon(scenario: &Scenario, host: &str) {
-    scenario.world.respond(host, "GET", "/manifest.json", 200, movie_addon(host));
+    scenario
+        .world
+        .respond(host, "GET", "/manifest.json", 200, movie_addon(host));
     scenario.world.respond(
         host,
         "GET",
@@ -58,7 +60,11 @@ fn installed_addon_feeds_home_detail_and_streams() {
         "detail": app.at("/detail/meta"), "language": "en", "profile": null
     }));
     assert_eq!(app.at("/detail/streams/0/url"), "https://cdn.example/a.mp4");
-    assert!(scenario.world.unmatched().is_empty(), "{:?}", scenario.world.unmatched());
+    assert!(
+        scenario.world.unmatched().is_empty(),
+        "{:?}",
+        scenario.world.unmatched()
+    );
 }
 
 #[test]
@@ -77,7 +83,13 @@ fn one_failing_addon_does_not_hide_the_others_on_home() {
     let scenario = Scenario::start();
     serve_movie_addon(&scenario, "addon.test");
     serve_movie_addon(&scenario, "addon2.test");
-    scenario.world.respond("addon2.test", "GET", "/catalog/movie/top.json", 500, json!({}));
+    scenario.world.respond(
+        "addon2.test",
+        "GET",
+        "/catalog/movie/top.json",
+        500,
+        json!({}),
+    );
     let app = scenario.app();
     for host in ["addon.test", "addon2.test"] {
         app.dispatch(json!({"type": "addonInstallRequested", "transportUrl": format!("https://{host}/manifest.json")}));
@@ -87,5 +99,8 @@ fn one_failing_addon_does_not_hide_the_others_on_home() {
 
     let categories = app.at("/home/categories");
     assert_eq!(categories.as_array().map(Vec::len), Some(1), "{categories}");
-    assert_eq!(categories[0]["transportUrl"], "https://addon.test/manifest.json");
+    assert_eq!(
+        categories[0]["transportUrl"],
+        "https://addon.test/manifest.json"
+    );
 }

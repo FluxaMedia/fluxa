@@ -90,7 +90,9 @@ impl World {
     }
 
     pub fn respond(&self, host: &str, method: &str, path: &str, status: u16, body: Value) {
-        self.on(host, method, path, move |_| Reply::json(status, body.clone()));
+        self.on(host, method, path, move |_| {
+            Reply::json(status, body.clone())
+        });
     }
 
     pub fn handle(&self, request: Recorded) -> Reply {

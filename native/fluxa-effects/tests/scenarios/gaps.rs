@@ -12,8 +12,19 @@ fn plugin_repository_can_be_added_from_a_manifest_url() {
 
     app.dispatch(json!({"type": "pluginRepositoryAddRequested", "manifestUrl": "https://addon.test/plugins/manifest.json"}));
 
-    assert_eq!(scenario.world.calls("addon.test", "GET", "/plugins/manifest.json").len(), 1);
-    assert_eq!(app.at("/addons/plugins/repositories").as_array().map(Vec::len), Some(1));
+    assert_eq!(
+        scenario
+            .world
+            .calls("addon.test", "GET", "/plugins/manifest.json")
+            .len(),
+        1
+    );
+    assert_eq!(
+        app.at("/addons/plugins/repositories")
+            .as_array()
+            .map(Vec::len),
+        Some(1)
+    );
 }
 
 #[test]
