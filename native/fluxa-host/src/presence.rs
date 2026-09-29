@@ -101,7 +101,8 @@ fn worker(rx: Receiver<Presence>) {
             }
             continue;
         }
-        if client.is_none() && last_attempt.is_none_or(|at| at.elapsed() >= Duration::from_secs(15)) {
+        if client.is_none() && last_attempt.is_none_or(|at| at.elapsed() >= Duration::from_secs(15))
+        {
             last_attempt = Some(Instant::now());
             let mut fresh = DiscordIpcClient::new(APP_ID);
             if fresh.connect().is_ok() {
@@ -118,9 +119,11 @@ fn worker(rx: Receiver<Presence>) {
         let result = match &current {
             Presence::Off => Ok(()),
             Presence::Browsing(label) => ipc.set_activity(
-                activity::Activity::new()
-                    .state(label)
-                    .assets(activity::Assets::new().large_image("logo").large_text("Fluxa")),
+                activity::Activity::new().state(label).assets(
+                    activity::Assets::new()
+                        .large_image("logo")
+                        .large_text("Fluxa"),
+                ),
             ),
             Presence::Viewing { title, poster } => ipc.set_activity(
                 activity::Activity::new()

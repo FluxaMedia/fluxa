@@ -5,7 +5,7 @@ use web_time::Instant;
 use fluxa_ui::AccountPrompt;
 use serde_json::{Value, json};
 
-use crate::{RendererState, host_log, profiles};
+use crate::{RendererState, card_menu, host_log, profiles};
 
 pub(crate) struct AccountAuth {
     provider: String,
@@ -47,8 +47,12 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
         .and_then(Value::as_str)
         .is_some_and(|value| !value.is_empty());
     if !connected {
+        state.settings.account_auth = None;
         let generation = generation(&auth_state(state));
-        dispatch(state, json!({"type": "authFlowRequested", "provider": provider, "mode": "device"}));
+        dispatch(
+            state,
+            json!({"type": "authFlowRequested", "provider": provider, "mode": "device"}),
+        );
         state.account_auth = Some(AccountAuth {
             provider: provider.to_owned(),
             device: None,
@@ -57,17 +61,32 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
         });
         return;
     }
+    card_menu::open_disconnect(state, provider);
+}
+
+pub(crate) fn disconnect(state: &mut RendererState, provider: &str) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let mut profile = session.active_profile();
     if let Some(fields) = profile.as_object_mut() {
         fields.retain(|key, _| !(key.starts_with(provider) && key.contains("Token")));
     }
     profiles::save_profile(session.storage(), &profile);
-    dispatch(state, json!({"type": "profileActivated", "profile": profile}));
+    dispatch(
+        state,
+        json!({"type": "profileActivated", "profile": profile}),
+    );
     if let Some(session) = state.session.as_ref()
         && let Err(error) = profiles::load_profile(session)
     {
         host_log(format!("Profile load failed: {error}"));
     }
-    if state.account_auth.as_ref().is_some_and(|flow| flow.provider == provider) {
+    if state
+        .account_auth
+        .as_ref()
+        .is_some_and(|flow| flow.provider == provider)
+    {
         state.account_auth = None;
     }
 }
@@ -75,12 +94,22 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
 pub(crate) fn poll(state: &mut RendererState) {
     let auth = auth_state(state);
     let Some(flow) = state.account_auth.as_mut() else {
-        state.settings.account_auth = None;
+        if state
+            .settings
+            .account_auth
+            .as_ref()
+            .is_some_and(|prompt| !prompt.failed)
+        {
+            state.settings.account_auth = None;
+        }
         return;
     };
     let now = Instant::now();
     let settled = generation(&auth) > flow.generation
-        && !auth.get("isLoading").and_then(Value::as_bool).unwrap_or(true);
+        && !auth
+            .get("isLoading")
+            .and_then(Value::as_bool)
+            .unwrap_or(true);
     if settled {
         flow.generation = generation(&auth);
         let result = auth.get("result").cloned().unwrap_or(Value::Null);
@@ -116,8 +145,13 @@ pub(crate) fn poll(state: &mut RendererState) {
                 if let Some(error) = auth.get("error").filter(|error| !error.is_null()) {
                     host_log(format!("{} sign-in failed: {error}", flow.provider));
                 }
+                state.settings.account_auth = Some(AccountPrompt {
+                    provider: flow.provider.clone(),
+                    code: String::new(),
+                    url: String::new(),
+                    failed: true,
+                });
                 state.account_auth = None;
-                state.settings.account_auth = None;
                 return;
             }
         }
@@ -145,6 +179,7 @@ pub(crate) fn poll(state: &mut RendererState) {
         provider: flow.provider.clone(),
         code: field("userCode"),
         url: field("verificationUrl"),
+        failed: false,
     });
     let Some(due) = flow.next_poll else {
         return;
