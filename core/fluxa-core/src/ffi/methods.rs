@@ -699,7 +699,7 @@ mod tests {
         include_str!("../settings/routes/data_policy.rs"),
         include_str!("../settings/routes/discord_presence.rs"),
         include_str!("../settings/routes/version_policy.rs"),
-        include_str!("../library/local_media.rs"),
+        include_str!("../library/storage/local_media.rs"),
     ];
 
     fn arm_methods(line: &str) -> Vec<&str> {

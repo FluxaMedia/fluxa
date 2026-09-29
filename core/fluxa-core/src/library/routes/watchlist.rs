@@ -83,9 +83,9 @@ pub(crate) fn route_watchlist(method: &str, args_json: &str) -> Outcome {
 pub(crate) fn route_offline(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object
-        "offlineDownloadPlan" => {
-            opt_json(crate::library::offline_download::offline_download_plan_json(args_json))
-        }
+        "offlineDownloadPlan" => opt_json(
+            crate::library::storage::offline_download::offline_download_plan_json(args_json),
+        ),
 
         _ => Err(unknown_method()),
     }

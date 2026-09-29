@@ -78,9 +78,12 @@ pub(crate) fn route_library_state(method: &str, args_json: &str) -> Outcome {
                 field_str(&args, "imdbId")?,
             ))
         }
-        "libraryDocumentViews" => opt_json(Some(crate::library::persistence::document_views_json(
-            &arg_str(args_json, "documentJson")?,
-        ))),
+        "libraryDocumentViews" => opt_json(Some(
+            crate::library::storage::persistence::document_views_json(&arg_str(
+                args_json,
+                "documentJson",
+            )?),
+        )),
         "isEpisodeReleased" => {
             let args = object(args_json)?;
             let video: Value =
