@@ -5,13 +5,20 @@ use web_time::Instant;
 use fluxa_ui::AccountPrompt;
 use serde_json::{Value, json};
 
-use crate::{RendererState, card_menu, host_log, profiles};
+use crate::{RendererState, card_menu, core_value, host_log, profiles};
 
 pub(crate) struct AccountAuth {
     provider: String,
     device: Option<Value>,
     generation: u64,
     next_poll: Option<Instant>,
+    redirect: Option<Redirect>,
+}
+
+struct Redirect {
+    verifier: String,
+    state: String,
+    returned: bool,
 }
 
 fn auth_state(state: &RendererState) -> Value {
@@ -49,15 +56,26 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     if !connected {
         state.settings.account_auth = None;
         let generation = generation(&auth_state(state));
+        let browser = provider == "simkl"
+            && state.home.form_factor == fluxa_ui::UiFormFactorJson::Mobile
+            && matches!(
+                state.home.platform,
+                fluxa_ui::UiPlatform::Android | fluxa_ui::UiPlatform::Ios
+            );
         dispatch(
             state,
-            json!({"type": "authFlowRequested", "provider": provider, "mode": "device"}),
+            json!({
+                "type": "authFlowRequested",
+                "provider": provider,
+                "mode": if browser { "pkce" } else { "device" },
+            }),
         );
         state.account_auth = Some(AccountAuth {
             provider: provider.to_owned(),
             device: None,
             generation,
             next_poll: None,
+            redirect: None,
         });
         return;
     }
@@ -89,6 +107,49 @@ pub(crate) fn disconnect(state: &mut RendererState, provider: &str) {
     {
         state.account_auth = None;
     }
+}
+
+pub(crate) fn finish_redirect(state: &mut RendererState, url: &str) {
+    let Some(callback) = core_value("providerAuthCallback", json!({"url": url})) else {
+        return;
+    };
+    let provider = callback
+        .get("provider")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let Some(flow) = state.account_auth.as_mut() else {
+        return;
+    };
+    let Some(redirect) = flow.redirect.as_mut() else {
+        return;
+    };
+    let code = callback
+        .get("code")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let matches_state = callback.get("state").and_then(Value::as_str) == Some(&redirect.state);
+    if flow.provider != provider || redirect.returned || code.is_empty() || !matches_state {
+        if flow.provider == provider && !redirect.returned {
+            state.settings.account_auth = Some(AccountPrompt {
+                provider: provider.to_owned(),
+                code: String::new(),
+                url: String::new(),
+                failed: true,
+            });
+            state.account_auth = None;
+        }
+        return;
+    }
+    redirect.returned = true;
+    let provider = flow.provider.clone();
+    let command = json!({
+        "type": "authExchangeRequested",
+        "provider": provider,
+        "code": code,
+        "codeVerifier": redirect.verifier,
+        "profile": state.session.as_ref().map(|session| session.active_profile()),
+    });
+    dispatch(state, command);
 }
 
 pub(crate) fn poll(state: &mut RendererState) {
@@ -132,6 +193,22 @@ pub(crate) fn poll(state: &mut RendererState) {
                         host_log(format!("Profile load failed: {error}"));
                     }
                 }
+                return;
+            }
+            Some("redirect") => {
+                let field = |key: &str| {
+                    result
+                        .get(key)
+                        .and_then(Value::as_str)
+                        .unwrap_or_default()
+                        .to_owned()
+                };
+                flow.redirect = Some(Redirect {
+                    verifier: field("codeVerifier"),
+                    state: field("oauthState"),
+                    returned: false,
+                });
+                state.open_url = Some(field("url"));
                 return;
             }
             Some("pending") => {

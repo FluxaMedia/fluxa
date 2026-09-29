@@ -34,6 +34,19 @@ fn token_field(provider: &str) -> &'static str {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+fn random_hex() -> Option<String> {
+    use aes_gcm::aead::Generate;
+    use aes_gcm::{Aes256Gcm, Key};
+    let key = Key::<Aes256Gcm>::generate();
+    Some(key.iter().map(|byte| format!("{byte:02x}")).collect())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn random_hex() -> Option<String> {
+    None
+}
+
 fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("")
 }
@@ -195,6 +208,27 @@ impl EffectExecutor {
         if client_id(provider).is_empty() {
             return Err(format!("{provider} is not configured in this build"));
         }
+        if str_field(payload, "mode") == "pkce" {
+            let verifier = random_hex().ok_or("secure randomness is unavailable")?;
+            let oauth_state = random_hex().ok_or("secure randomness is unavailable")?;
+            let authorize = core_value(
+                "providerAuthorizeUrl",
+                json!({
+                    "provider": provider,
+                    "clientId": client_id(provider),
+                    "codeVerifier": verifier,
+                    "state": oauth_state,
+                }),
+            )
+            .ok_or_else(|| format!("{provider} does not support browser sign-in"))?;
+            return Ok(json!({
+                "provider": provider,
+                "state": "redirect",
+                "url": authorize.get("url"),
+                "codeVerifier": verifier,
+                "oauthState": oauth_state,
+            }));
+        }
         let outcome = self.auth_call(provider, "start", json!({})).await?;
         if str_field(&outcome, "state") != "pending" {
             return Err(format!("{provider} did not return a device code"));
@@ -204,13 +238,16 @@ impl EffectExecutor {
 
     pub(super) async fn exchange_auth_code(&self, payload: &Value) -> Result<Value, String> {
         let provider = str_field(payload, "provider");
-        let outcome = self
-            .auth_call(
-                provider,
-                "poll",
-                json!({"code": str_field(payload, "code")}),
+        let verifier = str_field(payload, "codeVerifier");
+        let (operation, extra) = if verifier.is_empty() {
+            ("poll", json!({"code": str_field(payload, "code")}))
+        } else {
+            (
+                "exchange",
+                json!({"code": str_field(payload, "code"), "codeVerifier": verifier}),
             )
-            .await?;
+        };
+        let outcome = self.auth_call(provider, operation, extra).await?;
         match str_field(&outcome, "state") {
             "success" => {
                 let profile = self.merge_auth(

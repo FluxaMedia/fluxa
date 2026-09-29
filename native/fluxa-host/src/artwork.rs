@@ -76,7 +76,11 @@ impl ArtworkLoader {
                     [width as usize, height as usize],
                     &rgba,
                 );
-                context.load_texture(format!("emoji:{cluster}"), image, egui::TextureOptions::LINEAR)
+                context.load_texture(
+                    format!("emoji:{cluster}"),
+                    image,
+                    egui::TextureOptions::LINEAR,
+                )
             });
             self.emoji.insert(cluster, texture);
         }

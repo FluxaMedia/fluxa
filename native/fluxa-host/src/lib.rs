@@ -162,6 +162,7 @@ struct RendererState {
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
     applied_app_icon: Option<String>,
+    open_url: Option<String>,
     profiles: Option<fluxa_ui::ProfilesModel>,
     account_auth: Option<accounts::AccountAuth>,
     pack_job: Option<profiles::PackJob>,
@@ -300,6 +301,9 @@ enum NativeAction {
     },
     AccountToggle {
         provider: String,
+    },
+    OauthCallback {
+        url: String,
     },
     DiscoverType {
         content_type: String,
@@ -569,6 +573,7 @@ impl FluxaHost {
             video: None,
             fullscreen_toggle: false,
             applied_app_icon: None,
+            open_url: None,
             profiles: None,
             account_auth: None,
             pack_job: None,
@@ -919,6 +924,10 @@ impl FluxaHost {
     pub fn take_fullscreen_toggle(&self) -> bool {
         self.with_state(|state| std::mem::take(&mut state.fullscreen_toggle))
             .unwrap_or(false)
+    }
+
+    pub fn take_open_url(&self) -> Option<String> {
+        self.with_state(|state| state.open_url.take()).flatten()
     }
 
     pub fn take_app_icon(&self) -> Option<String> {

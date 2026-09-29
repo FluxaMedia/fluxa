@@ -775,7 +775,9 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         NativeAction::StartPlayback { item } => {
             vec![player::direct_playback_command(item, profile)]
         }
-        NativeAction::SettingsSection { .. } | NativeAction::AccountToggle { .. } => return None,
+        NativeAction::SettingsSection { .. }
+        | NativeAction::AccountToggle { .. }
+        | NativeAction::OauthCallback { .. } => return None,
     };
     Some(commands)
 }
@@ -792,9 +794,14 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let mut unhandled = Vec::new();
     let mut open_profiles = false;
     let mut toggles = Vec::new();
+    let mut callbacks = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
         if let NativeAction::AccountToggle { provider } = action {
             toggles.push(provider);
+            continue;
+        }
+        if let NativeAction::OauthCallback { url } = action {
+            callbacks.push(url);
             continue;
         }
         if matches!(&action, NativeAction::Navigate { destination } if *destination == Route::Profiles)
@@ -832,6 +839,9 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     state.pending_native_actions = unhandled;
     for provider in toggles {
         accounts::toggle(state, &provider);
+    }
+    for url in callbacks {
+        accounts::finish_redirect(state, &url);
     }
     if open_profiles {
         reset_ui(state);

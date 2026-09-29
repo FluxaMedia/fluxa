@@ -1111,7 +1111,11 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
             if let Some(player) = state.player.as_mut() {
                 let index = (node - fluxa_ui::NODE_PLAYER_SOURCE_FILTER_BASE) as usize;
                 let filter = index.checked_sub(1).and_then(|index| {
-                    player.model().addons().get(index).map(|addon| addon.to_string())
+                    player
+                        .model()
+                        .addons()
+                        .get(index)
+                        .map(|addon| addon.to_string())
                 });
                 player.source_filter = filter;
             }
