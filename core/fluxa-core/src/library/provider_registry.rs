@@ -7,6 +7,8 @@ pub(crate) struct Provider {
     pub capabilities: &'static [&'static str],
     pub calendar_plan: Option<fn(&str) -> Option<String>>,
     pub snapshot: Option<fn(&Value, &Value) -> Value>,
+    pub toggle_watchlist: Option<fn(&Value, &Value, &str, bool) -> Option<Value>>,
+    pub mark_watched: Option<fn(&Value, &super::provider::WatchedChange) -> Option<Value>>,
     pub library_requests: Option<fn(&Value) -> Option<Vec<Value>>>,
 }
 
@@ -25,6 +27,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         ],
         calendar_plan: Some(super::provider::trakt::trakt_calendar_plan_json),
         snapshot: Some(super::provider::trakt::trakt_library_snapshot),
+        toggle_watchlist: Some(super::provider::trakt::trakt_toggle_watchlist),
+        mark_watched: Some(super::provider::trakt::trakt_mark_watched),
         library_requests: Some(super::provider::trakt::trakt_library_requests),
     },
     Provider {
@@ -42,6 +46,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         ],
         calendar_plan: None,
         snapshot: Some(super::provider::simkl::simkl_library_snapshot),
+        toggle_watchlist: Some(super::provider::simkl::simkl_toggle_watchlist),
+        mark_watched: Some(super::provider::simkl::simkl_mark_watched),
         library_requests: None,
     },
     Provider {
@@ -58,6 +64,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         ],
         calendar_plan: Some(super::provider::mdblist::mdblist_calendar_plan_json),
         snapshot: Some(super::provider::mdblist::mdblist_library_snapshot),
+        toggle_watchlist: Some(super::provider::mdblist::mdblist_toggle_watchlist),
+        mark_watched: Some(super::provider::mdblist::mdblist_mark_watched),
         library_requests: Some(super::provider::mdblist::mdblist_library_requests),
     },
     Provider {
@@ -73,6 +81,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         ],
         calendar_plan: Some(super::provider::anilist::anilist_calendar_plan_json),
         snapshot: Some(super::provider::anilist::anilist_library_snapshot),
+        toggle_watchlist: Some(super::provider::anilist::anilist_toggle_watchlist),
+        mark_watched: Some(super::provider::anilist::anilist_mark_watched),
         library_requests: Some(super::provider::anilist::anilist_library_requests),
     },
 ];

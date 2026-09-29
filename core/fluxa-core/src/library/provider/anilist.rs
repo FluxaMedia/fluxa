@@ -120,3 +120,35 @@ pub(crate) fn anilist_library_snapshot(args: &Value, responses: &Value) -> Value
         args.get("nowSeconds").and_then(Value::as_i64).unwrap_or(0) * 1000,
     )
 }
+
+pub(crate) fn anilist_toggle_watchlist(
+    args: &Value,
+    _item: &Value,
+    id: &str,
+    remove: bool,
+) -> Option<Value> {
+    if remove {
+        return None;
+    }
+    anilist_save(args, id, json!({"status": "PLANNING"}))
+}
+
+pub(crate) fn anilist_mark_watched(args: &Value, change: &WatchedChange) -> Option<Value> {
+    if !change.watched {
+        return None;
+    }
+    let episode = change
+        .video_ids
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+        .filter(|id| id.matches(':').count() >= 2)
+        .filter_map(|id| id.rsplit(':').next()?.parse::<i64>().ok())
+        .max();
+    let fields = match episode {
+        Some(episode) => json!({"status": "CURRENT", "progress": episode}),
+        None => json!({"status": "COMPLETED"}),
+    };
+    anilist_save(args, change.series_id, fields)
+}

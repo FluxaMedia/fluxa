@@ -63,3 +63,57 @@ pub(crate) fn simkl_library_snapshot(args: &Value, responses: &Value) -> Value {
         "continueWatching": continue_watching,
     })
 }
+
+pub(crate) fn simkl_toggle_watchlist(
+    args: &Value,
+    item: &Value,
+    id: &str,
+    remove: bool,
+) -> Option<Value> {
+    let body = simkl_watchlist_body_json(
+        &json!({
+            "id": id,
+            "providerIds": item.get("providerIds"),
+            "contentType": content_type(item),
+            "command": if remove { "remove" } else { "add" },
+        })
+        .to_string(),
+    )?;
+    let path = if remove {
+        "sync/history/remove"
+    } else {
+        "sync/add-to-list"
+    };
+    Some(request(
+        "simkl",
+        args,
+        "POST",
+        format!("{SIMKL_API}/{path}"),
+        serde_json::from_str(&body).ok()?,
+    ))
+}
+
+pub(crate) fn simkl_mark_watched(args: &Value, change: &WatchedChange) -> Option<Value> {
+    let suffix = if change.watched { "" } else { "/remove" };
+    let rewatch = change.rewatch && change.watched;
+    Some(request(
+        "simkl",
+        args,
+        "POST",
+        format!(
+            "{SIMKL_API}/sync/history{suffix}{}",
+            if rewatch { "?allow_rewatch=yes" } else { "" }
+        ),
+        serde_json::from_str(&simkl_mark_watched_body_json(
+            &json!({
+                "videoIds": change.video_ids,
+                "providerIds": change.command.get("providerIds"),
+                "rewatch": rewatch,
+                "rewatchId": change.command.get("rewatchId"),
+                "meta": {"type": if change.is_series { "series" } else { "movie" }},
+            })
+            .to_string(),
+        )?)
+        .ok()?,
+    ))
+}

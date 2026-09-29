@@ -241,3 +241,43 @@ pub(crate) fn mdblist_library_snapshot(args: &Value, responses: &Value) -> Value
         "continueWatching": trakt_continue_watching(&playback, &up_next),
     })
 }
+
+pub(crate) fn mdblist_toggle_watchlist(
+    args: &Value,
+    item: &Value,
+    id: &str,
+    remove: bool,
+) -> Option<Value> {
+    from_mdblist_plan(
+        args,
+        catalog::mdblist::mdblist_watchlist_mutate_plan(
+            if remove { "remove" } else { "add" },
+            &mdblist_items_json(id, content_type(item))?,
+        ),
+    )
+}
+
+pub(crate) fn mdblist_mark_watched(args: &Value, change: &WatchedChange) -> Option<Value> {
+    let plan = if change.is_series {
+        let episodes: Vec<&str> = change
+            .video_ids
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(Value::as_str)
+            .filter(|id| id.matches(':').count() >= 2)
+            .collect();
+        let body = trakt_mark_watched_body_json(&json!({"videoIds": episodes}).to_string())?;
+        catalog::mdblist::mdblist_watched_body_plan(
+            !change.watched,
+            serde_json::from_str(&body).ok()?,
+        )
+    } else {
+        catalog::mdblist::mdblist_sync_mutate_plan(
+            "watched",
+            !change.watched,
+            &mdblist_items_json(change.series_id, "movie")?,
+        )
+    };
+    from_mdblist_plan(args, plan)
+}

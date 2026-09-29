@@ -163,3 +163,40 @@ pub(crate) fn trakt_library_snapshot(args: &Value, responses: &Value) -> Value {
         "continueWatching": trakt_continue_watching(&playback, &up_next),
     })
 }
+
+pub(crate) fn trakt_toggle_watchlist(
+    args: &Value,
+    item: &Value,
+    id: &str,
+    remove: bool,
+) -> Option<Value> {
+    let body = trakt_collection_body_json(
+        &json!({
+            "idsJson": trakt_ids_from_content_id_json(id)?,
+            "contentType": content_type(item),
+        })
+        .to_string(),
+    )?;
+    let suffix = if remove { "/remove" } else { "" };
+    Some(request(
+        "trakt",
+        args,
+        "POST",
+        format!("{TRAKT_API}/sync/watchlist{suffix}"),
+        serde_json::from_str(&body).ok()?,
+    ))
+}
+
+pub(crate) fn trakt_mark_watched(args: &Value, change: &WatchedChange) -> Option<Value> {
+    let suffix = if change.watched { "" } else { "/remove" };
+    Some(request(
+        "trakt",
+        args,
+        "POST",
+        format!("{TRAKT_API}/sync/history{suffix}"),
+        serde_json::from_str(&trakt_mark_watched_body_json(
+            &json!({"videoIds": change.video_ids}).to_string(),
+        )?)
+        .ok()?,
+    ))
+}

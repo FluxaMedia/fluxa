@@ -428,6 +428,15 @@ fn content_type(item: &Value) -> &str {
     }
 }
 
+pub(crate) struct WatchedChange<'a> {
+    pub command: &'a Value,
+    pub series_id: &'a str,
+    pub video_ids: &'a Value,
+    pub watched: bool,
+    pub rewatch: bool,
+    pub is_series: bool,
+}
+
 pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let provider = str_field(&args, "provider");
@@ -463,55 +472,8 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 .get("remove")
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            match provider {
-                "anilist" if !remove => requests.push(anilist_save(
-                    &args,
-                    id,
-                    json!({"status": "PLANNING"}),
-                )?),
-                "trakt" => {
-                    let body = trakt_collection_body_json(
-                        &json!({
-                            "idsJson": trakt_ids_from_content_id_json(id)?,
-                            "contentType": content_type(item),
-                        })
-                        .to_string(),
-                    )?;
-                    let suffix = if remove { "/remove" } else { "" };
-                    requests.push(post(
-                        format!("{TRAKT_API}/sync/watchlist{suffix}"),
-                        serde_json::from_str(&body).ok()?,
-                    ));
-                }
-                "simkl" => {
-                    let body = simkl_watchlist_body_json(
-                        &json!({
-                            "id": id,
-                            "providerIds": item.get("providerIds"),
-                            "contentType": content_type(item),
-                            "command": if remove { "remove" } else { "add" },
-                        })
-                        .to_string(),
-                    )?;
-                    let path = if remove {
-                        "sync/history/remove"
-                    } else {
-                        "sync/add-to-list"
-                    };
-                    requests.push(post(
-                        format!("{SIMKL_API}/{path}"),
-                        serde_json::from_str(&body).ok()?,
-                    ));
-                }
-                "mdblist" => requests.push(from_mdblist_plan(
-                    &args,
-                    catalog::mdblist::mdblist_watchlist_mutate_plan(
-                        if remove { "remove" } else { "add" },
-                        &mdblist_items_json(id, content_type(item))?,
-                    ),
-                )?),
-                _ => return None,
-            }
+            let toggle = registry::provider(provider)?.toggle_watchlist?;
+            requests.push(toggle(&args, item, id, remove)?);
         }
         "markWatched" => {
             let series_id = str_field(command, "seriesId");
@@ -534,81 +496,18 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 .get("rewatch")
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
-            let suffix = if watched { "" } else { "/remove" };
-            match provider {
-                "anilist" if watched => {
-                    let episode = video_ids
-                        .as_array()
-                        .into_iter()
-                        .flatten()
-                        .filter_map(Value::as_str)
-                        .filter(|id| id.matches(':').count() >= 2)
-                        .filter_map(|id| id.rsplit(':').next()?.parse::<i64>().ok())
-                        .max();
-                    let fields = match episode {
-                        Some(episode) => json!({"status": "CURRENT", "progress": episode}),
-                        None => json!({"status": "COMPLETED"}),
-                    };
-                    requests.push(anilist_save(&args, series_id, fields)?)
-                }
-                "trakt" => requests.push(post(
-                    format!("{TRAKT_API}/sync/history{suffix}"),
-                    serde_json::from_str(&trakt_mark_watched_body_json(
-                        &json!({"videoIds": video_ids}).to_string(),
-                    )?)
-                    .ok()?,
-                )),
-                "simkl" => requests.push(post(
-                    format!(
-                        "{SIMKL_API}/sync/history{suffix}{}",
-                        if rewatch && watched {
-                            "?allow_rewatch=yes"
-                        } else {
-                            ""
-                        }
-                    ),
-                    serde_json::from_str(&simkl_mark_watched_body_json(
-                        &json!({
-                            "videoIds": video_ids,
-                            "providerIds": command.get("providerIds"),
-                            "rewatch": rewatch && watched,
-                            "rewatchId": command.get("rewatchId"),
-                            "meta": {"type": if is_series { "series" } else { "movie" }},
-                        })
-                        .to_string(),
-                    )?)
-                    .ok()?,
-                )),
-                "mdblist" => {
-                    let plan = if is_series {
-                        let episodes: Vec<&str> = video_ids
-                            .as_array()
-                            .into_iter()
-                            .flatten()
-                            .filter_map(Value::as_str)
-                            .filter(|id| id.matches(':').count() >= 2)
-                            .collect();
-                        let body = trakt_mark_watched_body_json(
-                            &json!({"videoIds": episodes}).to_string(),
-                        )?;
-                        catalog::mdblist::mdblist_watched_body_plan(
-                            !watched,
-                            serde_json::from_str(&body).ok()?,
-                        )
-                    } else {
-                        catalog::mdblist::mdblist_sync_mutate_plan(
-                            "watched",
-                            !watched,
-                            &mdblist_items_json(
-                                series_id,
-                                if is_series { "series" } else { "movie" },
-                            )?,
-                        )
-                    };
-                    requests.push(from_mdblist_plan(&args, plan)?)
-                }
-                _ => return None,
-            }
+            let mark = registry::provider(provider)?.mark_watched?;
+            requests.push(mark(
+                &args,
+                &WatchedChange {
+                    command,
+                    series_id,
+                    video_ids: &video_ids,
+                    watched,
+                    rewatch,
+                    is_series,
+                },
+            )?);
         }
         _ => return None,
     }
