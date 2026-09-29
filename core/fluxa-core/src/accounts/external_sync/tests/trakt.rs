@@ -387,7 +387,8 @@ fn unmatched_lengths_leave_ids_alone_when_titles_are_generic() {
         {"season": 1, "number": 3, "title": "Episode 3"}
     ]}]);
     let mapped = trakt_remap_video_ids_json(
-        &json!({"videoIds": ["tt9:1:2"], "addonEpisodes": addon, "traktSeasons": trakt}).to_string(),
+        &json!({"videoIds": ["tt9:1:2"], "addonEpisodes": addon, "traktSeasons": trakt})
+            .to_string(),
     )
     .unwrap();
     assert_eq!(mapped, r#"["tt9:1:2"]"#);

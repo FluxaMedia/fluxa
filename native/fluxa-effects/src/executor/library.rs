@@ -397,6 +397,19 @@ impl EffectExecutor {
         } else {
             Vec::new()
         };
+        let watched_series = ids.iter().find(|id| {
+            local_watched_video_ids.iter().any(|watched| {
+                watched
+                    .as_str()
+                    .is_some_and(|watched| watched.starts_with(&format!("{id}:")))
+            })
+        });
+        let trakt_seasons = match (profile, watched_series) {
+            (Some(profile), Some(series_id)) => {
+                self.trakt_seasons_for_detail(profile, series_id).await
+            }
+            _ => None,
+        };
         let addons = self.account_addons().await?;
         let provider_availability = core_value(
             "providerAvailabilityPlan",
@@ -413,6 +426,7 @@ impl EffectExecutor {
         Ok(json!({
             "savedPlayback": progress.map(progress_meta).unwrap_or(Value::Null),
             "localWatchedVideoIds": local_watched_video_ids,
+            "traktSeasons": trakt_seasons,
             "isInWatchlist": is_in_watchlist,
             "feedback": feedback,
             "hasStreamProviders": provider_availability.get("hasStreamProviders").and_then(Value::as_bool).unwrap_or(false),

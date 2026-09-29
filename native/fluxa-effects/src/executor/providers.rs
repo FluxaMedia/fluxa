@@ -649,6 +649,18 @@ impl EffectExecutor {
         Ok(())
     }
 
+    pub(super) async fn trakt_seasons_for_detail(
+        &self,
+        profile: &Value,
+        series_id: &str,
+    ) -> Option<Value> {
+        if str_field(profile, "integrationLibrarySource") != "trakt" {
+            return None;
+        }
+        let credentials = self.provider_credentials("trakt", profile)?;
+        self.trakt_seasons(&credentials, series_id).await
+    }
+
     async fn trakt_seasons(&self, credentials: &Value, series_id: &str) -> Option<Value> {
         let key = format!("trakt_seasons_{}", sanitize_key(series_id));
         let now = chrono_unix_seconds();

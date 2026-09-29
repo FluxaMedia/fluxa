@@ -28,6 +28,10 @@ pub(super) struct DetailState {
     saved_playback: Value,
     watched_video_ids: Value,
     local_watched_video_ids: Value,
+    #[serde(skip_serializing_if = "Value::is_null")]
+    provider_watched_video_ids: Value,
+    #[serde(skip_serializing_if = "Value::is_null")]
+    trakt_seasons: Value,
     is_in_watchlist: Value,
     feedback: Value,
     user_addons: Value,
@@ -66,6 +70,8 @@ impl Default for DetailState {
             saved_playback: Value::Null,
             watched_video_ids: serde_json::json!([]),
             local_watched_video_ids: serde_json::json!([]),
+            provider_watched_video_ids: Value::Null,
+            trakt_seasons: Value::Null,
             is_in_watchlist: Value::Null,
             feedback: Value::Null,
             user_addons: serde_json::json!([]),
@@ -179,6 +185,31 @@ pub(super) fn set_is_in_watchlist(engine: &mut HeadlessEngine, value: Value) {
 
 pub(super) fn set_local_watched_video_ids(engine: &mut HeadlessEngine, value: Value) {
     engine.state.detail.local_watched_video_ids = value;
+    engine.state.detail.provider_watched_video_ids = Value::Null;
+    engine.state.detail.trakt_seasons = Value::Null;
+}
+
+fn remap_local_watched(engine: &mut HeadlessEngine) {
+    let detail = &mut engine.state.detail;
+    if detail.trakt_seasons.is_null() {
+        return;
+    }
+    let episodes = super::library::addon_episodes(Some(&detail.meta));
+    if episodes.is_empty() {
+        return;
+    }
+    let args = serde_json::json!({
+        "direction": "toAddon",
+        "videoIds": detail.provider_watched_video_ids,
+        "addonEpisodes": episodes,
+        "traktSeasons": detail.trakt_seasons,
+    });
+    if let Some(mapped) =
+        crate::accounts::external_sync::trakt_remap_video_ids_json(&args.to_string())
+            .and_then(|mapped| serde_json::from_str(&mapped).ok())
+    {
+        detail.local_watched_video_ids = mapped;
+    }
 }
 
 pub(super) fn set_feedback(engine: &mut HeadlessEngine, value: Value) {
@@ -473,6 +504,7 @@ pub(super) fn complete(
                         .unwrap_or(Value::Null);
                     engine.state.detail.meta = meta;
                     engine.state.detail.error = Value::Null;
+                    remap_local_watched(engine);
                 } else {
                     engine.state.detail.error = normalize_error(result.error.clone());
                 }
@@ -500,6 +532,14 @@ pub(super) fn complete(
                         .get("localWatchedVideoIds")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
+                    engine.state.detail.provider_watched_video_ids =
+                        engine.state.detail.local_watched_video_ids.clone();
+                    engine.state.detail.trakt_seasons = result
+                        .value
+                        .get("traktSeasons")
+                        .cloned()
+                        .unwrap_or(Value::Null);
+                    remap_local_watched(engine);
                     engine.state.detail.is_in_watchlist = result
                         .value
                         .get("isInWatchlist")
