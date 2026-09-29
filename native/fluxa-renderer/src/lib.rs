@@ -131,7 +131,7 @@ pub fn ambient_background() -> image::RgbaImage {
         let light = 24.0 * ambient_light(x as f32 / width as f32, y as f32 / height as f32);
         let hash = (x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263)).wrapping_mul(1_274_126_177);
         let grain = ((hash >> 24) as f32 / 255.0 - 0.5) * 3.0;
-        let value = (11.0 + light + grain).clamp(0.0, 255.0) as u8;
+        let value = (17.0 + light + grain).clamp(0.0, 255.0) as u8;
         image::Rgba([value, value, value, 255])
     })
 }
