@@ -1,4 +1,5 @@
-use crate::headless_engine::action_contract::{MarkWatchedAction, SavePlaybackProgressAction};
+pub(crate) mod actions;
+use crate::headless_engine::contracts::actions::{MarkWatchedAction, SavePlaybackProgressAction};
 use crate::runtime::EffectEnvelope;
 use crate::types::{MetaItem, Profile, Stream, Video};
 use serde::{Deserialize, Serialize};

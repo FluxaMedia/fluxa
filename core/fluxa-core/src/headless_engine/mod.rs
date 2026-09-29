@@ -1,4 +1,3 @@
-pub(crate) mod action_contract;
 pub(crate) mod app_state;
 pub(crate) mod complete_effect;
 pub(crate) mod contracts;
