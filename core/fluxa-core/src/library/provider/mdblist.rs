@@ -211,7 +211,7 @@ pub(crate) fn mdblist_library_requests(args: &Value) -> Option<Vec<Value>> {
     ])
 }
 
-pub(crate) fn mdblist_library_snapshot(args: &Value, responses: &Value) -> Value {
+pub(crate) fn mdblist_library_snapshot(_args: &Value, responses: &Value) -> Value {
     let empty = json!({});
     let watched_body = responses.get("watched").unwrap_or(&empty);
     let (completed, watched) = mdblist_watched(watched_body);

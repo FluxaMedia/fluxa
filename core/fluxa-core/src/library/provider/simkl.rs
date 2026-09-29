@@ -38,7 +38,7 @@ pub(super) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) 
 
 
 
-pub(crate) fn simkl_library_snapshot(args: &Value, responses: &Value) -> Value {
+pub(crate) fn simkl_library_snapshot(_args: &Value, responses: &Value) -> Value {
     let items = |status: &str| {
         let (shows, movies) = simkl_bucket(&responses, status);
         parsed(simkl_library_to_items_json(&shows, &movies))
