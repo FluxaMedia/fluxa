@@ -7,6 +7,7 @@ pub(crate) mod publicmetadb;
 pub(crate) mod registry;
 pub(crate) mod simkl;
 pub(crate) mod stremio;
+pub(crate) mod tmdb;
 pub(crate) mod trakt;
 
 use trakt::*;

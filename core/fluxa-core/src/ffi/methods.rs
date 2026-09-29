@@ -691,7 +691,7 @@ mod tests {
         include_str!("search_plan_routes.rs"),
         include_str!("stream_badge_routes.rs"),
         include_str!("stream_policy_routes.rs"),
-        include_str!("tmdb_routes.rs"),
+        include_str!("../services/tmdb/routes.rs"),
         include_str!("version_policy_routes.rs"),
         include_str!("watch_together_routes.rs"),
         include_str!("watchlist_offline_routes.rs"),

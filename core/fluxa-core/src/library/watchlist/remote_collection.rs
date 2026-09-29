@@ -289,14 +289,14 @@ pub(crate) fn remote_collection_response_plan_json(request_json: &str) -> Option
             .cloned()
             .collect::<Vec<_>>();
         let mut metas: Vec<Value> =
-            serde_json::from_str(&crate::catalog::tmdb::tmdb_bulk_metas_to_metas_json(
+            serde_json::from_str(&crate::services::tmdb::tmdb_bulk_metas_to_metas_json(
                 &Value::Array(movies).to_string(),
                 "movie",
                 language,
             )?)
             .ok()?;
         let mut series_metas: Vec<Value> =
-            serde_json::from_str(&crate::catalog::tmdb::tmdb_bulk_metas_to_metas_json(
+            serde_json::from_str(&crate::services::tmdb::tmdb_bulk_metas_to_metas_json(
                 &Value::Array(series).to_string(),
                 "series",
                 language,
@@ -305,7 +305,7 @@ pub(crate) fn remote_collection_response_plan_json(request_json: &str) -> Option
         metas.append(&mut series_metas);
         return serde_json::to_string(&metas).ok();
     }
-    crate::catalog::tmdb::tmdb_bulk_metas_to_metas_json(
+    crate::services::tmdb::tmdb_bulk_metas_to_metas_json(
         &Value::Array(items).to_string(),
         plan.get("requestedType")
             .and_then(Value::as_str)

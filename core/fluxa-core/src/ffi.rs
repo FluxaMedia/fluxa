@@ -26,13 +26,12 @@ mod resource_plan_routes;
 mod search_plan_routes;
 mod stream_badge_routes;
 mod stream_policy_routes;
-mod tmdb_routes;
 mod version_policy_routes;
 mod watch_together_routes;
 mod watchlist_offline_routes;
 use crate::services::{
     anilist::route_anilist, mdblist::route_mdblist, publicmetadb::route_publicmetadb,
-    simkl::route_simkl, stremio::route_stremio, trakt::route_trakt,
+    simkl::route_simkl, stremio::route_stremio, tmdb::route_tmdb, trakt::route_trakt,
 };
 use addon_protocol_routes::route_addon_protocol;
 use addon_resource_routes::route_addon_resource;
@@ -62,7 +61,7 @@ use resource_plan_routes::route_resource_plan;
 use search_plan_routes::route_search_plan;
 use stream_badge_routes::route_stream_badges;
 use stream_policy_routes::route_stream_policy;
-use tmdb_routes::route_tmdb;
+
 use version_policy_routes::route_version_policy;
 use watch_together_routes::route_watch_together;
 use watchlist_offline_routes::{route_offline, route_watchlist};

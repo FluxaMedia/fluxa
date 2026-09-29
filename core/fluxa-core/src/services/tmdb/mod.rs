@@ -1,3 +1,5 @@
+mod routes;
+pub(crate) use routes::*;
 mod genres_catalog;
 mod helpers;
 mod meta_conversion;
