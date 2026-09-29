@@ -16,7 +16,6 @@
 
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod action_contract;
-pub mod app_icon;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod addon_protocol;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -27,6 +26,7 @@ mod addon_store;
 mod addon_uptime;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod anime_detection;
+pub mod app_icon;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod app_state;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
@@ -97,8 +97,6 @@ mod nuvio_sync;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod oauth_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
-mod provider_library;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod offline_download;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod platform_plan;
@@ -119,6 +117,8 @@ mod profile_avatar_pack;
 mod profile_contract;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod profile_prefs;
+#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+mod provider_library;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod publicmetadb_plan;
 #[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]

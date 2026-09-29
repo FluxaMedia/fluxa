@@ -87,6 +87,47 @@ pub(super) fn dispatch_refresh(
     )]
 }
 
+fn addon_url(addon: &Value) -> Option<&str> {
+    addon
+        .get("transportUrl")
+        .or_else(|| addon.pointer("/manifest/transportUrl"))
+        .and_then(Value::as_str)
+}
+
+pub(super) fn dispatch_remove(
+    engine: &mut HeadlessEngine,
+    transport_url: &str,
+) -> Vec<EffectEnvelope> {
+    if let Some(items) = engine.state.addons.installed.as_array_mut() {
+        items.retain(|addon| addon_url(addon) != Some(transport_url));
+        let addons = engine.state.addons.installed.clone();
+        home::set_user_addons(engine, addons);
+    }
+    vec![]
+}
+
+pub(super) fn dispatch_move(
+    engine: &mut HeadlessEngine,
+    transport_url: &str,
+    offset: i64,
+) -> Vec<EffectEnvelope> {
+    let Some(items) = engine.state.addons.installed.as_array_mut() else {
+        return vec![];
+    };
+    let Some(from) = items
+        .iter()
+        .position(|addon| addon_url(addon) == Some(transport_url))
+    else {
+        return vec![];
+    };
+    let to = (from as i64 + offset).clamp(0, items.len() as i64 - 1) as usize;
+    let addon = items.remove(from);
+    items.insert(to, addon);
+    let addons = engine.state.addons.installed.clone();
+    home::set_user_addons(engine, addons);
+    vec![]
+}
+
 pub(super) fn dispatch_resource(
     engine: &mut HeadlessEngine,
     transport_url: String,
@@ -119,13 +160,28 @@ pub(super) fn complete(
             if generation == engine.state.runtime.get(GenerationKey::Addon) {
                 if result.status.is_ok() {
                     let manifest = result.value.clone();
-                    let id = manifest
-                        .get("transportUrl")
-                        .and_then(Value::as_str)
-                        .or_else(|| manifest.get("id").and_then(Value::as_str))
-                        .unwrap_or("unknown")
-                        .to_string();
-                    upsert_by_key(&mut engine.state.addons.installed, "id", &id, manifest);
+                    let url = addon_url(&manifest).map(ToOwned::to_owned);
+                    let existing = engine
+                        .state
+                        .addons
+                        .installed
+                        .as_array_mut()
+                        .and_then(|items| {
+                            items
+                                .iter_mut()
+                                .find(|addon| url.is_some() && addon_url(addon) == url.as_deref())
+                        });
+                    match existing {
+                        Some(existing) => *existing = manifest,
+                        None => {
+                            let id = url
+                                .as_deref()
+                                .or_else(|| manifest.get("id").and_then(Value::as_str))
+                                .unwrap_or("unknown")
+                                .to_string();
+                            upsert_by_key(&mut engine.state.addons.installed, "id", &id, manifest);
+                        }
+                    }
                     engine.state.addons.installing = Value::Null;
                     engine.state.addons.error = Value::Null;
                 } else {

@@ -480,3 +480,41 @@ fn discover_filter_options_and_genres_are_derived_by_core_from_addon_descriptors
     );
     assert!(destroy_headless_engine(handle));
 }
+
+#[test]
+fn moving_an_addon_past_the_ends_stops_at_the_edge() {
+    let handle = create_headless_engine(
+        &json!({"addons": {"installed": [
+            {"transportUrl": "a", "name": "A"},
+            {"transportUrl": "b", "name": "B"},
+            {"transportUrl": "c", "name": "C"}
+        ]}})
+        .to_string(),
+    );
+    let names = |value: &Value| -> Vec<String> {
+        value["state"]["addons"]["installed"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|addon| addon["name"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let moved: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(
+            handle,
+            r#"{"type":"addonMoveRequested","transportUrl":"c","offset":-5}"#,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(names(&moved), ["C", "A", "B"]);
+    let removed: Value = serde_json::from_str(
+        &headless_engine_dispatch_json(
+            handle,
+            r#"{"type":"addonRemoveRequested","transportUrl":"a"}"#,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(names(&removed), ["C", "B"]);
+}

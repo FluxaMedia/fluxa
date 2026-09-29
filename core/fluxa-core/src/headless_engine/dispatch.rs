@@ -318,6 +318,13 @@ impl HeadlessEngine {
                 transport_url,
                 force_refresh,
             } => addons::dispatch_install(self, transport_url, force_refresh),
+            AppAction::AddonRemoveRequested { transport_url } => {
+                addons::dispatch_remove(self, &transport_url)
+            }
+            AppAction::AddonMoveRequested {
+                transport_url,
+                offset,
+            } => addons::dispatch_move(self, &transport_url, offset),
             AppAction::AddonsRefreshRequested {
                 profile,
                 force_refresh,

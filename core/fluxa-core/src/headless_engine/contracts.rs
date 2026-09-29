@@ -207,6 +207,10 @@ pub(super) enum AppAction {
         transport_url: String,
         force_refresh: Option<bool>,
     },
+    #[serde(rename = "addonRemoveRequested")]
+    AddonRemoveRequested { transport_url: String },
+    #[serde(rename = "addonMoveRequested")]
+    AddonMoveRequested { transport_url: String, offset: i64 },
     #[serde(rename = "addonsRefreshRequested")]
     AddonsRefreshRequested {
         profile: Option<Value>,
