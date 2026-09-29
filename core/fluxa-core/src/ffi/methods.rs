@@ -660,7 +660,7 @@ mod tests {
     use super::METHODS;
 
     const SOURCES: &[&str] = &[
-        include_str!("../accounts/routes/device_auth.rs"),
+        include_str!("../services/auth/routes.rs"),
         include_str!("../accounts/routes/external_sync.rs"),
         include_str!("../services/fluxa/routes.rs"),
         include_str!("../addons/routes/discovery.rs"),

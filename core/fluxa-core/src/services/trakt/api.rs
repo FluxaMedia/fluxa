@@ -210,7 +210,7 @@ pub(crate) fn trakt_auth_request(args: &Value, operation: &str) -> Option<Value>
     let mut oauth = args.clone();
     oauth["service"] = json!("trakt");
     oauth["operation"] = json!(operation);
-    let plan: Value = serde_json::from_str(&crate::accounts::oauth::oauth_request_plan_json(
+    let plan: Value = serde_json::from_str(&crate::services::auth::oauth::oauth_request_plan_json(
         &oauth.to_string(),
     )?)
     .ok()?;
@@ -227,7 +227,7 @@ pub(crate) fn trakt_token_state(status: u16, _body: &Value) -> &'static str {
     if status == 429 {
         "slow_down"
     } else {
-        crate::accounts::oauth::oauth_response_outcome("trakt", "device_poll", status)
+        crate::services::auth::oauth::oauth_response_outcome("trakt", "device_poll", status)
     }
 }
 

@@ -1,4 +1,3 @@
-use crate::accounts;
 use crate::ffi::*;
 use serde_json::Value;
 
@@ -59,9 +58,9 @@ pub(crate) fn route_resource_plan(method: &str, args_json: &str) -> Outcome {
         "applyPreferenceUpdate" => {
             opt_json(crate::addons::streams::platform::apply_preference_update_json(args_json))
         }
-        "integrationSettingsPlan" => opt_json(
-            accounts::integrations::integration_settings_plan_json(args_json),
-        ),
+        "integrationSettingsPlan" => {
+            opt_json(crate::services::auth::integrations::integration_settings_plan_json(args_json))
+        }
         "addonCollectionMutationPlan" => opt_json(
             crate::addons::streams::platform::addon_collection_mutation_plan_json(args_json),
         ),
