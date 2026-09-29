@@ -155,9 +155,8 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
                 else {
                     continue;
                 };
-                let Some(content_id) =
-                    crate::accounts::external_sync::provider_mappers::simkl_content_id(media)
-                        .filter(|id| allowed.contains(id.as_str()))
+                let Some(content_id) = crate::services::simkl::simkl_content_id(media)
+                    .filter(|id| allowed.contains(id.as_str()))
                 else {
                     continue;
                 };

@@ -1,19 +1,12 @@
-use crate::accounts::external_sync::{
-    simkl_library_to_items_json, simkl_mark_watched_body_json, simkl_merge_playback_progress_json,
-    simkl_watched_to_ids_json, simkl_watching_to_items_json, simkl_watchlist_body_json,
-    trakt_collection_body_json, trakt_history_episodes_to_ids_json, trakt_id_from_source,
-    trakt_ids_from_content_id_json, trakt_mark_watched_body_json,
-    trakt_playback_items_to_library_json, trakt_up_next_to_items_json,
-    trakt_watchlist_to_items_json,
-};
 use crate::catalog;
 use serde_json::{Map, Value, json};
+use simkl::*;
 
 pub(crate) mod anilist;
-pub(crate) mod registry;
-pub(crate) mod simkl_sync;
 pub(crate) mod mdblist;
+pub(crate) mod registry;
 pub(crate) mod simkl;
+pub(crate) mod stremio;
 pub(crate) mod trakt;
 
 pub(crate) use anilist::anilist_calendar_plan_json;
@@ -375,10 +368,10 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
         .unwrap_or(0.0)
         .clamp(0.0, 100.0);
     if provider == "simkl" {
-        let mut target = crate::accounts::external_sync::simkl_target(item_id)?;
+        let mut target = crate::services::simkl::simkl_target(item_id)?;
         if let Some(ids) = args
             .get("providerIds")
-            .and_then(crate::accounts::external_sync::simkl_ids_from_provider)
+            .and_then(crate::services::simkl::simkl_ids_from_provider)
         {
             target.ids = ids;
         }
@@ -402,10 +395,10 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
         );
         return serde_json::to_string(&plan).ok();
     }
-    let episode = crate::accounts::external_sync::trakt_episode_locator_json(item_id)
+    let episode = crate::services::trakt::trakt_episode_locator_json(item_id)
         .and_then(|json| serde_json::from_str::<Value>(&json).ok())
         .filter(|_| str_field(&args, "metaType") != "movie");
-    let show_id = crate::accounts::external_sync::trakt_show_id_from_episode_id(item_id);
+    let show_id = crate::services::trakt::trakt_show_id_from_episode_id(item_id);
     let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(&show_id)?).ok()?;
     let body = match &episode {
         Some(episode) => json!({
@@ -829,10 +822,9 @@ mod tests {
 
     #[test]
     fn anilist_paused_entries_land_in_on_hold() {
-        let entry = |status: &str, id: i64| {
-            json!({"status": status, "progress": 1, "updatedAt": 10, "media": {"id": id, "title": {"romaji": "x"}}})
-        };
-        let list = json!({"isCustomList": false, "entries": [entry("PAUSED", 1), entry("DROPPED", 2)]});
+        let entry = |status: &str, id: i64| json!({"status": status, "progress": 1, "updatedAt": 10, "media": {"id": id, "title": {"romaji": "x"}}});
+        let list =
+            json!({"isCustomList": false, "entries": [entry("PAUSED", 1), entry("DROPPED", 2)]});
         let responses = json!({"list_1": {"data": {"MediaListCollection": {"lists": [list]}}}});
         let snapshot = anilist_snapshot(&responses, 0);
         assert_eq!(snapshot["onHold"][0]["id"], "anilist:1");

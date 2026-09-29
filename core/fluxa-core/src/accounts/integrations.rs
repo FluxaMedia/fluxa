@@ -34,12 +34,16 @@ pub(crate) fn integration_settings_from_value(value: Option<&Value>) -> Integrat
     IntegrationSettings {
         library_source: enum_value(
             "librarySource",
-            &["local", "trakt", "simkl", "nuvio", "anilist", "mdblist", "stremio"],
+            &[
+                "local", "trakt", "simkl", "nuvio", "anilist", "mdblist", "stremio",
+            ],
             "local",
         ),
         watch_progress_source: enum_value(
             "watchProgressSource",
-            &["all", "trakt", "simkl", "nuvio", "anilist", "mdblist", "stremio"],
+            &[
+                "all", "trakt", "simkl", "nuvio", "anilist", "mdblist", "stremio",
+            ],
             "all",
         ),
         continue_watching_days: value

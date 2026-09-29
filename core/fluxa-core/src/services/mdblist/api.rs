@@ -151,7 +151,6 @@ pub(crate) fn mdblist_up_next(upnext: &Value, watched: &Value) -> Value {
     items
 }
 
-
 pub(crate) fn mdblist_calendar_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let year = args.get("year")?.as_i64()? as i32;
@@ -167,13 +166,14 @@ pub(crate) fn mdblist_calendar_plan_json(args_json: &str) -> Option<String> {
         "mdblist",
         &args,
         "GET",
-        format!("{MDBLIST_API}/calendar/events?start={start}&end={end}&limit=1000&favorite_cast=false"),
+        format!(
+            "{MDBLIST_API}/calendar/events?start={start}&end={end}&limit=1000&favorite_cast=false"
+        ),
         Value::Null,
     );
     plan["key"] = json!("events");
     serde_json::to_string(&json!([plan])).ok()
 }
-
 
 pub(crate) fn mdblist_items_json(id: &str, content_type: &str) -> Option<String> {
     let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(id)?).ok()?;
@@ -181,8 +181,6 @@ pub(crate) fn mdblist_items_json(id: &str, content_type: &str) -> Option<String>
     item.insert("type".into(), json!(content_type));
     Some(json!([item]).to_string())
 }
-
-
 
 pub(crate) fn mdblist_library_requests(args: &Value) -> Option<Vec<Value>> {
     let get = |key: &str, url: String| {

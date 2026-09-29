@@ -1,10 +1,6 @@
-mod anilist;
 mod calendar;
 mod cross_provider;
 mod merge;
-mod simkl;
-mod stremio;
-mod trakt;
 
 #[cfg(test)]
 mod worker_policy {

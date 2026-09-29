@@ -1,5 +1,4 @@
-use super::super::trakt::trakt_playback_item_to_library;
-use super::super::*;
+use super::*;
 use serde_json::{Value, json};
 
 #[test]

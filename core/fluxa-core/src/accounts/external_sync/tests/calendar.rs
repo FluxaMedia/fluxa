@@ -115,7 +115,10 @@ fn mdblist_events_become_episode_items() {
     .unwrap();
     assert_eq!(items[0]["contentId"], "tmdb:2190");
     assert_eq!(items[0]["id"], "tmdb:2190:29:2");
-    assert_eq!(items[0]["episodePoster"], "https://image.tmdb.org/t/p/w500/b.jpg");
+    assert_eq!(
+        items[0]["episodePoster"],
+        "https://image.tmdb.org/t/p/w500/b.jpg"
+    );
 }
 
 #[test]

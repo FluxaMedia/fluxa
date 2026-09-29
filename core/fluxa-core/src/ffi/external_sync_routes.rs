@@ -40,23 +40,23 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
             accounts::external_sync::provider_pagination_plan_json(args_json),
         ),
         "stremioLibraryMutationPlan" => opt_json(
-            accounts::external_sync::stremio_library_mutation_plan_json(args_json),
+            services::stremio::stremio_library_mutation_plan_json(args_json),
         ),
-        "traktHasClient" => Ok(json!(accounts::external_sync::trakt_has_client(&arg_str(
+        "traktHasClient" => Ok(json!(services::trakt::trakt_has_client(&arg_str(
             args_json, "apiKey",
         )?))),
-        "traktBearer" => Ok(Value::String(accounts::external_sync::trakt_bearer(
-            &arg_str(args_json, "token")?,
-        ))),
-        "traktScrobbleUrl" => opt_str(accounts::external_sync::trakt_scrobble_url(&arg_str(
+        "traktBearer" => Ok(Value::String(services::trakt::trakt_bearer(&arg_str(
+            args_json, "token",
+        )?))),
+        "traktScrobbleUrl" => opt_str(services::trakt::trakt_scrobble_url(&arg_str(
             args_json, "action",
         )?)),
         "traktPlaybackUrl" => {
             let args = object(args_json)?;
             let content_type = args.get("contentType").and_then(Value::as_str);
-            opt_str(accounts::external_sync::trakt_playback_url(content_type))
+            opt_str(services::trakt::trakt_playback_url(content_type))
         }
-        "traktListReference" => opt_str(accounts::external_sync::trakt_list_reference(&arg_str(
+        "traktListReference" => opt_str(services::trakt::trakt_list_reference(&arg_str(
             args_json, "input",
         )?)),
         "traktTokenExpiresAt" => {
@@ -67,81 +67,73 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
             let expires_in_seconds = field(&args, "expiresInSeconds")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "expiresInSeconds must be a number"))?;
-            Ok(json!(accounts::external_sync::trakt_token_expires_at(
+            Ok(json!(services::trakt::trakt_token_expires_at(
                 created_at_seconds,
                 expires_in_seconds,
             )))
         }
-        "traktContentIdFromIds" => {
-            opt_str(accounts::external_sync::trakt_content_id_from_ids_json(
-                &arg_str(args_json, "idsJson")?,
-            ))
-        }
-        "traktSyncItemToMeta" => opt_json(accounts::external_sync::trakt_sync_item_to_meta_json(
+        "traktContentIdFromIds" => opt_str(services::trakt::trakt_content_id_from_ids_json(
+            &arg_str(args_json, "idsJson")?,
+        )),
+        "traktSyncItemToMeta" => opt_json(services::trakt::trakt_sync_item_to_meta_json(args_json)),
+        "traktSyncItemContentType" => opt_str(services::trakt::trakt_sync_item_content_type_json(
             args_json,
         )),
-        "traktSyncItemContentType" => opt_str(
-            accounts::external_sync::trakt_sync_item_content_type_json(args_json),
-        ),
-        "traktPlaybackDeleteIds" => opt_json(
-            accounts::external_sync::trakt_playback_delete_ids_json(args_json),
-        ),
-        "traktIdsFromContentId" => opt_json(
-            accounts::external_sync::trakt_ids_from_content_id_json(&arg_str(args_json, "rawId")?),
-        ),
-        "traktEpisodeLocator" => opt_json(accounts::external_sync::trakt_episode_locator_json(
-            &arg_str(args_json, "videoId")?,
+        "traktPlaybackDeleteIds" => {
+            opt_json(services::trakt::trakt_playback_delete_ids_json(args_json))
+        }
+        "traktIdsFromContentId" => opt_json(services::trakt::trakt_ids_from_content_id_json(
+            &arg_str(args_json, "rawId")?,
         )),
+        "traktEpisodeLocator" => opt_json(services::trakt::trakt_episode_locator_json(&arg_str(
+            args_json, "videoId",
+        )?)),
         "traktShowIdFromEpisodeId" => Ok(Value::String(
-            accounts::external_sync::trakt_show_id_from_episode_id(&arg_str(args_json, "videoId")?),
+            services::trakt::trakt_show_id_from_episode_id(&arg_str(args_json, "videoId")?),
         )),
         "traktScrobbleMediaId" => {
             let args = object(args_json)?;
             let video_id = args.get("videoId").and_then(Value::as_str);
-            Ok(Value::String(
-                accounts::external_sync::trakt_scrobble_media_id(
-                    field_str(&args, "parentId")?,
-                    video_id,
-                    field_str(&args, "mediaType")?,
-                ),
-            ))
+            Ok(Value::String(services::trakt::trakt_scrobble_media_id(
+                field_str(&args, "parentId")?,
+                video_id,
+                field_str(&args, "mediaType")?,
+            )))
         }
-        "traktOAuthErrorCode" => opt_str(accounts::external_sync::trakt_oauth_error_code(
-            &arg_str(args_json, "body")?,
-        )),
+        "traktOAuthErrorCode" => opt_str(services::trakt::trakt_oauth_error_code(&arg_str(
+            args_json, "body",
+        )?)),
         "traktHistoryRequest" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::trakt_history_request_json(
+            opt_json(services::trakt::trakt_history_request_json(
                 field_str(&args, "metaJson")?,
                 field_str(&args, "episodesJson")?,
             ))
         }
-        "traktCollectionBody" => opt_json(accounts::external_sync::trakt_collection_body_json(
+        "traktCollectionBody" => opt_json(services::trakt::trakt_collection_body_json(args_json)),
+        // args_json IS the items array for single-array-arg methods
+        "traktPlaybackItemsToLibrary" => opt_json(
+            services::trakt::trakt_playback_items_to_library_json(args_json),
+        ),
+        "traktWatchedShowsToItems" => opt_json(services::trakt::trakt_watched_shows_to_items_json(
             args_json,
         )),
-        // args_json IS the items array for single-array-arg methods
-        "traktPlaybackItemsToLibrary" => {
-            opt_json(accounts::external_sync::trakt_playback_items_to_library_json(args_json))
-        }
-        "traktWatchedShowsToItems" => opt_json(
-            accounts::external_sync::trakt_watched_shows_to_items_json(args_json),
-        ),
         "traktWatchlistToItems" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::trakt_watchlist_to_items_json(
+            opt_json(services::trakt::trakt_watchlist_to_items_json(
                 field_str(&args, "moviesJson")?,
                 field_str(&args, "showsJson")?,
             ))
         }
-        "stremioWatchlistToItems" => opt_json(
-            accounts::external_sync::stremio_watchlist_to_items_json(args_json),
-        ),
-        "stremioWatchedToIds" => opt_json(accounts::external_sync::stremio_watched_to_ids_json(
+        "stremioWatchlistToItems" => opt_json(services::stremio::stremio_watchlist_to_items_json(
             args_json,
         )),
+        "stremioWatchedToIds" => {
+            opt_json(services::stremio::stremio_watched_to_ids_json(args_json))
+        }
         "traktWatchedToIds" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::trakt_watched_to_ids_json(
+            opt_json(services::trakt::trakt_watched_to_ids_json(
                 field_str(&args, "moviesJson")?,
                 field_str(&args, "showsJson")?,
             ))
@@ -230,38 +222,30 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
         "externalProviderActionPlan" => opt_json(
             accounts::external_sync::external_provider_action_plan_json(args_json),
         ),
-        "traktPlaybackItemsDedup" => opt_json(
-            accounts::external_sync::trakt_playback_items_dedup_json(args_json),
-        ),
-        "traktRemapVideoIds" => opt_json(accounts::external_sync::trakt_remap_video_ids_json(
-            args_json,
-        )),
-        "traktUpNextToItems" => opt_json(accounts::external_sync::trakt_up_next_to_items_json(
-            args_json,
-        )),
-        "traktMarkWatchedBody" => opt_json(accounts::external_sync::trakt_mark_watched_body_json(
-            args_json,
-        )),
+        "traktPlaybackItemsDedup" => {
+            opt_json(services::trakt::trakt_playback_items_dedup_json(args_json))
+        }
+        "traktRemapVideoIds" => opt_json(services::trakt::trakt_remap_video_ids_json(args_json)),
+        "traktUpNextToItems" => opt_json(services::trakt::trakt_up_next_to_items_json(args_json)),
+        "traktMarkWatchedBody" => {
+            opt_json(services::trakt::trakt_mark_watched_body_json(args_json))
+        }
         "traktRelatedLookupSlug" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::trakt_related_lookup_slug(
+            opt_json(services::trakt::trakt_related_lookup_slug(
                 field_str(&args, "lookupJson")?,
                 field_str(&args, "wantType")?,
             ))
         }
         "traktRelatedItemsToMetas" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::trakt_related_items_to_metas_json(
+            opt_json(services::trakt::trakt_related_items_to_metas_json(
                 field_str(&args, "relatedJson")?,
                 field_str(&args, "contentType")?,
             ))
         }
-        "traktCommentsRequest" => opt_json(accounts::external_sync::trakt_comments_request_json(
-            args_json,
-        )),
-        "traktActivityDiff" => {
-            opt_json(accounts::external_sync::trakt_activity_diff_json(args_json))
-        }
+        "traktCommentsRequest" => opt_json(services::trakt::trakt_comments_request_json(args_json)),
+        "traktActivityDiff" => opt_json(services::trakt::trakt_activity_diff_json(args_json)),
 
         _ => Err(unknown_method()),
     }
@@ -269,58 +253,54 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
 
 pub(super) fn route_external_sync_simkl(method: &str, args_json: &str) -> Outcome {
     match method {
-        "simklHistoryRequest" => opt_json(accounts::external_sync::simkl_history_request_json(
-            args_json,
-        )),
-        "simklWatchlistRequest" => opt_json(accounts::external_sync::simkl_watchlist_request_json(
+        "simklHistoryRequest" => opt_json(services::simkl::simkl_history_request_json(args_json)),
+        "simklWatchlistRequest" => opt_json(services::simkl::simkl_watchlist_request_json(
             args_json, false,
         )),
-        "simklWatchlistRemovalRequest" => opt_json(
-            accounts::external_sync::simkl_watchlist_request_json(args_json, true),
-        ),
-        "simklMarkWatchedBody" => opt_json(accounts::external_sync::simkl_mark_watched_body_json(
-            args_json,
+        "simklWatchlistRemovalRequest" => opt_json(services::simkl::simkl_watchlist_request_json(
+            args_json, true,
         )),
-        "simklPlaybackDeleteIds" => opt_json(
-            accounts::external_sync::simkl_playback_delete_ids_json(args_json),
-        ),
-        "simklPlaybackItemToContinueMeta" => {
-            opt_json(accounts::external_sync::simkl_playback_item_to_continue_meta_json(args_json))
+        "simklMarkWatchedBody" => {
+            opt_json(services::simkl::simkl_mark_watched_body_json(args_json))
         }
-        "simklWatchlistBody" => opt_json(accounts::external_sync::simkl_watchlist_body_json(
-            args_json,
-        )),
+        "simklPlaybackDeleteIds" => {
+            opt_json(services::simkl::simkl_playback_delete_ids_json(args_json))
+        }
+        "simklPlaybackItemToContinueMeta" => opt_json(
+            services::simkl::simkl_playback_item_to_continue_meta_json(args_json),
+        ),
+        "simklWatchlistBody" => opt_json(services::simkl::simkl_watchlist_body_json(args_json)),
         "simklWatchingToItems" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_watching_to_items_json(
+            opt_json(services::simkl::simkl_watching_to_items_json(
                 field_str(&args, "showsJson")?,
                 field_str(&args, "moviesJson")?,
             ))
         }
         "simklWatchlistToItems" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_watchlist_to_items_json(
+            opt_json(services::simkl::simkl_watchlist_to_items_json(
                 field_str(&args, "showsJson")?,
                 field_str(&args, "moviesJson")?,
             ))
         }
         "simklLibraryToItems" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_library_to_items_json(
+            opt_json(services::simkl::simkl_library_to_items_json(
                 field_str(&args, "showsJson")?,
                 field_str(&args, "moviesJson")?,
             ))
         }
         "simklMergePlaybackProgress" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_merge_playback_progress_json(
+            opt_json(services::simkl::simkl_merge_playback_progress_json(
                 field_str(&args, "itemsJson")?,
                 field_str(&args, "playbackJson")?,
             ))
         }
         "simklWatchedToIds" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_watched_to_ids_json(
+            opt_json(services::simkl::simkl_watched_to_ids_json(
                 field_str(&args, "showsJson")?,
                 field_str(&args, "moviesJson")?,
             ))
@@ -352,14 +332,14 @@ pub(super) fn route_external_sync_simkl(method: &str, args_json: &str) -> Outcom
         }
         "simklMatchEpisode" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_match_episode_json(
+            opt_json(services::simkl::simkl_match_episode_json(
                 field_str(&args, "episodesJson")?,
                 field_str(&args, "targetJson")?,
             ))
         }
         "simklLookupIdForType" => {
             let args = object(args_json)?;
-            match accounts::external_sync::simkl_lookup_id_for_type(
+            match services::simkl::simkl_lookup_id_for_type(
                 field_str(&args, "lookupJson")?,
                 field_str(&args, "wantType")?,
             ) {
@@ -369,16 +349,13 @@ pub(super) fn route_external_sync_simkl(method: &str, args_json: &str) -> Outcom
         }
         "simklRecommendationCandidates" => {
             let args = object(args_json)?;
-            opt_json(
-                accounts::external_sync::simkl_recommendation_candidates_json(field_str(
-                    &args,
-                    "detailJson",
-                )?),
-            )
+            opt_json(services::simkl::simkl_recommendation_candidates_json(
+                field_str(&args, "detailJson")?,
+            ))
         }
         "simklRecommendationToMeta" => {
             let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_recommendation_to_meta_json(
+            opt_json(services::simkl::simkl_recommendation_to_meta_json(
                 field_str(&args, "recJson")?,
                 field_str(&args, "resolvedImdb")?,
             ))
@@ -404,7 +381,7 @@ pub(super) fn route_external_sync_anilist(method: &str, args_json: &str) -> Outc
                 .and_then(Value::as_array)
                 .map(|arr| arr.iter().filter_map(Value::as_str).collect());
             let dry_run = args.get("dryRun").and_then(Value::as_bool).unwrap_or(false);
-            Ok(accounts::external_sync::anilist_entries_to_sync(
+            Ok(services::anilist::anilist_entries_to_sync(
                 entries,
                 now_ms,
                 categories.as_deref(),
@@ -419,18 +396,18 @@ pub(super) fn route_external_sync_anilist(method: &str, args_json: &str) -> Outc
             let incoming = field(&args, "incoming")?
                 .as_array()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "incoming must be an array"))?;
-            Ok(accounts::external_sync::merge_library_items_by_id(
+            Ok(services::anilist::merge_library_items_by_id(
                 local, incoming,
             ))
         }
         "anilistGraphqlQueries" => Ok(Value::String(
-            accounts::external_sync::anilist_graphql_queries_json(),
+            services::anilist::anilist_graphql_queries_json(),
         )),
         "anilistSaveMediaListEntryVariables" => {
             let args = object(args_json)?;
             let progress = args.get("progress").and_then(Value::as_i64);
             opt_json(
-                accounts::external_sync::anilist_save_media_list_entry_variables_json(
+                services::anilist::anilist_save_media_list_entry_variables_json(
                     field_str(&args, "contentId")?,
                     field_str(&args, "status")?,
                     progress,
@@ -438,12 +415,12 @@ pub(super) fn route_external_sync_anilist(method: &str, args_json: &str) -> Outc
             )
         }
         // args_json IS the meta object
-        "extractAnilistIdFromLinks" => Ok(json!(
-            accounts::external_sync::extract_anilist_id_from_links(&object(args_json)?)
-        )),
-        "anilistSearchBestMatch" => opt_json(
-            accounts::external_sync::anilist_search_best_match_json(args_json),
-        ),
+        "extractAnilistIdFromLinks" => Ok(json!(services::anilist::extract_anilist_id_from_links(
+            &object(args_json)?
+        ))),
+        "anilistSearchBestMatch" => {
+            opt_json(services::anilist::anilist_search_best_match_json(args_json))
+        }
         "anilistMediaListStatus" => {
             let args = object(args_json)?;
             let total_episodes = field(&args, "totalEpisodes")?
@@ -452,7 +429,7 @@ pub(super) fn route_external_sync_anilist(method: &str, args_json: &str) -> Outc
             let progress_episode = field(&args, "progressEpisode")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progressEpisode must be a number"))?;
-            Ok(json!(accounts::external_sync::anilist_media_list_status(
+            Ok(json!(services::anilist::anilist_media_list_status(
                 total_episodes,
                 progress_episode
             )))

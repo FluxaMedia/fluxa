@@ -1,4 +1,4 @@
-use crate::accounts::external_sync::provider_mappers::simkl_content_id;
+use crate::services::simkl::simkl_content_id;
 use serde_json::{Value, json};
 
 pub(crate) fn simkl_history_request_json(args_json: &str) -> Option<String> {

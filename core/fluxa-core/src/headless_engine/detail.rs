@@ -204,9 +204,8 @@ fn remap_local_watched(engine: &mut HeadlessEngine) {
         "addonEpisodes": episodes,
         "traktSeasons": detail.trakt_seasons,
     });
-    if let Some(mapped) =
-        crate::accounts::external_sync::trakt_remap_video_ids_json(&args.to_string())
-            .and_then(|mapped| serde_json::from_str(&mapped).ok())
+    if let Some(mapped) = crate::services::trakt::trakt_remap_video_ids_json(&args.to_string())
+        .and_then(|mapped| serde_json::from_str(&mapped).ok())
     {
         detail.local_watched_video_ids = mapped;
     }

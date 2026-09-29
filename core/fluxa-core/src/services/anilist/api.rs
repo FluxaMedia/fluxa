@@ -10,7 +10,6 @@ pub(crate) fn anilist_user_id(token: &str) -> Option<i64> {
     claims.get("sub")?.as_str()?.parse().ok()
 }
 
-
 pub(crate) fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
     let entries: Vec<Value> = ["list_1", "list_2", "list_3"]
         .into_iter()
@@ -22,7 +21,7 @@ pub(crate) fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
         .flatten()
         .cloned()
         .collect();
-    let synced = crate::accounts::external_sync::anilist_entries_to_sync(&entries, now_ms, None, false);
+    let synced = crate::services::anilist::anilist_entries_to_sync(&entries, now_ms, None, false);
     let tagged = |key: &str| {
         let items: Vec<Value> = synced
             .get(key)
@@ -48,7 +47,6 @@ pub(crate) fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
     })
 }
 
-
 pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let year = args.get("year")?.as_i64()?;
@@ -69,7 +67,11 @@ pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
     };
     let month_start = year * 10_000 + month * 100;
     serde_json::to_string(&json!([
-        plan("releasing", "status:RELEASING".to_owned(), "notYetAired:true,"),
+        plan(
+            "releasing",
+            "status:RELEASING".to_owned(),
+            "notYetAired:true,"
+        ),
         plan(
             "finished",
             format!("status:FINISHED,endDate_greater:{month_start}"),
@@ -79,9 +81,13 @@ pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
     .ok()
 }
 
-
 pub(crate) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Option<Value> {
-    let media_id: i64 = content_id.strip_prefix("anilist:")?.split(':').next()?.parse().ok()?;
+    let media_id: i64 = content_id
+        .strip_prefix("anilist:")?
+        .split(':')
+        .next()?
+        .parse()
+        .ok()?;
     let mut variables = fields;
     variables["mediaId"] = json!(media_id);
     Some(request(
@@ -92,8 +98,6 @@ pub(crate) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Opt
         json!({"query": ANILIST_SAVE_MUTATION, "variables": variables}),
     ))
 }
-
-
 
 pub(crate) fn anilist_library_requests(args: &Value) -> Option<Vec<Value>> {
     let user_id = anilist_user_id(str_field(args, "token"))?;

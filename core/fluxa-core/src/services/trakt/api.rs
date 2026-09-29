@@ -43,7 +43,6 @@ pub(crate) fn trakt_continue_watching(playback: &Value, up_next: &Value) -> Valu
     Value::Array(items)
 }
 
-
 pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let year = args.get("year")?.as_i64()? as i32;
@@ -71,8 +70,6 @@ pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
         .collect();
     serde_json::to_string(&requests).ok()
 }
-
-
 
 pub(crate) fn trakt_library_requests(args: &Value) -> Option<Vec<Value>> {
     let get = |key: &str, url: String| {
@@ -211,9 +208,9 @@ pub(crate) fn trakt_auth_request(args: &Value, operation: &str) -> Option<Value>
     let mut oauth = args.clone();
     oauth["service"] = json!("trakt");
     oauth["operation"] = json!(operation);
-    let plan: Value = serde_json::from_str(
-        &crate::accounts::oauth::oauth_request_plan_json(&oauth.to_string())?,
-    )
+    let plan: Value = serde_json::from_str(&crate::accounts::oauth::oauth_request_plan_json(
+        &oauth.to_string(),
+    )?)
     .ok()?;
     Some(request(
         "trakt",

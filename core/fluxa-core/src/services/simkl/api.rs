@@ -36,8 +36,6 @@ pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) 
     (shows.to_string(), movies.to_string())
 }
 
-
-
 pub(crate) fn simkl_library_snapshot(_args: &Value, responses: &Value) -> Value {
     let items = |status: &str| {
         let (shows, movies) = simkl_bucket(&responses, status);
@@ -121,7 +119,10 @@ pub(crate) fn simkl_mark_watched(args: &Value, change: &WatchedChange) -> Option
 pub(crate) fn simkl_auth_request(args: &Value, operation: &str) -> Option<Value> {
     let client_id = str_field(args, "clientId");
     let (path, body) = match operation {
-        "start" => ("device", json!({"client_id": client_id, "scope": SIMKL_SCOPE})),
+        "start" => (
+            "device",
+            json!({"client_id": client_id, "scope": SIMKL_SCOPE}),
+        ),
         "exchange" => (
             "token",
             json!({

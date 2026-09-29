@@ -1,4 +1,4 @@
-use super::super::*;
+use super::*;
 use serde_json::Value;
 
 #[test]
