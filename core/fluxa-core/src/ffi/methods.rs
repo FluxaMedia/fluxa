@@ -216,6 +216,7 @@ static METHODS: &[(&str, Router)] = &[
     ("matchAnimeSkipEpisodeId", route_intro_segments),
     ("matchStreamBadges", route_stream_badges),
     ("mdblistBearer", route_mdblist),
+    ("mdblistCalendarPlan", route_provider_library),
     ("mdblistCatalogUrl", route_mdblist),
     ("mdblistCheckinPlan", route_mdblist),
     ("mdblistContentType", route_mdblist),

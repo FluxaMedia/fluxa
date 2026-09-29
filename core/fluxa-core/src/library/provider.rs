@@ -800,6 +800,28 @@ pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
     serde_json::to_string(&requests).ok()
 }
 
+pub(crate) fn mdblist_calendar_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let year = args.get("year")?.as_i64()? as i32;
+    let month = args.get("month")?.as_u64()? as u32;
+    let start = chrono::NaiveDate::from_ymd_opt(year, month, 1)?;
+    let next = if month == 12 {
+        chrono::NaiveDate::from_ymd_opt(year + 1, 1, 1)?
+    } else {
+        chrono::NaiveDate::from_ymd_opt(year, month + 1, 1)?
+    };
+    let end = next.pred_opt()?;
+    let mut plan = request(
+        "mdblist",
+        &args,
+        "GET",
+        format!("{MDBLIST_API}/calendar/events?start={start}&end={end}&limit=1000&favorite_cast=false"),
+        Value::Null,
+    );
+    plan["key"] = json!("events");
+    serde_json::to_string(&json!([plan])).ok()
+}
+
 pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let provider = str_field(&args, "provider");

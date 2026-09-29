@@ -569,22 +569,23 @@ impl EffectExecutor {
         core_value("providerCalendarItems", Value::Object(args)).unwrap_or_else(|| json!([]))
     }
 
-    pub(super) async fn trakt_calendar_items(
+    pub(super) async fn provider_calendar_items(
         &self,
+        provider: &str,
         profile: &Value,
         year: i64,
         month: i64,
     ) -> Value {
-        let Some(mut credentials) = self.provider_credentials("trakt", profile) else {
+        let Some(mut credentials) = self.provider_credentials(provider, profile) else {
             return json!([]);
         };
         credentials["year"] = json!(year);
         credentials["month"] = json!(month);
-        let Some(plan) = core_value("traktCalendarPlan", credentials) else {
+        let Some(plan) = core_value(&format!("{provider}CalendarPlan"), credentials) else {
             return json!([]);
         };
         let cache_key = format!(
-            "trakt_calendar_{}_{year}_{month}",
+            "{provider}_calendar_{}_{year}_{month}",
             sanitize_key(str_field(profile, "id"))
         );
         let cached = self.storage.read_json(&cache_key).ok().flatten();
@@ -599,18 +600,18 @@ impl EffectExecutor {
             let mut fetched = Map::new();
             if let Ok(client) = http_client() {
                 for request in plan.as_array().into_iter().flatten() {
-                    match Self::provider_get(&client, request, "Trakt").await {
+                    match Self::provider_get(&client, request, provider).await {
                         Ok(body) => {
                             fetched.insert(str_field(request, "key").to_owned(), body);
                         }
                         Err(error) => {
-                            crate::log!("[fluxa-native] trakt calendar failed: {error}");
+                            crate::log!("[fluxa-native] {provider} calendar failed: {error}");
                             break;
                         }
                     }
                 }
             }
-            responses = if fetched.len() == 2 {
+            responses = if fetched.len() == plan.as_array().map_or(0, Vec::len) {
                 let fetched = Value::Object(fetched);
                 let _ = self.storage.write_json(
                     &cache_key,
@@ -627,9 +628,10 @@ impl EffectExecutor {
         core_value(
             "providerCalendarItems",
             json!({
-                "provider": "trakt",
+                "provider": provider,
                 "shows": responses["shows"],
                 "movies": responses["movies"],
+                "events": responses["events"]["events"],
             }),
         )
         .unwrap_or_else(|| json!([]))

@@ -239,8 +239,12 @@ impl EffectExecutor {
         let external_items = if profile["integrationLibrarySource"] == "simkl" {
             self.simkl_calendar_items(profile_id, &profile, year, month)
                 .await
-        } else if profile["integrationLibrarySource"] == "trakt" {
-            self.trakt_calendar_items(&profile, year, month).await
+        } else if let Some(provider) = ["trakt", "mdblist"]
+            .into_iter()
+            .find(|provider| profile["integrationLibrarySource"] == *provider)
+        {
+            self.provider_calendar_items(provider, &profile, year, month)
+                .await
         } else {
             library
                 .get("externalCalendarItems")

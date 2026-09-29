@@ -18,6 +18,7 @@ pub(super) fn route_provider_library(method: &str, args_json: &str) -> Outcome {
             opt_json(library::provider::provider_library_snapshot_json(args_json))
         }
         "simklSyncPlan" => opt_json(library::simkl_sync::simkl_sync_plan_json(args_json)),
+        "mdblistCalendarPlan" => opt_json(library::provider::mdblist_calendar_plan_json(args_json)),
         "traktCalendarPlan" => opt_json(library::provider::trakt_calendar_plan_json(args_json)),
         "simklCalendarPlan" => opt_json(library::simkl_sync::simkl_calendar_plan_json(args_json)),
         "simklSyncApply" => opt_json(library::simkl_sync::simkl_sync_apply_json(args_json)),

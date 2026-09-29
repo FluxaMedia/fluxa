@@ -43,6 +43,72 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
         }
         return serde_json::to_string(&items).ok();
     }
+    if provider == "mdblist" {
+        for event in args
+            .get("events")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+        {
+            let is_movie = event.get("type").and_then(Value::as_str) == Some("movie");
+            let Some(tmdb) = event
+                .get(if is_movie { "movie_tmdb" } else { "show_tmdb" })
+                .or_else(|| event.get("tmdb"))
+                .and_then(Value::as_i64)
+            else {
+                continue;
+            };
+            let Some(date) = event.get("start").and_then(Value::as_str) else {
+                continue;
+            };
+            let content_id = format!("tmdb:{tmdb}");
+            let poster = event
+                .get("poster")
+                .and_then(Value::as_str)
+                .filter(|url| !url.is_empty());
+            if is_movie {
+                items.push(json!({
+                    "id": content_id,
+                    "title": event.get("title"),
+                    "dateIso": date,
+                    "contentId": content_id,
+                    "metaType": "movie",
+                    "poster": poster,
+                }));
+                continue;
+            }
+            let season = event.get("season_number").and_then(Value::as_i64);
+            let number = event.get("episode_number").and_then(Value::as_i64);
+            let still = event
+                .get("image")
+                .and_then(Value::as_str)
+                .filter(|path| path.starts_with('/'))
+                .map(|path| format!("https://image.tmdb.org/t/p/w500{path}"));
+            let finale = if event["is_season_finale"] == true {
+                Some("season")
+            } else if event["is_mid_season_finale"] == true {
+                Some("mid_season")
+            } else {
+                None
+            };
+            items.push(json!({
+                "id": format!("{content_id}:{}:{}", season.unwrap_or_default(), number.unwrap_or_default()),
+                "title": event.get("title"),
+                "episodeTitle": event.get("episode_title"),
+                "seasonNumber": season,
+                "episodeNumber": number,
+                "dateIso": date,
+                "contentId": content_id,
+                "seriesId": content_id,
+                "metaType": "series",
+                "poster": still.as_deref().or(poster),
+                "episodePoster": still,
+                "seriesPoster": poster,
+                "finaleType": finale,
+            }));
+        }
+        return serde_json::to_string(&items).ok();
+    }
     if provider == "simkl" && args.get("shows").is_some_and(Value::is_object) {
         let allowed: std::collections::HashSet<&str> = args
             .get("allowedContentIds")

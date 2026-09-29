@@ -103,3 +103,17 @@ fn simkl_calendar_keeps_only_library_titles_and_uses_anime_ids() {
         "https://simkl.in/posters/ab/abcdef_m.jpg"
     );
 }
+
+#[test]
+fn mdblist_events_become_episode_items() {
+    let items: serde_json::Value = serde_json::from_str(
+        &provider_calendar_items_json(
+            r#"{"provider":"mdblist","events":[{"type":"episode","start":"2026-10-01","title":"South Park","episode_title":"Episode 2","show_tmdb":2190,"season_number":29,"episode_number":2,"poster":"https://image.tmdb.org/t/p/w200/a.jpg","image":"/b.jpg","is_season_finale":false}]}"#,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(items[0]["contentId"], "tmdb:2190");
+    assert_eq!(items[0]["id"], "tmdb:2190:29:2");
+    assert_eq!(items[0]["episodePoster"], "https://image.tmdb.org/t/p/w500/b.jpg");
+}
