@@ -45,7 +45,7 @@ The Android project (`apps/android`) picks up the resulting `.so` files from `ta
 
 ## Panic policy
 
-The release profile keeps `panic = "unwind"`. `ffi.rs::core_invoke` uses `catch_unwind` so a panic in domain logic returns a safe null/error instead of aborting the host process. Switching to `panic = "abort"` would silently defeat this.
+The release profile keeps `panic = "unwind"`. `ffi::core_invoke` uses `catch_unwind` so a panic in domain logic returns a safe null/error instead of aborting the host process. Switching to `panic = "abort"` would silently defeat this.
 
 ## fluxa-streaming-engine
 

@@ -21,14 +21,14 @@ The core never initiates anything. Every state transition begins with the platfo
 
 **`headless_engine/`** is the primary, actively-developed engine. State is held in a typed `EngineState` struct composed of per-feature sub-structs (`HomeState`, `DetailState`, `PlayerState`, etc.). Cross-module mutation goes through `pub(super)` setters — never reaching across module boundaries directly.
 
-**`app_state.rs`** is a lighter, independently-maintained engine for overlapping concerns (home/discover/calendar/library/player). It is used by Android via UniFFI (`createAppCoreStateJson` / `appCoreDispatchJson`). The two engines are intentionally separate — don't try to merge them.
+**`headless_engine/app_state.rs`** is a lighter, independently-maintained engine for overlapping concerns (home/discover/calendar/library/player). It is used by Android via UniFFI (`createAppCoreStateJson` / `appCoreDispatchJson`). The two engines are intentionally separate — don't try to merge them.
 
 ## Entry points
 
 | Entry | Used by | File |
 |---|---|---|
 | `Engine` (`dispatch`, `complete`) | Every shell | `src/headless_engine` |
-| `core_invoke(method, args_json)` | Desktop plan calls, Swift, WASM | `src/ffi.rs` |
+| `core_invoke(method, args_json)` | Desktop plan calls, Swift, WASM | `src/ffi/` |
 
 `Engine` is the way in. `core_invoke` is a string-routed shim over the domain modules that shrinks as each domain is wired to the engine; see [`wiring-map.md`](wiring-map.md). `coreContractManifest` exposes the lifecycle and effect contract for generated bindings and drift checks.
 

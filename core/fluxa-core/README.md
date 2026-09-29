@@ -55,7 +55,7 @@ this crate in, including how to add a new capability for a given platform.
 - **`headless_engine/`** — the primary state machine. State is a typed `EngineState`
   struct made of per-feature sub-structs (home, detail, player, library, search, ...);
   cross-module writes go through `pub(super)` setters, never raw field access.
-- **`app_state.rs`** — a second, simpler engine for overlapping concerns. The split is intentional, not duplication to be cleaned up.
+- **`headless_engine/app_state.rs`** — a second, simpler engine for overlapping concerns. The split is intentional, not duplication to be cleaned up.
 - `Engine` is the entry point; `ffi::core_invoke` is a string-routed shim that shrinks as
   domains are wired to it. See [`docs/wiring-map.md`](docs/wiring-map.md).
 

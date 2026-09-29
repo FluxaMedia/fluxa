@@ -109,4 +109,4 @@ Result payloads are effect-specific. The general pattern:
 
 For network fetches, `data` typically contains the raw response body or a parsed object. For storage reads, it contains the stored value or `null` if nothing was saved. For write operations, `result` can be `{}` on success.
 
-The exact shape for each effect type is consumed by the engine's `completeEffect` handler in `src/headless_engine/` — check the relevant submodule (e.g. `home.rs`, `detail.rs`, `player.rs`) for the `EffectResultInput` variant that handles it.
+The exact shape for each effect type is consumed by the engine's `completeEffect` handler in `src/headless_engine/` — check the relevant domain slice (e.g. `src/home/engine.rs`, `src/catalog/engine/detail.rs`, `src/player/engine/`) for the `EffectResultInput` variant that handles it.

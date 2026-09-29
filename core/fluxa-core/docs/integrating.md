@@ -28,7 +28,7 @@ Stream and torrent planning for the streaming engine is called directly as `flux
 
 ### Adding a new capability for desktop
 
-Prefer an engine action and effect. If the logic is not wired yet, add a route arm to the matching `*_routes.rs` in `src/ffi/`, register it in `src/ffi/methods.rs`, and add the name to `tests/wire/core_invoke_methods.txt`.
+Prefer an engine action and effect. If the logic is not wired yet, add a route arm to the `routes` folder of the matching domain (or `src/services/<name>/routes.rs`), register it in `src/ffi/methods.rs`, and add the name to `tests/wire/core_invoke_methods.txt`.
 
 ---
 
