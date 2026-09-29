@@ -12,6 +12,7 @@ use serde_json::{Map, Value, json};
 const TRAKT_API: &str = "https://api.trakt.tv";
 pub(super) const SIMKL_SCOPE: &str = "media:read media:write";
 pub(super) const SIMKL_API: &str = "https://api.simkl.com";
+const MDBLIST_API: &str = "https://api.mdblist.com";
 const SIMKL_APP_NAME: &str = "fluxa";
 const SIMKL_USER_AGENT: &str = concat!("fluxa/", env!("CARGO_PKG_VERSION"));
 
@@ -36,7 +37,7 @@ fn headers(provider: &str, args: &Value) -> Value {
         }
         _ => {}
     }
-    if !token.is_empty() && provider != "mdblist" {
+    if !token.is_empty() {
         headers.insert("Authorization".into(), json!(format!("Bearer {token}")));
     }
     Value::Object(headers)
@@ -64,7 +65,7 @@ pub(super) fn request(
     body: Value,
 ) -> Value {
     let url = match provider {
-        "mdblist" => with_api_key(&url, args),
+        "mdblist" if str_field(args, "token").is_empty() => with_api_key(&url, args),
         "simkl" => with_simkl_app(&url),
         _ => url,
     };
@@ -137,6 +138,33 @@ pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
                 "client_id": client_id,
             }),
         ),
+        ("mdblist", operation @ ("start" | "poll" | "refresh")) => {
+            let (path, mut body) = match operation {
+                "start" => ("device-authorization", json!({"scope": "write"})),
+                "poll" => (
+                    "token",
+                    json!({
+                        "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                        "device_code": str_field(&args, "code"),
+                        "scope": "write",
+                    }),
+                ),
+                _ => (
+                    "token",
+                    json!({
+                        "grant_type": "refresh_token",
+                        "refresh_token": str_field(&args, "refreshToken"),
+                    }),
+                ),
+            };
+            body["client_id"] = json!(client_id);
+            json!({
+                "method": "POST",
+                "url": format!("{MDBLIST_API}/oauth/{path}/"),
+                "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+                "body": body,
+            })
+        }
         _ => return None,
     };
     serde_json::to_string(&plan).ok()
@@ -162,7 +190,7 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
             "device": {
                 "userCode": user_code,
                 "deviceCode": device_code,
-                "verificationUrl": if provider == "simkl" {
+                "verificationUrl": if provider != "trakt" {
                     str_field(&body, "verification_uri")
                 } else {
                     str_field(&body, "verification_url")
@@ -175,8 +203,8 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
     }
 
     let state = match provider {
-        "simkl" if ok && body.get("access_token").is_some() => "success",
-        "simkl" => match str_field(&body, "error") {
+        "simkl" | "mdblist" if ok && body.get("access_token").is_some() => "success",
+        "simkl" | "mdblist" => match str_field(&body, "error") {
             "authorization_pending" => "pending",
             "slow_down" => "slow_down",
             _ => "error",
@@ -949,6 +977,65 @@ mod tests {
         ));
         assert_eq!(refresh["body"]["grant_type"], "refresh_token");
         assert_eq!(refresh["body"]["refresh_token"], "ref");
+    }
+
+    #[test]
+    fn mdblist_device_sign_in_posts_form_fields() {
+        let start = value(provider_auth_request_json(
+            r#"{"provider":"mdblist","operation":"start","clientId":"cid"}"#,
+        ));
+        assert_eq!(
+            start["url"],
+            "https://api.mdblist.com/oauth/device-authorization/"
+        );
+        assert_eq!(
+            start["headers"]["Content-Type"],
+            "application/x-www-form-urlencoded"
+        );
+        assert_eq!(start["body"]["client_id"], "cid");
+        assert_eq!(start["body"]["scope"], "write");
+        let poll = value(provider_auth_request_json(
+            r#"{"provider":"mdblist","operation":"poll","clientId":"cid","code":"dev"}"#,
+        ));
+        assert_eq!(poll["body"]["device_code"], "dev");
+    }
+
+    #[test]
+    fn mdblist_poll_outcomes() {
+        let outcome = |status: u16, body: Value| {
+            value(provider_auth_outcome_json(
+                &json!({"provider": "mdblist", "operation": "poll", "status": status, "body": body, "nowSeconds": 100})
+                    .to_string(),
+            ))
+        };
+        assert_eq!(
+            outcome(400, json!({"error": "authorization_pending"}))["state"],
+            "pending"
+        );
+        assert_eq!(
+            outcome(400, json!({"error": "slow_down"}))["state"],
+            "slow_down"
+        );
+        let done = outcome(
+            200,
+            json!({"access_token": "a", "refresh_token": "r", "expires_in": 60}),
+        );
+        assert_eq!(done["auth"]["accessToken"], "a");
+        assert_eq!(done["auth"]["expiresAt"], 160);
+    }
+
+    #[test]
+    fn mdblist_bearer_token_replaces_the_api_key() {
+        let requests = value(provider_library_requests_json(
+            r#"{"provider":"mdblist","token":"tok","apiKey":"k"}"#,
+        ));
+        let first = &requests[0];
+        assert_eq!(first["headers"]["Authorization"], "Bearer tok");
+        assert!(!first["url"].as_str().unwrap().contains("apikey="));
+        let legacy = value(provider_library_requests_json(
+            r#"{"provider":"mdblist","apiKey":"k"}"#,
+        ));
+        assert!(legacy[0]["url"].as_str().unwrap().contains("apikey=k"));
     }
 
     #[test]

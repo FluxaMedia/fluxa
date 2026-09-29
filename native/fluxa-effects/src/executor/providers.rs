@@ -12,6 +12,7 @@ fn client_id(provider: &str) -> &'static str {
     match provider {
         "trakt" => option_env!("FLUXA_TRAKT_CLIENT_ID").unwrap_or(""),
         "simkl" => option_env!("FLUXA_SIMKL_CLIENT_ID").unwrap_or(""),
+        "mdblist" => option_env!("FLUXA_MDBLIST_CLIENT_ID").unwrap_or(""),
         _ => "",
     }
 }
@@ -28,6 +29,7 @@ fn token_field(provider: &str) -> &'static str {
     match provider {
         "trakt" => "traktAccessToken",
         "simkl" => "simklAccessToken",
+        "mdblist" => "mdblistAccessToken",
         _ => "",
     }
 }
@@ -71,7 +73,18 @@ async fn send(client: &Client, plan: &Value) -> Result<(u16, Value), String> {
         }
     }
     if let Some(body) = plan.get("body").filter(|body| !body.is_null()) {
-        request = request.body(body.to_string());
+        let form = plan["headers"]["Content-Type"]
+            .as_str()
+            .is_some_and(|kind| kind.contains("x-www-form-urlencoded"));
+        request = match body.as_object().filter(|_| form) {
+            Some(fields) => request.form(
+                &fields
+                    .iter()
+                    .map(|(name, value)| (name.as_str(), value.as_str().unwrap_or_default()))
+                    .collect::<Vec<_>>(),
+            ),
+            None => request.body(body.to_string()),
+        };
     }
     let response = request.send().await.map_err(|error| error.to_string())?;
     let status = response.status().as_u16();
@@ -107,7 +120,7 @@ impl EffectExecutor {
         let token = str_field(profile, token_field(provider));
         let api_key = self.provider_api_key(profile);
         let connected = match provider {
-            "mdblist" => !api_key.is_empty(),
+            "mdblist" => !token.is_empty() || !api_key.is_empty(),
             _ => !token.is_empty() && !client_id(provider).is_empty(),
         };
         connected.then(|| {
@@ -228,6 +241,7 @@ impl EffectExecutor {
         let (refresh_field, expires_field) = match provider {
             "trakt" => ("traktRefreshToken", "traktTokenExpiresAt"),
             "simkl" => ("simklRefreshToken", "simklTokenExpiresAt"),
+            "mdblist" => ("mdblistRefreshToken", "mdblistTokenExpiresAt"),
             _ => return Ok(profile),
         };
         let refresh_token = str_field(&profile, refresh_field);

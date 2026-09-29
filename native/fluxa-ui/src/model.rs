@@ -939,6 +939,7 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
                 ("trakt", "traktAccessToken"),
                 ("simkl", "simklAccessToken"),
                 ("anilist", "anilistAccessToken"),
+                ("mdblist", "mdblistAccessToken"),
                 ("stremio", "stremioAuthKey"),
             ] {
                 if profile

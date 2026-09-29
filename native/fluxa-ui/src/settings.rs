@@ -2989,9 +2989,9 @@ const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("Trakt", "traktAccessToken"),
     ("Simkl", "simklAccessToken"),
     ("AniList", "anilistAccessToken"),
-    ("MDBList", "mdblistApiKey"),
+    ("MDBList", "mdblistAccessToken"),
 ];
-pub const ACCOUNT_PROVIDERS: [&str; 2] = ["trakt", "simkl"];
+pub const ACCOUNT_PROVIDERS: [&str; 3] = ["trakt", "simkl", "mdblist"];
 const ACCOUNT_SOURCES: [(&str, &str); 2] = [
     (
         "settings.integration_library_source",
@@ -3091,7 +3091,7 @@ pub fn account_source_state(
         ("simkl", "simklAccessToken"),
         ("anilist", "anilistAccessToken"),
         ("stremio", "stremioAuthKey"),
-        ("mdblist", "mdblistApiKey"),
+        ("mdblist", "mdblistAccessToken"),
     ]
     .into_iter()
     .filter(|(_, token_key)| account_connected(settings, token_key))
