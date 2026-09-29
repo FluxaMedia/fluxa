@@ -137,6 +137,9 @@ struct RendererState {
     library_tab: LibraryTab,
     library_query: String,
     library_sort: String,
+    library_type: String,
+    library_list: bool,
+    library_downloads: bool,
     discover: DiscoverModel,
     calendar: CalendarModel,
     detail: DetailModel,
@@ -350,6 +353,9 @@ fn request_projection(state: &mut RendererState) {
         library_tab: state.library_tab,
         library_query: state.library_query.clone(),
         library_sort: state.library_sort.clone(),
+        library_type: state.library_type.clone(),
+        library_list: state.library_list,
+        library_downloads: state.library_downloads,
         hero_trailers: state.trailers.inputs(),
     });
 }
@@ -365,7 +371,9 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.route = projection.route;
     let scroll_offset = state.home.scroll_offset;
     let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
+    let platform = state.home.platform;
     state.home = projection.home;
+    state.home.platform = platform;
     state.home.scroll_offset = scroll_offset;
     state.home.row_scroll_offsets = row_scroll_offsets;
     if HOME_SYNC_LOGS.fetch_add(1, Ordering::Relaxed) % 120 == 0 {
@@ -407,6 +415,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.trailers.set_targets(projection.trailer_targets);
     let settings_section = state.settings.active_section;
     let section_open = state.settings.section_open;
+    let page_open = state.settings.page_open;
     let addon_url = std::mem::take(&mut state.settings.addon_url);
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
     let search = std::mem::take(&mut state.settings.search);
@@ -414,6 +423,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.settings = projection.settings;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.section_open = section_open;
+    state.settings.page_open = page_open;
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
     state.settings.search = search;
@@ -534,6 +544,9 @@ impl FluxaHost {
             library_tab: LibraryTab::Watchlist,
             library_query: String::new(),
             library_sort: "recent".to_owned(),
+            library_type: "all".to_owned(),
+            library_list: false,
+            library_downloads: false,
             discover: DiscoverModel::default(),
             calendar: CalendarModel::default(),
             detail: DetailModel::default(),
@@ -594,6 +607,16 @@ impl FluxaHost {
         });
     }
 
+    pub fn set_platform(&self, platform: &str) {
+        let Some(platform) = fluxa_ui::UiPlatform::parse(platform) else {
+            return;
+        };
+        self.with_state(|state| {
+            state.home.platform = platform;
+            reset_ui(state);
+        });
+    }
+
     pub fn set_home_state_json(&self, json: &str) {
         let Ok(home) = serde_json::from_str::<HomeModel>(json) else {
             host_log("ignored invalid home state JSON");
@@ -602,7 +625,9 @@ impl FluxaHost {
         self.with_state(|state| {
             let scroll_offset = state.home.scroll_offset;
             let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
+            let platform = state.home.platform;
             state.home = home;
+            state.home.platform = platform;
             state.home.scroll_offset = scroll_offset;
             state.home.row_scroll_offsets = row_scroll_offsets;
             reset_ui(state);
@@ -792,7 +817,11 @@ impl FluxaHost {
 
     pub fn text_input_focused(&self) -> bool {
         self.with_state(|state| {
-            state.ui.focused().and_then(|node| state.ui.node(node)).is_some_and(|node| node.kind == UiNodeKind::Input)
+            state
+                .ui
+                .focused()
+                .and_then(|node| state.ui.node(node))
+                .is_some_and(|node| node.kind == UiNodeKind::Input)
         })
         .unwrap_or(false)
     }
@@ -800,7 +829,12 @@ impl FluxaHost {
     pub fn blur_text_input(&self) {
         self.with_state(|state| {
             state.focus_hint = None;
-            if state.ui.focused().and_then(|node| state.ui.node(node)).is_some_and(|node| node.kind == UiNodeKind::Input) {
+            if state
+                .ui
+                .focused()
+                .and_then(|node| state.ui.node(node))
+                .is_some_and(|node| node.kind == UiNodeKind::Input)
+            {
                 let actions = state.ui.set_focus(None).into_iter().collect();
                 remember_actions(state, actions);
             }
@@ -825,7 +859,8 @@ impl FluxaHost {
     }
 
     pub fn focused_text(&self) -> Option<String> {
-        self.with_state(|state| actions::focused_text(state)).flatten()
+        self.with_state(|state| actions::focused_text(state))
+            .flatten()
     }
 
     pub fn set_focused_text(&self, text: &str) {
@@ -901,11 +936,29 @@ impl FluxaHost {
     pub fn surface_created(&self, surface: NativeSurface, width: u32, height: u32) {
         let size = [width.max(1), height.max(1)];
         host_log(format!("Surface created: {}x{}", size[0], size[1]));
+        let reattached = self
+            .with_state(|state| {
+                state.generation = state.generation.saturating_add(1);
+                state.size = size;
+                state.pending_resize = None;
+                let Some(gpu) = state.gpu.as_mut() else {
+                    return false;
+                };
+                match gpu.attach_surface(surface.clone(), size) {
+                    Ok(()) => true,
+                    Err(error) => {
+                        host_log(format!("Surface reattach failed: {error}"));
+                        state.gpu = None;
+                        false
+                    }
+                }
+            })
+            .unwrap_or(false);
+        if reattached {
+            host_log("Surface reattached to existing GPU");
+            return;
+        }
         let Some((generation, density, artwork_cache_dir, opener)) = self.with_state(|state| {
-            state.generation = state.generation.saturating_add(1);
-            state.size = size;
-            state.pending_resize = None;
-            state.gpu = None;
             (
                 state.generation,
                 state.density,
@@ -945,7 +998,9 @@ impl FluxaHost {
         self.with_state(|state| {
             state.generation = state.generation.saturating_add(1);
             state.pending_resize = None;
-            state.gpu = None;
+            if let Some(gpu) = state.gpu.as_mut() {
+                gpu.detach_surface();
+            }
         });
     }
 

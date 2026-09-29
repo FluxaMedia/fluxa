@@ -1,4 +1,5 @@
 use super::*;
+use fluxa_renderer::glass::GlassStyle;
 
 pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::CompositeAlphaMode {
     if cfg!(target_os = "android")
@@ -20,7 +21,8 @@ pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::Co
 pub(super) struct Gpu {
     pub(super) instance: wgpu::Instance,
     _surface: NativeSurface,
-    surface: wgpu::Surface<'static>,
+    adapter: wgpu::Adapter,
+    surface: Option<wgpu::Surface<'static>>,
     pub(super) device: wgpu::Device,
     queue: wgpu::Queue,
     pub(super) config: wgpu::SurfaceConfiguration,
@@ -31,6 +33,7 @@ pub(super) struct Gpu {
     background_texture: egui::TextureHandle,
     brand_mark: Option<egui::TextureHandle>,
     brand_icon: &'static fluxa_core::app_icon::AppIcon,
+    app_icons: Vec<(String, egui::TextureHandle)>,
     ambient_glow: egui::TextureHandle,
     pub(super) artwork: ArtworkLoader,
     started_at: Instant,
@@ -50,6 +53,7 @@ pub(super) struct HostAssets<'a> {
     background: egui::TextureId,
     brand_mark: Option<egui::TextureId>,
     brand_colors: Option<[egui::Color32; 2]>,
+    app_icons: &'a [(String, egui::TextureHandle)],
     ambient_glow: egui::TextureId,
     accent: Option<egui::Color32>,
     pub(super) artwork: &'a mut ArtworkLoader,
@@ -71,6 +75,12 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn brand_colors(&self) -> Option<[egui::Color32; 2]> {
         self.brand_colors
+    }
+    fn app_icon(&self, id: &str) -> Option<egui::TextureId> {
+        self.app_icons
+            .iter()
+            .find(|(icon, _)| icon == id)
+            .map(|(_, texture)| texture.id())
     }
     fn ambient_glow(&self) -> Option<egui::TextureId> {
         Some(self.ambient_glow)
@@ -231,7 +241,10 @@ fn upload_mipmapped(
     image: image::RgbaImage,
 ) -> egui::TextureId {
     let mut levels = vec![image];
-    while levels.last().is_some_and(|level| level.width() > 1 && level.height() > 1) {
+    while levels
+        .last()
+        .is_some_and(|level| level.width() > 1 && level.height() > 1)
+    {
         let prev = levels.last().unwrap();
         let (width, height) = (prev.width() / 2, prev.height() / 2);
         let next = image::RgbaImage::from_fn(width, height, |x, y| {
@@ -483,7 +496,8 @@ impl Gpu {
         Ok(Self {
             instance: instance,
             _surface: native_surface.clone(),
-            surface,
+            adapter,
+            surface: Some(surface),
             device,
             queue,
             config,
@@ -494,6 +508,7 @@ impl Gpu {
             background_texture,
             brand_mark,
             brand_icon: fluxa_core::app_icon::default_app_icon(),
+            app_icons: Vec::new(),
             ambient_glow,
             artwork: ArtworkLoader::new(artwork_cache_dir),
             started_at: Instant::now(),
@@ -505,7 +520,35 @@ impl Gpu {
     pub(super) fn resize(&mut self, size: [u32; 2]) {
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
-        self.surface.configure(&self.device, &self.config);
+        if let Some(surface) = self.surface.as_ref() {
+            surface.configure(&self.device, &self.config);
+        }
+    }
+
+    pub(super) fn detach_surface(&mut self) {
+        self.surface = None;
+    }
+
+    pub(super) fn attach_surface(
+        &mut self,
+        native_surface: NativeSurface,
+        size: [u32; 2],
+    ) -> Result<(), String> {
+        let surface = unsafe {
+            self.instance
+                .create_surface_unsafe((native_surface.target)()?)
+                .map_err(|error| error.to_string())?
+        };
+        let capabilities = surface.get_capabilities(&self.adapter);
+        if !capabilities.formats.contains(&self.config.format) {
+            return Err("surface format changed".to_owned());
+        }
+        self.config.width = size[0].max(1);
+        self.config.height = size[1].max(1);
+        surface.configure(&self.device, &self.config);
+        self.surface = Some(surface);
+        self._surface = native_surface;
+        Ok(())
     }
 
     pub(super) fn render(
@@ -574,7 +617,24 @@ impl Gpu {
                 ));
             }
         }
+        if route == Route::Settings && self.app_icons.is_empty() {
+            for icon in fluxa_core::app_icon::app_icons() {
+                if let Some(image) = crate::app_icon_rgba(&icon.id, 128) {
+                    let texture = self.egui_context.load_texture(
+                        format!("fluxa-app-icon-{}", icon.id),
+                        egui::ColorImage::from_rgba_premultiplied(
+                            [image.width() as usize, image.height() as usize],
+                            image.as_raw(),
+                        ),
+                        egui::TextureOptions::LINEAR,
+                    );
+                    self.app_icons.push((icon.id.to_string(), texture));
+                }
+            }
+        }
+        fluxa_ui::set_liquid_glass(settings.bool_value("liquidGlass"));
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
+        fluxa_ui::set_nav_language(&home.language);
         fluxa_ui::set_mobile_nav_style(
             settings.bool_value("navFloating"),
             settings.bool_value("navLabels"),
@@ -592,7 +652,11 @@ impl Gpu {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
                 brand_mark: self.brand_mark.as_ref().map(egui::TextureHandle::id),
-                brand_colors: Some([hex_color(&self.brand_icon.from), hex_color(&self.brand_icon.to)]),
+                brand_colors: Some([
+                    hex_color(&self.brand_icon.from),
+                    hex_color(&self.brand_icon.to),
+                ]),
+                app_icons: &self.app_icons,
                 ambient_glow: self.ambient_glow.id(),
                 accent: home.accent,
                 artwork: &mut self.artwork,
@@ -602,6 +666,7 @@ impl Gpu {
                 custom_background,
             };
             let viewport = Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
+                .with_platform(home.platform)
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
             if let Some(profiles) = profiles.as_deref_mut() {
@@ -625,16 +690,18 @@ impl Gpu {
             } else if route == Route::Detail {
                 rendered_layout = draw_detail(ui.ctx(), viewport, detail, &mut assets, focused);
             } else if route == Route::Settings {
-                rendered_layout = draw_settings(ui.ctx(), viewport, settings, &assets, focused);
+                rendered_layout = draw_settings(ui.ctx(), viewport, settings, &mut assets, focused);
             } else {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
             }
-            let page = if profiles.is_some() { 100 } else if player.is_some() { 101 } else { route as u64 };
-            fluxa_ui::page_transition(
-                ui.ctx(),
-                page,
-                &[egui::Id::new("fluxa-shared-bottom-bar")],
-            );
+            let page = if profiles.is_some() {
+                100
+            } else if player.is_some() {
+                101
+            } else {
+                route as u64
+            };
+            fluxa_ui::page_transition(ui.ctx(), page, &[egui::Id::new("fluxa-shared-bottom-bar")]);
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     ui.ctx(),
@@ -660,7 +727,10 @@ impl Gpu {
             size_in_pixels: screen_size,
             pixels_per_point: output.pixels_per_point,
         };
-        let frame = match self.surface.get_current_texture() {
+        let Some(surface) = self.surface.as_ref() else {
+            return Err("surface detached".to_owned());
+        };
+        let frame = match surface.get_current_texture() {
             wgpu::CurrentSurfaceTexture::Success(frame)
             | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
             wgpu::CurrentSurfaceTexture::Timeout => return Err("surface timeout".to_owned()),
@@ -675,43 +745,29 @@ impl Gpu {
         let view = frame
             .texture
             .create_view(&wgpu::TextureViewDescriptor::default());
-        let mut encoder = self
-            .device
-            .create_command_encoder(&wgpu::CommandEncoderDescriptor {
-                label: Some("fluxa-android-renderer-frame"),
-            });
-        self.egui_renderer.update_buffers(
+        let commands = self.egui_renderer.render_frame(
             &self.device,
             &self.queue,
-            &mut encoder,
+            &view,
+            if passthrough {
+                wgpu::Color::TRANSPARENT
+            } else {
+                self.clear_color
+            },
             &paint_jobs,
             &screen_descriptor,
+            |callback| {
+                let glass = callback.callback.downcast_ref::<fluxa_ui::Glass>()?;
+                Some(GlassStyle {
+                    radius: glass.radius,
+                    tint: glass.tint,
+                    refraction: glass.refraction,
+                    bevel: glass.bevel,
+                    rim: glass.rim,
+                })
+            },
         );
-        {
-            let pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-                label: Some("fluxa-android-egui-pass"),
-                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                    view: &view,
-                    depth_slice: None,
-                    resolve_target: None,
-                    ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(if passthrough {
-                            wgpu::Color::TRANSPARENT
-                        } else {
-                            self.clear_color
-                        }),
-                        store: wgpu::StoreOp::Store,
-                    },
-                })],
-                depth_stencil_attachment: None,
-                timestamp_writes: None,
-                occlusion_query_set: None,
-                multiview_mask: None,
-            });
-            self.egui_renderer
-                .render(&mut pass.forget_lifetime(), &paint_jobs, &screen_descriptor);
-        }
-        self.queue.submit([encoder.finish()]);
+        self.queue.submit([commands]);
         if let Some(pre_present) = pre_present {
             pre_present();
         }
