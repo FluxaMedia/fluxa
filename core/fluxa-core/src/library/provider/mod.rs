@@ -16,10 +16,7 @@ pub(crate) mod simkl;
 pub(crate) mod trakt;
 
 pub(crate) use anilist::anilist_calendar_plan_json;
-use anilist::*;
 pub(crate) use mdblist::mdblist_calendar_plan_json;
-use mdblist::*;
-use simkl::*;
 pub(crate) use trakt::trakt_calendar_plan_json;
 use trakt::*;
 
@@ -446,6 +443,7 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
 
 #[cfg(test)]
 mod tests {
+    use super::anilist::{anilist_snapshot, anilist_user_id};
     use super::*;
 
     fn value(json: Option<String>) -> Value {
