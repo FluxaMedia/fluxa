@@ -18,7 +18,7 @@ const imageProxy = new URLSearchParams(location.search).get("imageProxy") ?? (aw
 const webgpu = Boolean(navigator.gpu && (await navigator.gpu.requestAdapter().catch(() => null)));
 
 await init();
-const app = new FluxaWeb("fluxa", formFactor, webgpu, imageProxy);
+const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, imageProxy);
 addEventListener("resize", () => app.resize());
 
 const actionHandlers = [];

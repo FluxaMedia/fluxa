@@ -144,6 +144,7 @@ impl ApplicationHandler for App {
             data_dir.as_ref().map(|directory| directory.join("artwork-cache")),
         );
         host.set_form_factor("desktop");
+        host.set_platform(std::env::consts::OS);
         host.set_image_picker(Box::new(pick_image));
         let notified = window.clone();
         host.set_pre_present(Box::new(move || notified.pre_present_notify()));

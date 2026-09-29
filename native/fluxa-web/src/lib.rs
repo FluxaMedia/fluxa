@@ -62,6 +62,7 @@ impl FluxaWeb {
     pub fn new(
         canvas_id: &str,
         form_factor: &str,
+        platform: &str,
         webgpu: bool,
         image_proxy: Option<String>,
     ) -> Result<FluxaWeb, JsValue> {
@@ -77,6 +78,7 @@ impl FluxaWeb {
             .dyn_into()?;
         let host = FluxaHost::new(window.device_pixel_ratio() as f32, None);
         host.set_form_factor(form_factor);
+        host.set_platform(platform);
         host.start_session(PathBuf::from("fluxa"))
             .map_err(|error| JsValue::from_str(&error))?;
         let mut web = FluxaWeb {

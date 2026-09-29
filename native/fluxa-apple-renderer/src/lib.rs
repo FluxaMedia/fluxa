@@ -78,6 +78,7 @@ pub unsafe extern "C" fn fluxa_renderer_create(
 ) -> *mut FluxaRenderer {
     let cache = unsafe { text(artwork_cache_dir) }.map(PathBuf::from);
     let host = FluxaHost::new(density, cache);
+    host.set_platform(if cfg!(target_os = "tvos") { "tvos" } else { "ios" });
     host.set_video_backend(Box::new(BridgeVideo(video_bridge().clone())));
     Box::into_raw(Box::new(host))
 }
