@@ -3,6 +3,7 @@ mod app;
 mod auth;
 mod calendar;
 mod lists;
+mod nuvio;
 mod providers;
 mod simkl;
 mod trakt;
