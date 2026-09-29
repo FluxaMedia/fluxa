@@ -39,6 +39,7 @@ pub(crate) struct PageLayout {
     pub filters_top: f32,
     pub second_row_top: Option<f32>,
     pub content_top: f32,
+    pub sections_top: f32,
 }
 
 impl PageLayout {
@@ -98,7 +99,22 @@ impl PageLayout {
             filters_top,
             second_row_top,
             content_top,
+            sections_top: 0.0,
         }
+    }
+
+    pub fn with_sections(mut self, viewport: Viewport, metrics: UiMetrics) -> Self {
+        let shift = metrics.screen_control_height + metrics.control_gap;
+        if viewport.is_compact() {
+            self.sections_top = self.search.min.y;
+            self.search = self.search.translate(Vec2::new(0.0, shift));
+        } else {
+            self.sections_top = self.filters_top;
+        }
+        self.filters_top += shift;
+        self.second_row_top = self.second_row_top.map(|top| top + shift);
+        self.content_top += shift;
+        self
     }
 }
 
@@ -158,19 +174,32 @@ impl PosterGrid {
     }
 }
 
-pub(crate) fn library_needs_second_row(viewport: Viewport, metrics: UiMetrics) -> bool {
-    viewport.is_compact() || viewport.width - screen_margin(metrics) * 2.0 < 1240.0
+pub(crate) fn library_row_height(viewport: Viewport, metrics: UiMetrics) -> f32 {
+    if viewport.is_compact() {
+        metrics.screen_control_height * 2.4
+    } else {
+        metrics.screen_control_height * 2.8
+    }
+}
+
+fn library_list_height(viewport: Viewport, metrics: UiMetrics, count: usize) -> f32 {
+    let row = library_row_height(viewport, metrics);
+    count as f32 * row + count.saturating_sub(1) as f32 * metrics.control_gap
 }
 
 pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: LibraryTab) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);
-    let page = PageLayout::new(
-        viewport,
-        metrics,
-        library_needs_second_row(viewport, metrics),
-    );
-    let grid = PosterGrid::new(page.width, metrics);
-    let content = grid.height(library.cards(tab).len().min(LIBRARY_CARD_LIMIT));
+    let page = PageLayout::new(viewport, metrics, false).with_sections(viewport, metrics);
+    let count = if library.downloads_open {
+        0
+    } else {
+        library.cards(tab).len().min(LIBRARY_CARD_LIMIT)
+    };
+    let content = if library.list_view {
+        library_list_height(viewport, metrics, count)
+    } else {
+        PosterGrid::new(page.width, metrics).height(count)
+    };
     (page.content_top + content + metrics.section_gap
         - (viewport.height - mobile_scroll_reserve(viewport)))
     .max(0.0)
@@ -276,7 +305,7 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
                 settings,
             )
         } else {
-            crate::settings::compact_settings_list_height(metrics)
+            crate::settings::compact_settings_list_height(viewport, metrics)
         };
         return (content_top + content_height + metrics.page_padding
             - (viewport.height - mobile_scroll_reserve(viewport)))

@@ -19,6 +19,7 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
         (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
         state.home.form_factor.into(),
     )
+    .with_platform(state.home.platform)
     .with_safe_bottom(state.safe_bottom);
     let movement = state.scroll_velocity * elapsed;
     match state.active_scroll {
@@ -185,6 +186,7 @@ pub(super) fn logical_viewport(state: &RendererState) -> Viewport {
         (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
         state.home.form_factor.into(),
     )
+    .with_platform(state.home.platform)
     .with_safe_bottom(state.safe_bottom)
 }
 
@@ -209,7 +211,8 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         state.nav_dragging = true;
         let bar = fluxa_ui::mobile_nav_rect(viewport);
         let slot = bar.width() / 5.0;
-        let center = bar.left() + slot * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5);
+        let center =
+            bar.left() + slot * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5);
         fluxa_ui::set_mobile_nav_drag(Some(center));
         state.touch_start = Some(position);
         return;
@@ -217,7 +220,10 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     if state.nav_dragging {
         match phase {
             PointerPhase::Move => {
-                if state.touch_start.is_some_and(|start| (position[0] - start[0]).abs() > 12.0) {
+                if state
+                    .touch_start
+                    .is_some_and(|start| (position[0] - start[0]).abs() > 12.0)
+                {
                     state.touch_start = None;
                 }
                 if state.touch_start.is_none() {
@@ -230,7 +236,9 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                 let bar = fluxa_ui::mobile_nav_rect(viewport);
                 let slot = bar.width() / 5.0;
                 fluxa_ui::set_mobile_nav_pending(
-                    bar.left() + slot * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5),
+                    bar.left()
+                        + slot
+                            * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5),
                 );
                 let node = fluxa_ui::mobile_nav_node_at(viewport, position[0]);
                 rebuild_current_ui(state);
@@ -459,11 +467,10 @@ pub(super) fn apply_pointer_results(state: &mut RendererState, route: Route, lay
         set_text_value(state, node, value);
     }
     if let Some((key, value)) = layout.filter_change.as_ref()
-        && key == "librarySort"
+        && key.starts_with("library")
         && route == Route::Library
     {
-        state.library_sort = value.clone();
-        refresh_library_view(state);
+        apply_choice(state, route, key, value.clone());
     }
     if let Some((key, value)) = layout.setting_change.as_ref() {
         state
@@ -478,6 +485,51 @@ pub(super) fn apply_pointer_results(state: &mut RendererState, route: Route, lay
     {
         rebuild_current_ui(state);
         remember_actions(state, vec![UiAction::Activated(node)]);
+    }
+}
+
+pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, value: String) {
+    match key {
+        "libraryStatus" if route == Route::Library => {
+            if let Some(tab) = LibraryTab::ALL
+                .into_iter()
+                .find(|tab| tab.core_tab_key() == value)
+            {
+                state.library_tab = tab;
+                state.screen_scroll_offsets.remove(&Route::Library);
+                refresh_library_view(state);
+            }
+        }
+        "libraryType" if route == Route::Library => {
+            state.library_type = value;
+            refresh_library_view(state);
+        }
+        "librarySort" if route == Route::Library => {
+            state.library_sort = value;
+            refresh_library_view(state);
+        }
+        "discover:contentType" if route == Route::Discover => {
+            state.discover.content_type = value.clone();
+            state
+                .pending_native_actions
+                .push(NativeAction::DiscoverType { content_type: value });
+        }
+        "discover:catalog" | "discover:extra" if route == Route::Discover => {
+            if key == "discover:catalog" {
+                state.discover.selected_catalog_key = value;
+            } else {
+                state.discover.selected_extra_value = value;
+            }
+            let action = NativeAction::DiscoverFilters {
+                content_type: state.discover.content_type.clone(),
+                catalog_key: state.discover.selected_catalog_key.clone(),
+                extra_name: state.discover.selected_extra_name.clone(),
+                extra_value: state.discover.selected_extra_value.clone(),
+                query: state.discover.query.clone(),
+            };
+            state.pending_native_actions.push(action);
+        }
+        _ => {}
     }
 }
 

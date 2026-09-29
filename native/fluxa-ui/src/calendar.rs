@@ -30,7 +30,7 @@ impl CalendarGrid {
         };
         let mut header = title_size(viewport, metrics) * 1.25
             + metrics.control_gap
-            + body_size(viewport, metrics) * 1.4
+            + metrics.screen_control_height
             + metrics.section_gap;
         if compact {
             header += metrics.screen_control_height + metrics.section_gap;
@@ -113,7 +113,7 @@ pub fn draw_calendar(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 3, assets);
+    layout.activated = draw_navigation_bar(context, viewport, 2, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
     let valid = calendar.year > 0 && (1..=12).contains(&calendar.month);
@@ -139,18 +139,26 @@ pub fn draw_calendar(
         .show(context, |ui| {
             ui.spacing_mut().item_spacing = Vec2::ZERO;
             ui.label(
-                RichText::new(localized("nav.calendar", &calendar.language))
+                RichText::new(localized("nav.library", &calendar.language))
                     .size(title_size(viewport, metrics))
                     .strong()
                     .color(Color32::WHITE),
             );
-            ui.add_space(metrics.control_gap);
-            ui.label(
-                RichText::new(localized("calendar.description", &calendar.language))
-                    .size(body_size(viewport, metrics))
-                    .color(Color32::from_white_alpha(150)),
-            );
         });
+    crate::library::draw_library_sections(
+        context,
+        &mut layout,
+        Pos2::new(
+            grid.margin,
+            grid.top - scroll_y + title_size(viewport, metrics) * 1.25 + metrics.control_gap,
+        ),
+        viewport.width - grid.margin * 2.0,
+        1,
+        None,
+        &calendar.language,
+        assets,
+        metrics,
+    );
     if valid {
         let nav_width = metrics.screen_control_height * 2.0
             + metrics.control_gap * 3.0
@@ -238,13 +246,22 @@ pub fn draw_calendar(
                 &format!("calendar.weekday.{}", weekday.to_lowercase()),
                 &calendar.language,
             );
+            let column_x = column as f32 * (grid.cell_width + grid.gap);
             grid_painter.text(
                 origin
                     + Vec2::new(
-                        column as f32 * (grid.cell_width + grid.gap) + metrics.calendar_day_padding,
+                        if compact {
+                            column_x + grid.cell_width * 0.5
+                        } else {
+                            column_x + metrics.calendar_day_padding
+                        },
                         grid.weekday_height * 0.5,
                     ),
-                Align2::LEFT_CENTER,
+                if compact {
+                    Align2::CENTER_CENTER
+                } else {
+                    Align2::LEFT_CENTER
+                },
                 if compact {
                     label.chars().take(1).collect::<String>()
                 } else {
@@ -418,6 +435,7 @@ fn draw_calendar_cell(
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
+    let compact = rect.width() < 90.0;
     let response = ui.interact(rect, ui.id().with(("calendar-day", day)), Sense::click());
     let node = NODE_CALENDAR_DAY_BASE + day as u64;
     layout.focusable.push((node, rect));
@@ -489,10 +507,27 @@ fn draw_calendar_cell(
         );
     }
     let day_font = FontId::proportional(metrics.screen_card_title_size);
-    let day_pos = rect.left_top() + Vec2::new(padding, metrics.calendar_day_top);
+    let centered = compact && !has_art;
+    let day_pos = if centered {
+        rect.center()
+    } else {
+        rect.left_top() + Vec2::new(padding, metrics.calendar_day_top)
+    };
+    if calendar.selected_day == Some(day) {
+        painter.rect_stroke(
+            rect,
+            radius,
+            egui::Stroke::new(1.5, Color32::WHITE),
+            egui::StrokeKind::Inside,
+        );
+    }
     if today {
         let size = metrics.screen_card_title_size * 1.7;
-        let badge = Rect::from_min_size(day_pos - Vec2::splat(size * 0.2), Vec2::splat(size));
+        let badge = if centered {
+            Rect::from_center_size(rect.center(), Vec2::splat(size))
+        } else {
+            Rect::from_min_size(day_pos - Vec2::splat(size * 0.2), Vec2::splat(size))
+        };
         painter.circle_filled(badge.center(), size * 0.5, Color32::WHITE);
         painter.text(
             badge.center(),
@@ -504,7 +539,11 @@ fn draw_calendar_cell(
     } else {
         painter.text(
             day_pos,
-            Align2::LEFT_TOP,
+            if centered {
+                Align2::CENTER_CENTER
+            } else {
+                Align2::LEFT_TOP
+            },
             day.to_string(),
             day_font,
             if entries.is_empty() {

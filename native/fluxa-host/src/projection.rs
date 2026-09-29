@@ -17,6 +17,9 @@ pub(crate) struct Request {
     pub library_tab: LibraryTab,
     pub library_query: String,
     pub library_sort: String,
+    pub library_type: String,
+    pub library_list: bool,
+    pub library_downloads: bool,
     pub hero_trailers: Arc<Value>,
 }
 
@@ -133,6 +136,9 @@ fn project(
     let mut library = library_model_from_core_snapshot(snapshot);
     library.query = request.library_query.clone();
     library.sort_by = request.library_sort.clone();
+    library.content_type = request.library_type.clone();
+    library.list_view = request.library_list;
+    library.downloads_open = request.library_downloads;
     if route == Route::Library {
         let source = snapshot
             .get("library")
@@ -150,6 +156,8 @@ fn project(
                 "tab": request.library_tab.core_tab_key(),
                 "query": request.library_query,
                 "sortBy": request.library_sort,
+                "type": request.library_type,
+                "source": library.source.clone(),
             }),
         ) {
             library.apply_core_plan(&plan, request.library_tab);

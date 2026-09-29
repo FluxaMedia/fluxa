@@ -102,13 +102,8 @@ pub(super) fn native_action_for_node(
                 provider: (*provider).to_owned(),
             });
         }
-        if (fluxa_ui::NODE_SETTINGS_SECTION_BASE
-            ..fluxa_ui::NODE_SETTINGS_SECTION_BASE + fluxa_ui::SETTINGS_SECTIONS.len() as u64)
-            .contains(&node)
-        {
-            return Some(NativeAction::SettingsSection {
-                index: (node - fluxa_ui::NODE_SETTINGS_SECTION_BASE) as usize,
-            });
+        if let Some(index) = fluxa_ui::settings_page_for_node(node) {
+            return Some(NativeAction::SettingsSection { index });
         }
         if (fluxa_ui::NODE_SETTINGS_ROW_BASE
             ..fluxa_ui::NODE_SETTINGS_ROW_BASE
@@ -257,6 +252,9 @@ pub(super) fn playback_item(
 pub(super) fn refresh_library_view(state: &mut RendererState) {
     state.library.query = state.library_query.clone();
     state.library.sort_by = state.library_sort.clone();
+    state.library.content_type = state.library_type.clone();
+    state.library.list_view = state.library_list;
+    state.library.downloads_open = state.library_downloads;
     if let Some(snapshot) = state.core_snapshot.as_ref() {
         let library = snapshot
             .get("library")
@@ -274,6 +272,8 @@ pub(super) fn refresh_library_view(state: &mut RendererState) {
                 "tab": state.library_tab.core_tab_key(),
                 "query": state.library_query,
                 "sortBy": state.library_sort,
+                "type": state.library_type,
+                "source": state.library.source.clone(),
             }),
         ) {
             state.library.apply_core_plan(&plan, state.library_tab);
@@ -293,13 +293,14 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
             json!({"type":"addonsRefreshRequested", "profile":settings.profile, "forceRefresh":true}),
         );
     }
-    for (field, value) in fluxa_ui::POSTER_FIELDS.iter().zip(&settings.poster_fields) {
-        if node == field.save {
-            return Some(json!({"type":"settingsChanged", "key":field.key, "value":value.trim()}));
-        }
-        if node == field.clear {
-            return Some(json!({"type":"settingsChanged", "key":field.key, "value":""}));
-        }
+    if let Some((index, action)) = fluxa_ui::addon_action(node) {
+        let url = fluxa_ui::addon_transport_url(settings.addons.get(index)?)?;
+        return Some(match action {
+            0 => json!({"type":"addonMoveRequested", "transportUrl":url, "offset":-1}),
+            1 => json!({"type":"addonMoveRequested", "transportUrl":url, "offset":1}),
+            2 => json!({"type":"addonInstallRequested", "transportUrl":url, "forceRefresh":true}),
+            _ => json!({"type":"addonRemoveRequested", "transportUrl":url}),
+        });
     }
     if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
         let url = settings.plugin_url.trim();
@@ -311,7 +312,7 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
         .get("repositories")
         .and_then(Value::as_array);
     if (fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE
-        ..fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE + 4)
+        ..fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE + 20)
         .contains(&node)
     {
         let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE) as usize;
@@ -319,7 +320,7 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
         return Some(json!({"type":"pluginRepositoryRemoveRequested", "manifestUrl":url}));
     }
     if (fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE
-        ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 4)
+        ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 20)
         .contains(&node)
     {
         let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE) as usize;
@@ -327,7 +328,7 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
         return Some(json!({"type":"pluginRepositoryAddRequested", "manifestUrl":url}));
     }
     if (fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE
-        ..fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE + 4)
+        ..fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE + 30)
         .contains(&node)
     {
         let index = (node - fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE) as usize;
@@ -342,14 +343,22 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
     None
 }
 
-pub(super) fn edit_text(state: &mut RendererState, node: u64, edit: impl FnOnce(&mut String)) -> bool {
+pub(super) fn edit_text(
+    state: &mut RendererState,
+    node: u64,
+    edit: impl FnOnce(&mut String),
+) -> bool {
     let route = state.route;
     let text = match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => &mut state.library_query,
         fluxa_ui::NODE_DISCOVER_SEARCH if route == Route::Discover => &mut state.discover.query,
         fluxa_ui::NODE_SETTINGS_SEARCH if route == Route::Settings => &mut state.settings.search,
-        fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => &mut state.settings.addon_url,
-        fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => &mut state.settings.plugin_url,
+        fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => {
+            &mut state.settings.addon_url
+        }
+        fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
+            &mut state.settings.plugin_url
+        }
         _ if route == Route::Settings && fluxa_ui::poster_field(node).is_some() => {
             &mut state.settings.poster_fields[fluxa_ui::poster_field(node).unwrap_or_default()]
         }
@@ -375,14 +384,41 @@ pub(super) fn focused_text(state: &RendererState) -> Option<String> {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => state.library_query.clone(),
         fluxa_ui::NODE_DISCOVER_SEARCH if route == Route::Discover => state.discover.query.clone(),
         fluxa_ui::NODE_SETTINGS_SEARCH if route == Route::Settings => state.settings.search.clone(),
-        fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => state.settings.addon_url.clone(),
-        fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => state.settings.plugin_url.clone(),
-        _ if route == Route::Settings => state.settings.poster_fields[fluxa_ui::poster_field(node)?].clone(),
+        fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => {
+            state.settings.addon_url.clone()
+        }
+        fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
+            state.settings.plugin_url.clone()
+        }
+        _ if route == Route::Settings => {
+            state.settings.poster_fields[fluxa_ui::poster_field(node)?].clone()
+        }
         _ => return None,
     })
 }
 
+fn save_left_fields(state: &mut RendererState) {
+    let focused = state.ui.focused();
+    for (index, field) in fluxa_ui::POSTER_FIELDS.iter().enumerate() {
+        let value = state.settings.poster_fields[index].trim().to_owned();
+        if focused == Some(field.input)
+            || state.settings.str_value(field.key).unwrap_or("") == value
+        {
+            continue;
+        }
+        if let Some(values) = state.settings.values.as_object_mut() {
+            values.insert(field.key.to_owned(), Value::String(value.clone()));
+        }
+        state
+            .pending_native_actions
+            .push(NativeAction::CoreCommand {
+                command: json!({"type":"settingsChanged", "key":field.key, "value":value}),
+            });
+    }
+}
+
 pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
+    save_left_fields(state);
     if actions.is_empty() {
         return;
     }
@@ -404,6 +440,47 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             continue;
         }
         if let Some(node) = node {
+            let request = state
+                .rendered_layout
+                .as_ref()
+                .filter(|(route, _)| *route == state.route)
+                .and_then(|(_, layout)| layout.choices.iter().find(|(id, _)| *id == node))
+                .map(|(_, request)| request.clone());
+            if let Some(request) = request {
+                card_menu::open_choice(state, request);
+                continue;
+            }
+            if node == fluxa_ui::NODE_LIBRARY {
+                state.library_downloads = false;
+                refresh_library_view(state);
+            }
+            if (fluxa_ui::NODE_LIBRARY_SECTION_BASE..fluxa_ui::NODE_LIBRARY_SECTION_BASE + 3)
+                .contains(&node)
+            {
+                let section = node - fluxa_ui::NODE_LIBRARY_SECTION_BASE;
+                state.library_downloads = section == 2;
+                refresh_library_view(state);
+                let destination = if section == 1 {
+                    Route::Calendar
+                } else {
+                    Route::Library
+                };
+                if destination != state.route {
+                    state
+                        .pending_native_actions
+                        .push(NativeAction::Navigate { destination });
+                }
+                state.screen_scroll_offsets.remove(&Route::Library);
+                reset_ui(state);
+                continue;
+            }
+            if state.route == Route::Library && node == fluxa_ui::NODE_LIBRARY_VIEW {
+                state.library_list = !state.library_list;
+                refresh_library_view(state);
+                state.screen_scroll_offsets.remove(&Route::Library);
+                reset_ui(state);
+                continue;
+            }
             if state.route == Route::Library && node == fluxa_ui::NODE_LIBRARY_SORT {
                 state.library_sort = match state.library_sort.as_str() {
                     "recent" => "title",
@@ -430,10 +507,12 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 }
             }
             if state.route == Route::Settings
-                && logical_viewport(state).is_compact()
                 && let Some(row) = node
                     .checked_sub(fluxa_ui::NODE_SETTINGS_ROW_BASE)
                     .and_then(|index| fluxa_ui::settings_row_by_index(index as usize))
+                && (row.key == "appIcon"
+                    || logical_viewport(state).is_compact()
+                    || logical_viewport(state).is_tv())
                 && !row.options.is_empty()
                 && row.key != "accentColorArgb"
             {
@@ -441,21 +520,26 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 continue;
             }
             if state.route == Route::Settings
+                && (logical_viewport(state).is_compact() || logical_viewport(state).is_tv())
+                && let Some(index) = node.checked_sub(fluxa_ui::NODE_SETTINGS_ACCOUNT_SOURCE_BASE)
+                && index < 2
+            {
+                card_menu::open_source(state, index as usize);
+                continue;
+            }
+            if state.route == Route::Settings
                 && node == fluxa_ui::NODE_SETTINGS_BACK
-                && state.settings.section_open
+                && (state.settings.section_open || state.settings.page_open)
             {
                 close_settings_section(state);
                 continue;
             }
             if state.route == Route::Settings
-                && (fluxa_ui::NODE_SETTINGS_SECTION_BASE
-                    ..fluxa_ui::NODE_SETTINGS_SECTION_BASE
-                        + fluxa_ui::SETTINGS_SECTIONS.len() as u64)
-                    .contains(&node)
+                && let Some(index) = fluxa_ui::settings_page_for_node(node)
             {
-                state.settings.active_section =
-                    (node - fluxa_ui::NODE_SETTINGS_SECTION_BASE) as usize;
+                state.settings.active_section = index;
                 state.settings.section_open = true;
+                state.settings.page_open = node >= fluxa_ui::NODE_SETTINGS_PAGE_BASE;
                 state.settings.search.clear();
                 state.screen_scroll_offsets.remove(&Route::Settings);
                 reset_ui(state);
@@ -477,17 +561,6 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 reset_ui(state);
                 continue;
             }
-            if state.route == Route::Library
-                && (fluxa_ui::NODE_LIBRARY_TAB_BASE
-                    ..fluxa_ui::NODE_LIBRARY_TAB_BASE + LibraryTab::ALL.len() as u64)
-                    .contains(&node)
-            {
-                state.library_tab =
-                    LibraryTab::ALL[(node - fluxa_ui::NODE_LIBRARY_TAB_BASE) as usize];
-                refresh_library_view(state);
-                reset_ui(state);
-                continue;
-            }
             if state.route == Route::Detail
                 && (fluxa_ui::NODE_DETAIL_SEASON_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE)
                     .contains(&node)
@@ -499,7 +572,9 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             }
             if state.route == Route::Detail && node == fluxa_ui::NODE_DETAIL_SHUFFLE {
                 if let Some(item) = player::start_shuffle(state) {
-                    state.pending_native_actions.push(NativeAction::StartPlayback { item });
+                    state
+                        .pending_native_actions
+                        .push(NativeAction::StartPlayback { item });
                 }
                 continue;
             }
@@ -531,7 +606,9 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
                 state.calendar.selected_day = None;
                 reset_ui(state);
-            } else if state.route == Route::Settings && state.settings.section_open {
+            } else if state.route == Route::Settings
+                && (state.settings.section_open || state.settings.page_open)
+            {
                 close_settings_section(state);
             } else {
                 state.pending_native_actions.push(NativeAction::Back);
@@ -787,7 +864,14 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
 }
 
 fn close_settings_section(state: &mut RendererState) {
-    state.settings.section_open = false;
+    if state.settings.page_open {
+        state.settings.page_open = false;
+        state.settings.active_section = fluxa_ui::category_pages(state.settings.active_section)
+            .next()
+            .unwrap_or_default();
+    } else {
+        state.settings.section_open = false;
+    }
     state.screen_scroll_offsets.remove(&Route::Settings);
     reset_ui(state);
 }

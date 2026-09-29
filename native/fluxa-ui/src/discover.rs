@@ -47,7 +47,7 @@ pub fn draw_discover(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 2, assets);
+    layout.activated = draw_navigation_bar(context, viewport, 1, assets);
     let compact = viewport.is_compact();
     let page = PageLayout::new(viewport, metrics, false);
     let margin = page.margin;
@@ -252,8 +252,18 @@ pub fn draw_discover(
                     discover.content_type.as_str(),
                     &type_options,
                     type_width,
+                    compact,
                     metrics,
                 );
+                if compact && let Some(request) = components::sheet_choice(
+                    NODE_DISCOVER_TYPE_BASE,
+                    "discover:contentType",
+                    localized("auto.type", &discover.language),
+                    &type_options,
+                    discover.content_type.as_str(),
+                ) {
+                    layout.choices.push(request);
+                }
                 layout
                     .focusable
                     .push((NODE_DISCOVER_TYPE_BASE, type_response.rect));
@@ -281,8 +291,20 @@ pub fn draw_discover(
                             .unwrap_or(""),
                         &catalog_options,
                         catalog_width,
+                        compact,
                         metrics,
                     );
+                    if compact && let Some(request) = components::sheet_choice(
+                        NODE_DISCOVER_CATALOG_BASE,
+                        "discover:catalog",
+                        catalog_placeholder.clone(),
+                        &catalog_options,
+                        selected_catalog
+                            .map(|catalog| catalog.key.as_str())
+                            .unwrap_or(""),
+                    ) {
+                        layout.choices.push(request);
+                    }
                     layout
                         .focusable
                         .push((NODE_DISCOVER_CATALOG_BASE, response.rect));
@@ -298,8 +320,18 @@ pub fn draw_discover(
                         discover.selected_extra_value.as_str(),
                         &extra_options,
                         genre_width,
+                        compact,
                         metrics,
                     );
+                    if compact && let Some(request) = components::sheet_choice(
+                        NODE_DISCOVER_EXTRA,
+                        "discover:extra",
+                        genre_placeholder.clone(),
+                        &extra_options,
+                        discover.selected_extra_value.as_str(),
+                    ) {
+                        layout.choices.push(request);
+                    }
                     layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));
                     if let Some(value) = changed {
                         layout.filter_change = Some(("discover:extra".to_owned(), value));

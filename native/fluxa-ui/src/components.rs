@@ -231,7 +231,8 @@ pub(super) fn labeled_action(
     text_size: f32,
     active: bool,
 ) -> Response {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 40.0 + text_size), Sense::click());
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(width, 40.0 + text_size), Sense::click());
     let painter = ui.painter();
     let center = Pos2::new(rect.center().x, rect.top() + 18.0);
     if active {
@@ -244,7 +245,11 @@ pub(super) fn labeled_action(
             icon,
             Rect::from_center_size(center, Vec2::splat(20.0)),
             full_uv(),
-            if active { Color32::BLACK } else { Color32::WHITE },
+            if active {
+                Color32::BLACK
+            } else {
+                Color32::WHITE
+            },
         );
     }
     painter.text(
@@ -623,8 +628,72 @@ pub(super) fn poster_card(
     motion_active: bool,
 ) {
     crate::motion::press_scale(painter, rect, || {
-        poster_card_body(painter, rect, card, viewport, metrics, assets, motion_active)
+        poster_card_body(
+            painter,
+            rect,
+            card,
+            viewport,
+            metrics,
+            assets,
+            motion_active,
+            true,
+        )
     });
+}
+
+pub(super) fn library_row(
+    painter: &Painter,
+    rect: Rect,
+    card: &HomeCard,
+    viewport: Viewport,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+) {
+    painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+    painter.rect_stroke(
+        rect,
+        metrics.card_radius,
+        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        egui::StrokeKind::Inside,
+    );
+    let inset = metrics.control_gap;
+    let thumb = Rect::from_min_size(
+        rect.min + Vec2::splat(inset),
+        Vec2::new((rect.height() - inset * 2.0) * 2.0 / 3.0, rect.height() - inset * 2.0),
+    );
+    poster_card_body(painter, thumb, card, viewport, metrics, assets, false, false);
+    let text_x = thumb.right() + inset * 1.5;
+    let text_width = rect.right() - text_x - inset;
+    let title_size = metrics.screen_card_title_size + 2.0;
+    let title_y = rect.center().y - title_size - metrics.control_gap * 0.5;
+    paint_elided_text(
+        painter,
+        egui::Pos2::new(text_x, title_y),
+        &card.title,
+        FontId::proportional(title_size),
+        text_width,
+        Color32::WHITE,
+    );
+    paint_elided_text(
+        painter,
+        egui::Pos2::new(text_x, title_y + title_size + 4.0),
+        &card.subtitle,
+        crate::fonts::regular(metrics.screen_card_subtitle_size),
+        text_width,
+        Color32::from_white_alpha(185),
+    );
+    if card.progress > 0.0 {
+        let bar = Rect::from_min_size(
+            egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
+            Vec2::new(text_width.min(220.0), metrics.card_progress_height),
+        );
+        painter.rect_filled(bar, 2.0, Color32::from_white_alpha(40));
+        painter.rect_filled(
+            Rect::from_min_size(bar.min, Vec2::new(bar.width() * card.progress.clamp(0.0, 1.0), bar.height())),
+            2.0,
+            metrics.accent,
+        );
+    }
 }
 
 fn poster_card_body(
@@ -635,6 +704,7 @@ fn poster_card_body(
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
     motion_active: bool,
+    labels: bool,
 ) {
     painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(28, 28, 34));
 
@@ -715,7 +785,7 @@ fn poster_card_body(
         super::poster_overlay::paint(painter, rect, card, metrics.card_radius, tones);
     }
 
-    if card.hide_title && card.row_kind == super::HomeRowKind::Collection {
+    if !labels || card.hide_title && card.row_kind == super::HomeRowKind::Collection {
         return;
     }
     let title_font = FontId::proportional(if viewport.is_tv() {
@@ -960,12 +1030,33 @@ fn dropdown_popup_width(
         .min(600.0)
 }
 
+pub(super) fn sheet_choice(
+    node: u64,
+    key: &'static str,
+    title: String,
+    options: &[(String, String)],
+    selected: &str,
+) -> Option<(u64, crate::ChoiceRequest)> {
+    (!options.is_empty()).then(|| {
+        (
+            node,
+            crate::ChoiceRequest {
+                key,
+                title,
+                options: options.to_vec(),
+                selected: selected.to_owned(),
+            },
+        )
+    })
+}
+
 pub(super) fn dropdown(
     ui: &mut Ui,
     id: impl std::hash::Hash,
     selected: &str,
     options: &[(String, String)],
     width: f32,
+    sheet: bool,
     metrics: UiMetrics,
 ) -> (Response, Option<String>) {
     let selected_label = options
@@ -983,6 +1074,7 @@ pub(super) fn dropdown(
         width,
         popup_width,
         !options.is_empty(),
+        sheet,
         metrics,
     )
 }
@@ -994,7 +1086,7 @@ pub(super) fn dropdown_placeholder(
     width: f32,
     metrics: UiMetrics,
 ) -> Response {
-    dropdown_inner(ui, id, "", placeholder, &[], width, width, false, metrics).0
+    dropdown_inner(ui, id, "", placeholder, &[], width, width, false, false, metrics).0
 }
 
 fn dropdown_inner(
@@ -1006,6 +1098,7 @@ fn dropdown_inner(
     width: f32,
     popup_width: f32,
     enabled: bool,
+    sheet: bool,
     metrics: UiMetrics,
 ) -> (Response, Option<String>) {
     let height = metrics.screen_control_height.max(38.0);
@@ -1020,6 +1113,7 @@ fn dropdown_inner(
         &mut value,
         popup_width,
         enabled,
+        sheet,
     );
     let changed = value != selected;
     (response, changed.then_some(value))
@@ -1043,6 +1137,7 @@ pub(super) fn choice_field(
     selected: &mut String,
     popup_width: f32,
     enabled: bool,
+    sheet: bool,
 ) -> Response {
     let sense = if enabled {
         Sense::click()
@@ -1097,7 +1192,7 @@ pub(super) fn choice_field(
         turn,
         Color32::from_white_alpha(if enabled { 190 } else { 80 }),
     );
-    if !enabled {
+    if !enabled || sheet {
         return response;
     }
     let row_height = (text_size + 18.0).max(34.0);
@@ -1108,7 +1203,11 @@ pub(super) fn choice_field(
         .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
         .frame(
             egui::Frame::new()
-                .fill(Color32::from_rgb(24, 24, 24))
+                .fill(if liquid_glass() {
+                    Color32::TRANSPARENT
+                } else {
+                    Color32::from_rgb(24, 24, 24)
+                })
                 .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
                 .corner_radius(12.0)
                 .inner_margin(egui::Margin::same(5))
@@ -1120,6 +1219,8 @@ pub(super) fn choice_field(
                 }),
         )
         .show(|ui| {
+            let backdrop = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
+            let slot = liquid_glass().then(|| backdrop.add(egui::Shape::Noop));
             egui::ScrollArea::vertical()
                 .max_height(300.0)
                 .show(ui, |ui| {
@@ -1175,6 +1276,12 @@ pub(super) fn choice_field(
                         }
                     }
                 });
+            if let Some(slot) = slot {
+                backdrop.set(
+                    slot,
+                    glass_shape(ui.min_rect().expand(5.0), 12.0, Color32::from_rgb(24, 24, 24)),
+                );
+            }
         });
     response
 }
@@ -1228,12 +1335,19 @@ pub(super) fn pill_button(
             (false, false) => (Color32::from_white_alpha(28), Color32::WHITE),
             (false, true) => (Color32::from_white_alpha(46), Color32::WHITE),
         };
-        painter.rect_filled(rect, height * 0.5, fill);
+        if primary {
+            painter.rect_filled(rect, height * 0.5, fill);
+        } else {
+            glass(painter, rect, height * 0.5, fill);
+        }
         let lift = if progress.is_some() { 4.0 } else { 0.0 };
         if let Some(icon) = icon {
             painter.image(
                 icon,
-                Rect::from_center_size(rect.left_center() + Vec2::new(inset + 28.0, 0.0), Vec2::splat(18.0)),
+                Rect::from_center_size(
+                    rect.left_center() + Vec2::new(inset + 28.0, 0.0),
+                    Vec2::splat(18.0),
+                ),
                 full_uv(),
                 ink,
             );
@@ -1267,6 +1381,7 @@ pub(super) fn pill_button(
 pub struct ActionMenuItem {
     pub icon: &'static str,
     pub label: String,
+    pub app_icon: Option<&'static str>,
 }
 
 pub enum ActionMenuOutcome {
@@ -1280,11 +1395,7 @@ pub struct ActionMenuLayout {
     header: Option<Rect>,
 }
 
-pub fn action_menu_layout(
-    viewport: Viewport,
-    count: usize,
-    anchor: Pos2,
-) -> ActionMenuLayout {
+pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> ActionMenuLayout {
     let count = count as f32;
     if viewport.is_compact() {
         let (header, row) = (60.0, 56.0);
@@ -1329,7 +1440,10 @@ pub fn action_menu_layout(
             rows: (0..count as usize)
                 .map(|index| {
                     Rect::from_min_size(
-                        Pos2::new(panel.left() + pad, panel.top() + pad + header + row * index as f32),
+                        Pos2::new(
+                            panel.left() + pad,
+                            panel.top() + pad + header + row * index as f32,
+                        ),
                         Vec2::new(width - pad * 2.0, row),
                     )
                 })
@@ -1348,7 +1462,8 @@ pub fn action_menu_layout(
         } else {
             anchor.y
         };
-        let panel = Rect::from_min_size(Pos2::new(x.max(8.0), y.max(8.0)), Vec2::new(width, height));
+        let panel =
+            Rect::from_min_size(Pos2::new(x.max(8.0), y.max(8.0)), Vec2::new(width, height));
         ActionMenuLayout {
             panel,
             header: None,
@@ -1379,7 +1494,9 @@ pub fn draw_action_menu(
     let layout = action_menu_layout(viewport, items.len(), anchor);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
-    if context.data(|data| data.get_temp::<u64>(Id::new("fluxa-action-menu-serial"))) != Some(serial) {
+    if context.data(|data| data.get_temp::<u64>(Id::new("fluxa-action-menu-serial")))
+        != Some(serial)
+    {
         context.data_mut(|data| data.insert_temp(Id::new("fluxa-action-menu-serial"), serial));
         context.animate_bool_with_time(Id::new(("fluxa-action-menu", serial)), false, 0.0);
     }
@@ -1395,25 +1512,54 @@ pub fn draw_action_menu(
         .fixed_pos(Pos2::ZERO)
         .order(egui::Order::Debug)
         .show(context, |ui| {
-            let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+            let screen =
+                Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
             let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
-            let backdrop = ui.interact(screen, Id::new("fluxa-action-menu-backdrop"), Sense::click());
+            let backdrop = ui.interact(
+                screen,
+                Id::new("fluxa-action-menu-backdrop"),
+                Sense::click(),
+            );
             if compact || tv {
-                painter.rect_filled(screen, 0.0, Color32::from_black_alpha((150.0 * eased) as u8));
+                painter.rect_filled(
+                    screen,
+                    0.0,
+                    Color32::from_black_alpha((150.0 * eased) as u8),
+                );
             }
             let panel = layout.panel.translate(offset);
             let fill = Color32::from_rgb(20, 20, 22);
             let border = egui::Stroke::new(1.0, Color32::from_white_alpha(20));
-            if compact {
+            if compact && liquid_glass() {
+                glass(&painter, panel.with_max_y(panel.max.y + 40.0), 20.0, fill);
+                painter.rect_filled(
+                    Rect::from_center_size(
+                        Pos2::new(panel.center().x, panel.top() + 10.0),
+                        Vec2::new(36.0, 4.0),
+                    ),
+                    2.0,
+                    Color32::from_white_alpha(60),
+                );
+            } else if liquid_glass() {
+                glass(&painter, panel, 12.0, fill);
+            } else if compact {
                 painter.rect(
                     panel.with_max_y(panel.max.y + 40.0),
-                    egui::CornerRadius { nw: 20, ne: 20, sw: 0, se: 0 },
+                    egui::CornerRadius {
+                        nw: 20,
+                        ne: 20,
+                        sw: 0,
+                        se: 0,
+                    },
                     fill,
                     border,
                     egui::StrokeKind::Inside,
                 );
                 painter.rect_filled(
-                    Rect::from_center_size(Pos2::new(panel.center().x, panel.top() + 10.0), Vec2::new(36.0, 4.0)),
+                    Rect::from_center_size(
+                        Pos2::new(panel.center().x, panel.top() + 10.0),
+                        Vec2::new(36.0, 4.0),
+                    ),
                     2.0,
                     Color32::from_white_alpha(60),
                 );
@@ -1440,11 +1586,19 @@ pub fn draw_action_menu(
                     egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
                 );
             }
-            let label_size = if compact || tv { metrics.text.subtitle } else { metrics.text.body };
+            let label_size = if compact || tv {
+                metrics.text.subtitle
+            } else {
+                metrics.text.body
+            };
             let icon_size = if compact || tv { 24.0 } else { 18.0 };
             for (index, (item, row)) in items.iter().zip(&layout.rows).enumerate() {
                 let row = row.translate(offset);
-                let response = ui.interact(row, Id::new(("fluxa-action-menu-row", index)), Sense::click());
+                let response = ui.interact(
+                    row,
+                    Id::new(("fluxa-action-menu-row", index)),
+                    Sense::click(),
+                );
                 let focused = selected == Some(index);
                 let (bg, ink) = if tv && focused {
                     (Color32::WHITE, Color32::BLACK)
@@ -1455,7 +1609,29 @@ pub fn draw_action_menu(
                 };
                 painter.rect_filled(row, if compact { 12.0 } else { 8.0 }, bg);
                 let inset = if compact { 16.0 } else { 12.0 };
-                if let Some(icon) = assets.icon(item.icon) {
+                if let Some(texture) = item.app_icon.and_then(|id| assets.app_icon(id)) {
+                    let size = icon_size + 12.0;
+                    painter.image(
+                        texture,
+                        Rect::from_center_size(
+                            Pos2::new(row.left() + inset + icon_size * 0.5, row.center().y),
+                            Vec2::splat(size),
+                        ),
+                        full_uv(),
+                        Color32::WHITE,
+                    );
+                    if let Some(check) = assets.icon(item.icon) {
+                        painter.image(
+                            check,
+                            Rect::from_center_size(
+                                Pos2::new(row.right() - inset - icon_size * 0.5, row.center().y),
+                                Vec2::splat(icon_size),
+                            ),
+                            full_uv(),
+                            ink,
+                        );
+                    }
+                } else if let Some(icon) = assets.icon(item.icon) {
                     painter.image(
                         icon,
                         Rect::from_center_size(
@@ -1499,14 +1675,21 @@ pub(crate) fn brand_lockup(
     assets: &impl HomeAssets,
 ) {
     let gap = mark_size * 0.22;
-    let galley = painter.layout_no_wrap("fluxa".to_owned(), FontId::proportional(font_size), Color32::WHITE);
+    let galley = painter.layout_no_wrap(
+        "fluxa".to_owned(),
+        FontId::proportional(font_size),
+        Color32::WHITE,
+    );
     let width = mark_size + gap + galley.size().x;
     let left = center.x - width * 0.5;
     let tint = Color32::from_white_alpha(alpha);
     if let Some(mark) = assets.brand_mark() {
         painter.image(
             mark,
-            Rect::from_center_size(Pos2::new(left + mark_size * 0.5, center.y), Vec2::splat(mark_size)),
+            Rect::from_center_size(
+                Pos2::new(left + mark_size * 0.5, center.y),
+                Vec2::splat(mark_size),
+            ),
             full_uv(),
             tint,
         );
@@ -1525,7 +1708,11 @@ pub(super) fn toggle(
 ) {
     let t = context.animate_bool_with_time_and_easing(id, on, 0.22, egui::emath::easing::cubic_out);
     let off_track = Color32::from_rgb(54, 56, 59);
-    painter.rect_filled(track, track.height() * 0.5, lerp_color(off_track, metrics.accent, t));
+    painter.rect_filled(
+        track,
+        track.height() * 0.5,
+        lerp_color(off_track, metrics.accent, t),
+    );
     let radius = metrics
         .settings_toggle_knob_radius
         .min(track.height() * 0.5 - 2.0);
@@ -1587,6 +1774,51 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_ADDON_URL
             | super::NODE_SETTINGS_PLUGIN_URL
     ) || super::poster_field(node).is_some()
+}
+
+static LIQUID_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
+
+pub fn set_liquid_glass(enabled: bool) {
+    LIQUID_GLASS.store(enabled, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub(crate) fn liquid_glass() -> bool {
+    LIQUID_GLASS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Glass {
+    pub radius: f32,
+    pub tint: Color32,
+    pub refraction: f32,
+    pub bevel: f32,
+    pub rim: f32,
+}
+
+pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape {
+    if !liquid_glass() {
+        return egui::Shape::rect_filled(rect, radius, fill);
+    }
+    let tint = if fill.a() > 200 {
+        fill.gamma_multiply(0.5)
+    } else {
+        fill
+    };
+    let radius = radius.min(rect.height() * 0.5).min(rect.width() * 0.5);
+    egui::Shape::Callback(egui::PaintCallback {
+        rect,
+        callback: std::sync::Arc::new(Glass {
+            radius,
+            tint,
+            refraction: (rect.height() * 0.2).clamp(4.0, 14.0),
+            bevel: radius.clamp(6.0, 18.0),
+            rim: 1.0,
+        }),
+    })
+}
+
+pub(crate) fn glass(painter: &Painter, rect: Rect, radius: f32, fill: Color32) {
+    painter.add(glass_shape(rect, radius, fill));
 }
 
 pub(super) fn stream_row(

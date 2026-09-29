@@ -136,7 +136,7 @@
           "settingsToggleKnobRadius": 13,
           "calendarGridGapMobile": 5,
           "calendarGridGap": 8,
-          "calendarCellHeightMobile": 76,
+          "calendarCellHeightMobile": 58,
           "calendarCellHeightDesktop": 96,
           "calendarCellHeightTv": 112,
           "calendarCellRadius": 9,

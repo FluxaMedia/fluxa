@@ -1,4 +1,5 @@
 use super::*;
+use crate::components::{glass, glass_shape, liquid_glass};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 
 pub(crate) const NAV_BAR_TOP: f32 = 14.0;
@@ -21,7 +22,7 @@ pub(crate) fn estimated_navigation_text_width(text: &str, size: f32) -> f32 {
 }
 
 /// Draws the navigation shared by every native screen. The active route is an
-/// index into Home/Library/Discover/Calendar and the returned node id is
+/// index into Home/Discover/Library and the returned node id is
 /// consumed by the platform event adapters.
 pub fn draw_navigation_bar(
     context: &egui::Context,
@@ -72,8 +73,14 @@ pub(crate) fn draw_navigation_bar_with_profile(
         .fixed_pos(Pos2::new(bar_x, NAV_BAR_TOP))
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            egui::Frame::NONE
-                .fill(Color32::from_rgba_unmultiplied(22, 22, 24, 242))
+            let fill = Color32::from_rgba_unmultiplied(22, 22, 24, 242);
+            let backdrop = ui.painter().add(egui::Shape::Noop);
+            let frame = egui::Frame::NONE
+                .fill(if liquid_glass() {
+                    Color32::TRANSPARENT
+                } else {
+                    fill
+                })
                 .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(20)))
                 .corner_radius(NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING)
                 .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
@@ -81,9 +88,11 @@ pub(crate) fn draw_navigation_bar_with_profile(
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = NAV_ITEM_GAP;
                         let pill = ui.painter().add(egui::Shape::Noop);
-                        let mut slots = [Rect::NOTHING; 5];
-                        for (index, label) in ["Home", "Library", "Discover", "Calendar"]
-                            .into_iter()
+                        let mut slots = [Rect::NOTHING; 4];
+                        let labels = nav_labels();
+                        for (index, (label, icon)) in labels
+                            .iter()
+                            .zip(["Home", "Discover", "Library"])
                             .enumerate()
                         {
                             let active = index == active_route;
@@ -109,7 +118,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                     .layout_no_wrap(label.to_owned(), font.clone(), color);
                             let content = icon_size + 8.0 + galley.size().x;
                             let left = rect.center().x - content * 0.5;
-                            if let Some(icon_id) = assets.icon(label) {
+                            if let Some(icon_id) = assets.icon(icon) {
                                 ui.painter().image(
                                     icon_id,
                                     Rect::from_min_size(
@@ -129,15 +138,15 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 color,
                             );
                             if response.clicked() {
-                                activated = Some(NODE_HOME + index as u64);
+                                activated = Some([NODE_HOME, NODE_DISCOVER, NODE_LIBRARY][index]);
                             }
                         }
                         let (rect, response) = ui.allocate_exact_size(
                             Vec2::new(profile_width, NAV_ITEM_HEIGHT),
                             Sense::click(),
                         );
-                        slots[4] = rect;
-                        let profile_active = active_route == 4;
+                        slots[3] = rect;
+                        let profile_active = active_route == 3;
                         if !profile_active && response.hovered() {
                             ui.painter().rect_filled(
                                 rect,
@@ -145,7 +154,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 Color32::from_white_alpha(12),
                             );
                         }
-                        let target = slots[active_route.min(4)];
+                        let target = slots[active_route.min(3)];
                         let x = ui.ctx().animate_value_with_time(
                             Id::new("fluxa-top-bar-indicator-x"),
                             target.center().x,
@@ -159,7 +168,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         let stretch = (target.center().x - x).abs().min(target.width() * 0.5);
                         ui.painter().set(
                             pill,
-                            egui::epaint::RectShape::filled(
+                            glass_shape(
                                 Rect::from_center_size(
                                     Pos2::new(x, target.center().y),
                                     Vec2::new(width + stretch, NAV_ITEM_HEIGHT),
@@ -208,17 +217,41 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         }
                     });
                 });
+            if liquid_glass() {
+                ui.painter().set(
+                    backdrop,
+                    glass_shape(
+                        frame.response.rect,
+                        NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING,
+                        fill,
+                    ),
+                );
+            }
         });
     activated
 }
 
 static NAV_FLOATING: AtomicBool = AtomicBool::new(true);
 static NAV_LABELS: AtomicBool = AtomicBool::new(true);
+static NAV_LANGUAGE: std::sync::RwLock<String> = std::sync::RwLock::new(String::new());
 static NAV_DRAG: AtomicU32 = AtomicU32::new(u32::MAX);
 
 pub fn set_mobile_nav_style(floating: bool, labels: bool) {
     NAV_FLOATING.store(floating, Ordering::Relaxed);
     NAV_LABELS.store(labels, Ordering::Relaxed);
+}
+
+pub fn set_nav_language(language: &str) {
+    if let Ok(mut current) = NAV_LANGUAGE.write()
+        && *current != language
+    {
+        *current = language.to_owned();
+    }
+}
+
+pub(crate) fn nav_labels() -> [String; 3] {
+    let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
+    ["nav.home", "nav.discover", "nav.library"].map(|key| localized(key, &language))
 }
 
 pub fn set_mobile_nav_drag(x: Option<f32>) {
@@ -254,13 +287,17 @@ fn mobile_nav_drag() -> Option<f32> {
     (bits != u32::MAX).then(|| f32::from_bits(bits))
 }
 
-const MOBILE_NODES: [u64; 5] = [
-    NODE_HOME,
-    NODE_LIBRARY,
-    NODE_DISCOVER,
-    NODE_CALENDAR,
-    NODE_PROFILE,
-];
+fn nav_accent(assets: &impl HomeAssets) -> (Color32, Color32) {
+    match assets.accent_color() {
+        Some(accent) if !accent_is_neutral(assets) => {
+            let [r, g, b, _] = accent.to_array();
+            (accent, Color32::from_rgba_unmultiplied(r, g, b, 46))
+        }
+        _ => (Color32::WHITE, Color32::from_white_alpha(18)),
+    }
+}
+
+const MOBILE_NODES: [u64; 4] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_PROFILE];
 
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let height = 64.0;
@@ -283,8 +320,8 @@ pub fn mobile_nav_reserve(viewport: Viewport) -> f32 {
 
 pub fn mobile_nav_node_at(viewport: Viewport, x: f32) -> u64 {
     let rect = mobile_nav_rect(viewport);
-    let slot = rect.width() / 5.0;
-    let index = ((x - rect.left()) / slot).floor().clamp(0.0, 4.0) as usize;
+    let slot = rect.width() / 4.0;
+    let index = ((x - rect.left()) / slot).floor().clamp(0.0, 3.0) as usize;
     MOBILE_NODES[index]
 }
 
@@ -300,20 +337,30 @@ pub(crate) fn draw_mobile_navigation_bar(
     let floating = NAV_FLOATING.load(Ordering::Relaxed);
     let labels = NAV_LABELS.load(Ordering::Relaxed);
     let bar = mobile_nav_rect(viewport);
-    let slot_width = bar.width() / 5.0;
+    let slot_width = bar.width() / 4.0;
+    let (accent, indicator_fill) = nav_accent(assets);
     let [r, g, b, _] = metrics.background.to_array();
     let solid = Color32::from_rgb(r, g, b);
     let drag = mobile_nav_drag();
-    let active_x = bar.left() + slot_width * (active_route.min(4) as f32 + 0.5);
+    let active_x = bar.left() + slot_width * (active_route.min(3) as f32 + 0.5);
     let target = drag
-        .map(|x| x.clamp(bar.left() + slot_width * 0.5, bar.right() - slot_width * 0.5))
+        .map(|x| {
+            x.clamp(
+                bar.left() + slot_width * 0.5,
+                bar.right() - slot_width * 0.5,
+            )
+        })
         .or_else(|| mobile_nav_pending(active_x))
         .unwrap_or(active_x);
     let indicator_x =
         context.animate_value_with_time(Id::new("fluxa-bottom-bar-indicator"), target, 0.22);
     let stretch = (target - indicator_x).abs().min(slot_width * 0.6);
     let highlighted = drag
-        .map(|x| MOBILE_NODES.iter().position(|node| *node == mobile_nav_node_at(viewport, x)))
+        .map(|x| {
+            MOBILE_NODES
+                .iter()
+                .position(|node| *node == mobile_nav_node_at(viewport, x))
+        })
         .flatten()
         .unwrap_or(active_route);
     let mut activated = None;
@@ -322,7 +369,14 @@ pub(crate) fn draw_mobile_navigation_bar(
         .order(egui::Order::Tooltip)
         .show(context, |ui| {
             let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
-            if floating {
+            if floating && liquid_glass() {
+                glass(
+                    &painter,
+                    bar,
+                    bar.height() * 0.5,
+                    Color32::from_rgba_unmultiplied(22, 22, 24, 242),
+                );
+            } else if floating {
                 paint_vertical_gradient(
                     &painter,
                     Rect::from_min_max(
@@ -340,7 +394,11 @@ pub(crate) fn draw_mobile_navigation_bar(
                     0.0,
                     solid,
                 );
-                painter.rect_filled(bar, bar.height() * 0.5, Color32::from_rgba_unmultiplied(22, 22, 24, 242));
+                painter.rect_filled(
+                    bar,
+                    bar.height() * 0.5,
+                    Color32::from_rgba_unmultiplied(22, 22, 24, 242),
+                );
                 painter.rect_stroke(
                     bar,
                     bar.height() * 0.5,
@@ -369,17 +427,24 @@ pub(crate) fn draw_mobile_navigation_bar(
             let indicator_height = bar.height() - 8.0;
             let indicator = Rect::from_center_size(
                 Pos2::new(indicator_x, bar.center().y),
-                Vec2::new(slot_width * 1.2 + stretch, indicator_height - stretch * 0.12),
+                Vec2::new(
+                    slot_width * 1.2 + stretch,
+                    indicator_height - stretch * 0.12,
+                ),
             )
             .intersect(bar.shrink(4.0));
-            painter.rect_filled(indicator, indicator.height() * 0.5, Color32::from_white_alpha(18));
+            if floating {
+                glass(&painter, indicator, indicator.height() * 0.5, indicator_fill);
+            } else {
+                painter.rect_filled(indicator, indicator.height() * 0.5, indicator_fill);
+            }
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
+                let [home, discover, library] = nav_labels();
                 for (index, (label, icon, node)) in [
-                    ("Home", "Home", NODE_HOME),
-                    ("Library", "Library", NODE_LIBRARY),
-                    ("Discover", "Discover", NODE_DISCOVER),
-                    ("Calendar", "Calendar", NODE_CALENDAR),
+                    (home.as_str(), "Home", NODE_HOME),
+                    (discover.as_str(), "Discover", NODE_DISCOVER),
+                    (library.as_str(), "Library", NODE_LIBRARY),
                     (profile_name, "Account", NODE_PROFILE),
                 ]
                 .into_iter()
@@ -389,7 +454,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::new(slot_width, bar.height()), Sense::click());
                     let color = if active {
-                        Color32::WHITE
+                        accent
                     } else {
                         Color32::from_white_alpha(130)
                     };
@@ -398,7 +463,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     } else {
                         rect.center()
                     };
-                    let avatar = (index == 4)
+                    let avatar = (index == 3)
                         .then(|| assets.cached_texture(profile_avatar_url))
                         .flatten();
                     if let Some(avatar) = avatar {
@@ -407,7 +472,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                             ui.painter().circle_stroke(
                                 center,
                                 15.0,
-                                egui::Stroke::new(1.5, Color32::WHITE),
+                                egui::Stroke::new(1.5, accent),
                             );
                         }
                     } else if let Some(icon) = assets.icon(icon) {
@@ -429,7 +494,10 @@ pub(crate) fn draw_mobile_navigation_bar(
                         });
                         let width = galley.size().x;
                         ui.painter().galley(
-                            Pos2::new(rect.center().x - width * 0.5, rect.center().y + 15.0 - galley.size().y * 0.5),
+                            Pos2::new(
+                                rect.center().x - width * 0.5,
+                                rect.center().y + 15.0 - galley.size().y * 0.5,
+                            ),
                             galley,
                             color,
                         );
@@ -449,7 +517,7 @@ pub(crate) fn draw_mobile_navigation_bar(
 pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u64, Rect)> {
     if viewport.is_compact() {
         let bar = mobile_nav_rect(viewport);
-        let slot = bar.width() / 5.0;
+        let slot = bar.width() / 4.0;
         MOBILE_NODES
             .into_iter()
             .enumerate()
@@ -465,14 +533,13 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             .collect()
     } else {
         let tv = viewport.is_tv();
-        let widths = ["Home", "Library", "Discover", "Calendar"]
-            .map(|label| metrics.navigation_item_width(label, tv));
+        let widths = nav_labels().map(|label| metrics.navigation_item_width(&label, tv));
         let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
         let y = NAV_BAR_TOP + NAV_BAR_PADDING;
         let mut left = x;
-        let mut rects = Vec::with_capacity(5);
-        for (index, node) in [NODE_HOME, NODE_LIBRARY, NODE_DISCOVER, NODE_CALENDAR]
+        let mut rects = Vec::with_capacity(4);
+        for (index, node) in [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY]
             .into_iter()
             .enumerate()
         {
@@ -498,6 +565,6 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
 pub(crate) fn is_navigation_node(node: u64) -> bool {
     matches!(
         node,
-        NODE_HOME | NODE_LIBRARY | NODE_DISCOVER | NODE_CALENDAR | NODE_PROFILE
+        NODE_HOME | NODE_LIBRARY | NODE_DISCOVER | NODE_PROFILE
     )
 }

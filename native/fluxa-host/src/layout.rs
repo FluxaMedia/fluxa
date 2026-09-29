@@ -20,7 +20,9 @@ pub(super) fn rebuild_home_ui(
         };
     }
     let layout = fluxa_ui::home_layout(
-        Viewport::new(width, height, home.form_factor.into()).with_safe_bottom(safe_bottom),
+        Viewport::new(width, height, home.form_factor.into())
+            .with_platform(home.platform)
+            .with_safe_bottom(safe_bottom),
         home,
     );
     for (id, rect) in layout.focusable {
@@ -121,20 +123,29 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
             fluxa_ui::localized("settings.addon_refresh", "en")
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL => fluxa_ui::localized("settings.plugin_add", "en"),
+        id if fluxa_ui::addon_action(id).is_some() => {
+            let key = match fluxa_ui::addon_action(id).map_or(0, |(_, action)| action) {
+                0 => "settings.addon_move_up",
+                1 => "settings.addon_move_down",
+                2 => "settings.addon_refresh_one",
+                _ => "settings.addon_remove",
+            };
+            fluxa_ui::localized(key, "en")
+        }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE
-            ..fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE + 4)
+            ..fluxa_ui::NODE_SETTINGS_PLUGIN_REPOSITORY_BASE + 20)
             .contains(&id) =>
         {
             fluxa_ui::localized("settings.plugin_remove", "en")
         }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE
-            ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 4)
+            ..fluxa_ui::NODE_SETTINGS_PLUGIN_REFRESH_BASE + 20)
             .contains(&id) =>
         {
             fluxa_ui::localized("settings.plugin_refresh", "en")
         }
         id if (fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE
-            ..fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE + 4)
+            ..fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE + 30)
             .contains(&id) =>
         {
             let index = (id - fluxa_ui::NODE_SETTINGS_PLUGIN_SCRAPER_BASE) as usize;
@@ -176,14 +187,8 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 "Add to watchlist".to_owned()
             }
         }
-        id if (fluxa_ui::NODE_LIBRARY_TAB_BASE
-            ..fluxa_ui::NODE_LIBRARY_TAB_BASE + LibraryTab::ALL.len() as u64)
-            .contains(&id) =>
-        {
-            LibraryTab::ALL[(id - fluxa_ui::NODE_LIBRARY_TAB_BASE) as usize]
-                .label()
-                .to_owned()
-        }
+        fluxa_ui::NODE_LIBRARY_STATUS => state.library_tab.label().to_owned(),
+        fluxa_ui::NODE_LIBRARY_TYPE => "Type".to_owned(),
         id if id == fluxa_ui::NODE_DISCOVER_TYPE_BASE => {
             if id == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
                 "Movies".to_owned()
@@ -242,12 +247,9 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 .map(|row| row.label.to_owned())
                 .unwrap_or_else(|| "Setting".to_owned())
         }
-        id if (fluxa_ui::NODE_SETTINGS_SECTION_BASE
-            ..fluxa_ui::NODE_SETTINGS_SECTION_BASE + fluxa_ui::SETTINGS_SECTIONS.len() as u64)
-            .contains(&id) =>
-        {
-            fluxa_ui::SETTINGS_SECTIONS
-                .get((id - fluxa_ui::NODE_SETTINGS_SECTION_BASE) as usize)
+        id if fluxa_ui::settings_page_for_node(id).is_some() => {
+            fluxa_ui::settings_page_for_node(id)
+                .and_then(|index| fluxa_ui::SETTINGS_SECTIONS.get(index))
                 .map(|section| section.title.to_owned())
                 .unwrap_or_else(|| "Settings".to_owned())
         }
@@ -407,7 +409,7 @@ pub(super) fn rebuild_ui_from_layout(
             .cards(state.library_tab)
             .first()
             .map(|_| NODE_CARD_BASE)
-            .unwrap_or(fluxa_ui::NODE_LIBRARY_TAB_BASE),
+            .unwrap_or(fluxa_ui::NODE_LIBRARY_STATUS),
         Route::Discover => state
             .discover
             .results
@@ -458,6 +460,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
         state.home.form_factor.into(),
     )
+    .with_platform(state.home.platform)
     .with_safe_bottom(state.safe_bottom);
     let top_inset = 12.0;
     let bottom_inset = 12.0 + state.safe_bottom;

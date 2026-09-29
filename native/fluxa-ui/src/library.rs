@@ -19,11 +19,10 @@ pub fn draw_library(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 1, assets);
+    layout.activated = draw_navigation_bar(context, viewport, 2, assets);
 
     let compact = viewport.is_compact();
-    let split = library_needs_second_row(viewport, metrics);
-    let page = PageLayout::new(viewport, metrics, split);
+    let page = PageLayout::new(viewport, metrics, false).with_sections(viewport, metrics);
     let cards = library.cards(tab);
 
     egui::Area::new(Id::new("fluxa-shared-library-title"))
@@ -55,6 +54,37 @@ pub fn draw_library(
             });
         });
 
+    draw_library_sections(
+        context,
+        &mut layout,
+        Pos2::new(page.margin, page.sections_top),
+        page.width,
+        if library.downloads_open { 2 } else { 0 },
+        (!library.downloads_open).then_some(library.list_view),
+        &library.language,
+        assets,
+        metrics,
+    );
+    if library.downloads_open {
+        let bottom = viewport.height - mobile_scroll_reserve(viewport);
+        components::empty_state(
+            &painter,
+            Rect::from_min_max(
+                Pos2::new(page.margin, page.filters_top),
+                Pos2::new(page.margin + page.width, bottom.max(page.filters_top + 200.0)),
+            ),
+            assets.icon("Downloads"),
+            &localized("library.downloads_empty", &library.language),
+            &localized("library.downloads_hint", &library.language),
+            metrics,
+        );
+        layout
+            .focusable
+            .extend(navigation_focus_rects(viewport, metrics));
+        components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
+        return layout;
+    }
+
     egui::Area::new(Id::new("fluxa-shared-library-search"))
         .constrain(false)
         .fixed_pos(page.search.min)
@@ -75,102 +105,123 @@ pub fn draw_library(
             }
         });
 
-    let labels = LibraryTab::ALL
+    let status_options = LibraryTab::ALL
         .iter()
-        .map(|candidate| localized(candidate.translation_key(), &library.language))
+        .filter(|candidate| {
+            library
+                .statuses
+                .iter()
+                .any(|status| status == candidate.core_tab_key())
+        })
+        .map(|candidate| {
+            (
+                candidate.core_tab_key().to_owned(),
+                localized(candidate.translation_key(), &library.language),
+            )
+        })
         .collect::<Vec<_>>();
-    let selected = LibraryTab::ALL
-        .iter()
-        .position(|candidate| *candidate == tab)
-        .unwrap_or_default();
-    egui::Area::new(Id::new("fluxa-shared-library-tabs"))
+    let mut type_options = vec![("all".to_owned(), localized("auto.all", &library.language))];
+    for (key, label) in [
+        ("movie", "auto.movies"),
+        ("series", "auto.series"),
+        ("anime", "auto.anime"),
+    ] {
+        if library.types.iter().any(|kind| kind == key) {
+            type_options.push((key.to_owned(), localized(label, &library.language)));
+        }
+    }
+    let sort_options = ["tracker", "recent", "oldest", "title", "title_desc", "rating"]
+        .into_iter()
+        .filter(|sort| library.sorts.is_empty() || library.sorts.iter().any(|item| item == sort))
+        .map(|sort| {
+            (
+                sort.to_owned(),
+                localized(&format!("library.sort_{sort}"), &library.language),
+            )
+        })
+        .collect::<Vec<_>>();
+    let selected_sort = if sort_options.iter().any(|(key, _)| *key == library.sort_by) {
+        library.sort_by.as_str()
+    } else {
+        sort_options.first().map_or("", |(key, _)| key.as_str())
+    };
+    let selected_type = if library.content_type.is_empty() {
+        "all"
+    } else {
+        library.content_type.as_str()
+    };
+    let gap = metrics.control_gap;
+    let has_status = !status_options.is_empty();
+    egui::Area::new(Id::new("fluxa-shared-library-controls"))
         .constrain(false)
         .fixed_pos(Pos2::new(page.margin, page.filters_top))
         .show(context, |ui| {
-            let tabs_width = if split {
-                page.width
-            } else {
-                page.width - 440.0 - metrics.section_gap * 2.0
-            };
-            ui.set_width(tabs_width);
-            let scroll = egui::ScrollArea::horizontal()
-                .id_salt("fluxa-library-tabs")
-                .auto_shrink([false, true])
-                .max_width(tabs_width)
-                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysHidden)
-                .show(ui, |ui| {
-                    components::text_tabs(
-                        ui,
-                        &labels,
-                        selected,
-                        metrics.screen_control_height,
-                        metrics,
-                    )
-                });
-            for (index, response) in scroll.inner.into_iter().enumerate() {
-                let node = NODE_LIBRARY_TAB_BASE + index as u64;
-                layout
-                    .focusable
-                    .push((node, response.rect.intersect(scroll.inner_rect)));
-                if response.clicked() {
-                    layout.activated = Some(node);
-                }
-            }
-        });
-
-    let sort_options = [
-        (
-            "recent".to_owned(),
-            localized("library.sort_recent", &library.language),
-        ),
-        (
-            "title".to_owned(),
-            localized("library.sort_title", &library.language),
-        ),
-        (
-            "rating".to_owned(),
-            localized("library.sort_rating", &library.language),
-        ),
-    ];
-    let controls_width = if split { page.width.min(440.0) } else { 440.0 };
-    let sort_width = (controls_width - metrics.control_gap) * 0.42;
-    let source_width = controls_width - metrics.control_gap - sort_width;
-    let controls_pos = match page.second_row_top {
-        Some(row) => Pos2::new(page.margin, row),
-        None => Pos2::new(page.margin + page.width - controls_width, page.filters_top),
-    };
-    egui::Area::new(Id::new("fluxa-shared-library-controls"))
-        .constrain(false)
-        .fixed_pos(controls_pos)
-        .show(context, |ui| {
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing.x = metrics.control_gap;
-                let (sort, sort_change) = components::dropdown(
-                    ui,
-                    "library-sort",
-                    &library.sort_by,
-                    &sort_options,
-                    sort_width,
-                    metrics,
-                );
-                layout.focusable.push((NODE_LIBRARY_SORT, sort.rect));
-                if let Some(value) = sort_change {
-                    layout.filter_change = Some(("librarySort".to_owned(), value));
+                ui.spacing_mut().item_spacing.x = gap;
+                let mut controls = vec![
+                    (
+                        "library-status",
+                        NODE_LIBRARY_STATUS,
+                        "libraryStatus",
+                        "library.status",
+                        tab.core_tab_key(),
+                        &status_options,
+                    ),
+                    (
+                        "library-type",
+                        NODE_LIBRARY_TYPE,
+                        "libraryType",
+                        "auto.type",
+                        selected_type,
+                        &type_options,
+                    ),
+                    (
+                        "library-sort",
+                        NODE_LIBRARY_SORT,
+                        "librarySort",
+                        "library.sort_by",
+                        selected_sort,
+                        &sort_options,
+                    ),
+                ];
+                if !has_status {
+                    controls.remove(0);
                 }
-                let (source, source_change) = components::dropdown(
-                    ui,
-                    "library-source",
-                    &library.source,
-                    &library.source_options,
-                    source_width,
-                    metrics,
-                );
-                layout.focusable.push((NODE_LIBRARY_SOURCE, source.rect));
-                if let Some(value) = source_change {
-                    layout.setting_change = Some((
-                        "integrationLibrarySource".to_owned(),
-                        serde_json::Value::String(value),
-                    ));
+                let count = controls.len();
+                let mut remaining = page.width;
+                for (index, (id, node, key, title, selected, options)) in
+                    controls.into_iter().enumerate()
+                {
+                    let label = options
+                        .iter()
+                        .find(|(option, _)| option == selected)
+                        .map_or(selected, |(_, label)| label.as_str());
+                    let width = components::dropdown_width_for_label(
+                        ui,
+                        label,
+                        metrics,
+                        72.0,
+                        remaining - (count - index - 1) as f32 * (72.0 + gap),
+                    );
+                    remaining -= width + gap;
+                    let (response, change) = components::dropdown(
+                        ui, id, selected, options, width, compact, metrics,
+                    );
+                    if compact
+                        && let Some(request) = components::sheet_choice(
+                            node,
+                            key,
+                            localized(title, &library.language),
+                            options,
+                            selected,
+                        )
+                    {
+                        layout.choices.push(request);
+                    }
+                    layout.focusable.push((node, response.rect));
+                    if let Some(value) = change {
+                        layout.filter_change = Some((key.to_owned(), value));
+                    }
                 }
             });
         });
@@ -181,6 +232,7 @@ pub fn draw_library(
     );
 
     let grid = PosterGrid::new(page.width, metrics);
+    let row_height = library_row_height(viewport, metrics);
     let origin = Pos2::new(page.margin, page.content_top - scroll_y);
     let clip = Rect::from_min_max(
         Pos2::new(0.0, page.content_top - metrics.section_gap * 0.5),
@@ -195,7 +247,14 @@ pub fn draw_library(
         .show(context, |ui| {
             ui.set_clip_rect(ui.clip_rect().intersect(clip));
             for (index, card) in cards.iter().take(LIBRARY_CARD_LIMIT).enumerate() {
-                let rect = grid.cell(origin, index);
+                let rect = if library.list_view {
+                    Rect::from_min_size(
+                        origin + Vec2::new(0.0, index as f32 * (row_height + metrics.control_gap)),
+                        Vec2::new(page.width, row_height),
+                    )
+                } else {
+                    grid.cell(origin, index)
+                };
                 let visible = rect.intersect(clip);
                 if !visible.is_positive() {
                     continue;
@@ -205,6 +264,10 @@ pub fn draw_library(
                 layout.focusable.push((node, visible));
                 if response.clicked() {
                     layout.activated = Some(node);
+                }
+                if library.list_view {
+                    components::library_row(ui.painter(), rect, card, viewport, metrics, assets);
+                    continue;
                 }
                 let poster =
                     Rect::from_min_size(rect.min, Vec2::new(grid.card_width, grid.poster_height));
@@ -268,4 +331,56 @@ pub fn draw_library(
         .extend(navigation_focus_rects(viewport, metrics));
     components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
+}
+
+pub(crate) fn draw_library_sections(
+    context: &egui::Context,
+    layout: &mut HomeLayout,
+    pos: Pos2,
+    width: f32,
+    active: usize,
+    list_view: Option<bool>,
+    language: &str,
+    assets: &impl HomeAssets,
+    metrics: UiMetrics,
+) {
+    let labels = [
+        localized("nav.library", language),
+        localized("nav.calendar", language),
+        localized("library.downloads", language),
+    ];
+    egui::Area::new(Id::new("fluxa-shared-library-sections"))
+        .constrain(false)
+        .fixed_pos(pos)
+        .show(context, |ui| {
+            ui.set_width(width);
+            ui.horizontal(|ui| {
+                let tabs =
+                    components::text_tabs(ui, &labels, active, metrics.screen_control_height, metrics);
+                for (index, response) in tabs.into_iter().enumerate() {
+                    let node = NODE_LIBRARY_SECTION_BASE + index as u64;
+                    layout.focusable.push((node, response.rect));
+                    if response.clicked() {
+                        layout.activated = Some(node);
+                    }
+                }
+                if let Some(list) = list_view {
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let response = components::icon_button(
+                            ui,
+                            assets.icon(if list { "LayoutGrid" } else { "List" }),
+                            metrics.screen_control_height,
+                            Color32::WHITE,
+                            true,
+                            false,
+                            true,
+                        );
+                        layout.focusable.push((NODE_LIBRARY_VIEW, response.rect));
+                        if response.clicked() {
+                            layout.activated = Some(NODE_LIBRARY_VIEW);
+                        }
+                    });
+                }
+            });
+        });
 }

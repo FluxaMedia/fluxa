@@ -378,18 +378,11 @@ fn mobile_home_navigation_respects_real_system_bottom_inset() {
 }
 
 #[test]
-fn mobile_bottom_navigation_splits_the_floating_bar_into_five_slots() {
+fn mobile_bottom_navigation_splits_the_floating_bar_into_four_slots() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let metrics = UiMetrics::for_viewport(viewport);
     let navigation = navigation_focus_rects(viewport, metrics);
-    let slots = [
-        NODE_HOME,
-        NODE_LIBRARY,
-        NODE_DISCOVER,
-        NODE_CALENDAR,
-        NODE_PROFILE,
-    ]
-    .map(|node| {
+    let slots = [NODE_HOME, NODE_LIBRARY, NODE_DISCOVER, NODE_PROFILE].map(|node| {
         navigation
             .iter()
             .find(|(id, _)| *id == node)
@@ -399,14 +392,15 @@ fn mobile_bottom_navigation_splits_the_floating_bar_into_five_slots() {
     let width = slots[0].width();
 
     assert!((slots[0].left() - 10.0).abs() < 0.01);
-    assert!((slots[4].right() - (viewport.width - 10.0)).abs() < 0.01);
+    assert!((slots[3].right() - (viewport.width - 10.0)).abs() < 0.01);
     assert!(slots.iter().all(|rect| (rect.width() - width).abs() < 0.01));
 }
 
 #[test]
-fn mobile_library_tabs_remain_one_clipped_horizontal_row() {
+fn mobile_library_filters_share_one_row_inside_the_viewport() {
     let viewport = Viewport::new(320, 720, UiFormFactor::Mobile);
-    let library = LibraryModel::default();
+    let mut library = LibraryModel::default();
+    library.statuses = vec!["watchlist".to_owned(), "watching".to_owned()];
     let layout = draw_test_frame(viewport, |context, assets| {
         draw_library(
             context,
@@ -417,21 +411,15 @@ fn mobile_library_tabs_remain_one_clipped_horizontal_row() {
             None,
         )
     });
-    let tabs = layout
-        .focusable
-        .iter()
-        .filter(|(id, _)| {
-            (NODE_LIBRARY_TAB_BASE..NODE_LIBRARY_TAB_BASE + LibraryTab::ALL.len() as u64)
-                .contains(id)
-        })
-        .map(|(_, rect)| *rect)
-        .collect::<Vec<_>>();
-    assert_eq!(tabs.len(), LibraryTab::ALL.len());
+    let controls = [NODE_LIBRARY_STATUS, NODE_LIBRARY_TYPE, NODE_LIBRARY_SORT]
+        .map(|id| layout.focusable.iter().find(|(node, _)| *node == id).unwrap().1);
     assert!(
-        tabs.iter()
-            .all(|rect| (rect.top() - tabs[0].top()).abs() < 0.5)
+        controls
+            .iter()
+            .all(|rect| (rect.top() - controls[0].top()).abs() < 0.5)
     );
-    assert!(tabs.iter().all(|rect| rect.right() <= viewport.width + 1.0));
+    assert!(controls.windows(2).all(|pair| pair[0].right() <= pair[1].left()));
+    assert!(controls[2].right() <= viewport.width);
 }
 
 #[test]
@@ -504,6 +492,7 @@ fn home_carousels_share_horizontal_geometry_and_scroll_limits() {
 fn library_cards_scroll_without_moving_tabs_or_navigation() {
     let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
     let mut library = LibraryModel::default();
+    library.statuses = vec!["watchlist".to_owned()];
     library.watchlist = (0..18)
         .map(|index| HomeCard {
             title: format!("Title {index}"),
@@ -548,8 +537,8 @@ fn library_cards_scroll_without_moving_tabs_or_navigation() {
             < 0.01
     );
     assert_eq!(
-        rect(&first, NODE_LIBRARY_TAB_BASE),
-        rect(&scrolled, NODE_LIBRARY_TAB_BASE)
+        rect(&first, NODE_LIBRARY_STATUS),
+        rect(&scrolled, NODE_LIBRARY_STATUS)
     );
     assert_eq!(rect(&first, NODE_LIBRARY), rect(&scrolled, NODE_LIBRARY));
 }
@@ -581,19 +570,19 @@ fn compact_calendar_grid_stays_inside_the_viewport() {
 }
 
 #[test]
-fn smart_library_lists_come_from_core_plan() {
+fn library_filter_options_come_from_the_core_plan() {
     let mut model = LibraryModel::default();
     model.apply_core_plan(
-        &serde_json::json!({"smartLists": {
-            "airing": [{"id":"a","type":"series","name":"Airing title"}],
-            "rated": [{"id":"r","type":"movie","name":"Rated title"}],
-            "history": [{"id":"h","type":"movie","name":"Watched title"}]
-        }}),
+        &serde_json::json!({
+            "statuses": ["watchlist", "watching"],
+            "types": ["anime"],
+            "sorts": ["tracker", "title"]
+        }),
         LibraryTab::Watchlist,
     );
-    assert_eq!(model.cards(LibraryTab::Airing)[0].title, "Airing title");
-    assert_eq!(model.cards(LibraryTab::Rated)[0].title, "Rated title");
-    assert_eq!(model.cards(LibraryTab::History)[0].title, "Watched title");
+    assert_eq!(model.statuses, ["watchlist", "watching"]);
+    assert_eq!(model.types, ["anime"]);
+    assert_eq!(model.sorts, ["tracker", "title"]);
 }
 
 #[test]
@@ -1132,7 +1121,7 @@ fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
     let context = egui::Context::default();
     context.set_fonts(crate::fonts::definitions());
     let settings = SettingsModel::default();
-    let assets = EmptyHomeAssets;
+    let mut assets = EmptyHomeAssets;
     let _ = context.run_ui(
         egui::RawInput {
             screen_rect: Some(Rect::from_min_size(
@@ -1142,7 +1131,7 @@ fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
             ..Default::default()
         },
         |context| {
-            let layout = draw_settings(context, viewport, &settings, &assets, None);
+            let layout = draw_settings(context, viewport, &settings, &mut assets, None);
             assert!(
                 layout
                     .focusable
@@ -1166,11 +1155,11 @@ fn desktop_settings_uses_sidebar_title_without_redundant_back_header() {
 
 #[test]
 fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
-    let appearance = SETTINGS_SECTIONS
+    let keys: Vec<_> = SETTINGS_SECTIONS
         .iter()
-        .find(|section| section.title == "Appearance")
-        .unwrap();
-    let keys: Vec<_> = appearance.rows.iter().map(|row| row.key).collect();
+        .filter(|section| section.category == "Appearance")
+        .flat_map(|section| section.rows.iter().map(|row| row.key))
+        .collect();
     for key in [
         "accentColorArgb",
         "uiScale",
@@ -1206,6 +1195,7 @@ fn native_appearance_groups_are_separate_cards() {
     let metrics = UiMetrics::for_viewport(viewport);
     let settings = SettingsModel {
         active_section: 2,
+        page_open: true,
         ..Default::default()
     };
     let height =
@@ -1213,7 +1203,7 @@ fn native_appearance_groups_are_separate_cards() {
     let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
     let groups = super::settings::visible_groups(&settings, viewport);
     let cards = super::settings::group_cards(content, &groups, metrics);
-    assert_eq!(cards.len(), 7);
+    assert_eq!(cards.len(), 2);
     for pair in cards.windows(2) {
         assert!(
             pair[1].top() > pair[0].bottom(),
@@ -1221,6 +1211,17 @@ fn native_appearance_groups_are_separate_cards() {
         );
     }
     assert!(cards.last().unwrap().bottom() <= content.bottom());
+}
+
+#[test]
+fn shortcuts_only_listed_on_desktop() {
+    let listed = |form_factor, width, height| {
+        super::settings::categories(Viewport::new(width, height, form_factor))
+            .any(|index| SETTINGS_SECTIONS[index].title == "Shortcuts")
+    };
+    assert!(listed(UiFormFactor::Desktop, 1920, 1080));
+    assert!(!listed(UiFormFactor::Tv, 1920, 1080));
+    assert!(!listed(UiFormFactor::Mobile, 390, 844));
 }
 
 #[test]
@@ -1288,7 +1289,7 @@ fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
         |ui| {
             let options = vec![("recent".to_owned(), "Recently updated".to_owned())];
             let (select, _) =
-                components::dropdown(ui, "dropdown-test", "recent", &options, 240.0, metrics);
+                components::dropdown(ui, "dropdown-test", "recent", &options, 240.0, false, metrics);
             let placeholder = components::dropdown_placeholder(
                 ui,
                 "dropdown-placeholder-test",
@@ -1469,4 +1470,23 @@ fn scrolled_detail_swipe_lands_on_episode_row() {
         .filter_map(|y| detail_row_at_y(viewport, &detail, y as f32))
         .collect::<std::collections::BTreeSet<_>>();
     assert!(rows.contains(&1));
+}
+
+#[test]
+fn library_hides_status_dropdown_when_source_has_no_statuses() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let library = LibraryModel::default();
+    let layout = draw_test_frame(viewport, |context, assets| {
+        draw_library(
+            context,
+            viewport,
+            &library,
+            LibraryTab::Watchlist,
+            assets,
+            None,
+        )
+    });
+    let has = |id| layout.focusable.iter().any(|(node, _)| *node == id);
+    assert!(!has(NODE_LIBRARY_STATUS));
+    assert!(has(NODE_LIBRARY_TYPE) && has(NODE_LIBRARY_SORT));
 }

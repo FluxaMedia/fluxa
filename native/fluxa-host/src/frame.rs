@@ -156,6 +156,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             logical_size[1],
             state.home.form_factor.into(),
         )
+        .with_platform(state.home.platform)
         .with_safe_bottom(safe_bottom);
         let max_offset = screen_scroll_max(state, viewport);
         if let Some(offset) = state.screen_scroll_offsets.get_mut(&route) {
@@ -266,42 +267,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
                             });
                     }
                 }
-                if route == Route::Discover
-                    && let Some((key, value)) = layout.filter_change.as_ref()
-                {
-                    match key.as_str() {
-                        "discover:contentType" => {
-                            state.discover.content_type = value.clone();
-                            state
-                                .pending_native_actions
-                                .push(NativeAction::DiscoverType {
-                                    content_type: value.clone(),
-                                });
-                        }
-                        "discover:catalog" => {
-                            state.discover.selected_catalog_key = value.clone();
-                            let action = NativeAction::DiscoverFilters {
-                                content_type: state.discover.content_type.clone(),
-                                catalog_key: value.clone(),
-                                extra_name: state.discover.selected_extra_name.clone(),
-                                extra_value: state.discover.selected_extra_value.clone(),
-                                query: state.discover.query.clone(),
-                            };
-                            state.pending_native_actions.push(action);
-                        }
-                        "discover:extra" => {
-                            state.discover.selected_extra_value = value.clone();
-                            let action = NativeAction::DiscoverFilters {
-                                content_type: state.discover.content_type.clone(),
-                                catalog_key: state.discover.selected_catalog_key.clone(),
-                                extra_name: state.discover.selected_extra_name.clone(),
-                                extra_value: value.clone(),
-                                query: state.discover.query.clone(),
-                            };
-                            state.pending_native_actions.push(action);
-                        }
-                        _ => {}
-                    }
+                if let Some((key, value)) = layout.filter_change.as_ref() {
+                    apply_choice(state, route, key, value.clone());
                 }
                 rebuild_ui_from_layout(state, &layout, logical_size);
                 state.rendered_layout = Some((route, layout));

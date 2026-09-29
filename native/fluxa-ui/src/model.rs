@@ -8,6 +8,39 @@ pub enum UiFormFactor {
     Tv,
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum UiPlatform {
+    Android,
+    Ios,
+    Tvos,
+    Windows,
+    Macos,
+    #[default]
+    Linux,
+    Web,
+    Webos,
+}
+
+impl UiPlatform {
+    pub fn parse(name: &str) -> Option<Self> {
+        Some(match name {
+            "android" => Self::Android,
+            "ios" => Self::Ios,
+            "tvos" => Self::Tvos,
+            "windows" => Self::Windows,
+            "macos" => Self::Macos,
+            "linux" => Self::Linux,
+            "web" => Self::Web,
+            "webos" => Self::Webos,
+            _ => return None,
+        })
+    }
+
+    pub fn is_apple(self) -> bool {
+        matches!(self, Self::Ios | Self::Tvos | Self::Macos)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SizeClass {
     Compact,
@@ -28,6 +61,7 @@ pub struct Viewport {
     pub width: f32,
     pub height: f32,
     pub form_factor: UiFormFactor,
+    pub platform: UiPlatform,
     /// Bottom safe-drawing inset reported by the platform host, in logical dp.
     pub safe_bottom: f32,
     /// Vertical content offset supplied by the platform input adapter.
@@ -41,6 +75,7 @@ impl Viewport {
             width: width as f32,
             height: height as f32,
             form_factor,
+            platform: UiPlatform::default(),
             safe_bottom: 0.0,
             scroll_y: 0.0,
         }
@@ -52,6 +87,11 @@ impl Viewport {
         } else {
             0.0
         };
+        self
+    }
+
+    pub fn with_platform(mut self, platform: UiPlatform) -> Self {
+        self.platform = platform;
         self
     }
 
@@ -115,6 +155,8 @@ pub struct HomeModel {
     pub rows: Vec<HomeRow>,
     #[serde(rename = "formFactor")]
     pub form_factor: UiFormFactorJson,
+    #[serde(skip)]
+    pub platform: UiPlatform,
     #[serde(skip)]
     pub scroll_offset: f32,
     #[serde(skip)]
@@ -198,6 +240,7 @@ impl HomeModel {
             cards: Vec::new(),
             rows: Vec::new(),
             form_factor: UiFormFactorJson::Desktop,
+            platform: UiPlatform::default(),
             scroll_offset: 0.0,
             row_scroll_offsets: Vec::new(),
             trailer: None,
@@ -215,21 +258,15 @@ pub enum LibraryTab {
     Completed,
     Dropped,
     Liked,
-    Airing,
-    Rated,
-    History,
 }
 
 impl LibraryTab {
-    pub const ALL: [Self; 8] = [
+    pub const ALL: [Self; 5] = [
         Self::Watchlist,
         Self::Watching,
         Self::Completed,
         Self::Dropped,
         Self::Liked,
-        Self::Airing,
-        Self::Rated,
-        Self::History,
     ];
 
     pub fn label(self) -> &'static str {
@@ -239,9 +276,6 @@ impl LibraryTab {
             Self::Completed => "Completed",
             Self::Dropped => "Dropped",
             Self::Liked => "Favorites",
-            Self::Airing => "Airing",
-            Self::Rated => "Rated",
-            Self::History => "History",
         }
     }
 
@@ -252,9 +286,6 @@ impl LibraryTab {
             Self::Completed => "library.completed",
             Self::Dropped => "library.dropped",
             Self::Liked => "library.favorites",
-            Self::Airing => "library.smart_airing",
-            Self::Rated => "library.smart_rated",
-            Self::History => "library.history",
         }
     }
 
@@ -265,9 +296,6 @@ impl LibraryTab {
             Self::Completed => "completed",
             Self::Dropped => "dropped",
             Self::Liked => "favorites",
-            Self::Airing => "airing",
-            Self::Rated => "rated",
-            Self::History => "history",
         }
     }
 
@@ -278,8 +306,7 @@ impl LibraryTab {
             Self::Completed => "completed",
             Self::Dropped => "dropped",
             Self::Liked => "liked",
-            Self::Airing | Self::Rated | Self::History => "",
-        }
+                    }
     }
 }
 
@@ -288,6 +315,12 @@ pub struct LibraryModel {
     pub language: String,
     pub query: String,
     pub sort_by: String,
+    pub content_type: String,
+    pub list_view: bool,
+    pub downloads_open: bool,
+    pub types: Vec<String>,
+    pub statuses: Vec<String>,
+    pub sorts: Vec<String>,
     pub source: String,
     pub source_options: Vec<(String, String)>,
     pub view_tab: Option<LibraryTab>,
@@ -300,9 +333,6 @@ pub struct LibraryModel {
     pub dropped: Vec<HomeCard>,
     pub liked: Vec<HomeCard>,
     pub personal: std::sync::Arc<PersonalIndex>,
-    pub airing: Vec<HomeCard>,
-    pub rated: Vec<HomeCard>,
-    pub history: Vec<HomeCard>,
 }
 
 impl LibraryModel {
@@ -316,29 +346,29 @@ impl LibraryModel {
             LibraryTab::Completed => &self.completed,
             LibraryTab::Dropped => &self.dropped,
             LibraryTab::Liked => &self.liked,
-            LibraryTab::Airing => &self.airing,
-            LibraryTab::Rated => &self.rated,
-            LibraryTab::History => &self.history,
         }
     }
 
     pub fn apply_core_plan(&mut self, plan: &serde_json::Value, active_tab: LibraryTab) {
-        let smart = plan.get("smartLists").unwrap_or(&serde_json::Value::Null);
-        let cards = |key| {
-            smart
-                .get(key)
-                .and_then(serde_json::Value::as_array)
-                .map(|items| items.iter().take(64).map(core_home_card).collect())
-                .unwrap_or_default()
-        };
-        self.airing = cards("airing");
-        self.rated = cards("rated");
-        self.history = cards("history");
         self.view_cards = plan
             .get("items")
             .and_then(serde_json::Value::as_array)
             .map(|items| items.iter().take(64).map(core_home_card).collect())
             .unwrap_or_default();
+        let strings = |key| -> Vec<String> {
+            plan.get(key)
+                .and_then(serde_json::Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .filter_map(|item| item.as_str().map(ToOwned::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default()
+        };
+        self.types = strings("types");
+        self.statuses = strings("statuses");
+        self.sorts = strings("sorts");
         self.view_tab = Some(active_tab);
     }
 }
@@ -430,6 +460,8 @@ impl From<UiFormFactorJson> for UiFormFactor {
 pub struct HomeRow {
     pub id: Option<String>,
     pub title: String,
+    #[serde(rename = "typeLabel")]
+    pub type_label: Option<String>,
     pub cards: Vec<HomeCard>,
     pub kind: HomeRowKind,
     #[serde(rename = "canLoadMore")]
@@ -438,8 +470,6 @@ pub struct HomeRow {
     /// depending on a platform-specific Home implementation.
     #[serde(skip)]
     pub catalog_page: Option<serde_json::Value>,
-    #[serde(rename = "typeLabel")]
-    pub type_label: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Deserialize, Serialize)]
@@ -720,6 +750,13 @@ pub fn home_model_from_core_snapshot(
                 Some(HomeRow {
                     id: value_string(category, "id"),
                     catalog_page: Some(category.clone()),
+                    title: first_value_string(
+                        category,
+                        &["homeTitle", "name", "label", "title", "id"],
+                    )
+                    .filter(|title| !title.trim().is_empty())
+                    .map(|title| normalize_home_row_title(&title))
+                    .unwrap_or_else(|| format!("Catalog {}", index + 1)),
                     type_label: show_catalog_type
                         .then(|| category.get("type"))
                         .flatten()
@@ -730,13 +767,6 @@ pub fn home_model_from_core_snapshot(
                             _ => None,
                         })
                         .map(|key| crate::localized(key, &language)),
-                    title: first_value_string(
-                        category,
-                        &["homeTitle", "name", "label", "title", "id"],
-                    )
-                    .filter(|title| !title.trim().is_empty())
-                    .map(|title| normalize_home_row_title(&title))
-                    .unwrap_or_else(|| format!("Catalog {}", index + 1)),
                     cards: cards
                         .iter()
                         .map(|item| core_home_card_for_kind(item, kind))
@@ -876,6 +906,12 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
         language: language.clone(),
         query: String::new(),
         sort_by: "recent".to_owned(),
+        content_type: "all".to_owned(),
+        list_view: false,
+        downloads_open: false,
+        types: Vec::new(),
+        statuses: Vec::new(),
+        sorts: Vec::new(),
         source: snapshot
             .pointer("/settings/values/integrationLibrarySource")
             .and_then(serde_json::Value::as_str)
@@ -925,9 +961,6 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
         completed: cards(LibraryTab::Completed),
         dropped: cards(LibraryTab::Dropped),
         liked: cards(LibraryTab::Liked),
-        airing: Vec::new(),
-        rated: Vec::new(),
-        history: Vec::new(),
     }
 }
 
@@ -1329,7 +1362,11 @@ pub fn play_label(
     );
     let resumed = resume.and_then(|card| {
         let (season, number) = resume_episode(card)?;
-        Some((season, number, card.raw.get("lastEpisodeName").and_then(|v| v.as_str())))
+        Some((
+            season,
+            number,
+            card.raw.get("lastEpisodeName").and_then(|v| v.as_str()),
+        ))
     });
     let Some((season, number, name)) = resumed.or(episode) else {
         return action;
