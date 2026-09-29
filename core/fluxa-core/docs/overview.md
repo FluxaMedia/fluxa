@@ -23,48 +23,33 @@ The core never initiates anything. Every state transition begins with the platfo
 
 **`app_state.rs`** is a lighter, independently-maintained engine for overlapping concerns (home/discover/calendar/library/player). It is used by Android via UniFFI (`createAppCoreStateJson` / `appCoreDispatchJson`). The two engines are intentionally separate — don't try to merge them.
 
-## Three exposure mechanisms
+## Entry points
 
-| Mechanism | Used by | File |
+| Entry | Used by | File |
 |---|---|---|
-| `FluxaCore` struct | Desktop (native) | `src/core_api.rs` |
-| `core_invoke(method, args_json)` | Desktop + Swift | `src/ffi.rs` |
+| `Engine` (`dispatch`, `complete`) | Every shell | `src/headless_engine` |
+| `core_invoke(method, args_json)` | Desktop plan calls, Swift, WASM | `src/ffi.rs` |
 
-`FluxaCore` is intentionally minimal and contains only methods with verified desktop callers. Everything else goes through `core_invoke`. `coreContractManifest` exposes the shared lifecycle/effect contract for generated bindings and drift checks.
+`Engine` is the way in. `core_invoke` is a string-routed shim over the domain modules that shrinks as each domain is wired to the engine; see [`wiring-map.md`](wiring-map.md). `coreContractManifest` exposes the lifecycle and effect contract for generated bindings and drift checks.
 
 ## Module map
 
 | Module | Responsibility |
 |---|---|
-| `headless_engine` | Primary state machine — typed `EngineState`, action dispatch, effect emission |
+| `headless_engine` | Primary state machine: typed `EngineState`, action dispatch, effect emission |
 | `app_state` | Secondary state engine |
-| `core_api` | `FluxaCore` struct, 8 methods, desktop only |
-| `ffi` | `core_invoke` string-routed dispatcher (~115 methods) |
+| `ffi` | `core_invoke` string router |
 | `runtime` | `EffectKind` / `EffectEnvelope` types |
 | `bindings/wasm` | WASM exports for webOS |
-| `addon_protocol` | Manifest URL normalisation, resource URL construction, manifest merging |
-| `addon_store` | Addon search policy, CloudStream/plugin repo URL normalisation |
-| `addon_resource` | Addon HTTP response classification (success / empty / error) |
-| `stream_policy` | Stream selection, magnet building, audio/subtitle preference matching |
-| `player_policy` | Backend selection, track state, Dolby Vision fallback policy |
-| `player_flow` | Self-contained typed playback sub-engine (load → select → play) |
-| `player_scrobble` | Trakt/Simkl scrobble body construction |
-| `content_identity` | ID parsing/normalisation (IMDB, TMDB, Kitsu, episode locators) |
-| `home_ranking` | Billboard/shelf ordering, continue-watching dedup, personalization scoring |
-| `library_state` | Continue-watching badge computation, next-episode resolution |
-| `profile_contract` | Profile activation, auth token merging, settings migration |
-| `profile_prefs` | Typed read of user preferences from raw profile JSON |
-| `search_plan` / `discovery_plan` | Search/discover query planning, result grouping, sort |
-| `calendar_plan` | Calendar item filtering, widget rows, release notifications |
-| `external_sync` | Trakt and Simkl API response parsing and history mapping |
-| `intro_segments` | introdb.app and AniSkip segment parsing, deduplication |
-| `dolby_vision_rpu` | Dolby Vision RPU metadata extraction (`native` feature) |
-| `platform_plan` | Season/episode navigation planning |
-| `tmdb_plan` | TMDB ID resolution hints, trailer mapping |
-| `watchlist_plan` | Watchlist toggle, offline grouping, progress merging |
-| `offline_download` | Offline download plan construction |
-| `data_policy` | Cache/data-failure policy |
+| `home` | Shelf ordering, hero plan, recommendations |
+| `library` | Library state, continue watching, watchlist, calendar, persistence, offline downloads |
+| `catalog` | ID parsing, search, TMDB, MDBList, PublicMetaDB, content warnings |
+| `player` | Playback flow and policy, stream selection, scrobble, subtitles, casting, intro segments, Dolby Vision plan |
+| `addons` | Addon protocol, store, resources, plugins, repository flows |
+| `accounts` | Trakt, Simkl, AniList, Nuvio and Fluxa sync, device auth, OAuth plans |
+| `profile` | Profile contract, preferences, avatar packs |
+| `settings` | Settings contract, data policy, device resources, version and checksum policy |
 
 ## Companion crate
 
-`fluxa-streaming-engine/` lives in the same repo. It handles the runtime streaming side — torrent via librqbit, HTTP proxying via axum, Dolby Vision bitstream rewriting. It has three CLI tools (`torrent_bench`, `torrent_serve`, `companion_server`).
+`fluxa-streaming-engine/` lives in the same repo. It handles the runtime streaming side: torrent via librqbit, HTTP proxying via axum, Dolby Vision bitstream rewriting (with `fluxa-media`). It has three CLI tools (`torrent_bench`, `torrent_serve`, `companion_server`).

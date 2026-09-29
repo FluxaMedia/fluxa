@@ -43,7 +43,7 @@ Dolby Vision / HDR10+ stream rewriting.
 | Platform | Repo | How it links |
 | --- | --- | --- |
 | Android (mobile + TV) | `apps/android` | Rust dependency of `native/fluxa-android-renderer` |
-| Desktop (Linux/macOS/Windows) | `native/fluxa-desktop` | Plain Rust dependency — calls `FluxaCore`/`core_invoke` directly, no FFI marshaling |
+| Desktop (Linux/macOS/Windows) | `native/fluxa-desktop` | Plain Rust dependency — calls `Engine`/`core_invoke` directly, no FFI marshaling |
 | iOS / tvOS | `apps/apple` | Rust dependency of `native/fluxa-apple-renderer` |
 | Web / webOS | `native/fluxa-web` | WASM (`bindings/wasm.rs`, `wasm` feature) |
 
@@ -56,8 +56,8 @@ this crate in, including how to add a new capability for a given platform.
   struct made of per-feature sub-structs (home, detail, player, library, search, ...);
   cross-module writes go through `pub(super)` setters, never raw field access.
 - **`app_state.rs`** — a second, simpler engine for overlapping concerns. The split is intentional, not duplication to be cleaned up.
-- Two exposure mechanisms: `core_api::FluxaCore` (minimal) and `ffi::core_invoke`
-  (string-routed dispatcher).
+- `Engine` is the entry point; `ffi::core_invoke` is a string-routed shim that shrinks as
+  domains are wired to it. See [`docs/wiring-map.md`](docs/wiring-map.md).
 
 Full architecture notes, the effect catalog, and the wire-format reference live in
 [`docs/`](docs/):
@@ -66,6 +66,7 @@ Full architecture notes, the effect catalog, and the wire-format reference live 
 - [`docs/effect-loop.md`](docs/effect-loop.md) — the dispatch/effect/completeEffect cycle
 - [`docs/effects.md`](docs/effects.md) — every `EffectKind` and its payload shape
 - [`docs/integrating.md`](docs/integrating.md) — per-platform integration guide
+- [`docs/wiring-map.md`](docs/wiring-map.md) — which domains reach the engine and what is left
 - [`docs/building.md`](docs/building.md) — features, commands, cross-compilation
 
 ## Building from source

@@ -63,7 +63,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        features: [streaming-shared, desktop, ios]
+        features: [js-engine]
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable

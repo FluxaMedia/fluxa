@@ -20,15 +20,15 @@ No FFI marshaling — it calls Rust functions directly.
 
 **Two call sites:**
 
-1. `FluxaCore::*` methods (in `src/core_api.rs`) for the 8 things desktop calls without going through the dispatcher: headless engine lifecycle, `stream_playback_info_json`, `torrent_runtime_info_json`, `player_buffer_targets_json`, `offline_download_plan_json`.
+1. `Engine` (`dispatch`, `complete`) for state and effects.
 
-2. `fluxa_core::ffi::core_invoke(method, args_json)` for everything else — the full ~115-method dispatcher.
+2. `fluxa_core::ffi::core_invoke(method, args_json)` for plan calls that have no engine action yet.
+
+Stream and torrent planning for the streaming engine is called directly as `fluxa_core::player::stream_policy::*`.
 
 ### Adding a new capability for desktop
 
-If desktop needs it via `core_invoke`: add a route arm to the appropriate `route_*` function in `src/ffi.rs`.
-
-If desktop needs a direct `FluxaCore` method (unusual — only do this if `core_invoke` is genuinely not suitable): add it to `src/core_api.rs` and confirm there's a real call site in `native/` before adding.
+Prefer an engine action and effect. If the logic is not wired yet, add a route arm to the matching `*_routes.rs` in `src/ffi/`, register it in `src/ffi/methods.rs`, and add the name to `tests/wire/core_invoke_methods.txt`.
 
 ---
 

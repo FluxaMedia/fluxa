@@ -96,13 +96,13 @@ All action types are defined in `src/headless_engine/contracts.rs` (`AppAction` 
 
 The headless engine is accessed through an integer handle. Multiple engine instances can coexist (though typically one exists per app session).
 
-### Via `FluxaCore` (desktop)
+### Via `Engine` (Rust shells)
 
 ```rust
-let handle = FluxaCore::create_headless_engine(initial_json);
-let result = FluxaCore::headless_engine_dispatch_json(handle, action_json);
-let result = FluxaCore::headless_engine_complete_effect_json(handle, effect_result_json);
-let snapshot = FluxaCore::headless_engine_snapshot_json(handle);
+let mut engine = Engine::new(initial_state)?;
+let update = engine.dispatch(action)?;
+let update = engine.complete(effect_result)?;
+let snapshot = engine.snapshot();
 ```
 
 ### Via `core_invoke` (desktop/Swift)
