@@ -184,7 +184,7 @@ pub(super) fn mdblist_items_json(id: &str, content_type: &str) -> Option<String>
 
 
 
-pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
+pub(crate) fn mdblist_library_requests(args: &Value) -> Option<Vec<Value>> {
     let get = |key: &str, url: String| {
         let mut plan = request("mdblist", args, "GET", url, Value::Null);
         plan["key"] = json!(key);
@@ -209,4 +209,35 @@ pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
         ),
         get("upnext", catalog::mdblist::mdblist_upnext_url(None, "{}")?),
     ])
+}
+
+pub(crate) fn mdblist_library_snapshot(args: &Value, responses: &Value) -> Value {
+    let empty = json!({});
+    let watched_body = responses.get("watched").unwrap_or(&empty);
+    let (completed, watched) = mdblist_watched(watched_body);
+    let playback = responses
+        .get("playback")
+        .map(|body| {
+            concat(&[
+                body.get("movies").cloned().unwrap_or(json!([])),
+                body.get("episodes").cloned().unwrap_or(json!([])),
+                body.get("playback").cloned().unwrap_or(json!([])),
+                if body.is_array() {
+                    body.clone()
+                } else {
+                    json!([])
+                },
+            ])
+        })
+        .unwrap_or(json!([]));
+    let playback = mdblist_playback(&playback);
+    let up_next = mdblist_up_next(responses.get("upnext").unwrap_or(&empty), watched_body);
+    json!({
+        "watchlist": parsed(catalog::mdblist::mdblist_list_items_response_to_metas_json(&response_str(&responses, "watchlist"))),
+        "liked": [],
+        "completed": completed,
+        "watched": watched,
+        "dropped": mdblist_items(responses.get("dropped").unwrap_or(&empty)),
+        "continueWatching": trakt_continue_watching(&playback, &up_next),
+    })
 }

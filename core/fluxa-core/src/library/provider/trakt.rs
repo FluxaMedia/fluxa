@@ -74,7 +74,7 @@ pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
 
 
 
-pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
+pub(crate) fn trakt_library_requests(args: &Value) -> Option<Vec<Value>> {
     let get = |key: &str, url: String| {
         let mut plan = request("trakt", args, "GET", url, Value::Null);
         plan["key"] = json!(key);
@@ -112,4 +112,54 @@ pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
         format!("{TRAKT_API}/sync/playback?extended=full,images"),
     ));
     Some(requests)
+}
+
+pub(crate) fn trakt_library_snapshot(args: &Value, responses: &Value) -> Value {
+    let pair = |prefix: &str| {
+        (
+            response_str(&responses, &format!("{prefix}_movies")),
+            response_str(&responses, &format!("{prefix}_shows")),
+        )
+    };
+    let now = args.get("nowSeconds").and_then(Value::as_i64).unwrap_or(0);
+    let (watchlist_movies, watchlist_shows) = pair("watchlist");
+    let (favorite_movies, favorite_shows) = pair("favorites");
+    let watched_movies = response_str(&responses, "watched_movies");
+    let progress: Vec<Value> = responses
+        .get("progress")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    let finished: Vec<Value> = progress
+        .iter()
+        .filter(|entry| trakt_show_finished(entry))
+        .cloned()
+        .collect();
+    let started: Vec<Value> = progress
+        .iter()
+        .filter(|entry| trakt_next_episode_aired(entry, now))
+        .cloned()
+        .collect();
+    let movies_done = parsed(trakt_watchlist_to_items_json(&watched_movies, "[]"));
+    let shows_done = parsed(trakt_watchlist_to_items_json(
+        "[]",
+        &Value::Array(finished).to_string(),
+    ));
+    let playback = parsed(trakt_playback_items_to_library_json(&response_str(
+        &responses, "playback",
+    )));
+    let up_next = parsed(trakt_up_next_to_items_json(
+        &Value::Array(started).to_string(),
+    ));
+    json!({
+        "watchlist": parsed(trakt_watchlist_to_items_json(&watchlist_movies, &watchlist_shows)),
+        "liked": parsed(trakt_watchlist_to_items_json(&favorite_movies, &favorite_shows)),
+        "completed": concat(&[movies_done.clone(), shows_done]),
+        "watched": merge_maps(&[
+            watched_map(&movies_done),
+            parsed(trakt_history_episodes_to_ids_json(&response_str(&responses, "history"))),
+        ]),
+        "dropped": parsed(trakt_watchlist_to_items_json("[]", &response_str(&responses, "hidden_dropped"))),
+        "continueWatching": trakt_continue_watching(&playback, &up_next),
+    })
 }

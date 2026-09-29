@@ -95,7 +95,7 @@ pub(super) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Opt
 
 
 
-pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
+pub(crate) fn anilist_library_requests(args: &Value) -> Option<Vec<Value>> {
     let user_id = anilist_user_id(str_field(args, "token"))?;
     Some(
         (1..=3)
@@ -111,5 +111,12 @@ pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
                 plan
             })
             .collect(),
+    )
+}
+
+pub(crate) fn anilist_library_snapshot(args: &Value, responses: &Value) -> Value {
+    anilist_snapshot(
+        responses,
+        args.get("nowSeconds").and_then(Value::as_i64).unwrap_or(0) * 1000,
     )
 }

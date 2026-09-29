@@ -6,6 +6,7 @@ pub(crate) struct Provider {
     pub refresh_fields: Option<(&'static str, &'static str)>,
     pub capabilities: &'static [&'static str],
     pub calendar_plan: Option<fn(&str) -> Option<String>>,
+    pub snapshot: Option<fn(&Value, &Value) -> Value>,
     pub library_requests: Option<fn(&Value) -> Option<Vec<Value>>>,
 }
 
@@ -23,7 +24,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "calendar",
         ],
         calendar_plan: Some(super::provider::trakt::trakt_calendar_plan_json),
-        library_requests: Some(super::provider::trakt::library_requests),
+        snapshot: Some(super::provider::trakt::trakt_library_snapshot),
+        library_requests: Some(super::provider::trakt::trakt_library_requests),
     },
     Provider {
         id: "simkl",
@@ -39,6 +41,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "calendar",
         ],
         calendar_plan: None,
+        snapshot: Some(super::provider::simkl::simkl_library_snapshot),
         library_requests: None,
     },
     Provider {
@@ -54,7 +57,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "calendar",
         ],
         calendar_plan: Some(super::provider::mdblist::mdblist_calendar_plan_json),
-        library_requests: Some(super::provider::mdblist::library_requests),
+        snapshot: Some(super::provider::mdblist::mdblist_library_snapshot),
+        library_requests: Some(super::provider::mdblist::mdblist_library_requests),
     },
     Provider {
         id: "anilist",
@@ -68,7 +72,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "calendar",
         ],
         calendar_plan: Some(super::provider::anilist::anilist_calendar_plan_json),
-        library_requests: Some(super::provider::anilist::library_requests),
+        snapshot: Some(super::provider::anilist::anilist_library_snapshot),
+        library_requests: Some(super::provider::anilist::anilist_library_requests),
     },
 ];
 
