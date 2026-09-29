@@ -191,21 +191,24 @@ pub(crate) fn mdblist_library_requests(args: &Value) -> Option<Vec<Value>> {
     Some(vec![
         get(
             "watchlist",
-            catalog::mdblist::mdblist_watchlist_items_url(None, "{}"),
+            crate::services::mdblist::mdblist_watchlist_items_url(None, "{}"),
         ),
         get(
             "watched",
-            catalog::mdblist::mdblist_sync_get_url("watched", r#"{"limit":1000}"#)?,
+            crate::services::mdblist::mdblist_sync_get_url("watched", r#"{"limit":1000}"#)?,
         ),
         get(
             "dropped",
-            catalog::mdblist::mdblist_sync_get_url("dropped", "{}")?,
+            crate::services::mdblist::mdblist_sync_get_url("dropped", "{}")?,
         ),
         get(
             "playback",
-            catalog::mdblist::mdblist_sync_get_url("playback", "{}")?,
+            crate::services::mdblist::mdblist_sync_get_url("playback", "{}")?,
         ),
-        get("upnext", catalog::mdblist::mdblist_upnext_url(None, "{}")?),
+        get(
+            "upnext",
+            crate::services::mdblist::mdblist_upnext_url(None, "{}")?,
+        ),
     ])
 }
 
@@ -231,7 +234,7 @@ pub(crate) fn mdblist_library_snapshot(_args: &Value, responses: &Value) -> Valu
     let playback = mdblist_playback(&playback);
     let up_next = mdblist_up_next(responses.get("upnext").unwrap_or(&empty), watched_body);
     json!({
-        "watchlist": parsed(catalog::mdblist::mdblist_list_items_response_to_metas_json(&response_str(&responses, "watchlist"))),
+        "watchlist": parsed(crate::services::mdblist::mdblist_list_items_response_to_metas_json(&response_str(&responses, "watchlist"))),
         "liked": [],
         "completed": completed,
         "watched": watched,
@@ -248,7 +251,7 @@ pub(crate) fn mdblist_toggle_watchlist(
 ) -> Option<Value> {
     from_mdblist_plan(
         args,
-        catalog::mdblist::mdblist_watchlist_mutate_plan(
+        crate::services::mdblist::mdblist_watchlist_mutate_plan(
             if remove { "remove" } else { "add" },
             &mdblist_items_json(id, content_type(item))?,
         ),
@@ -266,12 +269,12 @@ pub(crate) fn mdblist_mark_watched(args: &Value, change: &WatchedChange) -> Opti
             .filter(|id| id.matches(':').count() >= 2)
             .collect();
         let body = trakt_mark_watched_body_json(&json!({"videoIds": episodes}).to_string())?;
-        catalog::mdblist::mdblist_watched_body_plan(
+        crate::services::mdblist::mdblist_watched_body_plan(
             !change.watched,
             serde_json::from_str(&body).ok()?,
         )
     } else {
-        catalog::mdblist::mdblist_sync_mutate_plan(
+        crate::services::mdblist::mdblist_sync_mutate_plan(
             "watched",
             !change.watched,
             &mdblist_items_json(change.series_id, "movie")?,

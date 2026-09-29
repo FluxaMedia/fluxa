@@ -4,6 +4,7 @@ use simkl::*;
 
 pub(crate) mod anilist;
 pub(crate) mod mdblist;
+pub(crate) mod publicmetadb;
 pub(crate) mod registry;
 pub(crate) mod simkl;
 pub(crate) mod stremio;
@@ -418,7 +419,7 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
         ),
         "mdblist" => from_mdblist_plan(
             &args,
-            catalog::mdblist::mdblist_scrobble_plan(
+            crate::services::mdblist::mdblist_scrobble_plan(
                 action,
                 &json!({
                     "ids": ids,
