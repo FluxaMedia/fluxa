@@ -35,6 +35,9 @@ fn headers(provider: &str, args: &Value) -> Value {
             headers.insert("simkl-api-key".into(), json!(client_id));
             headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
         }
+        "mdblist" => {
+            headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
+        }
         _ => {}
     }
     if !token.is_empty() {
@@ -161,7 +164,10 @@ pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
             json!({
                 "method": "POST",
                 "url": format!("{MDBLIST_API}/oauth/{path}/"),
-                "headers": {"Content-Type": "application/x-www-form-urlencoded"},
+                "headers": {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    "User-Agent": SIMKL_USER_AGENT,
+                },
                 "body": body,
             })
         }
