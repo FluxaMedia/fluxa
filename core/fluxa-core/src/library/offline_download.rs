@@ -1,4 +1,4 @@
-use crate::player::stream_policy::{
+use crate::player::streams::stream_policy::{
     is_torrent_playback_url, stream_effective_filename, stream_playable_url, stream_text,
 };
 use serde::{Deserialize, Serialize};

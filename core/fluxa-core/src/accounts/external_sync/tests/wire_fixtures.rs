@@ -13,7 +13,7 @@ fn external_sync_wire_fixtures_preserve_provider_contracts() {
     ))
     .unwrap();
     let trakt_actual: Value = serde_json::from_str(
-        &player::scrobble::trakt_scrobble_plan_json(
+        &player::playback::scrobble::trakt_scrobble_plan_json(
             &trakt_input["ids"].to_string(),
             trakt_input["isEpisode"].as_bool().unwrap(),
             None,

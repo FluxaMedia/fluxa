@@ -5,23 +5,29 @@ pub(crate) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
     let args = object(args_json)?;
     match method {
         "watchTogetherCreate" => Ok(
-            crate::player::watch_together::WatchTogetherProtocol::create(field_str(
+            crate::player::sessions::watch_together::WatchTogetherProtocol::create(field_str(
                 &args,
                 "displayName",
             )?),
         ),
-        "watchTogetherJoin" => Ok(crate::player::watch_together::WatchTogetherProtocol::join(
-            field_str(&args, "roomCode")?,
-            field_str(&args, "displayName")?,
-        )),
-        "watchTogetherLeave" => Ok(crate::player::watch_together::WatchTogetherProtocol::leave()),
-        "watchTogetherPing" => Ok(crate::player::watch_together::WatchTogetherProtocol::ping(
-            field(&args, "clientTimeMs")?
-                .as_i64()
-                .ok_or_else(|| fail(ErrorKind::InvalidArgs, "clientTimeMs must be a number"))?,
-        )),
+        "watchTogetherJoin" => Ok(
+            crate::player::sessions::watch_together::WatchTogetherProtocol::join(
+                field_str(&args, "roomCode")?,
+                field_str(&args, "displayName")?,
+            ),
+        ),
+        "watchTogetherLeave" => {
+            Ok(crate::player::sessions::watch_together::WatchTogetherProtocol::leave())
+        }
+        "watchTogetherPing" => Ok(
+            crate::player::sessions::watch_together::WatchTogetherProtocol::ping(
+                field(&args, "clientTimeMs")?
+                    .as_i64()
+                    .ok_or_else(|| fail(ErrorKind::InvalidArgs, "clientTimeMs must be a number"))?,
+            ),
+        ),
         "watchTogetherBuffering" => Ok(
-            crate::player::watch_together::WatchTogetherProtocol::buffering(
+            crate::player::sessions::watch_together::WatchTogetherProtocol::buffering(
                 field(&args, "buffering")?
                     .as_bool()
                     .ok_or_else(|| fail(ErrorKind::InvalidArgs, "buffering must be a boolean"))?,
@@ -30,7 +36,7 @@ pub(crate) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
         "watchTogetherContent" => {
             let content = serde_json::from_value(field(&args, "content")?.clone())
                 .map_err(|_| fail(ErrorKind::InvalidArgs, "content is invalid"))?;
-            Ok(crate::player::watch_together::WatchTogetherProtocol::content(&content))
+            Ok(crate::player::sessions::watch_together::WatchTogetherProtocol::content(&content))
         }
         "watchTogetherPlaybackState" => {
             let snapshot = serde_json::from_value(field(&args, "snapshot")?.clone())
@@ -43,15 +49,15 @@ pub(crate) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                 })
                 .transpose()?;
             Ok(
-                crate::player::watch_together::WatchTogetherProtocol::playback_state(
+                crate::player::sessions::watch_together::WatchTogetherProtocol::playback_state(
                     &snapshot,
                     content.as_ref(),
                 ),
             )
         }
         "watchTogetherRoomCodeSpec" => Ok(json!({
-            "alphabet": crate::player::watch_together::WatchTogetherProtocol::ROOM_CODE_ALPHABET,
-            "length": crate::player::watch_together::WatchTogetherProtocol::ROOM_CODE_LENGTH,
+            "alphabet": crate::player::sessions::watch_together::WatchTogetherProtocol::ROOM_CODE_ALPHABET,
+            "length": crate::player::sessions::watch_together::WatchTogetherProtocol::ROOM_CODE_LENGTH,
         })),
         "watchTogetherDecode" => {
             let text = field_str(&args, "text")?;
@@ -67,7 +73,7 @@ pub(crate) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                 Ok(value) => value,
                 Err(_) => serde_json::Value::Null,
             };
-            let decoded = crate::player::watch_together::WatchTogetherProtocol::decode(
+            let decoded = crate::player::sessions::watch_together::WatchTogetherProtocol::decode(
                 &value,
                 local_content.as_ref(),
             );
@@ -75,41 +81,44 @@ pub(crate) fn route_watch_together(method: &str, args_json: &str) -> Outcome {
                 .map_err(|_| fail(ErrorKind::Internal, "failed to encode decoded message"))
         }
         "watchTogetherDriftCorrection" => {
-            let correction = crate::player::watch_together::WatchTogetherDriftPolicy::correction(
-                field(&args, "localPositionMs")?.as_i64().ok_or_else(|| {
-                    fail(ErrorKind::InvalidArgs, "localPositionMs must be a number")
-                })?,
-                field(&args, "expectedPositionMs")?
-                    .as_i64()
-                    .ok_or_else(|| {
-                        fail(
-                            ErrorKind::InvalidArgs,
-                            "expectedPositionMs must be a number",
-                        )
+            let correction =
+                crate::player::sessions::watch_together::WatchTogetherDriftPolicy::correction(
+                    field(&args, "localPositionMs")?.as_i64().ok_or_else(|| {
+                        fail(ErrorKind::InvalidArgs, "localPositionMs must be a number")
                     })?,
-                field(&args, "hostPlaying")?
-                    .as_bool()
-                    .ok_or_else(|| fail(ErrorKind::InvalidArgs, "hostPlaying must be a boolean"))?,
-                field(&args, "speedCorrectionActive")?
-                    .as_bool()
-                    .ok_or_else(|| {
-                        fail(
-                            ErrorKind::InvalidArgs,
-                            "speedCorrectionActive must be a boolean",
-                        )
+                    field(&args, "expectedPositionMs")?
+                        .as_i64()
+                        .ok_or_else(|| {
+                            fail(
+                                ErrorKind::InvalidArgs,
+                                "expectedPositionMs must be a number",
+                            )
+                        })?,
+                    field(&args, "hostPlaying")?.as_bool().ok_or_else(|| {
+                        fail(ErrorKind::InvalidArgs, "hostPlaying must be a boolean")
                     })?,
-            );
+                    field(&args, "speedCorrectionActive")?
+                        .as_bool()
+                        .ok_or_else(|| {
+                            fail(
+                                ErrorKind::InvalidArgs,
+                                "speedCorrectionActive must be a boolean",
+                            )
+                        })?,
+                );
             Ok(match correction {
-                crate::player::watch_together::WatchTogetherCorrection::None => {
+                crate::player::sessions::watch_together::WatchTogetherCorrection::None => {
                     json!({"type": "none"})
                 }
-                crate::player::watch_together::WatchTogetherCorrection::Seek(position_ms) => {
+                crate::player::sessions::watch_together::WatchTogetherCorrection::Seek(
+                    position_ms,
+                ) => {
                     json!({"type": "seek", "positionMs": position_ms})
                 }
-                crate::player::watch_together::WatchTogetherCorrection::Speed(speed) => {
+                crate::player::sessions::watch_together::WatchTogetherCorrection::Speed(speed) => {
                     json!({"type": "speed", "value": speed})
                 }
-                crate::player::watch_together::WatchTogetherCorrection::ResetSpeed => {
+                crate::player::sessions::watch_together::WatchTogetherCorrection::ResetSpeed => {
                     json!({"type": "resetSpeed"})
                 }
             })

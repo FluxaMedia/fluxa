@@ -160,7 +160,7 @@ fn build_stream_discovery_plan(request: StreamDiscoveryPlanRequest) -> Option<St
         .addons
         .iter()
         .filter(|addon| {
-            addons::protocol::supports_resource(
+            addons::sources::protocol::supports_resource(
                 &addon.manifest.to_string(),
                 "stream",
                 Some(&request.content_type),

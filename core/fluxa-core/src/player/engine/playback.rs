@@ -56,7 +56,7 @@ pub(crate) fn dispatch_resolve_playback(
     engine.state.player.is_buffering = true;
     engine.state.player.is_video_rendered = false;
     engine.state.player.player_error = Value::Null;
-    if player::stream_policy::is_torrent_playback_url(&url) {
+    if player::streams::stream_policy::is_torrent_playback_url(&url) {
         let stream_value = stream.unwrap_or(Value::Null);
         let file_idx = stream_value.get("fileIdx").and_then(Value::as_i64);
         let preferred_filename = stream_value

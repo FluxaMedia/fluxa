@@ -1,4 +1,4 @@
-use crate::addons::protocol::{identity, normalize_manifest_url};
+use crate::addons::sources::protocol::{identity, normalize_manifest_url};
 use serde_json::{Value, json};
 
 fn text(value: Option<&Value>) -> String {

@@ -17,12 +17,14 @@ pub(crate) fn sanitize_profile_json(
     let cleaned_addons = normalize_distinct_addons(base_addons);
     let cleaned_ids = cleaned_addons
         .iter()
-        .map(|addon| crate::addons::protocol::identity(addon))
+        .map(|addon| crate::addons::sources::protocol::identity(addon))
         .collect::<std::collections::HashSet<_>>();
     let cleaned_disabled_addons =
         normalize_distinct_addons(string_list_field(&profile, "disabledLocalAddons"))
             .into_iter()
-            .filter(|addon| cleaned_ids.contains(&crate::addons::protocol::identity(addon)))
+            .filter(|addon| {
+                cleaned_ids.contains(&crate::addons::sources::protocol::identity(addon))
+            })
             .collect::<Vec<_>>();
 
     let object = profile.as_object_mut()?;
@@ -53,45 +55,45 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
         .or_else(|| profile.get("disabledLocalAddons").and_then(Value::as_array))
         .cloned()
         .unwrap_or_default();
-    let normalized_key = crate::addons::protocol::normalize_manifest_url(addon_key);
-    let target = crate::addons::protocol::identity(&normalized_key);
+    let normalized_key = crate::addons::sources::protocol::normalize_manifest_url(addon_key);
+    let target = crate::addons::sources::protocol::identity(&normalized_key);
     match command {
         "install" => {
             if !local.iter().any(|value| {
                 value
                     .as_str()
-                    .is_some_and(|url| crate::addons::protocol::identity(url) == target)
+                    .is_some_and(|url| crate::addons::sources::protocol::identity(url) == target)
             }) {
                 local.push(Value::String(normalized_key.clone()));
             }
             disabled.retain(|value| {
                 value
                     .as_str()
-                    .is_none_or(|url| crate::addons::protocol::identity(url) != target)
+                    .is_none_or(|url| crate::addons::sources::protocol::identity(url) != target)
             });
         }
         "remove" => {
             local.retain(|value| {
                 value
                     .as_str()
-                    .is_none_or(|url| crate::addons::protocol::identity(url) != target)
+                    .is_none_or(|url| crate::addons::sources::protocol::identity(url) != target)
             });
             disabled.retain(|value| {
                 value
                     .as_str()
-                    .is_none_or(|url| crate::addons::protocol::identity(url) != target)
+                    .is_none_or(|url| crate::addons::sources::protocol::identity(url) != target)
             });
         }
         "toggle" => {
             if disabled.iter().any(|value| {
                 value
                     .as_str()
-                    .is_some_and(|url| crate::addons::protocol::identity(url) == target)
+                    .is_some_and(|url| crate::addons::sources::protocol::identity(url) == target)
             }) {
                 disabled.retain(|value| {
                     value
                         .as_str()
-                        .is_none_or(|url| crate::addons::protocol::identity(url) != target)
+                        .is_none_or(|url| crate::addons::sources::protocol::identity(url) != target)
                 });
             } else {
                 disabled.push(Value::String(normalized_key.clone()));
@@ -101,14 +103,14 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
             disabled.retain(|value| {
                 value
                     .as_str()
-                    .is_none_or(|url| crate::addons::protocol::identity(url) != target)
+                    .is_none_or(|url| crate::addons::sources::protocol::identity(url) != target)
             });
         }
         "disable" => {
             if !disabled.iter().any(|value| {
                 value
                     .as_str()
-                    .is_some_and(|url| crate::addons::protocol::identity(url) == target)
+                    .is_some_and(|url| crate::addons::sources::protocol::identity(url) == target)
             }) {
                 disabled.push(Value::String(normalized_key.clone()));
             }
@@ -118,7 +120,7 @@ pub(crate) fn addon_profile_mutation_plan_json(args_json: &str) -> Option<String
             let Some(from) = local.iter().position(|value| {
                 value
                     .as_str()
-                    .is_some_and(|url| crate::addons::protocol::identity(url) == target)
+                    .is_some_and(|url| crate::addons::sources::protocol::identity(url) == target)
             }) else {
                 return serde_json::to_string(&profile).ok();
             };
@@ -150,9 +152,9 @@ fn normalize_distinct_addons(addons: Vec<String>) -> Vec<String> {
     let mut seen = std::collections::HashSet::new();
     addons
         .into_iter()
-        .map(|addon| crate::addons::protocol::normalize_manifest_url(&addon))
+        .map(|addon| crate::addons::sources::protocol::normalize_manifest_url(&addon))
         .filter(|addon| !addon.trim().is_empty())
-        .filter(|addon| seen.insert(crate::addons::protocol::identity(addon)))
+        .filter(|addon| seen.insert(crate::addons::sources::protocol::identity(addon)))
         .collect()
 }
 

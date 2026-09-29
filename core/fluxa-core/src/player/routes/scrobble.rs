@@ -3,12 +3,12 @@ use serde_json::{Value, json};
 
 pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
     match method {
-        "playerScrobbleLifecycleAction" => {
-            opt_json(crate::player::scrobble::lifecycle_action_json(args_json))
+        "playerScrobbleLifecycleAction" => opt_json(
+            crate::player::playback::scrobble::lifecycle_action_json(args_json),
+        ),
+        "scrobbleMediaContext" => {
+            opt_json(crate::player::playback::scrobble::scrobble_media_context_json(args_json))
         }
-        "scrobbleMediaContext" => opt_json(crate::player::scrobble::scrobble_media_context_json(
-            args_json,
-        )),
         "scrobbleCloseAction" => {
             let args = object(args_json)?;
             let time_pos = field(&args, "timePosSec")?
@@ -18,7 +18,8 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "durationSec must be a number"))?;
             Ok(Value::String(
-                crate::player::scrobble::scrobble_close_action(time_pos, duration).to_string(),
+                crate::player::playback::scrobble::scrobble_close_action(time_pos, duration)
+                    .to_string(),
             ))
         }
         "playerProgressPercent" => {
@@ -29,7 +30,7 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let duration_ms = field(&args, "durationMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "durationMs must be a number"))?;
-            Ok(json!(crate::player::scrobble::progress_percent(
+            Ok(json!(crate::player::playback::scrobble::progress_percent(
                 position_ms,
                 duration_ms,
             )))
@@ -47,7 +48,7 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progress must be a number"))?
                 as f32;
-            Ok(json!(crate::player::scrobble::should_send_start(
+            Ok(json!(crate::player::playback::scrobble::should_send_start(
                 token,
                 is_playing,
                 has_scrobbled_start,
@@ -63,10 +64,12 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progress must be a number"))?
                 as f32;
-            Ok(json!(crate::player::scrobble::should_mark_stopped(
-                has_scrobbled_stop,
-                progress,
-            )))
+            Ok(json!(
+                crate::player::playback::scrobble::should_mark_stopped(
+                    has_scrobbled_stop,
+                    progress,
+                )
+            ))
         }
         "playerShouldQueueScrobblePause" => {
             let args = object(args_json)?;
@@ -80,12 +83,14 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let has_scrobbled_stop = field(&args, "hasScrobbledStop")?
                 .as_bool()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "hasScrobbledStop must be bool"))?;
-            Ok(json!(crate::player::scrobble::should_queue_pause(
-                token,
-                was_play_when_ready,
-                has_scrobbled_start,
-                has_scrobbled_stop,
-            )))
+            Ok(json!(
+                crate::player::playback::scrobble::should_queue_pause(
+                    token,
+                    was_play_when_ready,
+                    has_scrobbled_start,
+                    has_scrobbled_stop,
+                )
+            ))
         }
         "playerShouldEnqueueDurableScrobble" => {
             let args = object(args_json)?;
@@ -94,11 +99,13 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "progress must be a number"))?
                 as f32;
-            Ok(json!(crate::player::scrobble::should_enqueue_durable(
-                field_str(&args, "action")?,
-                token,
-                progress,
-            )))
+            Ok(json!(
+                crate::player::playback::scrobble::should_enqueue_durable(
+                    field_str(&args, "action")?,
+                    token,
+                    progress,
+                )
+            ))
         }
         "playerShouldSavePeriodicProgress" => {
             let args = object(args_json)?;
@@ -112,7 +119,7 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "lastSavedAtMs must be a number"))?;
             Ok(json!(
-                crate::player::scrobble::should_save_periodic_progress(
+                crate::player::playback::scrobble::should_save_periodic_progress(
                     is_playing,
                     now_ms,
                     last_saved_at_ms,
@@ -127,19 +134,21 @@ pub(crate) fn route_player_scrobble(method: &str, args_json: &str) -> Outcome {
             let last_saved_at_ms = field(&args, "lastSavedAtMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "lastSavedAtMs must be a number"))?;
-            Ok(json!(crate::player::scrobble::should_save_event_progress(
-                now_ms,
-                last_saved_at_ms,
-            )))
+            Ok(json!(
+                crate::player::playback::scrobble::should_save_event_progress(
+                    now_ms,
+                    last_saved_at_ms,
+                )
+            ))
         }
         "playerShouldSaveOnDispose" => {
             let args = object(args_json)?;
             let position_ms = field(&args, "positionMs")?
                 .as_i64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "positionMs must be a number"))?;
-            Ok(json!(crate::player::scrobble::should_save_on_dispose(
-                position_ms
-            )))
+            Ok(json!(
+                crate::player::playback::scrobble::should_save_on_dispose(position_ms)
+            ))
         }
 
         _ => Err(unknown_method()),

@@ -1,4 +1,4 @@
-use crate::player::stream_policy::stream_playback_info_json;
+use crate::player::streams::stream_policy::stream_playback_info_json;
 use serde::Deserialize;
 use serde_json::{Value, json};
 

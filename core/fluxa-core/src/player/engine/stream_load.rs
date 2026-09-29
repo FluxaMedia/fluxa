@@ -3,7 +3,7 @@ use crate::headless_engine::HeadlessEngine;
 use crate::headless_engine::home;
 use crate::headless_engine::library;
 use crate::headless_engine::state::GenerationKey;
-use crate::player::flow::{self, PlayerFlowAction};
+use crate::player::playback::flow::{self, PlayerFlowAction};
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;

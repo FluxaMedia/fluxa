@@ -41,7 +41,7 @@ mod tests {
             json!([{"id":"tt1","name":"A"},{"id":"tt2","name":"B"}])
         );
 
-        let step1 = crate::addons::resource::parse_addon_resource_result_json(
+        let step1 = crate::addons::streams::resource::parse_addon_resource_result_json(
             "catalog",
             "https://addon.example/catalog/movie/top.json",
             200,
@@ -49,7 +49,7 @@ mod tests {
         );
         let step1: Value = serde_json::from_str(&step1).expect("step1 result");
         let value_json = step1["valueJson"].as_str().expect("valueJson");
-        let step2 = crate::addons::resource::wrap_addon_resource_response_value(
+        let step2 = crate::addons::streams::resource::wrap_addon_resource_response_value(
             "catalog",
             serde_json::from_str(value_json).unwrap(),
         );

@@ -1,4 +1,4 @@
-use crate::addons::repository::addon_streams_with_provider_json;
+use crate::addons::sources::repository::addon_streams_with_provider_json;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -96,7 +96,7 @@ fn resource_parse_plan_value(
                 .unwrap_or_default();
             let subtitles = resource_url
                 .map(|url| {
-                    crate::addons::resource::normalize_addon_subtitles_json(
+                    crate::addons::streams::resource::normalize_addon_subtitles_json(
                         &Value::Array(subtitles.clone()).to_string(),
                         url,
                     )
@@ -117,11 +117,12 @@ pub(crate) fn parse_and_plan_addon_resource_json(
     addon_name: Option<&str>,
     season: Option<i64>,
 ) -> String {
-    match crate::addons::resource::parse_addon_body(resource, url, status_code, body) {
-        crate::addons::resource::ParsedAddonBody::Error(err_json) => err_json,
-        crate::addons::resource::ParsedAddonBody::Success { payload, .. } => {
-            let wrapped =
-                crate::addons::resource::wrap_addon_resource_response_value(resource, payload);
+    match crate::addons::streams::resource::parse_addon_body(resource, url, status_code, body) {
+        crate::addons::streams::resource::ParsedAddonBody::Error(err_json) => err_json,
+        crate::addons::streams::resource::ParsedAddonBody::Success { payload, .. } => {
+            let wrapped = crate::addons::streams::resource::wrap_addon_resource_response_value(
+                resource, payload,
+            );
             let value = resource_parse_plan_value(kind, wrapped, addon_name, season, Some(url));
             let value_json = match kind {
                 "catalogPage" | "discover" | "search" => value.get("items"),

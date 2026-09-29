@@ -35,7 +35,7 @@ pub use home::ranking::home_hero_plan;
 // which would otherwise swallow the exact panics fuzzing is trying to find.
 #[cfg(feature = "fuzzing")]
 pub mod fuzz_targets {
-    pub use crate::addons::protocol::parse_manifest;
+    pub use crate::addons::sources::protocol::parse_manifest;
     pub use crate::catalog::identity::{
         contains_compact_episode, contains_spaced_episode, parse_episode_locator,
         percent_decode_component,
@@ -48,12 +48,12 @@ pub mod fuzz_targets {
 
 #[cfg(test)]
 mod tests {
-    use crate::addons::protocol::{
+    use crate::addons::sources::protocol::{
         catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra,
     };
     use crate::catalog::identity::stream_request_ids;
     use crate::home::ranking::optimize_home_rows_json;
-    use crate::player::stream_policy::{
+    use crate::player::streams::stream_policy::{
         stream_playback_info_json, stream_request_headers_json, stream_request_referer,
         torrent_runtime_info_json, torrent_status_info_json,
     };

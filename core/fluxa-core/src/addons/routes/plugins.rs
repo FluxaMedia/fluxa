@@ -13,7 +13,7 @@ pub(crate) fn route_plugins(method: &str, args_json: &str) -> Outcome {
         )),
         "pluginUpdatePlan" => opt_json(crate::addons::plugins::plugin_update_plan_json(args_json)),
         "pluginNetworkAddressAllowed" => Ok(json!(
-            crate::addons::plugin_network::plugin_network_address_allowed(&arg_str(
+            crate::addons::plugins::network::plugin_network_address_allowed(&arg_str(
                 args_json, "address"
             )?)
         )),
@@ -32,10 +32,10 @@ pub(crate) fn route_plugins(method: &str, args_json: &str) -> Outcome {
                 })
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(json!(
-                crate::addons::plugin_network::plugin_network_address_bytes_allowed(&bytes)
+                crate::addons::plugins::network::plugin_network_address_bytes_allowed(&bytes)
             ))
         }
-        "pluginUrlAllowed" => Ok(json!(crate::addons::plugin_network::plugin_url_allowed(
+        "pluginUrlAllowed" => Ok(json!(crate::addons::plugins::network::plugin_url_allowed(
             &arg_str(args_json, "url",)?
         ))),
         "pluginStreamResultsParse" => into_json(

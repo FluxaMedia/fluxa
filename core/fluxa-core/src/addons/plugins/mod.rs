@@ -1,3 +1,4 @@
+pub mod network;
 use crate::types::plugin::{
     PluginAudioResult, PluginManifest, PluginStreamResult, PluginSubtitleResult,
 };
@@ -513,7 +514,9 @@ mod tests {
             .unwrap()
             .pop()
             .unwrap();
-        let plan = crate::player::policy::stream_shell_plan_json(&stream_to_json(&stream)).unwrap();
+        let plan =
+            crate::player::playback::policy::stream_shell_plan_json(&stream_to_json(&stream))
+                .unwrap();
         let plan: Value = serde_json::from_str(&plan).unwrap();
 
         assert_eq!(

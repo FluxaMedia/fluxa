@@ -1,5 +1,5 @@
 use crate::addons;
-use crate::addons::repository::{is_unsupported_source, normalize_stream};
+use crate::addons::sources::repository::{is_unsupported_source, normalize_stream};
 use serde_json::{Value, json};
 
 fn resource_payload(resource: &str, root: &Value) -> Option<Value> {
@@ -324,8 +324,8 @@ pub(crate) fn parse_direct_streams_json(body: &str) -> Option<String> {
 }
 
 fn resolve_resource_asset_url(asset: Option<String>, resource_url: &str) -> Option<String> {
-    let secure = addons::protocol::prefer_https_asset_url(asset?.as_str())?;
-    if addons::protocol::is_http_url(&secure) {
+    let secure = addons::sources::protocol::prefer_https_asset_url(asset?.as_str())?;
+    if addons::sources::protocol::is_http_url(&secure) {
         return Some(secure);
     }
     if secure.starts_with('/') {
@@ -334,7 +334,7 @@ fn resolve_resource_asset_url(asset: Option<String>, resource_url: &str) -> Opti
             .find('/')
             .map(|index| scheme_end + index)
             .unwrap_or(resource_url.len());
-        return addons::protocol::prefer_https_asset_url(&format!(
+        return addons::sources::protocol::prefer_https_asset_url(&format!(
             "{}{}",
             &resource_url[..host_end],
             secure
@@ -344,7 +344,7 @@ fn resolve_resource_asset_url(asset: Option<String>, resource_url: &str) -> Opti
         .rsplit_once('/')
         .map(|(base, _)| format!("{base}/"))
         .unwrap_or_default();
-    addons::protocol::prefer_https_asset_url(&format!("{base}{secure}"))
+    addons::sources::protocol::prefer_https_asset_url(&format!("{base}{secure}"))
 }
 
 #[cfg(test)]

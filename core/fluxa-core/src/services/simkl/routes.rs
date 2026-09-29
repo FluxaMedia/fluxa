@@ -71,7 +71,7 @@ pub(crate) fn route_simkl(method: &str, args_json: &str) -> Outcome {
             let duration = field(&args, "durationSec")?
                 .as_f64()
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "durationSec must be a number"))?;
-            opt_json(player::scrobble::simkl_scrobble_body_json(
+            opt_json(player::playback::scrobble::simkl_scrobble_body_json(
                 field_str(&args, "idsJson")?,
                 field(&args, "isEpisode")?
                     .as_bool()

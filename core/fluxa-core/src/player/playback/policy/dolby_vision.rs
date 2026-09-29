@@ -1,4 +1,4 @@
-use crate::player::dolby_vision::{
+use crate::player::streams::dolby_vision::{
     DvContainer, DvDecoderCapabilities, DvFallbackMode, DvProfile, build_dv_playback_plan,
     decoder_supports,
 };

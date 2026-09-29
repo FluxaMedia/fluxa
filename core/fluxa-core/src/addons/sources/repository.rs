@@ -1,4 +1,4 @@
-use crate::addons::protocol::build_resource_url;
+use crate::addons::sources::protocol::build_resource_url;
 use crate::catalog::identity::parse_extra_args_json;
 use serde::Deserialize;
 use serde_json::{Map, Value, json};

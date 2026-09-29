@@ -1,4 +1,4 @@
-use crate::player::subtitle_sync::parse_subtitle_cues_with_text;
+use crate::player::subtitles::subtitle_sync::parse_subtitle_cues_with_text;
 use regex::Regex;
 use serde_json::{Value, json};
 use std::sync::OnceLock;

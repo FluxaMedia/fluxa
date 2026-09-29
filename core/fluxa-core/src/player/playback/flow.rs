@@ -132,7 +132,7 @@ pub(crate) fn dispatch(
                 return vec![];
             }
 
-            let selected_index = player::stream_policy::select_stream_index_values(
+            let selected_index = player::streams::stream_policy::select_stream_index_values(
                 &streams,
                 current_video_id.as_deref().unwrap_or_default(),
                 initial_stream_index,
@@ -171,7 +171,7 @@ fn playable_url(stream: &Value) -> Option<String> {
         .and_then(Value::as_str)
         .filter(|v| !v.is_empty())
         .map(ToString::to_string)
-        .or_else(|| player::stream_policy::stream_playable_url(stream))
+        .or_else(|| player::streams::stream_policy::stream_playable_url(stream))
 }
 
 #[cfg(test)]

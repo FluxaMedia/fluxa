@@ -107,7 +107,7 @@ pub(crate) fn route_trakt(method: &str, args_json: &str) -> Outcome {
                 .ok_or_else(|| fail(ErrorKind::InvalidArgs, "durationSec must be a number"))?;
             let ids_json = catalog::identity::build_trakt_ids_json(field_str(&args, "videoId")?)
                 .ok_or_else(|| fail(ErrorKind::NotFound, "could not build trakt ids"))?;
-            opt_json(player::scrobble::trakt_scrobble_plan_json(
+            opt_json(player::playback::scrobble::trakt_scrobble_plan_json(
                 &ids_json,
                 field(&args, "isEpisode")?
                     .as_bool()

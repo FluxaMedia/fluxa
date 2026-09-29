@@ -1,4 +1,4 @@
-use crate::addons::store::normalize_plugin_repository_url;
+use crate::addons::sources::store::normalize_plugin_repository_url;
 use crate::headless_engine::helpers::{normalize_error, upsert_by_key};
 use crate::headless_engine::state::GenerationKey;
 use crate::headless_engine::{EffectResultInput, HeadlessEngine};

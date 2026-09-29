@@ -145,11 +145,15 @@ fn raw_dispatch(method: &str, args_json: &str) -> Result<String, CallError> {
 
 fn route(method: &str, args_json: &str) -> Outcome {
     match method {
-        "subtitleCueList" => opt_json(player::subtitle_sync::subtitle_cue_list_json(args_json)),
+        "subtitleCueList" => opt_json(player::subtitles::subtitle_sync::subtitle_cue_list_json(
+            args_json,
+        )),
         "subtitleSyncCapture" => {
-            opt_json(player::subtitle_sync::subtitle_sync_capture_json(args_json))
+            opt_json(player::subtitles::subtitle_sync::subtitle_sync_capture_json(args_json))
         }
-        "subtitleSyncApply" => opt_json(player::subtitle_sync::subtitle_sync_apply_json(args_json)),
+        "subtitleSyncApply" => opt_json(
+            player::subtitles::subtitle_sync::subtitle_sync_apply_json(args_json),
+        ),
         _ => match methods::router_for(method) {
             Some(router) => router(method, args_json),
             None => Err(fail(

@@ -118,9 +118,9 @@ fn catalog_extras(catalog: &Value) -> Vec<Value> {
 }
 
 fn manifest_supports_catalog(manifest: &Value) -> bool {
-    serde_json::to_string(manifest)
-        .ok()
-        .is_some_and(|json| addons::protocol::supports_resource(&json, "catalog", None, None))
+    serde_json::to_string(manifest).ok().is_some_and(|json| {
+        addons::sources::protocol::supports_resource(&json, "catalog", None, None)
+    })
 }
 
 fn catalog_has_required_extra_except(catalog: &Value, allowed: &[&str]) -> bool {
@@ -128,14 +128,14 @@ fn catalog_has_required_extra_except(catalog: &Value, allowed: &[&str]) -> bool 
         serde_json::to_string(&allowed.iter().map(|s| s.to_string()).collect::<Vec<_>>())
             .unwrap_or_else(|_| "[]".to_string());
     serde_json::to_string(catalog).ok().is_some_and(|json| {
-        addons::protocol::catalog_has_required_extra_except(&json, &allowed_json)
+        addons::sources::protocol::catalog_has_required_extra_except(&json, &allowed_json)
     })
 }
 
 fn catalog_requires_extra(catalog: &Value, extra_name: &str) -> bool {
     serde_json::to_string(catalog)
         .ok()
-        .is_some_and(|json| addons::protocol::catalog_requires_extra(&json, extra_name))
+        .is_some_and(|json| addons::sources::protocol::catalog_requires_extra(&json, extra_name))
 }
 
 pub(crate) fn build_metadata_feed_options_json(addons_json: &str) -> Option<String> {

@@ -1,4 +1,4 @@
-use crate::player::flow::PlayerFlowState;
+use crate::player::playback::flow::PlayerFlowState;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 

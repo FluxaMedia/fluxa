@@ -8,12 +8,14 @@ pub(crate) fn route_stream_badges(method: &str, args_json: &str) -> Outcome {
             let source_url = field_str(&args, "sourceUrl")?;
             let payload = field_str(&args, "payload")?;
             into_json(
-                crate::player::stream_badges::parse_stream_badge_import_json(source_url, payload)
-                    .map_err(|message| fail(ErrorKind::InvalidArgs, message))?,
+                crate::player::streams::stream_badges::parse_stream_badge_import_json(
+                    source_url, payload,
+                )
+                .map_err(|message| fail(ErrorKind::InvalidArgs, message))?,
             )
         }
         "normalizeStreamBadgeRules" => into_json(
-            crate::player::stream_badges::normalize_stream_badge_rules_json(&arg_str(
+            crate::player::streams::stream_badges::normalize_stream_badge_rules_json(&arg_str(
                 args_json,
                 "rulesJson",
             )?),
@@ -27,7 +29,7 @@ pub(crate) fn route_stream_badges(method: &str, args_json: &str) -> Outcome {
                 .and_then(Value::as_bool)
                 .unwrap_or(true);
             opt_json(
-                crate::player::stream_badges::upsert_stream_badge_import_json(
+                crate::player::streams::stream_badges::upsert_stream_badge_import_json(
                     rules_json,
                     import_json,
                     activate,
@@ -37,7 +39,7 @@ pub(crate) fn route_stream_badges(method: &str, args_json: &str) -> Outcome {
         "setActiveStreamBadgeSource" => {
             let args = object(args_json)?;
             into_json(
-                crate::player::stream_badges::set_active_stream_badge_source_json(
+                crate::player::streams::stream_badges::set_active_stream_badge_source_json(
                     field_str(&args, "rulesJson")?,
                     field_str(&args, "sourceUrl")?,
                 ),
@@ -46,7 +48,7 @@ pub(crate) fn route_stream_badges(method: &str, args_json: &str) -> Outcome {
         "removeStreamBadgeSource" => {
             let args = object(args_json)?;
             into_json(
-                crate::player::stream_badges::remove_stream_badge_source_json(
+                crate::player::streams::stream_badges::remove_stream_badge_source_json(
                     field_str(&args, "rulesJson")?,
                     field_str(&args, "sourceUrl")?,
                 ),
@@ -54,10 +56,12 @@ pub(crate) fn route_stream_badges(method: &str, args_json: &str) -> Outcome {
         }
         "matchStreamBadges" => {
             let args = object(args_json)?;
-            into_json(crate::player::stream_badges::match_stream_badges_json(
-                field_str(&args, "streamJson")?,
-                field_str(&args, "rulesJson")?,
-            ))
+            into_json(
+                crate::player::streams::stream_badges::match_stream_badges_json(
+                    field_str(&args, "streamJson")?,
+                    field_str(&args, "rulesJson")?,
+                ),
+            )
         }
         _ => Err(unknown_method()),
     }

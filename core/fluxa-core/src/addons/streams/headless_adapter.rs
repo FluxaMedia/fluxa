@@ -40,7 +40,12 @@ pub(crate) fn provider_availability_plan_json(request_json: &str) -> Option<Stri
     let request = serde_json::from_str::<ProviderAvailabilityRequest>(request_json).ok()?;
     let has_stremio_stream_addon = request.addons.iter().any(|addon| {
         addon.get("manifest").is_some_and(|manifest| {
-            addons::protocol::supports_resource(&manifest.to_string(), "stream", None, None)
+            addons::sources::protocol::supports_resource(
+                &manifest.to_string(),
+                "stream",
+                None,
+                None,
+            )
         })
     });
     let plugin_names = stable_non_empty_strings(request.plugin_names);
@@ -113,7 +118,7 @@ fn playable_torrent_url(stream: &Value) -> Option<String> {
         .or_else(|| stream.get("url"))
         .and_then(Value::as_str)
         .filter(|value| !value.trim().is_empty())?;
-    player::stream_policy::is_torrent_playback_url(url).then(|| url.to_string())
+    player::streams::stream_policy::is_torrent_playback_url(url).then(|| url.to_string())
 }
 
 fn stable_non_empty_strings(values: Vec<String>) -> Vec<String> {

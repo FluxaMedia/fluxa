@@ -1,12 +1,7 @@
-pub(crate) mod discovery;
 pub(crate) mod engine;
-pub(crate) mod headless_adapter;
-pub(crate) mod platform;
-pub mod plugin_network;
 pub(crate) mod plugins;
-pub(crate) mod protocol;
-pub(crate) mod repository;
-pub(crate) mod resource;
 pub(crate) mod routes;
-pub(crate) mod store;
-pub(crate) mod uptime;
+pub(crate) mod sources;
+pub(crate) mod streams;
+
+pub use plugins::network as plugin_network;

@@ -153,7 +153,7 @@ fn with_referer_fallback(
     if has_referer {
         return headers;
     }
-    let referer = crate::player::stream_policy::stream_request_referer(url)?;
+    let referer = crate::player::streams::stream_policy::stream_request_referer(url)?;
     let mut map = headers
         .as_ref()
         .and_then(Value::as_object)

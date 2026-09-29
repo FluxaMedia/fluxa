@@ -1,4 +1,4 @@
-use crate::addons::protocol::{
+use crate::addons::sources::protocol::{
     build_resource_url, catalog_supports_extra as manifest_catalog_supports_extra,
     supports_resource,
 };
