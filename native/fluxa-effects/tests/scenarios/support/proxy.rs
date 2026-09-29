@@ -111,7 +111,7 @@ async fn respond(
     let recorded = Recorded {
         host: host.to_owned(),
         method: parts.method.to_string(),
-        path: parts.uri.path().to_owned(),
+        path: decode(parts.uri.path()),
         query: parts.uri.query().unwrap_or("").to_owned(),
         headers: parts
             .headers
@@ -131,4 +131,24 @@ async fn respond(
         .header("content-type", "application/json")
         .body(Full::new(Bytes::from(reply.body)))
         .unwrap_or_default()
+}
+
+fn decode(path: &str) -> String {
+    let bytes = path.as_bytes();
+    let mut out = Vec::with_capacity(bytes.len());
+    let mut i = 0;
+    while i < bytes.len() {
+        let hex = bytes.get(i + 1..i + 3).and_then(|pair| std::str::from_utf8(pair).ok());
+        match (bytes[i], hex.and_then(|pair| u8::from_str_radix(pair, 16).ok())) {
+            (b'%', Some(byte)) => {
+                out.push(byte);
+                i += 3;
+            }
+            (byte, _) => {
+                out.push(byte);
+                i += 1;
+            }
+        }
+    }
+    String::from_utf8_lossy(&out).into_owned()
 }
