@@ -1,6 +1,7 @@
 mod addons;
 mod app;
 mod auth;
+mod calendar;
 mod lists;
 mod providers;
 mod simkl;
