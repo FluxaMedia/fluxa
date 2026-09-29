@@ -353,3 +353,42 @@ fn matching_season_structure_keeps_video_ids() {
     .unwrap();
     assert_eq!(mapped, r#"["tt9:1:1"]"#);
 }
+
+#[test]
+fn trakt_absolute_numbers_map_back_to_addon_seasons() {
+    let addon: Vec<Value> = (1..=2)
+        .flat_map(|season| {
+            (1..=2).map(move |n| json!({"id": format!("tt9:{season}:{n}"), "season": season, "episode": n, "title": format!("Ep {season}{n}")}))
+        })
+        .collect();
+    let trakt = json!([{"number": 1, "episodes": [
+        {"season": 1, "number": 1, "title": "Ep 11"},
+        {"season": 1, "number": 2, "title": "Ep 12"},
+        {"season": 1, "number": 3, "title": "Ep 21"},
+        {"season": 1, "number": 4, "title": "Ep 22"}
+    ]}]);
+    let mapped = trakt_remap_video_ids_json(
+        &json!({"direction": "toAddon", "videoIds": ["tt9:1:3", "tt9:1:1"], "addonEpisodes": addon, "traktSeasons": trakt})
+            .to_string(),
+    )
+    .unwrap();
+    assert_eq!(mapped, r#"["tt9:2:1","tt9:1:1"]"#);
+}
+
+#[test]
+fn unmatched_lengths_leave_ids_alone_when_titles_are_generic() {
+    let addon = json!([
+        {"id": "tt9:1:1", "season": 1, "episode": 1, "title": "Episode 1"},
+        {"id": "tt9:1:2", "season": 1, "episode": 2, "title": "Episode 2"}
+    ]);
+    let trakt = json!([{"number": 1, "episodes": [
+        {"season": 1, "number": 1, "title": "Episode 1"},
+        {"season": 1, "number": 2, "title": "Episode 2"},
+        {"season": 1, "number": 3, "title": "Episode 3"}
+    ]}]);
+    let mapped = trakt_remap_video_ids_json(
+        &json!({"videoIds": ["tt9:1:2"], "addonEpisodes": addon, "traktSeasons": trakt}).to_string(),
+    )
+    .unwrap();
+    assert_eq!(mapped, r#"["tt9:1:2"]"#);
+}

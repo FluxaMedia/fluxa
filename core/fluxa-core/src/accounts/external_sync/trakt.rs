@@ -636,26 +636,32 @@ pub(crate) fn trakt_remap_video_ids_json(args_json: &str) -> Option<String> {
     if addon.is_empty() || trakt.is_empty() || season_sizes(&addon) == season_sizes(&trakt) {
         return serde_json::to_string(&video_ids).ok();
     }
+    let to_addon = args.get("direction").and_then(Value::as_str) == Some("toAddon");
+    let (source, target_list) = if to_addon {
+        (&trakt, &addon)
+    } else {
+        (&addon, &trakt)
+    };
     let mapped: Vec<String> = video_ids
         .iter()
         .map(|video_id| {
             let Some((prefix, season, number)) = split_episode_id(video_id) else {
                 return video_id.clone();
             };
-            let Some(index) = addon
+            let Some(index) = source
                 .iter()
                 .position(|entry| entry.season == season && entry.episode == number)
             else {
                 return video_id.clone();
             };
-            let title = &addon[index].title;
-            let by_title: Vec<&MappedEpisode> = trakt
+            let title = &source[index].title;
+            let by_title: Vec<&MappedEpisode> = target_list
                 .iter()
                 .filter(|entry| !title.is_empty() && entry.title == *title)
                 .collect();
             let target = match by_title.as_slice() {
                 [only] => Some((*only).clone()),
-                _ if addon.len() == trakt.len() => trakt.get(index).cloned(),
+                _ if source.len() == target_list.len() => target_list.get(index).cloned(),
                 _ => None,
             };
             target.map_or_else(
