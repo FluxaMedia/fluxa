@@ -95,7 +95,6 @@ discoverCatalogOptions
 discoverContentTypes
 discoverSelectionPlan
 discoverSortPlan
-dvProxyPlan
 effectiveMetadataFeedSelection
 engine.completeEffect
 engine.create
@@ -238,7 +237,6 @@ resolveTransportUrl
 resourceFetchPlan
 resourceKindToResource
 resourceParsePlan
-safeDolbyVisionFallbackMode
 safePlayerBufferCacheMb
 safeStreamSourceSelectionMode
 samePluginRepositoryUrl

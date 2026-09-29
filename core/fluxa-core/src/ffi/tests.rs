@@ -245,12 +245,6 @@ fn newly_routed_modules_compute() {
     let buffer = parse(&core_invoke("safePlayerBufferCacheMb", r#"{"value":50}"#));
     assert_eq!(buffer["value"], json!(100));
 
-    let dv_mode = parse(&core_invoke(
-        "safeDolbyVisionFallbackMode",
-        r#"{"mode":"dv8"}"#,
-    ));
-    assert_eq!(dv_mode["value"], json!("dv8"));
-
     let source_mode = parse(&core_invoke(
         "safeStreamSourceSelectionMode",
         r#"{"mode":"regex"}"#,

@@ -13,7 +13,7 @@ Workspace crates:
 | Crate | Purpose |
 |---|---|
 | `fluxa_core` | Domain logic, engine, string router |
-| `fluxa_media` | Matroska demux, fMP4/WebM mux, Dolby Vision RPU and sample rewriting |
+| `fluxa_media` | Matroska demux, fMP4/WebM mux |
 | `fluxa_plugin_runtime` | QuickJS plugin sandbox and its bridges |
 | `fluxa_streaming_engine` | Torrent and HTTP proxy |
 

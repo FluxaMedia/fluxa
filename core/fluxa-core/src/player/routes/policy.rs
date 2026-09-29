@@ -3,9 +3,6 @@ use serde_json::{Value, json};
 
 pub(crate) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
     match method {
-        "dvProxyPlan" => opt_json(crate::player::playback::policy::dv_proxy_plan_json(
-            args_json,
-        )),
         "torrentFallbackFilePolicy" => {
             opt_json(crate::player::playback::policy::torrent_fallback_file_policy_json(args_json))
         }

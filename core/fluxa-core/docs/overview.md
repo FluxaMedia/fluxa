@@ -44,7 +44,7 @@ The core never initiates anything. Every state transition begins with the platfo
 | `home` | Shelf ordering, hero plan, recommendations |
 | `library` | Library state, continue watching, watchlist, calendar, persistence, offline downloads |
 | `catalog` | ID parsing, search, TMDB, MDBList, PublicMetaDB, content warnings |
-| `player` | Playback flow and policy, stream selection, scrobble, subtitles, casting, intro segments, Dolby Vision plan |
+| `player` | Playback flow and policy, stream selection, scrobble, subtitles, casting, intro segments |
 | `addons` | Addon protocol, store, resources, plugins, repository flows |
 | `accounts` | Trakt, Simkl, AniList, Nuvio and Fluxa sync, device auth, OAuth plans |
 | `profile` | Profile contract, preferences, avatar packs |
@@ -52,4 +52,4 @@ The core never initiates anything. Every state transition begins with the platfo
 
 ## Companion crate
 
-`fluxa-streaming-engine/` lives in the same repo. It handles the runtime streaming side: torrent via librqbit, HTTP proxying via axum, Dolby Vision bitstream rewriting (with `fluxa-media`). It has three CLI tools (`torrent_bench`, `torrent_serve`, `companion_server`).
+`fluxa-streaming-engine/` lives in the same repo. It handles the runtime streaming side: torrent via librqbit, HTTP proxying via axum, chapter extraction. It has three CLI tools (`torrent_bench`, `torrent_serve`, `companion_server`).

@@ -1,11 +1,15 @@
 #[cfg(test)]
 use serde_json::{Value, json};
 
+mod lookup;
 mod parsers;
 mod request_plans;
+mod submit;
 
+pub(crate) use lookup::player_segments_step_json;
 pub(crate) use parsers::*;
 pub(crate) use request_plans::*;
+pub(crate) use submit::player_segments_submit_plan_json;
 
 fn the_introdb_wire_type(canonical: &str) -> &'static str {
     match canonical {

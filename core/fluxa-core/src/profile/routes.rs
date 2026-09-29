@@ -56,21 +56,6 @@ pub(crate) fn route_profile_prefs(method: &str, args_json: &str) -> Outcome {
                 value
             )))
         }
-        "safeDolbyVisionFallbackMode" => {
-            let args = object(args_json)?;
-            let mode = args.get("mode").and_then(Value::as_str);
-            let legacy_dv7_fallback = args.get("legacyDv7Fallback").and_then(Value::as_bool);
-            let legacy_dv7_to_dv8_fallback =
-                args.get("legacyDv7ToDv8Fallback").and_then(Value::as_bool);
-            Ok(Value::String(
-                crate::profile::prefs::safe_dolby_vision_fallback_mode(
-                    mode,
-                    legacy_dv7_fallback,
-                    legacy_dv7_to_dv8_fallback,
-                )
-                .to_string(),
-            ))
-        }
         "safeStreamSourceSelectionMode" => {
             let args = object(args_json)?;
             let mode = args.get("mode").and_then(Value::as_str);

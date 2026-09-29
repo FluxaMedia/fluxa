@@ -6,23 +6,6 @@ pub(crate) fn safe_player_buffer_cache_mb(value: Option<i32>) -> i32 {
     value.unwrap_or(100).clamp(100, 2000)
 }
 
-pub(crate) fn safe_dolby_vision_fallback_mode(
-    mode: Option<&str>,
-    legacy_dv7_fallback: Option<bool>,
-    legacy_dv7_to_dv8_fallback: Option<bool>,
-) -> &'static str {
-    match mode {
-        Some("auto") => "auto",
-        Some("convert_dv81") => "convert_dv81",
-        Some("hdr10") => "hdr10",
-        Some("dv8") => "dv8",
-        Some("off") => "off",
-        _ if legacy_dv7_to_dv8_fallback == Some(true) => "dv8",
-        _ if legacy_dv7_fallback != Some(false) => "hdr10",
-        _ => "off",
-    }
-}
-
 pub(crate) fn safe_stream_source_selection_mode(mode: Option<&str>) -> &'static str {
     match mode {
         Some("first") => "first",
@@ -104,9 +87,6 @@ struct ProfileSafePrefs {
     playback_speed: f32,
     hold_to_speed_enabled: bool,
     hold_speed: f32,
-    dolby_vision_fallback_mode: String,
-    dv7_to_dv8_fallback: bool,
-    dv7_fallback: bool,
     tunneled_playback: bool,
     use_skip_segments: bool,
     default_quality: String,
@@ -136,12 +116,6 @@ fn profile_safe_prefs(profile: &Value) -> ProfileSafePrefs {
     let card_layout = safe_card_layout(text(profile, "cardLayout"));
     let continue_watching_layout =
         safe_continue_watching_layout(text(profile, "continueWatchingLayout"));
-    let dolby_mode = safe_dolby_vision_fallback_mode(
-        text(profile, "dolbyVisionFallbackMode"),
-        bool_value(profile, "dv7Fallback"),
-        bool_value(profile, "dv7ToDv8Fallback"),
-    )
-    .to_string();
 
     ProfileSafePrefs {
         language: text(profile, "language")
@@ -255,9 +229,6 @@ fn profile_safe_prefs(profile: &Value) -> ProfileSafePrefs {
         playback_speed: number(profile, "playbackSpeed").unwrap_or(1.0) as f32,
         hold_to_speed_enabled: bool_value(profile, "holdToSpeedEnabled").unwrap_or(true),
         hold_speed: number(profile, "holdSpeed").unwrap_or(2.0) as f32,
-        dv7_to_dv8_fallback: dolby_mode == "dv8",
-        dv7_fallback: dolby_mode == "hdr10",
-        dolby_vision_fallback_mode: dolby_mode,
         tunneled_playback: bool_value(profile, "tunneledPlayback").unwrap_or(false),
         use_skip_segments: bool_value(profile, "useSkipSegments").unwrap_or(true),
         default_quality: text(profile, "defaultQuality")
@@ -364,23 +335,6 @@ mod tests {
     }
 
     #[test]
-    fn dolby_vision_mode_keeps_explicit_and_migrates_legacy_flags() {
-        assert_eq!(
-            safe_dolby_vision_fallback_mode(Some("auto"), None, None),
-            "auto"
-        );
-        assert_eq!(
-            safe_dolby_vision_fallback_mode(None, Some(false), Some(true)),
-            "dv8",
-        );
-        assert_eq!(safe_dolby_vision_fallback_mode(None, None, None), "hdr10");
-        assert_eq!(
-            safe_dolby_vision_fallback_mode(None, Some(false), Some(false)),
-            "off",
-        );
-    }
-
-    #[test]
     fn stream_source_mode_defaults_to_manual() {
         assert_eq!(safe_stream_source_selection_mode(Some("first")), "first");
         assert_eq!(safe_stream_source_selection_mode(Some("regex")), "regex");
@@ -410,9 +364,6 @@ mod tests {
                 "playerForwardBufferSeconds":999,
                 "playerBackBufferSeconds":-1,
                 "detailEpisodeViewMode":"unknown",
-                "dolbyVisionFallbackMode":null,
-                "dv7Fallback":false,
-                "dv7ToDv8Fallback":true,
                 "streamSourceSelectionMode":"invalid"
             }"#,
         )
@@ -428,7 +379,6 @@ mod tests {
         assert_eq!(value["playerForwardBufferSeconds"], 600);
         assert_eq!(value["playerBackBufferSeconds"], 0);
         assert_eq!(value["detailEpisodeViewMode"], "modern");
-        assert_eq!(value["dolbyVisionFallbackMode"], "dv8");
         assert_eq!(value["streamSourceSelectionMode"], "manual");
         assert_eq!(value["audioProcessingMode"], "reference");
     }

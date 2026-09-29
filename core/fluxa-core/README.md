@@ -36,7 +36,7 @@ Host  →  executes each effect (HTTP / storage / player / ...)
 
 This repo also contains a companion crate, **`fluxa-streaming-engine/`**, which handles
 the runtime streaming side: torrent download (via `librqbit`), local HTTP proxying, and
-Dolby Vision / HDR10+ stream rewriting.
+and chapter extraction.
 
 ## Who uses this
 
@@ -95,14 +95,14 @@ generation, and release-build details.
 
 ```
 src/                    domain logic, headless_engine, FFI bindings
-fluxa-streaming-engine/ torrent + Dolby Vision/HDR10+ stream rewriting (separate crate)
+fluxa-streaming-engine/ torrent + local streaming (separate crate)
 fuzz/                   cargo-fuzz targets for parsers (episode matching, manifests, percent-decode)
 docs/                   architecture, effects reference, integration guide
 ```
 
 ## Stack
 
-[Rust](https://www.rust-lang.org/) · [wasm-bindgen](https://rustwasm.github.io/wasm-bindgen/) · [axum](https://github.com/tokio-rs/axum) · [tokio](https://tokio.rs/) · [librqbit](https://github.com/ikatson/rqbit) · [dolby_vision](https://github.com/quietvoid/dovi_tool) · [serde](https://serde.rs/)
+[Rust](https://www.rust-lang.org/) · [wasm-bindgen](https://rustwasm.github.io/wasm-bindgen/) · [axum](https://github.com/tokio-rs/axum) · [tokio](https://tokio.rs/) · [librqbit](https://github.com/ikatson/rqbit) · [serde](https://serde.rs/)
 
 ---
 
