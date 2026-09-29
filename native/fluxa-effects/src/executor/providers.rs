@@ -290,39 +290,52 @@ impl EffectExecutor {
         let requests = core_value("providerLibraryRequests", credentials)
             .and_then(|requests| requests.as_array().cloned())
             .ok_or_else(|| "Fluxa Core could not plan the library requests".to_owned())?;
-        let client = http_client()?;
-        let results = futures::future::join_all(requests.iter().map(|request| {
-            let client = &client;
-            async move {
-                (
-                    str_field(request, "key").to_owned(),
-                    send(client, request).await,
-                )
-            }
-        }))
-        .await;
-        let mut responses = Map::new();
-        let mut failures = Vec::new();
-        for (key, result) in results {
-            match result {
-                Ok((status, body)) if (200..300).contains(&status) => {
-                    responses.insert(key, body);
+        let responses = if provider == "trakt" {
+            match self.read_trakt_library(&requests).await {
+                Ok(responses) => responses,
+                Err(error) => {
+                    crate::log!("[fluxa-native] trakt library sync failed: {error}");
+                    return self
+                        .cached_provider_library(provider, profile_id)
+                        .ok_or(error);
                 }
-                Ok((status, _)) => failures.push(format!("{key}: {status}")),
-                Err(error) => failures.push(format!("{key}: {error}")),
             }
-        }
-        if !failures.is_empty() {
-            crate::log!("[fluxa-native] {provider} library requests failed: {failures:?}");
-        }
-        if responses.is_empty() {
-            return self
-                .cached_provider_library(provider, profile_id)
-                .ok_or_else(|| format!("{provider} library could not be loaded"));
-        }
+        } else {
+            let client = http_client()?;
+            let results = futures::future::join_all(requests.iter().map(|request| {
+                let client = &client;
+                async move {
+                    (
+                        str_field(request, "key").to_owned(),
+                        send(client, request).await,
+                    )
+                }
+            }))
+            .await;
+            let mut responses = Map::new();
+            let mut failures = Vec::new();
+            for (key, result) in results {
+                match result {
+                    Ok((status, body)) if (200..300).contains(&status) => {
+                        responses.insert(key, body);
+                    }
+                    Ok((status, _)) => failures.push(format!("{key}: {status}")),
+                    Err(error) => failures.push(format!("{key}: {error}")),
+                }
+            }
+            if !failures.is_empty() {
+                crate::log!("[fluxa-native] {provider} library requests failed: {failures:?}");
+            }
+            if responses.is_empty() {
+                return self
+                    .cached_provider_library(provider, profile_id)
+                    .ok_or_else(|| format!("{provider} library could not be loaded"));
+            }
+            responses
+        };
         let snapshot = core_value(
             "providerLibrarySnapshot",
-            json!({"provider": provider, "responses": responses}),
+            json!({"provider": provider, "responses": responses, "nowSeconds": chrono_unix_seconds()}),
         )
         .ok_or_else(|| "Fluxa Core could not build the provider library".to_owned())?;
         self.store_provider_library(provider, profile_id, &snapshot);
@@ -330,21 +343,57 @@ impl EffectExecutor {
     }
 
     async fn simkl_get(client: &Client, plan: &Value) -> Result<Value, String> {
+        Self::provider_get(client, plan, "Simkl").await
+    }
+
+    async fn provider_get(client: &Client, plan: &Value, name: &str) -> Result<Value, String> {
         let mut delay = 1;
         for attempt in 0..4 {
             let (status, body) = send(client, plan).await?;
             match status {
                 200..=299 => return Ok(body),
-                401 => return Err("Simkl access was revoked, sign in again".to_owned()),
-                429 | 500 | 502 | 503 if attempt < 3 => {
+                401 => return Err(format!("{name} access was revoked, sign in again")),
+                429 | 500 | 502 | 503 | 504 if attempt < 3 => {
                     #[cfg(not(target_arch = "wasm32"))]
                     tokio::time::sleep(Duration::from_secs(delay)).await;
                     delay *= 2;
                 }
-                _ => return Err(format!("Simkl request failed ({status})")),
+                _ => return Err(format!("{name} request failed ({status})")),
             }
         }
-        Err("Simkl request failed".to_owned())
+        Err(format!("{name} request failed"))
+    }
+
+    async fn read_trakt_library(&self, requests: &[Value]) -> Result<Map<String, Value>, String> {
+        let client = http_client()?;
+        let mut responses = Map::new();
+        for request in requests {
+            let key = str_field(request, "key").to_owned();
+            let body = if key == "history" {
+                Self::trakt_history(&client, request).await?
+            } else {
+                Self::provider_get(&client, request, "Trakt").await?
+            };
+            responses.insert(key, body);
+        }
+        Ok(responses)
+    }
+
+    async fn trakt_history(client: &Client, request: &Value) -> Result<Value, String> {
+        let mut items = Vec::new();
+        for page in 1..=20 {
+            let mut request = request.clone();
+            let url = str_field(&request, "url").replace("page=1", &format!("page={page}"));
+            request["url"] = json!(url);
+            let body = Self::provider_get(client, &request, "Trakt").await?;
+            let batch = body.as_array().cloned().unwrap_or_default();
+            let last = batch.len() < 100;
+            items.extend(batch);
+            if last {
+                break;
+            }
+        }
+        Ok(Value::Array(items))
     }
 
     async fn simkl_pull(
@@ -500,8 +549,8 @@ impl EffectExecutor {
         let Some(mut args) = self.provider_credentials(provider, profile) else {
             return Err(format!("{provider} is not connected to the active profile"));
         };
-        let rewatch = provider == "simkl"
-            && command.get("rewatch").and_then(Value::as_bool) == Some(true);
+        let rewatch =
+            provider == "simkl" && command.get("rewatch").and_then(Value::as_bool) == Some(true);
         let mut command = command.clone();
         if rewatch {
             self.ensure_simkl_rewatch(profile, &args).await?;
@@ -544,15 +593,24 @@ impl EffectExecutor {
         .unwrap_or(false)
     }
 
-    async fn ensure_simkl_rewatch(&self, profile: &Value, credentials: &Value) -> Result<(), String> {
+    async fn ensure_simkl_rewatch(
+        &self,
+        profile: &Value,
+        credentials: &Value,
+    ) -> Result<(), String> {
         if !self.profile_flag(profile, "simklTrackRewatches") {
             return Err("Simkl rewatch tracking is turned off".to_owned());
         }
         let key = format!("simkl_account_{}", sanitize_key(str_field(profile, "id")));
         let now = chrono_unix_seconds();
-        let cached = self.storage.read_json(&key).ok().flatten().filter(|cached| {
-            cached.get("at").and_then(Value::as_i64).unwrap_or(0) + SIMKL_ACCOUNT_TTL > now
-        });
+        let cached = self
+            .storage
+            .read_json(&key)
+            .ok()
+            .flatten()
+            .filter(|cached| {
+                cached.get("at").and_then(Value::as_i64).unwrap_or(0) + SIMKL_ACCOUNT_TTL > now
+            });
         let plan = match cached {
             Some(cached) => str_field(&cached, "type").to_owned(),
             None => {
@@ -560,7 +618,9 @@ impl EffectExecutor {
                 args["command"] = json!({"type": "simklAccount"});
                 let request = core_value("providerWriteRequests", args)
                     .and_then(|requests| requests.get(0).cloned())
-                    .ok_or_else(|| "Fluxa Core could not plan the Simkl account request".to_owned())?;
+                    .ok_or_else(|| {
+                        "Fluxa Core could not plan the Simkl account request".to_owned()
+                    })?;
                 let body = Self::simkl_get(&http_client()?, &request).await?;
                 let plan = body
                     .pointer("/account/type")

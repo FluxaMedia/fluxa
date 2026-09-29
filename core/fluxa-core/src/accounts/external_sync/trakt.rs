@@ -511,6 +511,21 @@ pub(crate) fn trakt_watchlist_to_items_json(movies_json: &str, shows_json: &str)
     serde_json::to_string(&items).ok()
 }
 
+pub(crate) fn trakt_history_episodes_to_ids_json(history_json: &str) -> Option<String> {
+    let history: Vec<Value> = serde_json::from_str(history_json).unwrap_or_default();
+    let ids: Map<String, Value> = history
+        .iter()
+        .filter_map(|entry| {
+            let show_id = trakt_id_from_source(entry.get("show")?)?;
+            let episode = entry.get("episode")?;
+            let season = episode.get("season")?.as_i64().filter(|n| *n > 0)?;
+            let number = episode.get("number")?.as_i64().filter(|n| *n > 0)?;
+            Some((format!("{show_id}:{season}:{number}"), Value::Bool(true)))
+        })
+        .collect();
+    serde_json::to_string(&Value::Object(ids)).ok()
+}
+
 pub(crate) fn trakt_watched_to_ids_json(movies_json: &str, shows_json: &str) -> Option<String> {
     let movies: Vec<Value> = serde_json::from_str(movies_json).unwrap_or_default();
     let shows: Vec<Value> = serde_json::from_str(shows_json).unwrap_or_default();

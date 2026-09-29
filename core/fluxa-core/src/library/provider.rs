@@ -1,8 +1,9 @@
 use crate::accounts::external_sync::{
     simkl_library_to_items_json, simkl_mark_watched_body_json, simkl_merge_playback_progress_json,
     simkl_watched_to_ids_json, simkl_watching_to_items_json, simkl_watchlist_body_json,
-    trakt_collection_body_json, trakt_id_from_source, trakt_ids_from_content_id_json,
-    trakt_mark_watched_body_json, trakt_playback_items_to_library_json, trakt_watched_to_ids_json,
+    trakt_collection_body_json, trakt_history_episodes_to_ids_json, trakt_id_from_source,
+    trakt_ids_from_content_id_json, trakt_mark_watched_body_json,
+    trakt_playback_items_to_library_json, trakt_up_next_to_items_json,
     trakt_watchlist_to_items_json,
 };
 use crate::catalog;
@@ -25,6 +26,7 @@ fn headers(provider: &str, args: &Value) -> Value {
     headers.insert("Content-Type".into(), json!("application/json"));
     match provider {
         "trakt" => {
+            headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
             headers.insert("trakt-api-version".into(), json!("2"));
             headers.insert("trakt-api-key".into(), json!(client_id));
         }
@@ -230,11 +232,25 @@ pub(crate) fn provider_library_requests_json(args_json: &str) -> Option<String> 
                     &format!("favorites_{kind}"),
                     format!("{TRAKT_API}/sync/favorites/{kind}?extended=full,images"),
                 ));
-                requests.push(get(
-                    &format!("watched_{kind}"),
-                    format!("{TRAKT_API}/sync/watched/{kind}?extended=full,images"),
-                ));
             }
+            requests.push(get(
+                "watched_movies",
+                format!("{TRAKT_API}/sync/watched/movies?extended=full,images"),
+            ));
+            requests.push(get(
+                "progress",
+                format!("{TRAKT_API}/sync/progress/watched?extended=full,images&limit=1000"),
+            ));
+            requests.push(get(
+                "history",
+                format!("{TRAKT_API}/sync/history/episodes?page=1&limit=100"),
+            ));
+            requests.push(get(
+                "hidden_dropped",
+                format!(
+                    "{TRAKT_API}/users/hidden/dropped?type=show&extended=full,images&limit=1000"
+                ),
+            ));
             requests.push(get(
                 "playback",
                 format!("{TRAKT_API}/sync/playback?extended=full,images"),
@@ -357,6 +373,49 @@ fn mdblist_items(body: &Value) -> Value {
     Value::Array(items)
 }
 
+fn trakt_progress_number(entry: &Value, key: &str) -> i64 {
+    entry
+        .pointer(&format!("/progress/{key}"))
+        .and_then(Value::as_i64)
+        .unwrap_or(0)
+}
+
+fn trakt_show_finished(entry: &Value) -> bool {
+    let aired = trakt_progress_number(entry, "aired");
+    aired > 0 && trakt_progress_number(entry, "completed") >= aired
+}
+
+fn trakt_next_episode_aired(entry: &Value, now: i64) -> bool {
+    entry
+        .pointer("/progress/next_episode/first_aired")
+        .and_then(Value::as_str)
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+        .is_some_and(|aired| aired.timestamp() <= now)
+}
+
+fn trakt_continue_watching(playback: &Value, up_next: &Value) -> Value {
+    let mut items: Vec<Value> = Vec::new();
+    for item in playback.as_array().into_iter().flatten() {
+        let id = str_field(item, "id");
+        let saved_at = str_field(item, "savedAt");
+        match items.iter_mut().find(|kept| str_field(kept, "id") == id) {
+            Some(kept) if saved_at > str_field(kept, "savedAt") => *kept = item.clone(),
+            Some(_) => {}
+            None => items.push(item.clone()),
+        }
+    }
+    for item in up_next.as_array().into_iter().flatten() {
+        if !items
+            .iter()
+            .any(|kept| str_field(kept, "id") == str_field(item, "id"))
+        {
+            items.push(item.clone());
+        }
+    }
+    items.sort_by(|a, b| str_field(b, "savedAt").cmp(str_field(a, "savedAt")));
+    Value::Array(items)
+}
+
 fn watched_map(items: &Value) -> Value {
     Value::Object(
         items
@@ -379,19 +438,46 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
                     response_str(&responses, &format!("{prefix}_shows")),
                 )
             };
+            let now = args.get("nowSeconds").and_then(Value::as_i64).unwrap_or(0);
             let (watchlist_movies, watchlist_shows) = pair("watchlist");
             let (favorite_movies, favorite_shows) = pair("favorites");
-            let (watched_movies, watched_shows) = pair("watched");
+            let watched_movies = response_str(&responses, "watched_movies");
+            let progress: Vec<Value> = responses
+                .get("progress")
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let finished: Vec<Value> = progress
+                .iter()
+                .filter(|entry| trakt_show_finished(entry))
+                .cloned()
+                .collect();
+            let started: Vec<Value> = progress
+                .iter()
+                .filter(|entry| trakt_next_episode_aired(entry, now))
+                .cloned()
+                .collect();
+            let movies_done = parsed(trakt_watchlist_to_items_json(&watched_movies, "[]"));
+            let shows_done = parsed(trakt_watchlist_to_items_json(
+                "[]",
+                &Value::Array(finished).to_string(),
+            ));
+            let playback = parsed(trakt_playback_items_to_library_json(&response_str(
+                &responses, "playback",
+            )));
+            let up_next = parsed(trakt_up_next_to_items_json(
+                &Value::Array(started).to_string(),
+            ));
             json!({
                 "watchlist": parsed(trakt_watchlist_to_items_json(&watchlist_movies, &watchlist_shows)),
                 "liked": parsed(trakt_watchlist_to_items_json(&favorite_movies, &favorite_shows)),
-                "completed": parsed(trakt_watchlist_to_items_json(&watched_movies, &watched_shows)),
+                "completed": concat(&[movies_done.clone(), shows_done]),
                 "watched": merge_maps(&[
-                    watched_map(&parsed(trakt_watchlist_to_items_json(&watched_movies, "[]"))),
-                    parsed(trakt_watched_to_ids_json(&watched_movies, &watched_shows)),
+                    watched_map(&movies_done),
+                    parsed(trakt_history_episodes_to_ids_json(&response_str(&responses, "history"))),
                 ]),
-                "dropped": [],
-                "continueWatching": parsed(trakt_playback_items_to_library_json(&response_str(&responses, "playback"))),
+                "dropped": parsed(trakt_watchlist_to_items_json("[]", &response_str(&responses, "hidden_dropped"))),
+                "continueWatching": trakt_continue_watching(&playback, &up_next),
             })
         }
         "simkl" => {
@@ -553,7 +639,11 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 "simkl" => requests.push(post(
                     format!(
                         "{SIMKL_API}/sync/history{suffix}{}",
-                        if rewatch && watched { "?allow_rewatch=yes" } else { "" }
+                        if rewatch && watched {
+                            "?allow_rewatch=yes"
+                        } else {
+                            ""
+                        }
                     ),
                     serde_json::from_str(&simkl_mark_watched_body_json(
                         &json!({
@@ -680,6 +770,43 @@ mod tests {
     }
 
     #[test]
+    fn trakt_snapshot_dedupes_playback_and_derives_completed_from_progress() {
+        let show =
+            |imdb: &str, title: &str| json!({"title": title, "ids": {"imdb": imdb, "trakt": 1}});
+        let episode = |n: i64| json!({"season": 1, "number": n, "title": "e", "ids": {"trakt": n}});
+        let responses = json!({
+            "playback": [
+                {"id": 1, "type": "episode", "progress": 30.0, "paused_at": "2026-01-01T00:00:00.000Z", "show": show("tt1", "A"), "episode": episode(1)},
+                {"id": 2, "type": "episode", "progress": 40.0, "paused_at": "2026-02-01T00:00:00.000Z", "show": show("tt1", "A"), "episode": episode(2)}
+            ],
+            "progress": [
+                {"show": show("tt2", "Done"), "progress": {"aired": 3, "completed": 3, "last_watched_at": "2026-01-01T00:00:00.000Z"}},
+                {"show": show("tt3", "Partial"), "progress": {"aired": 3, "completed": 1, "last_watched_at": "2026-01-01T00:00:00.000Z",
+                    "next_episode": {"season": 1, "number": 2, "title": "n", "ids": {"trakt": 9}, "first_aired": "2026-01-02T00:00:00.000Z"}}},
+                {"show": show("tt4", "Future"), "progress": {"aired": 3, "completed": 1, "last_watched_at": "2026-01-01T00:00:00.000Z",
+                    "next_episode": {"season": 1, "number": 2, "title": "n", "ids": {"trakt": 10}, "first_aired": "2030-01-02T00:00:00.000Z"}}}
+            ],
+            "hidden_dropped": [{"show": show("tt5", "Dropped")}]
+        });
+        let snapshot = value(provider_library_snapshot_json(
+            &json!({"provider": "trakt", "responses": responses, "nowSeconds": 1_800_000_000})
+                .to_string(),
+        ));
+        let ids = |list: &str| -> Vec<String> {
+            snapshot[list]
+                .as_array()
+                .unwrap()
+                .iter()
+                .map(|item| item["id"].as_str().unwrap().to_owned())
+                .collect()
+        };
+        assert_eq!(ids("completed"), ["tt2"]);
+        assert_eq!(ids("dropped"), ["tt5"]);
+        assert_eq!(ids("continueWatching"), ["tt1", "tt3"]);
+        assert_eq!(snapshot["continueWatching"][0]["lastEpisodeNumber"], 2);
+    }
+
+    #[test]
     fn simkl_allow_rewatch_is_sent_only_for_explicit_rewatches() {
         let request = |command: Value| {
             value(provider_write_requests_json(
@@ -687,12 +814,28 @@ mod tests {
                     .to_string(),
             ))
         };
-        let plain = request(json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":true}));
+        let plain = request(
+            json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":true}),
+        );
         assert!(!plain[0]["url"].as_str().unwrap().contains("allow_rewatch"));
-        let rewatch = request(json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":true,"rewatch":true}));
-        assert!(rewatch[0]["url"].as_str().unwrap().contains("allow_rewatch=yes"));
-        let unwatch = request(json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":false,"rewatch":true}));
-        assert!(!unwatch[0]["url"].as_str().unwrap().contains("allow_rewatch"));
+        let rewatch = request(
+            json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":true,"rewatch":true}),
+        );
+        assert!(
+            rewatch[0]["url"]
+                .as_str()
+                .unwrap()
+                .contains("allow_rewatch=yes")
+        );
+        let unwatch = request(
+            json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":false,"rewatch":true}),
+        );
+        assert!(
+            !unwatch[0]["url"]
+                .as_str()
+                .unwrap()
+                .contains("allow_rewatch")
+        );
     }
 
     #[test]
