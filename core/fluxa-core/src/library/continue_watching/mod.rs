@@ -1,10 +1,14 @@
 use serde_json::{Value, json};
 
+mod badges;
 mod external;
 mod local;
+mod plans;
 
+pub(crate) use badges::*;
 pub(crate) use external::replace_external_continue_watching_json;
 pub(crate) use local::*;
+pub(crate) use plans::*;
 
 pub(crate) fn continue_watching_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
