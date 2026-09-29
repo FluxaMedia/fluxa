@@ -197,6 +197,8 @@ pub(crate) fn trakt_ids_from_content_id_json(raw_id: &str) -> Option<String> {
         ids.insert("tvdb".to_string(), json!(tvdb));
     } else if let Some(trakt) = prefix_number("trakt:") {
         ids.insert("trakt".to_string(), json!(trakt));
+    } else if let Some(slug) = raw_id.strip_prefix("slug:").filter(|slug| !slug.is_empty()) {
+        ids.insert("slug".to_string(), json!(slug));
     } else if let Some(tmdb) = raw_id
         .split(':')
         .next()
@@ -389,9 +391,11 @@ pub(crate) fn trakt_id_from_source(source: &Value) -> Option<String> {
         .filter(|s| !s.is_empty())
         .map(str::to_string)
         .or_else(|| {
-            ids.get("tmdb")
-                .and_then(Value::as_i64)
-                .map(|n| format!("tmdb:{n}"))
+            ["tmdb", "tvdb", "trakt"].iter().find_map(|key| {
+                ids.get(*key)
+                    .and_then(Value::as_i64)
+                    .map(|n| format!("{key}:{n}"))
+            })
         })
 }
 

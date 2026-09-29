@@ -306,3 +306,17 @@ fn trakt_activity_diff_forces_full_when_nothing_cached_yet() {
     assert_eq!(result["playbackChanged"], true);
     assert_eq!(result["watchedShowsChanged"], true);
 }
+
+#[test]
+fn items_without_imdb_or_tmdb_keep_their_tvdb_id() {
+    let source = json!({"ids": {"tvdb": 81189, "trakt": 1}});
+    assert_eq!(trakt_id_from_source(&source).as_deref(), Some("tvdb:81189"));
+}
+
+#[test]
+fn slug_ids_resolve_on_write() {
+    let ids: Value =
+        serde_json::from_str(&trakt_ids_from_content_id_json("slug:breaking-bad").unwrap())
+            .unwrap();
+    assert_eq!(ids["slug"], "breaking-bad");
+}
