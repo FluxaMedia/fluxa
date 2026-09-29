@@ -392,11 +392,7 @@ pub(super) fn custom_url(context: &egui::Context, card: &HomeCard) -> Option<Str
     let overlays = current(context)?;
     let template = overlays.template.as_deref()?;
     let id = card.id.as_deref()?;
-    let shape = if landscape() {
-        "landscape"
-    } else {
-        "poster"
-    };
+    let shape = if landscape() { "landscape" } else { "poster" };
     URLS.with_borrow_mut(|(cached, urls)| {
         if cached != template {
             *cached = template.to_owned();

@@ -94,7 +94,7 @@ pub(crate) fn accent_from_value(value: &serde_json::Value) -> Option<Color32> {
     ))
 }
 
-fn accent_is_neutral(assets: &impl HomeAssets) -> bool {
+pub(crate) fn accent_is_neutral(assets: &impl HomeAssets) -> bool {
     assets.accent_color().is_none_or(|accent| {
         let [r, g, b, _] = accent.to_array();
         r.max(g).max(b) - r.min(g).min(b) < 24
@@ -149,14 +149,7 @@ pub(crate) fn draw_loading_screen(
     let alpha = (0.72 + 0.28 * breathe) * 255.0;
     let mark_size = 64.0 * unit;
     let center = screen.center() - Vec2::new(0.0, 24.0 * unit);
-    components::brand_lockup(
-        painter,
-        center,
-        mark_size,
-        52.0 * unit,
-        alpha as u8,
-        assets,
-    );
+    components::brand_lockup(painter, center, mark_size, 52.0 * unit, alpha as u8, assets);
     let radius = 12.0 * unit;
     let spinner_center = center + Vec2::new(0.0, mark_size * 0.5 + 44.0 * unit);
     let stroke = 3.0 * unit;
@@ -201,7 +194,10 @@ pub(crate) fn paint_hero_scrim(
     let scrim = background.gamma_multiply(0.92);
     paint_vertical_gradient(
         painter,
-        Rect::from_min_max(Pos2::new(rect.left(), fade_from), Pos2::new(rect.right(), dark_at)),
+        Rect::from_min_max(
+            Pos2::new(rect.left(), fade_from),
+            Pos2::new(rect.right(), dark_at),
+        ),
         Color32::TRANSPARENT,
         scrim,
     );

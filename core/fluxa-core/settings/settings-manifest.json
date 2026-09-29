@@ -723,6 +723,13 @@
       "category": "appearance"
     },
     {
+      "key": "liquidGlass",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "navFloating",
       "type": "boolean",
       "default": true,

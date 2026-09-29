@@ -12,6 +12,7 @@ use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
 pub mod egui_wgpu_backend;
+pub mod glass;
 pub mod platform;
 pub mod style;
 pub mod svg_icons;

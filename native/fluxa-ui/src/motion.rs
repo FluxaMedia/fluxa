@@ -8,7 +8,11 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
     let (last, progress) = context
         .data(|data| data.get_temp::<(u64, f32)>(state))
         .unwrap_or((key, 1.0));
-    let linear = if last == key { (progress + dt / PAGE_SECONDS).min(1.0) } else { 0.0 };
+    let linear = if last == key {
+        (progress + dt / PAGE_SECONDS).min(1.0)
+    } else {
+        0.0
+    };
     context.data_mut(|data| data.insert_temp(state, (key, linear)));
     if linear >= 1.0 {
         return linear;
@@ -30,7 +34,9 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
             for index in 0..end.0 {
                 list.mutate_shape(egui::layers::ShapeIdx(index), |clipped| {
                     let alpha = alpha;
-                    adjust_colors(&mut clipped.shape, move |color| *color = color.gamma_multiply(alpha));
+                    adjust_colors(&mut clipped.shape, move |color| {
+                        *color = color.gamma_multiply(alpha)
+                    });
                 });
             }
         }
@@ -53,8 +59,14 @@ pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl 
                         .is_some_and(|pos| pos.distance(origin) < 12.0)
             })
     });
-    let id = Id::new(("fluxa-press", rect.min.x as i32, rect.min.y as i32, layer.id));
-    let t = context.animate_bool_with_time_and_easing(id, held, 0.14, egui::emath::easing::cubic_out);
+    let id = Id::new((
+        "fluxa-press",
+        rect.min.x as i32,
+        rect.min.y as i32,
+        layer.id,
+    ));
+    let t =
+        context.animate_bool_with_time_and_easing(id, held, 0.14, egui::emath::easing::cubic_out);
     if t <= 0.0 {
         return;
     }

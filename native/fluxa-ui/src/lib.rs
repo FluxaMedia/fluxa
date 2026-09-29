@@ -37,13 +37,14 @@ pub use nodes::*;
 use paint::*;
 
 pub use calendar::draw_calendar;
-pub use motion::page_transition;
-pub use components::{is_text_node, set_input_caret, 
+pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, action_menu_layout, draw_action_menu,
+    Glass, is_text_node, set_input_caret, set_liquid_glass,
 };
+pub use motion::page_transition;
 pub use poster_overlay::{
-    Enrichment, Personal, PersonalIndex, PosterOverlays, set_poster_enrichment, set_poster_landscape,
-    set_poster_overlays, set_poster_personal, set_rating_logos,
+    Enrichment, Personal, PersonalIndex, PosterOverlays, set_poster_enrichment,
+    set_poster_landscape, set_poster_overlays, set_poster_personal, set_rating_logos,
 };
 
 pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};
@@ -59,8 +60,9 @@ pub use profiles::{
 use settings::settings_card_height;
 pub use settings::{
     ACCOUNT_PROVIDERS, AccountPrompt, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
-    SettingsSection, draw_settings, option_label, poster_field, settings_model_from_core_snapshot,
-    settings_row_by_index, settings_row_label,
+    SettingsSection, account_source, account_source_state, addon_action, addon_transport_url,
+    category_pages, draw_settings, option_label, poster_field, settings_model_from_core_snapshot,
+    settings_page_for_node, settings_row_by_index, settings_row_label,
 };
 
 pub fn localized(key: &str, language: &str) -> String {

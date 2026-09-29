@@ -383,7 +383,7 @@ impl UiMetrics {
             ),
             calendar_grid_gap_mobile: common_dp("calendarGridGapMobile", 5.0),
             calendar_grid_gap: common_dp("calendarGridGap", 8.0),
-            calendar_cell_height_mobile: common_dp("calendarCellHeightMobile", 76.0),
+            calendar_cell_height_mobile: common_dp("calendarCellHeightMobile", 58.0),
             calendar_cell_height_desktop: common_dp("calendarCellHeightDesktop", 96.0),
             calendar_cell_height_tv: common_dp("calendarCellHeightTv", 112.0),
             calendar_cell_radius: common_dp("calendarCellRadius", 9.0),
@@ -496,8 +496,8 @@ impl UiMetrics {
         } else {
             self.page_padding
         };
-        let nav_width = ["Home", "Library", "Discover", "Calendar"]
-            .into_iter()
+        let nav_width = crate::navigation::nav_labels()
+            .iter()
             .map(|label| self.navigation_item_width(label, tv))
             .sum::<f32>();
         (if compact {
