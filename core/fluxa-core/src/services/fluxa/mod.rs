@@ -1,3 +1,5 @@
+mod routes;
+pub(crate) use routes::*;
 mod apply_pull;
 mod documents;
 mod profiles;

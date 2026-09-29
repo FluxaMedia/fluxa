@@ -8,8 +8,8 @@ use crate::services::{
 };
 use crate::{
     accounts::routes::*, addons::routes::*, catalog::routes::*, headless_engine::routes::*,
-    library::routes::*, player::routes::*, profile::routes::*, services::provider_routes::*,
-    settings::routes::*,
+    library::routes::*, player::routes::*, profile::routes::*, services::fluxa::route_fluxa_sync,
+    services::provider_routes::*, settings::routes::*,
 };
 
 use crate::{app_state, headless_engine, player};

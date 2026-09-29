@@ -3,6 +3,7 @@ use serde_json::{Map, Value, json};
 use simkl::*;
 
 pub(crate) mod anilist;
+pub(crate) mod fluxa;
 pub(crate) mod mdblist;
 pub(crate) mod nuvio;
 pub(crate) mod publicmetadb;

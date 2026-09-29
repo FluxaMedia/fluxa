@@ -662,7 +662,7 @@ mod tests {
     const SOURCES: &[&str] = &[
         include_str!("../accounts/routes/device_auth.rs"),
         include_str!("../accounts/routes/external_sync.rs"),
-        include_str!("../accounts/routes/fluxa_sync.rs"),
+        include_str!("../services/fluxa/routes.rs"),
         include_str!("../addons/routes/discovery.rs"),
         include_str!("../addons/routes/plan.rs"),
         include_str!("../addons/routes/plugins.rs"),
