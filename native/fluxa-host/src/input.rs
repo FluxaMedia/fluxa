@@ -564,6 +564,9 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
             if let Some(index) = fluxa_ui::poster_field(node) {
                 state.settings.poster_fields[index] = value.to_owned();
             }
+            if let Some(index) = fluxa_ui::server_input(node) {
+                state.settings.server_fields[index] = value.to_owned();
+            }
         }
     }
 }

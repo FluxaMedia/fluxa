@@ -11,8 +11,8 @@ use std::{
 mod calendar;
 mod components;
 mod detail;
-mod emoji;
 mod discover;
+mod emoji;
 pub mod fonts;
 mod home;
 mod layout;
@@ -38,8 +38,8 @@ use paint::*;
 
 pub use calendar::draw_calendar;
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, action_menu_layout, draw_action_menu,
-    Glass, is_text_node, set_input_caret, set_liquid_glass,
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, Glass, action_menu_layout,
+    draw_action_menu, is_text_node, set_input_caret, set_liquid_glass,
 };
 pub use motion::page_transition;
 pub use poster_overlay::{
@@ -51,7 +51,8 @@ pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw
 pub use discover::draw_discover;
 pub use library::draw_library;
 pub use player::{
-    PlayerModel, PlayerSource, content_warning_duration, draw_player, format_time, torrent_status_lines,
+    PlayerModel, PlayerSource, content_warning_duration, draw_player, format_time,
+    torrent_status_lines,
 };
 pub use profiles::{
     PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft, ProfileEntry,
@@ -61,8 +62,9 @@ use settings::settings_card_height;
 pub use settings::{
     ACCOUNT_PROVIDERS, AccountPrompt, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
     SettingsSection, account_source, account_source_state, addon_action, addon_transport_url,
-    category_pages, draw_settings, option_label, poster_field, settings_model_from_core_snapshot,
-    settings_page_for_node, settings_row_by_index, settings_row_label,
+    category_pages, draw_settings, option_label, poster_field, server_index, server_input,
+    settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
+    settings_row_label,
 };
 
 pub fn localized(key: &str, language: &str) -> String {

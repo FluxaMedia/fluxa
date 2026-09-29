@@ -302,6 +302,9 @@ enum NativeAction {
     AccountToggle {
         provider: String,
     },
+    MediaServer {
+        node: u64,
+    },
     OauthCallback {
         url: String,
     },
@@ -424,6 +427,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     let plugin_url = std::mem::take(&mut state.settings.plugin_url);
     let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
+    let server_fields = std::mem::take(&mut state.settings.server_fields);
     state.settings = projection.settings;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.section_open = section_open;
@@ -431,6 +435,8 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.settings.addon_url = addon_url;
     state.settings.plugin_url = plugin_url;
     state.settings.search = search;
+    state.settings.server_fields = server_fields;
+    accounts::refresh_servers(state);
     for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {
         if !typed.is_empty() {
             *field = typed;

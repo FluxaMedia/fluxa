@@ -113,6 +113,18 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_SETTINGS_ADDON_URL => fluxa_ui::localized("settings.addon_url", "en"),
         fluxa_ui::NODE_SETTINGS_SEARCH => fluxa_ui::localized("settings.search_placeholder", "en"),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => fluxa_ui::localized("settings.plugin_url", "en"),
+        fluxa_ui::NODE_SETTINGS_SERVER_ADDRESS => {
+            fluxa_ui::localized("settings.server_address", "en")
+        }
+        fluxa_ui::NODE_SETTINGS_SERVER_USERNAME => {
+            fluxa_ui::localized("settings.server_username", "en")
+        }
+        fluxa_ui::NODE_SETTINGS_SERVER_PASSWORD => {
+            fluxa_ui::localized("settings.server_password", "en")
+        }
+        fluxa_ui::NODE_SETTINGS_SERVER_JELLYFIN => "Jellyfin".to_owned(),
+        fluxa_ui::NODE_SETTINGS_SERVER_EMBY => "Emby".to_owned(),
+        fluxa_ui::NODE_SETTINGS_SERVER_PLEX => "Plex".to_owned(),
         id if fluxa_ui::poster_field(id).is_some() => fluxa_ui::poster_field(id)
             .map(|index| fluxa_ui::localized(fluxa_ui::POSTER_FIELDS[index].label, "en"))
             .unwrap_or_default(),
@@ -373,6 +385,7 @@ pub(super) fn rebuild_ui_from_layout(
                     || id == fluxa_ui::NODE_SETTINGS_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
                     || fluxa_ui::poster_field(id).is_some()
+                    || fluxa_ui::server_input(id).is_some()
                 {
                     UiNodeKind::Input
                 } else {

@@ -659,9 +659,14 @@ pub(super) fn library_row(
     let inset = metrics.control_gap;
     let thumb = Rect::from_min_size(
         rect.min + Vec2::splat(inset),
-        Vec2::new((rect.height() - inset * 2.0) * 2.0 / 3.0, rect.height() - inset * 2.0),
+        Vec2::new(
+            (rect.height() - inset * 2.0) * 2.0 / 3.0,
+            rect.height() - inset * 2.0,
+        ),
     );
-    poster_card_body(painter, thumb, card, viewport, metrics, assets, false, false);
+    poster_card_body(
+        painter, thumb, card, viewport, metrics, assets, false, false,
+    );
     let text_x = thumb.right() + inset * 1.5;
     let text_width = rect.right() - text_x - inset;
     let title_size = metrics.screen_card_title_size + 2.0;
@@ -689,7 +694,10 @@ pub(super) fn library_row(
         );
         painter.rect_filled(bar, 2.0, Color32::from_white_alpha(40));
         painter.rect_filled(
-            Rect::from_min_size(bar.min, Vec2::new(bar.width() * card.progress.clamp(0.0, 1.0), bar.height())),
+            Rect::from_min_size(
+                bar.min,
+                Vec2::new(bar.width() * card.progress.clamp(0.0, 1.0), bar.height()),
+            ),
             2.0,
             metrics.accent,
         );
@@ -1086,7 +1094,19 @@ pub(super) fn dropdown_placeholder(
     width: f32,
     metrics: UiMetrics,
 ) -> Response {
-    dropdown_inner(ui, id, "", placeholder, &[], width, width, false, false, metrics).0
+    dropdown_inner(
+        ui,
+        id,
+        "",
+        placeholder,
+        &[],
+        width,
+        width,
+        false,
+        false,
+        metrics,
+    )
+    .0
 }
 
 fn dropdown_inner(
@@ -1279,7 +1299,11 @@ pub(super) fn choice_field(
             if let Some(slot) = slot {
                 backdrop.set(
                     slot,
-                    glass_shape(ui.min_rect().expand(5.0), 12.0, Color32::from_rgb(24, 24, 24)),
+                    glass_shape(
+                        ui.min_rect().expand(5.0),
+                        12.0,
+                        Color32::from_rgb(24, 24, 24),
+                    ),
                 );
             }
         });
@@ -1774,6 +1798,7 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_ADDON_URL
             | super::NODE_SETTINGS_PLUGIN_URL
     ) || super::poster_field(node).is_some()
+        || super::server_input(node).is_some()
 }
 
 static LIQUID_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
@@ -1879,7 +1904,12 @@ pub(super) fn stream_row(
         painter.galley(pos, addon, Color32::WHITE);
     }
     if let Some(detail) = detail {
-        crate::emoji::paint(&painter, origin + Vec2::new(0.0, name_height + 8.0), detail, assets);
+        crate::emoji::paint(
+            &painter,
+            origin + Vec2::new(0.0, name_height + 8.0),
+            detail,
+            assets,
+        );
     }
     response
 }

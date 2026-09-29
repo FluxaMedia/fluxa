@@ -102,6 +102,15 @@ pub(super) fn native_action_for_node(
                 provider: (*provider).to_owned(),
             });
         }
+        if matches!(
+            node,
+            fluxa_ui::NODE_SETTINGS_SERVER_JELLYFIN
+                | fluxa_ui::NODE_SETTINGS_SERVER_EMBY
+                | fluxa_ui::NODE_SETTINGS_SERVER_PLEX
+        ) || fluxa_ui::server_index(node).is_some()
+        {
+            return Some(NativeAction::MediaServer { node });
+        }
         if let Some(index) = fluxa_ui::settings_page_for_node(node) {
             return Some(NativeAction::SettingsSection { index });
         }
@@ -360,6 +369,9 @@ pub(super) fn edit_text(
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
             &mut state.settings.plugin_url
         }
+        _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
+            &mut state.settings.server_fields[fluxa_ui::server_input(node).unwrap_or_default()]
+        }
         _ if route == Route::Settings && fluxa_ui::poster_field(node).is_some() => {
             &mut state.settings.poster_fields[fluxa_ui::poster_field(node).unwrap_or_default()]
         }
@@ -390,6 +402,9 @@ pub(super) fn focused_text(state: &RendererState) -> Option<String> {
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
             state.settings.plugin_url.clone()
+        }
+        _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
+            state.settings.server_fields[fluxa_ui::server_input(node)?].clone()
         }
         _ if route == Route::Settings => {
             state.settings.poster_fields[fluxa_ui::poster_field(node)?].clone()
@@ -777,6 +792,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         }
         NativeAction::SettingsSection { .. }
         | NativeAction::AccountToggle { .. }
+        | NativeAction::MediaServer { .. }
         | NativeAction::OauthCallback { .. } => return None,
     };
     Some(commands)
@@ -794,10 +810,15 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let mut unhandled = Vec::new();
     let mut open_profiles = false;
     let mut toggles = Vec::new();
+    let mut servers = Vec::new();
     let mut callbacks = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
         if let NativeAction::AccountToggle { provider } = action {
             toggles.push(provider);
+            continue;
+        }
+        if let NativeAction::MediaServer { node } = action {
+            servers.push(node);
             continue;
         }
         if let NativeAction::OauthCallback { url } = action {
@@ -839,6 +860,9 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     state.pending_native_actions = unhandled;
     for provider in toggles {
         accounts::toggle(state, &provider);
+    }
+    for node in servers {
+        accounts::media_server(state, node);
     }
     for url in callbacks {
         accounts::finish_redirect(state, &url);

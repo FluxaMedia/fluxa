@@ -714,3 +714,192 @@ fn draw_card(
     }
     frame.bottom()
 }
+
+pub const SERVER_INPUTS: [u64; 3] = [
+    NODE_SETTINGS_SERVER_ADDRESS,
+    NODE_SETTINGS_SERVER_USERNAME,
+    NODE_SETTINGS_SERVER_PASSWORD,
+];
+
+pub fn server_input(node: u64) -> Option<usize> {
+    SERVER_INPUTS.iter().position(|input| *input == node)
+}
+
+pub fn server_index(node: u64) -> Option<usize> {
+    let offset = node.checked_sub(NODE_SETTINGS_SERVER_BASE)?;
+    (offset < 50).then_some(offset as usize)
+}
+
+fn server_card<'a>(server: &'a serde_json::Value, index: usize, language: &str) -> Card<'a> {
+    let kind = text(server, "kind").unwrap_or_default();
+    let libraries = server
+        .get("catalogs")
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
+    Card {
+        title: text(server, "name").unwrap_or("Server"),
+        version: None,
+        subtitle: text(server, "baseUrl").map(host).unwrap_or_default(),
+        description: None,
+        logo: None,
+        icon: Some("Server"),
+        chips: vec![
+            capitalize(kind),
+            localized("settings.server_libraries", language).replace("%s", &libraries.to_string()),
+        ],
+        leading: Vec::new(),
+        trailing: vec![(NODE_SETTINGS_SERVER_BASE + index as u64, "Delete", true)],
+    }
+}
+
+fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Color32)> {
+    let prompt = settings
+        .account_auth
+        .as_ref()
+        .filter(|prompt| matches!(prompt.provider.as_str(), "plex" | "jellyfin" | "emby"))?;
+    if prompt.failed {
+        return Some((localized("settings.server_failed", language), ERROR));
+    }
+    Some((
+        format!(
+            "{} {}  ·  {}",
+            localized("trakt.device.enter_code", language),
+            prompt.code,
+            prompt.url
+        ),
+        Color32::from_white_alpha(200),
+    ))
+}
+
+pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
+    let cards: f32 = settings
+        .media_servers
+        .iter()
+        .enumerate()
+        .map(|(index, server)| server_card(server, index, language).height() + CARD_GAP)
+        .sum();
+    let input = metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
+    input * 3.0
+        + metrics.settings_extended_action_height
+        + 24.0
+        + APPEARANCE_GROUP_HEADING_HEIGHT
+        + 32.0
+        + if settings.media_servers.is_empty() {
+            56.0
+        } else {
+            0.0
+        }
+        + cards
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn draw_servers(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    assets: &mut impl HomeAssets,
+    language: &str,
+    rect: Rect,
+    top: f32,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let mut y = top;
+    let hints = [
+        "settings.server_address",
+        "settings.server_username",
+        "settings.server_password",
+    ];
+    for (index, node) in SERVER_INPUTS.iter().enumerate() {
+        let field = Rect::from_min_size(
+            Pos2::new(rect.left(), y),
+            Vec2::new(rect.width(), metrics.settings_extended_input_height),
+        );
+        let mut value = settings.server_fields[index].clone();
+        egui::Area::new(Id::new(("fluxa-server-input", *node)))
+            .constrain(false)
+            .fixed_pos(field.min)
+            .order(egui::Order::Foreground)
+            .show(context, |ui| {
+                let response = components::text_input(
+                    ui,
+                    &mut value,
+                    &localized(hints[index], language),
+                    field.width(),
+                    index == 2,
+                );
+                layout.focusable.push((*node, response.rect));
+                if response.changed() {
+                    layout.text_input = Some(value.clone());
+                    layout.text_input_node = Some(*node);
+                }
+            });
+        y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
+    }
+    let gap = metrics.settings_extended_action_gap;
+    let width = metrics
+        .settings_extended_addon_action_width
+        .min((rect.width() - gap * 2.0) / 3.0);
+    let buttons = [
+        (
+            NODE_SETTINGS_SERVER_JELLYFIN,
+            "Jellyfin",
+            components::ButtonKind::Primary,
+        ),
+        (
+            NODE_SETTINGS_SERVER_EMBY,
+            "Emby",
+            components::ButtonKind::Primary,
+        ),
+        (
+            NODE_SETTINGS_SERVER_PLEX,
+            "Plex",
+            components::ButtonKind::Secondary,
+        ),
+    ];
+    for (index, (node, label, kind)) in buttons.iter().enumerate() {
+        let button = Rect::from_min_size(
+            Pos2::new(rect.left() + index as f32 * (width + gap), y),
+            Vec2::new(width, metrics.settings_extended_action_height),
+        );
+        layout.focusable.push((*node, button));
+        egui::Area::new(Id::new(("fluxa-server-add", *node)))
+            .constrain(false)
+            .fixed_pos(button.min)
+            .order(egui::Order::Foreground)
+            .show(context, |ui| {
+                if components::button(ui, label, width, button.height(), *kind, metrics).clicked() {
+                    layout.activated = Some(*node);
+                }
+            });
+    }
+    y += metrics.settings_extended_action_height + 24.0;
+    y = heading(
+        &painter,
+        rect,
+        y,
+        format!(
+            "{}  ·  {}",
+            localized("settings.server_connected", language),
+            settings.media_servers.len()
+        ),
+    );
+    if let Some((message, color)) = server_notice(settings, language) {
+        notice(&painter, rect, y, &message, color);
+    }
+    y += 32.0;
+    if settings.media_servers.is_empty() {
+        notice(
+            &painter,
+            rect,
+            y + 8.0,
+            &localized("settings.server_empty", language),
+            Color32::from_white_alpha(140),
+        );
+        y += 56.0;
+    }
+    for (index, server) in settings.media_servers.iter().enumerate() {
+        let card = server_card(server, index, language);
+        y = draw_card(context, &painter, &card, assets, rect, y, layout) + CARD_GAP;
+    }
+}

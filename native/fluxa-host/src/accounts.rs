@@ -95,6 +95,94 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     card_menu::open_disconnect(state, provider);
 }
 
+pub(crate) fn refresh_servers(state: &mut RendererState) {
+    state.settings.media_servers = state
+        .session
+        .as_ref()
+        .map(|session| fluxa_effects::media_servers(session.storage()))
+        .unwrap_or_default();
+}
+
+fn start_flow(state: &mut RendererState, provider: &str, command: Value) {
+    state.settings.account_auth = None;
+    let generation = generation(&auth_state(state));
+    dispatch(state, command);
+    state.account_auth = Some(AccountAuth {
+        provider: provider.to_owned(),
+        device: None,
+        generation,
+        next_poll: None,
+        redirect: None,
+    });
+}
+
+pub(crate) fn media_server(state: &mut RendererState, node: u64) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    if let Some(index) = fluxa_ui::server_index(node) {
+        let key = state
+            .settings
+            .media_servers
+            .get(index)
+            .and_then(|server| server.get("key"))
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned);
+        if let Some(key) = key
+            && let Err(error) = fluxa_effects::remove_media_server(session.storage(), &key)
+        {
+            host_log(format!("Media server removal failed: {error}"));
+        }
+        refresh_servers(state);
+        reload_addons(state);
+        return;
+    }
+    if node == fluxa_ui::NODE_SETTINGS_SERVER_PLEX {
+        start_flow(
+            state,
+            "plex",
+            json!({"type": "authFlowRequested", "provider": "plex", "mode": "device"}),
+        );
+        return;
+    }
+    let provider = if node == fluxa_ui::NODE_SETTINGS_SERVER_EMBY {
+        "emby"
+    } else {
+        "jellyfin"
+    };
+    let [address, username, password] = state.settings.server_fields.clone();
+    if address.trim().is_empty() {
+        return;
+    }
+    let credentials = json!({
+        "baseUrl": address.trim(),
+        "username": username.trim(),
+        "password": password,
+    });
+    let command = json!({
+        "type": "authExchangeRequested",
+        "provider": provider,
+        "code": credentials.to_string(),
+        "codeVerifier": "",
+        "profile": session.active_profile(),
+    });
+    start_flow(state, provider, command);
+}
+
+fn reload_addons(state: &RendererState) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    dispatch(
+        state,
+        json!({
+            "type": "addonsRefreshRequested",
+            "profile": session.active_profile(),
+            "forceRefresh": true,
+        }),
+    );
+}
+
 pub(crate) fn disconnect(state: &mut RendererState, provider: &str) {
     let Some(session) = state.session.as_ref() else {
         return;
@@ -196,8 +284,14 @@ pub(crate) fn poll(state: &mut RendererState) {
             .unwrap_or(5);
         match result.get("state").and_then(Value::as_str) {
             Some("success") => {
+                let provider = flow.provider.clone();
                 state.account_auth = None;
                 state.settings.account_auth = None;
+                if matches!(provider.as_str(), "plex" | "jellyfin" | "emby") {
+                    state.settings.server_fields = Default::default();
+                    refresh_servers(state);
+                    reload_addons(state);
+                }
                 if let Some(session) = state.session.as_ref() {
                     if let Some(profile) = result.get("profile") {
                         profiles::save_profile(session.storage(), profile);

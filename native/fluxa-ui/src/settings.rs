@@ -1,7 +1,7 @@
 use super::*;
 
 mod addons;
-pub use addons::{addon_action, addon_transport_url};
+pub use addons::{addon_action, addon_transport_url, server_index, server_input};
 
 #[derive(Clone, Debug)]
 pub struct SettingsRow {
@@ -808,7 +808,7 @@ const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
 ];
 const DOWNLOADS_GROUPS: [(usize, &str); 1] = [(5, "settings.group.downloads")];
 const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 13] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 14] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -883,6 +883,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 13] = [
         title: "Plugins",
         category: "Content",
         description: "Scraper repositories and plugins",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
+        title: "Servers",
+        category: "Servers",
+        description: "Jellyfin, Emby and Plex libraries",
         rows: &EMPTY_SETTINGS,
         groups: &[],
     },
@@ -1257,6 +1264,10 @@ pub(super) fn settings_card_height(
             APPEARANCE_PAGE_HEADER_HEIGHT
                 + addons::plugins_height(settings, metrics, settings.language())
         }
+        "Servers" => {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+                + addons::servers_height(settings, metrics, settings.language())
+        }
         _ => groups_height(&groups, rows_metrics),
     };
     base.max(content_height + links_height(viewport, settings))
@@ -1278,6 +1289,8 @@ pub struct SettingsModel {
     pub section_open: bool,
     pub page_open: bool,
     pub account_auth: Option<AccountPrompt>,
+    pub media_servers: Vec<serde_json::Value>,
+    pub server_fields: [String; 3],
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1428,6 +1441,8 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         }),
         search: String::new(),
         account_auth: None,
+        media_servers: Vec::new(),
+        server_fields: Default::default(),
     }
 }
 
@@ -1985,6 +2000,21 @@ fn draw_settings_extended_section(
             layout,
         ),
         "Plugins" => addons::draw_plugins(
+            context,
+            settings,
+            assets,
+            language,
+            rect,
+            rect.top()
+                + if viewport.is_compact() {
+                    8.0
+                } else {
+                    APPEARANCE_PAGE_HEADER_HEIGHT
+                },
+            metrics,
+            layout,
+        ),
+        "Servers" => addons::draw_servers(
             context,
             settings,
             assets,
