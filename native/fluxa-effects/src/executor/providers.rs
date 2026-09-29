@@ -604,7 +604,8 @@ impl EffectExecutor {
         };
         credentials["year"] = json!(year);
         credentials["month"] = json!(month);
-        let Some(plan) = core_value(&format!("{provider}CalendarPlan"), credentials) else {
+        credentials["provider"] = json!(provider);
+        let Some(plan) = core_value("providerCalendarPlan", credentials) else {
             return json!([]);
         };
         let cache_key = format!(

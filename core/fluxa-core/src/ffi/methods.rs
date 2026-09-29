@@ -414,6 +414,7 @@ static METHODS: &[(&str, Router)] = &[
     ("providerAuthorizeUrl", route_provider_library),
     ("providerAvailabilityPlan", route_headless_adapter_plan),
     ("providerCalendarItems", route_external_sync_trakt),
+    ("providerCalendarPlan", route_provider_library),
     ("providerLibraryRequests", route_provider_library),
     ("providerLibrarySnapshot", route_provider_library),
     ("providerPaginationPlan", route_external_sync_trakt),

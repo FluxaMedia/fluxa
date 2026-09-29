@@ -5,6 +5,7 @@ pub(crate) struct Provider {
     pub token_field: &'static str,
     pub refresh_fields: Option<(&'static str, &'static str)>,
     pub capabilities: &'static [&'static str],
+    pub calendar_plan: Option<fn(&str) -> Option<String>>,
     pub library_requests: Option<fn(&Value) -> Option<Vec<Value>>>,
 }
 
@@ -21,6 +22,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "watchlistWrite",
             "calendar",
         ],
+        calendar_plan: Some(super::provider::trakt::trakt_calendar_plan_json),
         library_requests: Some(super::provider::trakt::library_requests),
     },
     Provider {
@@ -36,6 +38,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "watchlistWrite",
             "calendar",
         ],
+        calendar_plan: None,
         library_requests: None,
     },
     Provider {
@@ -50,6 +53,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "watchlistWrite",
             "calendar",
         ],
+        calendar_plan: Some(super::provider::mdblist::mdblist_calendar_plan_json),
         library_requests: Some(super::provider::mdblist::library_requests),
     },
     Provider {
@@ -63,6 +67,7 @@ pub(crate) const PROVIDERS: &[Provider] = &[
             "watchlistWrite",
             "calendar",
         ],
+        calendar_plan: Some(super::provider::anilist::anilist_calendar_plan_json),
         library_requests: Some(super::provider::anilist::library_requests),
     },
 ];

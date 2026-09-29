@@ -407,6 +407,11 @@ fn watched_map(items: &Value) -> Value {
     )
 }
 
+pub(crate) fn provider_calendar_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    (registry::provider(str_field(&args, "provider"))?.calendar_plan?)(args_json)
+}
+
 pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let responses = args.get("responses").cloned().unwrap_or(json!({}));
