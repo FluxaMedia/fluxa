@@ -9,7 +9,10 @@ use crate::catalog;
 use serde_json::{Map, Value, json};
 
 const TRAKT_API: &str = "https://api.trakt.tv";
-const SIMKL_API: &str = "https://api.simkl.com";
+pub(super) const SIMKL_SCOPE: &str = "media:read media:write";
+pub(super) const SIMKL_API: &str = "https://api.simkl.com";
+const SIMKL_APP_NAME: &str = "fluxa";
+const SIMKL_USER_AGENT: &str = concat!("fluxa/", env!("CARGO_PKG_VERSION"));
 
 fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("")
@@ -27,6 +30,7 @@ fn headers(provider: &str, args: &Value) -> Value {
         }
         "simkl" => {
             headers.insert("simkl-api-key".into(), json!(client_id));
+            headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
         }
         _ => {}
     }
@@ -42,11 +46,25 @@ fn with_api_key(url: &str, args: &Value) -> String {
     format!("{url}{separator}apikey={key}")
 }
 
-fn request(provider: &str, args: &Value, method: &str, url: String, body: Value) -> Value {
-    let url = if provider == "mdblist" {
-        with_api_key(&url, args)
-    } else {
-        url
+fn with_simkl_app(url: &str) -> String {
+    let separator = if url.contains('?') { '&' } else { '?' };
+    format!(
+        "{url}{separator}app-name={SIMKL_APP_NAME}&app-version={}",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+pub(super) fn request(
+    provider: &str,
+    args: &Value,
+    method: &str,
+    url: String,
+    body: Value,
+) -> Value {
+    let url = match provider {
+        "mdblist" => with_api_key(&url, args),
+        "simkl" => with_simkl_app(&url),
+        _ => url,
     };
     json!({"method": method, "url": url, "headers": headers(provider, args), "body": body})
 }
@@ -91,19 +109,31 @@ pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
         ("simkl", "start") => request(
             provider,
             &args,
-            "GET",
-            format!("{SIMKL_API}/oauth/pin?client_id={client_id}"),
-            Value::Null,
+            "POST",
+            format!("{SIMKL_API}/oauth2/device"),
+            json!({"client_id": client_id, "scope": SIMKL_SCOPE}),
         ),
         ("simkl", "poll") => request(
             provider,
             &args,
-            "GET",
-            format!(
-                "{SIMKL_API}/oauth/pin/{}?client_id={client_id}",
-                str_field(&args, "code")
-            ),
-            Value::Null,
+            "POST",
+            format!("{SIMKL_API}/oauth2/token"),
+            json!({
+                "grant_type": "urn:ietf:params:oauth:grant-type:device_code",
+                "device_code": str_field(&args, "code"),
+                "client_id": client_id,
+            }),
+        ),
+        ("simkl", "refresh") => request(
+            provider,
+            &args,
+            "POST",
+            format!("{SIMKL_API}/oauth2/token"),
+            json!({
+                "grant_type": "refresh_token",
+                "refresh_token": str_field(&args, "refreshToken"),
+                "client_id": client_id,
+            }),
         ),
         _ => return None,
     };
@@ -120,22 +150,21 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
     let ok = (200..300).contains(&status);
 
     if operation == "start" {
-        let result = str_field(&body, "result");
-        if !ok || (provider == "simkl" && result != "OK") {
+        if !ok {
             return serde_json::to_string(&json!({"state": "error"})).ok();
         }
         let user_code = str_field(&body, "user_code");
-        let device_code = if provider == "simkl" {
-            user_code
-        } else {
-            str_field(&body, "device_code")
-        };
+        let device_code = str_field(&body, "device_code");
         return serde_json::to_string(&json!({
             "state": "pending",
             "device": {
                 "userCode": user_code,
                 "deviceCode": device_code,
-                "verificationUrl": str_field(&body, "verification_url"),
+                "verificationUrl": if provider == "simkl" {
+                    str_field(&body, "verification_uri")
+                } else {
+                    str_field(&body, "verification_url")
+                },
                 "interval": body.get("interval").and_then(Value::as_i64).unwrap_or(5),
                 "expiresAt": now + body.get("expires_in").and_then(Value::as_i64).unwrap_or(600),
             }
@@ -145,7 +174,11 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
 
     let state = match provider {
         "simkl" if ok && body.get("access_token").is_some() => "success",
-        "simkl" if ok => "pending",
+        "simkl" => match str_field(&body, "error") {
+            "authorization_pending" => "pending",
+            "slow_down" => "slow_down",
+            _ => "error",
+        },
         "trakt" if status == 429 => "slow_down",
         "trakt" => crate::accounts::oauth::oauth_response_outcome("trakt", "device_poll", status),
         _ => "error",
@@ -206,19 +239,6 @@ pub(crate) fn provider_library_requests_json(args_json: &str) -> Option<String> 
                 "playback",
                 format!("{TRAKT_API}/sync/playback?extended=full,images"),
             ));
-            requests
-        }
-        "simkl" => {
-            let mut requests = Vec::new();
-            for kind in ["shows", "movies", "anime"] {
-                for status in ["plantowatch", "watching", "completed", "dropped"] {
-                    requests.push(get(
-                        &format!("{status}_{kind}"),
-                        format!("{SIMKL_API}/sync/all-items/{kind}/{status}?extended=full"),
-                    ));
-                }
-            }
-            requests.push(get("playback", format!("{SIMKL_API}/sync/playback")));
             requests
         }
         "mdblist" => vec![
@@ -292,6 +312,7 @@ fn simkl_bucket(responses: &Value, status: &str) -> (String, String) {
                         .iter()
                         .map(|entry| {
                             let mut entry = entry.clone();
+                            entry["anime"] = json!(true);
                             if let Some(show) = entry.get("show").or_else(|| entry.get("anime")) {
                                 entry["show"] = show.clone();
                             }
@@ -394,6 +415,7 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
                 "completed": items("completed"),
                 "watched": parsed(simkl_watched_to_ids_json(&completed_shows, &completed_movies)),
                 "dropped": items("dropped"),
+                "onHold": items("hold"),
                 "continueWatching": continue_watching,
             })
         }
@@ -443,6 +465,9 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
     let post = |url: String, body: Value| request(provider, &args, "POST", url, body);
     let mut requests = Vec::new();
     match str_field(command, "type") {
+        "simklAccount" if provider == "simkl" => {
+            requests.push(post(format!("{SIMKL_API}/users/settings"), json!({})))
+        }
         "toggleWatchlist" => {
             let item = command.get("item")?;
             let id = str_field(item, "id");
@@ -469,6 +494,7 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                     let body = simkl_watchlist_body_json(
                         &json!({
                             "id": id,
+                            "providerIds": item.get("providerIds"),
                             "contentType": content_type(item),
                             "command": if remove { "remove" } else { "add" },
                         })
@@ -511,6 +537,10 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 .flatten()
                 .filter_map(Value::as_str)
                 .any(|id| id.matches(':').count() >= 2 && id != series_id);
+            let rewatch = command
+                .get("rewatch")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
             let suffix = if watched { "" } else { "/remove" };
             match provider {
                 "trakt" => requests.push(post(
@@ -521,10 +551,16 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                     .ok()?,
                 )),
                 "simkl" => requests.push(post(
-                    format!("{SIMKL_API}/sync/history{suffix}"),
+                    format!(
+                        "{SIMKL_API}/sync/history{suffix}{}",
+                        if rewatch && watched { "?allow_rewatch=yes" } else { "" }
+                    ),
                     serde_json::from_str(&simkl_mark_watched_body_json(
                         &json!({
                             "videoIds": video_ids,
+                            "providerIds": command.get("providerIds"),
+                            "rewatch": rewatch && watched,
+                            "rewatchId": command.get("rewatchId"),
                             "meta": {"type": if is_series { "series" } else { "movie" }},
                         })
                         .to_string(),
@@ -567,6 +603,34 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
         .and_then(Value::as_f64)
         .unwrap_or(0.0)
         .clamp(0.0, 100.0);
+    if provider == "simkl" {
+        let mut target = crate::accounts::external_sync::simkl_target(item_id)?;
+        if let Some(ids) = args
+            .get("providerIds")
+            .and_then(crate::accounts::external_sync::simkl_ids_from_provider)
+        {
+            target.ids = ids;
+        }
+        let body = match target
+            .episode
+            .filter(|_| str_field(&args, "metaType") != "movie")
+        {
+            Some(episode) => json!({
+                "show": {"ids": target.ids},
+                "episode": {"season": target.season, "number": episode},
+                "progress": progress,
+            }),
+            None => json!({"movie": {"ids": target.ids}, "progress": progress}),
+        };
+        let plan = request(
+            provider,
+            &args,
+            "POST",
+            format!("{SIMKL_API}/scrobble/{action}"),
+            body,
+        );
+        return serde_json::to_string(&plan).ok();
+    }
     let episode = crate::accounts::external_sync::trakt_episode_locator_json(item_id)
         .and_then(|json| serde_json::from_str::<Value>(&json).ok())
         .filter(|_| str_field(&args, "metaType") != "movie");
@@ -586,13 +650,6 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
             &args,
             "POST",
             format!("{TRAKT_API}/scrobble/{action}"),
-            body,
-        ),
-        "simkl" => request(
-            provider,
-            &args,
-            "POST",
-            format!("{SIMKL_API}/scrobble/{action}"),
             body,
         ),
         "mdblist" => from_mdblist_plan(
@@ -623,15 +680,74 @@ mod tests {
     }
 
     #[test]
-    fn simkl_pin_poll_stays_pending_until_token_arrives() {
+    fn simkl_allow_rewatch_is_sent_only_for_explicit_rewatches() {
+        let request = |command: Value| {
+            value(provider_write_requests_json(
+                &json!({"provider":"simkl","token":"t","clientId":"c","command":command})
+                    .to_string(),
+            ))
+        };
+        let plain = request(json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":true}));
+        assert!(!plain[0]["url"].as_str().unwrap().contains("allow_rewatch"));
+        let rewatch = request(json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":true,"rewatch":true}));
+        assert!(rewatch[0]["url"].as_str().unwrap().contains("allow_rewatch=yes"));
+        let unwatch = request(json!({"type":"markWatched","seriesId":"tt1","videoIds":["tt1"],"watched":false,"rewatch":true}));
+        assert!(!unwatch[0]["url"].as_str().unwrap().contains("allow_rewatch"));
+    }
+
+    #[test]
+    fn simkl_scrobble_uses_anime_ids_directly() {
+        let plan = value(provider_scrobble_request_json(
+            r#"{"provider":"simkl","accessToken":"t","action":"start","itemId":"kitsu:46474:5","metaType":"series","progress":12.5}"#,
+        ));
+        assert_eq!(plan["body"]["show"]["ids"], json!({"kitsu": 46474}));
+        assert_eq!(plan["body"]["episode"], json!({"season": 1, "number": 5}));
+    }
+
+    #[test]
+    fn simkl_device_poll_stays_pending_until_token_arrives() {
         let pending = value(provider_auth_outcome_json(
-            r#"{"provider":"simkl","operation":"poll","status":200,"body":{"result":"KO","message":"Authorization pending"}}"#,
+            r#"{"provider":"simkl","operation":"poll","status":400,"body":{"error":"authorization_pending"}}"#,
         ));
         assert_eq!(pending["state"], "pending");
+        let slow = value(provider_auth_outcome_json(
+            r#"{"provider":"simkl","operation":"poll","status":400,"body":{"error":"slow_down"}}"#,
+        ));
+        assert_eq!(slow["state"], "slow_down");
+        let expired = value(provider_auth_outcome_json(
+            r#"{"provider":"simkl","operation":"poll","status":400,"body":{"error":"expired_token"}}"#,
+        ));
+        assert_eq!(expired["state"], "error");
         let done = value(provider_auth_outcome_json(
-            r#"{"provider":"simkl","operation":"poll","status":200,"body":{"result":"OK","access_token":"tok"}}"#,
+            r#"{"provider":"simkl","operation":"poll","status":200,"nowSeconds":100,"body":{"access_token":"tok","refresh_token":"ref","expires_in":604800}}"#,
         ));
         assert_eq!(done["auth"]["accessToken"], "tok");
+        assert_eq!(done["auth"]["refreshToken"], "ref");
+        assert_eq!(done["auth"]["expiresAt"], 604900);
+    }
+
+    #[test]
+    fn simkl_sign_in_uses_the_v2_endpoints_and_asks_for_write_scope() {
+        let start = value(provider_auth_request_json(
+            r#"{"provider":"simkl","operation":"start","clientId":"cid"}"#,
+        ));
+        assert!(
+            start["url"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://api.simkl.com/oauth2/device")
+        );
+        assert_eq!(start["body"]["scope"], "media:read media:write");
+        let poll = value(provider_auth_request_json(
+            r#"{"provider":"simkl","operation":"poll","clientId":"cid","code":"dev"}"#,
+        ));
+        assert!(poll["url"].as_str().unwrap().contains("/oauth2/token"));
+        assert_eq!(poll["body"]["device_code"], "dev");
+        let refresh = value(provider_auth_request_json(
+            r#"{"provider":"simkl","operation":"refresh","clientId":"cid","refreshToken":"ref"}"#,
+        ));
+        assert_eq!(refresh["body"]["grant_type"], "refresh_token");
+        assert_eq!(refresh["body"]["refresh_token"], "ref");
     }
 
     #[test]
@@ -649,6 +765,21 @@ mod tests {
         assert_eq!(snapshot["completed"][0]["id"], "tt0113277");
         assert_eq!(snapshot["watched"]["tt0113277"], true);
         assert_eq!(snapshot["continueWatching"][0]["id"], "tt0078748");
+    }
+
+    #[test]
+    fn simkl_requests_identify_the_app() {
+        let plan = value(provider_scrobble_request_json(
+            r#"{"provider":"simkl","action":"start","itemId":"tt0078748","metaType":"movie","progress":1}"#,
+        ));
+        let url = plan["url"].as_str().unwrap();
+        assert!(url.contains("app-name=fluxa&app-version="));
+        assert!(
+            plan["headers"]["User-Agent"]
+                .as_str()
+                .unwrap()
+                .starts_with("fluxa/")
+        );
     }
 
     #[test]

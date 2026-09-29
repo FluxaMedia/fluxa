@@ -122,6 +122,7 @@ pub(crate) fn playback_close_plan_json(input: &str) -> Option<String> {
                 })]
             }),
             profile: None,
+            rewatch: false,
         })
     });
     let up_next_action = (watched

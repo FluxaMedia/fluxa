@@ -173,7 +173,6 @@ fn fill_structured_settings(profile: &mut Map<String, Value>) {
             ("traktLastWatchlistCount", "traktLastWatchlistCount"),
             ("malAccessToken", "malAccessToken"),
             ("malRefreshToken", "malRefreshToken"),
-            ("simklAccessToken", "simklAccessToken"),
         ],
     );
     insert_object_from_fields(

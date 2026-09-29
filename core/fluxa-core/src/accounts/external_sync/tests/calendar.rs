@@ -74,3 +74,32 @@ fn simkl_calendar_items_accept_v2_cdn_payloads() {
     assert_eq!(result[0]["episodeNumber"], 10);
     assert_eq!(result[0]["poster"], "https://example.test/poster.jpg");
 }
+
+#[test]
+fn simkl_calendar_keeps_only_library_titles_and_uses_anime_ids() {
+    let request = json!({
+        "provider": "simkl",
+        "shows": {"calendar": [], "metadata": {}},
+        "anime": {
+            "calendar": [
+                {"simkl_id": 7, "date": "2026-10-03T15:30:00Z", "episode": {"episode": 6, "title": "Episode 6"}},
+                {"simkl_id": 8, "date": "2026-10-03T16:00:00Z", "episode": {"episode": 1}}
+            ],
+            "metadata": {
+                "7": {"title": "Frieren", "poster": "ab/abcdef", "ids": {"simkl_id": 7, "mal": "52991", "imdb": "tt22248376"}},
+                "8": {"title": "Other", "ids": {"simkl_id": 8, "mal": "1"}}
+            }
+        },
+        "movies": {"calendar": [], "metadata": {}},
+        "allowedContentIds": ["mal:52991"]
+    });
+    let result: Value =
+        serde_json::from_str(&provider_calendar_items_json(&request.to_string()).unwrap()).unwrap();
+    assert_eq!(result.as_array().unwrap().len(), 1);
+    assert_eq!(result[0]["contentId"], "mal:52991");
+    assert_eq!(result[0]["id"], "mal:52991:1:6");
+    assert_eq!(
+        result[0]["poster"],
+        "https://simkl.in/posters/ab/abcdef_m.jpg"
+    );
+}

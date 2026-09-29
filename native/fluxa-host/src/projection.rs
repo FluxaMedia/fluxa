@@ -151,6 +151,7 @@ fn project(
                 "watching": source.get("continueWatching"),
                 "completed": source.get("completed"),
                 "dropped": source.get("dropped"),
+                "onHold": source.get("onHold"),
                 "favorites": source.get("liked"),
                 "progress": source.get("progress"),
                 "tab": request.library_tab.core_tab_key(),

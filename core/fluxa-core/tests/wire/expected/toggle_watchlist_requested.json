@@ -41,6 +41,7 @@
       "lastWrite": null,
       "lastWriteError": null,
       "liked": null,
+      "onHold": null,
       "pendingPlaybackProgress": null,
       "savedPlaybackProgress": null,
       "watched": null,

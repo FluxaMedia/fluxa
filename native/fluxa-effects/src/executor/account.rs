@@ -570,7 +570,12 @@ impl EffectExecutor {
                 return;
             }
         };
-        let catalog = match session.rpc("get_avatar_catalog").json(&json!({})).send().await {
+        let catalog = match session
+            .rpc("get_avatar_catalog")
+            .json(&json!({}))
+            .send()
+            .await
+        {
             Ok(response) if response.status().is_success() => {
                 response.json::<Value>().await.unwrap_or(Value::Null)
             }

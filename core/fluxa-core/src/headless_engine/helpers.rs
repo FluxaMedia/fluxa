@@ -181,11 +181,14 @@ pub(super) fn should_sync_watched_state(profile: Option<&Value>, meta: Option<&V
     }
     let Some(profile) = profile else { return false };
     let is_guest = profile["isGuest"].as_bool().unwrap_or(false);
-    let has_trakt_token = profile["traktAccessToken"]
-        .as_str()
-        .map(|value| !value.trim().is_empty())
-        .unwrap_or(false);
-    !is_guest || has_trakt_token
+    let has_tracker_token = ["traktAccessToken", "simklAccessToken", "mdblistApiKey"]
+        .iter()
+        .any(|key| {
+            profile[key]
+                .as_str()
+                .is_some_and(|value| !value.trim().is_empty())
+        });
+    !is_guest || has_tracker_token
 }
 
 pub(super) fn upsert_by_key(target: &mut Value, key: &str, value: &str, item: Value) {

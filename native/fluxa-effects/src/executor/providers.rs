@@ -43,6 +43,18 @@ fn http_client() -> Result<Client, String> {
         .map_err(|error| error.to_string())
 }
 
+const SIMKL_ACCOUNT_TTL: i64 = 86_400;
+
+fn find_key<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
+    match value {
+        Value::Object(map) => map
+            .get(key)
+            .or_else(|| map.values().find_map(|inner| find_key(inner, key))),
+        Value::Array(items) => items.iter().find_map(|inner| find_key(inner, key)),
+        _ => None,
+    }
+}
+
 async fn send(client: &Client, plan: &Value) -> Result<(u16, Value), String> {
     let method = Method::from_bytes(str_field(plan, "method").as_bytes())
         .map_err(|error| error.to_string())?;
@@ -212,20 +224,25 @@ impl EffectExecutor {
         profile: Value,
         force: bool,
     ) -> Result<Value, String> {
-        let refresh_token = str_field(&profile, "traktRefreshToken");
+        let (refresh_field, expires_field) = match provider {
+            "trakt" => ("traktRefreshToken", "traktTokenExpiresAt"),
+            "simkl" => ("simklRefreshToken", "simklTokenExpiresAt"),
+            _ => return Ok(profile),
+        };
+        let refresh_token = str_field(&profile, refresh_field);
         let expires_at = profile
-            .get("traktTokenExpiresAt")
+            .get(expires_field)
             .and_then(Value::as_i64)
             .unwrap_or(i64::MAX);
         let due = force || expires_at < chrono_unix_seconds() + 86_400;
-        if provider != "trakt" || refresh_token.is_empty() || !due {
+        if refresh_token.is_empty() || !due {
             return Ok(profile);
         }
         let outcome = self
             .auth_call(provider, "refresh", json!({"refreshToken": refresh_token}))
             .await?;
         if str_field(&outcome, "state") != "success" {
-            return Err("Trakt session expired".to_owned());
+            return Err(format!("{provider} session expired, sign in again"));
         }
         self.merge_auth(
             provider,
@@ -267,6 +284,9 @@ impl EffectExecutor {
         let credentials = self
             .provider_credentials(provider, &profile)
             .ok_or_else(|| format!("{provider} is not connected to the active profile"))?;
+        if provider == "simkl" {
+            return self.read_simkl_library(profile_id, credentials).await;
+        }
         let requests = core_value("providerLibraryRequests", credentials)
             .and_then(|requests| requests.as_array().cloned())
             .ok_or_else(|| "Fluxa Core could not plan the library requests".to_owned())?;
@@ -309,6 +329,168 @@ impl EffectExecutor {
         Ok(snapshot)
     }
 
+    async fn simkl_get(client: &Client, plan: &Value) -> Result<Value, String> {
+        let mut delay = 1;
+        for attempt in 0..4 {
+            let (status, body) = send(client, plan).await?;
+            match status {
+                200..=299 => return Ok(body),
+                401 => return Err("Simkl access was revoked, sign in again".to_owned()),
+                429 | 500 | 502 | 503 if attempt < 3 => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    tokio::time::sleep(Duration::from_secs(delay)).await;
+                    delay *= 2;
+                }
+                _ => return Err(format!("Simkl request failed ({status})")),
+            }
+        }
+        Err("Simkl request failed".to_owned())
+    }
+
+    async fn simkl_pull(
+        &self,
+        state_key: &str,
+        credentials: &Value,
+        state: Option<Value>,
+    ) -> Result<Option<Value>, String> {
+        let client = http_client()?;
+        let plan_for = |activities: Option<&Value>| {
+            let mut args = credentials.clone();
+            args["state"] = state.clone().unwrap_or(Value::Null);
+            args["nowSeconds"] = json!(chrono_unix_seconds());
+            if let Some(activities) = activities {
+                args["activities"] = activities.clone();
+            }
+            core_value("simklSyncPlan", args)
+                .ok_or_else(|| "Fluxa Core could not plan the Simkl sync".to_owned())
+        };
+        let first = plan_for(None)?;
+        let request = first["requests"][0].clone();
+        let activities = Self::simkl_get(&client, &request).await?;
+        let plan = plan_for(Some(&activities))?;
+        let mode = str_field(&plan, "mode").to_owned();
+        if mode == "cached" {
+            return Ok(None);
+        }
+        let mut responses = Map::new();
+        for request in plan["requests"].as_array().into_iter().flatten() {
+            let body = Self::simkl_get(&client, request).await?;
+            responses.insert(str_field(request, "key").to_owned(), body);
+        }
+        let applied = core_value(
+            "simklSyncApply",
+            json!({
+                "mode": mode,
+                "nowSeconds": chrono_unix_seconds(),
+                "state": state.unwrap_or(Value::Null),
+                "activities": activities,
+                "responses": responses,
+            }),
+        )
+        .ok_or_else(|| "Fluxa Core could not build the Simkl library".to_owned())?;
+        let _ = self.storage.write_json(state_key, &applied["state"]);
+        Ok(applied.get("snapshot").cloned())
+    }
+
+    pub(super) async fn simkl_calendar_items(
+        &self,
+        profile_id: &str,
+        profile: &Value,
+        year: i64,
+        month: i64,
+    ) -> Value {
+        use chrono::Datelike;
+        let Some(credentials) = self.provider_credentials("simkl", profile) else {
+            return json!([]);
+        };
+        let now = chrono::Utc::now();
+        let Some(plan) = core_value(
+            "simklCalendarPlan",
+            json!({
+                "clientId": str_field(&credentials, "clientId"),
+                "year": year,
+                "month": month,
+                "nowYear": now.year(),
+                "nowMonth": now.month(),
+            }),
+        ) else {
+            return json!([]);
+        };
+        let cache_key = format!("simkl_calendar_{year}_{month}");
+        let cached = self.storage.read_json(&cache_key).ok().flatten();
+        let fresh = cached.as_ref().is_some_and(|cached| {
+            chrono_unix_seconds() - cached["fetchedAt"].as_i64().unwrap_or(0) < 3 * 60 * 60
+        });
+        let mut responses = cached
+            .as_ref()
+            .map(|cached| cached["responses"].clone())
+            .filter(|_| fresh)
+            .unwrap_or(Value::Null);
+        if responses.is_null() && plan.as_array().is_some_and(|plan| !plan.is_empty()) {
+            let mut fetched = Map::new();
+            if let Ok(client) = http_client() {
+                for request in plan.as_array().into_iter().flatten() {
+                    match Self::simkl_get(&client, request).await {
+                        Ok(body) => {
+                            fetched.insert(str_field(request, "key").to_owned(), body);
+                        }
+                        Err(error) => {
+                            crate::log!("[fluxa-native] simkl calendar failed: {error}");
+                            break;
+                        }
+                    }
+                }
+            }
+            if fetched.len() == 3 {
+                let _ = self.storage.write_json(
+                    &cache_key,
+                    &json!({"fetchedAt": chrono_unix_seconds(), "responses": fetched}),
+                );
+                responses = Value::Object(fetched);
+            } else if let Some(cached) = cached {
+                responses = cached["responses"].clone();
+            }
+        }
+        let Some(mut args) = responses.as_object().cloned() else {
+            return json!([]);
+        };
+        let library = self
+            .cached_provider_library("simkl", profile_id)
+            .unwrap_or(Value::Null);
+        let allowed: Vec<Value> = ["watchlist", "continueWatching", "onHold"]
+            .iter()
+            .filter_map(|list| library.get(list).and_then(Value::as_array))
+            .flatten()
+            .filter_map(|item| item.get("id").cloned())
+            .collect();
+        args.insert("provider".into(), json!("simkl"));
+        args.insert("allowedContentIds".into(), json!(allowed));
+        core_value("providerCalendarItems", Value::Object(args)).unwrap_or_else(|| json!([]))
+    }
+
+    async fn read_simkl_library(
+        &self,
+        profile_id: &str,
+        credentials: Value,
+    ) -> Result<Value, String> {
+        let state_key = format!("simkl_sync_{}", sanitize_key(profile_id));
+        let cached = self.cached_provider_library("simkl", profile_id);
+        let state = cached
+            .as_ref()
+            .and_then(|_| self.storage.read_json(&state_key).ok().flatten());
+        match self.simkl_pull(&state_key, &credentials, state).await {
+            Ok(Some(snapshot)) => {
+                self.store_provider_library("simkl", profile_id, &snapshot);
+                Ok(snapshot)
+            }
+            Ok(None) => cached.ok_or_else(|| "Simkl library could not be loaded".to_owned()),
+            Err(error) => {
+                crate::log!("[fluxa-native] simkl library sync failed: {error}");
+                cached.ok_or(error)
+            }
+        }
+    }
+
     pub(super) async fn push_provider_command(
         &self,
         provider: &str,
@@ -318,6 +500,15 @@ impl EffectExecutor {
         let Some(mut args) = self.provider_credentials(provider, profile) else {
             return Err(format!("{provider} is not connected to the active profile"));
         };
+        let rewatch = provider == "simkl"
+            && command.get("rewatch").and_then(Value::as_bool) == Some(true);
+        let mut command = command.clone();
+        if rewatch {
+            self.ensure_simkl_rewatch(profile, &args).await?;
+            command["rewatchId"] = self
+                .pinned_rewatch_id(str_field(profile, "id"), str_field(&command, "seriesId"))
+                .map_or(Value::Null, |id| json!(id));
+        }
         args["command"] = command.clone();
         let Some(requests) = core_value("providerWriteRequests", args) else {
             return Ok(());
@@ -328,8 +519,91 @@ impl EffectExecutor {
             if !(200..300).contains(&status) {
                 return Err(format!("{provider} rejected the change ({status}): {body}"));
             }
+            if rewatch && let Some(id) = find_key(&body, "rewatch_id").and_then(Value::as_i64) {
+                self.pin_rewatch_id(
+                    str_field(profile, "id"),
+                    str_field(&command, "seriesId"),
+                    id,
+                );
+            }
         }
         Ok(())
+    }
+
+    fn profile_flag(&self, profile: &Value, key: &str) -> bool {
+        [
+            Some(profile.clone()),
+            self.storage
+                .read_json(&Storage::prefs_key(str_field(profile, "id")))
+                .ok()
+                .flatten(),
+        ]
+        .into_iter()
+        .flatten()
+        .find_map(|source| source.get(key).and_then(Value::as_bool))
+        .unwrap_or(false)
+    }
+
+    async fn ensure_simkl_rewatch(&self, profile: &Value, credentials: &Value) -> Result<(), String> {
+        if !self.profile_flag(profile, "simklTrackRewatches") {
+            return Err("Simkl rewatch tracking is turned off".to_owned());
+        }
+        let key = format!("simkl_account_{}", sanitize_key(str_field(profile, "id")));
+        let now = chrono_unix_seconds();
+        let cached = self.storage.read_json(&key).ok().flatten().filter(|cached| {
+            cached.get("at").and_then(Value::as_i64).unwrap_or(0) + SIMKL_ACCOUNT_TTL > now
+        });
+        let plan = match cached {
+            Some(cached) => str_field(&cached, "type").to_owned(),
+            None => {
+                let mut args = credentials.clone();
+                args["command"] = json!({"type": "simklAccount"});
+                let request = core_value("providerWriteRequests", args)
+                    .and_then(|requests| requests.get(0).cloned())
+                    .ok_or_else(|| "Fluxa Core could not plan the Simkl account request".to_owned())?;
+                let body = Self::simkl_get(&http_client()?, &request).await?;
+                let plan = body
+                    .pointer("/account/type")
+                    .and_then(Value::as_str)
+                    .unwrap_or("free")
+                    .to_owned();
+                let _ = self
+                    .storage
+                    .write_json(&key, &json!({"type": plan, "at": now}));
+                plan
+            }
+        };
+        if matches!(plan.as_str(), "pro" | "vip") {
+            Ok(())
+        } else {
+            Err("Simkl rewatch tracking requires Simkl Pro or VIP".to_owned())
+        }
+    }
+
+    fn rewatch_key(profile_id: &str) -> String {
+        format!("simkl_rewatch_{}", sanitize_key(profile_id))
+    }
+
+    fn pinned_rewatch_id(&self, profile_id: &str, item_id: &str) -> Option<i64> {
+        self.storage
+            .read_json(&Self::rewatch_key(profile_id))
+            .ok()
+            .flatten()?
+            .get(item_id)?
+            .as_i64()
+    }
+
+    fn pin_rewatch_id(&self, profile_id: &str, item_id: &str, rewatch_id: i64) {
+        let key = Self::rewatch_key(profile_id);
+        let mut pinned = self
+            .storage
+            .read_json(&key)
+            .ok()
+            .flatten()
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}));
+        pinned[item_id] = json!(rewatch_id);
+        let _ = self.storage.write_json(&key, &pinned);
     }
 
     pub(super) async fn sync_watched_state(&self, payload: &Value) -> Result<Value, String> {
@@ -347,6 +621,7 @@ impl EffectExecutor {
         let command = json!({
             "type": "markWatched",
             "seriesId": meta_id,
+            "providerIds": meta.get("providerIds"),
             "videoIds": if video_ids.is_empty() { json!([meta_id]) } else { json!(video_ids) },
             "watched": payload.get("watched").and_then(Value::as_bool).unwrap_or(true),
         });
@@ -391,11 +666,13 @@ impl EffectExecutor {
             args["itemId"] = payload.get("itemId").cloned().unwrap_or(Value::Null);
             args["metaType"] = payload.get("metaType").cloned().unwrap_or(Value::Null);
             args["progress"] = payload.get("progress").cloned().unwrap_or(Value::Null);
+            args["providerIds"] = payload.get("providerIds").cloned().unwrap_or(Value::Null);
             let Some(plan) = core_value("providerScrobbleRequest", args) else {
                 continue;
             };
             match send(&client, &plan).await {
                 Ok((status, _)) if (200..300).contains(&status) || status == 409 => {}
+                Ok((400, body)) if body.to_string().contains("RATE_LIMIT") => {}
                 Ok((status, body)) => {
                     crate::log!("[fluxa-native] {provider} scrobble rejected ({status}): {body}")
                 }

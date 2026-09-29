@@ -14,7 +14,7 @@ Two ways in exist right now:
 | Domain | Modules | Reached today | Routes called |
 |---|---|---|---|
 | `home` | `ranking`, `recommendation` | router only | ranking through `core_value`; `home_hero_plan` is re-exported at the crate root |
-| `library` | `state`, `continue_watching`, `watchlist`, `provider`, `calendar`, `persistence`, `offline_download`, `local_media`, `release_date` | `state` in the engine; the rest by router | library state 10/55, provider 6/6, watchlist 3/22, calendar 1/13, local media 0/9 |
+| `library` | `state`, `continue_watching`, `watchlist`, `provider`, `calendar`, `persistence`, `offline_download`, `local_media`, `release_date` | `state` in the engine; the rest by router | library state 10/55, provider 6/6 (Simkl library sync runs through `simklSyncPlan` and `simklSyncApply`), watchlist 3/22, calendar 1/13, local media 0/9 |
 | `catalog` | `identity`, `search`, `tmdb`, `mdblist`, `publicmetadb`, `warnings`, `anime` | `identity` and `search` in the engine; the rest by router | search 6/23, tmdb 6/26, mdblist 1/52, publicmetadb 0/40, warnings 2/2, anime 0/2 |
 | `player` | `flow`, `policy`, `stream_policy`, `stream_badges`, `scrobble`, `subtitle_sync`, `desktop`, `cast`, `intro_segments`, `trailer_subtitles`, `watch_together`, `dolby_vision` | `flow` and `stream_policy` in the engine; `cast` and `dolby_vision` have no route | policy 3/19, stream policy 1/18, scrobble 0/11, intro segments 0/23, watch together 0/10, badges 0/6 |
 | `addons` | `protocol`, `resource`, `store`, `uptime`, `plugins`, `plugin_network`, `discovery`, `repository`, `headless_adapter`, `platform` | `store` in the engine; the rest by router | protocol 7/17, store 3/17, resource plan 6/19, adapter plan 2/4, plugins 0/8, resource 0/6 |

@@ -17,8 +17,29 @@ fn simkl_numeric_id(source: &Value) -> Option<i64> {
     source.get("ids")?.get("simkl").and_then(Value::as_i64)
 }
 
-fn simkl_content_id(source: &Value) -> Option<String> {
+fn simkl_is_anime(entry: &Value, _source: &Value) -> bool {
+    entry.get("anime").and_then(Value::as_bool) == Some(true) || entry.get("anime_type").is_some()
+}
+
+fn simkl_anime_id(source: &Value) -> Option<String> {
     let ids = source.get("ids")?;
+    ["kitsu", "mal", "anilist", "anidb", "anisearch", "livechart"]
+        .iter()
+        .find_map(|key| {
+            let id = ids.get(key)?;
+            let id = id
+                .as_str()
+                .map(str::to_string)
+                .or_else(|| id.as_i64().map(|n| n.to_string()))?;
+            (!id.is_empty()).then(|| format!("{key}:{id}"))
+        })
+}
+
+pub(crate) fn simkl_content_id(source: &Value) -> Option<String> {
+    let ids = source.get("ids")?;
+    if let Some(id) = simkl_anime_id(source) {
+        return Some(id);
+    }
     ids.get("imdb")
         .and_then(Value::as_str)
         .filter(|value| !value.is_empty())
@@ -33,10 +54,13 @@ fn simkl_content_id(source: &Value) -> Option<String> {
             })
         })
         .or_else(|| {
-            ids.get("slug")
-                .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
-                .map(|value| format!("simkl:{value}"))
+            ids.get("tvdb").and_then(|value| {
+                value
+                    .as_i64()
+                    .map(|value| value.to_string())
+                    .or_else(|| value.as_str().filter(|v| !v.is_empty()).map(str::to_string))
+                    .map(|value| format!("tvdb:{value}"))
+            })
         })
         .or_else(|| {
             ids.get("simkl")
@@ -124,6 +148,9 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             "lastEpisodeNumber": card_episode.map(|(_, episode)| episode),
             "continueWatchingBadge": next_episode.map(|_| "upNext"),
             "savedAt": saved_at, "reason": "simkl",
+            "source": "simkl",
+            "isAnime": simkl_is_anime(entry, show),
+            "providerIds": show.get("ids"),
             "simklId": simkl_numeric_id(show)
         }));
     }
@@ -148,7 +175,9 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
             "id": id, "type": "movie", "name": title,
             "poster": poster,
             "background": background,
-            "savedAt": saved_at, "reason": "simkl"
+            "savedAt": saved_at, "reason": "simkl",
+            "source": "simkl",
+            "providerIds": movie.get("ids")
         }));
     }
     serde_json::to_string(&items).ok()
@@ -176,7 +205,7 @@ fn simkl_playback_progress_entries(playback_json: &str) -> Vec<SimklPlaybackEntr
                 .get("movie")
                 .or_else(|| entry.get("show"))
                 .or_else(|| entry.get("anime"))?;
-            let id = trakt_id_from_source(source)?;
+            let id = simkl_content_id(source)?;
             let episode = entry.get("episode").and_then(|e| {
                 Some((
                     e.get("season").and_then(Value::as_i64)?,
@@ -397,6 +426,7 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
         let Some(show) = entry.get("show") else {
             continue;
         };
+        let anime = simkl_is_anime(entry, show);
         let Some(id) = simkl_content_id(show) else {
             continue;
         };
@@ -406,7 +436,12 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
             .and_then(Value::as_str)
             .map(|p| format!("https://simkl.in/posters/{p}_m.jpg"));
         let background = simkl_fanart_url(show);
-        items.push(json!({ "id": id, "name": title, "type": "series", "source": "simkl", "poster": poster, "background": background }));
+        let kind = if entry.get("anime_type").and_then(Value::as_str) == Some("movie") {
+            "movie"
+        } else {
+            "series"
+        };
+        items.push(json!({ "id": id, "name": title, "type": kind, "isAnime": anime, "source": "simkl", "poster": poster, "background": background, "providerIds": show.get("ids") }));
     }
     for entry in &movies {
         let Some(movie) = entry.get("movie") else {
@@ -421,7 +456,7 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
             .and_then(Value::as_str)
             .map(|p| format!("https://simkl.in/posters/{p}_m.jpg"));
         let background = simkl_fanart_url(movie);
-        items.push(json!({ "id": id, "name": title, "type": "movie", "source": "simkl", "poster": poster, "background": background }));
+        items.push(json!({ "id": id, "name": title, "type": "movie", "source": "simkl", "poster": poster, "background": background, "providerIds": movie.get("ids") }));
     }
     serde_json::to_string(&items).ok()
 }
@@ -435,12 +470,12 @@ pub(crate) fn simkl_watched_to_ids_json(shows_json: &str, movies_json: &str) -> 
     let movies = simkl_entries(movies_json, "movies");
     let mut ids: serde_json::Map<String, Value> = serde_json::Map::new();
     for entry in &shows {
-        if let Some(id) = entry.get("show").and_then(trakt_id_from_source) {
+        if let Some(id) = entry.get("show").and_then(simkl_content_id) {
             ids.insert(id, Value::Bool(true));
         }
     }
     for entry in &movies {
-        if let Some(id) = entry.get("movie").and_then(trakt_id_from_source) {
+        if let Some(id) = entry.get("movie").and_then(simkl_content_id) {
             ids.insert(id, Value::Bool(true));
         }
     }

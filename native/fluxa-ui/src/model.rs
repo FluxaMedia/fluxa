@@ -257,15 +257,17 @@ pub enum LibraryTab {
     Watching,
     Completed,
     Dropped,
+    OnHold,
     Liked,
 }
 
 impl LibraryTab {
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::Watchlist,
         Self::Watching,
         Self::Completed,
         Self::Dropped,
+        Self::OnHold,
         Self::Liked,
     ];
 
@@ -275,6 +277,7 @@ impl LibraryTab {
             Self::Watching => "Watching",
             Self::Completed => "Completed",
             Self::Dropped => "Dropped",
+            Self::OnHold => "On Hold",
             Self::Liked => "Favorites",
         }
     }
@@ -285,6 +288,7 @@ impl LibraryTab {
             Self::Watching => "library.watching",
             Self::Completed => "library.completed",
             Self::Dropped => "library.dropped",
+            Self::OnHold => "library.on_hold",
             Self::Liked => "library.favorites",
         }
     }
@@ -295,6 +299,7 @@ impl LibraryTab {
             Self::Watching => "watching",
             Self::Completed => "completed",
             Self::Dropped => "dropped",
+            Self::OnHold => "hold",
             Self::Liked => "favorites",
         }
     }
@@ -305,8 +310,9 @@ impl LibraryTab {
             Self::Watching => "continueWatching",
             Self::Completed => "completed",
             Self::Dropped => "dropped",
+            Self::OnHold => "onHold",
             Self::Liked => "liked",
-                    }
+        }
     }
 }
 
@@ -331,6 +337,7 @@ pub struct LibraryModel {
     pub watching: Vec<HomeCard>,
     pub completed: Vec<HomeCard>,
     pub dropped: Vec<HomeCard>,
+    pub on_hold: Vec<HomeCard>,
     pub liked: Vec<HomeCard>,
     pub personal: std::sync::Arc<PersonalIndex>,
 }
@@ -345,6 +352,7 @@ impl LibraryModel {
             LibraryTab::Watching => &self.watching,
             LibraryTab::Completed => &self.completed,
             LibraryTab::Dropped => &self.dropped,
+            LibraryTab::OnHold => &self.on_hold,
             LibraryTab::Liked => &self.liked,
         }
     }
@@ -960,6 +968,7 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
         watching: cards(LibraryTab::Watching),
         completed: cards(LibraryTab::Completed),
         dropped: cards(LibraryTab::Dropped),
+        on_hold: cards(LibraryTab::OnHold),
         liked: cards(LibraryTab::Liked),
     }
 }

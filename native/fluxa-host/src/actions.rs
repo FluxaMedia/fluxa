@@ -267,6 +267,7 @@ pub(super) fn refresh_library_view(state: &mut RendererState) {
                 "watching": library.get("continueWatching"),
                 "completed": library.get("completed"),
                 "dropped": library.get("dropped"),
+                "onHold": library.get("onHold"),
                 "favorites": library.get("liked"),
                 "progress": library.get("progress"),
                 "tab": state.library_tab.core_tab_key(),
@@ -565,7 +566,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && (fluxa_ui::NODE_DETAIL_SEASON_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE)
                     .contains(&node)
             {
-                state.detail.selected_season = Some((node - fluxa_ui::NODE_DETAIL_SEASON_BASE) as i64);
+                state.detail.selected_season =
+                    Some((node - fluxa_ui::NODE_DETAIL_SEASON_BASE) as i64);
                 state.detail.row_scroll_offsets[1] = 0.0;
                 reset_ui(state);
                 continue;

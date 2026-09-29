@@ -380,16 +380,6 @@ pub(super) fn route_external_sync_simkl(method: &str, args_json: &str) -> Outcom
                 field_str(&args, "resolvedImdb")?,
             ))
         }
-        "simklResourceSyncPlan" => opt_json(
-            accounts::external_sync::simkl_resource_sync_plan_json(args_json),
-        ),
-        "simklMergeDelta" => {
-            let args = object(args_json)?;
-            opt_json(accounts::external_sync::simkl_merge_delta_json(
-                field_str(&args, "previousJson")?,
-                field_str(&args, "changesJson")?,
-            ))
-        }
 
         _ => Err(unknown_method()),
     }

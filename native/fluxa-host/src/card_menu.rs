@@ -9,6 +9,7 @@ enum Entry {
     Details,
     Watchlist { saved: bool },
     Watched { watched: bool },
+    Rewatch,
     ClearProgress,
 }
 
@@ -93,6 +94,12 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
         entries.push(Entry::Watched {
             watched: personal.is_some_and(|personal| personal.watched),
         });
+    }
+    let simkl_rewatch = state.settings.value("integrationLibrarySource").and_then(Value::as_str)
+        == Some("simkl")
+        && state.settings.value("simklTrackRewatches").and_then(Value::as_bool) == Some(true);
+    if simkl_rewatch && personal.is_some_and(|personal| personal.watched) {
+        entries.push(Entry::Rewatch);
     }
     if card.progress > 0.0 || personal.is_some_and(|personal| personal.progress > 0.0) {
         entries.push(Entry::ClearProgress);
@@ -260,6 +267,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                 Entry::Watchlist { saved: false } => ("Plus", "menu.add_watchlist"),
                 Entry::Watched { watched: true } => ("EyeOff", "menu.mark_unwatched"),
                 Entry::Watched { watched: false } => ("CircleCheck", "menu.mark_watched"),
+                Entry::Rewatch => ("Refresh", "menu.rewatch"),
                 Entry::ClearProgress => ("Close", "menu.remove_continue"),
             };
             ActionMenuItem {
@@ -358,6 +366,16 @@ fn pick(state: &mut RendererState, index: usize) {
                 "seriesId": id,
                 "videoIds": [id],
                 "watched": !watched,
+                "meta": card.raw,
+            }),
+        },
+        Entry::Rewatch => NativeAction::CoreCommand {
+            command: json!({
+                "type": "markWatchedRequested",
+                "seriesId": id,
+                "videoIds": [id],
+                "watched": true,
+                "rewatch": true,
                 "meta": card.raw,
             }),
         },

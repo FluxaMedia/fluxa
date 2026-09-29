@@ -15,6 +15,7 @@ pub(crate) fn library_view_plan_json(args_json: &str) -> Option<String> {
     let favorites = list("favorites");
     let mut completed = list("completed");
     let mut dropped = list("dropped");
+    let on_hold = list("onHold");
     completed.sort_by(|a, b| status_changed_at(b).cmp(status_changed_at(a)));
     dropped.sort_by(|a, b| status_changed_at(b).cmp(status_changed_at(a)));
     let progress: Vec<Value> = args
@@ -28,6 +29,7 @@ pub(crate) fn library_view_plan_json(args_json: &str) -> Option<String> {
             .chain(&watching)
             .chain(&completed)
             .chain(&dropped)
+            .chain(&on_hold)
             .chain(&progress),
     );
     let mut airing = unique_items(watching.iter().chain(&watchlist));
@@ -80,6 +82,7 @@ pub(crate) fn library_view_plan_json(args_json: &str) -> Option<String> {
         "watching" => watching.clone(),
         "completed" => completed.clone(),
         "dropped" => dropped.clone(),
+        "hold" => on_hold.clone(),
         "airing" => airing.clone(),
         "rated" => rated.clone(),
         "history" => history.clone(),
@@ -143,7 +146,7 @@ fn source_capabilities(source: &str) -> SourceCapabilities {
             sorts: &["tracker", "title", "rating"],
         },
         "simkl" => SourceCapabilities {
-            statuses: &["watchlist", "watching", "completed", "dropped"],
+            statuses: &["watchlist", "watching", "completed", "hold", "dropped"],
             types: &["movie", "series", "anime"],
             sorts: &["tracker", "title", "rating"],
         },
@@ -173,6 +176,15 @@ fn source_capabilities(source: &str) -> SourceCapabilities {
 fn content_kind(item: &Value) -> &'static str {
     let kind = item.get("type").and_then(Value::as_str).unwrap_or("");
     let id = item.get("id").and_then(Value::as_str).unwrap_or("");
+    if item.get("source").and_then(Value::as_str) == Some("simkl") {
+        return if item.get("isAnime").and_then(Value::as_bool) == Some(true) {
+            "anime"
+        } else if kind == "movie" {
+            "movie"
+        } else {
+            "series"
+        };
+    }
     if kind == "anime"
         || item.get("isAnime").and_then(Value::as_bool) == Some(true)
         || crate::catalog::anime::should_attempt_anime_tracking(item)
@@ -236,6 +248,27 @@ fn playback_time(item: &Value) -> i64 {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn simkl_items_are_filtered_by_simkl_classification() {
+        let plan = library_view_plan_json(
+            &json!({
+                "source": "simkl",
+                "watchlist": [
+                    {"id": "tt1", "type": "series", "source": "simkl", "isAnime": false, "genres": ["Anime"]},
+                    {"id": "mal:1", "type": "series", "source": "simkl", "isAnime": true}
+                ],
+                "tab": "watchlist",
+                "type": "anime"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let plan = serde_json::from_str::<Value>(&plan).unwrap();
+
+        assert_eq!(plan["items"].as_array().unwrap().len(), 1);
+        assert_eq!(plan["items"][0]["id"], "mal:1");
+    }
 
     #[test]
     fn type_filter_keeps_anime_apart_and_lists_available_types() {

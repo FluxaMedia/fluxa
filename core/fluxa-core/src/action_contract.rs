@@ -33,6 +33,8 @@ pub(crate) struct MarkWatchedAction {
     pub(crate) episodes: Option<Vec<Value>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) profile: Option<Value>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) rewatch: bool,
 }
 
 fn tagged_action(action_type: &str, value: Value) -> Value {

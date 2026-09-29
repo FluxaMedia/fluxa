@@ -43,7 +43,7 @@ pub(crate) fn oauth_request_plan_json(request_json: &str) -> Option<String> {
             json!({"grant_type": "authorization_code", "client_id": client_id, "client_secret": client_secret, "redirect_uri": "fluxa://oauth/anilist", "code": code}),
         ),
         ("simkl", "exchange") => (
-            "https://api.simkl.com/oauth/token",
+            "https://api.simkl.com/oauth2/token",
             json!({"code": code, "client_id": client_id, "code_verifier": code_verifier, "redirect_uri": "fluxa://oauth/simkl", "grant_type": "authorization_code"}),
         ),
         ("mdblist", "device_start") => (

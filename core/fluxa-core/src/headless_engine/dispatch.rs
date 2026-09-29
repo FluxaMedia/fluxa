@@ -313,6 +313,7 @@ impl HeadlessEngine {
                 action.meta,
                 action.episodes,
                 action.profile,
+                action.rewatch,
             ),
             AppAction::AddonInstallRequested {
                 transport_url,

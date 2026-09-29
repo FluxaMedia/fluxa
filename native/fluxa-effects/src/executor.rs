@@ -181,7 +181,7 @@ impl EffectExecutor {
                 self.start_torrent_stream(&payload)
             }
             fluxa_core::runtime::EffectKind::ReadCalendarMonth => {
-                self.read_calendar_month(&payload)
+                self.read_calendar_month(&payload).await
             }
             fluxa_core::runtime::EffectKind::WriteSettings => self.write_settings(&payload),
             fluxa_core::runtime::EffectKind::WritePlaybackProgress => {
@@ -198,7 +198,7 @@ impl EffectExecutor {
         }
     }
 
-    fn read_calendar_month(&self, payload: &Value) -> Result<Value, String> {
+    async fn read_calendar_month(&self, payload: &Value) -> Result<Value, String> {
         let profile_id = payload
             .get("profileId")
             .and_then(Value::as_str)
@@ -235,10 +235,16 @@ impl EffectExecutor {
         .flatten()
         .cloned()
         .collect::<Vec<_>>();
-        let external_items = library
-            .get("externalCalendarItems")
-            .cloned()
-            .unwrap_or_else(|| json!([]));
+        let profile = payload.get("profile").cloned().unwrap_or(Value::Null);
+        let external_items = if profile["integrationLibrarySource"] == "simkl" {
+            self.simkl_calendar_items(profile_id, &profile, year, month)
+                .await
+        } else {
+            library
+                .get("externalCalendarItems")
+                .cloned()
+                .unwrap_or_else(|| json!([]))
+        };
         Ok(core_value(
             "desktopCalendarReadPlan",
             json!({

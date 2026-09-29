@@ -219,6 +219,7 @@ pub(crate) fn normalize_library_read_result_json(json: &str) -> String {
         ("continueWatching", &["continueWatching"][..]),
         ("liked", &["liked", "favorites"][..]),
         ("dropped", &["dropped"][..]),
+        ("onHold", &["onHold"][..]),
         ("completed", &["completed"][..]),
     ] {
         let value = aliases

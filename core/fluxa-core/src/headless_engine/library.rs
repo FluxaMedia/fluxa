@@ -19,6 +19,7 @@ pub(super) struct LibraryState {
     liked: Value,
     watched: Value,
     dropped: Value,
+    on_hold: Value,
     completed: Value,
     last_command: Value,
     last_write: Value,
@@ -116,6 +117,8 @@ struct MarkWatchedCommand {
     series_id: String,
     video_ids: Vec<String>,
     watched: bool,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    rewatch: bool,
 }
 
 #[derive(Serialize)]
@@ -319,6 +322,7 @@ pub(super) fn dispatch_mark_watched(
     meta: Option<Value>,
     episodes: Option<Vec<Value>>,
     profile: Option<Value>,
+    rewatch: bool,
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Library);
     let profile_id = active_profile_id(&engine.state, &Value::Null);
@@ -334,6 +338,7 @@ pub(super) fn dispatch_mark_watched(
         series_id,
         video_ids: clean_video_ids,
         watched: watched_value,
+        rewatch,
     };
     let command_value = serde_json::to_value(&command).unwrap_or(Value::Null);
     engine.state.library.last_command = command_value.clone();
@@ -416,6 +421,10 @@ pub(super) fn complete(
                         .unwrap_or_else(|| serde_json::json!({}));
                     engine.state.library.dropped = library_result
                         .get("dropped")
+                        .cloned()
+                        .unwrap_or_else(|| serde_json::json!([]));
+                    engine.state.library.on_hold = library_result
+                        .get("onHold")
                         .cloned()
                         .unwrap_or_else(|| serde_json::json!([]));
                     engine.state.library.completed = library_result

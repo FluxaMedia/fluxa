@@ -11,6 +11,9 @@ pub(super) fn route_provider_library(method: &str, args_json: &str) -> Outcome {
         "providerLibrarySnapshot" => {
             opt_json(library::provider::provider_library_snapshot_json(args_json))
         }
+        "simklSyncPlan" => opt_json(library::simkl_sync::simkl_sync_plan_json(args_json)),
+        "simklCalendarPlan" => opt_json(library::simkl_sync::simkl_calendar_plan_json(args_json)),
+        "simklSyncApply" => opt_json(library::simkl_sync::simkl_sync_apply_json(args_json)),
         "providerWriteRequests" => {
             opt_json(library::provider::provider_write_requests_json(args_json))
         }

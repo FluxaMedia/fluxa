@@ -37,10 +37,10 @@ pub(crate) use trakt::{
 mod provider_mappers;
 
 pub(crate) use provider_mappers::{
-    replace_external_continue_watching_json, simkl_library_to_items_json, simkl_lookup_id_for_type,
-    simkl_mark_watched_body_json, simkl_match_episode_json, simkl_merge_delta_json,
+    replace_external_continue_watching_json, simkl_ids_from_provider, simkl_library_to_items_json,
+    simkl_lookup_id_for_type, simkl_mark_watched_body_json, simkl_match_episode_json,
     simkl_merge_playback_progress_json, simkl_recommendation_candidates_json,
-    simkl_recommendation_to_meta_json, simkl_resource_sync_plan_json, simkl_watched_to_ids_json,
+    simkl_recommendation_to_meta_json, simkl_target, simkl_watched_to_ids_json,
     simkl_watching_to_items_json, simkl_watchlist_body_json, simkl_watchlist_to_items_json,
     trakt_activity_diff_json, trakt_mark_watched_body_json, trakt_playback_items_dedup_json,
     trakt_related_items_to_metas_json, trakt_related_lookup_slug, trakt_up_next_to_items_json,

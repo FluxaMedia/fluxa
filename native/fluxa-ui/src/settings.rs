@@ -678,7 +678,7 @@ const SUBTITLES_GROUPS: [(usize, &str); 2] = [
     (6, "settings.group.audio_subtitles"),
     (12, "settings.group.subtitle_style"),
 ];
-const CONTENT_SETTINGS: [SettingsRow; 18] = [
+const CONTENT_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "TMDB artwork enrichment",
         key: "tmdbEnrichArtworkEnabled",
@@ -769,10 +769,15 @@ const CONTENT_SETTINGS: [SettingsRow; 18] = [
         key: "traktCommentsEnabled",
         options: &[],
     },
+    SettingsRow {
+        label: "Track rewatches on Simkl",
+        key: "simklTrackRewatches",
+        options: &[],
+    },
 ];
 const CONTENT_GROUPS: [(usize, &str); 2] = [
     (14, "settings.group.metadata"),
-    (4, "settings.group.discovery"),
+    (5, "settings.group.discovery"),
 ];
 const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {

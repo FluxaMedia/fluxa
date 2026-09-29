@@ -153,8 +153,18 @@ pub(crate) fn token_merge_plan_json(request_json: &str) -> Option<String> {
         }
         AuthProvider::Simkl => {
             let token = auth.get("accessToken").or_else(|| auth.get("access_token"));
+            let refresh = auth
+                .get("refreshToken")
+                .or_else(|| auth.get("refresh_token"));
+            let expires_at = auth.get("expiresAt").or_else(|| auth.get("expires_at"));
             if let Some(t) = token {
                 obj.insert("simklAccessToken".to_string(), t.clone());
+            }
+            if let Some(r) = refresh {
+                obj.insert("simklRefreshToken".to_string(), r.clone());
+            }
+            if let Some(e) = expires_at {
+                obj.insert("simklTokenExpiresAt".to_string(), e.clone());
             }
         }
         AuthProvider::Anilist => {

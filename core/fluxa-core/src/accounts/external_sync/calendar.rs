@@ -43,78 +43,48 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
         }
         return serde_json::to_string(&items).ok();
     }
-    if provider == "simkl"
-        && args
-            .get("shows")
-            .and_then(|value| value.get("calendar"))
-            .is_some()
-    {
-        let allowed_content_ids: std::collections::HashSet<&str> = args
+    if provider == "simkl" && args.get("shows").is_some_and(Value::is_object) {
+        let allowed: std::collections::HashSet<&str> = args
             .get("allowedContentIds")
             .and_then(Value::as_array)
             .into_iter()
             .flatten()
             .filter_map(Value::as_str)
             .collect();
-        for (calendar, metadata, is_movie) in [
-            (
-                args.get("shows")
-                    .and_then(|value| value.get("calendar"))
-                    .and_then(Value::as_array),
-                args.get("shows")
-                    .and_then(|value| value.get("metadata"))
-                    .and_then(Value::as_object),
-                false,
-            ),
-            (
-                args.get("movies")
-                    .and_then(|value| value.get("calendar"))
-                    .and_then(Value::as_array),
-                args.get("movies")
-                    .and_then(|value| value.get("metadata"))
-                    .and_then(Value::as_object),
-                true,
-            ),
-        ] {
+        for (catalog, is_movie) in [("shows", false), ("anime", false), ("movies", true)] {
+            let block = args.get(catalog);
+            let metadata = block.and_then(|value| value.get("metadata"));
+            let calendar = block
+                .and_then(|value| value.get("calendar"))
+                .and_then(Value::as_array);
             for entry in calendar.into_iter().flatten() {
-                let Some(simkl_id) = entry.get("simkl_id") else {
-                    continue;
-                };
-                let simkl_key = simkl_id
-                    .as_str()
-                    .map(str::to_string)
-                    .or_else(|| simkl_id.as_i64().map(|value| value.to_string()));
-                let Some(media) = simkl_key
-                    .as_deref()
-                    .and_then(|key| metadata.and_then(|value| value.get(key)))
+                let Some(media) = entry
+                    .get("simkl_id")
+                    .and_then(|id| id.as_i64().map(|id| id.to_string()))
+                    .and_then(|key| metadata?.get(&key))
                 else {
                     continue;
                 };
-                let ids = media.get("ids").unwrap_or(&Value::Null);
-                let content_id = ids
-                    .get("imdb")
-                    .and_then(Value::as_str)
-                    .map(str::to_string)
-                    .or_else(|| {
-                        ids.get("tmdb")
-                            .and_then(Value::as_i64)
-                            .map(|id| format!("tmdb:{id}"))
-                            .or_else(|| {
-                                ids.get("tmdb")
-                                    .and_then(Value::as_str)
-                                    .filter(|id| !id.is_empty())
-                                    .map(|id| format!("tmdb:{id}"))
-                            })
-                    });
-                let Some(content_id) = content_id else {
+                let Some(content_id) =
+                    crate::accounts::external_sync::provider_mappers::simkl_content_id(media)
+                        .filter(|id| allowed.contains(id.as_str()))
+                else {
                     continue;
                 };
-                if !allowed_content_ids.contains(content_id.as_str()) {
-                    continue;
-                }
                 let Some(date) = entry.get("date").and_then(Value::as_str) else {
                     continue;
                 };
+                let poster = media
+                    .get("poster")
+                    .and_then(Value::as_str)
+                    .filter(|path| !path.is_empty())
+                    .map(|path| {
+                        if path.starts_with("http") {
+                            path.to_owned()
+                        } else {
+                            format!("https://simkl.in/posters/{path}_m.jpg")
+                        }
+                    });
                 if is_movie {
                     items.push(json!({
                         "id": content_id,
@@ -122,15 +92,15 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
                         "dateIso": date,
                         "contentId": content_id,
                         "metaType": "movie",
-                        "poster": media.get("poster"),
+                        "poster": poster,
                     }));
                     continue;
                 }
                 let episode = entry.get("episode").unwrap_or(&Value::Null);
-                let season = episode.get("season").and_then(Value::as_i64);
+                let season = episode.get("season").and_then(Value::as_i64).unwrap_or(1);
                 let number = episode.get("episode").and_then(Value::as_i64);
                 items.push(json!({
-                    "id": format!("{content_id}:{}:{}", season.unwrap_or_default(), number.unwrap_or_default()),
+                    "id": format!("{content_id}:{season}:{}", number.unwrap_or_default()),
                     "title": media.get("title"),
                     "episodeTitle": episode.get("title"),
                     "seasonNumber": season,
@@ -139,8 +109,10 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
                     "contentId": content_id,
                     "seriesId": content_id,
                     "metaType": "series",
-                    "poster": media.get("poster"),
-                    "seriesPoster": media.get("poster"),
+                    "poster": poster,
+                    "seriesPoster": poster,
+                    "isAnime": catalog == "anime",
+                    "finaleType": entry.get("finale_type"),
                 }));
             }
         }

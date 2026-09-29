@@ -1,4 +1,4 @@
-use crate::accounts::external_sync::trakt_id_from_source;
+use crate::accounts::external_sync::provider_mappers::simkl_content_id;
 use serde_json::{Value, json};
 
 pub(crate) fn simkl_history_request_json(args_json: &str) -> Option<String> {
@@ -62,8 +62,11 @@ pub(crate) fn simkl_playback_delete_ids_json(args_json: &str) -> Option<String> 
         .as_array()?
         .iter()
         .filter_map(|item| {
-            let source = item.get("show").or_else(|| item.get("movie"))?;
-            (trakt_id_from_source(source).as_deref() == Some(content_id))
+            let source = item
+                .get("show")
+                .or_else(|| item.get("anime"))
+                .or_else(|| item.get("movie"))?;
+            (simkl_content_id(source).as_deref() == Some(content_id))
                 .then(|| item.get("id")?.as_i64())
         })
         .collect::<Vec<_>>();
@@ -81,7 +84,7 @@ fn simkl_playback_item_to_continue_meta(item: &Value) -> Option<Value> {
     let show = item.get("show").or_else(|| item.get("anime"));
     let episode = item.get("episode");
     let source = movie.or(show)?;
-    let id = trakt_id_from_source(source)?;
+    let id = simkl_content_id(source)?;
     let progress_percent = item
         .get("progress")
         .and_then(Value::as_f64)

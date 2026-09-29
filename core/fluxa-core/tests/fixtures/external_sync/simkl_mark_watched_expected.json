@@ -2,6 +2,7 @@
   "movies": [],
   "shows": [{
     "ids": {"imdb": "tt0944947"},
+    "use_tvdb_anime_seasons": true,
     "seasons": [{"number": 1, "episodes": [{"number": 2}]}]
   }]
 }

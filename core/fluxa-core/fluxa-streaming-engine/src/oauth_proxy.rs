@@ -21,6 +21,7 @@ fn redirect_uri(service: &str) -> String {
 #[serde(rename_all = "camelCase")]
 pub struct ExchangeBody {
     code: String,
+    code_verifier: Option<String>,
 }
 
 fn client() -> Result<reqwest::Client, String> {
@@ -68,11 +69,11 @@ async fn trakt_exchange(body: ExchangeBody) -> Result<String, (StatusCode, Strin
 async fn simkl_exchange(body: ExchangeBody) -> Result<String, (StatusCode, String)> {
     let client = client().map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e))?;
     let res = client
-        .post("https://api.simkl.com/oauth/token")
+        .post("https://api.simkl.com/oauth2/token")
         .json(&serde_json::json!({
             "code": body.code,
+            "code_verifier": body.code_verifier,
             "client_id": env_or_empty("FLUXA_SIMKL_CLIENT_ID"),
-            "client_secret": env_or_empty("FLUXA_SIMKL_CLIENT_SECRET"),
             "redirect_uri": redirect_uri("simkl"),
             "grant_type": "authorization_code",
         }))
