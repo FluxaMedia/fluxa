@@ -7,12 +7,13 @@ use crate::accounts::external_sync::{
     trakt_watchlist_to_items_json,
 };
 use crate::catalog;
+use super::provider_registry as registry;
 use serde_json::{Map, Value, json};
 
-mod anilist;
-mod mdblist;
-mod simkl;
-mod trakt;
+pub(crate) mod anilist;
+pub(crate) mod mdblist;
+pub(crate) mod simkl;
+pub(crate) mod trakt;
 
 pub(crate) use anilist::anilist_calendar_plan_json;
 use anilist::*;
@@ -360,85 +361,7 @@ pub(crate) fn provider_auth_callback_json(args_json: &str) -> Option<String> {
 pub(crate) fn provider_library_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let provider = str_field(&args, "provider");
-    let get = |key: &str, url: String| {
-        let mut plan = request(provider, &args, "GET", url, Value::Null);
-        plan["key"] = json!(key);
-        plan
-    };
-    let requests = match provider {
-        "trakt" => {
-            let mut requests = Vec::new();
-            for kind in ["movies", "shows"] {
-                requests.push(get(
-                    &format!("watchlist_{kind}"),
-                    format!("{TRAKT_API}/sync/watchlist/{kind}?extended=full,images"),
-                ));
-                requests.push(get(
-                    &format!("favorites_{kind}"),
-                    format!("{TRAKT_API}/sync/favorites/{kind}?extended=full,images"),
-                ));
-            }
-            requests.push(get(
-                "watched_movies",
-                format!("{TRAKT_API}/sync/watched/movies?extended=full,images"),
-            ));
-            requests.push(get(
-                "progress",
-                format!("{TRAKT_API}/sync/progress/watched?extended=full,images&limit=1000"),
-            ));
-            requests.push(get(
-                "history",
-                format!("{TRAKT_API}/sync/history/episodes?page=1&limit=100"),
-            ));
-            requests.push(get(
-                "hidden_dropped",
-                format!(
-                    "{TRAKT_API}/users/hidden/dropped?type=show&extended=full,images&limit=1000"
-                ),
-            ));
-            requests.push(get(
-                "playback",
-                format!("{TRAKT_API}/sync/playback?extended=full,images"),
-            ));
-            requests
-        }
-        "mdblist" => vec![
-            get(
-                "watchlist",
-                catalog::mdblist::mdblist_watchlist_items_url(None, "{}"),
-            ),
-            get(
-                "watched",
-                catalog::mdblist::mdblist_sync_get_url("watched", r#"{"limit":1000}"#)?,
-            ),
-            get(
-                "dropped",
-                catalog::mdblist::mdblist_sync_get_url("dropped", "{}")?,
-            ),
-            get(
-                "playback",
-                catalog::mdblist::mdblist_sync_get_url("playback", "{}")?,
-            ),
-            get("upnext", catalog::mdblist::mdblist_upnext_url(None, "{}")?),
-        ],
-        "anilist" => {
-            let user_id = anilist_user_id(str_field(&args, "token"))?;
-            (1..=3)
-                .map(|chunk| {
-                    let mut plan = request(
-                        provider,
-                        &args,
-                        "POST",
-                        ANILIST_GRAPHQL.to_owned(),
-                        json!({"query": ANILIST_LIST_QUERY, "variables": {"userId": user_id, "chunk": chunk}}),
-                    );
-                    plan["key"] = json!(format!("list_{chunk}"));
-                    plan
-                })
-                .collect()
-        }
-        _ => return None,
-    };
+    let requests = (registry::provider(provider)?.library_requests?)(&args)?;
     serde_json::to_string(&requests).ok()
 }
 

@@ -183,3 +183,30 @@ pub(super) fn mdblist_items_json(id: &str, content_type: &str) -> Option<String>
 }
 
 
+
+pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
+    let get = |key: &str, url: String| {
+        let mut plan = request("mdblist", args, "GET", url, Value::Null);
+        plan["key"] = json!(key);
+        plan
+    };
+    Some(vec![
+        get(
+            "watchlist",
+            catalog::mdblist::mdblist_watchlist_items_url(None, "{}"),
+        ),
+        get(
+            "watched",
+            catalog::mdblist::mdblist_sync_get_url("watched", r#"{"limit":1000}"#)?,
+        ),
+        get(
+            "dropped",
+            catalog::mdblist::mdblist_sync_get_url("dropped", "{}")?,
+        ),
+        get(
+            "playback",
+            catalog::mdblist::mdblist_sync_get_url("playback", "{}")?,
+        ),
+        get("upnext", catalog::mdblist::mdblist_upnext_url(None, "{}")?),
+    ])
+}

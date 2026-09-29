@@ -73,3 +73,43 @@ pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
 }
 
 
+
+pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
+    let get = |key: &str, url: String| {
+        let mut plan = request("trakt", args, "GET", url, Value::Null);
+        plan["key"] = json!(key);
+        plan
+    };
+    let mut requests = Vec::new();
+    for kind in ["movies", "shows"] {
+        requests.push(get(
+            &format!("watchlist_{kind}"),
+            format!("{TRAKT_API}/sync/watchlist/{kind}?extended=full,images"),
+        ));
+        requests.push(get(
+            &format!("favorites_{kind}"),
+            format!("{TRAKT_API}/sync/favorites/{kind}?extended=full,images"),
+        ));
+    }
+    requests.push(get(
+        "watched_movies",
+        format!("{TRAKT_API}/sync/watched/movies?extended=full,images"),
+    ));
+    requests.push(get(
+        "progress",
+        format!("{TRAKT_API}/sync/progress/watched?extended=full,images&limit=1000"),
+    ));
+    requests.push(get(
+        "history",
+        format!("{TRAKT_API}/sync/history/episodes?page=1&limit=100"),
+    ));
+    requests.push(get(
+        "hidden_dropped",
+        format!("{TRAKT_API}/users/hidden/dropped?type=show&extended=full,images&limit=1000"),
+    ));
+    requests.push(get(
+        "playback",
+        format!("{TRAKT_API}/sync/playback?extended=full,images"),
+    ));
+    Some(requests)
+}

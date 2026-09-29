@@ -94,3 +94,22 @@ pub(super) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Opt
 }
 
 
+
+pub(crate) fn library_requests(args: &Value) -> Option<Vec<Value>> {
+    let user_id = anilist_user_id(str_field(args, "token"))?;
+    Some(
+        (1..=3)
+            .map(|chunk| {
+                let mut plan = request(
+                    "anilist",
+                    args,
+                    "POST",
+                    ANILIST_GRAPHQL.to_owned(),
+                    json!({"query": ANILIST_LIST_QUERY, "variables": {"userId": user_id, "chunk": chunk}}),
+                );
+                plan["key"] = json!(format!("list_{chunk}"));
+                plan
+            })
+            .collect(),
+    )
+}
