@@ -5,7 +5,7 @@ use serde_json::{Map, Value, json};
 use std::time::Duration;
 
 pub(super) fn is_provider(source: &str) -> bool {
-    matches!(source, "trakt" | "simkl" | "mdblist")
+    matches!(source, "trakt" | "simkl" | "mdblist" | "anilist")
 }
 
 fn client_id(provider: &str) -> &'static str {
@@ -13,6 +13,7 @@ fn client_id(provider: &str) -> &'static str {
         "trakt" => option_env!("FLUXA_TRAKT_CLIENT_ID").unwrap_or(""),
         "simkl" => option_env!("FLUXA_SIMKL_CLIENT_ID").unwrap_or(""),
         "mdblist" => option_env!("FLUXA_MDBLIST_CLIENT_ID").unwrap_or(""),
+        "anilist" => option_env!("FLUXA_ANILIST_CLIENT_ID").unwrap_or(""),
         _ => "",
     }
 }
@@ -21,6 +22,7 @@ fn client_secret(provider: &str) -> &'static str {
     match provider {
         "trakt" => option_env!("FLUXA_TRAKT_CLIENT_SECRET").unwrap_or(""),
         "simkl" => option_env!("FLUXA_SIMKL_CLIENT_SECRET").unwrap_or(""),
+        "anilist" => option_env!("FLUXA_ANILIST_CLIENT_SECRET").unwrap_or(""),
         _ => "",
     }
 }
@@ -30,6 +32,7 @@ fn token_field(provider: &str) -> &'static str {
         "trakt" => "traktAccessToken",
         "simkl" => "simklAccessToken",
         "mdblist" => "mdblistAccessToken",
+        "anilist" => "anilistAccessToken",
         _ => "",
     }
 }
@@ -632,6 +635,9 @@ impl EffectExecutor {
                 "shows": responses["shows"],
                 "movies": responses["movies"],
                 "events": responses["events"]["events"],
+                "anilist": responses,
+                "year": year,
+                "month": month,
             }),
         )
         .unwrap_or_else(|| json!([]))
@@ -884,7 +890,7 @@ impl EffectExecutor {
             "watched": payload.get("watched").and_then(Value::as_bool).unwrap_or(true),
             "addonEpisodes": meta.get("videos"),
         });
-        for provider in ["trakt", "simkl", "mdblist"] {
+        for provider in ["trakt", "simkl", "mdblist", "anilist"] {
             if provider == library_source || self.provider_credentials(provider, &profile).is_none()
             {
                 continue;
@@ -917,7 +923,7 @@ impl EffectExecutor {
             })
             .unwrap_or(Value::Null);
         let client = http_client()?;
-        for provider in ["trakt", "simkl", "mdblist"] {
+        for provider in ["trakt", "simkl", "mdblist", "anilist"] {
             let Some(mut args) = self.provider_credentials(provider, &profile) else {
                 continue;
             };

@@ -22,6 +22,7 @@ static METHODS: &[(&str, Router)] = &[
     ("addonUptimeMatchPlan", route_addon_uptime),
     ("airDateRefreshCandidates", route_watchlist),
     ("airDateRefreshPlan", route_watchlist),
+    ("anilistCalendarPlan", route_provider_library),
     ("anilistEntriesToSync", route_external_sync_anilist),
     ("anilistGraphqlQueries", route_external_sync_anilist),
     ("anilistId", route_intro_segments),

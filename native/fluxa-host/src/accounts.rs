@@ -56,7 +56,7 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     if !connected {
         state.settings.account_auth = None;
         let generation = generation(&auth_state(state));
-        let browser = provider == "simkl"
+        let browser = matches!(provider, "simkl" | "anilist")
             && state.home.form_factor == fluxa_ui::UiFormFactorJson::Mobile
             && matches!(
                 state.home.platform,

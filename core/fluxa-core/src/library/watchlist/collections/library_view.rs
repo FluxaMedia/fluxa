@@ -156,7 +156,7 @@ fn source_capabilities(source: &str) -> SourceCapabilities {
             sorts: &["tracker", "title", "rating"],
         },
         "anilist" => SourceCapabilities {
-            statuses: &["watchlist", "watching", "completed", "dropped"],
+            statuses: &["watchlist", "watching", "completed", "hold", "dropped"],
             types: &["anime"],
             sorts: &["tracker", "title", "rating"],
         },

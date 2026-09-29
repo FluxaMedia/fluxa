@@ -1,3 +1,4 @@
+use chrono::Datelike;
 use serde_json::{Value, json};
 
 pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
@@ -8,38 +9,62 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
     let entries = args.get("entries").and_then(Value::as_array);
     let mut items = Vec::new();
     if provider == "anilist" {
-        for entry in entries.into_iter().flatten() {
-            let Some(media) = entry.get("media") else {
-                continue;
-            };
-            let Some(next) = media.get("nextAiringEpisode") else {
-                continue;
-            };
+        let year = args.get("year").and_then(Value::as_i64).unwrap_or(0) as i32;
+        let month = args.get("month").and_then(Value::as_u64).unwrap_or(0) as u32;
+        let Some(start) = chrono::NaiveDate::from_ymd_opt(year, month, 1) else {
+            return None;
+        };
+        let start = start.and_hms_opt(0, 0, 0)?.and_utc().timestamp();
+        let end = start + 32 * 86_400;
+        let end = chrono::DateTime::from_timestamp(end, 0)?
+            .date_naive()
+            .with_day(1)?
+            .and_hms_opt(0, 0, 0)?
+            .and_utc()
+            .timestamp();
+        let pages = ["releasing", "finished"].into_iter().filter_map(|key| {
+            args.pointer(&format!("/anilist/{key}/data/Page/media"))
+                .and_then(Value::as_array)
+        });
+        for media in pages.flatten() {
             let Some(media_id) = media.get("id").and_then(Value::as_i64) else {
-                continue;
-            };
-            let Some(episode) = next.get("episode").and_then(Value::as_i64) else {
-                continue;
-            };
-            let Some(airing_at) = next.get("airingAt").and_then(Value::as_i64) else {
                 continue;
             };
             let content_id = format!("anilist:{media_id}");
             let title = media
                 .pointer("/title/english")
                 .or_else(|| media.pointer("/title/romaji"));
-            let Some(date_iso) =
-                chrono::DateTime::from_timestamp(airing_at, 0).map(|value| value.to_rfc3339())
-            else {
-                continue;
-            };
-            items.push(json!({
-                "id": format!("{content_id}:{episode}"),
-                "title": title,
-                "dateIso": date_iso,
-                "contentId": content_id,
-                "seriesId": content_id,
-            }));
+            let poster = media.pointer("/coverImage/large");
+            let nodes = media
+                .pointer("/airingSchedule/nodes")
+                .and_then(Value::as_array);
+            for node in nodes.into_iter().flatten() {
+                let (Some(episode), Some(airing_at)) = (
+                    node.get("episode").and_then(Value::as_i64),
+                    node.get("airingAt").and_then(Value::as_i64),
+                ) else {
+                    continue;
+                };
+                if airing_at < start || airing_at >= end {
+                    continue;
+                }
+                let Some(date_iso) =
+                    chrono::DateTime::from_timestamp(airing_at, 0).map(|value| value.to_rfc3339())
+                else {
+                    continue;
+                };
+                items.push(json!({
+                    "id": format!("{content_id}:{episode}"),
+                    "title": title,
+                    "episodeNumber": episode,
+                    "dateIso": date_iso,
+                    "contentId": content_id,
+                    "seriesId": content_id,
+                    "metaType": "series",
+                    "poster": poster,
+                    "seriesPoster": poster,
+                }));
+            }
         }
         return serde_json::to_string(&items).ok();
     }

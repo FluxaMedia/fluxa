@@ -14,6 +14,10 @@ pub(super) const SIMKL_SCOPE: &str = "media:read media:write";
 pub(super) const SIMKL_API: &str = "https://api.simkl.com";
 const SIMKL_REDIRECT_URI: &str = "fluxa://oauth/simkl";
 const MDBLIST_API: &str = "https://api.mdblist.com";
+const ANILIST_GRAPHQL: &str = "https://graphql.anilist.co";
+const ANILIST_REDIRECT_URI: &str = "fluxa://oauth/anilist";
+const ANILIST_SAVE_MUTATION: &str = "mutation($mediaId:Int,$status:MediaListStatus,$progress:Int){SaveMediaListEntry(mediaId:$mediaId,status:$status,progress:$progress){id}}";
+const ANILIST_LIST_QUERY: &str = "query($userId:Int,$chunk:Int){MediaListCollection(userId:$userId,type:ANIME,forceSingleCompletedList:true,chunk:$chunk,perChunk:500){hasNextChunk lists{isCustomList entries{status progress updatedAt media{id idMal format episodes seasonYear genres title{english romaji native} coverImage{extraLarge large} bannerImage}}}}}";
 const SIMKL_APP_NAME: &str = "fluxa";
 const SIMKL_USER_AGENT: &str = concat!("fluxa/", env!("CARGO_PKG_VERSION"));
 
@@ -38,6 +42,9 @@ fn headers(provider: &str, args: &Value) -> Value {
         }
         "mdblist" => {
             headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
+        }
+        "anilist" => {
+            headers.insert("Accept".into(), json!("application/json"));
         }
         _ => {}
     }
@@ -155,6 +162,19 @@ pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
                 "client_id": client_id,
             }),
         ),
+        ("anilist", "exchange") => request(
+            provider,
+            &args,
+            "POST",
+            "https://anilist.co/api/v2/oauth/token".to_owned(),
+            json!({
+                "grant_type": "authorization_code",
+                "client_id": client_id,
+                "client_secret": str_field(&args, "clientSecret"),
+                "redirect_uri": ANILIST_REDIRECT_URI,
+                "code": str_field(&args, "code"),
+            }),
+        ),
         ("mdblist", operation @ ("start" | "poll" | "refresh")) => {
             let (path, mut body) = match operation {
                 "start" => ("device-authorization", json!({"scope": "write"})),
@@ -223,7 +243,7 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
     }
 
     let state = match provider {
-        "simkl" | "mdblist" if ok && body.get("access_token").is_some() => "success",
+        "simkl" | "mdblist" | "anilist" if ok && body.get("access_token").is_some() => "success",
         "simkl" | "mdblist" => match str_field(&body, "error") {
             "authorization_pending" => "pending",
             "slow_down" => "slow_down",
@@ -264,6 +284,19 @@ pub(crate) fn provider_authorize_url_json(args_json: &str) -> Option<String> {
     use base64::Engine;
     use sha2::{Digest, Sha256};
     let args: Value = serde_json::from_str(args_json).ok()?;
+    if str_field(&args, "provider") == "anilist" {
+        let url = url::Url::parse_with_params(
+            "https://anilist.co/api/v2/oauth/authorize",
+            [
+                ("client_id", str_field(&args, "clientId")),
+                ("response_type", "code"),
+                ("redirect_uri", ANILIST_REDIRECT_URI),
+                ("state", str_field(&args, "state")),
+            ],
+        )
+        .ok()?;
+        return serde_json::to_string(&json!({"url": url.as_str()})).ok();
+    }
     if str_field(&args, "provider") != "simkl" {
         return None;
     }
@@ -375,9 +408,72 @@ pub(crate) fn provider_library_requests_json(args_json: &str) -> Option<String> 
             ),
             get("upnext", catalog::mdblist::mdblist_upnext_url(None, "{}")?),
         ],
+        "anilist" => {
+            let user_id = anilist_user_id(str_field(&args, "token"))?;
+            (1..=3)
+                .map(|chunk| {
+                    let mut plan = request(
+                        provider,
+                        &args,
+                        "POST",
+                        ANILIST_GRAPHQL.to_owned(),
+                        json!({"query": ANILIST_LIST_QUERY, "variables": {"userId": user_id, "chunk": chunk}}),
+                    );
+                    plan["key"] = json!(format!("list_{chunk}"));
+                    plan
+                })
+                .collect()
+        }
         _ => return None,
     };
     serde_json::to_string(&requests).ok()
+}
+
+fn anilist_user_id(token: &str) -> Option<i64> {
+    use base64::Engine;
+    let payload = token.split('.').nth(1)?;
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload.trim_end_matches('='))
+        .ok()?;
+    let claims: Value = serde_json::from_slice(&bytes).ok()?;
+    claims.get("sub")?.as_str()?.parse().ok()
+}
+
+fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
+    let entries: Vec<Value> = ["list_1", "list_2", "list_3"]
+        .into_iter()
+        .filter_map(|key| responses.pointer(&format!("/{key}/data/MediaListCollection/lists")))
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter(|list| list.get("isCustomList").and_then(Value::as_bool) != Some(true))
+        .filter_map(|list| list.get("entries").and_then(Value::as_array))
+        .flatten()
+        .cloned()
+        .collect();
+    let synced = crate::accounts::external_sync::anilist_entries_to_sync(&entries, now_ms, None, false);
+    let tagged = |key: &str| {
+        let items: Vec<Value> = synced
+            .get(key)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|mut item| {
+                item["source"] = json!("anilist");
+                item
+            })
+            .collect();
+        Value::Array(items)
+    };
+    json!({
+        "watchlist": tagged("watchlist"),
+        "liked": [],
+        "completed": tagged("completed"),
+        "watched": synced.get("watched").cloned().unwrap_or(json!({})),
+        "dropped": tagged("dropped"),
+        "onHold": tagged("onHold"),
+        "continueWatching": tagged("watching"),
+    })
 }
 
 fn parsed(json: Option<String>) -> Value {
@@ -760,6 +856,10 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
                 "continueWatching": trakt_continue_watching(&playback, &up_next),
             })
         }
+        "anilist" => anilist_snapshot(
+            &responses,
+            args.get("nowSeconds").and_then(Value::as_i64).unwrap_or(0) * 1000,
+        ),
         _ => return None,
     };
     serde_json::to_string(&snapshot).ok()
@@ -822,6 +922,36 @@ pub(crate) fn mdblist_calendar_plan_json(args_json: &str) -> Option<String> {
     serde_json::to_string(&json!([plan])).ok()
 }
 
+pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let year = args.get("year")?.as_i64()?;
+    let month = args.get("month")?.as_i64()?;
+    let plan = |key: &str, filter: String, schedule: &str| {
+        let query = format!(
+            "query{{Page(perPage:50){{media(type:ANIME,onList:true,{filter}){{id title{{romaji english}} coverImage{{large}} airingSchedule({schedule}perPage:50){{nodes{{airingAt episode}}}}}}}}}}"
+        );
+        let mut plan = request(
+            "anilist",
+            &args,
+            "POST",
+            ANILIST_GRAPHQL.to_owned(),
+            json!({"query": query}),
+        );
+        plan["key"] = json!(key);
+        plan
+    };
+    let month_start = year * 10_000 + month * 100;
+    serde_json::to_string(&json!([
+        plan("releasing", "status:RELEASING".to_owned(), "notYetAired:true,"),
+        plan(
+            "finished",
+            format!("status:FINISHED,endDate_greater:{month_start}"),
+            ""
+        ),
+    ]))
+    .ok()
+}
+
 pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let provider = str_field(&args, "provider");
@@ -858,6 +988,11 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 .and_then(Value::as_bool)
                 .unwrap_or(false);
             match provider {
+                "anilist" if !remove => requests.push(anilist_save(
+                    &args,
+                    id,
+                    json!({"status": "PLANNING"}),
+                )?),
                 "trakt" => {
                     let body = trakt_collection_body_json(
                         &json!({
@@ -925,6 +1060,21 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 .unwrap_or(false);
             let suffix = if watched { "" } else { "/remove" };
             match provider {
+                "anilist" if watched => {
+                    let episode = video_ids
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .filter_map(Value::as_str)
+                        .filter(|id| id.matches(':').count() >= 2)
+                        .filter_map(|id| id.rsplit(':').next()?.parse::<i64>().ok())
+                        .max();
+                    let fields = match episode {
+                        Some(episode) => json!({"status": "CURRENT", "progress": episode}),
+                        None => json!({"status": "COMPLETED"}),
+                    };
+                    requests.push(anilist_save(&args, series_id, fields)?)
+                }
                 "trakt" => requests.push(post(
                     format!("{TRAKT_API}/sync/history{suffix}"),
                     serde_json::from_str(&trakt_mark_watched_body_json(
@@ -987,6 +1137,19 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
         _ => return None,
     }
     serde_json::to_string(&requests).ok()
+}
+
+fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Option<Value> {
+    let media_id: i64 = content_id.strip_prefix("anilist:")?.split(':').next()?.parse().ok()?;
+    let mut variables = fields;
+    variables["mediaId"] = json!(media_id);
+    Some(request(
+        "anilist",
+        args,
+        "POST",
+        ANILIST_GRAPHQL.to_owned(),
+        json!({"query": ANILIST_SAVE_MUTATION, "variables": variables}),
+    ))
 }
 
 fn mdblist_items_json(id: &str, content_type: &str) -> Option<String> {
@@ -1453,5 +1616,23 @@ mod tests {
         ));
         assert_eq!(plan["body"]["show"]["ids"]["imdb"], "tt0903747");
         assert_eq!(plan["body"]["episode"]["number"], 3);
+    }
+
+    #[test]
+    fn anilist_user_id_comes_from_the_token_subject() {
+        let token = "h.eyJzdWIiOiI4MDkwNDMxIn0.s";
+        assert_eq!(anilist_user_id(token), Some(8090431));
+    }
+
+    #[test]
+    fn anilist_paused_entries_land_in_on_hold() {
+        let entry = |status: &str, id: i64| {
+            json!({"status": status, "progress": 1, "updatedAt": 10, "media": {"id": id, "title": {"romaji": "x"}}})
+        };
+        let list = json!({"isCustomList": false, "entries": [entry("PAUSED", 1), entry("DROPPED", 2)]});
+        let responses = json!({"list_1": {"data": {"MediaListCollection": {"lists": [list]}}}});
+        let snapshot = anilist_snapshot(&responses, 0);
+        assert_eq!(snapshot["onHold"][0]["id"], "anilist:1");
+        assert_eq!(snapshot["dropped"][0]["id"], "anilist:2");
     }
 }

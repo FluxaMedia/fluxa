@@ -285,6 +285,7 @@ pub(crate) fn anilist_entries_to_sync(
     let mut watchlist: Vec<Value> = Vec::new();
     let mut completed: Vec<Value> = Vec::new();
     let mut dropped: Vec<Value> = Vec::new();
+    let mut on_hold: Vec<Value> = Vec::new();
     let mut watching: Vec<Value> = Vec::new();
     let mut watched = Map::new();
     let mut watched_at_ms = Map::new();
@@ -337,7 +338,11 @@ pub(crate) fn anilist_entries_to_sync(
             "DROPPED" | "PAUSED" => {
                 let mut it = item.clone();
                 it.insert("statusChangedAt".to_string(), json!(updated_at));
-                dropped.push(Value::Object(it));
+                if status == "PAUSED" {
+                    on_hold.push(Value::Object(it));
+                } else {
+                    dropped.push(Value::Object(it));
+                }
                 mark_watched_through(
                     &mut watched,
                     &mut watched_at_ms,
@@ -396,6 +401,7 @@ pub(crate) fn anilist_entries_to_sync(
         "completedCount": completed_count,
         "dropped": if watched_apply { json!(dropped) } else { Value::Null },
         "droppedCount": dropped_count,
+        "onHold": if watched_apply { json!(on_hold) } else { Value::Null },
         "watching": if continue_watching_apply { json!(watching) } else { Value::Null },
         "watchingCount": watching_count,
         "watched": if watched_apply { Value::Object(watched) } else { Value::Null },

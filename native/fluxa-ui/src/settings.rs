@@ -2991,7 +2991,7 @@ const ACCOUNT_SERVICES: [(&str, &str); 4] = [
     ("AniList", "anilistAccessToken"),
     ("MDBList", "mdblistAccessToken"),
 ];
-pub const ACCOUNT_PROVIDERS: [&str; 3] = ["trakt", "simkl", "mdblist"];
+pub const ACCOUNT_PROVIDERS: [&str; 4] = ["trakt", "simkl", "mdblist", "anilist"];
 const ACCOUNT_SOURCES: [(&str, &str); 2] = [
     (
         "settings.integration_library_source",
