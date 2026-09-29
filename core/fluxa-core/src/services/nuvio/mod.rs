@@ -3,6 +3,8 @@ mod routes;
 pub(crate) use routes::*;
 mod addon_priority;
 mod collections;
+mod continue_watching;
+pub(crate) use continue_watching::continue_watching_json;
 mod delta_state;
 mod export_push;
 mod helpers;

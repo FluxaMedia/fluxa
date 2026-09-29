@@ -97,7 +97,7 @@ pub(crate) fn route_external_sync(method: &str, args_json: &str) -> Outcome {
             let args = object(args_json)?;
             let provider = args.get("provider").and_then(Value::as_str);
             into_json(
-                crate::accounts::external_sync::replace_external_continue_watching_json(
+                crate::library::continue_watching::replace_external_continue_watching_json(
                     field_str(&args, "existingJson")?,
                     provider,
                     field_str(&args, "itemsJson")?,

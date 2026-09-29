@@ -1,10 +1,8 @@
 mod calendar;
-mod continue_watching;
 mod merge;
 mod plan;
 
 pub(crate) use calendar::provider_calendar_items_json;
-pub(crate) use continue_watching::replace_external_continue_watching_json;
 pub(crate) use merge::{
     merge_continue_watching_lists_json, merge_external_watched_json, merge_external_watchlist_json,
     merge_watched_timestamped_json, merge_watchlist_timestamped_json, ranked_winner, saved_at_ms,

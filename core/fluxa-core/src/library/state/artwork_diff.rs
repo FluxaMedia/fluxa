@@ -1,4 +1,4 @@
-use super::continue_watching::format_episode_line_json;
+use crate::library::continue_watching::format_episode_line_json;
 use serde_json::{Value, json};
 
 fn progress_seconds(value: f64, duration: f64) -> f64 {

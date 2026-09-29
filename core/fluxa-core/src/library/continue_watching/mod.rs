@@ -1,15 +1,16 @@
-use crate::library::state::{
-    build_continue_watching_from_progress_json, normalized_continue_watching_source,
-};
 use serde_json::{Value, json};
 
-mod nuvio;
+mod external;
+mod local;
+
+pub(crate) use external::replace_external_continue_watching_json;
+pub(crate) use local::*;
 
 pub(crate) fn continue_watching_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let source = normalized_continue_watching_source(args.get("source").and_then(Value::as_str));
     match source {
-        "nuvio" => nuvio::continue_watching_json(args_json),
+        "nuvio" => crate::services::nuvio::continue_watching_json(args_json),
         "local" => build_continue_watching_from_progress_json(
             &args
                 .get("progress")

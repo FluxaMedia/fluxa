@@ -554,7 +554,7 @@ fn iso(ms: i64) -> Value {
         .unwrap_or(Value::Null)
 }
 
-pub(super) fn continue_watching_json(args_json: &str) -> Option<String> {
+pub(crate) fn continue_watching_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let now_ms = args.get("nowMs").and_then(Value::as_i64).unwrap_or(0);
     let prefs = args.get("prefs").cloned().unwrap_or_else(|| json!({}));

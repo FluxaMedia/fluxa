@@ -1,5 +1,5 @@
-use super::continue_watching::is_up_next_item;
 use super::helpers::{number, text};
+use crate::library::continue_watching::is_up_next_item;
 use serde_json::{Value, json};
 
 pub(crate) fn library_continue_watching_items_json(items_json: &str) -> Option<String> {

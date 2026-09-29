@@ -1,4 +1,5 @@
 use super::super::*;
+use crate::library::continue_watching::replace_external_continue_watching_json;
 use serde_json::{Value, json};
 
 #[test]
