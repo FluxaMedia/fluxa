@@ -4,6 +4,7 @@ mod api;
 mod mappers;
 mod plan;
 mod sync;
+mod targets;
 #[cfg(test)]
 mod tests;
 
@@ -11,3 +12,4 @@ pub(crate) use api::*;
 pub(crate) use mappers::*;
 pub(crate) use plan::*;
 pub(crate) use sync::*;
+pub(crate) use targets::*;
