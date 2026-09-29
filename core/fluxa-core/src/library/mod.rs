@@ -5,5 +5,6 @@ pub(crate) mod offline_download;
 #[allow(dead_code)]
 pub(crate) mod persistence;
 pub(crate) mod release_date;
+pub(crate) mod routes;
 pub(crate) mod state;
 pub(crate) mod watchlist;

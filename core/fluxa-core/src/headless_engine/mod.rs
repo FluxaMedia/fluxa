@@ -16,6 +16,7 @@ mod offline;
 mod player;
 mod plugins;
 mod profile;
+pub(crate) mod routes;
 mod search;
 mod settings;
 mod state;

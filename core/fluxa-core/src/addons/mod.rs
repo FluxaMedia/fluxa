@@ -6,5 +6,6 @@ pub(crate) mod plugins;
 pub(crate) mod protocol;
 pub(crate) mod repository;
 pub(crate) mod resource;
+pub(crate) mod routes;
 pub(crate) mod store;
 pub(crate) mod uptime;

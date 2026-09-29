@@ -1,76 +1,18 @@
 use serde_json::{Value, json};
 
-mod addon_protocol_routes;
-mod addon_resource_routes;
-mod addon_support_routes;
-mod anime_routes;
-mod calendar_routes;
-mod content_identity_routes;
-mod content_warning_routes;
-mod core_addon_store_routes;
-mod device_auth_routes;
-mod discord_presence_routes;
-mod engine_routes;
-mod external_sync_routes;
-mod fluxa_sync_routes;
-mod intro_plugins_routes;
-mod library_routes;
-mod local_media_routes;
 mod methods;
-mod plan_misc_routes;
-mod player_policy_routes;
-mod player_scrobble_routes;
-mod profile_routes;
-mod provider_library_routes;
-mod resource_plan_routes;
-mod search_plan_routes;
-mod stream_badge_routes;
-mod stream_policy_routes;
-mod version_policy_routes;
-mod watch_together_routes;
-mod watchlist_offline_routes;
 use crate::services::{
     anilist::route_anilist, mdblist::route_mdblist, nuvio::route_nuvio,
     publicmetadb::route_publicmetadb, simkl::route_simkl, stremio::route_stremio, tmdb::route_tmdb,
     trakt::route_trakt,
 };
-use addon_protocol_routes::route_addon_protocol;
-use addon_resource_routes::route_addon_resource;
-use addon_support_routes::{route_addon_uptime, route_trailer_subtitles};
-use anime_routes::route_anime_detection;
-use calendar_routes::route_calendar;
-use content_identity_routes::route_content_identity;
-use content_warning_routes::route_content_warnings;
-use core_addon_store_routes::{route_addon_store, route_core_contract, route_profile_avatar_pack};
-use device_auth_routes::route_device_auth;
-use discord_presence_routes::route_discord_presence;
-use engine_routes::route_engine_lifecycle;
-use external_sync_routes::route_external_sync;
-use fluxa_sync_routes::route_fluxa_sync;
-use intro_plugins_routes::{route_intro_segments, route_plugins};
-use library_routes::route_library_state;
-use local_media_routes::route_local_media;
-use plan_misc_routes::{
-    route_data_policy, route_device_resource, route_discovery_plan, route_headless_adapter_plan,
-    route_player_flow,
-};
-use player_policy_routes::route_player_policy;
-use player_scrobble_routes::route_player_scrobble;
-use profile_routes::{route_profile_contract, route_profile_prefs};
-use provider_library_routes::route_provider_library;
-use resource_plan_routes::route_resource_plan;
-use search_plan_routes::route_search_plan;
-use stream_badge_routes::route_stream_badges;
-use stream_policy_routes::route_stream_policy;
-
-use version_policy_routes::route_version_policy;
-use watch_together_routes::route_watch_together;
-use watchlist_offline_routes::{route_offline, route_watchlist};
-
 use crate::{
-    accounts, addons, app_state, catalog, headless_engine, home, library, player, profile,
-    services, settings,
+    accounts::routes::*, addons::routes::*, catalog::routes::*, headless_engine::routes::*,
+    library::routes::*, player::routes::*, profile::routes::*, services::provider_routes::*,
+    settings::routes::*,
 };
+
+use crate::{app_state, headless_engine, player};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ErrorKind {
