@@ -125,7 +125,9 @@ impl FluxaWeb {
     }
 
     pub fn take_app_icon_svg(&self) -> Option<String> {
-        self.host.take_app_icon().map(|id| fluxa_host::app_icon_svg(&id))
+        self.host
+            .take_app_icon()
+            .map(|id| fluxa_host::app_icon_svg(&id))
     }
 
     fn physical_size(&self) -> [u32; 2] {

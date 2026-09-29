@@ -75,11 +75,15 @@ impl PlayerModel {
     }
 
     fn visible_sources(&self) -> impl Iterator<Item = (usize, &PlayerSource)> {
-        self.sources.iter().flatten().enumerate().filter(|(_, source)| {
-            self.source_filter
-                .as_deref()
-                .is_none_or(|addon| addon == source.addon)
-        })
+        self.sources
+            .iter()
+            .flatten()
+            .enumerate()
+            .filter(|(_, source)| {
+                self.source_filter
+                    .as_deref()
+                    .is_none_or(|addon| addon == source.addon)
+            })
     }
 }
 
@@ -152,7 +156,11 @@ fn draw_sources(
             let mut x = left;
             for (index, (addon, label)) in filters.enumerate() {
                 let selected = player.source_filter.as_deref() == addon;
-                let kind = if selected { components::ButtonKind::Selected } else { components::ButtonKind::Secondary };
+                let kind = if selected {
+                    components::ButtonKind::Selected
+                } else {
+                    components::ButtonKind::Secondary
+                };
                 let response = ui
                     .scope_builder(
                         egui::UiBuilder::new().max_rect(Rect::from_min_size(
@@ -207,7 +215,11 @@ fn draw_sources(
                     Pos2::new(left, y + 12.0),
                     Align2::LEFT_TOP,
                     localized(
-                        if player.sources_loading { "player.streams_loading" } else { "player.streams_empty" },
+                        if player.sources_loading {
+                            "player.streams_loading"
+                        } else {
+                            "player.streams_empty"
+                        },
                         language,
                     ),
                     crate::fonts::regular(metrics.screen_card_subtitle_size),

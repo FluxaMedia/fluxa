@@ -5,7 +5,9 @@ use std::{
     sync::{Arc, Mutex, OnceLock},
 };
 
-use fluxa_host::{FluxaHost, VideoStatus, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase};
+use fluxa_host::{
+    FluxaHost, GamepadButton, Key, KeyInput, NativeSurface, PointerPhase, VideoStatus,
+};
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
     JNIEnv, JavaVM,
@@ -181,7 +183,9 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
     buffering: jfloat,
     error: JString<'_>,
 ) {
-    let error = (!error.is_null()).then(|| string(&mut env, &error)).flatten();
+    let error = (!error.is_null())
+        .then(|| string(&mut env, &error))
+        .flatten();
     let status = VideoStatus {
         position,
         duration,
@@ -532,12 +536,16 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_backNati
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedTextNative<'local>(
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedTextNative<
+    'local,
+>(
     env: JNIEnv<'local>,
     _class: JClass<'local>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    let text = host(handle).and_then(FluxaHost::focused_text).unwrap_or_default();
+    let text = host(handle)
+        .and_then(FluxaHost::focused_text)
+        .unwrap_or_default();
     env.new_string(text)
         .map(|value| value.into_raw())
         .unwrap_or(std::ptr::null_mut())

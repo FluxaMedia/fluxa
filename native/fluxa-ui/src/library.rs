@@ -71,7 +71,10 @@ pub fn draw_library(
             &painter,
             Rect::from_min_max(
                 Pos2::new(page.margin, page.filters_top),
-                Pos2::new(page.margin + page.width, bottom.max(page.filters_top + 200.0)),
+                Pos2::new(
+                    page.margin + page.width,
+                    bottom.max(page.filters_top + 200.0),
+                ),
             ),
             assets.icon("Downloads"),
             &localized("library.downloads_empty", &library.language),
@@ -130,16 +133,23 @@ pub fn draw_library(
             type_options.push((key.to_owned(), localized(label, &library.language)));
         }
     }
-    let sort_options = ["tracker", "recent", "oldest", "title", "title_desc", "rating"]
-        .into_iter()
-        .filter(|sort| library.sorts.is_empty() || library.sorts.iter().any(|item| item == sort))
-        .map(|sort| {
-            (
-                sort.to_owned(),
-                localized(&format!("library.sort_{sort}"), &library.language),
-            )
-        })
-        .collect::<Vec<_>>();
+    let sort_options = [
+        "tracker",
+        "recent",
+        "oldest",
+        "title",
+        "title_desc",
+        "rating",
+    ]
+    .into_iter()
+    .filter(|sort| library.sorts.is_empty() || library.sorts.iter().any(|item| item == sort))
+    .map(|sort| {
+        (
+            sort.to_owned(),
+            localized(&format!("library.sort_{sort}"), &library.language),
+        )
+    })
+    .collect::<Vec<_>>();
     let selected_sort = if sort_options.iter().any(|(key, _)| *key == library.sort_by) {
         library.sort_by.as_str()
     } else {
@@ -204,9 +214,8 @@ pub fn draw_library(
                         remaining - (count - index - 1) as f32 * (72.0 + gap),
                     );
                     remaining -= width + gap;
-                    let (response, change) = components::dropdown(
-                        ui, id, selected, options, width, compact, metrics,
-                    );
+                    let (response, change) =
+                        components::dropdown(ui, id, selected, options, width, compact, metrics);
                     if compact
                         && let Some(request) = components::sheet_choice(
                             node,
@@ -355,8 +364,13 @@ pub(crate) fn draw_library_sections(
         .show(context, |ui| {
             ui.set_width(width);
             ui.horizontal(|ui| {
-                let tabs =
-                    components::text_tabs(ui, &labels, active, metrics.screen_control_height, metrics);
+                let tabs = components::text_tabs(
+                    ui,
+                    &labels,
+                    active,
+                    metrics.screen_control_height,
+                    metrics,
+                );
                 for (index, response) in tabs.into_iter().enumerate() {
                     let node = NODE_LIBRARY_SECTION_BASE + index as u64;
                     layout.focusable.push((node, response.rect));

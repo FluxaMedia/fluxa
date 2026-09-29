@@ -100,7 +100,10 @@ pub(crate) fn paint(
             let size = first.font_height;
             let left = pos.x + placed.pos.x + first.pos.x;
             let top = pos.y + placed.pos.y + first.pos.y - first.font_ascent;
-            clusters.push((chars, Rect::from_min_size(Pos2::new(left, top), Vec2::splat(size))));
+            clusters.push((
+                chars,
+                Rect::from_min_size(Pos2::new(left, top), Vec2::splat(size)),
+            ));
             i = j;
         }
     }
@@ -114,7 +117,12 @@ pub(crate) fn paint(
             assets.texture_for(Some(&url), [72, 72], ArtworkPriority::Visible)
         };
         if let Some(texture) = texture {
-            painter.image(texture, rect.shrink(rect.width() * 0.06), full_uv(), Color32::WHITE);
+            painter.image(
+                texture,
+                rect.shrink(rect.width() * 0.06),
+                full_uv(),
+                Color32::WHITE,
+            );
         }
     }
 }

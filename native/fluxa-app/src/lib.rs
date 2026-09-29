@@ -47,7 +47,9 @@ impl FluxaRuntime {
         value: Value,
         error: Value,
     ) -> Result<RuntimeUpdate, String> {
-        let update = self.engine.complete(completion(effect_id, status, value, error))?;
+        let update = self
+            .engine
+            .complete(completion(effect_id, status, value, error))?;
         Ok(self.apply(update))
     }
 

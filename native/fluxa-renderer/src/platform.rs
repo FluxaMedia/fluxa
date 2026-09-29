@@ -30,7 +30,8 @@ pub const ANDROID_BACKEND_ORDER: [GraphicsBackend; 2] =
 
 pub const APPLE_BACKEND_ORDER: [GraphicsBackend; 1] = [GraphicsBackend::Metal];
 
-pub const WEB_BACKEND_ORDER: [GraphicsBackend; 2] = [GraphicsBackend::WebGpu, GraphicsBackend::Gles];
+pub const WEB_BACKEND_ORDER: [GraphicsBackend; 2] =
+    [GraphicsBackend::WebGpu, GraphicsBackend::Gles];
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SurfaceLifecycle {

@@ -78,7 +78,11 @@ pub unsafe extern "C" fn fluxa_renderer_create(
 ) -> *mut FluxaRenderer {
     let cache = unsafe { text(artwork_cache_dir) }.map(PathBuf::from);
     let host = FluxaHost::new(density, cache);
-    host.set_platform(if cfg!(target_os = "tvos") { "tvos" } else { "ios" });
+    host.set_platform(if cfg!(target_os = "tvos") {
+        "tvos"
+    } else {
+        "ios"
+    });
     host.set_video_backend(Box::new(BridgeVideo(video_bridge().clone())));
     Box::into_raw(Box::new(host))
 }
@@ -123,7 +127,10 @@ pub unsafe extern "C" fn fluxa_renderer_video_status(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fluxa_renderer_push_action(renderer: *const FluxaRenderer, json: *const c_char) {
+pub unsafe extern "C" fn fluxa_renderer_push_action(
+    renderer: *const FluxaRenderer,
+    json: *const c_char,
+) {
     if let (Some(renderer), Some(json)) = (unsafe { renderer.as_ref() }, unsafe { text(json) }) {
         let _ = renderer.push_action_json(&json);
     }
@@ -263,9 +270,7 @@ pub unsafe extern "C" fn fluxa_renderer_poll_actions(
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn fluxa_renderer_take_open_url(
-    renderer: *const FluxaRenderer,
-) -> *mut c_char {
+pub unsafe extern "C" fn fluxa_renderer_take_open_url(renderer: *const FluxaRenderer) -> *mut c_char {
     owned(unsafe { renderer.as_ref() }.and_then(FluxaHost::take_open_url))
 }
 

@@ -133,9 +133,30 @@ impl GlassPass {
         let list = wgpu::PrimitiveTopology::TriangleList;
         Self {
             format,
-            down: pipeline("fluxa-glass-down", &full_layout, "vs_full", "fs_down", list, None),
-            up: pipeline("fluxa-glass-up", &full_layout, "vs_full", "fs_up", list, None),
-            blit: pipeline("fluxa-glass-blit", &full_layout, "vs_full", "fs_blit", list, None),
+            down: pipeline(
+                "fluxa-glass-down",
+                &full_layout,
+                "vs_full",
+                "fs_down",
+                list,
+                None,
+            ),
+            up: pipeline(
+                "fluxa-glass-up",
+                &full_layout,
+                "vs_full",
+                "fs_up",
+                list,
+                None,
+            ),
+            blit: pipeline(
+                "fluxa-glass-blit",
+                &full_layout,
+                "vs_full",
+                "fs_blit",
+                list,
+                None,
+            ),
             pane: pipeline(
                 "fluxa-glass-pane",
                 &pane_pipeline_layout,
@@ -198,7 +219,11 @@ impl GlassPass {
         pixels_per_point: f32,
         panes: &[GlassPane],
     ) {
-        if self.targets.as_ref().is_none_or(|targets| targets.size != size) {
+        if self
+            .targets
+            .as_ref()
+            .is_none_or(|targets| targets.size != size)
+        {
             let scaled = |shift: u32| [size[0] >> shift, size[1] >> shift];
             let scene = self.level(device, size);
             let down = (1..=LEVELS as u32)
@@ -215,7 +240,11 @@ impl GlassPass {
             });
         }
         let needed = PANE_STRIDE * panes.len().max(1) as u64;
-        if self.panes.as_ref().is_none_or(|(_, _, capacity)| *capacity < needed) {
+        if self
+            .panes
+            .as_ref()
+            .is_none_or(|(_, _, capacity)| *capacity < needed)
+        {
             let capacity = needed.next_power_of_two();
             let buffer = device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("fluxa-glass-panes"),
@@ -272,7 +301,12 @@ impl GlassPass {
     }
 
     pub fn scene(&self) -> &wgpu::TextureView {
-        &self.targets.as_ref().expect("prepare before scene").scene.view
+        &self
+            .targets
+            .as_ref()
+            .expect("prepare before scene")
+            .scene
+            .view
     }
 
     fn fullscreen(
@@ -315,17 +349,19 @@ impl GlassPass {
         }
     }
 
-    pub fn draw(
-        &self,
-        pass: &mut wgpu::RenderPass<'static>,
-        index: usize,
-        clip: [u32; 4],
-    ) {
+    pub fn draw(&self, pass: &mut wgpu::RenderPass<'static>, index: usize, clip: [u32; 4]) {
         let (Some(targets), Some((_, panes, _))) = (&self.targets, &self.panes) else {
             return;
         };
         let blurred = targets.up.first().unwrap_or(&targets.down[0]);
-        pass.set_viewport(0.0, 0.0, targets.size[0] as f32, targets.size[1] as f32, 0.0, 1.0);
+        pass.set_viewport(
+            0.0,
+            0.0,
+            targets.size[0] as f32,
+            targets.size[1] as f32,
+            0.0,
+            1.0,
+        );
         pass.set_scissor_rect(clip[0], clip[1], clip[2], clip[3]);
         pass.set_pipeline(&self.pane);
         pass.set_bind_group(0, &blurred.bind, &[]);

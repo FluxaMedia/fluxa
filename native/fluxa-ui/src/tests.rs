@@ -411,14 +411,24 @@ fn mobile_library_filters_share_one_row_inside_the_viewport() {
             None,
         )
     });
-    let controls = [NODE_LIBRARY_STATUS, NODE_LIBRARY_TYPE, NODE_LIBRARY_SORT]
-        .map(|id| layout.focusable.iter().find(|(node, _)| *node == id).unwrap().1);
+    let controls = [NODE_LIBRARY_STATUS, NODE_LIBRARY_TYPE, NODE_LIBRARY_SORT].map(|id| {
+        layout
+            .focusable
+            .iter()
+            .find(|(node, _)| *node == id)
+            .unwrap()
+            .1
+    });
     assert!(
         controls
             .iter()
             .all(|rect| (rect.top() - controls[0].top()).abs() < 0.5)
     );
-    assert!(controls.windows(2).all(|pair| pair[0].right() <= pair[1].left()));
+    assert!(
+        controls
+            .windows(2)
+            .all(|pair| pair[0].right() <= pair[1].left())
+    );
     assert!(controls[2].right() <= viewport.width);
 }
 
@@ -621,7 +631,7 @@ fn settings_choices_cycle_without_coercing_strings_to_booleans() {
     );
     assert_eq!(
         defaults.next_value_for(player, UiFormFactor::Tv),
-        "exoplayer"
+        "external"
     );
 }
 
@@ -1288,8 +1298,15 @@ fn shared_dropdowns_keep_full_control_height_instead_of_collapsing_to_text() {
         },
         |ui| {
             let options = vec![("recent".to_owned(), "Recently updated".to_owned())];
-            let (select, _) =
-                components::dropdown(ui, "dropdown-test", "recent", &options, 240.0, false, metrics);
+            let (select, _) = components::dropdown(
+                ui,
+                "dropdown-test",
+                "recent",
+                &options,
+                240.0,
+                false,
+                metrics,
+            );
             let placeholder = components::dropdown_placeholder(
                 ui,
                 "dropdown-placeholder-test",

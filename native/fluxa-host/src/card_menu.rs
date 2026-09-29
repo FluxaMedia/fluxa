@@ -95,9 +95,16 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
             watched: personal.is_some_and(|personal| personal.watched),
         });
     }
-    let simkl_rewatch = state.settings.value("integrationLibrarySource").and_then(Value::as_str)
+    let simkl_rewatch = state
+        .settings
+        .value("integrationLibrarySource")
+        .and_then(Value::as_str)
         == Some("simkl")
-        && state.settings.value("simklTrackRewatches").and_then(Value::as_bool) == Some(true);
+        && state
+            .settings
+            .value("simklTrackRewatches")
+            .and_then(Value::as_bool)
+            == Some(true);
     if simkl_rewatch && personal.is_some_and(|personal| personal.watched) {
         entries.push(Entry::Rewatch);
     }

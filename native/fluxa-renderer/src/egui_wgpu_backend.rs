@@ -111,7 +111,11 @@ impl EguiWgpuBackend {
             descriptor.pixels_per_point,
             &panes,
         );
-        drop(begin(&mut encoder, self.glass.scene(), wgpu::LoadOp::Clear(clear)));
+        drop(begin(
+            &mut encoder,
+            self.glass.scene(),
+            wgpu::LoadOp::Clear(clear),
+        ));
         for (jobs, pane_range) in segments {
             if !pane_range.is_empty() {
                 self.glass.blur(&mut encoder);

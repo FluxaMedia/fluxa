@@ -255,13 +255,15 @@ pub fn draw_discover(
                     compact,
                     metrics,
                 );
-                if compact && let Some(request) = components::sheet_choice(
-                    NODE_DISCOVER_TYPE_BASE,
-                    "discover:contentType",
-                    localized("auto.type", &discover.language),
-                    &type_options,
-                    discover.content_type.as_str(),
-                ) {
+                if compact
+                    && let Some(request) = components::sheet_choice(
+                        NODE_DISCOVER_TYPE_BASE,
+                        "discover:contentType",
+                        localized("auto.type", &discover.language),
+                        &type_options,
+                        discover.content_type.as_str(),
+                    )
+                {
                     layout.choices.push(request);
                 }
                 layout
@@ -294,15 +296,17 @@ pub fn draw_discover(
                         compact,
                         metrics,
                     );
-                    if compact && let Some(request) = components::sheet_choice(
-                        NODE_DISCOVER_CATALOG_BASE,
-                        "discover:catalog",
-                        catalog_placeholder.clone(),
-                        &catalog_options,
-                        selected_catalog
-                            .map(|catalog| catalog.key.as_str())
-                            .unwrap_or(""),
-                    ) {
+                    if compact
+                        && let Some(request) = components::sheet_choice(
+                            NODE_DISCOVER_CATALOG_BASE,
+                            "discover:catalog",
+                            catalog_placeholder.clone(),
+                            &catalog_options,
+                            selected_catalog
+                                .map(|catalog| catalog.key.as_str())
+                                .unwrap_or(""),
+                        )
+                    {
                         layout.choices.push(request);
                     }
                     layout
@@ -323,13 +327,15 @@ pub fn draw_discover(
                         compact,
                         metrics,
                     );
-                    if compact && let Some(request) = components::sheet_choice(
-                        NODE_DISCOVER_EXTRA,
-                        "discover:extra",
-                        genre_placeholder.clone(),
-                        &extra_options,
-                        discover.selected_extra_value.as_str(),
-                    ) {
+                    if compact
+                        && let Some(request) = components::sheet_choice(
+                            NODE_DISCOVER_EXTRA,
+                            "discover:extra",
+                            genre_placeholder.clone(),
+                            &extra_options,
+                            discover.selected_extra_value.as_str(),
+                        )
+                    {
                         layout.choices.push(request);
                     }
                     layout.focusable.push((NODE_DISCOVER_EXTRA, response.rect));

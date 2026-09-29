@@ -434,7 +434,12 @@ pub(crate) fn draw_mobile_navigation_bar(
             )
             .intersect(bar.shrink(4.0));
             if floating {
-                glass(&painter, indicator, indicator.height() * 0.5, indicator_fill);
+                glass(
+                    &painter,
+                    indicator,
+                    indicator.height() * 0.5,
+                    indicator_fill,
+                );
             } else {
                 painter.rect_filled(indicator, indicator.height() * 0.5, indicator_fill);
             }

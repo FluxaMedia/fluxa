@@ -183,11 +183,26 @@ pub const LOGOS: &[(&str, &str)] = &[
     ("mal", include_str!("../assets/logos/mal.svg")),
     ("mdblist", include_str!("../assets/logos/mdblist.svg")),
     ("metacritic", include_str!("../assets/logos/metacritic.svg")),
-    ("rt-popcorn-full", include_str!("../assets/logos/rt-popcorn-full.svg")),
-    ("rt-popcorn-spilled", include_str!("../assets/logos/rt-popcorn-spilled.svg")),
-    ("rt-tomato-empty", include_str!("../assets/logos/rt-tomato-empty.svg")),
-    ("rt-tomato-fresh", include_str!("../assets/logos/rt-tomato-fresh.svg")),
-    ("rt-tomato-rotten", include_str!("../assets/logos/rt-tomato-rotten.svg")),
+    (
+        "rt-popcorn-full",
+        include_str!("../assets/logos/rt-popcorn-full.svg"),
+    ),
+    (
+        "rt-popcorn-spilled",
+        include_str!("../assets/logos/rt-popcorn-spilled.svg"),
+    ),
+    (
+        "rt-tomato-empty",
+        include_str!("../assets/logos/rt-tomato-empty.svg"),
+    ),
+    (
+        "rt-tomato-fresh",
+        include_str!("../assets/logos/rt-tomato-fresh.svg"),
+    ),
+    (
+        "rt-tomato-rotten",
+        include_str!("../assets/logos/rt-tomato-rotten.svg"),
+    ),
     ("simkl", include_str!("../assets/logos/simkl.svg")),
     ("stremio", include_str!("../assets/logos/stremio.svg")),
     ("tmdb", include_str!("../assets/logos/tmdb.svg")),
