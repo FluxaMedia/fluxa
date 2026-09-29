@@ -4,8 +4,33 @@ use reqwest::{Client, Method};
 use serde_json::{Map, Value, json};
 use std::time::Duration;
 
+fn registry_entry(provider: &str) -> Option<Value> {
+    core_value("providerRegistry", json!({}))?
+        .as_array()?
+        .iter()
+        .find(|entry| str_field(entry, "id") == provider)
+        .cloned()
+}
+
 pub(super) fn is_provider(source: &str) -> bool {
-    matches!(source, "trakt" | "simkl" | "mdblist" | "anilist")
+    registry_entry(source).is_some()
+}
+
+pub(super) fn has_capability(provider: &str, capability: &str) -> bool {
+    registry_entry(provider).is_some_and(|entry| {
+        entry["capabilities"]
+            .as_array()
+            .is_some_and(|all| all.iter().any(|item| item == capability))
+    })
+}
+
+fn connected_with(profile: &Value, capability: &str) -> Vec<String> {
+    core_value(
+        "connectedProviders",
+        json!({"profile": profile, "capability": capability}),
+    )
+    .and_then(|ids| serde_json::from_value(ids).ok())
+    .unwrap_or_default()
 }
 
 fn client_id(provider: &str) -> &'static str {
@@ -27,14 +52,10 @@ fn client_secret(provider: &str) -> &'static str {
     }
 }
 
-fn token_field(provider: &str) -> &'static str {
-    match provider {
-        "trakt" => "traktAccessToken",
-        "simkl" => "simklAccessToken",
-        "mdblist" => "mdblistAccessToken",
-        "anilist" => "anilistAccessToken",
-        _ => "",
-    }
+fn token_field(provider: &str) -> String {
+    registry_entry(provider)
+        .and_then(|entry| entry["tokenField"].as_str().map(str::to_owned))
+        .unwrap_or_default()
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -133,7 +154,7 @@ impl EffectExecutor {
     }
 
     fn provider_credentials(&self, provider: &str, profile: &Value) -> Option<Value> {
-        let token = str_field(profile, token_field(provider));
+        let token = str_field(profile, &token_field(provider));
         let api_key = self.provider_api_key(profile);
         let connected = match provider {
             "mdblist" => !token.is_empty() || !api_key.is_empty(),
@@ -278,15 +299,14 @@ impl EffectExecutor {
         profile: Value,
         force: bool,
     ) -> Result<Value, String> {
-        let (refresh_field, expires_field) = match provider {
-            "trakt" => ("traktRefreshToken", "traktTokenExpiresAt"),
-            "simkl" => ("simklRefreshToken", "simklTokenExpiresAt"),
-            "mdblist" => ("mdblistRefreshToken", "mdblistTokenExpiresAt"),
-            _ => return Ok(profile),
+        let Some([refresh_field, expires_field]) = registry_entry(provider).and_then(|entry| {
+            serde_json::from_value::<[String; 2]>(entry["refreshFields"].clone()).ok()
+        }) else {
+            return Ok(profile);
         };
-        let refresh_token = str_field(&profile, refresh_field);
+        let refresh_token = str_field(&profile, &refresh_field);
         let expires_at = profile
-            .get(expires_field)
+            .get(&expires_field)
             .and_then(Value::as_i64)
             .unwrap_or(i64::MAX);
         let due = force || expires_at < chrono_unix_seconds() + 86_400;
@@ -890,7 +910,8 @@ impl EffectExecutor {
             "watched": payload.get("watched").and_then(Value::as_bool).unwrap_or(true),
             "addonEpisodes": meta.get("videos"),
         });
-        for provider in ["trakt", "simkl", "mdblist", "anilist"] {
+        for provider in connected_with(&profile, "watchedSync") {
+            let provider = provider.as_str();
             if provider == library_source || self.provider_credentials(provider, &profile).is_none()
             {
                 continue;
@@ -923,7 +944,8 @@ impl EffectExecutor {
             })
             .unwrap_or(Value::Null);
         let client = http_client()?;
-        for provider in ["trakt", "simkl", "mdblist", "anilist"] {
+        for provider in connected_with(&profile, "scrobble") {
+            let provider = provider.as_str();
             let Some(mut args) = self.provider_credentials(provider, &profile) else {
                 continue;
             };
