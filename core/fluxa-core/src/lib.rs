@@ -22,6 +22,7 @@ mod library;
 pub mod log_sink;
 pub mod player;
 mod profile;
+mod services;
 mod settings;
 
 pub mod env;

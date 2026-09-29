@@ -1,6 +1,6 @@
-use super::*;
+use crate::services::*;
 
-pub(super) fn anilist_user_id(token: &str) -> Option<i64> {
+pub(crate) fn anilist_user_id(token: &str) -> Option<i64> {
     use base64::Engine;
     let payload = token.split('.').nth(1)?;
     let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
@@ -11,7 +11,7 @@ pub(super) fn anilist_user_id(token: &str) -> Option<i64> {
 }
 
 
-pub(super) fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
+pub(crate) fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
     let entries: Vec<Value> = ["list_1", "list_2", "list_3"]
         .into_iter()
         .filter_map(|key| responses.pointer(&format!("/{key}/data/MediaListCollection/lists")))
@@ -80,7 +80,7 @@ pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
 }
 
 
-pub(super) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Option<Value> {
+pub(crate) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Option<Value> {
     let media_id: i64 = content_id.strip_prefix("anilist:")?.split(':').next()?.parse().ok()?;
     let mut variables = fields;
     variables["mediaId"] = json!(media_id);

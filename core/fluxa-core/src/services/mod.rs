@@ -7,10 +7,11 @@ use crate::accounts::external_sync::{
     trakt_watchlist_to_items_json,
 };
 use crate::catalog;
-use super::provider_registry as registry;
 use serde_json::{Map, Value, json};
 
 pub(crate) mod anilist;
+pub(crate) mod registry;
+pub(crate) mod simkl_sync;
 pub(crate) mod mdblist;
 pub(crate) mod simkl;
 pub(crate) mod trakt;
@@ -21,8 +22,8 @@ pub(crate) use trakt::trakt_calendar_plan_json;
 use trakt::*;
 
 const TRAKT_API: &str = "https://api.trakt.tv";
-pub(super) const SIMKL_SCOPE: &str = "media:read media:write";
-pub(super) const SIMKL_API: &str = "https://api.simkl.com";
+pub(crate) const SIMKL_SCOPE: &str = "media:read media:write";
+pub(crate) const SIMKL_API: &str = "https://api.simkl.com";
 const SIMKL_REDIRECT_URI: &str = "fluxa://oauth/simkl";
 const MDBLIST_API: &str = "https://api.mdblist.com";
 const ANILIST_GRAPHQL: &str = "https://graphql.anilist.co";
@@ -79,7 +80,7 @@ fn with_simkl_app(url: &str) -> String {
     )
 }
 
-pub(super) fn request(
+pub(crate) fn request(
     provider: &str,
     args: &Value,
     method: &str,

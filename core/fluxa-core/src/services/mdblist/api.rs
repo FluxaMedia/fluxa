@@ -1,13 +1,13 @@
-use super::*;
+use crate::services::*;
 
-pub(super) fn mdblist_entries(body: &Value, kind: &str) -> Vec<Value> {
+pub(crate) fn mdblist_entries(body: &Value, kind: &str) -> Vec<Value> {
     body.get(kind)
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default()
 }
 
-pub(super) fn mdblist_items(body: &Value) -> Value {
+pub(crate) fn mdblist_items(body: &Value) -> Value {
     let mut items = Vec::new();
     for (kind, key, content_type) in [("movies", "movie", "movie"), ("shows", "show", "series")] {
         for entry in mdblist_entries(body, kind) {
@@ -26,7 +26,7 @@ pub(super) fn mdblist_items(body: &Value) -> Value {
     Value::Array(items)
 }
 
-pub(super) fn mdblist_watched(body: &Value) -> (Value, Value) {
+pub(crate) fn mdblist_watched(body: &Value) -> (Value, Value) {
     let mut completed = mdblist_items(&json!({"movies": mdblist_entries(body, "movies")}))
         .as_array()
         .cloned()
@@ -76,7 +76,7 @@ pub(super) fn mdblist_watched(body: &Value) -> (Value, Value) {
     (Value::Array(completed), Value::Object(watched))
 }
 
-pub(super) fn mdblist_playback(entries: &Value) -> Value {
+pub(crate) fn mdblist_playback(entries: &Value) -> Value {
     let entries: Vec<Value> = entries
         .as_array()
         .into_iter()
@@ -107,7 +107,7 @@ pub(super) fn mdblist_playback(entries: &Value) -> Value {
     items
 }
 
-pub(super) fn mdblist_up_next(upnext: &Value, watched: &Value) -> Value {
+pub(crate) fn mdblist_up_next(upnext: &Value, watched: &Value) -> Value {
     let mut imdb_by_tmdb = std::collections::HashMap::new();
     let shows = mdblist_entries(watched, "shows")
         .into_iter()
@@ -175,7 +175,7 @@ pub(crate) fn mdblist_calendar_plan_json(args_json: &str) -> Option<String> {
 }
 
 
-pub(super) fn mdblist_items_json(id: &str, content_type: &str) -> Option<String> {
+pub(crate) fn mdblist_items_json(id: &str, content_type: &str) -> Option<String> {
     let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(id)?).ok()?;
     let mut item = ids.as_object()?.clone();
     item.insert("type".into(), json!(content_type));

@@ -1,6 +1,6 @@
-use super::*;
+use crate::services::*;
 
-pub(super) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) {
+pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) {
     let shows = concat(&[
         responses
             .get(&format!("{status}_shows"))

@@ -1,4 +1,4 @@
-use super::provider::{SIMKL_API, provider_library_snapshot_json, request};
+use super::{SIMKL_API, provider_library_snapshot_json, request};
 use serde_json::{Map, Value, json};
 
 const TYPES: [(&str, &str); 3] = [

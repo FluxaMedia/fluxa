@@ -1,18 +1,18 @@
-use super::*;
+use crate::services::*;
 
-pub(super) fn trakt_progress_number(entry: &Value, key: &str) -> i64 {
+pub(crate) fn trakt_progress_number(entry: &Value, key: &str) -> i64 {
     entry
         .pointer(&format!("/progress/{key}"))
         .and_then(Value::as_i64)
         .unwrap_or(0)
 }
 
-pub(super) fn trakt_show_finished(entry: &Value) -> bool {
+pub(crate) fn trakt_show_finished(entry: &Value) -> bool {
     let aired = trakt_progress_number(entry, "aired");
     aired > 0 && trakt_progress_number(entry, "completed") >= aired
 }
 
-pub(super) fn trakt_next_episode_aired(entry: &Value, now: i64) -> bool {
+pub(crate) fn trakt_next_episode_aired(entry: &Value, now: i64) -> bool {
     entry
         .pointer("/progress/next_episode/first_aired")
         .and_then(Value::as_str)
@@ -20,7 +20,7 @@ pub(super) fn trakt_next_episode_aired(entry: &Value, now: i64) -> bool {
         .is_some_and(|aired| aired.timestamp() <= now)
 }
 
-pub(super) fn trakt_continue_watching(playback: &Value, up_next: &Value) -> Value {
+pub(crate) fn trakt_continue_watching(playback: &Value, up_next: &Value) -> Value {
     let mut items: Vec<Value> = Vec::new();
     for item in playback.as_array().into_iter().flatten() {
         let id = str_field(item, "id");
