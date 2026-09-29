@@ -655,7 +655,8 @@ pub(crate) fn trakt_remap_video_ids_json(args_json: &str) -> Option<String> {
                 .collect();
             let target = match by_title.as_slice() {
                 [only] => Some((*only).clone()),
-                _ => trakt.get(index).cloned(),
+                _ if addon.len() == trakt.len() => trakt.get(index).cloned(),
+                _ => None,
             };
             target.map_or_else(
                 || video_id.clone(),

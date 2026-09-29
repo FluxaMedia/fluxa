@@ -43,6 +43,7 @@ fn http_client() -> Result<Client, String> {
         .map_err(|error| error.to_string())
 }
 
+const TRAKT_SEASONS_TTL: i64 = 24 * 60 * 60;
 const SIMKL_ACCOUNT_TTL: i64 = 86_400;
 
 fn find_key<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
@@ -648,32 +649,65 @@ impl EffectExecutor {
         Ok(())
     }
 
-    async fn remap_trakt_episodes(&self, credentials: &Value, command: &mut Value) {
-        let addon = command["addonEpisodes"].take();
-        if str_field(command, "type") != "markWatched"
-            || addon.as_array().is_none_or(|episodes| episodes.is_empty())
+    async fn trakt_seasons(&self, credentials: &Value, series_id: &str) -> Option<Value> {
+        let key = format!("trakt_seasons_{}", sanitize_key(series_id));
+        let now = chrono_unix_seconds();
+        let cached = self.storage.read_json(&key).ok().flatten();
+        if let Some(cached) = cached
+            .as_ref()
+            .filter(|cached| cached["at"].as_i64().unwrap_or(0) + TRAKT_SEASONS_TTL > now)
         {
-            return;
+            return Some(cached["seasons"].clone());
         }
         let mut args = credentials.clone();
-        args["command"] = json!({"type": "traktSeasons", "seriesId": command["seriesId"]});
-        let Some(request) =
-            core_value("providerWriteRequests", args).and_then(|requests| requests.get(0).cloned())
-        else {
-            return;
-        };
-        let Ok(client) = http_client() else { return };
-        let Ok(seasons) = Self::provider_get(&client, &request, "Trakt").await else {
-            return;
-        };
-        if let Some(video_ids) = core_value(
+        args["command"] = json!({"type": "traktSeasons", "seriesId": series_id});
+        let request = core_value("providerWriteRequests", args)?.get(0).cloned()?;
+        let fetched = Self::provider_get(&http_client().ok()?, &request, "Trakt").await;
+        match fetched {
+            Ok(seasons) => {
+                let _ = self
+                    .storage
+                    .write_json(&key, &json!({"at": now, "seasons": seasons}));
+                Some(seasons)
+            }
+            Err(_) => cached.map(|cached| cached["seasons"].clone()),
+        }
+    }
+
+    async fn remap_trakt_video_ids(
+        &self,
+        credentials: &Value,
+        series_id: &str,
+        video_ids: &Value,
+        addon_episodes: &Value,
+    ) -> Option<Value> {
+        if addon_episodes
+            .as_array()
+            .is_none_or(|episodes| episodes.is_empty())
+        {
+            return None;
+        }
+        let seasons = self.trakt_seasons(credentials, series_id).await?;
+        core_value(
             "traktRemapVideoIds",
             json!({
-                "videoIds": command["videoIds"],
-                "addonEpisodes": addon,
+                "videoIds": video_ids,
+                "addonEpisodes": addon_episodes,
                 "traktSeasons": seasons,
             }),
-        ) {
+        )
+    }
+
+    async fn remap_trakt_episodes(&self, credentials: &Value, command: &mut Value) {
+        let addon = command["addonEpisodes"].take();
+        if str_field(command, "type") != "markWatched" {
+            return;
+        }
+        let series_id = str_field(command, "seriesId").to_owned();
+        if let Some(video_ids) = self
+            .remap_trakt_video_ids(credentials, &series_id, &command["videoIds"], &addon)
+            .await
+        {
             command["videoIds"] = video_ids;
         }
     }
@@ -827,6 +861,23 @@ impl EffectExecutor {
             args["metaType"] = payload.get("metaType").cloned().unwrap_or(Value::Null);
             args["progress"] = payload.get("progress").cloned().unwrap_or(Value::Null);
             args["providerIds"] = payload.get("providerIds").cloned().unwrap_or(Value::Null);
+            if provider == "trakt" && str_field(payload, "metaType") != "movie" {
+                let item_id = str_field(payload, "itemId");
+                let series_id = core_value("traktShowIdFromEpisodeId", json!({"videoId": item_id}))
+                    .and_then(|id| id.as_str().map(str::to_owned))
+                    .unwrap_or_default();
+                let remapped = self
+                    .remap_trakt_video_ids(
+                        &args,
+                        &series_id,
+                        &json!([item_id]),
+                        &payload["addonEpisodes"],
+                    )
+                    .await;
+                if let Some(id) = remapped.as_ref().and_then(|ids| ids.get(0)) {
+                    args["itemId"] = id.clone();
+                }
+            }
             let Some(plan) = core_value("providerScrobbleRequest", args) else {
                 continue;
             };

@@ -163,6 +163,8 @@ pub(super) enum AppAction {
         progress: f64,
         action_name: String,
         profile: Option<Value>,
+        #[serde(default)]
+        meta: Option<Value>,
     },
     #[serde(rename = "profileActivated")]
     ProfileActivated { profile: Profile },

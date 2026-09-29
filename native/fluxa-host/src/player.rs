@@ -1008,6 +1008,7 @@ fn scrobble(session: &SessionHandle, player: &PlayerSession, snapshot: &Value, a
         "progress": player.status.position / player.status.duration * 100.0,
         "actionName": action,
         "profile": session.active_profile(),
+        "meta": player.meta,
     });
     if let Err(error) = session.dispatch(command) {
         host_log(format!("core dispatch failed: {error}"));

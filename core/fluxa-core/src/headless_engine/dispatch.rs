@@ -249,6 +249,7 @@ impl HeadlessEngine {
                 progress,
                 action_name,
                 profile,
+                meta,
             } => player::dispatch_scrobble(
                 self,
                 token,
@@ -257,6 +258,7 @@ impl HeadlessEngine {
                 progress,
                 action_name,
                 profile,
+                meta,
             ),
             AppAction::ProfileActivated { profile } => {
                 library::dispatch_profile_activated(self, profile)

@@ -369,7 +369,7 @@ pub(super) fn dispatch_mark_watched(
     effects
 }
 
-fn addon_episodes(meta: Option<&Value>) -> Vec<Value> {
+pub(in crate::headless_engine) fn addon_episodes(meta: Option<&Value>) -> Vec<Value> {
     meta.and_then(|meta| meta.get("videos")?.as_array())
         .into_iter()
         .flatten()
