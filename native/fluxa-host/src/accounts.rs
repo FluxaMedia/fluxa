@@ -43,6 +43,19 @@ fn dispatch(state: &RendererState, command: Value) {
     }
 }
 
+fn has_capability(provider: &str, capability: &str) -> bool {
+    core_value("providerRegistry", json!({}))
+        .and_then(|registry| registry.as_array().cloned())
+        .into_iter()
+        .flatten()
+        .find(|entry| entry["id"] == provider)
+        .is_some_and(|entry| {
+            entry["capabilities"]
+                .as_array()
+                .is_some_and(|all| all.iter().any(|item| item == capability))
+        })
+}
+
 pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     let Some(session) = state.session.as_ref() else {
         return;
@@ -56,7 +69,7 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     if !connected {
         state.settings.account_auth = None;
         let generation = generation(&auth_state(state));
-        let browser = matches!(provider, "simkl" | "anilist")
+        let browser = has_capability(provider, "browser")
             && state.home.form_factor == fluxa_ui::UiFormFactorJson::Mobile
             && matches!(
                 state.home.platform,
@@ -274,4 +287,19 @@ pub(crate) fn poll(state: &mut RendererState) {
         "profile": state.session.as_ref().map(|session| session.active_profile()),
     });
     dispatch(state, command);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_listed_account_provider_can_sign_in() {
+        for provider in fluxa_ui::ACCOUNT_PROVIDERS {
+            assert!(
+                has_capability(provider, "device") || has_capability(provider, "browser"),
+                "{provider} has no sign-in flow in the registry"
+            );
+        }
+    }
 }
