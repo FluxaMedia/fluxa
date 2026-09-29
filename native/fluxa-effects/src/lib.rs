@@ -25,6 +25,8 @@ mod executor;
 mod session;
 pub mod storage;
 
-pub use executor::{EffectCompletion, EffectExecutor, core_value};
+pub use executor::{
+    EffectCompletion, EffectExecutor, core_value, media_servers, remove_media_server,
+};
 pub use session::{SessionHandle, persisted_runtime_state};
 pub use storage::Storage;

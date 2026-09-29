@@ -59,7 +59,7 @@ fn token_field(provider: &str) -> String {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn random_hex() -> Option<String> {
+pub(super) fn random_hex() -> Option<String> {
     use aes_gcm::aead::Generate;
     use aes_gcm::{Aes256Gcm, Key};
     let key = Key::<Aes256Gcm>::generate();
@@ -67,7 +67,7 @@ fn random_hex() -> Option<String> {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn random_hex() -> Option<String> {
+pub(super) fn random_hex() -> Option<String> {
     None
 }
 
@@ -95,7 +95,7 @@ fn find_key<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     }
 }
 
-async fn send(client: &Client, plan: &Value) -> Result<(u16, Value), String> {
+pub(super) async fn send(client: &Client, plan: &Value) -> Result<(u16, Value), String> {
     let method = Method::from_bytes(str_field(plan, "method").as_bytes())
         .map_err(|error| error.to_string())?;
     let mut request = client.request(method, str_field(plan, "url"));
@@ -229,6 +229,9 @@ impl EffectExecutor {
 
     pub(super) async fn run_auth_flow(&self, payload: &Value) -> Result<Value, String> {
         let provider = str_field(payload, "provider");
+        if super::mediaserver::is_kind(provider) {
+            return self.media_auth_start(provider).await;
+        }
         if client_id(provider).is_empty() {
             return Err(format!("{provider} is not configured in this build"));
         }
@@ -262,6 +265,9 @@ impl EffectExecutor {
 
     pub(super) async fn exchange_auth_code(&self, payload: &Value) -> Result<Value, String> {
         let provider = str_field(payload, "provider");
+        if super::mediaserver::is_kind(provider) {
+            return self.media_auth_exchange(payload).await;
+        }
         let verifier = str_field(payload, "codeVerifier");
         let (operation, extra) = if verifier.is_empty() {
             ("poll", json!({"code": str_field(payload, "code")}))
@@ -928,6 +934,9 @@ impl EffectExecutor {
     }
 
     pub(super) async fn scrobble(&self, payload: &Value) -> Result<Value, String> {
+        if self.report_media_server(payload).await {
+            return Ok(json!({}));
+        }
         let profile_id = self.active_profile_id(payload.get("profile"))?;
         let profile = payload
             .get("profile")

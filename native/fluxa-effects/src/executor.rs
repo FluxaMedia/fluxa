@@ -10,6 +10,7 @@ mod addons;
 mod catalog;
 mod home;
 mod library;
+mod mediaserver;
 mod providers;
 mod streams;
 mod tmdb;
@@ -18,6 +19,7 @@ mod torrent;
 use account::*;
 use addons::*;
 use catalog::*;
+pub use mediaserver::{media_servers, remove_media_server};
 use tmdb::*;
 use torrent::*;
 
@@ -57,6 +59,7 @@ pub struct EffectCompletion {
 impl EffectExecutor {
     pub fn new(storage: Storage) -> Self {
         let _ = TORRENT_CACHE_DIR.set(storage.dir().join("torrent-cache"));
+        mediaserver::init(&storage);
         Self { storage }
     }
 
@@ -376,6 +379,9 @@ async fn fetch_text(client: &Client, url: &str) -> Result<(i32, Option<String>),
             "unsupported resource URL scheme: {}",
             parsed.scheme()
         ));
+    }
+    if parsed.host_str() == Some(mediaserver::HOST) {
+        return Ok(mediaserver::respond(&parsed).await);
     }
     let response = client
         .get(parsed)

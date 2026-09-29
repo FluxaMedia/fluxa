@@ -164,6 +164,10 @@ impl EffectExecutor {
             Some("nuvio") => self.nuvio_addons(profile, &source).await?,
             _ => self.local_addons(profiles, active_id)?,
         };
+        let mut addons = addons;
+        if let Some(list) = addons.as_array_mut() {
+            list.extend(super::mediaserver::addons(&self.storage));
+        }
         normalize_enabled_addons(addons)
     }
 
