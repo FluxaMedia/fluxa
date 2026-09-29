@@ -10,6 +10,7 @@ mod effect_bookkeeping;
 mod helpers;
 mod home;
 mod library;
+pub(crate) mod manifest;
 mod navigation;
 mod offline;
 mod player;

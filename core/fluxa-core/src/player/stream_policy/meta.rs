@@ -155,7 +155,7 @@ pub(crate) fn stream_is_likely_player_compatible(
     }
     true
 }
-pub(crate) fn stream_playback_info_json(stream_json: &str) -> Option<String> {
+pub fn stream_playback_info_json(stream_json: &str) -> Option<String> {
     let stream = serde_json::from_str::<Value>(stream_json).ok()?;
     let playable_url = stream_playable_url(&stream);
     let effective_video_hash = stream_text(&stream, "videoHash")

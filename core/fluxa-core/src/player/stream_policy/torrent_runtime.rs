@@ -50,7 +50,7 @@ pub(crate) fn build_torrent_stream_url(
     query.push_str(&format!("&title={}", query_encode(title)));
     format!("{base}?{query}")
 }
-pub(crate) fn torrent_runtime_info_json(request_json: &str) -> Option<String> {
+pub fn torrent_runtime_info_json(request_json: &str) -> Option<String> {
     let request = serde_json::from_str::<TorrentRuntimeRequest>(request_json).ok()?;
     let normalized_link = normalize_torrent_link(&request.link, &request.sources);
     let (selected_file_idx, selected_reason) = resolve_torrent_file_index(

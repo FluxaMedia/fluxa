@@ -2,13 +2,15 @@ use super::*;
 
 pub(super) fn route_core_contract(method: &str, args_json: &str) -> Outcome {
     match method {
-        "coreCapabilities" => into_json(core_contract::core_capabilities_json(
+        "coreCapabilities" => into_json(headless_engine::manifest::core_capabilities_json(
             object(args_json)
                 .ok()
                 .and_then(|o| o.get("portable").and_then(Value::as_bool))
                 .unwrap_or(false),
         )),
-        "coreContractManifest" => into_json(core_contract::core_contract_manifest_json()),
+        "coreContractManifest" => {
+            into_json(headless_engine::manifest::core_contract_manifest_json())
+        }
 
         _ => Err(unknown_method()),
     }

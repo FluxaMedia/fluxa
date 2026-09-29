@@ -4,19 +4,23 @@ mod language;
 mod magnet;
 mod meta;
 mod selection;
+#[allow(dead_code)]
 mod torrent_files;
 mod torrent_runtime;
 
 pub(crate) use cloudstream::*;
 pub(crate) use external_audio::*;
 pub(crate) use language::*;
-pub(crate) use magnet::*;
+pub use magnet::stream_magnet_link_json;
+pub use meta::stream_playback_info_json;
 pub(crate) use meta::*;
 pub(crate) use selection::*;
-pub(crate) use torrent_files::*;
+pub use torrent_runtime::torrent_runtime_info_json;
 pub(crate) use torrent_runtime::*;
 #[cfg(test)]
 mod tests {
+    use super::magnet::*;
+    use super::torrent_files::*;
     use super::*;
     use serde_json::{Value, json};
 

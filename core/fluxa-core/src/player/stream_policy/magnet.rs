@@ -92,7 +92,7 @@ pub(crate) fn stream_magnet_link(stream: &Value) -> Option<String> {
     }
     None
 }
-pub(crate) fn stream_magnet_link_json(stream_json: &str) -> Option<String> {
+pub fn stream_magnet_link_json(stream_json: &str) -> Option<String> {
     let stream: Value = serde_json::from_str(stream_json).ok()?;
     stream_magnet_link(&stream)
 }

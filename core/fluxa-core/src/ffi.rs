@@ -70,8 +70,7 @@ use watch_together_routes::route_watch_together;
 use watchlist_offline_routes::{route_offline, route_watchlist};
 
 use crate::{
-    accounts, addons, app_state, catalog, core_contract, headless_engine, home, library, player,
-    profile, settings,
+    accounts, addons, app_state, catalog, headless_engine, home, library, player, profile, settings,
 };
 
 #[derive(Clone, Copy, PartialEq, Eq)]

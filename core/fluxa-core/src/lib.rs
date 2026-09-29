@@ -15,8 +15,6 @@ pub mod app_icon;
 mod app_state;
 mod catalog;
 mod constants;
-pub mod core_api;
-pub mod core_contract;
 mod core_error;
 mod headless_engine;
 mod home;
@@ -33,7 +31,6 @@ pub mod types;
 
 pub mod bindings;
 
-pub use core_api::FluxaCore;
 pub use headless_engine::{Engine, PageUpdate, Update};
 pub use home::ranking::home_hero_plan;
 

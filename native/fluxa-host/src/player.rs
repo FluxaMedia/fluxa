@@ -1,7 +1,7 @@
 use std::sync::{Arc, mpsc::Receiver};
 use std::time::Duration;
 
-use fluxa_core::FluxaCore;
+use fluxa_core::player::stream_policy;
 use fluxa_ui::{PlayerModel, SettingsModel};
 use serde_json::{Value, json};
 use web_time::Instant;
@@ -937,7 +937,7 @@ fn poll_torrent(
                 .get(index as usize)
         });
     let Some(link) =
-        stream.and_then(|stream| FluxaCore::stream_magnet_link_json(&stream.to_string()))
+        stream.and_then(|stream| stream_policy::stream_magnet_link_json(&stream.to_string()))
     else {
         return;
     };

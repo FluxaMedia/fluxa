@@ -8,7 +8,7 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Json, Router};
-use fluxa_core::FluxaCore;
+use fluxa_core::player::stream_policy;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::sync::{Arc, OnceLock};
@@ -113,7 +113,7 @@ async fn start_torrent_inner(state: &AppState, body: StartTorrentBody) -> Result
 
     let stream: Value =
         serde_json::from_str(&body.stream_json).map_err(|e| format!("invalid stream json: {e}"))?;
-    let playback_json = FluxaCore::stream_playback_info_json(&body.stream_json)
+    let playback_json = stream_policy::stream_playback_info_json(&body.stream_json)
         .ok_or_else(|| "stream playback info could not be resolved".to_string())?;
     let playback: Value =
         serde_json::from_str(&playback_json).map_err(|e| format!("invalid playback info: {e}"))?;
@@ -153,7 +153,7 @@ async fn start_torrent_inner(state: &AppState, body: StartTorrentBody) -> Result
         "stat": false,
         "durationMs": stream.get("durationMs").and_then(Value::as_u64)
     });
-    let runtime_json = FluxaCore::torrent_runtime_info_json(&runtime_request.to_string())
+    let runtime_json = stream_policy::torrent_runtime_info_json(&runtime_request.to_string())
         .ok_or_else(|| "torrent runtime info could not be resolved".to_string())?;
     let runtime: Value = serde_json::from_str(&runtime_json)
         .map_err(|e| format!("invalid torrent runtime response: {e}"))?;
