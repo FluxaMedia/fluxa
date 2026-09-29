@@ -117,3 +117,17 @@ fn mdblist_events_become_episode_items() {
     assert_eq!(items[0]["id"], "tmdb:2190:29:2");
     assert_eq!(items[0]["episodePoster"], "https://image.tmdb.org/t/p/w500/b.jpg");
 }
+
+#[test]
+fn mdblist_movie_releases_keep_their_own_event_id() {
+    let items: serde_json::Value = serde_json::from_str(
+        &provider_calendar_items_json(
+            r#"{"provider":"mdblist","events":[{"id":"movie-969681-digital-2026-10-06","type":"movie","release_type":"digital","start":"2026-10-06","title":"Spider-Man: Brand New Day","tmdb":969681,"show_tmdb":null,"poster":"https://image.tmdb.org/t/p/w200/a.jpg"}]}"#,
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(items[0]["contentId"], "tmdb:969681");
+    assert_eq!(items[0]["id"], "movie-969681-digital-2026-10-06");
+    assert_eq!(items[0]["metaType"], "movie");
+}

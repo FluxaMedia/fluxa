@@ -52,8 +52,7 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
         {
             let is_movie = event.get("type").and_then(Value::as_str) == Some("movie");
             let Some(tmdb) = event
-                .get(if is_movie { "movie_tmdb" } else { "show_tmdb" })
-                .or_else(|| event.get("tmdb"))
+                .get(if is_movie { "tmdb" } else { "show_tmdb" })
                 .and_then(Value::as_i64)
             else {
                 continue;
@@ -68,7 +67,7 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
                 .filter(|url| !url.is_empty());
             if is_movie {
                 items.push(json!({
-                    "id": content_id,
+                    "id": event.get("id").and_then(Value::as_str).unwrap_or(&content_id),
                     "title": event.get("title"),
                     "dateIso": date,
                     "contentId": content_id,
