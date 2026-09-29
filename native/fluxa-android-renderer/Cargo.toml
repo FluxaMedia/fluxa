@@ -9,7 +9,7 @@ description = "Android Surface/JNI host for Fluxa's Rust WGPU renderer."
 crate-type = ["cdylib"]
 
 [dependencies]
-fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["native"] }
+fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["js-engine"] }
 fluxa-host = { path = "../fluxa-host" }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 jni = "0.21"

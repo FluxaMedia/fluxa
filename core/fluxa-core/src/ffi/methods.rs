@@ -132,12 +132,6 @@ static METHODS: &[(&str, Router)] = &[
     ("discoverSelectionPlan", route_search_plan),
     ("discoverSortPlan", route_search_plan),
     ("discoverSourceRequests", route_search_plan),
-    #[cfg(feature = "dv-codec")]
-    ("dolbyVisionConvertRpu", route_dolby_vision_rpu),
-    #[cfg(feature = "dv-codec")]
-    ("dolbyVisionProcessSample", route_dolby_vision_rpu),
-    #[cfg(feature = "dv-codec")]
-    ("dolbyVisionRpuInfo", route_dolby_vision_rpu),
     ("dvProxyPlan", route_player_policy),
     ("effectiveAddonsOwnerId", route_addon_store),
     ("effectiveMetadataFeedSelection", route_content_identity),
@@ -735,8 +729,6 @@ mod tests {
         arms.sort_unstable();
         let names = METHODS.iter().map(|(name, _)| *name).collect::<Vec<_>>();
         assert!(names.windows(2).all(|pair| pair[0] < pair[1]));
-        #[cfg(not(feature = "dv-codec"))]
-        arms.retain(|arm| !arm.starts_with("dolbyVision"));
         assert_eq!(arms, names);
     }
 }

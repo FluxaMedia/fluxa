@@ -1275,22 +1275,47 @@ dependencies = [
 name = "fluxa_core"
 version = "0.1.0"
 dependencies = [
- "aes 0.9.1",
- "aes-gcm",
  "base64 0.22.1",
- "cbc",
  "chrono",
  "criterion",
+ "regex",
+ "rquickjs",
+ "serde",
+ "serde_json",
+ "sha2 0.11.0",
+ "url",
+ "wasm-bindgen",
+ "web-time",
+]
+
+[[package]]
+name = "fluxa_media"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
  "dolby_vision",
+ "fluxa_core",
+ "serde",
+ "serde_json",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "fluxa_plugin_runtime"
+version = "0.1.0"
+dependencies = [
+ "aes 0.9.1",
+ "aes-gcm",
+ "cbc",
  "ecb",
  "ego-tree",
+ "fluxa_core",
  "hmac",
  "log",
  "md-5",
  "p256",
  "pbkdf2",
  "rand 0.10.2",
- "regex",
  "rquickjs",
  "rsa",
  "scraper",
@@ -1300,8 +1325,6 @@ dependencies = [
  "sha2 0.11.0",
  "tokio",
  "url",
- "wasm-bindgen",
- "web-time",
 ]
 
 [[package]]
@@ -1312,6 +1335,7 @@ dependencies = [
  "bytes",
  "dolby_vision",
  "fluxa_core",
+ "fluxa_media",
  "futures-util",
  "librqbit",
  "memchr",

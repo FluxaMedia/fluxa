@@ -7,8 +7,8 @@ description = "Shared Fluxa Core application runtime for desktop, Android and TV
 
 [features]
 default = ["desktop"]
-desktop = ["fluxa_core/desktop"]
-android = ["fluxa_core/native"]
+desktop = ["fluxa_core/js-engine"]
+android = ["fluxa_core/js-engine"]
 
 [dependencies]
 fluxa_core = { path = "../../core/fluxa-core", default-features = false }

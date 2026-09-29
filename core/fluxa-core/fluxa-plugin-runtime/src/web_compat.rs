@@ -1,4 +1,4 @@
-pub(super) const WEB_COMPAT_POLYFILL: &str = r#"
+pub(crate) const WEB_COMPAT_POLYFILL: &str = r#"
 (function () {
     if (typeof globalThis.self === 'undefined') globalThis.self = globalThis;
 

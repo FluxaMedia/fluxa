@@ -1,0 +1,33 @@
+[package]
+name = "fluxa_plugin_runtime"
+version = "0.1.0"
+edition = "2024"
+
+[lints]
+workspace = true
+
+[dependencies]
+aes = "0.9.1"
+aes-gcm = "0.10"
+cbc = "0.2.1"
+ecb = "0.2.0"
+ego-tree = "0.11"
+fluxa_core = { workspace = true }
+hmac = "0.13.0"
+log = "0.4"
+"md-5" = "0.11.0"
+p256 = "0.14.0"
+pbkdf2 = "0.13.0"
+rand = "0.10.2"
+rquickjs = { version = "0.12.1", default-features = false, features = ["std", "chrono", "loader", "dyn-load", "either", "indexmap", "futures"] }
+rsa = { version = "0.9.10", features = ["sha2"] }
+scraper = "0.27.0"
+serde = { workspace = true }
+serde_json = { workspace = true }
+sha1 = "0.11.0"
+sha2 = "0.11.0"
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "macros", "time", "sync"] }
+url = "2"
+
+[target.'cfg(any(target_os = "android", target_os = "ios", target_os = "tvos"))'.dependencies]
+rquickjs = { version = "0.12.1", default-features = false, features = ["std", "chrono", "loader", "dyn-load", "either", "indexmap", "futures", "bindgen"] }

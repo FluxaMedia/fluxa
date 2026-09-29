@@ -5,8 +5,8 @@ mod scraper_exec;
 mod settings_layout;
 mod web_compat;
 
-use crate::plugin_network_policy::is_public_plugin_host;
-pub use crate::plugin_network_policy::{
+use fluxa_core::plugin_network_policy::is_public_plugin_host;
+pub use fluxa_core::plugin_network_policy::{
     plugin_network_address_allowed, plugin_network_address_bytes_allowed, plugin_url_allowed,
 };
 use scraper_exec::run;
@@ -20,12 +20,12 @@ use std::sync::mpsc::{self, Sender};
 use std::time::{Duration, Instant};
 use url::Url;
 
-pub(super) const PLUGIN_TIMEOUT_SECS: u64 = 60;
-pub(super) const PLUGIN_MEMORY_LIMIT: usize = 256 * 1024 * 1024;
+pub(crate) const PLUGIN_TIMEOUT_SECS: u64 = 60;
+pub(crate) const PLUGIN_MEMORY_LIMIT: usize = 256 * 1024 * 1024;
 pub const PLUGIN_MAX_REQUEST_BODY_BYTES: usize = 1_048_576;
 pub const PLUGIN_MAX_RESPONSE_BODY_BYTES: usize = 8 * 1_048_576;
 
-pub(super) fn plugin_memory_limit() -> usize {
+pub(crate) fn plugin_memory_limit() -> usize {
     static LIMIT: OnceLock<usize> = OnceLock::new();
     *LIMIT.get_or_init(|| {
         std::env::var("FLUXA_PLUGIN_MEMORY_LIMIT_MB")

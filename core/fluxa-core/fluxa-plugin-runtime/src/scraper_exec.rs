@@ -4,7 +4,7 @@ use super::host_functions::{
 };
 use super::web_compat::WEB_COMPAT_POLYFILL;
 use super::{PLUGIN_TIMEOUT_SECS, PluginHttpClient, plugin_memory_limit};
-use crate::plugin_runtime::dom_bridge::DomBridge;
+use crate::dom_bridge::DomBridge;
 use rquickjs::{AsyncContext, AsyncRuntime, CatchResultExt, Function, Persistent, Promise};
 use std::cell::RefCell;
 use std::collections::HashMap;

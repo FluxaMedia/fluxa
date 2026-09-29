@@ -6,7 +6,7 @@ use super::{
     PLUGIN_TIMEOUT_SECS, PluginHttpClient, PluginHttpRequest, PluginHttpResponse,
     plugin_memory_limit,
 };
-use crate::plugin_runtime::dom_bridge::DomBridge;
+use crate::dom_bridge::DomBridge;
 use rquickjs::{AsyncContext, AsyncRuntime, CatchResultExt, Function};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

@@ -1,6 +1,6 @@
 use url::{Host, Url};
 
-pub(crate) fn is_public_plugin_host(host: Host<&str>) -> bool {
+pub fn is_public_plugin_host(host: Host<&str>) -> bool {
     match host {
         Host::Ipv4(ip) => is_public_plugin_ipv4(ip),
         Host::Ipv6(ip) => is_public_plugin_ipv6(ip),

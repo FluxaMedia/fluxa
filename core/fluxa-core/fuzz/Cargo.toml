@@ -13,7 +13,11 @@ libfuzzer-sys = "0.4"
 [dependencies.fluxa_core]
 path = ".."
 default-features = false
-features = ["fuzzing", "dv-codec"]
+features = ["fuzzing"]
+
+[dependencies.fluxa_media]
+path = "../fluxa-media"
+features = ["fuzzing"]
 
 [[bin]]
 name = "episode_matching"

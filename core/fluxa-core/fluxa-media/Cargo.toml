@@ -1,0 +1,22 @@
+[package]
+name = "fluxa_media"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib", "staticlib", "rlib"]
+
+[lints]
+workspace = true
+
+[features]
+wasm = ["dep:wasm-bindgen"]
+fuzzing = []
+
+[dependencies]
+base64 = "0.22"
+dolby_vision = { workspace = true }
+fluxa_core = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+wasm-bindgen = { version = "0.2", optional = true }

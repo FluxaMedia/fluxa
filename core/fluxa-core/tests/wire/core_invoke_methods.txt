@@ -95,8 +95,6 @@ discoverCatalogOptions
 discoverContentTypes
 discoverSelectionPlan
 discoverSortPlan
-dolbyVisionConvertRpu
-dolbyVisionRpuInfo
 dvProxyPlan
 effectiveMetadataFeedSelection
 engine.completeEffect

@@ -1,9 +1,3 @@
-// Non-native consumers intentionally compile partial API surfaces: desktop uses
-// direct Rust calls plus core_invoke, WASM exposes a small JS bridge, and the
-// streaming engine uses only stream policy helpers. The Android/native build is
-// the exhaustive JNI surface, so keep dead-code checking strict there and avoid
-// warning noise for the partial compatibility builds.
-#![cfg_attr(not(feature = "native"), allow(dead_code))]
 #![cfg_attr(
     test,
     allow(
@@ -14,182 +8,102 @@
     )
 )]
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod action_contract;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod addon_protocol;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod addon_resource;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod addon_store;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod addon_uptime;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod anime_detection;
 pub mod app_icon;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod app_state;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod calendar_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod cast_protocol;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod checksum_policy;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod constants;
 mod content_identity;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod content_warnings;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod continue_watching;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod core_api;
-#[cfg(not(any(feature = "full-api", not(feature = "streaming-shared"))))]
-mod core_api;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod core_contract;
 mod core_error;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod data_policy;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod desktop_playback;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod device_auth;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod device_resource;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod discord_presence;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod discovery_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
-mod dolby_vision_plan;
-#[cfg(feature = "dv-codec")]
-mod dolby_vision_rpu;
-#[cfg(feature = "dv-codec")]
-mod dolby_vision_sample;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+pub mod dolby_vision_plan;
 mod external_sync;
 mod fluxa_sync;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod headless_adapter_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod headless_engine;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod home_ranking;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod integration_settings;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod intro_segments;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod library_persistence;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod library_state;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod local_media;
 pub mod log_sink;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod mdblist_plan;
-pub mod media_demux;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod nuvio_pin;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod nuvio_sync;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod oauth_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod offline_download;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod platform_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod player_flow;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod player_policy;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod player_scrobble;
-mod plugin_network_policy;
-#[cfg(feature = "plugin-js-engine")]
-pub mod plugin_runtime;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
+pub mod plugin_network_policy;
 mod plugins;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod profile_avatar_pack;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod profile_contract;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod profile_prefs;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod provider_library;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod publicmetadb_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod recommendation_policy;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod release_date;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod repository_flow;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod runtime_label;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod search_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod settings_contract;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod stream_badges;
 mod stream_policy;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod subtitle_sync;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod tmdb_plan;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod trailer_subtitles;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod version_policy;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod watch_together;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 mod watchlist_plan;
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod env;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod ffi;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod runtime;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod types;
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod bindings;
 
 pub use core_api::FluxaCore;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub use headless_engine::{Engine, PageUpdate, Update};
-#[cfg(feature = "full-api")]
 pub use home_ranking::home_hero_plan;
 
 // Re-exports internal parsing functions for the `fuzz/` crate only. These stay
 // pub(crate) for real consumers — this exists purely so libFuzzer can call
 // straight into them without going through ffi::core_invoke's catch_unwind,
 // which would otherwise swallow the exact panics fuzzing is trying to find.
-#[cfg(all(
-    feature = "fuzzing",
-    any(feature = "full-api", not(feature = "streaming-shared"))
-))]
+#[cfg(feature = "fuzzing")]
 pub mod fuzz_targets {
     pub use crate::addon_protocol::parse_manifest;
     pub use crate::content_identity::{
         contains_compact_episode, contains_spaced_episode, parse_episode_locator,
         percent_decode_component,
     };
-    #[cfg(feature = "dv-codec")]
-    pub use crate::dolby_vision_sample::{fuzz_process_sample, process_dv_sample_json};
     pub use crate::headless_engine::{
         create_headless_engine, destroy_headless_engine, headless_engine_complete_effect_json,
         headless_engine_dispatch_json,
     };
 }
 
-#[cfg(all(test, any(feature = "full-api", not(feature = "streaming-shared"))))]
+#[cfg(test)]
 mod tests {
     use crate::addon_protocol::{
         catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra,

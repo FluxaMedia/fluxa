@@ -2,7 +2,7 @@ use serde::Deserialize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub(crate) enum DvFallbackMode {
+pub enum DvFallbackMode {
     Off,
     #[default]
     Auto,
@@ -12,7 +12,7 @@ pub(crate) enum DvFallbackMode {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) enum DvProfile {
+pub enum DvProfile {
     P4,
     P5,
     P7,
@@ -25,7 +25,7 @@ pub(crate) enum DvProfile {
 }
 
 impl DvProfile {
-    pub(crate) fn label(self) -> &'static str {
+    pub fn label(self) -> &'static str {
         match self {
             DvProfile::P4 => "P4",
             DvProfile::P5 => "P5",
@@ -40,7 +40,7 @@ impl DvProfile {
     }
 }
 
-pub(crate) enum DvContainer {
+pub enum DvContainer {
     Mkv,
     Mp4,
     RawHevc,
@@ -49,7 +49,7 @@ pub(crate) enum DvContainer {
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(untagged)]
-pub(crate) enum DvProfileCapability {
+pub enum DvProfileCapability {
     #[default]
     Unset,
     Flag(bool),
@@ -79,20 +79,20 @@ impl DvProfileCapability {
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(crate) struct DvDecoderCapabilities {
+pub struct DvDecoderCapabilities {
     #[serde(default)]
-    pub(crate) profile4: DvProfileCapability,
+    pub profile4: DvProfileCapability,
     #[serde(default)]
-    pub(crate) profile5: DvProfileCapability,
+    pub profile5: DvProfileCapability,
     #[serde(default)]
-    pub(crate) profile7: DvProfileCapability,
+    pub profile7: DvProfileCapability,
     #[serde(default)]
-    pub(crate) profile8: DvProfileCapability,
+    pub profile8: DvProfileCapability,
     #[serde(default)]
-    pub(crate) profile10: DvProfileCapability,
+    pub profile10: DvProfileCapability,
 }
 
-pub(crate) fn decoder_supports(
+pub fn decoder_supports(
     caps: Option<&DvDecoderCapabilities>,
     legacy_flag: bool,
     profile: DvProfile,
@@ -111,7 +111,7 @@ pub(crate) fn decoder_supports(
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DvPlaybackAction {
+pub enum DvPlaybackAction {
     Native,
     ConvertToDv81,
     StripToHdr10,
@@ -122,7 +122,7 @@ pub(crate) enum DvPlaybackAction {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DvPlanReason {
+pub enum DvPlanReason {
     UserDisabled,
     NotDolbyVisionContent,
     ManifestHandledByHost,
@@ -142,11 +142,11 @@ pub(crate) enum DvPlanReason {
 
 #[allow(dead_code)]
 #[derive(Debug, Clone, Default)]
-pub(crate) struct DvOutputSignaling {
-    pub(crate) codec_profile: Option<u8>,
-    pub(crate) codec_string_override: Option<String>,
-    pub(crate) use_dolby_vision_mime: bool,
-    pub(crate) media_codec_profile: Option<DvProfile>,
+pub struct DvOutputSignaling {
+    pub codec_profile: Option<u8>,
+    pub codec_string_override: Option<String>,
+    pub use_dolby_vision_mime: bool,
+    pub media_codec_profile: Option<DvProfile>,
 }
 
 fn native_signaling(profile: DvProfile) -> DvOutputSignaling {
@@ -177,23 +177,23 @@ fn plain_hevc_signaling() -> DvOutputSignaling {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct DvPlaybackPlan {
-    pub(crate) action: DvPlaybackAction,
-    pub(crate) source_profile: DvProfile,
-    pub(crate) output_profile: Option<DvProfile>,
-    pub(crate) rpu_mode: Option<u8>,
-    pub(crate) drop_el: bool,
-    pub(crate) strip_dv_rpu: bool,
-    pub(crate) strip_hdr10plus: bool,
+pub struct DvPlaybackPlan {
+    pub action: DvPlaybackAction,
+    pub source_profile: DvProfile,
+    pub output_profile: Option<DvProfile>,
+    pub rpu_mode: Option<u8>,
+    pub drop_el: bool,
+    pub strip_dv_rpu: bool,
+    pub strip_hdr10plus: bool,
     #[allow(dead_code)]
-    pub(crate) zero_level5: bool,
+    pub zero_level5: bool,
     #[allow(dead_code)]
-    pub(crate) output_signaling: DvOutputSignaling,
-    pub(crate) reason: DvPlanReason,
+    pub output_signaling: DvOutputSignaling,
+    pub reason: DvPlanReason,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DvPlanError {
+pub enum DvPlanError {
     MissingOutputProfile,
     MissingRpuMode,
     MustDropEl,
@@ -201,7 +201,7 @@ pub(crate) enum DvPlanError {
 }
 
 impl DvPlaybackPlan {
-    pub(crate) fn validate(&self) -> Result<(), DvPlanError> {
+    pub fn validate(&self) -> Result<(), DvPlanError> {
         if self.action == DvPlaybackAction::ConvertToDv81 {
             if self.output_profile != Some(DvProfile::P8Hdr10) {
                 return Err(DvPlanError::MissingOutputProfile);
@@ -223,11 +223,11 @@ impl DvPlaybackPlan {
 // Deliberately excludes source_profile/output_signaling/reason so the
 // transformer can't make its own profile-based decisions.
 #[derive(Debug, Clone, Copy, Default)]
-pub(crate) struct SampleExecutionPlan {
-    pub(crate) rpu_mode: Option<u8>,
-    pub(crate) drop_el: bool,
-    pub(crate) strip_dv_rpu: bool,
-    pub(crate) strip_hdr10plus: bool,
+pub struct SampleExecutionPlan {
+    pub rpu_mode: Option<u8>,
+    pub drop_el: bool,
+    pub strip_dv_rpu: bool,
+    pub strip_hdr10plus: bool,
 }
 
 impl From<&DvPlaybackPlan> for SampleExecutionPlan {
@@ -241,12 +241,12 @@ impl From<&DvPlaybackPlan> for SampleExecutionPlan {
     }
 }
 
-pub(crate) struct DvLegacyPlanDetails {
-    pub(crate) action: &'static str,
-    pub(crate) reason_code: &'static str,
-    pub(crate) compatibility: &'static str,
-    pub(crate) safety: &'static str,
-    pub(crate) limitations: Vec<&'static str>,
+pub struct DvLegacyPlanDetails {
+    pub action: &'static str,
+    pub reason_code: &'static str,
+    pub compatibility: &'static str,
+    pub safety: &'static str,
+    pub limitations: Vec<&'static str>,
 }
 
 fn legacy(
@@ -269,7 +269,7 @@ fn legacy(
     clippy::too_many_arguments,
     reason = "planning inputs are all independent facts about the stream/device, not naturally groupable without an intermediate context struct this crate doesn't otherwise need"
 )]
-pub(crate) fn build_dv_playback_plan(
+pub fn build_dv_playback_plan(
     source_profile: DvProfile,
     container: DvContainer,
     fallback_mode: DvFallbackMode,

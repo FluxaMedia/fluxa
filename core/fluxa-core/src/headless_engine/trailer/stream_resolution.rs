@@ -1,4 +1,4 @@
-#[cfg(feature = "plugin-js-engine")]
+#[cfg(feature = "js-engine")]
 use super::super::youtube_cipher;
 use serde_json::{Value, json};
 
@@ -157,7 +157,7 @@ pub(super) fn best_adaptive_pair(
     Some((video, audio, height))
 }
 
-#[cfg(feature = "plugin-js-engine")]
+#[cfg(feature = "js-engine")]
 fn format_url(format: &Value, player_js: Option<&str>) -> Option<String> {
     format
         .get("url")
@@ -174,7 +174,7 @@ fn format_url(format: &Value, player_js: Option<&str>) -> Option<String> {
         })
 }
 
-#[cfg(not(feature = "plugin-js-engine"))]
+#[cfg(not(feature = "js-engine"))]
 fn format_url(format: &Value, _player_js: Option<&str>) -> Option<String> {
     format.get("url").and_then(Value::as_str).map(str::to_owned)
 }

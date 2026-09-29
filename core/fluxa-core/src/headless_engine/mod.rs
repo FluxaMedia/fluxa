@@ -20,7 +20,7 @@ mod settings;
 mod state;
 mod sync;
 mod trailer;
-#[cfg(feature = "plugin-js-engine")]
+#[cfg(feature = "js-engine")]
 mod youtube_cipher;
 
 use crate::core_error::{CoreError, LogAndDiscard};

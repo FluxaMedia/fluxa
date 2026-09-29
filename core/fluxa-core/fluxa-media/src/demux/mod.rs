@@ -3,17 +3,14 @@
 //!
 //! `ebml` is dependency-free and also used natively by
 //! `fluxa-streaming-engine`'s Dolby Vision RPU rewriter and chapter
-//! extractor (via the `streaming-shared` feature), so it stays available
-//! outside the wasm/browser-only parts of this module.
+//! extractor.
 
 pub mod ebml;
 
 pub mod fmp4_mux;
 pub mod mkv_demux;
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub mod webm_mux;
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 pub fn remux_mkv_to_webm(mkv_bytes: &[u8]) -> Result<Vec<u8>, String> {
     let demuxed = mkv_demux::demux(mkv_bytes).map_err(|e| format!("{e:?}"))?;
     Ok(webm_mux::remux(&demuxed))
@@ -25,7 +22,6 @@ pub fn remux_mkv_to_webm(mkv_bytes: &[u8]) -> Result<Vec<u8>, String> {
 /// start well before the whole source file has downloaded. See
 /// `mkv_demux::IncrementalDemuxer` and `webm_mux::ClusterWriter` docs for how
 /// the two halves compose.
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 #[derive(Default)]
 pub struct IncrementalRemuxSession {
     demuxer: mkv_demux::IncrementalDemuxer,
@@ -33,7 +29,6 @@ pub struct IncrementalRemuxSession {
     init_written: bool,
 }
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 impl IncrementalRemuxSession {
     pub fn new() -> Self {
         Self::default()
@@ -91,7 +86,6 @@ impl IncrementalRemuxSession {
     }
 }
 
-#[cfg(any(feature = "full-api", not(feature = "streaming-shared")))]
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -51,8 +51,6 @@ use intro_plugins_routes::{route_intro_segments, route_plugins};
 use library_routes::route_library_state;
 use local_media_routes::route_local_media;
 use mdblist_routes::route_mdblist;
-#[cfg(feature = "dv-codec")]
-use plan_misc_routes::route_dolby_vision_rpu;
 use plan_misc_routes::{
     route_data_policy, route_device_resource, route_discovery_plan, route_headless_adapter_plan,
     route_player_flow,
@@ -71,10 +69,6 @@ use version_policy_routes::route_version_policy;
 use watch_together_routes::route_watch_together;
 use watchlist_offline_routes::{route_offline, route_watchlist};
 
-#[cfg(feature = "dv-codec")]
-use crate::dolby_vision_rpu;
-#[cfg(feature = "dv-codec")]
-use crate::dolby_vision_sample;
 use crate::{
     addon_protocol, addon_resource, addon_store, addon_uptime, anime_detection, app_state,
     calendar_plan, content_identity, content_warnings, core_contract, data_policy,
@@ -738,13 +732,6 @@ mod tests {
             .lines()
             .map(str::trim)
             .filter(|l| !l.is_empty())
-            .filter(|method| {
-                cfg!(feature = "dv-codec")
-                    || !matches!(
-                        *method,
-                        "dolbyVisionConvertRpu" | "dolbyVisionRpuInfo" | "dolbyVisionProcessSample"
-                    )
-            })
             .collect();
         assert!(!methods.is_empty(), "fixture list must not be empty");
 

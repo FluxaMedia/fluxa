@@ -312,7 +312,7 @@ pub(super) fn register_host_functions(
     Ok(())
 }
 
-pub(super) const BASE64_POLYFILL: &str = include_str!("polyfills/base64.js");
-pub(super) const TEXT_ENCODER_POLYFILL: &str = include_str!("polyfills/text_encoder.js");
-pub(super) const CRYPTO_POLYFILL: &str = include_str!("polyfills/crypto.js");
-pub(super) const CHEERIO_POLYFILL: &str = include_str!("polyfills/cheerio.js");
+pub(crate) const BASE64_POLYFILL: &str = include_str!("polyfills/base64.js");
+pub(crate) const TEXT_ENCODER_POLYFILL: &str = include_str!("polyfills/text_encoder.js");
+pub(crate) const CRYPTO_POLYFILL: &str = include_str!("polyfills/crypto.js");
+pub(crate) const CHEERIO_POLYFILL: &str = include_str!("polyfills/cheerio.js");

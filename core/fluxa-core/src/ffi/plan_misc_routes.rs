@@ -51,22 +51,6 @@ pub(super) fn route_data_policy(method: &str, args_json: &str) -> Outcome {
     }
 }
 
-#[cfg(feature = "dv-codec")]
-pub(super) fn route_dolby_vision_rpu(method: &str, args_json: &str) -> Outcome {
-    match method {
-        // args_json IS the request object for both of these
-        "dolbyVisionRpuInfo" => opt_json(dolby_vision_rpu::dolby_vision_rpu_info_json(args_json)),
-        "dolbyVisionConvertRpu" => {
-            opt_json(dolby_vision_rpu::dolby_vision_convert_rpu_json(args_json))
-        }
-        "dolbyVisionProcessSample" => {
-            opt_json(dolby_vision_sample::process_dv_sample_json(args_json))
-        }
-
-        _ => Err(unknown_method()),
-    }
-}
-
 pub(super) fn route_device_resource(method: &str, args_json: &str) -> Outcome {
     match method {
         // args_json IS the request object

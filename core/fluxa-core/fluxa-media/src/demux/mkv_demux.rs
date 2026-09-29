@@ -393,7 +393,7 @@ fn parse_block_payload(
     tracks: &[Track],
     block_group_keyframe: Option<bool>,
 ) -> Option<Packet> {
-    let (track_number, vint_len) = crate::media_demux::ebml::parse_ebml_vint(block)?;
+    let (track_number, vint_len) = crate::demux::ebml::parse_ebml_vint(block)?;
     let rest = block.get(vint_len..)?;
     if rest.len() < 3 {
         return None;

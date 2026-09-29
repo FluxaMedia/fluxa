@@ -1,6 +1,6 @@
 #![no_main]
 
-use fluxa_core::fuzz_targets::fuzz_process_sample;
+use fluxa_media::dv_sample::fuzz_process_sample;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
