@@ -214,6 +214,17 @@ impl VideoBackend for AppleBackend {
                     .command(&["seek", &delta.to_string(), "relative"])
             }
             VideoCommand::SeekTo(position) => player.client.seek_to(position),
+            VideoCommand::SelectTracks(selection) => {
+                crate::mpv_common::select_tracks(&player.client, &selection)
+            }
+            VideoCommand::SetVolume(volume) => {
+                player
+                    .client
+                    .command(&["set", "volume", &volume.to_string()])
+            }
+            VideoCommand::SetSpeed(rate) => {
+                player.client.command(&["set", "speed", &rate.to_string()])
+            }
             VideoCommand::Shaders(_) => Ok(()),
         };
         if let Err(error) = result {
@@ -224,6 +235,13 @@ impl VideoBackend for AppleBackend {
     fn render(&mut self, _device: &wgpu::Device) -> Option<wgpu::TextureView> {
         self.poll();
         None
+    }
+
+    fn tracks(&mut self) -> Vec<fluxa_host::VideoTrack> {
+        self.player
+            .as_ref()
+            .map(|player| crate::mpv_common::list_tracks(&player.client))
+            .unwrap_or_default()
     }
 
     fn status(&mut self) -> VideoStatus {

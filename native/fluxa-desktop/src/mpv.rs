@@ -69,7 +69,16 @@ impl VideoBackend for MpvBackend {
         self.start(instance, device, url, true);
     }
 
+    fn media_session(&mut self, plan: &serde_json::Value) {
+        #[cfg(target_os = "linux")]
+        crate::mpris::publish(plan);
+        #[cfg(not(target_os = "linux"))]
+        let _ = plan;
+    }
+
     fn stop(&mut self) {
+        #[cfg(target_os = "linux")]
+        crate::mpris::clear();
         if let Some(player) = self.player.take() {
             let _ = player.client.command(&["stop"]);
         }
@@ -99,6 +108,17 @@ impl VideoBackend for MpvBackend {
                     .command(&["seek", &delta.to_string(), "relative"])
             }
             VideoCommand::SeekTo(position) => player.client.seek_to(position),
+            VideoCommand::SelectTracks(selection) => {
+                crate::mpv_common::select_tracks(&player.client, &selection)
+            }
+            VideoCommand::SetVolume(volume) => {
+                player
+                    .client
+                    .command(&["set", "volume", &volume.to_string()])
+            }
+            VideoCommand::SetSpeed(rate) => {
+                player.client.command(&["set", "speed", &rate.to_string()])
+            }
             VideoCommand::Shaders(_) => Ok(()),
         };
         if let Err(error) = result {
@@ -138,6 +158,13 @@ impl VideoBackend for MpvBackend {
                 None
             }
         }
+    }
+
+    fn tracks(&mut self) -> Vec<fluxa_host::VideoTrack> {
+        self.player
+            .as_ref()
+            .map(|player| crate::mpv_common::list_tracks(&player.client))
+            .unwrap_or_default()
     }
 
     fn status(&mut self) -> VideoStatus {

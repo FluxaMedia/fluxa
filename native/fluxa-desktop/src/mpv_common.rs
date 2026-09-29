@@ -2,7 +2,7 @@ use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::time::{Duration, Instant};
 
-use fluxa_host::Thumbnail;
+use fluxa_host::{Thumbnail, TrackSelection, VideoTrack};
 
 const THUMBNAIL_SIZE: [usize; 2] = [320, 180];
 const CHAPTER_REFRESH: Duration = Duration::from_secs(2);
@@ -13,6 +13,41 @@ pub fn thumbnail_url(url: &str) -> String {
     } else {
         url.to_owned()
     }
+}
+
+pub fn list_tracks(client: &fluxa_mpv::MpvClientHandle) -> Vec<VideoTrack> {
+    [("audio", false), ("sub", true)]
+        .into_iter()
+        .flat_map(|(kind, subtitle)| {
+            client
+                .track_options(kind)
+                .into_iter()
+                .map(move |option| VideoTrack {
+                    id: option.id,
+                    subtitle,
+                    language: option.lang,
+                    title: Some(option.label),
+                    selected: option.selected,
+                    external: option.external,
+                })
+        })
+        .collect()
+}
+
+pub fn select_tracks(
+    client: &fluxa_mpv::MpvClientHandle,
+    selection: &TrackSelection,
+) -> Result<(), String> {
+    if let Some(audio) = &selection.audio {
+        client.command(&["set", "aid", audio])?;
+    }
+    match (&selection.subtitle, selection.subtitles_off) {
+        (Some(subtitle), _) => client.command(&["set", "sid", subtitle])?,
+        (None, true) => client.command(&["set", "sid", "no"])?,
+        (None, false) => {}
+    }
+    let secondary = selection.secondary_subtitle.as_deref().unwrap_or("no");
+    client.command(&["set", "secondary-sid", secondary])
 }
 
 pub struct ThumbnailWorker {

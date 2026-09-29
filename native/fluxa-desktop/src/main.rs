@@ -14,9 +14,11 @@ use winit::{
 
 #[cfg(target_os = "macos")]
 mod apple_video;
-mod mpv_common;
+#[cfg(target_os = "linux")]
+mod mpris;
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 mod mpv;
+mod mpv_common;
 
 #[cfg(target_os = "macos")]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Metal];
@@ -161,15 +163,16 @@ impl ApplicationHandler for App {
         host.set_image_picker(Box::new(pick_image));
         let notified = window.clone();
         host.set_pre_present(Box::new(move || notified.pre_present_notify()));
+        #[cfg(target_os = "linux")]
+        mpris::start(host.clone());
         #[cfg(any(target_os = "linux", target_os = "windows"))]
         host.set_video_backend(Box::new(mpv::MpvBackend::new()));
         #[cfg(target_os = "macos")]
         {
             self.video_layer = apple_video::VideoLayer::attach(&window);
             match self.video_layer.as_ref() {
-                Some(layer) => host.set_video_backend(Box::new(apple_video::AppleBackend::new(
-                    layer.pointer(),
-                ))),
+                Some(layer) => host
+                    .set_video_backend(Box::new(apple_video::AppleBackend::new(layer.pointer()))),
                 None => eprintln!("[fluxa-desktop] could not attach the video layer"),
             }
         }
@@ -297,6 +300,14 @@ impl ApplicationHandler for App {
                     window.set_fullscreen(fullscreen);
                     return;
                 }
+                if event.state == ElementState::Pressed
+                    && !event.repeat
+                    && let Some(command) = media_command(&event.logical_key)
+                    && host.is_playing()
+                {
+                    host.media_command(command, 0.0);
+                    return;
+                }
                 self.key(
                     &host,
                     &event.logical_key,
@@ -330,6 +341,23 @@ fn key_input(key: &WinitKey, shift: bool) -> Option<KeyInput> {
         }
         _ => return None,
     }))
+}
+
+fn media_command(key: &WinitKey) -> Option<&'static str> {
+    let WinitKey::Named(named) = key else {
+        return None;
+    };
+    Some(match named {
+        NamedKey::MediaPlayPause => "toggle",
+        NamedKey::MediaPlay => "play",
+        NamedKey::MediaPause => "pause",
+        NamedKey::MediaStop => "stop",
+        NamedKey::MediaTrackNext => "next",
+        NamedKey::MediaTrackPrevious => "previous",
+        NamedKey::MediaFastForward => "fastForward",
+        NamedKey::MediaRewind => "rewind",
+        _ => return None,
+    })
 }
 
 fn egui_key(key: &WinitKey) -> Option<egui::Key> {

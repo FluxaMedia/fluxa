@@ -30,6 +30,9 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
             renderer,
             traitCollection.userInterfaceIdiom == .tv ? "tv" : "mobile"
         )
+        video.onMediaCommand = { [weak self] command, value in
+            self?.pushAction("{\"type\":\"mediaCommand\",\"command\":\"\(command)\",\"value\":\(value)}")
+        }
         installIndirectInput()
         observeControllers()
     }

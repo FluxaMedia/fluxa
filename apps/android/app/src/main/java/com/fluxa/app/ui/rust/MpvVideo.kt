@@ -99,6 +99,14 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String) {
         Mpv.command(mpv, arrayOf("cycle", "mute"))
     }
 
+    fun setVolume(volume: Double) {
+        Mpv.setProperty(mpv, "volume", volume.coerceIn(0.0, 100.0).toString())
+    }
+
+    fun setSpeed(rate: Double) {
+        Mpv.setProperty(mpv, "speed", rate.coerceIn(0.25, 4.0).toString())
+    }
+
     fun attach(holder: SurfaceHolder, width: Int, height: Int) {
         if (surface != 0L) return
         surface = Mpv.attach(mpv, holder.surface)

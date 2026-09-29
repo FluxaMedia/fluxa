@@ -9,6 +9,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.fluxa.app.BuildConfig
 import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.abs
 
 class NativeVideoHost(context: Context) : FrameLayout(context) {
@@ -21,6 +22,9 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var audioLanguage: String? = null
     private var subtitleLanguage: String? = null
     private var displayMode: DisplayModeHint? = null
+    private val mediaSession = PlaybackMediaSession(context) { command, value ->
+        renderer.pushAction(JSONObject(mapOf("type" to "mediaCommand", "command" to command, "value" to value)).toString())
+    }
     var onPlayingChanged: ((Boolean) -> Unit)? = null
 
     private val reportStatus = object : Runnable {
@@ -66,6 +70,9 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 "seek" -> player?.let { it.seekTo(it.position + request.optDouble("seconds")) }
                 "seekTo" -> player?.seekTo(request.optDouble("seconds"))
                 "toggleMute" -> player?.toggleMute()
+                "setVolume" -> player?.setVolume(request.optDouble("value"))
+                "mediaSession" -> request.optJSONObject("plan")?.let(mediaSession::update)
+                "setSpeed" -> player?.setSpeed(request.optDouble("value"))
             }
         }
     }
@@ -84,6 +91,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     fun stop() {
         if (player != null) onPlayingChanged?.invoke(false)
         handler.removeCallbacks(reportStatus)
+        mediaSession.release()
         videoSurface.video = null
         player?.release()
         player = null

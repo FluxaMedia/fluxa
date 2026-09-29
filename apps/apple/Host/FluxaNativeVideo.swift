@@ -8,6 +8,11 @@ import UIKit
 final class FluxaNativeVideo {
     let layer = AVSampleBufferDisplayLayer()
     var onPlayingChanged: ((Bool) -> Void)?
+    var onMediaCommand: ((String, Double) -> Void)? {
+        didSet { nowPlaying.onCommand = onMediaCommand }
+    }
+
+    private let nowPlaying = FluxaNowPlaying()
 
     private var mpv: OpaquePointer?
     private var audioLanguage = ""
@@ -54,8 +59,17 @@ final class FluxaNativeVideo {
         case "seekTo":
             guard let seconds = request["seconds"] as? Double else { return }
             command("seek", String(max(0, seconds)), "absolute")
+        case "mediaSession":
+            guard let plan = request["plan"] as? [String: Any] else { return }
+            nowPlaying.update(plan)
         case "toggleMute":
             command("cycle", "mute")
+        case "setVolume":
+            guard let value = request["value"] as? Double else { return }
+            command("set", "volume", String(min(max(value, 0), 100)))
+        case "setSpeed":
+            guard let value = request["value"] as? Double else { return }
+            command("set", "speed", String(min(max(value, 0.25), 4)))
         default:
             break
         }
@@ -134,6 +148,7 @@ final class FluxaNativeVideo {
         self.mpv = nil
         loaded = false
         layer.isHidden = true
+        nowPlaying.deactivate()
         onPlayingChanged?(false)
     }
 
