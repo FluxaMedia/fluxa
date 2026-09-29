@@ -19,7 +19,7 @@ use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
-pub(super) struct Tracked<T> {
+pub(crate) struct Tracked<T> {
     value: Arc<T>,
     dirty: bool,
 }
@@ -34,7 +34,7 @@ impl<T: Default> Default for Tracked<T> {
 }
 
 impl<T> Tracked<T> {
-    pub(super) fn take_if_dirty(&mut self) -> Option<Arc<T>> {
+    pub(crate) fn take_if_dirty(&mut self) -> Option<Arc<T>> {
         if self.dirty {
             self.dirty = false;
             Some(Arc::clone(&self.value))
@@ -74,7 +74,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Tracked<T> {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(super) enum GenerationKey {
+pub(crate) enum GenerationKey {
     Detail,
     Player,
     Home,
@@ -100,7 +100,7 @@ pub(super) enum GenerationKey {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
-pub(super) struct RuntimeGenerations {
+pub(crate) struct RuntimeGenerations {
     detail_generation: u64,
     player_generation: u64,
     home_generation: u64,
@@ -125,7 +125,7 @@ pub(super) struct RuntimeGenerations {
 }
 
 impl RuntimeGenerations {
-    pub(super) fn get(&self, key: GenerationKey) -> u64 {
+    pub(crate) fn get(&self, key: GenerationKey) -> u64 {
         match key {
             GenerationKey::Detail => self.detail_generation,
             GenerationKey::Player => self.player_generation,
@@ -151,7 +151,7 @@ impl RuntimeGenerations {
         }
     }
 
-    pub(super) fn bump(&mut self, key: GenerationKey) -> u64 {
+    pub(crate) fn bump(&mut self, key: GenerationKey) -> u64 {
         let slot = match key {
             GenerationKey::Detail => &mut self.detail_generation,
             GenerationKey::Player => &mut self.player_generation,
@@ -182,30 +182,30 @@ impl RuntimeGenerations {
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
-pub(super) struct EngineState {
-    pub(super) navigation: Tracked<NavigationState>,
-    pub(super) home: Tracked<HomeState>,
-    pub(super) search: Tracked<SearchState>,
-    pub(super) discover: Tracked<DiscoverState>,
-    pub(super) detail: Tracked<DetailState>,
-    pub(super) player: Tracked<PlayerState>,
-    pub(super) library: Tracked<LibraryState>,
-    pub(super) profile: Tracked<ProfileState>,
-    pub(super) settings: Tracked<SettingsState>,
-    pub(super) calendar: Tracked<CalendarState>,
-    pub(super) addons: Tracked<AddonsState>,
-    pub(super) auth: Tracked<AuthState>,
-    pub(super) sync: Tracked<SyncState>,
-    pub(super) lookup: Tracked<LookupState>,
-    pub(super) offline: Tracked<OfflineState>,
-    pub(super) trailer: Tracked<TrailerState>,
-    pub(super) plugins: Tracked<PluginsState>,
+pub(crate) struct EngineState {
+    pub(crate) navigation: Tracked<NavigationState>,
+    pub(crate) home: Tracked<HomeState>,
+    pub(crate) search: Tracked<SearchState>,
+    pub(crate) discover: Tracked<DiscoverState>,
+    pub(crate) detail: Tracked<DetailState>,
+    pub(crate) player: Tracked<PlayerState>,
+    pub(crate) library: Tracked<LibraryState>,
+    pub(crate) profile: Tracked<ProfileState>,
+    pub(crate) settings: Tracked<SettingsState>,
+    pub(crate) calendar: Tracked<CalendarState>,
+    pub(crate) addons: Tracked<AddonsState>,
+    pub(crate) auth: Tracked<AuthState>,
+    pub(crate) sync: Tracked<SyncState>,
+    pub(crate) lookup: Tracked<LookupState>,
+    pub(crate) offline: Tracked<OfflineState>,
+    pub(crate) trailer: Tracked<TrailerState>,
+    pub(crate) plugins: Tracked<PluginsState>,
     #[serde(rename = "_runtime")]
-    pub(super) runtime: RuntimeGenerations,
+    pub(crate) runtime: RuntimeGenerations,
 }
 
 impl EngineState {
-    pub(super) fn diff_dirty(&mut self) -> super::contracts::StatePatch {
+    pub(crate) fn diff_dirty(&mut self) -> super::contracts::StatePatch {
         super::contracts::StatePatch {
             navigation: self.navigation.take_if_dirty(),
             home: self.home.take_if_dirty(),

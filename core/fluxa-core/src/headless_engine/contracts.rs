@@ -11,7 +11,7 @@ use std::sync::Arc;
     rename_all_fields = "camelCase",
     tag = "type"
 )]
-pub(super) enum AppAction {
+pub(crate) enum AppAction {
     #[serde(rename = "navigationRequested")]
     NavigationRequested {
         route: String,
@@ -398,7 +398,7 @@ pub(crate) struct EffectResultInput {
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct DispatchResult {
+pub(crate) struct DispatchResult {
     pub revision: u64,
     pub state: StatePatch,
     pub effects: Vec<EffectEnvelope>,
@@ -410,7 +410,7 @@ pub(super) struct DispatchResult {
 // scales with everything the user has ever loaded, not with what changed.
 #[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct StatePatch {
+pub(crate) struct StatePatch {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub navigation: Option<Arc<super::navigation::NavigationState>>,
     #[serde(skip_serializing_if = "Option::is_none")]

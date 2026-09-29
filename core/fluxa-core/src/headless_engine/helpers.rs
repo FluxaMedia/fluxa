@@ -14,7 +14,7 @@ struct NormalizedTrailer {
     source: &'static str,
 }
 
-pub(super) fn normalize_error(error: Value) -> Value {
+pub(crate) fn normalize_error(error: Value) -> Value {
     if error.is_null() {
         json!({ "code": "generic" })
     } else {
@@ -22,7 +22,7 @@ pub(super) fn normalize_error(error: Value) -> Value {
     }
 }
 
-pub(super) fn error_code(error: &Value) -> String {
+pub(crate) fn error_code(error: &Value) -> String {
     error["code"]
         .as_str()
         .or_else(|| error.as_str())
@@ -30,7 +30,7 @@ pub(super) fn error_code(error: &Value) -> String {
         .to_string()
 }
 
-pub(super) fn active_profile_id(state: &EngineState, profile: &Value) -> String {
+pub(crate) fn active_profile_id(state: &EngineState, profile: &Value) -> String {
     profile["id"]
         .as_str()
         .or_else(|| state.profile.active_profile_id.as_str())
@@ -39,7 +39,7 @@ pub(super) fn active_profile_id(state: &EngineState, profile: &Value) -> String 
         .to_string()
 }
 
-pub(super) fn visible_streams(streams: &Value, selected_addon: Option<&str>) -> Value {
+pub(crate) fn visible_streams(streams: &Value, selected_addon: Option<&str>) -> Value {
     let Some(selected_addon) = selected_addon
         .map(str::trim)
         .filter(|value| !value.is_empty())
@@ -65,11 +65,11 @@ pub(super) fn visible_streams(streams: &Value, selected_addon: Option<&str>) -> 
     json!(filtered)
 }
 
-pub(super) fn value_array_is_empty(value: &Value) -> bool {
+pub(crate) fn value_array_is_empty(value: &Value) -> bool {
     value.as_array().map(Vec::is_empty).unwrap_or(true)
 }
 
-pub(super) fn with_normalized_meta_trailers(mut meta: Value) -> Value {
+pub(crate) fn with_normalized_meta_trailers(mut meta: Value) -> Value {
     let trailers = normalize_meta_trailers(&meta);
     if !value_array_is_empty(&trailers)
         && let Some(obj) = meta.as_object_mut()
@@ -79,7 +79,7 @@ pub(super) fn with_normalized_meta_trailers(mut meta: Value) -> Value {
     meta
 }
 
-pub(super) fn normalize_meta_trailers(meta: &Value) -> Value {
+pub(crate) fn normalize_meta_trailers(meta: &Value) -> Value {
     let mut trailers = meta
         .get("trailers")
         .and_then(Value::as_array)
@@ -162,7 +162,7 @@ fn normalize_meta_link_trailer(link: &Value) -> Option<Value> {
     .ok()
 }
 
-pub(super) fn non_blank_str(value: &Value, key: &str) -> Option<String> {
+pub(crate) fn non_blank_str(value: &Value, key: &str) -> Option<String> {
     value[key]
         .as_str()
         .map(str::trim)
@@ -170,7 +170,7 @@ pub(super) fn non_blank_str(value: &Value, key: &str) -> Option<String> {
         .map(str::to_string)
 }
 
-pub(super) fn should_sync_watched_state(profile: Option<&Value>, meta: Option<&Value>) -> bool {
+pub(crate) fn should_sync_watched_state(profile: Option<&Value>, meta: Option<&Value>) -> bool {
     let Some(meta) = meta else { return false };
     if meta["id"]
         .as_str()
@@ -196,7 +196,7 @@ pub(super) fn should_sync_watched_state(profile: Option<&Value>, meta: Option<&V
     !is_guest || has_tracker_token
 }
 
-pub(super) fn upsert_by_key(target: &mut Value, key: &str, value: &str, item: Value) {
+pub(crate) fn upsert_by_key(target: &mut Value, key: &str, value: &str, item: Value) {
     if !target.is_array() {
         *target = json!([]);
     }

@@ -1,29 +1,28 @@
-mod addons;
-mod auth;
-mod calendar;
-mod complete_effect;
-mod contracts;
-mod detail;
-mod discover;
-mod dispatch;
-mod effect_bookkeeping;
-mod helpers;
-mod home;
-mod library;
+pub(crate) mod complete_effect;
+pub(crate) mod contracts;
+pub(crate) mod dispatch;
+pub(crate) mod effect_bookkeeping;
+pub(crate) mod helpers;
 pub(crate) mod manifest;
-mod navigation;
-mod offline;
-mod player;
-mod plugins;
-mod profile;
+pub(crate) mod navigation;
 pub(crate) mod routes;
-mod search;
-mod settings;
-mod state;
-mod sync;
-mod trailer;
-#[cfg(feature = "js-engine")]
-mod youtube_cipher;
+pub(crate) mod state;
+
+pub(crate) use crate::accounts::engine::auth;
+pub(crate) use crate::accounts::engine::sync;
+pub(crate) use crate::addons::engine::installed as addons;
+pub(crate) use crate::addons::engine::plugins;
+pub(crate) use crate::catalog::engine::detail;
+pub(crate) use crate::catalog::engine::discover;
+pub(crate) use crate::catalog::engine::search;
+pub(crate) use crate::home::engine as home;
+pub(crate) use crate::library::engine::calendar;
+pub(crate) use crate::library::engine::library;
+pub(crate) use crate::library::engine::offline;
+pub(crate) use crate::player::engine as player;
+pub(crate) use crate::player::engine::trailer;
+pub(crate) use crate::profile::engine as profile;
+pub(crate) use crate::settings::engine as settings;
 
 use crate::core_error::{CoreError, LogAndDiscard};
 use crate::runtime::{EffectEnvelope, EffectKind};
@@ -42,16 +41,16 @@ pub(crate) use contracts::EffectResultInput;
 const EFFECT_EXPIRY: Duration = Duration::from_secs(300);
 
 #[derive(Debug, Default)]
-struct HeadlessEngine {
-    state: EngineState,
-    next_effect_id: u64,
-    revision: u64,
+pub(crate) struct HeadlessEngine {
+    pub(crate) state: EngineState,
+    pub(crate) next_effect_id: u64,
+    pub(crate) revision: u64,
     // Keeps the drain fallback in resolve_visible_effects from re-running in-flight effects.
-    delivered_effect_ids: HashSet<String>,
-    effect_created_at: HashMap<String, Instant>,
+    pub(crate) delivered_effect_ids: HashSet<String>,
+    pub(crate) effect_created_at: HashMap<String, Instant>,
     // Runtime-only effect registry. Effect payloads can contain credentials and must never
     // be included in a UI state snapshot or StatePatch.
-    pending_effects: Vec<EffectEnvelope>,
+    pub(crate) pending_effects: Vec<EffectEnvelope>,
 }
 
 pub struct Engine(HeadlessEngine);
@@ -125,14 +124,14 @@ impl From<DispatchResult> for Update {
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct EffectsOnlyResult {
-    revision: u64,
+    pub(crate) revision: u64,
     effects: Vec<EffectEnvelope>,
 }
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PageCompletionResult {
-    revision: u64,
+    pub(crate) revision: u64,
     delta: discover::DiscoverPageDelta,
     effects: Vec<EffectEnvelope>,
 }
@@ -343,4 +342,4 @@ fn lock_engines() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<Mutex<Headl
 }
 
 #[cfg(test)]
-mod tests;
+pub(crate) mod tests;

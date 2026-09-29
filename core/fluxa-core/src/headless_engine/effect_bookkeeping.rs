@@ -6,7 +6,7 @@ use serde_json::Value;
 use web_time::Instant;
 
 impl HeadlessEngine {
-    pub(super) fn effect<P: serde::Serialize>(
+    pub(crate) fn effect<P: serde::Serialize>(
         &mut self,
         kind: EffectKind,
         generation: u64,
@@ -25,7 +25,7 @@ impl HeadlessEngine {
         self.effect_created_at.insert(id, Instant::now());
     }
 
-    pub(super) fn take_pending_effect(&mut self, id: &str) -> Option<EffectEnvelope> {
+    pub(crate) fn take_pending_effect(&mut self, id: &str) -> Option<EffectEnvelope> {
         let index = self
             .pending_effects
             .iter()
@@ -39,7 +39,7 @@ impl HeadlessEngine {
     // Drops any pending effect old enough that it's almost certainly been abandoned by
     // the platform rather than genuinely still in flight. Called opportunistically on
     // every dispatch/complete_effect so no background timer is needed.
-    pub(super) fn expire_stale_pending_effects(&mut self, now: Instant) {
+    pub(crate) fn expire_stale_pending_effects(&mut self, now: Instant) {
         let stale_ids: Vec<String> = self
             .pending_effects
             .iter()
@@ -57,7 +57,7 @@ impl HeadlessEngine {
         }
     }
 
-    pub(super) fn bump_generation(&mut self, key: GenerationKey) -> u64 {
+    pub(crate) fn bump_generation(&mut self, key: GenerationKey) -> u64 {
         self.state.runtime.bump(key)
     }
 
@@ -67,7 +67,7 @@ impl HeadlessEngine {
     // handed to the platform is presumably still in flight (e.g. an addon fetch that
     // hasn't finished) — redelivering it here would make the platform start a second,
     // duplicate execution of the same effect. Only ever drain genuinely undelivered ones.
-    pub(super) fn resolve_visible_effects(
+    pub(crate) fn resolve_visible_effects(
         &mut self,
         effects: Vec<EffectEnvelope>,
     ) -> Vec<EffectEnvelope> {
@@ -82,7 +82,7 @@ impl HeadlessEngine {
         visible
     }
 
-    pub(super) fn undelivered_pending_effects(&self) -> Vec<EffectEnvelope> {
+    pub(crate) fn undelivered_pending_effects(&self) -> Vec<EffectEnvelope> {
         self.pending_effects
             .iter()
             .filter(|effect| !self.delivered_effect_ids.contains(&effect.id))

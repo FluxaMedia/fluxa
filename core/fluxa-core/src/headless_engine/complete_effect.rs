@@ -7,7 +7,7 @@ use super::{
 use crate::runtime::{EffectEnvelope, EffectKind};
 
 impl HeadlessEngine {
-    pub(super) fn complete_effect(&mut self, result: EffectResultInput) -> Vec<EffectEnvelope> {
+    pub(crate) fn complete_effect(&mut self, result: EffectResultInput) -> Vec<EffectEnvelope> {
         let Some(effect) = self.take_pending_effect(&result.effect_id) else {
             return vec![];
         };

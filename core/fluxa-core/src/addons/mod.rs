@@ -1,4 +1,5 @@
 pub(crate) mod discovery;
+pub(crate) mod engine;
 pub(crate) mod headless_adapter;
 pub(crate) mod platform;
 pub mod plugin_network;

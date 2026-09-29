@@ -3,6 +3,7 @@ pub(crate) mod contract;
 pub(crate) mod data_policy;
 pub(crate) mod device_resource;
 pub(crate) mod discord_presence;
+pub(crate) mod engine;
 pub(crate) mod routes;
 pub(crate) mod runtime_label;
 pub(crate) mod version;

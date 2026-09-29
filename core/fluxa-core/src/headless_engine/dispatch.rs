@@ -17,7 +17,7 @@ fn source_selection_mode_value(mode: Option<SourceSelectionMode>) -> Option<Stri
 }
 
 impl HeadlessEngine {
-    pub(super) fn dispatch(&mut self, action: AppAction) -> Vec<EffectEnvelope> {
+    pub(crate) fn dispatch(&mut self, action: AppAction) -> Vec<EffectEnvelope> {
         match action {
             AppAction::NavigationRequested { route, params } => {
                 navigation::dispatch(self, route, params)

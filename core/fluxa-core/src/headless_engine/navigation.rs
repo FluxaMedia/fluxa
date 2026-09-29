@@ -5,7 +5,7 @@ use serde_json::Value;
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
-pub(super) struct NavigationState {
+pub(crate) struct NavigationState {
     route: String,
     params: Value,
 }
@@ -19,7 +19,7 @@ impl Default for NavigationState {
     }
 }
 
-pub(super) fn dispatch(
+pub(crate) fn dispatch(
     engine: &mut HeadlessEngine,
     route: String,
     params: Option<Value>,

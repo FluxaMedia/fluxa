@@ -3,6 +3,7 @@ pub(crate) mod cast;
 #[allow(dead_code)]
 pub(crate) mod desktop;
 pub mod dolby_vision;
+pub(crate) mod engine;
 pub(crate) mod flow;
 pub(crate) mod intro_segments;
 pub(crate) mod policy;
