@@ -158,3 +158,39 @@ pub(crate) fn simkl_auth_request(args: &Value, operation: &str) -> Option<Value>
         body,
     ))
 }
+
+pub(crate) fn simkl_token_state(status: u16, body: &Value) -> &'static str {
+    if (200..300).contains(&status) && body.get("access_token").is_some() {
+        return "success";
+    }
+    match str_field(body, "error") {
+        "authorization_pending" => "pending",
+        "slow_down" => "slow_down",
+        _ => "error",
+    }
+}
+
+pub(crate) fn simkl_authorize_url(args: &Value) -> Option<String> {
+    use base64::Engine;
+    use sha2::{Digest, Sha256};
+    let verifier = str_field(args, "codeVerifier");
+    if verifier.len() < 43 {
+        return None;
+    }
+    let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .encode(Sha256::digest(verifier.as_bytes()));
+    let url = url::Url::parse_with_params(
+        "https://simkl.com/oauth2/authorize",
+        [
+            ("response_type", "code"),
+            ("client_id", str_field(args, "clientId")),
+            ("redirect_uri", SIMKL_REDIRECT_URI),
+            ("code_challenge", challenge.as_str()),
+            ("code_challenge_method", "S256"),
+            ("state", str_field(args, "state")),
+            ("scope", SIMKL_SCOPE),
+        ],
+    )
+    .ok()?;
+    Some(url.to_string())
+}

@@ -171,3 +171,25 @@ pub(crate) fn anilist_auth_request(args: &Value, operation: &str) -> Option<Valu
         }),
     ))
 }
+
+pub(crate) fn anilist_token_state(status: u16, body: &Value) -> &'static str {
+    if (200..300).contains(&status) && body.get("access_token").is_some() {
+        "success"
+    } else {
+        "error"
+    }
+}
+
+pub(crate) fn anilist_authorize_url(args: &Value) -> Option<String> {
+    let url = url::Url::parse_with_params(
+        "https://anilist.co/api/v2/oauth/authorize",
+        [
+            ("client_id", str_field(args, "clientId")),
+            ("response_type", "code"),
+            ("redirect_uri", ANILIST_REDIRECT_URI),
+            ("state", str_field(args, "state")),
+        ],
+    )
+    .ok()?;
+    Some(url.to_string())
+}

@@ -313,3 +313,14 @@ pub(crate) fn mdblist_auth_request(args: &Value, operation: &str) -> Option<Valu
         "body": body,
     }))
 }
+
+pub(crate) fn mdblist_token_state(status: u16, body: &Value) -> &'static str {
+    if (200..300).contains(&status) && body.get("access_token").is_some() {
+        return "success";
+    }
+    match str_field(body, "error") {
+        "authorization_pending" => "pending",
+        "slow_down" => "slow_down",
+        _ => "error",
+    }
+}

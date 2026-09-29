@@ -148,16 +148,9 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
         .ok();
     }
 
-    let state = match provider {
-        "simkl" | "mdblist" | "anilist" if ok && body.get("access_token").is_some() => "success",
-        "simkl" | "mdblist" => match str_field(&body, "error") {
-            "authorization_pending" => "pending",
-            "slow_down" => "slow_down",
-            _ => "error",
-        },
-        "trakt" if status == 429 => "slow_down",
-        "trakt" => crate::accounts::oauth::oauth_response_outcome("trakt", "device_poll", status),
-        _ => "error",
+    let state = match registry::provider(provider).and_then(|provider| provider.token_state) {
+        Some(token_state) => token_state(status, &body),
+        None => "error",
     };
     let state = if matches!(operation, "refresh" | "exchange") && state != "success" {
         "error"
@@ -187,45 +180,9 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
 }
 
 pub(crate) fn provider_authorize_url_json(args_json: &str) -> Option<String> {
-    use base64::Engine;
-    use sha2::{Digest, Sha256};
     let args: Value = serde_json::from_str(args_json).ok()?;
-    if str_field(&args, "provider") == "anilist" {
-        let url = url::Url::parse_with_params(
-            "https://anilist.co/api/v2/oauth/authorize",
-            [
-                ("client_id", str_field(&args, "clientId")),
-                ("response_type", "code"),
-                ("redirect_uri", ANILIST_REDIRECT_URI),
-                ("state", str_field(&args, "state")),
-            ],
-        )
-        .ok()?;
-        return serde_json::to_string(&json!({"url": url.as_str()})).ok();
-    }
-    if str_field(&args, "provider") != "simkl" {
-        return None;
-    }
-    let verifier = str_field(&args, "codeVerifier");
-    if verifier.len() < 43 {
-        return None;
-    }
-    let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .encode(Sha256::digest(verifier.as_bytes()));
-    let url = url::Url::parse_with_params(
-        "https://simkl.com/oauth2/authorize",
-        [
-            ("response_type", "code"),
-            ("client_id", str_field(&args, "clientId")),
-            ("redirect_uri", SIMKL_REDIRECT_URI),
-            ("code_challenge", challenge.as_str()),
-            ("code_challenge_method", "S256"),
-            ("state", str_field(&args, "state")),
-            ("scope", SIMKL_SCOPE),
-        ],
-    )
-    .ok()?;
-    serde_json::to_string(&json!({"url": url.as_str()})).ok()
+    let url = (registry::provider(str_field(&args, "provider"))?.authorize_url?)(&args)?;
+    serde_json::to_string(&json!({"url": url})).ok()
 }
 
 pub(crate) fn provider_auth_callback_json(args_json: &str) -> Option<String> {

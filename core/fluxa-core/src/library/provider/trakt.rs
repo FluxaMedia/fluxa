@@ -223,3 +223,11 @@ pub(crate) fn trakt_auth_request(args: &Value, operation: &str) -> Option<Value>
         plan["body"].clone(),
     ))
 }
+
+pub(crate) fn trakt_token_state(status: u16, _body: &Value) -> &'static str {
+    if status == 429 {
+        "slow_down"
+    } else {
+        crate::accounts::oauth::oauth_response_outcome("trakt", "device_poll", status)
+    }
+}

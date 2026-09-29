@@ -10,6 +10,8 @@ pub(crate) struct Provider {
     pub toggle_watchlist: Option<fn(&Value, &Value, &str, bool) -> Option<Value>>,
     pub mark_watched: Option<fn(&Value, &super::provider::WatchedChange) -> Option<Value>>,
     pub auth_request: Option<fn(&Value, &str) -> Option<Value>>,
+    pub token_state: Option<fn(u16, &Value) -> &'static str>,
+    pub authorize_url: Option<fn(&Value) -> Option<String>>,
     pub library_requests: Option<fn(&Value) -> Option<Vec<Value>>>,
 }
 
@@ -31,6 +33,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         toggle_watchlist: Some(super::provider::trakt::trakt_toggle_watchlist),
         mark_watched: Some(super::provider::trakt::trakt_mark_watched),
         auth_request: Some(super::provider::trakt::trakt_auth_request),
+        token_state: Some(super::provider::trakt::trakt_token_state),
+        authorize_url: None,
         library_requests: Some(super::provider::trakt::trakt_library_requests),
     },
     Provider {
@@ -51,6 +55,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         toggle_watchlist: Some(super::provider::simkl::simkl_toggle_watchlist),
         mark_watched: Some(super::provider::simkl::simkl_mark_watched),
         auth_request: Some(super::provider::simkl::simkl_auth_request),
+        token_state: Some(super::provider::simkl::simkl_token_state),
+        authorize_url: Some(super::provider::simkl::simkl_authorize_url),
         library_requests: None,
     },
     Provider {
@@ -70,6 +76,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         toggle_watchlist: Some(super::provider::mdblist::mdblist_toggle_watchlist),
         mark_watched: Some(super::provider::mdblist::mdblist_mark_watched),
         auth_request: Some(super::provider::mdblist::mdblist_auth_request),
+        token_state: Some(super::provider::mdblist::mdblist_token_state),
+        authorize_url: None,
         library_requests: Some(super::provider::mdblist::mdblist_library_requests),
     },
     Provider {
@@ -88,6 +96,8 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         toggle_watchlist: Some(super::provider::anilist::anilist_toggle_watchlist),
         mark_watched: Some(super::provider::anilist::anilist_mark_watched),
         auth_request: Some(super::provider::anilist::anilist_auth_request),
+        token_state: Some(super::provider::anilist::anilist_token_state),
+        authorize_url: Some(super::provider::anilist::anilist_authorize_url),
         library_requests: Some(super::provider::anilist::anilist_library_requests),
     },
 ];
