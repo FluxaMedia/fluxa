@@ -1,3 +1,5 @@
+mod routes;
+pub(crate) use routes::*;
 mod sync;
 #[cfg(test)]
 mod tests;

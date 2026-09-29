@@ -16,14 +16,12 @@ mod fluxa_sync_routes;
 mod intro_plugins_routes;
 mod library_routes;
 mod local_media_routes;
-mod mdblist_routes;
 mod methods;
 mod plan_misc_routes;
 mod player_policy_routes;
 mod player_scrobble_routes;
 mod profile_routes;
 mod provider_library_routes;
-mod publicmetadb_routes;
 mod resource_plan_routes;
 mod search_plan_routes;
 mod stream_badge_routes;
@@ -32,6 +30,10 @@ mod tmdb_routes;
 mod version_policy_routes;
 mod watch_together_routes;
 mod watchlist_offline_routes;
+use crate::services::{
+    anilist::route_anilist, mdblist::route_mdblist, publicmetadb::route_publicmetadb,
+    simkl::route_simkl, stremio::route_stremio, trakt::route_trakt,
+};
 use addon_protocol_routes::route_addon_protocol;
 use addon_resource_routes::route_addon_resource;
 use addon_support_routes::{route_addon_uptime, route_trailer_subtitles};
@@ -43,14 +45,11 @@ use core_addon_store_routes::{route_addon_store, route_core_contract, route_prof
 use device_auth_routes::route_device_auth;
 use discord_presence_routes::route_discord_presence;
 use engine_routes::route_engine_lifecycle;
-use external_sync_routes::{
-    route_external_sync_anilist, route_external_sync_simkl, route_external_sync_trakt,
-};
+use external_sync_routes::route_external_sync;
 use fluxa_sync_routes::route_fluxa_sync;
 use intro_plugins_routes::{route_intro_segments, route_plugins};
 use library_routes::route_library_state;
 use local_media_routes::route_local_media;
-use mdblist_routes::route_mdblist;
 use plan_misc_routes::{
     route_data_policy, route_device_resource, route_discovery_plan, route_headless_adapter_plan,
     route_player_flow,
@@ -59,7 +58,6 @@ use player_policy_routes::route_player_policy;
 use player_scrobble_routes::route_player_scrobble;
 use profile_routes::{route_profile_contract, route_profile_prefs};
 use provider_library_routes::route_provider_library;
-use publicmetadb_routes::route_publicmetadb;
 use resource_plan_routes::route_resource_plan;
 use search_plan_routes::route_search_plan;
 use stream_badge_routes::route_stream_badges;
@@ -93,26 +91,26 @@ impl ErrorKind {
     }
 }
 
-struct CallError {
+pub(crate) struct CallError {
     kind: ErrorKind,
     message: String,
 }
 
-fn fail(kind: ErrorKind, message: impl Into<String>) -> CallError {
+pub(crate) fn fail(kind: ErrorKind, message: impl Into<String>) -> CallError {
     CallError {
         kind,
         message: message.into(),
     }
 }
 
-fn unknown_method() -> CallError {
+pub(crate) fn unknown_method() -> CallError {
     CallError {
         kind: ErrorKind::UnknownMethod,
         message: String::new(),
     }
 }
 
-type Outcome = Result<Value, CallError>;
+pub(crate) type Outcome = Result<Value, CallError>;
 
 pub fn core_invoke(method: &str, args_json: &str) -> String {
     if matches!(
@@ -219,11 +217,11 @@ fn route(method: &str, args_json: &str) -> Outcome {
     }
 }
 
-fn opt_str(value: Option<String>) -> Outcome {
+pub(crate) fn opt_str(value: Option<String>) -> Outcome {
     Ok(value.map(Value::String).unwrap_or(Value::Null))
 }
 
-fn opt_json(value: Option<String>) -> Outcome {
+pub(crate) fn opt_json(value: Option<String>) -> Outcome {
     Ok(match value {
         Some(s) => serde_json::from_str(&s).map_err(|e| {
             fail(
@@ -235,7 +233,7 @@ fn opt_json(value: Option<String>) -> Outcome {
     })
 }
 
-fn object(args_json: &str) -> Result<Value, CallError> {
+pub(crate) fn object(args_json: &str) -> Result<Value, CallError> {
     let value: Value = serde_json::from_str(args_json).map_err(|e| {
         fail(
             ErrorKind::InvalidArgs,
@@ -249,17 +247,17 @@ fn object(args_json: &str) -> Result<Value, CallError> {
     }
 }
 
-fn arg_str(args_json: &str, name: &str) -> Result<String, CallError> {
+pub(crate) fn arg_str(args_json: &str, name: &str) -> Result<String, CallError> {
     let args = object(args_json)?;
     Ok(field_str(&args, name)?.to_string())
 }
 
-fn field<'a>(args: &'a Value, name: &str) -> Result<&'a Value, CallError> {
+pub(crate) fn field<'a>(args: &'a Value, name: &str) -> Result<&'a Value, CallError> {
     args.get(name)
         .ok_or_else(|| fail(ErrorKind::InvalidArgs, format!("missing field `{name}`")))
 }
 
-fn field_str<'a>(args: &'a Value, name: &str) -> Result<&'a str, CallError> {
+pub(crate) fn field_str<'a>(args: &'a Value, name: &str) -> Result<&'a str, CallError> {
     field(args, name)?.as_str().ok_or_else(|| {
         fail(
             ErrorKind::InvalidArgs,
@@ -268,7 +266,7 @@ fn field_str<'a>(args: &'a Value, name: &str) -> Result<&'a str, CallError> {
     })
 }
 
-fn field_u64(args: &Value, name: &str) -> Result<u64, CallError> {
+pub(crate) fn field_u64(args: &Value, name: &str) -> Result<u64, CallError> {
     field(args, name)?.as_u64().ok_or_else(|| {
         fail(
             ErrorKind::InvalidArgs,
@@ -277,7 +275,7 @@ fn field_u64(args: &Value, name: &str) -> Result<u64, CallError> {
     })
 }
 
-fn field_i64(args: &Value, name: &str) -> Result<i64, CallError> {
+pub(crate) fn field_i64(args: &Value, name: &str) -> Result<i64, CallError> {
     field(args, name)?.as_i64().ok_or_else(|| {
         fail(
             ErrorKind::InvalidArgs,
@@ -286,7 +284,7 @@ fn field_i64(args: &Value, name: &str) -> Result<i64, CallError> {
     })
 }
 
-fn handle(args_json: &str) -> Result<u64, CallError> {
+pub(crate) fn handle(args_json: &str) -> Result<u64, CallError> {
     let value: Value = serde_json::from_str(args_json).map_err(|e| {
         fail(
             ErrorKind::InvalidArgs,
@@ -304,7 +302,7 @@ fn handle(args_json: &str) -> Result<u64, CallError> {
         })
 }
 
-fn result_json(value: Option<String>, method: &str) -> Outcome {
+pub(crate) fn result_json(value: Option<String>, method: &str) -> Outcome {
     match value {
         Some(s) => into_json(s),
         None => Err(fail(
@@ -314,7 +312,7 @@ fn result_json(value: Option<String>, method: &str) -> Outcome {
     }
 }
 
-fn into_json(s: String) -> Outcome {
+pub(crate) fn into_json(s: String) -> Outcome {
     serde_json::from_str(&s).map_err(|e| {
         fail(
             ErrorKind::Internal,

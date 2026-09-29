@@ -1,3 +1,5 @@
+mod routes;
+pub(crate) use routes::*;
 mod api;
 mod discussion;
 mod helpers;

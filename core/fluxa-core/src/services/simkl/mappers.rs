@@ -1,7 +1,4 @@
 use crate::catalog::identity::parse_video_id_json;
-use crate::services::trakt::{
-    trakt_artwork, trakt_id_from_source, trakt_ids_from_content_id_json, trakt_image_url,
-};
 use serde_json::{Value, json};
 
 fn simkl_entries(json: &str, key: &str) -> Vec<Value> {

@@ -1,6 +1,8 @@
-use super::*;
+use crate::ffi::*;
+use crate::services;
+use serde_json::Value;
 
-pub(super) fn route_mdblist(method: &str, args_json: &str) -> Outcome {
+pub(crate) fn route_mdblist(method: &str, args_json: &str) -> Outcome {
     match method {
         "mdblistContentType" => Ok(Value::String(
             services::mdblist::mdblist_content_type(&arg_str(args_json, "contentType")?)
@@ -337,6 +339,7 @@ pub(super) fn route_mdblist(method: &str, args_json: &str) -> Outcome {
             ))
         }
 
+        "mdblistCalendarPlan" => opt_json(services::mdblist::mdblist_calendar_plan_json(args_json)),
         _ => Err(unknown_method()),
     }
 }

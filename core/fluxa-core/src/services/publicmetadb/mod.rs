@@ -1,3 +1,5 @@
+mod routes;
+pub(crate) use routes::*;
 mod anime_seasons;
 mod catalogs;
 mod episode_ratings;

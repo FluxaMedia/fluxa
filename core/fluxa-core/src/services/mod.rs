@@ -1,4 +1,3 @@
-use crate::catalog;
 use serde_json::{Map, Value, json};
 use simkl::*;
 
@@ -10,9 +9,6 @@ pub(crate) mod simkl;
 pub(crate) mod stremio;
 pub(crate) mod trakt;
 
-pub(crate) use anilist::anilist_calendar_plan_json;
-pub(crate) use mdblist::mdblist_calendar_plan_json;
-pub(crate) use trakt::trakt_calendar_plan_json;
 use trakt::*;
 
 const TRAKT_API: &str = "https://api.trakt.tv";
