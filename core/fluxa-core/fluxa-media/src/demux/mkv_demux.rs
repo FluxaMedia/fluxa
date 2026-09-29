@@ -7,9 +7,7 @@
 //! MediaSource Extensions when the inner codecs are already browser-native.
 //! Not a general-purpose demuxer: subtitle tracks, multiple audio tracks,
 //! chapters and tags are ignored, and laced blocks are dropped rather than
-//! unpacked (matches the existing lacing bail-out in
-//! `fluxa-streaming-engine/src/dv_rewrite/mkv.rs`; laced audio/video is rare
-//! in modern encodes).
+//! unpacked.
 //!
 //! `IncrementalDemuxer` still buffers each *element* fully before parsing it
 //! (a Cluster is typically a few seconds of media, at most a few MB — not

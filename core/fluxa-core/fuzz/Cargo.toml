@@ -46,10 +46,3 @@ path = "fuzz_targets/engine_dispatch.rs"
 test = false
 doc = false
 bench = false
-
-[[bin]]
-name = "dv_sample"
-path = "fuzz_targets/dv_sample.rs"
-test = false
-doc = false
-bench = false

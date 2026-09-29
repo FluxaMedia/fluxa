@@ -1,4 +1,4 @@
-use crate::dv_rewrite::try_parse_ebml_header;
+use fluxa_media::demux::ebml::try_parse_ebml_header;
 
 const ID_EBML_HEADER: u64 = 0x1A45DFA3;
 const ID_SEGMENT: u64 = 0x1853_8067;
@@ -246,7 +246,7 @@ pub(crate) fn parse_mkv_chapters_at_offset_json(buf: &[u8]) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::dv_rewrite::encode_ebml_element;
+    use fluxa_media::demux::ebml::encode_ebml_element;
 
     fn chapter_atom(start_ms: u64, title: &str) -> Vec<u8> {
         let time_start =

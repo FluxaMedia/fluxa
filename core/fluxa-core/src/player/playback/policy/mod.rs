@@ -3,7 +3,6 @@ mod audio_channels;
 mod audio_tracks;
 mod backend_selection;
 mod buffer_targets;
-mod dolby_vision;
 mod next_episode;
 mod playback_close;
 mod retry_and_ordering;
@@ -11,7 +10,6 @@ mod shuffle;
 mod source_sidebar;
 mod torrent_fallback;
 
-pub(crate) use self::dolby_vision::*;
 pub(crate) use anime4k::anime4k_shader_chain_json;
 pub(crate) use audio_channels::audio_pcm_channel_count_json;
 pub(crate) use audio_tracks::select_audio_track_json;

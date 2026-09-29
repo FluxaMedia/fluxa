@@ -3,8 +3,7 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
-use std::io::{BufRead, BufReader, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::TcpListener;
 use std::process::Stdio;
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
@@ -17,23 +16,6 @@ use tokio::process::Command;
 
 const PROXY_USER_AGENT: &str = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 const MAX_LOCAL_STREAM_CONNECTIONS: usize = 32;
-
-pub(crate) fn build_proxy_client() -> Arc<reqwest::blocking::Client> {
-    static CLIENT: OnceLock<Arc<reqwest::blocking::Client>> = OnceLock::new();
-    CLIENT
-        .get_or_init(|| {
-            Arc::new(
-                reqwest::blocking::Client::builder()
-                    .redirect(reqwest::redirect::Policy::limited(10))
-                    .connect_timeout(Duration::from_secs(15))
-                    .timeout(Duration::from_secs(90))
-                    .user_agent(PROXY_USER_AGENT)
-                    .build()
-                    .expect("proxy client build"),
-            )
-        })
-        .clone()
-}
 
 pub(crate) fn build_async_proxy_client() -> Arc<reqwest::Client> {
     static CLIENT: OnceLock<Arc<reqwest::Client>> = OnceLock::new();
@@ -71,10 +53,8 @@ pub(crate) struct LocalStreamConfig {
     pub(crate) id: String,
     pub(crate) target_url: String,
     pub(crate) headers: HashMap<String, String>,
-    pub(crate) client: Arc<reqwest::blocking::Client>,
     pub(crate) async_client: Arc<reqwest::Client>,
     pub(crate) active_connections: Arc<AtomicUsize>,
-    pub(crate) port: u16,
 }
 
 pub(crate) struct LocalStreamHandle {
@@ -136,82 +116,10 @@ impl Drop for ActiveConnectionGuard {
     }
 }
 
-pub(crate) fn parse_request(stream: &mut TcpStream) -> Option<ParsedLocalRequest> {
-    let mut reader = BufReader::new(stream.try_clone().ok()?);
-    let mut request_line = String::new();
-    reader.read_line(&mut request_line).ok()?;
-    let mut request_parts = request_line.split_whitespace();
-    let method = request_parts.next()?.to_ascii_uppercase();
-    let path = request_parts.next()?.to_string();
-    let mut headers = HashMap::new();
-    loop {
-        let mut line = String::new();
-        if reader.read_line(&mut line).ok()? == 0 {
-            break;
-        }
-        let trimmed = line.trim_end_matches(['\r', '\n']);
-        if trimmed.is_empty() {
-            break;
-        }
-        if let Some((key, value)) = trimmed.split_once(':') {
-            headers.insert(key.trim().to_ascii_lowercase(), value.trim().to_string());
-        }
-    }
-    Some(ParsedLocalRequest {
-        method,
-        path,
-        headers,
-    })
-}
-
-pub(crate) fn write_simple_response(stream: &mut TcpStream, status: &str) {
-    let body = status.as_bytes();
-    let _ = write!(
-        stream,
-        "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
-        body.len()
-    );
-    let _ = stream.write_all(body);
-}
-
 pub(crate) fn retryable_status(status: reqwest::StatusCode) -> bool {
     status == reqwest::StatusCode::REQUEST_TIMEOUT
         || status == reqwest::StatusCode::TOO_MANY_REQUESTS
         || status.is_server_error()
-}
-
-pub(crate) fn send_upstream_request(
-    client: &reqwest::blocking::Client,
-    config: &LocalStreamConfig,
-    method: &str,
-    request_headers: &HashMap<String, String>,
-) -> Result<reqwest::blocking::Response, reqwest::Error> {
-    let mut last_error = None;
-    for attempt in 0..3 {
-        let mut request = if method == "HEAD" {
-            client.head(&config.target_url)
-        } else {
-            client.get(&config.target_url)
-        };
-        for (key, value) in config.headers.iter() {
-            request = request.header(key, value);
-        }
-        if let Some(range) = request_headers.get("range") {
-            request = request.header("Range", range);
-        }
-        match request.send() {
-            Ok(response) if retryable_status(response.status()) && attempt < 2 => {
-                thread::sleep(Duration::from_millis(80 * (attempt + 1) as u64));
-            }
-            Ok(response) => return Ok(response),
-            Err(error) if attempt < 2 => {
-                last_error = Some(error);
-                thread::sleep(Duration::from_millis(80 * (attempt + 1) as u64));
-            }
-            Err(error) => return Err(error),
-        }
-    }
-    Err(last_error.expect("retry loop should keep the last error"))
 }
 
 pub(crate) async fn parse_async_request(stream: &mut TokioTcpStream) -> Option<ParsedLocalRequest> {
@@ -588,10 +496,8 @@ pub fn start_local_stream_server(
         id: id.clone(),
         target_url: target_url.to_string(),
         headers,
-        client: build_proxy_client(),
         async_client: build_async_proxy_client(),
         active_connections: Arc::new(AtomicUsize::new(0)),
-        port,
     };
     shared_local_configs()
         .lock()
@@ -606,9 +512,6 @@ pub fn start_local_stream_server(
 }
 
 pub fn stop_local_stream_server(id: &str) -> bool {
-    if crate::dv_rewrite::remove_shared_dv_config(id) {
-        return true;
-    }
     if shared_local_configs()
         .lock()
         .ok()

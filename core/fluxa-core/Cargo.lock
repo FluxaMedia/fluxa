@@ -360,12 +360,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4512299f36f043ab09a583e57bceb5a5aab7a73db1805848e8fef3c9e8c78b3"
 
 [[package]]
-name = "bitstream-io"
-version = "2.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6099cdc01846bc367c4e7dd630dc5966dccf36b652fae7a74e17b640411a91b2"
-
-[[package]]
 name = "bitvec"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -375,15 +369,6 @@ dependencies = [
  "radium",
  "tap",
  "wyz",
-]
-
-[[package]]
-name = "bitvec_helpers"
-version = "3.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d9a6aff977a34114f146bd3379c9d170a8eafcffcdeecbb7cc3bd2470a39709a"
-dependencies = [
- "bitstream-io",
 ]
 
 [[package]]
@@ -746,21 +731,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "crc"
-version = "3.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5eb8a2a1cd12ab0d987a5d5e825195d372001a4094a0376319d5a0ad71c1ba0d"
-dependencies = [
- "crc-catalog",
-]
-
-[[package]]
-name = "crc-catalog"
-version = "2.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "217698eaf96b4a3f0bc4f3662aaa55bdf913cd54d7204591faa790070c6d0853"
-
-[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1081,19 +1051,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "dolby_vision"
-version = "3.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "533d9f32336f4d03822e87fcee32277fd4a52e3f1278549bf42c8b28e3b0f798"
-dependencies = [
- "anyhow",
- "bitvec",
- "bitvec_helpers",
- "crc",
- "tinyvec",
-]
-
-[[package]]
 name = "dontfrag"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1293,7 +1250,6 @@ name = "fluxa_media"
 version = "0.1.0"
 dependencies = [
  "base64 0.22.1",
- "dolby_vision",
  "fluxa_core",
  "serde",
  "serde_json",
@@ -1333,7 +1289,6 @@ version = "0.1.0"
 dependencies = [
  "axum",
  "bytes",
- "dolby_vision",
  "fluxa_core",
  "fluxa_media",
  "futures-util",

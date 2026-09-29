@@ -2,8 +2,7 @@
 //! into WebM for MediaSource Extensions, without re-encoding.
 //!
 //! `ebml` is dependency-free and also used natively by
-//! `fluxa-streaming-engine`'s Dolby Vision RPU rewriter and chapter
-//! extractor.
+//! `fluxa-streaming-engine`'s chapter extractor.
 
 pub mod ebml;
 

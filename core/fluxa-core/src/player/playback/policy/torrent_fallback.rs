@@ -1,4 +1,3 @@
-use super::dolby_vision::episode_path_matches_id;
 use crate::runtime::core_error::{CoreError, LogAndDiscard};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -89,4 +88,27 @@ pub(crate) fn torrent_fallback_file_policy_json(request_json: &str) -> Option<St
         "rejectedIndex": rejected
     }))
     .ok()
+}
+
+#[expect(
+    clippy::indexing_slicing,
+    reason = "episode format is length-checked before accessing its fixed fields"
+)]
+pub(crate) fn episode_path_matches_id(path: &str, video_id: &str) -> bool {
+    let parts: Vec<&str> = video_id.split(':').collect();
+    if parts.len() < 3 {
+        return false;
+    }
+    let season = parts[1].parse::<i32>().unwrap_or(0);
+    let episode = parts[2].parse::<i32>().unwrap_or(0);
+    if season == 0 || episode == 0 {
+        return false;
+    }
+    let path_lower = path.to_lowercase();
+    let pattern_s_e = format!("s{:02}e{:02}", season, episode);
+    let pattern_sx_ex = format!("{}x{:02}", season, episode);
+    let pattern_ep = format!("e{:02}", episode);
+    path_lower.contains(&pattern_s_e)
+        || path_lower.contains(&pattern_sx_ex)
+        || path_lower.contains(&pattern_ep)
 }

@@ -1,7 +1,7 @@
 //! Remuxes supported demuxed MKV tracks/packets into fragmented MP4, the
 //! container AVFoundation accepts. Video is bitstream-copy only; codec
-//! configuration and Dolby Vision signaling still need source-specific
-//! handling before this is suitable for every HDR/DV file.
+//! configuration and HDR signaling still need source-specific
+//! handling before this is suitable for every HDR file.
 
 use super::mkv_demux::{DemuxResult, Packet, Track, TrackKind};
 

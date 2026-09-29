@@ -1,6 +1,5 @@
 //! Low-level EBML primitives shared by every Matroska/WebM reader and writer
-//! in this workspace (the MKV demuxer here, and the Dolby Vision RPU rewriter
-//! and chapter extractor in `fluxa-streaming-engine`). Kept dependency-free so
+//! in this workspace (the MKV demuxer here, and the chapter extractor in `fluxa-streaming-engine`). Kept dependency-free so
 //! it compiles for `wasm` as well as native targets.
 
 pub const EBML_UNKNOWN_SIZE: u64 = u64::MAX;

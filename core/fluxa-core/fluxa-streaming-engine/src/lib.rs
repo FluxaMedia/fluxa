@@ -1,5 +1,4 @@
 mod chapters;
-mod dv_rewrite;
 #[cfg(feature = "native")]
 pub mod http_proxy;
 mod local_stream;
