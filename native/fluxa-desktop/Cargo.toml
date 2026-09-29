@@ -20,3 +20,6 @@ wgpu = { version = "29.0.3", default-features = false, features = ["dx12", "gles
 
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
 ash = "0.38"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.5"

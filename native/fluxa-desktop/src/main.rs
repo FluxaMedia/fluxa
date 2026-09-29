@@ -12,7 +12,10 @@ use winit::{
     window::{CursorIcon, Fullscreen, Icon, Window, WindowId},
 };
 
-#[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
+#[cfg(target_os = "macos")]
+mod apple_video;
+mod mpv_common;
+#[cfg(any(target_os = "linux", target_os = "windows"))]
 mod mpv;
 
 #[cfg(target_os = "macos")]
@@ -30,6 +33,8 @@ struct App {
     modifiers: ModifiersState,
     cursor: egui::CursorIcon,
     pointer: [f32; 2],
+    #[cfg(target_os = "macos")]
+    video_layer: Option<apple_video::VideoLayer>,
 }
 
 impl App {
@@ -41,6 +46,8 @@ impl App {
             modifiers: ModifiersState::empty(),
             cursor: egui::CursorIcon::Default,
             pointer: [0.0, 0.0],
+            #[cfg(target_os = "macos")]
+            video_layer: None,
         }
     }
 
@@ -101,7 +108,10 @@ impl App {
             return;
         };
         if host.take_fullscreen_toggle() {
-            let fullscreen = window.fullscreen().is_none().then_some(Fullscreen::Borderless(None));
+            let fullscreen = window
+                .fullscreen()
+                .is_none()
+                .then_some(Fullscreen::Borderless(None));
             window.set_fullscreen(fullscreen);
         }
         if let Some(id) = host.take_app_icon() {
@@ -133,6 +143,7 @@ impl ApplicationHandler for App {
                 .create_window(
                     Window::default_attributes()
                         .with_title("Fluxa")
+                        .with_transparent(cfg!(target_os = "macos"))
                         .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 800.0))
                         .with_min_inner_size(winit::dpi::LogicalSize::new(640.0, 480.0)),
                 )
@@ -141,15 +152,27 @@ impl ApplicationHandler for App {
         let data_dir = fluxa_effects::storage::data_dir().ok();
         let host = FluxaHost::new(
             window.scale_factor() as f32,
-            data_dir.as_ref().map(|directory| directory.join("artwork-cache")),
+            data_dir
+                .as_ref()
+                .map(|directory| directory.join("artwork-cache")),
         );
         host.set_form_factor("desktop");
         host.set_platform(std::env::consts::OS);
         host.set_image_picker(Box::new(pick_image));
         let notified = window.clone();
         host.set_pre_present(Box::new(move || notified.pre_present_notify()));
-        #[cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))]
+        #[cfg(any(target_os = "linux", target_os = "windows"))]
         host.set_video_backend(Box::new(mpv::MpvBackend::new()));
+        #[cfg(target_os = "macos")]
+        {
+            self.video_layer = apple_video::VideoLayer::attach(&window);
+            match self.video_layer.as_ref() {
+                Some(layer) => host.set_video_backend(Box::new(apple_video::AppleBackend::new(
+                    layer.pointer(),
+                ))),
+                None => eprintln!("[fluxa-desktop] could not attach the video layer"),
+            }
+        }
         match data_dir {
             Some(directory) => {
                 if let Err(error) = host.start_session(directory) {
@@ -206,6 +229,12 @@ impl ApplicationHandler for App {
                 event_loop.exit();
             }
             WindowEvent::Resized(size) => host.surface_changed(size.width, size.height),
+            #[cfg(target_os = "macos")]
+            WindowEvent::ScaleFactorChanged { scale_factor, .. } => {
+                if let Some(layer) = self.video_layer.as_ref() {
+                    layer.set_scale(scale_factor);
+                }
+            }
             WindowEvent::RedrawRequested => {
                 host.render();
                 self.after_frame();
@@ -261,8 +290,10 @@ impl ApplicationHandler for App {
                     && event.state == ElementState::Pressed
                     && let Some(window) = self.window.as_ref()
                 {
-                    let fullscreen =
-                        window.fullscreen().is_none().then_some(Fullscreen::Borderless(None));
+                    let fullscreen = window
+                        .fullscreen()
+                        .is_none()
+                        .then_some(Fullscreen::Borderless(None));
                     window.set_fullscreen(fullscreen);
                     return;
                 }

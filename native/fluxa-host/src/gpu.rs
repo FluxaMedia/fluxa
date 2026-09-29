@@ -2,11 +2,16 @@ use super::*;
 use fluxa_renderer::glass::GlassStyle;
 
 pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::CompositeAlphaMode {
-    if cfg!(target_os = "android")
-        && let Some(mode) = [
-            wgpu::CompositeAlphaMode::PreMultiplied,
-            wgpu::CompositeAlphaMode::Inherit,
-        ]
+    if cfg!(any(
+        target_os = "android",
+        target_os = "ios",
+        target_os = "tvos",
+        target_os = "macos"
+    )) && let Some(mode) = [
+        wgpu::CompositeAlphaMode::PreMultiplied,
+        wgpu::CompositeAlphaMode::PostMultiplied,
+        wgpu::CompositeAlphaMode::Inherit,
+    ]
         .into_iter()
         .find(|mode| modes.contains(mode))
     {

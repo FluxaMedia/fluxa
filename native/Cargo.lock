@@ -1489,6 +1489,7 @@ dependencies = [
  "fluxa-renderer",
  "gilrs",
  "log",
+ "objc2 0.5.2",
  "sentry",
  "serde_json",
  "wgpu",

@@ -1,17 +1,15 @@
 use std::ffi::{CStr, c_void};
-use std::path::PathBuf;
 use std::sync::{
     Arc,
-    mpsc::{self, Receiver, Sender, TryRecvError},
+    mpsc::{self, Receiver, TryRecvError},
 };
-use std::time::{Duration, Instant};
 
 use ash::vk::Handle as _;
 use fluxa_host::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
 
+use crate::mpv_common::{Chapters, ThumbnailWorker, buffering, shader_dir, thumbnail_url};
+
 const FRAME_SIZE: [u32; 2] = [1920, 1080];
-const THUMBNAIL_SIZE: [usize; 2] = [320, 180];
-const CHAPTER_REFRESH: Duration = Duration::from_secs(2);
 
 pub struct MpvBackend {
     pending: Option<Receiver<Result<MpvPlayer, String>>>,
@@ -36,7 +34,13 @@ impl MpvBackend {
         }
     }
 
-    fn start(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str, preview: bool) {
+    fn start(
+        &mut self,
+        instance: &wgpu::Instance,
+        device: &wgpu::Device,
+        url: &str,
+        preview: bool,
+    ) {
         self.stop();
         let (sender, receiver) = mpsc::channel();
         let instance = instance.clone();
@@ -155,7 +159,7 @@ impl VideoBackend for MpvBackend {
             volume: number(status.volume.as_deref()).unwrap_or(100.0),
             has_frame: player.first_frame,
             error: self.error.clone(),
-            chapters: player.chapters().to_vec(),
+            chapters: player.chapters.get(&player.client).to_vec(),
             buffering: buffering(&position),
         }
     }
@@ -171,22 +175,8 @@ impl VideoBackend for MpvBackend {
     }
 
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
-        let worker = self.thumbnails.as_ref()?;
-        let mut latest = None;
-        while let Ok(thumbnail) = worker.results.try_recv() {
-            latest = Some(thumbnail);
-        }
-        latest
+        self.thumbnails.as_ref()?.latest()
     }
-}
-
-fn shader_dir() -> Option<PathBuf> {
-    let beside = std::env::current_exe()
-        .ok()
-        .and_then(|exe| exe.parent().map(|dir| dir.join("mpv-shaders/anime4k")));
-    let source = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../fluxa-mpv/shaders/anime4k");
-    [beside, Some(source)].into_iter().flatten().find(|dir| dir.is_dir())
 }
 
 fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
@@ -198,7 +188,12 @@ fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
                 .collect::<Vec<_>>()
                 .join(if cfg!(windows) { ";" } else { ":" });
             vec![
-                vec!["change-list".into(), "glsl-shaders".into(), "set".into(), chain],
+                vec![
+                    "change-list".into(),
+                    "glsl-shaders".into(),
+                    "set".into(),
+                    chain,
+                ],
                 vec!["set".into(), "scale".into(), "ewa_lanczossharp".into()],
                 vec!["set".into(), "cscale".into(), "ewa_lanczos".into()],
                 vec!["set".into(), "dscale".into(), "mitchell".into()],
@@ -207,7 +202,12 @@ fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
             ]
         }
         None => vec![
-            vec!["change-list".into(), "glsl-shaders".into(), "clr".into(), String::new()],
+            vec![
+                "change-list".into(),
+                "glsl-shaders".into(),
+                "clr".into(),
+                String::new(),
+            ],
             vec!["set".into(), "scale".into(), "bilinear".into()],
             vec!["set".into(), "cscale".into(), "bilinear".into()],
         ],
@@ -220,70 +220,6 @@ fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
     }
 }
 
-fn thumbnail_url(url: &str) -> String {
-    if url.contains("/stream/fname") {
-        format!("{url}&role=auxiliary")
-    } else {
-        url.to_owned()
-    }
-}
-
-struct ThumbnailWorker {
-    requests: Sender<f64>,
-    results: Receiver<Thumbnail>,
-}
-
-impl ThumbnailWorker {
-    fn spawn(url: String) -> Self {
-        let (requests, request_rx) = mpsc::channel::<f64>();
-        let (result_tx, results) = mpsc::channel();
-        std::thread::spawn(move || {
-            let mut renderer = match fluxa_mpv::MpvThumbnailRenderer::new()
-                .and_then(|mut renderer| renderer.load_thumbnail(&url).map(|_| renderer))
-            {
-                Ok(renderer) => renderer,
-                Err(error) => {
-                    eprintln!("[fluxa-desktop] seek thumbnails unavailable: {error}");
-                    return;
-                }
-            };
-            while let Ok(mut time) = request_rx.recv() {
-                while let Ok(next) = request_rx.try_recv() {
-                    time = next;
-                }
-                match render_thumbnail(&mut renderer, time) {
-                    Ok(rgba) => {
-                        let thumbnail = Thumbnail {
-                            time,
-                            size: THUMBNAIL_SIZE,
-                            rgba,
-                        };
-                        if result_tx.send(thumbnail).is_err() {
-                            return;
-                        }
-                    }
-                    Err(error) => eprintln!("[fluxa-desktop] seek thumbnail failed: {error}"),
-                }
-            }
-        });
-        Self { requests, results }
-    }
-}
-
-fn render_thumbnail(
-    renderer: &mut fluxa_mpv::MpvThumbnailRenderer,
-    time: f64,
-) -> Result<Vec<u8>, String> {
-    renderer.set_paused(false)?;
-    renderer.seek_thumbnail_to(time)?;
-    renderer.pump_events();
-    std::thread::sleep(Duration::from_millis(50));
-    renderer.set_paused(true)?;
-    renderer.pump_events();
-    std::thread::sleep(Duration::from_millis(20));
-    renderer.render_thumbnail(THUMBNAIL_SIZE[0] as i32, THUMBNAIL_SIZE[1] as i32)
-}
-
 struct MpvPlayer {
     render: fluxa_mpv::MpvRenderState,
     client: fluxa_mpv::MpvClientHandle,
@@ -292,8 +228,7 @@ struct MpvPlayer {
     image_layout: i32,
     sync: VulkanSync,
     first_frame: bool,
-    chapters: Vec<(f64, String)>,
-    chapters_at: Option<Instant>,
+    chapters: Chapters,
 }
 
 impl MpvPlayer {
@@ -303,9 +238,8 @@ impl MpvPlayer {
         url: &str,
         preview: bool,
     ) -> Result<Self, String> {
-        let local = preview
-            || url.starts_with("http://127.0.0.1:")
-            || url.starts_with("http://localhost:");
+        let local =
+            preview || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:");
         let (mut client, mut render) = if local {
             fluxa_mpv::MpvClientHandle::new_without_ytdl()?
         } else {
@@ -359,34 +293,8 @@ impl MpvPlayer {
             image_layout: 0,
             sync,
             first_frame: false,
-            chapters: Vec::new(),
-            chapters_at: None,
+            chapters: Chapters::default(),
         })
-    }
-
-    fn chapters(&mut self) -> &[(f64, String)] {
-        if self.chapters_at.is_none_or(|at| at.elapsed() >= CHAPTER_REFRESH) {
-            self.chapters_at = Some(Instant::now());
-            self.chapters = self
-                .client
-                .chapters_json()
-                .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
-                .and_then(|value| {
-                    value.get("chapters")?.as_array().map(|chapters| {
-                        chapters
-                            .iter()
-                            .filter_map(|chapter| {
-                                Some((
-                                    chapter.get("startMs")?.as_u64()? as f64 / 1000.0,
-                                    chapter.get("title")?.as_str()?.to_owned(),
-                                ))
-                            })
-                            .collect()
-                    })
-                })
-                .unwrap_or_default();
-        }
-        &self.chapters
     }
 
     fn render(&mut self) -> Result<bool, String> {
@@ -496,7 +404,10 @@ struct VulkanHandles {
     extensions: Vec<*const i8>,
 }
 
-fn vulkan_handles(instance: &wgpu::Instance, device: &wgpu::Device) -> Result<VulkanHandles, String> {
+fn vulkan_handles(
+    instance: &wgpu::Instance,
+    device: &wgpu::Device,
+) -> Result<VulkanHandles, String> {
     let hal_instance = unsafe { instance.as_hal::<wgpu::hal::api::Vulkan>() }
         .ok_or_else(|| "wgpu is not using the Vulkan backend".to_owned())?;
     let hal_device = unsafe { device.as_hal::<wgpu::hal::api::Vulkan>() }
@@ -523,7 +434,10 @@ fn open_shared_device(
     let hal_adapter = unsafe { adapter.as_hal::<wgpu::hal::api::Vulkan>() }
         .ok_or_else(|| "wgpu adapter is not backed by Vulkan".to_owned())?;
     let required: &[&CStr] = if cfg!(target_os = "linux") {
-        &[c"VK_KHR_external_memory_fd", c"VK_KHR_external_semaphore_fd"]
+        &[
+            c"VK_KHR_external_memory_fd",
+            c"VK_KHR_external_semaphore_fd",
+        ]
     } else {
         &[]
     };
@@ -556,16 +470,4 @@ fn open_shared_device(
     .map_err(|error| format!("open Vulkan device: {error}"))?;
     unsafe { adapter.create_device_from_hal(hal_device, descriptor) }
         .map_err(|error| format!("create wgpu device: {error}"))
-}
-
-fn buffering(position: &fluxa_mpv::PlayerPositionStatus) -> Option<f32> {
-    let number = |value: Option<&String>| value.and_then(|value| value.parse::<f32>().ok());
-    if position.paused_for_cache.as_deref() == Some("yes")
-        && let Some(state) = number(position.cache_buffering_state.as_ref())
-    {
-        return Some(state / 100.0);
-    }
-    number(position.demuxer_cache_duration.as_ref())
-        .filter(|seconds| *seconds > 0.0)
-        .map(|seconds| (seconds / 5.0).min(1.0))
 }

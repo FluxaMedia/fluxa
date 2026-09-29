@@ -1,10 +1,16 @@
 use super::*;
 
+#[allow(dead_code)]
+enum Embed {
+    X11(u64),
+    AppleLayer(usize, String),
+}
+
 impl MpvClientHandle {
     fn new_internal(
         thumbnail: bool,
         scripts: &[PathBuf],
-        x11_window_id: Option<u64>,
+        embed: Option<Embed>,
         disable_ytdl: bool,
     ) -> Result<(Self, MpvRenderState), String> {
         let api = MpvApi::load()?;
@@ -71,7 +77,14 @@ impl MpvClientHandle {
             if disable_ytdl {
                 client.set_option("ytdl", "no")?;
             }
-            if let Some(window_id) = x11_window_id {
+            if let Some(Embed::AppleLayer(layer, shaders)) = embed {
+                client.set_option("vo", "apple_native")?;
+                client.set_option("ao", "avfoundation,coreaudio")?;
+                client.set_option("wid", &layer.to_string())?;
+                if !shaders.is_empty() {
+                    client.set_option("vo-apple-native-shaders", &shaders)?;
+                }
+            } else if let Some(Embed::X11(window_id)) = embed {
                 // XWayland/X11 native embedding: let mpv own its Vulkan
                 // swapchain for the real X11 window instead of routing every
                 // frame through Fluxa's experimental render bridge.
@@ -232,7 +245,16 @@ impl MpvClientHandle {
         scripts: Vec<PathBuf>,
         window_id: u64,
     ) -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false, &scripts, Some(window_id), false)
+        Self::new_internal(false, &scripts, Some(Embed::X11(window_id)), false)
+    }
+
+    #[cfg(target_os = "macos")]
+    pub fn new_with_apple_layer(
+        layer: usize,
+        shaders: &[String],
+    ) -> Result<(Self, MpvRenderState), String> {
+        let shaders = shaders.join(":");
+        Self::new_internal(false, &[], Some(Embed::AppleLayer(layer, shaders)), false)
     }
 
     pub fn new_thumbnail() -> Result<(Self, MpvRenderState), String> {
