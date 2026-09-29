@@ -271,6 +271,24 @@ mod tests {
     }
 
     #[test]
+    fn on_hold_tab_lists_only_held_simkl_items() {
+        let plan = library_view_plan_json(
+            &json!({
+                "source": "simkl",
+                "watchlist": [{"id": "tt1", "type": "series", "source": "simkl"}],
+                "onHold": [{"id": "tt2", "type": "series", "source": "simkl"}],
+                "tab": "hold"
+            })
+            .to_string(),
+        )
+        .unwrap();
+        let plan = serde_json::from_str::<Value>(&plan).unwrap();
+
+        assert_eq!(plan["items"].as_array().unwrap().len(), 1);
+        assert_eq!(plan["items"][0]["id"], "tt2");
+    }
+
+    #[test]
     fn type_filter_keeps_anime_apart_and_lists_available_types() {
         let plan = library_view_plan_json(
             &json!({

@@ -682,3 +682,57 @@ impl EffectExecutor {
         Ok(json!({}))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+
+    fn serve(statuses: Vec<u16>) -> String {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let url = format!("http://{}/sync/activities", listener.local_addr().unwrap());
+        std::thread::spawn(move || {
+            for status in statuses {
+                let (mut stream, _) = listener.accept().unwrap();
+                let mut buffer = [0; 2048];
+                let _ = stream.read(&mut buffer);
+                let body = "{\"ok\":true}";
+                let _ = write!(
+                    stream,
+                    "HTTP/1.1 {status} X\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+            }
+        });
+        url
+    }
+
+    fn get(statuses: Vec<u16>) -> Result<Value, String> {
+        let url = serve(statuses);
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        runtime.block_on(async {
+            let client = http_client()?;
+            EffectExecutor::simkl_get(&client, &json!({"method": "GET", "url": url})).await
+        })
+    }
+
+    #[test]
+    fn rate_limited_requests_are_retried() {
+        assert_eq!(get(vec![429, 503, 200]).unwrap(), json!({"ok": true}));
+    }
+
+    #[test]
+    fn revoked_token_is_not_retried() {
+        let error = get(vec![401]).unwrap_err();
+        assert!(error.contains("sign in again"));
+    }
+
+    #[test]
+    fn gives_up_after_four_attempts() {
+        assert!(get(vec![500, 500, 500, 500]).unwrap_err().contains("500"));
+    }
+}
