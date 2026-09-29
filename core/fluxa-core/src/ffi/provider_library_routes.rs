@@ -3,6 +3,10 @@ use crate::library;
 
 pub(super) fn route_provider_library(method: &str, args_json: &str) -> Outcome {
     match method {
+        "connectedProviders" => opt_json(library::provider_registry::connected_providers_json(
+            args_json,
+        )),
+        "providerRegistry" => opt_json(Some(library::provider_registry::provider_registry_json())),
         "providerAuthCallback" => {
             opt_json(library::provider::provider_auth_callback_json(args_json))
         }
