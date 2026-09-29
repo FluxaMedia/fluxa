@@ -2,6 +2,7 @@ package com.fluxa.app.ui
 
 import android.app.Activity
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -29,6 +30,9 @@ class MainActivity : Activity() {
         host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
         host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
         host.renderer.onAppIcon = { AppIcons.apply(this, it) }
+        host.renderer.onOpenUrl = { url ->
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+        }
         host.renderer.onNativeAction = { Log.i("FluxaNativeRenderer", "Unhandled native actions: $it") }
         host.renderer.dispatchCoreCommand(
             gson.toJson(mapOf("formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile"))
@@ -72,6 +76,10 @@ class MainActivity : Activity() {
             )
         }
         val data = intent.data
+        if (intent.action == Intent.ACTION_VIEW && data?.scheme == "fluxa" && data.host == "oauth") {
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "oauthCallback", "url" to data.toString())))
+            return
+        }
         if (intent.action == Intent.ACTION_VIEW && data?.scheme == "app" && data.host == "play") {
             val id = data.getQueryParameter("id")?.takeIf(String::isNotBlank) ?: return
             val type = data.getQueryParameter("type")?.takeIf(String::isNotBlank) ?: return

@@ -105,6 +105,11 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         if let icon = take(fluxa_renderer_take_app_icon(renderer)) {
             applyAppIcon(icon)
         }
+        if let link = take(fluxa_renderer_take_open_url(renderer)), let url = URL(string: link) {
+            #if os(iOS)
+            UIApplication.shared.open(url)
+            #endif
+        }
     }
 
     private func applyAppIcon(_ id: String) {

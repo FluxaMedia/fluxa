@@ -60,6 +60,12 @@ final class FluxaHostView: UIView {
     }
 
     private func open(_ url: URL) {
+        if url.scheme == "fluxa", url.host == "oauth",
+           let data = try? JSONSerialization.data(withJSONObject: ["type": "oauthCallback", "url": url.absoluteString]),
+           let json = String(data: data, encoding: .utf8) {
+            renderer.pushAction(json)
+            return
+        }
         let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
         let value = { (name: String) in items.first { $0.name == name }?.value ?? "" }
         let id = value("id")

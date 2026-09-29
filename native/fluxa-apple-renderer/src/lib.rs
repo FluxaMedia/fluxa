@@ -263,6 +263,13 @@ pub unsafe extern "C" fn fluxa_renderer_poll_actions(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_take_open_url(
+    renderer: *const FluxaRenderer,
+) -> *mut c_char {
+    owned(unsafe { renderer.as_ref() }.and_then(FluxaHost::take_open_url))
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_take_app_icon(
     renderer: *const FluxaRenderer,
 ) -> *mut c_char {

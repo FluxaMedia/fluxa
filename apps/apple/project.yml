@@ -23,6 +23,7 @@ targetTemplates:
           - CFBundleURLName: FluxaApple
             CFBundleURLSchemes:
               - fluxaapple
+              - fluxa
     sources:
       - path: Host
       - path: Assets.xcassets
