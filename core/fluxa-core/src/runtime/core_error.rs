@@ -1,4 +1,4 @@
-use crate::log_sink;
+use crate::runtime::log_sink;
 
 pub(crate) enum CoreError {
     BadInput {

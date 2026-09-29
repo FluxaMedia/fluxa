@@ -1,4 +1,4 @@
-use crate::action_contract::{
+use crate::headless_engine::action_contract::{
     MarkWatchedAction, SavePlaybackProgressAction, mark_watched_action_value,
     save_playback_progress_action_value,
 };

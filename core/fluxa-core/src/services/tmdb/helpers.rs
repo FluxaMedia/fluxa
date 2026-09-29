@@ -1,4 +1,4 @@
-use crate::constants::DEFAULT_LANGUAGE;
+use crate::runtime::constants::DEFAULT_LANGUAGE;
 
 pub(crate) fn tmdb_content_type(content_type: &str) -> &str {
     if content_type == "series" {

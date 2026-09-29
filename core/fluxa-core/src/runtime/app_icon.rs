@@ -1,8 +1,8 @@
 use serde::Deserialize;
 use std::sync::OnceLock;
 
-const APP_ICONS_JSON: &str = include_str!("../../../shared/brand/app-icons.json");
-const MARK_SVG: &str = include_str!("../../../shared/brand/fluxa-mark.svg");
+const APP_ICONS_JSON: &str = include_str!("../../../../shared/brand/app-icons.json");
+const MARK_SVG: &str = include_str!("../../../../shared/brand/fluxa-mark.svg");
 
 #[derive(Clone, Debug, Deserialize)]
 pub struct AppIcon {

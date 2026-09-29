@@ -1,5 +1,5 @@
-use crate::app_state;
 use crate::ffi::*;
+use crate::headless_engine::app_state;
 use serde_json::json;
 
 pub(crate) fn route_engine_lifecycle(method: &str, args_json: &str) -> Outcome {
@@ -39,7 +39,7 @@ pub(crate) fn route_engine_lifecycle(method: &str, args_json: &str) -> Outcome {
         "engine.destroy" => Ok(json!(crate::headless_engine::destroy_headless_engine(
             handle(args_json)?
         ))),
-        "core.drainErrorLog" => opt_json(Some(crate::log_sink::drain_core_log_json())),
+        "core.drainErrorLog" => opt_json(Some(crate::runtime::log_sink::drain_core_log_json())),
         "app.create" => {
             let handle = app_state::create_app_core_state(args_json);
             if handle == 0 {

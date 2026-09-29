@@ -1,3 +1,5 @@
+pub(crate) mod action_contract;
+pub(crate) mod app_state;
 pub(crate) mod complete_effect;
 pub(crate) mod contracts;
 pub(crate) mod dispatch;
@@ -24,7 +26,7 @@ pub(crate) use crate::player::engine::trailer;
 pub(crate) use crate::profile::engine as profile;
 pub(crate) use crate::settings::engine as settings;
 
-use crate::core_error::{CoreError, LogAndDiscard};
+use crate::runtime::core_error::{CoreError, LogAndDiscard};
 use crate::runtime::{EffectEnvelope, EffectKind};
 use contracts::{AppAction, DispatchResult};
 use serde::Serialize;
@@ -222,7 +224,7 @@ pub fn create_headless_engine(initial_json: &str) -> u64 {
     let state = match serde_json::from_str::<EngineState>(initial_json) {
         Ok(state) => state,
         Err(error) => {
-            crate::log_sink::record("create_headless_engine", &error.to_string());
+            crate::runtime::log_sink::record("create_headless_engine", &error.to_string());
             return 0;
         }
     };
@@ -322,7 +324,7 @@ fn with_engine<T>(
     let mut engine = match engine.lock() {
         Ok(engine) => engine,
         Err(_) => {
-            crate::log_sink::record(context, "poisoned handle; recreate the engine");
+            crate::runtime::log_sink::record(context, "poisoned handle; recreate the engine");
             return None;
         }
     };

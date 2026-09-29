@@ -9,25 +9,19 @@
 )]
 
 mod accounts;
-mod action_contract;
 pub mod addons;
-pub mod app_icon;
-mod app_state;
 mod catalog;
-mod constants;
-mod core_error;
 mod headless_engine;
 mod home;
 mod library;
-pub mod log_sink;
 pub mod player;
 mod profile;
 mod services;
 mod settings;
 
-pub mod env;
 pub mod ffi;
 pub mod runtime;
+pub use runtime::{app_icon, env, log_sink};
 pub mod types;
 
 pub mod bindings;

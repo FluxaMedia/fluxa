@@ -1,4 +1,4 @@
-use crate::constants::{DEFAULT_LANGUAGE, GUEST_PROFILE_ID};
+use crate::runtime::constants::{DEFAULT_LANGUAGE, GUEST_PROFILE_ID};
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};

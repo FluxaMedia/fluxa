@@ -273,7 +273,7 @@ pub fn create_app_core_state(initial_json: &str) -> u64 {
     let state = match serde_json::from_str(initial_json) {
         Ok(state) => state,
         Err(error) => {
-            crate::log_sink::record("create_app_core_state", &error.to_string());
+            crate::runtime::log_sink::record("create_app_core_state", &error.to_string());
             return 0;
         }
     };
@@ -296,13 +296,13 @@ pub fn app_core_state_json(handle: u64) -> Option<String> {
 pub fn app_core_dispatch_json(handle: u64, action_json: &str) -> Option<String> {
     let action: AppCoreAction = serde_json::from_str(action_json)
         .map_err(|error| {
-            crate::log_sink::record("app_core_dispatch_json", &error.to_string());
+            crate::runtime::log_sink::record("app_core_dispatch_json", &error.to_string());
         })
         .ok()?;
     let state = lock_store().get(&handle)?.clone();
     let mut state = lock_app_state(&state)?;
     if !reduce(&mut state, action) {
-        crate::log_sink::record("app_core_dispatch_json", "unknown action");
+        crate::runtime::log_sink::record("app_core_dispatch_json", "unknown action");
         return None;
     }
     serde_json::to_string(&*state).ok()
@@ -460,7 +460,10 @@ fn lock_app_state(
     match state.lock() {
         Ok(guard) => Some(guard),
         Err(_) => {
-            crate::log_sink::record("app_core_state", "poisoned handle; recreate the app state");
+            crate::runtime::log_sink::record(
+                "app_core_state",
+                "poisoned handle; recreate the app state",
+            );
             None
         }
     }

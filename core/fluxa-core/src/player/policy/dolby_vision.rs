@@ -1,8 +1,8 @@
-use crate::core_error::{CoreError, LogAndDiscard};
 use crate::player::dolby_vision::{
     DvContainer, DvDecoderCapabilities, DvFallbackMode, DvProfile, build_dv_playback_plan,
     decoder_supports,
 };
+use crate::runtime::core_error::{CoreError, LogAndDiscard};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -76,7 +76,7 @@ pub(crate) fn dv_proxy_plan_json(request_json: &str) -> Option<String> {
     );
 
     if let Err(error) = plan.validate() {
-        crate::log_sink::record(
+        crate::runtime::log_sink::record(
             "dv_proxy_plan_json",
             &format!("planner produced an invalid plan: {error:?}"),
         );

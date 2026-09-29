@@ -1,4 +1,4 @@
-use crate::constants::DEFAULT_LANGUAGE;
+use crate::runtime::constants::DEFAULT_LANGUAGE;
 use serde::Serialize;
 use serde_json::Value;
 
