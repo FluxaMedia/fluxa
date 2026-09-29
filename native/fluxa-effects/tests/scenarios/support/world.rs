@@ -116,6 +116,10 @@ impl World {
         }
     }
 
+    pub fn requests_all(&self) -> Vec<Recorded> {
+        self.log.lock().unwrap().clone()
+    }
+
     pub fn requests(&self, host: &str) -> Vec<Recorded> {
         self.log
             .lock()

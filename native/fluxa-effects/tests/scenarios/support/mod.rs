@@ -60,7 +60,7 @@ impl Scenario {
         let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
             .join(format!("app-{}-{}", std::process::id(), APPS.fetch_add(1, Ordering::Relaxed)));
         let _ = std::fs::remove_dir_all(&dir);
-        let storage = Storage::open(dir).expect("storage");
+        let storage = Storage::open(dir.clone()).expect("storage");
         if profile.is_object() {
             let id = profile["id"].as_str().unwrap_or("guest").to_owned();
             storage.write_json("profiles", &json!([profile])).expect("profiles");
@@ -68,12 +68,14 @@ impl Scenario {
         }
         App {
             session: SessionHandle::open(storage).expect("session"),
+            dir,
         }
     }
 }
 
 pub struct App {
     pub session: SessionHandle,
+    dir: PathBuf,
 }
 
 impl App {
@@ -81,6 +83,16 @@ impl App {
         self.session.dispatch(action).expect("dispatch");
         self.settle();
         self
+    }
+
+    pub fn restart(self) -> App {
+        let App { session, dir } = self;
+        drop(session);
+        let storage = Storage::open(dir.clone()).expect("storage");
+        App {
+            session: SessionHandle::open(storage).expect("session"),
+            dir,
+        }
     }
 
     pub fn settle(&self) {
