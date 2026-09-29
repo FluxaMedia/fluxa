@@ -12,6 +12,7 @@ pub(crate) fn normalized_continue_watching_source(value: Option<&str>) -> &'stat
         Some("trakt") => "trakt",
         Some("simkl") => "simkl",
         Some("anilist") => "anilist",
+        Some("mdblist") => "mdblist",
         _ => "local",
     }
 }

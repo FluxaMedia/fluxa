@@ -34,12 +34,12 @@ pub(crate) fn integration_settings_from_value(value: Option<&Value>) -> Integrat
     IntegrationSettings {
         library_source: enum_value(
             "librarySource",
-            &["local", "trakt", "simkl", "nuvio", "anilist", "stremio"],
+            &["local", "trakt", "simkl", "nuvio", "anilist", "mdblist", "stremio"],
             "local",
         ),
         watch_progress_source: enum_value(
             "watchProgressSource",
-            &["all", "trakt", "simkl", "nuvio", "stremio"],
+            &["all", "trakt", "simkl", "nuvio", "anilist", "mdblist", "stremio"],
             "all",
         ),
         continue_watching_days: value
@@ -93,5 +93,14 @@ mod tests {
             &json!({"watchProgressSource":"invalid","continueWatchingDays":366}),
         ));
         assert_eq!(settings, IntegrationSettings::default());
+    }
+
+    #[test]
+    fn mdblist_and_anilist_sources_are_kept() {
+        let settings = integration_settings_from_value(Some(
+            &json!({"librarySource":"mdblist","watchProgressSource":"anilist"}),
+        ));
+        assert_eq!(settings.library_source, "mdblist");
+        assert_eq!(settings.watch_progress_source, "anilist");
     }
 }
