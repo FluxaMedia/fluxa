@@ -458,6 +458,37 @@ fn mdblist_watched(body: &Value) -> (Value, Value) {
     (Value::Array(completed), Value::Object(watched))
 }
 
+fn mdblist_playback(entries: &Value) -> Value {
+    let entries: Vec<Value> = entries
+        .as_array()
+        .into_iter()
+        .flatten()
+        .cloned()
+        .map(|mut entry| {
+            let progress = match entry.get("progress") {
+                Some(Value::String(text)) => text.parse::<f64>().unwrap_or(0.0),
+                Some(other) => other.as_f64().unwrap_or(0.0),
+                None => 0.0,
+            };
+            entry["progress"] = json!(progress);
+            if let Some(fields) = entry.as_object_mut() {
+                fields.retain(|_, value| !value.is_null());
+            }
+            if let Some(name) = entry.pointer("/episode/name").cloned() {
+                entry["episode"]["title"] = name;
+            }
+            entry
+        })
+        .collect();
+    let mut items = parsed(trakt_playback_items_to_library_json(
+        &Value::Array(entries).to_string(),
+    ));
+    for item in items.as_array_mut().into_iter().flatten() {
+        item["reason"] = json!("mdblist");
+    }
+    items
+}
+
 fn mdblist_up_next(upnext: &Value, watched: &Value) -> Value {
     let mut imdb_by_tmdb = std::collections::HashMap::new();
     let shows = mdblist_entries(watched, "shows")
@@ -653,7 +684,7 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
                     ])
                 })
                 .unwrap_or(json!([]));
-            let playback = parsed(trakt_playback_items_to_library_json(&playback.to_string()));
+            let playback = mdblist_playback(&playback);
             let up_next = mdblist_up_next(responses.get("upnext").unwrap_or(&empty), watched_body);
             json!({
                 "watchlist": parsed(catalog::mdblist::mdblist_list_items_response_to_metas_json(&response_str(&responses, "watchlist"))),
@@ -1028,6 +1059,27 @@ mod tests {
             5
         );
         assert!(plan[0]["body"].get("movies").is_none());
+    }
+
+    #[test]
+    fn mdblist_paused_movie_resumes_from_its_string_progress() {
+        let responses = json!({"playback": [{
+            "progress": "30.00",
+            "paused_at": "2026-01-01T00:00:00.000Z",
+            "type": "movie",
+            "movie": {"title": "M", "ids": {"imdb": "tt9"}},
+            "episode": null,
+            "show": null,
+        }]});
+        let snapshot = value(provider_library_snapshot_json(
+            &json!({"provider": "mdblist", "responses": responses}).to_string(),
+        ));
+        assert_eq!(snapshot["continueWatching"][0]["id"], "tt9");
+        assert_eq!(snapshot["continueWatching"][0]["lastVideoId"], "tt9");
+        assert_eq!(
+            snapshot["continueWatching"][0]["resumeProgressPercent"],
+            30.0
+        );
     }
 
     #[test]
