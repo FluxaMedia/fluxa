@@ -6,7 +6,7 @@ mod methods;
 #[cfg(test)]
 mod tests;
 use crate::services::{
-    anilist::route_anilist, mdblist::route_mdblist, nuvio::route_nuvio,
+    anilist::route_anilist, mdblist::route_mdblist, mediaserver::routes::route_mediaserver, nuvio::route_nuvio,
     publicmetadb::route_publicmetadb, simkl::route_simkl, stremio::route_stremio, tmdb::route_tmdb,
     trakt::route_trakt,
 };

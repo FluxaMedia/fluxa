@@ -6,6 +6,7 @@ pub(crate) mod anilist;
 pub(crate) mod auth;
 pub(crate) mod fluxa;
 pub(crate) mod mdblist;
+pub(crate) mod mediaserver;
 pub(crate) mod nuvio;
 pub(crate) mod publicmetadb;
 pub(crate) mod registry;
