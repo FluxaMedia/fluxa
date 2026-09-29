@@ -12,6 +12,7 @@ use serde_json::{Map, Value, json};
 const TRAKT_API: &str = "https://api.trakt.tv";
 pub(super) const SIMKL_SCOPE: &str = "media:read media:write";
 pub(super) const SIMKL_API: &str = "https://api.simkl.com";
+const SIMKL_REDIRECT_URI: &str = "fluxa://oauth/simkl";
 const MDBLIST_API: &str = "https://api.mdblist.com";
 const SIMKL_APP_NAME: &str = "fluxa";
 const SIMKL_USER_AGENT: &str = concat!("fluxa/", env!("CARGO_PKG_VERSION"));
@@ -119,6 +120,19 @@ pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
             format!("{SIMKL_API}/oauth2/device"),
             json!({"client_id": client_id, "scope": SIMKL_SCOPE}),
         ),
+        ("simkl", "exchange") => request(
+            provider,
+            &args,
+            "POST",
+            format!("{SIMKL_API}/oauth2/token"),
+            json!({
+                "grant_type": "authorization_code",
+                "code": str_field(&args, "code"),
+                "code_verifier": str_field(&args, "codeVerifier"),
+                "redirect_uri": SIMKL_REDIRECT_URI,
+                "client_id": client_id,
+            }),
+        ),
         ("simkl", "poll") => request(
             provider,
             &args,
@@ -219,7 +233,7 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
         "trakt" => crate::accounts::oauth::oauth_response_outcome("trakt", "device_poll", status),
         _ => "error",
     };
-    let state = if operation == "refresh" && state != "success" {
+    let state = if matches!(operation, "refresh" | "exchange") && state != "success" {
         "error"
     } else {
         state
@@ -242,6 +256,57 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
             "refreshToken": body.get("refresh_token"),
             "expiresAt": expires_at,
         }
+    }))
+    .ok()
+}
+
+pub(crate) fn provider_authorize_url_json(args_json: &str) -> Option<String> {
+    use base64::Engine;
+    use sha2::{Digest, Sha256};
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    if str_field(&args, "provider") != "simkl" {
+        return None;
+    }
+    let verifier = str_field(&args, "codeVerifier");
+    if verifier.len() < 43 {
+        return None;
+    }
+    let challenge = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .encode(Sha256::digest(verifier.as_bytes()));
+    let url = url::Url::parse_with_params(
+        "https://simkl.com/oauth2/authorize",
+        [
+            ("response_type", "code"),
+            ("client_id", str_field(&args, "clientId")),
+            ("redirect_uri", SIMKL_REDIRECT_URI),
+            ("code_challenge", challenge.as_str()),
+            ("code_challenge_method", "S256"),
+            ("state", str_field(&args, "state")),
+            ("scope", SIMKL_SCOPE),
+        ],
+    )
+    .ok()?;
+    serde_json::to_string(&json!({"url": url.as_str()})).ok()
+}
+
+pub(crate) fn provider_auth_callback_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let url = url::Url::parse(str_field(&args, "url")).ok()?;
+    if url.scheme() != "fluxa" || url.host_str() != Some("oauth") {
+        return None;
+    }
+    let provider = url.path().trim_matches('/').to_owned();
+    let query = |name: &str| {
+        url.query_pairs()
+            .find(|(key, _)| key == name)
+            .map(|(_, value)| value.into_owned())
+    };
+    let code = query("code").filter(|code| !code.is_empty());
+    serde_json::to_string(&json!({
+        "provider": provider,
+        "code": code,
+        "state": query("state"),
+        "error": query("error"),
     }))
     .ok()
 }
@@ -1045,6 +1110,60 @@ mod tests {
         assert_eq!(ids("dropped"), ["tt5"]);
         assert_eq!(ids("continueWatching"), ["tt1", "tt3"]);
         assert_eq!(snapshot["continueWatching"][0]["lastEpisodeNumber"], 2);
+    }
+
+    #[test]
+    fn simkl_authorize_url_carries_an_s256_challenge() {
+        let verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+        let out = value(provider_authorize_url_json(
+            &json!({"provider": "simkl", "clientId": "cid", "codeVerifier": verifier, "state": "st"})
+                .to_string(),
+        ));
+        let url = url::Url::parse(out["url"].as_str().unwrap()).unwrap();
+        let param = |name: &str| {
+            url.query_pairs()
+                .find(|(key, _)| key == name)
+                .unwrap()
+                .1
+                .into_owned()
+        };
+        assert_eq!(
+            param("code_challenge"),
+            "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
+        );
+        assert_eq!(param("redirect_uri"), "fluxa://oauth/simkl");
+        assert_eq!(param("state"), "st");
+    }
+
+    #[test]
+    fn oauth_callback_yields_code_and_state() {
+        let callback = value(provider_auth_callback_json(
+            r#"{"url":"fluxa://oauth/simkl?code=abc&state=st"}"#,
+        ));
+        assert_eq!(callback["provider"], "simkl");
+        assert_eq!(callback["code"], "abc");
+        assert_eq!(callback["state"], "st");
+        assert!(provider_auth_callback_json(r#"{"url":"https://evil/x?code=abc"}"#).is_none());
+        let denied = value(provider_auth_callback_json(
+            r#"{"url":"fluxa://oauth/simkl?error=access_denied"}"#,
+        ));
+        assert!(denied["code"].is_null());
+    }
+
+    #[test]
+    fn simkl_code_exchange_posts_the_verifier() {
+        let plan = value(provider_auth_request_json(
+            r#"{"provider":"simkl","operation":"exchange","clientId":"cid","code":"abc","codeVerifier":"ver"}"#,
+        ));
+        assert!(
+            plan["url"]
+                .as_str()
+                .unwrap()
+                .starts_with("https://api.simkl.com/oauth2/token")
+        );
+        assert_eq!(plan["body"]["grant_type"], "authorization_code");
+        assert_eq!(plan["body"]["code_verifier"], "ver");
+        assert_eq!(plan["body"]["redirect_uri"], "fluxa://oauth/simkl");
     }
 
     #[test]
