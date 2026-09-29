@@ -9,6 +9,19 @@ use crate::accounts::external_sync::{
 use crate::catalog;
 use serde_json::{Map, Value, json};
 
+mod anilist;
+mod mdblist;
+mod simkl;
+mod trakt;
+
+pub(crate) use anilist::anilist_calendar_plan_json;
+use anilist::*;
+pub(crate) use mdblist::mdblist_calendar_plan_json;
+use mdblist::*;
+use simkl::*;
+pub(crate) use trakt::trakt_calendar_plan_json;
+use trakt::*;
+
 const TRAKT_API: &str = "https://api.trakt.tv";
 pub(super) const SIMKL_SCOPE: &str = "media:read media:write";
 pub(super) const SIMKL_API: &str = "https://api.simkl.com";
@@ -429,53 +442,6 @@ pub(crate) fn provider_library_requests_json(args_json: &str) -> Option<String> 
     serde_json::to_string(&requests).ok()
 }
 
-fn anilist_user_id(token: &str) -> Option<i64> {
-    use base64::Engine;
-    let payload = token.split('.').nth(1)?;
-    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
-        .decode(payload.trim_end_matches('='))
-        .ok()?;
-    let claims: Value = serde_json::from_slice(&bytes).ok()?;
-    claims.get("sub")?.as_str()?.parse().ok()
-}
-
-fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
-    let entries: Vec<Value> = ["list_1", "list_2", "list_3"]
-        .into_iter()
-        .filter_map(|key| responses.pointer(&format!("/{key}/data/MediaListCollection/lists")))
-        .filter_map(Value::as_array)
-        .flatten()
-        .filter(|list| list.get("isCustomList").and_then(Value::as_bool) != Some(true))
-        .filter_map(|list| list.get("entries").and_then(Value::as_array))
-        .flatten()
-        .cloned()
-        .collect();
-    let synced = crate::accounts::external_sync::anilist_entries_to_sync(&entries, now_ms, None, false);
-    let tagged = |key: &str| {
-        let items: Vec<Value> = synced
-            .get(key)
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default()
-            .into_iter()
-            .map(|mut item| {
-                item["source"] = json!("anilist");
-                item
-            })
-            .collect();
-        Value::Array(items)
-    };
-    json!({
-        "watchlist": tagged("watchlist"),
-        "liked": [],
-        "completed": tagged("completed"),
-        "watched": synced.get("watched").cloned().unwrap_or(json!({})),
-        "dropped": tagged("dropped"),
-        "onHold": tagged("onHold"),
-        "continueWatching": tagged("watching"),
-    })
-}
-
 fn parsed(json: Option<String>) -> Value {
     json.and_then(|json| serde_json::from_str(&json).ok())
         .unwrap_or_else(|| json!([]))
@@ -505,236 +471,6 @@ fn merge_maps(maps: &[Value]) -> Value {
         merged.extend(map.clone());
     }
     Value::Object(merged)
-}
-
-fn simkl_bucket(responses: &Value, status: &str) -> (String, String) {
-    let shows = concat(&[
-        responses
-            .get(&format!("{status}_shows"))
-            .and_then(|value| value.get("shows"))
-            .cloned()
-            .unwrap_or(json!([])),
-        responses
-            .get(&format!("{status}_anime"))
-            .and_then(|value| value.get("anime"))
-            .and_then(Value::as_array)
-            .map(|anime| {
-                Value::Array(
-                    anime
-                        .iter()
-                        .map(|entry| {
-                            let mut entry = entry.clone();
-                            entry["anime"] = json!(true);
-                            if let Some(show) = entry.get("show").or_else(|| entry.get("anime")) {
-                                entry["show"] = show.clone();
-                            }
-                            entry
-                        })
-                        .collect(),
-                )
-            })
-            .unwrap_or(json!([])),
-    ]);
-    let movies = responses
-        .get(&format!("{status}_movies"))
-        .and_then(|value| value.get("movies"))
-        .cloned()
-        .unwrap_or(json!([]));
-    (shows.to_string(), movies.to_string())
-}
-
-fn mdblist_entries(body: &Value, kind: &str) -> Vec<Value> {
-    body.get(kind)
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default()
-}
-
-fn mdblist_items(body: &Value) -> Value {
-    let mut items = Vec::new();
-    for (kind, key, content_type) in [("movies", "movie", "movie"), ("shows", "show", "series")] {
-        for entry in mdblist_entries(body, kind) {
-            let source = entry.get(key).unwrap_or(&entry);
-            let Some(id) = trakt_id_from_source(source) else {
-                continue;
-            };
-            items.push(json!({
-                "id": id,
-                "type": content_type,
-                "name": source.get("title").and_then(Value::as_str).unwrap_or(""),
-                "source": "mdblist",
-            }));
-        }
-    }
-    Value::Array(items)
-}
-
-fn mdblist_watched(body: &Value) -> (Value, Value) {
-    let mut completed = mdblist_items(&json!({"movies": mdblist_entries(body, "movies")}))
-        .as_array()
-        .cloned()
-        .unwrap_or_default();
-    let mut watched = watched_map(&Value::Array(completed.clone()))
-        .as_object()
-        .cloned()
-        .unwrap_or_default();
-    let episodes: Vec<Value> = mdblist_entries(body, "episodes")
-        .into_iter()
-        .filter_map(|entry| {
-            let episode = entry.get("episode")?;
-            Some(json!({"show": episode.get("show")?, "episode": episode}))
-        })
-        .collect();
-    let ids: Value = serde_json::from_str(
-        &trakt_history_episodes_to_ids_json(&Value::Array(episodes).to_string())
-            .unwrap_or_default(),
-    )
-    .unwrap_or(json!({}));
-    watched.extend(ids.as_object().cloned().unwrap_or_default());
-    for entry in mdblist_entries(body, "shows") {
-        let Some(show) = entry.get("show") else {
-            continue;
-        };
-        let Some(id) = trakt_id_from_source(show) else {
-            continue;
-        };
-        let total = show
-            .get("total_aired_episodes")
-            .and_then(Value::as_i64)
-            .unwrap_or(0);
-        let prefix = format!("{id}:");
-        let seen = watched
-            .keys()
-            .filter(|key| key.starts_with(&prefix))
-            .count() as i64;
-        if total > 0 && seen >= total {
-            completed.push(json!({
-                "id": id,
-                "type": "series",
-                "name": show.get("title").and_then(Value::as_str).unwrap_or(""),
-                "source": "mdblist",
-            }));
-        }
-    }
-    (Value::Array(completed), Value::Object(watched))
-}
-
-fn mdblist_playback(entries: &Value) -> Value {
-    let entries: Vec<Value> = entries
-        .as_array()
-        .into_iter()
-        .flatten()
-        .cloned()
-        .map(|mut entry| {
-            let progress = match entry.get("progress") {
-                Some(Value::String(text)) => text.parse::<f64>().unwrap_or(0.0),
-                Some(other) => other.as_f64().unwrap_or(0.0),
-                None => 0.0,
-            };
-            entry["progress"] = json!(progress);
-            if let Some(fields) = entry.as_object_mut() {
-                fields.retain(|_, value| !value.is_null());
-            }
-            if let Some(name) = entry.pointer("/episode/name").cloned() {
-                entry["episode"]["title"] = name;
-            }
-            entry
-        })
-        .collect();
-    let mut items = parsed(trakt_playback_items_to_library_json(
-        &Value::Array(entries).to_string(),
-    ));
-    for item in items.as_array_mut().into_iter().flatten() {
-        item["reason"] = json!("mdblist");
-    }
-    items
-}
-
-fn mdblist_up_next(upnext: &Value, watched: &Value) -> Value {
-    let mut imdb_by_tmdb = std::collections::HashMap::new();
-    let shows = mdblist_entries(watched, "shows")
-        .into_iter()
-        .filter_map(|entry| entry.get("show").cloned());
-    for show in shows {
-        if let (Some(tmdb), Some(imdb)) = (
-            show.pointer("/ids/tmdb").and_then(Value::as_i64),
-            show.pointer("/ids/imdb").and_then(Value::as_str),
-        ) {
-            imdb_by_tmdb.insert(tmdb, imdb.to_string());
-        }
-    }
-    let entries: Vec<Value> = mdblist_entries(upnext, "items")
-        .into_iter()
-        .filter_map(|entry| {
-            let mut show = entry.get("show")?.clone();
-            let tmdb = show.pointer("/ids/tmdb").and_then(Value::as_i64)?;
-            if let Some(imdb) = imdb_by_tmdb.get(&tmdb) {
-                show["ids"]["imdb"] = json!(imdb);
-            }
-            let next = entry.get("next_episode")?;
-            Some(json!({
-                "show": show,
-                "progress": {
-                    "last_watched_at": entry.get("last_watched_at"),
-                    "next_episode": {
-                        "season": next.get("season"),
-                        "number": next.get("episode"),
-                        "title": next.get("title"),
-                    },
-                },
-            }))
-        })
-        .collect();
-    let mut items = parsed(trakt_up_next_to_items_json(
-        &Value::Array(entries).to_string(),
-    ));
-    for item in items.as_array_mut().into_iter().flatten() {
-        item["reason"] = json!("mdblist");
-    }
-    items
-}
-
-fn trakt_progress_number(entry: &Value, key: &str) -> i64 {
-    entry
-        .pointer(&format!("/progress/{key}"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0)
-}
-
-fn trakt_show_finished(entry: &Value) -> bool {
-    let aired = trakt_progress_number(entry, "aired");
-    aired > 0 && trakt_progress_number(entry, "completed") >= aired
-}
-
-fn trakt_next_episode_aired(entry: &Value, now: i64) -> bool {
-    entry
-        .pointer("/progress/next_episode/first_aired")
-        .and_then(Value::as_str)
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
-        .is_some_and(|aired| aired.timestamp() <= now)
-}
-
-fn trakt_continue_watching(playback: &Value, up_next: &Value) -> Value {
-    let mut items: Vec<Value> = Vec::new();
-    for item in playback.as_array().into_iter().flatten() {
-        let id = str_field(item, "id");
-        let saved_at = str_field(item, "savedAt");
-        match items.iter_mut().find(|kept| str_field(kept, "id") == id) {
-            Some(kept) if saved_at > str_field(kept, "savedAt") => *kept = item.clone(),
-            Some(_) => {}
-            None => items.push(item.clone()),
-        }
-    }
-    for item in up_next.as_array().into_iter().flatten() {
-        if !items
-            .iter()
-            .any(|kept| str_field(kept, "id") == str_field(item, "id"))
-        {
-            items.push(item.clone());
-        }
-    }
-    items.sort_by(|a, b| str_field(b, "savedAt").cmp(str_field(a, "savedAt")));
-    Value::Array(items)
 }
 
 fn watched_map(items: &Value) -> Value {
@@ -870,86 +606,6 @@ fn content_type(item: &Value) -> &str {
         "movie" => "movie",
         _ => "series",
     }
-}
-
-pub(crate) fn trakt_calendar_plan_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let year = args.get("year")?.as_i64()? as i32;
-    let month = args.get("month")?.as_u64()? as u32;
-    let start = chrono::NaiveDate::from_ymd_opt(year, month, 1)?;
-    let next = if month == 12 {
-        chrono::NaiveDate::from_ymd_opt(year + 1, 1, 1)?
-    } else {
-        chrono::NaiveDate::from_ymd_opt(year, month + 1, 1)?
-    };
-    let days = (next - start).num_days();
-    let requests: Vec<Value> = ["shows", "movies"]
-        .into_iter()
-        .map(|kind| {
-            let mut plan = request(
-                "trakt",
-                &args,
-                "GET",
-                format!("{TRAKT_API}/calendars/my/{kind}/{start}/{days}?extended=full,images"),
-                Value::Null,
-            );
-            plan["key"] = json!(kind);
-            plan
-        })
-        .collect();
-    serde_json::to_string(&requests).ok()
-}
-
-pub(crate) fn mdblist_calendar_plan_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let year = args.get("year")?.as_i64()? as i32;
-    let month = args.get("month")?.as_u64()? as u32;
-    let start = chrono::NaiveDate::from_ymd_opt(year, month, 1)?;
-    let next = if month == 12 {
-        chrono::NaiveDate::from_ymd_opt(year + 1, 1, 1)?
-    } else {
-        chrono::NaiveDate::from_ymd_opt(year, month + 1, 1)?
-    };
-    let end = next.pred_opt()?;
-    let mut plan = request(
-        "mdblist",
-        &args,
-        "GET",
-        format!("{MDBLIST_API}/calendar/events?start={start}&end={end}&limit=1000&favorite_cast=false"),
-        Value::Null,
-    );
-    plan["key"] = json!("events");
-    serde_json::to_string(&json!([plan])).ok()
-}
-
-pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let year = args.get("year")?.as_i64()?;
-    let month = args.get("month")?.as_i64()?;
-    let plan = |key: &str, filter: String, schedule: &str| {
-        let query = format!(
-            "query{{Page(perPage:50){{media(type:ANIME,onList:true,{filter}){{id title{{romaji english}} coverImage{{large}} airingSchedule({schedule}perPage:50){{nodes{{airingAt episode}}}}}}}}}}"
-        );
-        let mut plan = request(
-            "anilist",
-            &args,
-            "POST",
-            ANILIST_GRAPHQL.to_owned(),
-            json!({"query": query}),
-        );
-        plan["key"] = json!(key);
-        plan
-    };
-    let month_start = year * 10_000 + month * 100;
-    serde_json::to_string(&json!([
-        plan("releasing", "status:RELEASING".to_owned(), "notYetAired:true,"),
-        plan(
-            "finished",
-            format!("status:FINISHED,endDate_greater:{month_start}"),
-            ""
-        ),
-    ]))
-    .ok()
 }
 
 pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
@@ -1137,26 +793,6 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
         _ => return None,
     }
     serde_json::to_string(&requests).ok()
-}
-
-fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Option<Value> {
-    let media_id: i64 = content_id.strip_prefix("anilist:")?.split(':').next()?.parse().ok()?;
-    let mut variables = fields;
-    variables["mediaId"] = json!(media_id);
-    Some(request(
-        "anilist",
-        args,
-        "POST",
-        ANILIST_GRAPHQL.to_owned(),
-        json!({"query": ANILIST_SAVE_MUTATION, "variables": variables}),
-    ))
-}
-
-fn mdblist_items_json(id: &str, content_type: &str) -> Option<String> {
-    let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(id)?).ok()?;
-    let mut item = ids.as_object()?.clone();
-    item.insert("type".into(), json!(content_type));
-    Some(json!([item]).to_string())
 }
 
 pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> {

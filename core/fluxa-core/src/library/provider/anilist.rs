@@ -1,0 +1,96 @@
+use super::*;
+
+pub(super) fn anilist_user_id(token: &str) -> Option<i64> {
+    use base64::Engine;
+    let payload = token.split('.').nth(1)?;
+    let bytes = base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(payload.trim_end_matches('='))
+        .ok()?;
+    let claims: Value = serde_json::from_slice(&bytes).ok()?;
+    claims.get("sub")?.as_str()?.parse().ok()
+}
+
+
+pub(super) fn anilist_snapshot(responses: &Value, now_ms: i64) -> Value {
+    let entries: Vec<Value> = ["list_1", "list_2", "list_3"]
+        .into_iter()
+        .filter_map(|key| responses.pointer(&format!("/{key}/data/MediaListCollection/lists")))
+        .filter_map(Value::as_array)
+        .flatten()
+        .filter(|list| list.get("isCustomList").and_then(Value::as_bool) != Some(true))
+        .filter_map(|list| list.get("entries").and_then(Value::as_array))
+        .flatten()
+        .cloned()
+        .collect();
+    let synced = crate::accounts::external_sync::anilist_entries_to_sync(&entries, now_ms, None, false);
+    let tagged = |key: &str| {
+        let items: Vec<Value> = synced
+            .get(key)
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default()
+            .into_iter()
+            .map(|mut item| {
+                item["source"] = json!("anilist");
+                item
+            })
+            .collect();
+        Value::Array(items)
+    };
+    json!({
+        "watchlist": tagged("watchlist"),
+        "liked": [],
+        "completed": tagged("completed"),
+        "watched": synced.get("watched").cloned().unwrap_or(json!({})),
+        "dropped": tagged("dropped"),
+        "onHold": tagged("onHold"),
+        "continueWatching": tagged("watching"),
+    })
+}
+
+
+pub(crate) fn anilist_calendar_plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let year = args.get("year")?.as_i64()?;
+    let month = args.get("month")?.as_i64()?;
+    let plan = |key: &str, filter: String, schedule: &str| {
+        let query = format!(
+            "query{{Page(perPage:50){{media(type:ANIME,onList:true,{filter}){{id title{{romaji english}} coverImage{{large}} airingSchedule({schedule}perPage:50){{nodes{{airingAt episode}}}}}}}}}}"
+        );
+        let mut plan = request(
+            "anilist",
+            &args,
+            "POST",
+            ANILIST_GRAPHQL.to_owned(),
+            json!({"query": query}),
+        );
+        plan["key"] = json!(key);
+        plan
+    };
+    let month_start = year * 10_000 + month * 100;
+    serde_json::to_string(&json!([
+        plan("releasing", "status:RELEASING".to_owned(), "notYetAired:true,"),
+        plan(
+            "finished",
+            format!("status:FINISHED,endDate_greater:{month_start}"),
+            ""
+        ),
+    ]))
+    .ok()
+}
+
+
+pub(super) fn anilist_save(args: &Value, content_id: &str, fields: Value) -> Option<Value> {
+    let media_id: i64 = content_id.strip_prefix("anilist:")?.split(':').next()?.parse().ok()?;
+    let mut variables = fields;
+    variables["mediaId"] = json!(media_id);
+    Some(request(
+        "anilist",
+        args,
+        "POST",
+        ANILIST_GRAPHQL.to_owned(),
+        json!({"query": ANILIST_SAVE_MUTATION, "variables": variables}),
+    ))
+}
+
+
