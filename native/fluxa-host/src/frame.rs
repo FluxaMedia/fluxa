@@ -253,6 +253,12 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 if let Some(position) = layout.seek_to {
                     player::command(state, VideoCommand::SeekTo(position));
                 }
+                if let Some(gesture) = layout.player_gesture {
+                    player::gesture(state, gesture);
+                }
+                if route == Route::Player {
+                    player::speed_hold(state, layout.player_speed_hold);
+                }
                 player::hover_seek(state, layout.seek_hover);
                 if let (Some(max), Some(player)) = (layout.scroll_max, state.player.as_mut()) {
                     player.sources_scroll_max = max;

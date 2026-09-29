@@ -7,13 +7,19 @@ use serde_json::{Value, json};
 use web_time::Instant;
 
 use crate::{
-    NativeAction, RendererState, Route, SessionHandle, UiTree, core_value, host_log,
-    profile_language,
+    NativeAction, RendererState, Route, SessionHandle, core_value, host_log, profile_language,
 };
+
+mod overlay;
+use overlay::Overlay;
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const SEEK_STEP: f64 = 10.0;
 const SCRUB_COMMIT: Duration = Duration::from_millis(900);
+const MIN_BRIGHTNESS: f32 = 0.15;
+const MEDIA_DRIFT: f64 = 1.5;
+const FAST_SPEED: f64 = 2.0;
+const TOAST_FADE: Duration = Duration::from_millis(250);
 const THUMBNAIL_INTERVAL: Duration = Duration::from_millis(75);
 
 #[derive(Clone, Debug, Default)]
@@ -36,12 +42,33 @@ pub struct Thumbnail {
 }
 
 #[derive(Clone, Debug)]
+pub struct VideoTrack {
+    pub id: String,
+    pub subtitle: bool,
+    pub language: Option<String>,
+    pub title: Option<String>,
+    pub selected: bool,
+    pub external: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct TrackSelection {
+    pub audio: Option<String>,
+    pub subtitle: Option<String>,
+    pub secondary_subtitle: Option<String>,
+    pub subtitles_off: bool,
+}
+
+#[derive(Clone, Debug)]
 pub enum VideoCommand {
     TogglePause,
     Seek(f64),
     SeekTo(f64),
     ToggleMute,
+    SetVolume(f64),
+    SetSpeed(f64),
     Shaders(Vec<String>),
+    SelectTracks(TrackSelection),
 }
 
 pub type DeviceOpener = Arc<
@@ -63,9 +90,13 @@ pub trait VideoBackend: Send {
         self.load(instance, device, url);
     }
     fn stop(&mut self);
+    fn media_session(&mut self, _plan: &Value) {}
     fn command(&mut self, command: VideoCommand);
     fn render(&mut self, device: &wgpu::Device) -> Option<wgpu::TextureView>;
     fn status(&mut self) -> VideoStatus;
+    fn tracks(&mut self) -> Vec<VideoTrack> {
+        Vec::new()
+    }
     fn request_thumbnail(&mut self, _time: f64) {}
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
         None
@@ -106,12 +137,16 @@ pub(crate) struct PlayerSession {
     scrub_streak: u32,
     passthrough: bool,
     dispatched: Option<Value>,
-    scrobbled: Option<bool>,
+    overlay: Overlay,
     sources: Option<Vec<Value>>,
     chosen: Option<usize>,
     source_filter: Option<String>,
     pub(crate) sources_scroll_max: f32,
     manual: bool,
+    toast: Option<(Value, Instant)>,
+    media_sent: Option<(Instant, String, f64)>,
+    brightness: f32,
+    speed_held: bool,
 }
 
 impl PlayerSession {
@@ -152,7 +187,11 @@ impl PlayerSession {
             manual: false,
             scrub: None,
             scrub_streak: 0,
-            scrobbled: None,
+            overlay: Overlay::default(),
+            toast: None,
+            media_sent: None,
+            brightness: 1.0,
+            speed_held: false,
         }
     }
 
@@ -186,6 +225,32 @@ impl PlayerSession {
         let target = (base + direction * step).clamp(0.0, self.status.duration.max(0.0));
         self.scrub = Some((target, Instant::now()));
         self.touch();
+    }
+
+    pub(crate) fn toast(&mut self, kind: &str, value: f64) {
+        if let Some(plan) = core_value("playerToastPlan", json!({"kind": kind, "value": value})) {
+            self.toast = Some((plan, Instant::now()));
+        }
+    }
+
+    fn toast_model(&self) -> Option<fluxa_ui::PlayerToast> {
+        let (plan, at) = self.toast.as_ref()?;
+        let hold = Duration::from_millis(plan["holdMs"].as_u64().unwrap_or(1200));
+        let elapsed = at.elapsed();
+        if elapsed >= hold + TOAST_FADE {
+            return None;
+        }
+        let opacity = match elapsed.checked_sub(hold) {
+            Some(fade) => 1.0 - fade.as_secs_f32() / TOAST_FADE.as_secs_f32(),
+            None => 1.0,
+        };
+        let text = fluxa_ui::localized(plan["key"].as_str()?, &self.language)
+            .replace("%s", plan["value"].as_str().unwrap_or_default());
+        Some(fluxa_ui::PlayerToast {
+            text,
+            level: plan["level"].as_f64().map(|level| level as f32),
+            opacity,
+        })
     }
 
     pub(crate) fn touch(&mut self) {
@@ -244,6 +309,9 @@ impl PlayerSession {
             episode_title: self.episode_title.clone(),
             description: self.description.clone(),
             chapters: self.status.chapters.clone(),
+            chapter_spans: self.overlay.chapter_spans(),
+            skip: self.overlay.skip_card(),
+            next_episode: self.overlay.next_card(),
             thumbnail: self
                 .thumbnail
                 .as_ref()
@@ -275,6 +343,8 @@ impl PlayerSession {
             },
             sources_loading: self.sources.is_none(),
             source_filter: self.source_filter.clone(),
+            toast: self.toast_model(),
+            dim: 1.0 - self.brightness,
         }
     }
 }
@@ -469,17 +539,10 @@ pub(crate) fn pump(state: &mut RendererState) {
     };
     poll_torrent(player, session, &snapshot);
     load_resolved(player, video, gpu, settings, &snapshot);
+    let mut advance = false;
     if let Some(video) = video.as_mut() {
         player.status = video.status();
-        if player.status.has_frame && player.scrobbled != Some(player.status.paused) {
-            player.scrobbled = Some(player.status.paused);
-            let action = if player.status.paused {
-                "pause"
-            } else {
-                "start"
-            };
-            scrobble(session, player, &snapshot, action);
-        }
+        advance = overlay::tick(player, session, video.as_mut(), &snapshot);
         if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
             let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
             match player.thumbnail.as_mut() {
@@ -535,6 +598,117 @@ pub(crate) fn pump(state: &mut RendererState) {
     if shuffle.is_none() {
         tick_recommendations(player, session, settings, &snapshot);
     }
+    publish_media(player, video);
+    if advance {
+        play_next(state);
+    }
+}
+
+fn publish_media(player: &mut PlayerSession, video: &mut Option<Box<dyn VideoBackend>>) {
+    let Some(video) = video.as_mut().filter(|_| player.status.has_frame) else {
+        return;
+    };
+    let speed = if player.speed_held { FAST_SPEED } else { 1.0 };
+    let has_next = player.overlay.upcoming().is_some();
+    let key = format!(
+        "{}|{:?}|{}|{}|{}|{}",
+        player.title(),
+        player.episode_title,
+        player.status.paused,
+        player.status.duration as i64,
+        has_next,
+        speed
+    );
+    let position = player.status.position;
+    let unchanged = player.media_sent.as_ref().is_some_and(|(at, sent, from)| {
+        let advance = if player.status.paused {
+            0.0
+        } else {
+            at.elapsed().as_secs_f64() * speed
+        };
+        *sent == key && (from + advance - position).abs() < MEDIA_DRIFT
+    });
+    if unchanged {
+        return;
+    }
+    let poster = player
+        .meta
+        .get("poster")
+        .and_then(Value::as_str)
+        .filter(|url| url.starts_with("http"));
+    let input = json!({
+        "title": player.title(),
+        "subtitle": player.episode_title,
+        "poster": poster,
+        "paused": player.status.paused,
+        "buffering": player.status.buffering.is_some(),
+        "position": position,
+        "duration": player.status.duration,
+        "speed": speed,
+        "hasNext": has_next,
+    });
+    if let Some(plan) = core_value("playerMediaSessionPlan", input) {
+        video.media_session(&plan);
+    }
+    player.media_sent = Some((Instant::now(), key, position));
+}
+
+pub(crate) fn media_command(state: &mut RendererState, name: &str, value: f64) {
+    let Some(player) = state.player.as_ref() else {
+        return;
+    };
+    let Some(plan) = core_value(
+        "playerMediaCommandPlan",
+        json!({
+            "command": name,
+            "value": value,
+            "paused": player.status.paused,
+            "position": player.status.position,
+            "duration": player.status.duration,
+            "hasNext": player.overlay.upcoming().is_some(),
+        }),
+    ) else {
+        return;
+    };
+    let amount = plan["value"].as_f64().unwrap_or_default();
+    match plan["action"].as_str() {
+        Some("togglePause") => command(state, VideoCommand::TogglePause),
+        Some("seekBy") => command(state, VideoCommand::Seek(amount)),
+        Some("seekTo") => command(state, VideoCommand::SeekTo(amount)),
+        Some("next") => start_next(state, true),
+        Some("close") => close(state),
+        _ => {}
+    }
+}
+
+fn play_next(state: &mut RendererState) {
+    start_next(state, false);
+}
+
+fn start_next(state: &mut RendererState, any: bool) {
+    let Some(player) = state.player.as_ref() else {
+        return;
+    };
+    let next = if any {
+        player.overlay.upcoming()
+    } else {
+        player.overlay.next_video()
+    };
+    let Some(next) = next else {
+        return;
+    };
+    let Some(id) = next.get("id").and_then(Value::as_str) else {
+        return;
+    };
+    let mut item = player.meta.clone();
+    if let Some(fields) = item.as_object_mut() {
+        fields.retain(|key, _| !key.starts_with("last") && key != "timeOffset");
+        fields.insert("lastVideoId".to_owned(), json!(id));
+    }
+    close(state);
+    state
+        .pending_native_actions
+        .push(NativeAction::StartPlayback { item });
 }
 
 fn load_resolved(
@@ -959,10 +1133,15 @@ pub(crate) fn close(state: &mut RendererState) {
     };
     if let Some(session) = state.session.as_ref() {
         let snapshot = session.snapshot();
-        if player.scrobbled.is_some() {
+        if player.overlay.scrobbling() {
             scrobble(session, &player, &snapshot, "stop");
         }
-        save_progress(session, &player, &snapshot);
+        let tracks = state
+            .video
+            .as_mut()
+            .map(|video| video.tracks())
+            .unwrap_or_default();
+        overlay::finish(&player, session, &snapshot, &tracks);
     }
     if let Some(video) = state.video.as_mut() {
         video.stop();
@@ -1018,6 +1197,12 @@ fn scrobble(session: &SessionHandle, player: &PlayerSession, snapshot: &Value, a
 pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
     if let Some(player) = state.player.as_mut() {
         player.touch();
+        match &command {
+            VideoCommand::Seek(delta) => player.toast("seek", *delta),
+            VideoCommand::ToggleMute => player.toast("muted", f64::from(!player.status.muted)),
+            VideoCommand::SetSpeed(rate) => player.toast("speed", *rate),
+            _ => {}
+        }
     }
     if let Some(video) = state.video.as_mut() {
         video.command(command);
@@ -1098,6 +1283,22 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                 player.hide();
             }
         }
+        fluxa_ui::NODE_PLAYER_SKIP => {
+            let target = state.player.as_mut().and_then(|player| {
+                let target = player.overlay.skip_target();
+                player.overlay.dismiss_skip();
+                target
+            });
+            if let Some(target) = target {
+                command(state, VideoCommand::SeekTo(target));
+            }
+        }
+        fluxa_ui::NODE_PLAYER_NEXT_PLAY => play_next(state),
+        fluxa_ui::NODE_PLAYER_NEXT_DISMISS => {
+            if let Some(player) = state.player.as_mut() {
+                player.overlay.dismiss_next();
+            }
+        }
         fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => dismiss_recommendations(state),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_PLAY => open_recommendation(state, true),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_DETAILS => open_recommendation(state, false),
@@ -1133,6 +1334,39 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         }
         _ => {}
     }
+}
+
+pub(crate) fn gesture(state: &mut RendererState, gesture: fluxa_ui::PlayerGesture) {
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    match gesture {
+        fluxa_ui::PlayerGesture::Volume(delta) => {
+            let volume = (player.status.volume + f64::from(delta) * 100.0).clamp(0.0, 100.0);
+            player.status.volume = volume;
+            player.toast("volume", volume);
+            if let Some(video) = state.video.as_mut() {
+                video.command(VideoCommand::SetVolume(volume));
+            }
+        }
+        fluxa_ui::PlayerGesture::Brightness(delta) => {
+            player.brightness = (player.brightness + delta).clamp(MIN_BRIGHTNESS, 1.0);
+            let level = f64::from(player.brightness);
+            player.toast("brightness", level);
+        }
+    }
+}
+
+pub(crate) fn speed_hold(state: &mut RendererState, held: bool) {
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    if player.speed_held == held {
+        return;
+    }
+    player.speed_held = held;
+    let rate = if held { FAST_SPEED } else { 1.0 };
+    command(state, VideoCommand::SetSpeed(rate));
 }
 
 fn dismiss_recommendations(state: &mut RendererState) {
@@ -1249,6 +1483,12 @@ fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
         KeyInput::Key(Key::Enter) | KeyInput::Gamepad(GamepadButton::South)
     );
     let visible = player.controls_visible();
+    if ok && !visible {
+        if let Some(node) = player.overlay.card_node() {
+            activate(state, node);
+            return KeyOutcome::Handled;
+        }
+    }
     if visible && !on_seek {
         player.touch();
         return KeyOutcome::Focus;

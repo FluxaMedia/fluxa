@@ -346,6 +346,12 @@ pub struct ChoiceRequest {
     pub selected: String,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PlayerGesture {
+    Volume(f32),
+    Brightness(f32),
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct HomeLayout {
     pub choices: Vec<(u64, ChoiceRequest)>,
@@ -359,6 +365,8 @@ pub struct HomeLayout {
     pub load_more: Vec<serde_json::Value>,
     pub seek_to: Option<f64>,
     pub seek_hover: Option<f64>,
+    pub player_gesture: Option<PlayerGesture>,
+    pub player_speed_hold: bool,
     pub profiles: Option<ProfilesRequest>,
     pub scroll_max: Option<f32>,
 }

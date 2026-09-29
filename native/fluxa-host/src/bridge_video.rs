@@ -60,13 +60,19 @@ impl VideoBackend for BridgeVideo {
         self.send(json!({"type": "stop"}));
     }
 
+    fn media_session(&mut self, plan: &Value) {
+        self.send(json!({"type": "mediaSession", "plan": plan}));
+    }
+
     fn command(&mut self, command: VideoCommand) {
         let request = match command {
             VideoCommand::TogglePause => json!({"type": "togglePause"}),
             VideoCommand::Seek(delta) => json!({"type": "seek", "seconds": delta}),
             VideoCommand::SeekTo(position) => json!({"type": "seekTo", "seconds": position}),
             VideoCommand::ToggleMute => json!({"type": "toggleMute"}),
-            VideoCommand::Shaders(_) => return,
+            VideoCommand::SetVolume(volume) => json!({"type": "setVolume", "value": volume}),
+            VideoCommand::SetSpeed(rate) => json!({"type": "setSpeed", "value": rate}),
+            VideoCommand::Shaders(_) | VideoCommand::SelectTracks(_) => return,
         };
         self.send(request);
     }

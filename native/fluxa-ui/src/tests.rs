@@ -1507,3 +1507,52 @@ fn library_hides_status_dropdown_when_source_has_no_statuses() {
     assert!(!has(NODE_LIBRARY_STATUS));
     assert!(has(NODE_LIBRARY_TYPE) && has(NODE_LIBRARY_SORT));
 }
+
+#[test]
+fn skip_and_next_cards_stay_on_screen_for_every_form_factor() {
+    for form_factor in [
+        UiFormFactor::Desktop,
+        UiFormFactor::Mobile,
+        UiFormFactor::Tv,
+    ] {
+        let viewport = Viewport::new(960, 540, form_factor);
+        for controls_visible in [true, false] {
+            let player = PlayerModel {
+                passthrough: true,
+                duration: 1400.0,
+                position: 1300.0,
+                controls_visible,
+                skip: Some(SkipCard {
+                    kind: SkipKind::Outro,
+                    seek_to: 1390.0,
+                }),
+                next_episode: Some(NextEpisodeCard {
+                    label: "S1:E2".to_owned(),
+                    title: "Second".to_owned(),
+                    thumbnail: None,
+                    countdown: Some(5),
+                }),
+                ..PlayerModel::default()
+            };
+            let layout = draw_test_frame(viewport, |context, assets| {
+                draw_player(context, viewport, &player, assets, None)
+            });
+            let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(960.0, 540.0));
+            for node in [
+                NODE_PLAYER_SKIP,
+                NODE_PLAYER_NEXT_PLAY,
+                NODE_PLAYER_NEXT_DISMISS,
+            ] {
+                let (_, rect) = layout
+                    .focusable
+                    .iter()
+                    .find(|(id, _)| *id == node)
+                    .unwrap_or_else(|| panic!("{node} missing on {form_factor:?}"));
+                assert!(
+                    screen.contains_rect(*rect),
+                    "{node} off screen on {form_factor:?}"
+                );
+            }
+        }
+    }
+}

@@ -793,6 +793,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         NativeAction::SettingsSection { .. }
         | NativeAction::AccountToggle { .. }
         | NativeAction::MediaServer { .. }
+        | NativeAction::MediaCommand { .. }
         | NativeAction::OauthCallback { .. } => return None,
     };
     Some(commands)
@@ -812,7 +813,12 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let mut toggles = Vec::new();
     let mut servers = Vec::new();
     let mut callbacks = Vec::new();
+    let mut media = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
+        if let NativeAction::MediaCommand { command, value } = action {
+            media.push((command, value));
+            continue;
+        }
         if let NativeAction::AccountToggle { provider } = action {
             toggles.push(provider);
             continue;
@@ -858,6 +864,9 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         }
     }
     state.pending_native_actions = unhandled;
+    for (command, value) in media {
+        player::media_command(state, &command, value);
+    }
     for provider in toggles {
         accounts::toggle(state, &provider);
     }

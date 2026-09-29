@@ -12,8 +12,8 @@ pub(super) fn surface_alpha_mode(modes: &[wgpu::CompositeAlphaMode]) -> wgpu::Co
         wgpu::CompositeAlphaMode::PostMultiplied,
         wgpu::CompositeAlphaMode::Inherit,
     ]
-        .into_iter()
-        .find(|mode| modes.contains(mode))
+    .into_iter()
+    .find(|mode| modes.contains(mode))
     {
         return mode;
     }

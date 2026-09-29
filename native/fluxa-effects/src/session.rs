@@ -240,6 +240,10 @@ impl SessionHandle {
         self.executor.fetch_json(url)
     }
 
+    pub fn request_json(&self, plan: Value) -> Receiver<Option<Value>> {
+        self.executor.request_json(plan)
+    }
+
     pub fn executor(&self) -> EffectExecutor {
         self.executor.clone()
     }

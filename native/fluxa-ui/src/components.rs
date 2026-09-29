@@ -13,6 +13,68 @@ use super::{
     full_uv, paint_vertical_gradient, truncate_to_width,
 };
 
+pub(super) fn toast(
+    context: &egui::Context,
+    viewport: Viewport,
+    top_center: Pos2,
+    text: &str,
+    level: Option<f32>,
+    opacity: f32,
+) {
+    let (size, pad, bar) = match viewport.form_factor {
+        super::UiFormFactor::Tv => (26.0, 26.0, 160.0),
+        super::UiFormFactor::Mobile => (15.0, 16.0, 84.0),
+        super::UiFormFactor::Desktop => (17.0, 20.0, 120.0),
+    };
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Tooltip,
+        Id::new("fluxa-player-toast"),
+    ));
+    let font = FontId::proportional(size);
+    let galley = painter.layout_no_wrap(
+        text.to_owned(),
+        font,
+        Color32::from_white_alpha((255.0 * opacity) as u8),
+    );
+    let gap = 14.0;
+    let width = galley.size().x + pad * 2.0 + level.map_or(0.0, |_| bar + gap);
+    let rect = Rect::from_min_size(
+        Pos2::new(top_center.x - width * 0.5, top_center.y),
+        Vec2::new(width, size * 2.6),
+    );
+    painter.rect_filled(
+        rect,
+        16.0,
+        Color32::from_rgba_unmultiplied(0x13, 0x13, 0x13, (245.0 * opacity) as u8),
+    );
+    painter.rect_stroke(
+        rect,
+        16.0,
+        egui::Stroke::new(1.0, Color32::from_white_alpha((20.0 * opacity) as u8)),
+        egui::StrokeKind::Inside,
+    );
+    let text_pos = Pos2::new(rect.left() + pad, rect.center().y - galley.size().y * 0.5);
+    let text_width = galley.size().x;
+    painter.galley(text_pos, galley, Color32::WHITE);
+    if let Some(level) = level {
+        let track = Rect::from_min_size(
+            Pos2::new(text_pos.x + text_width + gap, rect.center().y - 2.5),
+            Vec2::new(bar, 5.0),
+        );
+        painter.rect_filled(
+            track,
+            2.5,
+            Color32::from_white_alpha((60.0 * opacity) as u8),
+        );
+        let filled = Rect::from_min_size(track.min, Vec2::new(bar * level.clamp(0.0, 1.0), 5.0));
+        painter.rect_filled(
+            filled,
+            2.5,
+            Color32::from_white_alpha((255.0 * opacity) as u8),
+        );
+    }
+}
+
 pub(super) fn calendar_release_row(
     ui: &mut Ui,
     card: &HomeCard,

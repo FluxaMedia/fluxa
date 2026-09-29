@@ -9,6 +9,7 @@ pub(crate) mod account;
 mod addons;
 mod catalog;
 mod home;
+mod http;
 mod library;
 mod mediaserver;
 mod providers;

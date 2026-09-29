@@ -96,7 +96,9 @@ pub use profiles::{ImagePicker, import_legacy};
 
 pub type PrePresent = Box<dyn Fn() + Send>;
 
-pub use player::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
+pub use player::{
+    DeviceOpener, Thumbnail, TrackSelection, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
+};
 
 static GPU_WAIT_LOGS: AtomicU32 = AtomicU32::new(0);
 static HOME_SYNC_LOGS: AtomicU32 = AtomicU32::new(0);
@@ -304,6 +306,11 @@ enum NativeAction {
     },
     MediaServer {
         node: u64,
+    },
+    MediaCommand {
+        command: String,
+        #[serde(default)]
+        value: f64,
     },
     OauthCallback {
         url: String,
@@ -902,6 +909,17 @@ impl FluxaHost {
             }
         });
         Ok(())
+    }
+
+    pub fn media_command(&self, command: &str, value: f64) {
+        self.with_state(|state| {
+            state
+                .pending_native_actions
+                .push(NativeAction::MediaCommand {
+                    command: command.to_owned(),
+                    value,
+                })
+        });
     }
 
     pub fn push_action_json(&self, json: &str) -> Result<(), String> {

@@ -1,5 +1,16 @@
 use super::*;
 
+mod overlay;
+
+pub use overlay::{ChapterSpan, NextEpisodeCard, SkipCard, SkipKind};
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct PlayerToast {
+    pub text: String,
+    pub level: Option<f32>,
+    pub opacity: f32,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct PlayerModel {
     pub title: String,
@@ -18,6 +29,9 @@ pub struct PlayerModel {
     pub episode_title: Option<String>,
     pub description: Option<String>,
     pub chapters: Vec<(f64, String)>,
+    pub chapter_spans: Vec<ChapterSpan>,
+    pub skip: Option<SkipCard>,
+    pub next_episode: Option<NextEpisodeCard>,
     pub thumbnail: Option<(f64, TextureId)>,
     pub warnings: Vec<(String, String)>,
     pub warnings_elapsed: Option<f32>,
@@ -31,6 +45,8 @@ pub struct PlayerModel {
     pub sources: Option<Vec<PlayerSource>>,
     pub source_filter: Option<String>,
     pub sources_loading: bool,
+    pub toast: Option<PlayerToast>,
+    pub dim: f32,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -272,6 +288,10 @@ pub fn draw_player(
         let top = if player.controls_visible { 72.0 } else { 24.0 };
         draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
+    let next_thumbnail = player
+        .next_episode
+        .as_ref()
+        .and_then(|card| assets.texture(card.thumbnail.as_deref()));
     egui::Area::new(Id::new("fluxa-player-controls"))
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
@@ -281,7 +301,32 @@ pub fn draw_player(
                 UiFormFactor::Mobile => mobile_controls(&chrome, ui, &mut layout),
                 UiFormFactor::Desktop => desktop_controls(&chrome, ui, &mut layout),
             }
+            if player.has_video() {
+                overlay::draw_skip_card(&chrome, ui, &mut layout);
+                overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
+            }
         });
+    if player.dim > 0.0 {
+        let veil = context.layer_painter(egui::LayerId::new(
+            egui::Order::Foreground,
+            Id::new("fluxa-player-dim"),
+        ));
+        veil.rect_filled(
+            rect,
+            0.0,
+            Color32::from_black_alpha((player.dim * 255.0) as u8),
+        );
+    }
+    if let Some(toast) = player.toast.as_ref() {
+        components::toast(
+            context,
+            viewport,
+            Pos2::new(rect.center().x, rect.top() + chrome.toast_top()),
+            &toast.text,
+            toast.level,
+            toast.opacity,
+        );
+    }
     draw_focus_ring(context, &layout, focused);
     layout
 }
@@ -303,6 +348,14 @@ impl Chrome<'_> {
             22.0
         };
         (self.rect.width() * 0.035).clamp(min, 64.0)
+    }
+
+    fn toast_top(&self) -> f32 {
+        match self.viewport.form_factor {
+            UiFormFactor::Tv => 48.0,
+            UiFormFactor::Mobile => 30.0,
+            UiFormFactor::Desktop => 28.0,
+        }
     }
 
     fn button(
@@ -334,11 +387,59 @@ impl Chrome<'_> {
     }
 
     fn surface(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, area: Rect) {
-        let response = ui.interact(area, Id::new("fluxa-player-surface"), Sense::click());
-        if self.viewport.form_factor != UiFormFactor::Mobile {
+        let mobile = self.viewport.form_factor == UiFormFactor::Mobile;
+        let sense = if mobile {
+            Sense::click_and_drag()
+        } else {
+            Sense::click()
+        };
+        let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
+        if !mobile {
             if response.clicked() {
                 layout.activated = Some(NODE_PLAYER_TOGGLE);
             }
+            return;
+        }
+        let held_id = Id::new("fluxa-player-speed-hold");
+        let held: bool = ui.data(|data| data.get_temp(held_id)).unwrap_or(false);
+        let pressing = response.is_pointer_button_down_on();
+        let still =
+            ui.input(
+                |input| match (input.pointer.press_origin(), input.pointer.latest_pos()) {
+                    (Some(origin), Some(now)) => origin.distance(now) < 12.0,
+                    _ => false,
+                },
+            );
+        let long = pressing
+            && still
+            && ui.input(|input| {
+                input
+                    .pointer
+                    .press_start_time()
+                    .is_some_and(|start| input.time - start > 0.45)
+            });
+        let holding = long || (held && pressing && still);
+        if holding {
+            ui.ctx().request_repaint();
+        }
+        ui.data_mut(|data| data.insert_temp(held_id, holding));
+        layout.player_speed_hold = holding;
+        if response.dragged()
+            && !holding
+            && let Some(pointer) = response.interact_pointer_pos()
+        {
+            let delta = response.drag_delta();
+            if delta.y.abs() > delta.x.abs() {
+                let fraction = -delta.y / (area.height() * 0.8);
+                layout.player_gesture = Some(if pointer.x < area.center().x {
+                    PlayerGesture::Brightness(fraction)
+                } else {
+                    PlayerGesture::Volume(fraction)
+                });
+            }
+            return;
+        }
+        if held {
             return;
         }
         if response.double_clicked()
@@ -382,29 +483,24 @@ impl Chrome<'_> {
             layout.seek_to = Some(position);
         }
         let y = track.center().y;
-        painter_bar(
+        if duration <= 0.0 {
+            painter_bar(
+                self.painter,
+                track,
+                thickness,
+                Color32::from_white_alpha(95),
+                track.width(),
+            );
+            return position;
+        }
+        let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
+        overlay::segmented_track(
             self.painter,
             track,
             thickness,
-            Color32::from_white_alpha(95),
-            track.width(),
+            &player.chapter_spans,
+            played,
         );
-        if duration <= 0.0 {
-            return position;
-        }
-        for (start, _) in &player.chapters {
-            if *start <= 0.0 || *start >= duration {
-                continue;
-            }
-            let x = track.left() + track.width() * (*start / duration) as f32;
-            self.painter.rect_filled(
-                Rect::from_center_size(Pos2::new(x, y), Vec2::new(2.0, thickness + 2.0)),
-                0.0,
-                Color32::BLACK,
-            );
-        }
-        let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
-        painter_bar(self.painter, track, thickness + 0.5, Color32::WHITE, played);
         let active = seek.hovered()
             || seek.dragged()
             || player.scrub.is_some()
