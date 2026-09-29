@@ -1,5 +1,7 @@
 use crate::services::*;
 
+pub(crate) const MDBLIST_API: &str = "https://api.mdblist.com";
+
 pub(crate) fn mdblist_entries(body: &Value, kind: &str) -> Vec<Value> {
     body.get(kind)
         .and_then(Value::as_array)
@@ -309,7 +311,7 @@ pub(crate) fn mdblist_auth_request(args: &Value, operation: &str) -> Option<Valu
         "url": format!("{MDBLIST_API}/oauth/{path}/"),
         "headers": {
             "Content-Type": "application/x-www-form-urlencoded",
-            "User-Agent": SIMKL_USER_AGENT,
+            "User-Agent": USER_AGENT,
         },
         "body": body,
     }))
@@ -324,4 +326,48 @@ pub(crate) fn mdblist_token_state(status: u16, body: &Value) -> &'static str {
         "slow_down" => "slow_down",
         _ => "error",
     }
+}
+
+pub(crate) fn mdblist_headers(_client_id: &str) -> Vec<(&'static str, String)> {
+    vec![("User-Agent", USER_AGENT.to_string())]
+}
+
+pub(crate) fn mdblist_prepare_url(url: String, args: &Value) -> String {
+    if !str_field(args, "token").is_empty() {
+        return url;
+    }
+    let key = str_field(args, "apiKey");
+    let separator = if url.contains('?') { '&' } else { '?' };
+    format!("{url}{separator}apikey={key}")
+}
+
+pub(crate) fn mdblist_scrobble(args: &Value, action: &str, progress: f64) -> Option<Value> {
+    let (_, episode) = trakt_scrobble_body(str_field(args, "itemId"), args, progress)?;
+    let show_id = trakt_show_id_from_episode_id(str_field(args, "itemId"));
+    let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(&show_id)?).ok()?;
+    from_mdblist_plan(
+        args,
+        crate::services::mdblist::mdblist_scrobble_plan(
+            action,
+            &json!({
+                "ids": ids,
+                "isEpisode": episode.is_some(),
+                "season": episode.as_ref().map(|episode| episode["season"].clone()),
+                "episode": episode.as_ref().map(|episode| episode["episode"].clone()),
+                "progress": progress,
+            })
+            .to_string(),
+        ),
+    )
+}
+
+fn from_mdblist_plan(args: &Value, plan: Option<String>) -> Option<Value> {
+    let plan: Value = serde_json::from_str(&plan?).ok()?;
+    Some(request(
+        "mdblist",
+        args,
+        str_field(&plan, "method"),
+        str_field(&plan, "url").to_string(),
+        plan.get("body").cloned().unwrap_or(Value::Null),
+    ))
 }

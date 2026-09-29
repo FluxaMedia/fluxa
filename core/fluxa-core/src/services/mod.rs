@@ -13,17 +13,7 @@ pub(crate) mod trakt;
 
 use trakt::*;
 
-const TRAKT_API: &str = "https://api.trakt.tv";
-pub(crate) const SIMKL_SCOPE: &str = "media:read media:write";
-pub(crate) const SIMKL_API: &str = "https://api.simkl.com";
-const SIMKL_REDIRECT_URI: &str = "fluxa://oauth/simkl";
-const MDBLIST_API: &str = "https://api.mdblist.com";
-const ANILIST_GRAPHQL: &str = "https://graphql.anilist.co";
-const ANILIST_REDIRECT_URI: &str = "fluxa://oauth/anilist";
-const ANILIST_SAVE_MUTATION: &str = "mutation($mediaId:Int,$status:MediaListStatus,$progress:Int){SaveMediaListEntry(mediaId:$mediaId,status:$status,progress:$progress){id}}";
-const ANILIST_LIST_QUERY: &str = "query($userId:Int,$chunk:Int){MediaListCollection(userId:$userId,type:ANIME,forceSingleCompletedList:true,chunk:$chunk,perChunk:500){hasNextChunk lists{isCustomList entries{status progress updatedAt media{id idMal format episodes seasonYear genres title{english romaji native} coverImage{extraLarge large} bannerImage}}}}}";
-const SIMKL_APP_NAME: &str = "fluxa";
-const SIMKL_USER_AGENT: &str = concat!("fluxa/", env!("CARGO_PKG_VERSION"));
+pub(crate) const USER_AGENT: &str = concat!("fluxa/", env!("CARGO_PKG_VERSION"));
 
 fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("")
@@ -31,45 +21,17 @@ fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
 
 fn headers(provider: &str, args: &Value) -> Value {
     let token = str_field(args, "token");
-    let client_id = str_field(args, "clientId");
     let mut headers = Map::new();
     headers.insert("Content-Type".into(), json!("application/json"));
-    match provider {
-        "trakt" => {
-            headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
-            headers.insert("trakt-api-version".into(), json!("2"));
-            headers.insert("trakt-api-key".into(), json!(client_id));
+    if let Some(extra) = registry::provider(provider).and_then(|provider| provider.headers) {
+        for (name, value) in extra(str_field(args, "clientId")) {
+            headers.insert(name.into(), json!(value));
         }
-        "simkl" => {
-            headers.insert("simkl-api-key".into(), json!(client_id));
-            headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
-        }
-        "mdblist" => {
-            headers.insert("User-Agent".into(), json!(SIMKL_USER_AGENT));
-        }
-        "anilist" => {
-            headers.insert("Accept".into(), json!("application/json"));
-        }
-        _ => {}
     }
     if !token.is_empty() {
         headers.insert("Authorization".into(), json!(format!("Bearer {token}")));
     }
     Value::Object(headers)
-}
-
-fn with_api_key(url: &str, args: &Value) -> String {
-    let key = str_field(args, "apiKey");
-    let separator = if url.contains('?') { '&' } else { '?' };
-    format!("{url}{separator}apikey={key}")
-}
-
-fn with_simkl_app(url: &str) -> String {
-    let separator = if url.contains('?') { '&' } else { '?' };
-    format!(
-        "{url}{separator}app-name={SIMKL_APP_NAME}&app-version={}",
-        env!("CARGO_PKG_VERSION")
-    )
 }
 
 pub(crate) fn request(
@@ -79,23 +41,11 @@ pub(crate) fn request(
     url: String,
     body: Value,
 ) -> Value {
-    let url = match provider {
-        "mdblist" if str_field(args, "token").is_empty() => with_api_key(&url, args),
-        "simkl" => with_simkl_app(&url),
-        _ => url,
+    let url = match registry::provider(provider).and_then(|provider| provider.prepare_url) {
+        Some(prepare) => prepare(url, args),
+        None => url,
     };
     json!({"method": method, "url": url, "headers": headers(provider, args), "body": body})
-}
-
-fn from_mdblist_plan(args: &Value, plan: Option<String>) -> Option<Value> {
-    let plan: Value = serde_json::from_str(&plan?).ok()?;
-    Some(request(
-        "mdblist",
-        args,
-        str_field(&plan, "method"),
-        str_field(&plan, "url").to_string(),
-        plan.get("body").cloned().unwrap_or(Value::Null),
-    ))
 }
 
 pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
@@ -126,11 +76,11 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
             "device": {
                 "userCode": user_code,
                 "deviceCode": device_code,
-                "verificationUrl": if provider != "trakt" {
-                    str_field(&body, "verification_uri")
-                } else {
-                    str_field(&body, "verification_url")
-                },
+                "verificationUrl": str_field(
+                    &body,
+                    registry::provider(provider)
+                        .map_or("verification_uri", |provider| provider.verification_key),
+                ),
                 "interval": body.get("interval").and_then(Value::as_i64).unwrap_or(5),
                 "expiresAt": now + body.get("expires_in").and_then(Value::as_i64).unwrap_or(600),
             }
@@ -280,30 +230,8 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let provider = str_field(&args, "provider");
     let command = args.get("command")?;
-    let post = |url: String, body: Value| request(provider, &args, "POST", url, body);
     let mut requests = Vec::new();
     match str_field(command, "type") {
-        "simklAccount" if provider == "simkl" => {
-            requests.push(post(format!("{SIMKL_API}/users/settings"), json!({})))
-        }
-        "traktSeasons" if provider == "trakt" => {
-            let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(str_field(
-                command, "seriesId",
-            ))?)
-            .ok()?;
-            let id = ids.as_object()?.values().next().map(|value| {
-                value
-                    .as_str()
-                    .map_or_else(|| value.to_string(), str::to_owned)
-            })?;
-            requests.push(request(
-                provider,
-                &args,
-                "GET",
-                format!("{TRAKT_API}/shows/{id}/seasons?extended=episodes"),
-                Value::Null,
-            ));
-        }
         "toggleWatchlist" => {
             let item = command.get("item")?;
             let id = str_field(item, "id");
@@ -348,7 +276,7 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                 },
             )?);
         }
-        _ => return None,
+        _ => requests.extend((registry::provider(provider)?.write?)(&args, command)?),
     }
     serde_json::to_string(&requests).ok()
 }
@@ -360,77 +288,12 @@ pub(crate) fn provider_scrobble_request_json(args_json: &str) -> Option<String> 
         action @ ("start" | "pause" | "stop") => action,
         _ => return None,
     };
-    let item_id = str_field(&args, "itemId");
     let progress = args
         .get("progress")
         .and_then(Value::as_f64)
         .unwrap_or(0.0)
         .clamp(0.0, 100.0);
-    if provider == "simkl" {
-        let mut target = crate::services::simkl::simkl_target(item_id)?;
-        if let Some(ids) = args
-            .get("providerIds")
-            .and_then(crate::services::simkl::simkl_ids_from_provider)
-        {
-            target.ids = ids;
-        }
-        let body = match target
-            .episode
-            .filter(|_| str_field(&args, "metaType") != "movie")
-        {
-            Some(episode) => json!({
-                "show": {"ids": target.ids},
-                "episode": {"season": target.season, "number": episode},
-                "progress": progress,
-            }),
-            None => json!({"movie": {"ids": target.ids}, "progress": progress}),
-        };
-        let plan = request(
-            provider,
-            &args,
-            "POST",
-            format!("{SIMKL_API}/scrobble/{action}"),
-            body,
-        );
-        return serde_json::to_string(&plan).ok();
-    }
-    let episode = crate::services::trakt::trakt_episode_locator_json(item_id)
-        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-        .filter(|_| str_field(&args, "metaType") != "movie");
-    let show_id = crate::services::trakt::trakt_show_id_from_episode_id(item_id);
-    let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(&show_id)?).ok()?;
-    let body = match &episode {
-        Some(episode) => json!({
-            "show": {"ids": ids},
-            "episode": {"season": episode["season"], "number": episode["episode"]},
-            "progress": progress,
-        }),
-        None => json!({"movie": {"ids": ids}, "progress": progress}),
-    };
-    let plan = match provider {
-        "trakt" => request(
-            provider,
-            &args,
-            "POST",
-            format!("{TRAKT_API}/scrobble/{action}"),
-            body,
-        ),
-        "mdblist" => from_mdblist_plan(
-            &args,
-            crate::services::mdblist::mdblist_scrobble_plan(
-                action,
-                &json!({
-                    "ids": ids,
-                    "isEpisode": episode.is_some(),
-                    "season": episode.as_ref().map(|episode| episode["season"].clone()),
-                    "episode": episode.as_ref().map(|episode| episode["episode"].clone()),
-                    "progress": progress,
-                })
-                .to_string(),
-            ),
-        )?,
-        _ => return None,
-    };
+    let plan = (registry::provider(provider)?.scrobble?)(&args, action, progress)?;
     serde_json::to_string(&plan).ok()
 }
 

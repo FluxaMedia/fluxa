@@ -1,5 +1,10 @@
 use crate::services::*;
 
+pub(crate) const SIMKL_SCOPE: &str = "media:read media:write";
+pub(crate) const SIMKL_API: &str = "https://api.simkl.com";
+pub(crate) const SIMKL_REDIRECT_URI: &str = "fluxa://oauth/simkl";
+pub(crate) const SIMKL_APP_NAME: &str = "fluxa";
+
 pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) {
     let shows = concat(&[
         responses
@@ -194,4 +199,57 @@ pub(crate) fn simkl_authorize_url(args: &Value) -> Option<String> {
     )
     .ok()?;
     Some(url.to_string())
+}
+
+pub(crate) fn simkl_headers(client_id: &str) -> Vec<(&'static str, String)> {
+    vec![
+        ("simkl-api-key", client_id.to_string()),
+        ("User-Agent", USER_AGENT.to_string()),
+    ]
+}
+
+pub(crate) fn simkl_prepare_url(url: String, _args: &Value) -> String {
+    let separator = if url.contains('?') { '&' } else { '?' };
+    format!(
+        "{url}{separator}app-name={SIMKL_APP_NAME}&app-version={}",
+        env!("CARGO_PKG_VERSION")
+    )
+}
+
+pub(crate) fn simkl_scrobble(args: &Value, action: &str, progress: f64) -> Option<Value> {
+    let mut target = simkl_target(str_field(args, "itemId"))?;
+    if let Some(ids) = args.get("providerIds").and_then(simkl_ids_from_provider) {
+        target.ids = ids;
+    }
+    let body = match target
+        .episode
+        .filter(|_| str_field(args, "metaType") != "movie")
+    {
+        Some(episode) => json!({
+            "show": {"ids": target.ids},
+            "episode": {"season": target.season, "number": episode},
+            "progress": progress,
+        }),
+        None => json!({"movie": {"ids": target.ids}, "progress": progress}),
+    };
+    Some(request(
+        "simkl",
+        args,
+        "POST",
+        format!("{SIMKL_API}/scrobble/{action}"),
+        body,
+    ))
+}
+
+pub(crate) fn simkl_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
+    if str_field(command, "type") != "simklAccount" {
+        return None;
+    }
+    Some(vec![request(
+        "simkl",
+        args,
+        "POST",
+        format!("{SIMKL_API}/users/settings"),
+        json!({}),
+    )])
 }

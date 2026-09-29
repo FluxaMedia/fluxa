@@ -1,5 +1,7 @@
 use crate::services::*;
 
+pub(crate) const TRAKT_API: &str = "https://api.trakt.tv";
+
 pub(crate) fn trakt_progress_number(entry: &Value, key: &str) -> i64 {
     entry
         .pointer(&format!("/progress/{key}"))
@@ -227,4 +229,66 @@ pub(crate) fn trakt_token_state(status: u16, _body: &Value) -> &'static str {
     } else {
         crate::accounts::oauth::oauth_response_outcome("trakt", "device_poll", status)
     }
+}
+
+pub(crate) fn trakt_headers(client_id: &str) -> Vec<(&'static str, String)> {
+    vec![
+        ("User-Agent", USER_AGENT.to_string()),
+        ("trakt-api-version", "2".to_string()),
+        ("trakt-api-key", client_id.to_string()),
+    ]
+}
+
+pub(crate) fn trakt_scrobble_body(
+    item_id: &str,
+    args: &Value,
+    progress: f64,
+) -> Option<(Value, Option<Value>)> {
+    let episode = trakt_episode_locator_json(item_id)
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .filter(|_| str_field(args, "metaType") != "movie");
+    let show_id = trakt_show_id_from_episode_id(item_id);
+    let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(&show_id)?).ok()?;
+    let body = match &episode {
+        Some(episode) => json!({
+            "show": {"ids": ids},
+            "episode": {"season": episode["season"], "number": episode["episode"]},
+            "progress": progress,
+        }),
+        None => json!({"movie": {"ids": ids}, "progress": progress}),
+    };
+    Some((body, episode))
+}
+
+pub(crate) fn trakt_scrobble(args: &Value, action: &str, progress: f64) -> Option<Value> {
+    let (body, _) = trakt_scrobble_body(str_field(args, "itemId"), args, progress)?;
+    Some(request(
+        "trakt",
+        args,
+        "POST",
+        format!("{TRAKT_API}/scrobble/{action}"),
+        body,
+    ))
+}
+
+pub(crate) fn trakt_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
+    if str_field(command, "type") != "traktSeasons" {
+        return None;
+    }
+    let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(str_field(
+        command, "seriesId",
+    ))?)
+    .ok()?;
+    let id = ids.as_object()?.values().next().map(|value| {
+        value
+            .as_str()
+            .map_or_else(|| value.to_string(), str::to_owned)
+    })?;
+    Some(vec![request(
+        "trakt",
+        args,
+        "GET",
+        format!("{TRAKT_API}/shows/{id}/seasons?extended=episodes"),
+        Value::Null,
+    )])
 }

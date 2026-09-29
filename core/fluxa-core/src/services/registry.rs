@@ -13,6 +13,12 @@ pub(crate) struct Provider {
     pub token_state: Option<fn(u16, &Value) -> &'static str>,
     pub authorize_url: Option<fn(&Value) -> Option<String>>,
     pub library_requests: Option<fn(&Value) -> Option<Vec<Value>>>,
+    pub headers: Option<fn(&str) -> Vec<(&'static str, String)>>,
+    pub prepare_url: Option<fn(String, &Value) -> String>,
+    pub scrobble: Option<fn(&Value, &str, f64) -> Option<Value>>,
+    pub write: Option<fn(&Value, &Value) -> Option<Vec<Value>>>,
+    pub verification_key: &'static str,
+    pub alt_token_field: Option<&'static str>,
 }
 
 pub(crate) const PROVIDERS: &[Provider] = &[
@@ -36,6 +42,12 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         token_state: Some(super::trakt::trakt_token_state),
         authorize_url: None,
         library_requests: Some(super::trakt::trakt_library_requests),
+        headers: Some(super::trakt::trakt_headers),
+        prepare_url: None,
+        scrobble: Some(super::trakt::trakt_scrobble),
+        write: Some(super::trakt::trakt_write),
+        verification_key: "verification_url",
+        alt_token_field: None,
     },
     Provider {
         id: "simkl",
@@ -58,6 +70,12 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         token_state: Some(super::simkl::simkl_token_state),
         authorize_url: Some(super::simkl::simkl_authorize_url),
         library_requests: None,
+        headers: Some(super::simkl::simkl_headers),
+        prepare_url: Some(super::simkl::simkl_prepare_url),
+        scrobble: Some(super::simkl::simkl_scrobble),
+        write: Some(super::simkl::simkl_write),
+        verification_key: "verification_uri",
+        alt_token_field: None,
     },
     Provider {
         id: "mdblist",
@@ -79,6 +97,12 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         token_state: Some(super::mdblist::mdblist_token_state),
         authorize_url: None,
         library_requests: Some(super::mdblist::mdblist_library_requests),
+        headers: Some(super::mdblist::mdblist_headers),
+        prepare_url: Some(super::mdblist::mdblist_prepare_url),
+        scrobble: Some(super::mdblist::mdblist_scrobble),
+        write: None,
+        verification_key: "verification_uri",
+        alt_token_field: Some("mdblistApiKey"),
     },
     Provider {
         id: "anilist",
@@ -99,6 +123,12 @@ pub(crate) const PROVIDERS: &[Provider] = &[
         token_state: Some(super::anilist::anilist_token_state),
         authorize_url: Some(super::anilist::anilist_authorize_url),
         library_requests: Some(super::anilist::anilist_library_requests),
+        headers: Some(super::anilist::anilist_headers),
+        prepare_url: None,
+        scrobble: None,
+        write: None,
+        verification_key: "verification_uri",
+        alt_token_field: None,
     },
 ];
 
@@ -118,7 +148,7 @@ impl Provider {
                 .and_then(Value::as_str)
                 .is_some_and(|value| !value.trim().is_empty())
         };
-        set(self.token_field) || (self.id == "mdblist" && set("mdblistApiKey"))
+        set(self.token_field) || self.alt_token_field.is_some_and(set)
     }
 }
 
