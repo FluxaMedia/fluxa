@@ -1,3 +1,6 @@
+pub(crate) mod pin;
+mod routes;
+pub(crate) use routes::*;
 mod addon_priority;
 mod collections;
 mod delta_state;

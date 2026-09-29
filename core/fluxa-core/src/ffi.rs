@@ -3,7 +3,7 @@ use serde_json::{Value, json};
 mod addon_protocol_routes;
 mod addon_resource_routes;
 mod addon_support_routes;
-mod anime_nuvio_routes;
+mod anime_routes;
 mod calendar_routes;
 mod content_identity_routes;
 mod content_warning_routes;
@@ -30,13 +30,14 @@ mod version_policy_routes;
 mod watch_together_routes;
 mod watchlist_offline_routes;
 use crate::services::{
-    anilist::route_anilist, mdblist::route_mdblist, publicmetadb::route_publicmetadb,
-    simkl::route_simkl, stremio::route_stremio, tmdb::route_tmdb, trakt::route_trakt,
+    anilist::route_anilist, mdblist::route_mdblist, nuvio::route_nuvio,
+    publicmetadb::route_publicmetadb, simkl::route_simkl, stremio::route_stremio, tmdb::route_tmdb,
+    trakt::route_trakt,
 };
 use addon_protocol_routes::route_addon_protocol;
 use addon_resource_routes::route_addon_resource;
 use addon_support_routes::{route_addon_uptime, route_trailer_subtitles};
-use anime_nuvio_routes::{route_anime_detection, route_nuvio_pin, route_nuvio_sync};
+use anime_routes::route_anime_detection;
 use calendar_routes::route_calendar;
 use content_identity_routes::route_content_identity;
 use content_warning_routes::route_content_warnings;

@@ -3,6 +3,7 @@ use simkl::*;
 
 pub(crate) mod anilist;
 pub(crate) mod mdblist;
+pub(crate) mod nuvio;
 pub(crate) mod publicmetadb;
 pub(crate) mod registry;
 pub(crate) mod simkl;
