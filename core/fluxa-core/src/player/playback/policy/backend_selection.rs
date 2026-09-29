@@ -9,12 +9,6 @@ struct BackendSelectionRequest {
     stream: Value,
     #[serde(default)]
     preferred_player: Option<String>,
-    #[serde(default)]
-    device_has_dolby_vision_decoder: bool,
-    #[serde(default)]
-    device_has_hdr_display: bool,
-    #[serde(default)]
-    force_software_audio: bool,
 }
 
 pub(crate) fn player_backend_selection_json(request_json: &str) -> Option<String> {
@@ -48,46 +42,9 @@ pub(crate) fn player_backend_selection_json(request_json: &str) -> Option<String
         .ok();
     }
 
-    // MPV is preferred for:
-    // - HDR / Dolby Vision streams when device doesn't have native HW decoder
-    // - Streams that specify mpv hints
-    // - User explicitly chose MPV
-    let has_mpv_hint = stream
-        .get("behaviorHints")
-        .and_then(|h| h.get("preferMpv"))
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-
-    let is_dv_stream = stream.get("dv").and_then(Value::as_bool).unwrap_or(false)
-        || stream
-            .get("dolbyVision")
-            .and_then(Value::as_bool)
-            .unwrap_or(false);
-    let is_hdr_stream = stream.get("hdr").and_then(Value::as_bool).unwrap_or(false);
-    let needs_mpv_for_hdr = (is_dv_stream && !request.device_has_dolby_vision_decoder)
-        || (is_hdr_stream && !request.device_has_hdr_display);
-
-    let use_mpv = preferred == "mpv"
-        || has_mpv_hint
-        || needs_mpv_for_hdr
-        || (request.force_software_audio && preferred != "exoplayer");
-
-    let backend = if use_mpv { "mpv" } else { "exoplayer" };
-    let reason = if preferred == "mpv" || preferred == "exoplayer" {
-        "user_preference"
-    } else if has_mpv_hint {
-        "stream_hint"
-    } else if needs_mpv_for_hdr {
-        "hdr_no_hw_decoder"
-    } else if request.force_software_audio {
-        "software_audio"
-    } else {
-        "default"
-    };
-
     serde_json::to_string(&json!({
-        "backend": backend,
-        "reason": reason
+        "backend": "mpv",
+        "reason": "single_engine"
     }))
     .ok()
 }

@@ -300,8 +300,8 @@ fn safe_subtitle_size_percent(value: f32) -> f32 {
 
 fn safe_preferred_player(value: Option<&str>) -> &'static str {
     match value {
-        Some("mpv") => "mpv",
-        _ => "exoplayer",
+        Some("external") => "external",
+        _ => "mpv",
     }
 }
 
@@ -421,7 +421,7 @@ mod tests {
 
         assert_eq!(value["language"], "en");
         assert_eq!(value["subtitleSizePercent"], 100.0);
-        assert_eq!(value["preferredPlayer"], "exoplayer");
+        assert_eq!(value["preferredPlayer"], "mpv");
         assert_eq!(value["cardLayout"], "horizontal");
         assert_eq!(value["resolvedContinueWatchingLayout"], "horizontal");
         assert_eq!(value["playerBufferCacheMb"], 100);

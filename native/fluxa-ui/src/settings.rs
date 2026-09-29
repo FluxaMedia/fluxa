@@ -445,7 +445,7 @@ const PLAYBACK_SETTINGS: [SettingsRow; 26] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
-        options: &["mpv", "exoplayer", "external"],
+        options: &["mpv", "external"],
     },
     SettingsRow {
         label: "Stream selection",
@@ -1372,21 +1372,12 @@ impl SettingsModel {
     pub fn next_value_for(
         &self,
         row: &SettingsRow,
-        form_factor: UiFormFactor,
+        _form_factor: UiFormFactor,
     ) -> serde_json::Value {
         if row.options.is_empty() {
             serde_json::Value::Bool(!self.bool_value(row.key))
         } else {
-            let options: Vec<&str> = row
-                .options
-                .iter()
-                .copied()
-                .filter(|option| {
-                    !(row.key == "preferredPlayer"
-                        && form_factor == UiFormFactor::Desktop
-                        && *option == "exoplayer")
-                })
-                .collect();
+            let options = row.options;
             let current = self.value(row.key).and_then(serde_json::Value::as_str);
             let next = current
                 .and_then(|value| options.iter().position(|option| *option == value))

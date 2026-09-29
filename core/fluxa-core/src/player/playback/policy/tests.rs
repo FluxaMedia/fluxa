@@ -2,13 +2,13 @@ use super::*;
 use serde_json::Value;
 
 #[test]
-fn backend_selection_defaults_to_exoplayer() {
+fn backend_selection_defaults_to_mpv() {
     let result: Value = serde_json::from_str(
         &player_backend_selection_json(r#"{"stream":{"url":"http://example.com/video.mp4"}}"#)
             .unwrap(),
     )
     .unwrap();
-    assert_eq!(result["backend"], "exoplayer");
+    assert_eq!(result["backend"], "mpv");
 }
 
 #[test]
@@ -27,16 +27,15 @@ fn stream_subtitles_result_has_one_shared_empty_and_populated_shape() {
 }
 
 #[test]
-fn backend_selection_respects_mpv_user_preference() {
+fn backend_selection_keeps_mpv_for_hdr_and_audio_hints() {
     let result: Value = serde_json::from_str(
         &player_backend_selection_json(
-            r#"{"stream":{"url":"http://example.com/video.mp4"},"preferredPlayer":"mpv"}"#,
+            r#"{"stream":{"url":"http://example.com/video.mp4","hdr":true},"preferredPlayer":"mpv"}"#,
         )
         .unwrap(),
     )
     .unwrap();
     assert_eq!(result["backend"], "mpv");
-    assert_eq!(result["reason"], "user_preference");
 }
 
 #[test]

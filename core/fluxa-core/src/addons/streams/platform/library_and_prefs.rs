@@ -98,7 +98,7 @@ pub(crate) fn apply_preference_update_json(request_json: &str) -> Option<String>
 
 fn normalize_preference_value(key: &str, value: Value) -> Value {
     match key {
-        "preferredPlayer" => enum_string(value, &["mpv", "exoplayer", "external"], "mpv"),
+        "preferredPlayer" => enum_string(value, &["mpv", "external"], "mpv"),
         "audioProcessingMode" => {
             enum_string(value, &["reference", "balanced", "night"], "reference")
         }
