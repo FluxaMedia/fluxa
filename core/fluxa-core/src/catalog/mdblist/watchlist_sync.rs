@@ -76,6 +76,15 @@ pub(crate) fn mdblist_sync_mutate_plan(
     plan("POST", build_url(&path, &[]), Some(body))
 }
 
+pub(crate) fn mdblist_watched_body_plan(remove: bool, body: Value) -> Option<String> {
+    let path = if remove {
+        "/sync/watched/remove"
+    } else {
+        "/sync/watched"
+    };
+    plan("POST", build_url(path, &[]), Some(body))
+}
+
 const UPNEXT_QUERY_KEYS: &[&str] = &["limit", "offset", "hide_unreleased", "days"];
 
 pub(crate) fn mdblist_upnext_url(section: Option<&str>, args_json: &str) -> Option<String> {

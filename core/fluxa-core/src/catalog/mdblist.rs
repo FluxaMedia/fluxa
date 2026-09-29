@@ -33,7 +33,7 @@ pub(crate) use user::{
     mdblist_public_user_url, mdblist_user_follow_plan, mdblist_user_stats_url, mdblist_user_url,
 };
 pub(crate) use watchlist_sync::{
-    mdblist_sync_get_url, mdblist_sync_mutate_plan, mdblist_upnext_url,
+    mdblist_sync_get_url, mdblist_sync_mutate_plan, mdblist_upnext_url, mdblist_watched_body_plan,
     mdblist_watchlist_items_url, mdblist_watchlist_mutate_plan,
 };
 #[cfg(test)]
