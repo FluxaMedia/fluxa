@@ -618,6 +618,7 @@ static METHODS: &[(&str, Router)] = &[
     ("traktPlaybackUrl", route_external_sync_trakt),
     ("traktRelatedItemsToMetas", route_external_sync_trakt),
     ("traktRelatedLookupSlug", route_external_sync_trakt),
+    ("traktRemapVideoIds", route_external_sync_trakt),
     ("traktScrobbleMediaId", route_external_sync_trakt),
     ("traktScrobblePlan", route_external_sync_trakt),
     ("traktScrobbleUrl", route_external_sync_trakt),

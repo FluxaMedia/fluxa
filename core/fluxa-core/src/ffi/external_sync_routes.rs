@@ -233,6 +233,9 @@ pub(super) fn route_external_sync_trakt(method: &str, args_json: &str) -> Outcom
         "traktPlaybackItemsDedup" => opt_json(
             accounts::external_sync::trakt_playback_items_dedup_json(args_json),
         ),
+        "traktRemapVideoIds" => opt_json(accounts::external_sync::trakt_remap_video_ids_json(
+            args_json,
+        )),
         "traktUpNextToItems" => opt_json(accounts::external_sync::trakt_up_next_to_items_json(
             args_json,
         )),

@@ -119,6 +119,8 @@ struct MarkWatchedCommand {
     watched: bool,
     #[serde(skip_serializing_if = "std::ops::Not::not")]
     rewatch: bool,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    addon_episodes: Vec<Value>,
 }
 
 #[derive(Serialize)]
@@ -339,6 +341,7 @@ pub(super) fn dispatch_mark_watched(
         video_ids: clean_video_ids,
         watched: watched_value,
         rewatch,
+        addon_episodes: addon_episodes(meta.as_ref()),
     };
     let command_value = serde_json::to_value(&command).unwrap_or(Value::Null);
     engine.state.library.last_command = command_value.clone();
@@ -364,6 +367,26 @@ pub(super) fn dispatch_mark_watched(
         ));
     }
     effects
+}
+
+fn addon_episodes(meta: Option<&Value>) -> Vec<Value> {
+    meta.and_then(|meta| meta.get("videos")?.as_array())
+        .into_iter()
+        .flatten()
+        .filter(|video| {
+            video
+                .get("season")
+                .is_some_and(|season| season.as_i64() > Some(0))
+        })
+        .map(|video| {
+            serde_json::json!({
+                "id": video.get("id"),
+                "season": video.get("season"),
+                "episode": video.get("episode"),
+                "title": video.get("title"),
+            })
+        })
+        .collect()
 }
 
 fn selected_library_source(engine: &HeadlessEngine, explicit_profile: Option<&Value>) -> String {

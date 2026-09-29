@@ -29,9 +29,9 @@ pub(crate) use trakt::{
     trakt_history_episodes_to_ids_json, trakt_history_request_json, trakt_id_from_source,
     trakt_ids_from_content_id_json, trakt_image_url, trakt_list_reference, trakt_oauth_error_code,
     trakt_playback_delete_ids_json, trakt_playback_items_to_library_json, trakt_playback_url,
-    trakt_scrobble_media_id, trakt_scrobble_url, trakt_show_id_from_episode_id,
-    trakt_sync_item_content_type_json, trakt_sync_item_to_meta_json, trakt_token_expires_at,
-    trakt_watched_to_ids_json, trakt_watchlist_to_items_json,
+    trakt_remap_video_ids_json, trakt_scrobble_media_id, trakt_scrobble_url,
+    trakt_show_id_from_episode_id, trakt_sync_item_content_type_json, trakt_sync_item_to_meta_json,
+    trakt_token_expires_at, trakt_watched_to_ids_json, trakt_watchlist_to_items_json,
 };
 
 mod provider_mappers;

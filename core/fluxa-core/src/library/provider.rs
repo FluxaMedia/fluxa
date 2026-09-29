@@ -554,6 +554,24 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
         "simklAccount" if provider == "simkl" => {
             requests.push(post(format!("{SIMKL_API}/users/settings"), json!({})))
         }
+        "traktSeasons" if provider == "trakt" => {
+            let ids: Value = serde_json::from_str(&trakt_ids_from_content_id_json(str_field(
+                command, "seriesId",
+            ))?)
+            .ok()?;
+            let id = ids.as_object()?.values().next().map(|value| {
+                value
+                    .as_str()
+                    .map_or_else(|| value.to_string(), str::to_owned)
+            })?;
+            requests.push(request(
+                provider,
+                &args,
+                "GET",
+                format!("{TRAKT_API}/shows/{id}/seasons?extended=episodes"),
+                Value::Null,
+            ));
+        }
         "toggleWatchlist" => {
             let item = command.get("item")?;
             let id = str_field(item, "id");

@@ -552,6 +552,9 @@ impl EffectExecutor {
         let rewatch =
             provider == "simkl" && command.get("rewatch").and_then(Value::as_bool) == Some(true);
         let mut command = command.clone();
+        if provider == "trakt" {
+            self.remap_trakt_episodes(&args, &mut command).await;
+        }
         if rewatch {
             self.ensure_simkl_rewatch(profile, &args).await?;
             command["rewatchId"] = self
@@ -577,6 +580,36 @@ impl EffectExecutor {
             }
         }
         Ok(())
+    }
+
+    async fn remap_trakt_episodes(&self, credentials: &Value, command: &mut Value) {
+        let addon = command["addonEpisodes"].take();
+        if str_field(command, "type") != "markWatched"
+            || addon.as_array().is_none_or(|episodes| episodes.is_empty())
+        {
+            return;
+        }
+        let mut args = credentials.clone();
+        args["command"] = json!({"type": "traktSeasons", "seriesId": command["seriesId"]});
+        let Some(request) =
+            core_value("providerWriteRequests", args).and_then(|requests| requests.get(0).cloned())
+        else {
+            return;
+        };
+        let Ok(client) = http_client() else { return };
+        let Ok(seasons) = Self::provider_get(&client, &request, "Trakt").await else {
+            return;
+        };
+        if let Some(video_ids) = core_value(
+            "traktRemapVideoIds",
+            json!({
+                "videoIds": command["videoIds"],
+                "addonEpisodes": addon,
+                "traktSeasons": seasons,
+            }),
+        ) {
+            command["videoIds"] = video_ids;
+        }
     }
 
     fn profile_flag(&self, profile: &Value, key: &str) -> bool {
@@ -684,6 +717,7 @@ impl EffectExecutor {
             "providerIds": meta.get("providerIds"),
             "videoIds": if video_ids.is_empty() { json!([meta_id]) } else { json!(video_ids) },
             "watched": payload.get("watched").and_then(Value::as_bool).unwrap_or(true),
+            "addonEpisodes": meta.get("videos"),
         });
         for provider in ["trakt", "simkl", "mdblist"] {
             if provider == library_source || self.provider_credentials(provider, &profile).is_none()
