@@ -235,8 +235,16 @@ pub fn draw_profiles(
                                 )
                                 .wrap(),
                             );
-                            if components::icon_button(ui, assets.icon("Close"), 22.0, Color32::from_white_alpha(170), false, false, true)
-                                .clicked()
+                            if components::icon_button(
+                                ui,
+                                assets.icon("Close"),
+                                22.0,
+                                Color32::from_white_alpha(170),
+                                false,
+                                false,
+                                true,
+                            )
+                            .clicked()
                             {
                                 model.notice = None;
                             }
@@ -270,7 +278,11 @@ fn paint_backdrop(
         Color32::WHITE,
         assets,
     ) {
-        painter.rect_filled(screen, 0.0, Color32::from_rgba_unmultiplied(12, 12, 12, 210));
+        painter.rect_filled(
+            screen,
+            0.0,
+            Color32::from_rgba_unmultiplied(12, 12, 12, 210),
+        );
     }
 }
 
@@ -302,7 +314,12 @@ fn heading(ui: &mut egui::Ui, eyebrow: &str, title: &str, subtitle: &str) {
             .color(Color32::from_white_alpha(110)),
     );
     ui.add_space(10.0);
-    ui.label(RichText::new(title).size(36.0).strong().color(Color32::WHITE));
+    ui.label(
+        RichText::new(title)
+            .size(36.0)
+            .strong()
+            .color(Color32::WHITE),
+    );
     ui.add_space(8.0);
     ui.label(
         RichText::new(subtitle)
@@ -321,9 +338,6 @@ fn draw_select(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<ProfilesRequest>,
 ) {
-    let radius = 65.0;
-    let cell = Vec2::new(150.0, 222.0);
-    let gap = 40.0;
     let count = model.profiles.len() + 1;
     let (radius, cell, gap) = if viewport.is_compact() {
         let gap = 18.0;
@@ -344,14 +358,7 @@ fn draw_select(
 
     let width = ui.available_width();
     let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, 60.0), Sense::hover());
-    components::brand_lockup(
-        ui.painter(),
-        brand_rect.center(),
-        40.0,
-        32.0,
-        255,
-        assets,
-    );
+    components::brand_lockup(ui.painter(), brand_rect.center(), 40.0, 32.0, 255, assets);
     ui.add_space(24.0);
 
     let title = ui.painter().layout_no_wrap(
@@ -399,14 +406,19 @@ fn draw_select(
             grid_rect.top() + row as f32 * (cell.y + gap),
         );
         let avatar_center = Pos2::new(origin.x + cell.x * 0.5, origin.y + radius);
-        let hit = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0))
-            .union(Rect::from_min_size(
+        let hit = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0)).union(
+            Rect::from_min_size(
                 Pos2::new(origin.x, avatar_center.y + radius),
                 Vec2::new(cell.x, 40.0),
-            ));
+            ),
+        );
         let Some(profile) = profiles.get(index) else {
             let response = ui.interact(hit, Id::new("fluxa-profiles-add"), Sense::click());
-            let r = if response.hovered() { radius * 1.04 } else { radius };
+            let r = if response.hovered() {
+                radius * 1.04
+            } else {
+                radius
+            };
             ui.painter().circle(
                 avatar_center,
                 r,
@@ -435,10 +447,22 @@ fn draw_select(
         };
         let response = ui.interact(hit, Id::new(("fluxa-profile", &profile.id)), Sense::click());
         let card_hovered = ui.rect_contains_pointer(Rect::from_min_size(origin, cell));
-        let r = if response.hovered() { radius * 1.04 } else { radius };
-        components::avatar(ui.painter(), assets, avatar_center, r, &profile.name, profile.avatar_url.as_deref());
+        let r = if response.hovered() {
+            radius * 1.04
+        } else {
+            radius
+        };
+        components::avatar(
+            ui.painter(),
+            assets,
+            avatar_center,
+            r,
+            &profile.name,
+            profile.avatar_url.as_deref(),
+        );
         if !response.hovered() {
-            ui.painter().circle_filled(avatar_center, r, Color32::from_black_alpha(30));
+            ui.painter()
+                .circle_filled(avatar_center, r, Color32::from_black_alpha(30));
         }
         if profile.locked {
             let badge = avatar_center + Vec2::splat(radius * 0.72);
@@ -479,8 +503,10 @@ fn draw_select(
                 Pos2::new(avatar_center.x, name_y + 22.0),
                 galley.size() + Vec2::new(14.0, 6.0),
             );
-            ui.painter().rect_filled(badge, 4.0, Color32::from_white_alpha(24));
-            ui.painter().galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+            ui.painter()
+                .rect_filled(badge, 4.0, Color32::from_white_alpha(24));
+            ui.painter()
+                .galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
             actions_y += 20.0;
         }
         let alpha = if card_hovered { 230 } else { 120 };
@@ -493,10 +519,15 @@ fn draw_select(
                 Vec2::splat(28.0),
             );
             let action = ui
-                .interact(rect, Id::new(("fluxa-profile-action", &profile.id, is_delete)), Sense::click())
+                .interact(
+                    rect,
+                    Id::new(("fluxa-profile-action", &profile.id, is_delete)),
+                    Sense::click(),
+                )
                 .on_hover_text(label);
             if action.hovered() {
-                ui.painter().rect_filled(rect, 6.0, Color32::from_white_alpha(18));
+                ui.painter()
+                    .rect_filled(rect, 6.0, Color32::from_white_alpha(18));
             }
             let color = Color32::from_white_alpha(if action.hovered() { 255 } else { alpha });
             if let Some(texture) = assets.icon(icon) {
@@ -508,7 +539,11 @@ fn draw_select(
                 );
             }
             if action.clicked() {
-                let purpose = if is_delete { PinPurpose::Delete } else { PinPurpose::Edit };
+                let purpose = if is_delete {
+                    PinPurpose::Delete
+                } else {
+                    PinPurpose::Edit
+                };
                 if profile.locked {
                     model.pin_prompt = Some(PinPrompt {
                         profile_id: profile.id.clone(),
@@ -548,8 +583,16 @@ fn close_button(
     ui.add_space(20.0);
     ui.horizontal(|ui| {
         ui.add_space(28.0);
-        let response = components::icon_button(ui, assets.icon("Close"), 36.0, Color32::from_white_alpha(190), true, false, true)
-            .on_hover_text(t("common.close"));
+        let response = components::icon_button(
+            ui,
+            assets.icon("Close"),
+            36.0,
+            Color32::from_white_alpha(190),
+            true,
+            false,
+            true,
+        )
+        .on_hover_text(t("common.close"));
         if response.clicked() {
             model.mode = ProfilesMode::Select;
         }
@@ -568,29 +611,40 @@ fn field_label(ui: &mut egui::Ui, text: &str) {
 
 fn note(ui: &mut egui::Ui, text: &str) {
     ui.add_space(4.0);
-    ui.label(RichText::new(text).size(12.0).color(Color32::from_white_alpha(170)));
+    ui.label(
+        RichText::new(text)
+            .size(12.0)
+            .color(Color32::from_white_alpha(170)),
+    );
 }
 
 fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
     ui.add_sized(
         [width, 44.0],
-        egui::Button::new(RichText::new(label).size(13.0).color(Color32::from_white_alpha(200)))
-            .fill(Color32::from_white_alpha(14))
-            .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
-            .corner_radius(8.0),
+        egui::Button::new(
+            RichText::new(label)
+                .size(13.0)
+                .color(Color32::from_white_alpha(200)),
+        )
+        .fill(Color32::from_white_alpha(14))
+        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
+        .corner_radius(8.0),
     )
 }
 
 fn primary_button(ui: &mut egui::Ui, label: &str, width: f32, enabled: bool) -> egui::Response {
     ui.add_enabled(
         enabled,
-        egui::Button::new(
-            RichText::new(label)
-                .size(13.0)
-                .strong()
-                .color(if enabled { Color32::BLACK } else { Color32::from_white_alpha(80) }),
-        )
-        .fill(if enabled { Color32::WHITE } else { Color32::from_white_alpha(24) })
+        egui::Button::new(RichText::new(label).size(13.0).strong().color(if enabled {
+            Color32::BLACK
+        } else {
+            Color32::from_white_alpha(80)
+        }))
+        .fill(if enabled {
+            Color32::WHITE
+        } else {
+            Color32::from_white_alpha(24)
+        })
         .corner_radius(8.0)
         .min_size(Vec2::new(width, 44.0)),
     )
@@ -599,9 +653,14 @@ fn primary_button(ui: &mut egui::Ui, label: &str, width: f32, enabled: bool) -> 
 fn danger_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
     ui.add_sized(
         [width, 44.0],
-        egui::Button::new(RichText::new(label).size(13.0).strong().color(Color32::WHITE))
-            .fill(Color32::from_rgb(170, 48, 48))
-            .corner_radius(8.0),
+        egui::Button::new(
+            RichText::new(label)
+                .size(13.0)
+                .strong()
+                .color(Color32::WHITE),
+        )
+        .fill(Color32::from_rgb(170, 48, 48))
+        .corner_radius(8.0),
     )
 }
 
@@ -637,8 +696,16 @@ fn draw_form(
             },
             &t("profiles.form_subtitle"),
         );
-        let left_width = if stacked { width } else { (width * 0.38).max(280.0) };
-        let right_width = if stacked { width } else { width - left_width - 14.0 };
+        let left_width = if stacked {
+            width
+        } else {
+            (width * 0.38).max(280.0)
+        };
+        let right_width = if stacked {
+            width
+        } else {
+            width - left_width - 14.0
+        };
         if stacked {
             form_details(ui, model, assets, t, request, left_width);
             ui.add_space(14.0);
@@ -654,7 +721,6 @@ fn draw_form(
     });
 }
 
-
 fn form_details(
     ui: &mut egui::Ui,
     model: &mut ProfilesModel,
@@ -663,136 +729,151 @@ fn form_details(
     request: &mut Option<ProfilesRequest>,
     width: f32,
 ) {
-            panel(ui, |ui| {
-                ui.set_width(width - 44.0);
-                ui.vertical_centered(|ui| {
-                    let (rect, response) = ui.allocate_exact_size(Vec2::splat(128.0), Sense::click());
-                    let name = if model.draft.name.trim().is_empty() {
-                        t("auto.profile")
-                    } else {
-                        model.draft.name.trim().to_owned()
-                    };
-                    components::avatar(
-                        ui.painter(),
-                        assets,
-                        rect.center(),
-                        64.0,
-                        &name,
-                        model.draft.avatar_url.as_deref(),
-                    );
-                    if response.hovered() {
-                        ui.painter().circle_filled(rect.center(), 64.0, Color32::from_black_alpha(90));
-                        ui.painter().text(
-                            rect.center(),
-                            Align2::CENTER_CENTER,
-                            t("profiles.change_image"),
-                            FontId::proportional(12.0),
-                            Color32::WHITE,
-                        );
-                    }
-                    if response.on_hover_text(t("profiles.choose_image")).clicked() {
-                        *request = Some(ProfilesRequest::PickAvatarImage);
-                    }
-                    ui.add_space(16.0);
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(&name).size(18.0).strong().color(Color32::WHITE));
-                        if model.draft_is_primary() {
-                            ui.label(
-                                RichText::new(t("profiles.primary_badge").to_uppercase())
-                                    .size(10.0)
-                                    .color(Color32::from_white_alpha(160))
-                                    .background_color(Color32::from_white_alpha(24)),
-                            );
-                        }
-                    });
-                    if model.draft.avatar_url.is_some()
-                        && ui
-                            .add(
-                                egui::Button::new(
-                                    RichText::new(t("profiles.use_initials"))
-                                        .size(12.0)
-                                        .color(Color32::from_white_alpha(110)),
-                                )
-                                .frame(false),
-                            )
-                            .clicked()
-                    {
-                        model.draft.avatar_url = None;
-                    }
-                });
-                ui.add_space(20.0);
-                let field_width = ui.available_width();
-                field_label(ui, &t("profiles.name"));
-                components::text_input(ui, &mut model.draft.name, &t("profiles.name_placeholder"), field_width, false);
-                if model.duplicate_name() {
-                    note(ui, &t("profiles.duplicate_name"));
-                }
-                ui.add_space(14.0);
-                field_label(ui, &t("profiles.pin_lock"));
-                let hint = if model.draft.has_pin && !model.draft.remove_pin {
-                    t("profiles.pin_set_placeholder")
-                } else {
-                    t("profiles.pin_placeholder")
-                };
-                if components::text_input(ui, &mut model.draft.pin, &hint, field_width, true).changed() {
-                    model.draft.pin.retain(|character| character.is_ascii_digit());
-                    model.draft.pin.truncate(4);
-                    model.draft.remove_pin = false;
-                }
-                if !model.draft.pin.is_empty() && model.draft.pin.len() != 4 {
-                    note(ui, &t("profiles.pin_invalid"));
-                }
-                if model.draft.has_pin && !model.draft.remove_pin {
-                    if ui
-                        .add(
-                            egui::Button::new(
-                                RichText::new(t("profiles.remove_pin"))
-                                    .size(12.0)
-                                    .color(Color32::from_white_alpha(120)),
-                            )
-                            .frame(false),
-                        )
-                        .clicked()
-                    {
-                        model.draft.remove_pin = true;
-                        model.draft.pin.clear();
-                    }
-                }
-                if model.draft.remove_pin {
-                    note(ui, &t("profiles.pin_will_be_removed"));
-                }
-                if !model.draft_is_primary() {
-                    ui.add_space(14.0);
-                    field_label(ui, &t("profiles.sharing"));
-                    ui.checkbox(
-                        &mut model.draft.uses_primary_addons,
-                        RichText::new(t("profiles.use_primary_addons")).size(13.0),
-                    );
-                    ui.checkbox(
-                        &mut model.draft.uses_primary_plugins,
-                        RichText::new(t("profiles.use_primary_plugins")).size(13.0),
+    panel(ui, |ui| {
+        ui.set_width(width - 44.0);
+        ui.vertical_centered(|ui| {
+            let (rect, response) = ui.allocate_exact_size(Vec2::splat(128.0), Sense::click());
+            let name = if model.draft.name.trim().is_empty() {
+                t("auto.profile")
+            } else {
+                model.draft.name.trim().to_owned()
+            };
+            components::avatar(
+                ui.painter(),
+                assets,
+                rect.center(),
+                64.0,
+                &name,
+                model.draft.avatar_url.as_deref(),
+            );
+            if response.hovered() {
+                ui.painter()
+                    .circle_filled(rect.center(), 64.0, Color32::from_black_alpha(90));
+                ui.painter().text(
+                    rect.center(),
+                    Align2::CENTER_CENTER,
+                    t("profiles.change_image"),
+                    FontId::proportional(12.0),
+                    Color32::WHITE,
+                );
+            }
+            if response.on_hover_text(t("profiles.choose_image")).clicked() {
+                *request = Some(ProfilesRequest::PickAvatarImage);
+            }
+            ui.add_space(16.0);
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(&name)
+                        .size(18.0)
+                        .strong()
+                        .color(Color32::WHITE),
+                );
+                if model.draft_is_primary() {
+                    ui.label(
+                        RichText::new(t("profiles.primary_badge").to_uppercase())
+                            .size(10.0)
+                            .color(Color32::from_white_alpha(160))
+                            .background_color(Color32::from_white_alpha(24)),
                     );
                 }
-                ui.add_space(20.0);
-                let half = (field_width - 8.0) * 0.5;
-                ui.horizontal(|ui| {
-                    ui.spacing_mut().item_spacing.x = 8.0;
-                    if secondary_button(ui, &t("common.cancel"), half).clicked() {
-                        model.mode = ProfilesMode::Select;
-                    }
-                    let label = if model.busy {
-                        t("common.saving")
-                    } else if model.draft.editing.is_some() {
-                        t("profiles.save")
-                    } else {
-                        t("profiles.create")
-                    };
-                    if primary_button(ui, &label, half, model.can_save()).clicked() {
-                        *request = Some(ProfilesRequest::Save);
-                    }
-                });
             });
+            if model.draft.avatar_url.is_some()
+                && ui
+                    .add(
+                        egui::Button::new(
+                            RichText::new(t("profiles.use_initials"))
+                                .size(12.0)
+                                .color(Color32::from_white_alpha(110)),
+                        )
+                        .frame(false),
+                    )
+                    .clicked()
+            {
+                model.draft.avatar_url = None;
+            }
+        });
+        ui.add_space(20.0);
+        let field_width = ui.available_width();
+        field_label(ui, &t("profiles.name"));
+        components::text_input(
+            ui,
+            &mut model.draft.name,
+            &t("profiles.name_placeholder"),
+            field_width,
+            false,
+        );
+        if model.duplicate_name() {
+            note(ui, &t("profiles.duplicate_name"));
         }
+        ui.add_space(14.0);
+        field_label(ui, &t("profiles.pin_lock"));
+        let hint = if model.draft.has_pin && !model.draft.remove_pin {
+            t("profiles.pin_set_placeholder")
+        } else {
+            t("profiles.pin_placeholder")
+        };
+        if components::text_input(ui, &mut model.draft.pin, &hint, field_width, true).changed() {
+            model
+                .draft
+                .pin
+                .retain(|character| character.is_ascii_digit());
+            model.draft.pin.truncate(4);
+            model.draft.remove_pin = false;
+        }
+        if !model.draft.pin.is_empty() && model.draft.pin.len() != 4 {
+            note(ui, &t("profiles.pin_invalid"));
+        }
+        if model.draft.has_pin && !model.draft.remove_pin {
+            if ui
+                .add(
+                    egui::Button::new(
+                        RichText::new(t("profiles.remove_pin"))
+                            .size(12.0)
+                            .color(Color32::from_white_alpha(120)),
+                    )
+                    .frame(false),
+                )
+                .clicked()
+            {
+                model.draft.remove_pin = true;
+                model.draft.pin.clear();
+            }
+        }
+        if model.draft.remove_pin {
+            note(ui, &t("profiles.pin_will_be_removed"));
+        }
+        if !model.draft_is_primary() {
+            ui.add_space(14.0);
+            field_label(ui, &t("profiles.sharing"));
+            ui.checkbox(
+                &mut model.draft.uses_primary_addons,
+                RichText::new(t("profiles.use_primary_addons")).size(13.0),
+            );
+            ui.checkbox(
+                &mut model.draft.uses_primary_plugins,
+                RichText::new(t("profiles.use_primary_plugins")).size(13.0),
+            );
+        }
+        ui.add_space(20.0);
+        let half = (field_width - 8.0) * 0.5;
+        ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 8.0;
+            if secondary_button(ui, &t("common.cancel"), half).clicked() {
+                model.mode = ProfilesMode::Select;
+            }
+            let label = if model.busy {
+                t("common.saving")
+            } else if model.draft.editing.is_some() {
+                t("profiles.save")
+            } else {
+                t("profiles.create")
+            };
+            if primary_button(ui, &label, half, model.can_save()).clicked() {
+                *request = Some(ProfilesRequest::Save);
+            }
+        });
+    });
+}
 
 fn form_images(
     ui: &mut egui::Ui,
@@ -802,81 +883,97 @@ fn form_images(
     request: &mut Option<ProfilesRequest>,
     width: f32,
 ) {
-            panel(ui, |ui| {
-                ui.set_width(width - 44.0);
-                let inner = ui.available_width();
-                if secondary_button(ui, &t("profiles.choose_image"), inner).clicked() {
-                    *request = Some(ProfilesRequest::PickAvatarImage);
-                }
-                if model.picker.avatar_packs.is_empty() {
-                    ui.add_space(14.0);
-                    ui.label(
-                        RichText::new(t("profiles.no_avatar_packs"))
-                            .size(13.0)
-                            .color(Color32::from_white_alpha(110)),
-                    );
-                    return;
-                }
-                ui.add_space(16.0);
-                ui.horizontal(|ui| {
-                    field_label(ui, &t("profiles.avatar_packs"));
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
-                        let refresh = components::icon_button(ui, assets.icon("Refresh"), 24.0, Color32::from_white_alpha(150), false, false, !model.busy)
-                            .on_hover_text(t("profiles.refresh_pack"));
-                        if refresh.clicked() {
-                            *request = Some(ProfilesRequest::RefreshAllPacks);
-                        }
-                    });
-                });
-                let tile = 64.0;
-                let gap = 10.0;
-                let per_row = (((inner + gap) / (tile + gap)).floor() as usize).max(1);
-                for pack in model.picker.avatar_packs.clone() {
-                    ui.add_space(12.0);
-                    ui.label(
-                        RichText::new(&pack.title)
-                            .size(13.0)
-                            .strong()
-                            .color(Color32::from_white_alpha(210)),
-                    );
-                    ui.add_space(8.0);
-                    for chunk in pack.avatars.chunks(per_row) {
-                        ui.horizontal(|ui| {
-                            ui.spacing_mut().item_spacing.x = gap;
-                            for avatar in chunk {
-                                let (rect, response) =
-                                    ui.allocate_exact_size(Vec2::new(tile, tile + 20.0), Sense::click());
-                                let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
-                                components::avatar(ui.painter(), assets, center, tile * 0.5, &avatar.name, Some(&avatar.url));
-                                let selected = model.draft.avatar_url.as_deref() == Some(avatar.url.as_str());
-                                if selected || response.hovered() {
-                                    ui.painter().circle_stroke(
-                                        center,
-                                        tile * 0.5 + 2.0,
-                                        egui::Stroke::new(
-                                            2.0,
-                                            Color32::from_white_alpha(if selected { 255 } else { 90 }),
-                                        ),
-                                    );
-                                }
-                                let font = FontId::proportional(11.0);
-                                ui.painter().text(
-                                    Pos2::new(center.x, rect.bottom() - 6.0),
-                                    Align2::CENTER_CENTER,
-                                    truncate_to_width(ui.painter(), &avatar.name, &font, tile),
-                                    font,
-                                    Color32::from_white_alpha(170),
-                                );
-                                if response.on_hover_text(&avatar.name).clicked() {
-                                    model.draft.avatar_url = Some(avatar.url.clone());
-                                }
-                            }
-                        });
-                        ui.add_space(gap);
-                    }
+    panel(ui, |ui| {
+        ui.set_width(width - 44.0);
+        let inner = ui.available_width();
+        if secondary_button(ui, &t("profiles.choose_image"), inner).clicked() {
+            *request = Some(ProfilesRequest::PickAvatarImage);
+        }
+        if model.picker.avatar_packs.is_empty() {
+            ui.add_space(14.0);
+            ui.label(
+                RichText::new(t("profiles.no_avatar_packs"))
+                    .size(13.0)
+                    .color(Color32::from_white_alpha(110)),
+            );
+            return;
+        }
+        ui.add_space(16.0);
+        ui.horizontal(|ui| {
+            field_label(ui, &t("profiles.avatar_packs"));
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                let refresh = components::icon_button(
+                    ui,
+                    assets.icon("Refresh"),
+                    24.0,
+                    Color32::from_white_alpha(150),
+                    false,
+                    false,
+                    !model.busy,
+                )
+                .on_hover_text(t("profiles.refresh_pack"));
+                if refresh.clicked() {
+                    *request = Some(ProfilesRequest::RefreshAllPacks);
                 }
             });
+        });
+        let tile = 64.0;
+        let gap = 10.0;
+        let per_row = (((inner + gap) / (tile + gap)).floor() as usize).max(1);
+        for pack in model.picker.avatar_packs.clone() {
+            ui.add_space(12.0);
+            ui.label(
+                RichText::new(&pack.title)
+                    .size(13.0)
+                    .strong()
+                    .color(Color32::from_white_alpha(210)),
+            );
+            ui.add_space(8.0);
+            for chunk in pack.avatars.chunks(per_row) {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = gap;
+                    for avatar in chunk {
+                        let (rect, response) =
+                            ui.allocate_exact_size(Vec2::new(tile, tile + 20.0), Sense::click());
+                        let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
+                        components::avatar(
+                            ui.painter(),
+                            assets,
+                            center,
+                            tile * 0.5,
+                            &avatar.name,
+                            Some(&avatar.url),
+                        );
+                        let selected =
+                            model.draft.avatar_url.as_deref() == Some(avatar.url.as_str());
+                        if selected || response.hovered() {
+                            ui.painter().circle_stroke(
+                                center,
+                                tile * 0.5 + 2.0,
+                                egui::Stroke::new(
+                                    2.0,
+                                    Color32::from_white_alpha(if selected { 255 } else { 90 }),
+                                ),
+                            );
+                        }
+                        let font = FontId::proportional(11.0);
+                        ui.painter().text(
+                            Pos2::new(center.x, rect.bottom() - 6.0),
+                            Align2::CENTER_CENTER,
+                            truncate_to_width(ui.painter(), &avatar.name, &font, tile),
+                            font,
+                            Color32::from_white_alpha(170),
+                        );
+                        if response.on_hover_text(&avatar.name).clicked() {
+                            model.draft.avatar_url = Some(avatar.url.clone());
+                        }
+                    }
+                });
+                ui.add_space(gap);
+            }
         }
+    });
+}
 
 fn draw_picker_settings(
     ui: &mut egui::Ui,
@@ -898,7 +995,12 @@ fn draw_picker_settings(
         );
         panel(ui, |ui| {
             ui.set_width(width - 44.0);
-            ui.label(RichText::new(t("profiles.picker_background")).size(19.0).strong().color(Color32::WHITE));
+            ui.label(
+                RichText::new(t("profiles.picker_background"))
+                    .size(19.0)
+                    .strong()
+                    .color(Color32::WHITE),
+            );
             ui.add_space(16.0);
             let has_background = model.picker.background_url.is_some();
             let buttons = if has_background { 2.0 } else { 1.0 };
@@ -915,16 +1017,32 @@ fn draw_picker_settings(
                 if field.lost_focus() {
                     *request = Some(ProfilesRequest::SaveBackground);
                 }
-                if components::icon_button(ui, assets.icon("ImagePlus"), 44.0, Color32::from_white_alpha(200), true, false, true)
-                    .on_hover_text(t("profiles.choose_image"))
-                    .clicked()
+                if components::icon_button(
+                    ui,
+                    assets.icon("ImagePlus"),
+                    44.0,
+                    Color32::from_white_alpha(200),
+                    true,
+                    false,
+                    true,
+                )
+                .on_hover_text(t("profiles.choose_image"))
+                .clicked()
                 {
                     *request = Some(ProfilesRequest::PickBackgroundImage);
                 }
                 if has_background
-                    && components::icon_button(ui, assets.icon("Delete"), 44.0, Color32::from_white_alpha(200), true, false, true)
-                        .on_hover_text(t("profiles.clear_background"))
-                        .clicked()
+                    && components::icon_button(
+                        ui,
+                        assets.icon("Delete"),
+                        44.0,
+                        Color32::from_white_alpha(200),
+                        true,
+                        false,
+                        true,
+                    )
+                    .on_hover_text(t("profiles.clear_background"))
+                    .clicked()
                 {
                     model.background_input.clear();
                     *request = Some(ProfilesRequest::SaveBackground);
@@ -934,7 +1052,12 @@ fn draw_picker_settings(
         ui.add_space(20.0);
         panel(ui, |ui| {
             ui.set_width(width - 44.0);
-            ui.label(RichText::new(t("profiles.avatar_packs")).size(19.0).strong().color(Color32::WHITE));
+            ui.label(
+                RichText::new(t("profiles.avatar_packs"))
+                    .size(19.0)
+                    .strong()
+                    .color(Color32::WHITE),
+            );
             ui.add_space(6.0);
             ui.label(
                 RichText::new(t("profiles.avatar_packs_desc"))
@@ -952,8 +1075,13 @@ fn draw_picker_settings(
                     field_width,
                     false,
                 );
-                let submit = field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
-                let label = if model.busy { t("common.loading") } else { t("profiles.add_pack") };
+                let submit =
+                    field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+                let label = if model.busy {
+                    t("common.loading")
+                } else {
+                    t("profiles.add_pack")
+                };
                 let can_add = !model.repository_input.trim().is_empty() && !model.busy;
                 if (primary_button(ui, &label, 140.0, can_add).clicked() || submit) && can_add {
                     *request = Some(ProfilesRequest::AddRepository);
@@ -981,34 +1109,74 @@ fn draw_picker_settings(
                                 Sense::hover(),
                             );
                             for (index, avatar) in pack.avatars.iter().take(previews).enumerate() {
-                                let center = Pos2::new(rect.left() + 24.0 + index as f32 * 32.0, rect.center().y);
-                                ui.painter().circle_filled(center, 24.5, Color32::from_rgb(20, 20, 20));
-                                components::avatar(ui.painter(), assets, center, 23.0, &avatar.name, Some(&avatar.url));
+                                let center = Pos2::new(
+                                    rect.left() + 24.0 + index as f32 * 32.0,
+                                    rect.center().y,
+                                );
+                                ui.painter().circle_filled(
+                                    center,
+                                    24.5,
+                                    Color32::from_rgb(20, 20, 20),
+                                );
+                                components::avatar(
+                                    ui.painter(),
+                                    assets,
+                                    center,
+                                    23.0,
+                                    &avatar.name,
+                                    Some(&avatar.url),
+                                );
                             }
                             ui.add_space(8.0);
                             ui.label(
                                 RichText::new(format!(
                                     "{} · {}",
                                     pack.title,
-                                    t("profiles.avatar_pack_count").replacen("%s", &pack.avatars.len().to_string(), 1)
+                                    t("profiles.avatar_pack_count").replacen(
+                                        "%s",
+                                        &pack.avatars.len().to_string(),
+                                        1
+                                    )
                                 ))
                                 .size(14.0)
                                 .color(Color32::from_white_alpha(220)),
                             );
-                            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                                if components::icon_button(ui, assets.icon("Delete"), 32.0, Color32::from_rgb(211, 74, 74), false, false, true)
+                            ui.with_layout(
+                                egui::Layout::right_to_left(egui::Align::Center),
+                                |ui| {
+                                    if components::icon_button(
+                                        ui,
+                                        assets.icon("Delete"),
+                                        32.0,
+                                        Color32::from_rgb(211, 74, 74),
+                                        false,
+                                        false,
+                                        true,
+                                    )
                                     .on_hover_text(t("profiles.remove_pack"))
                                     .clicked()
-                                {
-                                    *request = Some(ProfilesRequest::RemovePack(pack.id.clone()));
-                                }
-                                if components::icon_button(ui, assets.icon("Refresh"), 32.0, Color32::from_white_alpha(170), false, false, !model.busy)
+                                    {
+                                        *request =
+                                            Some(ProfilesRequest::RemovePack(pack.id.clone()));
+                                    }
+                                    if components::icon_button(
+                                        ui,
+                                        assets.icon("Refresh"),
+                                        32.0,
+                                        Color32::from_white_alpha(170),
+                                        false,
+                                        false,
+                                        !model.busy,
+                                    )
                                     .on_hover_text(t("profiles.refresh_pack"))
                                     .clicked()
-                                {
-                                    *request = Some(ProfilesRequest::RefreshRepository(pack.repository_url.clone()));
-                                }
-                            });
+                                    {
+                                        *request = Some(ProfilesRequest::RefreshRepository(
+                                            pack.repository_url.clone(),
+                                        ));
+                                    }
+                                },
+                            );
                         });
                     });
                 ui.add_space(10.0);
@@ -1017,8 +1185,12 @@ fn draw_picker_settings(
         ui.add_space(16.0);
         if ui
             .add(
-                egui::Button::new(RichText::new(format!("‹  {}", t("common.back"))).size(14.0).color(Color32::WHITE))
-                    .frame(false),
+                egui::Button::new(
+                    RichText::new(format!("‹  {}", t("common.back")))
+                        .size(14.0)
+                        .color(Color32::WHITE),
+                )
+                .frame(false),
             )
             .clicked()
         {
@@ -1030,7 +1202,10 @@ fn draw_picker_settings(
 
 fn modal(context: &egui::Context, screen: Rect, id: &str, add: impl FnOnce(&mut egui::Ui)) {
     context
-        .layer_painter(egui::LayerId::new(egui::Order::Middle, Id::new((id, "scrim"))))
+        .layer_painter(egui::LayerId::new(
+            egui::Order::Middle,
+            Id::new((id, "scrim")),
+        ))
         .rect_filled(screen, 0.0, Color32::from_black_alpha(170));
     egui::Area::new(Id::new(id))
         .order(egui::Order::Foreground)
@@ -1060,15 +1235,30 @@ fn draw_pin_prompt(
     let Some(prompt) = model.pin_prompt.clone() else {
         return;
     };
-    let profile = model.profile(&prompt.profile_id).cloned().unwrap_or_default();
+    let profile = model
+        .profile(&prompt.profile_id)
+        .cloned()
+        .unwrap_or_default();
     let mut pin = prompt.pin.clone();
     let mut cancel = false;
     modal(context, screen, "fluxa-profiles-pin", |ui| {
         ui.vertical_centered(|ui| {
             let (rect, _) = ui.allocate_exact_size(Vec2::splat(72.0), Sense::hover());
-            components::avatar(ui.painter(), assets, rect.center(), 36.0, &profile.name, profile.avatar_url.as_deref());
+            components::avatar(
+                ui.painter(),
+                assets,
+                rect.center(),
+                36.0,
+                &profile.name,
+                profile.avatar_url.as_deref(),
+            );
             ui.add_space(12.0);
-            ui.label(RichText::new(&profile.name).size(18.0).strong().color(Color32::WHITE));
+            ui.label(
+                RichText::new(&profile.name)
+                    .size(18.0)
+                    .strong()
+                    .color(Color32::WHITE),
+            );
             ui.add_space(4.0);
             ui.label(
                 RichText::new(t("profiles.pin_prompt"))

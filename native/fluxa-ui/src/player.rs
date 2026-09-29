@@ -285,7 +285,11 @@ struct Chrome<'a> {
 
 impl Chrome<'_> {
     fn margin(&self) -> f32 {
-        let min = if self.viewport.is_compact() { 14.0 } else { 22.0 };
+        let min = if self.viewport.is_compact() {
+            14.0
+        } else {
+            22.0
+        };
         (self.rect.width() * 0.035).clamp(min, 64.0)
     }
 
@@ -342,7 +346,13 @@ impl Chrome<'_> {
         }
     }
 
-    fn seek_bar(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, track: Rect, thickness: f32) -> f64 {
+    fn seek_bar(
+        &self,
+        ui: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        track: Rect,
+        thickness: f32,
+    ) -> f64 {
         let player = self.player;
         let seek = ui.interact(
             track.expand2(Vec2::new(0.0, 10.0)),
@@ -360,7 +370,13 @@ impl Chrome<'_> {
             layout.seek_to = Some(position);
         }
         let y = track.center().y;
-        painter_bar(self.painter, track, thickness, Color32::from_white_alpha(95), track.width());
+        painter_bar(
+            self.painter,
+            track,
+            thickness,
+            Color32::from_white_alpha(95),
+            track.width(),
+        );
         if duration <= 0.0 {
             return position;
         }
@@ -414,12 +430,20 @@ impl Chrome<'_> {
             }
         );
         let response = ui.interact(rect, Id::new("fluxa-player-upscaling"), Sense::click());
-        self.painter.rect_filled(
+        crate::components::glass(
+            self.painter,
             rect,
             rect.height() * 0.5,
             Color32::from_white_alpha(if response.hovered() { 40 } else { 22 }),
         );
-        self.text(rect.center(), Align2::CENTER_CENTER, &label, size, rect.width() - 12.0, 225);
+        self.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            &label,
+            size,
+            rect.width() - 12.0,
+            225,
+        );
         layout.focusable.push((NODE_PLAYER_UPSCALING, rect));
         if response.clicked() {
             layout.activated = Some(NODE_PLAYER_UPSCALING);
@@ -483,9 +507,30 @@ fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout)
     let position = chrome.seek_bar(ui, layout, track, 3.0);
     let y = rect.bottom() - 48.0 - chrome.viewport.safe_bottom;
     let play = if player.paused { "play" } else { "pause" };
-    chrome.button(ui, layout, Pos2::new(margin + 23.0, y), 48.0, play, NODE_PLAYER_TOGGLE);
-    chrome.button(ui, layout, Pos2::new(margin + 84.0, y), 42.0, "back", NODE_PLAYER_REWIND);
-    chrome.button(ui, layout, Pos2::new(margin + 132.0, y), 42.0, "forward", NODE_PLAYER_FORWARD);
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 23.0, y),
+        48.0,
+        play,
+        NODE_PLAYER_TOGGLE,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 84.0, y),
+        42.0,
+        "back",
+        NODE_PLAYER_REWIND,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 132.0, y),
+        42.0,
+        "forward",
+        NODE_PLAYER_FORWARD,
+    );
     let right = rect.right() - margin - 20.0;
     let volume_x = right - 52.0;
     let upscaling = Rect::from_center_size(Pos2::new(volume_x - 138.0, y), Vec2::new(150.0, 34.0));
@@ -497,15 +542,36 @@ fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout)
         (upscaling.left() - margin - 166.0).max(0.0),
         218,
     );
-    chrome.button(ui, layout, Pos2::new(right, y), 42.0, "fullscreen", NODE_PLAYER_FULLSCREEN);
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(right, y),
+        42.0,
+        "fullscreen",
+        NODE_PLAYER_FULLSCREEN,
+    );
     let mute = if player.muted { "mute" } else { "volume" };
-    chrome.button(ui, layout, Pos2::new(volume_x, y), 42.0, mute, NODE_PLAYER_MUTE);
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(volume_x, y),
+        42.0,
+        mute,
+        NODE_PLAYER_MUTE,
+    );
     let volume = if player.muted {
         localized("player.muted", &player.language)
     } else {
         format!("{}%", player.volume.round() as i32)
     };
-    chrome.text(Pos2::new(volume_x - 18.0, y), Align2::RIGHT_CENTER, &volume, 12.0, 60.0, 170);
+    chrome.text(
+        Pos2::new(volume_x - 18.0, y),
+        Align2::RIGHT_CENTER,
+        &volume,
+        12.0,
+        60.0,
+        170,
+    );
     chrome.upscaling(ui, layout, upscaling, 13.0);
 }
 
@@ -541,9 +607,23 @@ fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) 
     let center = rect.center();
     let gap = (rect.width() * 0.26).min(150.0);
     let play = if player.paused { "play" } else { "pause" };
-    chrome.button(ui, layout, center - Vec2::new(gap, 0.0), 56.0, "back", NODE_PLAYER_REWIND);
+    chrome.button(
+        ui,
+        layout,
+        center - Vec2::new(gap, 0.0),
+        56.0,
+        "back",
+        NODE_PLAYER_REWIND,
+    );
     chrome.button(ui, layout, center, 76.0, play, NODE_PLAYER_TOGGLE);
-    chrome.button(ui, layout, center + Vec2::new(gap, 0.0), 56.0, "forward", NODE_PLAYER_FORWARD);
+    chrome.button(
+        ui,
+        layout,
+        center + Vec2::new(gap, 0.0),
+        56.0,
+        "forward",
+        NODE_PLAYER_FORWARD,
+    );
     let track = Rect::from_min_size(
         Pos2::new(margin, rect.bottom() - 44.0 - chrome.viewport.safe_bottom),
         Vec2::new((rect.width() - margin * 2.0).max(80.0), 20.0),
@@ -609,10 +689,32 @@ fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
         218,
     );
     let play = if player.paused { "play" } else { "pause" };
-    chrome.button(ui, layout, Pos2::new(margin + 28.0, y), 56.0, play, NODE_PLAYER_TOGGLE);
-    chrome.button(ui, layout, Pos2::new(margin + 96.0, y), 52.0, "back", NODE_PLAYER_REWIND);
-    chrome.button(ui, layout, Pos2::new(margin + 160.0, y), 52.0, "forward", NODE_PLAYER_FORWARD);
-    let upscaling = Rect::from_min_size(Pos2::new(margin + 204.0, y - 22.0), Vec2::new(190.0, 44.0));
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 28.0, y),
+        56.0,
+        play,
+        NODE_PLAYER_TOGGLE,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 96.0, y),
+        52.0,
+        "back",
+        NODE_PLAYER_REWIND,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 160.0, y),
+        52.0,
+        "forward",
+        NODE_PLAYER_FORWARD,
+    );
+    let upscaling =
+        Rect::from_min_size(Pos2::new(margin + 204.0, y - 22.0), Vec2::new(190.0, 44.0));
     chrome.upscaling(ui, layout, upscaling, 16.0);
 }
 
@@ -640,7 +742,9 @@ fn draw_recommendations(
     assets: &mut impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
-    let index = player.recommendation_index.min(player.recommendations.len() - 1);
+    let index = player
+        .recommendation_index
+        .min(player.recommendations.len() - 1);
     let hero = &player.recommendations[index];
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
@@ -678,7 +782,11 @@ fn draw_recommendations(
     );
 
     let margin = if compact { 16.0 } else { 56.0 };
-    let panel_width = if compact { rect.width() - margin * 2.0 } else { 496.0 };
+    let panel_width = if compact {
+        rect.width() - margin * 2.0
+    } else {
+        496.0
+    };
     let panel_left = if compact {
         margin
     } else {
@@ -727,14 +835,22 @@ fn draw_recommendations(
                 painter.text(
                     Pos2::new(panel_left + slide, cursor),
                     Align2::LEFT_BOTTOM,
-                    truncate_to_width(&painter, &hero.eyebrow, &FontId::proportional(14.0), panel_width),
+                    truncate_to_width(
+                        &painter,
+                        &hero.eyebrow,
+                        &FontId::proportional(14.0),
+                        panel_width,
+                    ),
                     FontId::proportional(14.0),
                     Color32::from_white_alpha(text_alpha.min(190)),
                 );
                 cursor -= 30.0;
             }
             let logo_box = Vec2::new(panel_width * 0.7, if compact { 72.0 } else { 120.0 });
-            let logo = hero.logo_url.as_deref().filter(|url| !url.trim().is_empty());
+            let logo = hero
+                .logo_url
+                .as_deref()
+                .filter(|url| !url.trim().is_empty());
             match components::title_logo(
                 context.pixels_per_point(),
                 logo,
@@ -745,7 +861,10 @@ fn draw_recommendations(
                 Some((texture, fitted)) => {
                     painter.image(
                         texture,
-                        Rect::from_min_size(Pos2::new(panel_left + slide, cursor - fitted.y), fitted),
+                        Rect::from_min_size(
+                            Pos2::new(panel_left + slide, cursor - fitted.y),
+                            fitted,
+                        ),
                         full_uv(),
                         Color32::from_white_alpha(text_alpha),
                     );
@@ -766,7 +885,11 @@ fn draw_recommendations(
                 for dot in 0..player.recommendations.len() {
                     let center = Pos2::new(panel_left + 5.0 + dot as f32 * 20.0, dots_y);
                     let hit = Rect::from_center_size(center, Vec2::splat(18.0));
-                    let response = ui.interact(hit, Id::new(("fluxa-player-recommendation-dot", dot)), Sense::click());
+                    let response = ui.interact(
+                        hit,
+                        Id::new(("fluxa-player-recommendation-dot", dot)),
+                        Sense::click(),
+                    );
                     let node = NODE_PLAYER_RECOMMENDATION_BASE + dot as u64;
                     layout.focusable.push((node, hit));
                     if response.clicked() {
@@ -787,12 +910,10 @@ fn draw_recommendations(
                 }
             }
 
-            let mut child = ui.new_child(
-                egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                    Pos2::new(panel_left, buttons_top),
-                    Vec2::new(panel_width, button_height),
-                )),
-            );
+            let mut child = ui.new_child(egui::UiBuilder::new().max_rect(Rect::from_min_size(
+                Pos2::new(panel_left, buttons_top),
+                Vec2::new(panel_width, button_height),
+            )));
             child.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 12.0;
                 let play = components::button_auto_width(
@@ -802,7 +923,9 @@ fn draw_recommendations(
                     metrics.nav_label_size + 2.0,
                     metrics,
                 );
-                layout.focusable.push((NODE_PLAYER_RECOMMENDATION_PLAY, play.rect));
+                layout
+                    .focusable
+                    .push((NODE_PLAYER_RECOMMENDATION_PLAY, play.rect));
                 if play.clicked() {
                     layout.activated = Some(NODE_PLAYER_RECOMMENDATION_PLAY);
                 }
@@ -813,7 +936,9 @@ fn draw_recommendations(
                     metrics.nav_label_size + 2.0,
                     metrics,
                 );
-                layout.focusable.push((NODE_PLAYER_RECOMMENDATION_DETAILS, details.rect));
+                layout
+                    .focusable
+                    .push((NODE_PLAYER_RECOMMENDATION_DETAILS, details.rect));
                 if details.clicked() {
                     layout.activated = Some(NODE_PLAYER_RECOMMENDATION_DETAILS);
                 }
@@ -829,7 +954,9 @@ fn draw_recommendations(
                 "close",
                 false,
             );
-            layout.focusable.push((NODE_PLAYER_RECOMMENDATIONS_CLOSE, dismiss.rect));
+            layout
+                .focusable
+                .push((NODE_PLAYER_RECOMMENDATIONS_CLOSE, dismiss.rect));
             if dismiss.clicked() {
                 layout.activated = Some(NODE_PLAYER_RECOMMENDATIONS_CLOSE);
             }
@@ -864,9 +991,9 @@ fn draw_mini_player(
         }
     }
     let hovered = ui.rect_contains_pointer(mini);
-    let shown = ui
-        .ctx()
-        .animate_bool_with_time(Id::new("fluxa-player-mini-controls"), hovered, 0.2);
+    let shown =
+        ui.ctx()
+            .animate_bool_with_time(Id::new("fluxa-player-mini-controls"), hovered, 0.2);
     if shown <= 0.0 {
         let hit = ui.interact(mini, Id::new("fluxa-player-mini"), Sense::click());
         if hit.clicked() {
@@ -883,7 +1010,11 @@ fn draw_mini_player(
     );
     let y = strip.center().y + 4.0;
     for (offset, icon, node) in [
-        (-40.0, if player.paused { "play" } else { "pause" }, NODE_PLAYER_TOGGLE),
+        (
+            -40.0,
+            if player.paused { "play" } else { "pause" },
+            NODE_PLAYER_TOGGLE,
+        ),
         (0.0, "fullscreen", NODE_PLAYER_RECOMMENDATIONS_CLOSE),
         (40.0, "close", NODE_PLAYER_CLOSE),
     ] {
@@ -961,7 +1092,10 @@ fn draw_pause_info(
         let fade = 1.0 - index as f32 / 24.0;
         let left = rect.left() + index as f32 * band;
         painter.rect_filled(
-            Rect::from_min_max(Pos2::new(left, rect.top()), Pos2::new(left + band, rect.bottom())),
+            Rect::from_min_max(
+                Pos2::new(left, rect.top()),
+                Pos2::new(left + band, rect.bottom()),
+            ),
             0.0,
             Color32::from_black_alpha((200.0 * fade.powf(1.4)).round() as u8),
         );
@@ -1005,7 +1139,8 @@ fn draw_pause_info(
             }),
         )),
         None => {
-            let galley = components::wrapped_text(painter, &player.title, 40.0, Color32::WHITE, width, 2);
+            let galley =
+                components::wrapped_text(painter, &player.title, 40.0, Color32::WHITE, width, 2);
             blocks.push((
                 galley.size().y + 12.0,
                 Box::new(move |painter, y| {
@@ -1072,7 +1207,11 @@ fn draw_warnings(context: &egui::Context, origin: Pos2, player: &PlayerModel, el
         origin,
         Vec2::new(text_width + 34.0, rows as f32 * row_height + 20.0),
     );
-    painter.rect_filled(panel, 6.0, Color32::from_black_alpha((173.0 * box_alpha) as u8));
+    painter.rect_filled(
+        panel,
+        6.0,
+        Color32::from_black_alpha((173.0 * box_alpha) as u8),
+    );
     let bar = panel.height() - 20.0;
     painter.rect_filled(
         Rect::from_min_size(
@@ -1145,17 +1284,33 @@ fn draw_loading(
                             progress,
                             0.42,
                         );
-                        painter.image(texture, logo_rect, full_uv(), Color32::from_rgba_unmultiplied(184, 184, 184, 89));
+                        painter.image(
+                            texture,
+                            logo_rect,
+                            full_uv(),
+                            Color32::from_rgba_unmultiplied(184, 184, 184, 89),
+                        );
                         let mut lit = logo_rect;
                         lit.set_right(logo_rect.left() + logo_rect.width() * shown);
-                        painter.with_clip_rect(lit).image(texture, logo_rect, full_uv(), Color32::WHITE);
+                        painter.with_clip_rect(lit).image(
+                            texture,
+                            logo_rect,
+                            full_uv(),
+                            Color32::WHITE,
+                        );
                     }
                     None => {
                         let time = context.input(|input| input.time) as f32;
                         let phase = 0.5 - 0.5 * (time * std::f32::consts::PI / 1.08).cos();
                         let alpha = 0.38 + 0.48 * phase;
-                        let scaled = Rect::from_center_size(center, fitted * (0.992 + 0.02 * phase));
-                        painter.image(texture, scaled, full_uv(), Color32::from_white_alpha((255.0 * alpha) as u8));
+                        let scaled =
+                            Rect::from_center_size(center, fitted * (0.992 + 0.02 * phase));
+                        painter.image(
+                            texture,
+                            scaled,
+                            full_uv(),
+                            Color32::from_white_alpha((255.0 * alpha) as u8),
+                        );
                         context.request_repaint();
                     }
                 }
@@ -1184,7 +1339,12 @@ fn draw_loading(
         painter.text(
             center + Vec2::new(0.0, 16.0),
             Align2::CENTER_CENTER,
-            truncate_to_width(painter, error, &FontId::proportional(14.0), rect.width() - 64.0),
+            truncate_to_width(
+                painter,
+                error,
+                &FontId::proportional(14.0),
+                rect.width() - 64.0,
+            ),
             FontId::proportional(14.0),
             Color32::from_white_alpha(170),
         );
@@ -1248,8 +1408,9 @@ fn control(
 ) -> egui::Response {
     let response = ui.interact(rect, Id::new(("fluxa-player-button", icon)), Sense::click());
     if prominent || response.hovered() || response.is_pointer_button_down_on() {
-        painter.circle_filled(
-            rect.center(),
+        crate::components::glass(
+            painter,
+            rect,
             rect.width() * 0.5,
             if prominent {
                 Color32::from_white_alpha(30)
@@ -1281,15 +1442,24 @@ fn control(
         "pause" => {
             for offset in [-4.0, 4.0] {
                 painter.rect_filled(
-                    Rect::from_center_size(c + s * Vec2::new(offset, 0.0), s * Vec2::new(4.0, 17.0)),
+                    Rect::from_center_size(
+                        c + s * Vec2::new(offset, 0.0),
+                        s * Vec2::new(4.0, 17.0),
+                    ),
                     1.0,
                     color,
                 );
             }
         }
         "close" => {
-            painter.line_segment([c + s * Vec2::new(-6.0, -6.0), c + s * Vec2::new(6.0, 6.0)], stroke);
-            painter.line_segment([c + s * Vec2::new(6.0, -6.0), c + s * Vec2::new(-6.0, 6.0)], stroke);
+            painter.line_segment(
+                [c + s * Vec2::new(-6.0, -6.0), c + s * Vec2::new(6.0, 6.0)],
+                stroke,
+            );
+            painter.line_segment(
+                [c + s * Vec2::new(6.0, -6.0), c + s * Vec2::new(-6.0, 6.0)],
+                stroke,
+            );
         }
         "back" | "forward" => {
             let sign = if icon == "back" { -1.0 } else { 1.0 };
@@ -1329,8 +1499,14 @@ fn control(
             ));
             if icon == "mute" {
                 let thin = egui::Stroke::new(1.8, color);
-                painter.line_segment([c + s * Vec2::new(5.0, -5.0), c + s * Vec2::new(11.0, 5.0)], thin);
-                painter.line_segment([c + s * Vec2::new(11.0, -5.0), c + s * Vec2::new(5.0, 5.0)], thin);
+                painter.line_segment(
+                    [c + s * Vec2::new(5.0, -5.0), c + s * Vec2::new(11.0, 5.0)],
+                    thin,
+                );
+                painter.line_segment(
+                    [c + s * Vec2::new(11.0, -5.0), c + s * Vec2::new(5.0, 5.0)],
+                    thin,
+                );
             } else {
                 painter.add(egui::Shape::line(
                     (0..=10)
@@ -1354,7 +1530,10 @@ fn control(
                 ((8.0, 3.0), (8.0, 8.0)),
                 ((8.0, 8.0), (3.0, 8.0)),
             ] {
-                painter.line_segment([c + s * Vec2::new(a.0, a.1), c + s * Vec2::new(b.0, b.1)], stroke);
+                painter.line_segment(
+                    [c + s * Vec2::new(a.0, a.1), c + s * Vec2::new(b.0, b.1)],
+                    stroke,
+                );
             }
         }
         _ => {}
@@ -1380,7 +1559,12 @@ pub fn torrent_status_lines(status: Option<&serde_json::Value>) -> (String, Stri
         );
     };
     let text = |key: &str| status.get(key).and_then(serde_json::Value::as_str);
-    let number = |key: &str| status.get(key).and_then(serde_json::Value::as_u64).unwrap_or(0);
+    let number = |key: &str| {
+        status
+            .get(key)
+            .and_then(serde_json::Value::as_u64)
+            .unwrap_or(0)
+    };
     if status.get("stat").and_then(serde_json::Value::as_i64) == Some(-1) {
         return (
             "Torrent stream reported an error".to_owned(),

@@ -59,7 +59,9 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
     match state.route {
-        Route::Home if settings.bool_value("homeHeroAutoplayTrailer") && state.home.show_hero_section => {
+        Route::Home
+            if settings.bool_value("homeHeroAutoplayTrailer") && state.home.show_hero_section =>
+        {
             let context = &state.gpu.as_ref()?.egui_context;
             let hero = fluxa_ui::active_home_hero(context, &state.home)?;
             Some(Wanted {
@@ -68,7 +70,9 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 delay: delay("homeHeroAutoplayTrailerDelaySecs"),
             })
         }
-        Route::Detail if settings.bool_value("detailHeroAutoplayTrailer") && !state.detail.id.is_empty() => {
+        Route::Detail
+            if settings.bool_value("detailHeroAutoplayTrailer") && !state.detail.id.is_empty() =>
+        {
             Some(Wanted {
                 key: state.detail.id.clone(),
                 urls: state.detail.trailers.clone(),
@@ -115,7 +119,11 @@ fn fetch(state: &mut RendererState) {
             .unwrap_or(&Value::Null),
     );
     let targets = std::mem::take(&mut trailers.targets);
-    trailers.fetching = Some(session.executor().fetch_trailers(targets, api_key, language));
+    trailers.fetching = Some(
+        session
+            .executor()
+            .fetch_trailers(targets, api_key, language),
+    );
 }
 
 fn reset(state: &mut RendererState) {
@@ -152,7 +160,11 @@ fn youtube_ids(urls: &[String]) -> Vec<String> {
 pub(crate) fn tick(state: &mut RendererState) {
     fetch(state);
     let wanted = wanted(state);
-    let current = state.trailers.active.as_ref().map(|active| active.key.as_str());
+    let current = state
+        .trailers
+        .active
+        .as_ref()
+        .map(|active| active.key.as_str());
     if current != wanted.as_ref().map(|wanted| wanted.key.as_str()) {
         reset(state);
         if let Some(wanted) = wanted {
@@ -249,7 +261,8 @@ fn play(state: &mut RendererState) {
         gpu,
         ..
     } = state;
-    let (Some(active), Some(video), Some(gpu)) = (trailers.active.as_mut(), video.as_mut(), gpu.as_mut())
+    let (Some(active), Some(video), Some(gpu)) =
+        (trailers.active.as_mut(), video.as_mut(), gpu.as_mut())
     else {
         return;
     };
@@ -278,7 +291,11 @@ fn play(state: &mut RendererState) {
 }
 
 fn publish(state: &mut RendererState) {
-    let active = state.trailers.active.as_ref().filter(|active| !active.failed);
+    let active = state
+        .trailers
+        .active
+        .as_ref()
+        .filter(|active| !active.failed);
     state.home.trailer = active
         .filter(|_| state.route == Route::Home)
         .map(|active| HeroTrailer {

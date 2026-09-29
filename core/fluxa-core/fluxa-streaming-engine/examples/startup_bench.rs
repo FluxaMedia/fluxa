@@ -6,15 +6,21 @@ fn main() {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .with_writer(std::io::stderr)
         .init();
-    let magnet = std::env::args().nth(1).expect("usage: startup_bench <magnet> [file_index]");
+    let magnet = std::env::args()
+        .nth(1)
+        .expect("usage: startup_bench <magnet> [file_index]");
     let index = std::env::args().nth(2).unwrap_or_else(|| "0".into());
     let cache = std::env::temp_dir().join(format!("fluxa-bench-{}", std::process::id()));
-    let server = fluxa_streaming_engine::start_torrent_server(cache.to_str().unwrap(), 0, "bench").unwrap();
+    let server =
+        fluxa_streaming_engine::start_torrent_server(cache.to_str().unwrap(), 0, "bench").unwrap();
     let server: serde_json::Value = serde_json::from_str(&server).unwrap();
     let base = server["url"].as_str().unwrap();
     let link: String = url::form_urlencoded::byte_serialize(magnet.as_bytes()).collect();
 
-    let client = reqwest::blocking::Client::builder().timeout(Duration::from_secs(600)).build().unwrap();
+    let client = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(600))
+        .build()
+        .unwrap();
     let start = Instant::now();
     let status_url = format!("{base}/torrents");
     let status_magnet = magnet.clone();
@@ -29,7 +35,9 @@ fn main() {
             else {
                 continue;
             };
-            let Ok(s) = res.json::<serde_json::Value>() else { continue };
+            let Ok(s) = res.json::<serde_json::Value>() else {
+                continue;
+            };
             eprintln!(
                 "{:5.1} {} seen={} connecting={} live={} speed={:.0}KB/s loaded={}",
                 start.elapsed().as_secs_f64(),
@@ -44,7 +52,9 @@ fn main() {
     });
     let mut out = serde_json::Map::new();
     let mut body = client
-        .get(format!("{base}/stream/fname?link={link}&index={index}&play"))
+        .get(format!(
+            "{base}/stream/fname?link={link}&index={index}&play"
+        ))
         .header("Range", "bytes=0-")
         .send()
         .unwrap();

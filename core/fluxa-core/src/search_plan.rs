@@ -20,8 +20,8 @@ pub(crate) use discover::{
 };
 pub(crate) use library_sort::library_sort_plan_json;
 pub(crate) use search::{
-    merge_search_sources, merge_search_sources_json, recent_searches_plan_json, search_result_grouping_json,
-    search_screen_plan_json, search_suggestions_plan_json,
+    merge_search_sources, merge_search_sources_json, recent_searches_plan_json,
+    search_result_grouping_json, search_screen_plan_json, search_suggestions_plan_json,
 };
 #[cfg(test)]
 mod tests {

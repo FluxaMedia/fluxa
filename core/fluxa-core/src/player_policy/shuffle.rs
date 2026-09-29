@@ -20,7 +20,11 @@ pub(crate) fn shuffle_episode_pick_json(request_json: &str) -> Option<String> {
         .collect();
     let restarted = fresh.is_empty();
     let pool = if restarted {
-        episodes.iter().copied().filter(|id| Some(*id) != current).collect()
+        episodes
+            .iter()
+            .copied()
+            .filter(|id| Some(*id) != current)
+            .collect()
     } else {
         fresh
     };

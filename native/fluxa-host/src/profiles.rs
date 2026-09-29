@@ -120,9 +120,9 @@ pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
             let Some(prompt) = model.pin_prompt.take() else {
                 return;
             };
-            let profile = stored_profiles(&storage)
-                .into_iter()
-                .find(|profile| profile.get("id").and_then(Value::as_str) == Some(&prompt.profile_id));
+            let profile = stored_profiles(&storage).into_iter().find(|profile| {
+                profile.get("id").and_then(Value::as_str) == Some(&prompt.profile_id)
+            });
             let matches = profile.is_some_and(|profile| {
                 core_value(
                     "profilePinMatches",
@@ -266,7 +266,10 @@ fn save(model: &mut ProfilesModel, storage: &Storage) {
         fields.remove("pinHash");
     }
     fields.insert("usesPrimaryAddons".into(), json!(draft.uses_primary_addons));
-    fields.insert("usesPrimaryPlugins".into(), json!(draft.uses_primary_plugins));
+    fields.insert(
+        "usesPrimaryPlugins".into(),
+        json!(draft.uses_primary_plugins),
+    );
     if let Some(next) = core_value(
         "profileMutationPlan",
         json!({"operation": "save", "profiles": profiles, "profile": profile}),
@@ -336,7 +339,9 @@ pub(crate) fn load_profile(session: &SessionHandle) -> Result<(), String> {
         return Ok(());
     }
     for url in urls.iter().filter_map(Value::as_str) {
-        session.dispatch(json!({"type": "addonInstallRequested", "transportUrl": url, "forceRefresh": true}))?;
+        session.dispatch(
+            json!({"type": "addonInstallRequested", "transportUrl": url, "forceRefresh": true}),
+        )?;
     }
     write(storage, &key, &json!([]));
     Ok(())
@@ -348,11 +353,18 @@ fn legacy_addons_key(profile_id: &str) -> String {
 
 pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
     let storage = Storage::open(data_dir)?;
-    if storage.read_json("profiles")?.is_some_and(|profiles| profiles.is_array()) {
+    if storage
+        .read_json("profiles")?
+        .is_some_and(|profiles| profiles.is_array())
+    {
         return Ok(false);
     }
     let legacy: Value = serde_json::from_str(legacy).map_err(|error| error.to_string())?;
-    let legacy = if legacy.get("prefs").is_some() { from_android_prefs(&legacy) } else { legacy };
+    let legacy = if legacy.get("prefs").is_some() {
+        from_android_prefs(&legacy)
+    } else {
+        legacy
+    };
     let profiles = legacy
         .get("profiles")
         .and_then(Value::as_array)
@@ -361,7 +373,9 @@ pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
     for profile in &profiles {
         let (Some(id), Some(addons)) = (
             profile.get("id").and_then(Value::as_str),
-            profile.get("localAddons").filter(|addons| addons.is_array()),
+            profile
+                .get("localAddons")
+                .filter(|addons| addons.is_array()),
         ) else {
             continue;
         };
@@ -371,7 +385,11 @@ pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
     if let Some(active) = legacy.get("activeProfileId").filter(|id| id.is_string()) {
         storage.write_json("active_profile_id", active)?;
     }
-    if let Some(mut picker) = legacy.get("pickerSettings").filter(|picker| picker.is_object()).cloned() {
+    if let Some(mut picker) = legacy
+        .get("pickerSettings")
+        .filter(|picker| picker.is_object())
+        .cloned()
+    {
         for pack in picker
             .get_mut("avatarPacks")
             .and_then(Value::as_array_mut)
@@ -390,24 +408,45 @@ pub fn import_legacy(data_dir: PathBuf, legacy: &str) -> Result<bool, String> {
 
 fn from_android_prefs(raw: &Value) -> Value {
     let prefs = &raw["prefs"];
-    let text = |value: &Value| value.as_str().and_then(|text| serde_json::from_str::<Value>(text).ok());
+    let text = |value: &Value| {
+        value
+            .as_str()
+            .and_then(|text| serde_json::from_str::<Value>(text).ok())
+    };
     let profiles = text(&prefs["profiles_list"])
         .and_then(|list| list.as_array().cloned())
         .unwrap_or_default()
         .into_iter()
         .filter_map(|profile| {
-            let schema = profile.get("schemaVersion").and_then(Value::as_i64).unwrap_or(0);
-            let mut profile = core_value("profileSettingsMigrationPlan", json!({"raw": profile, "schemaVersion": schema}))
-                .and_then(|plan| plan.get("migratedProfile").cloned())
-                .filter(Value::is_object)?;
-            let id = profile.get("id").and_then(Value::as_str).unwrap_or_default().to_string();
+            let schema = profile
+                .get("schemaVersion")
+                .and_then(Value::as_i64)
+                .unwrap_or(0);
+            let mut profile = core_value(
+                "profileSettingsMigrationPlan",
+                json!({"raw": profile, "schemaVersion": schema}),
+            )
+            .and_then(|plan| plan.get("migratedProfile").cloned())
+            .filter(Value::is_object)?;
+            let id = profile
+                .get("id")
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+                .to_string();
             if let Some(Value::Object(credentials)) = text(&raw["credentials"][&id]) {
-                for (key, value) in credentials.into_iter().filter(|(_, value)| !value.is_null()) {
+                for (key, value) in credentials
+                    .into_iter()
+                    .filter(|(_, value)| !value.is_null())
+                {
                     profile[key] = value;
                 }
             }
             let key = core_value("profileLocalAddonsKey", profile.clone());
-            if let Some(addons) = key.as_ref().and_then(Value::as_str).and_then(|key| text(&prefs[key])) {
+            if let Some(addons) = key
+                .as_ref()
+                .and_then(Value::as_str)
+                .and_then(|key| text(&prefs[key]))
+            {
                 profile["localAddons"] = addons;
             }
             Some(profile)
@@ -543,7 +582,11 @@ pub(crate) fn poll(state: &mut RendererState) {
     };
     let adding = job.adding;
     state.pack_job = None;
-    let Some(storage) = state.session.as_ref().map(|session| session.storage().clone()) else {
+    let Some(storage) = state
+        .session
+        .as_ref()
+        .map(|session| session.storage().clone())
+    else {
         return;
     };
     let Some(model) = state.profiles.as_mut() else {
@@ -561,7 +604,13 @@ pub(crate) fn poll(state: &mut RendererState) {
                 if adding {
                     let fresh = packs
                         .into_iter()
-                        .filter(|pack| !model.picker.avatar_packs.iter().any(|known| known.id == pack.id))
+                        .filter(|pack| {
+                            !model
+                                .picker
+                                .avatar_packs
+                                .iter()
+                                .any(|known| known.id == pack.id)
+                        })
                         .collect::<Vec<_>>();
                     duplicate = fresh.is_empty();
                     added += fresh.len();
@@ -595,4 +644,3 @@ pub(crate) fn poll(state: &mut RendererState) {
         None
     };
 }
-

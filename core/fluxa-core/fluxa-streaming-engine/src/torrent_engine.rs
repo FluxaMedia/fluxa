@@ -8,7 +8,8 @@ use librqbit::api::{ApiTorrentListOpts, TorrentDetailsResponse, TorrentIdOrHash}
 use librqbit::dht::{DhtPersistenceConfig, Id20};
 use librqbit::{
     AddTorrent, AddTorrentOptions, Api, DhtSessionConfig, ListenerMode, ListenerOptions,
-    MagnetResolveSnapshot, PeerConnectionOptions, Session, SessionOptions, SessionPersistenceConfig, TorrentStatsState,
+    MagnetResolveSnapshot, PeerConnectionOptions, Session, SessionOptions,
+    SessionPersistenceConfig, TorrentStatsState,
 };
 use serde::Deserialize;
 use serde_json::{Value, json};

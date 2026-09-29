@@ -76,9 +76,10 @@ pub(crate) fn provider_auth_request_json(args_json: &str) -> Option<String> {
             let mut oauth = args.clone();
             oauth["service"] = json!("trakt");
             oauth["operation"] = json!(operation);
-            let plan: Value =
-                serde_json::from_str(&crate::oauth_plan::oauth_request_plan_json(&oauth.to_string())?)
-                    .ok()?;
+            let plan: Value = serde_json::from_str(&crate::oauth_plan::oauth_request_plan_json(
+                &oauth.to_string(),
+            )?)
+            .ok()?;
             request(
                 provider,
                 &json!({"clientId": client_id}),
@@ -157,7 +158,10 @@ pub(crate) fn provider_auth_outcome_json(args_json: &str) -> Option<String> {
     if state != "success" {
         return serde_json::to_string(&json!({"state": state})).ok();
     }
-    let created_at = body.get("created_at").and_then(Value::as_i64).unwrap_or(now);
+    let created_at = body
+        .get("created_at")
+        .and_then(Value::as_i64)
+        .unwrap_or(now);
     let expires_at = body
         .get("expires_in")
         .and_then(Value::as_i64)
@@ -222,9 +226,18 @@ pub(crate) fn provider_library_requests_json(args_json: &str) -> Option<String> 
                 "watchlist",
                 mdblist_plan::mdblist_watchlist_items_url(None, "{}"),
             ),
-            get("watched", mdblist_plan::mdblist_sync_get_url("watched", "{}")?),
-            get("dropped", mdblist_plan::mdblist_sync_get_url("dropped", "{}")?),
-            get("playback", mdblist_plan::mdblist_sync_get_url("playback", "{}")?),
+            get(
+                "watched",
+                mdblist_plan::mdblist_sync_get_url("watched", "{}")?,
+            ),
+            get(
+                "dropped",
+                mdblist_plan::mdblist_sync_get_url("dropped", "{}")?,
+            ),
+            get(
+                "playback",
+                mdblist_plan::mdblist_sync_get_url("playback", "{}")?,
+            ),
         ],
         _ => return None,
     };
@@ -367,7 +380,10 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
             };
             let (completed_shows, completed_movies) = simkl_bucket(&responses, "completed");
             let (watching_shows, watching_movies) = simkl_bucket(&responses, "watching");
-            let watching = parsed(simkl_watching_to_items_json(&watching_shows, &watching_movies));
+            let watching = parsed(simkl_watching_to_items_json(
+                &watching_shows,
+                &watching_movies,
+            ));
             let continue_watching = parsed(simkl_merge_playback_progress_json(
                 &watching.to_string(),
                 &response_str(&responses, "playback"),
@@ -391,7 +407,11 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
                         body.get("movies").cloned().unwrap_or(json!([])),
                         body.get("episodes").cloned().unwrap_or(json!([])),
                         body.get("playback").cloned().unwrap_or(json!([])),
-                        if body.is_array() { body.clone() } else { json!([]) },
+                        if body.is_array() {
+                            body.clone()
+                        } else {
+                            json!([])
+                        },
                     ])
                 })
                 .unwrap_or(json!([]));
@@ -426,7 +446,10 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
         "toggleWatchlist" => {
             let item = command.get("item")?;
             let id = str_field(item, "id");
-            let remove = command.get("remove").and_then(Value::as_bool).unwrap_or(false);
+            let remove = command
+                .get("remove")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
             match provider {
                 "trakt" => {
                     let body = trakt_collection_body_json(
@@ -451,7 +474,11 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
                         })
                         .to_string(),
                     )?;
-                    let path = if remove { "sync/history/remove" } else { "sync/add-to-list" };
+                    let path = if remove {
+                        "sync/history/remove"
+                    } else {
+                        "sync/add-to-list"
+                    };
                     requests.push(post(
                         format!("{SIMKL_API}/{path}"),
                         serde_json::from_str(&body).ok()?,
@@ -469,7 +496,10 @@ pub(crate) fn provider_write_requests_json(args_json: &str) -> Option<String> {
         }
         "markWatched" => {
             let series_id = str_field(command, "seriesId");
-            let watched = command.get("watched").and_then(Value::as_bool).unwrap_or(true);
+            let watched = command
+                .get("watched")
+                .and_then(Value::as_bool)
+                .unwrap_or(true);
             let video_ids = command
                 .get("videoIds")
                 .cloned()

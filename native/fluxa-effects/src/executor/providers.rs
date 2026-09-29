@@ -179,7 +179,11 @@ impl EffectExecutor {
     pub(super) async fn exchange_auth_code(&self, payload: &Value) -> Result<Value, String> {
         let provider = str_field(payload, "provider");
         let outcome = self
-            .auth_call(provider, "poll", json!({"code": str_field(payload, "code")}))
+            .auth_call(
+                provider,
+                "poll",
+                json!({"code": str_field(payload, "code")}),
+            )
             .await?;
         match str_field(&outcome, "state") {
             "success" => {
@@ -223,14 +227,22 @@ impl EffectExecutor {
         if str_field(&outcome, "state") != "success" {
             return Err("Trakt session expired".to_owned());
         }
-        self.merge_auth(provider, &profile, outcome.get("auth").unwrap_or(&Value::Null))
+        self.merge_auth(
+            provider,
+            &profile,
+            outcome.get("auth").unwrap_or(&Value::Null),
+        )
     }
 
     fn provider_cache_key(provider: &str, profile_id: &str) -> String {
         format!("provider_library_{provider}_{}", sanitize_key(profile_id))
     }
 
-    pub(super) fn cached_provider_library(&self, provider: &str, profile_id: &str) -> Option<Value> {
+    pub(super) fn cached_provider_library(
+        &self,
+        provider: &str,
+        profile_id: &str,
+    ) -> Option<Value> {
         self.storage
             .read_json(&Self::provider_cache_key(provider, profile_id))
             .ok()
@@ -249,7 +261,9 @@ impl EffectExecutor {
         profile_id: &str,
         profile: &Value,
     ) -> Result<Value, String> {
-        let profile = self.refreshed_profile(provider, profile.clone(), false).await?;
+        let profile = self
+            .refreshed_profile(provider, profile.clone(), false)
+            .await?;
         let credentials = self
             .provider_credentials(provider, &profile)
             .ok_or_else(|| format!("{provider} is not connected to the active profile"))?;
@@ -259,7 +273,12 @@ impl EffectExecutor {
         let client = http_client()?;
         let results = futures::future::join_all(requests.iter().map(|request| {
             let client = &client;
-            async move { (str_field(request, "key").to_owned(), send(client, request).await) }
+            async move {
+                (
+                    str_field(request, "key").to_owned(),
+                    send(client, request).await,
+                )
+            }
         }))
         .await;
         let mut responses = Map::new();
@@ -332,10 +351,14 @@ impl EffectExecutor {
             "watched": payload.get("watched").and_then(Value::as_bool).unwrap_or(true),
         });
         for provider in ["trakt", "simkl", "mdblist"] {
-            if provider == library_source || self.provider_credentials(provider, &profile).is_none() {
+            if provider == library_source || self.provider_credentials(provider, &profile).is_none()
+            {
                 continue;
             }
-            if let Err(error) = self.push_provider_command(provider, &profile, &command).await {
+            if let Err(error) = self
+                .push_provider_command(provider, &profile, &command)
+                .await
+            {
                 crate::log!("[fluxa-native] {provider} watched sync failed: {error}");
             }
         }

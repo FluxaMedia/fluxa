@@ -31,7 +31,12 @@ impl BridgeVideo {
 
 impl VideoBackend for BridgeVideo {
     fn configure(&mut self, settings: &Value) {
-        let text = |key: &str| settings.get(key).and_then(Value::as_str).unwrap_or_default();
+        let text = |key: &str| {
+            settings
+                .get(key)
+                .and_then(Value::as_str)
+                .unwrap_or_default()
+        };
         self.send(json!({
             "type": "configure",
             "mpvOptions": text("mpvCustomOptions"),
@@ -71,7 +76,10 @@ impl VideoBackend for BridgeVideo {
     }
 
     fn status(&mut self) -> VideoStatus {
-        self.0.lock().map(|bridge| bridge.status.clone()).unwrap_or_default()
+        self.0
+            .lock()
+            .map(|bridge| bridge.status.clone())
+            .unwrap_or_default()
     }
 
     fn passthrough(&self) -> bool {

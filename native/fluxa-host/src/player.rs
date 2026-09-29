@@ -45,7 +45,10 @@ pub enum VideoCommand {
 }
 
 pub type DeviceOpener = Arc<
-    dyn Fn(&wgpu::Adapter, &wgpu::DeviceDescriptor<'_>) -> Result<(wgpu::Device, wgpu::Queue), String>
+    dyn Fn(
+            &wgpu::Adapter,
+            &wgpu::DeviceDescriptor<'_>,
+        ) -> Result<(wgpu::Device, wgpu::Queue), String>
         + Send
         + Sync,
 >;
@@ -241,7 +244,10 @@ impl PlayerSession {
             episode_title: self.episode_title.clone(),
             description: self.description.clone(),
             chapters: self.status.chapters.clone(),
-            thumbnail: self.thumbnail.as_ref().map(|(time, texture)| (*time, texture.id())),
+            thumbnail: self
+                .thumbnail
+                .as_ref()
+                .map(|(time, texture)| (*time, texture.id())),
             warnings: self.warnings.clone(),
             warnings_elapsed: self.warnings_clock,
             language: self.language.clone(),
@@ -384,7 +390,9 @@ fn advance_shuffle(state: &mut RendererState) {
     let next = state.shuffle.as_mut().and_then(Shuffle::pick);
     close(state);
     match next {
-        Some(item) => state.pending_native_actions.push(crate::NativeAction::StartPlayback { item }),
+        Some(item) => state
+            .pending_native_actions
+            .push(crate::NativeAction::StartPlayback { item }),
         None => state.shuffle = None,
     }
 }
@@ -465,7 +473,11 @@ pub(crate) fn pump(state: &mut RendererState) {
         player.status = video.status();
         if player.status.has_frame && player.scrobbled != Some(player.status.paused) {
             player.scrobbled = Some(player.status.paused);
-            let action = if player.status.paused { "pause" } else { "start" };
+            let action = if player.status.paused {
+                "pause"
+            } else {
+                "start"
+            };
             scrobble(session, player, &snapshot, action);
         }
         if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
@@ -504,9 +516,8 @@ pub(crate) fn pump(state: &mut RendererState) {
     player.episode_title = episode_title(&player.meta, &snapshot);
     if !player.warnings_requested {
         player.warnings_requested = true;
-        player.language = profile_language(
-            snapshot.pointer("/profile/active").unwrap_or(&Value::Null),
-        );
+        player.language =
+            profile_language(snapshot.pointer("/profile/active").unwrap_or(&Value::Null));
         player.description = player
             .meta
             .get("description")
@@ -517,8 +528,8 @@ pub(crate) fn pump(state: &mut RendererState) {
                     .and_then(|value| value.as_str().map(ToOwned::to_owned))
                     .unwrap_or_else(|| text.to_owned())
             });
-        player.warnings_rx = content_warning_url(&player.meta, &snapshot)
-            .map(|url| session.fetch_json(url));
+        player.warnings_rx =
+            content_warning_url(&player.meta, &snapshot).map(|url| session.fetch_json(url));
     }
     tick_warnings(player);
     if shuffle.is_none() {
@@ -559,7 +570,11 @@ fn tick_recommendations(
     settings: &SettingsModel,
     snapshot: &Value,
 ) {
-    if let Some(items) = player.recommendations_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+    if let Some(items) = player
+        .recommendations_rx
+        .as_ref()
+        .and_then(|rx| rx.try_recv().ok())
+    {
         player.recommendations_rx = None;
         player.recommendations = terminal_plan(&player.meta, items, snapshot);
     }
@@ -595,13 +610,19 @@ fn tick_recommendations(
         return;
     }
     let endpoints = [
-        ("recommendations", settings.bool_value("tmdbRecommendationsEnabled")),
+        (
+            "recommendations",
+            settings.bool_value("tmdbRecommendationsEnabled"),
+        ),
         ("similar", settings.bool_value("tmdbSimilarResultsEnabled")),
     ]
     .into_iter()
     .filter_map(|(endpoint, on)| on.then_some(endpoint))
     .collect();
-    let api_key = settings.str_value("tmdbApiKey").unwrap_or_default().to_owned();
+    let api_key = settings
+        .str_value("tmdbApiKey")
+        .unwrap_or_default()
+        .to_owned();
     player.recommendations_rx = Some(session.executor().fetch_similar(
         player.meta.clone(),
         api_key,
@@ -617,7 +638,11 @@ fn series_finished(meta: &Value, snapshot: &Value) -> bool {
     let Some(current) = snapshot
         .pointer("/player/currentVideoId")
         .and_then(Value::as_str)
-        .and_then(|id| videos.iter().find(|video| video.get("id").and_then(Value::as_str) == Some(id)))
+        .and_then(|id| {
+            videos
+                .iter()
+                .find(|video| video.get("id").and_then(Value::as_str) == Some(id))
+        })
     else {
         return false;
     };
@@ -666,11 +691,16 @@ fn terminal_plan(meta: &Value, candidates: Vec<Value>, snapshot: &Value) -> Vec<
     if plan.get("showRecommendations").and_then(Value::as_bool) != Some(true) {
         return Vec::new();
     }
-    plan.get("items").and_then(Value::as_array).cloned().unwrap_or_default()
+    plan.get("items")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default()
 }
 
 fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
-    let id = snapshot.pointer("/player/currentVideoId").and_then(Value::as_str)?;
+    let id = snapshot
+        .pointer("/player/currentVideoId")
+        .and_then(Value::as_str)?;
     meta.get("videos")?
         .as_array()?
         .iter()
@@ -685,7 +715,9 @@ fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
 fn content_warning_url(meta: &Value, snapshot: &Value) -> Option<String> {
     let candidates = [
         meta.get("id").and_then(Value::as_str),
-        snapshot.pointer("/player/currentVideoId").and_then(Value::as_str),
+        snapshot
+            .pointer("/player/currentVideoId")
+            .and_then(Value::as_str),
     ];
     let imdb = candidates.into_iter().flatten().find_map(|id| {
         core_value("contentImdbId", json!({"id": id}))?
@@ -701,7 +733,11 @@ fn content_warning_url(meta: &Value, snapshot: &Value) -> Option<String> {
 fn tick_warnings(player: &mut PlayerSession) {
     let delta = player.last_pump.elapsed().as_secs_f32();
     player.last_pump = Instant::now();
-    if let Some(response) = player.warnings_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+    if let Some(response) = player
+        .warnings_rx
+        .as_ref()
+        .and_then(|rx| rx.try_recv().ok())
+    {
         player.warnings_rx = None;
         player.warnings = response
             .and_then(|response| build_warnings(&response, &player.language))
@@ -722,10 +758,19 @@ fn tick_warnings(player: &mut PlayerSession) {
 
 fn build_warnings(response: &Value, language: &str) -> Option<Vec<(String, String)>> {
     let label = |key: &str| fluxa_ui::localized(&format!("content_warning.{key}"), language);
-    let labels = ["nudity", "violence", "profanity", "alcohol", "frightening", "severe", "moderate", "mild"]
-        .into_iter()
-        .map(|key| (key.to_owned(), Value::String(label(key))))
-        .collect::<serde_json::Map<_, _>>();
+    let labels = [
+        "nudity",
+        "violence",
+        "profanity",
+        "alcohol",
+        "frightening",
+        "severe",
+        "moderate",
+        "mild",
+    ]
+    .into_iter()
+    .map(|key| (key.to_owned(), Value::String(label(key))))
+    .collect::<serde_json::Map<_, _>>();
     let result = core_value(
         "buildContentWarnings",
         json!({"responseJson": response.to_string(), "labels": labels}),
@@ -862,7 +907,10 @@ fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -> Option<Va
 }
 
 fn playback_url(stream: &Value, meta: &Value) -> Option<String> {
-    let plan = core_value("playbackPreparePlan", json!({"stream": stream, "meta": meta}))?;
+    let plan = core_value(
+        "playbackPreparePlan",
+        json!({"stream": stream, "meta": meta}),
+    )?;
     let mode = plan.get("mode").and_then(Value::as_str)?;
     matches!(mode, "direct" | "torrent" | "external")
         .then(|| plan.get("url").and_then(Value::as_str))
@@ -871,7 +919,11 @@ fn playback_url(stream: &Value, meta: &Value) -> Option<String> {
         .map(ToOwned::to_owned)
 }
 
-fn poll_torrent(player: &mut PlayerSession, session: &fluxa_effects::SessionHandle, snapshot: &Value) {
+fn poll_torrent(
+    player: &mut PlayerSession,
+    session: &fluxa_effects::SessionHandle,
+    snapshot: &Value,
+) {
     while let Some(status) = player.torrent_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
         player.torrent_status = Some(status);
     }
@@ -884,7 +936,8 @@ fn poll_torrent(player: &mut PlayerSession, session: &fluxa_effects::SessionHand
                 .as_array()?
                 .get(index as usize)
         });
-    let Some(link) = stream.and_then(|stream| FluxaCore::stream_magnet_link_json(&stream.to_string()))
+    let Some(link) =
+        stream.and_then(|stream| FluxaCore::stream_magnet_link_json(&stream.to_string()))
     else {
         return;
     };
@@ -971,7 +1024,10 @@ pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
 }
 
 pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
-    if settings.str_value("animeUpscalingMode").is_none_or(|mode| mode == "off") {
+    if settings
+        .str_value("animeUpscalingMode")
+        .is_none_or(|mode| mode == "off")
+    {
         return "off";
     }
     match settings.str_value("animeUpscalingModePreset") {
@@ -985,7 +1041,9 @@ fn shader_chain(settings: &SettingsModel) -> Vec<String> {
     if mode == "off" {
         return Vec::new();
     }
-    let tier = settings.str_value("animeUpscalingQuality").unwrap_or("anime4k_m");
+    let tier = settings
+        .str_value("animeUpscalingQuality")
+        .unwrap_or("anime4k_m");
     core_value("anime4kShaderChain", json!({"tier": tier, "mode": mode}))
         .and_then(|chain| serde_json::from_value(chain).ok())
         .unwrap_or_default()
@@ -1009,10 +1067,12 @@ fn cycle_upscaling(state: &mut RendererState) {
         if let Some(values) = state.settings.values.as_object_mut() {
             values.insert(key.to_owned(), value.clone());
         }
-        state.pending_native_actions.push(crate::NativeAction::SettingsChange {
-            key: key.to_owned(),
-            value,
-        });
+        state
+            .pending_native_actions
+            .push(crate::NativeAction::SettingsChange {
+                key: key.to_owned(),
+                value,
+            });
     }
     let chain = shader_chain(&state.settings);
     command(state, VideoCommand::Shaders(chain));
@@ -1062,7 +1122,8 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
             .contains(&node) =>
         {
             if let Some(player) = state.player.as_mut() {
-                player.recommendation_index = (node - fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE) as usize;
+                player.recommendation_index =
+                    (node - fluxa_ui::NODE_PLAYER_RECOMMENDATION_BASE) as usize;
             }
         }
         _ => {}
@@ -1109,8 +1170,8 @@ pub(crate) enum KeyOutcome {
 }
 
 pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
-    use fluxa_renderer::ui::{GamepadButton, Key};
     use crate::KeyInput;
+    use fluxa_renderer::ui::{GamepadButton, Key};
     let closes = matches!(
         input,
         KeyInput::Key(Key::Back | Key::Escape) | KeyInput::Gamepad(GamepadButton::East)
@@ -1167,8 +1228,8 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
 }
 
 fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
-    use fluxa_renderer::ui::{GamepadButton, Key};
     use crate::KeyInput;
+    use fluxa_renderer::ui::{GamepadButton, Key};
     let on_seek = state.ui.focused() == Some(fluxa_ui::NODE_PLAYER_SEEK);
     let Some(player) = state.player.as_mut() else {
         return KeyOutcome::Focus;
@@ -1178,7 +1239,10 @@ fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
         KeyInput::Key(Key::Right) | KeyInput::Gamepad(GamepadButton::DPadRight) => 1.0,
         _ => 0.0,
     };
-    let ok = matches!(input, KeyInput::Key(Key::Enter) | KeyInput::Gamepad(GamepadButton::South));
+    let ok = matches!(
+        input,
+        KeyInput::Key(Key::Enter) | KeyInput::Gamepad(GamepadButton::South)
+    );
     let visible = player.controls_visible();
     if visible && !on_seek {
         player.touch();

@@ -179,7 +179,11 @@ pub(crate) fn apply_remote_profiles_json(args_json: &str) -> Option<String> {
     let account = |profile: &Value| {
         ["nuvioUserId", "nuvioEmail", "email"]
             .iter()
-            .find_map(|key| str_field(profile, key).filter(|s| !s.is_empty()).map(str::to_owned))
+            .find_map(|key| {
+                str_field(profile, key)
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_owned)
+            })
     };
     let owner = account(session)?;
     let mut changed = false;

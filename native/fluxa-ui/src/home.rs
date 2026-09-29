@@ -78,6 +78,9 @@ pub trait HomeAssets {
     fn brand_colors(&self) -> Option<[Color32; 2]> {
         None
     }
+    fn app_icon(&self, _id: &str) -> Option<TextureId> {
+        None
+    }
     fn ambient_glow(&self) -> Option<TextureId> {
         None
     }
@@ -335,8 +338,17 @@ pub(crate) fn home_row_start(
         }
 }
 
+#[derive(Clone, Debug)]
+pub struct ChoiceRequest {
+    pub key: &'static str,
+    pub title: String,
+    pub options: Vec<(String, String)>,
+    pub selected: String,
+}
+
 #[derive(Clone, Debug, Default)]
 pub struct HomeLayout {
+    pub choices: Vec<(u64, ChoiceRequest)>,
     pub focusable: Vec<(u64, Rect)>,
     pub activated: Option<u64>,
     pub text_input: Option<String>,
@@ -1020,7 +1032,8 @@ pub(crate) fn draw_home_with_options(
                         let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
                         let series =
                             matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
-                        let label = play_label(&home.language, resume, series.then_some((1, 1, None)));
+                        let label =
+                            play_label(&home.language, resume, series.then_some((1, 1, None)));
                         let text_size = metrics.nav_label_size + 2.0;
                         let measure = |ui: &egui::Ui, text: &str| {
                             ui.painter()
@@ -1237,8 +1250,7 @@ pub(crate) fn draw_home_with_options(
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
                     for (column_index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
-                        let (item_width, item_height) =
-                            home_card_dimensions(metrics, card, kind);
+                        let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
                         let slot_height = if is_poster { body_height } else { card_height };
                         let (widget_id, slot_rect) =
                             ui.allocate_space(Vec2::new(item_width, slot_height));
