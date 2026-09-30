@@ -141,6 +141,12 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub profile_side_margin: f32,
+    pub profile_title_size: f32,
+    pub overlay_margin: f32,
+    pub toast_text_size: f32,
+    pub toast_padding: f32,
+    pub toast_bar_width: f32,
     pub detail_play_height: f32,
     pub detail_back_top: f32,
     pub detail_title_size: f32,
@@ -486,6 +492,12 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            profile_side_margin: 0.0,
+            profile_title_size: 0.0,
+            overlay_margin: 0.0,
+            toast_text_size: 0.0,
+            toast_padding: 0.0,
+            toast_bar_width: 0.0,
             detail_play_height: 0.0,
             detail_back_top: 0.0,
             detail_title_size: 0.0,
@@ -507,6 +519,17 @@ impl UiMetrics {
             "tv" => (52.0, 14.0, 26.0),
             _ => (48.0, 14.0, 21.0),
         };
+        let (side, title, overlay, toast) = match platform {
+            "mobile" => (32.0, 28.0, 16.0, (15.0, 16.0, 84.0)),
+            "tv" => (80.0, 38.0, 56.0, (26.0, 26.0, 160.0)),
+            _ => (80.0, 38.0, 56.0, (17.0, 20.0, 120.0)),
+        };
+        metrics.profile_side_margin = side;
+        metrics.profile_title_size = title;
+        metrics.overlay_margin = overlay;
+        metrics.toast_text_size = toast.0;
+        metrics.toast_padding = toast.1;
+        metrics.toast_bar_width = toast.2;
         metrics.detail_play_height = play_height;
         metrics.detail_back_top = back_top;
         metrics.detail_title_size = title_size;

@@ -27,7 +27,7 @@ pub(super) fn draw_sources(
         Color32::from_black_alpha(230),
     );
     let metrics = metrics_for_assets(viewport, assets);
-    let margin = if viewport.is_compact() { 16.0 } else { 56.0 };
+    let margin = metrics.overlay_margin;
     let width = (rect.width() - margin * 2.0).min(900.0);
     let left = (rect.width() - width) / 2.0;
     let top = 24.0 - viewport.scroll_y;

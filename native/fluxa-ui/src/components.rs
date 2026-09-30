@@ -21,11 +21,12 @@ pub(super) fn toast(
     level: Option<f32>,
     opacity: f32,
 ) {
-    let (size, pad, bar) = match viewport.form_factor {
-        super::UiFormFactor::Tv => (26.0, 26.0, 160.0),
-        super::UiFormFactor::Mobile => (15.0, 16.0, 84.0),
-        super::UiFormFactor::Desktop => (17.0, 20.0, 120.0),
-    };
+    let metrics = UiMetrics::for_viewport(viewport);
+    let (size, pad, bar) = (
+        metrics.toast_text_size,
+        metrics.toast_padding,
+        metrics.toast_bar_width,
+    );
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Tooltip,
         Id::new("fluxa-player-toast"),

@@ -18,7 +18,7 @@ pub(super) fn draw_select(
     } else {
         (65.0, Vec2::new(150.0, 222.0), 40.0)
     };
-    let side = if viewport.is_compact() { 32.0 } else { 80.0 };
+    let side = metrics.profile_side_margin;
     let per_row =
         (((viewport.width - side + gap) / (cell.x + gap)).floor() as usize).clamp(1, count);
     let rows = count.div_ceil(per_row);
@@ -34,7 +34,7 @@ pub(super) fn draw_select(
 
     let title = ui.painter().layout_no_wrap(
         t("profiles.who_watching"),
-        FontId::proportional(if viewport.is_compact() { 28.0 } else { 38.0 }),
+        FontId::proportional(metrics.profile_title_size),
         Color32::WHITE,
     );
     let (title_rect, _) = ui.allocate_exact_size(Vec2::new(width, 46.0), Sense::hover());
