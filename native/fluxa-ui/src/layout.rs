@@ -129,17 +129,15 @@ pub(crate) struct PosterGrid {
 
 impl PosterGrid {
     pub fn new(width: f32, metrics: UiMetrics) -> Self {
-        let compact = width < 600.0;
-        let gap = if compact {
-            metrics.horizontal_spacing.min(10.0)
+        let gap = if metrics.grid_max_gap > 0.0 {
+            metrics.horizontal_spacing.min(metrics.grid_max_gap)
         } else {
             metrics.horizontal_spacing
         };
-        let preferred = if compact {
-            metrics.poster_card_width.min((width - gap * 2.0) / 3.0)
-        } else {
-            metrics.poster_card_width
-        };
+        let across = metrics.grid_min_columns.max(1.0);
+        let preferred = metrics
+            .poster_card_width
+            .min((width - gap * (across - 1.0)) / across);
         let (columns, card_width) = discover_grid_geometry(width, preferred, gap);
         let poster_height =
             metrics.poster_card_height * (card_width / metrics.poster_card_width.max(1.0));
