@@ -198,5 +198,4 @@ mod tests {
         assert_eq!(result["disableSubtitles"], true);
         assert!(result["subtitleId"].is_null());
     }
-
 }

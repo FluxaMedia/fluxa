@@ -1,9 +1,9 @@
 mod flow;
 mod media_session;
-mod segments;
 mod overlay;
 mod policy;
 mod scrobble;
+mod segments;
 mod stream_badges;
 mod stream_policy;
 mod trailer_subtitles;
@@ -11,10 +11,10 @@ mod watch_together;
 
 pub(crate) use flow::*;
 pub(crate) use media_session::*;
-pub(crate) use segments::*;
 pub(crate) use overlay::*;
 pub(crate) use policy::*;
 pub(crate) use scrobble::*;
+pub(crate) use segments::*;
 pub(crate) use stream_badges::*;
 pub(crate) use stream_policy::*;
 pub(crate) use trailer_subtitles::*;
