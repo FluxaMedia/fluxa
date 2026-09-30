@@ -36,16 +36,9 @@ pub struct HomeLayout {
 /// consume the same responsive rectangles as the painter.
 pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
     let show_hero = home.show_hero_section && home.item_id.is_some();
     let metrics = home_metrics(viewport);
-    let margin = if compact {
-        metrics.page_padding
-    } else if tv {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics.screen_padding
-    };
+    let margin = metrics.screen_margin;
     let mut layout = HomeLayout::default();
     if !compact {
         layout
@@ -162,13 +155,7 @@ pub(crate) fn home_row_scroll_max_for_cards(
     cards: &[HomeCard],
     kind: HomeRowKind,
 ) -> f32 {
-    let margin = if viewport.is_compact() {
-        metrics.page_padding
-    } else if viewport.is_tv() {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics.screen_padding
-    };
+    let margin = metrics.screen_margin;
     let content_width = cards
         .iter()
         .map(|card| home_card_dimensions(metrics, card, kind).0 + metrics.horizontal_spacing)

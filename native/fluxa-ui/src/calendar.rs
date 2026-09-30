@@ -16,13 +16,7 @@ impl CalendarGrid {
     pub fn new(viewport: Viewport, metrics: UiMetrics, calendar: &CalendarModel) -> Self {
         let compact = viewport.is_compact();
         let tv = viewport.is_tv();
-        let margin = if compact {
-            metrics.page_padding
-        } else if tv {
-            metrics.screen_padding.max(32.0)
-        } else {
-            metrics.screen_padding
-        };
+        let margin = metrics.screen_margin;
         let top = if compact {
             metrics.content_header_top_mobile
         } else {

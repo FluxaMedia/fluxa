@@ -317,13 +317,7 @@ pub(crate) fn draw_home_with_options(
         }
         paint_hero_scrim(&painter, hero_visual_rect, compact, metrics.background);
     }
-    let margin = if compact {
-        16.0
-    } else if tv {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics.screen_padding
-    };
+    let margin = metrics.screen_margin;
     let mut activated = None;
     let mut hero_actions: Option<Rect> = None;
     let mut hero_watchlist: Option<Rect> = None;
