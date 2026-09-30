@@ -141,6 +141,9 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub settings_margin: f32,
+    pub settings_top: f32,
+    pub settings_card_height: f32,
     pub profile_side_margin: f32,
     pub profile_title_size: f32,
     pub overlay_margin: f32,
@@ -492,6 +495,9 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            settings_margin: 0.0,
+            settings_top: 0.0,
+            settings_card_height: 0.0,
             profile_side_margin: 0.0,
             profile_title_size: 0.0,
             overlay_margin: 0.0,
@@ -548,6 +554,24 @@ impl UiMetrics {
                 metrics.calendar_panel_width = metrics.calendar_panel_width_desktop;
             }
         }
+        let settings_margin = match platform {
+            "mobile" => metrics.page_padding,
+            "tv" => metrics.screen_padding.max(32.0),
+            _ => metrics
+                .settings_screen_padding_desktop
+                .max(metrics.screen_padding),
+        };
+        metrics.settings_margin = settings_margin;
+        metrics.settings_top = match platform {
+            "mobile" => metrics.detail_header_top_mobile,
+            "tv" => metrics.content_header_top,
+            _ => settings_margin.max(76.0),
+        };
+        metrics.settings_card_height = if platform == "mobile" {
+            metrics.settings_card_height_mobile
+        } else {
+            metrics.settings_card_height_desktop
+        };
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

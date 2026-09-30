@@ -300,13 +300,7 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
         .max(0.0);
     }
     let desktop = !viewport.is_compact() && !viewport.is_tv();
-    let top = if viewport.is_compact() {
-        metrics.detail_header_top_mobile
-    } else if desktop {
-        metrics.settings_screen_padding_desktop
-    } else {
-        metrics.content_header_top
-    };
+    let top = metrics.settings_top;
     let section_index = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
     let card_height = settings_card_height(
         viewport,

@@ -316,11 +316,7 @@ pub(super) fn settings_card_height(
     section: &SettingsSection,
     settings: &SettingsModel,
 ) -> f32 {
-    let base = if viewport.is_compact() {
-        metrics.settings_card_height_mobile
-    } else {
-        metrics.settings_card_height_desktop
-    };
+    let base = metrics.settings_card_height;
     let groups = visible_groups(settings, viewport);
     let rows_metrics = described(metrics);
     if !settings.search.trim().is_empty() {
@@ -676,7 +672,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 3] = [
+pub const POSTER_FIELDS: [PosterField; 6] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -697,6 +693,27 @@ pub const POSTER_FIELDS: [PosterField; 3] = [
         help: "settings.poster_mdblist_help",
         hint: "settings.mdblist_api_key_placeholder",
         input: NODE_SETTINGS_POSTER_MDBLIST_KEY,
+    },
+    PosterField {
+        key: "introDbApiKey",
+        label: "settings.introdb_api_key",
+        help: "settings.introdb_api_key_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_INTRODB_KEY,
+    },
+    PosterField {
+        key: "theIntroDbApiKey",
+        label: "settings.theintrodb_api_key",
+        help: "settings.theintrodb_api_key_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_THEINTRODB_KEY,
+    },
+    PosterField {
+        key: "skipDbApiKey",
+        label: "settings.skipdb_api_key",
+        help: "settings.skipdb_api_key_help",
+        hint: "settings.tmdb_api_key_placeholder",
+        input: NODE_SETTINGS_SKIPDB_KEY,
     },
 ];
 
@@ -1221,22 +1238,8 @@ pub fn draw_settings(
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
     let desktop = !compact && !tv;
-    let margin = if compact {
-        metrics.page_padding
-    } else if tv {
-        metrics.screen_padding.max(32.0)
-    } else {
-        metrics
-            .settings_screen_padding_desktop
-            .max(metrics.screen_padding)
-    };
-    let top = if compact {
-        metrics.detail_header_top_mobile
-    } else if desktop {
-        margin.max(76.0)
-    } else {
-        metrics.content_header_top
-    };
+    let margin = metrics.settings_margin;
+    let top = metrics.settings_top;
     let mut header_bottom = top;
     if tv {
         egui::Area::new(Id::new("fluxa-shared-settings-header"))
