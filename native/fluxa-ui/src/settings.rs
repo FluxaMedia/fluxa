@@ -1207,16 +1207,6 @@ pub fn settings_row_by_index(index: usize) -> Option<&'static SettingsRow> {
         .nth(index)
 }
 
-const KEYBOARD_SHORTCUTS: [(&str, &str); 8] = [
-    ("settings.shortcut_navigation", "1 / 2 / 3 / 4 / 5"),
-    ("settings.shortcut_search", "Ctrl + F"),
-    ("settings.shortcut_back", "Backspace / Escape"),
-    ("settings.shortcut_fullscreen", "F11"),
-    ("settings.shortcut_play_pause", "K / Space"),
-    ("settings.shortcut_seek", "← / →"),
-    ("settings.shortcut_volume", "↓ / ↑"),
-    ("settings.shortcut_mute", "M"),
-];
 const CONTROLLER_BINDINGS: [(&str, &str); 6] = [
     ("settings.controller_navigate", "D-pad / left stick"),
     ("settings.controller_select", "Enter / A"),
@@ -1245,9 +1235,13 @@ pub(super) fn settings_card_height(
     let content_height = match section.title {
         "Account" => account_height(metrics),
         "Shortcuts" => {
+            let player = settings.shortcuts.iter().filter(|row| row.player).count();
+            let app = settings.shortcuts.len() - player;
             APPEARANCE_PAGE_HEADER_HEIGHT
-                + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 2.0
-                + settings_group_card_height(KEYBOARD_SHORTCUTS.len(), metrics)
+                + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 4.0
+                + settings_group_card_height(app, metrics)
+                + settings_group_card_height(player, metrics)
+                + settings_group_card_height(1, metrics)
                 + settings_group_card_height(CONTROLLER_BINDINGS.len(), metrics)
         }
         "Posters" => {
@@ -1291,6 +1285,16 @@ pub struct SettingsModel {
     pub account_auth: Option<AccountPrompt>,
     pub media_servers: Vec<serde_json::Value>,
     pub server_fields: [String; 3],
+    pub shortcuts: Vec<ShortcutRow>,
+    pub shortcut_recording: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct ShortcutRow {
+    pub id: String,
+    pub player: bool,
+    pub label: String,
+    pub custom: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -1434,6 +1438,8 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         account_auth: None,
         media_servers: Vec::new(),
         server_fields: Default::default(),
+        shortcuts: Vec::new(),
+        shortcut_recording: None,
     }
 }
 
@@ -1875,6 +1881,90 @@ fn draw_field_group(
     card
 }
 
+fn draw_shortcut_group(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    rect: Rect,
+    top: f32,
+    title: &str,
+    rows: &[(usize, &ShortcutRow)],
+    settings: &SettingsModel,
+    language: &str,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) -> Rect {
+    let card = account_group(
+        painter,
+        rect,
+        top,
+        settings_group_card_height(rows.len(), metrics),
+        title,
+        false,
+    );
+    let size = metrics.settings_row_label_size_desktop;
+    for (position, (index, shortcut)) in rows.iter().enumerate() {
+        let row = account_row(card, position, metrics);
+        if position > 0 {
+            account_divider(painter, row, metrics);
+        }
+        painter.text(
+            row.left_center() + Vec2::new(4.0, 0.0),
+            Align2::LEFT_CENTER,
+            localized(&format!("shortcuts.{}", shortcut.id), language),
+            FontId::proportional(size),
+            Color32::from_white_alpha(210),
+        );
+        let recording = settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
+        let label = if recording {
+            localized("settings.shortcuts_recording", language)
+        } else if shortcut.label.is_empty() {
+            localized("settings.shortcuts_unassigned", language)
+        } else {
+            shortcut.label.clone()
+        };
+        let width = painter
+            .layout_no_wrap(label.clone(), FontId::proportional(size), Color32::WHITE)
+            .size()
+            .x
+            .max(120.0)
+            + 32.0;
+        let height = 32.0_f32.min(row.height() - 4.0);
+        let button = Rect::from_center_size(
+            Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
+            Vec2::new(width, height),
+        );
+        pill_button(
+            context,
+            layout,
+            NODE_SETTINGS_SHORTCUT_BASE + *index as u64,
+            button,
+            &label,
+            size,
+        );
+        if shortcut.custom {
+            let reset = localized("settings.shortcuts_reset_one", language);
+            let reset_width = painter
+                .layout_no_wrap(reset.clone(), FontId::proportional(size), Color32::WHITE)
+                .size()
+                .x
+                + 32.0;
+            let reset_button = Rect::from_center_size(
+                Pos2::new(button.left() - 10.0 - reset_width * 0.5, row.center().y),
+                Vec2::new(reset_width, height),
+            );
+            pill_button(
+                context,
+                layout,
+                NODE_SETTINGS_SHORTCUT_RESET_BASE + *index as u64,
+                reset_button,
+                &reset,
+                size,
+            );
+        }
+    }
+    card
+}
+
 fn draw_binding_group(
     painter: &egui::Painter,
     rect: Rect,
@@ -1934,14 +2024,58 @@ fn draw_settings_extended_section(
             context, viewport, settings, assets, language, rect, metrics, layout,
         ),
         "Shortcuts" => {
-            let card = draw_binding_group(
+            let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
+            for (title, player) in [
+                ("settings.shortcuts_group_general", false),
+                ("settings.shortcuts_group_player", true),
+            ] {
+                let rows = settings
+                    .shortcuts
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, row)| row.player == player)
+                    .collect::<Vec<_>>();
+                let card = draw_shortcut_group(
+                    context,
+                    &painter,
+                    rect,
+                    top,
+                    &localized(title, language),
+                    &rows,
+                    settings,
+                    language,
+                    metrics,
+                    layout,
+                );
+                top = card.bottom() + APPEARANCE_GROUP_GAP;
+            }
+            let card = account_group(
                 &painter,
                 rect,
-                rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
-                &localized("settings.group.keyboard", language),
-                &KEYBOARD_SHORTCUTS,
-                language,
-                metrics,
+                top,
+                settings_group_card_height(1, metrics),
+                &localized("settings.shortcuts_reset_all", language),
+                false,
+            );
+            let row = account_row(card, 0, metrics);
+            let label = localized("settings.shortcuts_reset_all", language);
+            let size = metrics.settings_row_label_size_desktop;
+            let width = painter
+                .layout_no_wrap(label.clone(), FontId::proportional(size), Color32::WHITE)
+                .size()
+                .x
+                + 32.0;
+            let button = Rect::from_center_size(
+                Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
+                Vec2::new(width, 32.0_f32.min(row.height() - 4.0)),
+            );
+            pill_button(
+                context,
+                layout,
+                NODE_SETTINGS_SHORTCUT_RESET_ALL,
+                button,
+                &label,
+                size,
             );
             draw_binding_group(
                 &painter,

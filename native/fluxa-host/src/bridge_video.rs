@@ -72,7 +72,9 @@ impl VideoBackend for BridgeVideo {
             VideoCommand::ToggleMute => json!({"type": "toggleMute"}),
             VideoCommand::SetVolume(volume) => json!({"type": "setVolume", "value": volume}),
             VideoCommand::SetSpeed(rate) => json!({"type": "setSpeed", "value": rate}),
-            VideoCommand::Shaders(_) | VideoCommand::SelectTracks(_) => return,
+            VideoCommand::Shaders(_) | VideoCommand::SelectTracks(_) | VideoCommand::Mpv(_) => {
+                return;
+            }
         };
         self.send(request);
     }

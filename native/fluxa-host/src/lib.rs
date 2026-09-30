@@ -83,6 +83,7 @@ mod poster_data;
 mod presence;
 mod profiles;
 mod projection;
+mod shortcuts;
 mod trailer;
 
 use actions::*;
@@ -163,6 +164,7 @@ struct RendererState {
     shuffle: Option<player::Shuffle>,
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
+    shortcut_recording: Option<String>,
     applied_app_icon: Option<String>,
     open_url: Option<String>,
     profiles: Option<fluxa_ui::ProfilesModel>,
@@ -443,6 +445,7 @@ fn apply_projection(state: &mut RendererState, projection: projection::Projectio
     state.settings.plugin_url = plugin_url;
     state.settings.search = search;
     state.settings.server_fields = server_fields;
+    shortcuts::refresh(state);
     accounts::refresh_servers(state);
     for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {
         if !typed.is_empty() {
@@ -585,6 +588,7 @@ impl FluxaHost {
             shuffle: None,
             video: None,
             fullscreen_toggle: false,
+            shortcut_recording: None,
             applied_app_icon: None,
             open_url: None,
             profiles: None,
@@ -816,6 +820,22 @@ impl FluxaHost {
 
     pub fn key_down(&self, input: KeyInput) {
         self.with_state(|state| key_down(state, input));
+    }
+
+    pub fn shortcut(&self, chord: &str, repeat: bool) -> bool {
+        self.with_state(|state| {
+            if shortcuts::recording(state) {
+                shortcuts::record(state, chord);
+                return true;
+            }
+            shortcuts::run(state, chord, repeat)
+        })
+        .unwrap_or(false)
+    }
+
+    pub fn shortcut_recording(&self) -> bool {
+        self.with_state(|state| shortcuts::recording(state))
+            .unwrap_or(false)
     }
 
     pub fn back(&self) -> bool {

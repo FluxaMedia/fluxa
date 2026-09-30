@@ -69,6 +69,7 @@ pub enum VideoCommand {
     SetSpeed(f64),
     Shaders(Vec<String>),
     SelectTracks(TrackSelection),
+    Mpv(Vec<String>),
 }
 
 pub type DeviceOpener = Arc<
@@ -117,7 +118,7 @@ pub(crate) struct PlayerSession {
     torrent_rx: Option<Receiver<Value>>,
     torrent_status: Option<Value>,
     error: Option<String>,
-    status: VideoStatus,
+    pub(crate) status: VideoStatus,
     language: String,
     description: Option<String>,
     episode_title: Option<String>,
@@ -147,6 +148,7 @@ pub(crate) struct PlayerSession {
     media_sent: Option<(Instant, String, f64)>,
     brightness: f32,
     speed_held: bool,
+    speed: f64,
 }
 
 impl PlayerSession {
@@ -192,6 +194,7 @@ impl PlayerSession {
             media_sent: None,
             brightness: 1.0,
             speed_held: false,
+            speed: 1.0,
         }
     }
 
@@ -1365,7 +1368,16 @@ pub(crate) fn speed_hold(state: &mut RendererState, held: bool) {
         return;
     }
     player.speed_held = held;
-    let rate = if held { FAST_SPEED } else { 1.0 };
+    let rate = if held { FAST_SPEED } else { player.speed };
+    command(state, VideoCommand::SetSpeed(rate));
+}
+
+pub(crate) fn step_speed(state: &mut RendererState, delta: f64) {
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    player.speed = (player.speed + delta).clamp(0.25, 4.0);
+    let rate = player.speed;
     command(state, VideoCommand::SetSpeed(rate));
 }
 

@@ -119,6 +119,10 @@ impl VideoBackend for MpvBackend {
             VideoCommand::SetSpeed(rate) => {
                 player.client.command(&["set", "speed", &rate.to_string()])
             }
+            VideoCommand::Mpv(args) => {
+                let args: Vec<&str> = args.iter().map(String::as_str).collect();
+                player.client.command(&args)
+            }
             VideoCommand::Shaders(_) => Ok(()),
         };
         if let Err(error) = result {

@@ -289,15 +289,16 @@ impl ApplicationHandler for App {
                 host.wheel(-x, -y);
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                if event.logical_key == WinitKey::Named(NamedKey::F11)
-                    && event.state == ElementState::Pressed
-                    && let Some(window) = self.window.as_ref()
+                if event.state == ElementState::Pressed
+                    && let Some(chord) = shortcut_chord(&event.logical_key, self.modifiers)
+                    && host.shortcut(&chord, event.repeat)
                 {
-                    let fullscreen = window
-                        .fullscreen()
-                        .is_none()
-                        .then_some(Fullscreen::Borderless(None));
-                    window.set_fullscreen(fullscreen);
+                    if let Some(window) = self.window.as_ref() {
+                        window.request_redraw();
+                    }
+                    return;
+                }
+                if host.shortcut_recording() {
                     return;
                 }
                 if event.state == ElementState::Pressed
@@ -341,6 +342,66 @@ fn key_input(key: &WinitKey, shift: bool) -> Option<KeyInput> {
         }
         _ => return None,
     }))
+}
+
+fn shortcut_chord(key: &WinitKey, modifiers: ModifiersState) -> Option<String> {
+    let name = match key {
+        WinitKey::Named(named) => match named {
+            NamedKey::ArrowUp => "up".to_owned(),
+            NamedKey::ArrowDown => "down".to_owned(),
+            NamedKey::ArrowLeft => "left".to_owned(),
+            NamedKey::ArrowRight => "right".to_owned(),
+            NamedKey::Space => "space".to_owned(),
+            NamedKey::Enter => "enter".to_owned(),
+            NamedKey::Escape => "escape".to_owned(),
+            NamedKey::Tab => "tab".to_owned(),
+            NamedKey::Backspace => "backspace".to_owned(),
+            NamedKey::Delete => "delete".to_owned(),
+            NamedKey::Insert => "insert".to_owned(),
+            NamedKey::Home => "home".to_owned(),
+            NamedKey::End => "end".to_owned(),
+            NamedKey::PageUp => "pageup".to_owned(),
+            NamedKey::PageDown => "pagedown".to_owned(),
+            other => {
+                let name = format!("{other:?}");
+                let number = name.strip_prefix('F')?;
+                number.parse::<u8>().ok()?;
+                name.to_lowercase()
+            }
+        },
+        WinitKey::Character(text) => {
+            let mut chars = text.chars();
+            let first = chars.next()?;
+            if chars.next().is_some() {
+                return None;
+            }
+            match first {
+                ',' => "comma".to_owned(),
+                '+' => "plus".to_owned(),
+                '-' => "minus".to_owned(),
+                ' ' => "space".to_owned(),
+                other => other.to_lowercase().collect(),
+            }
+        }
+        _ => return None,
+    };
+    let literal =
+        matches!(key, WinitKey::Character(text) if text.chars().all(|c| !c.is_alphabetic()));
+    let mut parts = Vec::new();
+    if modifiers.control_key() {
+        parts.push("ctrl");
+    }
+    if modifiers.alt_key() {
+        parts.push("alt");
+    }
+    if modifiers.shift_key() && !literal {
+        parts.push("shift");
+    }
+    if modifiers.super_key() {
+        parts.push("meta");
+    }
+    parts.push(&name);
+    Some(parts.join("+"))
 }
 
 fn media_command(key: &WinitKey) -> Option<&'static str> {

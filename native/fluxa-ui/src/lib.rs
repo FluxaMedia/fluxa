@@ -61,9 +61,9 @@ pub use profiles::{
 use settings::settings_card_height;
 pub use settings::{
     ACCOUNT_PROVIDERS, AccountPrompt, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
-    SettingsSection, account_source, account_source_state, addon_action, addon_transport_url,
-    category_pages, draw_settings, option_label, poster_field, server_index, server_input,
-    settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
+    SettingsSection, ShortcutRow, account_source, account_source_state, addon_action,
+    addon_transport_url, category_pages, draw_settings, option_label, poster_field, server_index,
+    server_input, settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
     settings_row_label,
 };
 

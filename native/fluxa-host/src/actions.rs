@@ -456,6 +456,9 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             continue;
         }
         if let Some(node) = node {
+            if shortcuts::activate_node(state, node) {
+                continue;
+            }
             let request = state
                 .rendered_layout
                 .as_ref()
