@@ -47,11 +47,7 @@ impl PageLayout {
         let compact = viewport.is_compact();
         let margin = screen_margin(metrics);
         let width = (viewport.width - margin * 2.0).max(1.0);
-        let top = if compact {
-            metrics.content_header_top_mobile
-        } else {
-            metrics.content_header_top
-        };
+        let top = metrics.content_header_top;
         let title_size = metrics.screen_title_size;
         let control = metrics.screen_control_height;
         let search_height = control + 4.0;

@@ -141,6 +141,8 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub calendar_cell_height: f32,
+    pub calendar_panel_width: f32,
     pub row_heading_size: f32,
     pub grid_min_columns: f32,
     pub grid_max_gap: f32,
@@ -481,6 +483,8 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            calendar_cell_height: 0.0,
+            calendar_panel_width: 0.0,
             row_heading_size: 0.0,
             grid_min_columns: platform_dp("gridMinColumns", 1.0),
             grid_max_gap: platform_dp("gridMaxGap", 0.0),
@@ -492,6 +496,21 @@ impl UiMetrics {
         } else {
             metrics.catalog_title_size - 4.0
         };
+        match platform {
+            "mobile" => {
+                metrics.content_header_top = metrics.content_header_top_mobile;
+                metrics.calendar_grid_gap = metrics.calendar_grid_gap_mobile;
+                metrics.calendar_cell_height = metrics.calendar_cell_height_mobile;
+            }
+            "tv" => {
+                metrics.calendar_cell_height = metrics.calendar_cell_height_tv;
+                metrics.calendar_panel_width = metrics.calendar_panel_width_tv;
+            }
+            _ => {
+                metrics.calendar_cell_height = metrics.calendar_cell_height_desktop;
+                metrics.calendar_panel_width = metrics.calendar_panel_width_desktop;
+            }
+        }
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,
             "tv" => metrics.screen_padding.max(32.0),

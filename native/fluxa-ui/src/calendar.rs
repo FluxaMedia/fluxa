@@ -17,11 +17,7 @@ impl CalendarGrid {
         let compact = viewport.is_compact();
         let tv = viewport.is_tv();
         let margin = metrics.screen_margin;
-        let top = if compact {
-            metrics.content_header_top_mobile
-        } else {
-            metrics.content_header_top
-        };
+        let top = metrics.content_header_top;
         let mut header = metrics.screen_title_size * 1.25
             + metrics.control_gap
             + metrics.screen_control_height
@@ -30,22 +26,12 @@ impl CalendarGrid {
             header += metrics.screen_control_height + metrics.section_gap;
         }
         let grid_top = top + header;
-        let gap = if compact {
-            metrics.calendar_grid_gap_mobile
-        } else {
-            metrics.calendar_grid_gap
-        };
+        let gap = metrics.calendar_grid_gap;
         let weekday_height = metrics.screen_card_subtitle_size * 2.2;
         let cell_width = ((viewport.width - margin * 2.0 - gap * 6.0) / 7.0).max(1.0);
         let leading = weekday_sunday_zero(calendar.year, calendar.month, 1) as usize;
         let rows = (leading + days_in_month(calendar.year, calendar.month) as usize).div_ceil(7);
-        let minimum = if compact {
-            metrics.calendar_cell_height_mobile
-        } else if tv {
-            metrics.calendar_cell_height_tv
-        } else {
-            metrics.calendar_cell_height_desktop
-        };
+        let minimum = metrics.calendar_cell_height;
         let available =
             (viewport.height - grid_top - weekday_height - margin) / rows.max(1) as f32 - gap;
         let cell_height = if compact {
@@ -289,10 +275,8 @@ pub fn draw_calendar(
     {
         let panel_width = if compact {
             (viewport.width - grid.margin * 2.0).max(1.0)
-        } else if tv {
-            metrics.calendar_panel_width_tv
         } else {
-            metrics.calendar_panel_width_desktop
+            metrics.calendar_panel_width
         }
         .min(viewport.width - grid.margin * 2.0);
         let panel_x = if compact {
