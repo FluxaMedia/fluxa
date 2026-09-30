@@ -89,23 +89,17 @@ fn shows_hub(settings: &SettingsModel) -> bool {
         && category_pages(settings.active_section).count() > 1
 }
 
-fn page_card_height(viewport: Viewport) -> f32 {
-    if viewport.is_tv() {
-        88.0
-    } else if viewport.is_compact() {
-        68.0
-    } else {
-        72.0
-    }
+fn page_card_height(metrics: UiMetrics) -> f32 {
+    metrics.settings_page_card_height
 }
 
 fn subpages(active: usize) -> impl Iterator<Item = usize> {
     category_pages(active).filter(move |&page| page != active)
 }
 
-fn links_height(viewport: Viewport, settings: &SettingsModel) -> f32 {
+fn links_height(metrics: UiMetrics, settings: &SettingsModel) -> f32 {
     if shows_hub(settings) {
-        subpages(settings.active_section).count() as f32 * page_card_height(viewport)
+        subpages(settings.active_section).count() as f32 * page_card_height(metrics)
             + APPEARANCE_GROUP_GAP
     } else {
         0.0
@@ -123,7 +117,7 @@ fn draw_page_cards(
     width: f32,
     layout: &mut HomeLayout,
 ) {
-    let height = page_card_height(viewport);
+    let height = page_card_height(metrics);
     let pages: Vec<usize> = subpages(active).collect();
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
     painter.rect_filled(card, metrics.card_radius, metrics.surface);
@@ -364,7 +358,7 @@ pub(super) fn settings_card_height(
         }
         _ => groups_height(&groups, rows_metrics),
     };
-    base.max(content_height + links_height(viewport, settings))
+    base.max(content_height + links_height(metrics, settings))
 }
 
 /// Pure geometry used by input adapters. It intentionally has no egui state
@@ -1041,12 +1035,7 @@ fn draw_settings_extended_section(
             assets,
             language,
             rect,
-            rect.top()
-                + if viewport.is_compact() {
-                    8.0
-                } else {
-                    APPEARANCE_PAGE_HEADER_HEIGHT
-                },
+            rect.top() + metrics.settings_subpage_header_offset,
             metrics,
             layout,
         ),
@@ -1056,12 +1045,7 @@ fn draw_settings_extended_section(
             assets,
             language,
             rect,
-            rect.top()
-                + if viewport.is_compact() {
-                    8.0
-                } else {
-                    APPEARANCE_PAGE_HEADER_HEIGHT
-                },
+            rect.top() + metrics.settings_subpage_header_offset,
             metrics,
             layout,
         ),
@@ -1071,12 +1055,7 @@ fn draw_settings_extended_section(
             assets,
             language,
             rect,
-            rect.top()
-                + if viewport.is_compact() {
-                    8.0
-                } else {
-                    APPEARANCE_PAGE_HEADER_HEIGHT
-                },
+            rect.top() + metrics.settings_subpage_header_offset,
             metrics,
             layout,
         ),
