@@ -1070,7 +1070,7 @@ pub fn compact_settings_content_top(metrics: UiMetrics, settings: &SettingsModel
     if settings.section_open && settings.search.trim().is_empty() {
         top + 40.0 + metrics.section_gap
     } else {
-        top + metrics.screen_title_size_mobile
+        top + metrics.screen_title_size
             + metrics.section_gap
             + metrics.screen_control_height
             + metrics.section_gap
@@ -1245,24 +1245,14 @@ pub fn draw_settings(
             .show(context, |ui| {
                 ui.label(
                     RichText::new(localized("nav.settings", language))
-                        .size(if compact {
-                            metrics.screen_title_size_mobile
-                        } else if tv {
-                            metrics.screen_title_size_tv
-                        } else {
-                            metrics.screen_title_size
-                        })
+                        .size(metrics.screen_title_size)
                         .strong()
                         .color(Color32::WHITE),
                 );
                 ui.add_space(metrics.control_gap);
                 ui.label(
                     RichText::new(localized("settings.description", language))
-                        .size(if tv {
-                            metrics.screen_body_size_tv
-                        } else {
-                            metrics.screen_body_size
-                        })
+                        .size(metrics.screen_body_size)
                         .color(metrics.text_secondary),
                 );
                 ui.add_space(metrics.section_gap);
@@ -1348,7 +1338,7 @@ pub fn draw_settings(
                 Pos2::new(margin, top - scroll_y),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
-                FontId::proportional(metrics.screen_title_size_mobile),
+                FontId::proportional(metrics.screen_title_size),
                 Color32::WHITE,
             );
             search_field(
@@ -1356,7 +1346,7 @@ pub fn draw_settings(
                 Rect::from_min_size(
                     Pos2::new(
                         margin,
-                        top + metrics.screen_title_size_mobile + metrics.section_gap - scroll_y,
+                        top + metrics.screen_title_size + metrics.section_gap - scroll_y,
                     ),
                     Vec2::new(width, search_height),
                 ),

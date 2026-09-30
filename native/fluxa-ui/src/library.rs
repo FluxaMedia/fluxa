@@ -34,13 +34,7 @@ pub fn draw_library(
                 ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
                 ui.label(
                     RichText::new(localized("nav.library", &library.language))
-                        .size(if compact {
-                            metrics.screen_title_size_mobile
-                        } else if viewport.is_tv() {
-                            metrics.screen_title_size_tv
-                        } else {
-                            metrics.screen_title_size
-                        })
+                        .size(metrics.screen_title_size)
                         .strong()
                         .color(metrics.text_primary),
                 );
@@ -275,21 +269,12 @@ pub fn draw_library(
                     layout.activated = Some(node);
                 }
                 if library.list_view {
-                    components::library_row(ui.painter(), rect, card, viewport, metrics, assets);
+                    components::library_row(ui.painter(), rect, card, metrics, assets);
                     continue;
                 }
                 let poster =
                     Rect::from_min_size(rect.min, Vec2::new(grid.card_width, grid.poster_height));
-                components::poster_card(
-                    ui.painter(),
-                    poster,
-                    card,
-                    index,
-                    viewport,
-                    metrics,
-                    assets,
-                    false,
-                );
+                components::poster_card(ui.painter(), poster, card, metrics, assets, false);
                 if card.progress > 0.0 {
                     ui.painter().rect_filled(
                         Rect::from_min_size(

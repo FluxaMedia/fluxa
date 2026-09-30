@@ -64,13 +64,7 @@ pub fn draw_discover(
                 ui.set_min_height(page.title_height);
                 ui.label(
                     RichText::new(localized("nav.discover", &discover.language))
-                        .size(if compact {
-                            metrics.screen_title_size_mobile
-                        } else if viewport.is_tv() {
-                            metrics.screen_title_size_tv
-                        } else {
-                            metrics.screen_title_size
-                        })
+                        .size(metrics.screen_title_size)
                         .strong()
                         .color(Color32::WHITE),
                 );
@@ -482,8 +476,6 @@ pub fn draw_discover(
                                 ui.painter(),
                                 poster_rect,
                                 card,
-                                column,
-                                viewport,
                                 metrics,
                                 assets,
                                 false,

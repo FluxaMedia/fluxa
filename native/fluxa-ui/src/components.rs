@@ -682,23 +682,12 @@ pub(super) fn poster_card(
     painter: &Painter,
     rect: Rect,
     card: &HomeCard,
-    _column_index: usize,
-    viewport: Viewport,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
     motion_active: bool,
 ) {
     crate::motion::press_scale(painter, rect, || {
-        poster_card_body(
-            painter,
-            rect,
-            card,
-            viewport,
-            metrics,
-            assets,
-            motion_active,
-            true,
-        )
+        poster_card_body(painter, rect, card, metrics, assets, motion_active, true)
     });
 }
 
@@ -706,7 +695,6 @@ pub(super) fn library_row(
     painter: &Painter,
     rect: Rect,
     card: &HomeCard,
-    viewport: Viewport,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
@@ -725,9 +713,7 @@ pub(super) fn library_row(
             rect.height() - inset * 2.0,
         ),
     );
-    poster_card_body(
-        painter, thumb, card, viewport, metrics, assets, false, false,
-    );
+    poster_card_body(painter, thumb, card, metrics, assets, false, false);
     let text_x = thumb.right() + inset * 1.5;
     let text_width = rect.right() - text_x - inset;
     let title_size = metrics.screen_card_title_size + 2.0;
@@ -769,7 +755,6 @@ fn poster_card_body(
     painter: &Painter,
     rect: Rect,
     card: &HomeCard,
-    viewport: Viewport,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
     motion_active: bool,
@@ -857,11 +842,7 @@ fn poster_card_body(
     if !labels || card.hide_title && card.row_kind == super::HomeRowKind::Collection {
         return;
     }
-    let title_font = FontId::proportional(if viewport.is_tv() {
-        metrics.screen_card_title_size_tv
-    } else {
-        metrics.screen_card_title_size
-    });
+    let title_font = FontId::proportional(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let label_y = rect.bottom() + metrics.control_gap;
     paint_elided_text(
@@ -943,13 +924,11 @@ pub(super) fn continue_card(
     painter: &Painter,
     rect: Rect,
     card: &HomeCard,
-    _column_index: usize,
-    viewport: Viewport,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
     crate::motion::press_scale(painter, rect, || {
-        continue_card_body(painter, rect, card, viewport, metrics, assets)
+        continue_card_body(painter, rect, card, metrics, assets)
     });
 }
 
@@ -957,7 +936,6 @@ fn continue_card_body(
     painter: &Painter,
     rect: Rect,
     card: &HomeCard,
-    viewport: Viewport,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
@@ -982,21 +960,13 @@ fn continue_card_body(
         Color32::TRANSPARENT,
         Color32::from_black_alpha(210),
     );
-    let title_font = FontId::proportional(if viewport.is_tv() {
-        metrics.screen_card_title_size_tv
-    } else {
-        metrics.screen_card_title_size
-    });
+    let title_font = FontId::proportional(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let content_width = (rect.width() - metrics.card_content_padding * 2.0).max(1.0);
     super::poster_overlay::paint_landscape(painter, rect, card);
     let bar_top = rect.bottom() - metrics.card_content_padding - metrics.card_progress_height;
     let subtitle_height = metrics.screen_card_subtitle_size * 1.25;
-    let title_height = if viewport.is_tv() {
-        metrics.screen_card_title_size_tv * 1.25
-    } else {
-        metrics.screen_card_title_size * 1.25
-    };
+    let title_height = metrics.screen_card_title_size * 1.25;
     let subtitle_top = bar_top - metrics.control_gap * 0.5 - subtitle_height;
     let title_top = subtitle_top - metrics.control_gap * 0.35 - title_height;
     let logo_box = Vec2::new(content_width * 0.6, title_height * 1.6);

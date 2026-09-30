@@ -373,7 +373,7 @@ pub(crate) fn draw_home_with_options(
                 screen.center(),
                 Align2::CENTER_CENTER,
                 "Home",
-                FontId::proportional(metrics.screen_title_size_mobile),
+                FontId::proportional(metrics.screen_title_size),
                 metrics.text_primary,
             );
         }

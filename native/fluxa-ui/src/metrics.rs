@@ -155,15 +155,11 @@ pub struct UiMetrics {
     pub nav_item_horizontal_padding: f32,
     pub nav_item_vertical_padding: f32,
     pub nav_label_size: f32,
-    pub screen_title_size_mobile: f32,
     pub screen_title_size: f32,
-    pub screen_title_size_tv: f32,
     pub screen_body_size: f32,
-    pub screen_body_size_tv: f32,
     pub screen_section_title_size: f32,
     pub screen_section_title_size_tv: f32,
     pub screen_card_title_size: f32,
-    pub screen_card_title_size_tv: f32,
     pub screen_card_subtitle_size: f32,
     pub catalog_title_size: f32,
     pub horizontal_spacing: f32,
@@ -440,15 +436,23 @@ impl UiMetrics {
             nav_item_horizontal_padding: window_dp("navigationItemHorizontalPadding", 14.0),
             nav_item_vertical_padding: window_dp("navigationItemVerticalPadding", 9.0),
             nav_label_size: window_sp("navigationLabelSize", 14.0),
-            screen_title_size_mobile: common_sp("screenTitleSizeMobile", 32.0),
-            screen_title_size: common_sp("screenTitleSize", 34.0),
-            screen_title_size_tv: common_sp("screenTitleSizeTv", 42.0),
-            screen_body_size: common_sp("screenBodySize", 15.0),
-            screen_body_size_tv: common_sp("screenBodySizeTv", 18.0),
+            screen_title_size: match platform {
+                "mobile" => common_sp("screenTitleSizeMobile", 32.0),
+                "tv" => common_sp("screenTitleSizeTv", 42.0),
+                _ => common_sp("screenTitleSize", 34.0),
+            },
+            screen_body_size: if platform == "tv" {
+                common_sp("screenBodySizeTv", 18.0)
+            } else {
+                common_sp("screenBodySize", 15.0)
+            },
             screen_section_title_size: common_sp("screenSectionTitleSize", 20.0),
             screen_section_title_size_tv: common_sp("screenSectionTitleSizeTv", 24.0),
-            screen_card_title_size: common_sp("screenCardTitleSize", 15.0),
-            screen_card_title_size_tv: common_sp("screenCardTitleSizeTv", 17.0),
+            screen_card_title_size: if platform == "tv" {
+                common_sp("screenCardTitleSizeTv", 17.0)
+            } else {
+                common_sp("screenCardTitleSize", 15.0)
+            },
             screen_card_subtitle_size: common_sp("screenCardSubtitleSize", 12.0),
             catalog_title_size: window_sp("catalogTitleSize", 26.0),
             horizontal_spacing: window_dp("horizontalSpacing", 16.0),

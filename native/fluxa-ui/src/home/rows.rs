@@ -172,7 +172,7 @@ pub(super) fn draw_home_rows(
                 ui.set_clip_rect(ui.clip_rect().intersect(row_clip));
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
-                    for (column_index, card) in cards.iter().enumerate() {
+                    for card in cards.iter() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
                         let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
                         let slot_height = if is_poster { body_height } else { card_height };
@@ -202,8 +202,6 @@ pub(super) fn draw_home_rows(
                                     ui.painter(),
                                     rect,
                                     card,
-                                    column_index,
-                                    viewport,
                                     metrics,
                                     assets,
                                     card.motion_enabled
@@ -220,8 +218,6 @@ pub(super) fn draw_home_rows(
                                     ui.painter(),
                                     rect,
                                     card,
-                                    column_index,
-                                    viewport,
                                     metrics,
                                     assets,
                                 );

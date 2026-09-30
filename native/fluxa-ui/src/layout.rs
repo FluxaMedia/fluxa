@@ -52,13 +52,7 @@ impl PageLayout {
         } else {
             metrics.content_header_top
         };
-        let title_size = if compact {
-            metrics.screen_title_size_mobile
-        } else if viewport.is_tv() {
-            metrics.screen_title_size_tv
-        } else {
-            metrics.screen_title_size
-        };
+        let title_size = metrics.screen_title_size;
         let control = metrics.screen_control_height;
         let search_height = control + 4.0;
         let (title_height, search, filters_top) = if compact {
@@ -326,10 +320,6 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
     );
     let title_height = if desktop {
         0.0
-    } else if viewport.is_compact() {
-        metrics.screen_title_size_mobile
-    } else if viewport.is_tv() {
-        metrics.screen_title_size_tv
     } else {
         metrics.screen_title_size
     };

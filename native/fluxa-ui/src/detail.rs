@@ -966,8 +966,6 @@ pub fn draw_detail(
                                     ui.painter(),
                                     Rect::from_min_size(rect.min, poster),
                                     card,
-                                    index,
-                                    viewport,
                                     metrics,
                                     assets,
                                     false,

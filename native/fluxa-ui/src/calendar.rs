@@ -28,7 +28,7 @@ impl CalendarGrid {
         } else {
             metrics.content_header_top
         };
-        let mut header = title_size(viewport, metrics) * 1.25
+        let mut header = metrics.screen_title_size * 1.25
             + metrics.control_gap
             + metrics.screen_control_height
             + metrics.section_gap;
@@ -77,24 +77,6 @@ impl CalendarGrid {
     }
 }
 
-fn title_size(viewport: Viewport, metrics: UiMetrics) -> f32 {
-    if viewport.is_compact() {
-        metrics.screen_title_size_mobile
-    } else if viewport.is_tv() {
-        metrics.screen_title_size_tv
-    } else {
-        metrics.screen_title_size
-    }
-}
-
-fn body_size(viewport: Viewport, metrics: UiMetrics) -> f32 {
-    if viewport.is_tv() {
-        metrics.screen_body_size_tv
-    } else {
-        metrics.screen_body_size
-    }
-}
-
 pub fn draw_calendar(
     context: &egui::Context,
     viewport: Viewport,
@@ -140,7 +122,7 @@ pub fn draw_calendar(
             ui.spacing_mut().item_spacing = Vec2::ZERO;
             ui.label(
                 RichText::new(localized("nav.library", &calendar.language))
-                    .size(title_size(viewport, metrics))
+                    .size(metrics.screen_title_size)
                     .strong()
                     .color(Color32::WHITE),
             );
@@ -150,7 +132,7 @@ pub fn draw_calendar(
         &mut layout,
         Pos2::new(
             grid.margin,
-            grid.top - scroll_y + title_size(viewport, metrics) * 1.25 + metrics.control_gap,
+            grid.top - scroll_y + metrics.screen_title_size * 1.25 + metrics.control_gap,
         ),
         viewport.width - grid.margin * 2.0,
         1,
@@ -171,8 +153,7 @@ pub fn draw_calendar(
         } else {
             Pos2::new(
                 viewport.width - grid.margin - nav_width,
-                grid.top
-                    + (title_size(viewport, metrics) * 1.25 - metrics.screen_control_height) * 0.5
+                grid.top + (metrics.screen_title_size * 1.25 - metrics.screen_control_height) * 0.5
                     - scroll_y,
             )
         };
