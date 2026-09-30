@@ -1104,7 +1104,11 @@ fn responsive_metrics_are_loaded_from_shared_token_contract() {
     assert_eq!(desktop.accent, Color32::WHITE);
     assert_eq!(desktop.page_padding, 24.0);
     assert_eq!(desktop.horizontal_card_width, 300.0);
-    assert_eq!(desktop.poster_card_height, 240.0);
+    assert_eq!(desktop.poster_card_width, 200.0);
+    assert_eq!(desktop.poster_card_height, 300.0);
+    let narrow = UiMetrics::for_viewport(Viewport::new(1100, 800, UiFormFactor::Desktop));
+    assert!((140.0..200.0).contains(&narrow.poster_card_width));
+    assert_eq!(mobile.poster_card_height, mobile.poster_card_width * 1.5);
     assert_eq!(mobile.page_padding, 16.0);
     assert_eq!(mobile.horizontal_card_width, 244.0);
     assert_eq!(tv.horizontal_card_width, 356.0);

@@ -286,6 +286,14 @@
     "platforms": {
       "mobile": {
         "dp": {
+          "posterVisibleCards": 2.6,
+          "posterCardMin": 110,
+          "posterCardMax": 170,
+          "collectionPosterWidth": 117,
+          "collectionPosterHeight": 176,
+          "collectionWideWidth": 210,
+          "collectionWideHeight": 119,
+          "collectionSquareSize": 113,
           "episodeCardWidth": 244,
           "episodeCardHeight": 148,
           "posterCardWidth": 136,
@@ -304,6 +312,14 @@
       },
       "desktop": {
         "dp": {
+          "posterVisibleCards": 7,
+          "posterCardMin": 140,
+          "posterCardMax": 200,
+          "collectionPosterWidth": 156,
+          "collectionPosterHeight": 234,
+          "collectionWideWidth": 280,
+          "collectionWideHeight": 158,
+          "collectionSquareSize": 150,
           "episodeCardWidth": 300,
           "episodeCardHeight": 180,
           "posterCardWidth": 160,
@@ -322,6 +338,14 @@
       },
       "tv": {
         "dp": {
+          "posterVisibleCards": 6,
+          "posterCardMin": 120,
+          "posterCardMax": 180,
+          "collectionPosterWidth": 156,
+          "collectionPosterHeight": 234,
+          "collectionWideWidth": 280,
+          "collectionWideHeight": 158,
+          "collectionSquareSize": 150,
           "episodeCardWidth": 356,
           "episodeCardHeight": 208,
           "posterCardWidth": 136,

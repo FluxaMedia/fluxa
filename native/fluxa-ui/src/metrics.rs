@@ -135,7 +135,11 @@ pub struct UiMetrics {
     pub horizontal_card_width: f32,
     pub horizontal_card_height: f32,
     pub home_continue_card_width: f32,
-    pub home_collection_scale: f32,
+    pub collection_poster_width: f32,
+    pub collection_poster_height: f32,
+    pub collection_wide_width: f32,
+    pub collection_wide_height: f32,
+    pub collection_square_size: f32,
     pub home_continue_card_height: f32,
     pub poster_card_width: f32,
     pub poster_card_height: f32,
@@ -461,8 +465,23 @@ impl UiMetrics {
                 meta: platform_sp("meta", 13.0),
                 label: platform_sp("label", 12.0),
             },
-            home_collection_scale: if viewport.is_compact() { 0.75 } else { 1.0 },
+            collection_poster_width: platform_dp("collectionPosterWidth", 156.0),
+            collection_poster_height: platform_dp("collectionPosterHeight", 234.0),
+            collection_wide_width: platform_dp("collectionWideWidth", 280.0),
+            collection_wide_height: platform_dp("collectionWideHeight", 158.0),
+            collection_square_size: platform_dp("collectionSquareSize", 150.0),
         };
+        let visible = platform_dp("posterVisibleCards", 0.0);
+        if visible > 0.0 {
+            let gap = metrics.horizontal_spacing;
+            let content = viewport.width - metrics.page_padding * 2.0;
+            let width = ((content - gap * (visible.ceil() - 1.0)) / visible).clamp(
+                platform_dp("posterCardMin", 120.0),
+                platform_dp("posterCardMax", 200.0),
+            );
+            metrics.poster_card_width = width;
+            metrics.poster_card_height = width * metrics.poster_height_ratio;
+        }
         if poster_overlay::landscape() {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;

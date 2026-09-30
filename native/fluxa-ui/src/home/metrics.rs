@@ -85,9 +85,9 @@ pub(crate) fn home_row_dimensions(metrics: UiMetrics, kind: HomeRowKind) -> (f32
                 + metrics.control_gap,
         ),
         HomeRowKind::Collection => (
-            156.0,
-            234.0,
-            234.0 + metrics.control_gap + metrics.screen_card_title_size,
+            metrics.collection_poster_width,
+            metrics.collection_poster_height,
+            metrics.collection_poster_height + metrics.control_gap + metrics.screen_card_title_size,
         ),
     }
 }
@@ -100,14 +100,20 @@ pub(crate) fn home_collection_card_dimensions(metrics: UiMetrics, card: &HomeCar
         .to_ascii_lowercase()
         .as_str()
     {
-        "wide" | "landscape" => (280.0, 158.0),
-        "square" => (150.0, 150.0),
-        _ => (156.0, 234.0),
+        "wide" | "landscape" => (
+            metrics.collection_wide_width,
+            metrics.collection_wide_height,
+        ),
+        "square" => (
+            metrics.collection_square_size,
+            metrics.collection_square_size,
+        ),
+        _ => (
+            metrics.collection_poster_width,
+            metrics.collection_poster_height,
+        ),
     };
-    (
-        width * metrics.home_collection_scale,
-        height * metrics.home_collection_scale,
-    )
+    (width, height)
 }
 
 pub(crate) fn home_card_dimensions(
