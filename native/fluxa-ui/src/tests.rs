@@ -433,12 +433,13 @@ fn mobile_library_filters_share_one_row_inside_the_viewport() {
 }
 
 #[test]
-fn mobile_home_continue_cards_use_compose_compact_dimensions() {
+fn mobile_continue_cards_leave_the_next_card_peeking() {
     let metrics = UiMetrics::for_viewport(Viewport::new(390, 844, UiFormFactor::Mobile));
     let (width, height, _) = home_row_dimensions(metrics, HomeRowKind::Continue);
 
-    assert_eq!(width, 196.0);
-    assert!((height - 109.76).abs() < 0.01);
+    let content = 390.0 - metrics.page_padding * 2.0;
+    assert!(width > content * 0.5 && width < content);
+    assert!((height - width * metrics.horizontal_card_height_ratio).abs() < 0.01);
 }
 
 #[test]

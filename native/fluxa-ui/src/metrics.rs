@@ -486,6 +486,18 @@ impl UiMetrics {
             metrics.poster_card_width = width;
             metrics.poster_card_height = width * metrics.poster_height_ratio;
         }
+        let continue_visible = platform_dp("continueVisibleCards", 0.0);
+        if continue_visible > 0.0 {
+            let gap = metrics.horizontal_spacing;
+            let content = viewport.width - metrics.page_padding * 2.0;
+            let width = ((content - gap * (continue_visible.ceil() - 1.0)) / continue_visible)
+                .clamp(
+                    platform_dp("continueCardMin", 180.0),
+                    platform_dp("continueCardMax", 320.0),
+                );
+            metrics.home_continue_card_width = width;
+            metrics.home_continue_card_height = width * metrics.horizontal_card_height_ratio;
+        }
         if poster_overlay::landscape() {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;

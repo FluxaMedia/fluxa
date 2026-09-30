@@ -152,15 +152,7 @@ pub(crate) fn home_row_body_height(
 }
 
 pub(crate) fn home_metrics(viewport: Viewport) -> UiMetrics {
-    let mut metrics = UiMetrics::for_viewport(viewport);
-    if viewport.is_compact() {
-        metrics.home_continue_card_width *= 1.15;
-        metrics.home_continue_card_height *= 1.15;
-    } else if !viewport.is_tv() {
-        metrics.home_continue_card_width *= 1.10;
-        metrics.home_continue_card_height *= 1.10;
-    }
-    metrics
+    UiMetrics::for_viewport(viewport)
 }
 
 /// Height occupied by a shelf heading and the gap between it and its cards.
