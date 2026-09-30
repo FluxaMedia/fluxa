@@ -70,7 +70,7 @@ pub fn draw_profiles(
                 ui.label(
                     RichText::new(t("profiles.delete_confirm_body").replacen("%s", &name, 1))
                         .size(14.0)
-                        .color(Color32::from_white_alpha(170)),
+                        .color(metrics.text_secondary),
                 );
                 ui.add_space(20.0);
                 ui.horizontal(|ui| {
@@ -104,9 +104,7 @@ pub fn draw_profiles(
                         ui.horizontal(|ui| {
                             ui.add(
                                 egui::Label::new(
-                                    RichText::new(notice)
-                                        .size(14.0)
-                                        .color(Color32::from_white_alpha(220)),
+                                    RichText::new(notice).size(14.0).color(metrics.text_primary),
                                 )
                                 .wrap(),
                             );

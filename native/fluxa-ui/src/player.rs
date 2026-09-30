@@ -140,7 +140,14 @@ pub fn draw_player(
             painter.image(texture, rect, full_uv(), Color32::WHITE);
         }
         None if player.passthrough => {}
-        None => draw_loading(context, &painter, rect, player, assets),
+        None => draw_loading(
+            context,
+            &painter,
+            rect,
+            player,
+            assets,
+            UiMetrics::for_viewport(viewport),
+        ),
     }
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);
@@ -391,7 +398,14 @@ impl Chrome<'_> {
             .or_else(|| player.scrub.map(|time| (track.left() + played, time)));
         if let Some((x, time)) = preview {
             layout.seek_hover = Some(time);
-            draw_seek_preview(self.context, track, x, time, player);
+            draw_seek_preview(
+                self.context,
+                track,
+                x,
+                time,
+                player,
+                UiMetrics::for_viewport(self.viewport),
+            );
         }
         position
     }

@@ -191,7 +191,7 @@ fn draw_page_cards(
                     Align2::LEFT_TOP,
                     truncate_to_width(ui.painter(), &description, &subtitle_font, text_width),
                     subtitle_font,
-                    Color32::from_white_alpha(120),
+                    metrics.text_muted,
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
                 let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(120));
@@ -417,7 +417,7 @@ fn settings_panel_line(
             Align2::CENTER_CENTER,
             truncate_to_width(painter, value, &value_font, chip.width() - 12.0),
             value_font,
-            Color32::from_white_alpha(220),
+            metrics.text_primary,
         );
         painter.line_segment(
             [
@@ -733,7 +733,7 @@ fn draw_field(
         Align2::LEFT_TOP,
         localized(field.label, language),
         crate::fonts::regular(label_size),
-        Color32::from_white_alpha(230),
+        metrics.text_primary,
     );
     let help_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     painter.text(
@@ -746,7 +746,7 @@ fn draw_field(
             inner.width(),
         ),
         help_font,
-        Color32::from_white_alpha(130),
+        metrics.text_muted,
     );
     let height = 36.0;
     let input = Rect::from_min_max(
@@ -836,7 +836,7 @@ fn draw_shortcut_group(
             Align2::LEFT_CENTER,
             localized(&format!("shortcuts.{}", shortcut.id), language),
             FontId::proportional(size),
-            Color32::from_white_alpha(210),
+            metrics.text_primary,
         );
         let recording = settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
         let label = if recording {
@@ -919,14 +919,14 @@ fn draw_binding_group(
             Align2::LEFT_CENTER,
             localized(action, language),
             label_font.clone(),
-            Color32::from_white_alpha(210),
+            metrics.text_primary,
         );
         painter.text(
             row.right_center() - Vec2::new(6.0, 0.0),
             Align2::RIGHT_CENTER,
             *keys,
             value_font.clone(),
-            Color32::from_white_alpha(150),
+            metrics.text_secondary,
         );
     }
     card
@@ -1284,7 +1284,7 @@ pub fn draw_settings(
                         } else {
                             metrics.screen_body_size
                         })
-                        .color(Color32::from_white_alpha(165)),
+                        .color(metrics.text_secondary),
                 );
                 ui.add_space(metrics.section_gap);
                 ui.horizontal(|ui| {
@@ -1670,7 +1670,7 @@ pub fn draw_settings(
                 language,
             ),
             crate::fonts::regular(metrics.screen_card_subtitle_size),
-            Color32::from_white_alpha(130),
+            metrics.text_muted,
         );
     }
     if !searching {
@@ -1821,7 +1821,7 @@ pub fn draw_settings(
                 text_width,
             ),
             label_font.clone(),
-            Color32::from_white_alpha(225),
+            metrics.text_primary,
         );
         let subtitle_top = text_top + row_label_size + 4.0;
         if is_app_icon {
@@ -1957,7 +1957,7 @@ pub fn draw_settings(
                         row_rect.width() * 0.4,
                     ),
                     value_font,
-                    Color32::from_white_alpha(140),
+                    metrics.text_secondary,
                 );
             }
         } else if let (Some(raw_value), Some(value)) = (raw_value, value) {

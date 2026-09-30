@@ -72,6 +72,7 @@ pub(super) fn draw_loading(
     rect: Rect,
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
 ) {
     painter.rect_filled(rect, 0.0, Color32::BLACK);
     let url = player.background.as_deref();
@@ -176,7 +177,7 @@ pub(super) fn draw_loading(
                 rect.width() - 64.0,
             ),
             FontId::proportional(14.0),
-            Color32::from_white_alpha(170),
+            metrics.text_secondary,
         );
         return;
     }
@@ -186,7 +187,7 @@ pub(super) fn draw_loading(
             Align2::CENTER_CENTER,
             episode,
             FontId::proportional(16.0),
-            Color32::from_white_alpha(210),
+            metrics.text_primary,
         );
         below += 28.0;
     }
@@ -200,7 +201,7 @@ pub(super) fn draw_loading(
         Align2::CENTER_CENTER,
         status,
         FontId::proportional(14.0),
-        Color32::from_white_alpha(150),
+        metrics.text_secondary,
     );
 }
 

@@ -52,7 +52,7 @@ pub(super) fn account_group(
             Align2::LEFT_TOP,
             title,
             crate::fonts::regular(15.0),
-            Color32::from_white_alpha(120),
+            metrics.text_muted,
         );
     } else {
         painter.text(
@@ -60,7 +60,7 @@ pub(super) fn account_group(
             Align2::LEFT_TOP,
             title.to_uppercase(),
             crate::fonts::regular(13.0),
-            Color32::from_white_alpha(145),
+            metrics.text_secondary,
         );
     }
     let card = Rect::from_min_size(
@@ -329,7 +329,7 @@ pub(super) fn draw_account(
                     Align2::LEFT_TOP,
                     *label,
                     crate::fonts::regular(label_size),
-                    Color32::from_white_alpha(225),
+                    metrics.text_primary,
                 );
                 painter.text(
                     Pos2::new(row.left() + label_left, text_top + label_size + 4.0),
@@ -349,14 +349,14 @@ pub(super) fn draw_account(
                     Align2::LEFT_CENTER,
                     *label,
                     crate::fonts::regular(label_size),
-                    Color32::from_white_alpha(225),
+                    metrics.text_primary,
                 );
                 painter.text(
                     Pos2::new(right, row.center().y),
                     Align2::RIGHT_CENTER,
                     status,
                     status_font,
-                    Color32::from_white_alpha(140),
+                    metrics.text_secondary,
                 );
             }
             if slot.is_some() && viewport.platform != UiPlatform::Android {
@@ -371,7 +371,7 @@ pub(super) fn draw_account(
             Align2::LEFT_CENTER,
             *label,
             FontId::proportional(label_size),
-            Color32::from_white_alpha(210),
+            metrics.text_primary,
         );
         let mut status_right = 8.0;
         if let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider) {
@@ -445,14 +445,14 @@ pub(super) fn draw_account(
                     Align2::LEFT_TOP,
                     title,
                     crate::fonts::regular(label_size),
-                    Color32::from_white_alpha(225),
+                    metrics.text_primary,
                 );
                 painter.text(
                     Pos2::new(row.left() + 4.0, text_top + label_size + 4.0),
                     Align2::LEFT_TOP,
                     current_label,
                     value_font,
-                    Color32::from_white_alpha(160),
+                    metrics.text_secondary,
                 );
             } else {
                 painter.text(
@@ -460,14 +460,14 @@ pub(super) fn draw_account(
                     Align2::LEFT_CENTER,
                     title,
                     crate::fonts::regular(label_size),
-                    Color32::from_white_alpha(225),
+                    metrics.text_primary,
                 );
                 painter.text(
                     tip - Vec2::new(16.0, 0.0),
                     Align2::RIGHT_CENTER,
                     current_label,
                     value_font,
-                    Color32::from_white_alpha(140),
+                    metrics.text_secondary,
                 );
                 let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
@@ -480,7 +480,7 @@ pub(super) fn draw_account(
             Align2::LEFT_CENTER,
             localized(label_key, language),
             FontId::proportional(label_size),
-            Color32::from_white_alpha(210),
+            metrics.text_primary,
         );
         let value_width = if compact { 132.0 } else { 176.0 };
         let value_rect = Rect::from_min_size(

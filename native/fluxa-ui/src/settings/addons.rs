@@ -300,13 +300,13 @@ fn draw_header(
     y + metrics.settings_extended_action_height + 24.0
 }
 
-fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String) -> f32 {
+fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String, metrics: UiMetrics) -> f32 {
     painter.text(
         Pos2::new(rect.left() + 4.0, y),
         Align2::LEFT_TOP,
         label,
         crate::fonts::regular(15.0),
-        Color32::from_white_alpha(120),
+        metrics.text_muted,
     );
     y + APPEARANCE_GROUP_HEADING_HEIGHT
 }
@@ -369,6 +369,7 @@ pub(super) fn draw_addons(
             "{}  ·  {count}",
             localized("settings.addon_installed", language)
         ),
+        metrics,
     );
     if let Some(error) = settings.addon_error.as_deref() {
         notice(&painter, rect, y, error, ERROR);
@@ -428,6 +429,7 @@ pub(super) fn draw_plugins(
             localized("settings.plugin_repositories", language),
             repos.len()
         ),
+        metrics,
     );
     if let Some(error) = plugin_error(settings) {
         notice(&painter, rect, y, error, ERROR);
@@ -460,6 +462,7 @@ pub(super) fn draw_plugins(
             localized("settings.plugin_scrapers", language),
             scrapers.len()
         ),
+        metrics,
     );
     let group = Rect::from_min_size(
         Pos2::new(rect.left(), y),
@@ -525,7 +528,7 @@ pub(super) fn draw_plugins(
                 Align2::LEFT_CENTER,
                 truncate_to_width(&painter, detail, &font, text_width),
                 font,
-                Color32::from_white_alpha(130),
+                metrics.text_muted,
             );
         }
         components::toggle(
@@ -604,7 +607,7 @@ fn draw_card(
             Align2::CENTER_CENTER,
             capitalize(&card.title.chars().take(1).collect::<String>()),
             crate::fonts::regular(20.0),
-            Color32::from_white_alpha(200),
+            metrics.text_primary,
         );
     }
     let text_left = logo.right() + 14.0;
@@ -621,7 +624,7 @@ fn draw_card(
             Align2::LEFT_TOP,
             format!("v{}", version.trim_start_matches('v')),
             crate::fonts::regular(13.0),
-            Color32::from_white_alpha(120),
+            metrics.text_muted,
         );
     }
     let subtitle_font = crate::fonts::regular(14.0);
@@ -630,14 +633,14 @@ fn draw_card(
         Align2::LEFT_TOP,
         truncate_to_width(painter, card.subtitle, &subtitle_font, text_width),
         subtitle_font,
-        Color32::from_white_alpha(130),
+        metrics.text_muted,
     );
     let mut y = logo.bottom() + 12.0;
     if let Some(description) = card.description {
         let mut job = egui::text::LayoutJob::simple(
             description.to_owned(),
             crate::fonts::regular(15.0),
-            Color32::from_white_alpha(185),
+            metrics.text_secondary,
             inner.width(),
         );
         job.wrap.max_rows = 2;
@@ -885,6 +888,7 @@ pub(super) fn draw_servers(
             localized("settings.server_connected", language),
             settings.media_servers.len()
         ),
+        metrics,
     );
     if let Some((message, color)) = server_notice(settings, language) {
         notice(&painter, rect, y, &message, color);

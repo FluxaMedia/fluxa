@@ -32,6 +32,7 @@ pub(super) fn draw_pin_prompt(
                     36.0,
                     &profile.name,
                     profile.avatar_url.as_deref(),
+                    metrics,
                 );
                 ui.add_space(12.0);
                 ui.label(
@@ -44,7 +45,7 @@ pub(super) fn draw_pin_prompt(
                 ui.label(
                     RichText::new(t("profiles.pin_prompt"))
                         .size(13.0)
-                        .color(Color32::from_white_alpha(140)),
+                        .color(metrics.text_secondary),
                 );
             });
             ui.add_space(18.0);
@@ -63,7 +64,7 @@ pub(super) fn draw_pin_prompt(
             pin.retain(|character| character.is_ascii_digit());
             pin.truncate(4);
             if prompt.error {
-                components::note(ui, &t("profiles.pin_error"));
+                components::note(ui, &t("profiles.pin_error"), metrics);
             }
             ui.add_space(18.0);
             let submit = pin.len() == 4

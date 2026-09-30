@@ -22,6 +22,7 @@ pub(super) fn draw_form(
                 t("profiles.create_new")
             },
             &t("profiles.form_subtitle"),
+            metrics,
         );
         let left_width = if stacked {
             width
@@ -75,6 +76,7 @@ pub(super) fn form_details(
                     64.0,
                     &name,
                     model.draft.avatar_url.as_deref(),
+                    metrics,
                 );
                 if response.hovered() {
                     ui.painter()
@@ -102,7 +104,7 @@ pub(super) fn form_details(
                         ui.label(
                             RichText::new(t("profiles.primary_badge").to_uppercase())
                                 .size(10.0)
-                                .color(Color32::from_white_alpha(160))
+                                .color(metrics.text_secondary)
                                 .background_color(Color32::from_white_alpha(24)),
                         );
                     }
@@ -115,7 +117,7 @@ pub(super) fn form_details(
             });
             ui.add_space(20.0);
             let field_width = ui.available_width();
-            components::field_label(ui, &t("profiles.name"));
+            components::field_label(ui, &t("profiles.name"), metrics);
             components::text_input(
                 ui,
                 &mut model.draft.name,
@@ -125,10 +127,10 @@ pub(super) fn form_details(
                 metrics,
             );
             if model.duplicate_name() {
-                components::note(ui, &t("profiles.duplicate_name"));
+                components::note(ui, &t("profiles.duplicate_name"), metrics);
             }
             ui.add_space(14.0);
-            components::field_label(ui, &t("profiles.pin_lock"));
+            components::field_label(ui, &t("profiles.pin_lock"), metrics);
             let hint = if model.draft.has_pin && !model.draft.remove_pin {
                 t("profiles.pin_set_placeholder")
             } else {
@@ -145,7 +147,7 @@ pub(super) fn form_details(
                 model.draft.remove_pin = false;
             }
             if !model.draft.pin.is_empty() && model.draft.pin.len() != 4 {
-                components::note(ui, &t("profiles.pin_invalid"));
+                components::note(ui, &t("profiles.pin_invalid"), metrics);
             }
             if model.draft.has_pin && !model.draft.remove_pin {
                 if components::text_button(ui, &t("profiles.remove_pin"), 12.0, 120).clicked() {
@@ -154,11 +156,11 @@ pub(super) fn form_details(
                 }
             }
             if model.draft.remove_pin {
-                components::note(ui, &t("profiles.pin_will_be_removed"));
+                components::note(ui, &t("profiles.pin_will_be_removed"), metrics);
             }
             if !model.draft_is_primary() {
                 ui.add_space(14.0);
-                components::field_label(ui, &t("profiles.sharing"));
+                components::field_label(ui, &t("profiles.sharing"), metrics);
                 ui.checkbox(
                     &mut model.draft.uses_primary_addons,
                     RichText::new(t("profiles.use_primary_addons")).size(13.0),
@@ -213,13 +215,13 @@ pub(super) fn form_images(
                 ui.label(
                     RichText::new(t("profiles.no_avatar_packs"))
                         .size(13.0)
-                        .color(Color32::from_white_alpha(110)),
+                        .color(metrics.text_muted),
                 );
                 return;
             }
             ui.add_space(16.0);
             ui.horizontal(|ui| {
-                components::field_label(ui, &t("profiles.avatar_packs"));
+                components::field_label(ui, &t("profiles.avatar_packs"), metrics);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                     let refresh = components::icon_button(
                         ui,
@@ -245,7 +247,7 @@ pub(super) fn form_images(
                     RichText::new(&pack.title)
                         .size(13.0)
                         .strong()
-                        .color(Color32::from_white_alpha(210)),
+                        .color(metrics.text_primary),
                 );
                 ui.add_space(8.0);
                 for chunk in pack.avatars.chunks(per_row) {
@@ -262,6 +264,7 @@ pub(super) fn form_images(
                                 tile * 0.5,
                                 &avatar.name,
                                 Some(&avatar.url),
+                                metrics,
                             );
                             let selected =
                                 model.draft.avatar_url.as_deref() == Some(avatar.url.as_str());
@@ -281,7 +284,7 @@ pub(super) fn form_images(
                                 Align2::CENTER_CENTER,
                                 truncate_to_width(ui.painter(), &avatar.name, &font, tile),
                                 font,
-                                Color32::from_white_alpha(170),
+                                metrics.text_secondary,
                             );
                             if response.on_hover_text(&avatar.name).clicked() {
                                 model.draft.avatar_url = Some(avatar.url.clone());

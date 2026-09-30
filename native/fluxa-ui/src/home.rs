@@ -577,7 +577,7 @@ pub(crate) fn draw_home_with_options(
                             } else {
                                 metrics.nav_label_size
                             }),
-                            Color32::from_white_alpha(185),
+                            metrics.text_secondary,
                         );
                     }
                     ui.add_space(if compact { 6.0 } else { 4.0 });

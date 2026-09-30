@@ -221,7 +221,7 @@ pub fn draw_calendar(
                             ui.label(
                                 RichText::new(localized("calendar.loading", &calendar.language))
                                     .size(metrics.screen_card_subtitle_size)
-                                    .color(Color32::from_white_alpha(120)),
+                                    .color(metrics.text_muted),
                             );
                         }
                         layout.focusable.push((NODE_CALENDAR_PREV, previous.rect));
@@ -268,7 +268,7 @@ pub fn draw_calendar(
                     label.to_uppercase()
                 },
                 crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
-                Color32::from_white_alpha(110),
+                metrics.text_muted,
             );
         }
         let total = days_in_month(calendar.year, calendar.month) as u32;
@@ -583,7 +583,7 @@ fn draw_calendar_cell(
             Align2::LEFT_BOTTOM,
             truncate_to_width(&painter, &entry.episode, &episode_font, text_width),
             episode_font.clone(),
-            Color32::from_white_alpha(180),
+            metrics.text_secondary,
         );
         baseline -= episode_font.size * 1.35;
     }

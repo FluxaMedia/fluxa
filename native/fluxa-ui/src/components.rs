@@ -185,6 +185,7 @@ pub(super) fn avatar(
     radius: f32,
     name: &str,
     url: Option<&str>,
+    metrics: UiMetrics,
 ) {
     let rect = Rect::from_center_size(center, Vec2::splat(radius * 2.0));
     let target = artwork_target_size(rect.size(), painter.ctx().pixels_per_point());
@@ -212,7 +213,7 @@ pub(super) fn avatar(
         Align2::CENTER_CENTER,
         initials,
         FontId::proportional(radius * 0.72),
-        Color32::from_white_alpha(220),
+        metrics.text_primary,
     );
 }
 
@@ -454,7 +455,7 @@ pub(super) fn search_field(
             .frame(egui::Frame::NONE)
             .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
             .vertical_align(egui::Align::Center)
-            .hint_text(RichText::new(hint).color(Color32::from_white_alpha(110)))
+            .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(Color32::WHITE)
             .margin(Vec2::ZERO),
     );
@@ -526,7 +527,7 @@ fn text_edit(
             .password(password)
             .font(FontId::proportional(font_size))
             .vertical_align(egui::Align::Center)
-            .hint_text(RichText::new(hint).color(Color32::from_white_alpha(90)))
+            .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(Color32::WHITE)
             .margin(Vec2::ZERO),
     );
@@ -1035,7 +1036,7 @@ fn continue_card_body(
         Align2::LEFT_TOP,
         truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
         subtitle_font,
-        Color32::from_white_alpha(185),
+        metrics.text_secondary,
     );
     let bar_origin = egui::Pos2::new(rect.left() + metrics.card_content_padding, bar_top);
     painter.rect_filled(
@@ -1919,7 +1920,7 @@ pub(super) fn stream_row(
         painter.layout_no_wrap(
             source.addon.clone(),
             crate::fonts::regular(metrics.screen_card_subtitle_size - 2.0),
-            Color32::from_white_alpha(120),
+            metrics.text_muted,
         )
     });
     let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0);
@@ -1935,7 +1936,7 @@ pub(super) fn stream_row(
         painter.layout_job(crate::emoji::job(
             &source.detail,
             crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
-            Color32::from_white_alpha(165),
+            metrics.text_secondary,
             text_width,
         ))
     });
@@ -1972,11 +1973,17 @@ pub(super) fn stream_row(
     response
 }
 
-pub(super) fn heading(ui: &mut egui::Ui, eyebrow: &str, title: &str, subtitle: &str) {
+pub(super) fn heading(
+    ui: &mut egui::Ui,
+    eyebrow: &str,
+    title: &str,
+    subtitle: &str,
+    metrics: UiMetrics,
+) {
     ui.label(
         RichText::new(eyebrow.to_uppercase())
             .size(11.0)
-            .color(Color32::from_white_alpha(110)),
+            .color(metrics.text_muted),
     );
     ui.add_space(10.0);
     ui.label(
@@ -1986,30 +1993,22 @@ pub(super) fn heading(ui: &mut egui::Ui, eyebrow: &str, title: &str, subtitle: &
             .color(Color32::WHITE),
     );
     ui.add_space(8.0);
-    ui.label(
-        RichText::new(subtitle)
-            .size(14.0)
-            .color(Color32::from_white_alpha(120)),
-    );
+    ui.label(RichText::new(subtitle).size(14.0).color(metrics.text_muted));
     ui.add_space(28.0);
 }
 
-pub(super) fn field_label(ui: &mut egui::Ui, text: &str) {
+pub(super) fn field_label(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
     ui.label(
         RichText::new(text.to_uppercase())
             .size(10.0)
-            .color(Color32::from_white_alpha(100)),
+            .color(metrics.text_muted),
     );
     ui.add_space(6.0);
 }
 
-pub(super) fn note(ui: &mut egui::Ui, text: &str) {
+pub(super) fn note(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
     ui.add_space(4.0);
-    ui.label(
-        RichText::new(text)
-            .size(12.0)
-            .color(Color32::from_white_alpha(170)),
-    );
+    ui.label(RichText::new(text).size(12.0).color(metrics.text_secondary));
 }
 
 pub(super) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {

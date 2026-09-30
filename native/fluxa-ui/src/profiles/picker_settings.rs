@@ -17,6 +17,7 @@ pub(super) fn draw_picker_settings(
             &t("profiles.settings"),
             &t("profiles.picker_settings"),
             &t("profiles.picker_background_desc"),
+            metrics,
         );
         components::panel(
             ui,
@@ -94,7 +95,7 @@ pub(super) fn draw_picker_settings(
                 ui.label(
                     RichText::new(t("profiles.avatar_packs_desc"))
                         .size(14.0)
-                        .color(Color32::from_white_alpha(120)),
+                        .color(metrics.text_muted),
                 );
                 ui.add_space(16.0);
                 ui.horizontal(|ui| {
@@ -127,7 +128,7 @@ pub(super) fn draw_picker_settings(
                     ui.label(
                         RichText::new(t("profiles.no_avatar_packs"))
                             .size(14.0)
-                            .color(Color32::from_white_alpha(110)),
+                            .color(metrics.text_muted),
                     );
                 }
                 for pack in model.picker.avatar_packs.clone() {
@@ -163,6 +164,7 @@ pub(super) fn draw_picker_settings(
                                         23.0,
                                         &avatar.name,
                                         Some(&avatar.url),
+                                        metrics,
                                     );
                                 }
                                 ui.add_space(8.0);
@@ -177,7 +179,7 @@ pub(super) fn draw_picker_settings(
                                         )
                                     ))
                                     .size(14.0)
-                                    .color(Color32::from_white_alpha(220)),
+                                    .color(metrics.text_primary),
                                 );
                                 ui.with_layout(
                                     egui::Layout::right_to_left(egui::Align::Center),

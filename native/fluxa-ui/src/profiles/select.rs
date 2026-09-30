@@ -109,7 +109,7 @@ pub(super) fn draw_select(
                 Align2::CENTER_CENTER,
                 t("profiles.add_profile"),
                 FontId::proportional(14.0),
-                Color32::from_white_alpha(110),
+                metrics.text_muted,
             );
             if response.clicked() {
                 model.open_form(None);
@@ -130,6 +130,7 @@ pub(super) fn draw_select(
             r,
             &profile.name,
             profile.avatar_url.as_deref(),
+            metrics,
         );
         if !response.hovered() {
             ui.painter()
@@ -168,7 +169,7 @@ pub(super) fn draw_select(
             let galley = ui.painter().layout_no_wrap(
                 label,
                 FontId::proportional(10.0),
-                Color32::from_white_alpha(150),
+                metrics.text_secondary,
             );
             let badge = Rect::from_center_size(
                 Pos2::new(avatar_center.x, name_y + 22.0),

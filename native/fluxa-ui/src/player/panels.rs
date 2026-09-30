@@ -73,6 +73,7 @@ pub(super) fn draw_seek_preview(
     pointer_x: f32,
     time: f64,
     player: &PlayerModel,
+    metrics: UiMetrics,
 ) {
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Foreground,
@@ -101,7 +102,7 @@ pub(super) fn draw_seek_preview(
             Align2::CENTER_BOTTOM,
             truncate_to_width(&painter, chapter, &label_font, width),
             label_font,
-            Color32::from_white_alpha(200),
+            metrics.text_primary,
         );
         bottom -= 20.0;
     }

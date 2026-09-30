@@ -454,7 +454,7 @@ pub fn draw_detail(
                         RichText::new(text)
                             .size(metrics.text.body)
                             .line_height(Some(metrics.text.body * 1.45))
-                            .color(Color32::from_white_alpha(230)),
+                            .color(metrics.text_primary),
                     )
                     .sense(Sense::click()),
                 );
@@ -466,7 +466,7 @@ pub fn draw_detail(
                     ui.label(
                         RichText::new(error)
                             .size(metrics.text.meta)
-                            .color(Color32::from_white_alpha(170)),
+                            .color(metrics.text_secondary),
                     );
                 }
                 return;
@@ -502,12 +502,12 @@ pub fn draw_detail(
                         RichText::new(fact)
                             .size(metrics.text.meta)
                             .strong()
-                            .color(Color32::from_white_alpha(225)),
+                            .color(metrics.text_primary),
                     );
                     ui.label(
                         RichText::new("·")
                             .size(metrics.text.meta)
-                            .color(Color32::from_white_alpha(120)),
+                            .color(metrics.text_muted),
                     );
                 }
                 for (source, score) in detail.ratings.iter().take(4) {
@@ -519,7 +519,7 @@ pub fn draw_detail(
                         ui.label(
                             RichText::new(source)
                                 .size(metrics.text.meta)
-                                .color(Color32::from_white_alpha(180)),
+                                .color(metrics.text_secondary),
                         );
                     }
                     ui.label(
@@ -536,7 +536,7 @@ pub fn draw_detail(
                 ui.label(
                     RichText::new(detail.genres.join("  ·  "))
                         .size(metrics.text.meta)
-                        .color(Color32::from_white_alpha(200)),
+                        .color(metrics.text_primary),
                 );
             }
             ui.add_space(space::XL);
@@ -658,7 +658,7 @@ pub fn draw_detail(
                         RichText::new(text)
                             .size(metrics.text.body)
                             .line_height(Some(metrics.text.body * 1.5))
-                            .color(Color32::from_white_alpha(230)),
+                            .color(metrics.text_primary),
                     )
                     .sense(if long { Sense::click() } else { Sense::hover() }),
                 );
@@ -671,7 +671,7 @@ pub fn draw_detail(
                 ui.label(
                     RichText::new(t("common.loading"))
                         .size(metrics.text.meta)
-                        .color(Color32::from_white_alpha(150)),
+                        .color(metrics.text_secondary),
                 );
             } else if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref())
             {
@@ -679,7 +679,7 @@ pub fn draw_detail(
                 ui.label(
                     RichText::new(error)
                         .size(metrics.text.meta)
-                        .color(Color32::from_white_alpha(150)),
+                        .color(metrics.text_secondary),
                 );
             }
         });
@@ -814,7 +814,7 @@ pub fn draw_detail(
                                     Align2::CENTER_CENTER,
                                     format!("E{}", episode.number),
                                     FontId::proportional(22.0),
-                                    Color32::from_white_alpha(90),
+                                    metrics.text_muted,
                                 );
                             }
                             if response.hovered() {
@@ -903,6 +903,7 @@ pub fn draw_detail(
                                     CAST_SIZE * 0.5,
                                     &member.name,
                                     member.photo.as_deref(),
+                                    metrics,
                                 );
                                 let font = FontId::proportional(13.5);
                                 painter.text(
@@ -919,7 +920,7 @@ pub fn draw_detail(
                                         Align2::CENTER_TOP,
                                         truncate_to_width(painter, role, &font, rect.width()),
                                         font,
-                                        Color32::from_white_alpha(130),
+                                        metrics.text_muted,
                                     );
                                 }
                             }
