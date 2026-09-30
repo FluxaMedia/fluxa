@@ -31,7 +31,7 @@ const ACTIONS: &[Action] = &[
     Action {
         id: "nav_settings",
         player: false,
-        defaults: &["5", "ctrl+comma"],
+        defaults: &["5", "ctrl+comma", "meta+comma"],
     },
     Action {
         id: "focus_search",
