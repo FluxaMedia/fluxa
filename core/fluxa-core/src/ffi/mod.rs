@@ -7,9 +7,8 @@ mod methods;
 mod tests;
 use crate::services::{
     anilist::route_anilist, mdblist::route_mdblist, mediaserver::routes::route_mediaserver,
-    nuvio::route_nuvio, publicmetadb::route_publicmetadb, simkl::route_simkl,
-    stremio::route_stremio, tmdb::route_tmdb, tracking::external_sync::route_external_sync,
-    trakt::route_trakt,
+    nuvio::route_nuvio, publicmetadb::route_publicmetadb, simkl::route_simkl, tmdb::route_tmdb,
+    tracking::external_sync::route_external_sync, trakt::route_trakt,
 };
 use crate::{
     addons::routes::*, catalog::routes::*, headless_engine::routes::*, library::routes::*,

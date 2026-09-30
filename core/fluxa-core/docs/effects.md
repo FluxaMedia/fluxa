@@ -78,8 +78,6 @@ Scheduling fields are optional and are present for effects with a policy. `dedup
 | `exchangeAuthCode` | Exchange an auth code for tokens |
 | `refreshAuthToken` | Refresh an expired auth token |
 | `refreshInstalledAddons` | Re-fetch manifests for all installed addons |
-| `runExternalSync` | Sync watched state with an external service (Trakt/Simkl) |
-| `syncExternalIntegration` | Run a full bidirectional sync with an external integration |
 | `syncWatchedState` | Push local watched state to an external service |
 | `replaceExternalContinueWatching` | Replace the external continue-watching list |
 | `enqueueTraktScrobble` | Queue a Trakt scrobble request |

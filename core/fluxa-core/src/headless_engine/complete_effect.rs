@@ -2,7 +2,7 @@ use super::HeadlessEngine;
 use super::contracts::EffectResultInput;
 use super::{
     addons, auth, calendar, detail, discover, home, library, offline, player, plugins, search,
-    settings, sync, trailer,
+    settings, trailer,
 };
 use crate::runtime::{EffectEnvelope, EffectKind};
 
@@ -77,10 +77,6 @@ impl HeadlessEngine {
             EffectKind::EnqueueOfflineDownload => offline::complete(self, generation, &result),
 
             EffectKind::WriteSettings => settings::complete(self, generation, &result),
-
-            EffectKind::RunExternalSync | EffectKind::SyncExternalIntegration => {
-                sync::complete(self, effect_type, generation, &result)
-            }
 
             EffectKind::RunAuthFlow
             | EffectKind::ExchangeAuthCode

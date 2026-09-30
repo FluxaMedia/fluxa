@@ -153,10 +153,6 @@
       "value": "runDiscover"
     },
     {
-      "variant": "RunExternalSync",
-      "value": "runExternalSync"
-    },
-    {
       "variant": "RunSearch",
       "value": "runSearch"
     },
@@ -167,10 +163,6 @@
     {
       "variant": "StopTorrent",
       "value": "stopTorrent"
-    },
-    {
-      "variant": "SyncExternalIntegration",
-      "value": "syncExternalIntegration"
     },
     {
       "variant": "SyncWatchedState",

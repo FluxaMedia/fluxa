@@ -1,7 +1,5 @@
 use serde_json::{Value, json};
 
-use super::export_push::library_item_request_json;
-
 pub(crate) fn write_requests_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let profile = args.get("profileIndex").cloned().unwrap_or(json!(1));
@@ -94,4 +92,19 @@ fn watched_requests(action: &Value, profile: &Value, now: i64) -> Option<Vec<Val
     Some(vec![
         json!({"rpc": "sync_push_watched_items", "body": {"p_profile_id": profile, "p_items": items}}),
     ])
+}
+
+fn library_item_request_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let item = args.get("item")?;
+    let added_at = args.get("addedAt").cloned().unwrap_or(Value::Null);
+    serde_json::to_string(&json!({
+        "content_id": item.get("id").or_else(|| item.get("contentId")),
+        "content_type": item.get("type").or_else(|| item.get("contentType")),
+        "name": item.get("name"), "poster": item.get("poster"), "background": item.get("background"),
+        "description": item.get("description"), "release_info": item.get("releaseInfo"),
+        "imdb_rating": item.get("imdbRating").and_then(Value::as_str).and_then(|v| v.parse::<f64>().ok()).or_else(|| item.get("imdbRating").cloned().and_then(|v| v.as_f64())),
+        "genres": item.get("genres"), "poster_shape": item.get("posterShape").and_then(Value::as_str).unwrap_or("POSTER"),
+        "addon_base_url": item.get("addonBaseUrl"), "added_at": added_at
+    })).ok()
 }

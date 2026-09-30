@@ -10,7 +10,6 @@ pub(crate) mod routes;
 pub(crate) mod state;
 
 pub(crate) use crate::accounts::engine::auth;
-pub(crate) use crate::accounts::engine::sync;
 pub(crate) use crate::addons::engine::installed as addons;
 pub(crate) use crate::addons::engine::plugins;
 pub(crate) use crate::catalog::engine::detail;

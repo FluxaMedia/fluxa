@@ -32,7 +32,6 @@ Effects the engine can emit are listed in `EffectKind` (`src/runtime`) and descr
 
 Each item names the action the shell would dispatch and the effect the shell would run. The domain function already exists in every case.
 
-- **Trakt, Simkl, AniList sync** (`accounts::external_sync`): an action to start and finish a sync, and `RunExternalSync` / `SyncExternalIntegration` already exist as effects; the request and response planning still goes through the router.
 - **PublicMetaDB** (`catalog::publicmetadb`): a detail-load action that asks for ratings, and a fetch effect for its endpoints.
 - **Intro segments** (`player::segments`): `IntroSegmentsRequested` and `FetchIntroSegments` exist; the remaining parsing and dedupe routes should move behind them.
 - **Watch together** (`player::watch_together`): room create, join and sync actions, and a socket effect. Nothing in the engine models a room yet.

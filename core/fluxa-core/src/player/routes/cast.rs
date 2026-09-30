@@ -55,7 +55,6 @@ pub(crate) fn route_cast(method: &str, args_json: &str) -> Outcome {
             maybe_text(&args, "subtitleUrl").as_deref(),
         )),
         "castDlnaSeekArgs" => Ok(json!(cast::dlna_seek_args(number(&args, "position")))),
-        "castDlnaVolumeArgs" => Ok(json!(cast::dlna_set_volume_args(number(&args, "level")))),
         "castChromecastEncode" => Ok(json!(cast::encode_cast_message(
             &text(&args, "source")?,
             &text(&args, "destination")?,
@@ -72,7 +71,6 @@ pub(crate) fn route_cast(method: &str, args_json: &str) -> Outcome {
             maybe_text(&args, "subtitleUrl").as_deref(),
         )),
         "castAirplayBody" => opt(cast::airplay_play_body(&text(&args, "mediaUrl")?)),
-        "castAirplayVolume" => Ok(json!(cast::airplay_volume_db(number(&args, "level")))),
         "castFcastEncode" => Ok(cast::fcast_encode_message(
             field_u64(&args, "opcode")? as u8,
             &maybe_text(&args, "body").unwrap_or_default(),
@@ -87,7 +85,6 @@ pub(crate) fn route_cast(method: &str, args_json: &str) -> Outcome {
             number(&args, "resume"),
         )),
         "castFcastSeekBody" => Ok(json!(cast::fcast_seek_body(number(&args, "position")))),
-        "castFcastVolumeBody" => Ok(json!(cast::fcast_set_volume_body(number(&args, "level")))),
         "castFcastVersionBody" => Ok(json!(cast::fcast_version_body(
             field_u64(&args, "version")? as u32
         ))),
@@ -96,7 +93,6 @@ pub(crate) fn route_cast(method: &str, args_json: &str) -> Outcome {
                 json!({"state": state, "time": time, "duration": duration, "speed": speed})
             })
             .unwrap_or(Value::Null)),
-        "castFcastError" => opt(cast::fcast_error_message(&text(&args, "body")?)),
         _ => Err(fail(ErrorKind::UnknownMethod, "unknown cast method")),
     }
 }

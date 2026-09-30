@@ -313,12 +313,6 @@ pub(crate) enum AppAction {
         frame_seconds: f64,
         energies: Vec<f64>,
     },
-    #[serde(rename = "externalSyncRequested")]
-    ExternalSyncRequested {
-        provider: String,
-        profile: Option<Value>,
-        language: Option<String>,
-    },
     #[serde(rename = "authFlowRequested")]
     AuthFlowRequested { provider: String, mode: String },
     #[serde(rename = "authExchangeRequested")]
@@ -330,12 +324,6 @@ pub(crate) enum AppAction {
     },
     #[serde(rename = "authRefreshRequested")]
     AuthRefreshRequested { provider: String, profile: Value },
-    #[serde(rename = "externalIntegrationSyncRequested")]
-    ExternalIntegrationSyncRequested {
-        provider: String,
-        profile: Value,
-        language: Option<String>,
-    },
     #[serde(rename = "settingsChanged")]
     SettingsChanged { key: String, value: Value },
     #[serde(rename = "calendarMonthRequested")]
@@ -456,8 +444,6 @@ pub(crate) struct StatePatch {
     pub addons: Option<Arc<super::addons::AddonsState>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub auth: Option<Arc<super::auth::AuthState>>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub sync: Option<Arc<super::sync::SyncState>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub lookup: Option<Arc<super::detail::LookupState>>,
     #[serde(skip_serializing_if = "Option::is_none")]

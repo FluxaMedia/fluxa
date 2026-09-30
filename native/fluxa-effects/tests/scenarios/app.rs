@@ -247,14 +247,3 @@ fn clearing_progress_removes_the_continue_watching_entry() {
     assert_eq!(app.at("/library/savedPlaybackProgress"), Value::Null);
 }
 
-#[test]
-#[ignore = "effects runExternalSync and syncExternalIntegration have no native implementation yet"]
-fn external_sync_pulls_the_connected_provider() {
-    let scenario = Scenario::start();
-    let profile = json!({"id": "p1", "name": "Me", "traktAccessToken": "tok"});
-    let app = scenario.app_with_profile(profile.clone());
-
-    app.dispatch(json!({"type": "externalSyncRequested", "provider": "trakt", "profile": profile, "language": "en"}));
-
-    assert_eq!(app.at("/sync/error"), Value::Null);
-}

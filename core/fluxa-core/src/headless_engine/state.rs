@@ -12,7 +12,6 @@ use super::plugins::PluginsState;
 use super::profile::ProfileState;
 use super::search::SearchState;
 use super::settings::SettingsState;
-use super::sync::SyncState;
 use super::trailer::TrailerState;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::ops::{Deref, DerefMut};
@@ -85,7 +84,6 @@ pub(crate) enum GenerationKey {
     Discover,
     DiscoverFilters,
     DiscoverPaging,
-    Sync,
     Auth,
     Settings,
     Calendar,
@@ -111,7 +109,6 @@ pub(crate) struct RuntimeGenerations {
     discover_generation: u64,
     discover_filters_generation: u64,
     discover_paging_generation: u64,
-    sync_generation: u64,
     auth_generation: u64,
     settings_generation: u64,
     calendar_generation: u64,
@@ -137,7 +134,6 @@ impl RuntimeGenerations {
             GenerationKey::Discover => self.discover_generation,
             GenerationKey::DiscoverFilters => self.discover_filters_generation,
             GenerationKey::DiscoverPaging => self.discover_paging_generation,
-            GenerationKey::Sync => self.sync_generation,
             GenerationKey::Auth => self.auth_generation,
             GenerationKey::Settings => self.settings_generation,
             GenerationKey::Calendar => self.calendar_generation,
@@ -163,7 +159,6 @@ impl RuntimeGenerations {
             GenerationKey::Discover => &mut self.discover_generation,
             GenerationKey::DiscoverFilters => &mut self.discover_filters_generation,
             GenerationKey::DiscoverPaging => &mut self.discover_paging_generation,
-            GenerationKey::Sync => &mut self.sync_generation,
             GenerationKey::Auth => &mut self.auth_generation,
             GenerationKey::Settings => &mut self.settings_generation,
             GenerationKey::Calendar => &mut self.calendar_generation,
@@ -195,7 +190,6 @@ pub(crate) struct EngineState {
     pub(crate) calendar: Tracked<CalendarState>,
     pub(crate) addons: Tracked<AddonsState>,
     pub(crate) auth: Tracked<AuthState>,
-    pub(crate) sync: Tracked<SyncState>,
     pub(crate) lookup: Tracked<LookupState>,
     pub(crate) offline: Tracked<OfflineState>,
     pub(crate) trailer: Tracked<TrailerState>,
@@ -219,7 +213,6 @@ impl EngineState {
             calendar: self.calendar.take_if_dirty(),
             addons: self.addons.take_if_dirty(),
             auth: self.auth.take_if_dirty(),
-            sync: self.sync.take_if_dirty(),
             lookup: self.lookup.take_if_dirty(),
             offline: self.offline.take_if_dirty(),
             trailer: self.trailer.take_if_dirty(),

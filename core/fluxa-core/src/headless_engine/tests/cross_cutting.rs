@@ -29,17 +29,6 @@ fn detail_player_sync_auth_settings_calendar_and_offline_are_core_actions() {
         "videoHash=abc"
     );
 
-    let sync: Value = serde_json::from_str(
-        &headless_engine_dispatch_json(
-            handle,
-            r#"{"type":"externalSyncRequested","provider":"trakt","language":"tr"}"#,
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(sync["effects"][0]["type"], "runExternalSync");
-    assert_eq!(sync["effects"][0]["payload"]["profileId"], "p1");
-
     let auth: Value = serde_json::from_str(
         &headless_engine_dispatch_json(
             handle,

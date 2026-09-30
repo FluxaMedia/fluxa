@@ -2,7 +2,7 @@ use super::HeadlessEngine;
 use super::contracts::{AppAction, SourceSelectionMode};
 use super::{
     addons, auth, calendar, detail, discover, home, library, navigation, offline, player, plugins,
-    search, settings, sync, trailer,
+    search, settings, trailer,
 };
 use crate::runtime::EffectEnvelope;
 use serde::Serialize;
@@ -455,11 +455,6 @@ impl HeadlessEngine {
                 frame_seconds,
                 energies,
             } => player::dispatch_audio_estimate(self, subtitle_text, frame_seconds, energies),
-            AppAction::ExternalSyncRequested {
-                provider,
-                profile,
-                language,
-            } => sync::dispatch_external_sync(self, provider, profile, language),
             AppAction::AuthFlowRequested { provider, mode } => {
                 auth::dispatch_flow(self, provider, mode)
             }
@@ -472,11 +467,6 @@ impl HeadlessEngine {
             AppAction::AuthRefreshRequested { provider, profile } => {
                 auth::dispatch_token_refresh(self, provider, profile)
             }
-            AppAction::ExternalIntegrationSyncRequested {
-                provider,
-                profile,
-                language,
-            } => sync::dispatch_integration_sync(self, provider, profile, language),
             AppAction::SettingsChanged { key, value } => settings::dispatch(self, key, value),
             AppAction::CalendarMonthRequested {
                 profile,

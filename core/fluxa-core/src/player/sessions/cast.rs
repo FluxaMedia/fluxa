@@ -122,13 +122,6 @@ pub(crate) fn dlna_seek_args(position_secs: f64) -> String {
     )
 }
 
-pub(crate) fn dlna_set_volume_args(level: f64) -> String {
-    let volume = (level.clamp(0.0, 1.0) * 100.0).round() as u32;
-    format!(
-        "<InstanceID>0</InstanceID><Channel>Master</Channel><DesiredVolume>{volume}</DesiredVolume>"
-    )
-}
-
 pub(crate) fn resolve_loopback_url(stream_url: &str, lan_ip: &str) -> String {
     if let Some(rest) = stream_url.strip_prefix("http://127.0.0.1") {
         return format!("http://{lan_ip}{rest}");
@@ -288,14 +281,6 @@ pub(crate) fn roku_launch_url(
     Some(url)
 }
 
-pub(crate) fn airplay_volume_db(level: f64) -> f64 {
-    if level <= 0.0 {
-        -30.0
-    } else {
-        (20.0 * level.clamp(0.0, 1.0).log10()).max(-30.0)
-    }
-}
-
 pub(crate) fn airplay_play_body(media_url: &str) -> Option<String> {
     if !validate_stream_url(media_url) {
         return None;
@@ -359,10 +344,6 @@ pub(crate) fn fcast_seek_body(position_secs: f64) -> String {
     json!({ "time": position_secs.max(0.0) }).to_string()
 }
 
-pub(crate) fn fcast_set_volume_body(level: f64) -> String {
-    json!({ "volume": level.clamp(0.0, 1.0) }).to_string()
-}
-
 pub(crate) fn fcast_set_speed_body(speed: f64) -> String {
     json!({ "speed": speed.clamp(0.1, 4.0) }).to_string()
 }
@@ -381,11 +362,6 @@ pub(crate) fn fcast_playback_update(body_json: &str) -> Option<(u8, f64, f64, f6
         .unwrap_or(0.0);
     let speed = value.get("speed").and_then(|v| v.as_f64()).unwrap_or(1.0);
     Some((state, time, duration, speed))
-}
-
-pub(crate) fn fcast_error_message(body_json: &str) -> Option<String> {
-    let value: serde_json::Value = serde_json::from_str(body_json).ok()?;
-    Some(value.get("message")?.as_str()?.to_string())
 }
 
 #[cfg(test)]

@@ -11,7 +11,6 @@ These fall through to `effect <name> has no native implementation yet` in `nativ
 | Effect | Symptom | Ignored test |
 | --- | --- | --- |
 | `clearPlaybackProgress` | Clearing progress does nothing; the continue watching entry stays | `app::clearing_progress_removes_the_continue_watching_entry` |
-| `runExternalSync`, `syncExternalIntegration` | External sync never pulls from the connected provider | `app::external_sync_pulls_the_connected_provider` |
 | `fetchSeasonEpisodes` | `detailSeasonRequested` sets `/detail/error` | `playback::detail_season_selects_that_seasons_episodes` |
 | `fetchDetailSecondary` | TMDB similar titles and trailers never load on detail | `tmdb::detail_secondary_loads_tmdb_similar_titles_and_trailers` |
 | `fetchPluginManifest` | Plugin repositories can't be added | `gaps::plugin_repository_can_be_added_from_a_manifest_url` |
