@@ -141,6 +141,9 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub detail_play_height: f32,
+    pub detail_back_top: f32,
+    pub detail_title_size: f32,
     pub calendar_cell_height: f32,
     pub calendar_panel_width: f32,
     pub row_heading_size: f32,
@@ -483,6 +486,9 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            detail_play_height: 0.0,
+            detail_back_top: 0.0,
+            detail_title_size: 0.0,
             calendar_cell_height: 0.0,
             calendar_panel_width: 0.0,
             row_heading_size: 0.0,
@@ -496,6 +502,14 @@ impl UiMetrics {
         } else {
             metrics.catalog_title_size - 4.0
         };
+        let (play_height, back_top, title_size) = match platform {
+            "mobile" => (48.0, 12.0, 21.0),
+            "tv" => (52.0, 14.0, 26.0),
+            _ => (48.0, 14.0, 21.0),
+        };
+        metrics.detail_play_height = play_height;
+        metrics.detail_back_top = back_top;
+        metrics.detail_title_size = title_size;
         match platform {
             "mobile" => {
                 metrics.content_header_top = metrics.content_header_top_mobile;

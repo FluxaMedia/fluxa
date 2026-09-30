@@ -15,7 +15,6 @@ pub(super) struct CalendarGrid {
 impl CalendarGrid {
     pub fn new(viewport: Viewport, metrics: UiMetrics, calendar: &CalendarModel) -> Self {
         let compact = viewport.is_compact();
-        let tv = viewport.is_tv();
         let margin = metrics.screen_margin;
         let top = metrics.content_header_top;
         let mut header = metrics.screen_title_size * 1.25

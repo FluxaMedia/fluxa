@@ -157,7 +157,6 @@ pub fn draw_detail(
     );
     let ppp = context.pixels_per_point();
     let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
     let shuffle = detail.episodes.len() > 1;
     let language = detail.language.as_str();
     let t = |key: &str| localized(key, language);
@@ -552,7 +551,7 @@ pub fn draw_detail(
                             (episode.season, episode.number, Some(episode.title.as_str()))
                         }),
                 );
-                let height = if tv { 52.0 } else { 48.0 };
+                let height = metrics.detail_play_height;
                 let play = components::play_button(
                     ui,
                     assets,
@@ -686,7 +685,7 @@ pub fn draw_detail(
     layout.focusable.extend(action_rects);
 
     let back_rect = Rect::from_min_size(
-        Pos2::new(margin, if compact { 12.0 } else { 14.0 } - scroll_y),
+        Pos2::new(margin, metrics.detail_back_top - scroll_y),
         Vec2::splat(40.0),
     );
     egui::Area::new(Id::new("fluxa-detail-back"))
@@ -710,7 +709,7 @@ pub fn draw_detail(
         });
     layout.focusable.push((NODE_DETAIL_BACK, back_rect));
 
-    let title_size = if tv { 26.0 } else { 21.0 };
+    let title_size = metrics.detail_title_size;
     let row_width = viewport.width - margin;
     let visible = Rect::from_min_max(
         Pos2::new(0.0, 0.0),
