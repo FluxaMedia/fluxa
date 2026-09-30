@@ -1,8 +1,10 @@
 use super::*;
 
+mod hero;
 mod layout;
 mod metrics;
 mod rows;
+use hero::HeroStyle;
 pub use layout::*;
 pub use metrics::*;
 pub(crate) use rows::*;
@@ -132,7 +134,6 @@ pub(crate) fn draw_home_with_options(
 ) -> HomeLayout {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
     let scroll_offset = if viewport.form_factor == UiFormFactor::Desktop {
         resolve_screen_scroll(
             context,
@@ -173,7 +174,8 @@ pub(crate) fn draw_home_with_options(
     // underneath the gap before the first shelf. This is what gives the web
     // and Compose heroes their soft fade instead of a hard image-to-black
     // edge.
-    let hero_fade_height = if compact { 96.0 } else { 176.0 };
+    let style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
+    let hero_fade_height = style.fade_height;
     let hero_visual_rect = Rect::from_min_size(
         hero_rect.min,
         Vec2::new(viewport.width, hero_height + hero_fade_height),
@@ -373,55 +375,26 @@ pub(crate) fn draw_home_with_options(
         );
         return layout;
     }
-    let hero_width = if compact {
-        viewport.width - margin * 2.0
-    } else {
-        (viewport.width * 0.58).min(if tv {
-            980.0
-        } else {
-            metrics.home_hero_content_max_width_desktop
-        })
-    };
+    let hero_width = style.width;
     if show_hero {
-        let bottom_padding = if compact { 44.0 } else { 48.0 };
         let has_logo = hero
             .logo_url
             .as_deref()
             .is_some_and(|url| !url.trim().is_empty());
         let title_height = if has_logo {
-            if compact {
-                72.0
-            } else if tv {
-                112.0
-            } else {
-                metrics.home_hero_logo_height_desktop
-            }
-        } else if compact {
-            metrics.catalog_title_size * 2.25
+            style.logo_height
         } else {
-            metrics.catalog_title_size * 1.9
+            style.text_title_height
         };
         let metadata_height = if home.eyebrow.is_empty() {
             0.0
-        } else if compact {
-            18.0
         } else {
-            22.0
+            style.metadata_height
         };
-        let synopsis_size = if compact {
-            metrics.card_title_size + 1.0
-        } else if tv {
-            metrics.card_title_size + 6.0
-        } else {
-            metrics.home_hero_synopsis_size_desktop
-        };
-        let synopsis_width = if compact {
-            hero_width
-        } else {
-            (hero_width * 0.55).clamp(420.0, 720.0).min(hero_width)
-        };
+        let synopsis_size = style.synopsis_size;
+        let synopsis_width = style.synopsis_width();
         let synopsis_color = Color32::from_white_alpha(240);
-        let synopsis_galley = if compact || hero.description.is_empty() {
+        let synopsis_galley = if !style.shows_synopsis || hero.description.is_empty() {
             None
         } else {
             let mut job = egui::text::LayoutJob::simple(
@@ -430,29 +403,18 @@ pub(crate) fn draw_home_with_options(
                 synopsis_color,
                 synopsis_width,
             );
-            job.wrap.max_rows = if compact { 2 } else { 3 };
+            job.wrap.max_rows = style.synopsis_rows;
             job.wrap.overflow_character = Some('…');
             Some(context.fonts_mut(|fonts| fonts.layout_job(job)))
         };
         let synopsis_height = synopsis_galley
             .as_ref()
             .map_or(0.0, |galley| galley.size().y);
-        let play_height = if compact { 42.0 } else { 44.0 };
-        let synopsis_button_gap = if compact { 8.0 } else { 22.0 };
-        let block_height = title_height
-            + metadata_height
-            + synopsis_height
-            + play_height
-            + if compact {
-                26.0
-            } else {
-                20.0 + synopsis_button_gap
-            };
-        let content_top = (hero_height - bottom_padding - block_height).max(if compact {
-            16.0
-        } else {
-            metrics.nav_vertical_padding * 2.0
-        }) - scroll_offset
+        let play_height = style.button_height;
+        let block_height =
+            title_height + metadata_height + synopsis_height + play_height + style.stack_extra;
+        let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
+            - scroll_offset
             + hero_slide_offset;
         egui::Area::new(Id::new("fluxa-shared-hero"))
             .constrain(false)
@@ -474,16 +436,9 @@ pub(crate) fn draw_home_with_options(
                     // Keep transparent title marks away from the clip edge.
                     // Some provider logos have visible pixels right at the
                     // source bitmap boundary.
-                    let logo_inset = if compact { 6.0 } else { 8.0 };
                     let max_logo_size = Vec2::new(
-                        if compact {
-                            220.0
-                        } else if tv {
-                            380.0
-                        } else {
-                            metrics.home_hero_logo_max_width_desktop.min(460.0)
-                        },
-                        (title_height - logo_inset * 2.0).max(1.0),
+                        style.logo_max_width,
+                        (title_height - style.logo_inset * 2.0).max(1.0),
                     );
                     if home.hero_slides.len() > 1 {
                         let next =
@@ -494,17 +449,10 @@ pub(crate) fn draw_home_with_options(
                             ArtworkPriority::Hero,
                         );
                     }
-                    let title_font_size = if compact {
-                        metrics.catalog_title_size + 2.0
-                    } else if tv {
-                        metrics.catalog_title_size * 2.0
-                    } else {
-                        metrics.catalog_title_size * 1.65
-                    };
                     let title_rect = ui
                         .allocate_exact_size(Vec2::new(hero_width, title_height), Sense::hover())
                         .0;
-                    let title_anchor = if compact {
+                    let title_anchor = if style.centered {
                         egui::Align2::CENTER_TOP
                     } else {
                         egui::Align2::LEFT_TOP
@@ -517,7 +465,7 @@ pub(crate) fn draw_home_with_options(
                             ArtworkPriority::Hero,
                             assets,
                         ) {
-                            let logo_x = if compact {
+                            let logo_x = if style.centered {
                                 title_rect.center().x - size.x * 0.5
                             } else {
                                 title_rect.left()
@@ -530,16 +478,16 @@ pub(crate) fn draw_home_with_options(
                                 .image(texture, logo_rect, full_uv(), Color32::WHITE);
                         }
                     } else {
-                        let title = truncate_text(&hero.title, if compact { 52 } else { 72 });
+                        let title = truncate_text(&hero.title, style.title_chars);
                         ui.painter().text(
                             title_rect.min,
                             title_anchor,
                             title,
-                            egui::FontId::proportional(title_font_size),
+                            egui::FontId::proportional(style.title_size),
                             Color32::WHITE,
                         );
                     }
-                    ui.add_space(if compact { 6.0 } else { 16.0 });
+                    ui.add_space(style.title_gap);
                     if !hero.eyebrow.is_empty() {
                         let metadata_rect = ui
                             .allocate_exact_size(
@@ -548,26 +496,22 @@ pub(crate) fn draw_home_with_options(
                             )
                             .0;
                         ui.painter().text(
-                            if compact {
+                            if style.centered {
                                 metadata_rect.center_top()
                             } else {
                                 metadata_rect.left_top()
                             },
-                            if compact {
+                            if style.centered {
                                 egui::Align2::CENTER_TOP
                             } else {
                                 egui::Align2::LEFT_TOP
                             },
-                            truncate_text(&hero.eyebrow, if compact { 64 } else { 90 }),
-                            egui::FontId::proportional(if tv {
-                                metrics.nav_label_size + 4.0
-                            } else {
-                                metrics.nav_label_size
-                            }),
+                            truncate_text(&hero.eyebrow, style.metadata_chars),
+                            egui::FontId::proportional(style.metadata_size),
                             metrics.text_secondary,
                         );
                     }
-                    ui.add_space(if compact { 6.0 } else { 4.0 });
+                    ui.add_space(style.metadata_gap);
                     if let Some(galley) = synopsis_galley.as_ref() {
                         let synopsis_rect = ui
                             .allocate_exact_size(
@@ -575,7 +519,7 @@ pub(crate) fn draw_home_with_options(
                                 Sense::hover(),
                             )
                             .0;
-                        let synopsis_x = if compact {
+                        let synopsis_x = if style.centered {
                             synopsis_rect.center().x - galley.size().x * 0.5
                         } else {
                             synopsis_rect.left()
@@ -586,7 +530,7 @@ pub(crate) fn draw_home_with_options(
                             synopsis_color,
                         );
                     }
-                    ui.add_space(if compact { 6.0 } else { synopsis_button_gap });
+                    ui.add_space(style.button_gap);
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = 12.0;
                         let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
@@ -608,7 +552,7 @@ pub(crate) fn draw_home_with_options(
                         let play_width = measure(ui, &label) + 70.0;
                         let watchlist_label = localized("library.watchlist", &home.language);
                         let watchlist_width = measure(ui, &watchlist_label) + 70.0;
-                        if compact {
+                        if style.centered {
                             let total = play_width + 12.0 + watchlist_width;
                             ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
                         }
@@ -697,27 +641,10 @@ pub(crate) fn draw_home_with_options(
     if let Some(play) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));
     } else if show_hero {
-        let play_y = hero_height - if compact { 92.0 } else { 194.0 } - scroll_offset;
+        let play = style.fallback_play(metrics, viewport.width, margin);
         layout.focusable.push((
             NODE_PLAY,
-            Rect::from_min_size(
-                Pos2::new(
-                    if compact {
-                        (viewport.width - 108.0) * 0.5
-                    } else {
-                        margin
-                    },
-                    play_y,
-                ),
-                Vec2::new(
-                    if compact {
-                        108.0
-                    } else {
-                        (metrics.horizontal_card_width * 0.46).max(160.0)
-                    },
-                    if compact { 42.0 } else { 50.0 },
-                ),
-            ),
+            play.translate(Vec2::new(0.0, hero_height - scroll_offset)),
         ));
     }
     components::focus_ring(
