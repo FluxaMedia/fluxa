@@ -141,6 +141,7 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub row_heading_size: f32,
     pub grid_min_columns: f32,
     pub grid_max_gap: f32,
     pub settings_page_card_height: f32,
@@ -480,10 +481,16 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            row_heading_size: 0.0,
             grid_min_columns: platform_dp("gridMinColumns", 1.0),
             grid_max_gap: platform_dp("gridMaxGap", 0.0),
             settings_page_card_height: platform_dp("settingsPageCardHeight", 72.0),
             settings_subpage_header_offset: platform_dp("settingsSubpageHeaderOffset", 66.0),
+        };
+        metrics.row_heading_size = if platform == "tv" {
+            metrics.catalog_title_size
+        } else {
+            metrics.catalog_title_size - 4.0
         };
         metrics.screen_margin = match platform {
             "mobile" => metrics.page_padding,

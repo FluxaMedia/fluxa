@@ -79,7 +79,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         .take(64)
     {
         let (_, _, body_height) = home_row_dimensions(metrics, kind);
-        let row_height = home_row_heading_height(metrics, viewport.is_tv()) + body_height;
+        let row_height = home_row_heading_height(metrics) + body_height;
         let visible_y = row_y - home.scroll_offset;
         if visible_y + row_height < 0.0 || visible_y > viewport.height {
             row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
@@ -97,10 +97,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             layout.focusable.push((
                 NODE_CARD_BASE + flat as u64,
                 Rect::from_min_size(
-                    Pos2::new(
-                        card_x,
-                        visible_y + home_row_heading_height(metrics, viewport.is_tv()),
-                    ),
+                    Pos2::new(card_x, visible_y + home_row_heading_height(metrics)),
                     Vec2::new(item_width, item_height),
                 ),
             ));
@@ -127,7 +124,7 @@ pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usi
     let content_y = y + home.scroll_offset;
     for (index, (_, cards, kind)) in home.content_rows_with_kind().into_iter().enumerate() {
         let body_height = home_row_body_height(metrics, cards, kind);
-        let heading_height = home_row_heading_height(metrics, viewport.is_tv());
+        let heading_height = home_row_heading_height(metrics);
         if content_y >= row_y + heading_height && content_y <= row_y + heading_height + body_height
         {
             return Some(index);
@@ -172,7 +169,7 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     let hero_height = home_hero_height(viewport);
     let mut content_height = home_row_start(viewport, metrics, hero_height, show_hero);
     for (_, cards, kind) in home.content_rows_with_kind().into_iter().take(64) {
-        content_height += home_row_heading_height(metrics, viewport.is_tv())
+        content_height += home_row_heading_height(metrics)
             + home_row_body_height(metrics, cards, kind)
             + metrics.section_gap
             + metrics.vertical_spacing;

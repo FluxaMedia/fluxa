@@ -16,7 +16,6 @@ pub(super) fn draw_home_rows(
     layout: &mut HomeLayout,
     activated: &mut Option<u64>,
 ) {
-    let tv = viewport.is_tv();
     let mut flat_index = 0usize;
     let mut row_y = row_start;
     for (row_index, (title, cards, kind)) in home
@@ -28,7 +27,7 @@ pub(super) fn draw_home_rows(
         let (card_width, card_height, _) = home_row_dimensions(metrics, kind);
         let body_height = home_row_body_height(metrics, cards, kind);
         let row_scroll_max = home_row_scroll_max_for_cards(viewport, metrics, cards, kind);
-        let row_height = home_row_heading_height(metrics, tv) + body_height;
+        let row_height = home_row_heading_height(metrics) + body_height;
         let visible_y = row_y - scroll_offset;
         let row_is_visible = visible_y + row_height >= 0.0 && visible_y <= viewport.height;
 
@@ -70,7 +69,7 @@ pub(super) fn draw_home_rows(
             flat_index += cards.len();
             continue;
         }
-        let heading_height = home_row_heading_height(metrics, tv);
+        let heading_height = home_row_heading_height(metrics);
         let type_label = row_index
             .checked_sub(usize::from(!home.cards.is_empty()))
             .and_then(|index| home.rows.get(index))
@@ -83,11 +82,7 @@ pub(super) fn draw_home_rows(
             .constrain(false)
             .show(context, |ui| {
                 ui.set_clip_rect(ui.clip_rect().intersect(screen));
-                let title_size = if tv {
-                    metrics.catalog_title_size
-                } else {
-                    metrics.catalog_title_size - 4.0
-                };
+                let title_size = metrics.row_heading_size;
                 let title = match type_label {
                     Some(label) => format!("{title} - {label}"),
                     None => title.to_owned(),

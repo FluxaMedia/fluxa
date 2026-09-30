@@ -158,13 +158,8 @@ pub(crate) fn home_metrics(viewport: Viewport) -> UiMetrics {
 /// Height occupied by a shelf heading and the gap between it and its cards.
 /// Keep this in the shared geometry calculation: omitting it made each next
 /// shelf start while the previous shelf's cards were still on screen.
-pub(crate) fn home_row_heading_height(metrics: UiMetrics, tv: bool) -> f32 {
-    let title_size = if tv {
-        metrics.catalog_title_size
-    } else {
-        metrics.catalog_title_size - 4.0
-    };
-    title_size * 1.25 + metrics.control_gap
+pub(crate) fn home_row_heading_height(metrics: UiMetrics) -> f32 {
+    metrics.row_heading_size * 1.25 + metrics.control_gap
 }
 
 pub(crate) fn home_artwork_signature(home: &HomeModel) -> u64 {
