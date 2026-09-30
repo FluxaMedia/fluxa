@@ -174,10 +174,6 @@ pub(crate) fn set_user_addons(engine: &mut HeadlessEngine, addons: Value) {
     engine.state.home.user_addons = addons;
 }
 
-pub(crate) fn set_external_continue_watching(engine: &mut HeadlessEngine, items: Value) {
-    engine.state.home.external_continue_watching = items;
-}
-
 pub(crate) fn dispatch_load(
     engine: &mut HeadlessEngine,
     profile: Option<Value>,

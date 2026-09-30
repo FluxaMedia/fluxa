@@ -6,7 +6,6 @@ pub(crate) fn provider_calendar_items_json(args_json: &str) -> Option<String> {
     let provider = args.get("provider")?.as_str()?;
     let shows = args.get("shows").and_then(Value::as_array);
     let movies = args.get("movies").and_then(Value::as_array);
-    let entries = args.get("entries").and_then(Value::as_array);
     let mut items = Vec::new();
     if provider == "anilist" {
         let year = args.get("year").and_then(Value::as_i64).unwrap_or(0) as i32;

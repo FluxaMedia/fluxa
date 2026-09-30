@@ -4,7 +4,6 @@ mod language;
 mod magnet;
 mod meta;
 mod selection;
-#[allow(dead_code)]
 mod torrent_files;
 mod torrent_runtime;
 

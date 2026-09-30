@@ -36,19 +36,6 @@ fn poisoned_engine_handle_is_rejected_without_affecting_other_handles() {
 }
 
 #[test]
-fn primitive_player_updates_mark_only_the_player_domain_dirty() {
-    let handle = create_headless_engine("{}");
-    assert!(headless_engine_set_player_buffering(handle, false));
-    assert!(headless_engine_set_player_stream_index(handle, 3));
-    assert!(headless_engine_set_player_position(handle, 12_345));
-    let response = headless_engine_snapshot_json(handle).unwrap();
-    assert!(response.contains(r#"isBuffering":false"#));
-    assert!(response.contains(r#"currentStreamIndex":3"#));
-    assert!(response.contains(r#"lastPositionMs":12345"#));
-    assert!(destroy_headless_engine(handle));
-}
-
-#[test]
 fn player_reset_and_telemetry_use_the_headless_core_state() {
     let handle = create_headless_engine("{}");
     headless_engine_dispatch_json(

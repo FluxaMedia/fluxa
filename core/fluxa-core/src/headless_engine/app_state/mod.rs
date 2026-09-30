@@ -4,12 +4,9 @@ use std::collections::HashMap;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-mod player;
 mod reducer;
 
-#[cfg(test)]
-use player::*;
-pub use reducer::*;
+use reducer::*;
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]

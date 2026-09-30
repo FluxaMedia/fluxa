@@ -54,15 +54,3 @@ pub(crate) fn dispatch_telemetry(
     engine.state.player.has_started_playing = started;
     engine.state.player.is_video_rendered = rendered;
 }
-
-pub(crate) fn set_buffering(engine: &mut HeadlessEngine, buffering: bool) {
-    engine.state.player.is_buffering = buffering;
-}
-
-pub(crate) fn set_stream_index(engine: &mut HeadlessEngine, stream_index: i64) {
-    engine.state.player.current_stream_index = stream_index;
-}
-
-pub(crate) fn set_position(engine: &mut HeadlessEngine, position_ms: i64) {
-    engine.state.player.last_position_ms = position_ms;
-}

@@ -123,13 +123,6 @@ impl From<DispatchResult> for Update {
 
 #[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct EffectsOnlyResult {
-    pub(crate) revision: u64,
-    effects: Vec<EffectEnvelope>,
-}
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
 struct PageCompletionResult {
     pub(crate) revision: u64,
     delta: discover::DiscoverPageDelta,
@@ -249,57 +242,11 @@ pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<S
     serde_json::to_string(&result).ok()
 }
 
-pub fn headless_engine_dispatch_effects_json(handle: u64, action_json: &str) -> Option<String> {
-    const CONTEXT: &str = "headless_engine_dispatch_effects_json";
-    let action: AppAction = parse(CONTEXT, action_json)?;
-    let (revision, effects) =
-        with_engine(handle, CONTEXT, |engine| engine.apply_page_request(action))?
-            .map_err(|detail| CoreError::BadInput {
-                context: CONTEXT,
-                detail,
-            })
-            .log_discard()?;
-    serde_json::to_string(&EffectsOnlyResult { revision, effects }).ok()
-}
-
-pub fn headless_engine_set_player_buffering(handle: u64, buffering: bool) -> bool {
-    update_player(handle, |engine| player::set_buffering(engine, buffering))
-}
-
-pub fn headless_engine_set_player_stream_index(handle: u64, stream_index: i64) -> bool {
-    update_player(handle, |engine| {
-        player::set_stream_index(engine, stream_index)
-    })
-}
-
-pub fn headless_engine_set_player_position(handle: u64, position_ms: i64) -> bool {
-    update_player(handle, |engine| player::set_position(engine, position_ms))
-}
-
-fn update_player(handle: u64, update: impl FnOnce(&mut HeadlessEngine)) -> bool {
-    with_engine(handle, "headless_engine_update_player", update).is_some()
-}
-
 pub fn headless_engine_complete_effect_json(handle: u64, result_json: &str) -> Option<String> {
     const CONTEXT: &str = "headless_engine_complete_effect_json";
     let result: EffectResultInput = parse(CONTEXT, result_json)?;
     let result = with_engine(handle, CONTEXT, |engine| engine.complete(result))?;
     serde_json::to_string(&result).ok()
-}
-
-pub fn headless_engine_complete_discover_page_json(
-    handle: u64,
-    result_json: &str,
-) -> Option<String> {
-    const CONTEXT: &str = "headless_engine_complete_discover_page_json";
-    let result: EffectResultInput = parse(CONTEXT, result_json)?;
-    let page = with_engine(handle, CONTEXT, |engine| engine.complete_page(result))?
-        .map_err(|detail| CoreError::BadInput {
-            context: CONTEXT,
-            detail,
-        })
-        .log_discard()?;
-    serde_json::to_string(&page).ok()
 }
 
 fn parse<T: serde::de::DeserializeOwned>(context: &'static str, json: &str) -> Option<T> {

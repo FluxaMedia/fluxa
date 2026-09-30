@@ -119,22 +119,6 @@ fn reducer_resets_player_episode_state_like_kotlin_state_holder() {
 }
 
 #[test]
-fn primitive_player_updates_avoid_json_dispatch() {
-    let handle = create_app_core_state("{}");
-    assert!(app_core_update_player(
-        handle, 12_345, 2, false, true, true, true
-    ));
-    let value: Value = serde_json::from_str(&app_core_state_json(handle).unwrap()).unwrap();
-    assert_eq!(value["player"]["lastSavedPosition"], json!(12_345));
-    assert_eq!(value["player"]["isBuffering"], json!(false));
-    assert_eq!(value["player"]["currentStreamIndex"], json!(2));
-    assert_eq!(value["player"]["playbackEnded"], json!(true));
-    assert_eq!(value["player"]["isVideoRendered"], json!(true));
-    assert_eq!(value["player"]["hasStartedPlaying"], json!(true));
-    assert!(destroy_app_core_state(handle));
-}
-
-#[test]
 fn delta_dispatch_returns_the_small_action_payload() {
     let handle = create_app_core_state("{}");
     let delta =

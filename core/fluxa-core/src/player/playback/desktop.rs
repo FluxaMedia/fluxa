@@ -17,10 +17,6 @@ enum ChapterInput {
     Envelope { chapters: Vec<Chapter> },
 }
 
-pub(crate) fn should_play_next_episode(has_next_episode: bool, auto_play: bool) -> bool {
-    has_next_episode && auto_play
-}
-
 pub(crate) fn chapter_skip_segments_json(chapters_json: &str, duration_ms: i64) -> String {
     let chapters = match serde_json::from_str::<ChapterInput>(chapters_json) {
         Ok(ChapterInput::List(chapters)) => chapters,
@@ -195,13 +191,6 @@ fn is_last_chapter(value: &str, index: usize, chapter_count: usize) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn next_episode_requires_both_a_successor_and_autoplay() {
-        assert!(should_play_next_episode(true, true));
-        assert!(!should_play_next_episode(true, false));
-        assert!(!should_play_next_episode(false, true));
-    }
 
     #[test]
     fn derives_skip_segments_from_named_chapters() {
