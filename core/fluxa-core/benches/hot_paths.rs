@@ -24,20 +24,6 @@ fn categories() -> Value {
 }
 
 fn hot_paths(c: &mut Criterion) {
-    let filenames = [
-        "[SubsPlease] Frieren - 17 [1080p].mkv",
-        "[Grp] The.Show.2024.S01E02.1080p.mkv",
-        "Some.Movie.2019.2160p.UHD.BluRay.x265-GROUP.mkv",
-    ];
-    c.bench_function("local_media_parse_filename", |b| {
-        b.iter(|| {
-            for name in filenames {
-                let args = json!({"fileName": name, "parentHints": [], "kind": "anime"});
-                black_box(call("localMediaParseFilename", &args).ok());
-            }
-        })
-    });
-
     let filters = (0..60)
         .map(|i| json!({"name": format!("B{i}"), "pattern": format!(r"\btag{i}\b"), "imageURL": format!("https://img.example/{i}.png")}))
         .collect::<Vec<_>>();
