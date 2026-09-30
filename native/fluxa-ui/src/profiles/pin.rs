@@ -18,7 +18,7 @@ pub(super) fn draw_pin_prompt(
         .unwrap_or_default();
     let mut pin = prompt.pin.clone();
     let mut cancel = false;
-    modal(context, screen, "fluxa-profiles-pin", |ui| {
+    components::modal(context, screen, "fluxa-profiles-pin", |ui| {
         ui.vertical_centered(|ui| {
             let (rect, _) = ui.allocate_exact_size(Vec2::splat(72.0), Sense::hover());
             components::avatar(
@@ -52,7 +52,7 @@ pub(super) fn draw_pin_prompt(
         pin.retain(|character| character.is_ascii_digit());
         pin.truncate(4);
         if prompt.error {
-            note(ui, &t("profiles.pin_error"));
+            components::note(ui, &t("profiles.pin_error"));
         }
         ui.add_space(18.0);
         let submit = pin.len() == 4
@@ -60,12 +60,14 @@ pub(super) fn draw_pin_prompt(
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
             let half = (width - 8.0) * 0.5;
-            if secondary_button(ui, &t("common.cancel"), half).clicked()
+            if components::secondary_button(ui, &t("common.cancel"), half).clicked()
                 || ui.input(|input| input.key_pressed(egui::Key::Escape))
             {
                 cancel = true;
             }
-            if primary_button(ui, &t("profiles.unlock"), half, pin.len() == 4).clicked() || submit {
+            if components::primary_button(ui, &t("profiles.unlock"), half, pin.len() == 4).clicked()
+                || submit
+            {
                 *request = Some(ProfilesRequest::SubmitPin);
             }
         });

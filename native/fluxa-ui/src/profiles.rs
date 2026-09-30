@@ -55,7 +55,7 @@ pub fn draw_profiles(
             .profile(&id)
             .map(|profile| profile.name.clone())
             .unwrap_or_default();
-        modal(context, screen, "fluxa-profiles-confirm", |ui| {
+        components::modal(context, screen, "fluxa-profiles-confirm", |ui| {
             ui.label(
                 RichText::new(t("profiles.delete_confirm_title"))
                     .size(22.0)
@@ -70,10 +70,10 @@ pub fn draw_profiles(
             );
             ui.add_space(20.0);
             ui.horizontal(|ui| {
-                if secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
+                if components::secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
                     model.confirm_delete = None;
                 }
-                if danger_button(ui, &t("profiles.delete"), 140.0).clicked() {
+                if components::danger_button(ui, &t("profiles.delete"), 140.0).clicked() {
                     model.confirm_delete = None;
                     request = Some(ProfilesRequest::Delete(id.clone()));
                 }
@@ -174,28 +174,6 @@ fn centered_column(ui: &mut egui::Ui, width: f32, add: impl FnOnce(&mut egui::Ui
     });
 }
 
-fn heading(ui: &mut egui::Ui, eyebrow: &str, title: &str, subtitle: &str) {
-    ui.label(
-        RichText::new(eyebrow.to_uppercase())
-            .size(11.0)
-            .color(Color32::from_white_alpha(110)),
-    );
-    ui.add_space(10.0);
-    ui.label(
-        RichText::new(title)
-            .size(36.0)
-            .strong()
-            .color(Color32::WHITE),
-    );
-    ui.add_space(8.0);
-    ui.label(
-        RichText::new(subtitle)
-            .size(14.0)
-            .color(Color32::from_white_alpha(120)),
-    );
-    ui.add_space(28.0);
-}
-
 fn close_button(
     ui: &mut egui::Ui,
     model: &mut ProfilesModel,
@@ -220,100 +198,4 @@ fn close_button(
         }
     });
     ui.add_space(24.0);
-}
-
-fn field_label(ui: &mut egui::Ui, text: &str) {
-    ui.label(
-        RichText::new(text.to_uppercase())
-            .size(10.0)
-            .color(Color32::from_white_alpha(100)),
-    );
-    ui.add_space(6.0);
-}
-
-fn note(ui: &mut egui::Ui, text: &str) {
-    ui.add_space(4.0);
-    ui.label(
-        RichText::new(text)
-            .size(12.0)
-            .color(Color32::from_white_alpha(170)),
-    );
-}
-
-fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
-    ui.add_sized(
-        [width, 44.0],
-        egui::Button::new(
-            RichText::new(label)
-                .size(13.0)
-                .color(Color32::from_white_alpha(200)),
-        )
-        .fill(Color32::from_white_alpha(14))
-        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
-        .corner_radius(8.0),
-    )
-}
-
-fn primary_button(ui: &mut egui::Ui, label: &str, width: f32, enabled: bool) -> egui::Response {
-    ui.add_enabled(
-        enabled,
-        egui::Button::new(RichText::new(label).size(13.0).strong().color(if enabled {
-            Color32::BLACK
-        } else {
-            Color32::from_white_alpha(80)
-        }))
-        .fill(if enabled {
-            Color32::WHITE
-        } else {
-            Color32::from_white_alpha(24)
-        })
-        .corner_radius(8.0)
-        .min_size(Vec2::new(width, 44.0)),
-    )
-}
-
-fn danger_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
-    ui.add_sized(
-        [width, 44.0],
-        egui::Button::new(
-            RichText::new(label)
-                .size(13.0)
-                .strong()
-                .color(Color32::WHITE),
-        )
-        .fill(Color32::from_rgb(170, 48, 48))
-        .corner_radius(8.0),
-    )
-}
-
-fn panel(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
-    egui::Frame::NONE
-        .fill(Color32::from_rgba_unmultiplied(20, 20, 20, 235))
-        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(20)))
-        .corner_radius(12.0)
-        .inner_margin(egui::Margin::same(22))
-        .show(ui, add);
-}
-
-fn modal(context: &egui::Context, screen: Rect, id: &str, add: impl FnOnce(&mut egui::Ui)) {
-    context
-        .layer_painter(egui::LayerId::new(
-            egui::Order::Middle,
-            Id::new((id, "scrim")),
-        ))
-        .rect_filled(screen, 0.0, Color32::from_black_alpha(170));
-    egui::Area::new(Id::new(id))
-        .order(egui::Order::Foreground)
-        .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
-        .show(context, |ui| {
-            egui::Frame::NONE
-                .fill(Color32::from_rgb(22, 22, 22))
-                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
-                .corner_radius(14.0)
-                .inner_margin(egui::Margin::same(26))
-                .show(ui, |ui| {
-                    ui.set_width(340.0);
-                    add(ui);
-                });
-        });
 }

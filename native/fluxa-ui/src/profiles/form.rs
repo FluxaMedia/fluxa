@@ -13,7 +13,7 @@ pub(super) fn draw_form(
     let width = (viewport.width - 56.0).min(1100.0);
     let stacked = width < 760.0;
     centered_column(ui, width, |ui| {
-        heading(
+        components::heading(
             ui,
             &t("profiles.settings"),
             &if model.draft.editing.is_some() {
@@ -56,7 +56,7 @@ pub(super) fn form_details(
     request: &mut Option<ProfilesRequest>,
     width: f32,
 ) {
-    panel(ui, |ui| {
+    components::panel(ui, |ui| {
         ui.set_width(width - 44.0);
         ui.vertical_centered(|ui| {
             let (rect, response) = ui.allocate_exact_size(Vec2::splat(128.0), Sense::click());
@@ -105,23 +105,14 @@ pub(super) fn form_details(
                 }
             });
             if model.draft.avatar_url.is_some()
-                && ui
-                    .add(
-                        egui::Button::new(
-                            RichText::new(t("profiles.use_initials"))
-                                .size(12.0)
-                                .color(Color32::from_white_alpha(110)),
-                        )
-                        .frame(false),
-                    )
-                    .clicked()
+                && components::text_button(ui, &t("profiles.use_initials"), 12.0, 110).clicked()
             {
                 model.draft.avatar_url = None;
             }
         });
         ui.add_space(20.0);
         let field_width = ui.available_width();
-        field_label(ui, &t("profiles.name"));
+        components::field_label(ui, &t("profiles.name"));
         components::text_input(
             ui,
             &mut model.draft.name,
@@ -130,10 +121,10 @@ pub(super) fn form_details(
             false,
         );
         if model.duplicate_name() {
-            note(ui, &t("profiles.duplicate_name"));
+            components::note(ui, &t("profiles.duplicate_name"));
         }
         ui.add_space(14.0);
-        field_label(ui, &t("profiles.pin_lock"));
+        components::field_label(ui, &t("profiles.pin_lock"));
         let hint = if model.draft.has_pin && !model.draft.remove_pin {
             t("profiles.pin_set_placeholder")
         } else {
@@ -148,30 +139,20 @@ pub(super) fn form_details(
             model.draft.remove_pin = false;
         }
         if !model.draft.pin.is_empty() && model.draft.pin.len() != 4 {
-            note(ui, &t("profiles.pin_invalid"));
+            components::note(ui, &t("profiles.pin_invalid"));
         }
         if model.draft.has_pin && !model.draft.remove_pin {
-            if ui
-                .add(
-                    egui::Button::new(
-                        RichText::new(t("profiles.remove_pin"))
-                            .size(12.0)
-                            .color(Color32::from_white_alpha(120)),
-                    )
-                    .frame(false),
-                )
-                .clicked()
-            {
+            if components::text_button(ui, &t("profiles.remove_pin"), 12.0, 120).clicked() {
                 model.draft.remove_pin = true;
                 model.draft.pin.clear();
             }
         }
         if model.draft.remove_pin {
-            note(ui, &t("profiles.pin_will_be_removed"));
+            components::note(ui, &t("profiles.pin_will_be_removed"));
         }
         if !model.draft_is_primary() {
             ui.add_space(14.0);
-            field_label(ui, &t("profiles.sharing"));
+            components::field_label(ui, &t("profiles.sharing"));
             ui.checkbox(
                 &mut model.draft.uses_primary_addons,
                 RichText::new(t("profiles.use_primary_addons")).size(13.0),
@@ -185,7 +166,7 @@ pub(super) fn form_details(
         let half = (field_width - 8.0) * 0.5;
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
-            if secondary_button(ui, &t("common.cancel"), half).clicked() {
+            if components::secondary_button(ui, &t("common.cancel"), half).clicked() {
                 model.mode = ProfilesMode::Select;
             }
             let label = if model.busy {
@@ -195,7 +176,7 @@ pub(super) fn form_details(
             } else {
                 t("profiles.create")
             };
-            if primary_button(ui, &label, half, model.can_save()).clicked() {
+            if components::primary_button(ui, &label, half, model.can_save()).clicked() {
                 *request = Some(ProfilesRequest::Save);
             }
         });
@@ -210,10 +191,10 @@ pub(super) fn form_images(
     request: &mut Option<ProfilesRequest>,
     width: f32,
 ) {
-    panel(ui, |ui| {
+    components::panel(ui, |ui| {
         ui.set_width(width - 44.0);
         let inner = ui.available_width();
-        if secondary_button(ui, &t("profiles.choose_image"), inner).clicked() {
+        if components::secondary_button(ui, &t("profiles.choose_image"), inner).clicked() {
             *request = Some(ProfilesRequest::PickAvatarImage);
         }
         if model.picker.avatar_packs.is_empty() {
@@ -227,7 +208,7 @@ pub(super) fn form_images(
         }
         ui.add_space(16.0);
         ui.horizontal(|ui| {
-            field_label(ui, &t("profiles.avatar_packs"));
+            components::field_label(ui, &t("profiles.avatar_packs"));
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
                 let refresh = components::icon_button(
                     ui,

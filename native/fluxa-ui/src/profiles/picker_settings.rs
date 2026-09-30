@@ -12,13 +12,13 @@ pub(super) fn draw_picker_settings(
     close_button(ui, model, assets, t);
     let width = (viewport.width - 56.0).min(1024.0);
     centered_column(ui, width, |ui| {
-        heading(
+        components::heading(
             ui,
             &t("profiles.settings"),
             &t("profiles.picker_settings"),
             &t("profiles.picker_background_desc"),
         );
-        panel(ui, |ui| {
+        components::panel(ui, |ui| {
             ui.set_width(width - 44.0);
             ui.label(
                 RichText::new(t("profiles.picker_background"))
@@ -75,7 +75,7 @@ pub(super) fn draw_picker_settings(
             });
         });
         ui.add_space(20.0);
-        panel(ui, |ui| {
+        components::panel(ui, |ui| {
             ui.set_width(width - 44.0);
             ui.label(
                 RichText::new(t("profiles.avatar_packs"))
@@ -108,7 +108,9 @@ pub(super) fn draw_picker_settings(
                     t("profiles.add_pack")
                 };
                 let can_add = !model.repository_input.trim().is_empty() && !model.busy;
-                if (primary_button(ui, &label, 140.0, can_add).clicked() || submit) && can_add {
+                if (components::primary_button(ui, &label, 140.0, can_add).clicked() || submit)
+                    && can_add
+                {
                     *request = Some(ProfilesRequest::AddRepository);
                 }
             });
@@ -121,11 +123,12 @@ pub(super) fn draw_picker_settings(
                 );
             }
             for pack in model.picker.avatar_packs.clone() {
-                egui::Frame::NONE
-                    .fill(Color32::from_white_alpha(8))
-                    .corner_radius(10.0)
-                    .inner_margin(egui::Margin::symmetric(14, 12))
-                    .show(ui, |ui| {
+                components::surface(
+                    ui,
+                    Color32::from_white_alpha(8),
+                    10.0,
+                    egui::Margin::symmetric(14, 12),
+                    |ui| {
                         ui.set_width(ui.available_width());
                         ui.horizontal(|ui| {
                             let previews = pack.avatars.len().min(6);
@@ -203,22 +206,13 @@ pub(super) fn draw_picker_settings(
                                 },
                             );
                         });
-                    });
+                    },
+                );
                 ui.add_space(10.0);
             }
         });
         ui.add_space(16.0);
-        if ui
-            .add(
-                egui::Button::new(
-                    RichText::new(format!("‹  {}", t("common.back")))
-                        .size(14.0)
-                        .color(Color32::WHITE),
-                )
-                .frame(false),
-            )
-            .clicked()
-        {
+        if components::text_button(ui, &format!("‹  {}", t("common.back")), 14.0, 255).clicked() {
             model.mode = ProfilesMode::Select;
         }
         ui.add_space(48.0);

@@ -657,18 +657,15 @@ fn pill_button(
         .fixed_pos(rect.min)
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            let (area, response) = ui.allocate_exact_size(rect.size(), Sense::click());
-            ui.painter().rect_filled(
-                area,
-                area.height() * 0.5,
-                Color32::from_white_alpha(if response.hovered() { 34 } else { 20 }),
-            );
-            ui.painter().text(
-                area.center(),
-                Align2::CENTER_CENTER,
+            let response = components::pill_button(
+                ui,
+                None,
                 label,
-                FontId::proportional(size),
-                Color32::WHITE,
+                Some(rect.width()),
+                rect.height(),
+                size,
+                false,
+                None,
             );
             if response.clicked() {
                 layout.activated = Some(id);
