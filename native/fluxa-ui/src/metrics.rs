@@ -141,6 +141,8 @@ pub struct UiMetrics {
     pub collection_wide_height: f32,
     pub collection_square_size: f32,
     pub screen_margin: f32,
+    pub nav_label_boost: f32,
+    pub navigation_icon: f32,
     pub settings_margin: f32,
     pub settings_top: f32,
     pub settings_card_height: f32,
@@ -495,6 +497,8 @@ impl UiMetrics {
             collection_wide_height: platform_dp("collectionWideHeight", 158.0),
             collection_square_size: platform_dp("collectionSquareSize", 150.0),
             screen_margin: 0.0,
+            nav_label_boost: 0.0,
+            navigation_icon: 0.0,
             settings_margin: 0.0,
             settings_top: 0.0,
             settings_card_height: 0.0,
@@ -536,6 +540,11 @@ impl UiMetrics {
         metrics.toast_text_size = toast.0;
         metrics.toast_padding = toast.1;
         metrics.toast_bar_width = toast.2;
+        (metrics.nav_label_boost, metrics.navigation_icon) = if platform == "tv" {
+            (3.0, 25.0)
+        } else {
+            (0.0, 20.0)
+        };
         metrics.detail_play_height = play_height;
         metrics.detail_back_top = back_top;
         metrics.detail_title_size = title_size;
@@ -607,25 +616,25 @@ impl UiMetrics {
         metrics
     }
 
-    pub fn navigation_label_size(self, tv: bool) -> f32 {
-        self.nav_label_size + if tv { 3.0 } else { 0.0 }
+    pub fn navigation_label_size(self) -> f32 {
+        self.nav_label_size + self.nav_label_boost
     }
 
-    pub fn navigation_icon_size(self, tv: bool) -> f32 {
-        if tv { 25.0 } else { 20.0 }
+    pub fn navigation_icon_size(self) -> f32 {
+        self.navigation_icon
     }
 
-    pub fn navigation_item_width(self, label: &str, tv: bool) -> f32 {
-        44.0 + self.navigation_icon_size(tv)
+    pub fn navigation_item_width(self, label: &str) -> f32 {
+        44.0 + self.navigation_icon_size()
             + 8.0
-            + estimated_navigation_text_width(label, self.navigation_label_size(tv))
+            + estimated_navigation_text_width(label, self.navigation_label_size())
     }
 
-    pub fn navigation_profile_width(self, profile_name: &str, tv: bool) -> f32 {
+    pub fn navigation_profile_width(self, profile_name: &str) -> f32 {
         (36.0
             + NAV_AVATAR_RADIUS * 2.0
             + 8.0
-            + estimated_navigation_text_width(profile_name, self.navigation_label_size(tv)))
+            + estimated_navigation_text_width(profile_name, self.navigation_label_size()))
         .clamp(72.0, 200.0)
     }
 
@@ -641,12 +650,12 @@ impl UiMetrics {
         };
         let nav_width = crate::navigation::nav_labels()
             .iter()
-            .map(|label| self.navigation_item_width(label, tv))
+            .map(|label| self.navigation_item_width(label))
             .sum::<f32>();
         (if compact {
             (viewport.width - margin * 2.0).max(280.0)
         } else {
-            nav_width + NAV_ITEM_GAP * 4.0 + self.navigation_profile_width(profile_name, tv)
+            nav_width + NAV_ITEM_GAP * 4.0 + self.navigation_profile_width(profile_name)
         })
         .min((viewport.width - margin * 2.0).max(1.0))
     }

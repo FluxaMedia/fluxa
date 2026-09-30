@@ -50,7 +50,6 @@ pub(crate) fn draw_navigation_bar_with_profile(
 ) -> Option<u64> {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
-    let tv = viewport.is_tv();
     if compact {
         return draw_mobile_navigation_bar(
             context,
@@ -62,9 +61,9 @@ pub(crate) fn draw_navigation_bar_with_profile(
             profile_name,
         );
     }
-    let label_size = metrics.navigation_label_size(tv);
-    let icon_size = metrics.navigation_icon_size(tv);
-    let profile_width = metrics.navigation_profile_width(profile_name, tv);
+    let label_size = metrics.navigation_label_size();
+    let icon_size = metrics.navigation_icon_size();
+    let profile_width = metrics.navigation_profile_width(profile_name);
     let bar_width = metrics.navigation_bar_width(viewport, profile_name) + NAV_BAR_PADDING * 2.0;
     let bar_x = (viewport.width - bar_width).max(12.0) * 0.5;
     let font = FontId::proportional(label_size);
@@ -96,7 +95,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             .enumerate()
                         {
                             let active = index == active_route;
-                            let width = metrics.navigation_item_width(label, tv);
+                            let width = metrics.navigation_item_width(label);
                             let (rect, response) = ui.allocate_exact_size(
                                 Vec2::new(width, NAV_ITEM_HEIGHT),
                                 Sense::click(),
@@ -537,8 +536,7 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             })
             .collect()
     } else {
-        let tv = viewport.is_tv();
-        let widths = nav_labels().map(|label| metrics.navigation_item_width(&label, tv));
+        let widths = nav_labels().map(|label| metrics.navigation_item_width(&label));
         let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
         let y = NAV_BAR_TOP + NAV_BAR_PADDING;
@@ -555,7 +553,7 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             ));
             left += item_width + NAV_ITEM_GAP;
         }
-        let profile_width = metrics.navigation_profile_width("Profile", tv);
+        let profile_width = metrics.navigation_profile_width("Profile");
         rects.push((
             NODE_PROFILE,
             Rect::from_min_size(
