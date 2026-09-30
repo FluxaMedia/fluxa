@@ -130,16 +130,9 @@ pub(crate) fn draw_home_with_options(
     focused: Option<u64>,
     draw_top_bar: bool,
 ) -> HomeLayout {
-    let mut metrics = metrics_for_assets(viewport, assets);
+    let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
-    if compact {
-        metrics.home_continue_card_width *= 1.15;
-        metrics.home_continue_card_height *= 1.15;
-    } else if !tv {
-        metrics.home_continue_card_width *= 1.10;
-        metrics.home_continue_card_height *= 1.10;
-    }
     let scroll_offset = if viewport.form_factor == UiFormFactor::Desktop {
         resolve_screen_scroll(
             context,
