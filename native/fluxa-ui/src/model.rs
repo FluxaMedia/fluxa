@@ -89,16 +89,25 @@ impl Viewport {
             height: height as f32,
             form_factor,
             platform: UiPlatform::default(),
-            safe_bottom: 0.0,
+            safe_bottom: Self::min_safe_bottom(form_factor),
             scroll_y: 0.0,
         }
     }
 
-    pub fn with_safe_bottom(mut self, inset: f32) -> Self {
-        self.safe_bottom = if inset.is_finite() {
-            inset.max(0.0)
+    fn min_safe_bottom(form_factor: UiFormFactor) -> f32 {
+        if form_factor == UiFormFactor::Tv {
+            27.0
         } else {
             0.0
+        }
+    }
+
+    pub fn with_safe_bottom(mut self, inset: f32) -> Self {
+        let floor = Self::min_safe_bottom(self.form_factor);
+        self.safe_bottom = if inset.is_finite() {
+            inset.max(floor)
+        } else {
+            floor
         };
         self
     }

@@ -181,6 +181,14 @@ pub(super) fn draw_home_rows(
                         let rect =
                             Rect::from_min_size(slot_rect.min, Vec2::new(item_width, item_height));
                         let node_id = NODE_CARD_BASE + flat_index as u64;
+                        let rect = if viewport.is_tv() && focused == Some(node_id) {
+                            Rect::from_center_size(
+                                rect.center(),
+                                rect.size() * metrics.focused_scale,
+                            )
+                        } else {
+                            rect
+                        };
                         layout.focusable.push((node_id, rect));
                         let card_visible = rect.intersects(screen) && rect.intersects(row_clip);
                         let response = card_visible
