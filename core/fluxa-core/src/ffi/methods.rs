@@ -524,6 +524,9 @@ static METHODS: &[(&str, Router)] = &[
     ("setActiveStreamBadgeSource", route_stream_badges),
     ("setMetadataFeedGroupEnabled", route_content_identity),
     ("sha256VerificationStatus", route_addon_store),
+    ("shortcutAssign", route_shortcuts),
+    ("shortcutBindings", route_shortcuts),
+    ("shortcutResolve", route_shortcuts),
     ("shortenSynopsis", route_content_identity),
     ("shouldAttemptAnimeTracking", route_anime_detection),
     ("shuffleEpisodePick", route_player_policy),
@@ -709,6 +712,7 @@ mod tests {
         include_str!("../services/tracking/trakt/routes.rs"),
         include_str!("../settings/routes/data_policy.rs"),
         include_str!("../settings/routes/discord_presence.rs"),
+        include_str!("../settings/routes/shortcuts.rs"),
         include_str!("../settings/routes/version_policy.rs"),
         include_str!("../library/storage/local_media.rs"),
     ];

@@ -6,4 +6,5 @@ pub(crate) mod engine;
 pub(crate) mod manifest;
 pub(crate) mod routes;
 pub(crate) mod runtime_label;
+pub(crate) mod shortcuts;
 pub(crate) mod version;
