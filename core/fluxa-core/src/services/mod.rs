@@ -2,18 +2,16 @@ pub(crate) mod provider_routes;
 use serde_json::{Map, Value, json};
 use simkl::*;
 
-pub(crate) mod anilist;
 pub(crate) mod auth;
-pub(crate) mod fluxa;
-pub(crate) mod mdblist;
 pub(crate) mod mediaserver;
-pub(crate) mod nuvio;
-pub(crate) mod publicmetadb;
+pub(crate) mod metadata;
 pub(crate) mod registry;
-pub(crate) mod simkl;
-pub(crate) mod stremio;
-pub(crate) mod tmdb;
-pub(crate) mod trakt;
+pub(crate) mod sync;
+pub(crate) mod tracking;
+
+pub(crate) use metadata::{publicmetadb, tmdb};
+pub(crate) use sync::{fluxa, nuvio, stremio};
+pub(crate) use tracking::{anilist, mdblist, simkl, trakt};
 
 use trakt::*;
 
