@@ -1,7 +1,6 @@
 use super::*;
 
 const SEGMENT_GAP: f32 = 3.0;
-const CARD_FILL: Color32 = crate::theme::SURFACE;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ChapterSpan {
@@ -220,6 +219,7 @@ pub(super) fn draw_next_episode_card(
     let Some(card) = chrome.player.next_episode.as_ref() else {
         return;
     };
+    let tokens = UiMetrics::for_viewport(chrome.viewport);
     let metrics = CardMetrics::for_form_factor(chrome.viewport.form_factor);
     let language = &chrome.player.language;
     let width = metrics
@@ -232,11 +232,13 @@ pub(super) fn draw_next_episode_card(
         Pos2::new(card_right(chrome) - width, card_bottom(chrome) - height),
         Vec2::new(width, height),
     );
-    chrome.painter.rect_filled(panel, 14.0, CARD_FILL);
+    chrome
+        .painter
+        .rect_filled(panel, tokens.card_radius, tokens.surface);
     chrome.painter.rect_stroke(
         panel,
-        14.0,
-        crate::theme::border(),
+        tokens.card_radius,
+        egui::Stroke::new(1.0, tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.pad);

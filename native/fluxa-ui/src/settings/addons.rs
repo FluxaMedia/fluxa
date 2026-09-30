@@ -385,7 +385,7 @@ pub(super) fn draw_addons(
     }
     for (index, addon) in settings.addons.iter().enumerate() {
         let card = addon_card(addon, index, count, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout) + CARD_GAP;
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
     }
 }
 
@@ -445,7 +445,7 @@ pub(super) fn draw_plugins(
     }
     for (index, repo) in repos.iter().enumerate() {
         let card = repository_card(repo, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout) + CARD_GAP;
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
     }
     let scrapers = scrapers(settings);
     if scrapers.is_empty() {
@@ -465,11 +465,11 @@ pub(super) fn draw_plugins(
         Pos2::new(rect.left(), y),
         Vec2::new(rect.width(), scrapers.len() as f32 * SCRAPER_ROW),
     );
-    painter.rect_filled(group, crate::theme::RADIUS_CARD, crate::theme::SURFACE);
+    painter.rect_filled(group, metrics.card_radius, metrics.surface);
     painter.rect_stroke(
         group,
-        16.0,
-        crate::theme::border(),
+        metrics.card_radius,
+        egui::Stroke::new(1.0, metrics.border),
         egui::StrokeKind::Inside,
     );
     for (index, scraper) in scrapers.iter().enumerate() {
@@ -556,16 +556,17 @@ fn draw_card(
     rect: Rect,
     top: f32,
     layout: &mut HomeLayout,
+    metrics: UiMetrics,
 ) -> f32 {
     let frame = Rect::from_min_size(
         Pos2::new(rect.left(), top),
         Vec2::new(rect.width(), card.height()),
     );
-    painter.rect_filled(frame, crate::theme::RADIUS_CARD, crate::theme::SURFACE);
+    painter.rect_filled(frame, metrics.card_radius, metrics.surface);
     painter.rect_stroke(
         frame,
-        16.0,
-        crate::theme::border(),
+        metrics.card_radius,
+        egui::Stroke::new(1.0, metrics.border),
         egui::StrokeKind::Inside,
     );
     let inner = frame.shrink(CARD_PADDING);
@@ -827,6 +828,7 @@ pub(super) fn draw_servers(
                     &localized(hints[index], language),
                     field.width(),
                     index == 2,
+                    metrics,
                 );
                 layout.focusable.push((*node, response.rect));
                 if response.changed() {
@@ -900,6 +902,6 @@ pub(super) fn draw_servers(
     }
     for (index, server) in settings.media_servers.iter().enumerate() {
         let card = server_card(server, index, language);
-        y = draw_card(context, &painter, &card, assets, rect, y, layout) + CARD_GAP;
+        y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
     }
 }

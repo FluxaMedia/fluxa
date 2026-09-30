@@ -27,7 +27,6 @@ mod player;
 mod poster_overlay;
 mod profiles;
 mod settings;
-mod theme;
 
 pub use home::*;
 pub use layout::*;

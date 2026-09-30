@@ -44,6 +44,7 @@ pub(super) fn account_group(
     height: f32,
     title: &str,
     compact: bool,
+    metrics: UiMetrics,
 ) -> Rect {
     if compact {
         painter.text(
@@ -66,8 +67,13 @@ pub(super) fn account_group(
         Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
         Vec2::new(rect.width(), height),
     );
-    painter.rect_filled(card, crate::theme::RADIUS_CARD, crate::theme::SURFACE);
-    painter.rect_stroke(card, 12.0, crate::theme::border(), egui::StrokeKind::Inside);
+    painter.rect_filled(card, metrics.card_radius, metrics.surface);
+    painter.rect_stroke(
+        card,
+        metrics.card_radius,
+        egui::Stroke::new(1.0, metrics.border),
+        egui::StrokeKind::Inside,
+    );
     card
 }
 
@@ -169,6 +175,7 @@ pub(super) fn draw_account(
         ACCOUNT_PROFILE_CARD_HEIGHT,
         &localized("settings.group.account_profile", language),
         compact,
+        metrics,
     );
     let name = settings
         .profile
@@ -260,6 +267,7 @@ pub(super) fn draw_account(
         settings_group_card_height(ACCOUNT_SERVICES.len(), metrics),
         &localized("settings.group.account_services", language),
         compact,
+        metrics,
     );
     for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
         let row = account_row(card, index, metrics);
@@ -415,6 +423,7 @@ pub(super) fn draw_account(
         settings_group_card_height(ACCOUNT_SOURCES.len(), metrics),
         &localized("settings.group.account_sync", language),
         compact,
+        metrics,
     );
     for (index, (label_key, key)) in ACCOUNT_SOURCES.iter().enumerate() {
         let row = account_row(card, index, metrics);
@@ -503,6 +512,7 @@ pub(super) fn draw_account(
                     value_rect.width(),
                     !options.is_empty(),
                     false,
+                    metrics,
                 );
                 layout.focusable.push((
                     NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,

@@ -126,11 +126,11 @@ fn draw_page_cards(
     let height = page_card_height(viewport);
     let pages: Vec<usize> = subpages(active).collect();
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
-    painter.rect_filled(card, metrics.card_radius, crate::theme::SURFACE);
+    painter.rect_filled(card, metrics.card_radius, metrics.surface);
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        crate::theme::border(),
+        egui::Stroke::new(1.0, metrics.border),
         egui::StrokeKind::Inside,
     );
     let title_size = if viewport.is_tv() {
@@ -409,7 +409,7 @@ fn settings_panel_line(
         painter.rect_stroke(
             chip,
             metrics.screen_control_radius,
-            crate::theme::border(),
+            egui::Stroke::new(1.0, metrics.border),
             egui::StrokeKind::Inside,
         );
         painter.text(
@@ -634,6 +634,7 @@ fn settings_panel_input(
                 hint.as_ref(),
                 rect.size(),
                 metrics.settings_row_value_size_desktop,
+                metrics,
             );
             layout.focusable.push((id, response.rect));
             if response.changed() {
@@ -782,6 +783,7 @@ fn draw_field_group(
         fields.len() as f32 * FIELD_HEIGHT,
         title,
         compact,
+        metrics,
     );
     for (slot, &index) in fields.iter().enumerate() {
         let area = Rect::from_min_size(
@@ -821,6 +823,7 @@ fn draw_shortcut_group(
         settings_group_card_height(rows.len(), metrics),
         title,
         false,
+        metrics,
     );
     let size = metrics.settings_row_label_size_desktop;
     for (position, (index, shortcut)) in rows.iter().enumerate() {
@@ -902,6 +905,7 @@ fn draw_binding_group(
         settings_group_card_height(rows.len(), metrics),
         title,
         false,
+        metrics,
     );
     let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
     let value_font = crate::fonts::regular(metrics.settings_row_value_size_desktop);
@@ -977,6 +981,7 @@ fn draw_settings_extended_section(
                 settings_group_card_height(1, metrics),
                 &localized("settings.shortcuts_reset_all", language),
                 false,
+                metrics,
             );
             let row = account_row(card, 0, metrics);
             let label = localized("settings.shortcuts_reset_all", language);
@@ -1128,11 +1133,11 @@ fn draw_compact_settings_list(
             Pos2::new(anchor.left(), top),
             Vec2::new(anchor.width(), count as f32 * COMPACT_SETTINGS_ROW),
         );
-        painter.rect_filled(card, metrics.card_radius, crate::theme::SURFACE);
+        painter.rect_filled(card, metrics.card_radius, metrics.surface);
         painter.rect_stroke(
             card,
             metrics.card_radius,
-            crate::theme::border(),
+            egui::Stroke::new(1.0, metrics.border),
             egui::StrokeKind::Inside,
         );
     };
@@ -1460,7 +1465,7 @@ pub fn draw_settings(
         painter.rect_stroke(
             nav_panel,
             metrics.card_radius,
-            crate::theme::border(),
+            egui::Stroke::new(1.0, metrics.border),
             egui::StrokeKind::Inside,
         );
         if desktop {
@@ -1611,12 +1616,12 @@ pub fn draw_settings(
                 Color32::from_white_alpha(if compact { 120 } else { 145 }),
             );
         }
-        painter.rect_filled(*card, metrics.card_radius, crate::theme::SURFACE);
+        painter.rect_filled(*card, metrics.card_radius, metrics.surface);
         if !compact {
             painter.rect_stroke(
                 *card,
                 metrics.card_radius,
-                crate::theme::border(),
+                egui::Stroke::new(1.0, metrics.border),
                 egui::StrokeKind::Inside,
             );
         }
@@ -1990,6 +1995,7 @@ pub fn draw_settings(
                         value_rect.width(),
                         true,
                         false,
+                        metrics,
                     );
                     layout.focusable.push((node, response.rect));
                 });

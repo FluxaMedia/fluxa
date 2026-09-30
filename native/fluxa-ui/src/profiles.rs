@@ -55,30 +55,38 @@ pub fn draw_profiles(
             .profile(&id)
             .map(|profile| profile.name.clone())
             .unwrap_or_default();
-        components::modal(context, screen, "fluxa-profiles-confirm", |ui| {
-            ui.label(
-                RichText::new(t("profiles.delete_confirm_title"))
-                    .size(22.0)
-                    .strong()
-                    .color(Color32::WHITE),
-            );
-            ui.add_space(8.0);
-            ui.label(
-                RichText::new(t("profiles.delete_confirm_body").replacen("%s", &name, 1))
-                    .size(14.0)
-                    .color(Color32::from_white_alpha(170)),
-            );
-            ui.add_space(20.0);
-            ui.horizontal(|ui| {
-                if components::secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
-                    model.confirm_delete = None;
-                }
-                if components::danger_button(ui, &t("profiles.delete"), 140.0).clicked() {
-                    model.confirm_delete = None;
-                    request = Some(ProfilesRequest::Delete(id.clone()));
-                }
-            });
-        });
+        components::modal(
+            context,
+            screen,
+            "fluxa-profiles-confirm",
+            |ui| {
+                ui.label(
+                    RichText::new(t("profiles.delete_confirm_title"))
+                        .size(22.0)
+                        .strong()
+                        .color(Color32::WHITE),
+                );
+                ui.add_space(8.0);
+                ui.label(
+                    RichText::new(t("profiles.delete_confirm_body").replacen("%s", &name, 1))
+                        .size(14.0)
+                        .color(Color32::from_white_alpha(170)),
+                );
+                ui.add_space(20.0);
+                ui.horizontal(|ui| {
+                    if components::secondary_button(ui, &t("common.cancel"), 140.0).clicked() {
+                        model.confirm_delete = None;
+                    }
+                    if components::danger_button(ui, &t("profiles.delete"), 140.0, metrics)
+                        .clicked()
+                    {
+                        model.confirm_delete = None;
+                        request = Some(ProfilesRequest::Delete(id.clone()));
+                    }
+                });
+            },
+            metrics,
+        );
     }
 
     if let Some(notice) = model.notice.clone() {
@@ -87,8 +95,8 @@ pub fn draw_profiles(
             .order(egui::Order::Tooltip)
             .show(context, |ui| {
                 egui::Frame::NONE
-                    .fill(crate::theme::SURFACE_RAISED)
-                    .stroke(crate::theme::border())
+                    .fill(metrics.surface_raised)
+                    .stroke(egui::Stroke::new(1.0, metrics.border))
                     .corner_radius(10.0)
                     .inner_margin(egui::Margin::symmetric(16, 12))
                     .show(ui, |ui| {

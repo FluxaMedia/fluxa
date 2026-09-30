@@ -81,7 +81,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                 } else {
                     fill
                 })
-                .stroke(crate::theme::border())
+                .stroke(egui::Stroke::new(1.0, metrics.border))
                 .corner_radius(NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING)
                 .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
                 .show(ui, |ui| {
@@ -402,7 +402,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                 painter.rect_stroke(
                     bar,
                     bar.height() * 0.5,
-                    crate::theme::border(),
+                    egui::Stroke::new(1.0, metrics.border),
                     egui::StrokeKind::Inside,
                 );
             } else {

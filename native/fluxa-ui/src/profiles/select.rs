@@ -5,7 +5,7 @@ pub(super) fn draw_select(
     viewport: Viewport,
     model: &mut ProfilesModel,
     assets: &mut impl HomeAssets,
-    _metrics: UiMetrics,
+    metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<ProfilesRequest>,
 ) {
@@ -94,7 +94,7 @@ pub(super) fn draw_select(
                 avatar_center,
                 r,
                 Color32::from_white_alpha(if response.hovered() { 26 } else { 10 }),
-                crate::theme::border(),
+                egui::Stroke::new(1.0, metrics.border),
             );
             if let Some(icon) = assets.icon("Plus") {
                 ui.painter().image(
