@@ -37,12 +37,12 @@ pub(crate) fn route_external_sync(method: &str, args_json: &str) -> Outcome {
                 .to_string(),
             ))
         }
-        "providerCalendarItems" => {
-            opt_json(crate::services::tracking::external_sync::provider_calendar_items_json(args_json))
-        }
-        "providerPaginationPlan" => {
-            opt_json(crate::services::tracking::external_sync::provider_pagination_plan_json(args_json))
-        }
+        "providerCalendarItems" => opt_json(
+            crate::services::tracking::external_sync::provider_calendar_items_json(args_json),
+        ),
+        "providerPaginationPlan" => opt_json(
+            crate::services::tracking::external_sync::provider_pagination_plan_json(args_json),
+        ),
         "mergeExternalWatchlist" => {
             let args = object(args_json)?;
             into_json(
@@ -54,15 +54,19 @@ pub(crate) fn route_external_sync(method: &str, args_json: &str) -> Outcome {
         }
         "mergeExternalWatched" => {
             let args = object(args_json)?;
-            into_json(crate::services::tracking::external_sync::merge_external_watched_json(
-                field_str(&args, "localJson")?,
-                field_str(&args, "externalJson")?,
-            ))
+            into_json(
+                crate::services::tracking::external_sync::merge_external_watched_json(
+                    field_str(&args, "localJson")?,
+                    field_str(&args, "externalJson")?,
+                ),
+            )
         }
-        "pushPlan" => opt_json(crate::services::tracking::external_sync::push_plan_json(args_json)),
-        "importApplyPlan" => opt_json(crate::services::tracking::external_sync::import_apply_plan_json(
+        "pushPlan" => opt_json(crate::services::tracking::external_sync::push_plan_json(
             args_json,
         )),
+        "importApplyPlan" => {
+            opt_json(crate::services::tracking::external_sync::import_apply_plan_json(args_json))
+        }
         "mergeContinueWatchingLists" => {
             let args = object(args_json)?;
             opt_json(
@@ -107,12 +111,14 @@ pub(crate) fn route_external_sync(method: &str, args_json: &str) -> Outcome {
                 ),
             )
         }
-        "promoteExternalProgressPlan" => {
-            opt_json(crate::services::tracking::external_sync::promote_external_progress_plan_json(args_json))
-        }
-        "externalProviderActionPlan" => {
-            opt_json(crate::services::tracking::external_sync::external_provider_action_plan_json(args_json))
-        }
+        "promoteExternalProgressPlan" => opt_json(
+            crate::services::tracking::external_sync::promote_external_progress_plan_json(
+                args_json,
+            ),
+        ),
+        "externalProviderActionPlan" => opt_json(
+            crate::services::tracking::external_sync::external_provider_action_plan_json(args_json),
+        ),
         _ => Err(unknown_method()),
     }
 }

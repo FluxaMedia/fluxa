@@ -5,6 +5,7 @@ use fluxa_ui::HeroTrailer;
 use serde_json::{Map, Value, json};
 use web_time::Instant;
 
+use crate::player::VideoCommand;
 use crate::{RendererState, Route, core_value, profile_language};
 
 #[derive(Default)]
@@ -26,6 +27,7 @@ struct Active {
     request: Option<String>,
     loaded: bool,
     failed: bool,
+    subtitle: Option<String>,
     texture: Option<egui::TextureId>,
 }
 
@@ -141,6 +143,34 @@ fn reset(state: &mut RendererState) {
     }
 }
 
+pub(crate) fn subtitle_url(resolution: &Value, profile: Option<&Value>) -> Option<String> {
+    let profile = profile.unwrap_or(&Value::Null);
+    if profile.get("autoEnableSubtitles").and_then(Value::as_bool) == Some(false) {
+        return None;
+    }
+    let tracks = resolution
+        .get("subtitles")?
+        .as_array()
+        .filter(|tracks| !tracks.is_empty())?;
+    let language = profile_language(profile);
+    let track = core_value(
+        "trailerSubtitleSelectionPlan",
+        json!({
+            "tracks": tracks,
+            "preferred": profile.get("preferredSubtitleLanguage"),
+            "secondary": profile.get("secondarySubtitleLanguage"),
+            "systemLanguage": language,
+        }),
+    )
+    .filter(|track| !track.is_null())?;
+    core_value(
+        "normalizeTrailerSubtitleUrl",
+        json!({"url": track.get("url")?}),
+    )?
+    .as_str()
+    .map(ToOwned::to_owned)
+}
+
 fn youtube_ids(urls: &[String]) -> Vec<String> {
     if urls.is_empty() {
         return Vec::new();
@@ -177,6 +207,7 @@ pub(crate) fn tick(state: &mut RendererState) {
                 request: None,
                 loaded: false,
                 failed: false,
+                subtitle: None,
                 texture: None,
             });
         }
@@ -226,6 +257,7 @@ fn resolve(state: &mut RendererState) {
         match (url, video.as_mut(), gpu.as_ref()) {
             (Some(url), Some(video), Some(gpu)) => {
                 video.load_preview(&gpu.instance, &gpu.device, url);
+                active.subtitle = subtitle_url(resolution, snapshot.pointer("/profile/active"));
                 active.loaded = true;
             }
             (Some(_), _, _) => active.failed = true,
@@ -277,6 +309,15 @@ fn play(state: &mut RendererState) {
             gpu.egui_renderer.free_texture(&texture);
         }
         return;
+    }
+    if active.subtitle.is_some() && video.status().has_frame {
+        if let Some(url) = active.subtitle.take() {
+            video.command(VideoCommand::Mpv(vec![
+                "sub-add".to_owned(),
+                url,
+                "select".to_owned(),
+            ]));
+        }
     }
     if let Some(view) = video.render(&gpu.device) {
         if let Some(old) = active.texture.take() {

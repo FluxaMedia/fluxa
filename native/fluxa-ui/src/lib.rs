@@ -51,8 +51,8 @@ pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw
 pub use discover::draw_discover;
 pub use library::draw_library;
 pub use player::{
-    ChapterSpan, NextEpisodeCard, PlayerModel, PlayerSource, PlayerToast, SkipCard, SkipKind,
-    content_warning_duration, draw_player, format_time, torrent_status_lines,
+    ChapterSpan, NextEpisodeCard, PanelRow, PlayerModel, PlayerPanel, PlayerSource, PlayerToast,
+    SkipCard, SkipKind, content_warning_duration, draw_player, format_time, torrent_status_lines,
 };
 pub use profiles::{
     PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft, ProfileEntry,

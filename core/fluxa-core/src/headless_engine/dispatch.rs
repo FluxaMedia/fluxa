@@ -438,6 +438,23 @@ impl HeadlessEngine {
                 id,
                 extra_args,
             } => player::dispatch_subtitle_load(self, stream, content_type, id, extra_args),
+            AppAction::SubtitleSyncCaptured {
+                subtitle_text,
+                current_time,
+            } => player::dispatch_capture(self, subtitle_text, current_time),
+            AppAction::SubtitleSyncCueSelected { cue_start } => {
+                player::dispatch_cue_selected(self, cue_start)
+            }
+            AppAction::SubtitleSyncEstimated {
+                subtitle_text,
+                reference_text,
+                speech_intervals,
+            } => player::dispatch_estimate(self, subtitle_text, reference_text, speech_intervals),
+            AppAction::SubtitleSyncAudioAnalyzed {
+                subtitle_text,
+                frame_seconds,
+                energies,
+            } => player::dispatch_audio_estimate(self, subtitle_text, frame_seconds, energies),
             AppAction::ExternalSyncRequested {
                 provider,
                 profile,

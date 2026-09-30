@@ -1,3 +1,4 @@
+mod cast;
 mod flow;
 mod media_session;
 mod overlay;
@@ -9,6 +10,7 @@ mod stream_policy;
 mod trailer_subtitles;
 mod watch_together;
 
+pub(crate) use cast::*;
 pub(crate) use flow::*;
 pub(crate) use media_session::*;
 pub(crate) use overlay::*;

@@ -139,6 +139,12 @@ pub(super) fn native_action_for_node(
                 item: detail.item.clone(),
             });
         }
+        if node == fluxa_ui::NODE_DETAIL_TRAILER {
+            return Some(NativeAction::PlayTrailer {
+                item: detail.item.clone(),
+                urls: detail.trailers.clone(),
+            });
+        }
         if node == fluxa_ui::NODE_DETAIL_PLAY {
             if !detail.id.is_empty() {
                 let first = detail
@@ -793,7 +799,8 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         NativeAction::StartPlayback { item } => {
             vec![player::direct_playback_command(item, profile)]
         }
-        NativeAction::SettingsSection { .. }
+        NativeAction::PlayTrailer { .. }
+        | NativeAction::SettingsSection { .. }
         | NativeAction::AccountToggle { .. }
         | NativeAction::MediaServer { .. }
         | NativeAction::MediaCommand { .. }
@@ -837,6 +844,12 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         if matches!(&action, NativeAction::Navigate { destination } if *destination == Route::Profiles)
         {
             open_profiles = true;
+            continue;
+        }
+        if let NativeAction::PlayTrailer { item, urls } = &action {
+            state.player = Some(player::PlayerSession::trailer(item.clone(), urls));
+            state.screen_scroll_offsets.remove(&Route::Player);
+            state.ui = UiTree::default();
             continue;
         }
         if let NativeAction::StartPlayback { item } = &action {

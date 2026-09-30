@@ -81,12 +81,28 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
     let right = rect.right() - margin - 20.0;
     let volume_x = right - 52.0;
     let upscaling = Rect::from_center_size(Pos2::new(volume_x - 138.0, y), Vec2::new(150.0, 34.0));
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(upscaling.left() - 28.0, y),
+        38.0,
+        "cast",
+        NODE_PLAYER_CAST,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(upscaling.left() - 74.0, y),
+        38.0,
+        "submit",
+        NODE_PLAYER_SUBMIT,
+    );
     chrome.text(
         Pos2::new(margin + 158.0, y),
         Align2::LEFT_CENTER,
         &chrome.times(position),
         13.0,
-        (upscaling.left() - margin - 166.0).max(0.0),
+        (upscaling.left() - margin - 250.0).max(0.0),
         218,
     );
     chrome.button(
@@ -142,13 +158,29 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         Vec2::new(132.0, 32.0),
     );
     chrome.upscaling(ui, layout, upscaling, 12.0);
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(upscaling.left() - 24.0, header_y),
+        40.0,
+        "cast",
+        NODE_PLAYER_CAST,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(upscaling.left() - 68.0, header_y),
+        40.0,
+        "submit",
+        NODE_PLAYER_SUBMIT,
+    );
     let title_x = close_center.x + 31.0;
     chrome.text(
         Pos2::new(title_x, header_y),
         Align2::LEFT_CENTER,
         &player.title,
         17.0,
-        upscaling.left() - title_x - 12.0,
+        upscaling.left() - title_x - 92.0,
         255,
     );
     let center = rect.center();
@@ -263,6 +295,22 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     let upscaling =
         Rect::from_min_size(Pos2::new(margin + 204.0, y - 22.0), Vec2::new(190.0, 44.0));
     chrome.upscaling(ui, layout, upscaling, 16.0);
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(upscaling.right() + 40.0, y),
+        52.0,
+        "cast",
+        NODE_PLAYER_CAST,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(upscaling.right() + 104.0, y),
+        52.0,
+        "submit",
+        NODE_PLAYER_SUBMIT,
+    );
 }
 
 pub(super) fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focused: Option<u64>) {
@@ -400,6 +448,52 @@ pub(super) fn control(
                     egui::Stroke::new(1.5, color),
                 ));
             }
+        }
+        "cast" => {
+            let frame =
+                Rect::from_min_max(c + s * Vec2::new(-9.0, -7.0), c + s * Vec2::new(9.0, 7.0));
+            for (a, b) in [
+                (frame.left_top(), frame.right_top()),
+                (frame.right_top(), frame.right_bottom()),
+                (
+                    frame.right_bottom(),
+                    frame.left_bottom() + s * Vec2::new(10.0, 0.0),
+                ),
+                (frame.left_top(), frame.left_top() + s * Vec2::new(0.0, 3.0)),
+            ] {
+                painter.line_segment([a, b], stroke);
+            }
+            for radius in [4.0, 8.0] {
+                painter.add(egui::Shape::line(
+                    (0..=8)
+                        .map(|step| {
+                            let angle = -std::f32::consts::FRAC_PI_2 * step as f32 / 8.0;
+                            c + s * Vec2::new(-9.0, 7.0)
+                                + s * Vec2::new(angle.cos() * radius, angle.sin() * radius)
+                        })
+                        .collect(),
+                    stroke,
+                ));
+            }
+            painter.circle_filled(c + s * Vec2::new(-8.0, 6.0), 1.2 * s, color);
+        }
+        "submit" => {
+            painter.line_segment(
+                [c + s * Vec2::new(0.0, 7.0), c + s * Vec2::new(0.0, -7.0)],
+                stroke,
+            );
+            painter.line_segment(
+                [c + s * Vec2::new(-6.0, -1.0), c + s * Vec2::new(0.0, -7.0)],
+                stroke,
+            );
+            painter.line_segment(
+                [c + s * Vec2::new(6.0, -1.0), c + s * Vec2::new(0.0, -7.0)],
+                stroke,
+            );
+            painter.line_segment(
+                [c + s * Vec2::new(-7.0, 9.0), c + s * Vec2::new(7.0, 9.0)],
+                stroke,
+            );
         }
         "fullscreen" => {
             for (a, b) in [

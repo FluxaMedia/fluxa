@@ -293,6 +293,26 @@ pub(crate) enum AppAction {
         id: String,
         extra_args: Option<String>,
     },
+    #[serde(rename = "subtitleSyncCaptured")]
+    SubtitleSyncCaptured {
+        subtitle_text: String,
+        current_time: f64,
+    },
+    #[serde(rename = "subtitleSyncCueSelected")]
+    SubtitleSyncCueSelected { cue_start: f64 },
+    #[serde(rename = "subtitleSyncEstimated")]
+    SubtitleSyncEstimated {
+        subtitle_text: String,
+        reference_text: Option<String>,
+        #[serde(default)]
+        speech_intervals: Vec<crate::player::subtitles::subtitle_sync::Interval>,
+    },
+    #[serde(rename = "subtitleSyncAudioAnalyzed")]
+    SubtitleSyncAudioAnalyzed {
+        subtitle_text: String,
+        frame_seconds: f64,
+        energies: Vec<f64>,
+    },
     #[serde(rename = "externalSyncRequested")]
     ExternalSyncRequested {
         provider: String,

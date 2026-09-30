@@ -73,6 +73,10 @@ pub(super) enum NativeAction {
         id: String,
         item_type: String,
     },
+    PlayTrailer {
+        item: Value,
+        urls: Vec<String>,
+    },
     StartPlayback {
         item: Value,
     },

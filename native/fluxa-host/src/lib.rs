@@ -74,6 +74,7 @@ mod actions;
 mod artwork;
 mod bridge_video;
 mod card_menu;
+mod cast;
 mod events;
 mod frame;
 mod gpu;

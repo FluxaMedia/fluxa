@@ -11,7 +11,7 @@ pub struct SettingsModel {
     pub plugins: serde_json::Value,
     pub addon_url: String,
     pub plugin_url: String,
-    pub poster_fields: [String; 3],
+    pub poster_fields: [String; 6],
     pub search: String,
     pub section_open: bool,
     pub page_open: bool,

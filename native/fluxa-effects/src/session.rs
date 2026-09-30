@@ -244,6 +244,10 @@ impl SessionHandle {
         self.executor.request_json(plan)
     }
 
+    pub fn request_ok(&self, plan: Value) -> Receiver<bool> {
+        self.executor.request_ok(plan)
+    }
+
     pub fn executor(&self) -> EffectExecutor {
         self.executor.clone()
     }

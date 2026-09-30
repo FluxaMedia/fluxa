@@ -14,7 +14,35 @@ impl EffectExecutor {
     }
 }
 
+impl EffectExecutor {
+    pub fn request_ok(&self, plan: Value) -> std::sync::mpsc::Receiver<bool> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let task = async move {
+            let ok = match send_request(&plan).await {
+                Some(response) => response.error_for_status().is_ok(),
+                None => false,
+            };
+            let _ = sender.send(ok);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+}
+
 async fn send_plan(plan: &Value) -> Option<Value> {
+    send_request(plan)
+        .await?
+        .error_for_status()
+        .ok()?
+        .json::<Value>()
+        .await
+        .ok()
+}
+
+async fn send_request(plan: &Value) -> Option<reqwest::Response> {
     let url = reqwest::Url::parse(plan.get("url")?.as_str()?).ok()?;
     if !matches!(url.scheme(), "http" | "https") {
         return None;
@@ -33,13 +61,5 @@ async fn send_plan(plan: &Value) -> Option<Value> {
     if let Some(body) = plan.get("body").and_then(Value::as_str) {
         request = request.body(body.to_owned());
     }
-    request
-        .send()
-        .await
-        .ok()?
-        .error_for_status()
-        .ok()?
-        .json::<Value>()
-        .await
-        .ok()
+    request.send().await.ok()
 }

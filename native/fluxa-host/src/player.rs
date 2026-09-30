@@ -10,10 +10,13 @@ use crate::{
     NativeAction, RendererState, Route, SessionHandle, core_value, host_log, profile_language,
 };
 
+mod casting;
 mod input;
 mod overlay;
 mod resolve;
 mod shuffle;
+mod submit;
+mod trailer;
 mod upnext;
 pub(crate) use input::*;
 use overlay::Overlay;
@@ -147,6 +150,9 @@ pub(crate) struct PlayerSession {
     passthrough: bool,
     dispatched: Option<Value>,
     overlay: Overlay,
+    panel: Option<Panel>,
+    cast: crate::cast::Cast,
+    trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
     chosen: Option<usize>,
     source_filter: Option<String>,
@@ -159,7 +165,19 @@ pub(crate) struct PlayerSession {
     speed: f64,
 }
 
+enum Panel {
+    Submit(submit::Submit),
+    Cast,
+}
+
 impl PlayerSession {
+    pub(crate) fn trailer(meta: Value, urls: &[String]) -> Self {
+        let mut player = Self::new(meta);
+        player.trailer = Some(trailer::TrailerPlay::new(urls));
+        player.started = true;
+        player
+    }
+
     pub(crate) fn new(meta: Value) -> Self {
         Self {
             stale: None,
@@ -198,6 +216,9 @@ impl PlayerSession {
             scrub: None,
             scrub_streak: 0,
             overlay: Overlay::default(),
+            panel: None,
+            cast: crate::cast::Cast::default(),
+            trailer: None,
             toast: None,
             media_sent: None,
             brightness: 1.0,
@@ -355,6 +376,10 @@ impl PlayerSession {
             sources_loading: self.sources.is_none(),
             source_filter: self.source_filter.clone(),
             toast: self.toast_model(),
+            panel: self.panel.as_ref().map(|panel| match panel {
+                Panel::Submit(submit) => submit.model(&self.language),
+                Panel::Cast => self.cast.model(&self.language),
+            }),
             dim: 1.0 - self.brightness,
         }
     }
@@ -411,6 +436,16 @@ pub(crate) fn pump(state: &mut RendererState) {
     {
         command(state, VideoCommand::SeekTo(time));
     }
+    if let Some(Panel::Submit(submit)) = state
+        .player
+        .as_mut()
+        .and_then(|player| player.panel.as_mut())
+    {
+        submit.poll();
+    }
+    if let Some(player) = state.player.as_mut() {
+        player.cast.poll();
+    }
     advance_shuffle(state);
     let RendererState {
         shuffle,
@@ -464,6 +499,15 @@ pub(crate) fn pump(state: &mut RendererState) {
         player.episode_title = episode_title(&player.meta, &snapshot);
         return;
     };
+    if player.trailer.is_some() {
+        trailer::tick(player, session, video, gpu, &snapshot);
+        if let Some(video) = video.as_mut() {
+            player.status = video.status();
+        }
+        player.language =
+            profile_language(snapshot.pointer("/profile/active").unwrap_or(&Value::Null));
+        return;
+    }
     poll_torrent(player, session, &snapshot);
     load_resolved(player, video, gpu, settings, &snapshot);
     let mut advance = false;

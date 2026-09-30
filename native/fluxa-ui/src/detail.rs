@@ -403,6 +403,14 @@ pub fn draw_detail(
                                 t("library.favorites"),
                             ),
                         ];
+                        if !detail.trailers.is_empty() {
+                            actions.push((
+                                NODE_DETAIL_TRAILER,
+                                "Film",
+                                false,
+                                t("detail.watch_trailer"),
+                            ));
+                        }
                         if shuffle {
                             actions.push((
                                 NODE_DETAIL_SHUFFLE,
@@ -590,6 +598,12 @@ pub fn draw_detail(
                 let icons = [
                     (NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")),
                     (
+                        NODE_DETAIL_TRAILER,
+                        "Film",
+                        false,
+                        t("detail.watch_trailer"),
+                    ),
+                    (
                         NODE_DETAIL_COMPLETED,
                         "CircleCheck",
                         detail.completed,
@@ -615,6 +629,9 @@ pub fn draw_detail(
                 for (node, icon, active, hint) in icons
                     .into_iter()
                     .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
+                    .filter(|(node, ..)| {
+                        *node != NODE_DETAIL_TRAILER || !detail.trailers.is_empty()
+                    })
                 {
                     let response = components::icon_button_sized(
                         ui,

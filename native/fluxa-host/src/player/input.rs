@@ -29,6 +29,35 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                 command(state, VideoCommand::SeekTo(target));
             }
         }
+        fluxa_ui::NODE_PLAYER_SUBMIT => {
+            if let Some(player) = state.player.as_mut() {
+                submit::open(player);
+            }
+        }
+        fluxa_ui::NODE_PLAYER_CAST => {
+            if let Some(player) = state.player.as_mut() {
+                casting::open(player);
+            }
+        }
+        fluxa_ui::NODE_PLAYER_PANEL_CLOSE => {
+            if let Some(player) = state.player.as_mut() {
+                player.panel = None;
+            }
+        }
+        node if (fluxa_ui::NODE_PLAYER_PANEL_ROW_BASE
+            ..fluxa_ui::NODE_PLAYER_PANEL_ROW_BASE + fluxa_ui::PLAYER_PANEL_ROW_LIMIT as u64)
+            .contains(&node) =>
+        {
+            let row = (node - fluxa_ui::NODE_PLAYER_PANEL_ROW_BASE) as usize;
+            match state
+                .player
+                .as_ref()
+                .and_then(|player| player.panel.as_ref())
+            {
+                Some(Panel::Cast) => casting::activate_row(state, row),
+                _ => submit::activate_row(state, row),
+            }
+        }
         fluxa_ui::NODE_PLAYER_NEXT_PLAY => play_next(state),
         fluxa_ui::NODE_PLAYER_NEXT_DISMISS => {
             if let Some(player) = state.player.as_mut() {
@@ -171,7 +200,15 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
                 .player
                 .as_ref()
                 .is_some_and(|player| player.status.has_frame && player.controls_visible());
-        if recommending {
+        let paneled = state
+            .player
+            .as_ref()
+            .is_some_and(|player| player.panel.is_some());
+        if paneled {
+            if let Some(player) = state.player.as_mut() {
+                player.panel = None;
+            }
+        } else if recommending {
             dismiss_recommendations(state);
         } else if tv_hides {
             if let Some(player) = state.player.as_mut() {

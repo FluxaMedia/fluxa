@@ -530,7 +530,7 @@ pub(super) fn draw_account(
         rect,
         card.bottom() + APPEARANCE_GROUP_GAP,
         &localized("settings.group.api_keys", language),
-        &[1, 2],
+        &[1, 2, 3, 4, 5],
         metrics,
         compact,
         layout,

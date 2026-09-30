@@ -14,7 +14,7 @@ Two ways in exist right now:
 | Domain | Modules | Reached today | Routes called |
 |---|---|---|---|
 | `home` | `ranking`, `recommendation` | router only | ranking through `core_value`; `home_hero_plan` is re-exported at the crate root |
-| `library` | `state`, `continue_watching`, `watchlist`, `provider`, `calendar`, `persistence`, `offline_download`, `local_media`, `release_date` | `state` in the engine; the rest by router | library state 10/55, provider 6/6 (Simkl library sync runs through `simklSyncPlan` and `simklSyncApply`; the Simkl calendar through `simklCalendarPlan`), watchlist 3/22, calendar 1/13, local media 0/9 |
+| `library` | `state`, `continue_watching`, `watchlist`, `provider`, `calendar`, `persistence`, `offline_download`, `release_date` | `state` in the engine; the rest by router | library state 10/55, provider 6/6 (Simkl library sync runs through `simklSyncPlan` and `simklSyncApply`; the Simkl calendar through `simklCalendarPlan`), watchlist 3/22, calendar 1/13 |
 | `catalog` | `identity`, `search`, `tmdb`, `mdblist`, `publicmetadb`, `warnings`, `anime` | `identity` and `search` in the engine; the rest by router | search 6/23, tmdb 6/26, mdblist 1/52, publicmetadb 0/40, warnings 2/2, anime 0/2 |
 | `player` | `flow`, `policy`, `stream_policy`, `stream_badges`, `scrobble`, `subtitle_sync`, `desktop`, `cast`, `segments`, `overlay`, `media_session`, `trailer_subtitles`, `watch_together` | `flow` and `stream_policy` in the engine; `cast` has no route | policy 3/19, stream policy 1/18, scrobble 0/11, intro segments 0/23, watch together 0/10, badges 0/6 |
 | `addons` | `protocol`, `resource`, `store`, `uptime`, `plugins`, `plugin_network`, `discovery`, `repository`, `headless_adapter`, `platform` | `store` in the engine; the rest by router | protocol 7/17, store 3/17, resource plan 6/19, adapter plan 2/4, plugins 0/8, resource 0/6 |
@@ -37,10 +37,9 @@ Each item names the action the shell would dispatch and the effect the shell wou
 - **Intro segments** (`player::segments`): `IntroSegmentsRequested` and `FetchIntroSegments` exist; the remaining parsing and dedupe routes should move behind them.
 - **Watch together** (`player::watch_together`): room create, join and sync actions, and a socket effect. Nothing in the engine models a room yet.
 - **Casting** (`player::cast`): DLNA, Chromecast, FCast, Roku and AirPlay message builders. They need a device discovery effect and a cast session action; today they are only reachable as plain Rust functions.
-- **Subtitle sync** (`player::subtitle_sync`): actions for estimate, capture and apply, and a subtitle fetch effect (`FetchSubtitles` exists).
 - **Scrobble** (`player::scrobble`): `ScrobbleRequested` and `EnqueueTraktScrobble` exist; the scrobble body routes are not called by any shell.
 - **Plugins** (`addons::plugins`, `fluxa-plugin-runtime`): `ExecutePlugin` and `FetchPluginManifest` exist; scraper settings and repository management have no action.
-- **Local media** (`library::local_media`), **offline downloads** (`library::offline_download`): `EnqueueOfflineDownload` exists; local library scanning has no action.
+- **Offline downloads** (`library::offline_download`): `EnqueueOfflineDownload` exists.
 - **Settings and data policy** (`settings::*`): `WriteSettings` exists; cache trimming and failure policy have no caller.
 - **Device auth, Nuvio PIN, Fluxa sync** (`accounts`): `RunAuthFlow` and `RefreshAuthToken` exist; the PIN and Fluxa account flows need their own actions.
 

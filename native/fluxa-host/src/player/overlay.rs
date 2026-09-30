@@ -190,7 +190,7 @@ fn resolve_next(meta: &Value, snapshot: &Value) -> Option<Value> {
     .filter(|next| !next.is_null())
 }
 
-fn lookup_context(player: &PlayerSession, snapshot: &Value) -> Option<Value> {
+pub(super) fn lookup_context(player: &PlayerSession, snapshot: &Value) -> Option<Value> {
     let meta = &player.meta;
     let video = current_video(meta, snapshot);
     let text = |key: &str| meta.get(key).and_then(Value::as_str);

@@ -1,3 +1,4 @@
+use super::subtitle_sync::SubtitleSyncState;
 use crate::player::playback::flow::PlayerFlowState;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,6 +24,7 @@ pub(crate) struct PlayerState {
     pub(crate) prefetched_next_episode: Value,
     pub(crate) subtitle_loading: bool,
     pub(crate) subtitles: Value,
+    pub(crate) subtitle_sync: SubtitleSyncState,
     pub(crate) intro_segments: Value,
     pub(crate) intro_imdb_id: Value,
     pub(crate) last_scrobble: Value,
@@ -52,6 +54,7 @@ impl Default for PlayerState {
             prefetched_next_episode: Value::Null,
             subtitle_loading: false,
             subtitles: serde_json::json!([]),
+            subtitle_sync: SubtitleSyncState::default(),
             intro_segments: serde_json::json!([]),
             intro_imdb_id: Value::Null,
             last_scrobble: Value::Null,

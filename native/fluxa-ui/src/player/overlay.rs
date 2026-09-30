@@ -158,7 +158,7 @@ fn card_right(chrome: &Chrome) -> f32 {
     chrome.rect.right() - margin
 }
 
-fn pill(
+pub(super) fn pill(
     ui: &mut egui::Ui,
     layout: &mut HomeLayout,
     rect: Rect,

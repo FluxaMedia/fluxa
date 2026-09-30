@@ -686,7 +686,10 @@ mod tests {
         let kind = std::env::var("DEMO_KIND").unwrap_or("jellyfin".into());
         if kind == "plex" {
             let resource = json!({"id": "demoplex", "name": "Plex Demo", "accessToken": "", "connections": [{"uri": base, "local": true}]});
-            executor.add_plex_server(&resource, "", "demo-device").await.unwrap();
+            executor
+                .add_plex_server(&resource, "", "demo-device")
+                .await
+                .unwrap();
         } else {
             let signed_in = executor
                 .media_auth_exchange(&json!({

@@ -1,8 +1,10 @@
 use super::*;
 
 mod overlay;
+mod panel;
 
 pub use overlay::{ChapterSpan, NextEpisodeCard, SkipCard, SkipKind};
+pub use panel::{PanelRow, PlayerPanel};
 
 mod controls;
 mod loading;
@@ -57,6 +59,7 @@ pub struct PlayerModel {
     pub source_filter: Option<String>,
     pub sources_loading: bool,
     pub toast: Option<PlayerToast>,
+    pub panel: Option<PlayerPanel>,
     pub dim: f32,
 }
 
@@ -180,6 +183,9 @@ pub fn draw_player(
             if player.has_video() {
                 overlay::draw_skip_card(&chrome, ui, &mut layout);
                 overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
+            }
+            if let Some(panel) = player.panel.as_ref() {
+                panel::draw_panel(&chrome, ui, &mut layout, panel);
             }
         });
     if player.dim > 0.0 {

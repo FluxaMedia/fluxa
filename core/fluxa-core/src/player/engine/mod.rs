@@ -4,6 +4,7 @@ mod playback;
 mod scrobble;
 mod state;
 mod stream_load;
+mod subtitle_sync;
 pub(crate) mod trailer;
 #[cfg(feature = "js-engine")]
 mod youtube_cipher;
@@ -22,6 +23,9 @@ pub(crate) use state::PlayerState;
 pub(crate) use stream_load::{
     dispatch_continue_watching_playback, dispatch_load_streams, dispatch_next_episode_prefetch,
     dispatch_streams_failed, dispatch_streams_loaded,
+};
+pub(crate) use subtitle_sync::{
+    dispatch_audio_estimate, dispatch_capture, dispatch_cue_selected, dispatch_estimate,
 };
 
 pub(crate) fn dispatch_reset_for_episode(engine: &mut HeadlessEngine, video_id: String) {
