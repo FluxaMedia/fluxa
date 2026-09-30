@@ -8,10 +8,10 @@ mod tests;
 use crate::services::{
     anilist::route_anilist, mdblist::route_mdblist, mediaserver::routes::route_mediaserver, nuvio::route_nuvio,
     publicmetadb::route_publicmetadb, simkl::route_simkl, stremio::route_stremio, tmdb::route_tmdb,
-    trakt::route_trakt,
+    trakt::route_trakt, tracking::external_sync::route_external_sync,
 };
 use crate::{
-    accounts::routes::*, addons::routes::*, catalog::routes::*, headless_engine::routes::*,
+    addons::routes::*, catalog::routes::*, headless_engine::routes::*,
     library::routes::*, player::routes::*, profile::routes::*, services::auth::route_device_auth,
     services::fluxa::route_fluxa_sync, services::provider_routes::*, settings::routes::*,
 };

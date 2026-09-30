@@ -371,7 +371,7 @@ pub(crate) fn home_bootstrap_preparation_plan_json(request_json: &str) -> Option
         .cloned()
         .unwrap_or_else(|| json!({}));
     let continue_watching: Value =
-        crate::accounts::external_sync::merge_continue_watching_lists_json(
+        crate::services::tracking::external_sync::merge_continue_watching_lists_json(
             &Value::Array(local).to_string(),
             &Value::Array(external).to_string(),
             &progress.to_string(),

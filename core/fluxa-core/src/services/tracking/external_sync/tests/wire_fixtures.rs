@@ -5,11 +5,11 @@ use serde_json::Value;
 #[test]
 fn external_sync_wire_fixtures_preserve_provider_contracts() {
     let trakt_input: Value = serde_json::from_str(include_str!(
-        "../../../../tests/fixtures/external_sync/trakt_scrobble_plan_input.json"
+        "../../../../../tests/fixtures/external_sync/trakt_scrobble_plan_input.json"
     ))
     .unwrap();
     let trakt_expected: Value = serde_json::from_str(include_str!(
-        "../../../../tests/fixtures/external_sync/trakt_scrobble_plan_expected.json"
+        "../../../../../tests/fixtures/external_sync/trakt_scrobble_plan_expected.json"
     ))
     .unwrap();
     let trakt_actual: Value = serde_json::from_str(
@@ -28,9 +28,9 @@ fn external_sync_wire_fixtures_preserve_provider_contracts() {
     assert_eq!(trakt_actual, trakt_expected);
 
     let simkl_input =
-        include_str!("../../../../tests/fixtures/external_sync/simkl_mark_watched_input.json");
+        include_str!("../../../../../tests/fixtures/external_sync/simkl_mark_watched_input.json");
     let simkl_expected: Value = serde_json::from_str(include_str!(
-        "../../../../tests/fixtures/external_sync/simkl_mark_watched_expected.json"
+        "../../../../../tests/fixtures/external_sync/simkl_mark_watched_expected.json"
     ))
     .unwrap();
     let simkl_actual: Value =
@@ -38,12 +38,12 @@ fn external_sync_wire_fixtures_preserve_provider_contracts() {
     assert_eq!(simkl_actual, simkl_expected);
 
     let trakt_playback_expected: Value = serde_json::from_str(include_str!(
-        "../../../../tests/fixtures/external_sync/trakt_playback_expected.json"
+        "../../../../../tests/fixtures/external_sync/trakt_playback_expected.json"
     ))
     .unwrap();
     let trakt_playback_actual: Value = serde_json::from_str(
         &trakt_playback_items_to_library_json(include_str!(
-            "../../../../tests/fixtures/external_sync/trakt_playback_response.json"
+            "../../../../../tests/fixtures/external_sync/trakt_playback_response.json"
         ))
         .unwrap(),
     )
@@ -51,11 +51,11 @@ fn external_sync_wire_fixtures_preserve_provider_contracts() {
     assert_eq!(trakt_playback_actual, trakt_playback_expected);
 
     let simkl_response: Value = serde_json::from_str(include_str!(
-        "../../../../tests/fixtures/external_sync/simkl_watched_response.json"
+        "../../../../../tests/fixtures/external_sync/simkl_watched_response.json"
     ))
     .unwrap();
     let simkl_watched_expected: Value = serde_json::from_str(include_str!(
-        "../../../../tests/fixtures/external_sync/simkl_watched_expected.json"
+        "../../../../../tests/fixtures/external_sync/simkl_watched_expected.json"
     ))
     .unwrap();
     let simkl_watched_actual: Value = serde_json::from_str(

@@ -1,4 +1,4 @@
-use crate::accounts::external_sync::{ranked_winner, saved_at_ms};
+use crate::services::tracking::external_sync::{ranked_winner, saved_at_ms};
 use serde_json::Value;
 
 pub(crate) fn replace_external_continue_watching_json(

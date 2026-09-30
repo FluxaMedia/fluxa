@@ -1,7 +1,9 @@
 mod calendar;
+mod routes;
 mod merge;
 mod plan;
 
+pub(crate) use routes::*;
 pub(crate) use calendar::provider_calendar_items_json;
 pub(crate) use merge::{
     merge_continue_watching_lists_json, merge_external_watched_json, merge_external_watchlist_json,
