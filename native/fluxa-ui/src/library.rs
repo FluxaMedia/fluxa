@@ -237,7 +237,7 @@ pub fn draw_library(
     painter.hline(
         page.margin..=page.margin + page.width,
         page.content_top - metrics.section_gap * 0.75,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(18)),
+        crate::theme::border(),
     );
 
     let grid = PosterGrid::new(page.width, metrics);

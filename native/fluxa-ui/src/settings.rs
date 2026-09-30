@@ -126,11 +126,11 @@ fn draw_page_cards(
     let height = page_card_height(viewport);
     let pages: Vec<usize> = subpages(active).collect();
     let card = Rect::from_min_size(top_left, Vec2::new(width, pages.len() as f32 * height));
-    painter.rect_filled(card, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+    painter.rect_filled(card, metrics.card_radius, crate::theme::SURFACE);
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        crate::theme::border(),
         egui::StrokeKind::Inside,
     );
     let title_size = if viewport.is_tv() {
@@ -409,7 +409,7 @@ fn settings_panel_line(
         painter.rect_stroke(
             chip,
             metrics.screen_control_radius,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(18)),
+            crate::theme::border(),
             egui::StrokeKind::Inside,
         );
         painter.text(
@@ -1128,11 +1128,11 @@ fn draw_compact_settings_list(
             Pos2::new(anchor.left(), top),
             Vec2::new(anchor.width(), count as f32 * COMPACT_SETTINGS_ROW),
         );
-        painter.rect_filled(card, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+        painter.rect_filled(card, metrics.card_radius, crate::theme::SURFACE);
         painter.rect_stroke(
             card,
             metrics.card_radius,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+            crate::theme::border(),
             egui::StrokeKind::Inside,
         );
     };
@@ -1460,7 +1460,7 @@ pub fn draw_settings(
         painter.rect_stroke(
             nav_panel,
             metrics.card_radius,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+            crate::theme::border(),
             egui::StrokeKind::Inside,
         );
         if desktop {
@@ -1611,12 +1611,12 @@ pub fn draw_settings(
                 Color32::from_white_alpha(if compact { 120 } else { 145 }),
             );
         }
-        painter.rect_filled(*card, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+        painter.rect_filled(*card, metrics.card_radius, crate::theme::SURFACE);
         if !compact {
             painter.rect_stroke(
                 *card,
                 metrics.card_radius,
-                egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+                crate::theme::border(),
                 egui::StrokeKind::Inside,
             );
         }

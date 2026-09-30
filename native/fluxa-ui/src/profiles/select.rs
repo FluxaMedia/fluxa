@@ -94,7 +94,7 @@ pub(super) fn draw_select(
                 avatar_center,
                 r,
                 Color32::from_white_alpha(if response.hovered() { 26 } else { 10 }),
-                egui::Stroke::new(1.0, Color32::from_white_alpha(26)),
+                crate::theme::border(),
             );
             if let Some(icon) = assets.icon("Plus") {
                 ui.painter().image(

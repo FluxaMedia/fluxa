@@ -66,13 +66,8 @@ pub(super) fn account_group(
         Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
         Vec2::new(rect.width(), height),
     );
-    painter.rect_filled(card, 12.0, Color32::from_rgb(19, 19, 19));
-    painter.rect_stroke(
-        card,
-        12.0,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
-        egui::StrokeKind::Inside,
-    );
+    painter.rect_filled(card, crate::theme::RADIUS_CARD, crate::theme::SURFACE);
+    painter.rect_stroke(card, 12.0, crate::theme::border(), egui::StrokeKind::Inside);
     card
 }
 

@@ -1,7 +1,7 @@
 use super::*;
 
 const SEGMENT_GAP: f32 = 3.0;
-const CARD_FILL: Color32 = Color32::from_rgb(0x13, 0x13, 0x13);
+const CARD_FILL: Color32 = crate::theme::SURFACE;
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct ChapterSpan {
@@ -236,7 +236,7 @@ pub(super) fn draw_next_episode_card(
     chrome.painter.rect_stroke(
         panel,
         14.0,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        crate::theme::border(),
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.pad);

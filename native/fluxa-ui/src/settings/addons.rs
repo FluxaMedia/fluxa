@@ -465,11 +465,11 @@ pub(super) fn draw_plugins(
         Pos2::new(rect.left(), y),
         Vec2::new(rect.width(), scrapers.len() as f32 * SCRAPER_ROW),
     );
-    painter.rect_filled(group, 16.0, Color32::from_rgb(19, 19, 19));
+    painter.rect_filled(group, crate::theme::RADIUS_CARD, crate::theme::SURFACE);
     painter.rect_stroke(
         group,
         16.0,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        crate::theme::border(),
         egui::StrokeKind::Inside,
     );
     for (index, scraper) in scrapers.iter().enumerate() {
@@ -561,11 +561,11 @@ fn draw_card(
         Pos2::new(rect.left(), top),
         Vec2::new(rect.width(), card.height()),
     );
-    painter.rect_filled(frame, 16.0, Color32::from_rgb(19, 19, 19));
+    painter.rect_filled(frame, crate::theme::RADIUS_CARD, crate::theme::SURFACE);
     painter.rect_stroke(
         frame,
         16.0,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        crate::theme::border(),
         egui::StrokeKind::Inside,
     );
     let inner = frame.shrink(CARD_PADDING);

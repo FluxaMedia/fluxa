@@ -87,8 +87,8 @@ pub fn draw_profiles(
             .order(egui::Order::Tooltip)
             .show(context, |ui| {
                 egui::Frame::NONE
-                    .fill(Color32::from_rgb(28, 28, 28))
-                    .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(28)))
+                    .fill(crate::theme::SURFACE_RAISED)
+                    .stroke(crate::theme::border())
                     .corner_radius(10.0)
                     .inner_margin(egui::Margin::symmetric(16, 12))
                     .show(ui, |ui| {

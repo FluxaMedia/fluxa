@@ -468,7 +468,7 @@ pub(super) fn search_field(
     let stroke = if response.has_focus() {
         egui::Stroke::new(1.0, Color32::from_white_alpha(120))
     } else {
-        egui::Stroke::new(1.0, Color32::from_white_alpha(22))
+        crate::theme::border()
     };
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
@@ -528,7 +528,7 @@ fn text_edit(
     let stroke = if response.has_focus() {
         egui::Stroke::new(1.0, Color32::from_white_alpha(120))
     } else {
-        egui::Stroke::new(1.0, Color32::from_white_alpha(22))
+        crate::theme::border()
     };
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
@@ -645,7 +645,7 @@ pub(super) fn button_with_text_size(
 ) -> Response {
     let fill = match kind {
         ButtonKind::Primary => Color32::WHITE,
-        ButtonKind::Secondary => Color32::from_white_alpha(52),
+        ButtonKind::Secondary => Color32::from_white_alpha(28),
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent,
     };
     let text_color = match kind {
@@ -662,20 +662,7 @@ pub(super) fn button_with_text_size(
                 .color(text_color),
         )
         .fill(fill)
-        .stroke(egui::Stroke::new(
-            1.0,
-            Color32::from_white_alpha(
-                if matches!(
-                    kind,
-                    ButtonKind::Primary | ButtonKind::Accent | ButtonKind::Selected
-                ) {
-                    0
-                } else {
-                    55
-                },
-            ),
-        ))
-        .corner_radius(metrics.screen_control_radius),
+        .corner_radius(height * 0.5),
     )
 }
 
@@ -711,11 +698,11 @@ pub(super) fn library_row(
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
-    painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(19, 19, 19));
+    painter.rect_filled(rect, metrics.card_radius, crate::theme::SURFACE);
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+        crate::theme::border(),
         egui::StrokeKind::Inside,
     );
     let inset = metrics.control_gap;
@@ -776,7 +763,7 @@ fn poster_card_body(
     motion_active: bool,
     labels: bool,
 ) {
-    painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(28, 28, 34));
+    painter.rect_filled(rect, metrics.card_radius, crate::theme::SURFACE);
 
     let landscape = card.is_landscape();
     let artwork = card.poster_art();
@@ -962,7 +949,7 @@ fn continue_card_body(
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) {
-    painter.rect_filled(rect, metrics.card_radius, Color32::from_rgb(28, 28, 34));
+    painter.rect_filled(rect, metrics.card_radius, crate::theme::SURFACE);
 
     artwork_image(
         painter,
@@ -1288,10 +1275,10 @@ pub(super) fn choice_field(
                 .fill(if liquid_glass() {
                     Color32::TRANSPARENT
                 } else {
-                    Color32::from_rgb(24, 24, 24)
+                    crate::theme::SURFACE_RAISED
                 })
-                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
-                .corner_radius(12.0)
+                .stroke(crate::theme::border())
+                .corner_radius(crate::theme::RADIUS_PANEL)
                 .inner_margin(egui::Margin::same(5))
                 .shadow(egui::epaint::Shadow {
                     offset: [0, 10],
@@ -1364,7 +1351,7 @@ pub(super) fn choice_field(
                     glass_shape(
                         ui.min_rect().expand(5.0),
                         12.0,
-                        Color32::from_rgb(24, 24, 24),
+                        crate::theme::SURFACE_RAISED,
                     ),
                 );
             }
@@ -1615,7 +1602,7 @@ pub fn draw_action_menu(
             }
             let panel = layout.panel.translate(offset);
             let fill = Color32::from_rgb(20, 20, 22);
-            let border = egui::Stroke::new(1.0, Color32::from_white_alpha(20));
+            let border = crate::theme::border();
             if compact && liquid_glass() {
                 glass(&painter, panel.with_max_y(panel.max.y + 40.0), 20.0, fill);
                 painter.rect_filled(
@@ -1669,7 +1656,7 @@ pub fn draw_action_menu(
                 painter.hline(
                     panel.x_range().shrink(if compact { 0.0 } else { 16.0 }),
                     header.bottom() - 0.5,
-                    egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
+                    crate::theme::border(),
                 );
             }
             let label_size = if compact || tv {
@@ -1947,17 +1934,12 @@ pub(super) fn stream_row(
     let height = pad * 2.0 + name.size().y + detail_height;
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let fill = if response.is_pointer_button_down_on() {
-        Color32::from_rgb(0x1c, 0x1c, 0x1c)
+        crate::theme::SURFACE_RAISED
     } else {
-        Color32::from_rgb(0x13, 0x13, 0x13)
+        crate::theme::SURFACE
     };
     painter.rect_filled(rect, 14.0, fill);
-    painter.rect_stroke(
-        rect,
-        14.0,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(20)),
-        egui::StrokeKind::Inside,
-    );
+    painter.rect_stroke(rect, 14.0, crate::theme::border(), egui::StrokeKind::Inside);
     let origin = rect.min + Vec2::splat(pad);
     let name_height = name.size().y;
     crate::emoji::paint(&painter, origin, name, assets);
@@ -2022,10 +2004,10 @@ pub(super) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> eg
         egui::Button::new(
             RichText::new(label)
                 .size(13.0)
-                .color(Color32::from_white_alpha(200)),
+                .strong()
+                .color(Color32::WHITE),
         )
-        .fill(Color32::from_white_alpha(14))
-        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
+        .fill(Color32::from_white_alpha(28))
         .corner_radius(22.0),
     )
 }
@@ -2062,16 +2044,16 @@ pub(super) fn danger_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui:
                 .strong()
                 .color(Color32::WHITE),
         )
-        .fill(Color32::from_rgb(170, 48, 48))
+        .fill(crate::theme::DANGER)
         .corner_radius(22.0),
     )
 }
 
 pub(super) fn panel(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui)) {
     egui::Frame::NONE
-        .fill(Color32::from_rgba_unmultiplied(20, 20, 20, 235))
-        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(20)))
-        .corner_radius(12.0)
+        .fill(crate::theme::SURFACE)
+        .stroke(crate::theme::border())
+        .corner_radius(crate::theme::RADIUS_PANEL)
         .inner_margin(egui::Margin::same(22))
         .show(ui, add);
 }
@@ -2093,9 +2075,9 @@ pub(super) fn modal(
         .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
         .show(context, |ui| {
             egui::Frame::NONE
-                .fill(Color32::from_rgb(22, 22, 22))
-                .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(26)))
-                .corner_radius(14.0)
+                .fill(crate::theme::SURFACE_RAISED)
+                .stroke(crate::theme::border())
+                .corner_radius(crate::theme::RADIUS_PANEL)
                 .inner_margin(egui::Margin::same(26))
                 .show(ui, |ui| {
                     ui.set_width(340.0);
@@ -2124,7 +2106,7 @@ pub(super) fn surface(
 ) {
     egui::Frame::NONE
         .fill(fill)
-        .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(28)))
+        .stroke(crate::theme::border())
         .corner_radius(radius)
         .inner_margin(margin)
         .show(ui, add);
