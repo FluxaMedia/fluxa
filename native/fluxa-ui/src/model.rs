@@ -357,6 +357,12 @@ pub struct HomeCard {
     pub backdrop_url: Option<String>,
     #[serde(skip)]
     pub poster_shape: Option<String>,
+    #[serde(skip)]
+    pub detail: String,
+    #[serde(skip)]
+    pub episodes: String,
+    #[serde(skip)]
+    pub upcoming: bool,
 }
 
 impl HomeCard {

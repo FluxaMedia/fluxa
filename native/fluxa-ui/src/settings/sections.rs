@@ -66,7 +66,7 @@ pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.general_behavior"),
     (2, "settings.group.general_calendar"),
 ];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -105,6 +105,16 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Show catalog type",
         key: "showCatalogType",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Continue watching badge",
+        key: "continueProgressLabel",
+        options: &["remaining", "percent"],
+    },
+    SettingsRow {
+        label: "Upcoming row",
+        key: "showUpcomingRow",
         options: &[],
     },
     SettingsRow {

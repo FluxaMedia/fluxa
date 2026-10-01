@@ -42,6 +42,7 @@ static METHODS: &[(&str, Router)] = &[
     ("connectedProviders", route_provider_library),
     ("contentImdbId", route_content_identity),
     ("contentWarningUrl", route_content_warnings),
+    ("continueWatchingEpisodeStatus", route_library_state),
     ("continueWatchingSourcePlan", route_library_state),
     ("createProfilePlan", route_profile_contract),
     ("cs3CatalogFeedKey", route_content_identity),

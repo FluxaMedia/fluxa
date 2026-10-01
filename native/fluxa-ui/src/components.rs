@@ -1105,8 +1105,8 @@ fn continue_card_body(
         assets,
     );
 
-    let scrim_top = rect.top() + rect.height() * 0.3;
-    let scrim_mid = rect.top() + rect.height() * 0.62;
+    let scrim_top = rect.top() + rect.height() * 0.2;
+    let scrim_mid = rect.top() + rect.height() * 0.5;
     paint_vertical_gradient(
         painter,
         Rect::from_min_max(
@@ -1114,23 +1114,31 @@ fn continue_card_body(
             egui::Pos2::new(rect.right(), scrim_mid),
         ),
         Color32::TRANSPARENT,
-        Color32::from_black_alpha(150),
+        Color32::from_black_alpha(190),
     );
     paint_vertical_gradient(
         painter,
         Rect::from_min_max(egui::Pos2::new(rect.left(), scrim_mid), rect.right_bottom()),
-        Color32::from_black_alpha(150),
-        Color32::from_black_alpha(235),
+        Color32::from_black_alpha(190),
+        Color32::from_black_alpha(245),
     );
     let title_font = FontId::proportional(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let content_width = (rect.width() - metrics.card_content_padding * 2.0).max(1.0);
-    super::poster_overlay::paint_landscape(painter, rect, card);
     let bar_top = rect.bottom() - metrics.card_content_padding - metrics.card_progress_height;
-    let subtitle_height = metrics.screen_card_subtitle_size * 1.25;
+    let has_subtitle = !card.subtitle.is_empty();
+    let subtitle_height = if has_subtitle {
+        metrics.screen_card_subtitle_size * 1.25
+    } else {
+        0.0
+    };
     let title_height = metrics.screen_card_title_size * 1.25;
     let subtitle_top = bar_top - metrics.control_gap * 0.5 - subtitle_height;
-    let title_top = subtitle_top - metrics.control_gap * 0.35 - title_height;
+    let title_top = if has_subtitle {
+        subtitle_top - metrics.control_gap * 0.35 - title_height
+    } else {
+        subtitle_top - title_height
+    };
     let logo_box = Vec2::new(content_width * 0.6, title_height * 1.6);
     let logo = title_logo(
         painter.ctx().pixels_per_point(),
@@ -1163,13 +1171,33 @@ fn continue_card_body(
             Color32::WHITE,
         );
     }
-    painter.text(
-        egui::Pos2::new(rect.left() + metrics.card_content_padding, subtitle_top),
-        Align2::LEFT_TOP,
-        truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
-        subtitle_font,
-        Color32::from_white_alpha(210),
-    );
+    if has_subtitle {
+        painter.text(
+            egui::Pos2::new(rect.left() + metrics.card_content_padding, subtitle_top),
+            Align2::LEFT_TOP,
+            truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
+            subtitle_font.clone(),
+            Color32::from_white_alpha(210),
+        );
+    }
+    let badge_pad = metrics.screen_card_subtitle_size * 0.45;
+    let badge_height = metrics.screen_card_subtitle_size + badge_pad * 1.4;
+    let inset = (rect.height() * 0.06).max(4.0);
+    for (text, right) in [(&card.episodes, false), (&card.detail, true)] {
+        if text.is_empty() {
+            continue;
+        }
+        let galley = painter.layout_no_wrap(text.clone(), subtitle_font.clone(), Color32::WHITE);
+        let size = Vec2::new(galley.size().x + badge_pad * 2.0, badge_height);
+        let origin = if right {
+            egui::Pos2::new(rect.right() - inset - size.x, rect.top() + inset)
+        } else {
+            egui::Pos2::new(rect.left() + inset, rect.top() + inset)
+        };
+        let badge = Rect::from_min_size(origin, size);
+        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
+        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+    }
     let bar_origin = egui::Pos2::new(rect.left() + metrics.card_content_padding, bar_top);
     painter.rect_filled(
         Rect::from_min_size(

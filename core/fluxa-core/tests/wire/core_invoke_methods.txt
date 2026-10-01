@@ -99,6 +99,7 @@ extractAddonManifestUrl
 filterDiscoverResults
 filterEnabledAddons
 filterHomeContinueWatching
+continueWatchingEpisodeStatus
 continueWatchingSourcePlan
 findPreferredSubtitleIndex
 formatEpisodeLine

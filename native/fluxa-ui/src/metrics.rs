@@ -210,6 +210,8 @@ pub mod space {
     pub const XXXL: f32 = 48.0;
 }
 
+const CONTINUE_CARD_SCALE: f32 = 1.05;
+
 impl UiMetrics {
     pub fn for_viewport(viewport: Viewport) -> Self {
         let tokens = active_shared_ui_tokens().expect("shared Fluxa tokens must be valid");
@@ -441,8 +443,9 @@ impl UiMetrics {
             // Home's Continue Watching row uses the same responsive size
             // presets as Compose horizontalCardWidth/Height, not the larger
             // episode-card dimensions used by other surfaces.
-            home_continue_card_width: window_dp("horizontalCardBase", 196.0),
+            home_continue_card_width: window_dp("horizontalCardBase", 196.0) * CONTINUE_CARD_SCALE,
             home_continue_card_height: window_dp("horizontalCardBase", 196.0)
+                * CONTINUE_CARD_SCALE
                 * number(&["common", "number", "horizontalCardHeightRatio"], 0.56),
             poster_card_width: platform_dp("posterCardWidth", 160.0),
             poster_card_height: platform_dp("posterCardHeight", 240.0),
@@ -606,8 +609,9 @@ impl UiMetrics {
                     platform_dp("continueCardMin", 180.0),
                     platform_dp("continueCardMax", 320.0),
                 );
-            metrics.home_continue_card_width = width;
-            metrics.home_continue_card_height = width * metrics.horizontal_card_height_ratio;
+            metrics.home_continue_card_width = width * CONTINUE_CARD_SCALE;
+            metrics.home_continue_card_height =
+                width * CONTINUE_CARD_SCALE * metrics.horizontal_card_height_ratio;
         }
         if poster_overlay::landscape() {
             metrics.poster_card_width = metrics.home_continue_card_width;

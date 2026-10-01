@@ -39,6 +39,101 @@ impl EffectExecutor {
         prefs: &Value,
         source: Option<&str>,
     ) -> Result<Value, String> {
+        let items = self
+            .raw_continue_watching(profile_id, profile, prefs, source)
+            .await?;
+        Ok(self.annotate_episode_status(profile_id, items).await)
+    }
+
+    async fn annotate_episode_status(&self, profile_id: &str, mut items: Value) -> Value {
+        const TTL_MS: i64 = 6 * 60 * 60 * 1000;
+        const MAX_FETCHES: usize = 12;
+        let Some(list) = items.as_array_mut() else {
+            return items;
+        };
+        let now_ms = chrono::Utc::now().timestamp_millis();
+        let key = format!("cw_episodes_{profile_id}");
+        let mut cache = self
+            .storage
+            .read_json(&key)
+            .ok()
+            .flatten()
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}));
+        let stale: Vec<(String, String)> = list
+            .iter()
+            .filter(|item| item.get("type").and_then(Value::as_str) == Some("series"))
+            .filter_map(|item| {
+                let id = item.get("id")?.as_str()?.to_owned();
+                let fresh = cache
+                    .get(&id)
+                    .and_then(|entry| entry.get("at")?.as_i64())
+                    .is_some_and(|at| now_ms - at < TTL_MS);
+                (!fresh).then(|| (id, "series".to_owned()))
+            })
+            .take(MAX_FETCHES)
+            .collect();
+        let fetched = futures::future::join_all(stale.iter().map(|(id, kind)| async move {
+            let meta = self
+                .fetch_meta_detail(&json!({"contentType": kind, "id": id}))
+                .await
+                .ok()?;
+            let videos: Vec<Value> = meta
+                .get("videos")?
+                .as_array()?
+                .iter()
+                .map(|video| {
+                    json!({
+                        "id": video.get("id"),
+                        "season": video.get("season"),
+                        "episode": video.get("episode").or_else(|| video.get("number")),
+                        "released": video.get("released"),
+                    })
+                })
+                .collect();
+            Some((id.clone(), videos))
+        }))
+        .await;
+        for (id, videos) in fetched.into_iter().flatten() {
+            cache[id] = json!({"at": now_ms, "videos": videos});
+        }
+        if !stale.is_empty() {
+            let _ = self.storage.write_json(&key, &cache);
+        }
+        for item in list.iter_mut() {
+            let Some(videos) = item
+                .get("id")
+                .and_then(Value::as_str)
+                .and_then(|id| cache.get(id))
+                .and_then(|entry| entry.get("videos"))
+                .cloned()
+            else {
+                continue;
+            };
+            let Some(status) = core_value(
+                "continueWatchingEpisodeStatus",
+                json!({"item": item, "videos": videos, "nowMs": now_ms}),
+            ) else {
+                continue;
+            };
+            if let (Some(object), Some(status)) = (item.as_object_mut(), status.as_object()) {
+                for field in ["episodesLeft", "upcoming", "airsAt"] {
+                    if let Some(value) = status.get(field) {
+                        object.insert(field.to_owned(), value.clone());
+                    }
+                }
+            }
+        }
+        items
+    }
+
+    async fn raw_continue_watching(
+        &self,
+        profile_id: &str,
+        profile: &Value,
+        prefs: &Value,
+        source: Option<&str>,
+    ) -> Result<Value, String> {
         let nuvio_connected = profile
             .get("nuvioAccessToken")
             .and_then(Value::as_str)

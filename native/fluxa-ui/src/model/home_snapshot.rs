@@ -246,7 +246,42 @@ pub fn home_model_from_core_snapshot(
             })
             .collect();
     }
+    finish_continue_cards(&mut model, snapshot);
     model
+}
+
+fn finish_continue_cards(model: &mut HomeModel, snapshot: &serde_json::Value) {
+    let language = model.language.clone();
+    let show_percent = snapshot
+        .pointer("/settings/values/continueProgressLabel")
+        .and_then(serde_json::Value::as_str)
+        == Some("percent");
+    for card in &mut model.cards {
+        (card.detail, card.episodes) = continue_detail(&card.raw, &language, show_percent);
+    }
+    let separate = snapshot
+        .pointer("/settings/values/showUpcomingRow")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(false);
+    if !separate || !model.cards.iter().any(|card| card.upcoming) {
+        return;
+    }
+    let (upcoming, watching): (Vec<_>, Vec<_>) = std::mem::take(&mut model.cards)
+        .into_iter()
+        .partition(|card| card.upcoming);
+    model.cards = watching;
+    model.rows.insert(
+        0,
+        HomeRow {
+            id: Some("upcoming".to_owned()),
+            catalog_page: None,
+            title: localized("calendar.upcoming", &language),
+            type_label: None,
+            cards: upcoming,
+            kind: HomeRowKind::Continue,
+            can_load_more: false,
+        },
+    );
 }
 
 pub(crate) fn core_home_hero(item: &serde_json::Value, language: &str) -> HomeHero {

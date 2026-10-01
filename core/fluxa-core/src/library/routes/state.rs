@@ -12,6 +12,9 @@ pub(crate) fn route_library_state(method: &str, args_json: &str) -> Outcome {
         "recommendationOutroPlan" => opt_json(
             home::recommendation::recommendation_outro_plan_json(args_json),
         ),
+        "continueWatchingEpisodeStatus" => opt_json(
+            crate::library::continue_watching::continue_watching_episode_status_json(args_json),
+        ),
         "continueWatchingSourcePlan" => opt_json(
             crate::library::state::continue_watching_source_plan_json(args_json),
         ),

@@ -422,6 +422,20 @@
       "category": "appearance"
     },
     {
+      "key": "continueProgressLabel",
+      "type": "string",
+      "default": "remaining",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "showUpcomingRow",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "heroFeedOrder",
       "type": "string[]",
       "default": [],
