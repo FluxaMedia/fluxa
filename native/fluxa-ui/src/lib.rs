@@ -27,6 +27,7 @@ mod player;
 mod poster_overlay;
 mod profiles;
 mod settings;
+mod shorts;
 
 pub use home::*;
 pub use layout::*;
@@ -67,6 +68,7 @@ pub use settings::{
     server_input, settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
     settings_row_label,
 };
+pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 
 pub fn localized(key: &str, language: &str) -> String {
     localized_or(key, key, language)

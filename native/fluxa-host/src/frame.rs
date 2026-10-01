@@ -124,6 +124,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         gpu.resize(size);
     }
     sync_home_from_core_snapshot(state);
+    shorts::tick(state);
     trailer::tick(state);
     poster_data::tick(state);
     timer.mark("sync");
@@ -210,6 +211,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             profiles,
             picker_background,
             egui_events,
+            shorts,
             modifiers,
             pre_present,
             ..
@@ -230,6 +232,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 profiles.as_mut(),
                 picker_background.as_deref(),
                 player_model.as_ref(),
+                shorts,
                 focused,
                 safe_bottom,
                 scroll_y,
@@ -272,6 +275,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     for request in &layout.load_more {
                         state
                             .pending_native_actions
+                if let Some(delta) = layout.short_step {
+                    shorts::step(state, delta);
+                }
                             .push(NativeAction::CoreCommand {
                                 command: request.clone(),
                             });

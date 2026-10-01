@@ -32,6 +32,7 @@ pub struct HomeLayout {
     pub profiles: Option<ProfilesRequest>,
     pub scroll_max: Option<f32>,
 }
+    pub short_step: Option<i32>,
 
 /// consume the same responsive rectangles as the painter.
 pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {

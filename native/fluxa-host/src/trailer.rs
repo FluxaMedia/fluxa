@@ -39,6 +39,22 @@ impl Trailers {
         Arc::new(json!({"fetched": self.fetched, "ids": self.fetched_ids}))
     }
 
+    fn fetched_urls(&self, id: &str) -> Vec<String> {
+        self.fetched
+            .get(id)
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|trailer| {
+                ["url", "link"]
+                    .into_iter()
+                    .find_map(|key| trailer.get(key).and_then(Value::as_str))
+            })
+            .take(6)
+            .map(ToOwned::to_owned)
+            .collect()
+    }
+
     pub(crate) fn set_targets(&mut self, targets: Vec<Value>) {
         self.targets = targets
             .into_iter()
@@ -73,6 +89,20 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 key: hero.item_id.clone()?,
                 urls: hero.trailers.clone(),
                 delay: delay("homeHeroAutoplayTrailerDelaySecs"),
+            })
+        }
+        Route::Shorts => {
+            let hero = state.shorts.items.get(state.shorts.index)?;
+            let id = hero.item_id.clone()?;
+            let urls = if hero.trailers.is_empty() {
+                state.trailers.fetched_urls(&id)
+            } else {
+                hero.trailers.clone()
+            };
+            Some(Wanted {
+                key: id,
+                urls,
+                delay: 0.3,
             })
         }
         Route::Detail
@@ -190,7 +220,28 @@ fn youtube_ids(urls: &[String]) -> Vec<String> {
         .unwrap_or_default()
 }
 
+fn queue_shorts(state: &mut RendererState) {
+    if state.route != Route::Shorts {
+        return;
+    }
+    let trailers = &mut state.trailers;
+    for hero in state.shorts.items.iter().skip(state.shorts.index).take(3) {
+        let Some(id) = hero.item_id.as_deref() else {
+            continue;
+        };
+        let id = Value::String(id.to_owned());
+        let queued = trailers
+            .targets
+            .iter()
+            .any(|target| target.get("id") == Some(&id));
+        if hero.trailers.is_empty() && !queued && !trailers.fetched_ids.contains(&id) {
+            trailers.targets.push(hero.raw.clone());
+        }
+    }
+}
+
 pub(crate) fn tick(state: &mut RendererState) {
+    queue_shorts(state);
     fetch(state);
     let wanted = wanted(state);
     let current = state
@@ -369,6 +420,14 @@ fn publish(state: &mut RendererState) {
         .and_then(|active| active.texture);
     state.detail.trailer_subtitle = active
         .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
+    state.shorts.trailer = active
+        .filter(|_| state.route == Route::Shorts)
+        .map(|active| HeroTrailer {
+            item_id: active.key.clone(),
+            texture: active.texture,
+            finished: active.finished,
+            subtitle: active.cue.clone(),
+        });
         .and_then(|active| active.cue.clone());
 }
 

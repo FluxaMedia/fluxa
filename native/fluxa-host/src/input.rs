@@ -443,6 +443,17 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if !matches!(input, KeyInput::Key(Key::Back | Key::Escape)) {
         state.keyboard_focus_visible = true;
     }
+    if state.route == Route::Shorts && state.player.is_none() && state.profiles.is_none() {
+        let delta = match input {
+            KeyInput::Key(Key::Up) | KeyInput::Gamepad(GamepadButton::DPadUp) => Some(-1),
+            KeyInput::Key(Key::Down) | KeyInput::Gamepad(GamepadButton::DPadDown) => Some(1),
+            _ => None,
+        };
+        if let Some(delta) = delta {
+            shorts::step(state, delta);
+            return;
+        }
+    }
     rebuild_current_ui(state);
     if matches!(input, KeyInput::Backspace)
         && let Some(node) = state.ui.focused()

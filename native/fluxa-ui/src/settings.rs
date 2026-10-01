@@ -1245,7 +1245,7 @@ pub fn draw_settings(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 3, assets);
+    layout.activated = draw_navigation_bar(context, viewport, 4, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
     let desktop = !compact && !tv;

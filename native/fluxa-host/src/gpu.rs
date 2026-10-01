@@ -564,6 +564,7 @@ impl Gpu {
         library_tab: LibraryTab,
         discover: &DiscoverModel,
         calendar: &CalendarModel,
+        shorts: &fluxa_ui::ShortsModel,
         detail: &DetailModel,
         settings: &SettingsModel,
         mut profiles: Option<&mut fluxa_ui::ProfilesModel>,
@@ -692,6 +693,9 @@ impl Gpu {
                 rendered_layout = draw_discover(ui.ctx(), viewport, discover, &mut assets, focused);
             } else if route == Route::Calendar {
                 rendered_layout = draw_calendar(ui.ctx(), viewport, calendar, &mut assets, focused);
+            } else if route == Route::Shorts {
+                rendered_layout =
+                    fluxa_ui::draw_shorts(ui.ctx(), viewport, shorts, &mut assets, focused);
             } else if route == Route::Detail {
                 rendered_layout = draw_detail(ui.ctx(), viewport, detail, &mut assets, focused);
             } else if route == Route::Settings {

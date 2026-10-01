@@ -31,6 +31,7 @@ pub(super) fn rebuild_home_ui(
             NODE_LIBRARY => "Library",
             NODE_DISCOVER => "Discover",
             NODE_CALENDAR => "Calendar",
+            fluxa_ui::NODE_SHORTS => "Shorts",
             NODE_PROFILE => "Profile",
             NODE_PLAY => "Play",
             NODE_MORE_INFO => "More info",
@@ -106,6 +107,10 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_LIBRARY => "Library".to_owned(),
         fluxa_ui::NODE_DISCOVER => "Discover".to_owned(),
         fluxa_ui::NODE_CALENDAR => "Calendar".to_owned(),
+        fluxa_ui::NODE_SHORTS => "Shorts".to_owned(),
+        fluxa_ui::NODE_SHORTS_PLAY => "Play".to_owned(),
+        fluxa_ui::NODE_SHORTS_WATCHLIST => "Watchlist".to_owned(),
+        fluxa_ui::NODE_SHORTS_INFO => "More info".to_owned(),
         fluxa_ui::NODE_PROFILE => "Profile and settings".to_owned(),
         fluxa_ui::NODE_LIBRARY_SEARCH => {
             fluxa_ui::localized("library.filter_placeholder", &state.library.language)
@@ -409,6 +414,7 @@ pub(super) fn rebuild_ui_from_layout(
                 | fluxa_ui::NODE_LIBRARY
                 | fluxa_ui::NODE_DISCOVER
                 | fluxa_ui::NODE_CALENDAR
+                | fluxa_ui::NODE_SHORTS
                 | fluxa_ui::NODE_PROFILE
         ) {
             if let Some(node) = ui.node_mut(node_id) {
@@ -436,6 +442,7 @@ pub(super) fn rebuild_ui_from_layout(
                 fluxa_ui::NODE_CALENDAR_PREV
             }
         }
+        Route::Shorts => fluxa_ui::NODE_SHORTS_PLAY,
         Route::Detail => fluxa_ui::NODE_DETAIL_PLAY,
         Route::Settings => fluxa_ui::NODE_SETTINGS_BACK,
         _ if state.home.item_id.is_some() => fluxa_ui::NODE_PLAY,
@@ -463,6 +470,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             | fluxa_ui::NODE_LIBRARY
             | fluxa_ui::NODE_DISCOVER
             | fluxa_ui::NODE_CALENDAR
+            | fluxa_ui::NODE_SHORTS
             | fluxa_ui::NODE_PROFILE
     );
     if is_navigation {

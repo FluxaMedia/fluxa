@@ -88,6 +88,7 @@ mod profiles;
 mod projection;
 mod route;
 mod shortcuts;
+mod shorts;
 mod surface;
 mod sync;
 mod trailer;
@@ -182,6 +183,7 @@ struct RendererState {
     image_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
+    shorts: fluxa_ui::ShortsModel,
     poster_data: poster_data::PosterData,
 }
 
@@ -206,6 +208,7 @@ fn current_presence(state: &RendererState) -> presence::Presence {
         Route::Library => "Browsing the library",
         Route::Discover => "Discovering",
         Route::Calendar => "Checking the calendar",
+        Route::Shorts => "Watching shorts",
         Route::Settings => "In settings",
         _ => "Browsing",
     };
@@ -334,6 +337,7 @@ impl FluxaHost {
             image_picker: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
+            shorts: Default::default(),
             poster_data: poster_data::PosterData::default(),
         })))
     }

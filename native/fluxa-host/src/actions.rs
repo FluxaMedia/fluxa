@@ -17,6 +17,7 @@ pub(super) fn native_action_for_node(
         NODE_LIBRARY => Some(Route::Library),
         NODE_DISCOVER => Some(Route::Discover),
         NODE_CALENDAR => Some(Route::Calendar),
+        fluxa_ui::NODE_SHORTS => Some(Route::Shorts),
         NODE_PROFILE => Some(Route::Settings),
         _ => None,
     };
@@ -604,6 +605,23 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 }
                 continue;
             }
+            let (node, hero) = if state.route == Route::Shorts {
+                let node = match node {
+                    fluxa_ui::NODE_SHORTS_PLAY => NODE_PLAY,
+                    fluxa_ui::NODE_SHORTS_WATCHLIST => fluxa_ui::NODE_HERO_WATCHLIST,
+                    fluxa_ui::NODE_SHORTS_INFO => NODE_MORE_INFO,
+                    other => other,
+                };
+                (node, shorts::current(state))
+            } else {
+                (
+                    node,
+                    state
+                        .gpu
+                        .as_ref()
+                        .and_then(|gpu| fluxa_ui::active_home_hero(&gpu.egui_context, &state.home)),
+                )
+            };
             if let Some(native_action) = native_action_for_node(
                 node,
                 &state.home,
@@ -744,6 +762,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
                 vec![
                     navigation(Route::Calendar),
                     json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
+            Route::Shorts => vec![navigation(Route::Shorts)],
                 ]
             }
             Route::Settings => vec![navigation(Route::Settings)],
