@@ -54,6 +54,8 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
         | "navLabels" | "posterHoverPreview" => !compact,
         "discordRichPresenceEnabled" | "automaticUpdates" => desktop,
         "backgroundPlayback" | "pictureInPicture" | "torrentWifiOnly" => !desktop,
+        "playerShowSettings" | "playerShowVolume" | "playerShowFullscreen" => desktop,
+        "playerGestures" | "playerDoubleTapSeek" | "playerCenterControls" => compact,
         _ => true,
     }
 }

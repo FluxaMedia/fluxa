@@ -14,7 +14,7 @@ pub struct SettingsSection {
     pub groups: &'static [(usize, &'static str)],
 }
 
-pub(super) const GENERAL_SETTINGS: [SettingsRow; 10] = [
+pub(super) const GENERAL_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {
         label: "Language",
         key: "language",
@@ -51,11 +51,6 @@ pub(super) const GENERAL_SETTINGS: [SettingsRow; 10] = [
         options: &[],
     },
     SettingsRow {
-        label: "Content warnings",
-        key: "contentWarningsEnabled",
-        options: &[],
-    },
-    SettingsRow {
         label: "Upcoming episodes row",
         key: "upcomingRowEnabled",
         options: &[],
@@ -68,7 +63,7 @@ pub(super) const GENERAL_SETTINGS: [SettingsRow; 10] = [
 ];
 pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
     (2, "settings.group.general_startup"),
-    (6, "settings.group.general_behavior"),
+    (5, "settings.group.general_behavior"),
     (2, "settings.group.general_calendar"),
 ];
 pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
@@ -807,8 +802,100 @@ pub(super) const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     },
 ];
 pub(super) const DOWNLOADS_GROUPS: [(usize, &str); 1] = [(5, "settings.group.downloads")];
+pub(super) const PLAYER_SETTINGS: [SettingsRow; 17] = [
+    SettingsRow {
+        label: "Pause screen info",
+        key: "pauseMetadataOverlayEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Content warnings",
+        key: "contentWarningsEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Content info",
+        key: "playerShowTitle",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Up next card",
+        key: "playerShowUpNextCard",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Audio and subtitles",
+        key: "playerShowAudioSubtitles",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Speed",
+        key: "playerShowSpeed",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Episode picker",
+        key: "playerShowEpisodes",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Next episode button",
+        key: "playerShowNextEpisode",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Player settings",
+        key: "playerShowSettings",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Volume",
+        key: "playerShowVolume",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Fullscreen",
+        key: "playerShowFullscreen",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Cast",
+        key: "playerShowCast",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Mark segment",
+        key: "playerShowMarkSegment",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Upscaling",
+        key: "playerShowUpscaling",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Brightness and volume gestures",
+        key: "playerGestures",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Double-tap to seek",
+        key: "playerDoubleTapSeek",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Controls in the middle",
+        key: "playerCenterControls",
+        options: &[],
+    },
+];
+pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
+    (4, "settings.group.player_overlay"),
+    (10, "settings.group.player_controls"),
+    (3, "settings.group.player_touch"),
+];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 14] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 15] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -864,6 +951,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 14] = [
         description: "Audio and subtitle languages and style",
         rows: &SUBTITLES_SETTINGS,
         groups: &SUBTITLES_GROUPS,
+    },
+    SettingsSection {
+        title: "Player",
+        category: "Playback",
+        description: "Overlay, controls and gestures while watching",
+        rows: &PLAYER_SETTINGS,
+        groups: &PLAYER_GROUPS,
     },
     SettingsSection {
         title: "Content",
