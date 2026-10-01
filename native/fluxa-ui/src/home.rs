@@ -410,7 +410,24 @@ pub(crate) fn draw_home_with_options(
             .logo_url
             .as_deref()
             .is_some_and(|url| !url.trim().is_empty());
-        let title_height = if has_logo {
+        let max_logo_size = Vec2::new(
+            style.logo_max_width,
+            (style.logo_height - style.logo_inset * 2.0).max(1.0),
+        );
+        let fitted_logo = if has_logo {
+            components::title_logo(
+                context.pixels_per_point(),
+                hero.logo_url.as_deref(),
+                max_logo_size,
+                ArtworkPriority::Hero,
+                assets,
+            )
+        } else {
+            None
+        };
+        let title_height = if let Some((_, size)) = fitted_logo {
+            size.y
+        } else if has_logo {
             style.logo_height
         } else {
             style.text_title_height
@@ -462,13 +479,6 @@ pub(crate) fn draw_home_with_options(
                 // galley width, so fallback titles and metadata end up with
                 // a different x than an explicitly allocated logo.
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
-                    // Keep transparent title marks away from the clip edge.
-                    // Some provider logos have visible pixels right at the
-                    // source bitmap boundary.
-                    let max_logo_size = Vec2::new(
-                        style.logo_max_width,
-                        (title_height - style.logo_inset * 2.0).max(1.0),
-                    );
                     if home.hero_slides.len() > 1 {
                         let next =
                             &home.hero_slides[(active_hero_index + 1) % home.hero_slides.len()];
@@ -487,13 +497,7 @@ pub(crate) fn draw_home_with_options(
                         egui::Align2::LEFT_TOP
                     };
                     if has_logo {
-                        if let Some((texture, size)) = components::title_logo(
-                            context.pixels_per_point(),
-                            hero.logo_url.as_deref(),
-                            max_logo_size,
-                            ArtworkPriority::Hero,
-                            assets,
-                        ) {
+                        if let Some((texture, size)) = fitted_logo {
                             let logo_x = if style.centered {
                                 title_rect.center().x - size.x * 0.5
                             } else {
