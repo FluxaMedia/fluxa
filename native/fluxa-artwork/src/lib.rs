@@ -62,8 +62,8 @@ pub const MAX_ARTWORK_HEIGHT: u32 = 1080;
 pub const MAX_IN_FLIGHT: usize = 32;
 // Keep background warming from occupying every network/decode slot before
 // newly visible artwork gets a chance to start.
-const MAX_PREFETCH_IN_FLIGHT: usize = 8;
-const MAX_PREFETCH_DECODE_IN_FLIGHT: usize = 1;
+const MAX_PREFETCH_IN_FLIGHT: usize = 16;
+const MAX_PREFETCH_DECODE_IN_FLIGHT: usize = 3;
 // Animated WebP/GIF composition is substantially more CPU- and memory-heavy
 // than a poster raster decode. Keep a burst of newly-visible animations from
 // occupying every decode worker while the user is scrolling.

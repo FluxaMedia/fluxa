@@ -275,6 +275,16 @@ pub fn draw_detail(
         .first()
         .map(|(index, episode)| (*index, *episode));
 
+    prefetch_artwork(
+        detail,
+        &season_episodes,
+        viewport,
+        margin,
+        Vec2::new(metrics.poster_card_width, metrics.poster_card_height),
+        context.pixels_per_point(),
+        assets,
+    );
+
     let content_width = if compact {
         viewport.width - margin * 2.0
     } else {
@@ -1070,4 +1080,30 @@ pub fn draw_detail(
         .extend(navigation_focus_rects(viewport, metrics));
     components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
     layout
+}
+
+fn prefetch_artwork(
+    detail: &DetailModel,
+    episodes: &[(usize, &DetailEpisode)],
+    viewport: Viewport,
+    margin: f32,
+    poster: Vec2,
+    pixels_per_point: f32,
+    assets: &mut impl HomeAssets,
+) {
+    let target = |size: Vec2| artwork_target_size(size, pixels_per_point);
+    for (_, url) in &detail.season_posters {
+        assets.prefetch_for(Some(url), target(SEASON_TILE), ArtworkPriority::Prefetch);
+    }
+    episodes::prefetch(detail, episodes, viewport, margin, pixels_per_point, assets);
+    for member in detail.cast.iter().chain(&detail.crew) {
+        assets.prefetch_for(
+            member.photo.as_deref(),
+            target(Vec2::splat(CAST_SIZE)),
+            ArtworkPriority::Prefetch,
+        );
+    }
+    for card in &detail.similar {
+        assets.prefetch_for(card.poster_art(), target(poster), ArtworkPriority::Prefetch);
+    }
 }

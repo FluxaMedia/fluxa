@@ -195,6 +195,36 @@ pub(super) fn draw_episodes(
     }
 }
 
+pub(super) fn prefetch(
+    detail: &DetailModel,
+    episodes: &[(usize, &DetailEpisode)],
+    viewport: Viewport,
+    margin: f32,
+    pixels_per_point: f32,
+    assets: &mut impl HomeAssets,
+) {
+    let compact = viewport.is_compact();
+    let avail = available_width(viewport, margin);
+    let width = match detail.episode_layout_for(compact) {
+        EpisodeLayout::List => list_thumb_width(compact),
+        EpisodeLayout::Grid => grid_cell(avail, compact, detail.show_episode_descriptions).x,
+        EpisodeLayout::Numbers if compact => avail - PANEL_PAD * 2.0,
+        EpisodeLayout::Numbers => NUMBERS_THUMB,
+        EpisodeLayout::Cards => return,
+    };
+    let target = artwork_target_size(Vec2::new(width, width * 9.0 / 16.0), pixels_per_point);
+    for (_, episode) in episodes {
+        if detail.episode_view(episode).hide_still {
+            continue;
+        }
+        assets.prefetch_for(
+            episode.thumbnail.as_deref(),
+            target,
+            ArtworkPriority::Prefetch,
+        );
+    }
+}
+
 fn episode_hit(
     ui: &mut egui::Ui,
     cx: &EpisodeContext,
