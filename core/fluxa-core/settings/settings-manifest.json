@@ -23,13 +23,6 @@
       "category": "general"
     },
     {
-      "key": "animationsEnabled",
-      "type": "boolean",
-      "default": true,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "animePreferJapaneseAudio",
       "type": "boolean",
       "default": false,

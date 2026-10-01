@@ -71,7 +71,7 @@ pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
     (6, "settings.group.general_behavior"),
     (2, "settings.group.general_calendar"),
 ];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 15] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -90,11 +90,6 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 15] = [
     SettingsRow {
         label: "AMOLED black",
         key: "amoledMode",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Animations",
-        key: "animationsEnabled",
         options: &[],
     },
     SettingsRow {
@@ -157,7 +152,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 15] = [
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
-    (8, "settings.group.color_and_motion"),
+    (7, "settings.group.color_and_motion"),
     (6, "settings.group.navigation"),
 ];
 pub(super) const HOME_SETTINGS: [SettingsRow; 13] = [

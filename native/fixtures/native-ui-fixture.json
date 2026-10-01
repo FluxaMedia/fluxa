@@ -41,5 +41,5 @@
   "library": { "isLoading": false, "watchlist": [], "continueWatching": [], "completed": [], "dropped": [], "liked": [] },
   "discover": { "contentType": "movie", "catalogs": [{ "key": "popular", "label": "Popular" }, { "key": "recent", "label": "Recently added" }], "results": [], "isLoading": false, "catalogsLoading": false },
   "detail": { "id": "fixture-featured", "contentType": "movie", "isLoading": false, "isInWatchlist": false, "meta": { "id": "fixture-featured", "type": "movie", "name": "Clash of the Thunder...", "year": 2026, "description": "Fixture detail description for visual testing." }, "similarItems": [] },
-  "settings": { "values": { "animationsEnabled": true, "notificationsEnabled": true, "autoplayNext": true, "rememberPlayback": true, "compactCards": false, "showEpisodeBadges": true, "cacheArtwork": true, "hardwareDecoding": true }, "lastWriteError": null }
+  "settings": { "values": { "notificationsEnabled": true, "autoplayNext": true, "rememberPlayback": true, "compactCards": false, "showEpisodeBadges": true, "cacheArtwork": true, "hardwareDecoding": true }, "lastWriteError": null }
 }

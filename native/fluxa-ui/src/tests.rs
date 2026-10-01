@@ -1077,7 +1077,7 @@ fn core_snapshot_projection_maps_detail_and_settings() {
             "liked": [{"id":"tt42"}]
         },
         "settings": {
-            "values": {"animationsEnabled": false},
+            "values": {"compactCards": false},
             "lastWriteError": null
         }
     });
@@ -1092,7 +1092,7 @@ fn core_snapshot_projection_maps_detail_and_settings() {
     assert_eq!(detail.ratings.len(), 3);
     assert_eq!(detail.trailers[0], "https://example.test/trailer.mp4");
     assert_eq!(detail.similar[0].title, "Similar");
-    assert!(!settings.bool_value("animationsEnabled"));
+    assert!(!settings.bool_value("compactCards"));
     assert!(settings.bool_value("notificationsEnabled"));
 }
 
