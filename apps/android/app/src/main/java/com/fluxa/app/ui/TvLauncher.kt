@@ -28,8 +28,10 @@ object TvLauncher {
 
     private fun write(context: Context, feed: JSONObject) {
         writeWatchNext(context, feed.optJSONArray("watchNext") ?: JSONArray())
-        val items = feed.optJSONArray("rows")?.optJSONObject(0)?.optJSONArray("items") ?: JSONArray()
-        writeChannel(context, items)
+        val row = feed.optJSONArray("rows")?.optJSONObject(0)
+        val name = row?.optString("title")?.takeIf(String::isNotEmpty)
+            ?: context.applicationInfo.loadLabel(context.packageManager).toString()
+        writeChannel(context, name, row?.optJSONArray("items") ?: JSONArray())
     }
 
     private fun writeWatchNext(context: Context, items: JSONArray) {
@@ -49,9 +51,9 @@ object TvLauncher {
         }
     }
 
-    private fun writeChannel(context: Context, items: JSONArray) {
+    private fun writeChannel(context: Context, name: String, items: JSONArray) {
         val resolver = context.contentResolver
-        val channel = channelId(context)
+        val channel = channelId(context, name)
         resolver.delete(TvContract.PreviewPrograms.CONTENT_URI, "${TvContract.PreviewPrograms.COLUMN_CHANNEL_ID}=?", arrayOf(channel.toString()))
         for (index in 0 until items.length()) {
             val item = items.getJSONObject(index)
@@ -94,17 +96,19 @@ object TvLauncher {
         return Intent(Intent.ACTION_VIEW, uri).setPackage(context.packageName).toUri(Intent.URI_INTENT_SCHEME)
     }
 
-    private fun channelId(context: Context): Long {
+    private fun channelId(context: Context, name: String): Long {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val known = prefs.getLong(CHANNEL, -1L)
         val resolver = context.contentResolver
         if (known >= 0 && resolver.query(TvContract.buildChannelUri(known), arrayOf(TvContract.Channels._ID), null, null, null)?.use { it.moveToFirst() } == true) {
+            val rename = ContentValues().apply { put(TvContract.Channels.COLUMN_DISPLAY_NAME, name) }
+            resolver.update(TvContract.buildChannelUri(known), rename, null, null)
             return known
         }
         val values = ContentValues().apply {
             put(TvContract.Channels.COLUMN_INPUT_ID, "")
             put(TvContract.Channels.COLUMN_TYPE, TvContract.Channels.TYPE_PREVIEW)
-            put(TvContract.Channels.COLUMN_DISPLAY_NAME, context.applicationInfo.loadLabel(context.packageManager).toString())
+            put(TvContract.Channels.COLUMN_DISPLAY_NAME, name)
             put(TvContract.Channels.COLUMN_APP_LINK_INTENT_URI, Intent(context, MainActivity::class.java).toUri(Intent.URI_INTENT_SCHEME))
         }
         val uri = resolver.insert(TvContract.Channels.CONTENT_URI, values) ?: error("channel insert failed")
