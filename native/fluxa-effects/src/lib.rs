@@ -22,11 +22,19 @@ macro_rules! log {
 }
 
 mod executor;
+#[cfg(not(target_arch = "wasm32"))]
+mod fetch_text;
+#[cfg(not(target_arch = "wasm32"))]
+mod range_proxy;
 mod session;
 pub mod storage;
 
 pub use executor::{
     EffectCompletion, EffectExecutor, core_value, media_servers, remove_media_server,
 };
+#[cfg(not(target_arch = "wasm32"))]
+pub use fetch_text::fetch_text;
+#[cfg(not(target_arch = "wasm32"))]
+pub use range_proxy::range_proxy;
 pub use session::{SessionHandle, persisted_runtime_state};
 pub use storage::Storage;
