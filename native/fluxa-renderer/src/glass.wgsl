@@ -13,6 +13,8 @@ struct Pane {
 @group(0) @binding(0) var src: texture_2d<f32>;
 @group(0) @binding(1) var samp: sampler;
 @group(1) @binding(0) var<uniform> pane: Pane;
+@group(2) @binding(0) var clear_src: texture_2d<f32>;
+@group(2) @binding(1) var clear_samp: sampler;
 
 @vertex
 fn vs_full(@builtin(vertex_index) i: u32) -> FullOut {
@@ -85,23 +87,30 @@ fn fs_pane(@builtin(position) frag: vec4<f32>) -> @location(0) vec4<f32> {
     let bend = edge * edge * edge * pane.params.y;
 
     let uv = (frag.xy - n * bend) / pane.screen.xy;
-    let spread = n * bend * 0.12 / pane.screen.xy;
-    let base = textureSample(src, samp, uv);
-    let red = textureSample(src, samp, uv - spread).r;
-    let blue = textureSample(src, samp, uv + spread).b;
-    var rgb = vec3<f32>(red, base.g, blue);
+    let spread = n * bend * 0.18 / pane.screen.xy;
+    let frost = mix(0.55, 0.12, edge);
+    let sharp = vec3<f32>(
+        textureSample(clear_src, clear_samp, uv - spread).r,
+        textureSample(clear_src, clear_samp, uv).g,
+        textureSample(clear_src, clear_samp, uv + spread).b,
+    );
+    let soft = textureSample(src, samp, uv);
+    var rgb = mix(sharp, soft.rgb, frost);
 
     let luma = dot(rgb, vec3<f32>(0.2126, 0.7152, 0.0722));
-    rgb = max(mix(vec3<f32>(luma), rgb, 1.2), vec3<f32>(0.0));
+    rgb = max(mix(vec3<f32>(luma), rgb, 1.35), vec3<f32>(0.0));
+    rgb *= 1.0 + 0.12 * (1.0 - edge) * (1.0 - n.y) * 0.5;
 
     let t = pane.tint;
     rgb = rgb * (1.0 - t.a) + t.rgb;
-    var a = base.a * (1.0 - t.a) + t.a;
+    var a = soft.a * (1.0 - t.a) + t.a;
 
-    let rim_width = 1.5 * pane.screen.z;
+    let rim_width = 1.4 * pane.screen.z;
     let band = smoothstep(-rim_width, 0.0, d);
     let facing = dot(n, normalize(vec2<f32>(-0.45, -1.0)));
-    let spec = pane.params.w * (band * (0.5 * max(facing, 0.0) + 0.18 * max(-facing, 0.0)) + edge * edge * 0.05);
+    let rim = band * (0.75 * pow(max(facing, 0.0), 1.5) + 0.3 * pow(max(-facing, 0.0), 1.5) + 0.12);
+    let glow = edge * edge * edge * (0.05 + 0.12 * max(facing, 0.0));
+    let spec = pane.params.w * (rim + glow);
     rgb += vec3<f32>(spec);
     a = min(a + spec, 1.0);
 

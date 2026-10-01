@@ -97,7 +97,7 @@ impl GlassPass {
         });
         let pane_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("fluxa-glass-pane"),
-            bind_group_layouts: &[Some(&layout), Some(&pane_layout)],
+            bind_group_layouts: &[Some(&layout), Some(&pane_layout), Some(&layout)],
             immediate_size: 0,
         });
         let pipeline = |label, layout, vs, fs, topology, blend| {
@@ -366,6 +366,7 @@ impl GlassPass {
         pass.set_pipeline(&self.pane);
         pass.set_bind_group(0, &blurred.bind, &[]);
         pass.set_bind_group(1, panes, &[(index as u64 * PANE_STRIDE) as u32]);
+        pass.set_bind_group(2, &targets.down[0].bind, &[]);
         pass.draw(0..4, 0..1);
     }
 
