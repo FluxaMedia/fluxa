@@ -248,6 +248,14 @@ impl SessionHandle {
         self.executor.request_json(plan)
     }
 
+    pub fn fetch_addon_subtitles(
+        &self,
+        content_type: String,
+        id: String,
+    ) -> Receiver<Option<Value>> {
+        self.executor.fetch_addon_subtitles(content_type, id)
+    }
+
     pub fn request_ok(&self, plan: Value) -> Receiver<bool> {
         self.executor.request_ok(plan)
     }

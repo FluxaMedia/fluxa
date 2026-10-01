@@ -22,6 +22,9 @@ pub(super) struct Overlay {
     next_dismissed: bool,
     next_shown_at: Option<Instant>,
     next_prefetched: bool,
+    addon_subtitles_request: Option<Receiver<Option<Value>>>,
+    addon_subtitles_started: bool,
+    pub(super) addon_subtitles: Vec<Value>,
     dismissed: Vec<String>,
     tracks_applied: bool,
     last_scrobble: Option<String>,
@@ -474,11 +477,104 @@ pub(super) fn tick(
     if !player.overlay.tracks_applied {
         apply_tracks(player, video, profile);
     }
+    load_addon_subtitles(player, session, video, snapshot, profile);
     tick_scrobble(player, session, snapshot);
     refresh_plan(player);
     prefetch_next_streams(player, session, snapshot);
     auto_skip(player, video);
     player.overlay.countdown_done()
+}
+
+fn load_addon_subtitles(
+    player: &mut PlayerSession,
+    session: &SessionHandle,
+    video: &mut dyn VideoBackend,
+    snapshot: &Value,
+    profile: &Value,
+) {
+    let overlay = &mut player.overlay;
+    if !overlay.addon_subtitles_started {
+        overlay.addon_subtitles_started = true;
+        let id = snapshot
+            .pointer("/player/currentVideoId")
+            .or_else(|| player.meta.get("id"))
+            .and_then(Value::as_str);
+        let content_type = player.meta.get("type").and_then(Value::as_str);
+        if let (Some(id), Some(content_type)) = (id, content_type) {
+            overlay.addon_subtitles_request =
+                Some(session.fetch_addon_subtitles(content_type.to_owned(), id.to_owned()));
+        }
+        return;
+    }
+    let Some(receiver) = overlay.addon_subtitles_request.as_ref() else {
+        return;
+    };
+    let tracks = match receiver.try_recv() {
+        Ok(tracks) => tracks,
+        Err(std::sync::mpsc::TryRecvError::Empty) => return,
+        Err(std::sync::mpsc::TryRecvError::Disconnected) => None,
+    };
+    overlay.addon_subtitles_request = None;
+    let Some(Value::Array(tracks)) = tracks else {
+        return;
+    };
+    let candidates: Vec<Value> = tracks
+        .iter()
+        .enumerate()
+        .map(|(index, track)| {
+            json!({
+                "id": index.to_string(),
+                "label": track["label"],
+                "language": track["lang"],
+            })
+        })
+        .collect();
+    overlay.addon_subtitles = tracks;
+    let field = |key: &str| profile.get(key).cloned().unwrap_or(Value::Null);
+    let Some(plan) = core_value(
+        "playerTrackPlan",
+        json!({
+            "audioTracks": [],
+            "subtitleTracks": candidates,
+            "prefs": {
+                "preferredSubtitleLanguage": field("preferredSubtitleLanguage"),
+                "secondarySubtitleLanguage": field("secondarySubtitleLanguage"),
+                "autoEnableSubtitles": field("autoEnableSubtitles"),
+            },
+            "lastSubtitleLanguage": player.meta.get("lastSubtitleLanguage"),
+        }),
+    ) else {
+        return;
+    };
+    let embedded_selected = video
+        .tracks()
+        .iter()
+        .any(|track| track.subtitle && track.selected);
+    for (key, select) in [
+        ("subtitleId", !embedded_selected),
+        ("secondarySubtitleId", false),
+    ] {
+        let Some(track) = plan[key]
+            .as_str()
+            .and_then(|id| id.parse::<usize>().ok())
+            .and_then(|index| player.overlay.addon_subtitles.get(index))
+        else {
+            continue;
+        };
+        let Some(url) = track["url"].as_str() else {
+            continue;
+        };
+        let mut args = vec![
+            "sub-add".to_owned(),
+            url.to_owned(),
+            if select { "select" } else { "auto" }.to_owned(),
+            track["label"].as_str().unwrap_or("Subtitle").to_owned(),
+        ];
+        if let Some(lang) = track["lang"].as_str() {
+            args.push(lang.to_owned());
+        }
+        video.command(VideoCommand::Mpv(args));
+    }
 }
 
 fn prefetch_next_streams(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {

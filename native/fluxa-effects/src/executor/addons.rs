@@ -1,6 +1,79 @@
 use super::*;
 
 impl EffectExecutor {
+    pub fn fetch_addon_subtitles(
+        &self,
+        content_type: String,
+        id: String,
+    ) -> std::sync::mpsc::Receiver<Option<Value>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let executor = self.clone();
+        let task = async move {
+            let _ = sender.send(executor.addon_subtitles(&content_type, &id).await);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+
+    async fn addon_subtitles(&self, content_type: &str, id: &str) -> Option<Value> {
+        let addons = self.account_addons().await.ok()?;
+        let plan = core_value(
+            "resourceFetchPlan",
+            json!({
+                "kind": "subtitles",
+                "resource": "subtitles",
+                "contentType": content_type,
+                "id": id,
+                "addons": addons
+            }),
+        )?;
+        let requests = plan.get("requests")?.as_array()?.clone();
+        let client = Client::builder()
+            .user_agent("Fluxa/1.0")
+            .native_timeout(Duration::from_secs(10))
+            .build()
+            .ok()?;
+        let mut subtitles = Vec::new();
+        for request in requests {
+            let Some(url) = request.get("url").and_then(Value::as_str) else {
+                continue;
+            };
+            let Ok((status_code, body)) = fetch_text(&client, url).await else {
+                continue;
+            };
+            let parsed = core_value(
+                "parseAndPlanAddonResource",
+                json!({
+                    "resource": "subtitles",
+                    "url": url,
+                    "statusCode": status_code,
+                    "body": body,
+                    "kind": "subtitles",
+                    "addonName": request.get("addonName"),
+                    "season": null
+                }),
+            );
+            let Some(parsed) =
+                parsed.filter(|p| p.get("kind").and_then(Value::as_str) == Some("success"))
+            else {
+                continue;
+            };
+            if let Some(Value::Array(found)) = parsed
+                .get("valueJson")
+                .and_then(Value::as_str)
+                .and_then(|json| serde_json::from_str(json).ok())
+            {
+                subtitles.extend(found);
+            }
+        }
+        core_value("subtitleTracks", json!({ "subtitles": subtitles }))
+    }
+}
+
+impl EffectExecutor {
     pub(super) async fn fetch_meta_detail(&self, payload: &Value) -> Result<Value, String> {
         let content_type = payload
             .get("contentType")
