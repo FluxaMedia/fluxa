@@ -1105,11 +1105,22 @@ fn continue_card_body(
         assets,
     );
 
+    let scrim_top = rect.top() + rect.height() * 0.3;
+    let scrim_mid = rect.top() + rect.height() * 0.62;
     paint_vertical_gradient(
         painter,
-        rect,
+        Rect::from_min_max(
+            egui::Pos2::new(rect.left(), scrim_top),
+            egui::Pos2::new(rect.right(), scrim_mid),
+        ),
         Color32::TRANSPARENT,
-        Color32::from_black_alpha(210),
+        Color32::from_black_alpha(150),
+    );
+    paint_vertical_gradient(
+        painter,
+        Rect::from_min_max(egui::Pos2::new(rect.left(), scrim_mid), rect.right_bottom()),
+        Color32::from_black_alpha(150),
+        Color32::from_black_alpha(235),
     );
     let title_font = FontId::proportional(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
@@ -1157,7 +1168,7 @@ fn continue_card_body(
         Align2::LEFT_TOP,
         truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
         subtitle_font,
-        metrics.text_secondary,
+        Color32::from_white_alpha(210),
     );
     let bar_origin = egui::Pos2::new(rect.left() + metrics.card_content_padding, bar_top);
     painter.rect_filled(
@@ -2065,7 +2076,7 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape
         return egui::Shape::rect_filled(rect, radius, fill);
     }
     let tint = if fill.a() > 200 {
-        fill.gamma_multiply(0.5)
+        fill.gamma_multiply(0.3)
     } else {
         fill
     };
@@ -2075,8 +2086,8 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape
         callback: std::sync::Arc::new(Glass {
             radius,
             tint,
-            refraction: (rect.height() * 0.2).clamp(4.0, 14.0),
-            bevel: radius.clamp(6.0, 18.0),
+            refraction: (rect.height() * 0.3).clamp(6.0, 22.0),
+            bevel: (radius * 0.8).clamp(8.0, 26.0),
             rim: 1.0,
         }),
     })
