@@ -74,7 +74,6 @@ struct ProfileSafePrefs {
     poster_hide_titles: bool,
     detail_episode_view_mode: String,
     animations_enabled: bool,
-    reduce_motion: bool,
     start_page: String,
     notifications_enabled: bool,
     alert_new_episodes: bool,
@@ -211,7 +210,6 @@ fn profile_safe_prefs(profile: &Value) -> ProfileSafePrefs {
         ))
         .to_string(),
         animations_enabled: bool_value(profile, "animationsEnabled").unwrap_or(true),
-        reduce_motion: bool_value(profile, "reduceMotion").unwrap_or(false),
         start_page: text(profile, "startPage").unwrap_or("home").to_string(),
         notifications_enabled: bool_value(profile, "notificationsEnabled").unwrap_or(true),
         alert_new_episodes: bool_value(profile, "alertNewEpisodes").unwrap_or(true),

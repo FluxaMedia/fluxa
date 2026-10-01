@@ -786,13 +786,6 @@
       "category": "appearance"
     },
     {
-      "key": "reduceMotion",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "general"
-    },
-    {
       "key": "rememberLastProfile",
       "type": "boolean",
       "default": null,
