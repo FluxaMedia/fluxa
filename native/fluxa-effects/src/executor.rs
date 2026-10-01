@@ -184,6 +184,7 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::StartTorrentStream => {
                 self.start_torrent_stream(&payload)
             }
+            fluxa_core::runtime::EffectKind::StopTorrent => self.stop_torrent(),
             fluxa_core::runtime::EffectKind::ReadCalendarMonth => {
                 self.read_calendar_month(&payload).await
             }

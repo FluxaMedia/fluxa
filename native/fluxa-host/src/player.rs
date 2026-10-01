@@ -748,6 +748,9 @@ pub(crate) fn close(state: &mut RendererState) {
             .map(|video| video.tracks())
             .unwrap_or_default();
         overlay::finish(&player, session, &snapshot, &tracks);
+        if let Some(link) = player.torrent_link.clone() {
+            session.deactivate_torrent(link);
+        }
     }
     if let Some(video) = state.video.as_mut() {
         video.stop();

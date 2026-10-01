@@ -63,6 +63,45 @@ impl EffectExecutor {
         receiver
     }
 
+    #[cfg(target_arch = "wasm32")]
+    pub fn deactivate_torrent(&self, _link: String) {}
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn deactivate_torrent(&self, link: String) {
+        std::thread::spawn(move || {
+            let Ok(server) = ensure_torrent_server() else {
+                return;
+            };
+            let Some(base_url) = server.get("url").and_then(Value::as_str) else {
+                return;
+            };
+            let url = format!("{}/torrents", base_url.trim_end_matches('/'));
+            let result = super::runtime().block_on(async {
+                Client::new()
+                    .post(&url)
+                    .json(&json!({ "action": "deactivate", "link": link }))
+                    .timeout(Duration::from_secs(5))
+                    .send()
+                    .await
+            });
+            if let Err(error) = result {
+                crate::log!("[fluxa-native] torrent deactivate failed: {error}");
+            }
+        });
+    }
+
+    pub(super) fn stop_torrent(&self) -> Result<Value, String> {
+        if let Some(link) = ACTIVE_TORRENT_LINK
+            .get_or_init(Default::default)
+            .lock()
+            .map_err(|_| "torrent link state is poisoned".to_owned())?
+            .take()
+        {
+            self.deactivate_torrent(link);
+        }
+        Ok(json!({}))
+    }
+
     pub(super) fn start_torrent_stream(&self, payload: &Value) -> Result<Value, String> {
         let stream = payload
             .get("stream")
@@ -116,6 +155,9 @@ impl EffectExecutor {
             base_url,
             stream_url
         );
+        if let Ok(mut active) = ACTIVE_TORRENT_LINK.get_or_init(Default::default).lock() {
+            *active = Some(normalized_link.clone());
+        }
         start_torrent_add(base_url.to_owned(), normalized_link, file_id);
         Ok(json!({
             "url": stream_url,
@@ -136,6 +178,8 @@ pub(super) fn ensure_torrent_server() -> Result<Value, String> {
 
 #[cfg(target_arch = "wasm32")]
 pub(super) fn start_torrent_add(_base_url: String, _link: String, _file_id: Option<i64>) {}
+
+static ACTIVE_TORRENT_LINK: OnceLock<std::sync::Mutex<Option<String>>> = OnceLock::new();
 
 pub(super) static TORRENT_CACHE_DIR: OnceLock<std::path::PathBuf> = OnceLock::new();
 

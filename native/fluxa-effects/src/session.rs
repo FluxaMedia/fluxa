@@ -236,6 +236,10 @@ impl SessionHandle {
         self.executor.poll_torrent_status(link, file_id)
     }
 
+    pub fn deactivate_torrent(&self, link: String) {
+        self.executor.deactivate_torrent(link);
+    }
+
     pub fn fetch_json(&self, url: String) -> Receiver<Option<Value>> {
         self.executor.fetch_json(url)
     }
