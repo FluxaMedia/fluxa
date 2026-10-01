@@ -394,18 +394,32 @@
       "category": "playback"
     },
     {
+      "key": "dolbyVisionMode",
+      "type": "string",
+      "default": "auto",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "dolbyVisionTonemap",
+      "type": "string",
+      "default": "auto",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "displayPeakNits",
+      "type": "string",
+      "default": "0",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "gifAutoplayEnabled",
       "type": "boolean",
       "default": false,
       "scope": "profile",
       "category": "appearance"
-    },
-    {
-      "key": "hdrEnabled",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "playback"
     },
     {
       "key": "heroFeedOrder",
@@ -579,13 +593,6 @@
       "key": "p2pEnabled",
       "type": "boolean",
       "default": true,
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
-      "key": "p7FelGpu",
-      "type": "boolean",
-      "default": false,
       "scope": "profile",
       "category": "playback"
     },

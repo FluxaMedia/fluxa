@@ -431,7 +431,7 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 4] = [
     (3, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),
 ];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 27] = [
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -473,14 +473,19 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 27] = [
         options: &[],
     },
     SettingsRow {
-        label: "HDR output",
-        key: "hdrEnabled",
-        options: &[],
+        label: "Dolby Vision",
+        key: "dolbyVisionMode",
+        options: &["auto", "native", "convert", "base_layer", "compose"],
     },
     SettingsRow {
-        label: "P7 FEL GPU",
-        key: "p7FelGpu",
-        options: &[],
+        label: "Dolby Vision tone mapping",
+        key: "dolbyVisionTonemap",
+        options: &["auto", "no", "yes", "sdr"],
+    },
+    SettingsRow {
+        label: "Display peak brightness",
+        key: "displayPeakNits",
+        options: &["0", "300", "400", "600", "1000", "1500", "4000"],
     },
     SettingsRow {
         label: "Auto skip intro",
@@ -570,7 +575,7 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 27] = [
 ];
 pub(super) const PLAYBACK_GROUPS: [(usize, &str); 5] = [
     (7, "settings.group.playback"),
-    (2, "settings.group.sources_video"),
+    (4, "settings.group.sources_video"),
     (9, "settings.group.skip_controls"),
     (4, "settings.group.upscaling_motion"),
     (4, "settings.group.player_advanced"),

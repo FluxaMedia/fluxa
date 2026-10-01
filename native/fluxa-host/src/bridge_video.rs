@@ -41,7 +41,9 @@ impl VideoBackend for BridgeVideo {
             "type": "configure",
             "mpvOptions": text("mpvCustomOptions"),
             "audioProcessingMode": text("audioProcessingMode"),
-            "p7FelGpu": settings.get("p7FelGpu").and_then(Value::as_bool).unwrap_or(false),
+            "dolbyVisionMode": text("dolbyVisionMode"),
+            "dolbyVisionTonemap": text("dolbyVisionTonemap"),
+            "displayPeakNits": text("displayPeakNits"),
             "audioLanguage": text("preferredAudioLanguage"),
             "subtitleLanguage": text("preferredSubtitleLanguage"),
         }));

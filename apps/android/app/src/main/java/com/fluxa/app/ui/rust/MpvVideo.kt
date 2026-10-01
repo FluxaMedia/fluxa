@@ -9,7 +9,7 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.fluxa.app.BuildConfig
 
-class MpvVideo(context: Context, options: String, audioProcessingMode: String, p7FelGpu: Boolean) {
+class MpvVideo(context: Context, options: String, audioProcessingMode: String, videoOptions: Map<String, String>) {
     private val appContext = context.applicationContext
     private val mpv = Mpv.create().also { require(it != 0L) { "libmpv could not be created" } }
     private var surface = 0L
@@ -40,8 +40,7 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, p
             "sub-ass-override" to "scale",
             "audio-display" to "no",
             "idle" to "once",
-            "hwdec-dolby-vision" to if (p7FelGpu) "compose" else "auto",
-        ).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
+        ).plus(videoOptions).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
         options.lines().map(String::trim).filter { it.isNotEmpty() && !it.startsWith('#') }.forEach { line ->
             val key = line.substringBefore('=', "").trim()
             if (key.isNotEmpty() && key !in routeOwnedAudioOptions) {
