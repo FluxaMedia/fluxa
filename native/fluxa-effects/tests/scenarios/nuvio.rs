@@ -236,6 +236,29 @@ fn expired_token_is_refreshed_and_stored_before_syncing() {
 }
 
 #[test]
+fn token_expiry_stored_in_milliseconds_still_triggers_refresh() {
+    let scenario = Scenario::start();
+    serve(&scenario.world);
+    scenario.world.respond(
+        HOST,
+        "POST",
+        "/auth/v1/token",
+        200,
+        json!({
+            "access_token": "access-2", "refresh_token": "refresh-2", "expires_in": 3600
+        }),
+    );
+    let app = scenario.app_with_profile(profile(1_790_796_893_306));
+
+    hydrate(&app);
+
+    assert_eq!(
+        scenario.world.calls(HOST, "POST", "/auth/v1/token").len(),
+        1
+    );
+}
+
+#[test]
 fn failed_refresh_surfaces_an_error_instead_of_an_empty_library() {
     let scenario = Scenario::start();
     serve(&scenario.world);

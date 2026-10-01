@@ -74,6 +74,7 @@ impl EffectExecutor {
         let expires_at = profile
             .get("nuvioTokenExpiresAt")
             .and_then(Value::as_i64)
+            .map(|value| if value > 100_000_000_000 { value / 1000 } else { value })
             .unwrap_or_default();
         if expires_at <= chrono_unix_seconds() + 60
             && let Some(refresh_token) = profile
@@ -212,6 +213,9 @@ impl EffectExecutor {
             }
             Err(error) => {
                 crate::log!("[fluxa-native] Nuvio add-on refresh failed: {error}");
+                let mut stale = snapshot.clone();
+                stale["checkedAt"] = json!(chrono_unix_seconds());
+                self.storage.write_json(key, &stale)?;
                 Ok(snapshot_addons(&snapshot))
             }
         }
@@ -314,6 +318,9 @@ impl EffectExecutor {
             }
             Err(error) if state.get("initialized") == Some(&Value::Bool(true)) => {
                 crate::log!("[fluxa-native] Nuvio {resource} refresh failed: {error}");
+                let mut stale = state.clone();
+                stale["checkedAt"] = json!(chrono_unix_seconds());
+                self.storage.write_json(key, &stale)?;
                 Ok(state)
             }
             Err(error) => Err(error),
@@ -512,6 +519,9 @@ impl EffectExecutor {
             }
             Err(error) if state.get("rows").is_some() => {
                 crate::log!("[fluxa-native] Nuvio {entity} refresh failed: {error}");
+                let mut stale = state.clone();
+                stale["checkedAt"] = json!(chrono_unix_seconds());
+                self.storage.write_json(key, &stale)?;
                 Ok(state["rows"].clone())
             }
             Err(error) => Err(error),
