@@ -13,7 +13,6 @@ use crate::{
 };
 
 const SETTING_KEY: &str = "keyboardShortcuts";
-const SEEK_SMALL: f64 = 10.0;
 const SEEK_BIG: f64 = 60.0;
 const VOLUME_STEP: f32 = 0.05;
 const SPEED_STEP: f64 = 0.25;
@@ -227,8 +226,8 @@ fn player_action(state: &mut RendererState, action: &str) {
     let duration = session.status.duration;
     match action {
         "player_play_pause" => player::command(state, VideoCommand::TogglePause),
-        "player_seek_back" => player::command(state, VideoCommand::Seek(-SEEK_SMALL)),
-        "player_seek_forward" => player::command(state, VideoCommand::Seek(SEEK_SMALL)),
+        "player_seek_back" => player::seek(state, -1.0),
+        "player_seek_forward" => player::seek(state, 1.0),
         "player_seek_big_back" => player::command(state, VideoCommand::Seek(-SEEK_BIG)),
         "player_seek_big_forward" => player::command(state, VideoCommand::Seek(SEEK_BIG)),
         "player_seek_start" => player::command(state, VideoCommand::SeekTo(0.0)),

@@ -147,6 +147,7 @@ pub(crate) fn playback_preferences_plan_json(input: &str) -> Option<String> {
         "nextEpisodeThresholdPercent": safe.get("nextEpisodeThresholdPercent"),
         "autoPlayNextEpisode": safe.get("autoPlayNextEpisode"),
         "autoSkipIntro": safe.get("autoSkipIntro"),
+        "seekSeconds": safe.get("seekSeconds"),
         "autoPlayCountdownSecs": prefs.get("autoPlayCountdownSecs").and_then(Value::as_i64).unwrap_or(7).clamp(1, 60),
         "useSkipSegments": safe.get("useSkipSegments"),
         "useAnimeSkip": prefs.get("useAnimeSkip").and_then(Value::as_bool).unwrap_or(true),

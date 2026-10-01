@@ -59,6 +59,10 @@ impl Overlay {
         self.next_episode.as_ref()
     }
 
+    pub(super) fn seek_seconds(&self) -> Option<f64> {
+        self.prefs.as_ref()?["seekSeconds"].as_f64()
+    }
+
     pub(super) fn next_video(&self) -> Option<&Value> {
         self.next_episode
             .as_ref()

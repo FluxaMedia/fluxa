@@ -835,20 +835,6 @@
       "category": "general"
     },
     {
-      "key": "seekBackwardSeconds",
-      "type": "string",
-      "default": null,
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
-      "key": "seekForwardSeconds",
-      "type": "string",
-      "default": null,
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "seekSeconds",
       "type": "string",
       "default": "10",

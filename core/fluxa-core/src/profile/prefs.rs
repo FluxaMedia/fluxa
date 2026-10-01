@@ -55,8 +55,7 @@ struct ProfileSafePrefs {
     auto_skip_intro: bool,
     auto_play_next_episode: bool,
     next_episode_threshold_percent: f32,
-    seek_forward_seconds: i64,
-    seek_backward_seconds: i64,
+    seek_seconds: i64,
     player_buffer_cache_mb: i32,
     player_forward_buffer_seconds: i64,
     player_back_buffer_seconds: i64,
@@ -173,8 +172,7 @@ fn profile_safe_prefs(profile: &Value) -> ProfileSafePrefs {
         next_episode_threshold_percent: number(profile, "nextEpisodeThresholdPercent")
             .unwrap_or(90.0)
             .clamp(50.0, 99.0) as f32,
-        seek_forward_seconds: int(profile, "seekForwardSeconds").unwrap_or(10),
-        seek_backward_seconds: int(profile, "seekBackwardSeconds").unwrap_or(10),
+        seek_seconds: safe_seek_seconds(profile),
         player_buffer_cache_mb: safe_player_buffer_cache_mb(
             int(profile, "playerBufferCacheMb").map(|v| v as i32),
         ),
@@ -257,6 +255,15 @@ fn profile_safe_prefs(profile: &Value) -> ProfileSafePrefs {
     }
 }
 
+fn safe_seek_seconds(profile: &Value) -> i64 {
+    let value = profile.get("seekSeconds");
+    value
+        .and_then(Value::as_i64)
+        .or_else(|| value.and_then(Value::as_str)?.trim().parse().ok())
+        .unwrap_or(10)
+        .clamp(1, 120)
+}
+
 fn safe_subtitle_size_percent(value: f32) -> f32 {
     if value <= 40.0 {
         ((value / 20.0) * 100.0).clamp(50.0, 200.0)
@@ -321,6 +328,14 @@ fn number(value: &Value, key: &str) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn seek_seconds_accepts_strings_and_clamps() {
+        assert_eq!(safe_seek_seconds(&json!({"seekSeconds": "15"})), 15);
+        assert_eq!(safe_seek_seconds(&json!({"seekSeconds": 0})), 1);
+        assert_eq!(safe_seek_seconds(&json!({})), 10);
+    }
 
     #[test]
     fn player_buffer_cache_is_clamped() {

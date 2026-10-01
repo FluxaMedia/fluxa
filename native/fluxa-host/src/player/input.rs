@@ -4,8 +4,8 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
     match node {
         fluxa_ui::NODE_PLAYER_CLOSE => close(state),
         fluxa_ui::NODE_PLAYER_TOGGLE => command(state, VideoCommand::TogglePause),
-        fluxa_ui::NODE_PLAYER_REWIND => command(state, VideoCommand::Seek(-SEEK_STEP)),
-        fluxa_ui::NODE_PLAYER_FORWARD => command(state, VideoCommand::Seek(SEEK_STEP)),
+        fluxa_ui::NODE_PLAYER_REWIND => seek(state, -1.0),
+        fluxa_ui::NODE_PLAYER_FORWARD => seek(state, 1.0),
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
         fluxa_ui::NODE_PLAYER_UPSCALING => cycle_upscaling(state),
@@ -234,12 +234,8 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
     }
     player.touch();
     match input {
-        KeyInput::Key(Key::Left) | KeyInput::Gamepad(GamepadButton::DPadLeft) => {
-            command(state, VideoCommand::Seek(-SEEK_STEP))
-        }
-        KeyInput::Key(Key::Right) | KeyInput::Gamepad(GamepadButton::DPadRight) => {
-            command(state, VideoCommand::Seek(SEEK_STEP))
-        }
+        KeyInput::Key(Key::Left) | KeyInput::Gamepad(GamepadButton::DPadLeft) => seek(state, -1.0),
+        KeyInput::Key(Key::Right) | KeyInput::Gamepad(GamepadButton::DPadRight) => seek(state, 1.0),
         KeyInput::Key(Key::Enter) | KeyInput::Gamepad(GamepadButton::South) => {
             command(state, VideoCommand::TogglePause)
         }

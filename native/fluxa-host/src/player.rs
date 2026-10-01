@@ -25,7 +25,7 @@ pub(crate) use shuffle::*;
 use upnext::*;
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
-const SEEK_STEP: f64 = 10.0;
+const DEFAULT_SEEK_STEP: f64 = 10.0;
 const SCRUB_COMMIT: Duration = Duration::from_millis(900);
 const MIN_BRIGHTNESS: f32 = 0.15;
 const MEDIA_DRIFT: f64 = 1.5;
@@ -247,13 +247,17 @@ impl PlayerSession {
         }
     }
 
+    pub(crate) fn seek_step(&self) -> f64 {
+        self.overlay.seek_seconds().unwrap_or(DEFAULT_SEEK_STEP)
+    }
+
     fn scrub(&mut self, direction: f64) {
         let (base, streak) = match self.scrub {
             Some((time, at)) if at.elapsed() < SCRUB_COMMIT => (time, self.scrub_streak + 1),
             _ => (self.status.position, 0),
         };
         self.scrub_streak = streak;
-        let step = SEEK_STEP * (1 + streak / 4).min(6) as f64;
+        let step = self.seek_step() * (1 + streak / 4).min(6) as f64;
         let target = (base + direction * step).clamp(0.0, self.status.duration.max(0.0));
         self.scrub = Some((target, Instant::now()));
         self.touch();
@@ -793,6 +797,14 @@ fn scrobble(session: &SessionHandle, player: &PlayerSession, snapshot: &Value, a
     if let Err(error) = session.dispatch(command) {
         host_log(format!("core dispatch failed: {error}"));
     }
+}
+
+pub(crate) fn seek(state: &mut RendererState, direction: f64) {
+    let step = state
+        .player
+        .as_ref()
+        .map_or(DEFAULT_SEEK_STEP, PlayerSession::seek_step);
+    command(state, VideoCommand::Seek(direction * step));
 }
 
 pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
