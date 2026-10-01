@@ -1,26 +1,6 @@
 use super::super::*;
-use crate::library::continue_watching::replace_external_continue_watching_json;
 use serde_json::{Value, json};
 
-#[test]
-fn replace_external_continue_watching_sorts_by_saved_at_descending() {
-    let items = json!([
-        {"id": "tt1", "reason": "Nuvio", "timeOffset": 100, "duration": 1000, "savedAt": "2026-07-16T16:18:15Z"},
-        {"id": "tt2", "reason": "Nuvio", "timeOffset": 100, "duration": 1000, "savedAt": "2026-07-18T22:15:23Z"},
-        {"id": "tt3", "reason": "Nuvio", "timeOffset": 100, "duration": 1000, "savedAt": "2026-07-17T19:11:51Z"},
-    ]);
-    let result = replace_external_continue_watching_json(
-        "[]",
-        Some("Nuvio"),
-        &items.to_string(),
-        None,
-        None,
-        None,
-    );
-    let parsed: Vec<Value> = serde_json::from_str(&result).unwrap();
-    let ids: Vec<&str> = parsed.iter().map(|v| v["id"].as_str().unwrap()).collect();
-    assert_eq!(ids, vec!["tt2", "tt3", "tt1"]);
-}
 
 #[test]
 fn merge_continue_watching_sorts_the_combined_result_by_saved_at_descending() {

@@ -20,60 +20,9 @@ fn search_grouping_separates_movies_series_and_other() {
     assert_eq!(groups[2]["type"], "other");
 }
 
-#[test]
-fn discover_sort_filters_by_content_type() {
-    let result: Value = serde_json::from_str(
-        &discover_sort_plan_json(
-            r#"{"contentTypeFilter":"movie","items":[{"id":"tt1","type":"movie"},{"id":"tt2","type":"series"}]}"#,
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["items"].as_array().unwrap().len(), 1);
-}
 
-#[test]
-fn library_sort_filters_by_type() {
-    let result: Value = serde_json::from_str(
-        &library_sort_plan_json(
-            r#"{"typeFilter":"movie","items":[{"id":"tt1","type":"movie"},{"id":"tt2","type":"series"}]}"#,
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["items"].as_array().unwrap().len(), 1);
-}
 
-#[test]
-fn detail_load_plan_centralizes_effective_ids_and_season_decision() {
-    let result: Value = serde_json::from_str(
-        &detail_load_plan_json(
-            r#"{"requestedType":"movie","requestedId":"cs3:show","season":2,"detail":{"id":"cs3:show","type":"series","name":"Show","releaseInfo":"2026","videos":[{"id":"cs3:show:1:1","season":1}]}}"#,
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["effectiveType"], "series");
-    assert_eq!(result["seriesLookupId"], "cs3:show");
-    assert_eq!(result["streamLookupId"], "cs3:show");
-    assert_eq!(result["shouldReadSeasonFromDetail"], true);
-    assert_eq!(result["shouldFetchSeason"], false);
-    assert_eq!(result["year"], 2026);
-}
 
-#[test]
-fn detail_season_videos_preserve_fallback_selection_policy() {
-    let result: Value = serde_json::from_str(
-        &detail_season_videos_json(
-            r#"{"season":9,"videos":[{"id":"a","season":1},{"id":"b","season":2},{"id":"c","season":2}]}"#,
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    let episodes = result["episodes"].as_array().unwrap();
-    assert_eq!(episodes.len(), 1);
-    assert_eq!(episodes[0]["id"], "a");
-}
 
 #[test]
 fn metadata_feed_options_preserve_custom_stremio_catalog_types() {
@@ -142,60 +91,7 @@ fn discover_catalog_options_expose_genre_extra_as_flat_list() {
     assert_eq!(options[1]["defaultGenre"], "2026");
 }
 
-#[test]
-fn discover_selection_plan_falls_back_to_default_when_extra_is_required() {
-    let catalogs = serde_json::json!([{
-        "key": "tmdb.year", "type": "movie",
-        "extras": [{"name": "genre", "options": ["2026", "2025"], "isRequired": true, "default": "2026"}]
-    }]);
-    let result: Value = serde_json::from_str(
-        &discover_selection_plan_json(
-            &serde_json::json!({"contentType": "movie", "catalogs": catalogs}).to_string(),
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["extraValue"], "2026");
 
-    let optional_catalogs = serde_json::json!([{
-        "key": "tmdb.top", "type": "movie",
-        "extras": [{"name": "genre", "options": ["Action", "Comedy"], "isRequired": false}]
-    }]);
-    let optional_result: Value = serde_json::from_str(
-        &discover_selection_plan_json(
-            &serde_json::json!({"contentType": "movie", "catalogs": optional_catalogs}).to_string(),
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert!(optional_result["extraValue"].is_null());
-}
 
-#[test]
-fn series_lookup_id_extracts_imdb_id() {
-    assert_eq!(detail_series_lookup_id("tt1234567:1:2"), "tt1234567");
-    assert_eq!(detail_series_lookup_id("tt9999999"), "tt9999999");
-}
 
-#[test]
-fn series_lookup_id_strips_episode_parts_for_non_imdb() {
-    assert_eq!(detail_series_lookup_id("kitsu:777:1:2"), "kitsu:777");
-    assert_eq!(detail_series_lookup_id("tmdb:12345:1:2"), "tmdb:12345");
-}
 
-#[test]
-fn season_load_plan_uses_saved_season_when_valid() {
-    let result: Value = serde_json::from_str(
-        &detail_season_load_plan_json(r#"{"savedVideoId":"tt1:3:2","seasonsCount":5}"#).unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["firstSeasonToLoad"], 3);
-}
-
-#[test]
-fn season_load_plan_defaults_to_season_1_when_no_saved() {
-    let result: Value =
-        serde_json::from_str(&detail_season_load_plan_json(r#"{"seasonsCount":5}"#).unwrap())
-            .unwrap();
-    assert_eq!(result["firstSeasonToLoad"], 1);
-}

@@ -22,7 +22,7 @@ pub(crate) struct PlayerFlowState {
     #[serde(default)]
     pub(crate) player_error: Option<String>,
     #[serde(default)]
-    pub(crate) preferred_binge_group: Option<String>,
+    pub(crate) preferred_binge_group: Option<String>
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -39,7 +39,7 @@ pub(crate) enum PlayerFlowAction {
         current_video_id: Option<String>,
         initial_video_id: Option<String>,
         initial_streams: Vec<Value>,
-        initial_stream_index: i32,
+        initial_stream_index: i32
     },
     #[serde(rename = "streamsLoaded")]
     StreamsLoaded {
@@ -50,17 +50,10 @@ pub(crate) enum PlayerFlowAction {
         saved_title: Option<String>,
         source_selection_mode: Option<String>,
         regex_pattern: Option<String>,
-        preferred_binge_group: Option<String>,
+        preferred_binge_group: Option<String>
     },
     #[serde(rename = "streamsFailed")]
-    StreamsFailed { error_code: Option<String> },
-}
-
-#[derive(Clone, Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct PlayerFlowResult {
-    state: PlayerFlowState,
-    effects: Vec<PlayerFlowEffect>,
+    StreamsFailed { error_code: Option<String> }
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -74,15 +67,8 @@ pub(crate) enum PlayerFlowEffect {
     LoadStreams {
         content_type: String,
         id: String,
-        use_initial_streams: bool,
-    },
-}
-
-pub(crate) fn player_flow_dispatch_json(state_json: &str, action_json: &str) -> Option<String> {
-    let mut state: PlayerFlowState = serde_json::from_str(state_json).unwrap_or_default();
-    let action: PlayerFlowAction = serde_json::from_str(action_json).ok()?;
-    let effects = dispatch(&mut state, action);
-    serde_json::to_string(&PlayerFlowResult { state, effects }).ok()
+        use_initial_streams: bool
+    }
 }
 
 pub(crate) fn dispatch(
@@ -96,7 +82,7 @@ pub(crate) fn dispatch(
             current_video_id,
             initial_video_id,
             initial_streams,
-            initial_stream_index,
+            initial_stream_index
         } => {
             state.current_video_id = current_video_id.clone();
             state.current_streams.clear();
@@ -111,7 +97,7 @@ pub(crate) fn dispatch(
             vec![PlayerFlowEffect::LoadStreams {
                 content_type,
                 id,
-                use_initial_streams,
+                use_initial_streams
             }]
         }
         PlayerFlowAction::StreamsLoaded {
@@ -122,7 +108,7 @@ pub(crate) fn dispatch(
             saved_title,
             source_selection_mode,
             regex_pattern,
-            preferred_binge_group,
+            preferred_binge_group
         } => {
             if streams.is_empty() {
                 state.current_streams.clear();
@@ -176,55 +162,8 @@ fn playable_url(stream: &Value) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::player_flow_dispatch_json;
-    use serde_json::Value;
+    
 
-    #[test]
-    fn load_request_returns_effect_and_resets_playback_state() {
-        let result: Value = serde_json::from_str(
-            &player_flow_dispatch_json(
-                r#"{"currentUrl":"http://old","isVideoRendered":true}"#,
-                r#"{"type":"loadStreamsRequested","contentType":"series","id":"tt1:1:2","currentVideoId":"tt1:1:2","initialVideoId":"tt1:1:2","initialStreams":[{"playableUrl":"http://s"}],"initialStreamIndex":2}"#,
-            )
-            .expect("result"),
-        )
-        .expect("json");
 
-        assert_eq!(result["state"]["currentUrl"], Value::Null);
-        assert_eq!(result["state"]["isBuffering"], true);
-        assert_eq!(result["effects"][0]["type"], "loadStreams");
-        assert_eq!(result["effects"][0]["useInitialStreams"], true);
-    }
 
-    #[test]
-    fn loaded_streams_select_url_without_reordering_provider_results() {
-        let result: Value = serde_json::from_str(
-            &player_flow_dispatch_json(
-                "{}",
-                r#"{"type":"streamsLoaded","streams":[{"title":"A","playableUrl":"http://a"},{"title":"B","playableUrl":"http://b"}],"currentVideoId":"tt1","initialStreamIndex":1,"sourceSelectionMode":"manual"}"#,
-            )
-            .expect("result"),
-        )
-        .expect("json");
-
-        assert_eq!(result["state"]["currentStreamIndex"], 1);
-        assert_eq!(result["state"]["currentUrl"], "http://b");
-        assert_eq!(result["state"]["currentStreams"][0]["title"], "A");
-        assert_eq!(result["state"]["currentStreams"][1]["title"], "B");
-    }
-
-    #[test]
-    fn empty_streams_return_no_source_error_code() {
-        let result: Value = serde_json::from_str(
-            &player_flow_dispatch_json(
-                "{}",
-                r#"{"type":"streamsLoaded","streams":[],"initialStreamIndex":0}"#,
-            )
-            .expect("result"),
-        )
-        .expect("json");
-
-        assert_eq!(result["state"]["playerError"], "no_source");
-        assert_eq!(result["state"]["isBuffering"], false);
-    }
 }

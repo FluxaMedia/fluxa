@@ -42,63 +42,7 @@ fn home_metadata_feed_plan_shares_order_and_unknown_selection_fallback() {
     );
 }
 
-#[test]
-fn hero_episode_plan_skips_specials_and_advances_from_progress() {
-    let result: Value = serde_json::from_str(
-        &home_hero_episode_plan_json(
-            &json!({
-                "type": "series",
-                "lastVideoId": "show:1:1",
-                "videos": [
-                    {"id": "show:0:1", "season": 0, "number": 1, "name": "Special"},
-                    {"id": "show:1:1", "season": 1, "number": 1, "name": "Pilot"},
-                    {"id": "show:1:2", "season": 1, "number": 2, "name": "Next"}
-                ]
-            })
-            .to_string(),
-        )
-        .expect("hero episode plan")
-        .as_str(),
-    )
-    .expect("valid hero episode JSON");
-    assert_eq!(result["episode"]["season"], 1);
-    assert_eq!(result["episode"]["number"], 2);
-    assert_eq!(result["isContinue"], true);
-}
 
-#[test]
-fn billboard_policy_scores_match_the_shared_rules() {
-    let meta = json!({
-        "id": "tt1",
-        "type": "series",
-        "rank": 1,
-        "imdbRating": "8.5",
-        "reason": "EDITORIAL_SPOTLIGHT",
-        "poster": "https://image.example/poster.jpg",
-        "background": "https://image.example/background.jpg",
-        "logo": "https://image.example/logo.png",
-        "description": "Description",
-        "releaseInfo": "2025",
-    });
-    let args = json!({ "meta": meta, "daysSinceRelease": 10 });
-
-    assert_eq!(
-        billboard_candidate_score_json(&args.to_string()),
-        Some(2127)
-    );
-    assert_eq!(billboard_visual_score_json(&args.to_string()), Some(470));
-    assert_eq!(
-        billboard_editorial_match_score_json(
-            &json!({ "meta": args["meta"], "minYear": 2020 }).to_string()
-        ),
-        Some(738)
-    );
-    assert_eq!(
-        billboard_identity_key_json(&args.to_string()),
-        Some("series:tt1".to_string())
-    );
-    assert_eq!(billboard_normalized_title("Çığ Şöw"), "cig sow");
-}
 
 #[test]
 fn home_collection_shelves_filter_hidden_collections_and_resolve_catalog_sources() {

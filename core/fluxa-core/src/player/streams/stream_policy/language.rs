@@ -36,30 +36,6 @@ pub(crate) fn resolve_preferred_audio_language(
         preferred
     }
 }
-pub(crate) fn resolve_profile_audio_language(
-    genres: &[String],
-    anime_preferred: bool,
-    preference: Option<&str>,
-    original_language: Option<&str>,
-    device_language: Option<&str>,
-) -> Option<String> {
-    let is_anime = genres
-        .iter()
-        .any(|genre| genre.to_ascii_lowercase().contains("anime"));
-    if is_anime && anime_preferred {
-        return Some("ja".to_string());
-    }
-    match preference {
-        Some("original") => original_language
-            .filter(|value| !value.is_empty())
-            .map(str::to_string),
-        Some("device_language") => device_language
-            .filter(|value| !value.is_empty())
-            .map(str::to_string),
-        Some(value) => Some(value.to_string()),
-        None => None,
-    }
-}
 // The preference string changes once per settings edit, not per stream, so a
 // one-entry cache avoids recompiling the same word-boundary regex on every
 // track in a per-stream ranking loop.
@@ -106,20 +82,6 @@ pub(crate) fn subtitle_language_alias_matches(label: &str, normalized_preference
             .any(|alias| label.contains(alias)),
         _ => false,
     }
-}
-pub(crate) fn subtitle_language_matches(
-    label: &str,
-    language: Option<&str>,
-    preferred_language: &str,
-) -> bool {
-    let normalized_preference = normalize_language_preference(preferred_language);
-    let word_regex = word_boundary_regex_for(&normalized_preference);
-    subtitle_language_matches_precompiled(
-        label,
-        language,
-        &normalized_preference,
-        word_regex.as_ref(),
-    )
 }
 fn subtitle_language_matches_precompiled(
     label: &str,
@@ -185,20 +147,4 @@ pub(crate) fn find_preferred_subtitle_index_in_tracks(
         }
     }
     -1
-}
-pub(crate) fn find_preferred_subtitle_index(
-    tracks_json: &str,
-    last_subtitle_language: Option<&str>,
-    preferred_subtitle_language: Option<&str>,
-    secondary_subtitle_language: Option<&str>,
-) -> i32 {
-    let Ok(tracks) = serde_json::from_str::<Vec<SubtitleSelectionTrack>>(tracks_json) else {
-        return -1;
-    };
-    find_preferred_subtitle_index_in_tracks(
-        &tracks,
-        last_subtitle_language,
-        preferred_subtitle_language,
-        secondary_subtitle_language,
-    )
 }

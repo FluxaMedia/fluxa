@@ -1,5 +1,4 @@
 use serde_json::{Value, json};
-use std::collections::HashMap;
 
 pub(crate) const VIDEO_FILE_EXTENSIONS: [&str; 7] =
     [".mkv", ".mp4", ".avi", ".webm", ".m4v", ".mov", ".ts"];
@@ -197,27 +196,4 @@ pub fn stream_playback_info_json(stream_json: &str) -> Option<String> {
         "isLikelyPlayerCompatible": is_compatible
     }))
     .ok()
-}
-pub(crate) fn stream_request_headers_json(headers_json: &str) -> Option<String> {
-    let headers = serde_json::from_str::<HashMap<String, String>>(headers_json).ok()?;
-    let clean = headers
-        .into_iter()
-        .filter(|(key, value)| !key.trim().is_empty() && !value.trim().is_empty())
-        .collect::<HashMap<_, _>>();
-    serde_json::to_string(&clean).ok()
-}
-pub(crate) fn stream_request_referer(url: &str) -> Option<String> {
-    let after_scheme = url.split_once("://")?.1;
-    let host_end = after_scheme
-        .find(['/', '?', '#'])
-        .unwrap_or(after_scheme.len());
-    let authority = &after_scheme[..host_end];
-    if authority.is_empty() {
-        return None;
-    }
-    let scheme = url.split_once("://")?.0;
-    if scheme != "http" && scheme != "https" {
-        return None;
-    }
-    Some(format!("{scheme}://{authority}/"))
 }

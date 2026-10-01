@@ -15,13 +15,6 @@ pub(crate) fn tmdb_language(language: &str) -> String {
         lang => format!("{}-{}", lang, lang.to_uppercase()),
     }
 }
-pub(crate) fn tmdb_region_from_language(language: &str) -> String {
-    tmdb_language(language)
-        .split('-')
-        .nth(1)
-        .unwrap_or("US")
-        .to_string()
-}
 pub(crate) fn tmdb_image_url(path: Option<&str>, size: &str) -> Option<String> {
     let path = path?.trim();
     if path.is_empty() {
@@ -78,11 +71,4 @@ pub(crate) fn is_imdb_id(id: &str) -> bool {
     id.len() > 2
         && id[..2].eq_ignore_ascii_case("tt")
         && id[2..].bytes().all(|b| b.is_ascii_digit())
-}
-pub(crate) fn normalize_person_name(name: &str) -> String {
-    name.trim()
-        .to_lowercase()
-        .split_whitespace()
-        .collect::<Vec<_>>()
-        .join(" ")
 }

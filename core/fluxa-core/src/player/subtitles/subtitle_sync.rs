@@ -3,22 +3,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::OnceLock;
 
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct SubtitleSyncRequest {
-    #[serde(default)]
-    subtitle_text: String,
-    #[serde(default)]
-    subtitle_cues: Vec<Interval>,
-    #[serde(default)]
-    speech_intervals: Vec<Interval>,
-}
-
 #[derive(Clone, Copy, Debug, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Interval {
     pub(crate) start: f64,
-    pub(crate) end: f64,
+    pub(crate) end: f64
 }
 
 #[derive(Deserialize)]
@@ -27,47 +16,31 @@ struct SubtitleCueRequest {
     subtitle_text: String,
     current_time: f64,
     #[serde(default = "default_cue_window")]
-    window_seconds: f64,
+    window_seconds: f64
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SubtitleCueListRequest {
-    subtitle_text: String,
+    subtitle_text: String
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SubtitleSyncApplyRequest {
     captured_time: f64,
-    cue_start: f64,
+    cue_start: f64
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub(crate) struct SubtitleCue {
     pub(crate) start: f64,
     pub(crate) end: f64,
-    pub(crate) text: String,
+    pub(crate) text: String
 }
 
 fn default_cue_window() -> f64 {
     30.0
-}
-
-pub(crate) fn subtitle_cues_around_time_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<SubtitleCueRequest>(request_json).ok()?;
-    if !request.current_time.is_finite() {
-        return None;
-    }
-    let window = request.window_seconds.clamp(5.0, 120.0);
-    let cues = parse_subtitle_cues_with_text(&request.subtitle_text)
-        .into_iter()
-        .filter(|cue| {
-            cue.end >= request.current_time - window && cue.start <= request.current_time + window
-        })
-        .map(|cue| json!({ "start": cue.start, "end": cue.end, "text": cue.text }))
-        .collect::<Vec<_>>();
-    Some(json!({ "cues": cues }).to_string())
 }
 
 pub(crate) fn subtitle_cue_list_json(request_json: &str) -> Option<String> {
@@ -98,7 +71,7 @@ pub(crate) fn subtitle_sync_apply_json(request_json: &str) -> Option<String> {
         json!({
             "delaySeconds": delay,
             "capturedTime": request.captured_time,
-            "cueStart": request.cue_start,
+            "cueStart": request.cue_start
         })
         .to_string(),
     )
@@ -112,29 +85,11 @@ pub(crate) fn delay_for_cue(captured_time: f64, cue_start: f64) -> Option<f64> {
     Some((delay * 10.0).round() / 10.0)
 }
 
-pub(crate) fn estimate_subtitle_delay_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<SubtitleSyncRequest>(request_json).ok()?;
-    let subtitle_cues = if request.subtitle_text.trim().is_empty() {
-        request.subtitle_cues
-    } else {
-        parse_subtitle_cues(&request.subtitle_text)
-    };
-    let alignment = align(subtitle_cues, request.speech_intervals)?;
-    Some(
-        json!({
-            "delaySeconds": alignment.delay_seconds,
-            "scale": alignment.scale,
-            "confidence": alignment.confidence,
-        })
-        .to_string(),
-    )
-}
-
 pub(crate) struct Alignment {
     pub(crate) delay_seconds: f64,
     pub(crate) scale: f64,
     pub(crate) confidence: f64,
-    pub(crate) matched: usize,
+    pub(crate) matched: usize
 }
 
 pub(crate) fn speech_intervals_from_energy(frame_seconds: f64, energies: &[f64]) -> Vec<Interval> {
@@ -164,14 +119,14 @@ pub(crate) fn speech_intervals_from_energy(frame_seconds: f64, energies: &[f64])
         }
         match runs.last_mut() {
             Some(last) if index - last.1 <= max_gap => last.1 = index + 1,
-            _ => runs.push((index, index + 1)),
+            _ => runs.push((index, index + 1))
         }
     }
     runs.into_iter()
         .filter(|(start, end)| end - start >= min_frames)
         .map(|(start, end)| Interval {
             start: start as f64 * frame_seconds,
-            end: end as f64 * frame_seconds,
+            end: end as f64 * frame_seconds
         })
         .collect()
 }
@@ -192,7 +147,7 @@ pub(crate) fn retime(cues: &[SubtitleCue], alignment: &Alignment) -> Vec<Subtitl
         .map(|cue| SubtitleCue {
             start: cue.start * alignment.scale + alignment.delay_seconds,
             end: cue.end * alignment.scale + alignment.delay_seconds,
-            text: cue.text.clone(),
+            text: cue.text.clone()
         })
         .collect()
 }
@@ -208,7 +163,7 @@ fn align(subtitle_cues: Vec<Interval>, reference: Vec<Interval>) -> Option<Align
                 .iter()
                 .map(|cue| Interval {
                     start: cue.start * scale,
-                    end: cue.end * scale,
+                    end: cue.end * scale
                 })
                 .collect::<Vec<_>>();
             let (coarse, confidence) = estimate_delay(&scaled, &reference)?;
@@ -279,7 +234,7 @@ fn align_from(
         delay_seconds: (offset * 10.0).round() / 10.0,
         scale,
         confidence,
-        matched: pairs.len(),
+        matched: pairs.len()
     })
 }
 
@@ -346,7 +301,7 @@ fn parse_subtitle_cues(text: &str) -> Vec<Interval> {
         .into_iter()
         .map(|cue| Interval {
             start: cue.start,
-            end: cue.end,
+            end: cue.end
         })
         .collect()
 }
@@ -438,7 +393,7 @@ fn parse_timed_text_cues(text: &str) -> Vec<SubtitleCue> {
             (!cue_text.is_empty()).then_some(SubtitleCue {
                 start,
                 end,
-                text: cue_text,
+                text: cue_text
             })
         })
         .collect()
@@ -481,7 +436,7 @@ pub(crate) fn parse_subtitle_cues_with_text(text: &str) -> Vec<SubtitleCue> {
                         .replace("\\N", " ")
                         .replace("{\\", "{")
                         .trim()
-                        .to_string(),
+                        .to_string()
                 });
             }
             index += 1;
@@ -502,7 +457,7 @@ pub(crate) fn parse_subtitle_cues_with_text(text: &str) -> Vec<SubtitleCue> {
                 cues.push(SubtitleCue {
                     start,
                     end,
-                    text: decode_subtitle_text(&cue_text.join("\n")),
+                    text: decode_subtitle_text(&cue_text.join("\n"))
                 });
             }
             continue;
@@ -578,20 +533,11 @@ fn overlap_score(subtitles: &[Interval], speech: &[Interval], delay: f64) -> f64
 #[cfg(test)]
 mod tests {
     use super::{
-        estimate_subtitle_delay_json, parse_subtitle_cues_with_text, speech_intervals_from_energy,
-        subtitle_cue_list_json, subtitle_sync_apply_json, subtitle_sync_capture_json,
+        parse_subtitle_cues_with_text, speech_intervals_from_energy,
+        subtitle_cue_list_json, subtitle_sync_apply_json, subtitle_sync_capture_json
     };
     use serde_json::Value;
 
-    #[test]
-    fn estimates_delay_from_subtitle_and_speech_timelines() {
-        let result = estimate_subtitle_delay_json(r#"{
-          "subtitleText":"00:00:10,000 --> 00:00:10,800\na\n\n00:00:20,000 --> 00:00:20,800\nb\n\n00:00:30,000 --> 00:00:30,800\nc\n",
-          "speechIntervals":[{"start":12.0,"end":12.8},{"start":22.0,"end":22.8},{"start":32.0,"end":32.8}]
-        }"#).expect("sync estimate");
-        let value: Value = serde_json::from_str(&result).expect("valid result");
-        assert!((value["delaySeconds"].as_f64().expect("delay") - 2.0).abs() <= 0.1);
-    }
 
     #[test]
     fn energy_envelope_becomes_speech_intervals() {
@@ -616,15 +562,6 @@ mod tests {
         assert!(speech_intervals_from_energy(0.05, &[0.01; 500]).is_empty());
     }
 
-    #[test]
-    fn parses_ass_dialogue_cues() {
-        let result = estimate_subtitle_delay_json(r#"{
-          "subtitleText":"[Events]\nDialogue: 0,0:00:10.00,0:00:10.80,Default,,0,0,0,,a\nDialogue: 0,0:00:20.00,0:00:20.80,Default,,0,0,0,,b\nDialogue: 0,0:00:30.00,0:00:30.80,Default,,0,0,0,,c",
-          "speechIntervals":[{"start":12.0,"end":12.8},{"start":22.0,"end":22.8},{"start":32.0,"end":32.8}]
-        }"#).expect("sync estimate");
-        let value: Value = serde_json::from_str(&result).expect("valid result");
-        assert!((value["delaySeconds"].as_f64().expect("delay") - 2.0).abs() <= 0.1);
-    }
 
     #[test]
     fn shared_parser_handles_short_vtt_and_timed_text() {

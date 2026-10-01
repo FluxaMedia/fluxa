@@ -70,18 +70,6 @@ fn token_merge_plan_merges_trakt_tokens_into_profile() {
     assert_eq!(result["mergedProfile"]["traktTokenExpiresAt"], 999);
 }
 
-#[test]
-fn profile_sync_merge_plan_keeps_local_edits_and_applies_remote_changes() {
-    let result: Value = serde_json::from_str(
-        &profile_sync_merge_plan_json(
-            r#"{"base":{"id":"p1","language":"en","cardLayout":"vertical"},"updated":{"id":"p1","language":"tr","cardLayout":"vertical"},"current":{"id":"p1","language":"en","cardLayout":"horizontal"}}"#,
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["language"], "tr");
-    assert_eq!(result["cardLayout"], "horizontal");
-}
 
 #[test]
 fn settings_migration_flattens_nested_external_accounts() {
@@ -118,14 +106,6 @@ fn settings_migration_keeps_nested_library_collections_when_top_level_is_empty()
     );
 }
 
-#[test]
-fn default_seed_produces_guest_profile_with_default_addon() {
-    let result: Value = serde_json::from_str(&profile_default_seed_json("{}").unwrap()).unwrap();
-    assert_eq!(result["id"], "guest");
-    assert_eq!(result["isGuest"], true);
-    let addons = result["localAddons"].as_array().unwrap();
-    assert!(!addons.is_empty());
-}
 
 #[test]
 fn settings_migration_preserves_an_explicitly_empty_addon_list() {

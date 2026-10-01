@@ -30,10 +30,3 @@ pub(crate) fn publicmetadb_skips_create_plan(args_json: &str) -> Option<String> 
     )?;
     plan("POST", build_url("/skips", &[]), Some(body))
 }
-
-pub(crate) fn publicmetadb_skips_delete_plan(id: &str) -> Option<String> {
-    if id.is_empty() {
-        return None;
-    }
-    plan("DELETE", build_url(&format!("/skips/{id}"), &[]), None)
-}

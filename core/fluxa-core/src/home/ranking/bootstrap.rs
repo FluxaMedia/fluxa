@@ -100,11 +100,6 @@ fn hero_episode_plan_value(request: &Value) -> Option<Value> {
     }))
 }
 
-pub(crate) fn home_hero_episode_plan_json(request_json: &str) -> Option<String> {
-    let request: Value = serde_json::from_str(request_json).ok()?;
-    serde_json::to_string(&hero_episode_plan_value(&request)?).ok()
-}
-
 pub(crate) fn home_hero_plan_json(request_json: &str) -> Option<String> {
     let request: Value = serde_json::from_str(request_json).ok()?;
     serde_json::to_string(&home_hero_plan(&request)).ok()

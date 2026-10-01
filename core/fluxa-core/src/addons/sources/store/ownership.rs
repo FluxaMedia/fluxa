@@ -1,4 +1,4 @@
-use serde_json::{Value, json};
+use serde_json::Value;
 
 pub(crate) fn profile_local_addons_key_json(profile_json: &str) -> Option<String> {
     let profile: Value = serde_json::from_str(profile_json).ok()?;
@@ -37,34 +37,6 @@ pub(crate) fn effective_addons_owner_id_json(args_json: &str) -> Option<String> 
     let profiles_json = args.get("profiles")?.to_string();
     let active_profile_id = args.get("activeProfileId").and_then(Value::as_str)?;
     effective_shared_owner_id(&profiles_json, active_profile_id, "usesPrimaryAddons")
-}
-
-pub(crate) fn effective_plugins_owner_id_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let profiles_json = args.get("profiles")?.to_string();
-    let active_profile_id = args.get("activeProfileId").and_then(Value::as_str)?;
-    effective_shared_owner_id(&profiles_json, active_profile_id, "usesPrimaryPlugins")
-}
-
-pub(crate) fn plugin_storage_fallback_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let repository_urls = args
-        .get("scopedRepositoryUrls")
-        .filter(|v| !v.is_null())
-        .or_else(|| args.get("legacyRepositoryUrls"))
-        .cloned()
-        .unwrap_or_else(|| json!([]));
-    let scraper_overrides = args
-        .get("scopedScraperOverrides")
-        .filter(|v| !v.is_null())
-        .or_else(|| args.get("legacyScraperOverrides"))
-        .cloned()
-        .unwrap_or_else(|| json!({}));
-    serde_json::to_string(&json!({
-        "repositoryUrls": repository_urls,
-        "scraperOverrides": scraper_overrides,
-    }))
-    .ok()
 }
 
 fn string_field(value: &Value, key: &str) -> Option<String> {

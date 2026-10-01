@@ -38,26 +38,25 @@ pub mod fuzz_targets {
     pub use crate::addons::sources::protocol::parse_manifest;
     pub use crate::catalog::identity::{
         contains_compact_episode, contains_spaced_episode, parse_episode_locator,
-        percent_decode_component,
+        percent_decode_component
     };
     pub use crate::headless_engine::{
         create_headless_engine, destroy_headless_engine, headless_engine_complete_effect_json,
-        headless_engine_dispatch_json,
+        headless_engine_dispatch_json
     };
 }
 
 #[cfg(test)]
 mod tests {
     use crate::addons::sources::protocol::{
-        catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra,
+        catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra
     };
     use crate::catalog::identity::stream_request_ids;
-    use crate::home::ranking::optimize_home_rows_json;
     use crate::player::streams::stream_policy::{
-        stream_playback_info_json, stream_request_headers_json, stream_request_referer,
-        torrent_runtime_info_json, torrent_status_info_json,
+        stream_playback_info_json, 
+        torrent_runtime_info_json 
     };
-    use serde_json::{Value, json};
+    use serde_json::Value;
 
     #[test]
     fn stream_request_ids_keep_requested_tmdb_episode_before_canonical_fallback() {
@@ -269,45 +268,7 @@ mod tests {
         );
     }
 
-    #[test]
-    fn torrent_status_info_reports_progress_and_playability() {
-        let info = torrent_status_info_json(
-            r#"{
-                "stat":1,
-                "progress":4.0,
-                "loaded_size":262144,
-                "preload_size":524288
-            }"#,
-        )
-        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-        .expect("torrent status info");
 
-        assert_eq!(info.get("bufferProgress").and_then(Value::as_i64), Some(50));
-        assert_eq!(
-            info.get("isPlayableEnough").and_then(Value::as_bool),
-            Some(false)
-        );
-        assert_eq!(
-            info.get("statusKey").and_then(Value::as_str),
-            Some("player.torrent_status.preloading")
-        );
-    }
-
-    #[test]
-    fn stream_request_headers_keep_only_explicit_clean_headers() {
-        let headers = stream_request_headers_json(r#"{"X-Test":"ok","":"ignored","Blank":""}"#)
-            .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-            .expect("headers");
-
-        assert_eq!(headers.get("X-Test").and_then(Value::as_str), Some("ok"));
-        assert!(headers.get("").is_none());
-        assert!(headers.get("Blank").is_none());
-        assert_eq!(
-            stream_request_referer("https://vidmoly.me/video.mp4"),
-            Some("https://vidmoly.me/".to_string())
-        );
-        assert_eq!(stream_request_referer("magnet:?xt=urn:btih:abc"), None);
-    }
 
     #[test]
     fn catalog_extra_helpers_match_manifest_extra_shapes() {
@@ -323,48 +284,4 @@ mod tests {
         assert!(catalog_has_required_extra_except(modern, "[]"));
     }
 
-    #[test]
-    fn home_rows_keep_pinned_before_native_ranked_rows() {
-        let request = json!({
-            "categories": [
-                {"id":"popular","name":"Popular","semanticName":"Popular","type":"movie","items":[
-                    {"id":"p1","name":"P1","type":"movie","poster":null},
-                    {"id":"p2","name":"P2","type":"movie","poster":null},
-                    {"id":"p3","name":"P3","type":"movie","poster":null},
-                    {"id":"p4","name":"P4","type":"movie","poster":null},
-                    {"id":"p5","name":"P5","type":"movie","poster":null},
-                    {"id":"p6","name":"P6","type":"movie","poster":null}
-                ]},
-                {"id":"continue_watching","name":"Continue Watching","semanticName":"Continue Watching","type":"movie","items":[
-                    {"id":"cw1","name":"CW1","type":"movie","poster":null}
-                ]},
-                {"id":"trending","name":"Trending Now","semanticName":"Trending Now","type":"movie","items":[
-                    {"id":"t1","name":"T1","type":"movie","poster":null},
-                    {"id":"t2","name":"T2","type":"movie","poster":null},
-                    {"id":"t3","name":"T3","type":"movie","poster":null},
-                    {"id":"t4","name":"T4","type":"movie","poster":null},
-                    {"id":"t5","name":"T5","type":"movie","poster":null},
-                    {"id":"t6","name":"T6","type":"movie","poster":null}
-                ]}
-            ],
-            "preferredOrderLabels": ["Trending Now", "Popular"],
-            "preferredGenres": {},
-            "preferredTypes": {},
-            "priorityLabels": {
-                "trendingNow": "Trending Now",
-                "popularForYou": "Popular For You",
-                "mostWatched": "Most Watched"
-            }
-        });
-        let rows = optimize_home_rows_json(&request.to_string())
-            .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-            .expect("rows");
-        let rows = rows.as_array().expect("row array");
-
-        assert_eq!(
-            rows[0].get("id").and_then(Value::as_str),
-            Some("continue_watching")
-        );
-        assert_eq!(rows[1].get("id").and_then(Value::as_str), Some("trending"));
-    }
 }

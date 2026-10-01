@@ -105,16 +105,3 @@ pub(crate) fn token_merge_plan_json(request_json: &str) -> Option<String> {
     }))
     .ok()
 }
-
-pub(crate) fn profile_sync_merge_plan_json(request_json: &str) -> Option<String> {
-    let request: Value = serde_json::from_str(request_json).ok()?;
-    let base = request.get("base")?.as_object()?;
-    let updated = request.get("updated")?.as_object()?;
-    let mut current = request.get("current")?.as_object()?.clone();
-    for (key, value) in updated {
-        if base.get(key) != Some(value) {
-            current.insert(key.clone(), value.clone());
-        }
-    }
-    serde_json::to_string(&Value::Object(current)).ok()
-}

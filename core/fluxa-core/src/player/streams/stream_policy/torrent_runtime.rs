@@ -3,7 +3,7 @@ use super::meta::form_encode;
 use super::torrent_files::{
     TorrentFileStat, resolve_torrent_file_index, torrent_fallback_file_indexes,
 };
-use serde_json::{Value, json};
+use serde_json::json;
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -78,112 +78,6 @@ pub fn torrent_runtime_info_json(request_json: &str) -> Option<String> {
         "streamUrl": stream_url
     }))
     .ok()
-}
-pub(crate) fn torrent_buffer_progress(status: &Value) -> i32 {
-    let stat = status.get("stat").and_then(Value::as_i64).unwrap_or(0);
-    let preload = status.get("preload").and_then(Value::as_i64).unwrap_or(0);
-    let loaded_size = status
-        .get("loaded_size")
-        .or_else(|| status.get("loadedSize"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-    let preload_size = status
-        .get("preload_size")
-        .or_else(|| status.get("preloadSize"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-    let progress = status
-        .get("progress")
-        .and_then(Value::as_f64)
-        .unwrap_or(0.0);
-    let value = if stat >= 3 {
-        100
-    } else if preload > 0 {
-        preload as i32
-    } else if preload_size > 0 {
-        ((loaded_size as f64 / preload_size as f64) * 100.0) as i32
-    } else if loaded_size > 0 {
-        ((loaded_size as f64 / (512.0 * 1024.0)) * 100.0) as i32
-    } else {
-        progress as i32
-    };
-    value.clamp(0, 100)
-}
-pub(crate) fn torrent_is_playable_enough(status: &Value) -> bool {
-    let stat = status.get("stat").and_then(Value::as_i64).unwrap_or(0);
-    let preload = status.get("preload").and_then(Value::as_i64).unwrap_or(0);
-    let loaded_size = status
-        .get("loaded_size")
-        .or_else(|| status.get("loadedSize"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-    let preload_size = status
-        .get("preload_size")
-        .or_else(|| status.get("preloadSize"))
-        .and_then(Value::as_i64)
-        .unwrap_or(0);
-    let target = if preload_size > 0 {
-        preload_size.min(4 * 1024 * 1024)
-    } else {
-        512 * 1024
-    };
-    stat >= 3 || preload >= 100 || loaded_size >= target
-}
-pub(crate) fn torrent_status_key(status: &Value) -> &'static str {
-    match status.get("stat").and_then(Value::as_i64).unwrap_or(0) {
-        1 => "player.torrent_status.preloading",
-        2 => "player.torrent_status.downloading",
-        3 => "player.torrent_status.ready",
-        _ => "player.torrent_status.loading_metadata",
-    }
-}
-pub(crate) fn torrent_status_info_json(status_json: &str) -> Option<String> {
-    let status = serde_json::from_str::<Value>(status_json).ok()?;
-    serde_json::to_string(&json!({
-        "bufferProgress": torrent_buffer_progress(&status),
-        "isPlayableEnough": torrent_is_playable_enough(&status),
-        "statusKey": torrent_status_key(&status)
-    }))
-    .ok()
-}
-pub(crate) fn torrent_ready_budget_json() -> String {
-    serde_json::json!({
-        "firstAttemptMs": 15_000,
-        "retryBudgetMs": 45_000,
-        "hardLimitMs": 120_000,
-        "stallExtensionMs": 20_000,
-        "maxPeerRetriesWithAlternatives": 1,
-        "maxPeerRetriesSingleSource": 2,
-    })
-    .to_string()
-}
-
-pub(crate) fn torrent_retry_plan_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let alternatives = args
-        .get("hasAlternatives")
-        .and_then(Value::as_bool)
-        .unwrap_or(false);
-    let budget: Value = serde_json::from_str(&torrent_ready_budget_json()).ok()?;
-    let max_retries = budget
-        .get(if alternatives {
-            "maxPeerRetriesWithAlternatives"
-        } else {
-            "maxPeerRetriesSingleSource"
-        })
-        .and_then(Value::as_u64)?;
-    let retry_budget = budget.get("retryBudgetMs").and_then(Value::as_u64)?;
-    Some(
-        json!({
-            "maxPeerRetries": max_retries,
-            "firstAttemptMs": budget.get("firstAttemptMs")?,
-            "retryBudgetMs": retry_budget,
-            "hardLimitMs": budget.get("hardLimitMs")?,
-            "stallExtensionMs": budget.get("stallExtensionMs")?,
-            "perRetryMs": if max_retries > 0 { retry_budget / max_retries } else { 0 },
-        })
-        .to_string(),
-    )
 }
 
 #[cfg(test)]

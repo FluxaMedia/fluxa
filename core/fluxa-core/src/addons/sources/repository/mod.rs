@@ -5,23 +5,6 @@ use serde_json::{Map, Value, json};
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct MetaDetailPlanRequest {
-    use_configured_addons: bool,
-    auth_key: String,
-    #[serde(default)]
-    local_addons: Vec<String>,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ManifestFetchDecisionRequest {
-    force_refresh: bool,
-    memory_hit: bool,
-    persistent_hit: bool,
-}
-
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct AddonResourceRequestPlan {
     transport_url: String,
     resource: String,
@@ -31,56 +14,6 @@ struct AddonResourceRequestPlan {
     extra_args: Map<String, Value>,
     #[serde(default)]
     extra_raw: String,
-}
-
-pub(crate) fn repository_meta_detail_plan_json(request_json: &str) -> Option<String> {
-    let request: MetaDetailPlanRequest = serde_json::from_str(request_json).ok()?;
-    let has_configured_source = !request.auth_key.trim().is_empty()
-        || request
-            .local_addons
-            .iter()
-            .any(|addon| !addon.trim().is_empty());
-    serde_json::to_string(&json!({
-        "preferAddonMetaDetail": request.use_configured_addons && has_configured_source,
-        "fallbackToStremioMetaDetail": true
-    }))
-    .ok()
-}
-
-pub(crate) fn repository_season_videos_json(meta_detail_json: &str, season_number: i32) -> String {
-    let videos = serde_json::from_str::<Value>(meta_detail_json)
-        .ok()
-        .and_then(|value| value.get("videos").cloned())
-        .and_then(|value| value.as_array().cloned())
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|video| {
-            video
-                .get("season")
-                .and_then(Value::as_i64)
-                .map(|season| season == season_number as i64)
-                .unwrap_or(false)
-        })
-        .collect::<Vec<_>>();
-    Value::Array(videos).to_string()
-}
-
-pub(crate) fn manifest_fetch_decision_json(request_json: &str) -> Option<String> {
-    let request: ManifestFetchDecisionRequest = serde_json::from_str(request_json).ok()?;
-    let phase = if request.force_refresh {
-        "fetch"
-    } else if request.memory_hit {
-        "memory"
-    } else if request.persistent_hit {
-        "persistent"
-    } else {
-        "fetch"
-    };
-    serde_json::to_string(&json!({
-        "phase": phase,
-        "allowStaleFallback": true
-    }))
-    .ok()
 }
 
 pub(crate) fn addon_resource_request_plan_json(request_json: &str) -> Option<String> {

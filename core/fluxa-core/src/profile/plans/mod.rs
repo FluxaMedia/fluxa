@@ -1,4 +1,4 @@
-use crate::runtime::constants::{DEFAULT_LANGUAGE, GUEST_PROFILE_ID};
+use crate::runtime::constants::GUEST_PROFILE_ID;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -8,8 +8,6 @@ mod tokens;
 
 pub(crate) use settings_migration::*;
 pub(crate) use tokens::*;
-
-const DEFAULT_ADDON_URL: &str = "https://v3-cinemeta.strem.io/manifest.json";
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -53,33 +51,11 @@ impl From<&str> for AuthProvider {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct DefaultProfileRequest {
-    #[serde(default)]
-    id: Option<String>,
-    #[serde(default)]
-    email: Option<String>,
-    #[serde(default)]
-    auth_key: Option<String>,
-    #[serde(default)]
-    language: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
 struct SettingsMigrationRequest {
     #[serde(default)]
     raw: Value,
     #[serde(default)]
     schema_version: Option<i32>,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct AvatarDefaultRequest {
-    #[serde(default)]
-    profile: Value,
-    #[serde(default)]
-    catalog: Vec<Value>,
 }
 
 pub(crate) fn active_profile_plan_json(request_json: &str) -> Option<String> {
@@ -124,57 +100,6 @@ pub(crate) fn primary_profile_id_json(profiles_json: &str) -> Option<String> {
         .get("id")
         .and_then(Value::as_str)
         .map(str::to_string)
-}
-
-pub(crate) fn profile_default_seed_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<DefaultProfileRequest>(request_json).ok()?;
-    let id = request
-        .id
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| GUEST_PROFILE_ID.to_string());
-    let email = request.email.unwrap_or_default();
-    let auth_key = request.auth_key.unwrap_or_default();
-    let language = request
-        .language
-        .filter(|s| !s.trim().is_empty())
-        .unwrap_or_else(|| DEFAULT_LANGUAGE.to_string());
-    let is_guest = id == GUEST_PROFILE_ID || auth_key.is_empty();
-    serde_json::to_string(&json!({
-        "id": id,
-        "email": email,
-        "authKey": auth_key,
-        "isGuest": is_guest,
-        "language": language,
-        "localAddons": [DEFAULT_ADDON_URL],
-        "disabledLocalAddons": []
-    }))
-    .ok()
-}
-
-pub(crate) fn profile_avatar_default_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<AvatarDefaultRequest>(request_json).ok()?;
-    let existing = request
-        .profile
-        .get("avatarUrl")
-        .and_then(Value::as_str)
-        .filter(|s| !s.trim().is_empty());
-    if let Some(url) = existing {
-        return serde_json::to_string(&json!({
-            "avatarUrl": url,
-            "fromCatalog": false
-        }))
-        .ok();
-    }
-    let first_catalog = request
-        .catalog
-        .first()
-        .and_then(|e| e.get("url").and_then(Value::as_str))
-        .map(ToString::to_string);
-    serde_json::to_string(&json!({
-        "avatarUrl": first_catalog,
-        "fromCatalog": first_catalog.is_some()
-    }))
-    .ok()
 }
 
 #[expect(
@@ -227,23 +152,6 @@ pub(crate) fn profile_pin_matches(profile_json: &str, pin: &str) -> bool {
         .get("pinHash")
         .and_then(Value::as_str)
         .is_none_or(|hash| hash == profile_pin_hash(pin))
-}
-
-pub(crate) fn profile_connection_state_json(profile_json: &str, now_epoch_seconds: i64) -> String {
-    let profile: Value = serde_json::from_str(profile_json).unwrap_or(Value::Null);
-    let trakt = profile
-        .get("traktAccessToken")
-        .and_then(Value::as_str)
-        .is_some_and(|token| !token.is_empty())
-        && profile
-            .get("traktTokenExpiresAt")
-            .and_then(Value::as_i64)
-            .is_none_or(|expires| expires >= now_epoch_seconds);
-    let simkl = profile
-        .get("simklAccessToken")
-        .and_then(Value::as_str)
-        .is_some_and(|token| !token.is_empty());
-    json!({"trakt": trakt, "simkl": simkl}).to_string()
 }
 
 pub(crate) fn account_source_json(request_json: &str) -> Option<String> {

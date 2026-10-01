@@ -82,62 +82,8 @@ pub(crate) fn normalize_content_type(value: &str) -> Option<&'static str> {
     }
 }
 
-pub(crate) fn is_series_content_type(value: &str) -> bool {
-    matches!(normalize_content_type(value), Some("series" | "anime"))
-}
-
-pub(crate) fn normalize_catalog_type(value: &str) -> String {
-    let trimmed = value.trim();
-    normalize_content_type(trimmed)
-        .map(str::to_string)
-        .unwrap_or_else(|| trimmed.to_lowercase())
-}
-
-pub(crate) fn content_matches_filter(content_type: &str, filter: &str) -> bool {
-    match filter {
-        "movie" => content_type == "movie",
-        "series" => matches!(content_type, "series" | "tv" | "anime"),
-        _ => true,
-    }
-}
-
 pub(crate) fn collapse_whitespace(value: &str) -> String {
     value.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-pub(crate) fn normalize_provider_search_text(value: &str) -> String {
-    collapse_whitespace(
-        &value
-            .to_lowercase()
-            .replace(['+', '-', '_'], " ")
-            .chars()
-            .map(|ch| {
-                if ch.is_ascii_alphanumeric() || ch == ' ' {
-                    ch
-                } else {
-                    ' '
-                }
-            })
-            .collect::<String>(),
-    )
-}
-
-pub(crate) fn provider_search_terms(provider: &str) -> Vec<String> {
-    match provider.trim().to_lowercase().as_str() {
-        "8" => vec!["netflix".to_string()],
-        "9" => vec!["prime".to_string(), "amazon".to_string()],
-        "337" => vec!["disney".to_string()],
-        "49" => vec!["hbo".to_string(), "max".to_string()],
-        "350" => vec!["apple".to_string()],
-        _ => {
-            let normalized = normalize_provider_search_text(provider);
-            if normalized.is_empty() {
-                Vec::new()
-            } else {
-                vec![normalized]
-            }
-        }
-    }
 }
 
 pub(crate) fn parse_string_list(json: &str) -> Vec<String> {

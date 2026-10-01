@@ -7,71 +7,15 @@ pub(crate) fn route_resource_plan(method: &str, args_json: &str) -> Outcome {
         "addonResourceRequestPlan" => opt_json(
             crate::addons::sources::repository::addon_resource_request_plan_json(args_json),
         ),
-        "repositoryMetaDetailPlan" => opt_json(
-            crate::addons::sources::repository::repository_meta_detail_plan_json(args_json),
-        ),
-        "manifestFetchDecision" => {
-            opt_json(crate::addons::sources::repository::manifest_fetch_decision_json(args_json))
-        }
-        "repositorySeasonVideos" => {
-            let args = object(args_json)?;
-            let season_number = field(&args, "seasonNumber")?
-                .as_i64()
-                .ok_or_else(|| fail(ErrorKind::InvalidArgs, "seasonNumber must be a number"))?
-                as i32;
-            into_json(
-                crate::addons::sources::repository::repository_season_videos_json(
-                    field_str(&args, "metaDetailJson")?,
-                    season_number,
-                ),
-            )
-        }
-        "addonStreamsWithProvider" => {
-            let args = object(args_json)?;
-            into_json(
-                crate::addons::sources::repository::addon_streams_with_provider_json(
-                    field_str(&args, "streamsJson")?,
-                    field_str(&args, "addonName")?,
-                ),
-            )
-        }
         "resourceFetchPlan" => opt_json(
             crate::addons::streams::platform::resource_fetch_plan_json(args_json),
         ),
         "resourceFetchExecutionPolicy" => opt_json(
             crate::addons::streams::platform::resource_fetch_execution_policy_json(args_json),
         ),
-        "resourceParsePlan" => opt_json(
-            crate::addons::streams::platform::resource_parse_plan_json(args_json),
-        ),
-
         // Platform plan — args_json IS the request object
         "playbackPreparePlan" => {
             opt_json(crate::addons::streams::platform::playback_prepare_plan_json(args_json))
-        }
-        "libraryLocalStatePlan" => {
-            opt_json(crate::addons::streams::platform::library_local_state_plan_json(args_json))
-        }
-        "preferencesSchema" => {
-            into_json(crate::addons::streams::platform::preferences_schema_json())
-        }
-        "applyPreferenceUpdate" => {
-            opt_json(crate::addons::streams::platform::apply_preference_update_json(args_json))
-        }
-        "integrationSettingsPlan" => {
-            opt_json(crate::services::auth::integrations::integration_settings_plan_json(args_json))
-        }
-        "addonCollectionMutationPlan" => opt_json(
-            crate::addons::streams::platform::addon_collection_mutation_plan_json(args_json),
-        ),
-        "detailEpisodePlan" => opt_json(
-            crate::addons::streams::platform::detail_episode_plan_json(args_json),
-        ),
-        "seasonWatchedPlan" => opt_json(
-            crate::addons::streams::platform::season_watched_plan_json(args_json),
-        ),
-        "markSeasonsActionPlan" => {
-            opt_json(crate::addons::streams::platform::mark_seasons_action_plan_json(args_json))
         }
         "resourceKindToResource" => {
             let args = object(args_json)?;

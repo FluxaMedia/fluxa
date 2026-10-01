@@ -1,15 +1,7 @@
 use crate::ffi::*;
 
-pub(crate) fn route_player_flow(method: &str, args_json: &str) -> Outcome {
+pub(crate) fn route_player_flow(method: &str, _args_json: &str) -> Outcome {
     match method {
-        "playerFlowDispatch" => {
-            let args = object(args_json)?;
-            opt_json(crate::player::playback::flow::player_flow_dispatch_json(
-                field_str(&args, "state")?,
-                field_str(&args, "action")?,
-            ))
-        }
-
         _ => Err(unknown_method()),
     }
 }

@@ -1,7 +1,7 @@
 use super::{
-    build_resource_url, catalog_search_eligible, merge_live_manifest_json,
+    build_resource_url, 
     normalize_addon_descriptor_json, parse_manifest, resolve_manifest_assets_json,
-    supports_resource,
+    supports_resource
 };
 use serde_json::{Value, json};
 
@@ -50,19 +50,6 @@ fn resolve_manifest_assets_normalizes_transport_and_relative_assets() {
     );
 }
 
-#[test]
-fn catalog_search_policy_requires_supported_type_and_search_extra() {
-    assert!(catalog_search_eligible(
-        r#"{"type":"movie","extraSupported":["search"]}"#
-    ));
-    assert!(!catalog_search_eligible(
-        r#"{"type":"anime","extraSupported":["search"]}"#
-    ));
-    assert!(!catalog_search_eligible(r#"{"type":"movie"}"#));
-    assert!(!catalog_search_eligible(
-        r#"{"type":"movie","extraSupported":["search"],"extra":[{"name":"genre","isRequired":true}]}"#
-    ));
-}
 
 #[test]
 fn manifest_fetch_plan_owns_cache_key_and_candidates() {
@@ -87,70 +74,6 @@ fn manifest_fetch_plan_owns_cache_key_and_candidates() {
     );
 }
 
-#[test]
-fn merge_live_manifest_keeps_current_fields_when_live_is_empty() {
-    let current = r#"{
-        "transportUrl":"https://addon.example/manifest.json",
-        "manifest":{
-            "id":"old",
-            "name":"Old",
-            "description":"Current",
-            "version":"1.0",
-            "resources":["stream"],
-            "types":["movie"],
-            "catalogs":[{"type":"movie","id":"old"}],
-            "logo":"logo.png",
-            "background":"bg.jpg",
-            "configurable":false
-        }
-    }"#;
-    let live = r#"{
-        "transportUrl":"https://addon.example/manifest.json",
-        "manifest":{
-            "id":"new",
-            "name":"Unknown",
-            "description":"",
-            "version":"2.0",
-            "resources":[],
-            "types":[],
-            "catalogs":[],
-            "logo":null,
-            "background":"live-bg.jpg",
-            "configurable":true
-        }
-    }"#;
-    let merged = merge_live_manifest_json(current, Some(live), "Unknown")
-        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-        .expect("merged descriptor");
-    let manifest = merged.get("manifest").expect("manifest");
-
-    assert_eq!(manifest.get("id").and_then(Value::as_str), Some("new"));
-    assert_eq!(manifest.get("name").and_then(Value::as_str), Some("Old"));
-    assert_eq!(
-        manifest.get("description").and_then(Value::as_str),
-        Some("Current")
-    );
-    assert_eq!(manifest.get("version").and_then(Value::as_str), Some("2.0"));
-    assert_eq!(
-        manifest
-            .get("resources")
-            .and_then(Value::as_array)
-            .map(Vec::len),
-        Some(1)
-    );
-    assert_eq!(
-        manifest.get("logo").and_then(Value::as_str),
-        Some("https://addon.example/logo.png")
-    );
-    assert_eq!(
-        manifest.get("background").and_then(Value::as_str),
-        Some("live-bg.jpg")
-    );
-    assert_eq!(
-        manifest.get("configurable").and_then(Value::as_bool),
-        Some(true)
-    );
-}
 
 #[test]
 fn parse_manifest_preserves_stremio_manifest_fields() {
@@ -219,42 +142,6 @@ fn parse_manifest_preserves_stremio_manifest_fields() {
     );
 }
 
-#[test]
-fn merge_live_manifest_preserves_new_live_manifest_fields() {
-    let current = r#"{
-        "transportUrl":"https://addon.example/manifest.json",
-        "manifest":{"id":"old","name":"Old","description":"Current","resources":["stream"],"types":["movie"],"catalogs":[]}
-    }"#;
-    let live = r#"{
-        "manifest":{
-            "id":"old",
-            "name":"Live",
-            "description":"Live description",
-            "resources":["stream"],
-            "types":["movie"],
-            "catalogs":[],
-            "addonCatalogs":[{"type":"addon","id":"community","name":"Community"}],
-            "config":[{"key":"token","type":"password"}],
-            "contactEmail":"ops@example.com",
-            "behaviorHints":{"configurable":true,"configurationRequired":true}
-        }
-    }"#;
-    let merged = merge_live_manifest_json(current, Some(live), "Unknown")
-        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-        .expect("merged manifest");
-    let manifest = merged.get("manifest").expect("manifest");
-
-    assert_eq!(
-        manifest["addonCatalogs"][0]["id"].as_str(),
-        Some("community")
-    );
-    assert_eq!(manifest["config"][0]["key"].as_str(), Some("token"));
-    assert_eq!(manifest["contactEmail"].as_str(), Some("ops@example.com"));
-    assert_eq!(
-        manifest["behaviorHints"]["configurationRequired"].as_bool(),
-        Some(true)
-    );
-}
 
 #[test]
 fn build_resource_url_appends_extra_path_segment_and_omits_blank_values() {
@@ -296,7 +183,7 @@ fn supports_resource_gates_on_content_type_but_catalog_bypasses_id_prefix() {
     let manifest = json!({
         "resources": ["stream"],
         "types": ["movie"],
-        "idPrefixes": ["tt"],
+        "idPrefixes": ["tt"]
     });
     assert!(supports_resource(
         &manifest.to_string(),
@@ -313,7 +200,7 @@ fn supports_resource_gates_on_content_type_but_catalog_bypasses_id_prefix() {
     ));
 
     let catalog_manifest = json!({
-        "resources": [{ "name": "catalog", "types": ["movie"], "idPrefixes": ["tt"] }],
+        "resources": [{ "name": "catalog", "types": ["movie"], "idPrefixes": ["tt"] }]
     });
     // catalog resources never gate on id prefix, even though one is declared.
     assert!(supports_resource(

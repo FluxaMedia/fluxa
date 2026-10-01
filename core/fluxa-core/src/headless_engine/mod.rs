@@ -30,7 +30,6 @@ use contracts::{AppAction, DispatchResult};
 use serde::Serialize;
 use state::EngineState;
 use std::collections::{HashMap, HashSet};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use web_time::Instant;
@@ -208,32 +207,7 @@ impl HeadlessEngine {
     }
 }
 
-static ENGINE_COUNTER: AtomicU64 = AtomicU64::new(1);
 static ENGINES: OnceLock<Mutex<HashMap<u64, Arc<Mutex<HeadlessEngine>>>>> = OnceLock::new();
-
-pub fn create_headless_engine(initial_json: &str) -> u64 {
-    let state = match serde_json::from_str::<EngineState>(initial_json) {
-        Ok(state) => state,
-        Err(error) => {
-            crate::runtime::log_sink::record("create_headless_engine", &error.to_string());
-            return 0;
-        }
-    };
-    let handle = ENGINE_COUNTER.fetch_add(1, Ordering::Relaxed);
-    lock_engines().insert(handle, Arc::new(Mutex::new(HeadlessEngine::new(state))));
-    handle
-}
-
-pub fn destroy_headless_engine(handle: u64) -> bool {
-    lock_engines().remove(&handle).is_some()
-}
-
-pub fn headless_engine_snapshot_json(handle: u64) -> Option<String> {
-    let state = with_engine(handle, "headless_engine_snapshot_json", |engine| {
-        engine.state.clone()
-    })?;
-    serde_json::to_string(&state).ok()
-}
 
 pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<String> {
     const CONTEXT: &str = "headless_engine_dispatch_json";

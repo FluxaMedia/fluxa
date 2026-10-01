@@ -235,17 +235,6 @@ pub(crate) fn catalog_supports_extra(catalog_json: &str, extra_name: &str) -> bo
             })
 }
 
-pub(crate) fn catalog_search_eligible(catalog_json: &str) -> bool {
-    let Ok(catalog) = serde_json::from_str::<Value>(catalog_json) else {
-        return false;
-    };
-    matches!(
-        catalog.get("type").and_then(Value::as_str),
-        Some("movie" | "series")
-    ) && catalog_supports_extra(catalog_json, "search")
-        && !catalog_has_required_extra_except(catalog_json, r#"["search"]"#)
-}
-
 pub(crate) fn catalog_requires_extra(catalog_json: &str, extra_name: &str) -> bool {
     let Ok(catalog) = serde_json::from_str::<Value>(catalog_json) else {
         return false;

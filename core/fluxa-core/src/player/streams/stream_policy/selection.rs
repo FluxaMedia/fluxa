@@ -1,87 +1,7 @@
-use super::language::{
-    SubtitleSelectionTrack, find_preferred_subtitle_index_in_tracks,
-    resolve_preferred_audio_language, resolve_profile_audio_language,
-};
 use super::meta::SourceSelectionMode;
 use crate::catalog::identity::stream_matches_episode;
-use serde_json::{Value, json};
+use serde_json::Value;
 
-#[derive(serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PlayerTrackStateRequest {
-    #[serde(default)]
-    available_subtitles: Vec<SubtitleSelectionTrack>,
-    last_audio_language: Option<String>,
-    preferred_audio_language: Option<String>,
-    original_language: Option<String>,
-    #[serde(default)]
-    content_genres: Vec<String>,
-    profile_audio_language: Option<String>,
-    #[serde(default)]
-    anime_prefer_japanese_audio: bool,
-    device_language: Option<String>,
-    last_subtitle_language: Option<String>,
-    preferred_subtitle_language: Option<String>,
-    secondary_subtitle_language: Option<String>,
-}
-pub(crate) fn player_track_state_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<PlayerTrackStateRequest>(request_json).ok()?;
-    let profile_audio_language = resolve_profile_audio_language(
-        &request.content_genres,
-        request.anime_prefer_japanese_audio,
-        request
-            .profile_audio_language
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-        request.original_language.as_deref(),
-        request.device_language.as_deref(),
-    );
-    let preferred_audio_language = resolve_preferred_audio_language(
-        request
-            .last_audio_language
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-        request
-            .preferred_audio_language
-            .as_deref()
-            .filter(|value| !value.is_empty())
-            .or(profile_audio_language.as_deref()),
-        request
-            .original_language
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-    );
-    let preferred_subtitle_index = find_preferred_subtitle_index_in_tracks(
-        &request.available_subtitles,
-        request
-            .last_subtitle_language
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-        request
-            .preferred_subtitle_language
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-        request
-            .secondary_subtitle_language
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-    );
-    let preferred_subtitle_id = if preferred_subtitle_index >= 0 {
-        request
-            .available_subtitles
-            .get(preferred_subtitle_index as usize)
-            .and_then(|track| track.id.clone())
-    } else {
-        None
-    };
-    serde_json::to_string(&json!({
-        "preferredAudioLanguage": preferred_audio_language,
-        "preferredSubtitleIndex": preferred_subtitle_index,
-        "preferredSubtitleId": preferred_subtitle_id,
-        "subtitlesDisabled": preferred_subtitle_index < 0
-    }))
-    .ok()
-}
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct StreamSelectionItem {
@@ -92,7 +12,7 @@ pub(crate) struct StreamSelectionItem {
     playable_url: Option<String>,
     binge_group: Option<String>,
     filename: Option<String>,
-    effective_filename: Option<String>,
+    effective_filename: Option<String>
 }
 impl StreamSelectionItem {
     pub(crate) fn matches_episode(&self, video_id: &str) -> bool {
@@ -157,7 +77,7 @@ fn stream_selection_item_from_value(v: &Value) -> StreamSelectionItem {
         effective_filename: v
             .get("effectiveFilename")
             .and_then(Value::as_str)
-            .map(str::to_string),
+            .map(str::to_string)
     }
 }
 pub(crate) fn index_of_first_playable<F>(
@@ -282,31 +202,6 @@ fn select_stream_index_inner(
         initial_stream_index,
         saved_url,
         saved_title,
-    )
-}
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn select_stream_index(
-    streams_json: &str,
-    current_video_id: &str,
-    initial_stream_index: i32,
-    saved_url: Option<&str>,
-    saved_title: Option<&str>,
-    source_selection_mode: SourceSelectionMode,
-    regex_pattern: Option<&str>,
-    preferred_binge_group: Option<&str>,
-) -> i32 {
-    let Ok(streams) = serde_json::from_str::<Vec<StreamSelectionItem>>(streams_json) else {
-        return -1;
-    };
-    select_stream_index_inner(
-        &streams,
-        current_video_id,
-        initial_stream_index,
-        saved_url,
-        saved_title,
-        source_selection_mode,
-        regex_pattern,
-        preferred_binge_group,
     )
 }
 #[allow(clippy::too_many_arguments)]

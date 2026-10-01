@@ -368,15 +368,6 @@ pub(crate) fn match_anime_skip_episode_id(
         .map(|s| s.to_string())
 }
 
-pub(crate) fn unique_intro_segments_json(
-    segments_a_json: &str,
-    segments_b_json: &str,
-) -> Option<String> {
-    let a: Vec<Value> = serde_json::from_str(segments_a_json).unwrap_or_default();
-    let b: Vec<Value> = serde_json::from_str(segments_b_json).unwrap_or_default();
-    dedup_and_sort(a.into_iter().chain(b).collect())
-}
-
 pub(crate) fn merge_intro_segments_json(sources_json: &str) -> Option<String> {
     let sources: Vec<Value> = serde_json::from_str(sources_json).ok()?;
     let all: Vec<Value> = sources

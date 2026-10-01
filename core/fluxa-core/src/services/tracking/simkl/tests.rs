@@ -1,31 +1,6 @@
 use super::*;
-use crate::library::continue_watching::replace_external_continue_watching_json;
 use serde_json::{Value, json};
 
-#[test]
-fn simkl_watching_items_are_kept_for_continue_watching() {
-    let items = simkl_watching_to_items_json(
-            r#"{"shows":[{"show":{"title":"Example","ids":{"imdb":"tt42"}},"last_watched":"S01E02","next_to_watch":"S01E03","last_watched_at":"2026-07-21T00:00:00.000Z","seasons":[{"number":1,"episodes":[{"number":2}]}]}]}"#,
-            "[]",
-        )
-        .expect("items");
-    let replaced: Value = serde_json::from_str(&replace_external_continue_watching_json(
-        "[]",
-        Some("simkl"),
-        &items,
-        None,
-        None,
-        None,
-    ))
-    .unwrap();
-    assert_eq!(replaced[0]["id"], "tt42");
-    assert_eq!(replaced[0]["lastVideoId"], "tt42:1:3");
-    assert_eq!(replaced[0]["lastEpisodeSeason"], 1);
-    assert_eq!(replaced[0]["lastEpisodeNumber"], 3);
-    assert_eq!(replaced[0]["continueWatchingBadge"], "upNext");
-    assert!(replaced[0].get("timeOffset").is_none());
-    assert!(replaced[0].get("duration").is_none());
-}
 
 #[test]
 fn simkl_library_items_share_watchlist_metadata_mapping() {
@@ -54,46 +29,7 @@ fn simkl_library_items_preserve_string_and_fallback_ids() {
     assert_eq!(items[1]["id"], "tmdb:7");
 }
 
-#[test]
-fn simkl_request_policy_builds_series_history_and_watchlist_removal() {
-    let history = simkl_history_request_json(
-        &json!({
-            "imdbId": "tt1",
-            "isSeries": true,
-            "episodesBySeasonNumber": { "2": [3, 4] },
-        })
-        .to_string(),
-    )
-    .and_then(|value| serde_json::from_str::<Value>(&value).ok())
-    .unwrap();
-    assert_eq!(history["shows"][0]["seasons"][0]["number"], 2);
-    assert_eq!(
-        history["shows"][0]["seasons"][0]["episodes"]
-            .as_array()
-            .map(Vec::len),
-        Some(2)
-    );
 
-    let removal = simkl_watchlist_request_json(
-        &json!({ "imdbId": "tt1", "isSeries": false }).to_string(),
-        true,
-    )
-    .and_then(|value| serde_json::from_str::<Value>(&value).ok())
-    .unwrap();
-    assert!(removal["movies"][0].get("to").is_none());
-}
-
-#[test]
-fn simkl_playback_deletion_matches_shared_content_identity() {
-    let ids: Value = serde_json::from_str(&simkl_playback_delete_ids_json(&json!({
-            "contentId": "tt4574334",
-            "items": [
-                {"id": 12345, "show": {"ids": {"simkl": 39687, "imdb": "tt4574334", "tvdb": 305288}}},
-                {"id": 99, "movie": {"ids": {"simkl": 1, "imdb": "tt9999999"}}},
-            ],
-        }).to_string()).unwrap()).unwrap();
-    assert_eq!(ids, json!([12345]));
-}
 
 #[test]
 fn simkl_anime_seasons_get_distinct_anime_ids() {
@@ -225,7 +161,7 @@ fn simkl_writes_prefer_the_items_full_id_set() {
                 "id": "tt1",
                 "contentType": "series",
                 "command": "add",
-                "providerIds": {"simkl": 5, "imdb": "tt1", "slug": "x", "mal": 9, "empty": ""},
+                "providerIds": {"simkl": 5, "imdb": "tt1", "slug": "x", "mal": 9, "empty": ""}
             })
             .to_string(),
         )
@@ -254,7 +190,7 @@ fn rewatch_marks_the_item_and_pins_the_session() {
                 "videoIds": ["tt1"],
                 "meta": {"type": "movie"},
                 "rewatch": true,
-                "rewatchId": 77,
+                "rewatchId": 77
             })
             .to_string(),
         )

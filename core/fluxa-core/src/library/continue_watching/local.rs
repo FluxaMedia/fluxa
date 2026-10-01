@@ -3,8 +3,6 @@ use serde_json::{Value, json};
 pub(crate) const UP_NEXT_POSITION_SECONDS: i64 = 0;
 pub(crate) const UP_NEXT_DURATION_SECONDS: i64 = 0;
 
-const UNSTARTED_PLACEHOLDER_DURATION_SECONDS: f64 = 86_400.0;
-
 pub(crate) fn normalized_continue_watching_source(value: Option<&str>) -> &'static str {
     match value.map(str::trim).map(str::to_ascii_lowercase).as_deref() {
         Some("stremio") => "stremio",
@@ -36,21 +34,6 @@ pub(crate) fn continue_watching_source_plan_json(args_json: &str) -> Option<Stri
         "requiresMetadataEnrichment": uses_local,
     }))
     .ok()
-}
-
-pub(crate) fn is_up_next_item(item: &Value) -> bool {
-    let offset = item
-        .get("timeOffset")
-        .and_then(Value::as_f64)
-        .unwrap_or(0.0);
-    let duration = item.get("duration").and_then(Value::as_f64).unwrap_or(0.0);
-    if offset <= 1.0 && duration > UNSTARTED_PLACEHOLDER_DURATION_SECONDS {
-        return true;
-    }
-    if duration <= 0.0 {
-        return offset <= 1.0;
-    }
-    offset / duration >= 0.995
 }
 
 pub(crate) fn build_continue_watching_from_progress_json(progress_json: &str) -> Option<String> {

@@ -10,7 +10,7 @@ pub(crate) mod sync;
 pub(crate) mod tracking;
 
 pub(crate) use metadata::{publicmetadb, tmdb};
-pub(crate) use sync::{fluxa, nuvio};
+pub(crate) use sync::nuvio;
 pub(crate) use tracking::{anilist, mdblist, simkl, trakt};
 
 use trakt::*;

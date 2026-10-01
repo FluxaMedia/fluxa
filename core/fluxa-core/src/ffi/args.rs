@@ -59,15 +59,6 @@ pub(crate) fn field_u64(args: &Value, name: &str) -> Result<u64, CallError> {
     })
 }
 
-pub(crate) fn field_i64(args: &Value, name: &str) -> Result<i64, CallError> {
-    field(args, name)?.as_i64().ok_or_else(|| {
-        fail(
-            ErrorKind::InvalidArgs,
-            format!("field `{name}` must be an integer"),
-        )
-    })
-}
-
 pub(crate) fn handle(args_json: &str) -> Result<u64, CallError> {
     let value: Value = serde_json::from_str(args_json).map_err(|e| {
         fail(

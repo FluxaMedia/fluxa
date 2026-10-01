@@ -22,9 +22,6 @@ pub(crate) fn route_nuvio(method: &str, args_json: &str) -> Outcome {
         "nuvioHomeLayout" => opt_json(services::nuvio::home_layout_json(args_json)),
         "nuvioMapCollections" => opt_json(services::nuvio::map_collections_json(args_json)),
         "nuvioAddonSnapshotPlan" => opt_json(services::nuvio::addon_snapshot_plan_json(args_json)),
-        "nuvioPinHash" => opt_str(services::nuvio::pin::pin_hash_json(args_json)),
-        "nuvioPinCachePayload" => opt_json(services::nuvio::pin::cache_payload_json(args_json)),
-        "nuvioPinVerifyCached" => opt_json(services::nuvio::pin::verify_cached_json(args_json)),
         _ => Err(unknown_method()),
     }
 }

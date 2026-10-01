@@ -6,17 +6,15 @@ mod methods;
 #[cfg(test)]
 mod tests;
 use crate::services::{
-    anilist::route_anilist, mdblist::route_mdblist, mediaserver::routes::route_mediaserver,
+    mdblist::route_mdblist, mediaserver::routes::route_mediaserver,
     nuvio::route_nuvio, publicmetadb::route_publicmetadb, simkl::route_simkl, tmdb::route_tmdb,
     tracking::external_sync::route_external_sync, trakt::route_trakt,
 };
 use crate::{
-    addons::routes::*, catalog::routes::*, headless_engine::routes::*, library::routes::*,
-    player::routes::*, profile::routes::*, services::auth::route_device_auth,
-    services::fluxa::route_fluxa_sync, services::provider_routes::*, settings::routes::*,
+    addons::routes::*, catalog::routes::*, library::routes::*,
+    player::routes::*, profile::routes::*, services::provider_routes::*, settings::routes::*,
 };
 
-use crate::headless_engine::{self, app_state};
 use crate::player;
 
 pub(crate) use args::*;
@@ -24,26 +22,6 @@ pub use errors::ErrorKind;
 pub(crate) use errors::{CallError, Outcome, fail, unknown_method};
 
 pub fn core_invoke(method: &str, args_json: &str) -> String {
-    if matches!(
-        method,
-        "app.dispatchDelta" | "engine.dispatch" | "engine.completeEffect"
-    ) {
-        return match std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            raw_dispatch(method, args_json)
-        })) {
-            Ok(Ok(value)) => format!(r#"{{"ok":true,"value":{value}}}"#),
-            Ok(Err(error)) => json!({
-                "ok": false,
-                "error": { "kind": error.kind.as_str(), "message": error.message, "method": method },
-            })
-            .to_string(),
-            Err(_) => json!({
-                "ok": false,
-                "error": { "kind": ErrorKind::Internal.as_str(), "message": "internal panic", "method": method },
-            })
-            .to_string(),
-        };
-    }
     match guarded_route(method, args_json) {
         Ok(value) => json!({ "ok": true, "value": value }).to_string(),
         Err(e) => json!({
@@ -82,33 +60,6 @@ fn call_direct(method: &str, args: &Value) -> Option<Value> {
 fn guarded_route(method: &str, args_json: &str) -> Outcome {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| route(method, args_json)))
         .unwrap_or_else(|_| Err(fail(ErrorKind::Internal, "internal panic")))
-}
-
-fn raw_dispatch(method: &str, args_json: &str) -> Result<String, CallError> {
-    let args = object(args_json)?;
-    let value = match method {
-        "app.dispatchDelta" => app_state::app_core_dispatch_delta_json(
-            field_u64(&args, "handle")?,
-            &field(&args, "action")?.to_string(),
-        ),
-        "engine.dispatch" => headless_engine::headless_engine_dispatch_json(
-            field_u64(&args, "handle")?,
-            &field(&args, "action")?.to_string(),
-        ),
-        "engine.completeEffect" => headless_engine::headless_engine_complete_effect_json(
-            field_u64(&args, "handle")?,
-            &field(&args, "result")?.to_string(),
-        ),
-        _ => unreachable!(),
-    }
-    .ok_or_else(|| {
-        fail(
-            ErrorKind::NotFound,
-            format!("`{method}` produced no result"),
-        )
-    })?;
-    debug_assert!(serde_json::from_str::<&serde_json::value::RawValue>(&value).is_ok());
-    Ok(value)
 }
 
 fn route(method: &str, args_json: &str) -> Outcome {

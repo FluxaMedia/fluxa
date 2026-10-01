@@ -1,31 +1,5 @@
 use crate::addons::sources::repository::addon_streams_with_provider_json;
-use serde::Deserialize;
 use serde_json::{Value, json};
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct ResourceParseRequest {
-    #[serde(default)]
-    kind: String,
-    #[serde(default)]
-    response: Value,
-    #[serde(default)]
-    addon_name: Option<String>,
-    #[serde(default)]
-    season: Option<i64>,
-}
-
-pub(crate) fn resource_parse_plan_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<ResourceParseRequest>(request_json).ok()?;
-    let value = resource_parse_plan_value(
-        &request.kind,
-        request.response,
-        request.addon_name.as_deref(),
-        request.season,
-        None,
-    );
-    serde_json::to_string(&value).ok()
-}
 
 /// Maps a request `kind` to the addon resource name used in URLs and responses.
 /// `request_resource` and `item_resource` are optional overrides from the request.

@@ -290,21 +290,33 @@ pub(crate) fn airplay_play_body(media_url: &str) -> Option<String> {
     ))
 }
 
-pub(crate) const FCAST_OP_PLAY: u8 = 1;
-pub(crate) const FCAST_OP_PAUSE: u8 = 2;
-pub(crate) const FCAST_OP_RESUME: u8 = 3;
-pub(crate) const FCAST_OP_STOP: u8 = 4;
-pub(crate) const FCAST_OP_SEEK: u8 = 5;
-pub(crate) const FCAST_OP_PLAYBACK_UPDATE: u8 = 6;
-pub(crate) const FCAST_OP_VOLUME_UPDATE: u8 = 7;
-pub(crate) const FCAST_OP_SET_VOLUME: u8 = 8;
-pub(crate) const FCAST_OP_PLAYBACK_ERROR: u8 = 9;
-pub(crate) const FCAST_OP_SET_SPEED: u8 = 10;
-pub(crate) const FCAST_OP_VERSION: u8 = 11;
-pub(crate) const FCAST_OP_PING: u8 = 12;
-pub(crate) const FCAST_OP_PONG: u8 = 13;
-
 pub(crate) const FCAST_MAX_MESSAGE_BYTES: usize = 32 * 1024 - 4;
+#[cfg(test)]
+pub(crate) const FCAST_OP_PLAY: u8 = 1;
+#[cfg(test)]
+pub(crate) const FCAST_OP_PAUSE: u8 = 2;
+#[cfg(test)]
+pub(crate) const FCAST_OP_RESUME: u8 = 3;
+#[cfg(test)]
+pub(crate) const FCAST_OP_STOP: u8 = 4;
+#[cfg(test)]
+pub(crate) const FCAST_OP_SEEK: u8 = 5;
+#[cfg(test)]
+pub(crate) const FCAST_OP_PLAYBACK_UPDATE: u8 = 6;
+#[cfg(test)]
+pub(crate) const FCAST_OP_VOLUME_UPDATE: u8 = 7;
+#[cfg(test)]
+pub(crate) const FCAST_OP_SET_VOLUME: u8 = 8;
+#[cfg(test)]
+pub(crate) const FCAST_OP_PLAYBACK_ERROR: u8 = 9;
+#[cfg(test)]
+pub(crate) const FCAST_OP_SET_SPEED: u8 = 10;
+#[cfg(test)]
+pub(crate) const FCAST_OP_VERSION: u8 = 11;
+#[cfg(test)]
+pub(crate) const FCAST_OP_PING: u8 = 12;
+#[cfg(test)]
+pub(crate) const FCAST_OP_PONG: u8 = 13;
 
 pub(crate) fn fcast_encode_message(opcode: u8, body_json: &str) -> Option<Vec<u8>> {
     if body_json.len() + 1 > FCAST_MAX_MESSAGE_BYTES {
@@ -342,10 +354,6 @@ pub(crate) fn fcast_play_body(media_url: &str, resume_position_secs: f64) -> Opt
 
 pub(crate) fn fcast_seek_body(position_secs: f64) -> String {
     json!({ "time": position_secs.max(0.0) }).to_string()
-}
-
-pub(crate) fn fcast_set_speed_body(speed: f64) -> String {
-    json!({ "speed": speed.clamp(0.1, 4.0) }).to_string()
 }
 
 pub(crate) fn fcast_version_body(version: u32) -> String {

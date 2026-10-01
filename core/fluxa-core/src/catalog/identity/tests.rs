@@ -1,69 +1,10 @@
 use super::*;
-use serde_json::Value;
 
-#[test]
-fn content_filter_matches_shared_movie_and_series_types() {
-    assert!(content_matches_filter("movie", "movie"));
-    assert!(content_matches_filter("anime", "series"));
-    assert!(!content_matches_filter("movie", "series"));
-    assert!(content_matches_filter("custom", "all"));
-}
 
-#[test]
-fn series_content_type_policy_accepts_shared_aliases() {
-    assert!(is_series_content_type("series"));
-    assert!(is_series_content_type("show"));
-    assert!(is_series_content_type("anime"));
-    assert!(!is_series_content_type("movie"));
-}
 
-#[test]
-fn catalog_type_normalization_keeps_custom_types_lowercase() {
-    assert_eq!(normalize_catalog_type(" TV "), "series");
-    assert_eq!(normalize_catalog_type("Anime.Movie"), "anime.movie");
-    assert_eq!(normalize_catalog_type("  Custom.Type  "), "custom.type");
-}
 
-#[test]
-fn tmdb_numeric_id_accepts_movie_and_tv_urls() {
-    assert_eq!(
-        tmdb_numeric_id("https://www.themoviedb.org/movie/12345"),
-        Some("12345".into())
-    );
-    assert_eq!(
-        tmdb_numeric_id("https://themoviedb.org/tv/67890?language=en"),
-        Some("67890".into())
-    );
-}
 
-#[test]
-fn cs3_feed_keys_are_stable_and_platform_neutral() {
-    assert_eq!(
-        cs3_plugin_feed_key("My Plugin/API"),
-        "cs3_plugin_my_plugin_api"
-    );
-    assert_eq!(
-        cs3_catalog_feed_key("My Plugin", "Trending Now", 2),
-        "cs3_catalog_my_plugin:2:trending_now"
-    );
-}
 
-#[test]
-fn cs3_metadata_feed_options_share_the_feed_contract() {
-    let options = cs3_metadata_feed_options_json(
-        r#"[{"pluginName":"My Plugin","catalogName":"Trending Now","catalogIndex":2}]"#,
-    )
-    .unwrap();
-    let value: Value = serde_json::from_str(&options).unwrap();
-    assert_eq!(value[0]["key"], "cs3_catalog_my_plugin:2:trending_now");
-    assert_eq!(value[0]["label"], "Trending Now - My Plugin");
-    assert_eq!(
-        value[0]["transportUrl"],
-        "cs3://cs3_catalog_my_plugin:2:trending_now"
-    );
-    assert_eq!(value[0]["type"], "all");
-    assert_eq!(value[0]["id"], value[0]["key"]);
-}
 
 #[test]
 fn shorten_synopsis_joins_paired_em_dash_aside_with_commas() {
@@ -104,14 +45,6 @@ fn shorten_synopsis_cuts_long_text_at_comma_not_mid_word() {
     assert!(!result.ends_with(" ."));
 }
 
-#[test]
-fn playback_intro_lookup_prefers_imdb_then_base_tmdb_number() {
-    assert_eq!(playback_intro_lookup_content_id("tmdb:42:1:2"), "42");
-    assert_eq!(
-        playback_intro_lookup_content_id("tt1234567:1:2"),
-        "tt1234567"
-    );
-}
 
 #[test]
 fn stream_matching_uses_torrent_filename_episode_suffix() {
@@ -121,81 +54,10 @@ fn stream_matching_uses_torrent_filename_episode_suffix() {
     assert!(stream_matches_episode("tt123:1:2", &[e2]));
 }
 
-#[test]
-fn playback_stream_request_ids_use_detail_imdb_as_canonical_id() {
-    let ids = playback_stream_request_ids_json("movie", "tmdb:42", Some("tt1234567"))
-        .and_then(|json| serde_json::from_str::<Vec<String>>(&json).ok())
-        .expect("ids");
 
-    assert_eq!(ids, vec!["tt1234567", "tmdb:42"]);
-}
 
-#[test]
-fn direct_playback_plan_selects_first_released_episode_without_mutating_provider_streams() {
-    let plan = direct_playback_plan_json(
-        r#"{"id":"tt1","name":"Fallback","type":"series","description":"fallback","lastStreamIndex":3}"#,
-        Some(
-            r#"{"id":"tt1","name":"Detail","type":"series","poster":"p","videos":[{"id":"tt1:1:2","season":1,"number":2,"released":"2026-06-01T00:00:00.000Z"},{"id":"tt1:1:1","season":1,"number":1,"released":"2026-05-01T00:00:00.000Z"}]}"#,
-        ),
-        "2026-05-21",
-    )
-    .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-    .expect("plan");
 
-    assert_eq!(plan["targetVideoId"], "tt1:1:1");
-    assert_eq!(plan["lookupId"], "tt1:1:1");
-    assert_eq!(plan["meta"]["name"], "Detail");
-    assert_eq!(plan["meta"]["description"], "fallback");
-    assert_eq!(plan["meta"]["episodesCount"], 2);
-    assert_eq!(plan["meta"]["lastStreamIndex"], 3);
-}
 
-#[test]
-fn direct_playback_plan_prefers_saved_video_and_falls_back_to_meta_without_detail() {
-    let plan = direct_playback_plan_json(
-        r#"{"id":"tt1","name":"Movie","type":"movie","lastVideoId":"tt1:2:3"}"#,
-        None,
-        "2026-05-21",
-    )
-    .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-    .expect("plan");
-
-    assert_eq!(plan["targetVideoId"], "tt1:2:3");
-    assert_eq!(plan["lookupId"], "tt1:2:3");
-    assert_eq!(plan["meta"]["name"], "Movie");
-}
-
-#[test]
-fn direct_playback_plan_opens_the_addon_default_video() {
-    let plan = direct_playback_plan_json(
-        r#"{"id":"yt:chan","type":"movie"}"#,
-        Some(
-            r#"{"id":"yt:chan","type":"movie","behaviorHints":{"defaultVideoId":"yt:abc"},"videos":[{"id":"yt:abc"}]}"#,
-        ),
-        "2026-05-21",
-    )
-    .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-    .expect("plan");
-
-    assert_eq!(plan["targetVideoId"], "yt:abc");
-    assert_eq!(plan["lookupId"], "yt:abc");
-}
-
-#[test]
-fn live_channel_plays_the_channel_not_a_programme() {
-    let plan = direct_playback_plan_json(
-        r#"{"id":"epg:bbc1","type":"series","lastVideoId":"epg:bbc1:prog"}"#,
-        Some(
-            r#"{"id":"epg:bbc1","type":"series","behaviorHints":{"hasScheduledVideos":true,"defaultVideoId":"epg:bbc1:prog"},"videos":[{"id":"epg:bbc1:prog","season":1,"number":1}]}"#,
-        ),
-        "2026-05-21",
-    )
-    .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-    .expect("plan");
-
-    assert!(plan["targetVideoId"].is_null());
-    assert_eq!(plan["lookupId"], "epg:bbc1");
-}
 
 #[test]
 fn cinemeta_series_keeps_its_episodes() {
@@ -230,34 +92,6 @@ fn effective_metadata_feed_selection_preserves_explicit_empty_selection() {
     );
 }
 
-#[test]
-fn stream_discovery_episode_context_preserves_episode_order() {
-    let context = stream_discovery_episode_context_json(
-        "series",
-        "tt1:1:2",
-        Some(r#"{"videos":[{"id":"tt1:1:2","name":"From detail"}]}"#),
-        r#"[{"id":"tt1:1:1","number":1,"name":"Pilot"},{"id":"tt1:1:2","number":2,"name":"Second"}]"#,
-    )
-    .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-    .expect("context");
-
-    assert_eq!(
-        context
-            .get("expectedEpisodeTitles")
-            .and_then(Value::as_array)
-            .and_then(|items| items.first())
-            .and_then(Value::as_str),
-        Some("Second")
-    );
-    assert_eq!(
-        context
-            .get("seasonEpisodeIds")
-            .and_then(Value::as_object)
-            .and_then(|ids| ids.get("2"))
-            .and_then(Value::as_str),
-        Some("tt1:1:2")
-    );
-}
 
 #[test]
 fn parse_episode_locator_finds_compact_code_with_no_colon_separators() {

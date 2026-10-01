@@ -1,5 +1,4 @@
 use crate::addons;
-use crate::player;
 use serde::Deserialize;
 use serde_json::{Value, json};
 
@@ -27,13 +26,6 @@ struct DetailStreamResultRequest {
     attempts: Vec<DetailStreamAttempt>,
     #[serde(default)]
     has_stream_providers: bool,
-}
-
-#[derive(Debug, Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct PrefetchPlanRequest {
-    #[serde(default)]
-    streams: Vec<Value>,
 }
 
 pub(crate) fn provider_availability_plan_json(request_json: &str) -> Option<String> {
@@ -79,25 +71,6 @@ pub(crate) fn detail_stream_result_plan_json(request_json: &str) -> Option<Strin
     .ok()
 }
 
-pub(crate) fn prefetch_detail_streams_plan_json(request_json: &str) -> Option<String> {
-    let request = serde_json::from_str::<PrefetchPlanRequest>(request_json).ok()?;
-    let prewarm_url = request.streams.iter().find_map(playable_torrent_url);
-    serde_json::to_string(&json!({
-        "count": request.streams.len(),
-        "prewarmUrl": prewarm_url,
-        "shouldPrewarmTorrent": prewarm_url.is_some()
-    }))
-    .ok()
-}
-
-pub(crate) fn direct_playback_policy_json() -> String {
-    json!({
-        "metaDetailTimeoutMs": 3500,
-        "streamDetailTimeoutMs": 2500
-    })
-    .to_string()
-}
-
 fn available_addons(streams: &[Value]) -> Vec<String> {
     streams
         .iter()
@@ -110,15 +83,6 @@ fn available_addons(streams: &[Value]) -> Vec<String> {
             }
             acc
         })
-}
-
-fn playable_torrent_url(stream: &Value) -> Option<String> {
-    let url = stream
-        .get("playableUrl")
-        .or_else(|| stream.get("url"))
-        .and_then(Value::as_str)
-        .filter(|value| !value.trim().is_empty())?;
-    player::streams::stream_policy::is_torrent_playback_url(url).then(|| url.to_string())
 }
 
 fn stable_non_empty_strings(values: Vec<String>) -> Vec<String> {
@@ -171,18 +135,4 @@ mod tests {
         assert_eq!(value["availableAddons"], json!(["B", "A"]));
     }
 
-    #[test]
-    fn prefetch_plan_selects_first_torrent_playable_url_only() {
-        let value: Value = serde_json::from_str(
-            &prefetch_detail_streams_plan_json(
-                r#"{"streams":[{"playableUrl":"https://video.example/file.mp4"},{"playableUrl":"magnet:?xt=urn:btih:abc"},{"playableUrl":"magnet:?xt=urn:btih:def"}]}"#,
-            )
-            .unwrap(),
-        )
-        .unwrap();
-
-        assert_eq!(value["count"], 3);
-        assert_eq!(value["shouldPrewarmTorrent"], true);
-        assert_eq!(value["prewarmUrl"], "magnet:?xt=urn:btih:abc");
-    }
 }

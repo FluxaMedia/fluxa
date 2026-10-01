@@ -1,59 +1,6 @@
 use crate::catalog::identity::{base_content_id, imdb_regex, parse_episode_locator};
 use serde_json::{Map, Value, json};
 
-const TRAKT_API_BASE_URL: &str = "https://api.trakt.tv";
-
-pub(crate) fn trakt_list_reference(input: &str) -> Option<String> {
-    let trimmed = input.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    if trimmed.chars().all(|character| character.is_ascii_digit()) {
-        return Some(trimmed.to_string());
-    }
-
-    let query = trimmed
-        .split_once('?')
-        .map(|(_, query)| query)
-        .unwrap_or("");
-    for parameter in query.split('&') {
-        let Some((key, value)) = parameter.split_once('=') else {
-            continue;
-        };
-        if key.eq_ignore_ascii_case("id") && !value.is_empty() {
-            return value
-                .split('#')
-                .next()
-                .filter(|value| !value.is_empty())
-                .map(str::to_string);
-        }
-    }
-
-    let without_query = trimmed.split(['?', '#']).next().unwrap_or(trimmed);
-    let parts = without_query
-        .split('/')
-        .filter(|part| !part.is_empty())
-        .collect::<Vec<_>>();
-    if parts
-        .iter()
-        .any(|part| part.eq_ignore_ascii_case("trakt.tv"))
-    {
-        if let Some(index) = parts
-            .iter()
-            .position(|part| part.eq_ignore_ascii_case("lists"))
-        {
-            if let Some(value) = parts.get(index + 1).filter(|value| !value.is_empty()) {
-                return Some((*value).to_string());
-            }
-        }
-    }
-
-    trimmed
-        .chars()
-        .all(|character| character.is_ascii_alphanumeric() || matches!(character, '_' | '-'))
-        .then(|| trimmed.to_string())
-}
-
 pub(crate) fn trakt_image_url(images: &Value, kind: &str) -> Option<String> {
     images
         .get(kind)?
@@ -82,98 +29,6 @@ pub(crate) fn trakt_artwork(source: &Value) -> TraktArtwork {
             logo: None,
         },
     }
-}
-
-pub(crate) fn trakt_sync_item_to_meta_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let item = args.get("item")?;
-    let summary = item.get("movie").or_else(|| item.get("show"))?;
-    let id = trakt_content_id_from_ids_json(&summary.get("ids")?.to_string())?;
-    let year = summary.get("year").and_then(Value::as_i64);
-    serde_json::to_string(&json!({"id":id,"name":summary.get("title").and_then(Value::as_str).filter(|name| !name.trim().is_empty()).unwrap_or_else(|| args.get("unknownName").and_then(Value::as_str).unwrap_or("Unknown")),"type":args.get("type")?.as_str()?,"poster":Value::Null,"releaseInfo":year.map(|year| year.to_string()),"released":year.map(|year| format!("{year}-01-01"))})).ok()
-}
-
-pub(crate) fn trakt_sync_item_content_type_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let item = args.get("item")?;
-    if item.get("movie").is_some_and(|value| !value.is_null()) {
-        return Some("movie".to_string());
-    }
-    item.get("show")
-        .filter(|value| !value.is_null())
-        .map(|_| "series".to_string())
-}
-
-pub(crate) fn trakt_has_client(api_key: &str) -> bool {
-    !api_key.trim().is_empty()
-}
-
-pub(crate) fn trakt_bearer(token: &str) -> String {
-    format!("Bearer {token}")
-}
-
-pub(crate) fn trakt_scrobble_url(action: &str) -> Option<String> {
-    match action.trim() {
-        "start" => Some(format!("{TRAKT_API_BASE_URL}/scrobble/start")),
-        "pause" => Some(format!("{TRAKT_API_BASE_URL}/scrobble/pause")),
-        "stop" => Some(format!("{TRAKT_API_BASE_URL}/scrobble/stop")),
-        _ => None,
-    }
-}
-
-pub(crate) fn trakt_playback_url(content_type: Option<&str>) -> Option<String> {
-    let suffix = match content_type
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-    {
-        None => None,
-        Some("movie" | "movies") => Some("movies"),
-        Some("series" | "show" | "shows" | "episode" | "episodes") => Some("episodes"),
-        Some(_) => return None,
-    };
-    Some(match suffix {
-        Some(suffix) => format!("{TRAKT_API_BASE_URL}/sync/playback/{suffix}"),
-        None => format!("{TRAKT_API_BASE_URL}/sync/playback"),
-    })
-}
-
-pub(crate) fn trakt_token_expires_at(created_at_seconds: i64, expires_in_seconds: i64) -> i64 {
-    let refresh_buffer_seconds = 5 * 60;
-    let effective_expires_in = (expires_in_seconds - refresh_buffer_seconds).max(0);
-    created_at_seconds + effective_expires_in
-}
-
-fn number_to_i32(value: &Value) -> Option<i32> {
-    value.as_i64().and_then(|value| i32::try_from(value).ok())
-}
-
-pub(crate) fn trakt_content_id_from_ids_json(ids_json: &str) -> Option<String> {
-    let ids: Value = serde_json::from_str(ids_json).ok()?;
-    ids.get("imdb")
-        .and_then(Value::as_str)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-        .or_else(|| {
-            ids.get("tmdb")
-                .and_then(number_to_i32)
-                .map(|id| format!("tmdb:{id}"))
-        })
-        .or_else(|| {
-            ids.get("tvdb")
-                .and_then(number_to_i32)
-                .map(|id| format!("tvdb:{id}"))
-        })
-        .or_else(|| {
-            ids.get("slug")
-                .and_then(Value::as_str)
-                .filter(|value| !value.is_empty())
-                .map(|slug| format!("trakt:{slug}"))
-        })
-        .or_else(|| {
-            ids.get("trakt")
-                .and_then(number_to_i32)
-                .map(|id| format!("trakt:{id}"))
-        })
 }
 
 pub(crate) fn trakt_ids_from_content_id_json(raw_id: &str) -> Option<String> {
@@ -214,39 +69,6 @@ pub(crate) fn trakt_ids_from_content_id_json(raw_id: &str) -> Option<String> {
     }
 }
 
-pub(crate) fn trakt_comments_request_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let content_id = args.get("contentId")?.as_str()?;
-    let content_type = args.get("contentType")?.as_str()?;
-    let resource = match content_type {
-        "movie" => "movies",
-        "series" => "shows",
-        _ => return None,
-    };
-    let ids_json = trakt_ids_from_content_id_json(content_id)?;
-    let ids: Value = serde_json::from_str(&ids_json).ok()?;
-    let (lookup_type, id) = ids
-        .get("imdb")
-        .and_then(Value::as_str)
-        .map(|value| ("imdb", value.to_string()))
-        .or_else(|| {
-            ids.get("tmdb")
-                .and_then(Value::as_i64)
-                .map(|value| ("tmdb", value.to_string()))
-        })
-        .or_else(|| {
-            ids.get("tvdb")
-                .and_then(Value::as_i64)
-                .map(|value| ("tvdb", value.to_string()))
-        })
-        .or_else(|| {
-            ids.get("trakt")
-                .and_then(Value::as_i64)
-                .map(|value| ("trakt", value.to_string()))
-        })?;
-    serde_json::to_string(&json!({ "resource": resource, "id": id, "lookupType": lookup_type, "wantType": if resource == "shows" { "show" } else { "movie" } })).ok()
-}
-
 pub(crate) fn trakt_episode_locator_json(video_id: &str) -> Option<String> {
     let (_, season, episode) = parse_episode_locator(video_id)?;
     serde_json::to_string(&json!({
@@ -262,113 +84,6 @@ pub(crate) fn trakt_show_id_from_episode_id(video_id: &str) -> String {
     } else {
         video_id.to_string()
     }
-}
-
-pub(crate) fn trakt_scrobble_media_id(
-    parent_id: &str,
-    video_id: Option<&str>,
-    media_type: &str,
-) -> String {
-    if media_type != "series" {
-        return video_id.unwrap_or(parent_id).to_string();
-    }
-    let Some(video_id) = video_id.filter(|value| !value.is_empty()) else {
-        return parent_id.to_string();
-    };
-    let Some((_, season, episode)) = parse_episode_locator(video_id) else {
-        return video_id.to_string();
-    };
-    format!("{parent_id}:{season}:{episode}")
-}
-
-pub(crate) fn trakt_oauth_error_code(body: &str) -> Option<String> {
-    let value: Value = serde_json::from_str(body).ok()?;
-    value
-        .get("error")
-        .and_then(Value::as_str)
-        .map(str::trim)
-        .filter(|value| !value.is_empty())
-        .map(str::to_string)
-}
-
-fn episode_season_number(episode: &Value) -> Option<(i32, i32)> {
-    let parsed = episode
-        .get("id")
-        .and_then(Value::as_str)
-        .and_then(parse_episode_locator);
-    let season = episode
-        .get("season")
-        .and_then(number_to_i32)
-        .or_else(|| parsed.as_ref().map(|(_, season, _)| *season));
-    let number = episode
-        .get("number")
-        .and_then(number_to_i32)
-        .or_else(|| parsed.as_ref().map(|(_, _, episode)| *episode));
-    season.zip(number)
-}
-
-pub(crate) fn trakt_history_request_json(meta_json: &str, episodes_json: &str) -> Option<String> {
-    let meta: Value = serde_json::from_str(meta_json).ok()?;
-    let episodes: Vec<Value> = serde_json::from_str(episodes_json).unwrap_or_default();
-    let meta_id = meta.get("id").and_then(Value::as_str).unwrap_or("");
-    let ids_json = trakt_ids_from_content_id_json(meta_id).or_else(|| {
-        episodes
-            .first()
-            .and_then(|episode| episode.get("id").and_then(Value::as_str))
-            .and_then(trakt_ids_from_content_id_json)
-    })?;
-    let ids: Value = serde_json::from_str(&ids_json).ok()?;
-
-    if meta.get("type").and_then(Value::as_str) == Some("movie") {
-        return serde_json::to_string(&json!({
-            "movies": [{ "ids": ids }]
-        }))
-        .ok();
-    }
-
-    let target_episodes = if episodes.is_empty() {
-        meta.get("lastVideoId")
-            .and_then(Value::as_str)
-            .or_else(|| meta.get("id").and_then(Value::as_str))
-            .and_then(parse_episode_locator)
-            .map(|(_, season, episode)| {
-                vec![json!({
-                    "season": season,
-                    "number": episode
-                })]
-            })
-            .unwrap_or_default()
-    } else {
-        episodes
-    };
-
-    let mut seasons = std::collections::BTreeMap::<i32, Vec<i32>>::new();
-    for episode in target_episodes.iter().filter_map(episode_season_number) {
-        seasons.entry(episode.0).or_default().push(episode.1);
-    }
-    if seasons.is_empty() {
-        return None;
-    }
-
-    let seasons = seasons
-        .into_iter()
-        .map(|(season, mut episodes)| {
-            episodes.sort_unstable();
-            episodes.dedup();
-            json!({
-                "number": season,
-                "episodes": episodes.into_iter().map(|number| json!({ "number": number })).collect::<Vec<_>>()
-            })
-        })
-        .collect::<Vec<_>>();
-
-    serde_json::to_string(&json!({
-        "shows": [{
-            "ids": ids,
-            "seasons": seasons
-        }]
-    }))
-    .ok()
 }
 
 pub(crate) fn trakt_collection_body_json(args_json: &str) -> Option<String> {
@@ -397,22 +112,6 @@ pub(crate) fn trakt_id_from_source(source: &Value) -> Option<String> {
                     .map(|n| format!("{key}:{n}"))
             })
         })
-}
-
-pub(crate) fn trakt_playback_delete_ids_json(args_json: &str) -> Option<String> {
-    let args: Value = serde_json::from_str(args_json).ok()?;
-    let content_id = args.get("contentId")?.as_str()?;
-    let ids = args
-        .get("items")?
-        .as_array()?
-        .iter()
-        .filter_map(|item| {
-            let source = item.get("show").or_else(|| item.get("movie"))?;
-            (trakt_id_from_source(source).as_deref() == Some(content_id))
-                .then(|| item.get("id")?.as_i64())
-        })
-        .collect::<Vec<_>>();
-    serde_json::to_string(&ids).ok()
 }
 
 pub(crate) fn trakt_playback_items_to_library_json(items_json: &str) -> Option<String> {
@@ -527,42 +226,5 @@ pub(crate) fn trakt_history_episodes_to_ids_json(history_json: &str) -> Option<S
             Some((format!("{show_id}:{season}:{number}"), Value::Bool(true)))
         })
         .collect();
-    serde_json::to_string(&Value::Object(ids)).ok()
-}
-
-pub(crate) fn trakt_watched_to_ids_json(movies_json: &str, shows_json: &str) -> Option<String> {
-    let movies: Vec<Value> = serde_json::from_str(movies_json).unwrap_or_default();
-    let shows: Vec<Value> = serde_json::from_str(shows_json).unwrap_or_default();
-    let mut ids: serde_json::Map<String, Value> = serde_json::Map::new();
-    for entry in &movies {
-        if let Some(id) = entry.get("movie").and_then(trakt_id_from_source) {
-            ids.insert(id, Value::Bool(true));
-        }
-    }
-    for entry in &shows {
-        let show_id = match entry.get("show").and_then(trakt_id_from_source) {
-            Some(id) => id,
-            None => continue,
-        };
-        let seasons = entry
-            .get("seasons")
-            .and_then(Value::as_array)
-            .cloned()
-            .unwrap_or_default();
-        for season in &seasons {
-            let s_num = season.get("number").and_then(Value::as_i64).unwrap_or(0);
-            let episodes = season
-                .get("episodes")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default();
-            for ep in &episodes {
-                let e_num = ep.get("number").and_then(Value::as_i64).unwrap_or(0);
-                if s_num > 0 && e_num > 0 {
-                    ids.insert(format!("{show_id}:{s_num}:{e_num}"), Value::Bool(true));
-                }
-            }
-        }
-    }
     serde_json::to_string(&Value::Object(ids)).ok()
 }

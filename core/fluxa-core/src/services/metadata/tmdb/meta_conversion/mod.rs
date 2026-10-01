@@ -1,11 +1,9 @@
-use super::helpers::{tmdb_image_url, tmdb_language, tmdb_region_from_language};
+use super::helpers::tmdb_image_url;
 use serde_json::{Value, json};
 
 mod enrichment;
 mod full_meta;
 
-pub(crate) use enrichment::*;
-pub(crate) use full_meta::*;
 
 pub(crate) fn tmdb_item_content_type(
     media_type: &str,
@@ -57,7 +55,7 @@ pub(crate) fn tmdb_meta_to_meta_json(
         "name": name,
         "poster": poster,
         "background": background,
-        "releaseInfo": released.map(|r| r.get(..4).unwrap_or(r)),
+        "releaseInfo": released.map(|r| r.get(..4).unwrap_or(r))
     }))
     .ok()
 }
@@ -94,7 +92,7 @@ pub(crate) fn tmdb_video_to_trailer_json(video_json: &str) -> Option<String> {
     serde_json::to_string(&json!({
         "url": format!("https://www.youtube.com/watch?v={key}"),
         "title": title,
-        "type": video_type,
+        "type": video_type
     }))
     .ok()
 }
@@ -125,58 +123,4 @@ pub(crate) fn tmdb_bulk_videos_to_trailers_json(items_json: &str) -> Option<Stri
         })
         .collect();
     serde_json::to_string(&trailers).ok()
-}
-fn pick_logo(images: &Value, language: &str) -> Option<String> {
-    let logos = images.get("logos").and_then(Value::as_array)?;
-    let lang = tmdb_language(language);
-    let lang_prefix = lang.split('-').next().unwrap_or("en");
-    let pick = |want: &str| {
-        logos
-            .iter()
-            .find(|l| l.get("iso_639_1").and_then(Value::as_str) == Some(want))
-    };
-    let chosen = pick(lang_prefix)
-        .or_else(|| pick("en"))
-        .or_else(|| logos.first())?;
-    tmdb_image_url(chosen.get("file_path").and_then(Value::as_str), "w500")
-}
-pub(crate) fn tmdb_pick_logo_json(images_json: &str, language: &str) -> Option<String> {
-    let images: Value = serde_json::from_str(images_json).ok()?;
-    let logo = pick_logo(&images, language);
-    serde_json::to_string(&json!({ "logo": logo })).ok()
-}
-fn pick_image(images: &Value, key: &str, language: &str, size: &str) -> Option<String> {
-    let variants = images.get(key).and_then(Value::as_array)?;
-    let lang = tmdb_language(language);
-    let lang_prefix = lang.split('-').next().unwrap_or("en");
-    let pick = |want: Option<&str>| {
-        variants
-            .iter()
-            .find(|v| v.get("iso_639_1").and_then(Value::as_str) == want)
-    };
-    let chosen = pick(Some(lang_prefix))
-        .or_else(|| pick(None))
-        .or_else(|| variants.first())?;
-    tmdb_image_url(chosen.get("file_path").and_then(Value::as_str), size)
-}
-pub(crate) fn tmdb_episodes_to_videos_json(season_json: &str, series_id: &str) -> Option<String> {
-    let season: Value = serde_json::from_str(season_json).ok()?;
-    let episodes = season.get("episodes").and_then(Value::as_array)?;
-    let videos: Vec<Value> = episodes
-        .iter()
-        .filter_map(|ep| {
-            let season_num = ep.get("season_number").and_then(Value::as_i64)?;
-            let episode_num = ep.get("episode_number").and_then(Value::as_i64)?;
-            Some(json!({
-                "id": format!("{series_id}:{season_num}:{episode_num}"),
-                "title": ep.get("name").and_then(Value::as_str).unwrap_or("Episode"),
-                "season": season_num,
-                "episode": episode_num,
-                "overview": ep.get("overview").and_then(Value::as_str).filter(|s| !s.is_empty()),
-                "released": ep.get("air_date").and_then(Value::as_str),
-                "thumbnail": tmdb_image_url(ep.get("still_path").and_then(Value::as_str), "w300"),
-            }))
-        })
-        .collect();
-    serde_json::to_string(&videos).ok()
 }

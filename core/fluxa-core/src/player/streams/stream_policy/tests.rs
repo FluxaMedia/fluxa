@@ -1,71 +1,11 @@
 use super::magnet::*;
 use super::torrent_files::*;
-use super::*;
-use serde_json::{Value, json};
+use serde_json::json;
 
-fn track_state(request: Value) -> Value {
-    serde_json::from_str(&player_track_state_json(&request.to_string()).unwrap()).unwrap()
-}
 
-#[test]
-fn player_track_state_uses_audio_memory_before_profile_preference() {
-    let state = track_state(json!({
-        "lastAudioLanguage": "tr",
-        "preferredAudioLanguage": "en",
-        "originalLanguage": "en"
-    }));
 
-    assert_eq!(state["preferredAudioLanguage"], "tr");
-}
 
-#[test]
-fn player_track_state_uses_japanese_original_for_english_anime_preference() {
-    let state = track_state(json!({
-        "preferredAudioLanguage": "en",
-        "originalLanguage": "ja"
-    }));
 
-    assert_eq!(state["preferredAudioLanguage"], "ja");
-}
-
-#[test]
-fn player_track_state_selects_subtitle_memory_then_secondary() {
-    let memory = track_state(json!({
-        "availableSubtitles": [
-            { "id": "en", "label": "English", "language": "en" },
-            { "id": "tr", "label": "Turkish", "language": "tr" }
-        ],
-        "lastSubtitleLanguage": "tr",
-        "preferredSubtitleLanguage": "en"
-    }));
-    assert_eq!(memory["preferredSubtitleIndex"], 1);
-    assert_eq!(memory["preferredSubtitleId"], "tr");
-    assert_eq!(memory["subtitlesDisabled"], false);
-
-    let secondary = track_state(json!({
-        "availableSubtitles": [
-            { "id": "tr", "label": "Turkish", "language": "tr" }
-        ],
-        "preferredSubtitleLanguage": "en",
-        "secondarySubtitleLanguage": "tr"
-    }));
-    assert_eq!(secondary["preferredSubtitleIndex"], 0);
-    assert_eq!(secondary["preferredSubtitleId"], "tr");
-}
-
-#[test]
-fn player_track_state_disables_subtitles_when_no_preferred_match_exists() {
-    let state = track_state(json!({
-        "availableSubtitles": [
-            { "id": "tr", "label": "Turkish", "language": "tr" }
-        ],
-        "preferredSubtitleLanguage": "en"
-    }));
-
-    assert_eq!(state["preferredSubtitleIndex"], -1);
-    assert!(state["preferredSubtitleId"].is_null());
-    assert_eq!(state["subtitlesDisabled"], true);
-}
 
 #[test]
 fn build_magnet_dedupes_addon_tracker_and_appends_fallbacks() {
@@ -89,31 +29,7 @@ fn stream_magnet_link_builds_from_info_hash_and_sources() {
     assert!(link.starts_with("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12"));
 }
 
-#[test]
-fn torrent_sibling_subtitles_match_by_episode_tag_over_unrelated_files() {
-    let files = vec![
-        (1, "Show.S01E01.mkv".to_string()),
-        (2, "Show.S01E02.mkv".to_string()),
-        (3, "Show.S01E02.eng.srt".to_string()),
-        (4, "Show.S01E03.eng.srt".to_string()),
-        (5, "readme.txt".to_string()),
-    ];
-    let matches = torrent_sibling_subtitle_matches("Show.S01E02.mkv", &files);
-    assert_eq!(matches.len(), 1);
-    assert_eq!(matches[0].id, 3);
-    assert_eq!(matches[0].language.as_deref(), Some("eng"));
-}
 
-#[test]
-fn torrent_sibling_subtitles_single_video_torrent_accepts_any_subtitle() {
-    let files = vec![
-        (1, "release-group-video.mkv".to_string()),
-        (2, "totally-unrelated-name.srt".to_string()),
-    ];
-    let matches = torrent_sibling_subtitle_matches("release-group-video.mkv", &files);
-    assert_eq!(matches.len(), 1);
-    assert_eq!(matches[0].id, 2);
-}
 
 #[test]
 fn stream_magnet_link_none_for_direct_http_stream() {

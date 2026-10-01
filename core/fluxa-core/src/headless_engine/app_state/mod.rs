@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
 mod reducer;
@@ -258,7 +257,6 @@ struct AppCoreAction {
     video_id: Value,
 }
 
-static NEXT_HANDLE: AtomicU64 = AtomicU64::new(1);
 static STORE: OnceLock<Mutex<HashMap<u64, Arc<Mutex<AppCoreState>>>>> = OnceLock::new();
 
 fn store() -> &'static Mutex<HashMap<u64, Arc<Mutex<AppCoreState>>>> {
@@ -271,45 +269,6 @@ fn lock_store() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<Mutex<AppCore
     store()
         .lock()
         .unwrap_or_else(|poisoned| poisoned.into_inner())
-}
-
-pub fn create_app_core_state(initial_json: &str) -> u64 {
-    let state = match serde_json::from_str(initial_json) {
-        Ok(state) => state,
-        Err(error) => {
-            crate::runtime::log_sink::record("create_app_core_state", &error.to_string());
-            return 0;
-        }
-    };
-    let mut states = lock_store();
-    let handle = NEXT_HANDLE.fetch_add(1, Ordering::Relaxed);
-    states.insert(handle, Arc::new(Mutex::new(state)));
-    handle
-}
-
-pub fn destroy_app_core_state(handle: u64) -> bool {
-    lock_store().remove(&handle).is_some()
-}
-
-pub fn app_core_state_json(handle: u64) -> Option<String> {
-    let state = lock_store().get(&handle)?.clone();
-    let state = lock_app_state(&state)?;
-    serde_json::to_string(&*state).ok()
-}
-
-pub fn app_core_dispatch_json(handle: u64, action_json: &str) -> Option<String> {
-    let action: AppCoreAction = serde_json::from_str(action_json)
-        .map_err(|error| {
-            crate::runtime::log_sink::record("app_core_dispatch_json", &error.to_string());
-        })
-        .ok()?;
-    let state = lock_store().get(&handle)?.clone();
-    let mut state = lock_app_state(&state)?;
-    if !reduce(&mut state, action) {
-        crate::runtime::log_sink::record("app_core_dispatch_json", "unknown action");
-        return None;
-    }
-    serde_json::to_string(&*state).ok()
 }
 
 pub fn app_core_dispatch_delta_json(handle: u64, action_json: &str) -> Option<String> {

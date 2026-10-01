@@ -57,7 +57,7 @@ pub(crate) fn simkl_calendar_plan_json(args_json: &str) -> Option<String> {
 fn stamp<'a>(activities: &'a Value, domain: Option<&str>, field: &str) -> Option<&'a str> {
     let scope = match domain {
         Some(domain) => activities.get(domain)?,
-        None => activities,
+        None => activities
     };
     scope.get(field)?.as_str()
 }
@@ -104,7 +104,7 @@ pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
         let since = stamp(saved, Some(domain), "all").or_else(|| stamp(saved, None, "all"));
         let path = match since {
             Some(since) => format!("/sync/all-items/{kind}?date_from={since}"),
-            None => format!("/sync/all-items/{kind}"),
+            None => format!("/sync/all-items/{kind}")
         };
         requests.push(keyed(&args, &format!("items_{kind}"), path));
         if stamp(activities, Some(domain), "removed_from_list")
@@ -169,7 +169,7 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
                     .and_then(|id| current.iter().position(|old| entry_id(old) == Some(id)));
                 match position {
                     Some(position) => current[position] = entry,
-                    None => current.push(entry),
+                    None => current.push(entry)
                 }
             }
         }
@@ -206,7 +206,7 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
     .ok()?;
     serde_json::to_string(&json!({
         "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "fullAt": full_at},
-        "snapshot": snapshot,
+        "snapshot": snapshot
     }))
     .ok()
 }

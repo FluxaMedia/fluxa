@@ -34,42 +34,8 @@ fn trakt_collection_body_uses_provider_resource_for_content_type() {
     assert!(series.get("movies").is_none());
 }
 
-#[test]
-fn trakt_token_expiry_stays_in_epoch_seconds() {
-    assert_eq!(trakt_token_expires_at(1_700_000_000, 3_600), 1_700_003_300);
-}
 
-#[test]
-fn trakt_urls_accept_only_supported_routes() {
-    assert_eq!(
-        trakt_scrobble_url("pause").as_deref(),
-        Some("https://api.trakt.tv/scrobble/pause")
-    );
-    assert_eq!(trakt_scrobble_url("delete"), None);
-    assert_eq!(
-        trakt_playback_url(Some("series")).as_deref(),
-        Some("https://api.trakt.tv/sync/playback/episodes")
-    );
-    assert_eq!(trakt_playback_url(Some("unknown")), None);
-}
 
-#[test]
-fn trakt_list_references_accept_ids_and_supported_urls() {
-    assert_eq!(trakt_list_reference("42").as_deref(), Some("42"));
-    assert_eq!(
-        trakt_list_reference("https://trakt.tv/lists/my-list?foo=bar").as_deref(),
-        Some("my-list")
-    );
-    assert_eq!(
-        trakt_list_reference("https://trakt.tv/users/user/lists/7").as_deref(),
-        Some("7")
-    );
-    assert_eq!(
-        trakt_list_reference("?id=custom_list").as_deref(),
-        Some("custom_list")
-    );
-    assert_eq!(trakt_list_reference("https://example.com/list/7"), None);
-}
 
 #[test]
 fn trakt_playback_tmdb_show_keeps_a_resolvable_episode_id() {
@@ -84,24 +50,6 @@ fn trakt_playback_tmdb_show_keeps_a_resolvable_episode_id() {
     assert_eq!(result["lastVideoId"], "tmdb:42:1:2");
 }
 
-#[test]
-fn trakt_watched_shows_create_continue_watching_items() {
-    let watched = json!([{
-        "last_watched_at": "2026-07-21T00:00:00.000Z",
-        "completed": 4,
-        "show": {"title": "Example", "aired_episodes": 8, "ids": {"imdb": "tt42"}},
-        "seasons": [{"number": 1, "episodes": [
-            {"number": 4, "last_watched_at": "2026-07-21T00:00:00.000Z"}
-        ]}]
-    }]);
-    let items: Value = serde_json::from_str(
-        &trakt_watched_shows_to_items_json(&watched.to_string()).expect("items"),
-    )
-    .unwrap();
-    assert_eq!(items[0]["id"], "tt42");
-    assert_eq!(items[0]["lastVideoId"], "tt42:1:4");
-    assert_eq!(items[0]["timeOffset"], 1);
-}
 
 #[test]
 fn trakt_up_next_items_use_the_source_next_episode() {
@@ -120,87 +68,10 @@ fn trakt_up_next_items_use_the_source_next_episode() {
     assert_eq!(items[0]["continueWatchingBadge"], "upNext");
 }
 
-#[test]
-fn trakt_watched_shows_without_episode_timestamps_use_latest_episode() {
-    let watched = json!([{
-        "last_watched_at": "2026-07-21T00:00:00.000Z",
-        "completed": 3,
-        "show": {"title": "Example", "aired_episodes": 12, "ids": {"imdb": "tt42"}},
-        "seasons": [
-            {"number": 1, "episodes": [{"number": 3}]},
-            {"number": 9, "episodes": [{"number": 3}]}
-        ]
-    }]);
-    let items: Value = serde_json::from_str(
-        &trakt_watched_shows_to_items_json(&watched.to_string()).expect("items"),
-    )
-    .unwrap();
-    assert_eq!(items[0]["lastVideoId"], "tt42:9:3");
-}
 
-#[test]
-fn trakt_watched_shows_use_furthest_episode_over_newer_earlier_rewatch() {
-    let watched = json!([{
-        "last_watched_at": "2026-07-21T00:00:00.000Z",
-        "completed": 3,
-        "show": {"title": "Example", "aired_episodes": 12, "ids": {"imdb": "tt42"}},
-        "seasons": [
-            {"number": 1, "episodes": [{"number": 2, "last_watched_at": "2026-07-21T00:00:00.000Z"}]},
-            {"number": 9, "episodes": [{"number": 2, "last_watched_at": "2026-07-01T00:00:00.000Z"}]}
-        ]
-    }]);
-    let items: Value = serde_json::from_str(
-        &trakt_watched_shows_to_items_json(&watched.to_string()).expect("items"),
-    )
-    .unwrap();
-    assert_eq!(items[0]["lastVideoId"], "tt42:9:2");
-}
 
-#[test]
-fn trakt_playback_dedup_keeps_the_furthest_watched_episode() {
-    let items = json!([
-        {"id": "tt42", "lastEpisodeSeason": 1, "lastEpisodeNumber": 1, "savedAt": "2026-07-22T00:00:00.000Z"},
-        {"id": "tt42", "lastEpisodeSeason": 1, "lastEpisodeNumber": 2, "savedAt": "2026-07-21T00:00:00.000Z", "continueWatchingBadge": "upNext"}
-    ]);
-    let result: Value = serde_json::from_str(
-        &trakt_playback_items_dedup_json(&items.to_string()).expect("deduped items"),
-    )
-    .unwrap();
-    assert_eq!(result[0]["lastEpisodeNumber"], 2);
-}
 
-#[test]
-fn history_request_builds_show_seasons_from_episode_ids() {
-    let request = trakt_history_request_json(
-            r#"{"id":"tt1234567","name":"Show","type":"series","poster":null}"#,
-            r#"[{"id":"tt1234567:1:2","name":null,"season":null,"number":null,"released":null,"thumbnail":null}]"#,
-        )
-        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
-        .expect("history request");
 
-    assert_eq!(
-        request
-            .get("shows")
-            .and_then(Value::as_array)
-            .and_then(|shows| shows.first())
-            .and_then(|show| show.get("seasons"))
-            .and_then(Value::as_array)
-            .and_then(|seasons| seasons.first())
-            .and_then(|season| season.get("number"))
-            .and_then(Value::as_i64),
-        Some(1)
-    );
-    assert!(request.get("movies").is_none());
-}
-
-#[test]
-fn trakt_oauth_error_code_extracts_structured_error() {
-    assert_eq!(
-        trakt_oauth_error_code(r#"{"error":"authorization_pending"}"#).as_deref(),
-        Some("authorization_pending")
-    );
-    assert_eq!(trakt_oauth_error_code("{}"), None);
-}
 
 #[test]
 fn trakt_mark_watched_body_groups_episodes_by_show_and_dedupes() {
@@ -241,70 +112,9 @@ fn trakt_mark_watched_body_is_none_for_unrecognized_ids() {
     );
 }
 
-#[test]
-fn trakt_sync_item_policy_normalizes_identity_and_release_date() {
-    let meta = trakt_sync_item_to_meta_json(
-        &json!({
-            "item": { "show": { "title": "Show", "year": 2025, "ids": { "imdb": "tt1" } } },
-            "type": "series",
-            "unknownName": "Unknown",
-        })
-        .to_string(),
-    )
-    .and_then(|value| serde_json::from_str::<Value>(&value).ok())
-    .unwrap();
-    assert_eq!(meta["id"], "tt1");
-    assert_eq!(meta["released"], "2025-01-01");
-}
 
-#[test]
-fn trakt_playback_deletion_matches_shared_content_identity() {
-    let ids: Value = serde_json::from_str(&trakt_playback_delete_ids_json(&json!({
-            "contentId":"tmdb:42",
-            "items":[{"id":1,"show":{"ids":{"tmdb":42}}},{"id":2,"movie":{"ids":{"imdb":"tt1"}}}],
-        }).to_string()).unwrap()).unwrap();
-    assert_eq!(ids, json!([1]));
-}
 
-#[test]
-fn trakt_activity_diff_flags_only_moved_timestamps() {
-    let result: Value = serde_json::from_str(&trakt_activity_diff_json(&json!({
-            "previous": { "movies": { "paused_at": "t1", "watchlisted_at": "t1", "watched_at": "t1" }, "episodes": { "paused_at": "t1", "watched_at": "t1" }, "shows": { "watchlisted_at": "t1" } },
-            "current": { "movies": { "paused_at": "t1", "watchlisted_at": "t1", "watched_at": "t2" }, "episodes": { "paused_at": "t1", "watched_at": "t1" }, "shows": { "watchlisted_at": "t1" } },
-            "hasPlayback": true,
-            "hasWatchlistMovies": true,
-            "hasWatchlistShows": true,
-            "hasWatchedMovies": true,
-            "hasWatchedShows": true,
-        }).to_string()).unwrap()).unwrap();
-    assert_eq!(result["playbackChanged"], false);
-    assert_eq!(result["watchlistMoviesChanged"], false);
-    assert_eq!(result["watchlistShowsChanged"], false);
-    assert_eq!(result["watchedMoviesChanged"], true);
-    assert_eq!(result["watchedShowsChanged"], false);
-}
 
-#[test]
-fn trakt_activity_diff_forces_full_when_nothing_cached_yet() {
-    let result: Value = serde_json::from_str(
-        &trakt_activity_diff_json(
-            &json!({
-                "previous": null,
-                "current": { "movies": {}, "episodes": {}, "shows": {} },
-                "hasPlayback": false,
-                "hasWatchlistMovies": false,
-                "hasWatchlistShows": false,
-                "hasWatchedMovies": false,
-                "hasWatchedShows": false,
-            })
-            .to_string(),
-        )
-        .unwrap(),
-    )
-    .unwrap();
-    assert_eq!(result["playbackChanged"], true);
-    assert_eq!(result["watchedShowsChanged"], true);
-}
 
 #[test]
 fn items_without_imdb_or_tmdb_keep_their_tvdb_id() {

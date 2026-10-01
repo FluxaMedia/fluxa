@@ -1,49 +1,7 @@
 use super::*;
 
-#[test]
-fn repository_meta_detail_plan_prefers_addons_only_when_configured_source_exists() {
-    let plan = repository_meta_detail_plan_json(
-        r#"{"useConfiguredAddons":true,"authKey":"","localAddons":[]}"#,
-    )
-    .unwrap();
-    assert!(plan.contains(r#""preferAddonMetaDetail":false"#));
 
-    let plan = repository_meta_detail_plan_json(
-        r#"{"useConfiguredAddons":true,"authKey":"","localAddons":["https://addon/manifest.json"]}"#,
-    )
-    .unwrap();
-    assert!(plan.contains(r#""preferAddonMetaDetail":true"#));
-}
 
-#[test]
-fn repository_season_videos_filters_by_season_without_reordering() {
-    let videos = repository_season_videos_json(
-        r#"{"videos":[{"id":"s2e1","season":2},{"id":"s1e1","season":1},{"id":"s2e2","season":2}]}"#,
-        2,
-    );
-    assert_eq!(
-        videos,
-        r#"[{"id":"s2e1","season":2},{"id":"s2e2","season":2}]"#
-    );
-}
-
-#[test]
-fn manifest_fetch_decision_uses_cache_before_network_unless_forced() {
-    assert!(
-        manifest_fetch_decision_json(
-            r#"{"forceRefresh":false,"memoryHit":true,"persistentHit":true}"#
-        )
-        .unwrap()
-        .contains(r#""phase":"memory""#)
-    );
-    assert!(
-        manifest_fetch_decision_json(
-            r#"{"forceRefresh":true,"memoryHit":true,"persistentHit":true}"#
-        )
-        .unwrap()
-        .contains(r#""phase":"fetch""#)
-    );
-}
 
 #[test]
 fn addon_resource_plan_builds_subtitle_and_catalog_urls() {

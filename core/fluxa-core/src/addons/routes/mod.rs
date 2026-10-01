@@ -7,7 +7,6 @@ mod store;
 
 pub(crate) use discovery::*;
 pub(crate) use plan::*;
-pub(crate) use plugins::*;
 pub(crate) use protocol::*;
 pub(crate) use resource::*;
 pub(crate) use store::*;

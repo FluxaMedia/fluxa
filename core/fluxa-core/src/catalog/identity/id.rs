@@ -106,24 +106,6 @@ pub(crate) fn is_tmdb_like_content_id(id: &str) -> bool {
     base.to_ascii_lowercase().starts_with(TMDB_ID_PREFIX) || base.parse::<i32>().is_ok()
 }
 
-pub(crate) fn tmdb_numeric_id(id: &str) -> Option<String> {
-    let base = base_content_id(id);
-    if let Some((_, path)) = base.split_once("themoviedb.org/") {
-        let mut parts = path.split('/');
-        let kind = parts.next().unwrap_or_default();
-        let candidate = parts.next().unwrap_or_default().split(['?', '#']).next()?;
-        if matches!(kind, "movie" | "tv") {
-            return candidate.parse::<i32>().ok().map(|_| candidate.to_string());
-        }
-    }
-    let numeric = base
-        .strip_prefix(TMDB_ID_PREFIX)
-        .or_else(|| base.strip_prefix("movie:"))
-        .or_else(|| base.strip_prefix("series:"))
-        .unwrap_or(&base);
-    numeric.parse::<i32>().ok().map(|_| numeric.to_string())
-}
-
 pub(crate) fn episode_id(base_id: &str, season: i32, episode: i32) -> String {
     format!("{base_id}:{season}:{episode}")
 }
@@ -166,18 +148,4 @@ pub(crate) fn parse_video_id_json(id: &str) -> String {
     }
     serde_json::to_string(&serde_json::Value::Object(map))
         .unwrap_or_else(|_| r#"{"isEpisode":false}"#.to_string())
-}
-
-pub(crate) fn build_trakt_ids_json(video_id: &str) -> Option<String> {
-    let parsed_json = parse_video_id_json(video_id);
-    let parsed: serde_json::Value = serde_json::from_str(&parsed_json).ok()?;
-    if let Some(imdb) = parsed.get("imdb").and_then(serde_json::Value::as_str) {
-        return serde_json::to_string(&serde_json::json!({"imdb": imdb})).ok();
-    }
-    if let Some(tmdb) = parsed.get("tmdb").and_then(serde_json::Value::as_str)
-        && let Ok(n) = tmdb.parse::<i64>()
-    {
-        return serde_json::to_string(&serde_json::json!({"tmdb": n})).ok();
-    }
-    None
 }
