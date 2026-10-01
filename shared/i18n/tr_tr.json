@@ -982,8 +982,6 @@
   "settings.progress_thresholds": "İLERLEME EŞİKLERİ",
   "settings.next_episode_threshold": "Sonraki Bölüm Eşiği",
   "settings.next_episode_threshold_desc": "Oynatma bu noktaya ulaşınca sonraki bölüm kartını gösterir.",
-  "settings.watched_threshold": "İzlendi Eşiği",
-  "settings.watched_threshold_desc": "Oynatma bu noktaya ulaşınca içeriği izlenmiş sayar.",
   "settings.movie_recommendation_outro_percent": "Film Öneri Outrosu",
   "settings.series_recommendation_outro_percent": "Dizi Öneri Outrosu",
   "settings.recommendation_outro_percent_desc": "Oynatma bu yüzdeye ulaştığında önerileri açar ve playerı küçültür.",

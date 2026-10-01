@@ -982,8 +982,6 @@
   "settings.progress_thresholds": "PROGRESS THRESHOLDS",
   "settings.next_episode_threshold": "Next episode threshold",
   "settings.next_episode_threshold_desc": "Shows the next episode card after playback reaches this point.",
-  "settings.watched_threshold": "Watched threshold",
-  "settings.watched_threshold_desc": "Marks the current item as watched after playback reaches this point.",
   "settings.movie_recommendation_outro_percent": "Movie recommendation outro",
   "settings.series_recommendation_outro_percent": "Series recommendation outro",
   "settings.recommendation_outro_percent_desc": "Opens recommendations and shrinks the player after this percentage.",

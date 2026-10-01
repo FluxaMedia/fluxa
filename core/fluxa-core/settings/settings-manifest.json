@@ -1388,13 +1388,6 @@
       "category": "playback"
     },
     {
-      "key": "watchedThresholdPercent",
-      "type": "string",
-      "default": "90",
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "watchProgressSource",
       "type": "string",
       "default": "all",

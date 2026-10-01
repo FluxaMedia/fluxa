@@ -55,7 +55,6 @@ struct ProfileSafePrefs {
     auto_skip_intro: bool,
     auto_play_next_episode: bool,
     next_episode_threshold_percent: f32,
-    watched_threshold_percent: f32,
     seek_forward_seconds: i64,
     seek_backward_seconds: i64,
     player_buffer_cache_mb: i32,
@@ -173,9 +172,6 @@ fn profile_safe_prefs(profile: &Value) -> ProfileSafePrefs {
         auto_play_next_episode: bool_value(profile, "autoPlayNextEpisode").unwrap_or(true),
         next_episode_threshold_percent: number(profile, "nextEpisodeThresholdPercent")
             .unwrap_or(90.0)
-            .clamp(50.0, 99.0) as f32,
-        watched_threshold_percent: number(profile, "watchedThresholdPercent")
-            .unwrap_or(80.0)
             .clamp(50.0, 99.0) as f32,
         seek_forward_seconds: int(profile, "seekForwardSeconds").unwrap_or(10),
         seek_backward_seconds: int(profile, "seekBackwardSeconds").unwrap_or(10),
