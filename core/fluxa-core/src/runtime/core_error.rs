@@ -5,22 +5,13 @@ pub(crate) enum CoreError {
         context: &'static str,
         detail: String,
     },
-    NotFound {
-        context: &'static str,
-    },
 }
 
 impl CoreError {
     fn log(&self) {
         match self {
             CoreError::BadInput { context, detail } => log_sink::record(context, detail),
-            CoreError::NotFound { context } => log_sink::record(context, "not found"),
         }
-    }
-
-    pub(crate) fn log_and_none<T>(self) -> Option<T> {
-        self.log();
-        None
     }
 }
 

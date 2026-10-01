@@ -1,4 +1,3 @@
-pub(crate) mod app_state;
 pub(crate) mod complete_effect;
 pub(crate) mod contracts;
 pub(crate) mod dispatch;
@@ -24,13 +23,11 @@ pub(crate) use crate::player::engine::trailer;
 pub(crate) use crate::profile::engine as profile;
 pub(crate) use crate::settings::engine as settings;
 
-use crate::runtime::core_error::{CoreError, LogAndDiscard};
 use crate::runtime::{EffectEnvelope, EffectKind};
 use contracts::{AppAction, DispatchResult};
 use serde::Serialize;
 use state::EngineState;
 use std::collections::{HashMap, HashSet};
-use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 use web_time::Instant;
 
@@ -205,61 +202,6 @@ impl HeadlessEngine {
             effects,
         })
     }
-}
-
-static ENGINES: OnceLock<Mutex<HashMap<u64, Arc<Mutex<HeadlessEngine>>>>> = OnceLock::new();
-
-pub fn headless_engine_dispatch_json(handle: u64, action_json: &str) -> Option<String> {
-    const CONTEXT: &str = "headless_engine_dispatch_json";
-    let action: AppAction = parse(CONTEXT, action_json)?;
-    let result = with_engine(handle, CONTEXT, |engine| engine.apply(action))?;
-    serde_json::to_string(&result).ok()
-}
-
-pub fn headless_engine_complete_effect_json(handle: u64, result_json: &str) -> Option<String> {
-    const CONTEXT: &str = "headless_engine_complete_effect_json";
-    let result: EffectResultInput = parse(CONTEXT, result_json)?;
-    let result = with_engine(handle, CONTEXT, |engine| engine.complete(result))?;
-    serde_json::to_string(&result).ok()
-}
-
-fn parse<T: serde::de::DeserializeOwned>(context: &'static str, json: &str) -> Option<T> {
-    serde_json::from_str(json)
-        .map_err(|error| CoreError::BadInput {
-            context,
-            detail: error.to_string(),
-        })
-        .log_discard()
-}
-
-fn with_engine<T>(
-    handle: u64,
-    context: &'static str,
-    run: impl FnOnce(&mut HeadlessEngine) -> T,
-) -> Option<T> {
-    let Some(engine) = lock_engines().get(&handle).cloned() else {
-        return CoreError::NotFound { context }.log_and_none();
-    };
-    let mut engine = match engine.lock() {
-        Ok(engine) => engine,
-        Err(_) => {
-            crate::runtime::log_sink::record(context, "poisoned handle; recreate the engine");
-            return None;
-        }
-    };
-    Some(run(&mut engine))
-}
-
-// A panic while a request held the registry lock poisons it; recover so a caught panic
-// does not make every handle inaccessible.
-fn engines() -> &'static Mutex<HashMap<u64, Arc<Mutex<HeadlessEngine>>>> {
-    ENGINES.get_or_init(|| Mutex::new(HashMap::new()))
-}
-
-fn lock_engines() -> std::sync::MutexGuard<'static, HashMap<u64, Arc<Mutex<HeadlessEngine>>>> {
-    engines()
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 #[cfg(test)]

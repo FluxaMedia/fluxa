@@ -40,10 +40,6 @@ pub mod fuzz_targets {
         contains_compact_episode, contains_spaced_episode, parse_episode_locator,
         percent_decode_component
     };
-    pub use crate::headless_engine::{
-        create_headless_engine, destroy_headless_engine, headless_engine_complete_effect_json,
-        headless_engine_dispatch_json
-    };
 }
 
 #[cfg(test)]
