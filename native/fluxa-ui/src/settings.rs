@@ -518,6 +518,7 @@ fn raw_row_label(setting: &SettingsRow, language: &str) -> String {
     let legacy_key = match setting.key {
         "autoSkipIntro" => "settings.auto_skip",
         "useAnimeSkip" => "settings.use_animeskip",
+        "reduceMotion" => "auto.reduce_motion",
         "seekThumbnailEnabled" => "settings.seek_thumbnails",
         "holdToSpeedEnabled" => "settings.hold_to_speed",
         "playbackSpeed" => "auto.playback_speed",
