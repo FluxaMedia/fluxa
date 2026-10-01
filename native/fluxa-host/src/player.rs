@@ -715,6 +715,9 @@ fn load_resolved(
 }
 
 pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
+    if !state.settings.bool_value("seekThumbnailEnabled") {
+        return;
+    }
     let (Some(player), Some(video)) = (state.player.as_mut(), state.video.as_mut()) else {
         return;
     };
