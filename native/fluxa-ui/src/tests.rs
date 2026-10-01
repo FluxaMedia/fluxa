@@ -1530,6 +1530,7 @@ fn skip_and_next_cards_stay_on_screen_for_every_form_factor() {
                 skip: Some(SkipCard {
                     kind: SkipKind::Outro,
                     seek_to: 1390.0,
+                    progress: 0.5,
                 }),
                 next_episode: Some(NextEpisodeCard {
                     label: "S1:E2".to_owned(),

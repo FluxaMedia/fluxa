@@ -2,9 +2,11 @@ use super::*;
 
 mod overlay;
 mod panel;
+mod stats;
 
-pub use overlay::{ChapterSpan, NextEpisodeCard, SkipCard, SkipKind};
+pub use overlay::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
 pub use panel::{PanelRow, PlayerPanel};
+pub use stats::StatsSection;
 
 mod controls;
 mod loading;
@@ -36,13 +38,19 @@ pub struct PlayerModel {
     pub paused: bool,
     pub muted: bool,
     pub volume: f64,
+    pub boost: bool,
+    pub stats: Vec<StatsSection>,
     pub controls_visible: bool,
     pub show_pause_info: bool,
     pub logo: Option<String>,
     pub episode_title: Option<String>,
+    pub episode_image: Option<String>,
+    pub synopsis: Option<String>,
     pub description: Option<String>,
     pub chapters: Vec<(f64, String)>,
     pub chapter_spans: Vec<ChapterSpan>,
+    pub segment_spans: Vec<SegmentSpan>,
+    pub mark_preview: Option<SegmentSpan>,
     pub skip: Option<SkipCard>,
     pub next_episode: Option<NextEpisodeCard>,
     pub thumbnail: Option<(f64, TextureId)>,
@@ -58,6 +66,7 @@ pub struct PlayerModel {
     pub sources: Option<Vec<PlayerSource>>,
     pub source_filter: Option<String>,
     pub sources_loading: bool,
+    pub sources_pending: Vec<String>,
     pub toast: Option<PlayerToast>,
     pub panel: Option<PlayerPanel>,
     pub dim: f32,
@@ -80,7 +89,7 @@ pub struct PlayerOptions {
     pub fullscreen: bool,
     pub cast: bool,
     pub mark_segment: bool,
-    pub upscaling: bool,
+    pub segments: bool,
     pub gestures: bool,
     pub double_tap: bool,
     pub center_controls: bool,
@@ -100,7 +109,7 @@ impl Default for PlayerOptions {
             fullscreen: true,
             cast: true,
             mark_segment: true,
-            upscaling: true,
+            segments: true,
             gestures: true,
             double_tap: true,
             center_controls: true,
@@ -116,11 +125,13 @@ const PLAYER_ICONS: &[&str] = &[
     "SkipBack",
     "Volume",
     "VolumeMuted",
+    "Zap",
+    "ZapFilled",
     "Maximize",
     "AudioSubtitles",
     "Gauge",
-    "Sliders",
-    "List",
+    "Settings",
+    "ListVideo",
     "Cast",
     "Flag",
     "Sparkles",
@@ -183,6 +194,13 @@ impl PlayerModel {
         for source in self.sources.iter().flatten() {
             if !addons.contains(&source.addon.as_str()) {
                 addons.push(&source.addon);
+            }
+        }
+        if self.sources_loading {
+            for addon in &self.sources_pending {
+                if !addons.contains(&addon.as_str()) {
+                    addons.push(addon);
+                }
             }
         }
         addons
@@ -253,6 +271,7 @@ pub fn draw_player(
         let top = if player.controls_visible { 72.0 } else { 24.0 };
         draw_warnings(context, Pos2::new(chrome.margin(), top), player, elapsed);
     }
+    stats::draw_stats(&chrome);
     let next_thumbnail = player
         .next_episode
         .as_ref()
@@ -271,7 +290,7 @@ pub fn draw_player(
                 overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
             }
             if let Some(panel) = player.panel.as_ref() {
-                panel::draw_panel(&chrome, ui, &mut layout, panel);
+                panel::draw_panel(&chrome, ui, &mut layout, panel, assets);
             }
         });
     if player.dim > 0.0 {
@@ -343,7 +362,11 @@ impl Chrome<'_> {
             rect,
             self.icons.get(icon),
             node,
-            if node == NODE_PLAYER_TOGGLE { 0.6 } else { 0.5 },
+            if node == NODE_PLAYER_TOGGLE {
+                0.72
+            } else {
+                0.6
+            },
         );
         layout.focusable.push((node, response.rect));
         if response.clicked() {
@@ -371,7 +394,9 @@ impl Chrome<'_> {
         };
         let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
         if !mobile {
-            if response.clicked() {
+            if response.double_clicked() {
+                layout.activated = Some(NODE_PLAYER_FULLSCREEN);
+            } else if response.clicked() {
                 layout.activated = Some(NODE_PLAYER_TOGGLE);
             }
             return;
@@ -479,6 +504,17 @@ impl Chrome<'_> {
             &player.chapter_spans,
             played,
         );
+        if player.options.segments {
+            overlay::segment_tints(self.painter, track, thickness, &player.segment_spans);
+        }
+        if let Some(preview) = player.mark_preview.as_ref() {
+            overlay::segment_tints(
+                self.painter,
+                track,
+                thickness,
+                std::slice::from_ref(preview),
+            );
+        }
         let active = seek.hovered()
             || seek.dragged()
             || player.scrub.is_some()

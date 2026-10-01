@@ -7,8 +7,8 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_REWIND => seek(state, -1.0),
         fluxa_ui::NODE_PLAYER_FORWARD => seek(state, 1.0),
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
+        fluxa_ui::NODE_PLAYER_BOOST => toggle_boost(state),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
-        fluxa_ui::NODE_PLAYER_UPSCALING => cycle_upscaling(state),
         fluxa_ui::NODE_PLAYER_CONTROLS => {
             if let Some(player) = state.player.as_mut() {
                 player.touch();
@@ -22,6 +22,7 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_SKIP => {
             let target = state.player.as_mut().and_then(|player| {
                 let target = player.overlay.skip_target();
+                player.toast_skip();
                 player.overlay.dismiss_skip();
                 target
             });
@@ -74,6 +75,14 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_RECOMMENDATIONS_CLOSE => dismiss_recommendations(state),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_PLAY => open_recommendation(state, true),
         fluxa_ui::NODE_PLAYER_RECOMMENDATION_DETAILS => open_recommendation(state, false),
+        fluxa_ui::NODE_PLAYER_SOURCES_RETRY => {
+            if let Some(item) = state.player.as_ref().map(|player| player.meta.clone()) {
+                close(state);
+                state
+                    .pending_native_actions
+                    .push(crate::NativeAction::StartPlayback { item });
+            }
+        }
         node if node >= fluxa_ui::NODE_PLAYER_SOURCE_BASE => {
             if let Some(player) = state.player.as_mut() {
                 player.chosen = Some((node - fluxa_ui::NODE_PLAYER_SOURCE_BASE) as usize);
@@ -114,13 +123,10 @@ pub(crate) fn gesture(state: &mut RendererState, gesture: fluxa_ui::PlayerGestur
     };
     match gesture {
         fluxa_ui::PlayerGesture::Volume(delta) => {
-            let volume = (player.status.volume + f64::from(delta) * 100.0).clamp(0.0, 100.0);
-            player.status.volume = volume;
-            player.toast("volume", volume);
-            if let Some(video) = state.video.as_mut() {
-                video.command(VideoCommand::SetVolume(volume));
-            }
+            let volume = player.status.volume + f64::from(delta) * 100.0;
+            set_volume(state, volume);
         }
+        fluxa_ui::PlayerGesture::VolumeSet(percent) => set_volume(state, f64::from(percent)),
         fluxa_ui::PlayerGesture::Brightness(delta) => {
             player.brightness = (player.brightness + delta).clamp(MIN_BRIGHTNESS, 1.0);
             let level = f64::from(player.brightness);
@@ -212,7 +218,9 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
             .as_ref()
             .is_some_and(|player| player.panel.is_some());
         if paneled {
-            if let Some(player) = state.player.as_mut() {
+            if let Some(player) = state.player.as_mut()
+                && !menu::back(player)
+            {
                 player.panel = None;
             }
         } else if recommending {
@@ -297,4 +305,56 @@ pub(super) fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOu
 
 fn open_menu(state: &mut RendererState, kind: menu::Menu) {
     menu::open(state, kind);
+}
+
+fn volume_max(state: &RendererState) -> f64 {
+    if state.settings.bool_value("playerAudioBoost") {
+        200.0
+    } else {
+        100.0
+    }
+}
+
+fn set_volume(state: &mut RendererState, volume: f64) {
+    let max = volume_max(state);
+    let volume = volume.clamp(0.0, max);
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    player.status.volume = volume;
+    player.toast("volume", volume);
+    if let Some(video) = state.video.as_mut() {
+        video.command(VideoCommand::Mpv(vec![
+            "set".to_owned(),
+            "volume-max".to_owned(),
+            max.to_string(),
+        ]));
+        video.command(VideoCommand::SetVolume(volume));
+    }
+}
+
+pub(crate) fn toggle_boost(state: &mut RendererState) {
+    let on = !state.settings.bool_value("playerAudioBoost");
+    let value = json!(on);
+    if let Some(values) = state.settings.values.as_object_mut() {
+        values.insert("playerAudioBoost".to_owned(), value.clone());
+    }
+    state
+        .pending_native_actions
+        .push(crate::NativeAction::SettingsChange {
+            key: "playerAudioBoost".to_owned(),
+            value,
+        });
+    let current = state
+        .player
+        .as_ref()
+        .map_or(100.0, |player| player.status.volume);
+    set_volume(state, if on { 200.0 } else { current });
+}
+
+pub(crate) fn toggle_stats(state: &mut RendererState) {
+    if let Some(player) = state.player.as_mut() {
+        player.stats_visible = !player.stats_visible;
+        player.stats_at = None;
+    }
 }

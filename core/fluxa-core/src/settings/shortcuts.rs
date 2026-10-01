@@ -203,6 +203,41 @@ const ACTIONS: &[Action] = &[
         player: true,
         defaults: &["f"],
     },
+    Action {
+        id: "player_anime4k_toggle",
+        player: true,
+        defaults: &["u"],
+    },
+    Action {
+        id: "player_anime4k_mode_next",
+        player: true,
+        defaults: &["shift+u"],
+    },
+    Action {
+        id: "player_anime4k_mode_prev",
+        player: true,
+        defaults: &[],
+    },
+    Action {
+        id: "player_boost_toggle",
+        player: true,
+        defaults: &["b"],
+    },
+    Action {
+        id: "player_previous_episode",
+        player: true,
+        defaults: &["p"],
+    },
+    Action {
+        id: "player_mark_segment",
+        player: true,
+        defaults: &["shift+i"],
+    },
+    Action {
+        id: "player_toggle_stats",
+        player: true,
+        defaults: &["i"],
+    },
 ];
 
 const NAMED_KEYS: &[&str] = &[

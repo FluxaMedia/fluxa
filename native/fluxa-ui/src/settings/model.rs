@@ -19,6 +19,7 @@ pub struct SettingsModel {
     pub media_servers: Vec<serde_json::Value>,
     pub server_fields: [String; 3],
     pub shortcuts: Vec<ShortcutRow>,
+    pub playback_summary: Vec<crate::StatsSection>,
     pub shortcut_recording: Option<String>,
 }
 
@@ -172,6 +173,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         media_servers: Vec::new(),
         server_fields: Default::default(),
         shortcuts: Vec::new(),
+        playback_summary: Vec::new(),
         shortcut_recording: None,
     }
 }

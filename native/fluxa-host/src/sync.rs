@@ -84,7 +84,9 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     let server_fields = std::mem::take(&mut state.settings.server_fields);
+    let playback_summary = std::mem::take(&mut state.settings.playback_summary);
     state.settings = projection.settings;
+    state.settings.playback_summary = playback_summary;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.section_open = section_open;
     state.settings.page_open = page_open;

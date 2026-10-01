@@ -256,6 +256,13 @@ fn player_action(state: &mut RendererState, action: &str) {
         "player_speed_decrease" => player::step_speed(state, -SPEED_STEP),
         "player_speed_increase" => player::step_speed(state, SPEED_STEP),
         "player_skip_active" => player::activate(state, fluxa_ui::NODE_PLAYER_SKIP),
+        "player_anime4k_toggle" => player::toggle_upscaling(state),
+        "player_anime4k_mode_next" => player::step_upscaling_mode(state, 1),
+        "player_anime4k_mode_prev" => player::step_upscaling_mode(state, -1),
+        "player_boost_toggle" => player::toggle_boost(state),
+        "player_toggle_stats" => player::toggle_stats(state),
+        "player_previous_episode" => player::previous_episode(state),
+        "player_mark_segment" => player::open_submit(state),
         "player_next_episode" => player::media_command(state, "next", 0.0),
         _ => {}
     }

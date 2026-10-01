@@ -24,6 +24,11 @@ enum Item {
     AudioDelay(f64),
     SubtitleDelay(f64),
     Sleep,
+    Upscaling,
+    UpscalingMode,
+    Stats,
+    Language(bool, String),
+    LanguageBack,
 }
 
 fn row(label: String, value: Option<String>, selected: bool, item: Item) -> (PanelRow, Item) {
@@ -49,22 +54,109 @@ fn heading(label: String) -> (PanelRow, Item) {
     )
 }
 
-fn track_label(track: &VideoTrack, index: usize, language: &str) -> (String, Option<String>) {
+fn language_key(code: &str) -> Option<&'static str> {
+    let key = match code.to_ascii_lowercase().get(..2)? {
+        "tr" => "language.turkish",
+        "en" => "language.english",
+        "ar" => "language.arabic",
+        "zh" | "ch" => "language.chinese",
+        "fr" => "language.french",
+        "de" | "ge" => "language.german",
+        "hi" => "language.hindi",
+        "it" => "language.italian",
+        "ja" | "jp" => "language.japanese",
+        "ko" | "kr" => "language.korean",
+        "pt" => "language.portuguese",
+        "ru" => "language.russian",
+        "es" | "sp" => "language.spanish",
+        _ => return None,
+    };
+    Some(key)
+}
+
+fn group_label(track: &VideoTrack, language: &str) -> String {
     let code = track.language.as_deref().filter(|code| !code.is_empty());
-    match track.title.as_deref().filter(|title| !title.is_empty()) {
-        Some(title) => (title.to_owned(), code.map(str::to_uppercase)),
-        None => match code {
-            Some(code) => (code.to_uppercase(), None),
-            None => (
-                format!(
-                    "{} {}",
-                    localized("player.audio_track", language),
-                    index + 1
-                ),
-                None,
-            ),
+    match code {
+        Some(code) => match language_key(code) {
+            Some(key) => localized(key, language),
+            None => code.to_uppercase(),
         },
+        None => localized("player.language_unknown", language),
     }
+}
+
+fn track_row(
+    track: &VideoTrack,
+    index: usize,
+    language: &str,
+    subtitles: bool,
+) -> (PanelRow, Item) {
+    let title = track.title.as_deref().filter(|title| !title.is_empty());
+    let label = match title {
+        Some(title) => title.to_owned(),
+        None => format!(
+            "{} {}",
+            localized("player.audio_track", language),
+            index + 1
+        ),
+    };
+    let item = if subtitles {
+        Item::Subtitle(Some(track.id.clone()))
+    } else {
+        Item::Audio(track.id.clone())
+    };
+    row(
+        label,
+        track
+            .external
+            .then(|| localized("player.external", language)),
+        track.selected,
+        item,
+    )
+}
+
+fn language_groups<'a>(
+    tracks: Vec<&'a VideoTrack>,
+    language: &str,
+) -> Vec<(String, Vec<&'a VideoTrack>)> {
+    let mut groups: Vec<(String, Vec<&VideoTrack>)> = Vec::new();
+    for track in tracks {
+        let label = group_label(track, language);
+        match groups.iter_mut().find(|(name, _)| *name == label) {
+            Some((_, members)) => members.push(track),
+            None => groups.push((label, vec![track])),
+        }
+    }
+    groups.sort_by_key(|(_, members)| !members.iter().any(|track| track.selected));
+    groups
+}
+
+fn grouped(
+    rows: &mut Vec<(PanelRow, Item)>,
+    tracks: Vec<&VideoTrack>,
+    language: &str,
+    subtitles: bool,
+) {
+    let groups = language_groups(tracks, language);
+    if groups.len() <= 1 {
+        for (index, track) in groups.iter().flat_map(|(_, members)| members).enumerate() {
+            rows.push(track_row(track, index, language, subtitles));
+        }
+        return;
+    }
+    for (name, members) in groups {
+        let selected = members.iter().any(|track| track.selected);
+        rows.push(row(
+            name.clone(),
+            Some(members.len().to_string()),
+            selected,
+            Item::Language(subtitles, name),
+        ));
+    }
+}
+
+pub(super) fn back(player: &mut PlayerSession) -> bool {
+    player.track_lang.take().is_some()
 }
 
 fn episodes(player: &PlayerSession) -> Vec<&Value> {
@@ -111,17 +203,27 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
     let language = player.language.as_str();
     let text = |key: &str| localized(key, language);
     match menu {
+        Menu::Tracks if player.track_lang.is_some() => {
+            let (subtitles, name) = player.track_lang.clone().unwrap_or_default();
+            let mut rows = vec![row(text("player.back"), None, false, Item::LanguageBack)];
+            rows.push(heading(name.clone()));
+            let members = player
+                .tracks
+                .iter()
+                .filter(|track| track.subtitle == subtitles && group_label(track, language) == name)
+                .enumerate()
+                .map(|(index, track)| track_row(track, index, language, subtitles));
+            rows.extend(members);
+            (String::new(), rows)
+        }
         Menu::Tracks => {
             let mut rows = vec![heading(text("player.audio"))];
-            for (index, track) in player.tracks.iter().filter(|t| !t.subtitle).enumerate() {
-                let (label, value) = track_label(track, index, language);
-                rows.push(row(
-                    label,
-                    value,
-                    track.selected,
-                    Item::Audio(track.id.clone()),
-                ));
-            }
+            grouped(
+                &mut rows,
+                player.tracks.iter().filter(|t| !t.subtitle).collect(),
+                language,
+                false,
+            );
             rows.push(heading(text("player.subtitles")));
             let subtitles: Vec<&VideoTrack> = player.tracks.iter().filter(|t| t.subtitle).collect();
             rows.push(row(
@@ -130,15 +232,7 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 !subtitles.iter().any(|track| track.selected),
                 Item::Subtitle(None),
             ));
-            for (index, track) in subtitles.into_iter().enumerate() {
-                let (label, value) = track_label(track, index, language);
-                rows.push(row(
-                    label,
-                    value,
-                    track.selected,
-                    Item::Subtitle(Some(track.id.clone())),
-                ));
-            }
+            grouped(&mut rows, subtitles, language, true);
             (String::new(), rows)
         }
         Menu::Speed => {
@@ -175,12 +269,22 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                         .or_else(|| video.get("title"))
                         .and_then(Value::as_str)
                         .unwrap_or_default();
-                    Some(row(
-                        format!("S{}·E{} {}", number("season"), episode, name),
+                    let mut entry = row(
+                        format!("{}. {}", episode, name),
                         None,
                         player.overlay.current_id() == Some(id),
                         Item::Episode(id.to_owned()),
-                    ))
+                    );
+                    entry.0.thumbnail = video
+                        .get("thumbnail")
+                        .and_then(Value::as_str)
+                        .map(str::to_owned);
+                    entry.0.detail = ["overview", "description"]
+                        .iter()
+                        .find_map(|key| video.get(*key).and_then(Value::as_str))
+                        .filter(|detail| !detail.is_empty())
+                        .map(str::to_owned);
+                    Some(entry)
                 })
                 .collect();
             (text("player.episodes"), rows)
@@ -195,7 +299,25 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 0 => text("player.off"),
                 minutes => text("player.minutes_format").replace("%s", &minutes.to_string()),
             };
-            let rows = vec![
+            let mut anime4k = row(text("player.anime4k"), None, false, Item::Upscaling);
+            anime4k.0.switch = Some(player.anime4k);
+            let mode = match player.upscaling.as_str() {
+                "b" => text("player.anime4k_mode_b"),
+                "c" => text("player.anime4k_mode_c"),
+                _ => text("player.anime4k_mode_a"),
+            };
+            let mut stats = row(text("player.playback_summary"), None, false, Item::Stats);
+            stats.0.switch = Some(player.stats_visible);
+            let mut rows = vec![anime4k];
+            if player.anime4k {
+                rows.push(row(
+                    text("player.anime4k_mode"),
+                    Some(mode),
+                    false,
+                    Item::UpscalingMode,
+                ));
+            }
+            rows.extend([
                 row(
                     text("player.aspect_ratio"),
                     Some(aspect),
@@ -227,7 +349,8 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                     Item::SubtitleDelay(DELAY_STEP),
                 ),
                 row(text("player.sleep_timer"), Some(sleep), false, Item::Sleep),
-            ];
+                stats,
+            ]);
             (text("player.settings"), rows)
         }
     }
@@ -251,6 +374,7 @@ pub(super) fn open(state: &mut RendererState, menu: Menu) {
         player.tracks = video.tracks();
     }
     if let Some(player) = state.player.as_mut() {
+        player.track_lang = None;
         let toggled = matches!(player.panel, Some(Panel::Menu(open)) if open == menu);
         player.panel = (!toggled).then_some(Panel::Menu(menu));
         player.touch();
@@ -267,6 +391,8 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
     player.touch();
     match item {
         Item::None => {}
+        Item::Language(subtitles, name) => player.track_lang = Some((subtitles, name)),
+        Item::LanguageBack => player.track_lang = None,
         Item::Audio(id) => select(
             state,
             TrackSelection {
@@ -309,6 +435,9 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
             let value = player.subtitle_delay.to_string();
             mpv(state, "sub-delay", &value);
         }
+        Item::Upscaling => super::toggle_upscaling(state),
+        Item::UpscalingMode => super::step_upscaling_mode(state, 1),
+        Item::Stats => super::toggle_stats(state),
         Item::Sleep => {
             player.sleep = (player.sleep + 1) % SLEEP_MINUTES.len();
             player.sleep_at = (SLEEP_MINUTES[player.sleep] > 0).then(|| {
@@ -328,6 +457,99 @@ fn mpv(state: &mut RendererState, name: &str, value: &str) {
 fn select(state: &mut RendererState, selection: TrackSelection) {
     command(state, VideoCommand::SelectTracks(selection));
     if let (Some(video), Some(player)) = (state.video.as_mut(), state.player.as_mut()) {
+        player.tracks = video.tracks();
+    }
+    remember_tracks(state);
+}
+
+const MEMORY_KEY: &str = "playerTrackMemory";
+const MEMORY_LIMIT: usize = 200;
+
+fn language_of(track: &VideoTrack) -> Option<String> {
+    track
+        .language
+        .as_deref()
+        .filter(|code| !code.is_empty())
+        .map(str::to_lowercase)
+}
+
+fn remember_tracks(state: &mut RendererState) {
+    let Some(player) = state.player.as_ref() else {
+        return;
+    };
+    let Some(id) = player.meta.get("id").and_then(Value::as_str) else {
+        return;
+    };
+    let selected = |subtitle: bool| {
+        player
+            .tracks
+            .iter()
+            .find(|track| track.subtitle == subtitle && track.selected)
+            .and_then(language_of)
+    };
+    let entry = json!({
+        "audio": selected(false),
+        "subtitle": selected(true).unwrap_or_else(|| "off".to_owned()),
+    });
+    let mut memory = state
+        .settings
+        .values
+        .get(MEMORY_KEY)
+        .cloned()
+        .filter(Value::is_object)
+        .unwrap_or_else(|| json!({}));
+    if let Some(map) = memory.as_object_mut() {
+        if map.len() >= MEMORY_LIMIT && !map.contains_key(id) {
+            if let Some(oldest) = map.keys().next().cloned() {
+                map.remove(&oldest);
+            }
+        }
+        map.insert(id.to_owned(), entry);
+    }
+    if let Some(values) = state.settings.values.as_object_mut() {
+        values.insert(MEMORY_KEY.to_owned(), memory.clone());
+    }
+    state
+        .pending_native_actions
+        .push(NativeAction::SettingsChange {
+            key: MEMORY_KEY.to_owned(),
+            value: memory,
+        });
+}
+
+pub(super) fn restore_tracks(
+    player: &mut PlayerSession,
+    video: &mut dyn VideoBackend,
+    settings: &fluxa_ui::SettingsModel,
+) {
+    let Some(entry) = player
+        .meta
+        .get("id")
+        .and_then(Value::as_str)
+        .and_then(|id| settings.values.get(MEMORY_KEY)?.get(id))
+    else {
+        return;
+    };
+    let tracks = video.tracks();
+    let pick = |subtitle: bool, language: &str| {
+        tracks
+            .iter()
+            .find(|track| {
+                track.subtitle == subtitle && language_of(track).as_deref() == Some(language)
+            })
+            .map(|track| track.id.clone())
+    };
+    let mut selection = TrackSelection::default();
+    if let Some(language) = entry["audio"].as_str() {
+        selection.audio = pick(false, language);
+    }
+    match entry["subtitle"].as_str() {
+        Some("off") => selection.subtitles_off = true,
+        Some(language) => selection.subtitle = pick(true, language),
+        None => {}
+    }
+    if selection.audio.is_some() || selection.subtitle.is_some() || selection.subtitles_off {
+        video.command(VideoCommand::SelectTracks(selection));
         player.tracks = video.tracks();
     }
 }

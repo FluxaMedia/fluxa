@@ -5,7 +5,7 @@ use std::sync::{
 };
 
 use ash::vk::Handle as _;
-use fluxa_host::{DeviceOpener, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
+use fluxa_host::{DeviceOpener, PlaybackStats, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
 
 use crate::mpv_common::{Chapters, ThumbnailWorker, buffering, shader_dir, thumbnail_url};
 
@@ -193,6 +193,56 @@ impl VideoBackend for MpvBackend {
             chapters: player.chapters.get(&player.client).to_vec(),
             buffering: buffering(&position),
         }
+    }
+
+    fn stats(&mut self) -> Option<PlaybackStats> {
+        let client = &self.player.as_ref()?.client;
+        let status = client.status();
+        let node = |name: &str| {
+            client
+                .query_property(name)
+                .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+                .and_then(|value| value.as_object().cloned())
+        };
+        let dovi = node("dolby-vision-summary").map(|mut summary| {
+            summary.extend(node("dolby-vision-status").unwrap_or_default());
+            serde_json::Value::Object(summary)
+        });
+        let number = |value: &Option<String>| value.as_deref().and_then(|v| v.parse::<f64>().ok());
+        let count = |value: &Option<String>| number(value).map(|v| v as u64);
+        let text = |value: &Option<String>| value.clone().filter(|v| !v.is_empty());
+        Some(PlaybackStats {
+            container: text(&status.file_format),
+            video_codec: text(&status.video_codec),
+            hwdec: text(&status.hwdec_current),
+            width: number(&status.width).map(|v| v as u32),
+            height: number(&status.height).map(|v| v as u32),
+            fps: number(&status.fps),
+            container_fps: number(&status.container_fps),
+            display_fps: number(&status.display_fps),
+            video_bitrate: number(&status.video_bitrate),
+            primaries: text(&status.color_primaries),
+            gamma: text(&status.color_gamma),
+            out_primaries: text(&status.video_out_primaries),
+            out_gamma: text(&status.video_out_gamma),
+            peak: number(&status.sig_peak),
+            audio_codec: text(&status.audio_codec),
+            sample_rate: number(&status.audio_samplerate).map(|v| v as u32),
+            channels: text(&status.audio_channels),
+            audio_bitrate: number(&status.audio_bitrate),
+            cache_seconds: number(&status.demuxer_cache_duration),
+            cache_speed: number(&status.cache_speed),
+            decoder_drops: count(&status.decoder_frame_drop_count),
+            renderer_drops: count(&status.frame_drop_count),
+            mistimed: count(&status.mistimed_frame_count),
+            vo_delayed: count(&status.vo_delayed_frame_count),
+            avsync: number(&status.avsync),
+            dovi,
+            video_decoder: client
+                .query_property("current-tracks/video/decoder")
+                .filter(|name| !name.is_empty()),
+            audio: node("audio-status").map(serde_json::Value::Object),
+        })
     }
 
     fn request_thumbnail(&mut self, time: f64) {

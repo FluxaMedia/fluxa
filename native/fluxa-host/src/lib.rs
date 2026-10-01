@@ -107,7 +107,8 @@ use sync::*;
 pub type PrePresent = Box<dyn Fn() + Send>;
 
 pub use player::{
-    DeviceOpener, Thumbnail, TrackSelection, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
+    DeviceOpener, PlaybackStats, Thumbnail, TrackSelection, VideoBackend, VideoCommand,
+    VideoStatus, VideoTrack,
 };
 
 static GPU_WAIT_LOGS: AtomicU32 = AtomicU32::new(0);

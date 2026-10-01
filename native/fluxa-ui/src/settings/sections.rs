@@ -879,8 +879,8 @@ pub(super) const PLAYER_SETTINGS: [SettingsRow; 17] = [
         options: &[],
     },
     SettingsRow {
-        label: "Upscaling",
-        key: "playerShowUpscaling",
+        label: "Segments on seek bar",
+        key: "playerShowSegments",
         options: &[],
     },
     SettingsRow {
@@ -905,7 +905,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 15] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 16] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -968,6 +968,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 15] = [
         description: "Overlay, controls and gestures while watching",
         rows: &PLAYER_SETTINGS,
         groups: &PLAYER_GROUPS,
+    },
+    SettingsSection {
+        title: "Summary",
+        category: "Playback",
+        description: "Details of your last playback",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
     },
     SettingsSection {
         title: "Content",

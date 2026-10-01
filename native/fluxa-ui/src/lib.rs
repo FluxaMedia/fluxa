@@ -53,8 +53,8 @@ pub use discover::draw_discover;
 pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PlayerModel, PlayerOptions, PlayerPanel, PlayerSource,
-    PlayerToast, SkipCard, SkipKind, content_warning_duration, draw_player, format_time,
-    torrent_status_lines,
+    PlayerToast, SegmentSpan, SkipCard, SkipKind, StatsSection, content_warning_duration,
+    draw_player, format_time, torrent_status_lines,
 };
 pub use profiles::{
     PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft, ProfileEntry,

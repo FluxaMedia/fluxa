@@ -16,6 +16,7 @@ mod menu;
 mod overlay;
 mod resolve;
 mod shuffle;
+mod stats;
 mod submit;
 mod trailer;
 mod upnext;
@@ -23,6 +24,7 @@ pub(crate) use input::*;
 use overlay::Overlay;
 use resolve::*;
 pub(crate) use shuffle::*;
+pub use stats::PlaybackStats;
 use upnext::*;
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
@@ -117,6 +119,9 @@ pub trait VideoBackend: Send {
     fn passthrough(&self) -> bool {
         false
     }
+    fn stats(&mut self) -> Option<PlaybackStats> {
+        None
+    }
 }
 
 pub(crate) struct PlayerSession {
@@ -135,6 +140,9 @@ pub(crate) struct PlayerSession {
     language: String,
     description: Option<String>,
     episode_title: Option<String>,
+    episode_image: Option<String>,
+    synopsis: Option<String>,
+    stream_addons: Vec<String>,
     warnings_rx: Option<Receiver<Option<Value>>>,
     warnings_requested: bool,
     warnings: Vec<(String, String)>,
@@ -166,11 +174,19 @@ pub(crate) struct PlayerSession {
     speed_held: bool,
     speed: f64,
     tracks: Vec<VideoTrack>,
+    track_lang: Option<(bool, String)>,
     aspect: usize,
     audio_delay: f64,
     subtitle_delay: f64,
     sleep: usize,
     sleep_at: Option<Instant>,
+    tracks_restored: bool,
+    pub(crate) anime4k: bool,
+    pub(crate) upscaling: String,
+    pub(crate) stats_visible: bool,
+    stats: Vec<fluxa_ui::StatsSection>,
+    stats_at: Option<Instant>,
+    last_stats: Option<PlaybackStats>,
 }
 
 enum Panel {
@@ -204,6 +220,9 @@ impl PlayerSession {
             language: "en".to_owned(),
             description: None,
             episode_title: None,
+            episode_image: None,
+            synopsis: None,
+            stream_addons: Vec::new(),
             warnings_rx: None,
             warnings_requested: false,
             warnings: Vec::new(),
@@ -235,11 +254,19 @@ impl PlayerSession {
             speed_held: false,
             speed: 1.0,
             tracks: Vec::new(),
+            track_lang: None,
             aspect: 0,
             audio_delay: 0.0,
             subtitle_delay: 0.0,
             sleep: 0,
             sleep_at: None,
+            tracks_restored: false,
+            anime4k: false,
+            upscaling: String::new(),
+            stats_visible: false,
+            stats: Vec::new(),
+            stats_at: None,
+            last_stats: None,
         }
     }
 
@@ -281,6 +308,20 @@ impl PlayerSession {
 
     pub(crate) fn toast(&mut self, kind: &str, value: f64) {
         if let Some(plan) = core_value("playerToastPlan", json!({"kind": kind, "value": value})) {
+            self.toast = Some((plan, Instant::now()));
+        }
+    }
+
+    pub(crate) fn toast_skip(&mut self) {
+        let Some(skip) = self.overlay.skip() else {
+            return;
+        };
+        let input = json!({
+            "kind": "skip",
+            "segment": skip["kind"],
+            "label": skip["provider"].as_str().unwrap_or("Chapters"),
+        });
+        if let Some(plan) = core_value("playerToastPlan", input) {
             self.toast = Some((plan, Instant::now()));
         }
     }
@@ -333,9 +374,26 @@ impl PlayerSession {
             == "manual";
     }
 
+    fn load_stage(&self) -> String {
+        let text = |key: &str| fluxa_ui::localized(key, &self.language);
+        if self.loaded_url.is_none() {
+            return text("player.status_preparing");
+        }
+        match self.status.buffering {
+            Some(fraction) => text("player.status_buffering_percent")
+                .replace("%s", &((fraction * 100.0).round() as u32).to_string()),
+            None => text("player.status_connecting_source"),
+        }
+    }
+
     pub(crate) fn model(&self) -> PlayerModel {
-        let status = (self.texture.is_none() && self.torrent_link.is_some())
-            .then(|| fluxa_ui::torrent_status_lines(self.torrent_status.as_ref()));
+        let status = if self.texture.is_some() {
+            None
+        } else if self.torrent_link.is_some() {
+            Some(fluxa_ui::torrent_status_lines(self.torrent_status.as_ref()))
+        } else {
+            Some((self.load_stage(), String::new()))
+        };
         PlayerModel {
             title: self.title(),
             video: self.texture.filter(|_| self.status.has_frame),
@@ -347,6 +405,8 @@ impl PlayerSession {
             paused: self.status.paused,
             muted: self.status.muted,
             volume: self.status.volume,
+            boost: false,
+            stats: self.stats.clone(),
             controls_visible: self.controls_visible(),
             show_pause_info: self.status.paused
                 && self.status.has_frame
@@ -359,10 +419,19 @@ impl PlayerSession {
                 .filter(|url| !url.trim().is_empty())
                 .map(ToOwned::to_owned),
             episode_title: self.episode_title.clone(),
+            episode_image: self.episode_image.clone(),
+            synopsis: self.synopsis.clone(),
             description: self.description.clone(),
             chapters: self.status.chapters.clone(),
             chapter_spans: self.overlay.chapter_spans(),
-            skip: self.overlay.skip_card(),
+            segment_spans: self.overlay.segment_spans(),
+            mark_preview: match &self.panel {
+                Some(Panel::Submit(submit)) => {
+                    submit.preview(self.status.position, self.status.duration)
+                }
+                _ => None,
+            },
+            skip: self.overlay.skip_card(self.status.position),
             next_episode: self.overlay.next_card(),
             thumbnail: self
                 .thumbnail
@@ -394,6 +463,11 @@ impl PlayerSession {
                 None => None,
             },
             sources_loading: self.sources.is_none(),
+            sources_pending: if self.sources.is_none() {
+                self.stream_addons.clone()
+            } else {
+                Vec::new()
+            },
             source_filter: self.source_filter.clone(),
             toast: self.toast_model(),
             panel: self.panel.as_ref().map(|panel| match panel {
@@ -550,7 +624,12 @@ pub(crate) fn pump(state: &mut RendererState) {
     let mut advance = false;
     if let Some(video) = video.as_mut() {
         player.status = video.status();
+        if player.status.has_frame && !player.tracks_restored {
+            player.tracks_restored = true;
+            menu::restore_tracks(player, video.as_mut(), settings);
+        }
         advance = overlay::tick(player, session, video.as_mut(), &snapshot);
+        refresh_stats(player, video.as_mut());
         if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
             let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
             match player.thumbnail.as_mut() {
@@ -585,6 +664,9 @@ pub(crate) fn pump(state: &mut RendererState) {
         }
     }
     player.episode_title = episode_title(&player.meta, &snapshot);
+    player.episode_image = episode_image(&player.meta, &snapshot);
+    player.synopsis = synopsis(&player.meta, &snapshot);
+    player.stream_addons = stream_addon_names(&snapshot);
     if !player.warnings_requested {
         player.warnings_requested = true;
         player.language =
@@ -773,6 +855,7 @@ pub(crate) fn close(state: &mut RendererState) {
     let Some(player) = state.player.take() else {
         return;
     };
+    remember_summary(state, &player);
     if let Some(session) = state.session.as_ref() {
         let snapshot = session.snapshot();
         if player.overlay.scrobbling() {
@@ -878,11 +961,12 @@ pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
         fullscreen: on("playerShowFullscreen"),
         cast: on("playerShowCast"),
         mark_segment: on("playerShowMarkSegment"),
-        upscaling: on("playerShowUpscaling"),
+        segments: on("playerShowSegments"),
         gestures: on("playerGestures"),
         double_tap: on("playerDoubleTapSeek"),
         center_controls: on("playerCenterControls"),
     };
+    model.boost = on("playerAudioBoost");
     model.show_pause_info &= on("pauseMetadataOverlayEnabled");
     if !on("contentWarningsEnabled") {
         model.warnings.clear();
@@ -935,13 +1019,39 @@ fn shader_chain(settings: &SettingsModel) -> Vec<String> {
         .unwrap_or_default()
 }
 
-fn cycle_upscaling(state: &mut RendererState) {
-    let next = match upscaling(&state.settings) {
-        "off" => "a",
-        "a" => "b",
-        "b" => "c",
-        _ => "off",
+pub(crate) fn toggle_upscaling(state: &mut RendererState) {
+    let next = if upscaling(&state.settings) == "off" {
+        "a"
+    } else {
+        "off"
     };
+    set_upscaling(state, next);
+}
+
+pub(crate) fn step_upscaling_mode(state: &mut RendererState, direction: i32) {
+    if upscaling(&state.settings) == "off" {
+        return;
+    }
+    const MODES: [&str; 3] = ["a", "b", "c"];
+    let current = MODES
+        .iter()
+        .position(|mode| *mode == upscaling(&state.settings))
+        .unwrap_or(0) as i32;
+    let next = MODES[(current + direction).rem_euclid(MODES.len() as i32) as usize];
+    set_upscaling(state, next);
+}
+
+pub(crate) fn previous_episode(state: &mut RendererState) {
+    menu::previous(state);
+}
+
+pub(crate) fn open_submit(state: &mut RendererState) {
+    if let Some(player) = state.player.as_mut() {
+        submit::open(player);
+    }
+}
+
+fn set_upscaling(state: &mut RendererState, next: &str) {
     let mut changes = vec![(
         "animeUpscalingMode",
         json!(if next == "off" { "off" } else { "auto" }),
@@ -982,4 +1092,48 @@ pub(crate) fn upload_frame(state: &mut RendererState) {
             wgpu::FilterMode::Linear,
         ));
     }
+}
+
+fn refresh_stats(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
+    let interval = if player.stats_visible {
+        stats::REFRESH
+    } else {
+        stats::SAMPLE
+    };
+    if !player.stats_visible {
+        player.stats.clear();
+    }
+    if player.stats_at.is_some_and(|at| at.elapsed() < interval) {
+        return;
+    }
+    player.stats_at = Some(Instant::now());
+    let Some(stats) = video.stats() else {
+        return;
+    };
+    if player.stats_visible {
+        player.stats = stats.sections();
+    }
+    player.last_stats = Some(stats);
+}
+
+fn remember_summary(state: &mut RendererState, player: &PlayerSession) {
+    let live = state.video.as_mut().and_then(|video| video.stats());
+    let Some(stats) = live
+        .filter(|stats| stats.video_codec.is_some())
+        .or_else(|| player.last_stats.clone())
+    else {
+        return;
+    };
+    let watched = (player.status.position > 0.0).then(|| {
+        let position = fluxa_ui::format_time(player.status.position);
+        match player.status.duration {
+            duration if duration > 0.0 => format!("{position} / {}", fluxa_ui::format_time(duration)),
+            _ => position,
+        }
+    });
+    let details = vec![
+        ("settings.summary_title_label", Some(player.title())),
+        ("settings.summary_watched", watched),
+    ];
+    state.settings.playback_summary = stats.summary(details);
 }
