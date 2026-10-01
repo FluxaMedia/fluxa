@@ -214,6 +214,8 @@ pub struct HomeHero {
 pub struct HeroTrailer {
     pub item_id: String,
     pub texture: Option<egui::TextureId>,
+    pub finished: bool,
+    pub subtitle: Option<String>,
 }
 
 impl Default for HomeModel {

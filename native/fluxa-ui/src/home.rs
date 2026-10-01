@@ -307,10 +307,39 @@ pub(crate) fn draw_home_with_options(
                 texture,
                 hero_visual_rect,
                 hero.item_id.as_deref(),
-                210,
+                255,
             );
         }
         paint_hero_scrim(&painter, hero_visual_rect, compact, metrics.background);
+        if let Some(text) = home
+            .trailer
+            .as_ref()
+            .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
+            .and_then(|trailer| trailer.subtitle.as_deref())
+        {
+            paint_trailer_subtitle(context, hero_rect, text);
+        }
+        let swipe_id = Id::new("fluxa-home-hero-swipe");
+        let (pressed, released, position) = context.input(|input| {
+            (
+                input.pointer.primary_pressed(),
+                input.pointer.primary_released(),
+                input.pointer.interact_pos(),
+            )
+        });
+        if pressed {
+            let start = position.filter(|position| hero_rect.contains(*position));
+            context.data_mut(|data| data.insert_temp(swipe_id, start));
+        }
+        if released {
+            let start = context.data_mut(|data| data.remove_temp::<Option<Pos2>>(swipe_id));
+            if let (Some(Some(start)), Some(end)) = (start, position) {
+                let delta = end - start;
+                if delta.x.abs() > 70.0 && delta.x.abs() > delta.y.abs() * 1.5 {
+                    hero_shift(context, home, if delta.x < 0.0 { 1 } else { -1 });
+                }
+            }
+        }
     }
     let margin = metrics.screen_margin;
     let mut activated = None;

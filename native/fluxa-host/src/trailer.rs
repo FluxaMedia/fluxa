@@ -5,7 +5,6 @@ use fluxa_ui::HeroTrailer;
 use serde_json::{Map, Value, json};
 use web_time::Instant;
 
-use crate::player::VideoCommand;
 use crate::{RendererState, Route, core_value, profile_language};
 
 #[derive(Default)]
@@ -27,7 +26,11 @@ struct Active {
     request: Option<String>,
     loaded: bool,
     failed: bool,
-    subtitle: Option<String>,
+    finished: bool,
+    last_position: f64,
+    subtitle: Option<Receiver<Option<String>>>,
+    cues: Vec<Cue>,
+    cue: Option<String>,
     texture: Option<egui::TextureId>,
 }
 
@@ -207,7 +210,11 @@ pub(crate) fn tick(state: &mut RendererState) {
                 request: None,
                 loaded: false,
                 failed: false,
+                finished: false,
+                last_position: 0.0,
                 subtitle: None,
+                cues: Vec::new(),
+                cue: None,
                 texture: None,
             });
         }
@@ -256,8 +263,10 @@ fn resolve(state: &mut RendererState) {
             .filter(|_| resolution.get("status").and_then(Value::as_str) == Some("ok"));
         match (url, video.as_mut(), gpu.as_ref()) {
             (Some(url), Some(video), Some(gpu)) => {
-                video.load_preview(&gpu.instance, &gpu.device, url);
-                active.subtitle = subtitle_url(resolution, snapshot.pointer("/profile/active"));
+                let proxied = fluxa_effects::range_proxy(url);
+                video.load_preview(&gpu.instance, &gpu.device, proxied.as_deref().unwrap_or(url));
+                active.subtitle = subtitle_url(resolution, snapshot.pointer("/profile/active"))
+                    .map(|url| fluxa_effects::fetch_text(&url));
                 active.loaded = true;
             }
             (Some(_), _, _) => active.failed = true,
@@ -310,15 +319,25 @@ fn play(state: &mut RendererState) {
         }
         return;
     }
-    if active.subtitle.is_some() && video.status().has_frame {
-        if let Some(url) = active.subtitle.take() {
-            video.command(VideoCommand::Mpv(vec![
-                "sub-add".to_owned(),
-                url,
-                "select".to_owned(),
-            ]));
-        }
+    let status = video.status();
+    if !active.finished
+        && status.duration > 0.0
+        && (status.position + 0.6 >= status.duration || status.position + 1.0 < active.last_position)
+    {
+        active.finished = true;
     }
+    active.last_position = status.position;
+    if let Some(receiver) = active.subtitle.as_ref()
+        && let Ok(text) = receiver.try_recv()
+    {
+        active.cues = text.map(|text| parse_cues(&text)).unwrap_or_default();
+        active.subtitle = None;
+    }
+    active.cue = active
+        .cues
+        .iter()
+        .find(|cue| cue.start <= status.position && status.position < cue.end)
+        .map(|cue| cue.text.clone());
     if let Some(view) = video.render(&gpu.device) {
         if let Some(old) = active.texture.take() {
             gpu.egui_renderer.free_texture(&old);
@@ -342,10 +361,15 @@ fn publish(state: &mut RendererState) {
         .map(|active| HeroTrailer {
             item_id: active.key.clone(),
             texture: active.texture,
+            finished: active.finished,
+            subtitle: active.cue.clone(),
         });
     state.detail.trailer = active
         .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
         .and_then(|active| active.texture);
+    state.detail.trailer_subtitle = active
+        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
+        .and_then(|active| active.cue.clone());
 }
 
 pub(crate) fn next_redraw(state: &RendererState, now: Instant) -> Option<Instant> {
@@ -365,4 +389,58 @@ pub(crate) fn next_redraw(state: &RendererState, now: Instant) -> Option<Instant
         }
     });
     [fetching, playing].into_iter().flatten().min()
+}
+
+struct Cue {
+    start: f64,
+    end: f64,
+    text: String,
+}
+
+fn timestamp(value: &str) -> Option<f64> {
+    let mut seconds = 0.0;
+    for part in value.trim().split(':') {
+        seconds = seconds * 60.0 + part.parse::<f64>().ok()?;
+    }
+    Some(seconds)
+}
+
+fn parse_cues(vtt: &str) -> Vec<Cue> {
+    let mut cues = Vec::new();
+    let mut lines = vtt.lines();
+    while let Some(line) = lines.next() {
+        let Some((start, rest)) = line.split_once("-->") else {
+            continue;
+        };
+        let end = rest.split_whitespace().next().unwrap_or("");
+        let (Some(start), Some(end)) = (timestamp(start), timestamp(end)) else {
+            continue;
+        };
+        let mut text = String::new();
+        let mut in_tag = false;
+        for line in lines.by_ref().take_while(|line| !line.trim().is_empty()) {
+            if !text.is_empty() {
+                text.push('\n');
+            }
+            for character in line.chars() {
+                match character {
+                    '<' => in_tag = true,
+                    '>' => in_tag = false,
+                    _ if !in_tag => text.push(character),
+                    _ => {}
+                }
+            }
+        }
+        let text = text
+            .replace("&nbsp;", " ")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#39;", "'")
+            .replace("&amp;", "&");
+        if !text.trim().is_empty() {
+            cues.push(Cue { start, end, text });
+        }
+    }
+    cues
 }

@@ -293,11 +293,7 @@ pub(crate) struct HeroCarouselState {
     pub(super) next_at: f64,
 }
 
-pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usize {
-    let count = home.hero_slides.len();
-    if count <= 1 {
-        return 0;
-    }
+fn hero_carousel_id(home: &HomeModel) -> Id {
     let signature = home
         .hero_slides
         .iter()
@@ -309,18 +305,45 @@ pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usiz
                 .unwrap_or(slide.title.as_str())
         })
         .collect::<Vec<_>>();
-    let id = Id::new(("fluxa-home-hero-carousel", signature));
+    Id::new(("fluxa-home-hero-carousel", signature))
+}
+
+pub(crate) fn hero_shift(context: &egui::Context, home: &HomeModel, delta: isize) {
+    let count = home.hero_slides.len();
+    if count <= 1 {
+        return;
+    }
+    let id = hero_carousel_id(home);
+    let mut state = context
+        .data_mut(|data| data.get_temp::<HeroCarouselState>(id))
+        .unwrap_or_default();
+    state.index = (state.index as isize + delta).rem_euclid(count as isize) as usize;
+    state.generation = state.generation.wrapping_add(1);
+    state.next_at = context.input(|input| input.time) + 6.5;
+    context.data_mut(|data| data.insert_temp(id, state));
+    context.request_repaint();
+}
+
+pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usize {
+    let count = home.hero_slides.len();
+    if count <= 1 {
+        return 0;
+    }
+    let id = hero_carousel_id(home);
     let now = context.input(|input| input.time);
     let mut state = context
         .data_mut(|data| data.get_temp::<HeroCarouselState>(id))
         .unwrap_or_default();
-    let holding = home.trailer.as_ref().is_some_and(|trailer| {
+    let current_trailer = home.trailer.as_ref().filter(|trailer| {
         home.hero_slides
             .get(state.index % count)
             .and_then(|slide| slide.item_id.as_deref())
             == Some(trailer.item_id.as_str())
     });
-    if state.next_at <= 0.0 || holding {
+    let holding = current_trailer.is_some_and(|trailer| !trailer.finished);
+    if current_trailer.is_some_and(|trailer| trailer.finished) {
+        state.next_at = now;
+    } else if state.next_at <= 0.0 || holding {
         state.next_at = now + 6.5;
     }
     if now >= state.next_at {

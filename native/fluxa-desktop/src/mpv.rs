@@ -312,7 +312,6 @@ impl MpvPlayer {
             client.apply_options(&[
                 ("mute".to_owned(), "yes".to_owned()),
                 ("loop-file".to_owned(), "inf".to_owned()),
-                ("sid".to_owned(), "no".to_owned()),
             ])?;
         }
         client.load(url, None)?;

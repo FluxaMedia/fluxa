@@ -332,3 +332,22 @@ pub(crate) fn rating_logo(source: &str, score: &str) -> Option<&'static str> {
         _ => return None,
     })
 }
+
+pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: &str) {
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        Id::new("fluxa-trailer-subtitle"),
+    ));
+    let size = (rect.width() * 0.022).clamp(15.0, 26.0);
+    let galley = painter.layout(
+        text.to_owned(),
+        egui::FontId::proportional(size),
+        Color32::WHITE,
+        rect.width() * 0.6,
+    );
+    let size = galley.size() + Vec2::new(24.0, 12.0);
+    let bottom = rect.bottom() - rect.height() * 0.06;
+    let backdrop = Rect::from_center_size(Pos2::new(rect.center().x, bottom - size.y * 0.5), size);
+    painter.rect_filled(backdrop, 8.0, Color32::from_black_alpha(150));
+    painter.galley(backdrop.center() - galley.size() * 0.5, galley, Color32::WHITE);
+}

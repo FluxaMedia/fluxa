@@ -213,7 +213,7 @@ pub fn draw_detail(
             texture,
             image,
             Some(detail.id.as_str()),
-            225,
+            255,
         );
     }
     if compact {
@@ -259,6 +259,10 @@ pub fn draw_detail(
         Color32::from_black_alpha(150),
         Color32::TRANSPARENT,
     );
+
+    if let Some(text) = detail.trailer_subtitle.as_deref().filter(|_| detail.trailer.is_some()) {
+        crate::paint_trailer_subtitle(context, image, text);
+    }
 
     let mut layout = HomeLayout::default();
     layout.activated = draw_navigation_bar(context, viewport, 0, assets);

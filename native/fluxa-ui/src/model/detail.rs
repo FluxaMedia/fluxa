@@ -21,6 +21,7 @@ pub struct DetailModel {
     pub genres: Vec<String>,
     pub trailers: Vec<String>,
     pub trailer: Option<egui::TextureId>,
+    pub trailer_subtitle: Option<String>,
     pub error: Option<String>,
     pub streams_error: Option<String>,
     pub similar: Vec<HomeCard>,
@@ -567,6 +568,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             .unwrap_or_default(),
         trailers: trailer_urls(detail),
         trailer: None,
+        trailer_subtitle: None,
         error: detail
             .get("error")
             .and_then(serde_json::Value::as_str)
