@@ -6,7 +6,7 @@ use serde_json::{Map, Value, json};
 use web_time::Instant;
 
 use super::{PlayerSession, TrackSelection, VideoBackend, VideoCommand, VideoTrack};
-use crate::{SessionHandle, core_value};
+use crate::{SessionHandle, core_value, host_log, profile_language};
 
 const PLAN_INTERVAL: Duration = Duration::from_millis(250);
 
@@ -21,6 +21,7 @@ pub(super) struct Overlay {
     next_resolved: bool,
     next_dismissed: bool,
     next_shown_at: Option<Instant>,
+    next_prefetched: bool,
     dismissed: Vec<String>,
     tracks_applied: bool,
     last_scrobble: Option<String>,
@@ -475,8 +476,39 @@ pub(super) fn tick(
     }
     tick_scrobble(player, session, snapshot);
     refresh_plan(player);
+    prefetch_next_streams(player, session, snapshot);
     auto_skip(player, video);
     player.overlay.countdown_done()
+}
+
+fn prefetch_next_streams(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
+    let overlay = &mut player.overlay;
+    if overlay.next_prefetched || overlay.next_shown_at.is_none() {
+        return;
+    }
+    let Some(next) = overlay.next_episode.as_ref() else {
+        return;
+    };
+    let Some(next_video_id) = next["id"].as_str() else {
+        return;
+    };
+    overlay.next_prefetched = true;
+    let meta = &player.meta;
+    let profile = snapshot.pointer("/profile/active").unwrap_or(&Value::Null);
+    let command = json!({
+        "type": "playerNextEpisodeCardShown",
+        "contentType": meta.get("type").and_then(Value::as_str).unwrap_or("series"),
+        "seriesId": meta.get("id"),
+        "nextVideoId": next_video_id,
+        "title": meta.get("name").or_else(|| meta.get("title")),
+        "originalName": meta.get("originalName"),
+        "year": meta.get("year"),
+        "language": profile_language(profile),
+        "profile": profile,
+    });
+    if let Err(error) = session.dispatch(command) {
+        host_log(format!("core dispatch failed: {error}"));
+    }
 }
 
 fn auto_skip(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
@@ -546,7 +578,7 @@ pub(super) fn finish(
                 json!(selected(true).unwrap_or_else(|| "__off__".into()));
         }
         if let Err(error) = session.dispatch(action) {
-            crate::host_log(format!("core dispatch failed: {error}"));
+            host_log(format!("core dispatch failed: {error}"));
         }
     }
 }
