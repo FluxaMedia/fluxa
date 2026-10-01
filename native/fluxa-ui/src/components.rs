@@ -1522,12 +1522,23 @@ pub(super) fn pill_button(
     progress: Option<f32>,
 ) -> Response {
     let font = FontId::proportional(text_size);
-    let natural = ui
-        .painter()
-        .layout_no_wrap(label.to_owned(), font.clone(), Color32::BLACK)
-        .size()
-        .x
-        + 70.0;
+    let measure = |text: &str| {
+        ui.painter()
+            .layout_no_wrap(text.to_owned(), font.clone(), Color32::BLACK)
+            .size()
+            .x
+            + 70.0
+    };
+    let mut label = label.to_owned();
+    if let Some(limit) = width {
+        while measure(&label) > limit && label.chars().count() > 1 {
+            label = label.trim_end_matches('…').to_owned();
+            label.pop();
+            label = format!("{}…", label.trim_end());
+        }
+    }
+    let label = label.as_str();
+    let natural = measure(label);
     let width = width.unwrap_or(natural).max(natural);
     let inset = (width - natural) * 0.5;
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
@@ -1549,7 +1560,7 @@ pub(super) fn pill_button(
             painter.image(
                 icon,
                 Rect::from_center_size(
-                    rect.left_center() + Vec2::new(inset + 28.0, 0.0),
+                    rect.left_center() + Vec2::new(inset + 28.0, -lift),
                     Vec2::splat(18.0),
                 ),
                 full_uv(),
