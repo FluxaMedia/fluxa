@@ -121,6 +121,7 @@ pub trait VideoBackend: Send {
 pub(crate) struct PlayerSession {
     pub(crate) stale: Option<Value>,
     meta: Value,
+    local: bool,
     started: bool,
     loaded_url: Option<String>,
     pub(crate) texture: Option<egui::TextureId>,
@@ -182,6 +183,7 @@ impl PlayerSession {
         Self {
             stale: None,
             meta,
+            local: false,
             started: false,
             loaded_url: None,
             texture: None,
@@ -432,6 +434,17 @@ pub(crate) fn direct_playback_command(item: &Value, profile: &Value) -> Value {
     })
 }
 
+pub(crate) fn open_file(state: &mut RendererState, uri: &str, title: &str) -> Value {
+    let mut player = PlayerSession::new(json!({"name": title, "type": "movie"}));
+    player.local = true;
+    player.started = true;
+    state.player = Some(player);
+    state.shuffle = None;
+    state.screen_scroll_offsets.remove(&Route::Player);
+    crate::reset_ui(state);
+    json!({"type": "playerResolvePlaybackRequested", "url": uri, "title": title})
+}
+
 pub(crate) fn pump(state: &mut RendererState) {
     if let Some((time, _)) = state
         .player
@@ -570,7 +583,7 @@ pub(crate) fn pump(state: &mut RendererState) {
             content_warning_url(&player.meta, &snapshot).map(|url| session.fetch_json(url));
     }
     tick_warnings(player);
-    if shuffle.is_none() {
+    if shuffle.is_none() && !player.local {
         tick_recommendations(player, session, settings, &snapshot);
     }
     publish_media(player, video);
@@ -750,7 +763,9 @@ pub(crate) fn close(state: &mut RendererState) {
             .as_mut()
             .map(|video| video.tracks())
             .unwrap_or_default();
-        overlay::finish(&player, session, &snapshot, &tracks);
+        if !player.local {
+            overlay::finish(&player, session, &snapshot, &tracks);
+        }
         if let Some(link) = player.torrent_link.clone() {
             session.deactivate_torrent(link);
         }
@@ -765,7 +780,7 @@ pub(crate) fn close(state: &mut RendererState) {
 }
 
 fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Value) {
-    if player.status.duration <= 0.0 || player.status.position < 5.0 {
+    if player.local || player.status.duration <= 0.0 || player.status.position < 5.0 {
         return;
     }
     let command = json!({
@@ -788,7 +803,7 @@ fn scrobble(session: &SessionHandle, player: &PlayerSession, snapshot: &Value, a
         .or_else(|| player.meta.get("id"))
         .and_then(Value::as_str)
         .unwrap_or_default();
-    if item_id.is_empty() || player.status.duration <= 0.0 {
+    if player.local || item_id.is_empty() || player.status.duration <= 0.0 {
         return;
     }
     let command = json!({

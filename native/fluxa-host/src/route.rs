@@ -104,6 +104,10 @@ pub(super) enum NativeAction {
     OauthCallback {
         url: String,
     },
+    OpenFile {
+        uri: String,
+        title: String,
+    },
     DiscoverType {
         content_type: String,
     },

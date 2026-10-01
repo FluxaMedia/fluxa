@@ -76,6 +76,10 @@ class MainActivity : Activity() {
             )
         }
         val data = intent.data
+        if (intent.action == Intent.ACTION_VIEW && (data?.scheme == "content" || data?.scheme == "file")) {
+            openFile(data)
+            return
+        }
         if (intent.action == Intent.ACTION_VIEW && data?.scheme == "fluxa" && data.host == "oauth") {
             host.renderer.pushAction(gson.toJson(mapOf("type" to "oauthCallback", "url" to data.toString())))
             return
@@ -85,6 +89,26 @@ class MainActivity : Activity() {
             val type = data.getQueryParameter("type")?.takeIf(String::isNotBlank) ?: return
             host.renderer.pushAction(gson.toJson(mapOf("type" to "detail", "id" to id, "itemType" to type)))
         }
+    }
+
+    private fun openFile(uri: Uri) {
+        val title = fileName(uri)
+        val source = if (uri.scheme == "content") {
+            val fd = runCatching { contentResolver.openFileDescriptor(uri, "r")?.detachFd() }.getOrNull() ?: return
+            "fd://$fd"
+        } else {
+            uri.path ?: return
+        }
+        host.renderer.pushAction(gson.toJson(mapOf("type" to "openFile", "uri" to source, "title" to title)))
+    }
+
+    private fun fileName(uri: Uri): String {
+        if (uri.scheme == "content") {
+            contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                if (it.moveToFirst()) it.getString(0)?.let { name -> return name.substringBeforeLast('.') }
+            }
+        }
+        return uri.lastPathSegment?.substringAfterLast('/')?.substringBeforeLast('.') ?: ""
     }
 
     private fun setPlaying(playing: Boolean) {

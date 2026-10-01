@@ -804,6 +804,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         | NativeAction::AccountToggle { .. }
         | NativeAction::MediaServer { .. }
         | NativeAction::MediaCommand { .. }
+        | NativeAction::OpenFile { .. }
         | NativeAction::OauthCallback { .. } => return None,
     };
     Some(commands)
@@ -823,6 +824,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let mut toggles = Vec::new();
     let mut servers = Vec::new();
     let mut callbacks = Vec::new();
+    let mut files = Vec::new();
     let mut media = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
         if let NativeAction::MediaCommand { command, value } = action {
@@ -850,6 +852,10 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             state.player = Some(player::PlayerSession::trailer(item.clone(), urls));
             state.screen_scroll_offsets.remove(&Route::Player);
             state.ui = UiTree::default();
+            continue;
+        }
+        if let NativeAction::OpenFile { uri, title } = action {
+            files.push((uri, title));
             continue;
         }
         if let NativeAction::StartPlayback { item } = &action {
@@ -891,6 +897,14 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     }
     for url in callbacks {
         accounts::finish_redirect(state, &url);
+    }
+    for (uri, title) in files {
+        let command = player::open_file(state, &uri, &title);
+        if let Some(session) = state.session.as_ref()
+            && let Err(error) = session.dispatch(command)
+        {
+            host_log(format!("core dispatch failed: {error}"));
+        }
     }
     if open_profiles {
         reset_ui(state);
