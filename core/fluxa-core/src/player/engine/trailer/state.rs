@@ -8,6 +8,8 @@ pub(crate) struct TrailerState {
     pub(crate) requests: std::collections::HashMap<String, TrailerRequest>,
     #[serde(skip)]
     pub(crate) watch_config: Option<WatchConfig>,
+    #[serde(skip)]
+    pub(crate) preferred_client: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -22,4 +24,5 @@ pub(crate) struct TrailerRequest {
     pub(crate) video_id: String,
     pub(crate) max_height: Option<u32>,
     pub(crate) player_response: Option<Value>,
+    pub(crate) attempt: usize,
 }

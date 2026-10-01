@@ -263,3 +263,10 @@ fn resolve_player_response_falls_back_to_progressive_when_no_adaptive_pair() {
     assert_eq!(resolved["streamUrl"], "progressive-360p");
     assert!(resolved["audioUrl"].is_null());
 }
+
+#[test]
+fn client_rotation_starts_at_the_preferred_client_and_wraps() {
+    use super::clients::{COUNT, rotated_index};
+    let order: Vec<usize> = (0..COUNT).map(|attempt| rotated_index(2, attempt)).collect();
+    assert_eq!(order, vec![2, 3, 0, 1]);
+}

@@ -1,3 +1,4 @@
+mod clients;
 mod commands;
 mod effects;
 mod state;

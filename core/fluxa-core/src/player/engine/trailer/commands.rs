@@ -1,3 +1,4 @@
+use super::clients;
 use super::effects::{dispatch_player, player_script_effect, watch_config_effect};
 use super::state::TrailerRequest;
 use super::stream_resolution::{
@@ -23,6 +24,7 @@ pub(crate) fn dispatch_resolve(
             video_id,
             max_height,
             player_response: None,
+            attempt: 0,
         },
     );
     if engine.state.trailer.watch_config.is_some() {
@@ -95,37 +97,57 @@ pub(crate) fn complete(
             } else {
                 Value::Null
             };
-            engine.state.trailer.requests.remove(&request_id);
-            engine
-                .state
-                .trailer
-                .resolutions
-                .insert(request_id, resolution);
-            vec![]
+            finish(engine, generation, &request_id, resolution)
         }
         "fetchYoutubeTrailerPlayerScript" => {
             let Some(request_id) = request_id else {
                 return vec![];
             };
-            let request = engine.state.trailer.requests.remove(&request_id);
-            let resolution = request
+            let resolution = engine
+                .state
+                .trailer
+                .requests
+                .get(&request_id)
                 .and_then(|request| {
-                    let player_response = request.player_response?;
+                    let player_response = request.player_response.as_ref()?;
                     let player_js = result.value.get("body")?.as_str()?;
                     Some(resolve_player_response(
-                        &player_response,
+                        player_response,
                         request.max_height,
                         Some(player_js),
                     ))
                 })
                 .unwrap_or(Value::Null);
-            engine
-                .state
-                .trailer
-                .resolutions
-                .insert(request_id, resolution);
-            vec![]
+            finish(engine, generation, &request_id, resolution)
         }
         _ => vec![],
     }
+}
+
+fn finish(
+    engine: &mut HeadlessEngine,
+    generation: u64,
+    request_id: &str,
+    resolution: Value,
+) -> Vec<EffectEnvelope> {
+    let Some(request) = engine.state.trailer.requests.get_mut(request_id) else {
+        return vec![];
+    };
+    if resolution.is_null() && request.attempt + 1 < clients::COUNT {
+        request.attempt += 1;
+        request.player_response = None;
+        return dispatch_player(engine, generation, request_id);
+    }
+    let attempt = request.attempt;
+    if !resolution.is_null() {
+        engine.state.trailer.preferred_client =
+            clients::rotated_index(engine.state.trailer.preferred_client, attempt);
+    }
+    engine.state.trailer.requests.remove(request_id);
+    engine
+        .state
+        .trailer
+        .resolutions
+        .insert(request_id.to_string(), resolution);
+    vec![]
 }

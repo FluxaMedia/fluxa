@@ -1,3 +1,4 @@
+use super::clients;
 use super::state::WatchConfig;
 use crate::headless_engine::HeadlessEngine;
 use crate::runtime::{EffectEnvelope, EffectKind};
@@ -73,10 +74,15 @@ pub(crate) fn dispatch_player(
             visitor_data: None,
             player_script_url: None,
         });
+    let client = clients::client(clients::rotated_index(
+        engine.state.trailer.preferred_client,
+        request.attempt,
+    ));
     let mut headers = json!({
-        "User-Agent": "com.google.android.apps.youtube.vr.oculus/1.56.21 (Linux; U; Android 12; en_US; Quest 3; Build/SQ3A.220605.009.A1) gzip",
-        "X-YouTube-Client-Name": "28",
-        "X-YouTube-Client-Version": "1.56.21"
+        "User-Agent": client.user_agent,
+        "Origin": "https://www.youtube.com",
+        "X-YouTube-Client-Name": client.id,
+        "X-YouTube-Client-Version": client.version
     });
     if let Some(visitor_data) = config.visitor_data
         && let Some(headers) = headers.as_object_mut()
@@ -95,20 +101,7 @@ pub(crate) fn dispatch_player(
                 "videoId": request.video_id,
                 "contentCheckOk": true,
                 "racyCheckOk": true,
-                "context": {
-                    "client": {
-                        "clientName": "ANDROID_VR",
-                        "clientVersion": "1.56.21",
-                        "deviceMake": "Oculus",
-                        "deviceModel": "Quest 3",
-                        "osName": "Android",
-                        "osVersion": "12",
-                        "platform": "MOBILE",
-                        "androidSdkVersion": 32,
-                        "hl": "en",
-                        "gl": "US"
-                    }
-                },
+                "context": { "client": client.context },
                 "playbackContext": { "contentPlaybackContext": { "html5Preference": "HTML5_PREF_WANTS" } }
             })),
         },
