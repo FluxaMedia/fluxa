@@ -705,6 +705,7 @@ fn load_resolved(
                 video.configure(&settings.values);
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
+                apply_subtitle_style(video.as_mut(), &settings.values);
                 player.loaded_url = Some(url.to_owned());
             }
             (None, _) => player.error = Some("No video backend on this platform".to_owned()),
@@ -832,6 +833,21 @@ pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
     match settings.str_value("animeUpscalingModePreset") {
         Some(mode @ ("b" | "c")) => mode,
         _ => "a",
+    }
+}
+
+fn apply_subtitle_style(video: &mut dyn VideoBackend, settings: &Value) {
+    let Some(Value::Array(options)) = core_value("subtitleStylePlan", settings.clone()) else {
+        return;
+    };
+    for option in options {
+        if let (Some(name), Some(value)) = (option[0].as_str(), option[1].as_str()) {
+            video.command(VideoCommand::Mpv(vec![
+                "set".to_owned(),
+                name.to_owned(),
+                value.to_owned(),
+            ]));
+        }
     }
 }
 

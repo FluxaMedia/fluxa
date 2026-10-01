@@ -151,6 +151,7 @@ static METHODS: &[(&str, Router)] = &[
     ("simklSyncPlan", route_simkl),
     ("streamRequestIds", route_content_identity),
     ("streamSubtitlesResult", route_player_policy),
+    ("subtitleStylePlan", route_player_policy),
     ("subtitleTracks", route_addon_resource),
     ("terminalRecommendationEligibility", route_library_state),
     ("terminalRecommendationPlan", route_library_state),

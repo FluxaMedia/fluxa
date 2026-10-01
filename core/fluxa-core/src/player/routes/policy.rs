@@ -15,6 +15,9 @@ pub(crate) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         "shuffleEpisodePick" => opt_json(
             crate::player::playback::policy::shuffle_episode_pick_json(args_json),
         ),
+        "subtitleStylePlan" => opt_json(crate::player::playback::policy::subtitle_style_plan_json(
+            args_json,
+        )),
         "streamSubtitlesResult" => {
             opt_json(crate::player::playback::policy::stream_subtitles_result_json(args_json))
         }
