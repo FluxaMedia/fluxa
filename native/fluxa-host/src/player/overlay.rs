@@ -18,6 +18,7 @@ pub(super) struct Overlay {
     segments: Vec<Value>,
     lookup: Option<Lookup>,
     next_episode: Option<Value>,
+    current_id: Option<String>,
     next_resolved: bool,
     next_dismissed: bool,
     next_shown_at: Option<Instant>,
@@ -57,6 +58,10 @@ impl Overlay {
     pub(super) fn skip_target(&self) -> Option<f64> {
         let millis = self.plan.pointer("/skip/seekToMs")?.as_i64()?;
         Some(millis as f64 / 1000.0)
+    }
+
+    pub(super) fn current_id(&self) -> Option<&str> {
+        self.current_id.as_deref()
     }
 
     pub(super) fn upcoming(&self) -> Option<&Value> {
@@ -460,6 +465,12 @@ pub(super) fn tick(
     }
     if !player.status.has_frame {
         return false;
+    }
+    if player.overlay.current_id.is_none() {
+        player.overlay.current_id = snapshot
+            .pointer("/player/currentVideoId")
+            .and_then(Value::as_str)
+            .map(str::to_owned);
     }
     if !player.overlay.next_resolved && player.status.duration > 0.0 {
         player.overlay.next_resolved = true;

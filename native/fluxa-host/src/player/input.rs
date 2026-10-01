@@ -39,6 +39,12 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                 casting::open(player);
             }
         }
+        fluxa_ui::NODE_PLAYER_TRACKS => open_menu(state, menu::Menu::Tracks),
+        fluxa_ui::NODE_PLAYER_SPEED => open_menu(state, menu::Menu::Speed),
+        fluxa_ui::NODE_PLAYER_EPISODES => open_menu(state, menu::Menu::Episodes),
+        fluxa_ui::NODE_PLAYER_SETTINGS => open_menu(state, menu::Menu::Settings),
+        fluxa_ui::NODE_PLAYER_NEXT => start_next(state, true),
+        fluxa_ui::NODE_PLAYER_PREVIOUS => menu::previous(state),
         fluxa_ui::NODE_PLAYER_PANEL_CLOSE => {
             if let Some(player) = state.player.as_mut() {
                 player.panel = None;
@@ -55,6 +61,7 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                 .and_then(|player| player.panel.as_ref())
             {
                 Some(Panel::Cast) => casting::activate_row(state, row),
+                Some(Panel::Menu(kind)) => menu::activate_row(state, *kind, row),
                 _ => submit::activate_row(state, row),
             }
         }
@@ -286,4 +293,8 @@ pub(super) fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOu
     }
     state.ui.set_focus(Some(fluxa_ui::NODE_PLAYER_SEEK));
     KeyOutcome::Handled
+}
+
+fn open_menu(state: &mut RendererState, kind: menu::Menu) {
+    menu::open(state, kind);
 }

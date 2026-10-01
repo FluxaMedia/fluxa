@@ -272,26 +272,31 @@ impl Cast {
                     ),
                     value: None,
                     primary: true,
+                    ..Default::default()
                 },
                 Row::Back => PanelRow {
                     label: format!("-{SEEK_STEP:.0}s"),
                     value: None,
                     primary: false,
+                    ..Default::default()
                 },
                 Row::Forward => PanelRow {
                     label: format!("+{SEEK_STEP:.0}s"),
                     value: None,
                     primary: false,
+                    ..Default::default()
                 },
                 Row::Stop => PanelRow {
                     label: text("player.stop_casting"),
                     value: None,
                     primary: false,
+                    ..Default::default()
                 },
                 Row::Device(index) => PanelRow {
                     label: self.devices[index].name.clone(),
                     value: Some(self.devices[index].protocol.label().to_owned()),
                     primary: false,
+                    ..Default::default()
                 },
             })
             .collect();
@@ -299,6 +304,7 @@ impl Cast {
             title: text("player.cast"),
             message,
             rows,
+            ..Default::default()
         }
     }
 }

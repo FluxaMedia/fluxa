@@ -66,23 +66,28 @@ impl Submit {
                     label: text(&format!("player.mark_segment_type_{}", KINDS[self.kind])),
                     value: None,
                     primary: false,
+                    ..Default::default()
                 },
                 PanelRow {
                     label: text("player.mark_segment_start"),
                     value: time(self.start),
                     primary: false,
+                    ..Default::default()
                 },
                 PanelRow {
                     label: text("player.mark_segment_stop"),
                     value: time(self.end),
                     primary: false,
+                    ..Default::default()
                 },
                 PanelRow {
                     label: text("player.mark_segment_submit"),
                     value: None,
                     primary: true,
+                    ..Default::default()
                 },
             ],
+            ..Default::default()
         }
     }
 }

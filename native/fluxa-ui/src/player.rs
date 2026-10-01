@@ -61,6 +61,90 @@ pub struct PlayerModel {
     pub toast: Option<PlayerToast>,
     pub panel: Option<PlayerPanel>,
     pub dim: f32,
+    pub options: PlayerOptions,
+    pub has_next: bool,
+    pub has_previous: bool,
+    pub has_episodes: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct PlayerOptions {
+    pub title: bool,
+    pub up_next: bool,
+    pub audio_subtitles: bool,
+    pub speed: bool,
+    pub episodes: bool,
+    pub next_episode: bool,
+    pub settings: bool,
+    pub volume: bool,
+    pub fullscreen: bool,
+    pub cast: bool,
+    pub mark_segment: bool,
+    pub upscaling: bool,
+    pub gestures: bool,
+    pub double_tap: bool,
+    pub center_controls: bool,
+}
+
+impl Default for PlayerOptions {
+    fn default() -> Self {
+        Self {
+            title: true,
+            up_next: true,
+            audio_subtitles: true,
+            speed: true,
+            episodes: true,
+            next_episode: true,
+            settings: true,
+            volume: true,
+            fullscreen: true,
+            cast: true,
+            mark_segment: true,
+            upscaling: true,
+            gestures: true,
+            double_tap: true,
+            center_controls: true,
+        }
+    }
+}
+
+const PLAYER_ICONS: &[&str] = &[
+    "ArrowLeft",
+    "PlayFilled",
+    "PauseFilled",
+    "SkipForward",
+    "SkipBack",
+    "Volume",
+    "VolumeMuted",
+    "Maximize",
+    "AudioSubtitles",
+    "Gauge",
+    "Sliders",
+    "List",
+    "Cast",
+    "Flag",
+    "Sparkles",
+    "Check",
+];
+
+struct Icons(Vec<(&'static str, TextureId)>);
+
+impl Icons {
+    fn load(assets: &impl HomeAssets) -> Self {
+        Self(
+            PLAYER_ICONS
+                .iter()
+                .filter_map(|name| assets.icon(name).map(|texture| (*name, texture)))
+                .collect(),
+        )
+    }
+
+    fn get(&self, name: &str) -> Option<TextureId> {
+        self.0
+            .iter()
+            .find(|(key, _)| *key == name)
+            .map(|(_, texture)| *texture)
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -155,7 +239,9 @@ pub fn draw_player(
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);
     }
+    let icons = Icons::load(assets);
     let chrome = Chrome {
+        icons: &icons,
         context,
         painter: &painter,
         viewport,
@@ -214,6 +300,7 @@ pub fn draw_player(
 }
 
 struct Chrome<'a> {
+    icons: &'a Icons,
     context: &'a egui::Context,
     painter: &'a egui::Painter,
     viewport: Viewport,
@@ -250,7 +337,14 @@ impl Chrome<'_> {
         node: u64,
     ) {
         let rect = Rect::from_center_size(center, Vec2::splat(size));
-        let response = control(ui, self.painter, rect, icon, node == NODE_PLAYER_TOGGLE);
+        let response = icon_control(
+            ui,
+            self.painter,
+            rect,
+            self.icons.get(icon),
+            node,
+            if node == NODE_PLAYER_TOGGLE { 0.6 } else { 0.5 },
+        );
         layout.focusable.push((node, response.rect));
         if response.clicked() {
             layout.activated = Some(node);
@@ -307,6 +401,7 @@ impl Chrome<'_> {
         ui.data_mut(|data| data.insert_temp(held_id, holding));
         layout.player_speed_hold = holding;
         if response.dragged()
+            && self.player.options.gestures
             && !holding
             && let Some(pointer) = response.interact_pointer_pos()
         {
@@ -325,6 +420,7 @@ impl Chrome<'_> {
             return;
         }
         if response.double_clicked()
+            && self.player.options.double_tap
             && let Some(pointer) = response.interact_pointer_pos()
         {
             layout.activated = Some(if pointer.x < area.center().x {
@@ -414,37 +510,6 @@ impl Chrome<'_> {
             );
         }
         position
-    }
-
-    fn upscaling(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, rect: Rect, size: f32) {
-        let player = self.player;
-        let label = format!(
-            "{}  {}",
-            localized("player.anime4k", &player.language),
-            match player.upscaling.as_str() {
-                "off" | "" => localized("player.off", &player.language),
-                mode => localized(&format!("player.anime4k_mode_{mode}"), &player.language),
-            }
-        );
-        let response = ui.interact(rect, Id::new("fluxa-player-upscaling"), Sense::click());
-        crate::components::glass(
-            self.painter,
-            rect,
-            rect.height() * 0.5,
-            Color32::from_white_alpha(if response.hovered() { 40 } else { 22 }),
-        );
-        self.text(
-            rect.center(),
-            Align2::CENTER_CENTER,
-            &label,
-            size,
-            rect.width() - 12.0,
-            225,
-        );
-        layout.focusable.push((NODE_PLAYER_UPSCALING, rect));
-        if response.clicked() {
-            layout.activated = Some(NODE_PLAYER_UPSCALING);
-        }
     }
 
     fn times(&self, position: f64) -> String {

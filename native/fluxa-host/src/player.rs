@@ -12,6 +12,7 @@ use crate::{
 
 mod casting;
 mod input;
+mod menu;
 mod overlay;
 mod resolve;
 mod shuffle;
@@ -164,11 +165,18 @@ pub(crate) struct PlayerSession {
     brightness: f32,
     speed_held: bool,
     speed: f64,
+    tracks: Vec<VideoTrack>,
+    aspect: usize,
+    audio_delay: f64,
+    subtitle_delay: f64,
+    sleep: usize,
+    sleep_at: Option<Instant>,
 }
 
 enum Panel {
     Submit(submit::Submit),
     Cast,
+    Menu(menu::Menu),
 }
 
 impl PlayerSession {
@@ -226,6 +234,12 @@ impl PlayerSession {
             brightness: 1.0,
             speed_held: false,
             speed: 1.0,
+            tracks: Vec::new(),
+            aspect: 0,
+            audio_delay: 0.0,
+            subtitle_delay: 0.0,
+            sleep: 0,
+            sleep_at: None,
         }
     }
 
@@ -385,8 +399,13 @@ impl PlayerSession {
             panel: self.panel.as_ref().map(|panel| match panel {
                 Panel::Submit(submit) => submit.model(&self.language),
                 Panel::Cast => self.cast.model(&self.language),
+                Panel::Menu(menu) => menu::model(self, *menu),
             }),
+            has_next: self.overlay.upcoming().is_some(),
+            has_previous: menu::has_previous(self),
+            has_episodes: menu::has_episodes(self),
             dim: 1.0 - self.brightness,
+            options: fluxa_ui::PlayerOptions::default(),
         }
     }
 }
@@ -464,6 +483,7 @@ pub(crate) fn pump(state: &mut RendererState) {
         player.cast.poll();
     }
     advance_shuffle(state);
+    menu::tick_sleep(state);
     let RendererState {
         shuffle,
         player,
@@ -842,6 +862,36 @@ pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
     if let Some(video) = state.video.as_mut() {
         video.command(command);
     }
+}
+
+pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
+    let on = |key: &str| settings.bool_value(key);
+    let options = fluxa_ui::PlayerOptions {
+        title: on("playerShowTitle"),
+        up_next: on("playerShowUpNextCard"),
+        audio_subtitles: on("playerShowAudioSubtitles"),
+        speed: on("playerShowSpeed"),
+        episodes: on("playerShowEpisodes"),
+        next_episode: on("playerShowNextEpisode"),
+        settings: on("playerShowSettings"),
+        volume: on("playerShowVolume"),
+        fullscreen: on("playerShowFullscreen"),
+        cast: on("playerShowCast"),
+        mark_segment: on("playerShowMarkSegment"),
+        upscaling: on("playerShowUpscaling"),
+        gestures: on("playerGestures"),
+        double_tap: on("playerDoubleTapSeek"),
+        center_controls: on("playerCenterControls"),
+    };
+    model.show_pause_info &= on("pauseMetadataOverlayEnabled");
+    if !on("contentWarningsEnabled") {
+        model.warnings.clear();
+        model.warnings_elapsed = None;
+    }
+    if !options.up_next {
+        model.next_episode = None;
+    }
+    model.options = options;
 }
 
 pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
