@@ -340,7 +340,7 @@
     {
       "key": "detailSeasonSelectorMode",
       "type": "string",
-      "default": "tabs",
+      "default": "posters",
       "scope": "profile",
       "category": "appearance"
     },
@@ -410,7 +410,7 @@
     {
       "key": "episodeCardsLayout",
       "type": "string",
-      "default": "standard",
+      "default": "auto",
       "scope": "profile",
       "category": "appearance"
     },

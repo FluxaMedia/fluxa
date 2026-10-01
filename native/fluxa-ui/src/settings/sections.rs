@@ -280,12 +280,12 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "Season selector style",
         key: "detailSeasonSelectorMode",
-        options: &["tabs", "slider", "compact"],
+        options: &["posters", "chips", "dropdown"],
     },
     SettingsRow {
         label: "Episode card layout",
         key: "episodeCardsLayout",
-        options: &["standard", "wide", "compact", "horizontal"],
+        options: &["auto", "cards", "list", "grid", "numbers"],
     },
     SettingsRow {
         label: "Blur unwatched episodes",

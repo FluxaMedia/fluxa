@@ -9,8 +9,8 @@ use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText,
 use std::hash::{Hash, Hasher};
 
 use super::{
-    ArtworkPriority, HomeAssets, HomeCard, UiMetrics, Viewport, artwork_target_size, cover_uv,
-    full_uv, paint_vertical_gradient, truncate_to_width,
+    ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, UiMetrics, Viewport, artwork_target_size,
+    cover_uv, full_uv, paint_vertical_gradient, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -158,6 +158,156 @@ pub(super) fn rounded_artwork(
         texture_image(painter, texture, rect, uv, tint);
     }
     true
+}
+
+pub(super) fn season_tile(
+    ui: &mut Ui,
+    assets: &mut impl HomeAssets,
+    poster: Option<&str>,
+    label: &str,
+    selected: bool,
+    size: Vec2,
+    label_height: f32,
+    metrics: UiMetrics,
+) -> Response {
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(size.x, size.y + label_height), Sense::click());
+    let painter = ui.painter();
+    let image = Rect::from_min_size(rect.min, size);
+    painter.rect_filled(image, 8.0, Color32::from_white_alpha(14));
+    let tint = if selected {
+        Color32::WHITE
+    } else {
+        Color32::from_white_alpha(150)
+    };
+    rounded_artwork(
+        painter,
+        image,
+        8.0,
+        poster,
+        artwork_target_size(image.size(), painter.ctx().pixels_per_point()),
+        ArtworkPriority::Visible,
+        tint,
+        assets,
+    );
+    if selected {
+        painter.rect_stroke(
+            image,
+            8.0,
+            egui::Stroke::new(2.0, Color32::WHITE),
+            egui::StrokeKind::Inside,
+        );
+    }
+    let font = FontId::proportional(metrics.text.meta);
+    painter.text(
+        Pos2::new(rect.center().x, image.bottom() + 6.0),
+        Align2::CENTER_TOP,
+        truncate_to_width(painter, label, &font, size.x),
+        font,
+        if selected {
+            metrics.text_primary
+        } else {
+            metrics.text_muted
+        },
+    );
+    response
+}
+
+pub(super) fn episode_artwork(
+    painter: &Painter,
+    assets: &mut impl HomeAssets,
+    rect: Rect,
+    episode: &DetailEpisode,
+    hide_still: bool,
+    hovered: bool,
+    selected: bool,
+    metrics: UiMetrics,
+) {
+    painter.rect_filled(rect, 10.0, Color32::from_white_alpha(14));
+    if hide_still
+        || !rounded_artwork(
+            painter,
+            rect,
+            10.0,
+            episode.thumbnail.as_deref(),
+            artwork_target_size(rect.size(), painter.ctx().pixels_per_point()),
+            ArtworkPriority::Visible,
+            Color32::WHITE,
+            assets,
+        )
+    {
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            format!("E{}", episode.number),
+            FontId::proportional(22.0),
+            metrics.text_muted,
+        );
+    }
+    if hovered {
+        painter.rect_filled(rect, 10.0, Color32::from_black_alpha(90));
+        if let Some(icon) = assets.icon("PlayFilled") {
+            painter.image(
+                icon,
+                Rect::from_center_size(rect.center(), Vec2::splat(34.0)),
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
+            );
+        }
+    }
+    if episode.watched {
+        let center = rect.right_top() + Vec2::new(-16.0, 16.0);
+        painter.circle_filled(center, 10.0, Color32::WHITE);
+        painter.text(
+            center,
+            Align2::CENTER_CENTER,
+            "✓",
+            FontId::proportional(13.0),
+            Color32::BLACK,
+        );
+    } else if episode.progress > 0.0 {
+        let bar = Rect::from_min_size(
+            Pos2::new(rect.left(), rect.bottom() - 3.0),
+            Vec2::new(rect.width() * episode.progress, 3.0),
+        );
+        painter.rect_filled(bar, 0.0, Color32::WHITE);
+    }
+    if selected {
+        painter.rect_stroke(
+            rect,
+            10.0,
+            egui::Stroke::new(2.0, Color32::WHITE),
+            egui::StrokeKind::Inside,
+        );
+    }
+}
+
+pub(super) fn episode_text(
+    painter: &Painter,
+    origin: Pos2,
+    width: f32,
+    number: i64,
+    title: &str,
+    overview: Option<(&str, usize)>,
+) {
+    let title = if title.is_empty() {
+        number.to_string()
+    } else {
+        format!("{number}. {title}")
+    };
+    let font = FontId::proportional(15.0);
+    painter.text(
+        origin,
+        Align2::LEFT_TOP,
+        truncate_to_width(painter, &title, &font, width),
+        font,
+        Color32::WHITE,
+    );
+    if let Some((overview, rows)) = overview {
+        let color = Color32::from_white_alpha(140);
+        let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
+        painter.galley(Pos2::new(origin.x, origin.y + 22.0), galley, color);
+    }
 }
 
 pub(super) fn title_logo(

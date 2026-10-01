@@ -528,6 +528,11 @@ pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, v
                     content_type: value,
                 });
         }
+        "detail:season" if route == Route::Detail => {
+            state.detail.selected_season = value.parse().ok();
+            state.detail.row_scroll_offsets[1] = 0.0;
+            reset_ui(state);
+        }
         "discover:catalog" | "discover:extra" if route == Route::Discover => {
             if key == "discover:catalog" {
                 state.discover.selected_catalog_key = value;

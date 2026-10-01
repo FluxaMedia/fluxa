@@ -1561,3 +1561,100 @@ fn skip_and_next_cards_stay_on_screen_for_every_form_factor() {
         }
     }
 }
+
+#[test]
+fn app_extras_feed_the_detail_model() {
+    let snapshot = serde_json::json!({
+        "detail": {
+            "id": "tt1",
+            "contentType": "series",
+            "meta": {
+                "name": "Show",
+                "year": "2026",
+                "videos": [
+                    {"id": "tt1:0:1", "season": 0, "episode": 1},
+                    {"id": "tt1:1:1", "season": 1, "episode": 1}
+                ],
+                "app_extras": {
+                    "certification": "TV-14",
+                    "certificationLocal": "TV-MA",
+                    "seasonPosters": {"1": "https://img/s1.jpg", "0": "https://img/s0.jpg", "x": "bad"},
+                    "directors": [{"name": "Dana", "character": "Dana", "photo": null}],
+                    "writers": [{"name": "Dana", "character": "Dana"}, {"name": "Lee"}],
+                    "watchProviders": [{"name": "Crunchyroll", "url": "u"}, "Netflix", {"name": "Netflix"}],
+                    "releaseDates": {"results": [{"iso_3166_1": "US", "release_dates": [
+                        {"type": 4, "release_date": "2026-07-01T00:00:00.000Z"},
+                        {"type": 3, "release_date": "2026-05-01T00:00:00.000Z"}
+                    ]}]}
+                }
+            }
+        }
+    });
+    let detail = detail_model_from_core_snapshot(&snapshot);
+    assert_eq!(
+        detail.season_posters,
+        vec![
+            (1, "https://img/s1.jpg".to_owned()),
+            (0, "https://img/s0.jpg".to_owned())
+        ]
+    );
+    assert_eq!(detail.facts.get(1).map(String::as_str), Some("TV-MA"));
+    let crew = detail
+        .crew
+        .iter()
+        .map(|member| member.name.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(crew, ["Dana", "Dana", "Lee"]);
+    assert!(detail.info_lines[0].contains("2026-05-01"));
+    assert!(detail.info_lines[0].contains("2026-07-01"));
+    assert!(detail.info_lines[1].contains("Crunchyroll, Netflix"));
+}
+
+#[test]
+fn posters_mode_falls_back_to_chips_without_season_posters() {
+    let mut detail = DetailModel {
+        season_selector: SeasonSelector::from_setting(Some("tabs")),
+        ..Default::default()
+    };
+    assert_eq!(detail.season_selector_mode(), SeasonSelector::Chips);
+    detail.season_posters = vec![(1, "https://img/s1.jpg".to_owned())];
+    assert_eq!(detail.season_selector_mode(), SeasonSelector::Posters);
+    assert_eq!(
+        SeasonSelector::from_setting(Some("dropdown")),
+        SeasonSelector::Dropdown
+    );
+}
+
+#[test]
+fn episode_layout_defaults_follow_form_factor_and_setting() {
+    let mut detail = DetailModel::default();
+    assert_eq!(detail.episode_layout_for(true), EpisodeLayout::List);
+    assert_eq!(detail.episode_layout_for(false), EpisodeLayout::Cards);
+    detail.episode_layout = EpisodeLayout::from_setting(Some("grid"));
+    assert_eq!(detail.episode_layout_for(true), EpisodeLayout::Grid);
+    assert_eq!(EpisodeLayout::from_setting(Some("auto")), None);
+}
+
+#[test]
+fn unwatched_episodes_hide_still_and_spoilers() {
+    let library = serde_json::json!({"watched": {"tt1:1:1": true}});
+    let meta = serde_json::json!({"videos": [
+        {"id": "tt1:1:1", "season": 1, "episode": 1, "title": "Pilot", "overview": "Seen"},
+        {"id": "tt1:1:2", "season": 1, "episode": 2, "title": "Next", "overview": "Secret"}
+    ]});
+    let episodes = detail_episodes(&meta, &library);
+    let mut detail = DetailModel {
+        show_episode_descriptions: true,
+        blur_unwatched: true,
+        ..DetailModel::default()
+    };
+    assert!(episodes[0].watched && !episodes[1].watched);
+    let seen = detail.episode_view(&episodes[0]);
+    assert!(!seen.hide_still && seen.title == "Pilot");
+    let next = detail.episode_view(&episodes[1]);
+    assert!(next.hide_still && next.title == "Next");
+    detail.hide_spoilers = true;
+    let next = detail.episode_view(&episodes[1]);
+    assert!(next.title.is_empty() && next.overview.is_none());
+    assert_eq!(detail.episode_view(&episodes[0]).overview, Some("Seen"));
+}

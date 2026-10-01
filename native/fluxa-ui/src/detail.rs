@@ -1,13 +1,23 @@
 use super::*;
 use std::sync::atomic::{AtomicU32, Ordering};
 
+mod episodes;
+
 const SECTION_TITLE: f32 = 44.0;
 const SECTION_GAP: f32 = 36.0;
 const SEASON_ROW: f32 = 54.0;
+const SEASON_TILE: Vec2 = Vec2::new(84.0, 126.0);
+const SEASON_TILE_LABEL: f32 = 30.0;
 const EPISODE_WIDTH: f32 = 300.0;
-const EPISODE_TEXT: f32 = 74.0;
 const CAST_SIZE: f32 = 92.0;
 const CAST_TEXT: f32 = 48.0;
+
+fn season_row(detail: &DetailModel) -> f32 {
+    match detail.season_selector_mode() {
+        SeasonSelector::Posters => SEASON_TILE.y + SEASON_TILE_LABEL + 12.0,
+        SeasonSelector::Chips | SeasonSelector::Dropdown => SEASON_ROW,
+    }
+}
 
 fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
     let poster = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
@@ -42,10 +52,13 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
     let mut y = hero_height + 12.0;
     let episodes_top = (!detail.episodes.is_empty()).then(|| {
         let top = y;
-        y += SECTION_TITLE + SEASON_ROW + EPISODE_WIDTH * 9.0 / 16.0 + EPISODE_TEXT + SECTION_GAP;
+        y += SECTION_TITLE
+            + season_row(detail)
+            + episodes::episodes_height(viewport, detail, margin)
+            + SECTION_GAP;
         top
     });
-    let cast_top = (!detail.cast.is_empty()).then(|| {
+    let cast_top = (!detail.cast.is_empty() || !detail.crew.is_empty()).then(|| {
         let top = y;
         y += SECTION_TITLE + CAST_SIZE + CAST_TEXT + SECTION_GAP;
         top
@@ -83,12 +96,12 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
     let mut rows = Vec::new();
     if let Some(top) = geometry.episodes_top {
         let seasons = top + SECTION_TITLE;
-        rows.push((0, seasons, seasons + SEASON_ROW));
-        let episodes = seasons + SEASON_ROW;
+        rows.push((0, seasons, seasons + season_row(detail)));
+        let episodes = seasons + season_row(detail);
         rows.push((
             1,
             episodes,
-            episodes + EPISODE_WIDTH * 9.0 / 16.0 + EPISODE_TEXT,
+            episodes + episodes::episodes_height(viewport, detail, geometry.margin),
         ));
     }
     if let Some(top) = geometry.cast_top {
@@ -251,14 +264,7 @@ pub fn draw_detail(
     layout.activated = draw_navigation_bar(context, viewport, 0, assets);
 
     let seasons = detail.seasons();
-    let season_id = Id::new(("fluxa-detail-season", &detail.id));
-    let selected_season = detail
-        .selected_season
-        .or_else(|| context.data(|data| data.get_temp::<i64>(season_id)))
-        .filter(|season| seasons.contains(season))
-        .or_else(|| seasons.iter().copied().find(|season| *season > 0))
-        .or_else(|| seasons.first().copied())
-        .unwrap_or(1);
+    let selected_season = detail.current_season();
     let season_episodes = detail
         .episodes
         .iter()
@@ -338,6 +344,17 @@ pub fn draw_detail(
                         )
                         .halign(egui::Align::Center),
                     );
+                    for line in &detail.info_lines {
+                        ui.add_space(space::XS);
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(line)
+                                    .size(metrics.text.meta)
+                                    .color(metrics.text_muted),
+                            )
+                            .halign(egui::Align::Center),
+                        );
+                    }
                     ui.add_space(space::LG);
                     let resume = detail.resume.as_ref();
                     let label = crate::play_label(
@@ -544,6 +561,14 @@ pub fn draw_detail(
                     RichText::new(detail.genres.join("  ·  "))
                         .size(metrics.text.meta)
                         .color(metrics.text_primary),
+                );
+            }
+            for line in &detail.info_lines {
+                ui.add_space(space::XS);
+                ui.label(
+                    RichText::new(line)
+                        .size(metrics.text.meta)
+                        .color(metrics.text_muted),
                 );
             }
             ui.add_space(space::XL);
@@ -754,29 +779,92 @@ pub fn draw_detail(
                     row_scroll(viewport, detail, 0, "fluxa-detail-season-scroll").show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 8.0;
-                            for season in &seasons {
-                                let label = if *season == 0 {
+                            let season_label = |season: i64| {
+                                if season == 0 {
                                     t("auto.specials")
                                 } else {
                                     t("format.season_number").replacen("%s", &season.to_string(), 1)
-                                };
-                                let response = components::button_auto_width(
+                                }
+                            };
+                            let mode = detail.season_selector_mode();
+                            if mode == SeasonSelector::Dropdown {
+                                let options = seasons
+                                    .iter()
+                                    .map(|season| (season.to_string(), season_label(*season)))
+                                    .collect::<Vec<_>>();
+                                let selected = selected_season.to_string();
+                                let width = components::dropdown_width_for_label(
                                     ui,
-                                    &label,
-                                    if *season == selected_season {
-                                        components::ButtonKind::Selected
-                                    } else {
-                                        components::ButtonKind::Secondary
-                                    },
-                                    metrics.nav_label_size,
+                                    &season_label(selected_season),
+                                    metrics,
+                                    160.0,
+                                    320.0,
+                                );
+                                let (response, changed) = components::dropdown(
+                                    ui,
+                                    "fluxa-detail-season-dropdown",
+                                    &selected,
+                                    &options,
+                                    width,
+                                    compact,
                                     metrics,
                                 );
+                                layout
+                                    .focusable
+                                    .push((NODE_DETAIL_SEASON_BASE, response.rect));
+                                layout.choices.extend(components::sheet_choice(
+                                    NODE_DETAIL_SEASON_BASE,
+                                    "detail:season",
+                                    t("settings.season_selector"),
+                                    &options,
+                                    &selected,
+                                ));
+                                if let Some(value) = changed {
+                                    layout.filter_change =
+                                        Some(("detail:season".to_owned(), value));
+                                }
+                                return;
+                            }
+                            for season in &seasons {
+                                let label = season_label(*season);
+                                let response = if mode == SeasonSelector::Chips {
+                                    components::button_auto_width(
+                                        ui,
+                                        &label,
+                                        if *season == selected_season {
+                                            components::ButtonKind::Selected
+                                        } else {
+                                            components::ButtonKind::Secondary
+                                        },
+                                        metrics.nav_label_size,
+                                        metrics,
+                                    )
+                                } else {
+                                    let poster = detail
+                                        .season_posters
+                                        .iter()
+                                        .find(|(number, _)| number == season)
+                                        .map(|(_, url)| url.as_str())
+                                        .or(detail.poster_url.as_deref());
+                                    components::season_tile(
+                                        ui,
+                                        assets,
+                                        poster,
+                                        &label,
+                                        *season == selected_season,
+                                        SEASON_TILE,
+                                        SEASON_TILE_LABEL,
+                                        metrics,
+                                    )
+                                };
                                 layout.focusable.push((
                                     NODE_DETAIL_SEASON_BASE + (*season).clamp(0, 99) as u64,
                                     response.rect,
                                 ));
                                 if response.clicked() {
-                                    context.data_mut(|data| data.insert_temp(season_id, *season));
+                                    layout.activated = Some(
+                                        NODE_DETAIL_SEASON_BASE + (*season).clamp(0, 99) as u64,
+                                    );
                                 }
                             }
                         });
@@ -784,101 +872,81 @@ pub fn draw_detail(
                 record_row_max(0, &output);
             });
         let thumb = Vec2::new(EPISODE_WIDTH, EPISODE_WIDTH * 9.0 / 16.0);
-        egui::Area::new(Id::new("fluxa-detail-episodes"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(margin, top + SECTION_TITLE + SEASON_ROW))
-            .show(context, |ui| {
-                ui.set_clip_rect(visible);
-                ui.set_max_width(row_width);
-                let output = row_scroll(
-                    viewport,
-                    detail,
-                    1,
-                    ("fluxa-detail-episode-scroll", selected_season),
-                )
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 16.0;
-                        for (index, episode) in &season_episodes {
-                            let (rect, response) = ui.allocate_exact_size(
-                                Vec2::new(EPISODE_WIDTH, thumb.y + EPISODE_TEXT),
-                                Sense::click(),
-                            );
-                            let node = NODE_DETAIL_EPISODE_BASE + *index as u64;
-                            layout.focusable.push((node, rect));
-                            if response.clicked() {
-                                layout.activated = Some(node);
-                            }
-                            if !ui.is_rect_visible(rect) {
-                                continue;
-                            }
-                            let painter = ui.painter();
-                            let image = Rect::from_min_size(rect.min, thumb);
-                            painter.rect_filled(image, 10.0, Color32::from_white_alpha(14));
-                            if !components::rounded_artwork(
-                                painter,
-                                image,
-                                10.0,
-                                episode.thumbnail.as_deref(),
-                                artwork_target_size(image.size(), ppp),
-                                ArtworkPriority::Visible,
-                                Color32::WHITE,
-                                assets,
-                            ) {
-                                painter.text(
-                                    image.center(),
-                                    Align2::CENTER_CENTER,
-                                    format!("E{}", episode.number),
-                                    FontId::proportional(22.0),
-                                    metrics.text_muted,
+        let episodes_pos = Pos2::new(margin, top + SECTION_TITLE + season_row(detail));
+        if detail.episode_layout_for(compact) == EpisodeLayout::Cards {
+            egui::Area::new(Id::new("fluxa-detail-episodes"))
+                .constrain(false)
+                .fixed_pos(episodes_pos)
+                .show(context, |ui| {
+                    ui.set_clip_rect(visible);
+                    ui.set_max_width(row_width);
+                    let output = row_scroll(
+                        viewport,
+                        detail,
+                        1,
+                        ("fluxa-detail-episode-scroll", selected_season),
+                    )
+                    .show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 16.0;
+                            for (index, episode) in &season_episodes {
+                                let (rect, response) = ui.allocate_exact_size(
+                                    Vec2::new(
+                                        EPISODE_WIDTH,
+                                        episodes::episodes_height(viewport, detail, margin),
+                                    ),
+                                    Sense::click(),
+                                );
+                                let node = NODE_DETAIL_EPISODE_BASE + *index as u64;
+                                layout.focusable.push((node, rect));
+                                if response.clicked() {
+                                    layout.activated = Some(node);
+                                }
+                                if !ui.is_rect_visible(rect) {
+                                    continue;
+                                }
+                                let image = Rect::from_min_size(rect.min, thumb);
+                                let view = detail.episode_view(episode);
+                                components::episode_artwork(
+                                    ui.painter(),
+                                    assets,
+                                    image,
+                                    episode,
+                                    view.hide_still,
+                                    response.hovered(),
+                                    false,
+                                    metrics,
+                                );
+                                components::episode_text(
+                                    ui.painter(),
+                                    Pos2::new(rect.left(), image.bottom() + 12.0),
+                                    EPISODE_WIDTH,
+                                    episode.number,
+                                    view.title,
+                                    view.overview.map(|text| (text, 2)),
                                 );
                             }
-                            if response.hovered() {
-                                painter.rect_filled(image, 10.0, Color32::from_black_alpha(90));
-                                if let Some(icon) = assets.icon("PlayFilled") {
-                                    painter.image(
-                                        icon,
-                                        Rect::from_center_size(image.center(), Vec2::splat(34.0)),
-                                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                                        Color32::WHITE,
-                                    );
-                                }
-                            }
-                            let title = if episode.title.is_empty() {
-                                format!("{}", episode.number)
-                            } else {
-                                format!("{}. {}", episode.number, episode.title)
-                            };
-                            painter.text(
-                                Pos2::new(rect.left(), image.bottom() + 12.0),
-                                Align2::LEFT_TOP,
-                                truncate_to_width(
-                                    painter,
-                                    &title,
-                                    &FontId::proportional(15.0),
-                                    EPISODE_WIDTH,
-                                ),
-                                FontId::proportional(15.0),
-                                Color32::WHITE,
-                            );
-                            let overview = components::wrapped_text(
-                                painter,
-                                &episode.overview,
-                                13.0,
-                                Color32::from_white_alpha(140),
-                                EPISODE_WIDTH,
-                                2,
-                            );
-                            painter.galley(
-                                Pos2::new(rect.left(), image.bottom() + 34.0),
-                                overview,
-                                Color32::from_white_alpha(140),
-                            );
-                        }
+                        });
                     });
+                    record_row_max(1, &output);
                 });
-                record_row_max(1, &output);
-            });
+        } else {
+            let context_data = episodes::EpisodeContext {
+                viewport,
+                detail,
+                episodes: &season_episodes,
+                season: selected_season,
+                metrics,
+                margin,
+            };
+            egui::Area::new(Id::new("fluxa-detail-episodes"))
+                .constrain(false)
+                .fixed_pos(episodes_pos)
+                .show(context, |ui| {
+                    ui.set_clip_rect(visible);
+                    episodes::draw_episodes(ui, &context_data, assets, &mut layout);
+                });
+        }
     }
 
     if let Some(top) = geometry.cast_top {
@@ -886,7 +954,11 @@ pub fn draw_detail(
         section_title(
             &painter,
             Pos2::new(margin, top),
-            &t("auto.cast"),
+            &t(if detail.crew.is_empty() {
+                "auto.cast"
+            } else {
+                "detail.cast_crew"
+            }),
             title_size,
         );
         egui::Area::new(Id::new("fluxa-detail-cast"))
@@ -899,7 +971,7 @@ pub fn draw_detail(
                     row_scroll(viewport, detail, 2, "fluxa-detail-cast-scroll").show(ui, |ui| {
                         ui.horizontal(|ui| {
                             ui.spacing_mut().item_spacing.x = 18.0;
-                            for member in &detail.cast {
+                            for member in detail.cast.iter().chain(&detail.crew) {
                                 let (rect, _) = ui.allocate_exact_size(
                                     Vec2::new(CAST_SIZE + 16.0, CAST_SIZE + CAST_TEXT),
                                     Sense::hover(),

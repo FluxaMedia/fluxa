@@ -28,9 +28,55 @@ pub struct DetailModel {
     pub facts: Vec<String>,
     pub episodes: Vec<DetailEpisode>,
     pub cast: Vec<DetailCastMember>,
+    pub crew: Vec<DetailCastMember>,
+    pub season_posters: Vec<(i64, String)>,
+    pub season_selector: SeasonSelector,
+    pub episode_layout: Option<EpisodeLayout>,
+    pub show_episode_descriptions: bool,
+    pub blur_unwatched: bool,
+    pub hide_spoilers: bool,
+    pub info_lines: Vec<String>,
     pub resume: Option<HomeCard>,
     pub row_scroll_offsets: [f32; 4],
     pub selected_season: Option<i64>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum SeasonSelector {
+    #[default]
+    Posters,
+    Chips,
+    Dropdown,
+}
+
+impl SeasonSelector {
+    pub fn from_setting(value: Option<&str>) -> Self {
+        match value {
+            Some("chips") => Self::Chips,
+            Some("dropdown" | "compact") => Self::Dropdown,
+            _ => Self::Posters,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EpisodeLayout {
+    Cards,
+    List,
+    Grid,
+    Numbers,
+}
+
+impl EpisodeLayout {
+    pub fn from_setting(value: Option<&str>) -> Option<Self> {
+        match value {
+            Some("cards") => Some(Self::Cards),
+            Some("list") => Some(Self::List),
+            Some("grid") => Some(Self::Grid),
+            Some("numbers") => Some(Self::Numbers),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Default)]
@@ -41,6 +87,14 @@ pub struct DetailEpisode {
     pub title: String,
     pub overview: String,
     pub thumbnail: Option<String>,
+    pub watched: bool,
+    pub progress: f32,
+}
+
+pub struct EpisodeView<'a> {
+    pub title: &'a str,
+    pub overview: Option<&'a str>,
+    pub hide_still: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -51,8 +105,43 @@ pub struct DetailCastMember {
 }
 
 impl DetailModel {
+    pub fn season_selector_mode(&self) -> SeasonSelector {
+        match self.season_selector {
+            SeasonSelector::Posters if self.season_posters.is_empty() => SeasonSelector::Chips,
+            mode => mode,
+        }
+    }
+
     pub fn is_series(&self) -> bool {
         matches!(self.content_type.as_str(), "series" | "tv" | "show") || !self.episodes.is_empty()
+    }
+
+    pub fn current_season(&self) -> i64 {
+        let seasons = self.seasons();
+        self.selected_season
+            .filter(|season| seasons.contains(season))
+            .or_else(|| seasons.iter().copied().find(|season| *season > 0))
+            .or_else(|| seasons.first().copied())
+            .unwrap_or(1)
+    }
+
+    pub fn episode_view<'a>(&self, episode: &'a DetailEpisode) -> EpisodeView<'a> {
+        let unwatched = !episode.watched;
+        let hide_info = self.hide_spoilers && unwatched;
+        EpisodeView {
+            title: if hide_info { "" } else { &episode.title },
+            overview: (self.show_episode_descriptions && !hide_info)
+                .then_some(episode.overview.as_str()),
+            hide_still: (self.blur_unwatched || self.hide_spoilers) && unwatched,
+        }
+    }
+
+    pub fn episode_layout_for(&self, compact: bool) -> EpisodeLayout {
+        self.episode_layout.unwrap_or(if compact {
+            EpisodeLayout::List
+        } else {
+            EpisodeLayout::Cards
+        })
     }
 
     pub fn seasons(&self) -> Vec<i64> {
@@ -67,7 +156,10 @@ impl DetailModel {
     }
 }
 
-pub(crate) fn detail_episodes(meta: &serde_json::Value) -> Vec<DetailEpisode> {
+pub(crate) fn detail_episodes(
+    meta: &serde_json::Value,
+    library: &serde_json::Value,
+) -> Vec<DetailEpisode> {
     let mut episodes = meta
         .get("videos")
         .and_then(serde_json::Value::as_array)
@@ -80,13 +172,21 @@ pub(crate) fn detail_episodes(meta: &serde_json::Value) -> Vec<DetailEpisode> {
                     let season = number("season").unwrap_or(1);
                     let episode = number("episode").or_else(|| number("number")).unwrap_or(0);
                     Some(DetailEpisode {
-                        id,
+                        id: id.clone(),
                         season,
                         number: episode,
                         title: first_value_string(video, &["title", "name"]).unwrap_or_default(),
                         overview: first_value_string(video, &["overview", "description"])
                             .unwrap_or_default(),
                         thumbnail: first_value_string(video, &["thumbnail", "still", "image"]),
+                        watched: library
+                            .pointer(&format!(
+                                "/watched/{}",
+                                id.replace('~', "~0").replace('/', "~1")
+                            ))
+                            .and_then(serde_json::Value::as_bool)
+                            .unwrap_or(false),
+                        progress: episode_progress(library, &id),
                     })
                 })
                 .collect::<Vec<_>>()
@@ -94,6 +194,192 @@ pub(crate) fn detail_episodes(meta: &serde_json::Value) -> Vec<DetailEpisode> {
         .unwrap_or_default();
     episodes.sort_by_key(|episode| (episode.season, episode.number));
     episodes
+}
+
+fn episode_progress(library: &serde_json::Value, id: &str) -> f32 {
+    let entry = library
+        .get("progress")
+        .and_then(|progress| progress.get(id));
+    let number = |key: &str| entry?.get(key)?.as_f64();
+    match (number("timeOffset"), number("duration")) {
+        (Some(offset), Some(duration)) if duration > 0.0 => {
+            (offset / duration).clamp(0.0, 1.0) as f32
+        }
+        _ => 0.0,
+    }
+}
+
+fn cast_member(item: &serde_json::Value) -> DetailCastMember {
+    match item {
+        serde_json::Value::String(name) => DetailCastMember {
+            name: name.trim().to_owned(),
+            ..DetailCastMember::default()
+        },
+        _ => DetailCastMember {
+            name: first_value_string(item, &["name", "fullName", "actor"]).unwrap_or_default(),
+            role: first_value_string(item, &["character", "role", "as"]),
+            photo: first_value_string(
+                item,
+                &[
+                    "profilePath",
+                    "profile_path",
+                    "photo",
+                    "profile",
+                    "image",
+                    "img",
+                ],
+            )
+            .map(|photo| {
+                if photo.starts_with('/') {
+                    format!("https://image.tmdb.org/t/p/w185{photo}")
+                } else {
+                    photo
+                }
+            }),
+        },
+    }
+}
+
+fn app_extras(meta: &serde_json::Value) -> Option<&serde_json::Value> {
+    meta.get("app_extras").or_else(|| meta.get("appExtras"))
+}
+
+pub(crate) fn detail_crew(meta: &serde_json::Value, language: &str) -> Vec<DetailCastMember> {
+    let Some(extras) = app_extras(meta) else {
+        return Vec::new();
+    };
+    let groups = [
+        (["directors", "director"], "detail.director"),
+        (["writers", "writer"], "detail.writer"),
+        (["producers", "producer"], "detail.producer"),
+    ];
+    let mut crew = Vec::<DetailCastMember>::new();
+    for (keys, label) in groups {
+        let people = keys
+            .iter()
+            .filter_map(|key| extras.get(*key))
+            .filter_map(serde_json::Value::as_array)
+            .flatten();
+        for item in people {
+            let mut member = cast_member(item);
+            member.role = Some(localized(label, language));
+            if !member.name.is_empty()
+                && !crew.iter().any(|known| {
+                    known.name.eq_ignore_ascii_case(&member.name) && known.role == member.role
+                })
+            {
+                crew.push(member);
+            }
+        }
+    }
+    crew.truncate(12);
+    crew
+}
+
+pub(crate) fn detail_season_posters(meta: &serde_json::Value) -> Vec<(i64, String)> {
+    let mut posters = app_extras(meta)
+        .and_then(|extras| extras.get("seasonPosters"))
+        .and_then(serde_json::Value::as_object)
+        .map(|posters| {
+            posters
+                .iter()
+                .filter_map(|(season, url)| {
+                    let url = url.as_str().filter(|url| !url.is_empty())?;
+                    Some((season.parse::<i64>().ok()?, url.to_owned()))
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    posters.sort_by_key(|(season, _)| if *season == 0 { i64::MAX } else { *season });
+    posters
+}
+
+pub(crate) fn detail_certification(meta: &serde_json::Value) -> Option<String> {
+    let extras = app_extras(meta)?;
+    first_value_string(extras, &["certificationLocal", "certification"])
+        .filter(|value| !value.trim().is_empty())
+}
+
+fn release_date_lines(meta: &serde_json::Value, language: &str) -> Vec<String> {
+    let Some(raw) = app_extras(meta).and_then(|extras| extras.get("releaseDates")) else {
+        return Vec::new();
+    };
+    let results = raw
+        .get("results")
+        .unwrap_or(raw)
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    let region = language
+        .split(['-', '_'])
+        .nth(1)
+        .map(str::to_uppercase)
+        .unwrap_or_else(|| "US".to_owned());
+    let in_region = |code: &str| {
+        results.iter().find(|entry| {
+            value_string(entry, "iso_3166_1").is_some_and(|value| value.eq_ignore_ascii_case(code))
+        })
+    };
+    let Some(entry) = in_region(&region).or_else(|| in_region("US")) else {
+        return Vec::new();
+    };
+    let dates = entry
+        .get("release_dates")
+        .and_then(serde_json::Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    [
+        (3, "detail.release_theatrical"),
+        (4, "detail.release_digital"),
+        (5, "detail.release_physical"),
+    ]
+    .into_iter()
+    .filter_map(|(kind, label)| {
+        let date = dates
+            .iter()
+            .filter(|item| item.get("type").and_then(serde_json::Value::as_i64) == Some(kind))
+            .filter_map(|item| value_string(item, "release_date"))
+            .filter(|date| date.len() >= 10)
+            .map(|date| date[..10].to_owned())
+            .min()?;
+        Some(format!("{} {date}", localized(label, language)))
+    })
+    .collect()
+}
+
+fn streaming_line(meta: &serde_json::Value, language: &str) -> Option<String> {
+    let providers = app_extras(meta)?
+        .get("watchProviders")?
+        .as_array()?
+        .iter()
+        .filter_map(|item| {
+            item.as_str()
+                .map(ToOwned::to_owned)
+                .or_else(|| first_value_string(item, &["name", "title"]))
+        })
+        .fold(Vec::<String>::new(), |mut names, name| {
+            if !name.is_empty() && !names.contains(&name) {
+                names.push(name);
+            }
+            names
+        });
+    (!providers.is_empty()).then(|| {
+        format!(
+            "{}: {}",
+            localized("detail.watch_on", language),
+            providers.join(", ")
+        )
+    })
+}
+
+pub(crate) fn detail_info_lines(meta: &serde_json::Value, language: &str) -> Vec<String> {
+    let mut lines = Vec::new();
+    let releases = release_date_lines(meta, language);
+    if !releases.is_empty() {
+        lines.push(releases.join("  ·  "));
+    }
+    lines.extend(streaming_line(meta, language));
+    lines
 }
 
 pub(crate) fn detail_cast(meta: &serde_json::Value) -> Vec<DetailCastMember> {
@@ -109,34 +395,7 @@ pub(crate) fn detail_cast(meta: &serde_json::Value) -> Vec<DetailCastMember> {
         .filter_map(serde_json::Value::as_array)
         .flatten()
     {
-        let member = match item {
-            serde_json::Value::String(name) => DetailCastMember {
-                name: name.trim().to_owned(),
-                ..DetailCastMember::default()
-            },
-            _ => DetailCastMember {
-                name: first_value_string(item, &["name", "fullName", "actor"]).unwrap_or_default(),
-                role: first_value_string(item, &["character", "role", "as"]),
-                photo: first_value_string(
-                    item,
-                    &[
-                        "profilePath",
-                        "profile_path",
-                        "photo",
-                        "profile",
-                        "image",
-                        "img",
-                    ],
-                )
-                .map(|photo| {
-                    if photo.starts_with('/') {
-                        format!("https://image.tmdb.org/t/p/w185{photo}")
-                    } else {
-                        photo
-                    }
-                }),
-            },
-        };
+        let member = cast_member(item);
         if !member.name.is_empty()
             && !cast
                 .iter()
@@ -245,7 +504,12 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             ratings.push(("Metacritic".to_owned(), value.to_owned()));
         }
     }
-    let episodes = detail_episodes(meta);
+    let episodes = detail_episodes(meta, library);
+    let language = snapshot_language(snapshot);
+    let mut facts = detail_facts(meta, &episodes, &language);
+    if let Some(certification) = detail_certification(meta) {
+        facts.insert(facts.len().min(1), certification);
+    }
     DetailModel {
         item: meta.clone(),
         id: id.clone(),
@@ -322,8 +586,33 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             .filter(|url| !url.is_empty())
             .map(ToOwned::to_owned)
             .or_else(|| value_string(meta, "logo")),
-        facts: detail_facts(meta, &episodes, &snapshot_language(snapshot)),
+        facts,
         cast: detail_cast(meta),
+        crew: detail_crew(meta, &language),
+        season_posters: detail_season_posters(meta),
+        season_selector: SeasonSelector::from_setting(
+            snapshot
+                .pointer("/settings/values/detailSeasonSelectorMode")
+                .and_then(serde_json::Value::as_str),
+        ),
+        episode_layout: EpisodeLayout::from_setting(
+            snapshot
+                .pointer("/settings/values/episodeCardsLayout")
+                .and_then(serde_json::Value::as_str),
+        ),
+        show_episode_descriptions: snapshot
+            .pointer("/settings/values/detailShowEpisodeDescriptions")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(true),
+        blur_unwatched: snapshot
+            .pointer("/settings/values/blurUnwatchedEpisodes")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+        hide_spoilers: snapshot
+            .pointer("/settings/values/spoilerHideEpisodeInfo")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+        info_lines: detail_info_lines(meta, &language),
         resume: None,
         episodes,
         row_scroll_offsets: [0.0; 4],
