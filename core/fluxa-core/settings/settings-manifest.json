@@ -58,13 +58,6 @@
       "category": "playback"
     },
     {
-      "key": "animeUseMpv",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "appIcon",
       "type": "string",
       "default": "ember",
@@ -147,13 +140,6 @@
       "default": false,
       "scope": "profile",
       "category": "appearance"
-    },
-    {
-      "key": "bottomBarLabels",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "general"
     },
     {
       "key": "cardCornerPreset",
@@ -282,13 +268,6 @@
       "category": "appearance"
     },
     {
-      "key": "customThemes",
-      "type": "string",
-      "default": "[]",
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "detailCollapsingHero",
       "type": "boolean",
       "default": null,
@@ -312,13 +291,6 @@
     {
       "key": "detailPreferClearlogo",
       "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "general"
-    },
-    {
-      "key": "detailScreenStyle",
-      "type": "string",
       "default": null,
       "scope": "profile",
       "category": "general"
@@ -408,25 +380,11 @@
       "category": "appearance"
     },
     {
-      "key": "externalPlayerTarget",
-      "type": "string",
-      "default": "mpv",
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "fanartApiKey",
       "type": "string",
       "default": "",
       "scope": "profile",
       "category": "account"
-    },
-    {
-      "key": "floatingBottomBar",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "general"
     },
     {
       "key": "frameInterpolationMode",
@@ -441,13 +399,6 @@
       "default": false,
       "scope": "profile",
       "category": "appearance"
-    },
-    {
-      "key": "hdrDetectionCompleted",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "playback"
     },
     {
       "key": "hdrEnabled",
@@ -469,13 +420,6 @@
       "default": [],
       "scope": "profile",
       "category": "appearance"
-    },
-    {
-      "key": "heroFollowsFocusedItem",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "general"
     },
     {
       "key": "holdSpeed",
@@ -548,25 +492,11 @@
       "category": "playback"
     },
     {
-      "key": "introDbSubmitEnabled",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "language",
       "type": "string",
       "default": "en",
       "scope": "profile",
       "category": "system"
-    },
-    {
-      "key": "liquidGlassMode",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "general"
     },
     {
       "key": "mdblistApiKey",
@@ -688,13 +618,6 @@
       "category": "playback"
     },
     {
-      "key": "playerEngine",
-      "type": "string",
-      "default": "mpv",
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "playerForwardBufferSeconds",
       "type": "string",
       "default": "60",
@@ -786,13 +709,6 @@
       "category": "general"
     },
     {
-      "key": "renderBackend",
-      "type": "string",
-      "default": "vulkan",
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
       "key": "rpdbApiKey",
       "type": "string",
       "default": "",
@@ -863,23 +779,9 @@
       "category": "general"
     },
     {
-      "key": "skinConfig",
-      "type": "string",
-      "default": "",
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "skipDbApiKey",
       "type": "string",
       "default": "",
-      "scope": "profile",
-      "category": "general"
-    },
-    {
-      "key": "skipDbSubmitEnabled",
-      "type": "boolean",
-      "default": false,
       "scope": "profile",
       "category": "general"
     },
@@ -926,13 +828,6 @@
       "category": "subtitles"
     },
     {
-      "key": "subtitleBackgroundColorArgb",
-      "type": "string",
-      "default": null,
-      "scope": "profile",
-      "category": "subtitles"
-    },
-    {
       "key": "subtitleBackgroundOpacity",
       "type": "string",
       "default": "0.5",
@@ -961,13 +856,6 @@
       "category": "subtitles"
     },
     {
-      "key": "subtitleColorArgb",
-      "type": "string",
-      "default": null,
-      "scope": "profile",
-      "category": "subtitles"
-    },
-    {
       "key": "subtitleFont",
       "type": "string",
       "default": "default",
@@ -985,13 +873,6 @@
       "key": "subtitleOutlineColor",
       "type": "string",
       "default": "#000000",
-      "scope": "profile",
-      "category": "subtitles"
-    },
-    {
-      "key": "subtitleOutlineColorArgb",
-      "type": "number",
-      "default": null,
       "scope": "profile",
       "category": "subtitles"
     },
@@ -1057,27 +938,6 @@
       "default": "",
       "scope": "profile",
       "category": "playback"
-    },
-    {
-      "key": "theIntroDbSubmitEnabled",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "playback"
-    },
-    {
-      "key": "themeId",
-      "type": "string",
-      "default": "fluxa-dark",
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "themeJson",
-      "type": "string",
-      "default": null,
-      "scope": "profile",
-      "category": "appearance"
     },
     {
       "key": "timezoneConversionEnabled",
@@ -1241,13 +1101,6 @@
       "category": "account"
     },
     {
-      "key": "topNavigationBar",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "general"
-    },
-    {
       "key": "topTenFeedToggles",
       "type": "string[]",
       "default": [],
@@ -1269,37 +1122,9 @@
       "category": "general"
     },
     {
-      "key": "trailerOnDetailHeroDelaySeconds",
-      "type": "number",
-      "default": null,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "trailerOnDetailHeroEnabled",
-      "type": "boolean",
-      "default": null,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "trailerOnHero",
       "type": "boolean",
       "default": false,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "trailerOnHomeHeroDelaySeconds",
-      "type": "number",
-      "default": null,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "trailerOnHomeHeroEnabled",
-      "type": "boolean",
-      "default": null,
       "scope": "profile",
       "category": "appearance"
     },
