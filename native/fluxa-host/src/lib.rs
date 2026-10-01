@@ -79,6 +79,7 @@ mod events;
 mod frame;
 mod gpu;
 mod input;
+mod launcher;
 mod layout;
 mod player;
 mod poster_data;
@@ -477,6 +478,17 @@ impl FluxaHost {
 
     pub fn take_open_url(&self) -> Option<String> {
         self.with_state(|state| state.open_url.take()).flatten()
+    }
+
+    pub fn launcher_feed_json(&self) -> Option<String> {
+        self.with_state(|state| {
+            let snapshot = match state.session.as_ref() {
+                Some(session) => session.snapshot(),
+                None => state.core_snapshot.clone()?,
+            };
+            Some(launcher::feed(&snapshot).to_string())
+        })
+        .flatten()
     }
 
     pub fn take_app_icon(&self) -> Option<String> {

@@ -46,6 +46,14 @@ class MainActivity : Activity() {
         handleIntent(intent)
     }
 
+    override fun onStop() {
+        super.onStop()
+        if (!com.fluxa.app.BuildConfig.IS_TV) return
+        val feed = host.renderer.launcherFeed() ?: return
+        val context = applicationContext
+        Thread { TvLauncher.publish(context, feed) }.start()
+    }
+
     @Deprecated("Replaced by OnBackInvokedCallback on API 33+")
     override fun onBackPressed() = back()
 

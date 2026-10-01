@@ -114,6 +114,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         importantForAccessibility = IMPORTANT_FOR_ACCESSIBILITY_YES
     }
 
+    fun launcherFeed(): String? = if (nativeHandle == 0L) null else NativeRenderer.launcherFeedNative(nativeHandle)
+
     /** Pushes the platform data-source projection into the Rust-owned scene. */
     fun setHomeStateJson(json: String) {
         pendingHomeStateJson = json
@@ -686,6 +688,7 @@ private object NativeRenderer {
     @JvmStatic external fun pollActionsNative(handle: Long): String
     @JvmStatic external fun takeAppIconNative(handle: Long): String?
     @JvmStatic external fun takeOpenUrlNative(handle: Long): String?
+    @JvmStatic external fun launcherFeedNative(handle: Long): String?
     @JvmStatic external fun backNative(handle: Long): Boolean
     @JvmStatic external fun isPlayingNative(handle: Long): Boolean
     @JvmStatic external fun pollVideoNative(): String
