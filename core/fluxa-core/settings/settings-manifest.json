@@ -583,6 +583,13 @@
       "category": "playback"
     },
     {
+      "key": "p7FelGpu",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "pictureInPicture",
       "type": "boolean",
       "default": false,

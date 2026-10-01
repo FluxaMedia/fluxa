@@ -431,7 +431,7 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 4] = [
     (3, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),
 ];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 26] = [
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 27] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -475,6 +475,11 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 26] = [
     SettingsRow {
         label: "HDR output",
         key: "hdrEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "P7 FEL GPU",
+        key: "p7FelGpu",
         options: &[],
     },
     SettingsRow {

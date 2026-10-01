@@ -19,6 +19,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var player: MpvVideo? = null
     private var mpvOptions = ""
     private var audioProcessingMode = "reference"
+    private var p7FelGpu = false
     private var audioLanguage: String? = null
     private var subtitleLanguage: String? = null
     private var displayMode: DisplayModeHint? = null
@@ -61,6 +62,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 "configure" -> {
                     mpvOptions = request.optString("mpvOptions")
                     audioProcessingMode = request.optString("audioProcessingMode").ifBlank { "reference" }
+                    p7FelGpu = request.optBoolean("p7FelGpu")
                     audioLanguage = request.optString("audioLanguage").takeUnless { it.isBlank() || it == "none" }
                     subtitleLanguage = request.optString("subtitleLanguage").takeUnless { it.isBlank() || it == "none" }
                 }
@@ -80,7 +82,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private fun load(url: String) {
         if (url.isBlank()) return
         stop()
-        val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode) }.getOrNull() ?: return
+        val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, p7FelGpu) }.getOrNull() ?: return
         this.player = player
         onPlayingChanged?.invoke(true)
         player.load(url, audioLanguage, subtitleLanguage)
