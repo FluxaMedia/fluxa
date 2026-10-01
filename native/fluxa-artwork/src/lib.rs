@@ -481,7 +481,10 @@ impl ArtworkFetcher {
                     Err(error) => Err(error),
                 }
             };
-            let result = result.map(|prepared| {
+            let result = result.map(|mut prepared| {
+                if prepared.animation_atlas.is_none() {
+                    trim_transparent_margins(&mut prepared.image);
+                }
                 let ratio = transparent_ratio(
                     prepared
                         .animation_atlas
@@ -1172,6 +1175,23 @@ fn atlas_frame(
     }
 }
 
+fn trim_transparent_margins(image: &mut RgbaImage) {
+    let (width, height) = image.dimensions();
+    let (mut left, mut top, mut right, mut bottom) = (width, height, 0, 0);
+    for (x, y, pixel) in image.enumerate_pixels() {
+        if pixel.0[3] > 8 {
+            left = left.min(x);
+            top = top.min(y);
+            right = right.max(x + 1);
+            bottom = bottom.max(y + 1);
+        }
+    }
+    if right <= left || bottom <= top || (right - left == width && bottom - top == height) {
+        return;
+    }
+    *image = image::imageops::crop_imm(image, left, top, right - left, bottom - top).to_image();
+}
+
 fn transparent_ratio(image: &RgbaImage) -> f32 {
     let pixels = image.pixels().len().max(1);
     image.pixels().filter(|pixel| pixel.0[3] < 250).count() as f32 / pixels as f32
@@ -1523,6 +1543,16 @@ fn eviction_candidates(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn transparent_margins_are_cropped_to_content() {
+        let mut image = RgbaImage::new(20, 10);
+        for x in 4..12 {
+            image.put_pixel(x, 3, image::Rgba([255, 255, 255, 255]));
+        }
+        trim_transparent_margins(&mut image);
+        assert_eq!(image.dimensions(), (8, 1));
+    }
 
     #[test]
     fn animation_clock_keeps_late_ready_artwork_on_the_shared_timeline() {
