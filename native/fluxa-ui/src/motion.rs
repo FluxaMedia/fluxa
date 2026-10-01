@@ -2,21 +2,7 @@ use egui::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjus
 
 const PAGE_SECONDS: f32 = 0.26;
 
-static REDUCED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
-
-pub fn set_reduce_motion(context: &egui::Context, reduced: bool) {
-    REDUCED.store(reduced, std::sync::atomic::Ordering::Relaxed);
-    context.style_mut(|style| style.animation_time = if reduced { 0.0 } else { 1.0 / 12.0 });
-}
-
-fn reduced() -> bool {
-    REDUCED.load(std::sync::atomic::Ordering::Relaxed)
-}
-
 pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
-    if reduced() {
-        return 1.0;
-    }
     let state = Id::new("fluxa-page-transition");
     let dt = context.input(|input| input.stable_dt).min(1.0 / 30.0);
     let (last, progress) = context
@@ -59,10 +45,6 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
 }
 
 pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl FnOnce()) {
-    if reduced() {
-        draw();
-        return;
-    }
     let context = painter.ctx();
     let layer = painter.layer_id();
     let start = context.graphics_mut(|graphics| graphics.entry(layer).next_idx());

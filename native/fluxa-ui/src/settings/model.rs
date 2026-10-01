@@ -80,12 +80,6 @@ impl SettingsModel {
         self.value(key).and_then(serde_json::Value::as_str)
     }
 
-    pub fn reduce_motion(&self) -> bool {
-        self.value("reduceMotion")
-            .and_then(serde_json::Value::as_bool)
-            .unwrap_or(false)
-    }
-
     pub fn bool_value(&self, key: &str) -> bool {
         self.value(key)
             .and_then(serde_json::Value::as_bool)

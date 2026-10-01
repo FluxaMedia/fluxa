@@ -41,7 +41,7 @@ pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, Glass, action_menu_layout,
     draw_action_menu, is_text_node, set_input_caret, set_liquid_glass,
 };
-pub use motion::{page_transition, set_reduce_motion};
+pub use motion::page_transition;
 pub use poster_overlay::{
     Enrichment, Personal, PersonalIndex, PosterOverlays, set_poster_enrichment,
     set_poster_landscape, set_poster_overlays, set_poster_personal, set_rating_logos,

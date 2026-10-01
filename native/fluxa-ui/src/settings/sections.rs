@@ -14,7 +14,7 @@ pub struct SettingsSection {
     pub groups: &'static [(usize, &'static str)],
 }
 
-pub(super) const GENERAL_SETTINGS: [SettingsRow; 11] = [
+pub(super) const GENERAL_SETTINGS: [SettingsRow; 10] = [
     SettingsRow {
         label: "Language",
         key: "language",
@@ -46,11 +46,6 @@ pub(super) const GENERAL_SETTINGS: [SettingsRow; 11] = [
         options: &[],
     },
     SettingsRow {
-        label: "Reduce motion",
-        key: "reduceMotion",
-        options: &[],
-    },
-    SettingsRow {
         label: "Search opens details",
         key: "searchSuggestionsOpenDetail",
         options: &[],
@@ -73,7 +68,7 @@ pub(super) const GENERAL_SETTINGS: [SettingsRow; 11] = [
 ];
 pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
     (2, "settings.group.general_startup"),
-    (7, "settings.group.general_behavior"),
+    (6, "settings.group.general_behavior"),
     (2, "settings.group.general_calendar"),
 ];
 pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 15] = [
