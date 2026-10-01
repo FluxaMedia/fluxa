@@ -6,7 +6,7 @@ mod episodes;
 const SECTION_TITLE: f32 = 44.0;
 const SECTION_GAP: f32 = 36.0;
 const SEASON_ROW: f32 = 54.0;
-const SEASON_TILE: Vec2 = Vec2::new(84.0, 126.0);
+const SEASON_TILE: Vec2 = Vec2::new(116.0, 174.0);
 const SEASON_TILE_LABEL: f32 = 30.0;
 const EPISODE_WIDTH: f32 = 300.0;
 const CAST_SIZE: f32 = 92.0;
@@ -603,7 +603,18 @@ pub fn draw_detail(
                     ui,
                     assets,
                     &play_label,
-                    None,
+                    Some(
+                        (ui.painter()
+                            .layout_no_wrap(
+                                play_label.clone(),
+                                egui::FontId::proportional(metrics.text.subtitle),
+                                Color32::WHITE,
+                            )
+                            .size()
+                            .x
+                            + 70.0)
+                            .min(340.0),
+                    ),
                     height,
                     metrics.text.subtitle,
                     resume
@@ -620,16 +631,16 @@ pub fn draw_detail(
                         _ => NODE_DETAIL_PLAY,
                     });
                 }
-                let watchlist = components::pill_button(
+                let watchlist = components::icon_button_sized(
                     ui,
                     assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
-                    &t("library.watchlist"),
-                    None,
-                    height,
-                    metrics.text.subtitle,
-                    false,
-                    None,
-                );
+                    Vec2::splat(height),
+                    Color32::WHITE,
+                    true,
+                    detail.in_watchlist,
+                    true,
+                )
+                .on_hover_text(t("library.watchlist"));
                 action_rects.push((NODE_DETAIL_WATCHLIST, watchlist.rect));
                 if watchlist.clicked() {
                     layout.activated = Some(NODE_DETAIL_WATCHLIST);

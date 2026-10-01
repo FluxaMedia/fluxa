@@ -578,11 +578,10 @@ pub(crate) fn draw_home_with_options(
                                 .size()
                                 .x
                         };
-                        let play_width = measure(ui, &label) + 70.0;
+                        let play_width = (measure(ui, &label) + 70.0).min(320.0);
                         let watchlist_label = localized("library.watchlist", &home.language);
-                        let watchlist_width = measure(ui, &watchlist_label) + 70.0;
                         if style.centered {
-                            let total = play_width + 12.0 + watchlist_width;
+                            let total = play_width + 12.0 + play_height;
                             ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
                         }
                         let play = components::play_button(
@@ -605,16 +604,16 @@ pub(crate) fn draw_home_with_options(
                             .as_deref()
                             .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
                             .is_some_and(|personal| personal.saved);
-                        let watchlist = components::pill_button(
+                        let watchlist = components::icon_button_sized(
                             ui,
                             assets.icon(if saved { "Check" } else { "Plus" }),
-                            &watchlist_label,
-                            Some(watchlist_width),
-                            play_height,
-                            text_size,
-                            false,
-                            None,
-                        );
+                            Vec2::splat(play_height),
+                            Color32::WHITE,
+                            true,
+                            saved,
+                            true,
+                        )
+                        .on_hover_text(&watchlist_label);
                         hero_watchlist = Some(watchlist.rect);
                         if watchlist.clicked() {
                             activated = Some(NODE_HERO_WATCHLIST);
