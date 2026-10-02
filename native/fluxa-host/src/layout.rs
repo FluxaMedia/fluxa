@@ -521,13 +521,34 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         });
         let node_left = node.bounds.x - pending_x;
         let node_right = node.bounds.x + node.bounds.width - pending_x;
-        let dx = if node_left < inset {
+        let mut dx = if node_left < inset {
             node_left - inset
         } else if node_right > viewport.width - inset {
             node_right - (viewport.width - inset)
         } else {
             0.0
         };
+        let leading = state.home.form_factor != UiFormFactorJson::Mobile;
+        let mut leading_target = None;
+        if leading {
+            let card = (focused - NODE_CARD_BASE) as usize;
+            let mut first = card;
+            while first > 0 && fluxa_ui::home_row_of_card(&state.home, first - 1) == Some(row) {
+                first -= 1;
+            }
+            let anchor = if card > first { card - 1 } else { card };
+            let anchor_left = state
+                .ui
+                .node(NODE_CARD_BASE + anchor as u64)
+                .map(|node| node.bounds.x);
+            let first_left = state
+                .ui
+                .node(NODE_CARD_BASE + first as u64)
+                .map(|node| node.bounds.x);
+            if let (Some(anchor_left), Some(first_left)) = (anchor_left, first_left) {
+                leading_target = Some((anchor_left - first_left).max(0.0));
+            }
+        }
         if state.home.row_scroll_offsets.len() <= row {
             state.home.row_scroll_offsets.resize(row + 1, 0.0);
         }
@@ -537,13 +558,25 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
         let max = fluxa_ui::home_row_scroll_max(viewport, &state.home, row);
         let base = live.unwrap_or(state.home.row_scroll_offsets[row]);
-        let next = (base + dx).clamp(0.0, max);
+        let next = match leading_target {
+            Some(target) => {
+                let target = target.clamp(0.0, max);
+                dx = target - base - pending_x;
+                target
+            }
+            None => (base + dx).clamp(0.0, max),
+        };
         state.home.row_scroll_offsets[row] = next;
-        if dx != 0.0
+        let queued = if leading_target.is_some() {
+            dx
+        } else {
+            next - base
+        };
+        if queued.abs() > 0.01
             && desktop
             && let Some(gpu) = state.gpu.as_ref()
         {
-            fluxa_ui::queue_row_scroll(&gpu.egui_context, row, next - base);
+            fluxa_ui::queue_row_scroll(&gpu.egui_context, row, queued);
         }
         request_home_row_load_more_at(state, row, viewport, next);
     }
