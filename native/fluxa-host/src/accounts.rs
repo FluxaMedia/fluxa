@@ -95,11 +95,20 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     card_menu::open_disconnect(state, provider);
 }
 
+fn profile_id(session: &fluxa_effects::SessionHandle) -> String {
+    session
+        .active_profile()
+        .get("id")
+        .and_then(Value::as_str)
+        .unwrap_or("guest")
+        .to_owned()
+}
+
 pub(crate) fn refresh_servers(state: &mut RendererState) {
     state.settings.media_servers = state
         .session
         .as_ref()
-        .map(|session| fluxa_effects::media_servers(session.storage()))
+        .map(|session| fluxa_effects::media_servers(session.storage(), &profile_id(session)))
         .unwrap_or_default();
 }
 
@@ -129,7 +138,8 @@ pub(crate) fn media_server(state: &mut RendererState, node: u64) {
             .and_then(Value::as_str)
             .map(ToOwned::to_owned);
         if let Some(key) = key
-            && let Err(error) = fluxa_effects::remove_media_server(session.storage(), &key)
+            && let Err(error) =
+                fluxa_effects::remove_media_server(session.storage(), &profile_id(session), &key)
         {
             host_log(format!("Media server removal failed: {error}"));
         }

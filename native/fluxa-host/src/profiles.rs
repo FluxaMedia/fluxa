@@ -302,6 +302,19 @@ fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
             state.route = crate::Route::Home;
             state.profiles = None;
             state.pack_job = None;
+            state.card_menu = None;
+            state.account_auth = None;
+            state.screen_scroll_offsets.clear();
+            state.library_tab = fluxa_ui::LibraryTab::Watchlist;
+            state.library_query.clear();
+            state.library_sort = "recent".to_owned();
+            state.library_type = "all".to_owned();
+            state.library_list = false;
+            state.library_downloads = false;
+            state.folder = Default::default();
+            state.folder_tab = 0;
+            state.calendar = Default::default();
+            state.detail = Default::default();
         }
         Err(error) => host_log(format!("Profile switch failed: {error}")),
     }

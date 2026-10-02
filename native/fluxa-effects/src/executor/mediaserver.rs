@@ -3,7 +3,7 @@ use super::*;
 use std::sync::OnceLock;
 
 pub(super) const HOST: &str = "mediaserver.fluxa.internal";
-const SERVERS_KEY: &str = "media_servers";
+const LEGACY_SERVERS_KEY: &str = "media_servers";
 const CLIENT_KEY: &str = "media_client_id";
 const PAGE_SIZE: i64 = 50;
 
@@ -17,29 +17,52 @@ pub(super) fn is_kind(provider: &str) -> bool {
     matches!(provider, "jellyfin" | "emby" | "plex")
 }
 
-pub fn media_servers(storage: &Storage) -> Vec<Value> {
-    storage
-        .read_json(SERVERS_KEY)
+pub fn media_servers(storage: &Storage, profile_id: &str) -> Vec<Value> {
+    let key = Storage::media_servers_key(profile_id);
+    if let Ok(Some(servers)) = storage.read_json(&key) {
+        return servers.as_array().cloned().unwrap_or_default();
+    }
+    let active = storage
+        .read_json("active_profile_id")
         .ok()
         .flatten()
-        .and_then(|servers| servers.as_array().cloned())
-        .unwrap_or_default()
+        .and_then(|value| value.as_str().map(ToOwned::to_owned));
+    if active.as_deref() != Some(profile_id) {
+        return Vec::new();
+    }
+    let Some(legacy) = storage
+        .read_json(LEGACY_SERVERS_KEY)
+        .ok()
+        .flatten()
+        .filter(Value::is_array)
+    else {
+        return Vec::new();
+    };
+    let _ = storage.write_json(&key, &legacy);
+    let _ = storage.write_json(LEGACY_SERVERS_KEY, &Value::Null);
+    legacy.as_array().cloned().unwrap_or_default()
 }
 
-pub fn remove_media_server(storage: &Storage, key: &str) -> Result<(), String> {
-    let servers: Vec<Value> = media_servers(storage)
+pub fn remove_media_server(storage: &Storage, profile_id: &str, key: &str) -> Result<(), String> {
+    let servers: Vec<Value> = media_servers(storage, profile_id)
         .into_iter()
         .filter(|server| str_of(server, "key") != key)
         .collect();
-    storage.write_json(SERVERS_KEY, &Value::Array(servers))
+    storage.write_json(
+        &Storage::media_servers_key(profile_id),
+        &Value::Array(servers),
+    )
 }
 
-fn upsert_server(storage: &Storage, server: Value) -> Result<(), String> {
-    let mut servers = media_servers(storage);
+fn upsert_server(storage: &Storage, profile_id: &str, server: Value) -> Result<(), String> {
+    let mut servers = media_servers(storage, profile_id);
     let key = str_of(&server, "key").to_owned();
     servers.retain(|existing| str_of(existing, "key") != key);
     servers.push(server);
-    storage.write_json(SERVERS_KEY, &Value::Array(servers))
+    storage.write_json(
+        &Storage::media_servers_key(profile_id),
+        &Value::Array(servers),
+    )
 }
 
 fn client_id(storage: &Storage) -> Result<String, String> {
@@ -65,8 +88,11 @@ fn str_of<'a>(value: &'a Value, key: &str) -> &'a str {
     value.get(key).and_then(Value::as_str).unwrap_or("")
 }
 
-fn transport(key: &str) -> String {
-    format!("https://{HOST}/{key}")
+fn transport(profile_id: &str, key: &str) -> String {
+    format!(
+        "https://{HOST}/{}/{key}",
+        crate::storage::sanitize_key(profile_id)
+    )
 }
 
 fn slug(text: &str) -> String {
@@ -116,7 +142,7 @@ async fn call(
         .ok_or_else(|| format!("could not read the {operation} response"))
 }
 
-fn descriptor(server: &Value) -> Value {
+fn descriptor(profile_id: &str, server: &Value) -> Value {
     let key = str_of(server, "key");
     let name = str_of(server, "name");
     let prefix = format!("ms:{key}:");
@@ -158,7 +184,7 @@ fn descriptor(server: &Value) -> Value {
             paged.clone(),
         );
     }
-    let url = transport(key);
+    let url = transport(profile_id, key);
     json!({
         "transportUrl": url,
         "manifest": {
@@ -179,8 +205,11 @@ fn descriptor(server: &Value) -> Value {
     })
 }
 
-pub(super) fn addons(storage: &Storage) -> Vec<Value> {
-    media_servers(storage).iter().map(descriptor).collect()
+pub(super) fn addons(storage: &Storage, profile_id: &str) -> Vec<Value> {
+    media_servers(storage, profile_id)
+        .iter()
+        .map(|server| descriptor(profile_id, server))
+        .collect()
 }
 
 fn percent_decode(text: &str) -> String {
@@ -232,14 +261,18 @@ async fn handle_with(storage: &Storage, url: &reqwest::Url) -> Result<Value, Str
             *last = stripped.to_owned();
         }
     }
+    if segments.len() < 2 {
+        return Err("media server url is incomplete".to_owned());
+    }
+    let profile_id = segments.remove(0);
     let key = segments.first().cloned().unwrap_or_default();
-    let server = media_servers(storage)
+    let server = media_servers(storage, &profile_id)
         .into_iter()
         .find(|server| str_of(server, "key") == key)
         .ok_or("media server is not configured")?;
     let client = client(20)?;
     match segments.get(1).map(String::as_str) {
-        Some("manifest") => Ok(descriptor(&server)["manifest"].clone()),
+        Some("manifest") => Ok(descriptor(&profile_id, &server)["manifest"].clone()),
         Some("catalog") => {
             let kind = segments.get(2).cloned().unwrap_or_default();
             let id = segments.get(3).cloned().unwrap_or_default();
@@ -526,7 +559,10 @@ impl EffectExecutor {
     async fn save_server(&self, client: &Client, mut server: Value) -> Result<(), String> {
         let libraries = call(client, &server, "libraries", json!({})).await?;
         server["catalogs"] = libraries["catalogs"].clone();
-        upsert_server(&self.storage, server)
+        let profile_id = self
+            .current_profile_id()?
+            .unwrap_or_else(|| "guest".to_owned());
+        upsert_server(&self.storage, &profile_id, server)
     }
 }
 
@@ -538,7 +574,10 @@ impl EffectExecutor {
         let Some((key, item)) = rest.split_once(':') else {
             return true;
         };
-        let Some(server) = media_servers(&self.storage)
+        let Ok(profile_id) = self.active_profile_id(None) else {
+            return true;
+        };
+        let Some(server) = media_servers(&self.storage, &profile_id)
             .into_iter()
             .find(|server| str_of(server, "key") == key)
         else {
@@ -623,6 +662,7 @@ mod tests {
         let storage = Storage::open(directory.clone()).unwrap();
         upsert_server(
             &storage,
+            "p1",
             json!({
                 "key": "jellyfin-abc",
                 "kind": "jellyfin",
@@ -645,7 +685,7 @@ mod tests {
         );
         let (storage, directory) = storage_with(&base);
         let url = reqwest::Url::parse(
-            "https://mediaserver.fluxa.internal/jellyfin-abc/catalog/movie/lib1.json",
+            "https://mediaserver.fluxa.internal/p1/jellyfin-abc/catalog/movie/lib1.json",
         )
         .unwrap();
         let body = handle_with(&storage, &url).await.unwrap();
@@ -657,8 +697,8 @@ mod tests {
     #[tokio::test]
     async fn unknown_server_key_is_an_error() {
         let (storage, directory) = storage_with("http://127.0.0.1:1");
-        let url =
-            reqwest::Url::parse("https://mediaserver.fluxa.internal/gone/manifest.json").unwrap();
+        let url = reqwest::Url::parse("https://mediaserver.fluxa.internal/p1/gone/manifest.json")
+            .unwrap();
         assert!(handle_with(&storage, &url).await.is_err());
         let _ = std::fs::remove_dir_all(directory);
     }
@@ -666,12 +706,12 @@ mod tests {
     #[test]
     fn synthetic_addon_matches_external_ids_for_streams() {
         let (storage, directory) = storage_with("http://127.0.0.1:1");
-        let addon = &addons(&storage)[0];
+        let addon = &addons(&storage, "p1")[0];
         let prefixes = &addon["manifest"]["resources"][2]["idPrefixes"];
         assert_eq!(prefixes[1], "tt");
         assert_eq!(
             addon["transportUrl"],
-            "https://mediaserver.fluxa.internal/jellyfin-abc"
+            "https://mediaserver.fluxa.internal/p1/jellyfin-abc"
         );
         let _ = std::fs::remove_dir_all(directory);
     }
@@ -701,11 +741,11 @@ mod tests {
                 .unwrap();
             println!("sign-in: {signed_in}");
         }
-        let server = media_servers(&storage).remove(0);
+        let server = media_servers(&storage, "guest").remove(0);
         println!("stored server: {}", serde_json::to_string(&server).unwrap());
         let key = str_of(&server, "key").to_owned();
         let get = |path: &str| {
-            let url = reqwest::Url::parse(&format!("https://{HOST}/{key}/{path}")).unwrap();
+            let url = reqwest::Url::parse(&format!("https://{HOST}/guest/{key}/{path}")).unwrap();
             let storage = storage.clone();
             async move { handle_with(&storage, &url).await }
         };

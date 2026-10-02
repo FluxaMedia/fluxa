@@ -170,7 +170,7 @@ impl EffectExecutor {
         };
         let mut addons = addons;
         if let Some(list) = addons.as_array_mut() {
-            list.extend(super::mediaserver::addons(&self.storage));
+            list.extend(super::mediaserver::addons(&self.storage, active_id));
         }
         normalize_enabled_addons(addons)
     }
