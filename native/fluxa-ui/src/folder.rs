@@ -192,18 +192,7 @@ pub fn draw_folder(
         });
 
     if let Some(tabs_top) = geometry.tabs_top {
-        let labels: Vec<String> = folder
-            .tabs
-            .iter()
-            .map(|tab| {
-                let twins = folder
-                    .tabs
-                    .iter()
-                    .filter(|other| other.label == tab.label)
-                    .count();
-                if twins > 1 { tab.row_title() } else { tab.label.clone() }
-            })
-            .collect();
+        let labels: Vec<String> = folder.tabs.iter().map(|tab| tab.label.clone()).collect();
         egui::Area::new(Id::new("fluxa-folder-tabs"))
             .constrain(false)
             .fixed_pos(Pos2::new(page.margin, tabs_top))
