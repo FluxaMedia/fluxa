@@ -54,7 +54,7 @@ pub(super) fn badges_height(settings: &SettingsModel, metrics: UiMetrics) -> f32
     height
 }
 
-fn pills_right(
+pub(super) fn pills_right(
     context: &egui::Context,
     painter: &egui::Painter,
     layout: &mut HomeLayout,
@@ -387,7 +387,7 @@ pub(super) fn draw_badges(
     }
 }
 
-fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
+pub(super) fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
     painter.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
         egui::Stroke::new(1.0, Color32::from_white_alpha(12)),

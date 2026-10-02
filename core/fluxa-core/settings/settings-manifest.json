@@ -737,6 +737,13 @@
       "category": "playback"
     },
     {
+      "key": "streamBadgeTheme",
+      "type": "string",
+      "default": "vivid",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "streamBadgePlacement",
       "type": "string",
       "default": "bottom",

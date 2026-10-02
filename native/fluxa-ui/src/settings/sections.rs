@@ -302,7 +302,7 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 4] = [
+pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
         label: "Stream badges",
         key: "streamBadgesEnabled",
@@ -317,6 +317,11 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 4] = [
         label: "File size badge",
         key: "streamBadgeFileSize",
         options: &[],
+    },
+    SettingsRow {
+        label: "Badge theme",
+        key: "streamBadgeTheme",
+        options: &["vivid", "classic", "soft", "neon", "gold", "sunset"],
     },
     SettingsRow {
         label: "Badge placement",

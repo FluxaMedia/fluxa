@@ -3,7 +3,7 @@ use std::sync::Mutex;
 use std::sync::mpsc::Receiver;
 
 use egui::Color32;
-use fluxa_core::player::stream_badges::{self as engine, BadgeKind, Filter, Options, Rules};
+use fluxa_core::player::stream_badges::{self as engine, BadgeKind, Filter, Options, Rules, Theme};
 use fluxa_ui::{
     BadgeCustomRow, BadgePackRow, NODE_SETTINGS_BADGE_CLEAR, NODE_SETTINGS_BADGE_EDIT_BASE,
     NODE_SETTINGS_BADGE_IMPORT, NODE_SETTINGS_BADGE_PACK_REMOVE_BASE,
@@ -45,7 +45,6 @@ fn color(value: u32) -> Color32 {
 
 fn convert(badge: engine::StreamBadge) -> SourceBadge {
     SourceBadge {
-        primary: badge.kind == BadgeKind::Resolution,
         fill: badge.look.fill.map(color),
         text: badge.look.text.map(color),
         border: badge.look.border.map(color),
@@ -96,6 +95,7 @@ fn sync_config(state: &mut RendererState) {
     let options = Options {
         built_in: settings.bool_value("streamBadgeBuiltIn"),
         file_size: settings.bool_value("streamBadgeFileSize"),
+        theme: Theme::from_name(settings.str_value("streamBadgeTheme").unwrap_or_default()),
     };
     let enabled = settings.bool_value("streamBadgesEnabled");
     let top = settings.str_value("streamBadgePlacement") == Some("top");
@@ -161,7 +161,6 @@ fn preview(state: &RendererState) -> SourceBadge {
         } else {
             name.to_owned()
         },
-        primary: false,
         fill: parse(&fields[3]),
         text: parse(&fields[4]),
         border: parse(&fields[5]),

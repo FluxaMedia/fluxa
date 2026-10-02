@@ -170,7 +170,6 @@ pub struct PlayerSource {
 #[derive(Clone, Debug, Default)]
 pub struct SourceBadge {
     pub label: String,
-    pub primary: bool,
     pub fill: Option<Color32>,
     pub text: Option<Color32>,
     pub border: Option<Color32>,

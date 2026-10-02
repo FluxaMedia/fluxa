@@ -82,6 +82,7 @@ fn built_in_and_size_can_be_turned_off() {
     let options = Options {
         built_in: false,
         file_size: false,
+        ..Options::default()
     };
     assert!(parse("2160p HDR 4.5 GB", None, options, &Rules::default()).is_empty());
 }
@@ -99,4 +100,16 @@ fn custom_badge_needs_name_and_valid_regex() {
     assert!(!rules.upsert_custom(filter("a", "(")));
     assert!(rules.upsert_custom(filter("a", "x")));
     assert_eq!(rules.custom.len(), 1);
+}
+
+#[test]
+fn theme_colours_built_in_badges() {
+    let options = Options {
+        theme: Theme::Classic,
+        ..Options::default()
+    };
+    let plain = parse("2160p HDR", None, options, &Rules::default());
+    assert!(plain.iter().all(|badge| badge.look.fill.is_none()));
+    let vivid = parse("2160p HDR", None, Options::default(), &Rules::default());
+    assert!(vivid.iter().all(|badge| badge.look.fill.is_some()));
 }

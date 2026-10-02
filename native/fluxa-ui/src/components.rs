@@ -2122,7 +2122,6 @@ pub(crate) fn glass_shape(rect: Rect, radius: f32, fill: Color32) -> egui::Shape
 }
 
 pub(crate) fn glass(painter: &Painter, rect: Rect, radius: f32, fill: Color32) {
-        || super::badge_input(node).is_some()
     painter.add(glass_shape(rect, radius, fill));
 }
 
@@ -2185,11 +2184,7 @@ pub(crate) fn paint_badge_chip(
         );
         badge.text.or(badge.fill).unwrap_or(Color32::WHITE)
     } else {
-        let fill = badge.fill.unwrap_or(if badge.primary {
-            Color32::WHITE
-        } else {
-            Color32::from_white_alpha(20)
-        });
+        let fill = badge.fill.unwrap_or(Color32::from_white_alpha(24));
         painter.rect_filled(chip, rounding, fill);
         if let Some(border) = badge.border {
             painter.rect_stroke(
@@ -2199,10 +2194,9 @@ pub(crate) fn paint_badge_chip(
                 egui::StrokeKind::Inside,
             );
         }
-        badge.text.unwrap_or(match (badge.fill, badge.primary) {
-            (Some(fill), _) => readable_on(fill),
-            (None, true) => Color32::BLACK,
-            (None, false) => Color32::from_white_alpha(220),
+        badge.text.unwrap_or(match badge.fill {
+            Some(fill) => readable_on(fill),
+            None => Color32::from_white_alpha(230),
         })
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;
@@ -2260,7 +2254,7 @@ fn stream_row_layout(
     let mut name_job = crate::emoji::job(
         &source.name,
         FontId::proportional(metrics.screen_card_title_size),
-        Color32::WHITE,
+        Color32::PLACEHOLDER,
         text_width - addon_width,
     );
     name_job.wrap.max_rows = 3;
@@ -2357,6 +2351,7 @@ pub(super) fn stream_row(
         let chip = chip.translate(chips_origin.to_vec2() + Vec2::new(0.0, chips_y));
         paint_badge_chip(&painter, chip, galley, &source.badges[index], assets);
     }
+        || super::badge_input(node).is_some()
     response
 }
 
