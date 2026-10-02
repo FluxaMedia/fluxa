@@ -515,6 +515,12 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     {
         return;
     }
+    let vertical = matches!(
+        input,
+        KeyInput::Key(Key::Up | Key::Down)
+            | KeyInput::Gamepad(GamepadButton::DPadUp | GamepadButton::DPadDown)
+    );
+    let previous = state.ui.focused();
     let actions = match input {
         KeyInput::Gamepad(button) => state.ui.dispatch(UiEvent::GamepadButton {
             button,
@@ -524,7 +530,39 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
         KeyInput::Backspace => return,
     };
     remember_actions(state, actions);
+    if vertical {
+        focus_row_start(state, previous);
+    }
     ensure_focused_visible(state);
+}
+
+fn focus_row_start(state: &mut RendererState, previous: Option<u64>) {
+    if state.route != Route::Home {
+        return;
+    }
+    let Some(focused) = state.ui.focused().filter(|id| *id >= NODE_CARD_BASE) else {
+        return;
+    };
+    let card = (focused - NODE_CARD_BASE) as usize;
+    let Some(row) = fluxa_ui::home_row_of_card(&state.home, card) else {
+        return;
+    };
+    let same_row = previous
+        .filter(|id| *id >= NODE_CARD_BASE)
+        .and_then(|id| fluxa_ui::home_row_of_card(&state.home, (id - NODE_CARD_BASE) as usize))
+        == Some(row);
+    if same_row {
+        return;
+    }
+    let mut first = card;
+    while first > 0 && fluxa_ui::home_row_of_card(&state.home, first - 1) == Some(row) {
+        first -= 1;
+    }
+    if first != card
+        && let Some(action) = state.ui.set_focus(Some(NODE_CARD_BASE + first as u64))
+    {
+        remember_actions(state, vec![action]);
+    }
 }
 
 pub(super) fn active_route(state: &RendererState) -> Route {
