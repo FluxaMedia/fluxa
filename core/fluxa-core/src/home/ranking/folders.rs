@@ -273,6 +273,7 @@ fn folder_source_categories(folder_id: &str, resolved: &[Value], addons_json: &s
                 .and_then(Value::as_str)
                 .map(str::trim)
                 .filter(|genre| !genre.is_empty() && !genre.eq_ignore_ascii_case("none"));
+            let name = format!("{name} ({})", type_label(content_type));
             let name = match genre {
                 Some(genre) => format!("{name} · {genre}"),
                 None => name,
@@ -470,7 +471,7 @@ mod tests {
             .collect();
         assert_eq!(sources.len(), 2);
         assert_eq!(sources[1]["id"], "c1.f1#1");
-        assert_eq!(sources[1]["name"], "Top Series");
+        assert_eq!(sources[1]["name"], "Top Series (Series)");
         assert_eq!(sources[1]["folderId"], "c1.f1");
         assert_eq!(hidden[0]["viewMode"], "ROWS");
         assert_eq!(hidden[0]["showAllTab"], false);
@@ -489,6 +490,9 @@ fn type_label(content_type: &str) -> String {
     match content_type.to_ascii_lowercase().as_str() {
         "movie" => "Movies".to_owned(),
         "series" => "Series".to_owned(),
+        "anime" => "Anime".to_owned(),
+        "channel" => "Channels".to_owned(),
+        "tv" => "TV".to_owned(),
         other => capitalize(other),
     }
 }
