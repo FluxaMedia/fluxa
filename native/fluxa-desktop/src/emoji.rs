@@ -33,22 +33,6 @@ pub fn warm_up() {
     });
 }
 
-fn trim(image: RgbaImage) -> RgbaImage {
-    let (mut min_x, mut min_y, mut max_x, mut max_y) = (image.width(), image.height(), 0, 0);
-    for (x, y, px) in image.enumerate_pixels() {
-        if px[3] > 8 {
-            min_x = min_x.min(x);
-            min_y = min_y.min(y);
-            max_x = max_x.max(x);
-            max_y = max_y.max(y);
-        }
-    }
-    if min_x > max_x {
-        return image;
-    }
-    imageops::crop_imm(&image, min_x, min_y, max_x - min_x + 1, max_y - min_y + 1).to_image()
-}
-
 pub fn rasterize(cluster: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     let font = FONT.get_or_init(load).as_ref()?;
     let face = Face::from_slice(&font.data, font.index)?;
@@ -70,7 +54,6 @@ pub fn rasterize(cluster: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     let decoded = image::load_from_memory_with_format(raster.data, image::ImageFormat::Png)
         .ok()?
         .into_rgba8();
-    let decoded = trim(decoded);
     let side = decoded.width().max(decoded.height());
     let scale = size as f32 / side as f32;
     let width = ((decoded.width() as f32 * scale).round() as u32).max(1);

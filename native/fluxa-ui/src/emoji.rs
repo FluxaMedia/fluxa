@@ -118,7 +118,11 @@ pub(crate) fn paint(
             (texture, assets.texture_size(Some(&url)))
         };
         if let Some(texture) = texture {
-            let rect = rect.shrink(rect.width() * 0.06);
+            let rect = if native {
+                Rect::from_center_size(rect.center(), rect.size() * 1.12)
+            } else {
+                rect.shrink(rect.width() * 0.06)
+            };
             let target = match size {
                 Some([width, height]) if width > 0 && height > 0 => {
                     let scale = (rect.width() / width as f32).min(rect.height() / height as f32);
