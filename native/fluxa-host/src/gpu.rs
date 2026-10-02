@@ -589,7 +589,10 @@ impl Gpu {
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
         if let Some(surface) = self.surface.as_ref() {
-            surface.configure(&self.device, &self.config);
+            {
+                let _queue = fluxa_renderer::queue_gate::guard();
+                surface.configure(&self.device, &self.config);
+            }
         }
     }
 
@@ -613,7 +616,10 @@ impl Gpu {
         }
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
-        surface.configure(&self.device, &self.config);
+        {
+            let _queue = fluxa_renderer::queue_gate::guard();
+            surface.configure(&self.device, &self.config);
+        }
         self.surface = Some(surface);
         self._surface = native_surface;
         Ok(())
@@ -862,11 +868,17 @@ impl Gpu {
                 })
             },
         );
-        self.queue.submit([commands]);
+        {
+            let _queue = fluxa_renderer::queue_gate::guard();
+            self.queue.submit([commands]);
+        }
         if let Some(pre_present) = pre_present {
             pre_present();
         }
-        frame.present();
+        {
+            let _queue = fluxa_renderer::queue_gate::guard();
+            frame.present();
+        }
         timer.mark("present");
         self.egui_renderer
             .free_texture_deltas(&output.textures_delta);

@@ -156,6 +156,21 @@ struct MpvVulkanInitParams {
     queue_graphics_count: u32,
     enabled_extensions: *const *const c_char,
     num_enabled_extensions: i32,
+    features: *const c_void,
+    queue_transfer_index: u32,
+    queue_transfer_count: u32,
+    queue_compute_index: u32,
+    queue_compute_count: u32,
+    lock_queue: Option<unsafe extern "C" fn(*mut c_void, u32, u32)>,
+    unlock_queue: Option<unsafe extern "C" fn(*mut c_void, u32, u32)>,
+    queue_ctx: *mut c_void,
+}
+
+#[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
+#[derive(Clone, Copy)]
+pub struct VulkanQueueLock {
+    pub lock: unsafe extern "C" fn(*mut c_void, u32, u32),
+    pub unlock: unsafe extern "C" fn(*mut c_void, u32, u32),
 }
 
 #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]

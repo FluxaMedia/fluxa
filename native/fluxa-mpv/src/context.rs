@@ -96,6 +96,7 @@ impl MpvRenderState {
         queue_graphics_count: u32,
         get_proc_address: *mut c_void,
         enabled_extension_ptrs: &[*const c_char],
+        queue_lock: Option<VulkanQueueLock>,
     ) -> Result<(), String> {
         let api_type = CString::new("vulkan").unwrap();
         let mut init_params = MpvVulkanInitParams {
@@ -107,6 +108,14 @@ impl MpvRenderState {
             queue_graphics_count,
             enabled_extensions: enabled_extension_ptrs.as_ptr(),
             num_enabled_extensions: enabled_extension_ptrs.len() as i32,
+            features: ptr::null(),
+            queue_transfer_index: 0,
+            queue_transfer_count: 0,
+            queue_compute_index: 0,
+            queue_compute_count: 0,
+            lock_queue: queue_lock.map(|l| l.lock),
+            unlock_queue: queue_lock.map(|l| l.unlock),
+            queue_ctx: ptr::null_mut(),
         };
         let mut params = [
             MpvRenderParam {

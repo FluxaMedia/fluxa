@@ -14,6 +14,7 @@ use wgpu::util::DeviceExt;
 pub mod egui_wgpu_backend;
 pub mod glass;
 pub mod platform;
+pub mod queue_gate;
 pub mod style;
 pub mod svg_icons;
 pub mod ui;
@@ -668,7 +669,10 @@ impl WgpuRenderer {
     pub fn resize(&mut self, size: winit::dpi::PhysicalSize<u32>) {
         self.config.width = size.width.max(1);
         self.config.height = size.height.max(1);
-        self.surface.configure(&self.device, &self.config);
+        {
+            let _queue = queue_gate::guard();
+            self.surface.configure(&self.device, &self.config);
+        }
         self.queue.write_buffer(
             &self.globals_buffer,
             0,
@@ -702,7 +706,10 @@ impl WgpuRenderer {
             wgpu::CurrentSurfaceTexture::Success(frame)
             | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
             wgpu::CurrentSurfaceTexture::Lost | wgpu::CurrentSurfaceTexture::Outdated => {
-                self.surface.configure(&self.device, &self.config);
+                {
+                    let _queue = queue_gate::guard();
+                    self.surface.configure(&self.device, &self.config);
+                }
                 return Ok(());
             }
             wgpu::CurrentSurfaceTexture::Timeout | wgpu::CurrentSurfaceTexture::Occluded => {
@@ -756,8 +763,11 @@ impl WgpuRenderer {
             pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
             pass.draw_indexed(0..QUAD_INDICES.len() as u32, 0, 0..instances.len() as u32);
         }
-        self.queue.submit(Some(encoder.finish()));
-        frame.present();
+        {
+            let _queue = queue_gate::guard();
+            self.queue.submit(Some(encoder.finish()));
+            frame.present();
+        }
         Ok(())
     }
 }

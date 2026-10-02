@@ -130,6 +130,7 @@ impl EguiWgpuBackend {
             }
             self.renderer.render(&mut pass, jobs, descriptor);
             drop(pass);
+            let _queue = crate::queue_gate::guard();
             queue.submit([std::mem::replace(
                 &mut encoder,
                 device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

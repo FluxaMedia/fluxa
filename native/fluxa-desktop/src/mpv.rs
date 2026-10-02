@@ -1,8 +1,10 @@
 use std::ffi::{CStr, c_void};
 use std::sync::{
-    Arc,
+    Arc, Mutex,
+    atomic::{AtomicBool, Ordering},
     mpsc::{self, Receiver, TryRecvError},
 };
+use std::time::Duration;
 
 use ash::vk::Handle as _;
 use fluxa_host::{DeviceOpener, PlaybackStats, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
@@ -154,7 +156,7 @@ impl VideoBackend for MpvBackend {
         }
         let player = self.player.as_mut()?;
         match player.render() {
-            Ok(first) => first.then(|| player.view.clone()),
+            Ok(view) => view,
             Err(error) => {
                 eprintln!("[fluxa-desktop] mpv frame failed: {error}");
                 self.player = None;
@@ -301,15 +303,40 @@ fn apply_shaders(player: &MpvPlayer, shaders: &[String]) {
     }
 }
 
+const FRAME_BUFFERS: usize = 3;
+
 struct MpvPlayer {
-    render: fluxa_mpv::MpvRenderState,
     client: fluxa_mpv::MpvClientHandle,
-    texture: wgpu::Texture,
-    view: wgpu::TextureView,
-    image_layout: i32,
-    sync: VulkanSync,
+    frames: Arc<FrameSlot>,
+    thread: Option<std::thread::JoinHandle<()>>,
     first_frame: bool,
     chapters: Chapters,
+}
+
+#[derive(Default)]
+struct FrameSlot {
+    stop: AtomicBool,
+    latest: Mutex<Delivery>,
+}
+
+#[derive(Default)]
+struct Delivery {
+    view: Option<wgpu::TextureView>,
+    error: Option<String>,
+}
+
+struct Target {
+    view: wgpu::TextureView,
+    image: u64,
+    layout: i32,
+}
+
+unsafe extern "C" fn lock_queue(_ctx: *mut c_void, _family: u32, _index: u32) {
+    fluxa_renderer::queue_gate::lock();
+}
+
+unsafe extern "C" fn unlock_queue(_ctx: *mut c_void, _family: u32, _index: u32) {
+    fluxa_renderer::queue_gate::unlock();
 }
 
 impl MpvPlayer {
@@ -335,6 +362,10 @@ impl MpvPlayer {
             1,
             handles.get_proc_address,
             &handles.extensions,
+            Some(fluxa_mpv::VulkanQueueLock {
+                lock: lock_queue,
+                unlock: unlock_queue,
+            }),
         ) {
             let _ = client.poll_events();
             for line in client.recent_log_lines() {
@@ -342,6 +373,64 @@ impl MpvPlayer {
             }
             return Err(error);
         }
+        let targets = (0..FRAME_BUFFERS)
+            .map(|_| Target::new(device))
+            .collect::<Result<Vec<_>, _>>()?;
+        let sync = VulkanSync::new(device)?;
+        if preview {
+            client.apply_options(&[
+                ("mute".to_owned(), "yes".to_owned()),
+                ("loop-file".to_owned(), "inf".to_owned()),
+            ])?;
+        }
+        client.load(url, None)?;
+        let frames = Arc::new(FrameSlot::default());
+        let thread = {
+            let frames = frames.clone();
+            std::thread::Builder::new()
+                .name("fluxa-mpv-render".to_owned())
+                .spawn(move || render_loop(render, targets, sync, frames))
+                .map_err(|error| format!("spawn mpv render thread: {error}"))?
+        };
+        Ok(Self {
+            client,
+            frames,
+            thread: Some(thread),
+            first_frame: false,
+            chapters: Chapters::default(),
+        })
+    }
+
+    fn render(&mut self) -> Result<Option<wgpu::TextureView>, String> {
+        for event in self.client.poll_events() {
+            if let fluxa_mpv::PlayerEvent::EndFile {
+                error: Some(error), ..
+            } = event
+            {
+                return Err(error);
+            }
+        }
+        let mut latest = self.frames.latest.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some(error) = latest.error.take() {
+            return Err(error);
+        }
+        let view = latest.view.take();
+        self.first_frame |= view.is_some();
+        Ok(view)
+    }
+}
+
+impl Drop for MpvPlayer {
+    fn drop(&mut self) {
+        self.frames.stop.store(true, Ordering::Release);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
+impl Target {
+    fn new(device: &wgpu::Device) -> Result<Self, String> {
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("fluxa-mpv-frame"),
             size: wgpu::Extent3d {
@@ -357,69 +446,63 @@ impl MpvPlayer {
             view_formats: &[],
         });
         let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
-        let sync = VulkanSync::new(device)?;
-        if preview {
-            client.apply_options(&[
-                ("mute".to_owned(), "yes".to_owned()),
-                ("loop-file".to_owned(), "inf".to_owned()),
-            ])?;
-        }
-        client.load(url, None)?;
+        let image = {
+            let hal_texture = unsafe { texture.as_hal::<wgpu::hal::api::Vulkan>() }
+                .ok_or_else(|| "wgpu Vulkan texture handle unavailable".to_owned())?;
+            unsafe { hal_texture.raw_handle() }.as_raw()
+        };
         Ok(Self {
-            render,
-            client,
-            texture,
             view,
-            image_layout: 0,
-            sync,
-            first_frame: false,
-            chapters: Chapters::default(),
+            image,
+            layout: 0,
         })
     }
+}
 
-    fn render(&mut self) -> Result<bool, String> {
-        for event in self.client.poll_events() {
-            if let fluxa_mpv::PlayerEvent::EndFile {
-                error: Some(error), ..
-            } = event
-            {
-                return Err(error);
-            }
+fn render_loop(
+    mut render: fluxa_mpv::MpvRenderState,
+    mut targets: Vec<Target>,
+    mut sync: VulkanSync,
+    frames: Arc<FrameSlot>,
+) {
+    let mut next = 0;
+    while !frames.stop.load(Ordering::Acquire) {
+        if !render.vulkan_frame_ready() {
+            std::thread::sleep(Duration::from_millis(1));
+            continue;
         }
-        if !self.render.vulkan_frame_ready() {
-            return Ok(false);
-        }
-        let hal_texture = unsafe { self.texture.as_hal::<wgpu::hal::api::Vulkan>() }
-            .ok_or_else(|| "wgpu Vulkan texture handle unavailable".to_owned())?;
-        let image = unsafe { hal_texture.raw_handle() }.as_raw();
-        let (wait, signal) = self.sync.next_pair();
-        let mut target = fluxa_mpv::VulkanTargetImage {
-            image,
+        let target = &mut targets[next];
+        let (wait, signal) = sync.next_pair();
+        let mut image = fluxa_mpv::VulkanTargetImage {
+            image: target.image,
             // VK_FORMAT_B8G8R8A8_UNORM
             format: 44,
             w: FRAME_SIZE[0] as i32,
             h: FRAME_SIZE[1] as i32,
             usage: (ash::vk::ImageUsageFlags::COLOR_ATTACHMENT | ash::vk::ImageUsageFlags::SAMPLED)
                 .as_raw(),
-            layout: self.image_layout,
+            layout: target.layout,
             wait_semaphore: wait.as_raw(),
             signal_semaphore: signal.as_raw(),
         };
-        self.render.render_vulkan_frame(&mut target)?;
-        self.image_layout = target.layout;
-        self.render.report_swap();
-        let first = !self.first_frame;
-        self.first_frame = true;
-        Ok(first)
-    }
-}
-
-impl Drop for MpvPlayer {
-    fn drop(&mut self) {
-        unsafe {
-            let _ = self.sync.device.device_wait_idle();
+        let result = render.render_vulkan_frame(&mut image);
+        target.layout = image.layout;
+        let mut latest = frames.latest.lock().unwrap_or_else(|e| e.into_inner());
+        match result {
+            Ok(()) => {
+                render.report_swap();
+                latest.view = Some(target.view.clone());
+                next = (next + 1) % targets.len();
+            }
+            Err(error) => {
+                latest.error = Some(error);
+                break;
+            }
         }
     }
+    drop(render);
+    sync.wait_idle();
+    drop(targets);
 }
 
 struct VulkanSync {
@@ -461,16 +544,18 @@ impl VulkanSync {
             .unwrap_or(ash::vk::Semaphore::null());
         (wait, signal)
     }
+
+    fn wait_idle(&self) {
+        let _queue = fluxa_renderer::queue_gate::guard();
+        let _ = unsafe { self.device.device_wait_idle() };
+    }
 }
 
 impl Drop for VulkanSync {
     fn drop(&mut self) {
-        unsafe {
-            // mpv and wgpu share this device; both queues must be idle before the semaphores go.
-            let _ = self.device.device_wait_idle();
-            for semaphore in self.semaphores {
-                self.device.destroy_semaphore(semaphore, None);
-            }
+        self.wait_idle();
+        for semaphore in self.semaphores {
+            unsafe { self.device.destroy_semaphore(semaphore, None) };
         }
     }
 }
