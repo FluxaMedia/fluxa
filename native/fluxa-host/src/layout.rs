@@ -497,8 +497,11 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     let bottom_inset = 12.0 + state.safe_bottom;
     let visible_top = top_inset;
     let visible_bottom = (viewport.height - bottom_inset).max(visible_top + 1.0);
-    let node_top = node.bounds.y;
-    let node_bottom = node.bounds.y + node.bounds.height;
+    let pending_y = state.gpu.as_ref().map_or(0.0, |gpu| {
+        fluxa_ui::pending_screen_scroll(&gpu.egui_context)
+    });
+    let node_top = node.bounds.y - pending_y;
+    let node_bottom = node.bounds.y + node.bounds.height - pending_y;
     let delta = if node_top < visible_top {
         node_top - visible_top
     } else if node_bottom > visible_bottom {
@@ -506,6 +509,44 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     } else {
         0.0
     };
+    let desktop = state.home.form_factor == UiFormFactorJson::Desktop;
+    if state.route == Route::Home
+        && focused >= NODE_CARD_BASE
+        && let Some(row) =
+            fluxa_ui::home_row_of_card(&state.home, (focused - NODE_CARD_BASE) as usize)
+    {
+        let inset = 24.0;
+        let pending_x = state.gpu.as_ref().map_or(0.0, |gpu| {
+            fluxa_ui::pending_row_scroll(&gpu.egui_context, row)
+        });
+        let node_left = node.bounds.x - pending_x;
+        let node_right = node.bounds.x + node.bounds.width - pending_x;
+        let dx = if node_left < inset {
+            node_left - inset
+        } else if node_right > viewport.width - inset {
+            node_right - (viewport.width - inset)
+        } else {
+            0.0
+        };
+        if state.home.row_scroll_offsets.len() <= row {
+            state.home.row_scroll_offsets.resize(row + 1, 0.0);
+        }
+        let live = state
+            .gpu
+            .as_ref()
+            .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
+        let max = fluxa_ui::home_row_scroll_max(viewport, &state.home, row);
+        let base = live.unwrap_or(state.home.row_scroll_offsets[row]);
+        let next = (base + dx).clamp(0.0, max);
+        state.home.row_scroll_offsets[row] = next;
+        if dx != 0.0
+            && desktop
+            && let Some(gpu) = state.gpu.as_ref()
+        {
+            fluxa_ui::queue_row_scroll(&gpu.egui_context, row, next - base);
+        }
+        request_home_row_load_more_at(state, row, viewport, next);
+    }
     if delta.abs() < 0.5 {
         return;
     }
@@ -518,6 +559,36 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         let offset = state.screen_scroll_offsets.entry(route).or_default();
         *offset = (*offset + delta).clamp(0.0, max_offset);
     }
+    if desktop && let Some(gpu) = state.gpu.as_ref() {
+        fluxa_ui::queue_screen_scroll(&gpu.egui_context, delta);
+    }
     // The next frame will draw the newly revealed target at its scrolled
     // position and rebuild the same UiTree with the updated geometry.
+}
+
+pub(super) fn follow_focus(state: &mut RendererState) {
+    let Some(node) = state.ui.focused().and_then(|id| state.ui.node(id)) else {
+        return;
+    };
+    let height = logical_surface_size(state)[1] as f32;
+    let (top, bottom) = (node.bounds.y, node.bounds.y + node.bounds.height);
+    let edge = if bottom < 0.0 {
+        0.0
+    } else if top > height {
+        height
+    } else {
+        return;
+    };
+    let action = state.ui.focus_nearest_to_edge(edge, 0.0, height, |id| {
+        !matches!(
+            id,
+            fluxa_ui::NODE_HOME
+                | fluxa_ui::NODE_LIBRARY
+                | fluxa_ui::NODE_DISCOVER
+                | fluxa_ui::NODE_CALENDAR
+                | fluxa_ui::NODE_SHORTS
+                | fluxa_ui::NODE_PROFILE
+        )
+    });
+    remember_actions(state, action.into_iter().collect());
 }

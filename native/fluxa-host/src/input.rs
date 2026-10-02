@@ -96,6 +96,21 @@ pub(super) fn request_home_row_load_more(
     content_row_index: usize,
     viewport: Viewport,
 ) {
+    let offset = state
+        .home
+        .row_scroll_offsets
+        .get(content_row_index)
+        .copied()
+        .unwrap_or(0.0);
+    request_home_row_load_more_at(state, content_row_index, viewport, offset);
+}
+
+pub(super) fn request_home_row_load_more_at(
+    state: &mut RendererState,
+    content_row_index: usize,
+    viewport: Viewport,
+    offset: f32,
+) {
     if state.route != Route::Home {
         return;
     }
@@ -121,12 +136,6 @@ pub(super) fn request_home_row_load_more(
     let visible_width = (viewport.width * 0.9).max(1.0);
     let card_pitch = (max_offset + visible_width) / card_count as f32;
     let threshold = (visible_width * 2.0).max(card_pitch * 6.0).min(max_offset);
-    let offset = state
-        .home
-        .row_scroll_offsets
-        .get(scroll_index)
-        .copied()
-        .unwrap_or(0.0);
     if offset < (max_offset - threshold).max(0.0) {
         return;
     }
@@ -346,9 +355,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                     HomeScrollTarget::Horizontal(_)
                     | HomeScrollTarget::DetailRow(_)
                     | HomeScrollTarget::FolderRow(_),
-                ) => {
-                    last[0] - position[0]
-                }
+                ) => last[0] - position[0],
                 Some(HomeScrollTarget::ScreenVertical) => last[1] - position[1],
                 None => 0.0,
             };
@@ -466,6 +473,13 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     remember_actions(state, actions);
 }
 
+pub(super) fn hide_pointer(state: &mut RendererState) {
+    if !state.keyboard_focus_visible {
+        state.egui_events.push(egui::Event::PointerGone);
+    }
+    state.keyboard_focus_visible = true;
+}
+
 pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if state.player.is_some() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
         return;
@@ -474,12 +488,12 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
         return;
     }
     if matches!(input, KeyInput::Gamepad(GamepadButton::West)) {
-        state.keyboard_focus_visible = true;
+        hide_pointer(state);
         card_menu::open_from_focus(state);
         return;
     }
     if !matches!(input, KeyInput::Key(Key::Back | Key::Escape)) {
-        state.keyboard_focus_visible = true;
+        hide_pointer(state);
     }
     if state.route == Route::Shorts && state.player.is_none() && state.profiles.is_none() {
         let delta = match input {

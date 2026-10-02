@@ -82,7 +82,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         let (_, _, body_height) = home_row_dimensions(metrics, kind);
         let row_height = home_row_heading_height(metrics) + body_height;
         let visible_y = row_y - home.scroll_offset;
-        if visible_y + row_height < 0.0 || visible_y > viewport.height {
+        if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
             row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
             flat += cards.len();
             continue;
@@ -117,6 +117,17 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
 }
 
 /// The shelf under the given touch point, if it is over a row's cards rather
+pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
+    let mut start = 0;
+    for (index, (_, cards, _)) in home.content_rows_with_kind().enumerate() {
+        if card < start + cards.len() {
+            return Some(index);
+        }
+        start += cards.len();
+    }
+    None
+}
+
 /// than the hero or the space between shelves.
 pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usize> {
     let metrics = home_metrics(viewport);

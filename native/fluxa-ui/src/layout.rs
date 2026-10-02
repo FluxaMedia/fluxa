@@ -336,6 +336,61 @@ pub fn settings_scroll_max(viewport: Viewport, settings: &SettingsModel) -> f32 
     .max(0.0)
 }
 
+const SCREEN_SCROLL_NUDGE: &str = "fluxa-screen-scroll-nudge";
+
+pub fn queue_screen_scroll(context: &egui::Context, delta: f32) {
+    context.data_mut(|data| {
+        let id = Id::new(SCREEN_SCROLL_NUDGE);
+        let queued = data.get_temp::<f32>(id).unwrap_or(0.0);
+        data.insert_temp(id, queued + delta);
+    });
+}
+
+pub fn queue_row_scroll(context: &egui::Context, row: usize, delta: f32) {
+    context.data_mut(|data| {
+        let id = Id::new(("fluxa-home-row-scroll", row)).with("nudge");
+        let queued = data.get_temp::<f32>(id).unwrap_or(0.0);
+        data.insert_temp(id, queued + delta);
+    });
+}
+
+pub fn pending_screen_scroll(context: &egui::Context) -> f32 {
+    context
+        .data(|data| data.get_temp::<f32>(Id::new(SCREEN_SCROLL_NUDGE)))
+        .unwrap_or(0.0)
+}
+
+pub fn pending_row_scroll(context: &egui::Context, row: usize) -> f32 {
+    context
+        .data(|data| data.get_temp::<f32>(Id::new(("fluxa-home-row-scroll", row)).with("nudge")))
+        .unwrap_or(0.0)
+}
+
+fn take_nudge_step(context: &egui::Context, id: Id) -> f32 {
+    let pending = context.data(|data| data.get_temp::<f32>(id)).unwrap_or(0.0);
+    if pending == 0.0 {
+        return 0.0;
+    }
+    let dt = context.input(|input| input.stable_dt).clamp(0.001, 0.05);
+    let mut step = pending * (1.0 - (-dt * 16.0).exp());
+    if (pending - step).abs() < 0.5 {
+        step = pending;
+    }
+    context.data_mut(|data| data.insert_temp(id, pending - step));
+    if pending != step {
+        context.request_repaint();
+    }
+    step
+}
+
+fn clear_nudge(context: &egui::Context, id: Id) {
+    context.data_mut(|data| data.insert_temp(id, 0.0f32));
+}
+
+pub fn row_scroll_offset(context: &egui::Context, row: usize) -> Option<f32> {
+    context.data(|data| data.get_temp::<f32>(Id::new(("fluxa-home-row-scroll", row))))
+}
+
 pub(crate) fn resolve_screen_scroll(
     context: &egui::Context,
     viewport: Viewport,
@@ -360,12 +415,17 @@ pub(crate) fn resolve_screen_scroll(
         // by CSS pixels. Scale the native event once at the shared boundary.
         input.smooth_scroll_delta.y * 1.65
     });
+    let nudge_id = Id::new(SCREEN_SCROLL_NUDGE);
+    let nudge = take_nudge_step(context, nudge_id);
     let offset = context.data_mut(|data| {
         let previous = data.get_temp::<f32>(id).unwrap_or(viewport.scroll_y);
-        let offset = (previous - wheel_delta).clamp(0.0, max_offset);
+        let offset = (previous - wheel_delta + nudge).clamp(0.0, max_offset);
         data.insert_temp(id, offset);
         offset
     });
+    if offset <= 0.0 || offset >= max_offset {
+        clear_nudge(context, nudge_id);
+    }
     let offset = apply_desktop_drag_scroll(
         context,
         id.with("desktop-drag"),
@@ -503,12 +563,17 @@ pub(crate) fn resolve_desktop_horizontal_scroll(
             0.0
         }
     });
+    let nudge_id = id.with("nudge");
+    let nudge = take_nudge_step(context, nudge_id);
     let offset = context.data_mut(|data| {
         let previous = data.get_temp::<f32>(id).unwrap_or(current);
-        let offset = (previous - wheel_delta).clamp(0.0, max_offset);
+        let offset = (previous - wheel_delta + nudge).clamp(0.0, max_offset);
         data.insert_temp(id, offset);
         offset
     });
+    if offset <= 0.0 || offset >= max_offset {
+        clear_nudge(context, nudge_id);
+    }
     let offset = apply_desktop_drag_scroll(
         context,
         id.with("desktop-drag"),

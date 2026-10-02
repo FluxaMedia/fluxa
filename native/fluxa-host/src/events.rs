@@ -13,6 +13,14 @@ impl FluxaHost {
         });
     }
 
+    pub fn gamepad_scroll(&self, delta_y: f32) {
+        self.wheel(0.0, delta_y);
+        self.with_state(|state| {
+            input::hide_pointer(state);
+            layout::follow_focus(state);
+        });
+    }
+
     pub fn mouse_moved(&self, x: f32, y: f32) {
         self.with_state(|state| {
             let position = Pos2::new(x, y) * (state.density / state.scale());

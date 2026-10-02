@@ -72,7 +72,7 @@ pub(crate) fn draw_home_rows(
                 }
             }
         }
-        if visible_y + row_height < 0.0 || visible_y > viewport.height {
+        if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
             row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
             flat_index += cards.len();
             continue;

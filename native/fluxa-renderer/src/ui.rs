@@ -359,13 +359,46 @@ impl UiTree {
         self.set_focus(Some(nodes[index].id))
     }
 
+    pub fn focus_nearest_to_edge(
+        &mut self,
+        edge: f32,
+        top: f32,
+        bottom: f32,
+        allow: impl Fn(NodeId) -> bool,
+    ) -> Option<UiAction> {
+        let current = self.focused.and_then(|id| self.node(id))?.bounds.center();
+        let candidate = self
+            .focusable_nodes()
+            .into_iter()
+            .filter(|node| allow(node.id))
+            .filter(|node| {
+                let center = node.bounds.center()[1];
+                center >= top && center <= bottom
+            })
+            .map(|node| {
+                let center = node.bounds.center();
+                let score = (center[1] - edge).abs() * 1000.0 + (center[0] - current[0]).abs();
+                (score, node.id)
+            })
+            .min_by(|left, right| left.0.total_cmp(&right.0))?;
+        self.set_focus(Some(candidate.1))
+    }
+
     fn move_spatial(&mut self, direction: NavigationDirection) -> Option<UiAction> {
         let current_id = self.focused?;
-        let current = self.node(current_id)?.bounds.center();
+        let bounds = self.node(current_id)?.bounds;
+        let current = bounds.center();
         let candidate = self
             .focusable_nodes()
             .into_iter()
             .filter(|node| node.id != current_id)
+            .filter(|node| match direction {
+                NavigationDirection::Left | NavigationDirection::Right => {
+                    node.bounds.y < bounds.y + bounds.height
+                        && node.bounds.y + node.bounds.height > bounds.y
+                }
+                _ => true,
+            })
             .filter_map(|node| {
                 let center = node.bounds.center();
                 let primary = match direction {

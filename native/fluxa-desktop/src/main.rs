@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 
 use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, MouseButton, NativeSurface, egui};
 use fluxa_renderer::platform::GraphicsBackend;
-use gilrs::{Button, EventType, Gilrs};
+use gilrs::{Axis, Button, EventType, Gilrs};
 use winit::{
     application::ApplicationHandler,
     event::{ElementState, MouseScrollDelta, WindowEvent},
@@ -28,12 +28,20 @@ const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend:
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
 const LINE_HEIGHT: f32 = 40.0;
+const STICK_DEADZONE: f32 = 0.2;
+const STICK_SCROLL: f32 = 40.0;
+const REPEAT_DELAY: Duration = Duration::from_millis(400);
+const REPEAT_RATE: Duration = Duration::from_millis(100);
 const GAMEPAD_POLL: Duration = Duration::from_millis(50);
 
 struct App {
     host: Option<FluxaHost>,
     window: Option<Arc<Window>>,
     gamepad: Option<Gilrs>,
+    axis_dirs: [i8; 2],
+    right_stick_y: f32,
+    held: Option<(GamepadButton, Instant)>,
+    cursor_hidden: bool,
     modifiers: ModifiersState,
     cursor: egui::CursorIcon,
     pointer: [f32; 2],
@@ -47,6 +55,10 @@ impl App {
             host: None,
             window: None,
             gamepad: Gilrs::new().ok(),
+            axis_dirs: [0; 2],
+            right_stick_y: 0.0,
+            held: None,
+            cursor_hidden: false,
             modifiers: ModifiersState::empty(),
             cursor: egui::CursorIcon::Default,
             pointer: [0.0, 0.0],
@@ -65,14 +77,66 @@ impl App {
         let (Some(gamepad), Some(host)) = (self.gamepad.as_mut(), self.host.as_ref()) else {
             return;
         };
+        let now = Instant::now();
+        let mut active = false;
         while let Some(event) = gamepad.next_event() {
-            if let EventType::ButtonPressed(button, _) = event.event
-                && let Some(button) = gamepad_button(button)
-            {
-                host.key_down(KeyInput::Gamepad(button));
-                if let Some(window) = self.window.as_ref() {
-                    window.request_redraw();
+            let pressed = match event.event {
+                EventType::ButtonPressed(button, _) => gamepad_button(button),
+                EventType::ButtonReleased(button, _) => {
+                    if gamepad_button(button)
+                        .is_some_and(|button| self.held.is_some_and(|(held, _)| held == button))
+                    {
+                        self.held = None;
+                    }
+                    None
                 }
+                EventType::AxisChanged(Axis::RightStickY, value, _) => {
+                    self.right_stick_y = if value.abs() < STICK_DEADZONE {
+                        0.0
+                    } else {
+                        value
+                    };
+                    None
+                }
+                EventType::AxisChanged(axis, value, _) => {
+                    let slot = axis_slot(axis);
+                    let pressed = axis_press(&mut self.axis_dirs, axis, value);
+                    if let Some(slot) = slot
+                        && self.axis_dirs[slot] == 0
+                        && self.held.is_some_and(|(held, _)| axis_owns(slot, held))
+                    {
+                        self.held = None;
+                    }
+                    pressed
+                }
+                _ => None,
+            };
+            if let Some(button) = pressed {
+                host.key_down(KeyInput::Gamepad(button));
+                active = true;
+                if is_direction(button) {
+                    self.held = Some((button, now + REPEAT_DELAY));
+                }
+            }
+        }
+        if let Some((button, at)) = self.held
+            && now >= at
+        {
+            host.key_down(KeyInput::Gamepad(button));
+            self.held = Some((button, now + REPEAT_RATE));
+            active = true;
+        }
+        if self.right_stick_y != 0.0 {
+            host.gamepad_scroll(-self.right_stick_y * STICK_SCROLL);
+            active = true;
+        }
+        if active {
+            if let Some(window) = self.window.as_ref() {
+                if !self.cursor_hidden {
+                    window.set_cursor_visible(false);
+                    self.cursor_hidden = true;
+                }
+                window.request_redraw();
             }
         }
     }
@@ -266,6 +330,12 @@ impl ApplicationHandler for App {
             WindowEvent::CursorMoved { position, .. } => {
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
                 host.mouse_moved(self.pointer[0], self.pointer[1]);
+                if self.cursor_hidden {
+                    if let Some(window) = self.window.as_ref() {
+                        window.set_cursor_visible(true);
+                    }
+                    self.cursor_hidden = false;
+                }
             }
             WindowEvent::CursorLeft { .. } => host.mouse_left(),
             WindowEvent::MouseInput { state, button, .. } => {
@@ -448,6 +518,53 @@ fn egui_key(key: &WinitKey) -> Option<egui::Key> {
         WinitKey::Character(text) => egui::Key::from_name(text),
         _ => None,
     }
+}
+
+fn axis_slot(axis: Axis) -> Option<usize> {
+    match axis {
+        Axis::DPadX | Axis::LeftStickX => Some(0),
+        Axis::DPadY | Axis::LeftStickY => Some(1),
+        _ => None,
+    }
+}
+
+fn axis_owns(slot: usize, button: GamepadButton) -> bool {
+    match slot {
+        0 => matches!(button, GamepadButton::DPadLeft | GamepadButton::DPadRight),
+        _ => matches!(button, GamepadButton::DPadUp | GamepadButton::DPadDown),
+    }
+}
+
+fn is_direction(button: GamepadButton) -> bool {
+    matches!(
+        button,
+        GamepadButton::DPadUp
+            | GamepadButton::DPadDown
+            | GamepadButton::DPadLeft
+            | GamepadButton::DPadRight
+    )
+}
+
+fn axis_press(dirs: &mut [i8; 2], axis: Axis, value: f32) -> Option<GamepadButton> {
+    let slot = axis_slot(axis)?;
+    let dir = if value > 0.6 {
+        1
+    } else if value < -0.6 {
+        -1
+    } else {
+        0
+    };
+    if dir == dirs[slot] {
+        return None;
+    }
+    dirs[slot] = dir;
+    Some(match (slot, dir) {
+        (0, 1) => GamepadButton::DPadRight,
+        (0, -1) => GamepadButton::DPadLeft,
+        (1, 1) => GamepadButton::DPadUp,
+        (1, -1) => GamepadButton::DPadDown,
+        _ => return None,
+    })
 }
 
 fn gamepad_button(button: Button) -> Option<GamepadButton> {
