@@ -268,16 +268,6 @@ fn folder_source_categories(folder_id: &str, resolved: &[Value], addons_json: &s
                 .filter(|name| !name.is_empty())
                 .map(capitalize)
                 .unwrap_or_else(|| type_label(content_type));
-            let genre = source
-                .get("genre")
-                .and_then(Value::as_str)
-                .map(str::trim)
-                .filter(|genre| !genre.is_empty() && !genre.eq_ignore_ascii_case("none"));
-            let name = format!("{name} ({})", type_label(content_type));
-            let name = match genre {
-                Some(genre) => format!("{name} · {genre}"),
-                None => name,
-            };
             fields.insert("name".to_owned(), json!(name));
             fields.insert("transportUrl".to_owned(), json!(transport_url));
             fields.insert("catalogId".to_owned(), json!(catalog_id));
@@ -471,7 +461,7 @@ mod tests {
             .collect();
         assert_eq!(sources.len(), 2);
         assert_eq!(sources[1]["id"], "c1.f1#1");
-        assert_eq!(sources[1]["name"], "Top Series (Series)");
+        assert_eq!(sources[1]["name"], "Top Series");
         assert_eq!(sources[1]["folderId"], "c1.f1");
         assert_eq!(hidden[0]["viewMode"], "ROWS");
         assert_eq!(hidden[0]["showAllTab"], false);
