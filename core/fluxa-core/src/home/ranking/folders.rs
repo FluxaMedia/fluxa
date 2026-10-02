@@ -59,12 +59,21 @@ pub(crate) fn build_home_collection_shelves_json(
 
             let resolved = resolve_folder_catalog_sources(folder, addons_json);
             if !resolved.is_empty() {
-                hidden.push(hidden_folder_category(
-                    &folder_id,
-                    &folder_title,
-                    folder,
-                    resolved,
-                ));
+                let source_categories = folder_source_categories(&folder_id, &resolved, addons_json);
+                let mut category = hidden_folder_category(&folder_id, &folder_title, folder, resolved);
+                if let Some(fields) = category.as_object_mut() {
+                    fields.insert(
+                        "viewMode".to_owned(),
+                        c.get("viewMode").cloned().unwrap_or_else(|| json!("TABBED_GRID")),
+                    );
+                    fields.insert(
+                        "showAllTab".to_owned(),
+                        c.get("showAllTab").cloned().unwrap_or(Value::Bool(true)),
+                    );
+                    fields.insert("sourceCount".to_owned(), json!(source_categories.len()));
+                }
+                hidden.push(category);
+                hidden.extend(source_categories);
             }
             tiles.push(folder_tile(&folder_id, &folder_title, folder));
         }
@@ -215,6 +224,68 @@ pub(crate) fn resolve_folder_catalog_sources(
     resolved
 }
 
+fn folder_source_categories(folder_id: &str, resolved: &[Value], addons_json: &str) -> Vec<Value> {
+    let addons: Value = serde_json::from_str(addons_json).unwrap_or(Value::Null);
+    resolved
+        .iter()
+        .enumerate()
+        .map(|(index, source)| {
+            let mut category = json!({
+                "id": format!("{folder_id}#{index}"),
+                "type": "collection_folder_source",
+                "folderId": folder_id,
+                "sourceIndex": index,
+                "items": [],
+                "canLoadMore": true,
+            });
+            let fields = category.as_object_mut().expect("object literal");
+            let provider = source.get("provider").and_then(Value::as_str);
+            if matches!(provider, Some("trakt" | "tmdb")) {
+                fields.insert("remoteSource".to_owned(), source.clone());
+                fields.insert(
+                    "name".to_owned(),
+                    source.get("title").cloned().unwrap_or_else(|| json!(provider)),
+                );
+                fields.insert("contentType".to_owned(), source.get("mediaType").cloned().unwrap_or(json!("movie")));
+                return category;
+            }
+            let transport_url = source.get("transportUrl").and_then(Value::as_str).unwrap_or("");
+            let catalog_id = source.get("catalogId").and_then(Value::as_str).unwrap_or("");
+            let content_type = source.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let name = addons
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|addon| addon.get("transportUrl").and_then(Value::as_str) == Some(transport_url))
+                .filter_map(|addon| addon.pointer("/manifest/catalogs").and_then(Value::as_array))
+                .flatten()
+                .find(|catalog| {
+                    catalog.get("id").and_then(Value::as_str) == Some(catalog_id)
+                        && catalog.get("type").and_then(Value::as_str) == Some(content_type)
+                })
+                .and_then(|catalog| catalog.get("name").and_then(Value::as_str))
+                .unwrap_or(catalog_id);
+            let genre = source
+                .get("genre")
+                .and_then(Value::as_str)
+                .map(str::trim)
+                .filter(|genre| !genre.is_empty() && !genre.eq_ignore_ascii_case("none"));
+            let name = match genre {
+                Some(genre) => format!("{name} · {genre}"),
+                None => name.to_owned(),
+            };
+            fields.insert("name".to_owned(), json!(name));
+            fields.insert("transportUrl".to_owned(), json!(transport_url));
+            fields.insert("catalogId".to_owned(), json!(catalog_id));
+            fields.insert("contentType".to_owned(), json!(content_type));
+            if let Some(genre) = source.get("genre") {
+                fields.insert("genre".to_owned(), genre.clone());
+            }
+            category
+        })
+        .collect()
+}
+
 fn hidden_folder_category(
     folder_id: &str,
     folder_title: &str,
@@ -355,5 +426,50 @@ mod tests {
             result["hiddenFolderCategories"][0]["catalogSources"][0]["transportUrl"],
             "https://aiometadata.elfhosted.com/stremio/configured/manifest.json"
         );
+    }
+
+    #[test]
+    fn folder_sources_become_individual_categories() {
+        let profile = serde_json::json!({
+            "libraryCollections": [{
+                "id": "c1",
+                "title": "Mix",
+                "viewMode": "ROWS",
+                "showAllTab": false,
+                "folders": [{
+                    "id": "c1.f1",
+                    "title": "Folder",
+                    "catalogSources": [
+                        {"addonId": "a", "catalogId": "top", "type": "movie"},
+                        {"addonId": "a", "catalogId": "top", "type": "series"}
+                    ]
+                }]
+            }]
+        });
+        let addons = serde_json::json!([{
+            "transportUrl": "https://addon.test/manifest.json",
+            "manifest": {
+                "id": "a",
+                "catalogs": [
+                    { "id": "top", "type": "movie", "name": "Top Movies" },
+                    { "id": "top", "type": "series", "name": "Top Series" }
+                ]
+            }
+        }]);
+        let result: Value = serde_json::from_str(
+            &build_home_collection_shelves_json(&profile.to_string(), &addons.to_string()).unwrap(),
+        )
+        .unwrap();
+        let hidden = result["hiddenFolderCategories"].as_array().unwrap();
+        let sources: Vec<&Value> = hidden
+            .iter()
+            .filter(|category| category["type"] == "collection_folder_source")
+            .collect();
+        assert_eq!(sources.len(), 2);
+        assert_eq!(sources[1]["id"], "c1.f1#1");
+        assert_eq!(sources[1]["name"], "Top Series");
+        assert_eq!(sources[1]["folderId"], "c1.f1");
+        assert_eq!(hidden[0]["viewMode"], "ROWS");
+        assert_eq!(hidden[0]["showAllTab"], false);
     }
 }

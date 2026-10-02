@@ -263,7 +263,7 @@ pub(crate) fn import_collections_json(raw_json: &str) -> Option<String> {
             "itemIds": [],
             "folders": folders,
             "showAllTab": col.get("showAllTab").and_then(Value::as_bool).unwrap_or(true),
-            "viewMode": col.get("viewMode").and_then(Value::as_str).unwrap_or("FOLLOW_LAYOUT"),
+            "viewMode": col.get("viewMode").and_then(Value::as_str).unwrap_or("TABBED_GRID"),
             "pinToTop": col.get("pinToTop").and_then(Value::as_bool).unwrap_or(false),
             "focusGlowEnabled": col.get("focusGlowEnabled").and_then(Value::as_bool).unwrap_or(true),
         })))
@@ -311,7 +311,7 @@ pub(crate) fn export_collections_json(collections_json: &str) -> Option<String> 
                 .or_insert_with(|| Value::Bool(true));
             collection
                 .entry("viewMode".to_string())
-                .or_insert_with(|| Value::String("FOLLOW_LAYOUT".to_string()));
+                .or_insert_with(|| Value::String("TABBED_GRID".to_string()));
             collection
                 .entry("pinToTop".to_string())
                 .or_insert_with(|| Value::Bool(false));

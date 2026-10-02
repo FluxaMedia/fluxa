@@ -249,7 +249,7 @@ pub(crate) fn map_collections_json(args_json: &str) -> Option<String> {
                 c.get("viewMode")
                     .filter(|v| v.is_string())
                     .cloned()
-                    .unwrap_or_else(|| Value::String("FOLLOW_LAYOUT".into())),
+                    .unwrap_or_else(|| Value::String("TABBED_GRID".into())),
             );
             out.insert(
                 "showAllTab".into(),

@@ -28,7 +28,7 @@ fn maps_nuvio_collections_to_the_canonical_profile_shape() {
 
     let collection = &result[0];
     assert_eq!(collection["showOnHome"], true);
-    assert_eq!(collection["viewMode"], "FOLLOW_LAYOUT");
+    assert_eq!(collection["viewMode"], "TABBED_GRID");
     assert_eq!(collection["showAllTab"], true);
     assert_eq!(collection["focusGlowEnabled"], true);
     let folder = &collection["folders"][0];

@@ -354,14 +354,33 @@ pub(crate) fn complete(
                 engine.state.home.paging.items = items;
                 engine.state.home.paging.error = Value::Null;
             }
-        } else if engine.state.home.paging.category_id
-            == effect_payload
+        } else {
+            let category_id = effect_payload
                 .get("categoryId")
                 .and_then(Value::as_str)
-                .unwrap_or_default()
-        {
-            engine.state.home.paging.is_loading = false;
-            engine.state.home.paging.error = normalize_error(result.error.clone());
+                .unwrap_or_default();
+            let error = normalize_error(result.error.clone());
+            if let Some(category) = engine
+                .state
+                .home
+                .categories
+                .as_array_mut()
+                .and_then(|categories| {
+                    categories.iter_mut().find(|category| {
+                        category.get("id").and_then(Value::as_str) == Some(category_id)
+                            && category.get("type").and_then(Value::as_str)
+                                == Some("collection_folder_source")
+                    })
+                })
+                .and_then(Value::as_object_mut)
+            {
+                category.insert("canLoadMore".to_owned(), Value::Bool(false));
+                category.insert("error".to_owned(), error.clone());
+            }
+            if engine.state.home.paging.category_id == category_id {
+                engine.state.home.paging.is_loading = false;
+                engine.state.home.paging.error = error;
+            }
         }
         return vec![];
     }

@@ -98,7 +98,7 @@ fn home_collection_shelves_filter_hidden_collections_and_resolve_catalog_sources
     );
 
     let hidden = result["hiddenFolderCategories"].as_array().unwrap();
-    assert_eq!(hidden.len(), 1);
+    assert_eq!(hidden.len(), 2);
     assert_eq!(hidden[0]["id"], "f1");
     assert_eq!(
         hidden[0]["catalogSources"][0]["transportUrl"],
