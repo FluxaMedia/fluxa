@@ -9,6 +9,13 @@ pub struct ChapterSpan {
     pub title: String,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct SegmentSpan {
+    pub start_fraction: f32,
+    pub end_fraction: f32,
+    pub kind: SkipKind,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SkipKind {
     Intro,
@@ -17,6 +24,14 @@ pub enum SkipKind {
 }
 
 impl SkipKind {
+    fn tint(self) -> Color32 {
+        match self {
+            SkipKind::Intro => Color32::from_rgb(86, 190, 120),
+            SkipKind::Recap => Color32::from_rgb(232, 180, 70),
+            SkipKind::Outro => Color32::from_rgb(96, 150, 230),
+        }
+    }
+
     fn label_key(self) -> &'static str {
         match self {
             SkipKind::Intro => "player.skip_intro",
@@ -30,6 +45,7 @@ impl SkipKind {
 pub struct SkipCard {
     pub kind: SkipKind,
     pub seek_to: f64,
+    pub progress: f32,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -120,6 +136,28 @@ pub(super) fn segmented_track(
     }
 }
 
+pub(super) fn segment_tints(
+    painter: &egui::Painter,
+    track: Rect,
+    thickness: f32,
+    segments: &[SegmentSpan],
+) {
+    for segment in segments {
+        let left = track.left() + track.width() * segment.start_fraction;
+        let right = track.left() + track.width() * segment.end_fraction;
+        if right > left {
+            painter_bar_at(
+                painter,
+                track,
+                left,
+                right - left,
+                thickness + 0.5,
+                segment.kind.tint().gamma_multiply(0.85),
+            );
+        }
+    }
+}
+
 fn painter_bar_at(
     painter: &egui::Painter,
     track: Rect,
@@ -199,15 +237,15 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
         Pos2::new(right - width, card_bottom(chrome) - metrics.pill),
         Vec2::new(width, metrics.pill),
     );
-    pill(
-        ui,
-        layout,
-        rect,
-        &label,
-        metrics.text,
-        true,
-        NODE_PLAYER_SKIP,
-    );
+    let response = ui
+        .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
+            crate::components::progress_pill(ui, rect, &label, metrics.text, card.progress)
+        })
+        .inner;
+    layout.focusable.push((NODE_PLAYER_SKIP, response.rect));
+    if response.clicked() {
+        layout.activated = Some(NODE_PLAYER_SKIP);
+    }
 }
 
 pub(super) fn draw_next_episode_card(

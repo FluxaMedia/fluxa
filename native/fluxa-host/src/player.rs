@@ -1152,7 +1152,9 @@ fn remember_summary(state: &mut RendererState, player: &PlayerSession) {
     let watched = (player.status.position > 0.0).then(|| {
         let position = fluxa_ui::format_time(player.status.position);
         match player.status.duration {
-            duration if duration > 0.0 => format!("{position} / {}", fluxa_ui::format_time(duration)),
+            duration if duration > 0.0 => {
+                format!("{position} / {}", fluxa_ui::format_time(duration))
+            }
             _ => position,
         }
     });

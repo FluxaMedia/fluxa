@@ -7,6 +7,10 @@ pub struct PanelRow {
     pub primary: bool,
     pub selected: bool,
     pub heading: bool,
+    pub group: bool,
+    pub switch: Option<bool>,
+    pub thumbnail: Option<String>,
+    pub detail: Option<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -22,9 +26,10 @@ pub(super) fn draw_panel(
     ui: &mut egui::Ui,
     layout: &mut HomeLayout,
     panel: &PlayerPanel,
+    assets: &mut impl HomeAssets,
 ) {
     if panel.list {
-        draw_list(chrome, ui, layout, panel);
+        draw_list(chrome, ui, layout, panel, assets);
         return;
     }
     let tokens = UiMetrics::for_viewport(chrome.viewport);
@@ -118,14 +123,31 @@ pub(super) fn draw_panel(
     );
 }
 
-fn draw_list(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout, panel: &PlayerPanel) {
+fn draw_list(
+    chrome: &Chrome,
+    ui: &mut egui::Ui,
+    layout: &mut HomeLayout,
+    panel: &PlayerPanel,
+    assets: &mut impl HomeAssets,
+) {
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let (row_h, text, pad, base) = match form_factor {
+    let (mut row_h, text, pad, mut base) = match form_factor {
         UiFormFactor::Tv => (58.0, 21.0, 26.0, 400.0),
         UiFormFactor::Mobile => (44.0, 15.0, 14.0, 250.0),
         UiFormFactor::Desktop => (38.0, 14.0, 12.0, 270.0),
     };
+    let rich = panel
+        .rows
+        .iter()
+        .any(|row| row.thumbnail.is_some() || row.detail.is_some());
+    if rich {
+        (row_h, base) = match form_factor {
+            UiFormFactor::Tv => (128.0, 760.0),
+            UiFormFactor::Mobile => (88.0, 420.0),
+            UiFormFactor::Desktop => (92.0, 460.0),
+        };
+    }
     let mut columns: Vec<(Option<&str>, Vec<(usize, &PanelRow)>)> = Vec::new();
     for (index, row) in panel.rows.iter().enumerate().take(PLAYER_PANEL_ROW_LIMIT) {
         if row.heading {
@@ -262,6 +284,18 @@ fn draw_list(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout, panel:
                 Pos2::new(left, rows_top + (position as f32 - start as f32) * row_h),
                 Vec2::new(col_w, row_h),
             );
+            if row.group {
+                if position >= start && position < start + visible {
+                    veil.text(
+                        Pos2::new(rect.left() + 8.0, rect.center().y + row_h * 0.12),
+                        Align2::LEFT_CENTER,
+                        &row.label,
+                        FontId::proportional(text * 0.8),
+                        Color32::from_white_alpha(120),
+                    );
+                }
+                continue;
+            }
             layout.focusable.push((node, rect));
             if position < start || position >= start + visible {
                 continue;
@@ -288,6 +322,67 @@ fn draw_list(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout, panel:
                 Color32::from_white_alpha(if row.selected { 255 } else { 215 })
             };
             let mut right = rect.right() - 12.0;
+            if rich {
+                let art = Rect::from_min_size(
+                    rect.min + Vec2::new(8.0, 8.0),
+                    Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
+                );
+                veil.rect_filled(art, 6.0, Color32::from_white_alpha(14));
+                components::rounded_artwork(
+                    &veil,
+                    art,
+                    6.0,
+                    row.thumbnail.as_deref(),
+                    [320, 180],
+                    ArtworkPriority::Visible,
+                    Color32::WHITE,
+                    assets,
+                );
+                let left = art.right() + 12.0;
+                let width = (rect.right() - left - 12.0).max(0.0);
+                let title_font = FontId::proportional(text);
+                veil.text(
+                    Pos2::new(left, rect.top() + 12.0),
+                    Align2::LEFT_TOP,
+                    truncate_to_width(&veil, &row.label, &title_font, width),
+                    title_font,
+                    ink,
+                );
+                if let Some(detail) = row.detail.as_deref() {
+                    let mut job = egui::text::LayoutJob::simple(
+                        detail.to_owned(),
+                        FontId::proportional(text * 0.85),
+                        ink.gamma_multiply(0.6),
+                        width,
+                    );
+                    job.wrap.max_rows = if form_factor == UiFormFactor::Mobile {
+                        2
+                    } else {
+                        3
+                    };
+                    let galley = veil.layout_job(job);
+                    veil.galley(Pos2::new(left, rect.top() + 12.0 + text * 1.5), galley, ink);
+                }
+                if response.clicked() {
+                    layout.activated = Some(node);
+                }
+                continue;
+            }
+            if let Some(on_state) = row.switch {
+                let track = Rect::from_center_size(
+                    Pos2::new(right - 20.0, rect.center().y),
+                    Vec2::new(40.0, 22.0),
+                );
+                components::toggle(
+                    chrome.context,
+                    &veil,
+                    Id::new(("fluxa-player-panel-switch", node)),
+                    track,
+                    on_state,
+                    tokens,
+                );
+                right -= 52.0;
+            }
             if row.selected
                 && let Some(check) = check
             {

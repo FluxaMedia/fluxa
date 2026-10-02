@@ -146,6 +146,11 @@ pub(super) fn render_frame(state: &mut RendererState) {
     rebuild_current_ui(state);
     timer.mark("rebuild");
     let route = active_route(state);
+    let mode = player::upscaling(&state.settings).to_owned();
+    if let Some(player) = state.player.as_mut() {
+        player.anime4k = mode != "off";
+        player.upscaling = mode;
+    }
     let player_model = state.player.as_ref().map(|player| {
         let mut model = fluxa_ui::PlayerModel {
             upscaling: player::upscaling(&state.settings).to_owned(),
@@ -211,15 +216,15 @@ pub(super) fn render_frame(state: &mut RendererState) {
             home,
             library,
             discover,
+            folder,
+            folder_tab,
             calendar,
+            shorts,
             detail,
             settings,
             profiles,
             picker_background,
-            folder,
-            folder_tab,
             egui_events,
-            shorts,
             modifiers,
             pre_present,
             ..
@@ -234,15 +239,15 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 library,
                 library_tab,
                 discover,
+                folder,
+                *folder_tab,
                 calendar,
+                shorts,
                 detail,
                 settings,
                 profiles.as_mut(),
                 picker_background.as_deref(),
-                folder,
-                *folder_tab,
                 player_model.as_ref(),
-                shorts,
                 focused,
                 safe_bottom,
                 scroll_y,
@@ -280,14 +285,14 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 if let (Some(max), Some(player)) = (layout.scroll_max, state.player.as_mut()) {
                     player.sources_scroll_max = max;
                 }
+                if let Some(delta) = layout.short_step {
+                    shorts::step(state, delta);
+                }
                 apply_pointer_results(state, route, &layout);
                 if matches!(route, Route::Discover | Route::Folder) {
                     for request in &layout.load_more {
                         state
                             .pending_native_actions
-                if let Some(delta) = layout.short_step {
-                    shorts::step(state, delta);
-                }
                             .push(NativeAction::CoreCommand {
                                 command: request.clone(),
                             });

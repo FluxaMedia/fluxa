@@ -11,6 +11,7 @@ pub struct ChoiceRequest {
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum PlayerGesture {
     Volume(f32),
+    VolumeSet(f32),
     Brightness(f32),
 }
 
@@ -31,8 +32,8 @@ pub struct HomeLayout {
     pub player_speed_hold: bool,
     pub profiles: Option<ProfilesRequest>,
     pub scroll_max: Option<f32>,
-}
     pub short_step: Option<i32>,
+}
 
 /// consume the same responsive rectangles as the painter.
 pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
@@ -95,8 +96,8 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         let mut card_x = margin - row_scroll;
         for (index, card) in cards.iter().enumerate() {
             let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
-            layout.focusable.push((
             let lead = home_card_lead(title, kind, index, item_height);
+            layout.focusable.push((
                 NODE_CARD_BASE + flat as u64,
                 Rect::from_min_size(
                     Pos2::new(card_x + lead, visible_y + home_row_heading_height(metrics)),
@@ -116,7 +117,6 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     layout
 }
 
-/// The shelf under the given touch point, if it is over a row's cards rather
 pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
     let mut start = 0;
     for (index, (_, cards, _)) in home.content_rows_with_kind().enumerate() {
@@ -128,6 +128,7 @@ pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
     None
 }
 
+/// The shelf under the given touch point, if it is over a row's cards rather
 /// than the hero or the space between shelves.
 pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usize> {
     let metrics = home_metrics(viewport);
@@ -162,8 +163,8 @@ pub fn home_row_scroll_max(viewport: Viewport, home: &HomeModel, row_index: usiz
 pub(crate) fn home_row_scroll_max_for_cards(
     viewport: Viewport,
     metrics: UiMetrics,
-    cards: &[HomeCard],
     title: &str,
+    cards: &[HomeCard],
     kind: HomeRowKind,
 ) -> f32 {
     let margin = metrics.screen_margin;

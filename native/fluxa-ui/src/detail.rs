@@ -260,7 +260,11 @@ pub fn draw_detail(
         Color32::TRANSPARENT,
     );
 
-    if let Some(text) = detail.trailer_subtitle.as_deref().filter(|_| detail.trailer.is_some()) {
+    if let Some(text) = detail
+        .trailer_subtitle
+        .as_deref()
+        .filter(|_| detail.trailer.is_some())
+    {
         crate::paint_trailer_subtitle(context, image, text);
     }
 

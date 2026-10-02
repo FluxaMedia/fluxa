@@ -65,13 +65,13 @@ pub use profiles::{
 };
 use settings::settings_card_height;
 pub use settings::{
-    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit, FormatterPresetRow, FormatterRow,
-    CollectionListRow, FolderEdit, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
-    SettingsSection, ShortcutRow, account_source, account_source_state, addon_action,
-    addon_transport_url, badge_input, badge_input_label, category_pages, collection_input,
-    collection_input_label, collection_view_modes, draw_settings, option_label, poster_field,
-    server_index, server_input, settings_model_from_core_snapshot, settings_page_for_node,
-    settings_row_by_index, settings_row_label,
+    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit,
+    CollectionListRow, FolderEdit, FormatterPresetRow, FormatterRow, POSTER_FIELDS,
+    SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, ShortcutRow, account_source,
+    account_source_state, addon_action, addon_transport_url, badge_input, badge_input_label,
+    category_pages, collection_input, collection_input_label, collection_view_modes, draw_settings,
+    option_label, poster_field, server_index, server_input, settings_model_from_core_snapshot,
+    settings_page_for_node, settings_row_by_index, settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 

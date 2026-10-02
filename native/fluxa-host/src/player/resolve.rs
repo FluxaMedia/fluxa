@@ -91,7 +91,7 @@ pub(super) fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -
         "regexPattern": profile.get("streamSourceRegexPattern"),
         "title": meta.get("name").or_else(|| meta.get("title")),
         "originalName": meta.get("originalName"),
-        "year": meta.get("year"),
+        "year": meta_year(meta),
         "language": profile_language(&profile),
         "profile": profile,
     }))
@@ -142,4 +142,12 @@ pub(super) fn poll_torrent(
     player.torrent_link = Some(link.clone());
     player.torrent_status = None;
     player.torrent_rx = Some(session.poll_torrent_status(link, file_id));
+}
+
+fn meta_year(meta: &Value) -> Value {
+    let year = meta.get("year");
+    let parsed = year
+        .and_then(Value::as_i64)
+        .or_else(|| year.and_then(Value::as_str)?.get(..4)?.parse().ok());
+    parsed.map_or(Value::Null, |year| json!(year))
 }

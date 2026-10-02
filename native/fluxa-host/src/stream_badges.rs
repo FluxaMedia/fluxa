@@ -4,19 +4,18 @@ use std::sync::mpsc::Receiver;
 
 use egui::Color32;
 use fluxa_core::player::stream_badges::{self as engine, BadgeKind, Filter, Options, Rules, Theme};
-use fluxa_core::player::stream_layout::{self as layouts, Layout};
 use fluxa_core::player::stream_formatter::{Formatter, PRESETS, Rule as FormatterRule};
+use fluxa_core::player::stream_layout::{self as layouts, Layout};
 use fluxa_ui::{
-    BadgeCustomRow, BadgePackRow, FormatterPresetRow, FormatterRow, NODE_SETTINGS_BADGE_CLEAR, NODE_SETTINGS_BADGE_EDIT_BASE,
-    NODE_SETTINGS_BADGE_IMPORT, NODE_SETTINGS_BADGE_PACK_REMOVE_BASE,
-    NODE_SETTINGS_BADGE_PACK_TOGGLE_BASE, NODE_SETTINGS_BADGE_REMOVE_BASE,
-    NODE_SETTINGS_BADGE_SAVE, NODE_SETTINGS_BADGE_STYLE, NODE_SETTINGS_BADGE_TOGGLE_BASE,
-    NODE_SETTINGS_FORMATTER_CLEAR, NODE_SETTINGS_FORMATTER_EDIT_BASE,
-    NODE_SETTINGS_LAYOUT_SAVE, NODE_SETTINGS_LAYOUT_USE_CURRENT,
-    NODE_SETTINGS_FORMATTER_PRESET_BASE,
+    BadgeCustomRow, BadgePackRow, FormatterPresetRow, FormatterRow, NODE_SETTINGS_BADGE_CLEAR,
+    NODE_SETTINGS_BADGE_EDIT_BASE, NODE_SETTINGS_BADGE_IMPORT,
+    NODE_SETTINGS_BADGE_PACK_REMOVE_BASE, NODE_SETTINGS_BADGE_PACK_TOGGLE_BASE,
+    NODE_SETTINGS_BADGE_REMOVE_BASE, NODE_SETTINGS_BADGE_SAVE, NODE_SETTINGS_BADGE_STYLE,
+    NODE_SETTINGS_BADGE_TOGGLE_BASE, NODE_SETTINGS_FORMATTER_CLEAR,
+    NODE_SETTINGS_FORMATTER_EDIT_BASE, NODE_SETTINGS_FORMATTER_PRESET_BASE,
     NODE_SETTINGS_FORMATTER_REMOVE_BASE, NODE_SETTINGS_FORMATTER_SAVE,
-    NODE_SETTINGS_FORMATTER_TOGGLE_BASE,
-    SourceBadge, localized,
+    NODE_SETTINGS_FORMATTER_TOGGLE_BASE, NODE_SETTINGS_LAYOUT_SAVE,
+    NODE_SETTINGS_LAYOUT_USE_CURRENT, SourceBadge, localized,
 };
 use serde_json::Value;
 
@@ -104,9 +103,18 @@ pub(crate) fn lay_out(text: &str, video_size: Option<i64>) -> Option<(String, St
 fn sync_layout(state: &RendererState) {
     let settings = &state.settings;
     let key = (
-        settings.str_value("streamLayout").unwrap_or("off").to_owned(),
-        settings.str_value("streamLayoutName").unwrap_or_default().to_owned(),
-        settings.str_value("streamLayoutDetail").unwrap_or_default().to_owned(),
+        settings
+            .str_value("streamLayout")
+            .unwrap_or("off")
+            .to_owned(),
+        settings
+            .str_value("streamLayoutName")
+            .unwrap_or_default()
+            .to_owned(),
+        settings
+            .str_value("streamLayoutDetail")
+            .unwrap_or_default()
+            .to_owned(),
     );
     let mut guard = LAYOUT
         .lock()
@@ -129,7 +137,8 @@ fn layout_preview(state: &RendererState) -> Vec<String> {
     let settings = &state.settings;
     let mode = settings.str_value("streamLayout").unwrap_or("off");
     let fields = &settings.badge_fields;
-    let drafting = !fields[LAYOUT_FIELDS].trim().is_empty() || !fields[LAYOUT_FIELDS + 1].trim().is_empty();
+    let drafting =
+        !fields[LAYOUT_FIELDS].trim().is_empty() || !fields[LAYOUT_FIELDS + 1].trim().is_empty();
     let layout = if drafting {
         Some(Layout {
             name: unescaped(&fields[LAYOUT_FIELDS]),
@@ -147,7 +156,11 @@ fn layout_preview(state: &RendererState) -> Vec<String> {
     };
     let extracted = layouts::extract(SAMPLE, Some(SAMPLE_BYTES));
     let mut lines = vec![layouts::render(&layout.name, &extracted)];
-    lines.extend(layouts::render(&layout.detail, &extracted).lines().map(str::to_owned));
+    lines.extend(
+        layouts::render(&layout.detail, &extracted)
+            .lines()
+            .map(str::to_owned),
+    );
     lines.retain(|line| !line.is_empty());
     lines
 }
@@ -166,7 +179,9 @@ fn set_setting(state: &mut RendererState, key: &str, value: Value) {
 
 fn save_layout(state: &mut RendererState) {
     let name = state.settings.badge_fields[LAYOUT_FIELDS].trim().to_owned();
-    let detail = state.settings.badge_fields[LAYOUT_FIELDS + 1].trim().to_owned();
+    let detail = state.settings.badge_fields[LAYOUT_FIELDS + 1]
+        .trim()
+        .to_owned();
     set_setting(state, "streamLayoutName", Value::String(name));
     set_setting(state, "streamLayoutDetail", Value::String(detail));
     set_setting(state, "streamLayout", Value::String("custom".to_owned()));
@@ -177,9 +192,21 @@ fn save_layout(state: &mut RendererState) {
 }
 
 fn use_current_layout(state: &mut RendererState) {
-    let mode = state.settings.str_value("streamLayout").unwrap_or("off").to_owned();
-    let name = state.settings.str_value("streamLayoutName").unwrap_or_default().to_owned();
-    let detail = state.settings.str_value("streamLayoutDetail").unwrap_or_default().to_owned();
+    let mode = state
+        .settings
+        .str_value("streamLayout")
+        .unwrap_or("off")
+        .to_owned();
+    let name = state
+        .settings
+        .str_value("streamLayoutName")
+        .unwrap_or_default()
+        .to_owned();
+    let detail = state
+        .settings
+        .str_value("streamLayoutDetail")
+        .unwrap_or_default()
+        .to_owned();
     let layout = active_layout(&mode, &unescaped(&name), &unescaped(&detail))
         .or_else(|| layouts::preset("detailed"));
     if let Some(layout) = layout {
@@ -325,7 +352,10 @@ fn sync_config(state: &mut RendererState) {
     state.settings.formatter_presets = PRESETS
         .iter()
         .map(|preset| FormatterPresetRow {
-            name: localized(&format!("settings.formatter_preset.{}", preset.id), &language),
+            name: localized(
+                &format!("settings.formatter_preset.{}", preset.id),
+                &language,
+            ),
             description: localized(
                 &format!("settings.formatter_preset.{}.description", preset.id),
                 &language,

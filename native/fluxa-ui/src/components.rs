@@ -1873,6 +1873,50 @@ pub(super) fn pill_button(
     response
 }
 
+pub(super) fn progress_pill(
+    ui: &mut Ui,
+    rect: Rect,
+    label: &str,
+    text_size: f32,
+    fraction: f32,
+) -> Response {
+    let response = ui.interact(
+        rect,
+        Id::new(("fluxa-progress-pill", label)),
+        Sense::click(),
+    );
+    let painter = ui.painter();
+    let radius = rect.height() * 0.5;
+    let font = FontId::proportional(text_size);
+    crate::motion::press_scale(painter, rect, || {
+        let base = if response.hovered() { 46 } else { 28 };
+        glass(painter, rect, radius, Color32::from_white_alpha(base));
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            label,
+            font.clone(),
+            Color32::WHITE,
+        );
+        let filled = rect.width() * fraction.clamp(0.0, 1.0);
+        if filled > 0.5 {
+            let covered = painter.with_clip_rect(Rect::from_min_size(
+                rect.min,
+                Vec2::new(filled, rect.height()),
+            ));
+            covered.rect_filled(rect, radius, Color32::WHITE);
+            covered.text(
+                rect.center(),
+                Align2::CENTER_CENTER,
+                label,
+                font,
+                Color32::BLACK,
+            );
+        }
+    });
+    response
+}
+
 pub struct ActionMenuItem {
     pub icon: &'static str,
     pub label: String,
@@ -2084,7 +2128,7 @@ pub fn draw_action_menu(
                     2.0,
                     Color32::from_white_alpha(60),
                 );
-            } else if liquid_glass() {
+            } else if liquid_glass() && tv {
                 glass(&painter, panel, 12.0, fill);
             } else if sheet {
                 painter.rect(
@@ -2108,7 +2152,18 @@ pub fn draw_action_menu(
                     Color32::from_white_alpha(60),
                 );
             } else {
-                painter.rect(panel, 12.0, fill, border, egui::StrokeKind::Inside);
+                painter.rect_filled(
+                    panel.expand(1.0).translate(Vec2::new(0.0, 6.0)),
+                    14.0,
+                    Color32::from_black_alpha(90),
+                );
+                painter.rect(
+                    panel,
+                    12.0,
+                    Color32::from_rgb(19, 19, 19),
+                    border,
+                    egui::StrokeKind::Inside,
+                );
             }
             if let Some(header) = layout.header.map(|header| header.translate(offset)) {
                 let inset = style.header_inset();
@@ -2319,6 +2374,7 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_PLUGIN_URL
     ) || super::poster_field(node).is_some()
         || super::server_input(node).is_some()
+        || super::badge_input(node).is_some()
 }
 
 static LIQUID_GLASS: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(true);
@@ -2383,7 +2439,7 @@ pub(crate) fn badge_chip_layout(
     let galley = painter.layout_no_wrap(
         badge.label.clone(),
         FontId::proportional(font_size),
-        Color32::WHITE,
+        Color32::PLACEHOLDER,
     );
     let icon = if badge.image.is_some() {
         galley.size().y + 4.0
@@ -2479,23 +2535,20 @@ fn stream_row_layout(
     show_addon: bool,
     width: f32,
     metrics: UiMetrics,
-    assets: &mut impl HomeAssets,
-) -> Response {
-    let pad = 16.0;
-    let text_width = (width - pad * 2.0).max(1.0);
-    let painter = ui.painter().clone();
+) -> StreamRowLayout {
+    let text_width = (width - STREAM_ROW_PAD * 2.0).max(1.0);
     let addon = (show_addon && !source.name.starts_with(&source.addon)).then(|| {
         painter.layout_no_wrap(
             source.addon.clone(),
-            crate::fonts::regular(metrics.screen_card_subtitle_size - 2.0),
+            crate::fonts::regular(metrics.screen_card_subtitle_size + 1.0),
             metrics.text_muted,
         )
     });
     let addon_width = addon.as_ref().map_or(0.0, |galley| galley.size().x + 12.0);
     let mut name_job = crate::emoji::job(
         &source.name,
-        FontId::proportional(metrics.screen_card_title_size),
-        Color32::PLACEHOLDER,
+        FontId::proportional(metrics.screen_card_title_size + 3.0),
+        Color32::WHITE,
         text_width - addon_width,
     );
     name_job.wrap.max_rows = 3;
@@ -2503,7 +2556,7 @@ fn stream_row_layout(
     let detail = (!source.detail.is_empty()).then(|| {
         painter.layout_job(crate::emoji::job(
             &source.detail,
-            crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
+            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
             metrics.text_secondary,
             text_width,
         ))
@@ -2579,9 +2632,13 @@ pub(super) fn stream_row(
     let name_height = name.size().y;
     crate::emoji::paint(&painter, origin, name, assets);
     if let Some(addon) = addon {
-        let pos = egui::Pos2::new(rect.right() - pad - addon.size().x, origin.y + 2.0);
+        let pos = egui::Pos2::new(
+            rect.right() - STREAM_ROW_PAD - addon.size().x,
+            origin.y + 2.0,
+        );
         painter.galley(pos, addon, Color32::WHITE);
     }
+    let mut below = name_height + 8.0;
     if let Some(detail) = detail {
         let detail_height = detail.size().y;
         crate::emoji::paint(&painter, origin + Vec2::new(0.0, below), detail, assets);
@@ -2592,7 +2649,6 @@ pub(super) fn stream_row(
         let chip = chip.translate(chips_origin.to_vec2() + Vec2::new(0.0, chips_y));
         paint_badge_chip(&painter, chip, galley, &source.badges[index], assets);
     }
-        || super::badge_input(node).is_some()
     response
 }
 

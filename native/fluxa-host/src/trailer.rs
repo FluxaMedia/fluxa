@@ -284,6 +284,19 @@ pub(crate) fn tick(state: &mut RendererState) {
     publish(state);
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+use fluxa_effects::{fetch_text, range_proxy};
+
+#[cfg(target_arch = "wasm32")]
+fn range_proxy(_url: &str) -> Option<String> {
+    None
+}
+
+#[cfg(target_arch = "wasm32")]
+fn fetch_text(_url: &str) -> std::sync::mpsc::Receiver<Option<String>> {
+    std::sync::mpsc::channel().1
+}
+
 fn resolve(state: &mut RendererState) {
     let RendererState {
         trailers,
@@ -314,10 +327,14 @@ fn resolve(state: &mut RendererState) {
             .filter(|_| resolution.get("status").and_then(Value::as_str) == Some("ok"));
         match (url, video.as_mut(), gpu.as_ref()) {
             (Some(url), Some(video), Some(gpu)) => {
-                let proxied = fluxa_effects::range_proxy(url);
-                video.load_preview(&gpu.instance, &gpu.device, proxied.as_deref().unwrap_or(url));
+                let proxied = range_proxy(url);
+                video.load_preview(
+                    &gpu.instance,
+                    &gpu.device,
+                    proxied.as_deref().unwrap_or(url),
+                );
                 active.subtitle = subtitle_url(resolution, snapshot.pointer("/profile/active"))
-                    .map(|url| fluxa_effects::fetch_text(&url));
+                    .map(|url| fetch_text(&url));
                 active.loaded = true;
             }
             (Some(_), _, _) => active.failed = true,
@@ -373,7 +390,8 @@ fn play(state: &mut RendererState) {
     let status = video.status();
     if !active.finished
         && status.duration > 0.0
-        && (status.position + 0.6 >= status.duration || status.position + 1.0 < active.last_position)
+        && (status.position + 0.6 >= status.duration
+            || status.position + 1.0 < active.last_position)
     {
         active.finished = true;
     }
@@ -415,11 +433,6 @@ fn publish(state: &mut RendererState) {
             finished: active.finished,
             subtitle: active.cue.clone(),
         });
-    state.detail.trailer = active
-        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
-        .and_then(|active| active.texture);
-    state.detail.trailer_subtitle = active
-        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
     state.shorts.trailer = active
         .filter(|_| state.route == Route::Shorts)
         .map(|active| HeroTrailer {
@@ -428,6 +441,11 @@ fn publish(state: &mut RendererState) {
             finished: active.finished,
             subtitle: active.cue.clone(),
         });
+    state.detail.trailer = active
+        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
+        .and_then(|active| active.texture);
+    state.detail.trailer_subtitle = active
+        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
         .and_then(|active| active.cue.clone());
 }
 

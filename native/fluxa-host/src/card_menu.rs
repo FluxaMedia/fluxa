@@ -61,6 +61,7 @@ fn card_for_node(state: &RendererState, node: u64) -> Option<HomeCard> {
         Route::Home => state.home.card_at(index),
         Route::Library => state.library.cards(state.library_tab).get(index),
         Route::Discover => state.discover.results.get(index),
+        Route::Folder => state.folder.card_at(state.folder_tab, index),
         Route::Detail => {
             let range = fluxa_ui::NODE_DETAIL_SIMILAR_BASE..fluxa_ui::NODE_DETAIL_CAST_BASE;
             if !range.contains(&node) {

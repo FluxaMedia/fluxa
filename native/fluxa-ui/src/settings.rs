@@ -331,8 +331,7 @@ pub(super) fn settings_card_height(
     let content_height = match section.title {
         "Account" => account_height(metrics),
         "Summary" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + summary_height(&settings.playback_summary, metrics)
+            APPEARANCE_PAGE_HEADER_HEIGHT + summary_height(&settings.playback_summary, metrics)
         }
         "Shortcuts" => {
             let player = settings.shortcuts.iter().filter(|row| row.player).count();
@@ -350,11 +349,11 @@ pub(super) fn settings_card_height(
                 + FIELD_HEIGHT
                 + APPEARANCE_GROUP_GAP
         }
+        "Badges" => groups_height(&groups, rows_metrics) + badges::badges_height(settings, metrics),
         "Collections" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
                 + collections::collections_height(settings, settings.language())
         }
-        "Badges" => groups_height(&groups, rows_metrics) + badges::badges_height(settings, metrics),
         "Add-ons" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
                 + addons::addons_height(settings, metrics, settings.language())
@@ -1145,6 +1144,7 @@ fn draw_settings_extended_section(
             badges::draw_badges(
                 context, settings, assets, language, rect, top, metrics, layout,
             );
+        }
         "Collections" => collections::draw_collections(
             context,
             settings,
@@ -1154,7 +1154,6 @@ fn draw_settings_extended_section(
             metrics,
             layout,
         ),
-        }
         "Add-ons" => addons::draw_addons(
             context,
             settings,

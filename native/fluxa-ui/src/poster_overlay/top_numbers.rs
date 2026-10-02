@@ -43,7 +43,8 @@ pub(crate) fn rank_for(title: &str, kind: HomeRowKind, index: usize) -> Option<u
         return None;
     }
     let title = title.to_lowercase();
-    (numbers.all_rows || TRENDING_WORDS.iter().any(|word| title.contains(word))).then_some(index + 1)
+    (numbers.all_rows || TRENDING_WORDS.iter().any(|word| title.contains(word)))
+        .then_some(index + 1)
 }
 
 fn beside_size(card_height: f32, scale: f32) -> f32 {

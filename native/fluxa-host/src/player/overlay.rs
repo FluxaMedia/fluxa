@@ -1,7 +1,7 @@
 use std::sync::mpsc::Receiver;
 use std::time::Duration;
 
-use fluxa_ui::{ChapterSpan, NextEpisodeCard, SkipCard, SkipKind};
+use fluxa_ui::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
 use serde_json::{Map, Value, json};
 use web_time::Instant;
 
@@ -55,6 +55,10 @@ impl Overlay {
         }
     }
 
+    pub(super) fn skip(&self) -> Option<&Value> {
+        self.plan.get("skip").filter(|skip| !skip.is_null())
+    }
+
     pub(super) fn skip_target(&self) -> Option<f64> {
         let millis = self.plan.pointer("/skip/seekToMs")?.as_i64()?;
         Some(millis as f64 / 1000.0)
@@ -105,7 +109,28 @@ impl Overlay {
             .collect()
     }
 
-    pub(super) fn skip_card(&self) -> Option<SkipCard> {
+    pub(super) fn segment_spans(&self) -> Vec<SegmentSpan> {
+        let spans = self.plan.get("segments").and_then(Value::as_array);
+        spans
+            .into_iter()
+            .flatten()
+            .filter_map(|span| {
+                let kind = match span["kind"].as_str()? {
+                    "intro" => SkipKind::Intro,
+                    "recap" => SkipKind::Recap,
+                    "outro" => SkipKind::Outro,
+                    _ => return None,
+                };
+                Some(SegmentSpan {
+                    start_fraction: span["startFraction"].as_f64()? as f32,
+                    end_fraction: span["endFraction"].as_f64()? as f32,
+                    kind,
+                })
+            })
+            .collect()
+    }
+
+    pub(super) fn skip_card(&self, position: f64) -> Option<SkipCard> {
         let skip = self.plan.get("skip").filter(|skip| !skip.is_null())?;
         let kind = match skip.get("kind")?.as_str()? {
             "intro" => SkipKind::Intro,
@@ -116,6 +141,15 @@ impl Overlay {
         Some(SkipCard {
             kind,
             seek_to: skip.get("seekToMs")?.as_i64()? as f64 / 1000.0,
+            progress: {
+                let start = skip["startMs"].as_f64().unwrap_or(0.0) / 1000.0;
+                let end = skip["endMs"].as_f64().unwrap_or(0.0) / 1000.0;
+                if end > start {
+                    ((position - start) / (end - start)).clamp(0.0, 1.0) as f32
+                } else {
+                    0.0
+                }
+            },
         })
     }
 
@@ -630,6 +664,7 @@ fn auto_skip(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
     let Some(target) = skip["seekToMs"].as_i64() else {
         return;
     };
+    player.toast_skip();
     player.overlay.dismiss_skip();
     video.command(VideoCommand::SeekTo(target as f64 / 1000.0));
 }

@@ -372,10 +372,16 @@ pub(super) fn draw_badges(
     top = card.bottom() + APPEARANCE_GROUP_GAP;
 
     if !settings.badge_custom.is_empty() {
-        top = draw_custom_list(context, &painter, settings, assets, language, rect, top, metrics, layout);
+        top = draw_custom_list(
+            context, &painter, settings, assets, language, rect, top, metrics, layout,
+        );
     }
-    top = draw_layout(context, &painter, settings, language, rect, top, metrics, layout);
-    draw_formatter(context, &painter, settings, language, rect, top, metrics, layout);
+    top = draw_layout(
+        context, &painter, settings, language, rect, top, metrics, layout,
+    );
+    draw_formatter(
+        context, &painter, settings, language, rect, top, metrics, layout,
+    );
 }
 
 fn draw_custom_list(
@@ -635,8 +641,7 @@ fn draw_formatter(
     );
     for (slot, index) in (FORM_FIELDS..BADGE_INPUT_COUNT).enumerate() {
         let row = Rect::from_min_size(
-            card.left_top()
-                + Vec2::new(metrics.settings_row_inset, 6.0 + slot as f32 * FORM_ROW),
+            card.left_top() + Vec2::new(metrics.settings_row_inset, 6.0 + slot as f32 * FORM_ROW),
             Vec2::new(card.width() - metrics.settings_row_inset * 2.0, FORM_ROW),
         );
         if slot > 0 {

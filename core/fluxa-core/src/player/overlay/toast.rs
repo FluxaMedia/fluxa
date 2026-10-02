@@ -12,6 +12,8 @@ struct Input {
     value: f64,
     #[serde(default)]
     label: Option<String>,
+    #[serde(default)]
+    segment: Option<String>,
 }
 
 fn trim(value: f64) -> String {
@@ -69,6 +71,15 @@ pub(crate) fn player_toast_plan_json(args_json: &str) -> Option<String> {
             }
             None => json!({"key": "player.toast.subtitle_off", "holdMs": HOLD_MS}),
         },
+        "skip" => {
+            let key = match input.segment.as_deref()? {
+                "intro" => "player.toast.skipped_intro",
+                "recap" => "player.toast.skipped_recap",
+                "outro" => "player.toast.skipped_outro",
+                _ => return None,
+            };
+            json!({"key": key, "value": input.label?, "holdMs": HOLD_MS})
+        }
         _ => return None,
     };
     Some(Value::to_string(&plan))
@@ -124,5 +135,12 @@ mod tests {
             plan(json!({"kind": "subtitle"}))["key"],
             "player.toast.subtitle_off"
         );
+    }
+
+    #[test]
+    fn skip_names_the_segment_and_its_source() {
+        let result = plan(json!({"kind": "skip", "segment": "recap", "label": "IntroDB"}));
+        assert_eq!(result["key"], "player.toast.skipped_recap");
+        assert_eq!(result["value"], "IntroDB");
     }
 }

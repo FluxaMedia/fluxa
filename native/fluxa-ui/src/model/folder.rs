@@ -225,10 +225,16 @@ pub fn folder_model_from_core_snapshot(snapshot: &serde_json::Value) -> FolderMo
 }
 
 fn addon_type_label(category: &serde_json::Value, language: &str) -> Option<String> {
-    if category.get("remoteSource").is_some_and(|source| !source.is_null()) {
+    if category
+        .get("remoteSource")
+        .is_some_and(|source| !source.is_null())
+    {
         return None;
     }
-    let kind = match value_string(category, "contentType")?.to_ascii_lowercase().as_str() {
+    let kind = match value_string(category, "contentType")?
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "movie" => localized("settings.addon_type.movie", language),
         "series" | "tv" => localized("settings.addon_type.series", language),
         other => {

@@ -28,6 +28,8 @@ struct Segment {
     kind: String,
     start_time: i64,
     end_time: i64,
+    #[serde(default)]
+    provider: Option<String>,
 }
 
 #[derive(Default, Deserialize)]
@@ -91,6 +93,15 @@ struct SkipCard {
     end_ms: i64,
     seek_to_ms: i64,
     auto: bool,
+    provider: Option<String>,
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct SegmentSpan {
+    kind: String,
+    start_fraction: f64,
+    end_fraction: f64,
 }
 
 #[derive(Serialize)]
@@ -109,6 +120,7 @@ struct NextCard {
 #[serde(rename_all = "camelCase")]
 struct OverlayPlan {
     chapters: Vec<ChapterSpan>,
+    segments: Vec<SegmentSpan>,
     skip: Option<SkipCard>,
     next: Option<NextCard>,
 }
@@ -120,6 +132,7 @@ pub(crate) fn player_overlay_plan_json(input: &str) -> Option<String> {
     let skip = skip_card(&input, duration).filter(|skip| next.is_none() || skip.kind != "outro");
     let plan = OverlayPlan {
         chapters: chapter_spans(&input.chapters, duration),
+        segments: segment_spans(&input, duration),
         skip,
         next,
     };
@@ -192,6 +205,21 @@ fn merged_segments(input: &OverlayInput, duration: i64) -> Vec<Segment> {
     segments
 }
 
+fn segment_spans(input: &OverlayInput, duration: i64) -> Vec<SegmentSpan> {
+    if duration <= 0 || !input.prefs.use_skip_segments {
+        return Vec::new();
+    }
+    let fraction = |ms: i64| (ms as f64 / duration as f64).clamp(0.0, 1.0);
+    merged_segments(input, duration)
+        .into_iter()
+        .map(|segment| SegmentSpan {
+            start_fraction: fraction(segment.start_time),
+            end_fraction: fraction(segment.end_time),
+            kind: segment.kind,
+        })
+        .collect()
+}
+
 fn skip_card(input: &OverlayInput, duration: i64) -> Option<SkipCard> {
     if !input.prefs.use_skip_segments {
         return None;
@@ -208,6 +236,7 @@ fn skip_card(input: &OverlayInput, duration: i64) -> Option<SkipCard> {
             seek_to_ms: segment.end_time,
             start_ms: segment.start_time,
             end_ms: segment.end_time,
+            provider: segment.provider,
             kind: segment.kind,
         })
 }
@@ -278,6 +307,17 @@ mod tests {
             "segments": segments, "dismissed": ["intro"]
         }));
         assert!(dismissed["skip"].is_null());
+    }
+
+    #[test]
+    fn skip_card_and_spans_carry_provider_and_fractions() {
+        let segments = json!([{
+            "type": "intro", "startTime": 100000, "endTime": 200000, "provider": "IntroDB"
+        }]);
+        let result = plan(json!({"positionMs": 150000, "durationMs": 1000000, "segments": segments}));
+        assert_eq!(result["skip"]["provider"], "IntroDB");
+        assert_eq!(result["segments"][0]["startFraction"], 0.1);
+        assert_eq!(result["segments"][0]["endFraction"], 0.2);
     }
 
     #[test]

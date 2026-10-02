@@ -66,10 +66,7 @@ pub fn folder_row_at_y(
     }
     let metrics = UiMetrics::for_viewport(viewport);
     let mut row_y = folder_geometry(viewport, metrics, folder).content_top - scroll_y;
-    for (index, (_, cards, kind)) in rows_home(folder)
-        .content_rows_with_kind()
-        .enumerate()
-    {
+    for (index, (_, cards, kind)) in rows_home(folder).content_rows_with_kind().enumerate() {
         let heading = home_row_heading_height(metrics);
         let body = home_row_body_height(metrics, cards, kind);
         if y >= row_y + heading && y <= row_y + heading + body {

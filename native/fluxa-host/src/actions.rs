@@ -213,6 +213,12 @@ pub(super) fn native_action_for_node(
     } else if route == Route::Discover && node >= NODE_CARD_BASE {
         let card = discover.results.get((node - NODE_CARD_BASE) as usize)?;
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
+    } else if route == Route::Folder {
+        if node == fluxa_ui::NODE_FOLDER_BACK {
+            return Some(NativeAction::Back);
+        }
+        let card = folder.card_at(folder_tab, node.checked_sub(NODE_CARD_BASE)? as usize)?;
+        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else if node == fluxa_ui::NODE_HERO_WATCHLIST {
         return Some(NativeAction::ToggleWatchlist {
             item: hero?.raw.clone(),
@@ -233,12 +239,6 @@ pub(super) fn native_action_for_node(
                 item: playback_item(
                     &hero.raw,
                     home.resume_for(id),
-    } else if route == Route::Folder {
-        if node == fluxa_ui::NODE_FOLDER_BACK {
-            return Some(NativeAction::Back);
-        }
-        let card = folder.card_at(folder_tab, node.checked_sub(NODE_CARD_BASE)? as usize)?;
-        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
                     series.then(|| format!("{id}:1:1")),
                 ),
             });
@@ -250,6 +250,11 @@ pub(super) fn native_action_for_node(
         )
     } else if node >= NODE_CARD_BASE {
         let card = home.card_at((node - NODE_CARD_BASE) as usize)?;
+        if card.row_kind == fluxa_ui::HomeRowKind::Collection {
+            return Some(NativeAction::Folder {
+                id: card.id.as_ref()?.clone(),
+            });
+        }
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else {
         return None;
@@ -270,11 +275,6 @@ pub(super) fn native_action_for_node(
 
 pub(super) fn playback_item(
     item: &Value,
-        if card.row_kind == fluxa_ui::HomeRowKind::Collection {
-            return Some(NativeAction::Folder {
-                id: card.id.as_ref()?.clone(),
-            });
-        }
     resume: Option<&HomeCard>,
     first_video: Option<String>,
 ) -> Value {
@@ -413,6 +413,10 @@ pub(super) fn edit_text(
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             &mut state.settings.server_fields[fluxa_ui::server_input(node).unwrap_or_default()]
         }
+        _ if route == Route::Settings && fluxa_ui::collection_input(node).is_some() => {
+            &mut state.settings.collection_fields
+                [fluxa_ui::collection_input(node).unwrap_or_default()]
+        }
         _ if route == Route::Settings && fluxa_ui::badge_input(node).is_some() => {
             &mut state.settings.badge_fields[fluxa_ui::badge_input(node).unwrap_or_default()]
         }
@@ -433,10 +437,6 @@ pub(super) fn edit_text(
     }
     true
 }
-        _ if route == Route::Settings && fluxa_ui::collection_input(node).is_some() => {
-            &mut state.settings.collection_fields
-                [fluxa_ui::collection_input(node).unwrap_or_default()]
-        }
 
 pub(super) fn focused_text(state: &RendererState) -> Option<String> {
     let node = state.ui.focused()?;
@@ -453,6 +453,9 @@ pub(super) fn focused_text(state: &RendererState) -> Option<String> {
         }
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             state.settings.server_fields[fluxa_ui::server_input(node)?].clone()
+        }
+        _ if route == Route::Settings && fluxa_ui::collection_input(node).is_some() => {
+            state.settings.collection_fields[fluxa_ui::collection_input(node)?].clone()
         }
         _ if route == Route::Settings && fluxa_ui::badge_input(node).is_some() => {
             state.settings.badge_fields[fluxa_ui::badge_input(node)?].clone()
@@ -474,9 +477,6 @@ fn save_left_fields(state: &mut RendererState) {
             continue;
         }
         if let Some(values) = state.settings.values.as_object_mut() {
-        _ if route == Route::Settings && fluxa_ui::collection_input(node).is_some() => {
-            state.settings.collection_fields[fluxa_ui::collection_input(node)?].clone()
-        }
             values.insert(field.key.to_owned(), Value::String(value.clone()));
         }
         state
@@ -567,6 +567,16 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 refresh_library_view(state);
                 continue;
             }
+            if state.route == Route::Folder
+                && node >= fluxa_ui::NODE_FOLDER_TAB_BASE
+                && let index = (node - fluxa_ui::NODE_FOLDER_TAB_BASE) as usize
+                && index < state.folder.tabs.len()
+            {
+                state.folder_tab = index;
+                state.screen_scroll_offsets.remove(&Route::Folder);
+                reset_ui(state);
+                continue;
+            }
             if state.route == Route::Calendar {
                 if node == fluxa_ui::NODE_CALENDAR_CLOSE_DAY {
                     state.calendar.selected_day = None;
@@ -587,16 +597,6 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     .checked_sub(fluxa_ui::NODE_SETTINGS_ROW_BASE)
                     .and_then(|index| fluxa_ui::settings_row_by_index(index as usize))
                 && (row.key == "appIcon"
-            if state.route == Route::Folder
-                && node >= fluxa_ui::NODE_FOLDER_TAB_BASE
-                && let index = (node - fluxa_ui::NODE_FOLDER_TAB_BASE) as usize
-                && index < state.folder.tabs.len()
-            {
-                state.folder_tab = index;
-                state.screen_scroll_offsets.remove(&Route::Folder);
-                reset_ui(state);
-                continue;
-            }
                     || logical_viewport(state).is_compact()
                     || logical_viewport(state).is_tv())
                 && !row.options.is_empty()
@@ -688,14 +688,13 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 &state.library,
                 state.library_tab,
                 &state.discover,
+                &state.folder,
+                state.folder_tab,
                 &state.calendar,
                 &state.detail,
                 &state.settings,
                 state.route,
-                state
-                    .gpu
-                    .as_ref()
-                    .and_then(|gpu| fluxa_ui::active_home_hero(&gpu.egui_context, &state.home)),
+                hero,
             ) {
                 if let NativeAction::Detail { preview, .. } = &native_action {
                     state.backdrop_prefetch = ["background", "poster"]
@@ -708,8 +707,6 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         }
         if matches!(action, UiAction::Back) {
             if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
-                &state.folder,
-                state.folder_tab,
                 state.calendar.selected_day = None;
                 reset_ui(state);
             } else if state.route == Route::Settings
@@ -792,23 +789,6 @@ pub(super) fn discover_command(
     })
 }
 
-pub(super) fn navigation(route: Route) -> Value {
-    json!({"type": "navigationRequested", "route": route.as_str(), "params": {}})
-}
-
-pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>> {
-    let commands = match action {
-        NativeAction::CoreCommand { command } => vec![command.clone()],
-        NativeAction::LoadMore { .. } => Vec::new(),
-        NativeAction::Back => vec![navigation(Route::Home)],
-        NativeAction::Navigate { destination } => match destination {
-            Route::Home => vec![
-                navigation(Route::Home),
-                json!({
-                    "type": "refreshContinueWatchingRequested",
-                    "profile": profile,
-                    "language": profile_language(profile),
-                    "source": "navigation",
 pub(super) fn folder_commands(
     snapshot: Option<&Value>,
     folder_id: &str,
@@ -850,6 +830,24 @@ pub(super) fn folder_commands(
     commands
 }
 
+pub(super) fn navigation(route: Route) -> Value {
+    json!({"type": "navigationRequested", "route": route.as_str(), "params": {}})
+}
+
+pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option<Vec<Value>> {
+    let commands = match action {
+        NativeAction::CoreCommand { command } => vec![command.clone()],
+        NativeAction::LoadMore { .. } => Vec::new(),
+        NativeAction::Folder { .. } => return None,
+        NativeAction::Back => vec![navigation(Route::Home)],
+        NativeAction::Navigate { destination } => match destination {
+            Route::Home => vec![
+                navigation(Route::Home),
+                json!({
+                    "type": "refreshContinueWatchingRequested",
+                    "profile": profile,
+                    "language": profile_language(profile),
+                    "source": "navigation",
                 }),
             ],
             Route::Library => vec![
@@ -858,7 +856,6 @@ pub(super) fn folder_commands(
             ],
             Route::Discover => vec![
                 navigation(Route::Discover),
-        NativeAction::Folder { .. } => return None,
                 discover_command(profile, "movie", "", "", "", true),
             ],
             Route::Calendar => {
@@ -869,6 +866,7 @@ pub(super) fn folder_commands(
                 ]
             }
             Route::Settings => vec![navigation(Route::Settings)],
+            Route::Shorts => vec![navigation(Route::Shorts)],
             _ => return None,
         },
         NativeAction::DiscoverType { content_type } => {
@@ -886,7 +884,6 @@ pub(super) fn folder_commands(
             catalog_key,
             extra_name,
             extra_value,
-            Route::Shorts => vec![navigation(Route::Shorts)],
             ..
         } => vec![discover_command(
             profile,
@@ -977,6 +974,17 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             state.ui = UiTree::default();
             continue;
         }
+        if let NativeAction::Folder { id } = &action {
+            let commands = folder_commands(state.core_snapshot.as_deref(), id, &profile);
+            state.folder_tab = 0;
+            state.screen_scroll_offsets.remove(&Route::Folder);
+            for command in commands {
+                if let Err(error) = session.dispatch(command) {
+                    host_log(format!("core dispatch failed: {error}"));
+                }
+            }
+            continue;
+        }
         if let NativeAction::OpenFile { uri, title } = action {
             files.push((uri, title));
             continue;
@@ -994,17 +1002,6 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         {
             if let Err(error) = session.dispatch(navigation(Route::Discover)) {
                 host_log(format!("core dispatch failed: {error}"));
-        if let NativeAction::Folder { id } = &action {
-            let commands = folder_commands(state.core_snapshot.as_deref(), id, &profile);
-            state.folder_tab = 0;
-            state.screen_scroll_offsets.remove(&Route::Folder);
-            for command in commands {
-                if let Err(error) = session.dispatch(command) {
-                    host_log(format!("core dispatch failed: {error}"));
-                }
-            }
-            continue;
-        }
             }
             continue;
         }

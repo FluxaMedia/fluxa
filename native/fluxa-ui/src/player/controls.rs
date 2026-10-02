@@ -30,36 +30,107 @@ impl Chrome<'_> {
             actions.push(("Gauge", NODE_PLAYER_SPEED));
         }
         if options.episodes && player.has_episodes {
-            actions.push(("List", NODE_PLAYER_EPISODES));
+            actions.push(("ListVideo", NODE_PLAYER_EPISODES));
         }
         if options.settings && self.viewport.form_factor == UiFormFactor::Desktop {
-            actions.push(("Sliders", NODE_PLAYER_SETTINGS));
+            actions.push(("Settings", NODE_PLAYER_SETTINGS));
         }
         if !mobile_header {
-            if options.cast {
+            if options.cast && self.viewport.form_factor == UiFormFactor::Tv {
                 actions.push(("Cast", NODE_PLAYER_CAST));
             }
             if options.mark_segment {
                 actions.push(("Flag", NODE_PLAYER_SUBMIT));
             }
-            if options.upscaling {
-                actions.push(("Sparkles", NODE_PLAYER_UPSCALING));
-            }
         }
         actions
     }
 
-    fn secondary(&self) -> Vec<Action> {
-        let options = &self.player.options;
-        let mut actions = Vec::new();
-        if options.cast {
+    fn header_actions(&self, mobile: bool) -> Vec<Action> {
+        let mut actions = if mobile {
+            self.actions(true)
+        } else {
+            Vec::new()
+        };
+        if self.player.options.cast {
             actions.push(("Cast", NODE_PLAYER_CAST));
         }
-        if options.mark_segment {
-            actions.push(("Flag", NODE_PLAYER_SUBMIT));
+        actions
+    }
+
+    fn volume_slider(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, x: f32, y: f32) -> f32 {
+        let player = self.player;
+        let full = 88.0;
+        let zone = Rect::from_min_max(
+            Pos2::new(x - 52.0, y - 24.0),
+            Pos2::new(x + full + 56.0, y + 24.0),
+        );
+        let id = Id::new("fluxa-player-volume");
+        let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
+        let open = dragging || ui.rect_contains_pointer(zone);
+        let amount = ui.ctx().animate_bool_with_time(id.with("open"), open, 0.16);
+        let width = full * amount;
+        if width < 2.0 {
+            return x + full + 8.0;
         }
-        if options.upscaling {
-            actions.push(("Sparkles", NODE_PLAYER_UPSCALING));
+        let max = if player.boost { 200.0 } else { 100.0 };
+        let track = Rect::from_min_size(Pos2::new(x + 4.0, y - 12.0), Vec2::new(width - 8.0, 24.0));
+        let response = ui.interact(track, id, Sense::click_and_drag());
+        ui.data_mut(|data| data.insert_temp(id, response.dragged()));
+        if (response.clicked() || response.dragged())
+            && let Some(pointer) = response.interact_pointer_pos()
+        {
+            let ratio = ((pointer.x - track.left()) / track.width()).clamp(0.0, 1.0);
+            layout.player_gesture = Some(PlayerGesture::VolumeSet(ratio * max));
+        }
+        if response.hovered() {
+            let scroll = ui.input(|input| input.smooth_scroll_delta.y);
+            if scroll.abs() > 0.5 {
+                layout.player_gesture = Some(PlayerGesture::Volume(scroll.signum() * 0.05));
+            }
+        }
+        let alpha = (255.0 * amount) as u8;
+        let shown = if player.muted {
+            0.0
+        } else {
+            player.volume as f32
+        };
+        let ratio = (shown / max).clamp(0.0, 1.0);
+        let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
+        self.painter
+            .rect_filled(bar, 2.0, Color32::from_white_alpha(alpha / 3));
+        let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
+        self.painter
+            .rect_filled(filled, 2.0, Color32::from_white_alpha(alpha));
+        if player.boost {
+            let mark = bar.left() + bar.width() * 0.5;
+            self.painter.line_segment(
+                [
+                    Pos2::new(mark, bar.center().y - 5.0),
+                    Pos2::new(mark, bar.center().y + 5.0),
+                ],
+                egui::Stroke::new(1.5, Color32::from_white_alpha(alpha / 2)),
+            );
+        }
+        self.painter.circle_filled(
+            Pos2::new(filled.right(), bar.center().y),
+            6.0 * amount,
+            Color32::WHITE,
+        );
+        self.painter.text(
+            Pos2::new(filled.right(), bar.center().y - 20.0),
+            Align2::CENTER_CENTER,
+            format!("{}%", shown.round() as i32),
+            FontId::proportional(12.0),
+            Color32::from_white_alpha(alpha),
+        );
+        x + full + 8.0
+    }
+
+    fn secondary(&self) -> Vec<Action> {
+        let mut actions = Vec::new();
+        if self.player.options.mark_segment {
+            actions.push(("Flag", NODE_PLAYER_SUBMIT));
         }
         actions
     }
@@ -166,10 +237,18 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         return;
     }
     scrims(chrome.painter, rect);
+    let header_right = chrome.row_right(
+        ui,
+        layout,
+        rect.right() - margin,
+        header_y,
+        44.0,
+        &chrome.header_actions(false),
+    );
     chrome.heading(
         close_center.x + 34.0,
         header_y,
-        rect.width() - margin * 2.0 - 60.0,
+        (header_right - close_center.x - 48.0).max(0.0),
         19.0,
         13.0,
     );
@@ -197,26 +276,23 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         chrome.button(
             ui,
             layout,
-            Pos2::new(x + 20.0, y),
-            40.0,
+            Pos2::new(x + 22.0, y),
+            44.0,
             mute,
             NODE_PLAYER_MUTE,
         );
-        x += 44.0;
-        let volume = if player.muted {
-            localized("player.muted", &player.language)
-        } else {
-            format!("{}%", player.volume.round() as i32)
-        };
-        chrome.text(
-            Pos2::new(x, y),
-            Align2::LEFT_CENTER,
-            &volume,
-            12.0,
-            60.0,
-            170,
+        x += 48.0;
+        x = chrome.volume_slider(ui, layout, x, y);
+        let bolt = if player.boost { "ZapFilled" } else { "Zap" };
+        chrome.button(
+            ui,
+            layout,
+            Pos2::new(x + 18.0, y),
+            40.0,
+            bolt,
+            NODE_PLAYER_BOOST,
         );
-        x += 56.0;
+        x += 48.0;
     }
     let mut right = rect.right() - margin;
     if player.options.fullscreen {
@@ -225,11 +301,11 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             layout,
             right,
             y,
-            40.0,
+            44.0,
             &[("Maximize", NODE_PLAYER_FULLSCREEN)],
         );
     }
-    let right = chrome.row_right(ui, layout, right, y, 40.0, &chrome.actions(false));
+    let right = chrome.row_right(ui, layout, right, y, 44.0, &chrome.actions(false));
     chrome.text(
         Pos2::new(x + 8.0, y),
         Align2::LEFT_CENTER,
@@ -275,7 +351,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         rect.right() - margin,
         header_y,
         40.0,
-        &chrome.actions(true),
+        &chrome.header_actions(true),
     );
     let title_x = close_center.x + 34.0;
     chrome.heading(

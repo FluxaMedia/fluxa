@@ -1,6 +1,6 @@
 use std::sync::mpsc::Receiver;
 
-use fluxa_ui::{PanelRow, PlayerPanel, localized};
+use fluxa_ui::{PanelRow, PlayerPanel, SegmentSpan, SkipKind, localized};
 use serde_json::{Value, json};
 
 use super::{PlayerSession, overlay};
@@ -49,6 +49,24 @@ impl Submit {
                 "player.mark_segment_error_unknown"
             });
         }
+    }
+
+    pub(super) fn preview(&self, position: f64, duration: f64) -> Option<SegmentSpan> {
+        if duration <= 0.0 {
+            return None;
+        }
+        let start = self.start?;
+        let end = self.end.unwrap_or(position).max(start);
+        let kind = match KINDS[self.kind] {
+            "intro" => SkipKind::Intro,
+            "recap" => SkipKind::Recap,
+            _ => SkipKind::Outro,
+        };
+        Some(SegmentSpan {
+            start_fraction: (start / duration).clamp(0.0, 1.0) as f32,
+            end_fraction: (end / duration).clamp(0.0, 1.0) as f32,
+            kind,
+        })
     }
 
     pub(super) fn model(&self, language: &str) -> PlayerPanel {

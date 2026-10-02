@@ -133,19 +133,67 @@ pub(super) fn terminal_plan(meta: &Value, candidates: Vec<Value>, snapshot: &Val
         .unwrap_or_default()
 }
 
-pub(super) fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
+fn current_video<'a>(meta: &'a Value, snapshot: &Value) -> Option<&'a Value> {
     let id = snapshot
         .pointer("/player/currentVideoId")
-        .and_then(Value::as_str)?;
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+        .or_else(|| meta.get("lastVideoId").and_then(Value::as_str))?;
     meta.get("videos")?
         .as_array()?
         .iter()
-        .find(|video| video.get("id").and_then(Value::as_str) == Some(id))?
-        .get("name")
-        .or_else(|| meta.get("title"))
-        .and_then(Value::as_str)
-        .filter(|title| !title.trim().is_empty())
+        .find(|video| video.get("id").and_then(Value::as_str) == Some(id))
+}
+
+fn first_text(value: &Value, keys: &[&str]) -> Option<String> {
+    keys.iter()
+        .find_map(|key| value.get(*key).and_then(Value::as_str))
+        .filter(|text| !text.trim().is_empty())
         .map(ToOwned::to_owned)
+}
+
+pub(super) fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
+    current_video(meta, snapshot)
+        .and_then(|video| first_text(video, &["title", "name"]))
+        .or_else(|| first_text(meta, &["lastEpisodeName"]))
+}
+
+pub(super) fn episode_image(meta: &Value, snapshot: &Value) -> Option<String> {
+    first_text(
+        current_video(meta, snapshot)?,
+        &["thumbnail", "still", "image"],
+    )
+}
+
+pub(super) fn synopsis(meta: &Value, snapshot: &Value) -> Option<String> {
+    current_video(meta, snapshot)
+        .and_then(|video| first_text(video, &["overview", "description"]))
+        .or_else(|| first_text(meta, &["description"]))
+}
+
+pub(super) fn stream_addon_names(snapshot: &Value) -> Vec<String> {
+    let Some(installed) = snapshot
+        .pointer("/addons/installed")
+        .and_then(Value::as_array)
+    else {
+        return Vec::new();
+    };
+    installed
+        .iter()
+        .filter_map(|addon| addon.get("manifest"))
+        .filter(|manifest| {
+            manifest
+                .get("resources")
+                .and_then(Value::as_array)
+                .is_some_and(|resources| {
+                    resources.iter().any(|resource| {
+                        resource.as_str().or_else(|| resource["name"].as_str()) == Some("stream")
+                    })
+                })
+        })
+        .filter_map(|manifest| manifest.get("name").and_then(Value::as_str))
+        .map(ToOwned::to_owned)
+        .collect()
 }
 
 pub(super) fn content_warning_url(meta: &Value, snapshot: &Value) -> Option<String> {
