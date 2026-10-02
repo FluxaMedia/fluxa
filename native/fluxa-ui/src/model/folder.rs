@@ -39,6 +39,7 @@ pub struct FolderModel {
     pub view_mode: FolderViewMode,
     pub tabs: Vec<FolderTab>,
     pub has_all_tab: bool,
+    pub row_scroll_offsets: Vec<f32>,
 }
 
 impl FolderModel {
@@ -206,6 +207,7 @@ pub fn folder_model_from_core_snapshot(snapshot: &serde_json::Value) -> FolderMo
         ),
         tabs,
         has_all_tab,
+        row_scroll_offsets: Vec::new(),
         language,
     }
 }

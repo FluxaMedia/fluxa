@@ -57,10 +57,15 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
         ));
     }
     state.library = projection.library;
+    let previous_folder = state.folder.id.clone();
     if state.folder.id != projection.folder.id {
         state.folder_tab = 0;
     }
+    let folder_offsets = std::mem::take(&mut state.folder.row_scroll_offsets);
     state.folder = projection.folder;
+    if state.folder.id == previous_folder {
+        state.folder.row_scroll_offsets = folder_offsets;
+    }
     let query = std::mem::take(&mut state.discover.query);
     state.discover = projection.discover;
     state.discover.query = query;

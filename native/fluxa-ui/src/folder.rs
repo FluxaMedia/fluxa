@@ -31,6 +31,7 @@ fn rows_home(folder: &FolderModel) -> HomeModel {
         rows: folder.home_rows(),
         show_hero_section: false,
         cards: Vec::new(),
+        row_scroll_offsets: folder.row_scroll_offsets.clone(),
         language: folder.language.clone(),
         ..HomeModel::default()
     }
@@ -53,6 +54,35 @@ fn folder_content_height(metrics: UiMetrics, folder: &FolderModel, tab: usize, w
 }
 
 const FOLDER_CARD_LIMIT: usize = 600;
+
+pub fn folder_row_at_y(
+    viewport: Viewport,
+    folder: &FolderModel,
+    scroll_y: f32,
+    y: f32,
+) -> Option<usize> {
+    if folder.view_mode == FolderViewMode::TabbedGrid {
+        return None;
+    }
+    let metrics = UiMetrics::for_viewport(viewport);
+    let mut row_y = folder_geometry(viewport, metrics, folder).content_top - scroll_y;
+    for (index, (_, cards, kind)) in rows_home(folder)
+        .content_rows_with_kind()
+        .enumerate()
+    {
+        let heading = home_row_heading_height(metrics);
+        let body = home_row_body_height(metrics, cards, kind);
+        if y >= row_y + heading && y <= row_y + heading + body {
+            return Some(index);
+        }
+        row_y += heading + body + metrics.section_gap + metrics.vertical_spacing;
+    }
+    None
+}
+
+pub fn folder_row_scroll_max(viewport: Viewport, folder: &FolderModel, row: usize) -> f32 {
+    home_row_scroll_max(viewport, &rows_home(folder), row)
+}
 
 pub fn folder_scroll_max(viewport: Viewport, folder: &FolderModel, tab: usize) -> f32 {
     let metrics = UiMetrics::for_viewport(viewport);

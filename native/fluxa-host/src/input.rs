@@ -59,6 +59,19 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
                 *offset = next;
             }
         }
+        Some(HomeScrollTarget::FolderRow(row)) => {
+            let max_offset = fluxa_ui::folder_row_scroll_max(viewport, &state.folder, row);
+            let offsets = &mut state.folder.row_scroll_offsets;
+            if offsets.len() <= row {
+                offsets.resize(row + 1, 0.0);
+            }
+            let next = (offsets[row] + movement).clamp(0.0, max_offset);
+            if (next - offsets[row]).abs() < 0.01 {
+                state.scroll_velocity = 0.0;
+            } else {
+                offsets[row] = next;
+            }
+        }
         Some(HomeScrollTarget::DetailRow(row)) => {
             let offset = &mut state.detail.row_scroll_offsets[row];
             let next = (*offset + movement).clamp(0.0, fluxa_ui::detail_row_scroll_max(row));
@@ -290,6 +303,16 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                         state.active_scroll = Some(HomeScrollTarget::Vertical);
                     }
                 } else {
+                    if state.route == Route::Folder && total_x.abs() > total_y.abs() * 1.15 {
+                        let scroll_y = state
+                            .screen_scroll_offsets
+                            .get(&Route::Folder)
+                            .copied()
+                            .unwrap_or(0.0);
+                        state.active_scroll =
+                            fluxa_ui::folder_row_at_y(viewport, &state.folder, scroll_y, start[1])
+                                .map(HomeScrollTarget::FolderRow);
+                    }
                     if state.player.is_none()
                         && state.route == Route::Detail
                         && total_x.abs() > total_y.abs() * 1.15
@@ -319,7 +342,11 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                 .clamp(1.0 / 240.0, 0.08);
             let delta = match state.active_scroll {
                 Some(HomeScrollTarget::Vertical) => last[1] - position[1],
-                Some(HomeScrollTarget::Horizontal(_) | HomeScrollTarget::DetailRow(_)) => {
+                Some(
+                    HomeScrollTarget::Horizontal(_)
+                    | HomeScrollTarget::DetailRow(_)
+                    | HomeScrollTarget::FolderRow(_),
+                ) => {
                     last[0] - position[0]
                 }
                 Some(HomeScrollTarget::ScreenVertical) => last[1] - position[1],
@@ -344,6 +371,15 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                     }
                     Some(HomeScrollTarget::ScreenVertical) => {
                         update_screen_scroll(state, delta, viewport);
+                    }
+                    Some(HomeScrollTarget::FolderRow(row)) => {
+                        let max_offset =
+                            fluxa_ui::folder_row_scroll_max(viewport, &state.folder, row);
+                        let offsets = &mut state.folder.row_scroll_offsets;
+                        if offsets.len() <= row {
+                            offsets.resize(row + 1, 0.0);
+                        }
+                        offsets[row] = (offsets[row] + delta).clamp(0.0, max_offset);
                     }
                     Some(HomeScrollTarget::DetailRow(row)) => {
                         let offset = &mut state.detail.row_scroll_offsets[row];
@@ -376,7 +412,8 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                             match state.active_scroll {
                                 Some(
                                     HomeScrollTarget::Horizontal(_)
-                                    | HomeScrollTarget::DetailRow(_),
+                                    | HomeScrollTarget::DetailRow(_)
+                                    | HomeScrollTarget::FolderRow(_),
                                 ) => (first[0] - last[0]) / seconds,
                                 Some(
                                     HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical,

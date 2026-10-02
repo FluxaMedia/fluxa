@@ -52,7 +52,7 @@ pub use poster_overlay::{
 
 pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
-pub use folder::{draw_folder, folder_scroll_max};
+pub use folder::{draw_folder, folder_row_at_y, folder_row_scroll_max, folder_scroll_max};
 pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PlayerModel, PlayerOptions, PlayerPanel, PlayerSource,
