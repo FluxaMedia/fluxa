@@ -14,6 +14,8 @@ use winit::{
 
 #[cfg(target_os = "macos")]
 mod apple_video;
+#[cfg(any(target_os = "linux", target_os = "macos"))]
+mod emoji;
 #[cfg(target_os = "linux")]
 mod mpris;
 #[cfg(any(target_os = "linux", target_os = "windows"))]
@@ -158,6 +160,11 @@ impl ApplicationHandler for App {
                 .as_ref()
                 .map(|directory| directory.join("artwork-cache")),
         );
+        #[cfg(any(target_os = "linux", target_os = "macos"))]
+        {
+            emoji::warm_up();
+            fluxa_host::set_emoji_rasterizer(emoji::rasterize);
+        }
         host.set_form_factor("desktop");
         host.set_platform(std::env::consts::OS);
         host.set_image_picker(Box::new(pick_image));
