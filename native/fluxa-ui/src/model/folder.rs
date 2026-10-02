@@ -45,7 +45,7 @@ pub struct FolderModel {
 
 impl FolderTab {
     pub fn row_title(&self) -> String {
-        if self.type_label.is_empty() {
+        if self.type_label.is_empty() || self.label == self.type_label {
             self.label.clone()
         } else {
             format!("{} - {}", self.label, self.type_label)
