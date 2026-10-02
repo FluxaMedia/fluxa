@@ -264,7 +264,10 @@ fn folder_source_categories(folder_id: &str, resolved: &[Value], addons_json: &s
                         && catalog.get("type").and_then(Value::as_str) == Some(content_type)
                 })
                 .and_then(|catalog| catalog.get("name").and_then(Value::as_str))
-                .unwrap_or(catalog_id);
+                .map(str::trim)
+                .filter(|name| !name.is_empty())
+                .map(capitalize)
+                .unwrap_or_else(|| type_label(content_type));
             let genre = source
                 .get("genre")
                 .and_then(Value::as_str)
@@ -272,7 +275,7 @@ fn folder_source_categories(folder_id: &str, resolved: &[Value], addons_json: &s
                 .filter(|genre| !genre.is_empty() && !genre.eq_ignore_ascii_case("none"));
             let name = match genre {
                 Some(genre) => format!("{name} · {genre}"),
-                None => name.to_owned(),
+                None => name,
             };
             fields.insert("name".to_owned(), json!(name));
             fields.insert("transportUrl".to_owned(), json!(transport_url));
@@ -471,5 +474,21 @@ mod tests {
         assert_eq!(sources[1]["folderId"], "c1.f1");
         assert_eq!(hidden[0]["viewMode"], "ROWS");
         assert_eq!(hidden[0]["showAllTab"], false);
+    }
+}
+
+fn capitalize(text: &str) -> String {
+    let mut chars = text.chars();
+    chars
+        .next()
+        .map(|first| first.to_uppercase().chain(chars).collect())
+        .unwrap_or_default()
+}
+
+fn type_label(content_type: &str) -> String {
+    match content_type.to_ascii_lowercase().as_str() {
+        "movie" => "Movies".to_owned(),
+        "series" => "Series".to_owned(),
+        other => capitalize(other),
     }
 }
