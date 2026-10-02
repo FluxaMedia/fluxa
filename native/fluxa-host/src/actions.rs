@@ -6,6 +6,8 @@ pub(super) fn native_action_for_node(
     library: &LibraryModel,
     library_tab: LibraryTab,
     discover: &DiscoverModel,
+    folder: &FolderModel,
+    folder_tab: usize,
     calendar: &CalendarModel,
     detail: &DetailModel,
     settings: &SettingsModel,
@@ -210,6 +212,12 @@ pub(super) fn native_action_for_node(
                 item: playback_item(
                     &hero.raw,
                     home.resume_for(id),
+    } else if route == Route::Folder {
+        if node == fluxa_ui::NODE_FOLDER_BACK {
+            return Some(NativeAction::Back);
+        }
+        let card = folder.card_at(folder_tab, node.checked_sub(NODE_CARD_BASE)? as usize)?;
+        (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
                     series.then(|| format!("{id}:1:1")),
                 ),
             });
@@ -241,6 +249,11 @@ pub(super) fn native_action_for_node(
 
 pub(super) fn playback_item(
     item: &Value,
+        if card.row_kind == fluxa_ui::HomeRowKind::Collection {
+            return Some(NativeAction::Folder {
+                id: card.id.as_ref()?.clone(),
+            });
+        }
     resume: Option<&HomeCard>,
     first_video: Option<String>,
 ) -> Value {
@@ -399,6 +412,10 @@ pub(super) fn edit_text(
     }
     true
 }
+        _ if route == Route::Settings && fluxa_ui::collection_input(node).is_some() => {
+            &mut state.settings.collection_fields
+                [fluxa_ui::collection_input(node).unwrap_or_default()]
+        }
 
 pub(super) fn focused_text(state: &RendererState) -> Option<String> {
     let node = state.ui.focused()?;
@@ -436,6 +453,9 @@ fn save_left_fields(state: &mut RendererState) {
             continue;
         }
         if let Some(values) = state.settings.values.as_object_mut() {
+        _ if route == Route::Settings && fluxa_ui::collection_input(node).is_some() => {
+            state.settings.collection_fields[fluxa_ui::collection_input(node)?].clone()
+        }
             values.insert(field.key.to_owned(), Value::String(value.clone()));
         }
         state
@@ -469,7 +489,10 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             continue;
         }
         if let Some(node) = node {
-            if shortcuts::activate_node(state, node) || stream_badges::activate_node(state, node) {
+            if shortcuts::activate_node(state, node)
+                || stream_badges::activate_node(state, node)
+                || collections::activate_node(state, node)
+            {
                 continue;
             }
             let request = state
@@ -543,6 +566,16 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                     .checked_sub(fluxa_ui::NODE_SETTINGS_ROW_BASE)
                     .and_then(|index| fluxa_ui::settings_row_by_index(index as usize))
                 && (row.key == "appIcon"
+            if state.route == Route::Folder
+                && node >= fluxa_ui::NODE_FOLDER_TAB_BASE
+                && let index = (node - fluxa_ui::NODE_FOLDER_TAB_BASE) as usize
+                && index < state.folder.tabs.len()
+            {
+                state.folder_tab = index;
+                state.screen_scroll_offsets.remove(&Route::Folder);
+                reset_ui(state);
+                continue;
+            }
                     || logical_viewport(state).is_compact()
                     || logical_viewport(state).is_tv())
                 && !row.options.is_empty()
@@ -654,6 +687,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         }
         if matches!(action, UiAction::Back) {
             if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
+                &state.folder,
+                state.folder_tab,
                 state.calendar.selected_day = None;
                 reset_ui(state);
             } else if state.route == Route::Settings
@@ -753,6 +788,47 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
                     "profile": profile,
                     "language": profile_language(profile),
                     "source": "navigation",
+pub(super) fn folder_commands(
+    snapshot: Option<&Value>,
+    folder_id: &str,
+    profile: &Value,
+) -> Vec<Value> {
+    let mut commands = vec![json!({
+        "type": "navigationRequested",
+        "route": Route::Folder.as_str(),
+        "params": {"folderId": folder_id},
+    })];
+    let categories = snapshot
+        .and_then(|snapshot| snapshot.pointer("/home/categories"))
+        .and_then(Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    for category in categories {
+        let is_source = category.get("type").and_then(Value::as_str)
+            == Some("collection_folder_source")
+            && category.get("folderId").and_then(Value::as_str) == Some(folder_id);
+        let loaded = category
+            .get("items")
+            .and_then(Value::as_array)
+            .is_some_and(|items| !items.is_empty());
+        if !is_source || loaded {
+            continue;
+        }
+        commands.push(json!({
+            "type": "catalogPageRequested",
+            "categoryId": category.get("id"),
+            "transportUrl": category.get("transportUrl"),
+            "contentType": category.get("contentType"),
+            "catalogId": category.get("catalogId"),
+            "skip": 0,
+            "genre": category.get("genre"),
+            "remoteSource": category.get("remoteSource"),
+            "profile": profile,
+        }));
+    }
+    commands
+}
+
                 }),
             ],
             Route::Library => vec![
@@ -761,6 +837,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
             ],
             Route::Discover => vec![
                 navigation(Route::Discover),
+        NativeAction::Folder { .. } => return None,
                 discover_command(profile, "movie", "", "", "", true),
             ],
             Route::Calendar => {
@@ -768,7 +845,6 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
                 vec![
                     navigation(Route::Calendar),
                     json!({"type": "calendarMonthRequested", "profile": profile, "year": year, "month": month, "plannedItems": []}),
-            Route::Shorts => vec![navigation(Route::Shorts)],
                 ]
             }
             Route::Settings => vec![navigation(Route::Settings)],
@@ -789,6 +865,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
             catalog_key,
             extra_name,
             extra_value,
+            Route::Shorts => vec![navigation(Route::Shorts)],
             ..
         } => vec![discover_command(
             profile,
@@ -896,6 +973,17 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         {
             if let Err(error) = session.dispatch(navigation(Route::Discover)) {
                 host_log(format!("core dispatch failed: {error}"));
+        if let NativeAction::Folder { id } = &action {
+            let commands = folder_commands(state.core_snapshot.as_deref(), id, &profile);
+            state.folder_tab = 0;
+            state.screen_scroll_offsets.remove(&Route::Folder);
+            for command in commands {
+                if let Err(error) = session.dispatch(command) {
+                    host_log(format!("core dispatch failed: {error}"));
+                }
+            }
+            continue;
+        }
             }
             continue;
         }

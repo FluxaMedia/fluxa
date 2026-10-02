@@ -130,6 +130,9 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_SETTINGS_SERVER_JELLYFIN => "Jellyfin".to_owned(),
         fluxa_ui::NODE_SETTINGS_SERVER_EMBY => "Emby".to_owned(),
         fluxa_ui::NODE_SETTINGS_SERVER_PLEX => "Plex".to_owned(),
+        id if fluxa_ui::collection_input(id).is_some() => fluxa_ui::collection_input(id)
+            .map(|index| fluxa_ui::localized(fluxa_ui::collection_input_label(index), "en"))
+            .unwrap_or_default(),
         id if fluxa_ui::badge_input(id).is_some() => fluxa_ui::badge_input(id)
             .map(|index| fluxa_ui::localized(fluxa_ui::badge_input_label(index), "en"))
             .unwrap_or_default(),
@@ -278,6 +281,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
             let card = match state.route {
                 Route::Library => state.library.cards(state.library_tab).get(index),
                 Route::Discover => state.discover.results.get(index),
+                Route::Folder => state.folder.card_at(state.folder_tab, index),
                 _ => state.home.card_at(index),
             };
             card.map(|card| card.title.clone())
@@ -395,6 +399,7 @@ pub(super) fn rebuild_ui_from_layout(
                     || fluxa_ui::poster_field(id).is_some()
                     || fluxa_ui::server_input(id).is_some()
                     || fluxa_ui::badge_input(id).is_some()
+                    || fluxa_ui::collection_input(id).is_some()
                 {
                     UiNodeKind::Input
                 } else {
@@ -439,6 +444,7 @@ pub(super) fn rebuild_ui_from_layout(
             .first()
             .map(|_| NODE_CARD_BASE)
             .unwrap_or(fluxa_ui::NODE_DISCOVER_TYPE_BASE),
+        Route::Folder => fluxa_ui::NODE_FOLDER_BACK,
         Route::Calendar => {
             if state.calendar.selected_day.is_some() {
                 fluxa_ui::NODE_CALENDAR_CLOSE_DAY

@@ -27,6 +27,35 @@ pub struct SettingsModel {
     pub badge_packs: Vec<BadgePackRow>,
     pub badge_custom: Vec<BadgeCustomRow>,
     pub badge_status: Option<String>,
+    pub collection_fields: [String; COLLECTION_INPUT_COUNT],
+    pub collections: Vec<CollectionListRow>,
+    pub collection_edit: Option<CollectionEdit>,
+    pub collection_status: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CollectionListRow {
+    pub title: String,
+    pub folders: usize,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct CollectionEdit {
+    pub view_mode: String,
+    pub show_all_tab: bool,
+    pub pin_to_top: bool,
+    pub focus_glow: bool,
+    pub show_on_home: bool,
+    pub folders: Vec<CollectionListRow>,
+    pub folder: Option<FolderEdit>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FolderEdit {
+    pub shape: String,
+    pub hide_title: bool,
+    pub provider: String,
+    pub sources: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -200,5 +229,9 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         badge_packs: Vec::new(),
         badge_custom: Vec::new(),
         badge_status: None,
+        collection_fields: Default::default(),
+        collections: Vec::new(),
+        collection_edit: None,
+        collection_status: None,
     }
 }

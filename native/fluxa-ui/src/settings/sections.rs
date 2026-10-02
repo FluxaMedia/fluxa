@@ -969,7 +969,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 16] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 17] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1046,6 +1046,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 16] = [
         description: "Catalog and metadata preferences",
         rows: &CONTENT_SETTINGS,
         groups: &CONTENT_GROUPS,
+    },
+    SettingsSection {
+        title: "Collections",
+        category: "Content",
+        description: "Folders of catalogs on the home screen",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
     },
     SettingsSection {
         title: "Add-ons",

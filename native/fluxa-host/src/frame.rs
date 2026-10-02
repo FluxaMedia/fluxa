@@ -107,6 +107,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     profiles::poll(state);
     accounts::poll(state);
     stream_badges::poll(state);
+    collections::poll(state);
     player::pump(state);
     player::upload_frame(state);
     timer.mark("player");
@@ -211,6 +212,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
             settings,
             profiles,
             picker_background,
+            folder,
+            folder_tab,
             egui_events,
             shorts,
             modifiers,
@@ -232,6 +235,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 settings,
                 profiles.as_mut(),
                 picker_background.as_deref(),
+                folder,
+                *folder_tab,
                 player_model.as_ref(),
                 shorts,
                 focused,
@@ -272,7 +277,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     player.sources_scroll_max = max;
                 }
                 apply_pointer_results(state, route, &layout);
-                if route == Route::Discover {
+                if matches!(route, Route::Discover | Route::Folder) {
                     for request in &layout.load_more {
                         state
                             .pending_native_actions

@@ -173,6 +173,7 @@ pub(super) fn screen_scroll_max(state: &RendererState, viewport: Viewport) -> f3
             .map_or(0.0, |player| player.sources_scroll_max),
         Route::Library => fluxa_ui::library_scroll_max(viewport, &state.library, state.library_tab),
         Route::Discover => fluxa_ui::discover_scroll_max(viewport, &state.discover),
+        Route::Folder => fluxa_ui::folder_scroll_max(viewport, &state.folder, state.folder_tab),
         Route::Calendar => fluxa_ui::calendar_scroll_max(viewport, &state.calendar),
         Route::Detail => fluxa_ui::detail_scroll_max(viewport, &state.detail),
         Route::Settings => fluxa_ui::settings_scroll_max(viewport, &state.settings),
@@ -582,6 +583,9 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
             }
             if let Some(index) = fluxa_ui::server_input(node) {
                 state.settings.server_fields[index] = value.to_owned();
+            }
+            if let Some(index) = fluxa_ui::collection_input(node) {
+                state.settings.collection_fields[index] = value.to_owned();
             }
             if let Some(index) = fluxa_ui::badge_input(node) {
                 state.settings.badge_fields[index] = value.to_owned();

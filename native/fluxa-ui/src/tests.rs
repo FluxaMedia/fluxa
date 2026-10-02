@@ -1659,3 +1659,22 @@ fn unwatched_episodes_hide_still_and_spoilers() {
     assert!(next.title.is_empty() && next.overview.is_none());
     assert_eq!(detail.episode_view(&episodes[0]).overview, Some("Seen"));
 }
+
+#[test]
+fn folder_all_tab_merges_sources_without_duplicates() {
+    let snapshot = serde_json::json!({
+        "navigation": {"params": {"folderId": "f"}},
+        "home": {"categories": [
+            {"id": "f", "type": "collection_folder", "name": "Folder", "showAllTab": true, "viewMode": "TABBED_GRID"},
+            {"id": "f#0", "type": "collection_folder_source", "folderId": "f", "name": "A", "canLoadMore": false,
+             "items": [{"id": "1", "type": "movie", "name": "One"}, {"id": "2", "type": "movie", "name": "Two"}]},
+            {"id": "f#1", "type": "collection_folder_source", "folderId": "f", "name": "B", "canLoadMore": false,
+             "items": [{"id": "2", "type": "movie", "name": "Two"}, {"id": "3", "type": "movie", "name": "Three"}]}
+        ]}
+    });
+    let folder = folder_model_from_core_snapshot(&snapshot);
+    assert!(folder.has_all_tab);
+    assert_eq!(folder.tabs.len(), 3);
+    assert_eq!(folder.cards(0).len(), 3);
+    assert_eq!(folder.cards(2).len(), 2);
+}

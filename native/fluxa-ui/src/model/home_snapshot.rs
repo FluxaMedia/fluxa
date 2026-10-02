@@ -198,6 +198,12 @@ pub fn home_model_from_core_snapshot(
                 {
                     return None;
                 }
+                if matches!(
+                    category.get("type").and_then(serde_json::Value::as_str),
+                    Some("collection_folder_source")
+                ) {
+                    return None;
+                }
                 let cards = category
                     .get("items")
                     .and_then(serde_json::Value::as_array)?;

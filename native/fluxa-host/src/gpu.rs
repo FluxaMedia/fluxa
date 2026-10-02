@@ -563,6 +563,8 @@ impl Gpu {
         library: &LibraryModel,
         library_tab: LibraryTab,
         discover: &DiscoverModel,
+        folder: &fluxa_ui::FolderModel,
+        folder_tab: usize,
         calendar: &CalendarModel,
         shorts: &fluxa_ui::ShortsModel,
         detail: &DetailModel,
@@ -692,6 +694,15 @@ impl Gpu {
                 );
             } else if route == Route::Discover {
                 rendered_layout = draw_discover(ui.ctx(), viewport, discover, &mut assets, focused);
+            } else if route == Route::Folder {
+                rendered_layout = fluxa_ui::draw_folder(
+                    ui.ctx(),
+                    viewport,
+                    folder,
+                    folder_tab,
+                    &mut assets,
+                    focused,
+                );
             } else if route == Route::Calendar {
                 rendered_layout = draw_calendar(ui.ctx(), viewport, calendar, &mut assets, focused);
             } else if route == Route::Shorts {

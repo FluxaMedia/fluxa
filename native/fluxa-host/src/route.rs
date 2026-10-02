@@ -18,6 +18,7 @@ pub(super) enum Route {
     Calendar,
     Shorts,
     Detail,
+    Folder,
     Settings,
     Profiles,
     Player,
@@ -31,6 +32,7 @@ impl Route {
             "calendar" => Self::Calendar,
             "shorts" => Self::Shorts,
             "detail" => Self::Detail,
+            "folder" => Self::Folder,
             "settings" => Self::Settings,
             "profiles" => Self::Profiles,
             "player" => Self::Player,
@@ -46,6 +48,7 @@ impl Route {
             Self::Calendar => "calendar",
             Self::Shorts => "shorts",
             Self::Detail => "detail",
+            Self::Folder => "folder",
             Self::Settings => "settings",
             Self::Profiles => "profiles",
             Self::Player => "player",
@@ -131,6 +134,9 @@ pub(super) enum NativeAction {
     CalendarMonth {
         year: i32,
         month: i32,
+    },
+    Folder {
+        id: String,
     },
     Back,
     LoadMore {

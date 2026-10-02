@@ -57,6 +57,10 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
         ));
     }
     state.library = projection.library;
+    if state.folder.id != projection.folder.id {
+        state.folder_tab = 0;
+    }
+    state.folder = projection.folder;
     let query = std::mem::take(&mut state.discover.query);
     state.discover = projection.discover;
     state.discover.query = query;
@@ -85,6 +89,10 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     let server_fields = std::mem::take(&mut state.settings.server_fields);
     let badge_fields = std::mem::take(&mut state.settings.badge_fields);
+    let collection_fields = std::mem::take(&mut state.settings.collection_fields);
+    let collections = std::mem::take(&mut state.settings.collections);
+    let collection_edit = state.settings.collection_edit.take();
+    let collection_status = state.settings.collection_status.take();
     let badge_outline = state.settings.badge_outline;
     let badge_status = state.settings.badge_status.take();
     let playback_summary = std::mem::take(&mut state.settings.playback_summary);
@@ -98,6 +106,10 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.search = search;
     state.settings.server_fields = server_fields;
     state.settings.badge_fields = badge_fields;
+    state.settings.collection_fields = collection_fields;
+    state.settings.collections = collections;
+    state.settings.collection_edit = collection_edit;
+    state.settings.collection_status = collection_status;
     state.settings.badge_outline = badge_outline;
     state.settings.badge_status = badge_status;
     shortcuts::refresh(state);

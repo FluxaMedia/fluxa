@@ -3,11 +3,13 @@ use super::*;
 mod account;
 mod addons;
 mod badges;
+mod collections;
 mod model;
 mod sections;
 pub use account::*;
 pub use addons::{addon_action, addon_transport_url, server_index, server_input};
 pub use badges::{badge_input, badge_input_label};
+pub use collections::{collection_input, collection_input_label, collection_view_modes};
 pub use model::*;
 pub use sections::*;
 
@@ -347,6 +349,10 @@ pub(super) fn settings_card_height(
                 + APPEARANCE_GROUP_HEADING_HEIGHT
                 + FIELD_HEIGHT
                 + APPEARANCE_GROUP_GAP
+        }
+        "Collections" => {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+                + collections::collections_height(settings, settings.language())
         }
         "Badges" => groups_height(&groups, rows_metrics) + badges::badges_height(settings, metrics),
         "Add-ons" => {
@@ -1139,6 +1145,15 @@ fn draw_settings_extended_section(
             badges::draw_badges(
                 context, settings, assets, language, rect, top, metrics, layout,
             );
+        "Collections" => collections::draw_collections(
+            context,
+            settings,
+            language,
+            rect,
+            rect.top() + metrics.settings_subpage_header_offset,
+            metrics,
+            layout,
+        ),
         }
         "Add-ons" => addons::draw_addons(
             context,

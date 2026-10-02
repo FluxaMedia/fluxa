@@ -13,6 +13,7 @@ mod components;
 mod detail;
 mod discover;
 mod emoji;
+mod folder;
 pub mod fonts;
 mod home;
 mod layout;
@@ -51,6 +52,7 @@ pub use poster_overlay::{
 
 pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
+pub use folder::{draw_folder, folder_scroll_max};
 pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PlayerModel, PlayerOptions, PlayerPanel, PlayerSource,
@@ -63,12 +65,13 @@ pub use profiles::{
 };
 use settings::settings_card_height;
 pub use settings::{
-    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, POSTER_FIELDS,
-    SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, ShortcutRow, account_source,
-    account_source_state, addon_action, addon_transport_url, badge_input, badge_input_label,
-    category_pages, draw_settings, option_label, poster_field, server_index, server_input,
-    settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
-    settings_row_label,
+    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit,
+    CollectionListRow, FolderEdit, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
+    SettingsSection, ShortcutRow, account_source, account_source_state, addon_action,
+    addon_transport_url, badge_input, badge_input_label, category_pages, collection_input,
+    collection_input_label, collection_view_modes, draw_settings, option_label, poster_field,
+    server_index, server_input, settings_model_from_core_snapshot, settings_page_for_node,
+    settings_row_by_index, settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 

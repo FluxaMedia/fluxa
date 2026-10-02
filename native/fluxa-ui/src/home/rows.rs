@@ -1,7 +1,7 @@
 use super::*;
 
 #[allow(clippy::too_many_arguments)]
-pub(super) fn draw_home_rows(
+pub(crate) fn draw_home_rows(
     context: &egui::Context,
     viewport: Viewport,
     home: &HomeModel,
@@ -87,13 +87,13 @@ pub(super) fn draw_home_rows(
                     Some(label) => format!("{title} - {label}"),
                     None => title.to_owned(),
                 };
-                ui.label(RichText::new(title).size(title_size).strong());
+                ui.add(egui::Label::new(RichText::new(title).size(title_size).strong()).extend());
                 ui.add_space(metrics.control_gap);
             });
         let row_clip = Rect::from_min_max(
-            Pos2::new(margin, visible_y + heading_height),
+            Pos2::new(0.0, visible_y + heading_height),
             Pos2::new(
-                (viewport.width - margin).max(margin),
+                viewport.width,
                 (visible_y + heading_height + body_height).min(viewport.height),
             ),
         );

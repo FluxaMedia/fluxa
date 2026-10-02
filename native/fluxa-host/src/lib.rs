@@ -20,8 +20,8 @@ use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, rasterize_sv
 pub use fluxa_renderer::ui::{GamepadButton, Key};
 use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, UiTree};
 use fluxa_ui::{
-    AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, HomeAssets,
-    HomeCard, HomeHero, HomeLayout, HomeModel, LibraryModel, LibraryTab, PlayerModel,
+    AnimatedTexture, ArtworkPriority, CalendarModel, DetailModel, DiscoverModel, FolderModel,
+    HomeAssets, HomeCard, HomeHero, HomeLayout, HomeModel, LibraryModel, LibraryTab, PlayerModel,
     SettingsModel, UiFormFactorJson, Viewport, draw_calendar, draw_detail, draw_discover,
     draw_home, draw_library, draw_player, draw_settings,
 };
@@ -75,6 +75,7 @@ mod artwork;
 mod bridge_video;
 mod card_menu;
 mod cast;
+mod collections;
 mod events;
 mod frame;
 mod gpu;
@@ -88,8 +89,8 @@ mod profiles;
 mod projection;
 mod route;
 mod shortcuts;
-mod stream_badges;
 mod shorts;
+mod stream_badges;
 mod surface;
 mod sync;
 mod trailer;
@@ -155,6 +156,8 @@ struct RendererState {
     library_list: bool,
     library_downloads: bool,
     discover: DiscoverModel,
+    folder: FolderModel,
+    folder_tab: usize,
     calendar: CalendarModel,
     detail: DetailModel,
     settings: SettingsModel,
@@ -176,6 +179,7 @@ struct RendererState {
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
     shortcut_recording: Option<String>,
+    collections: collections::State,
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     open_url: Option<String>,
@@ -310,6 +314,8 @@ impl FluxaHost {
             library_list: false,
             library_downloads: false,
             discover: DiscoverModel::default(),
+            folder: FolderModel::default(),
+            folder_tab: 0,
             calendar: CalendarModel::default(),
             detail: DetailModel::default(),
             settings: SettingsModel::default(),
@@ -331,6 +337,7 @@ impl FluxaHost {
             video: None,
             fullscreen_toggle: false,
             shortcut_recording: None,
+            collections: Default::default(),
             stream_badges: Default::default(),
             applied_app_icon: None,
             open_url: None,

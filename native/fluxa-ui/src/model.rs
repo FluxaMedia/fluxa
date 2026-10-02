@@ -4,12 +4,14 @@ mod calendar;
 mod cards;
 mod detail;
 mod discover;
+mod folder;
 mod home_snapshot;
 mod library;
 pub use calendar::*;
 pub use cards::*;
 pub use detail::*;
 pub use discover::*;
+pub use folder::*;
 pub use home_snapshot::*;
 pub use library::*;
 

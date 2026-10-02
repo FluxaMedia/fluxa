@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use fluxa_ui::{
-    CalendarModel, DetailModel, DiscoverModel, HomeModel, LibraryModel, LibraryTab, SettingsModel,
-    UiFormFactorJson, detail_model_from_core_snapshot, discover_model_from_core_snapshot,
-    home_model_from_core_snapshot, library_model_from_core_snapshot,
-    refresh_discover_model_from_core_snapshot, settings_model_from_core_snapshot,
+    CalendarModel, DetailModel, DiscoverModel, FolderModel, HomeModel, LibraryModel, LibraryTab,
+    SettingsModel, UiFormFactorJson, detail_model_from_core_snapshot,
+    discover_model_from_core_snapshot, home_model_from_core_snapshot,
+    library_model_from_core_snapshot, refresh_discover_model_from_core_snapshot,
+    settings_model_from_core_snapshot,
 };
 use serde_json::{Value, json};
 
@@ -29,6 +30,7 @@ pub(crate) struct Projection {
     pub home: HomeModel,
     pub library: LibraryModel,
     pub discover: DiscoverModel,
+    pub folder: FolderModel,
     pub calendar: CalendarModel,
     pub detail: DetailModel,
     pub settings: SettingsModel,
@@ -170,6 +172,11 @@ fn project(
         home,
         library,
         discover: discover_cache.project(snapshot),
+        folder: if route == Route::Folder {
+            fluxa_ui::folder_model_from_core_snapshot(snapshot)
+        } else {
+            FolderModel::default()
+        },
         calendar: fluxa_ui::calendar_model_from_core_snapshot(snapshot),
         detail: detail_model_from_core_snapshot(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
