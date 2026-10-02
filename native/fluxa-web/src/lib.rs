@@ -10,7 +10,7 @@ use raw_window_handle::{
     RawDisplayHandle, RawWindowHandle, WebCanvasWindowHandle, WebDisplayHandle,
 };
 use wasm_bindgen::{JsCast, JsValue, prelude::*};
-use web_sys::{HtmlCanvasElement, KeyboardEvent, PointerEvent, WheelEvent};
+use web_sys::{HtmlCanvasElement, HtmlInputElement, KeyboardEvent, PointerEvent, WheelEvent};
 
 struct CanvasHandle(NonNull<c_void>);
 
@@ -122,6 +122,34 @@ impl FluxaWeb {
         self.host
             .take_actions_json()
             .filter(|actions| actions != "[]")
+    }
+
+    pub fn accessibility_json(&self) -> Option<String> {
+        self.host.accessibility_json()
+    }
+
+    pub fn focus_node(&self, node: f64) {
+        self.host.focus_node(node as u64);
+    }
+
+    pub fn activate_node(&self, node: f64) {
+        self.host.activate_node(node as u64);
+    }
+
+    pub fn text_input_focused(&self) -> bool {
+        self.host.text_input_focused()
+    }
+
+    pub fn focused_text(&self) -> Option<String> {
+        self.host.focused_text()
+    }
+
+    pub fn set_focused_text(&self, text: &str) {
+        self.host.set_focused_text(text);
+    }
+
+    pub fn media_command(&self, command: &str, value: f64) {
+        self.host.media_command(command, value);
     }
 
     pub fn take_app_icon_svg(&self) -> Option<String> {
@@ -245,6 +273,17 @@ impl FluxaWeb {
             let Ok(event) = event.dyn_into::<KeyboardEvent>() else {
                 return;
             };
+            let in_field = event
+                .target()
+                .is_some_and(|target| target.dyn_ref::<HtmlInputElement>().is_some());
+            if in_field {
+                if matches!(event.key().as_str(), "Enter" | "Escape")
+                    && let Some(input) = key_input(&event)
+                {
+                    host.key_down(input);
+                }
+                return;
+            }
             host.set_modifiers(egui::Modifiers {
                 alt: event.alt_key(),
                 ctrl: event.ctrl_key(),

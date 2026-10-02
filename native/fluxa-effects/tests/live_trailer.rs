@@ -18,7 +18,8 @@ fn settle(session: &SessionHandle) {
 }
 
 fn resolve(video_id: &str, max_height: u32) -> Value {
-    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR")).join(format!("live-trailer-{video_id}-{max_height}"));
+    let dir = PathBuf::from(env!("CARGO_TARGET_TMPDIR"))
+        .join(format!("live-trailer-{video_id}-{max_height}"));
     let _ = std::fs::remove_dir_all(&dir);
     let session = SessionHandle::open(Storage::open(dir).expect("storage")).expect("session");
     session
@@ -43,7 +44,15 @@ fn live_trailers_resolve_to_1080p_with_separate_audio() {
     for id in ["dQw4w9WgXcQ"] {
         let resolution = resolve(id, 1080);
         println!("RES {resolution}");
-        assert!(resolution["streamUrl"].as_str().is_some_and(|url| url.starts_with("https://")), "{id}: {resolution}");
-        assert!(resolution["audioUrl"].as_str().is_some(), "{id}: {resolution}");
+        assert!(
+            resolution["streamUrl"]
+                .as_str()
+                .is_some_and(|url| url.starts_with("https://")),
+            "{id}: {resolution}"
+        );
+        assert!(
+            resolution["audioUrl"].as_str().is_some(),
+            "{id}: {resolution}"
+        );
     }
 }

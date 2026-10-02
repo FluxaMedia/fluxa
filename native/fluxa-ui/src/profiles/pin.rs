@@ -55,7 +55,7 @@ pub(super) fn draw_pin_prompt(
                 &mut pin,
                 &t("profiles.enter_pin"),
                 width,
-                true,
+                components::InputKind::Number { secret: true },
                 metrics,
             );
             if !field.has_focus() && pin.is_empty() {

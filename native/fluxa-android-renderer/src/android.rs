@@ -290,6 +290,15 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_snapshot
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_accessibilityTreeNative(
+    env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jstring {
+    java_string(&env, host(handle).and_then(FluxaHost::accessibility_json))
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pollActionsNative(
     env: JNIEnv<'_>,
     _class: JClass<'_>,

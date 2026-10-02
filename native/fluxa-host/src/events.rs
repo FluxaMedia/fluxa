@@ -178,13 +178,39 @@ impl FluxaHost {
 
     pub fn text_input_focused(&self) -> bool {
         self.with_state(|state| {
-            state
-                .ui
-                .focused()
-                .and_then(|node| state.ui.node(node))
-                .is_some_and(|node| node.kind == UiNodeKind::Input)
+            state.access.field.is_some()
+                || state
+                    .ui
+                    .focused()
+                    .and_then(|node| state.ui.node(node))
+                    .is_some_and(|node| node.kind == UiNodeKind::Input)
         })
         .unwrap_or(false)
+    }
+
+    pub fn caret_bounds(&self) -> Option<[f32; 4]> {
+        self.with_state(|state| state.access.caret).flatten()
+    }
+
+    pub fn focused_bounds(&self) -> Option<[f32; 4]> {
+        self.with_state(|state| {
+            if let Some(field) = &state.access.field {
+                return Some([
+                    field.rect.min.x,
+                    field.rect.min.y,
+                    field.rect.width(),
+                    field.rect.height(),
+                ]);
+            }
+            let node = state.ui.node(state.ui.focused()?)?;
+            Some([
+                node.bounds.x,
+                node.bounds.y,
+                node.bounds.width,
+                node.bounds.height,
+            ])
+        })
+        .flatten()
     }
 
     pub fn blur_text_input(&self) {
@@ -220,13 +246,36 @@ impl FluxaHost {
     }
 
     pub fn focused_text(&self) -> Option<String> {
-        self.with_state(|state| actions::focused_text(state))
-            .flatten()
+        self.with_state(|state| match &state.access.field {
+            Some(field) => Some(field.text.clone()),
+            None => actions::focused_text(state),
+        })
+        .flatten()
     }
 
     pub fn set_focused_text(&self, text: &str) {
         self.with_state(|state| {
-            if let Some(node) = state.ui.focused() {
+            if state.access.field.is_some() {
+                let ctrl = egui::Modifiers::COMMAND;
+                state.egui_events.push(egui::Event::Key {
+                    key: egui::Key::A,
+                    physical_key: None,
+                    pressed: true,
+                    repeat: false,
+                    modifiers: ctrl,
+                });
+                state.egui_events.push(if text.is_empty() {
+                    egui::Event::Key {
+                        key: egui::Key::Backspace,
+                        physical_key: None,
+                        pressed: true,
+                        repeat: false,
+                        modifiers: egui::Modifiers::NONE,
+                    }
+                } else {
+                    egui::Event::Text(text.to_owned())
+                });
+            } else if let Some(node) = state.ui.focused() {
                 actions::edit_text(state, node, |value| *value = text.to_owned());
             }
         });

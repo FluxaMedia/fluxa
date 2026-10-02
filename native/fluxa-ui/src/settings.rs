@@ -647,6 +647,7 @@ fn settings_panel_input(
                 hint.as_ref(),
                 rect.size(),
                 metrics.settings_row_value_size_desktop,
+                components::input_kind(id),
                 metrics,
             );
             layout.focusable.push((id, response.rect));

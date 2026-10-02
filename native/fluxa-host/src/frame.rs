@@ -264,6 +264,11 @@ pub(super) fn render_frame(state: &mut RendererState) {
             Ok(frame) => {
                 state.cursor = frame.cursor;
                 state.wants_keyboard = frame.wants_keyboard;
+                state.access = AccessFrame {
+                    runs: frame.text_runs,
+                    field: frame.field,
+                    caret: frame.caret,
+                };
                 state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
                 let mut layout = frame.layout;
                 if let Some(outcome) = frame.menu_outcome {

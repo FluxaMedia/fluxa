@@ -88,6 +88,14 @@ mod presence;
 mod profiles;
 mod projection;
 mod route;
+mod semantics;
+
+#[derive(Default)]
+struct AccessFrame {
+    runs: Vec<gpu::TextRun>,
+    field: Option<fluxa_ui::FocusedField>,
+    caret: Option<[f32; 4]>,
+}
 mod shortcuts;
 mod shorts;
 mod stream_badges;
@@ -112,6 +120,7 @@ pub use player::{
     DeviceOpener, PlaybackStats, Thumbnail, TrackSelection, VideoBackend, VideoCommand,
     VideoStatus, VideoTrack,
 };
+pub use semantics::{AccessNode, AccessTree, Role};
 
 static GPU_WAIT_LOGS: AtomicU32 = AtomicU32::new(0);
 static HOME_SYNC_LOGS: AtomicU32 = AtomicU32::new(0);
@@ -172,6 +181,7 @@ struct RendererState {
     mouse_position: Option<Pos2>,
     cursor: egui::CursorIcon,
     wants_keyboard: bool,
+    access: AccessFrame,
     redraw_at: Option<Instant>,
     focus_hint: Option<(Route, u64)>,
     player: Option<player::PlayerSession>,
@@ -330,6 +340,7 @@ impl FluxaHost {
             mouse_position: None,
             cursor: egui::CursorIcon::Default,
             wants_keyboard: false,
+            access: AccessFrame::default(),
             redraw_at: Some(Instant::now()),
             focus_hint: None,
             player: None,
@@ -418,6 +429,21 @@ impl FluxaHost {
             sync_home_from_core_snapshot(state);
             reset_ui(state);
         });
+    }
+
+    pub fn accessibility_tree(&self) -> Option<semantics::AccessTree> {
+        self.with_state(|state| {
+            if let Some(gpu) = state.gpu.as_mut() {
+                gpu.collect_text = true;
+            }
+            rebuild_current_ui(state);
+            semantics::tree(state)
+        })
+    }
+
+    pub fn accessibility_json(&self) -> Option<String> {
+        self.accessibility_tree()
+            .and_then(|tree| serde_json::to_string(&tree).ok())
     }
 
     pub fn snapshot_json(&self) -> Option<String> {

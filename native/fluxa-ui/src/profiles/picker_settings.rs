@@ -40,7 +40,7 @@ pub(super) fn draw_picker_settings(
                         &mut model.background_input,
                         &t("profiles.picker_background_placeholder"),
                         field_width,
-                        false,
+                        components::InputKind::Url,
                         metrics,
                     );
                     if field.lost_focus() {
@@ -106,7 +106,7 @@ pub(super) fn draw_picker_settings(
                         &mut model.repository_input,
                         &t("profiles.avatar_pack_repository_placeholder"),
                         field_width,
-                        false,
+                        components::InputKind::Url,
                         metrics,
                     );
                     let submit =

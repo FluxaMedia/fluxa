@@ -311,7 +311,10 @@ impl EffectExecutor {
 
 impl EffectExecutor {
     async fn effective_collections(&self, profile: &Value, prefs: &Value) -> Option<Value> {
-        if let Some(local) = prefs.get("libraryCollections").filter(|value| value.is_array()) {
+        if let Some(local) = prefs
+            .get("libraryCollections")
+            .filter(|value| value.is_array())
+        {
             return Some(local.clone());
         }
         if let Ok(Some(session)) = self.nuvio_session(profile).await

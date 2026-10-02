@@ -17,6 +17,10 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     nonisolated(unsafe) private var controllerObservers: [NSObjectProtocol] = []
 
     private var metalLayer: CAMetalLayer { layer as! CAMetalLayer }
+    private var accessNodes: [FluxaAccessNode] = []
+    private var accessFocused: UInt64?
+    private var accessSignature = ""
+    private var accessTicks = 0
 
     override init(frame: CGRect) {
         let cacheDir = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first?
@@ -102,6 +106,10 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     @objc private func tick() {
         video.tick()
         fluxa_renderer_render(renderer)
+        accessTicks += 1
+        if accessTicks % 15 == 0, UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning {
+            refreshAccessibility()
+        }
         if let actions = take(fluxa_renderer_poll_actions(renderer)), actions != "[]" {
             onActions?(actions)
         }
@@ -180,6 +188,118 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
     #endif
 
     override var canBecomeFirstResponder: Bool { true }
+
+    override var isAccessibilityElement: Bool {
+        get { false }
+        set {}
+    }
+
+    override var accessibilityElements: [Any]? {
+        get {
+            if accessNodes.isEmpty { refreshAccessibility() }
+            return accessNodes.map { element(for: $0) }
+        }
+        set {}
+    }
+
+    private var focusedAccessNode: FluxaAccessNode? {
+        accessNodes.first { $0.id == accessFocused && $0.isTextInput }
+    }
+
+    var keyboardType: UIKeyboardType {
+        get {
+            switch focusedAccessNode?.role {
+            case "url_input": return .URL
+            case "search_input": return .webSearch
+            case "number_input": return .numberPad
+            default: return .default
+            }
+        }
+        set {}
+    }
+
+    var isSecureTextEntry: Bool {
+        get { focusedAccessNode?.role == "password_input" }
+        set {}
+    }
+
+    var returnKeyType: UIReturnKeyType {
+        get {
+            switch focusedAccessNode?.role {
+            case "search_input": return .search
+            case "multiline_input": return .default
+            default: return .done
+            }
+        }
+        set {}
+    }
+
+    var autocorrectionType: UITextAutocorrectionType {
+        get { .no }
+        set {}
+    }
+
+    var autocapitalizationType: UITextAutocapitalizationType {
+        get { .none }
+        set {}
+    }
+
+    private func refreshAccessibility() {
+        guard let json = take(fluxa_renderer_accessibility_tree(renderer)), json != accessSignature,
+              let data = json.data(using: .utf8),
+              let tree = try? JSONDecoder().decode(FluxaAccessTree.self, from: data) else { return }
+        let structureChanged = tree.nodes.map(\.id) != accessNodes.map(\.id)
+        let focusChanged = tree.focused != accessFocused
+        accessSignature = json
+        accessNodes = tree.nodes
+        accessFocused = tree.focused
+        guard UIAccessibility.isVoiceOverRunning else { return }
+        if structureChanged {
+            UIAccessibility.post(notification: .layoutChanged, argument: nil)
+        } else if focusChanged, let focused = tree.focused,
+                  let node = accessNodes.first(where: { $0.id == focused }) {
+            UIAccessibility.post(notification: .layoutChanged, argument: element(for: node))
+        }
+    }
+
+    private func element(for node: FluxaAccessNode) -> UIAccessibilityElement {
+        let element = FluxaAccessElement(accessibilityContainer: self)
+        element.node = node
+        element.owner = self
+        element.accessibilityLabel = node.label
+        element.accessibilityValue = node.value
+        element.accessibilityFrameInContainerSpace = CGRect(
+            x: node.bounds[0], y: node.bounds[1], width: node.bounds[2], height: node.bounds[3]
+        )
+        var traits: UIAccessibilityTraits = node.isTextInput ? [] : .button
+        if node.role == "text" { traits = .staticText }
+        if node.role == "heading" { traits = [.staticText, .header] }
+        if node.role == "search_input" { traits.insert(.searchField) }
+        if node.role == "slider" { traits = .adjustable }
+        if node.selected || node.checked == true { traits.insert(.selected) }
+        element.accessibilityTraits = traits
+        if node.role == "switch" {
+            element.accessibilityValue = node.checked == true ? "1" : "0"
+        }
+        return element
+    }
+
+    fileprivate func activate(_ node: FluxaAccessNode) {
+        if node.isStatic { return }
+        fluxa_renderer_focus_node(renderer, node.id)
+        if node.isTextInput {
+            becomeFirstResponder()
+            reloadInputViews()
+        } else {
+            fluxa_renderer_activate_node(renderer, node.id)
+        }
+    }
+
+    fileprivate func seek(by seconds: Double, from node: FluxaAccessNode) {
+        guard let range = node.range else { return }
+        let target = min(max(range[2] + seconds, range[0]), range[1])
+        pushAction("{\"type\":\"mediaCommand\",\"command\":\"seekTo\",\"value\":\(target)}")
+    }
 
     var hasText: Bool { true }
 
@@ -272,5 +392,47 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
             guard pressed else { return }
             MainActor.assumeIsolated { self?.key(FLUXA_GAMEPAD_SELECT) }
         }
+    }
+}
+
+struct FluxaAccessNode: Decodable {
+    let id: UInt64
+    let role: String
+    let label: String
+    let value: String?
+    let checked: Bool?
+    let selected: Bool
+    let bounds: [Double]
+    let range: [Double]?
+
+    var isTextInput: Bool { role.hasSuffix("_input") }
+    var isStatic: Bool { role == "text" || role == "heading" }
+}
+
+struct FluxaAccessTree: Decodable {
+    let nodes: [FluxaAccessNode]
+    let focused: UInt64?
+    let caret: [Double]?
+    let selection: [Int]?
+}
+
+final class FluxaAccessElement: UIAccessibilityElement {
+    var node: FluxaAccessNode?
+    weak var owner: FluxaNativeRendererView?
+
+    override func accessibilityActivate() -> Bool {
+        guard let node, let owner else { return false }
+        MainActor.assumeIsolated { owner.activate(node) }
+        return true
+    }
+
+    override func accessibilityIncrement() {
+        guard let node, let owner else { return }
+        MainActor.assumeIsolated { owner.seek(by: 10, from: node) }
+    }
+
+    override func accessibilityDecrement() {
+        guard let node, let owner else { return }
+        MainActor.assumeIsolated { owner.seek(by: -10, from: node) }
     }
 }

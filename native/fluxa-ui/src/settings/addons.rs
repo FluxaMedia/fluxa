@@ -830,7 +830,7 @@ pub(super) fn draw_servers(
                     &mut value,
                     &localized(hints[index], language),
                     field.width(),
-                    index == 2,
+                    components::input_kind(*node),
                     metrics,
                 );
                 layout.focusable.push((*node, response.rect));

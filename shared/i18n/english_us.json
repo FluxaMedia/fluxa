@@ -3125,5 +3125,11 @@
   "collections.status_exported": "Exported to the text field above",
   "collections.status_save_failed": "Could not save collections",
   "settings.section.collections": "Collections",
-  "settings.section.collections.description": "Folders of catalogs on the home screen"
+  "settings.section.collections.description": "Folders of catalogs on the home screen",
+  "a11y.seek": "Seek",
+  "a11y.rewind": "Rewind 10 seconds",
+  "a11y.forward": "Forward 10 seconds",
+  "a11y.next_episode": "Next episode",
+  "a11y.previous_episode": "Previous episode",
+  "a11y.text_field": "Text field"
 }

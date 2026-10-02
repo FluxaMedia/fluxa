@@ -123,7 +123,7 @@ pub(super) fn form_details(
                 &mut model.draft.name,
                 &t("profiles.name_placeholder"),
                 field_width,
-                false,
+                components::InputKind::Text,
                 metrics,
             );
             if model.duplicate_name() {
@@ -136,8 +136,15 @@ pub(super) fn form_details(
             } else {
                 t("profiles.pin_placeholder")
             };
-            if components::text_input(ui, &mut model.draft.pin, &hint, field_width, true, metrics)
-                .changed()
+            if components::text_input(
+                ui,
+                &mut model.draft.pin,
+                &hint,
+                field_width,
+                components::InputKind::Number { secret: true },
+                metrics,
+            )
+            .changed()
             {
                 model
                     .draft

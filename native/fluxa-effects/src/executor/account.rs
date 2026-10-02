@@ -74,7 +74,13 @@ impl EffectExecutor {
         let expires_at = profile
             .get("nuvioTokenExpiresAt")
             .and_then(Value::as_i64)
-            .map(|value| if value > 100_000_000_000 { value / 1000 } else { value })
+            .map(|value| {
+                if value > 100_000_000_000 {
+                    value / 1000
+                } else {
+                    value
+                }
+            })
             .unwrap_or_default();
         if expires_at <= chrono_unix_seconds() + 60
             && let Some(refresh_token) = profile

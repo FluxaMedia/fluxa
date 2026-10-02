@@ -246,4 +246,3 @@ fn clearing_progress_removes_the_continue_watching_entry() {
 
     assert_eq!(app.at("/library/savedPlaybackProgress"), Value::Null);
 }
-

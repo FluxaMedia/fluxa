@@ -49,6 +49,7 @@ void fluxa_renderer_set_form_factor(const FluxaRenderer *renderer, const char *f
 void fluxa_renderer_set_home_state(const FluxaRenderer *renderer, const char *json);
 void fluxa_renderer_set_core_snapshot(const FluxaRenderer *renderer, const char *json);
 char *fluxa_renderer_snapshot(const FluxaRenderer *renderer);
+char *fluxa_renderer_accessibility_tree(const FluxaRenderer *renderer);
 char *fluxa_renderer_poll_actions(const FluxaRenderer *renderer);
 char *fluxa_renderer_take_app_icon(const FluxaRenderer *renderer);
 char *fluxa_renderer_take_open_url(const FluxaRenderer *renderer);

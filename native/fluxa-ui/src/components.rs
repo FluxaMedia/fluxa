@@ -538,23 +538,88 @@ pub(super) fn empty_state(
     );
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum InputKind {
+    #[default]
+    Text,
+    Search,
+    Password,
+    Url,
+    Number {
+        secret: bool,
+    },
+    Multiline,
+}
+
+impl InputKind {
+    pub fn secret(self) -> bool {
+        matches!(self, Self::Password | Self::Number { secret: true })
+    }
+}
+
+pub fn input_kind(node: u64) -> InputKind {
+    match node {
+        super::NODE_LIBRARY_SEARCH | super::NODE_DISCOVER_SEARCH | super::NODE_SETTINGS_SEARCH => {
+            InputKind::Search
+        }
+        super::NODE_SETTINGS_SERVER_PASSWORD => InputKind::Password,
+        super::NODE_SETTINGS_ADDON_URL
+        | super::NODE_SETTINGS_PLUGIN_URL
+        | super::NODE_SETTINGS_SERVER_ADDRESS
+        | super::NODE_SETTINGS_POSTER_URL => InputKind::Url,
+        _ if super::collection_input(node) == Some(0) || super::badge_input(node) == Some(0) => {
+            InputKind::Multiline
+        }
+        _ => InputKind::Text,
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct FocusedField {
+    pub kind: InputKind,
+    pub rect: Rect,
+    pub text: String,
+    pub hint: String,
+    pub selection: [usize; 2],
+}
+
+const CARET_FOCUS: &str = "fluxa-input-caret";
+const CARET_RECT: &str = "fluxa-caret-rect";
+const FOCUSED_FIELD: &str = "fluxa-focused-field";
+
 pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
-    context.data_mut(|data| data.insert_temp(Id::new("fluxa-input-caret"), rect));
+    context.data_mut(|data| {
+        data.insert_temp(Id::new(CARET_FOCUS), rect);
+        data.remove::<Rect>(Id::new(CARET_RECT));
+        data.remove::<FocusedField>(Id::new(FOCUSED_FIELD));
+    });
+}
+
+pub fn caret_rect(context: &egui::Context) -> Option<Rect> {
+    context.data(|data| data.get_temp::<Rect>(Id::new(CARET_RECT)))
+}
+
+pub fn focused_field(context: &egui::Context) -> Option<FocusedField> {
+    context.data(|data| data.get_temp::<FocusedField>(Id::new(FOCUSED_FIELD)))
+}
+
+fn record_caret(ui: &Ui, caret: Rect) {
+    ui.ctx()
+        .data_mut(|data| data.insert_temp(Id::new(CARET_RECT), caret));
+}
+
+fn record_field(ui: &Ui, field: FocusedField) {
+    ui.ctx()
+        .data_mut(|data| data.insert_temp(Id::new(FOCUSED_FIELD), field));
 }
 
 fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) {
     let focused = ui
         .ctx()
-        .data(|data| data.get_temp::<Option<Rect>>(Id::new("fluxa-input-caret")))
+        .data(|data| data.get_temp::<Option<Rect>>(Id::new(CARET_FOCUS)))
         .flatten()
         .is_some_and(|rect| field.contains(rect.center()));
     if !focused {
-        return;
-    }
-    let millis = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |elapsed| elapsed.as_millis());
-    if millis / 530 % 2 == 1 {
         return;
     }
     let width = ui
@@ -564,12 +629,51 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
         .x;
     let x = (text_rect.left() + width + 1.0).min(text_rect.right());
     let half = font.size * 0.62;
+    record_caret(
+        ui,
+        Rect::from_min_max(
+            Pos2::new(x, text_rect.center().y - half),
+            Pos2::new(x + 1.6, text_rect.center().y + half),
+        ),
+    );
+    let millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |elapsed| elapsed.as_millis());
+    if millis / 530 % 2 == 1 {
+        return;
+    }
     ui.painter().line_segment(
         [
             egui::Pos2::new(x, text_rect.center().y - half),
             egui::Pos2::new(x, text_rect.center().y + half),
         ],
         egui::Stroke::new(1.6, Color32::WHITE),
+    );
+}
+
+fn record_native_focus(
+    ui: &Ui,
+    output: &egui::text_edit::TextEditOutput,
+    kind: InputKind,
+    value: &str,
+    hint: &str,
+) {
+    if !output.response.has_focus() {
+        return;
+    }
+    let range = output.cursor_range.unwrap_or_default();
+    let [start, end] = [range.primary.index, range.secondary.index];
+    let caret = output.galley.pos_from_cursor(range.primary);
+    record_caret(ui, caret.translate(output.galley_pos.to_vec2()));
+    record_field(
+        ui,
+        FocusedField {
+            kind,
+            rect: output.response.response.rect,
+            text: value.to_owned(),
+            hint: hint.to_owned(),
+            selection: [start.min(end), start.max(end)],
+        },
     );
 }
 
@@ -600,7 +704,8 @@ pub(super) fn search_field(
         egui::Pos2::new(rect.left() + radius + 16.0, rect.top()),
         egui::Pos2::new(rect.right() - radius * 0.6, rect.bottom()),
     );
-    let response = ui.put(
+    let output = put_edit(
+        ui,
         text_rect,
         egui::TextEdit::singleline(query)
             .frame(egui::Frame::NONE)
@@ -610,6 +715,8 @@ pub(super) fn search_field(
             .text_color(Color32::WHITE)
             .margin(Vec2::ZERO),
     );
+    record_native_focus(ui, &output, InputKind::Search, query, hint);
+    let response = output.response.response.clone();
     paint_caret(
         ui,
         rect,
@@ -627,15 +734,24 @@ pub(super) fn search_field(
     response
 }
 
+fn put_edit(ui: &mut Ui, rect: Rect, edit: egui::TextEdit<'_>) -> egui::text_edit::TextEditOutput {
+    let layout = *ui.layout();
+    ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(layout), |ui| {
+        edit.show(ui)
+    })
+    .inner
+}
+
 pub(super) fn text_field(
     ui: &mut Ui,
     value: &mut String,
     hint: &str,
     size: Vec2,
     font_size: f32,
+    kind: InputKind,
     metrics: UiMetrics,
 ) -> Response {
-    text_edit(ui, value, hint, size, font_size, false, metrics)
+    text_edit(ui, value, hint, size, font_size, kind, metrics)
 }
 
 pub(super) fn text_input(
@@ -643,18 +759,10 @@ pub(super) fn text_input(
     value: &mut String,
     hint: &str,
     width: f32,
-    password: bool,
+    kind: InputKind,
     metrics: UiMetrics,
 ) -> Response {
-    text_edit(
-        ui,
-        value,
-        hint,
-        Vec2::new(width, 44.0),
-        14.0,
-        password,
-        metrics,
-    )
+    text_edit(ui, value, hint, Vec2::new(width, 44.0), 14.0, kind, metrics)
 }
 
 fn text_edit(
@@ -663,7 +771,7 @@ fn text_edit(
     hint: &str,
     size: Vec2,
     font_size: f32,
-    password: bool,
+    kind: InputKind,
     metrics: UiMetrics,
 ) -> Response {
     let radius = size.y * 0.5;
@@ -671,18 +779,25 @@ fn text_edit(
     ui.painter()
         .rect_filled(rect, radius, Color32::from_white_alpha(10));
     let text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
-    let response = ui.put(
-        text_rect,
+    let edit = if kind == InputKind::Multiline {
+        egui::TextEdit::multiline(value).desired_rows(1)
+    } else {
         egui::TextEdit::singleline(value)
-            .frame(egui::Frame::NONE)
-            .password(password)
+    };
+    let output = put_edit(
+        ui,
+        text_rect,
+        edit.frame(egui::Frame::NONE)
+            .password(kind.secret())
             .font(FontId::proportional(font_size))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(Color32::WHITE)
             .margin(Vec2::ZERO),
     );
-    let shown = if password {
+    record_native_focus(ui, &output, kind, value, hint);
+    let response = output.response.response.clone();
+    let shown = if kind.secret() {
         "\u{2022}".repeat(value.chars().count())
     } else {
         value.clone()

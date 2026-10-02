@@ -40,8 +40,9 @@ use paint::*;
 
 pub use calendar::draw_calendar;
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, Glass, action_menu_layout,
-    draw_action_menu, is_text_node, set_input_caret, set_liquid_glass,
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, FocusedField, Glass, InputKind,
+    action_menu_layout, caret_rect, draw_action_menu, focused_field, input_kind, is_text_node,
+    set_input_caret, set_liquid_glass,
 };
 pub use motion::page_transition;
 pub use poster_overlay::{

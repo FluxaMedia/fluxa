@@ -44,12 +44,74 @@ pub(super) struct Gpu {
     started_at: Instant,
     pub(super) density: f32,
     adapter_name: String,
+    pub(super) collect_text: bool,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct TextRun {
+    pub(super) text: String,
+    pub(super) rect: [f32; 4],
+    pub(super) size: f32,
+}
+
+fn collect_text_runs(shapes: &[egui::epaint::ClippedShape], viewport: egui::Rect) -> Vec<TextRun> {
+    fn visit(shape: &egui::epaint::Shape, clip: egui::Rect, out: &mut Vec<TextRun>) {
+        match shape {
+            egui::epaint::Shape::Vec(shapes) => {
+                shapes.iter().for_each(|shape| visit(shape, clip, out))
+            }
+            egui::epaint::Shape::Text(text) => {
+                let galley = &text.galley;
+                let string = galley.text().trim();
+                if string.is_empty() || text.opacity_factor < 0.05 {
+                    return;
+                }
+                let hidden = text.override_text_color.is_none()
+                    && galley
+                        .job
+                        .sections
+                        .iter()
+                        .all(|section| section.format.color.a() == 0);
+                if hidden {
+                    return;
+                }
+                let rect = galley.rect.translate(text.pos.to_vec2());
+                let visible = rect.intersect(clip);
+                if visible.width() < 2.0 || visible.height() < 2.0 {
+                    return;
+                }
+                let size = galley
+                    .job
+                    .sections
+                    .first()
+                    .map_or(14.0, |section| section.format.font_id.size);
+                out.push(TextRun {
+                    text: string.to_owned(),
+                    rect: [rect.min.x, rect.min.y, rect.width(), rect.height()],
+                    size,
+                });
+            }
+            _ => {}
+        }
+    }
+    let mut runs = Vec::new();
+    for clipped in shapes {
+        visit(
+            &clipped.shape,
+            clipped.clip_rect.intersect(viewport),
+            &mut runs,
+        );
+    }
+    runs
 }
 
 pub(super) struct FrameOutput {
     pub(super) layout: HomeLayout,
     pub(super) cursor: egui::CursorIcon,
     pub(super) wants_keyboard: bool,
+    pub(super) text_runs: Vec<TextRun>,
+    pub(super) field: Option<fluxa_ui::FocusedField>,
+    pub(super) caret: Option<[f32; 4]>,
     pub(super) repaint_delay: Duration,
     pub(super) menu_outcome: Option<fluxa_ui::ActionMenuOutcome>,
 }
@@ -519,6 +581,7 @@ impl Gpu {
             started_at: Instant::now(),
             density,
             adapter_name,
+            collect_text: false,
         })
     }
 
@@ -738,6 +801,17 @@ impl Gpu {
             }
         });
         timer.mark("draw");
+        let text_runs = if self.collect_text {
+            collect_text_runs(
+                &output.shapes,
+                egui::Rect::from_min_size(
+                    egui::Pos2::ZERO,
+                    egui::vec2(logical_size[0] as f32, logical_size[1] as f32),
+                ),
+            )
+        } else {
+            Vec::new()
+        };
         let paint_jobs = self
             .egui_context
             .tessellate(output.shapes, output.pixels_per_point);
@@ -800,6 +874,10 @@ impl Gpu {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,
             wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
+            text_runs,
+            field: fluxa_ui::focused_field(&self.egui_context),
+            caret: fluxa_ui::caret_rect(&self.egui_context)
+                .map(|rect| [rect.min.x, rect.min.y, rect.width(), rect.height()]),
             repaint_delay: output
                 .viewport_output
                 .get(&egui::ViewportId::ROOT)

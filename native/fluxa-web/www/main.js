@@ -1,3 +1,4 @@
+import { mountAccessibility } from "./a11y.js";
 import init, { FluxaWeb } from "./pkg/fluxa_web.js";
 
 const webos = /web0s|webos/i.test(navigator.userAgent);
@@ -19,12 +20,18 @@ const webgpu = Boolean(navigator.gpu && (await navigator.gpu.requestAdapter().ca
 
 await init();
 const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, imageProxy);
+const syncAccessibility = mountAccessibility(app, document.getElementById("fluxa"), document.getElementById("a11y"));
 addEventListener("resize", () => app.resize());
 
 const actionHandlers = [];
 window.fluxaOnAction = (handler) => actionHandlers.push(handler);
 
-const tick = () => {
+let accessAt = 0;
+const tick = (now) => {
+  if (now - accessAt > 250) {
+    accessAt = now;
+    syncAccessibility();
+  }
   const actions = app.frame();
   if (actions) {
     for (const action of JSON.parse(actions)) {

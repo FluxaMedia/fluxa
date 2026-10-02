@@ -69,7 +69,12 @@ fn serve(
         .lines()
         .find_map(|line| line.strip_prefix("range: bytes="))
         .and_then(|value| value.split_once('-'))
-        .map(|(start, end)| (start.trim().parse::<u64>().ok(), end.trim().parse::<u64>().ok()));
+        .map(|(start, end)| {
+            (
+                start.trim().parse::<u64>().ok(),
+                end.trim().parse::<u64>().ok(),
+            )
+        });
     let (start, end) = match range {
         Some((Some(start), end)) => (start, end.unwrap_or(length - 1).min(length - 1)),
         _ => (0, length - 1),
@@ -82,7 +87,11 @@ fn serve(
             .as_bytes(),
         );
     }
-    let status = if range.is_some() { "206 Partial Content" } else { "200 OK" };
+    let status = if range.is_some() {
+        "206 Partial Content"
+    } else {
+        "200 OK"
+    };
     let content_range = if range.is_some() {
         format!("Content-Range: bytes {start}-{end}/{length}\r\n")
     } else {

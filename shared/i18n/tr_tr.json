@@ -3125,5 +3125,11 @@
   "collections.status_exported": "Yukarıdaki metin alanına aktarıldı",
   "collections.status_save_failed": "Koleksiyonlar kaydedilemedi",
   "settings.section.collections": "Koleksiyonlar",
-  "settings.section.collections.description": "Ana ekrandaki katalog klasörleri"
+  "settings.section.collections.description": "Ana ekrandaki katalog klasörleri",
+  "a11y.seek": "İlerlet",
+  "a11y.rewind": "10 saniye geri",
+  "a11y.forward": "10 saniye ileri",
+  "a11y.next_episode": "Sonraki bölüm",
+  "a11y.previous_episode": "Önceki bölüm",
+  "a11y.text_field": "Metin alanı"
 }

@@ -439,7 +439,10 @@ pub(super) fn edit_text(
 }
 
 pub(super) fn focused_text(state: &RendererState) -> Option<String> {
-    let node = state.ui.focused()?;
+    node_text(state, state.ui.focused()?)
+}
+
+pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
     let route = state.route;
     Some(match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => state.library_query.clone(),

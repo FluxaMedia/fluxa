@@ -2,6 +2,7 @@ package com.fluxa.app.ui.rust
 
 import android.content.Context
 import android.graphics.Rect
+import android.graphics.RectF
 import android.os.Handler
 import android.os.HandlerThread
 import android.view.KeyEvent
@@ -43,8 +44,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var pendingFormFactor: String? = null
     private var lastCoreCommandJson: String? = null
     private var safeBottomInsetPx = 0
-    private var accessibilityHeroTitle = "Recommended"
-    private var accessibilityCardTitles = emptyList<String>()
+    private var accessSignature = ""
+    private var accessNodes = emptyMap<Int, AccessNode>()
+    private var accessCaret: RectF? = null
+    private var accessSelection: IntArray? = null
+    private var accessFocused = -1
     var sessionDataDir: String? = null
     var legacyProfilesJson: (() -> String)? = null
     private val pendingActions = mutableListOf<String>()
@@ -119,7 +123,6 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     /** Pushes the platform data-source projection into the Rust-owned scene. */
     fun setHomeStateJson(json: String) {
         pendingHomeStateJson = json
-        updateAccessibilityState(json)
         scheduleArtworkDownloads(json)
         publishResolvedHomeState()
     }
@@ -222,6 +225,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     override fun onDetachedFromWindow() {
+        inputEditable = null
         stopRenderThread()
         artworkScope.cancel()
         if (nativeHandle != 0L) {
@@ -414,109 +418,230 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         return true
     }
 
-    private fun updateAccessibilityState(json: String) {
-        runCatching {
-            val root = JSONObject(json)
-            accessibilityHeroTitle = root.optString("title", "Recommended")
-            val cards = root.optJSONArray("cards")
-            accessibilityCardTitles = if (cards == null) {
-                emptyList()
-            } else {
-                buildList(cards.length()) {
-                    for (index in 0 until cards.length()) {
-                        add(cards.optJSONObject(index)?.optString("title", "Item") ?: "Item")
-                    }
-                }
+    private val accessibilityManager =
+        context.getSystemService(Context.ACCESSIBILITY_SERVICE) as android.view.accessibility.AccessibilityManager
+
+    private val accessibilityPoll = object : Runnable {
+        override fun run() {
+            refreshAccessibility()
+            if (accessibilityManager.isEnabled) postDelayed(this, ACCESSIBILITY_POLL_MS)
+        }
+    }
+
+    private val accessibilityStateListener =
+        android.view.accessibility.AccessibilityManager.AccessibilityStateChangeListener { enabled ->
+            removeCallbacks(accessibilityPoll)
+            if (enabled) post(accessibilityPoll)
+        }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        accessibilityManager.addAccessibilityStateChangeListener(accessibilityStateListener)
+        if (accessibilityManager.isEnabled) post(accessibilityPoll)
+    }
+
+    private fun loadAccessTree(): String? {
+        val handle = nativeHandle
+        return if (handle == 0L) null else NativeRenderer.accessibilityTreeNative(handle)
+    }
+
+    private fun refreshAccessibility() {
+        val json = loadAccessTree() ?: return
+        if (json == accessSignature) return
+        accessSignature = json
+        val previousFocus = accessFocused
+        val previousNodes = accessNodes
+        val tree = runCatching { JSONObject(json) }.getOrNull() ?: return
+        val density = resources.displayMetrics.density
+        val nodes = LinkedHashMap<Int, AccessNode>()
+        val array = tree.optJSONArray("nodes") ?: JSONArray()
+        for (index in 0 until array.length()) {
+            val node = AccessNode.parse(array.getJSONObject(index), density)
+            nodes[node.id] = node
+        }
+        accessNodes = nodes
+        accessCaret = tree.optJSONArray("caret")?.let {
+            RectF(
+                (it.getDouble(0) * density).toFloat(),
+                (it.getDouble(1) * density).toFloat(),
+                ((it.getDouble(0) + it.getDouble(2)) * density).toFloat(),
+                ((it.getDouble(1) + it.getDouble(3)) * density).toFloat(),
+            )
+        }
+        accessSelection = tree.optJSONArray("selection")?.let { intArrayOf(it.getInt(0), it.getInt(1)) }
+        accessFocused = if (tree.isNull("focused")) -1 else tree.optInt("focused", -1)
+        if (!accessibilityManager.isEnabled) return
+        if (previousNodes.keys != nodes.keys) {
+            val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+            event.contentChangeTypes = AccessibilityEvent.CONTENT_CHANGE_TYPE_SUBTREE
+            event.setSource(this, HOST_VIEW_ID)
+            parent?.requestSendAccessibilityEvent(this, event)
+        } else {
+            for ((id, node) in nodes) {
+                if (previousNodes[id]?.describes(node) == false) notifyNodeChanged(id)
             }
         }
-        sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        if (accessFocused != previousFocus && accessFocused != -1) {
+            val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_VIEW_FOCUSED)
+            event.setSource(this, accessFocused)
+            parent?.requestSendAccessibilityEvent(this, event)
+        }
+    }
+
+    private fun notifyNodeChanged(id: Int) {
+        val event = AccessibilityEvent.obtain(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED)
+        event.contentChangeTypes = AccessibilityEvent.CONTENT_CHANGE_TYPE_CONTENT_DESCRIPTION or
+            AccessibilityEvent.CONTENT_CHANGE_TYPE_TEXT
+        event.setSource(this, id)
+        parent?.requestSendAccessibilityEvent(this, event)
+    }
+
+    private fun seekBy(seconds: Double): Boolean {
+        val slider = accessNodes.values.firstOrNull { it.role == "slider" } ?: return false
+        val range = slider.range ?: return false
+        return seekTo((range[2] + seconds).coerceIn(range[0], range[1]))
+    }
+
+    private fun seekTo(seconds: Double): Boolean {
+        if (nativeHandle == 0L) return false
+        NativeRenderer.pushActionNative(
+            nativeHandle,
+            JSONObject(mapOf("type" to "mediaCommand", "command" to "seekTo", "value" to seconds)).toString(),
+        )
+        return true
     }
 
     private val accessibilityProvider = object : AccessibilityNodeProvider() {
         override fun createAccessibilityNodeInfo(virtualViewId: Int): AccessibilityNodeInfo? {
             if (virtualViewId == HOST_VIEW_ID) {
                 return AccessibilityNodeInfo.obtain(this@FluxaNativeRendererView).apply {
-                    packageName = context.packageName
-                    className = FluxaNativeRendererView::class.java.name
-                    isVisibleToUser = visibility == VISIBLE
-                    for (nodeId in virtualNodeIds()) addChild(this@FluxaNativeRendererView, nodeId)
+                    onInitializeAccessibilityNodeInfo(this)
+                    for (id in accessNodes.keys) addChild(this@FluxaNativeRendererView, id)
                 }
             }
-            if (!virtualNodeIds().contains(virtualViewId)) return null
+            val node = accessNodes[virtualViewId] ?: return null
             val info = AccessibilityNodeInfo.obtain()
             info.packageName = context.packageName
-            info.className = "android.widget.Button"
             info.setSource(this@FluxaNativeRendererView, virtualViewId)
             info.setParent(this@FluxaNativeRendererView, HOST_VIEW_ID)
             info.isEnabled = true
             info.isFocusable = true
-            info.isVisibleToUser = visibility == VISIBLE
-            info.text = accessibilityLabel(virtualViewId)
-            info.contentDescription = info.text
-            info.setBoundsInParent(accessibilityBounds(virtualViewId))
-            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
-            info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_FOCUS)
+            info.isFocused = virtualViewId == accessFocused
+            info.isVisibleToUser = visibility == VISIBLE && node.visible(width, height)
+            info.isSelected = node.selected
+            info.isAccessibilityFocused = virtualViewId == accessibilityFocusedNode
+            info.setBoundsInParent(node.bounds)
+            val screen = IntArray(2).also { getLocationOnScreen(it) }
+            info.setBoundsInScreen(Rect(node.bounds).apply { offset(screen[0], screen[1]) })
+            if (!node.isStatic()) info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_FOCUS)
             info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_ACCESSIBILITY_FOCUS)
+            if (virtualViewId == accessibilityFocusedNode) {
+                info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLEAR_ACCESSIBILITY_FOCUS)
+            }
+            when (node.role) {
+                "switch" -> {
+                    info.className = "android.widget.Switch"
+                    info.isCheckable = true
+                    info.isChecked = node.checked == true
+                    info.text = node.label
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
+                }
+                "slider" -> {
+                    info.className = "android.widget.SeekBar"
+                    info.contentDescription = node.label
+                    node.range?.let {
+                        info.rangeInfo = AccessibilityNodeInfo.RangeInfo.obtain(
+                            AccessibilityNodeInfo.RangeInfo.RANGE_TYPE_FLOAT,
+                            it[0].toFloat(),
+                            it[1].toFloat(),
+                            it[2].toFloat(),
+                        )
+                    }
+                    if (android.os.Build.VERSION.SDK_INT >= 30) info.stateDescription = node.value
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS)
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_FORWARD)
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SCROLL_BACKWARD)
+                }
+                "text", "heading" -> {
+                    info.className = "android.widget.TextView"
+                    info.text = node.label
+                    if (node.role == "heading" && android.os.Build.VERSION.SDK_INT >= 28) info.isHeading = true
+                }
+                "text_input", "search_input", "password_input", "url_input", "number_input", "multiline_input" -> {
+                    info.className = "android.widget.EditText"
+                    info.isEditable = true
+                    info.isMultiLine = node.role == "multiline_input"
+                    info.isPassword = node.role == "password_input"
+                    info.text = node.value ?: ""
+                    if (android.os.Build.VERSION.SDK_INT >= 26) info.hintText = node.label
+                    info.contentDescription = node.label
+                    info.inputType = node.inputType()
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_TEXT)
+                }
+                else -> {
+                    info.className = "android.widget.Button"
+                    info.text = node.label
+                    if (node.value != null && android.os.Build.VERSION.SDK_INT >= 30) {
+                        info.stateDescription = node.value
+                    }
+                    info.addAction(AccessibilityNodeInfo.AccessibilityAction.ACTION_CLICK)
+                }
+            }
             return info
         }
 
         override fun performAction(virtualViewId: Int, action: Int, arguments: android.os.Bundle?): Boolean {
-            if (!virtualNodeIds().contains(virtualViewId) || nativeHandle == 0L) return false
+            if (virtualViewId == HOST_VIEW_ID) return false
+            val node = accessNodes[virtualViewId]
+            if (node == null || nativeHandle == 0L) return false
             return when (action) {
                 AccessibilityNodeInfo.ACTION_CLICK -> {
-                    NativeRenderer.activateNodeNative(nativeHandle, virtualViewId.toLong())
+                    if (node.isTextInput()) {
+                        NativeRenderer.focusNodeNative(nativeHandle, virtualViewId.toLong())
+                        syncSoftKeyboard()
+                    } else {
+                        NativeRenderer.activateNodeNative(nativeHandle, virtualViewId.toLong())
+                    }
                     true
                 }
-                AccessibilityNodeInfo.ACTION_FOCUS,
-                AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS -> {
+                AccessibilityNodeInfo.ACTION_FOCUS -> {
                     NativeRenderer.focusNodeNative(nativeHandle, virtualViewId.toLong())
                     true
                 }
-                AccessibilityNodeInfo.ACTION_CLEAR_FOCUS,
-                AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS -> true
+                AccessibilityNodeInfo.ACTION_ACCESSIBILITY_FOCUS -> {
+                    accessibilityFocusedNode = virtualViewId
+                    NativeRenderer.focusNodeNative(nativeHandle, virtualViewId.toLong())
+                    notifyNodeChanged(virtualViewId)
+                    true
+                }
+                AccessibilityNodeInfo.ACTION_CLEAR_ACCESSIBILITY_FOCUS -> {
+                    if (accessibilityFocusedNode == virtualViewId) accessibilityFocusedNode = -1
+                    true
+                }
+                AccessibilityNodeInfo.ACTION_SET_TEXT -> {
+                    val text = arguments?.getCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE)
+                    NativeRenderer.focusNodeNative(nativeHandle, virtualViewId.toLong())
+                    NativeRenderer.setFocusedTextNative(nativeHandle, text?.toString() ?: "")
+                    true
+                }
+                AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id ->
+                    node.role == "slider" && seekTo(
+                        arguments?.getFloat(AccessibilityNodeInfo.ACTION_ARGUMENT_PROGRESS_VALUE)?.toDouble() ?: return false,
+                    )
+                AccessibilityNodeInfo.ACTION_SCROLL_FORWARD -> node.role == "slider" && seekBy(SEEK_STEP_SECONDS)
+                AccessibilityNodeInfo.ACTION_SCROLL_BACKWARD -> node.role == "slider" && seekBy(-SEEK_STEP_SECONDS)
                 else -> false
             }
         }
-    }
 
-    private fun virtualNodeIds(): List<Int> = buildList {
-        addAll(listOf(10, 11, 12, 13, 14, 20, 21))
-        addAll(accessibilityCardTitles.indices.map { 100 + it })
-    }
-
-    private fun accessibilityLabel(virtualViewId: Int): String = when (virtualViewId) {
-        10 -> "Home"
-        11 -> "Library"
-        12 -> "Discover"
-        13 -> "Calendar"
-        14 -> "Profile"
-        20 -> "Play $accessibilityHeroTitle"
-        21 -> "More info about $accessibilityHeroTitle"
-        else -> accessibilityCardTitles.getOrNull(virtualViewId - 100) ?: "Item"
-    }
-
-    private fun accessibilityBounds(virtualViewId: Int): Rect {
-        val topBarWidth = minOf(620f, width.toFloat() - 32f).coerceAtLeast(320f)
-        val topX = (width - topBarWidth) / 2f + 10f
-        when (virtualViewId) {
-            10, 11, 12, 13, 14 -> {
-                val index = virtualViewId - 10
-                return Rect((topX + index * 122f).toInt(), 24, (topX + index * 122f + 118f).toInt(), 62)
-            }
-            20, 21 -> {
-                val x = if (virtualViewId == 20) 32f else 158f
-                val buttonWidth = if (virtualViewId == 20) 118f else 126f
-                val y = (height * 0.20f).coerceAtLeast(100f) + 180f
-                return Rect(x.toInt(), y.toInt(), (x + buttonWidth).toInt(), (y + 42f).toInt())
-            }
+        override fun findFocus(focus: Int): AccessibilityNodeInfo? {
+            val id = if (focus == AccessibilityNodeInfo.FOCUS_ACCESSIBILITY) accessibilityFocusedNode else accessFocused
+            return if (id == -1) null else createAccessibilityNodeInfo(id)
         }
-        val index = virtualViewId - 100
-        val cardWidth = ((width - 64f) / 5.8f).coerceIn(170f, 288f)
-        val cardHeight = (cardWidth * 0.56f).coerceAtLeast(104f)
-        val x = 16f + index * (cardWidth + 8f)
-        val y = height * 0.64f + 33f
-        return Rect(x.toInt(), y.toInt(), (x + cardWidth).toInt(), (y + cardHeight).toInt())
     }
+
+    private var accessibilityFocusedNode = -1
 
     fun back(): Boolean = nativeHandle != 0L && NativeRenderer.backNative(nativeHandle)
 
@@ -544,6 +669,49 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     private var selectLongPressed = false
     private var imeShown = false
+    private var inputEditable: android.text.Editable? = null
+
+    private val editableSync = object : Runnable {
+        override fun run() {
+            val editable = inputEditable ?: return
+            if (nativeHandle == 0L || !NativeRenderer.textInputFocusedNative(nativeHandle)) {
+                inputEditable = null
+                return
+            }
+            val current = NativeRenderer.focusedTextNative(nativeHandle)
+            if (current != editable.toString()) {
+                editable.replace(0, editable.length, current)
+                val selection = accessSelection
+                val start = (selection?.get(0) ?: editable.length).coerceIn(0, editable.length)
+                val end = (selection?.get(1) ?: editable.length).coerceIn(0, editable.length)
+                android.text.Selection.setSelection(editable, start, end)
+                reportSelection(editable)
+            }
+            postDelayed(this, EDITABLE_POLL_MS)
+        }
+    }
+
+    private fun reportSelection(editable: android.text.Editable) {
+        val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager ?: return
+        val start = android.text.Selection.getSelectionStart(editable)
+        val end = android.text.Selection.getSelectionEnd(editable)
+        val composingStart = BaseInputConnection.getComposingSpanStart(editable)
+        val composingEnd = BaseInputConnection.getComposingSpanEnd(editable)
+        input.updateSelection(this, start, end, composingStart, composingEnd)
+        val caret = accessCaret
+        val bounds = accessNodes[accessFocused]?.bounds ?: return
+        val top = caret?.top ?: bounds.top.toFloat()
+        val bottom = caret?.bottom ?: bounds.bottom.toFloat()
+        val x = caret?.left ?: bounds.left.toFloat()
+        val anchor = android.view.inputmethod.CursorAnchorInfo.Builder()
+            .setSelectionRange(start, end)
+            .setMatrix(android.graphics.Matrix())
+        if (composingStart >= 0 && composingEnd > composingStart) {
+            anchor.setComposingText(composingStart, editable.subSequence(composingStart, composingEnd))
+        }
+        anchor.setInsertionMarkerLocation(x, top, bottom, bottom, 0)
+        input.updateCursorAnchorInfo(this, anchor.build())
+    }
 
     private fun syncSoftKeyboard() {
         val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager ?: return
@@ -586,13 +754,21 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     override fun onCheckIsTextEditor(): Boolean = true
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
-        outAttrs.inputType = android.text.InputType.TYPE_CLASS_TEXT
-        outAttrs.imeOptions = EditorInfo.IME_ACTION_DONE
+        refreshAccessibility()
+        val focusedNode = accessNodes[accessFocused]?.takeIf { it.isTextInput() }
+        outAttrs.inputType = focusedNode?.inputType() ?: android.text.InputType.TYPE_CLASS_TEXT
+        outAttrs.imeOptions = when (focusedNode?.role) {
+            "search_input" -> EditorInfo.IME_ACTION_SEARCH
+            "multiline_input" -> EditorInfo.IME_ACTION_NONE
+            else -> EditorInfo.IME_ACTION_DONE
+        }
+        if (android.os.Build.VERSION.SDK_INT >= 26) focusedNode?.label?.let { outAttrs.hintText = it }
         val connection = object : BaseInputConnection(this, true) {
             private fun sync(result: Boolean): Boolean {
                 if (nativeHandle != 0L) {
                     NativeRenderer.setFocusedTextNative(nativeHandle, editable.toString())
                 }
+                if (batch == 0) editable?.let { reportSelection(it) }
                 return result
             }
 
@@ -661,6 +837,9 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             }
             outAttrs.initialSelStart = current.length
             outAttrs.initialSelEnd = current.length
+            inputEditable = connection.editable
+            removeCallbacks(editableSync)
+            postDelayed(editableSync, EDITABLE_POLL_MS)
         }
         return connection
     }
@@ -701,6 +880,7 @@ private object NativeRenderer {
         buffering: Float,
         error: String?,
     )
+    @JvmStatic external fun accessibilityTreeNative(handle: Long): String?
     @JvmStatic external fun focusNodeNative(handle: Long, node: Long)
     @JvmStatic external fun activateNodeNative(handle: Long, node: Long)
     @JvmStatic external fun pointerEventNative(handle: Long, action: Int, x: Float, y: Float)
@@ -739,6 +919,63 @@ private const val POINTER_MOVE = 0
 private const val POINTER_DOWN = 1
 private const val POINTER_UP = 2
 private const val HOST_VIEW_ID = -1
+private const val ACCESSIBILITY_POLL_MS = 250L
+private const val EDITABLE_POLL_MS = 200L
+private const val SEEK_STEP_SECONDS = 10.0
+
+private class AccessNode(
+    val id: Int,
+    val role: String,
+    val label: String,
+    val value: String?,
+    val checked: Boolean?,
+    val selected: Boolean,
+    val bounds: Rect,
+    val range: DoubleArray?,
+) {
+    fun isTextInput() = role.endsWith("_input")
+
+    fun isStatic() = role == "text" || role == "heading"
+
+    fun visible(width: Int, height: Int) = bounds.right > 0 && bounds.bottom > 0 && bounds.left < width && bounds.top < height
+
+    fun describes(other: AccessNode) = label == other.label && value == other.value &&
+        checked == other.checked && selected == other.selected
+
+    fun inputType(): Int = when (role) {
+        "password_input" -> android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        "url_input" -> android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_URI
+        "number_input" -> android.text.InputType.TYPE_CLASS_NUMBER
+        "multiline_input" -> android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+        else -> android.text.InputType.TYPE_CLASS_TEXT
+    }
+
+    companion object {
+        fun parse(json: JSONObject, density: Float): AccessNode {
+            val box = json.getJSONArray("bounds")
+            val left = (box.getDouble(0) * density).toInt()
+            val top = (box.getDouble(1) * density).toInt()
+            val range = json.optJSONArray("range")?.let {
+                doubleArrayOf(it.getDouble(0), it.getDouble(1), it.getDouble(2))
+            }
+            return AccessNode(
+                id = json.getInt("id"),
+                role = json.getString("role"),
+                label = json.optString("label"),
+                value = if (json.isNull("value")) null else json.getString("value"),
+                checked = if (json.isNull("checked")) null else json.getBoolean("checked"),
+                selected = json.optBoolean("selected"),
+                bounds = Rect(
+                    left,
+                    top,
+                    left + (box.getDouble(2) * density).toInt(),
+                    top + (box.getDouble(3) * density).toInt(),
+                ),
+                range = range,
+            )
+        }
+    }
+}
 private const val MAX_ARTWORK_URLS = 96
 private const val MAX_ARTWORK_BYTES = 16L * 1024L * 1024L
 private val ARTWORK_URL_FIELDS = setOf(

@@ -264,7 +264,11 @@ impl EffectExecutor {
             .get("remoteSource")
             .cloned()
             .ok_or_else(|| "remote collection source is missing".to_owned())?;
-        let skip = payload.get("skip").and_then(Value::as_i64).unwrap_or(0).max(0);
+        let skip = payload
+            .get("skip")
+            .and_then(Value::as_i64)
+            .unwrap_or(0)
+            .max(0);
         let page_size = match source.get("provider").and_then(Value::as_str) {
             Some("trakt") => 50,
             _ => 20,

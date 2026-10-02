@@ -6,12 +6,13 @@ use fluxa_renderer::platform::GraphicsBackend;
 use gilrs::{Axis, Button, EventType, Gilrs};
 use winit::{
     application::ApplicationHandler,
-    event::{ElementState, MouseScrollDelta, WindowEvent},
-    event_loop::{ActiveEventLoop, ControlFlow, EventLoop},
+    event::{ElementState, Ime, MouseScrollDelta, WindowEvent},
+    event_loop::{ActiveEventLoop, ControlFlow, EventLoop, EventLoopProxy},
     keyboard::{Key as WinitKey, ModifiersState, NamedKey},
     window::{CursorIcon, Fullscreen, Icon, Window, WindowId},
 };
 
+mod access;
 #[cfg(target_os = "macos")]
 mod apple_video;
 #[cfg(any(target_os = "linux", target_os = "macos"))]
@@ -32,9 +33,22 @@ const STICK_DEADZONE: f32 = 0.2;
 const STICK_SCROLL: f32 = 40.0;
 const REPEAT_DELAY: Duration = Duration::from_millis(400);
 const REPEAT_RATE: Duration = Duration::from_millis(100);
+const ACCESS_INTERVAL: Duration = Duration::from_millis(200);
 const GAMEPAD_POLL: Duration = Duration::from_millis(50);
 
+struct AccessEvent(accesskit_winit::Event);
+
+impl From<accesskit_winit::Event> for AccessEvent {
+    fn from(event: accesskit_winit::Event) -> Self {
+        Self(event)
+    }
+}
+
 struct App {
+    proxy: EventLoopProxy<AccessEvent>,
+    access: Option<accesskit_winit::Adapter>,
+    access_tree: Option<fluxa_host::AccessTree>,
+    access_at: Instant,
     host: Option<FluxaHost>,
     window: Option<Arc<Window>>,
     gamepad: Option<Gilrs>,
@@ -42,6 +56,7 @@ struct App {
     right_stick_y: f32,
     held: Option<(GamepadButton, Instant)>,
     cursor_hidden: bool,
+    ime_allowed: bool,
     modifiers: ModifiersState,
     cursor: egui::CursorIcon,
     pointer: [f32; 2],
@@ -50,8 +65,12 @@ struct App {
 }
 
 impl App {
-    fn new() -> Self {
+    fn new(proxy: EventLoopProxy<AccessEvent>) -> Self {
         Self {
+            proxy,
+            access: None,
+            access_tree: None,
+            access_at: Instant::now(),
             host: None,
             window: None,
             gamepad: Gilrs::new().ok(),
@@ -59,6 +78,7 @@ impl App {
             right_stick_y: 0.0,
             held: None,
             cursor_hidden: false,
+            ime_allowed: false,
             modifiers: ModifiersState::empty(),
             cursor: egui::CursorIcon::Default,
             pointer: [0.0, 0.0],
@@ -171,7 +191,35 @@ impl App {
         }
     }
 
+    fn push_access(&mut self, force: bool) {
+        let (Some(host), Some(window), Some(adapter)) = (
+            self.host.as_ref(),
+            self.window.as_ref(),
+            self.access.as_mut(),
+        ) else {
+            return;
+        };
+        if !force && self.access_at.elapsed() < ACCESS_INTERVAL {
+            return;
+        }
+        self.access_at = Instant::now();
+        let scale = window.scale_factor() as f32;
+        let last = &mut self.access_tree;
+        let Some(tree) = host.accessibility_tree() else {
+            return;
+        };
+        if !force && last.as_ref() == Some(&tree) {
+            return;
+        }
+        adapter.update_if_active(|| {
+            let update = access::tree_update(&tree, scale, "Fluxa");
+            *last = Some(tree);
+            update
+        });
+    }
+
     fn after_frame(&mut self) {
+        self.push_access(false);
         let (Some(host), Some(window)) = (self.host.as_ref(), self.window.as_ref()) else {
             return;
         };
@@ -188,6 +236,21 @@ impl App {
             });
             window.set_window_icon(icon);
         }
+        let editing = host.text_input_focused() || host.wants_keyboard();
+        if editing != self.ime_allowed {
+            self.ime_allowed = editing;
+            window.set_ime_allowed(editing);
+        }
+        if editing
+            && let Some([x, y, width, height]) =
+                host.caret_bounds().or_else(|| host.focused_bounds())
+        {
+            let scale = window.scale_factor();
+            window.set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(x as f64, y as f64).to_physical::<u32>(scale),
+                winit::dpi::LogicalSize::new(width as f64, height as f64).to_physical::<u32>(scale),
+            );
+        }
         let cursor = host.cursor();
         if cursor != self.cursor {
             self.cursor = cursor;
@@ -201,7 +264,7 @@ impl App {
     }
 }
 
-impl ApplicationHandler for App {
+impl ApplicationHandler<AccessEvent> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_some() {
             return;
@@ -211,12 +274,19 @@ impl ApplicationHandler for App {
                 .create_window(
                     Window::default_attributes()
                         .with_title("Fluxa")
+                        .with_visible(false)
                         .with_transparent(cfg!(target_os = "macos"))
                         .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 800.0))
                         .with_min_inner_size(winit::dpi::LogicalSize::new(640.0, 480.0)),
                 )
                 .expect("create Fluxa window"),
         );
+        self.access = Some(accesskit_winit::Adapter::with_event_loop_proxy(
+            event_loop,
+            &window,
+            self.proxy.clone(),
+        ));
+        window.set_visible(true);
         let data_dir = fluxa_effects::storage::data_dir().ok();
         let host = FluxaHost::new(
             window.scale_factor() as f32,
@@ -269,6 +339,25 @@ impl ApplicationHandler for App {
         self.window = Some(window);
     }
 
+    fn user_event(&mut self, _event_loop: &ActiveEventLoop, event: AccessEvent) {
+        let Some(host) = self.host.as_ref() else {
+            return;
+        };
+        match event.0.window_event {
+            accesskit_winit::WindowEvent::InitialTreeRequested => {
+                self.access_tree = None;
+                self.push_access(true);
+            }
+            accesskit_winit::WindowEvent::ActionRequested(request) => {
+                access::handle(host, request);
+                if let Some(window) = self.window.as_ref() {
+                    window.request_redraw();
+                }
+            }
+            accesskit_winit::WindowEvent::AccessibilityDeactivated => self.access_tree = None,
+        }
+    }
+
     fn about_to_wait(&mut self, event_loop: &ActiveEventLoop) {
         self.poll_gamepad();
         let (Some(host), Some(window)) = (self.host.as_ref(), self.window.as_ref()) else {
@@ -288,6 +377,9 @@ impl ApplicationHandler for App {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
+        if let (Some(adapter), Some(window)) = (self.access.as_mut(), self.window.as_ref()) {
+            adapter.process_event(window, &event);
+        }
         let Some(host) = self.host.clone() else {
             return;
         };
@@ -364,6 +456,13 @@ impl ApplicationHandler for App {
                     }
                 };
                 host.wheel(-x, -y);
+            }
+            WindowEvent::Ime(Ime::Commit(text)) => {
+                if host.wants_keyboard() {
+                    host.egui_text(&text);
+                } else {
+                    host.text_input(&text);
+                }
             }
             WindowEvent::KeyboardInput { event, .. } => {
                 if event.state == ElementState::Pressed
@@ -601,7 +700,9 @@ fn main() -> Result<(), winit::error::EventLoopError> {
             || sentry::capture_message(&error.message, sentry::Level::Error),
         );
     });
-    EventLoop::new()?.run_app(&mut App::new())
+    let event_loop = EventLoop::<AccessEvent>::with_user_event().build()?;
+    let proxy = event_loop.create_proxy();
+    event_loop.run_app(&mut App::new(proxy))
 }
 
 fn pick_image() -> Option<std::path::PathBuf> {
