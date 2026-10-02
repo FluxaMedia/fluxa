@@ -66,12 +66,12 @@ pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.general_behavior"),
     (2, "settings.group.general_calendar"),
 ];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 16] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 15] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
         options: &[
-            "#FFFFFF", "#E50914", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
+            "glass", "#FFFFFF", "#E50914", "#3F7CFF", "#54D17A", "#FF8A3D", "#C084FC",
         ],
     },
     SettingsRow {
@@ -90,11 +90,6 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "Reduced effects",
         key: "reducedEffects",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Liquid glass",
-        key: "liquidGlass",
         options: &[],
     },
     SettingsRow {
@@ -157,7 +152,7 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 16] = [
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
-    (7, "settings.group.color_and_motion"),
+    (6, "settings.group.color_and_motion"),
     (6, "settings.group.navigation"),
 ];
 pub(super) const HOME_SETTINGS: [SettingsRow; 13] = [

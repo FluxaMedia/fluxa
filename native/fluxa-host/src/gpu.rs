@@ -709,7 +709,7 @@ impl Gpu {
                 }
             }
         }
-        fluxa_ui::set_liquid_glass(settings.bool_value("liquidGlass"));
+        fluxa_ui::set_liquid_glass(settings.value("accentColorArgb").and_then(serde_json::Value::as_str) == Some("glass"));
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
         fluxa_ui::set_mobile_nav_style(

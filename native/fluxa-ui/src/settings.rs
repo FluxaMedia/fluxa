@@ -43,6 +43,14 @@ fn settings_group_card_height(row_count: usize, metrics: UiMetrics) -> f32 {
 }
 
 const ROW_SUBTITLE_EXTRA: f32 = 18.0;
+const SWATCH_STRIP_EXTRA: f32 = 56.0;
+
+fn swatch_extra(rows: &[usize]) -> f32 {
+    let has_accent = rows
+        .iter()
+        .any(|&index| settings_row_by_index(index).is_some_and(|row| row.key == "accentColorArgb"));
+    if has_accent { SWATCH_STRIP_EXTRA } else { 0.0 }
+}
 
 fn described(mut metrics: UiMetrics) -> UiMetrics {
     metrics.settings_row_height += ROW_SUBTITLE_EXTRA;
@@ -279,7 +287,7 @@ pub(super) fn group_cards(
                 Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
                 Vec2::new(
                     rect.width(),
-                    settings_group_card_height(rows.len(), metrics),
+                    settings_group_card_height(rows.len(), metrics) + swatch_extra(rows),
                 ),
             );
             top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -295,6 +303,7 @@ fn groups_height(groups: &[(String, Vec<usize>)], metrics: UiMetrics) -> f32 {
             .map(|(_, rows)| {
                 APPEARANCE_GROUP_HEADING_HEIGHT
                     + settings_group_card_height(rows.len(), metrics)
+                    + swatch_extra(rows)
                     + APPEARANCE_GROUP_GAP
             })
             .sum::<f32>()
@@ -443,6 +452,7 @@ fn settings_panel_line(
 
 fn color_name(value: &str) -> Option<&'static str> {
     Some(match value {
+        "glass" => "settings.liquid_glass",
         "#FFFFFF" => "auto.white",
         "#000000" => "auto.black",
         "#E50914" | "#FF5D5D" => "auto.red",
@@ -1774,26 +1784,31 @@ pub fn draw_settings(
     }
     let row_metrics = described(metrics);
     let rows = groups.iter().zip(&cards).flat_map(|((_, rows), card)| {
+        let extra = swatch_extra(rows);
         rows.iter()
             .enumerate()
-            .map(move |(slot, &index)| (index, slot, *card))
+            .map(move |(slot, &index)| (index, slot, *card, extra))
     });
-    for (index, slot, card) in rows {
+    for (index, slot, card, extra) in rows {
         let Some(setting) = settings_row_by_index(index) else {
             continue;
         };
         let node = NODE_SETTINGS_ROW_BASE + index as u64;
+        let is_swatches = setting.key == "accentColorArgb";
+        let row_extra = if is_swatches { extra } else { 0.0 };
         let row_rect = Rect::from_min_size(
             card.left_top()
                 + Vec2::new(
                     metrics.settings_row_inset,
-                    6.0 + slot as f32 * row_metrics.settings_row_spacing,
+                    6.0 + slot as f32 * row_metrics.settings_row_spacing
+                        + if slot > 0 { extra } else { 0.0 },
                 ),
             Vec2::new(
                 card.width() - metrics.settings_row_inset * 2.0,
-                row_metrics.settings_row_height,
+                row_metrics.settings_row_height + row_extra,
             ),
         );
+        let text_center_y = row_rect.top() + row_metrics.settings_row_height * 0.5;
         if slot > 0 {
             let y = row_rect.top()
                 - (row_metrics.settings_row_spacing - row_metrics.settings_row_height) * 0.5;
@@ -1806,7 +1821,6 @@ pub fn draw_settings(
             );
         }
         let is_toggle = setting.options.is_empty();
-        let is_swatches = setting.key == "accentColorArgb";
         let is_app_icon = setting.key == "appIcon";
         let sheet_row = (compact || tv || is_app_icon) && !is_toggle && !is_swatches;
         let value_below =
@@ -1837,8 +1851,6 @@ pub fn draw_settings(
         } else {
             metrics.screen_card_subtitle_size + 1.0
         };
-        let swatch_size = if compact { 22.0 } else { 28.0 };
-        let swatch_gap = if compact { 8.0 } else { 12.0 };
         let raw_value = (!is_toggle).then(|| {
             settings
                 .value(setting.key)
@@ -1883,8 +1895,7 @@ pub fn draw_settings(
         };
         let text_left = row_rect.left() + 4.0;
         let control_width = if is_swatches {
-            let count = setting.options.len() as f32;
-            count * swatch_size + (count - 1.0) * swatch_gap + 6.0
+            0.0
         } else if is_app_icon {
             (row_rect.height() - 16.0).min(44.0) + 4.0
         } else if is_toggle {
@@ -1896,7 +1907,7 @@ pub fn draw_settings(
         let label_font = crate::fonts::regular(row_label_size);
         let subtitle_font = crate::fonts::regular(subtitle_size);
         let text_height = row_label_size + 4.0 + subtitle_size;
-        let text_top = row_rect.center().y - text_height * 0.5;
+        let text_top = text_center_y - text_height * 0.5;
         painter.text(
             Pos2::new(text_left, text_top),
             Align2::LEFT_TOP,
@@ -1933,7 +1944,7 @@ pub fn draw_settings(
                 Align2::LEFT_TOP,
                 truncate_to_width(
                     &painter,
-                    &if value_below || is_app_icon {
+                    &if value_below || is_app_icon || is_swatches {
                         value.clone().unwrap_or_default()
                     } else {
                         localized(
@@ -1945,7 +1956,7 @@ pub fn draw_settings(
                     text_width,
                 ),
                 subtitle_font,
-                if value_below || is_app_icon {
+                if value_below || is_app_icon || is_swatches {
                     Color32::from_white_alpha(160)
                 } else {
                     Color32::from_white_alpha(if compact { 100 } else { 120 })
@@ -1954,15 +1965,14 @@ pub fn draw_settings(
         }
         if is_swatches {
             let current = raw_value.unwrap_or_default().to_ascii_uppercase();
-            let size = swatch_size;
-            let gap = swatch_gap;
             let count = setting.options.len() as f32;
-            let strip = Rect::from_min_max(
-                Pos2::new(
-                    row_rect.right() - 6.0 - count * size - (count - 1.0) * gap,
-                    row_rect.center().y - size * 0.5,
-                ),
-                Pos2::new(row_rect.right() - 6.0, row_rect.center().y + size * 0.5),
+            let gap = if compact { 10.0 } else { 14.0 };
+            let available = row_rect.width() - 8.0;
+            let size = 40.0_f32.min((available - gap * (count - 1.0)) / count);
+            let top = row_rect.top() + row_metrics.settings_row_height + 2.0;
+            let strip = Rect::from_min_size(
+                Pos2::new(row_rect.left() + 4.0, top),
+                Vec2::new(count * size + (count - 1.0) * gap, size),
             );
             layout.focusable.push((node, strip.expand(6.0)));
             egui::Area::new(Id::new(("fluxa-settings-swatches", node)))
@@ -1975,7 +1985,12 @@ pub fn draw_settings(
                         for option in setting.options {
                             let (rect, response) =
                                 ui.allocate_exact_size(Vec2::splat(size), Sense::click());
-                            let color = Color32::from_hex(option).unwrap_or(Color32::WHITE);
+                            let glass = *option == "glass";
+                            let color = if glass {
+                                Color32::from_white_alpha(80)
+                            } else {
+                                Color32::from_hex(option).unwrap_or(Color32::WHITE)
+                            };
                             let active = option.eq_ignore_ascii_case(&current);
                             let grow = ui.ctx().animate_bool_with_time(
                                 Id::new(("fluxa-swatch", *option)),
@@ -1988,6 +2003,19 @@ pub fn draw_settings(
                                 size * 0.5 - 4.0 + 2.0 * grow,
                                 color,
                             );
+                            if glass {
+                                let radius = size * 0.5 - 4.0 + 2.0 * grow;
+                                ui.painter().circle_stroke(
+                                    center,
+                                    radius,
+                                    egui::Stroke::new(1.2, Color32::from_white_alpha(190)),
+                                );
+                                ui.painter().circle_filled(
+                                    center - Vec2::splat(radius * 0.38),
+                                    radius * 0.26,
+                                    Color32::from_white_alpha(170),
+                                );
+                            }
                             if active {
                                 ui.painter().circle_stroke(
                                     center,
@@ -2002,6 +2030,7 @@ pub fn draw_settings(
                                 );
                             }
                             let name = match *option {
+                                "glass" => "settings.liquid_glass",
                                 "#FFFFFF" => "auto.white",
                                 "#E50914" => "auto.red",
                                 "#3F7CFF" => "auto.blue",

@@ -4,7 +4,7 @@
     {
       "key": "accentColorArgb",
       "type": "string",
-      "default": "#FFFFFF",
+      "default": "glass",
       "scope": "profile",
       "category": "appearance"
     },
@@ -864,13 +864,6 @@
     },
     {
       "key": "posterHoverPreview",
-      "type": "boolean",
-      "default": true,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
-      "key": "liquidGlass",
       "type": "boolean",
       "default": true,
       "scope": "profile",
