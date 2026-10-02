@@ -201,28 +201,10 @@ impl EffectExecutor {
         );
 
         let mut collection_profile = profile.clone();
-        if let Ok(Some(session)) = self.nuvio_session(&profile).await
-            && let Ok(rows) = self
-                .nuvio_rows(
-                    &session,
-                    &profile,
-                    "collections",
-                    "sync_pull_collections",
-                    json!({"p_profile_id": session.profile_index}),
-                )
-                .await
-            && let Some(collections) = rows
-                .as_array()
-                .and_then(|rows| rows.first())
-                .and_then(|row| row.get("collections_json"))
-                .and_then(Value::as_array)
-            && let Some(mapped) = core_value(
-                "nuvioMapCollections",
-                json!({"collections": collections, "profileIndex": session.profile_index}),
-            )
+        if let Some(collections) = self.effective_collections(&profile, &prefs).await
             && let Some(fields) = collection_profile.as_object_mut()
         {
-            fields.insert("libraryCollections".to_owned(), mapped);
+            fields.insert("libraryCollections".to_owned(), collections);
         }
         let shelves = core_value(
             "buildHomeCollectionShelves",
@@ -287,5 +269,104 @@ impl EffectExecutor {
         });
         self.storage.write_json(&cache_key, &bootstrap)?;
         Ok(bootstrap)
+    }
+}
+
+impl EffectExecutor {
+    pub(super) async fn push_nuvio_collections(&self, profile_id: &str, collections: &Value) {
+        let profiles = self
+            .storage
+            .read_json("profiles")
+            .ok()
+            .flatten()
+            .unwrap_or_else(|| json!([]));
+        let Some(profile) = profiles
+            .as_array()
+            .and_then(|items| {
+                items
+                    .iter()
+                    .find(|item| item.get("id").and_then(Value::as_str) == Some(profile_id))
+            })
+            .cloned()
+        else {
+            return;
+        };
+        let Ok(Some(session)) = self.nuvio_session(&profile).await else {
+            return;
+        };
+        let Some(exported) = core_value("exportCollections", collections.clone()) else {
+            return;
+        };
+        let result = session
+            .rpc("sync_push_collections")
+            .json(&json!({"p_profile_id": session.profile_index, "p_collections_json": exported}))
+            .send()
+            .await
+            .and_then(reqwest::Response::error_for_status);
+        if let Err(error) = result {
+            crate::log!("[fluxa-native] Nuvio collections push failed: {error}");
+        }
+    }
+}
+
+impl EffectExecutor {
+    async fn effective_collections(&self, profile: &Value, prefs: &Value) -> Option<Value> {
+        if let Some(local) = prefs.get("libraryCollections").filter(|value| value.is_array()) {
+            return Some(local.clone());
+        }
+        if let Ok(Some(session)) = self.nuvio_session(profile).await
+            && let Ok(rows) = self
+                .nuvio_rows(
+                    &session,
+                    profile,
+                    "collections",
+                    "sync_pull_collections",
+                    json!({"p_profile_id": session.profile_index}),
+                )
+                .await
+            && let Some(collections) = rows
+                .as_array()
+                .and_then(|rows| rows.first())
+                .and_then(|row| row.get("collections_json"))
+                .and_then(Value::as_array)
+            && let Some(mapped) = core_value(
+                "nuvioMapCollections",
+                json!({"collections": collections, "profileIndex": session.profile_index}),
+            )
+        {
+            return Some(mapped);
+        }
+        profile.get("libraryCollections").cloned()
+    }
+
+    pub fn read_collections(&self) -> std::sync::mpsc::Receiver<Value> {
+        let executor = self.clone();
+        super::detached(async move {
+            let Ok((active_id, profile, _)) = executor.active_profile() else {
+                return json!([]);
+            };
+            let prefs = executor
+                .storage
+                .read_json(&Storage::prefs_key(&active_id))
+                .ok()
+                .flatten()
+                .or_else(|| executor.storage.read_json("prefs").ok().flatten())
+                .unwrap_or_else(|| json!({}));
+            executor
+                .effective_collections(&profile, &prefs)
+                .await
+                .filter(Value::is_array)
+                .unwrap_or_else(|| json!([]))
+        })
+    }
+
+    pub fn save_collections(&self, collections: Value) -> std::sync::mpsc::Receiver<bool> {
+        let executor = self.clone();
+        super::detached(async move {
+            executor
+                .write_settings(&json!({"key": "libraryCollections", "value": collections}))
+                .await
+                .is_ok()
+        })
     }
 }

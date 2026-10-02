@@ -33,7 +33,7 @@ fn connected_with(profile: &Value, capability: &str) -> Vec<String> {
     .unwrap_or_default()
 }
 
-fn client_id(provider: &str) -> &'static str {
+pub(super) fn client_id(provider: &str) -> &'static str {
     match provider {
         "trakt" => option_env!("FLUXA_TRAKT_CLIENT_ID").unwrap_or(""),
         "simkl" => option_env!("FLUXA_SIMKL_CLIENT_ID").unwrap_or(""),

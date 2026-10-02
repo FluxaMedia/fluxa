@@ -188,7 +188,7 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::ReadCalendarMonth => {
                 self.read_calendar_month(&payload).await
             }
-            fluxa_core::runtime::EffectKind::WriteSettings => self.write_settings(&payload),
+            fluxa_core::runtime::EffectKind::WriteSettings => self.write_settings(&payload).await,
             fluxa_core::runtime::EffectKind::WritePlaybackProgress => {
                 self.write_playback_progress(&payload).await
             }
@@ -268,7 +268,7 @@ impl EffectExecutor {
         .unwrap_or_else(|| json!({"items": [], "localItems": [], "externalItems": []})))
     }
 
-    fn write_settings(&self, payload: &Value) -> Result<Value, String> {
+    async fn write_settings(&self, payload: &Value) -> Result<Value, String> {
         let key = payload
             .get("key")
             .and_then(Value::as_str)
@@ -315,6 +315,10 @@ impl EffectExecutor {
                 .expect("profile settings was normalized to an object")
                 .insert(key.to_owned(), value);
             self.storage.write_json(&profile_key, &profile_settings)?;
+        }
+        if key == "libraryCollections" {
+            self.push_nuvio_collections(&active_id, &settings["libraryCollections"])
+                .await;
         }
         Ok(settings)
     }

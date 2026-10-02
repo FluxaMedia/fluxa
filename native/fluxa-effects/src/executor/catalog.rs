@@ -221,7 +221,7 @@ impl EffectExecutor {
             .get("remoteSource")
             .is_some_and(|source| !source.is_null() && source != &json!([]))
         {
-            return Err("desktop remote collection paging is not implemented".to_owned());
+            return self.fetch_remote_collection_page(payload).await;
         }
         let transport_url = payload
             .get("transportUrl")
@@ -256,6 +256,110 @@ impl EffectExecutor {
                 "catalogPage",
             )
             .await?;
+        Ok(json!({"items": items}))
+    }
+
+    async fn fetch_remote_collection_page(&self, payload: &Value) -> Result<Value, String> {
+        let source = payload
+            .get("remoteSource")
+            .cloned()
+            .ok_or_else(|| "remote collection source is missing".to_owned())?;
+        let skip = payload.get("skip").and_then(Value::as_i64).unwrap_or(0).max(0);
+        let page_size = match source.get("provider").and_then(Value::as_str) {
+            Some("trakt") => 50,
+            _ => 20,
+        };
+        let active_id = self
+            .storage
+            .read_json("active_profile_id")?
+            .and_then(|value| value.as_str().map(ToOwned::to_owned))
+            .unwrap_or_default();
+        let prefs = self
+            .storage
+            .read_json(&Storage::prefs_key(&active_id))?
+            .or_else(|| self.storage.read_json("prefs").ok().flatten())
+            .unwrap_or_else(|| json!({}));
+        let language = self
+            .storage
+            .read_json("profiles")?
+            .and_then(|profiles| {
+                profiles.as_array()?.iter().find_map(|profile| {
+                    (profile.get("id").and_then(Value::as_str) == Some(active_id.as_str()))
+                        .then(|| profile.get("language")?.as_str().map(ToOwned::to_owned))
+                        .flatten()
+                })
+            })
+            .unwrap_or_else(|| "en".to_owned());
+        let plan = core_value(
+            "remoteCollectionRequestPlan",
+            json!({
+                "source": source,
+                "page": skip / page_size + 1,
+                "apiKey": prefs.get("tmdbApiKey"),
+                "clientId": providers::client_id("trakt"),
+                "language": language,
+            }),
+        )
+        .ok_or_else(|| "this source needs a TMDB API key or Trakt client id".to_owned())?;
+        if skip > 0
+            && matches!(
+                plan.get("sourceType").and_then(Value::as_str),
+                Some("COLLECTION" | "PERSON" | "DIRECTOR" | "LIST")
+            )
+        {
+            return Ok(json!({"items": []}));
+        }
+        let url = plan
+            .get("url")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "remote collection plan has no url".to_owned())?;
+        let mut parsed = reqwest::Url::parse(url).map_err(|error| error.to_string())?;
+        if let Some(params) = plan.get("params").and_then(Value::as_object) {
+            let mut query = parsed.query_pairs_mut();
+            for (key, value) in params {
+                let value = value
+                    .as_str()
+                    .map(ToOwned::to_owned)
+                    .unwrap_or_else(|| value.to_string());
+                query.append_pair(key, &value);
+            }
+        }
+        let client = Client::builder()
+            .user_agent("Fluxa/1.0")
+            .native_timeout(Duration::from_secs(20))
+            .build()
+            .map_err(|error| error.to_string())?;
+        let mut request = client.get(parsed);
+        if let Some(headers) = plan.get("headers").and_then(Value::as_object) {
+            for (name, value) in headers {
+                if let Some(value) = value.as_str() {
+                    request = request.header(name.as_str(), value);
+                }
+            }
+        }
+        let data: Value = request
+            .send()
+            .await
+            .map_err(|error| error.to_string())?
+            .error_for_status()
+            .map_err(|error| error.to_string())?
+            .json()
+            .await
+            .map_err(|error| error.to_string())?;
+        let metas = core_value(
+            "remoteCollectionResponsePlan",
+            json!({"plan": plan, "data": data}),
+        )
+        .ok_or_else(|| "Fluxa Core could not read the remote collection response".to_owned())?;
+        let content_type = plan
+            .get("requestedType")
+            .and_then(Value::as_str)
+            .unwrap_or("movie");
+        let items = annotate_catalog_items(
+            metas.as_array().map(Vec::as_slice).unwrap_or_default(),
+            "remote://collection",
+            content_type,
+        )?;
         Ok(json!({"items": items}))
     }
 
