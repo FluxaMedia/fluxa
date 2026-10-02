@@ -128,6 +128,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     sync_home_from_core_snapshot(state);
     shorts::tick(state);
     trailer::tick(state);
+    layout::sync_expanded(state);
     poster_data::tick(state);
     timer.mark("sync");
     if state.route == Route::Home

@@ -4,6 +4,7 @@ const HOVER_PREVIEW_DELAY: f64 = 0.5;
 
 #[derive(Clone, Debug)]
 pub struct ExpandedPoster {
+    pub node: u64,
     pub id: String,
     pub raw: serde_json::Value,
 }
@@ -344,6 +345,7 @@ pub(crate) fn draw_home_rows(
                                     && let Some(id) = card.id.clone()
                                 {
                                     expanded_card = Some(ExpandedPoster {
+                                        node: node_id,
                                         id,
                                         raw: card.raw.clone(),
                                     });

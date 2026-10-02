@@ -194,6 +194,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub expanded_posters_delay: f64,
     #[serde(skip)]
+    pub expanded_node: Option<u64>,
+    #[serde(skip)]
     pub language: String,
     #[serde(skip)]
     pub(crate) artwork_signature: OnceLock<u64>,
@@ -279,6 +281,7 @@ impl HomeModel {
             poster_trailer: None,
             expanded_posters: false,
             expanded_posters_delay: 1.0,
+            expanded_node: None,
             language: "en".to_owned(),
             artwork_signature: OnceLock::new(),
         }

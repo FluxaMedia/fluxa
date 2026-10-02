@@ -157,7 +157,19 @@ pub fn home_row_scroll_max(viewport: Viewport, home: &HomeModel, row_index: usiz
         return 0.0;
     };
     let metrics = home_metrics(viewport);
-    home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind)
+    let (width, height, _) = home_row_dimensions(metrics, kind);
+    let expanded_here = home.expanded_posters
+        && kind == HomeRowKind::Poster
+        && home
+            .expanded_node
+            .and_then(|node| node.checked_sub(NODE_CARD_BASE))
+            .is_some_and(|card| home_row_of_card(home, card as usize) == Some(row_index));
+    let extra = if expanded_here {
+        (height * 16.0 / 9.0 - width).max(0.0)
+    } else {
+        0.0
+    };
+    home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind) + extra
 }
 
 pub(crate) fn home_row_scroll_max_for_cards(
