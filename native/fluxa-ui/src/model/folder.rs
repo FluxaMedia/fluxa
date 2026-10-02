@@ -22,6 +22,7 @@ impl FolderViewMode {
 pub struct FolderTab {
     pub category_id: String,
     pub label: String,
+    pub type_label: String,
     pub cards: Vec<HomeCard>,
     pub loading: bool,
     pub error: Option<String>,
@@ -40,6 +41,16 @@ pub struct FolderModel {
     pub tabs: Vec<FolderTab>,
     pub has_all_tab: bool,
     pub row_scroll_offsets: Vec<f32>,
+}
+
+impl FolderTab {
+    pub fn row_title(&self) -> String {
+        if self.type_label.is_empty() {
+            self.label.clone()
+        } else {
+            format!("{} - {}", self.label, self.type_label)
+        }
+    }
 }
 
 impl FolderModel {
@@ -73,7 +84,7 @@ impl FolderModel {
                 }
                 HomeRow {
                     id: Some(tab.category_id.clone()),
-                    title: tab.label.clone(),
+                    title: tab.row_title(),
                     type_label: None,
                     cards: tab.cards.clone(),
                     kind: HomeRowKind::Poster,
@@ -136,6 +147,10 @@ pub fn folder_model_from_core_snapshot(snapshot: &serde_json::Value) -> FolderMo
             let failed = category.get("error").is_some_and(|error| !error.is_null());
             FolderTab {
                 label: value_string(category, "name").unwrap_or_default(),
+                type_label: type_label(
+                    value_string(category, "contentType").as_deref(),
+                    &language,
+                ),
                 cards: items
                     .iter()
                     .map(|item| core_home_card_for_kind(item, HomeRowKind::Poster))
@@ -184,6 +199,7 @@ pub fn folder_model_from_core_snapshot(snapshot: &serde_json::Value) -> FolderMo
             FolderTab {
                 category_id: String::new(),
                 label: localized("collections.tab_all", &language),
+                type_label: String::new(),
                 loading: tabs.iter().all(|tab| tab.loading),
                 error: None,
                 next_page: None,
@@ -209,5 +225,13 @@ pub fn folder_model_from_core_snapshot(snapshot: &serde_json::Value) -> FolderMo
         has_all_tab,
         row_scroll_offsets: Vec::new(),
         language,
+    }
+}
+
+fn type_label(content_type: Option<&str>, language: &str) -> String {
+    match content_type.map(str::to_ascii_lowercase).as_deref() {
+        Some("movie") => localized("settings.addon_type.movie", language),
+        Some("series" | "tv") => localized("settings.addon_type.series", language),
+        _ => String::new(),
     }
 }
