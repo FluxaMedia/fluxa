@@ -222,7 +222,6 @@ impl EffectExecutor {
         let stored_library = self
             .storage
             .read_json(&Storage::library_key(profile_id))?
-            .or_else(|| self.storage.read_json("library").ok().flatten())
             .unwrap_or_else(|| json!({}));
         let should_derive_continue_watching = stored_library
             .get("continueWatching")
@@ -298,7 +297,6 @@ impl EffectExecutor {
             None => self
                 .storage
                 .read_json(&key)?
-                .or_else(|| self.storage.read_json("library").ok().flatten())
                 .unwrap_or_else(|| json!({})),
         };
         let library = core_value("normalizeLibraryDocument", library)

@@ -192,7 +192,6 @@ impl EffectExecutor {
                     .ok()
                     .flatten()
             })
-            .or_else(|| self.storage.read_json("addons").ok().flatten())
             .filter(Value::is_array)
             .unwrap_or_else(|| json!([])))
     }

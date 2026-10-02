@@ -634,6 +634,25 @@ mod tests {
     }
 
     #[test]
+    fn legacy_library_goes_to_the_active_profile_once() {
+        let directory = temporary_directory();
+        let storage = Storage::open(directory.clone()).expect("open storage");
+        storage
+            .write_json("profiles", &json!([{"id": "a"}, {"id": "b"}]))
+            .unwrap();
+        storage.write_json("active_profile_id", &json!("a")).unwrap();
+        storage
+            .write_json("library", &json!({"completed": [{"id": "tt1"}]}))
+            .unwrap();
+        crate::persisted_runtime_state(&storage, json!({}));
+        assert!(storage.read_json(&Storage::library_key("a")).unwrap().is_some());
+        storage.write_json("active_profile_id", &json!("b")).unwrap();
+        crate::persisted_runtime_state(&storage, json!({}));
+        assert!(storage.read_json(&Storage::library_key("b")).unwrap().is_none());
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
     fn settings_write_lands_in_the_bound_profile_only() {
         let directory = temporary_directory();
         let storage = Storage::open(directory.clone()).expect("open storage");

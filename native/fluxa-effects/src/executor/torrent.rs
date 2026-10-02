@@ -90,7 +90,7 @@ impl EffectExecutor {
         });
     }
 
-    pub(super) fn stop_torrent(&self) -> Result<Value, String> {
+    pub(crate) fn stop_torrent(&self) -> Result<Value, String> {
         if let Some(link) = ACTIVE_TORRENT_LINK
             .get_or_init(Default::default)
             .lock()

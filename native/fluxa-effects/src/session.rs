@@ -276,6 +276,7 @@ impl SessionHandle {
 impl Drop for SessionHandle {
     fn drop(&mut self) {
         self.executor.cancel();
+        let _ = self.executor.stop_torrent();
         let _ = self.commands.send(Command::Stop);
     }
 }
@@ -314,6 +315,26 @@ fn run(
     }
 }
 
+fn adopt_legacy_documents(storage: &Storage, active_id: &str) {
+    for (legacy, target) in [
+        ("library", Storage::library_key(active_id)),
+        ("addons", Storage::addons_key(active_id)),
+    ] {
+        let Some(document) = storage
+            .read_json(legacy)
+            .ok()
+            .flatten()
+            .filter(|value| !value.is_null())
+        else {
+            continue;
+        };
+        if storage.read_json(&target).ok().flatten().is_none() {
+            let _ = storage.write_json(&target, &document);
+        }
+        let _ = storage.write_json(legacy, &Value::Null);
+    }
+}
+
 pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value {
     let profiles = storage
         .read_json("profiles")
@@ -335,6 +356,7 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
         .and_then(Value::as_str)
         .unwrap_or("guest")
         .to_owned();
+    adopt_legacy_documents(storage, &active_id);
     let active_profile = plan.get("activeProfile").cloned().unwrap_or(Value::Null);
     let mut prefs = storage
         .read_json(&Storage::prefs_key(&active_id))
@@ -380,7 +402,6 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
                     .ok()
                     .flatten()
             })
-            .or_else(|| storage.read_json("addons").ok().flatten())
             .filter(Value::is_array)
             .unwrap_or_else(|| json!([])),
     };
