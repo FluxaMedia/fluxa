@@ -751,6 +751,34 @@
       "category": "playback"
     },
     {
+      "key": "streamLayout",
+      "type": "string",
+      "default": "off",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamLayoutName",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamLayoutDetail",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamFormatterEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "playerGestures",
       "type": "boolean",
       "default": true,

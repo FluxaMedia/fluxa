@@ -518,19 +518,26 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         .pointer("/behaviorHints/filename")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    let (badges, badges_top) = crate::stream_badges::badges_for(
-        &format!(
-            "{}\n{}\n{}\n{filename}",
-            lines("name"),
-            text("description"),
-            text("title")
-        ),
-        video_size,
+    let raw = format!(
+        "{}\n{}\n{}\n{filename}",
+        lines("name"),
+        text("description"),
+        text("title")
     );
+    let (badges, badges_top) = crate::stream_badges::badges_for(&raw, video_size);
+    let mut name = lines("name");
+    if let Some((laid_name, laid_detail)) = crate::stream_badges::lay_out(&raw, video_size) {
+        if !laid_name.is_empty() {
+            name = laid_name;
+        }
+        if !laid_detail.is_empty() {
+            detail = laid_detail;
+        }
+    }
     fluxa_ui::PlayerSource {
         addon: lines("addonName"),
-        name: lines("name"),
-        detail,
+        name: crate::stream_badges::format_text(&name),
+        detail: crate::stream_badges::format_text(&detail),
         badges,
         badges_top,
     }

@@ -26,7 +26,11 @@ pub struct SettingsModel {
     pub badge_preview: crate::SourceBadge,
     pub badge_packs: Vec<BadgePackRow>,
     pub badge_custom: Vec<BadgeCustomRow>,
+    pub formatter_rules: Vec<FormatterRow>,
+    pub formatter_presets: Vec<FormatterPresetRow>,
+    pub layout_preview: Vec<String>,
     pub badge_status: Option<String>,
+    pub formatter_status: Option<String>,
     pub collection_fields: [String; COLLECTION_INPUT_COUNT],
     pub collections: Vec<CollectionListRow>,
     pub collection_edit: Option<CollectionEdit>,
@@ -68,6 +72,20 @@ pub struct BadgePackRow {
 #[derive(Clone, Debug, Default)]
 pub struct BadgeCustomRow {
     pub badge: crate::SourceBadge,
+    pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FormatterPresetRow {
+    pub name: String,
+    pub description: String,
+    pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct FormatterRow {
+    pub pattern: String,
+    pub replacement: String,
     pub enabled: bool,
 }
 
@@ -228,7 +246,11 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         badge_preview: Default::default(),
         badge_packs: Vec::new(),
         badge_custom: Vec::new(),
+        formatter_rules: Vec::new(),
+        formatter_presets: Vec::new(),
+        layout_preview: Vec::new(),
         badge_status: None,
+        formatter_status: None,
         collection_fields: Default::default(),
         collections: Vec::new(),
         collection_edit: None,

@@ -302,7 +302,7 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 5] = [
+pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     SettingsRow {
         label: "Stream badges",
         key: "streamBadgesEnabled",
@@ -327,6 +327,16 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 5] = [
         label: "Badge placement",
         key: "streamBadgePlacement",
         options: &["bottom", "top"],
+    },
+    SettingsRow {
+        label: "Card layout",
+        key: "streamLayout",
+        options: &["off", "detailed", "compact", "minimal", "custom"],
+    },
+    SettingsRow {
+        label: "Text formatter",
+        key: "streamFormatterEnabled",
+        options: &[],
     },
 ];
 
@@ -969,7 +979,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 17] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 18] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1034,6 +1044,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 17] = [
         groups: &PLAYER_GROUPS,
     },
     SettingsSection {
+        title: "Badges",
+        category: "Playback",
+        description: "Badges on the source list, with regex rules and packs",
+        rows: &STREAM_BADGES_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
         title: "Summary",
         category: "Playback",
         description: "Details of your last playback",
@@ -1076,13 +1093,6 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 17] = [
         groups: &[],
     },
     SettingsSection {
-    SettingsSection {
-        title: "Badges",
-        category: "Playback",
-        description: "Badges on the source list, with regex rules and packs",
-        rows: &STREAM_BADGES_SETTINGS,
-        groups: &[],
-    },
         title: "Downloads",
         category: "Downloads",
         description: "Torrent and download defaults",

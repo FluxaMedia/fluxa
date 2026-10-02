@@ -65,7 +65,7 @@ pub use profiles::{
 };
 use settings::settings_card_height;
 pub use settings::{
-    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit,
+    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit, FormatterPresetRow, FormatterRow,
     CollectionListRow, FolderEdit, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
     SettingsSection, ShortcutRow, account_source, account_source_state, addon_action,
     addon_transport_url, badge_input, badge_input_label, category_pages, collection_input,

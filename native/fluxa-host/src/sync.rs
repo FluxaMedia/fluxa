@@ -100,6 +100,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let collection_status = state.settings.collection_status.take();
     let badge_outline = state.settings.badge_outline;
     let badge_status = state.settings.badge_status.take();
+    let formatter_status = state.settings.formatter_status.take();
     let playback_summary = std::mem::take(&mut state.settings.playback_summary);
     state.settings = projection.settings;
     state.settings.playback_summary = playback_summary;
@@ -117,6 +118,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.collection_status = collection_status;
     state.settings.badge_outline = badge_outline;
     state.settings.badge_status = badge_status;
+    state.settings.formatter_status = formatter_status;
     shortcuts::refresh(state);
     accounts::refresh_servers(state);
     for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {

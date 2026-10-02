@@ -8,7 +8,7 @@ mod tests;
 
 pub use theme::Theme;
 pub use rules::{
-    BadgeLook, Filter, MAX_PACKS, Pack, Rules, parse_color, parse_pack, valid_pattern,
+    BadgeLook, Filter, MAX_PACKS, Pack, Rules, compile, parse_color, parse_pack, valid_pattern,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq)]
