@@ -7,6 +7,10 @@ use super::{ArtworkPriority, HomeAssets, full_uv};
 
 const TWEMOJI: &str = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/72x72";
 
+const FLAG_TOP: f32 = 10.0 / 72.0;
+const FLAG_HEIGHT: f32 = 52.0 / 72.0;
+const FLAG_ASPECT: f32 = 52.0 / 72.0;
+
 fn is_base(c: char) -> bool {
     matches!(c as u32,
         0x1F000..=0x1FAFF | 0x2600..=0x27BF | 0x2300..=0x23FF | 0x2B00..=0x2BFF
@@ -110,13 +114,26 @@ pub(crate) fn paint(
     painter.galley(pos, galley, Color32::WHITE);
     let native = assets.has_native_emoji();
     for (chars, rect) in clusters {
-        let texture = if native {
+        let flag = is_flag(chars[0]);
+        let texture = if native && !flag {
             assets.emoji(&chars.iter().collect::<String>())
         } else {
             let url = format!("{TWEMOJI}/{}.png", code(&chars));
             assets.texture_for(Some(&url), [72, 72], ArtworkPriority::Visible)
         };
-        if let Some(texture) = texture {
+        let Some(texture) = texture else {
+            continue;
+        };
+        if flag {
+            let width = rect.width() * 0.94;
+            let height = width * FLAG_ASPECT;
+            let flag_rect = Rect::from_center_size(rect.center(), Vec2::new(width, height));
+            let uv = Rect::from_min_max(
+                Pos2::new(0.0, FLAG_TOP),
+                Pos2::new(1.0, FLAG_TOP + FLAG_HEIGHT),
+            );
+            painter.image(texture, flag_rect, uv, Color32::WHITE);
+        } else {
             painter.image(
                 texture,
                 rect.shrink(rect.width() * 0.06),
