@@ -23,7 +23,6 @@ impl EffectExecutor {
         let prefs = self
             .storage
             .read_json(&Storage::prefs_key(profile_id))?
-            .or_else(|| self.storage.read_json("prefs").ok().flatten())
             .unwrap_or_else(|| json!({}));
         let source = payload.get("source").and_then(Value::as_str);
         let items = self
@@ -537,15 +536,9 @@ impl EffectExecutor {
         {
             return Ok(id.to_owned());
         }
-        if let Some(id) = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
-        {
-            return Ok(id);
-        }
-        Ok("guest".to_owned())
+        Ok(self
+            .current_profile_id()?
+            .unwrap_or_else(|| "guest".to_owned()))
     }
 
     pub(super) async fn read_nuvio_library(

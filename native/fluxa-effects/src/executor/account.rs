@@ -39,10 +39,7 @@ impl EffectExecutor {
             .read_json("profiles")?
             .unwrap_or_else(|| json!([]));
         let active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
+            .current_profile_id()?
             .unwrap_or_else(|| "guest".to_owned());
         let profile = find_profile(&profiles, &active_id);
         Ok((active_id, profile, profiles))

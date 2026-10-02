@@ -138,7 +138,6 @@ impl EffectExecutor {
                 .read_json(&Storage::prefs_key(profile_id))
                 .ok()
                 .flatten(),
-            self.storage.read_json("prefs").ok().flatten(),
         ]
         .into_iter()
         .flatten()

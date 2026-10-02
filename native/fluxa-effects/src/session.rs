@@ -22,8 +22,12 @@ impl AppSession {
     fn open(storage: Storage, sender: Sender<EffectCompletion>) -> Result<Self, String> {
         let state = persisted_runtime_state(&storage, json!({}));
         let persisted_addons = state["addons"]["installed"].clone();
+        let active_id = state["profile"]["activeProfileId"]
+            .as_str()
+            .unwrap_or("guest")
+            .to_owned();
         let runtime = FluxaRuntime::new(state)?;
-        let executor = EffectExecutor::new(storage.clone());
+        let executor = EffectExecutor::bound_to(storage.clone(), &active_id);
         executor.warm_torrent_engine();
         Ok(Self {
             runtime,
@@ -271,6 +275,7 @@ impl SessionHandle {
 
 impl Drop for SessionHandle {
     fn drop(&mut self) {
+        self.executor.cancel();
         let _ = self.commands.send(Command::Stop);
     }
 }

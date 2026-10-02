@@ -20,10 +20,7 @@ impl EffectExecutor {
             .read_json("profiles")?
             .unwrap_or_else(|| json!([]));
         let stored_active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
+            .current_profile_id()?
             .unwrap_or_else(|| profile_id.to_owned());
         let active_id = effect_profile
             .as_ref()
@@ -273,15 +270,9 @@ impl EffectExecutor {
             Some("trakt") => 50,
             _ => 20,
         };
-        let active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .unwrap_or_default();
+        let active_id = self.current_profile_id()?.unwrap_or_default();
         let prefs = self
-            .storage
-            .read_json(&Storage::prefs_key(&active_id))?
-            .or_else(|| self.storage.read_json("prefs").ok().flatten())
+            .profile_prefs(&active_id)?
             .unwrap_or_else(|| json!({}));
         let language = self
             .storage
@@ -444,15 +435,9 @@ impl EffectExecutor {
         content_type: &str,
         extra: &Value,
     ) -> Result<Vec<Value>, String> {
-        let active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .unwrap_or_default();
+        let active_id = self.current_profile_id()?.unwrap_or_default();
         let prefs = self
-            .storage
-            .read_json(&Storage::prefs_key(&active_id))?
-            .or_else(|| self.storage.read_json("prefs").ok().flatten())
+            .profile_prefs(&active_id)?
             .unwrap_or_else(|| json!({}));
         let api_key = prefs
             .get("tmdbApiKey")

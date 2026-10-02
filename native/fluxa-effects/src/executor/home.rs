@@ -6,10 +6,12 @@ impl EffectExecutor {
             .get("language")
             .and_then(Value::as_str)
             .unwrap_or("en");
-        let profile_id = payload
+        let profile_id = &payload
             .get("profileId")
             .and_then(Value::as_str)
-            .unwrap_or("guest");
+            .map(ToOwned::to_owned)
+            .or(self.current_profile_id()?)
+            .unwrap_or_else(|| "guest".to_owned());
         let cache_key = format!(
             "home_bootstrap_v1_{}_{}",
             Storage::library_key(profile_id),
@@ -26,12 +28,7 @@ impl EffectExecutor {
             .storage
             .read_json("profiles")?
             .unwrap_or_else(|| json!([]));
-        let active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| profile_id.to_owned());
+        let active_id = profile_id.clone();
         let profile = profiles
             .as_array()
             .and_then(|items| {
@@ -42,9 +39,7 @@ impl EffectExecutor {
             .cloned()
             .unwrap_or_else(|| json!({}));
         let prefs = self
-            .storage
-            .read_json(&Storage::prefs_key(&active_id))?
-            .or_else(|| self.storage.read_json("prefs").ok().flatten())
+            .profile_prefs(&active_id)?
             .unwrap_or_else(|| json!({}));
         let mut addons = self
             .addons_for_profile(&profiles, &active_id, &profile)
@@ -353,7 +348,6 @@ impl EffectExecutor {
                 .read_json(&Storage::prefs_key(&active_id))
                 .ok()
                 .flatten()
-                .or_else(|| executor.storage.read_json("prefs").ok().flatten())
                 .unwrap_or_else(|| json!({}));
             executor
                 .effective_collections(&profile, &prefs)

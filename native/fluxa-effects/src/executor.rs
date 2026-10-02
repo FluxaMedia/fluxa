@@ -47,6 +47,8 @@ fn chrono_unix_seconds() -> i64 {
 #[derive(Clone)]
 pub struct EffectExecutor {
     storage: Storage,
+    profile_id: Option<std::sync::Arc<str>>,
+    cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 pub struct EffectCompletion {
@@ -61,7 +63,37 @@ impl EffectExecutor {
     pub fn new(storage: Storage) -> Self {
         let _ = TORRENT_CACHE_DIR.set(storage.dir().join("torrent-cache"));
         mediaserver::init(&storage);
-        Self { storage }
+        Self {
+            storage,
+            profile_id: None,
+            cancelled: Default::default(),
+        }
+    }
+
+    pub fn bound_to(storage: Storage, profile_id: &str) -> Self {
+        let mut executor = Self::new(storage);
+        executor.profile_id = Some(profile_id.into());
+        executor
+    }
+
+    pub fn cancel(&self) {
+        self.cancelled
+            .store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+
+    pub(crate) fn current_profile_id(&self) -> Result<Option<String>, String> {
+        if let Some(id) = &self.profile_id {
+            return Ok(Some(id.to_string()));
+        }
+        Ok(self
+            .storage
+            .read_json("active_profile_id")?
+            .and_then(|value| value.as_str().map(ToOwned::to_owned))
+            .filter(|value| !value.is_empty()))
+    }
+
+    pub(crate) fn profile_prefs(&self, profile_id: &str) -> Result<Option<Value>, String> {
+        self.storage.read_json(&Storage::prefs_key(profile_id))
     }
 
     pub fn spawn(&self, effect: Value, sender: Sender<EffectCompletion>) {
@@ -77,6 +109,9 @@ impl EffectExecutor {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_owned();
+            if executor.cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+                return;
+            }
             let completion = match executor.execute(&effect).await {
                 Ok(value) => EffectCompletion {
                     effect_id,
@@ -275,9 +310,11 @@ impl EffectExecutor {
             .filter(|value| !value.is_empty())
             .ok_or_else(|| "settings write is missing key".to_owned())?;
         let value = payload.get("value").cloned().unwrap_or(Value::Null);
+        let active_id = self
+            .current_profile_id()?
+            .unwrap_or_else(|| "guest".to_owned());
         let mut settings = self
-            .storage
-            .read_json("prefs")?
+            .profile_prefs(&active_id)?
             .unwrap_or_else(|| json!({}));
         if !settings.is_object() {
             settings = json!({});
@@ -285,37 +322,9 @@ impl EffectExecutor {
         settings
             .as_object_mut()
             .expect("settings was normalized to an object")
-            .insert(key.to_owned(), value.clone());
-        self.storage.write_json("prefs", &settings)?;
-        let active_id = self
-            .storage
-            .read_json("active_profile_id")?
-            .and_then(|value| value.as_str().map(ToOwned::to_owned))
-            .filter(|value| !value.is_empty())
-            .unwrap_or_else(|| "guest".to_owned());
-        let profiles = self
-            .storage
-            .read_json("profiles")?
-            .unwrap_or_else(|| json!([]));
-        if profiles.as_array().is_some_and(|items| {
-            items
-                .iter()
-                .any(|profile| profile.get("id").and_then(Value::as_str) == Some(&active_id))
-        }) {
-            let profile_key = Storage::prefs_key(&active_id);
-            let mut profile_settings = self
-                .storage
-                .read_json(&profile_key)?
-                .unwrap_or_else(|| json!({}));
-            if !profile_settings.is_object() {
-                profile_settings = json!({});
-            }
-            profile_settings
-                .as_object_mut()
-                .expect("profile settings was normalized to an object")
-                .insert(key.to_owned(), value);
-            self.storage.write_json(&profile_key, &profile_settings)?;
-        }
+            .insert(key.to_owned(), value);
+        self.storage
+            .write_json(&Storage::prefs_key(&active_id), &settings)?;
         if key == "libraryCollections" {
             self.push_nuvio_collections(&active_id, &settings["libraryCollections"])
                 .await;
@@ -621,6 +630,33 @@ mod tests {
                 .as_str()
                 .is_some()
         );
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
+    fn settings_write_lands_in_the_bound_profile_only() {
+        let directory = temporary_directory();
+        let storage = Storage::open(directory.clone()).expect("open storage");
+        storage
+            .write_json("active_profile_id", &json!("other"))
+            .expect("write active id");
+        let executor = EffectExecutor::bound_to(storage.clone(), "mine");
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("create runtime");
+        runtime
+            .block_on(executor.execute(&json!({
+                "type": "writeSettings",
+                "payload": {"key": "tmdbApiKey", "value": "secret"}
+            })))
+            .expect("write settings");
+        assert_eq!(
+            storage.read_json(&Storage::prefs_key("mine")).unwrap().unwrap()["tmdbApiKey"],
+            "secret"
+        );
+        assert!(storage.read_json(&Storage::prefs_key("other")).unwrap().is_none());
+        assert!(storage.read_json("prefs").unwrap().is_none());
         let _ = std::fs::remove_dir_all(directory);
     }
 
