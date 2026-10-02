@@ -26,7 +26,7 @@ pub(super) fn draw_home_rows(
     {
         let (card_width, card_height, _) = home_row_dimensions(metrics, kind);
         let body_height = home_row_body_height(metrics, cards, kind);
-        let row_scroll_max = home_row_scroll_max_for_cards(viewport, metrics, cards, kind);
+        let row_scroll_max = home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind);
         let row_height = home_row_heading_height(metrics) + body_height;
         let visible_y = row_y - scroll_offset;
         let row_is_visible = visible_y + row_height >= 0.0 && visible_y <= viewport.height;
@@ -167,14 +167,17 @@ pub(super) fn draw_home_rows(
                 ui.set_clip_rect(ui.clip_rect().intersect(row_clip));
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
-                    for card in cards.iter() {
+                    for (index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
                         let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
                         let slot_height = if is_poster { body_height } else { card_height };
+                        let lead = home_card_lead(title, kind, index, item_height);
                         let (widget_id, slot_rect) =
-                            ui.allocate_space(Vec2::new(item_width, slot_height));
-                        let rect =
-                            Rect::from_min_size(slot_rect.min, Vec2::new(item_width, item_height));
+                            ui.allocate_space(Vec2::new(lead + item_width, slot_height));
+                        let rect = Rect::from_min_size(
+                            slot_rect.min + Vec2::new(lead, 0.0),
+                            Vec2::new(item_width, item_height),
+                        );
                         let node_id = NODE_CARD_BASE + flat_index as u64;
                         let rect = if viewport.is_tv() && focused == Some(node_id) {
                             Rect::from_center_size(
@@ -192,6 +195,16 @@ pub(super) fn draw_home_rows(
                             *activated = Some(node_id);
                         }
                         if card_visible {
+                            let rank = poster_overlay::rank_for(title, kind, index);
+                            if let Some(rank) = rank {
+                                poster_overlay::paint_beside(
+                                    ui.painter(),
+                                    rect,
+                                    rank,
+                                    metrics.accent,
+                                    metrics.background,
+                                );
+                            }
                             if is_poster {
                                 components::poster_card(
                                     ui.painter(),
@@ -215,6 +228,15 @@ pub(super) fn draw_home_rows(
                                     card,
                                     metrics,
                                     assets,
+                                );
+                            }
+                            if let Some(rank) = rank {
+                                poster_overlay::paint_overlay(
+                                    ui.painter(),
+                                    rect,
+                                    rank,
+                                    metrics.accent,
+                                    metrics.background,
                                 );
                             }
                         }

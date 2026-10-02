@@ -73,7 +73,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let row_start = home_row_start(viewport, metrics, hero_height, show_hero);
     let mut flat = 0;
     let mut row_y = row_start;
-    for (row_index, (_, cards, kind)) in home
+    for (row_index, (title, cards, kind)) in home
         .content_rows_with_kind()
         .into_iter()
         .enumerate()
@@ -93,16 +93,17 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             .copied()
             .unwrap_or(0.0);
         let mut card_x = margin - row_scroll;
-        for card in cards {
+        for (index, card) in cards.iter().enumerate() {
             let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
             layout.focusable.push((
+            let lead = home_card_lead(title, kind, index, item_height);
                 NODE_CARD_BASE + flat as u64,
                 Rect::from_min_size(
-                    Pos2::new(card_x, visible_y + home_row_heading_height(metrics)),
+                    Pos2::new(card_x + lead, visible_y + home_row_heading_height(metrics)),
                     Vec2::new(item_width, item_height),
                 ),
             ));
-            card_x += item_width + metrics.horizontal_spacing;
+            card_x += lead + item_width + metrics.horizontal_spacing;
             flat += 1;
         }
         row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
@@ -140,23 +141,28 @@ pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usi
 
 /// Maximum horizontal drag offset for a Home shelf.
 pub fn home_row_scroll_max(viewport: Viewport, home: &HomeModel, row_index: usize) -> f32 {
-    let Some((_, cards, kind)) = home.content_rows_with_kind().nth(row_index) else {
+    let Some((title, cards, kind)) = home.content_rows_with_kind().nth(row_index) else {
         return 0.0;
     };
     let metrics = home_metrics(viewport);
-    home_row_scroll_max_for_cards(viewport, metrics, cards, kind)
+    home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind)
 }
 
 pub(crate) fn home_row_scroll_max_for_cards(
     viewport: Viewport,
     metrics: UiMetrics,
     cards: &[HomeCard],
+    title: &str,
     kind: HomeRowKind,
 ) -> f32 {
     let margin = metrics.screen_margin;
     let content_width = cards
         .iter()
-        .map(|card| home_card_dimensions(metrics, card, kind).0 + metrics.horizontal_spacing)
+        .enumerate()
+        .map(|(index, card)| {
+            let (width, height) = home_card_dimensions(metrics, card, kind);
+            home_card_lead(title, kind, index, height) + width + metrics.horizontal_spacing
+        })
         .sum::<f32>()
         - metrics.horizontal_spacing;
     (content_width - (viewport.width - margin * 2.0)).max(0.0)

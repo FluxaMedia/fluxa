@@ -135,6 +135,10 @@ pub(crate) fn home_card_dimensions(
     }
 }
 
+pub(crate) fn home_card_lead(title: &str, kind: HomeRowKind, index: usize, height: f32) -> f32 {
+    poster_overlay::lead_width(height, poster_overlay::rank_for(title, kind, index))
+}
+
 pub(crate) fn home_row_body_height(
     metrics: UiMetrics,
     cards: &[HomeCard],

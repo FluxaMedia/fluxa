@@ -44,8 +44,9 @@ pub use components::{
 };
 pub use motion::page_transition;
 pub use poster_overlay::{
-    Enrichment, Personal, PersonalIndex, PosterOverlays, set_poster_enrichment,
-    set_poster_landscape, set_poster_overlays, set_poster_personal, set_rating_logos,
+    Enrichment, NumberColor, NumberStyle, Personal, PersonalIndex, PosterOverlays, TopNumbers,
+    set_poster_enrichment, set_poster_landscape, set_poster_overlays, set_poster_personal,
+    set_rating_logos, set_top_numbers,
 };
 
 pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};

@@ -430,7 +430,7 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 22] = [
         options: &[],
     },
 ];
-pub(super) const POSTERS_GROUPS: [(usize, &str); 4] = [
+pub(super) const POSTERS_GROUPS: [(usize, &str); 5] = [
     (6, "settings.group.cards"),
     (4, "settings.group.poster_overlays"),
     (3, "settings.group.poster_rating"),
@@ -453,11 +453,47 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
         options: &[],
     },
     SettingsRow {
+        label: "Top numbers",
+        key: "posterTopNumbers",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Numbered rows",
+        key: "posterTopNumbersRows",
+        options: &["trending", "all"],
+    },
+    SettingsRow {
+        label: "Numbered titles",
+        key: "posterTopNumbersCount",
+        options: &["3", "5", "10", "20"],
+    },
+    SettingsRow {
+        label: "Number style",
+        key: "posterTopNumbersStyle",
+        options: &["outline", "solid", "ghost"],
+    },
+    SettingsRow {
+        label: "Number color",
+        key: "posterTopNumbersColor",
+        options: &["white", "gray", "accent"],
+    },
+    SettingsRow {
+        label: "Number size",
+        key: "posterTopNumbersSize",
+        options: &["default", "small", "large"],
+    },
+    SettingsRow {
+        label: "Number position",
+        key: "posterTopNumbersPosition",
+        options: &["beside", "overlay"],
+    },
+    SettingsRow {
         label: "Countdown duration",
         key: "autoPlayCountdownSecs",
         options: &["5", "7", "10", "15"],
     },
     SettingsRow {
+    (7, "settings.group.poster_top_numbers"),
         label: "Try binge group",
         key: "tryBingeGroup",
         options: &[],

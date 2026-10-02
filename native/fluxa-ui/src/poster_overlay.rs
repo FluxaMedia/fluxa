@@ -11,11 +11,13 @@ mod landscape;
 mod personal;
 mod scores;
 mod template;
+mod top_numbers;
 pub use enrichment::*;
 pub use landscape::*;
 pub use personal::*;
 pub use scores::*;
 pub use template::*;
+pub use top_numbers::*;
 
 const NEW_EPISODE_DAYS: i64 = 7;
 const NEW_RELEASE_DAYS: i64 = 30;
@@ -128,6 +130,13 @@ pub(super) fn setting_default(key: &str) -> Option<&'static serde_json::Value> {
                 "posterAgeRating": true,
                 "posterAwardBadge": true,
                 "posterRatingSource": "imdb",
+                "posterTopNumbers": false,
+                "posterTopNumbersRows": "trending",
+                "posterTopNumbersCount": "10",
+                "posterTopNumbersStyle": "outline",
+                "posterTopNumbersColor": "white",
+                "posterTopNumbersSize": "default",
+                "posterTopNumbersPosition": "beside",
             })
         })
         .get(key)
