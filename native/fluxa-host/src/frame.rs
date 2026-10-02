@@ -303,6 +303,19 @@ pub(super) fn render_frame(state: &mut RendererState) {
                             });
                     }
                 }
+                if route == Route::Home && state.home.form_factor == UiFormFactorJson::Desktop {
+                    let viewport = logical_viewport(state);
+                    let rows = state.home.content_rows_with_kind().count();
+                    for row in 0..rows {
+                        let live = state
+                            .gpu
+                            .as_ref()
+                            .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
+                        if let Some(offset) = live {
+                            request_home_row_load_more_at(state, row, viewport, offset);
+                        }
+                    }
+                }
                 if let Some((key, value)) = layout.filter_change.as_ref() {
                     apply_choice(state, route, key, value.clone());
                 }
