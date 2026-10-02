@@ -379,6 +379,9 @@ pub(super) fn edit_text(
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             &mut state.settings.server_fields[fluxa_ui::server_input(node).unwrap_or_default()]
         }
+        _ if route == Route::Settings && fluxa_ui::badge_input(node).is_some() => {
+            &mut state.settings.badge_fields[fluxa_ui::badge_input(node).unwrap_or_default()]
+        }
         _ if route == Route::Settings && fluxa_ui::poster_field(node).is_some() => {
             &mut state.settings.poster_fields[fluxa_ui::poster_field(node).unwrap_or_default()]
         }
@@ -412,6 +415,9 @@ pub(super) fn focused_text(state: &RendererState) -> Option<String> {
         }
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             state.settings.server_fields[fluxa_ui::server_input(node)?].clone()
+        }
+        _ if route == Route::Settings && fluxa_ui::badge_input(node).is_some() => {
+            state.settings.badge_fields[fluxa_ui::badge_input(node)?].clone()
         }
         _ if route == Route::Settings => {
             state.settings.poster_fields[fluxa_ui::poster_field(node)?].clone()
@@ -463,7 +469,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             continue;
         }
         if let Some(node) = node {
-            if shortcuts::activate_node(state, node) {
+            if shortcuts::activate_node(state, node) || stream_badges::activate_node(state, node) {
                 continue;
             }
             let request = state

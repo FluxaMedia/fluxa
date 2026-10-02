@@ -54,8 +54,8 @@ pub use discover::draw_discover;
 pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PlayerModel, PlayerOptions, PlayerPanel, PlayerSource,
-    PlayerToast, SegmentSpan, SkipCard, SkipKind, StatsSection, content_warning_duration,
-    draw_player, format_time, torrent_status_lines,
+    PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
+    content_warning_duration, draw_player, format_time, torrent_status_lines,
 };
 pub use profiles::{
     PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft, ProfileEntry,
@@ -63,10 +63,11 @@ pub use profiles::{
 };
 use settings::settings_card_height;
 pub use settings::{
-    ACCOUNT_PROVIDERS, AccountPrompt, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow,
-    SettingsSection, ShortcutRow, account_source, account_source_state, addon_action,
-    addon_transport_url, category_pages, draw_settings, option_label, poster_field, server_index,
-    server_input, settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
+    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, POSTER_FIELDS,
+    SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, ShortcutRow, account_source,
+    account_source_state, addon_action, addon_transport_url, badge_input, badge_input_label,
+    category_pages, draw_settings, option_label, poster_field, server_index, server_input,
+    settings_model_from_core_snapshot, settings_page_for_node, settings_row_by_index,
     settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};

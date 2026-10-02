@@ -84,6 +84,9 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     let server_fields = std::mem::take(&mut state.settings.server_fields);
+    let badge_fields = std::mem::take(&mut state.settings.badge_fields);
+    let badge_outline = state.settings.badge_outline;
+    let badge_status = state.settings.badge_status.take();
     let playback_summary = std::mem::take(&mut state.settings.playback_summary);
     state.settings = projection.settings;
     state.settings.playback_summary = playback_summary;
@@ -94,6 +97,9 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.plugin_url = plugin_url;
     state.settings.search = search;
     state.settings.server_fields = server_fields;
+    state.settings.badge_fields = badge_fields;
+    state.settings.badge_outline = badge_outline;
+    state.settings.badge_status = badge_status;
     shortcuts::refresh(state);
     accounts::refresh_servers(state);
     for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {

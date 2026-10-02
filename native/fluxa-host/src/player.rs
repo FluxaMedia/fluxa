@@ -511,10 +511,28 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
     if detail.is_empty() {
         detail = text("title");
     }
+    let video_size = stream
+        .pointer("/behaviorHints/videoSize")
+        .and_then(Value::as_i64);
+    let filename = stream
+        .pointer("/behaviorHints/filename")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let (badges, badges_top) = crate::stream_badges::badges_for(
+        &format!(
+            "{}\n{}\n{}\n{filename}",
+            lines("name"),
+            text("description"),
+            text("title")
+        ),
+        video_size,
+    );
     fluxa_ui::PlayerSource {
         addon: lines("addonName"),
         name: lines("name"),
         detail,
+        badges,
+        badges_top,
     }
 }
 

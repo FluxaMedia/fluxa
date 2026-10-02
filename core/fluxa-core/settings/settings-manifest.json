@@ -716,6 +716,34 @@
       "category": "playback"
     },
     {
+      "key": "streamBadgesEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamBadgeBuiltIn",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamBadgeFileSize",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "streamBadgePlacement",
+      "type": "string",
+      "default": "bottom",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "playerGestures",
       "type": "boolean",
       "default": true,

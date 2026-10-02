@@ -9,4 +9,4 @@ pub(crate) mod streams;
 pub(crate) mod subtitles;
 
 pub use sessions::watch_together;
-pub use streams::stream_policy;
+pub use streams::{stream_badges, stream_policy};

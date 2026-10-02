@@ -88,6 +88,7 @@ mod profiles;
 mod projection;
 mod route;
 mod shortcuts;
+mod stream_badges;
 mod shorts;
 mod surface;
 mod sync;
@@ -175,6 +176,7 @@ struct RendererState {
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
     shortcut_recording: Option<String>,
+    stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     open_url: Option<String>,
     profiles: Option<fluxa_ui::ProfilesModel>,
@@ -329,6 +331,7 @@ impl FluxaHost {
             video: None,
             fullscreen_toggle: false,
             shortcut_recording: None,
+            stream_badges: Default::default(),
             applied_app_icon: None,
             open_url: None,
             profiles: None,

@@ -21,6 +21,25 @@ pub struct SettingsModel {
     pub shortcuts: Vec<ShortcutRow>,
     pub playback_summary: Vec<crate::StatsSection>,
     pub shortcut_recording: Option<String>,
+    pub badge_fields: [String; BADGE_INPUT_COUNT],
+    pub badge_outline: bool,
+    pub badge_preview: crate::SourceBadge,
+    pub badge_packs: Vec<BadgePackRow>,
+    pub badge_custom: Vec<BadgeCustomRow>,
+    pub badge_status: Option<String>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BadgePackRow {
+    pub name: String,
+    pub count: usize,
+    pub active: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct BadgeCustomRow {
+    pub badge: crate::SourceBadge,
+    pub enabled: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -175,5 +194,11 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         shortcuts: Vec::new(),
         playback_summary: Vec::new(),
         shortcut_recording: None,
+        badge_fields: Default::default(),
+        badge_outline: false,
+        badge_preview: Default::default(),
+        badge_packs: Vec::new(),
+        badge_custom: Vec::new(),
+        badge_status: None,
     }
 }

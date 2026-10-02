@@ -106,6 +106,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     timer.mark("snapshot");
     profiles::poll(state);
     accounts::poll(state);
+    stream_badges::poll(state);
     player::pump(state);
     player::upload_frame(state);
     timer.mark("player");

@@ -302,7 +302,30 @@ pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 22] = [
+pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 4] = [
+    SettingsRow {
+        label: "Stream badges",
+        key: "streamBadgesEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Built-in badges",
+        key: "streamBadgeBuiltIn",
+        options: &[],
+    },
+    SettingsRow {
+        label: "File size badge",
+        key: "streamBadgeFileSize",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Badge placement",
+        key: "streamBadgePlacement",
+        options: &["bottom", "top"],
+    },
+];
+
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 29] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -429,29 +452,6 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 22] = [
         key: "posterAwardBadge",
         options: &[],
     },
-];
-pub(super) const POSTERS_GROUPS: [(usize, &str); 5] = [
-    (6, "settings.group.cards"),
-    (4, "settings.group.poster_overlays"),
-    (3, "settings.group.poster_rating"),
-    (9, "settings.group.poster_badges"),
-];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
-    SettingsRow {
-        label: "Playback destination",
-        key: "preferredPlayer",
-        options: &["mpv", "external"],
-    },
-    SettingsRow {
-        label: "Stream selection",
-        key: "streamSourceSelectionMode",
-        options: &["manual", "first", "best", "regex"],
-    },
-    SettingsRow {
-        label: "Autoplay next episode",
-        key: "autoPlayNextEpisode",
-        options: &[],
-    },
     SettingsRow {
         label: "Top numbers",
         key: "posterTopNumbers",
@@ -487,13 +487,36 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
         key: "posterTopNumbersPosition",
         options: &["beside", "overlay"],
     },
+];
+pub(super) const POSTERS_GROUPS: [(usize, &str); 5] = [
+    (6, "settings.group.cards"),
+    (4, "settings.group.poster_overlays"),
+    (3, "settings.group.poster_rating"),
+    (9, "settings.group.poster_badges"),
+    (7, "settings.group.poster_top_numbers"),
+];
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
+    SettingsRow {
+        label: "Playback destination",
+        key: "preferredPlayer",
+        options: &["mpv", "external"],
+    },
+    SettingsRow {
+        label: "Stream selection",
+        key: "streamSourceSelectionMode",
+        options: &["manual", "first", "best", "regex"],
+    },
+    SettingsRow {
+        label: "Autoplay next episode",
+        key: "autoPlayNextEpisode",
+        options: &[],
+    },
     SettingsRow {
         label: "Countdown duration",
         key: "autoPlayCountdownSecs",
         options: &["5", "7", "10", "15"],
     },
     SettingsRow {
-    (7, "settings.group.poster_top_numbers"),
         label: "Try binge group",
         key: "tryBingeGroup",
         options: &[],
@@ -1041,6 +1064,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 16] = [
         groups: &[],
     },
     SettingsSection {
+    SettingsSection {
+        title: "Badges",
+        category: "Playback",
+        description: "Badges on the source list, with regex rules and packs",
+        rows: &STREAM_BADGES_SETTINGS,
+        groups: &[],
+    },
         title: "Downloads",
         category: "Downloads",
         description: "Torrent and download defaults",

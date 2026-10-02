@@ -163,6 +163,19 @@ pub struct PlayerSource {
     pub addon: String,
     pub name: String,
     pub detail: String,
+    pub badges: Vec<SourceBadge>,
+    pub badges_top: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct SourceBadge {
+    pub label: String,
+    pub primary: bool,
+    pub fill: Option<Color32>,
+    pub text: Option<Color32>,
+    pub border: Option<Color32>,
+    pub outline: bool,
+    pub image: Option<String>,
 }
 
 const WARNING_BAR: f32 = 0.3;
