@@ -492,6 +492,34 @@
       "category": "appearance"
     },
     {
+      "key": "expandedPosters",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "expandedPostersDelay",
+      "type": "string",
+      "default": "1",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "trailerOnExpandedPosters",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "trailerOnExpandedPostersDelay",
+      "type": "string",
+      "default": "2",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "homeSeasonPostersOnHero",
       "type": "boolean",
       "default": true,

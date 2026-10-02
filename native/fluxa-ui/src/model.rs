@@ -188,6 +188,12 @@ pub struct HomeModel {
     #[serde(skip)]
     pub trailer: Option<HeroTrailer>,
     #[serde(skip)]
+    pub poster_trailer: Option<HeroTrailer>,
+    #[serde(skip)]
+    pub expanded_posters: bool,
+    #[serde(skip)]
+    pub expanded_posters_delay: f64,
+    #[serde(skip)]
     pub language: String,
     #[serde(skip)]
     pub(crate) artwork_signature: OnceLock<u64>,
@@ -270,6 +276,9 @@ impl HomeModel {
             scroll_offset: 0.0,
             row_scroll_offsets: Vec::new(),
             trailer: None,
+            poster_trailer: None,
+            expanded_posters: false,
+            expanded_posters_delay: 1.0,
             language: "en".to_owned(),
             artwork_signature: OnceLock::new(),
         }

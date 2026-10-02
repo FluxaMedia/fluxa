@@ -340,7 +340,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     },
 ];
 
-pub(super) const POSTERS_SETTINGS: [SettingsRow; 29] = [
+pub(super) const POSTERS_SETTINGS: [SettingsRow; 33] = [
     SettingsRow {
         label: "Card corners",
         key: "cardCornerPreset",
@@ -502,13 +502,34 @@ pub(super) const POSTERS_SETTINGS: [SettingsRow; 29] = [
         key: "posterTopNumbersPosition",
         options: &["beside", "overlay"],
     },
+    SettingsRow {
+        label: "Expanded posters",
+        key: "expandedPosters",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Expand delay",
+        key: "expandedPostersDelay",
+        options: &["0", "1", "2", "3"],
+    },
+    SettingsRow {
+        label: "Trailer on expanded posters",
+        key: "trailerOnExpandedPosters",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Expanded poster trailer delay",
+        key: "trailerOnExpandedPostersDelay",
+        options: &["0", "2", "4", "6"],
+    },
 ];
-pub(super) const POSTERS_GROUPS: [(usize, &str); 5] = [
+pub(super) const POSTERS_GROUPS: [(usize, &str); 6] = [
     (6, "settings.group.cards"),
     (4, "settings.group.poster_overlays"),
     (3, "settings.group.poster_rating"),
     (9, "settings.group.poster_badges"),
     (7, "settings.group.poster_top_numbers"),
+    (4, "settings.group.expanded_posters"),
 ];
 pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
     SettingsRow {

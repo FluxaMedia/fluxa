@@ -120,6 +120,19 @@ pub fn home_model_from_core_snapshot(
             .pointer("/settings/values/gifAutoplayEnabled")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(true),
+        expanded_posters: snapshot
+            .pointer("/settings/values/expandedPosters")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
+        expanded_posters_delay: snapshot
+            .pointer("/settings/values/expandedPostersDelay")
+            .and_then(|value| {
+                value
+                    .as_f64()
+                    .or_else(|| value.as_str().and_then(|text| text.parse().ok()))
+            })
+            .unwrap_or(1.0)
+            .max(0.0),
         accent: snapshot
             .pointer("/settings/values/accentColorArgb")
             .and_then(accent_from_value),

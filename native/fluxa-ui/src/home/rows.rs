@@ -2,6 +2,24 @@ use super::*;
 
 const HOVER_PREVIEW_DELAY: f64 = 0.5;
 
+#[derive(Clone, Debug)]
+pub struct ExpandedPoster {
+    pub id: String,
+    pub raw: serde_json::Value,
+}
+
+pub fn expanded_poster(context: &egui::Context) -> Option<ExpandedPoster> {
+    context.data(|data| data.get_temp(Id::new("fluxa-expanded-poster")))
+}
+
+#[derive(Clone, Default)]
+struct ExpandState {
+    focus: Option<(u64, f64)>,
+    progress: Vec<(u64, f32)>,
+}
+
+const EXPAND_SECONDS: f32 = 0.25;
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_home_rows(
     context: &egui::Context,
@@ -26,6 +44,65 @@ pub(crate) fn draw_home_rows(
         .then(|| context.input(|input| input.pointer.hover_pos()))
         .flatten();
     let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
+    let now = context.input(|input| input.time);
+    let expand_id = Id::new("fluxa-expand-state");
+    let mut expand = context
+        .data(|data| data.get_temp::<ExpandState>(expand_id))
+        .unwrap_or_default();
+    let focus_node = focused
+        .filter(|node| home.expanded_posters && (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node));
+    if expand.focus.map(|(node, _)| node) != focus_node {
+        expand.focus = focus_node.map(|node| (node, now));
+    }
+    let expanded_node = expand
+        .focus
+        .filter(|(_, since)| now - since >= home.expanded_posters_delay)
+        .map(|(node, _)| node);
+    let snap = home.expanded_posters_delay <= 0.0;
+    let step = context.input(|input| input.stable_dt).min(0.05) / EXPAND_SECONDS;
+    if let Some(node) = expanded_node
+        && !expand.progress.iter().any(|(id, _)| *id == node)
+    {
+        expand.progress.push((node, 0.0));
+    }
+    for (node, progress) in &mut expand.progress {
+        let open = Some(*node) == expanded_node;
+        *progress = match (open, snap) {
+            (true, true) => 1.0,
+            (false, true) => 0.0,
+            (true, false) => (*progress + step).min(1.0),
+            (false, false) => (*progress - step).max(0.0),
+        };
+    }
+    expand
+        .progress
+        .retain(|(node, progress)| *progress > 0.0 || Some(*node) == expanded_node);
+    let moving = expand.progress.iter().any(|(node, progress)| {
+        if Some(*node) == expanded_node {
+            *progress < 1.0
+        } else {
+            *progress > 0.0
+        }
+    });
+    if moving {
+        context.request_repaint();
+    } else if let Some((_, since)) = expand.focus
+        && expanded_node.is_none()
+    {
+        let wait = (home.expanded_posters_delay - (now - since)).max(0.0);
+        context.request_repaint_after(std::time::Duration::from_secs_f64(wait));
+    }
+    let expand_ease = |node: u64| {
+        expand
+            .progress
+            .iter()
+            .find(|(id, _)| *id == node)
+            .map_or(0.0, |(_, progress)| {
+                egui::emath::easing::cubic_out(*progress)
+            })
+    };
+    context.data_mut(|data| data.insert_temp(expand_id, expand.clone()));
+    let mut expanded_card: Option<ExpandedPoster> = None;
     for (row_index, (title, cards, kind)) in home
         .content_rows_with_kind()
         .into_iter()
@@ -34,7 +111,19 @@ pub(crate) fn draw_home_rows(
     {
         let (card_width, card_height, _) = home_row_dimensions(metrics, kind);
         let body_height = home_row_body_height(metrics, cards, kind);
-        let row_scroll_max = home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind);
+        let expand_extra = if kind == HomeRowKind::Poster {
+            let wide = card_height * 16.0 / 9.0;
+            (0..cards.len())
+                .map(|index| {
+                    let ease = expand_ease(NODE_CARD_BASE + (flat_index + index) as u64);
+                    (wide - card_width).max(0.0) * ease
+                })
+                .sum::<f32>()
+        } else {
+            0.0
+        };
+        let row_scroll_max =
+            home_row_scroll_max_for_cards(viewport, metrics, title, cards, kind) + expand_extra;
         let row_height = home_row_heading_height(metrics) + body_height;
         let visible_y = row_y - scroll_offset;
         let row_is_visible = visible_y + row_height >= 0.0 && visible_y <= viewport.height;
@@ -178,6 +267,14 @@ pub(crate) fn draw_home_rows(
                     for (index, card) in cards.iter().enumerate() {
                         let is_poster = !matches!(kind, HomeRowKind::Continue);
                         let (item_width, item_height) = home_card_dimensions(metrics, card, kind);
+                        let node_id = NODE_CARD_BASE + flat_index as u64;
+                        let ease = if is_poster && kind != HomeRowKind::Collection {
+                            expand_ease(node_id)
+                        } else {
+                            0.0
+                        };
+                        let item_width =
+                            item_width + (item_height * 16.0 / 9.0 - item_width).max(0.0) * ease;
                         let slot_height = if is_poster { body_height } else { card_height };
                         let lead = home_card_lead(title, kind, index, item_height);
                         let (widget_id, slot_rect) =
@@ -186,7 +283,6 @@ pub(crate) fn draw_home_rows(
                             slot_rect.min + Vec2::new(lead, 0.0),
                             Vec2::new(item_width, item_height),
                         );
-                        let node_id = NODE_CARD_BASE + flat_index as u64;
                         let rect = if viewport.is_tv() && focused == Some(node_id) {
                             Rect::from_center_size(
                                 rect.center(),
@@ -213,6 +309,25 @@ pub(crate) fn draw_home_rows(
                         if response.as_ref().is_some_and(|response| response.clicked()) {
                             *activated = Some(node_id);
                         }
+                        if card_visible
+                            && home.expanded_posters
+                            && is_poster
+                            && kind != HomeRowKind::Collection
+                        {
+                            let near = focus_node.is_some_and(|focus| node_id.abs_diff(focus) <= 4);
+                            let priority = if near {
+                                ArtworkPriority::Visible
+                            } else {
+                                ArtworkPriority::Prefetch
+                            };
+                            components::prefetch_expanded(
+                                context,
+                                card,
+                                item_height,
+                                priority,
+                                assets,
+                            );
+                        }
                         if card_visible {
                             let rank = poster_overlay::rank_for(title, kind, index);
                             if let Some(rank) = rank {
@@ -224,7 +339,32 @@ pub(crate) fn draw_home_rows(
                                     metrics.background,
                                 );
                             }
-                            if is_poster {
+                            if is_poster && ease > 0.0 {
+                                if expanded_node == Some(node_id)
+                                    && let Some(id) = card.id.clone()
+                                {
+                                    expanded_card = Some(ExpandedPoster {
+                                        id,
+                                        raw: card.raw.clone(),
+                                    });
+                                }
+                                let trailer = home
+                                    .poster_trailer
+                                    .as_ref()
+                                    .filter(|trailer| {
+                                        card.id.as_deref() == Some(trailer.item_id.as_str())
+                                    })
+                                    .and_then(|trailer| trailer.texture);
+                                components::expanded_poster_card(
+                                    ui.painter(),
+                                    rect,
+                                    card,
+                                    ease,
+                                    trailer,
+                                    metrics,
+                                    assets,
+                                );
+                            } else if is_poster {
                                 components::poster_card(
                                     ui.painter(),
                                     rect,
@@ -265,12 +405,17 @@ pub(crate) fn draw_home_rows(
             });
         row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
     }
+    context.data_mut(|data| match expanded_card {
+        Some(card) => {
+            data.insert_temp(Id::new("fluxa-expanded-poster"), card);
+        }
+        None => data.remove::<ExpandedPoster>(Id::new("fluxa-expanded-poster")),
+    });
     let Some((node_id, anchor, card)) = hovered else {
         components::hover_preview_reset(context);
         context.data_mut(|data| data.remove::<(u64, f64, Rect)>(preview_id));
         return;
     };
-    let now = context.input(|input| input.time);
     let since = preview_state
         .filter(|(id, _, _)| *id == node_id)
         .map_or(now, |(_, since, _)| since);

@@ -19,6 +19,7 @@ pub(crate) struct Trailers {
 
 struct Active {
     key: String,
+    poster: bool,
     urls: Vec<String>,
     ids: Vec<String>,
     next: usize,
@@ -55,6 +56,27 @@ impl Trailers {
             .collect()
     }
 
+    fn urls_for(&self, id: &str, raw: &Value) -> Vec<String> {
+        let urls: Vec<String> = raw
+            .get("trailers")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|trailer| {
+                ["url", "link"]
+                    .into_iter()
+                    .find_map(|key| trailer.get(key).and_then(Value::as_str))
+            })
+            .take(6)
+            .map(ToOwned::to_owned)
+            .collect();
+        if urls.is_empty() {
+            self.fetched_urls(id)
+        } else {
+            urls
+        }
+    }
+
     pub(crate) fn set_targets(&mut self, targets: Vec<Value>) {
         self.targets = targets
             .into_iter()
@@ -71,6 +93,7 @@ struct Wanted {
     key: String,
     urls: Vec<String>,
     delay: f64,
+    poster: bool,
 }
 
 fn wanted(state: &RendererState) -> Option<Wanted> {
@@ -80,6 +103,16 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
     match state.route {
+        Route::Home if settings.bool_value("trailerOnExpandedPosters") => {
+            let context = &state.gpu.as_ref()?.egui_context;
+            let poster = fluxa_ui::expanded_poster(context)?;
+            Some(Wanted {
+                urls: state.trailers.urls_for(&poster.id, &poster.raw),
+                key: poster.id,
+                delay: delay("trailerOnExpandedPostersDelay"),
+                poster: true,
+            })
+        }
         Route::Home
             if settings.bool_value("homeHeroAutoplayTrailer") && state.home.show_hero_section =>
         {
@@ -89,6 +122,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 key: hero.item_id.clone()?,
                 urls: hero.trailers.clone(),
                 delay: delay("homeHeroAutoplayTrailerDelaySecs"),
+                poster: false,
             })
         }
         Route::Shorts => {
@@ -103,6 +137,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 key: id,
                 urls,
                 delay: 0.3,
+                poster: false,
             })
         }
         Route::Detail
@@ -112,6 +147,7 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
                 key: state.detail.id.clone(),
                 urls: state.detail.trailers.clone(),
                 delay: delay("detailHeroAutoplayTrailerDelaySecs"),
+                poster: false,
             })
         }
         _ => None,
@@ -240,22 +276,52 @@ fn queue_shorts(state: &mut RendererState) {
     }
 }
 
+fn queue_expanded(state: &mut RendererState) {
+    if state.route != Route::Home || !state.settings.bool_value("trailerOnExpandedPosters") {
+        return;
+    }
+    let Some(gpu) = state.gpu.as_ref() else {
+        return;
+    };
+    let Some(poster) = fluxa_ui::expanded_poster(&gpu.egui_context) else {
+        return;
+    };
+    let trailers = &mut state.trailers;
+    let id = Value::String(poster.id.clone());
+    let queued = trailers
+        .targets
+        .iter()
+        .any(|target| target.get("id") == Some(&id));
+    if trailers.urls_for(&poster.id, &poster.raw).is_empty()
+        && !queued
+        && !trailers.fetched_ids.contains(&id)
+    {
+        trailers.targets.push(poster.raw);
+    }
+}
+
 pub(crate) fn tick(state: &mut RendererState) {
     queue_shorts(state);
+    queue_expanded(state);
     fetch(state);
     let wanted = wanted(state);
     let current = state
         .trailers
         .active
         .as_ref()
-        .map(|active| active.key.as_str());
-    if current != wanted.as_ref().map(|wanted| wanted.key.as_str()) {
+        .map(|active| (active.key.as_str(), active.poster));
+    if current
+        != wanted
+            .as_ref()
+            .map(|wanted| (wanted.key.as_str(), wanted.poster))
+    {
         reset(state);
         if let Some(wanted) = wanted {
             state.trailers.active = Some(Active {
                 ids: youtube_ids(&wanted.urls),
                 urls: wanted.urls,
                 key: wanted.key,
+                poster: wanted.poster,
                 next: 0,
                 due: Instant::now() + Duration::from_secs_f64(wanted.delay),
                 request: None,
@@ -426,12 +492,20 @@ fn publish(state: &mut RendererState) {
         .as_ref()
         .filter(|active| !active.failed);
     state.home.trailer = active
-        .filter(|_| state.route == Route::Home)
+        .filter(|active| state.route == Route::Home && !active.poster)
         .map(|active| HeroTrailer {
             item_id: active.key.clone(),
             texture: active.texture,
             finished: active.finished,
             subtitle: active.cue.clone(),
+        });
+    state.home.poster_trailer = active
+        .filter(|active| state.route == Route::Home && active.poster)
+        .map(|active| HeroTrailer {
+            item_id: active.key.clone(),
+            texture: active.texture,
+            finished: active.finished,
+            subtitle: None,
         });
     state.shorts.trailer = active
         .filter(|_| state.route == Route::Shorts)

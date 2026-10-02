@@ -957,6 +957,119 @@ pub(super) fn poster_card(
     });
 }
 
+fn expanded_bounds(height: f32) -> (Vec2, Vec2) {
+    let wide = height * 16.0 / 9.0;
+    (
+        Vec2::new(wide, height),
+        Vec2::new(wide * 0.4, height * 0.26),
+    )
+}
+
+pub(super) fn prefetch_expanded(
+    context: &egui::Context,
+    card: &HomeCard,
+    height: f32,
+    priority: ArtworkPriority,
+    assets: &mut impl HomeAssets,
+) {
+    let (backdrop, logo) = expanded_bounds(height);
+    let ppp = context.pixels_per_point();
+    assets.prefetch_for(
+        card.backdrop_url.as_deref().or(card.artwork_url.as_deref()),
+        artwork_target_size(backdrop, ppp),
+        priority,
+    );
+    assets.prefetch_for(
+        card.logo_url.as_deref(),
+        artwork_target_size(logo, ppp),
+        priority,
+    );
+}
+
+pub(super) fn expanded_poster_card(
+    painter: &Painter,
+    rect: Rect,
+    card: &HomeCard,
+    progress: f32,
+    trailer: Option<egui::TextureId>,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+) {
+    crate::motion::press_scale(painter, rect, || {
+        poster_card_body(painter, rect, card, metrics, assets, false, true);
+        let radius = metrics.card_radius;
+        let alpha = (255.0 * progress) as u8;
+        let url = card.backdrop_url.as_deref().or(card.artwork_url.as_deref());
+        let (backdrop_bounds, logo_bounds) = expanded_bounds(rect.height());
+        rounded_artwork(
+            painter,
+            rect,
+            radius,
+            url,
+            artwork_target_size(backdrop_bounds, painter.ctx().pixels_per_point()),
+            ArtworkPriority::Visible,
+            Color32::from_white_alpha(alpha),
+            assets,
+        );
+        if let Some(texture) = trailer {
+            let fade = painter.ctx().animate_bool_with_time(
+                Id::new(("fluxa-poster-trailer-fade", texture)),
+                true,
+                0.6,
+            );
+            painter.add(
+                egui::epaint::RectShape::filled(
+                    rect,
+                    radius,
+                    Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
+                )
+                .with_texture(texture, cover_uv([1920, 1080], rect)),
+            );
+        }
+        let scrim = Rect::from_min_max(
+            Pos2::new(rect.left(), rect.top() + rect.height() * 0.5),
+            rect.max,
+        );
+        paint_vertical_gradient(
+            painter,
+            scrim,
+            Color32::TRANSPARENT,
+            Color32::from_black_alpha((180.0 * progress) as u8),
+        );
+        let pad = 14.0;
+        let logo = title_logo(
+            painter.ctx().pixels_per_point(),
+            card.logo_url.as_deref(),
+            logo_bounds,
+            ArtworkPriority::Visible,
+            assets,
+        );
+        match logo {
+            Some((texture, size)) => texture_image(
+                painter,
+                texture,
+                Rect::from_min_size(
+                    Pos2::new(rect.left() + pad, rect.bottom() - pad - size.y),
+                    size,
+                ),
+                full_uv(),
+                Color32::from_white_alpha(alpha),
+            ),
+            None => {
+                let size = metrics.screen_card_title_size + 4.0;
+                paint_elided_text(
+                    painter,
+                    Pos2::new(rect.left() + pad, rect.bottom() - pad - size),
+                    &card.title,
+                    FontId::proportional(size),
+                    rect.width() * 0.6,
+                    Color32::from_white_alpha(alpha),
+                );
+            }
+        }
+    });
+}
+
 const PREVIEW_PAD: f32 = 18.0;
 const PREVIEW_BUTTON_HEIGHT: f32 = 44.0;
 
