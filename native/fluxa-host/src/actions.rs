@@ -184,6 +184,27 @@ pub(super) fn native_action_for_node(
             });
         }
     }
+    if route == Route::Home && node >= fluxa_ui::NODE_PREVIEW_BASE {
+        let slot = node - fluxa_ui::NODE_PREVIEW_BASE;
+        let card = home.card_at((slot / 2) as usize)?;
+        let id = card.id.as_ref()?.clone();
+        let item_type = card.item_type.as_ref()?.clone();
+        return Some(match slot % 2 {
+            0 => {
+                let series = matches!(item_type.as_str(), "series" | "tv" | "show");
+                NativeAction::StartPlayback {
+                    item: playback_item(
+                        &card.raw,
+                        home.resume_for(&id),
+                        series.then(|| format!("{id}:1:1")),
+                    ),
+                }
+            }
+            _ => NativeAction::ToggleWatchlist {
+                item: card.raw.clone(),
+            },
+        });
+    }
     let (id, item_type, preview) = if route == Route::Library && node >= NODE_CARD_BASE {
         let card = library
             .cards(library_tab)

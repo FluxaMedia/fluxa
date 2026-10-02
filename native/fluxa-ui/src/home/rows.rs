@@ -1,5 +1,7 @@
 use super::*;
 
+const HOVER_PREVIEW_DELAY: f64 = 0.5;
+
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn draw_home_rows(
     context: &egui::Context,
@@ -18,6 +20,12 @@ pub(crate) fn draw_home_rows(
 ) {
     let mut flat_index = 0usize;
     let mut row_y = row_start;
+    let preview_id = Id::new("fluxa-hover-preview-state");
+    let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
+    let pointer = (viewport.form_factor == UiFormFactor::Desktop)
+        .then(|| context.input(|input| input.pointer.hover_pos()))
+        .flatten();
+    let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
     for (row_index, (title, cards, kind)) in home
         .content_rows_with_kind()
         .into_iter()
@@ -189,6 +197,17 @@ pub(crate) fn draw_home_rows(
                         };
                         layout.focusable.push((node_id, rect));
                         let card_visible = rect.intersects(screen) && rect.intersects(row_clip);
+                        if card_visible
+                            && is_poster
+                            && kind != HomeRowKind::Collection
+                            && let Some(pos) = pointer
+                            && (rect.intersect(row_clip).contains(pos)
+                                || preview_state.is_some_and(|(id, _, area)| {
+                                    id == node_id && area.contains(pos)
+                                }))
+                        {
+                            hovered = Some((node_id, rect, card));
+                        }
                         let response = card_visible
                             .then(|| ui.interact(slot_rect, widget_id, egui::Sense::click()));
                         if response.as_ref().is_some_and(|response| response.clicked()) {
@@ -245,5 +264,51 @@ pub(crate) fn draw_home_rows(
                 });
             });
         row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
+    }
+    let Some((node_id, anchor, card)) = hovered else {
+        components::hover_preview_reset(context);
+        context.data_mut(|data| data.remove::<(u64, f64, Rect)>(preview_id));
+        return;
+    };
+    let now = context.input(|input| input.time);
+    let since = preview_state
+        .filter(|(id, _, _)| *id == node_id)
+        .map_or(now, |(_, since, _)| since);
+    let synopsis = first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
+    let (area, synopsis) =
+        components::hover_preview_rect(context, anchor, screen, &synopsis, metrics);
+    context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
+    let remaining = HOVER_PREVIEW_DELAY - (now - since);
+    if remaining > 0.0 {
+        components::hover_preview_reset(context);
+        context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
+        return;
+    }
+    let meta = hero_meta_line(&card.raw, &home.language);
+    let resume = card.id.as_deref().and_then(|id| home.resume_for(id));
+    let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
+    let play_label = play_label(&home.language, resume, series.then_some((1, 1, None)));
+    let progress = resume
+        .map(|resume| resume.progress)
+        .filter(|progress| *progress > 0.0);
+    let (response, action) = components::hover_preview(
+        context,
+        area,
+        card,
+        &meta,
+        synopsis,
+        &play_label,
+        progress,
+        metrics,
+        assets,
+    );
+    let slot = (node_id - NODE_CARD_BASE) * 2;
+    match action {
+        Some(components::PreviewAction::Play) => *activated = Some(NODE_PREVIEW_BASE + slot),
+        Some(components::PreviewAction::Watchlist) => {
+            *activated = Some(NODE_PREVIEW_BASE + slot + 1)
+        }
+        None if response.clicked() => *activated = Some(node_id),
+        None => {}
     }
 }

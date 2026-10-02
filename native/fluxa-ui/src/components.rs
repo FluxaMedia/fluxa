@@ -842,6 +842,247 @@ pub(super) fn poster_card(
     });
 }
 
+const PREVIEW_PAD: f32 = 18.0;
+const PREVIEW_BUTTON_HEIGHT: f32 = 44.0;
+
+fn preview_body_size(metrics: UiMetrics) -> f32 {
+    (metrics.screen_card_subtitle_size + 3.0).max(15.0)
+}
+
+pub(super) fn hover_preview_reset(context: &egui::Context) {
+    context.animate_bool_with_time(Id::new("fluxa-hover-preview-appear"), false, 0.0);
+}
+
+pub(super) fn hover_preview_rect(
+    context: &egui::Context,
+    anchor: Rect,
+    screen: Rect,
+    synopsis: &str,
+    metrics: UiMetrics,
+) -> (Rect, std::sync::Arc<egui::Galley>) {
+    let width = (anchor.width() * 2.4).clamp(400.0, 500.0);
+    let margin = 12.0;
+    let body = preview_body_size(metrics);
+    let image_height = width * 9.0 / 16.0;
+    let fixed = image_height + body + 12.0 + 16.0 + PREVIEW_BUTTON_HEIGHT + PREVIEW_PAD * 2.0;
+    let line = body * 1.25;
+    let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
+    let mut job = egui::text::LayoutJob::single_section(
+        synopsis.to_owned(),
+        egui::TextFormat::simple(crate::fonts::regular(body), Color32::from_white_alpha(150)),
+    );
+    job.wrap.max_width = width - PREVIEW_PAD * 2.0;
+    job.wrap.max_rows = rows;
+    let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
+    let height = fixed + galley.size().y;
+    let x = (anchor.center().x - width * 0.5).clamp(
+        screen.left() + margin,
+        (screen.right() - margin - width).max(screen.left()),
+    );
+    let y = (anchor.center().y - height * 0.5).clamp(
+        screen.top() + margin,
+        (screen.bottom() - margin - height).max(screen.top()),
+    );
+    (
+        Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, height)),
+        galley,
+    )
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PreviewAction {
+    Play,
+    Watchlist,
+}
+
+#[allow(clippy::too_many_arguments)]
+pub(super) fn hover_preview(
+    context: &egui::Context,
+    rect: Rect,
+    card: &HomeCard,
+    meta: &str,
+    synopsis: std::sync::Arc<egui::Galley>,
+    play_label: &str,
+    progress: Option<f32>,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+) -> (Response, Option<PreviewAction>) {
+    let saved = card
+        .id
+        .as_deref()
+        .and_then(|id| super::poster_overlay::personal_for(context, id))
+        .is_some_and(|personal| personal.saved);
+    let title_size = (metrics.screen_card_title_size + 7.0).max(22.0);
+    let body_size = preview_body_size(metrics);
+    let button_size = body_size + 1.0;
+    let appear = context.animate_bool_with_time_and_easing(
+        Id::new("fluxa-hover-preview-appear"),
+        true,
+        0.18,
+        egui::emath::easing::cubic_out,
+    );
+    let scale = 0.92 + 0.08 * appear;
+    context.set_transform_layer(
+        egui::LayerId::new(egui::Order::Tooltip, Id::new("fluxa-hover-preview")),
+        egui::emath::TSTransform::new(rect.center().to_vec2() * (1.0 - scale), scale),
+    );
+    egui::Area::new(Id::new("fluxa-hover-preview"))
+        .order(egui::Order::Tooltip)
+        .fixed_pos(rect.min)
+        .constrain(false)
+        .show(context, |ui| {
+            ui.set_opacity(appear);
+            let response = ui.allocate_rect(rect, Sense::click());
+            let radius = metrics.card_radius;
+            let corner = egui::CornerRadius::from(radius);
+            let painter = ui.painter().clone();
+            painter.rect_filled(
+                rect.expand(1.0),
+                radius + 1.0,
+                Color32::from_black_alpha(120),
+            );
+            painter.rect_filled(rect, radius, metrics.surface);
+
+            let image_height = rect.width() * 9.0 / 16.0;
+            let image =
+                Rect::from_min_size(rect.min, Vec2::new(rect.width(), image_height + radius));
+            let url = card.backdrop_url.as_deref().or(card.artwork_url.as_deref());
+            rounded_artwork(
+                &painter,
+                image,
+                radius,
+                url,
+                artwork_target_size(image.size(), context.pixels_per_point()),
+                ArtworkPriority::Visible,
+                Color32::WHITE,
+                assets,
+            );
+            let info =
+                Rect::from_min_max(Pos2::new(rect.left(), rect.top() + image_height), rect.max);
+            painter.rect_filled(
+                info,
+                egui::CornerRadius {
+                    nw: 0,
+                    ne: 0,
+                    sw: corner.sw,
+                    se: corner.se,
+                },
+                metrics.surface,
+            );
+            let scrim = Rect::from_min_max(
+                Pos2::new(rect.left(), rect.top() + image_height * 0.4),
+                Pos2::new(rect.right(), info.top()),
+            );
+            paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, metrics.surface);
+            painter.rect_stroke(
+                rect,
+                radius,
+                egui::Stroke::new(1.0, metrics.border),
+                egui::StrokeKind::Inside,
+            );
+
+            let left = rect.left() + PREVIEW_PAD;
+            let text_width = rect.width() - PREVIEW_PAD * 2.0;
+            let logo = title_logo(
+                context.pixels_per_point(),
+                card.logo_url.as_deref(),
+                Vec2::new(rect.width() * 0.5, image_height * 0.32),
+                ArtworkPriority::Visible,
+                assets,
+            );
+            match logo {
+                Some((texture, size)) => texture_image(
+                    &painter,
+                    texture,
+                    Rect::from_min_size(Pos2::new(left, info.top() - 12.0 - size.y), size),
+                    full_uv(),
+                    Color32::WHITE,
+                ),
+                None => paint_elided_text(
+                    &painter,
+                    Pos2::new(left, info.top() - 14.0 - title_size),
+                    &card.title,
+                    FontId::proportional(title_size),
+                    text_width,
+                    Color32::WHITE,
+                ),
+            }
+
+            let mut y = info.top() + 2.0;
+            let rating = card.overlay.rating.map(|rating| format!("{rating:.1}/10"));
+            let meta_line = [rating.as_deref().unwrap_or(""), meta]
+                .iter()
+                .filter(|part| !part.is_empty())
+                .copied()
+                .collect::<Vec<_>>()
+                .join("  ·  ");
+            if !meta_line.is_empty() {
+                paint_elided_text(
+                    &painter,
+                    Pos2::new(left, y),
+                    &meta_line,
+                    crate::fonts::regular(body_size),
+                    text_width,
+                    Color32::from_white_alpha(200),
+                );
+            }
+            y += body_size + 12.0;
+            painter.galley(Pos2::new(left, y), synopsis, Color32::WHITE);
+
+            let gap = 10.0;
+            let row_y = rect.bottom() - PREVIEW_PAD - PREVIEW_BUTTON_HEIGHT;
+            let icon_rect = Rect::from_min_size(
+                Pos2::new(rect.right() - PREVIEW_PAD - PREVIEW_BUTTON_HEIGHT, row_y),
+                Vec2::splat(PREVIEW_BUTTON_HEIGHT),
+            );
+            let play_rect = Rect::from_min_max(
+                Pos2::new(left, row_y),
+                Pos2::new(icon_rect.left() - gap, row_y + PREVIEW_BUTTON_HEIGHT),
+            );
+            let mut action = None;
+            let play = ui
+                .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
+                    play_button(
+                        ui,
+                        assets,
+                        play_label,
+                        Some(play_rect.width()),
+                        PREVIEW_BUTTON_HEIGHT,
+                        button_size,
+                        progress,
+                    )
+                })
+                .inner;
+            if play.clicked() {
+                action = Some(PreviewAction::Play);
+            }
+            let watchlist = ui.interact(
+                icon_rect,
+                Id::new(("fluxa-hover-preview-pill", "watchlist")),
+                Sense::click(),
+            );
+            let fill = if watchlist.hovered() { 46 } else { 28 };
+            painter.rect_filled(
+                icon_rect,
+                PREVIEW_BUTTON_HEIGHT * 0.5,
+                Color32::from_white_alpha(fill),
+            );
+            if let Some(icon) = assets.icon(if saved { "Check" } else { "Plus" }) {
+                painter.image(
+                    icon,
+                    Rect::from_center_size(icon_rect.center(), Vec2::splat(20.0)),
+                    full_uv(),
+                    Color32::WHITE,
+                );
+            }
+            if watchlist.clicked() {
+                action = Some(PreviewAction::Watchlist);
+            }
+            (response, action)
+        })
+        .inner
+}
+
 pub(super) fn library_row(
     painter: &Painter,
     rect: Rect,
