@@ -132,17 +132,9 @@ impl MpvClientHandle {
                 MPV_EVENT_NONE => break,
                 MPV_EVENT_LOG_MESSAGE if !event.data.is_null() => {
                     let msg = unsafe { &*(event.data as *const MpvEventLogMessage) };
-                    let prefix = if msg.prefix.is_null() {
-                        "unknown".into()
-                    } else {
-                        unsafe { CStr::from_ptr(msg.prefix) }.to_string_lossy()
-                    };
-                    let level = if msg.level.is_null() {
-                        "unknown".into()
-                    } else {
-                        unsafe { CStr::from_ptr(msg.level) }.to_string_lossy()
-                    };
-                    let text = unsafe { CStr::from_ptr(msg.text) }.to_string_lossy();
+                    let prefix = cstr_or(msg.prefix, "unknown");
+                    let level = cstr_or(msg.level, "unknown");
+                    let text = cstr_or(msg.text, "");
                     let text = text.trim_end();
                     if !text.is_empty() {
                         let truehd_decode_noise =
@@ -691,9 +683,16 @@ impl MpvClientHandle {
     }
 }
 
+fn cstr_or<'a>(ptr: *const c_char, fallback: &'a str) -> std::borrow::Cow<'a, str> {
+    if ptr.is_null() {
+        return fallback.into();
+    }
+    unsafe { CStr::from_ptr(ptr) }.to_string_lossy()
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{audio_output_mode_for_policy, audio_passthrough_failure_text};
+    use super::{audio_output_mode_for_policy, audio_passthrough_failure_text, cstr_or};
     use crate::MpvAudioPolicyState;
 
     #[test]
@@ -746,5 +745,16 @@ mod tests {
             }),
             "pcm_dsp"
         );
+    }
+
+    #[test]
+    fn null_pointer_yields_fallback() {
+        assert_eq!(cstr_or(std::ptr::null(), "unknown"), "unknown");
+    }
+
+    #[test]
+    fn invalid_utf8_is_replaced_not_rejected() {
+        let bytes = b"ab\xffcd\0";
+        assert_eq!(cstr_or(bytes.as_ptr().cast(), ""), "ab\u{fffd}cd");
     }
 }
