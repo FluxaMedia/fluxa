@@ -2325,7 +2325,12 @@ pub fn draw_action_menu(
             let border = egui::Stroke::new(1.0, metrics.border);
             let sheet_radius = metrics.dialog_radius + 4.0;
             if sheet && liquid_glass() {
-                glass(&painter, panel.with_max_y(panel.max.y + 40.0), sheet_radius, fill);
+                glass(
+                    &painter,
+                    panel.with_max_y(panel.max.y + 40.0),
+                    sheet_radius,
+                    fill,
+                );
                 painter.rect_filled(
                     Rect::from_center_size(
                         Pos2::new(panel.center().x, panel.top() + 10.0),

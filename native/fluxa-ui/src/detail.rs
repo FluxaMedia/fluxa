@@ -384,26 +384,34 @@ pub fn draw_detail(
                                 (episode.season, episode.number, Some(episode.title.as_str()))
                             }),
                     );
-                    let play = components::play_button(
-                        ui,
-                        assets,
-                        &label,
-                        Some(content_width),
-                        48.0,
-                        metrics.text.subtitle,
-                        resume
-                            .map(|card| card.progress)
-                            .filter(|progress| *progress > 0.0),
-                    );
-                    action_rects.push((NODE_DETAIL_PLAY, play.rect));
-                    if play.clicked() {
-                        layout.activated = Some(match play_target {
-                            _ if resume.is_some() => NODE_DETAIL_PLAY,
-                            Some((index, _)) if detail.is_series() => {
-                                NODE_DETAIL_EPISODE_BASE + index as u64
-                            }
-                            _ => NODE_DETAIL_PLAY,
-                        });
+                    let slots = fluxa_theme::css::detail_actions();
+                    let show = |name: &str| {
+                        slots
+                            .as_ref()
+                            .is_none_or(|slots| slots.iter().any(|slot| slot == name))
+                    };
+                    if show("play") {
+                        let play = components::play_button(
+                            ui,
+                            assets,
+                            &label,
+                            Some(content_width),
+                            48.0,
+                            metrics.text.subtitle,
+                            resume
+                                .map(|card| card.progress)
+                                .filter(|progress| *progress > 0.0),
+                        );
+                        action_rects.push((NODE_DETAIL_PLAY, play.rect));
+                        if play.clicked() {
+                            layout.activated = Some(match play_target {
+                                _ if resume.is_some() => NODE_DETAIL_PLAY,
+                                Some((index, _)) if detail.is_series() => {
+                                    NODE_DETAIL_EPISODE_BASE + index as u64
+                                }
+                                _ => NODE_DETAIL_PLAY,
+                            });
+                        }
                     }
                     ui.add_space(space::LG);
                     ui.horizontal(|ui| {
@@ -454,7 +462,22 @@ pub fn draw_detail(
                                 t("common.shuffle"),
                             ));
                         }
-                        let width = content_width / actions.len() as f32;
+                        if let Some(slots) = slots.as_ref() {
+                            let name = |node: u64| match node {
+                                NODE_DETAIL_WATCHLIST => "watchlist",
+                                NODE_DETAIL_COMPLETED => "completed",
+                                NODE_DETAIL_DROPPED => "dropped",
+                                NODE_DETAIL_FAVORITE => "favorite",
+                                NODE_DETAIL_TRAILER => "trailer",
+                                _ => "shuffle",
+                            };
+                            actions
+                                .retain(|action| slots.iter().any(|slot| slot == name(action.0)));
+                            actions.sort_by_key(|action| {
+                                slots.iter().position(|slot| slot == name(action.0))
+                            });
+                        }
+                        let width = content_width / actions.len().max(1) as f32;
                         for (node, icon, active, label) in actions {
                             let response = components::labeled_action(
                                 ui,
@@ -603,53 +626,7 @@ pub fn draw_detail(
                         }),
                 );
                 let height = metrics.detail_play_height;
-                let play = components::play_button(
-                    ui,
-                    assets,
-                    &play_label,
-                    Some(
-                        (ui.painter()
-                            .layout_no_wrap(
-                                play_label.clone(),
-                                egui::FontId::proportional(metrics.text.subtitle),
-                                text_primary(),
-                            )
-                            .size()
-                            .x
-                            + 70.0)
-                            .min(340.0),
-                    ),
-                    height,
-                    metrics.text.subtitle,
-                    resume
-                        .map(|card| card.progress)
-                        .filter(|progress| *progress > 0.0),
-                );
-                action_rects.push((NODE_DETAIL_PLAY, play.rect));
-                if play.clicked() {
-                    layout.activated = Some(match play_target {
-                        _ if resume.is_some() => NODE_DETAIL_PLAY,
-                        Some((index, _)) if detail.is_series() => {
-                            NODE_DETAIL_EPISODE_BASE + index as u64
-                        }
-                        _ => NODE_DETAIL_PLAY,
-                    });
-                }
-                let watchlist = components::icon_button_sized(
-                    ui,
-                    assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
-                    Vec2::splat(height),
-                    text_primary(),
-                    true,
-                    detail.in_watchlist,
-                    true,
-                )
-                .on_hover_text(t("library.watchlist"));
-                action_rects.push((NODE_DETAIL_WATCHLIST, watchlist.rect));
-                if watchlist.clicked() {
-                    layout.activated = Some(NODE_DETAIL_WATCHLIST);
-                }
-                let icons = [
+                let icons = vec![
                     (NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")),
                     (
                         NODE_DETAIL_TRAILER,
@@ -680,26 +657,107 @@ pub fn draw_detail(
                         t("library.favorites"),
                     ),
                 ];
-                for (node, icon, active, hint) in icons
+                let icons: Vec<_> = icons
                     .into_iter()
                     .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
                     .filter(|(node, ..)| {
                         *node != NODE_DETAIL_TRAILER || !detail.trailers.is_empty()
                     })
-                {
-                    let response = components::icon_button_sized(
-                        ui,
-                        assets.icon(icon),
-                        Vec2::splat(height),
-                        text_primary(),
-                        true,
-                        active,
-                        true,
-                    )
-                    .on_hover_text(&hint);
-                    action_rects.push((node, response.rect));
-                    if response.clicked() {
-                        layout.activated = Some(node);
+                    .collect();
+                let order = fluxa_theme::css::detail_actions().unwrap_or_else(|| {
+                    [
+                        "play",
+                        "watchlist",
+                        "shuffle",
+                        "trailer",
+                        "completed",
+                        "dropped",
+                        "favorite",
+                    ]
+                    .map(str::to_owned)
+                    .to_vec()
+                });
+                for slot in &order {
+                    match slot.as_str() {
+                        "play" => {
+                            let play = components::play_button(
+                                ui,
+                                assets,
+                                &play_label,
+                                Some(
+                                    (ui.painter()
+                                        .layout_no_wrap(
+                                            play_label.clone(),
+                                            egui::FontId::proportional(metrics.text.subtitle),
+                                            text_primary(),
+                                        )
+                                        .size()
+                                        .x
+                                        + 70.0)
+                                        .min(340.0),
+                                ),
+                                height,
+                                metrics.text.subtitle,
+                                resume
+                                    .map(|card| card.progress)
+                                    .filter(|progress| *progress > 0.0),
+                            );
+                            action_rects.push((NODE_DETAIL_PLAY, play.rect));
+                            if play.clicked() {
+                                layout.activated = Some(match play_target {
+                                    _ if resume.is_some() => NODE_DETAIL_PLAY,
+                                    Some((index, _)) if detail.is_series() => {
+                                        NODE_DETAIL_EPISODE_BASE + index as u64
+                                    }
+                                    _ => NODE_DETAIL_PLAY,
+                                });
+                            }
+                        }
+                        "watchlist" => {
+                            let watchlist = components::icon_button_sized(
+                                ui,
+                                assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
+                                Vec2::splat(height),
+                                text_primary(),
+                                true,
+                                detail.in_watchlist,
+                                true,
+                            )
+                            .on_hover_text(t("library.watchlist"));
+                            action_rects.push((NODE_DETAIL_WATCHLIST, watchlist.rect));
+                            if watchlist.clicked() {
+                                layout.activated = Some(NODE_DETAIL_WATCHLIST);
+                            }
+                        }
+                        other => {
+                            let node = match other {
+                                "shuffle" => NODE_DETAIL_SHUFFLE,
+                                "trailer" => NODE_DETAIL_TRAILER,
+                                "completed" => NODE_DETAIL_COMPLETED,
+                                "dropped" => NODE_DETAIL_DROPPED,
+                                _ => NODE_DETAIL_FAVORITE,
+                            };
+                            let Some((node, icon, active, hint)) =
+                                icons.iter().find(|(candidate, ..)| *candidate == node)
+                            else {
+                                continue;
+                            };
+                            let (node, icon, active) = (*node, *icon, *active);
+                            let response = components::icon_button_sized(
+                                ui,
+                                assets.icon(icon),
+                                Vec2::splat(height),
+                                text_primary(),
+                                true,
+                                active,
+                                true,
+                            )
+                            .on_hover_text(hint);
+                            action_rects.push((node, response.rect));
+                            if response.clicked() {
+                                layout.activated = Some(node);
+                            }
+                        }
                     }
                 }
             });

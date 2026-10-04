@@ -588,7 +588,13 @@ pub(crate) fn draw_home_with_options(
                         let slots = fluxa_theme::css::hero_actions();
                         let total: f32 = slots
                             .iter()
-                            .map(|slot| if slot == "play" { play_width } else { play_height })
+                            .map(|slot| {
+                                if slot == "play" {
+                                    play_width
+                                } else {
+                                    play_height
+                                }
+                            })
                             .sum::<f32>()
                             + 12.0 * slots.len().saturating_sub(1) as f32;
                         if style.centered {
@@ -683,7 +689,11 @@ pub(crate) fn draw_home_with_options(
     }
     if let Some(play) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));
-    } else if show_hero && fluxa_theme::css::hero_actions().iter().any(|slot| slot == "play") {
+    } else if show_hero
+        && fluxa_theme::css::hero_actions()
+            .iter()
+            .any(|slot| slot == "play")
+    {
         let play = style.fallback_play(metrics, viewport.width, margin);
         layout.focusable.push((
             NODE_PLAY,
