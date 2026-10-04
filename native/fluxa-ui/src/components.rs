@@ -347,7 +347,7 @@ pub(super) fn avatar(
         .filter_map(|word| word.chars().next())
         .flat_map(char::to_uppercase)
         .collect::<String>();
-    painter.circle_filled(center, radius, Color32::from_rgb(44, 44, 44));
+    painter.circle_filled(center, radius, ink(32));
     painter.text(
         center,
         Align2::CENTER_CENTER,
@@ -2323,8 +2323,9 @@ pub fn draw_action_menu(
             let panel = layout.panel.translate(offset);
             let fill = metrics.surface;
             let border = egui::Stroke::new(1.0, metrics.border);
+            let sheet_radius = metrics.dialog_radius + 4.0;
             if sheet && liquid_glass() {
-                glass(&painter, panel.with_max_y(panel.max.y + 40.0), 20.0, fill);
+                glass(&painter, panel.with_max_y(panel.max.y + 40.0), sheet_radius, fill);
                 painter.rect_filled(
                     Rect::from_center_size(
                         Pos2::new(panel.center().x, panel.top() + 10.0),
@@ -2334,13 +2335,13 @@ pub fn draw_action_menu(
                     metrics.ink(60),
                 );
             } else if liquid_glass() && tv {
-                glass(&painter, panel, 12.0, fill);
+                glass(&painter, panel, metrics.card_radius, fill);
             } else if sheet {
                 painter.rect(
                     panel.with_max_y(panel.max.y + 40.0),
                     egui::CornerRadius {
-                        nw: 20,
-                        ne: 20,
+                        nw: sheet_radius as u8,
+                        ne: sheet_radius as u8,
                         sw: 0,
                         se: 0,
                     },
@@ -2359,12 +2360,12 @@ pub fn draw_action_menu(
             } else {
                 painter.rect_filled(
                     panel.expand(1.0).translate(Vec2::new(0.0, 6.0)),
-                    14.0,
+                    metrics.card_radius + 2.0,
                     Color32::from_black_alpha(90),
                 );
                 painter.rect(
                     panel,
-                    12.0,
+                    metrics.card_radius,
                     metrics.surface,
                     border,
                     egui::StrokeKind::Inside,
@@ -2511,7 +2512,7 @@ pub(super) fn toggle(
     metrics: UiMetrics,
 ) {
     let t = context.animate_bool_with_time_and_easing(id, on, 0.22, egui::emath::easing::cubic_out);
-    let off_track = Color32::from_rgb(54, 56, 59);
+    let off_track = metrics.ink(40);
     painter.rect_filled(
         track,
         track.height() * 0.5,
@@ -2528,11 +2529,11 @@ pub(super) fn toggle(
         Vec2::new(radius * 2.0 + stretch, radius * 2.0),
     );
     let knob_color = lerp_color(
-        Color32::from_rgb(168, 172, 178),
+        metrics.ink(170),
         if metrics.accent_foreground == metrics.text_primary {
             metrics.text_primary
         } else {
-            Color32::from_rgb(24, 25, 28)
+            metrics.background
         },
         t,
     );
