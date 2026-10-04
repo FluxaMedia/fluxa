@@ -11,6 +11,7 @@ pub struct UserTheme {
     radii: Vec<(&'static str, f32)>,
     hidden_rows: Vec<String>,
     row_order: Vec<String>,
+    hero_actions: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -75,6 +76,14 @@ pub fn row_order() -> Vec<String> {
         .read()
         .map(|user| user.row_order.clone())
         .unwrap_or_default()
+}
+
+pub fn hero_actions() -> Vec<String> {
+    user_theme()
+        .read()
+        .ok()
+        .and_then(|user| user.hero_actions.clone())
+        .unwrap_or_else(|| vec!["play".to_owned(), "watchlist".to_owned()])
 }
 
 pub fn clear_user_theme() {
@@ -161,6 +170,15 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, CssReport) {
             } else {
                 theme.row_order = list;
             }
+            report.applied += 1;
+        } else if name == "hero-actions" {
+            let mut list: Vec<String> = Vec::new();
+            for entry in value.split(',').map(|entry| entry.trim().to_lowercase()) {
+                if matches!(entry.as_str(), "play" | "watchlist") && !list.contains(&entry) {
+                    list.push(entry);
+                }
+            }
+            theme.hero_actions = Some(list);
             report.applied += 1;
         } else {
             report.rejected.push(format!("--{name}: unknown property"));
@@ -277,6 +295,12 @@ mod tests {
         let (user, _) = parse_user_theme(":root { --hide-rows: Top 10, \"Popular\"; --row-order: a,b }");
         assert_eq!(user.hidden_rows, vec!["top 10", "popular"]);
         assert_eq!(user.row_order, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn hero_actions_keep_order_and_drop_unknown_names() {
+        let (user, _) = parse_user_theme(":root { --hero-actions: watchlist, share, play, play }");
+        assert_eq!(user.hero_actions, Some(vec!["watchlist".to_owned(), "play".to_owned()]));
     }
 
     #[test]

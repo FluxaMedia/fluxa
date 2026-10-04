@@ -585,43 +585,53 @@ pub(crate) fn draw_home_with_options(
                         };
                         let play_width = (measure(ui, &label) + 70.0).min(320.0);
                         let watchlist_label = localized("library.watchlist", &home.language);
+                        let slots = fluxa_theme::css::hero_actions();
+                        let total: f32 = slots
+                            .iter()
+                            .map(|slot| if slot == "play" { play_width } else { play_height })
+                            .sum::<f32>()
+                            + 12.0 * slots.len().saturating_sub(1) as f32;
                         if style.centered {
-                            let total = play_width + 12.0 + play_height;
                             ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
                         }
-                        let play = components::play_button(
-                            ui,
-                            assets,
-                            &label,
-                            Some(play_width),
-                            play_height,
-                            text_size,
-                            resume
-                                .map(|card| card.progress)
-                                .filter(|progress| *progress > 0.0),
-                        );
-                        hero_actions = Some(play.rect);
-                        if play.clicked() {
-                            activated = Some(NODE_PLAY);
-                        }
-                        let saved = hero
-                            .item_id
-                            .as_deref()
-                            .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
-                            .is_some_and(|personal| personal.saved);
-                        let watchlist = components::icon_button_sized(
-                            ui,
-                            assets.icon(if saved { "Check" } else { "Plus" }),
-                            Vec2::splat(play_height),
-                            text_primary(),
-                            true,
-                            saved,
-                            true,
-                        )
-                        .on_hover_text(&watchlist_label);
-                        hero_watchlist = Some(watchlist.rect);
-                        if watchlist.clicked() {
-                            activated = Some(NODE_HERO_WATCHLIST);
+                        for slot in &slots {
+                            if slot == "play" {
+                                let play = components::play_button(
+                                    ui,
+                                    assets,
+                                    &label,
+                                    Some(play_width),
+                                    play_height,
+                                    text_size,
+                                    resume
+                                        .map(|card| card.progress)
+                                        .filter(|progress| *progress > 0.0),
+                                );
+                                hero_actions = Some(play.rect);
+                                if play.clicked() {
+                                    activated = Some(NODE_PLAY);
+                                }
+                            } else {
+                                let saved = hero
+                                    .item_id
+                                    .as_deref()
+                                    .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
+                                    .is_some_and(|personal| personal.saved);
+                                let watchlist = components::icon_button_sized(
+                                    ui,
+                                    assets.icon(if saved { "Check" } else { "Plus" }),
+                                    Vec2::splat(play_height),
+                                    text_primary(),
+                                    true,
+                                    saved,
+                                    true,
+                                )
+                                .on_hover_text(&watchlist_label);
+                                hero_watchlist = Some(watchlist.rect);
+                                if watchlist.clicked() {
+                                    activated = Some(NODE_HERO_WATCHLIST);
+                                }
+                            }
                         }
                     });
                 });
@@ -673,7 +683,7 @@ pub(crate) fn draw_home_with_options(
     }
     if let Some(play) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));
-    } else if show_hero {
+    } else if show_hero && fluxa_theme::css::hero_actions().iter().any(|slot| slot == "play") {
         let play = style.fallback_play(metrics, viewport.width, margin);
         layout.focusable.push((
             NODE_PLAY,
