@@ -447,6 +447,42 @@ fn library_catalogs(body: &Value) -> Vec<Value> {
         .collect()
 }
 
+const TRICKPLAY_WIDTH: i64 = 320;
+
+fn trickplay(server: &Server, id: &str, source_id: &str, item: &Value) -> Option<Value> {
+    let token = server.token.clone();
+    if server.kind == "emby" {
+        let url = format!(
+            "{}/Videos/{id}/index.bif?{}",
+            server.base,
+            query(&[
+                ("MediaSourceId", source_id.to_owned()),
+                ("Width", TRICKPLAY_WIDTH.to_string()),
+                ("api_key", token),
+            ])
+        );
+        return Some(json!({"kind": "bif", "url": url}));
+    }
+    let widths = item.get("Trickplay")?.get(source_id)?.as_object()?;
+    let (width, info) = widths
+        .iter()
+        .filter_map(|(width, info)| Some((width.parse::<i64>().ok()?, info)))
+        .min_by_key(|(width, _)| (width - TRICKPLAY_WIDTH).abs())?;
+    let url = format!(
+        "{}/Videos/{id}/Trickplay/{width}/{{sheet}}.jpg?{}",
+        server.base,
+        query(&[("MediaSourceId", source_id.to_owned()), ("api_key", token)])
+    );
+    Some(json!({
+        "kind": "sheets",
+        "url": url,
+        "interval": int_field(info, "Interval")?,
+        "tileWidth": int_field(info, "TileWidth")?,
+        "tileHeight": int_field(info, "TileHeight")?,
+        "count": int_field(info, "ThumbnailCount")?,
+    }))
+}
+
 fn streams_for(server: &Server, item: &Value) -> Vec<Value> {
     let id = str_field(item, "Id");
     let mut streams = Vec::new();
@@ -523,6 +559,7 @@ fn streams_for(server: &Server, item: &Value) -> Vec<Value> {
             ])
         );
         let label = server.kind.clone();
+        let trickplay = trickplay(server, id, source_id, item);
         let title = stream_title(&[
             resolution.clone(),
             video_codec.to_uppercase(),
@@ -542,6 +579,7 @@ fn streams_for(server: &Server, item: &Value) -> Vec<Value> {
             },
             "mediaServer": server.media_source(id),
             "mediaSourceId": source_id,
+            "trickplay": trickplay,
         }));
         streams.push(json!({
             "name": label,
@@ -550,6 +588,7 @@ fn streams_for(server: &Server, item: &Value) -> Vec<Value> {
             "subtitles": subtitles,
             "mediaServer": server.media_source(id),
             "mediaSourceId": source_id,
+            "trickplay": trickplay,
         }));
     }
     streams

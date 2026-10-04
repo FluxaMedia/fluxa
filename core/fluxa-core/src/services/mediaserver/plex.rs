@@ -433,6 +433,9 @@ fn streams_for(server: &Server, body: &Value) -> Vec<Value> {
                     continue;
                 }
                 let size = int_field(part, "size");
+                let trickplay = Some(str_field(part, "indexKey"))
+                    .filter(|index| !index.is_empty())
+                    .map(|index| json!({"kind": "bif", "url": asset(server, index)}));
                 let subtitles: Vec<Value> = list(part, "Stream")
                     .iter()
                     .filter(|stream| {
@@ -468,6 +471,7 @@ fn streams_for(server: &Server, body: &Value) -> Vec<Value> {
                         "bingeGroup": format!("{}-{media_index}", server.key),
                     },
                     "mediaServer": server.media_source(id),
+                    "trickplay": trickplay,
                 }));
                 let transcode = format!(
                     "{}/video/:/transcode/universal/start.m3u8?{}",
@@ -493,6 +497,7 @@ fn streams_for(server: &Server, body: &Value) -> Vec<Value> {
                     "url": transcode,
                     "subtitles": subtitles,
                     "mediaServer": server.media_source(id),
+                    "trickplay": trickplay,
                 }));
             }
         }

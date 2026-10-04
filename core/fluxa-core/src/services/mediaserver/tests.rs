@@ -308,3 +308,50 @@ fn jellyfin_lookup_drops_items_the_server_returned_for_an_unmatched_id() {
     assert_eq!(metas.len(), 1);
     assert_eq!(metas[0]["id"], "ms:srv:b");
 }
+
+#[test]
+fn jellyfin_trickplay_picks_width_closest_to_320() {
+    let parsed = parse(
+        "jellyfin",
+        "streams",
+        json!({"Id": "i1",
+            "Trickplay": {"ms1": {
+                "160": {"Interval": 10000, "TileWidth": 10, "TileHeight": 10, "ThumbnailCount": 50},
+                "400": {"Interval": 10000, "TileWidth": 5, "TileHeight": 5, "ThumbnailCount": 50}
+            }},
+            "MediaSources": [{"Id": "ms1", "MediaStreams": []}, {"Id": "ms2", "MediaStreams": []}]}),
+    );
+    let streams = parsed["streams"].as_array().unwrap();
+    let trickplay = &streams[0]["trickplay"];
+    assert_eq!(trickplay["kind"], "sheets");
+    assert!(trickplay["url"].as_str().unwrap().contains("/Trickplay/400/{sheet}.jpg"));
+    assert_eq!(trickplay["tileWidth"], 5);
+    assert!(streams[2]["trickplay"].is_null());
+}
+
+#[test]
+fn emby_and_plex_advertise_bif_when_available() {
+    let emby = parse(
+        "emby",
+        "streams",
+        json!({"Id": "i1", "MediaSources": [{"Id": "ms1", "MediaStreams": []}]}),
+    );
+    let url = emby["streams"][0]["trickplay"]["url"].as_str().unwrap();
+    assert!(url.starts_with("https://m.example/emby/Videos/i1/index.bif?"));
+    let plex = parse(
+        "plex",
+        "streams",
+        json!({"MediaContainer": {"Metadata": [{"ratingKey": "5", "Media": [{
+            "Part": [
+                {"key": "/library/parts/9/file.mkv", "indexKey": "/library/parts/9/indexes/sd/77"},
+                {"key": "/library/parts/10/file.mkv"}
+            ]
+        }]}]}}),
+    );
+    let streams = plex["streams"].as_array().unwrap();
+    assert_eq!(
+        streams[0]["trickplay"]["url"],
+        "https://m.example/library/parts/9/indexes/sd/77?X-Plex-Token=tok"
+    );
+    assert!(streams[2]["trickplay"].is_null());
+}
