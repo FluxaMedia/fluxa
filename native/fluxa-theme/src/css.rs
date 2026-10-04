@@ -9,6 +9,8 @@ use crate::theme::{ThemeError, ThemePack};
 pub struct UserTheme {
     colors: Vec<(&'static str, String)>,
     radii: Vec<(&'static str, f32)>,
+    hidden_rows: Vec<String>,
+    row_order: Vec<String>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -59,6 +61,20 @@ pub fn set_user_theme_from_path(path: impl AsRef<Path>) -> Result<CssReport, The
     let source = std::fs::read_to_string(path)
         .map_err(|error| ThemeError::InvalidSource(format!("{}: {error}", path.display())))?;
     Ok(set_user_theme_css(&source))
+}
+
+pub fn hidden_rows() -> Vec<String> {
+    user_theme()
+        .read()
+        .map(|user| user.hidden_rows.clone())
+        .unwrap_or_default()
+}
+
+pub fn row_order() -> Vec<String> {
+    user_theme()
+        .read()
+        .map(|user| user.row_order.clone())
+        .unwrap_or_default()
 }
 
 pub fn clear_user_theme() {
@@ -134,6 +150,18 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, CssReport) {
                     .rejected
                     .push(format!("--{name}: invalid length `{value}`")),
             }
+        } else if name == "hide-rows" || name == "row-order" {
+            let list = value
+                .split(',')
+                .map(|entry| entry.trim().trim_matches('"').to_lowercase())
+                .filter(|entry| !entry.is_empty())
+                .collect();
+            if name == "hide-rows" {
+                theme.hidden_rows = list;
+            } else {
+                theme.row_order = list;
+            }
+            report.applied += 1;
         } else {
             report.rejected.push(format!("--{name}: unknown property"));
         }
@@ -243,6 +271,13 @@ fn expand_hex(hex: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn row_lists_are_lowercased_and_split_on_commas() {
+        let (user, _) = parse_user_theme(":root { --hide-rows: Top 10, \"Popular\"; --row-order: a,b }");
+        assert_eq!(user.hidden_rows, vec!["top 10", "popular"]);
+        assert_eq!(user.row_order, vec!["a", "b"]);
+    }
 
     #[test]
     fn root_block_overrides_apply_and_bad_values_are_reported() {

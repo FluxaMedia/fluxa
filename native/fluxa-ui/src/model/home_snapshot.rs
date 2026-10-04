@@ -266,7 +266,33 @@ pub fn home_model_from_core_snapshot(
             .collect();
     }
     finish_continue_cards(&mut model, snapshot);
+    apply_row_layout(&mut model);
     model
+}
+
+fn row_matches(row: &HomeRow, key: &str) -> bool {
+    row.id.as_deref().is_some_and(|id| id.to_lowercase() == key) || row.title.to_lowercase() == key
+}
+
+fn apply_row_layout(model: &mut HomeModel) {
+    let hidden = fluxa_theme::css::hidden_rows();
+    let order = fluxa_theme::css::row_order();
+    if hidden.iter().any(|key| key == "continue-watching") {
+        model.cards.clear();
+    }
+    model
+        .rows
+        .retain(|row| !hidden.iter().any(|key| row_matches(row, key)));
+    if order.is_empty() {
+        return;
+    }
+    let position = |row: &HomeRow| {
+        order
+            .iter()
+            .position(|key| row_matches(row, key))
+            .unwrap_or(usize::MAX)
+    };
+    model.rows.sort_by_key(position);
 }
 
 fn finish_continue_cards(model: &mut HomeModel, snapshot: &serde_json::Value) {
