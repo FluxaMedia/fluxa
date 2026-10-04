@@ -248,6 +248,10 @@ impl SessionHandle {
         self.executor.fetch_json(url)
     }
 
+    pub fn fetch_bytes(&self, url: String) -> Receiver<Option<Vec<u8>>> {
+        self.executor.fetch_bytes(url)
+    }
+
     pub fn request_json(&self, plan: Value) -> Receiver<Option<Value>> {
         self.executor.request_json(plan)
     }

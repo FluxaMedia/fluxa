@@ -19,6 +19,7 @@ mod shuffle;
 mod stats;
 mod submit;
 mod trailer;
+mod trickplay;
 mod upnext;
 pub(crate) use input::*;
 use overlay::Overlay;
@@ -150,6 +151,7 @@ pub(crate) struct PlayerSession {
     last_pump: Instant,
     thumbnail: Option<(f64, egui::TextureHandle)>,
     thumbnail_requested: Option<(f64, Instant)>,
+    trickplay: Option<trickplay::Trickplay>,
     outro_reached: bool,
     recommendations_rx: Option<Receiver<Vec<Value>>>,
     recommendations: Vec<Value>,
@@ -230,6 +232,7 @@ impl PlayerSession {
             last_pump: Instant::now(),
             thumbnail: None,
             thumbnail_requested: None,
+            trickplay: None,
             outro_reached: false,
             recommendations_rx: None,
             recommendations: Vec::new(),
@@ -655,7 +658,12 @@ pub(crate) fn pump(state: &mut RendererState) {
         }
         advance = overlay::tick(player, session, video.as_mut(), &snapshot);
         refresh_stats(player, video.as_mut());
-        if let (Some(thumbnail), Some(gpu)) = (video.take_thumbnail(), gpu.as_ref()) {
+        let thumbnail = player
+            .trickplay
+            .as_mut()
+            .and_then(|trickplay| trickplay.poll(session))
+            .or_else(|| video.take_thumbnail());
+        if let (Some(thumbnail), Some(gpu)) = (thumbnail, gpu.as_ref()) {
             let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
             match player.thumbnail.as_mut() {
                 Some((time, texture)) => {
@@ -847,6 +855,7 @@ fn load_resolved(
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
                 apply_subtitle_style(video.as_mut(), &settings.values);
                 player.loaded_url = Some(url.to_owned());
+                player.trickplay = trickplay::from_snapshot(snapshot);
             }
             (None, _) => player.error = Some("No video backend on this platform".to_owned()),
             _ => {}
@@ -865,6 +874,10 @@ pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
         return;
     };
     player.touch();
+    if let Some(trickplay) = player.trickplay.as_mut().filter(|trickplay| trickplay.usable()) {
+        trickplay.request(time);
+        return;
+    }
     let time = (time * 2.0).round() / 2.0;
     if player
         .thumbnail_requested

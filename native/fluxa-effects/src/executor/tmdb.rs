@@ -26,6 +26,32 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_bytes(&self, url: String) -> std::sync::mpsc::Receiver<Option<Vec<u8>>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let task = async move {
+            let response = async {
+                let bytes = Client::builder()
+                    .native_timeout(Duration::from_secs(30))
+                    .build()?
+                    .get(&url)
+                    .header("User-Agent", "Fluxa")
+                    .send()
+                    .await?
+                    .error_for_status()?
+                    .bytes()
+                    .await?;
+                Ok::<_, reqwest::Error>(bytes.to_vec())
+            }
+            .await;
+            let _ = sender.send(response.ok());
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+
     pub fn fetch_trailers(
         &self,
         items: Vec<Value>,

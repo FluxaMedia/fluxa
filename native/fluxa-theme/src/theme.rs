@@ -235,11 +235,13 @@ pub fn active_shared_ui_tokens() -> Result<UiTokens, ThemeError> {
 }
 
 pub fn active_theme(id: &str) -> Result<ThemePack, ThemeError> {
-    active_shared_ui_tokens()?
+    let mut theme = active_shared_ui_tokens()?
         .themes
         .into_iter()
         .find(|theme| theme.id == id)
-        .ok_or_else(|| ThemeError::MissingTheme(id.to_owned()))
+        .ok_or_else(|| ThemeError::MissingTheme(id.to_owned()))?;
+    crate::css::apply_user_theme(&mut theme);
+    Ok(theme)
 }
 
 /// Replace the development-time token override with a JSON file from disk.
