@@ -3,7 +3,7 @@ use std::sync::Arc;
 use egui::text::{LayoutJob, TextFormat};
 use egui::{Color32, FontId, Galley, Painter, Pos2, Rect, Vec2};
 
-use super::{ArtworkPriority, HomeAssets, full_uv};
+use super::{ArtworkPriority, HomeAssets, full_uv, text_primary};
 
 const TWEMOJI: &str = "https://cdn.jsdelivr.net/gh/jdecked/twemoji@15.1.0/assets/72x72";
 
@@ -107,7 +107,7 @@ pub(crate) fn paint(
             i = j;
         }
     }
-    painter.galley(pos, galley, Color32::WHITE);
+    painter.galley(pos, galley, text_primary());
     let native = assets.has_native_emoji();
     for (chars, rect) in clusters {
         let url = format!("{TWEMOJI}/{}.png", code(&chars));

@@ -159,7 +159,7 @@ fn draw_page_cards(
                     Pos2::new(row.left() + 20.0, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
-                egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+                egui::Stroke::new(1.0, ink(12)),
             );
         }
         let title = section_label(SETTINGS_SECTIONS[page].title, language);
@@ -177,11 +177,7 @@ fn draw_page_cards(
             .show(context, |ui| {
                 let (rect, response) = ui.allocate_exact_size(row.size(), Sense::click());
                 if response.hovered() || response.is_pointer_button_down_on() {
-                    ui.painter().rect_filled(
-                        rect,
-                        metrics.card_radius,
-                        Color32::from_white_alpha(8),
-                    );
+                    ui.painter().rect_filled(rect, metrics.card_radius, ink(8));
                 }
                 let text_width = (rect.width() - 72.0).max(1.0);
                 let title_font = crate::fonts::regular(title_size);
@@ -192,7 +188,7 @@ fn draw_page_cards(
                     Align2::LEFT_TOP,
                     truncate_to_width(ui.painter(), &title, &title_font, text_width),
                     title_font,
-                    Color32::WHITE,
+                    text_primary(),
                 );
                 ui.painter().text(
                     Pos2::new(rect.left() + 20.0, text_top + title_size + 4.0),
@@ -202,7 +198,7 @@ fn draw_page_cards(
                     metrics.text_muted,
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(120));
+                let stroke = egui::Stroke::new(1.6, ink(120));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
@@ -437,7 +433,7 @@ fn settings_panel_line(
                 Pos2::new(row_left, y + metrics.settings_extended_line_spacing - 1.0),
                 Pos2::new(row_right, y + metrics.settings_extended_line_spacing - 1.0),
             ],
-            egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+            egui::Stroke::new(1.0, ink(12)),
         );
     } else {
         painter.text(
@@ -846,7 +842,7 @@ fn draw_field_group(
                     Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
                     Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
                 ],
-                egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+                egui::Stroke::new(1.0, ink(12)),
             );
         }
         draw_field(context, settings, index, area, metrics, compact, layout);
@@ -1280,7 +1276,7 @@ fn draw_compact_settings_list(
                     Pos2::new(rect.left() + 52.0, rect.top()),
                     Pos2::new(rect.right(), rect.top()),
                 ],
-                egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+                egui::Stroke::new(1.0, ink(12)),
             );
         }
         let mut clicked = false;
@@ -1290,28 +1286,24 @@ fn draw_compact_settings_list(
             .show(context, |ui| {
                 let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                 if response.is_pointer_button_down_on() {
-                    ui.painter().rect_filled(
-                        row,
-                        metrics.card_radius,
-                        Color32::from_white_alpha(10),
-                    );
+                    ui.painter().rect_filled(row, metrics.card_radius, ink(10));
                 }
                 settings_category_icon(
                     assets,
                     ui.painter(),
                     row.left_center() + Vec2::new(26.0, 0.0),
                     icon,
-                    Color32::WHITE,
+                    text_primary(),
                 );
                 ui.painter().text(
                     row.left_center() + Vec2::new(52.0, 0.0),
                     Align2::LEFT_CENTER,
                     label,
                     crate::fonts::regular(metrics.nav_label_size + 2.0),
-                    Color32::WHITE,
+                    text_primary(),
                 );
                 let tip = row.right_center() - Vec2::new(20.0, 0.0);
-                let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(120));
+                let stroke = egui::Stroke::new(1.6, ink(120));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
@@ -1342,11 +1334,11 @@ pub fn draw_settings(
         .value("accentColorArgb")
         .and_then(serde_json::Value::as_str)
         .and_then(parse_settings_color)
-        .unwrap_or(Color32::WHITE);
+        .unwrap_or(text_primary());
     metrics.accent_foreground = if accent_needs_dark_foreground(metrics.accent) {
         Color32::from_rgb(20, 20, 22)
     } else {
-        Color32::WHITE
+        text_primary()
     };
     let scroll_y = resolve_screen_scroll(
         context,
@@ -1374,7 +1366,7 @@ pub fn draw_settings(
                     RichText::new(localized("nav.settings", language))
                         .size(metrics.screen_title_size)
                         .strong()
-                        .color(Color32::WHITE),
+                        .color(text_primary()),
                 );
                 ui.add_space(metrics.control_gap);
                 ui.label(
@@ -1466,7 +1458,7 @@ pub fn draw_settings(
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
                 FontId::proportional(metrics.screen_title_size),
-                Color32::WHITE,
+                text_primary(),
             );
             search_field(
                 &mut layout,
@@ -1490,7 +1482,7 @@ pub fn draw_settings(
                         ui,
                         assets.icon("ArrowLeft"),
                         40.0,
-                        Color32::WHITE,
+                        text_primary(),
                         false,
                         false,
                         true,
@@ -1509,7 +1501,7 @@ pub fn draw_settings(
                     section_label(SETTINGS_SECTIONS[active_section].category, language)
                 },
                 FontId::proportional(metrics.text.title),
-                Color32::WHITE,
+                text_primary(),
             );
         }
         if !settings.section_open && !searching {
@@ -1570,7 +1562,7 @@ pub fn draw_settings(
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
                 FontId::proportional(metrics.settings_section_title_size_desktop + 2.0),
-                Color32::WHITE,
+                text_primary(),
             );
         }
         let search_top = if desktop { 58.0 } else { metrics.control_gap };
@@ -1606,11 +1598,8 @@ pub fn draw_settings(
                     let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                     let active = section.category == active_category && !searching;
                     if active {
-                        ui.painter().rect_filled(
-                            item_rect,
-                            metrics.screen_control_radius,
-                            Color32::from_white_alpha(12),
-                        );
+                        ui.painter()
+                            .rect_filled(item_rect, metrics.screen_control_radius, ink(12));
                         ui.painter().rect_filled(
                             Rect::from_min_max(
                                 item_rect.left_top() + Vec2::new(1.0, 9.0),
@@ -1625,22 +1614,14 @@ pub fn draw_settings(
                         ui.painter(),
                         item_rect.left_center() + Vec2::new(22.0, 0.0),
                         section.category,
-                        if active {
-                            Color32::WHITE
-                        } else {
-                            Color32::from_white_alpha(150)
-                        },
+                        if active { text_primary() } else { ink(150) },
                     );
                     ui.painter().text(
                         item_rect.left_center() + Vec2::new(42.0, 0.0),
                         Align2::LEFT_CENTER,
                         section_label(section.category, language),
                         FontId::proportional(metrics.nav_label_size + if tv { 0.0 } else { 2.0 }),
-                        if active {
-                            Color32::WHITE
-                        } else {
-                            Color32::from_white_alpha(185)
-                        },
+                        if active { text_primary() } else { ink(185) },
                     );
                     clicked = response.clicked();
                 });
@@ -1709,7 +1690,7 @@ pub fn draw_settings(
                 crate::fonts::regular(
                     metrics.screen_card_subtitle_size + if compact { 1.0 } else { 0.0 },
                 ),
-                Color32::from_white_alpha(if compact { 120 } else { 145 }),
+                ink(if compact { 120 } else { 145 }),
             );
         }
         painter.rect_filled(*card, metrics.card_radius, metrics.surface);
@@ -1748,7 +1729,7 @@ pub fn draw_settings(
         } else {
             metrics.screen_section_title_size
         }),
-        Color32::WHITE,
+        text_primary(),
     );
     if tv && !searching {
         painter.text(
@@ -1817,7 +1798,7 @@ pub fn draw_settings(
                     Pos2::new(row_rect.left(), y),
                     Pos2::new(row_rect.right(), y),
                 ],
-                egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+                egui::Stroke::new(1.0, ink(12)),
             );
         }
         let is_toggle = setting.options.is_empty();
@@ -1878,7 +1859,7 @@ pub fn draw_settings(
                         .layout_no_wrap(
                             option_label(setting.key, option, language),
                             value_font.clone(),
-                            Color32::WHITE,
+                            text_primary(),
                         )
                         .size()
                         .x
@@ -1957,9 +1938,9 @@ pub fn draw_settings(
                 ),
                 subtitle_font,
                 if value_below || is_app_icon || is_swatches {
-                    Color32::from_white_alpha(160)
+                    ink(160)
                 } else {
-                    Color32::from_white_alpha(if compact { 100 } else { 120 })
+                    ink(if compact { 100 } else { 120 })
                 },
             );
         }
@@ -1987,9 +1968,9 @@ pub fn draw_settings(
                                 ui.allocate_exact_size(Vec2::splat(size), Sense::click());
                             let glass = *option == "glass";
                             let color = if glass {
-                                Color32::from_white_alpha(80)
+                                ink(80)
                             } else {
-                                Color32::from_hex(option).unwrap_or(Color32::WHITE)
+                                Color32::from_hex(option).unwrap_or(text_primary())
                             };
                             let active = option.eq_ignore_ascii_case(&current);
                             let grow = ui.ctx().animate_bool_with_time(
@@ -2008,25 +1989,25 @@ pub fn draw_settings(
                                 ui.painter().circle_stroke(
                                     center,
                                     radius,
-                                    egui::Stroke::new(1.2, Color32::from_white_alpha(190)),
+                                    egui::Stroke::new(1.2, ink(190)),
                                 );
                                 ui.painter().circle_filled(
                                     center - Vec2::splat(radius * 0.38),
                                     radius * 0.26,
-                                    Color32::from_white_alpha(170),
+                                    ink(170),
                                 );
                             }
                             if active {
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(2.0, Color32::WHITE),
+                                    egui::Stroke::new(2.0, text_primary()),
                                 );
                             } else if response.hovered() {
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(1.0, Color32::from_white_alpha(90)),
+                                    egui::Stroke::new(1.0, ink(90)),
                                 );
                             }
                             let name = match *option {
@@ -2056,7 +2037,7 @@ pub fn draw_settings(
         } else if sheet_row {
             if !value_below && !is_app_icon {
                 let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-                let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(110));
+                let stroke = egui::Stroke::new(1.6, ink(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }

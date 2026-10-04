@@ -86,7 +86,7 @@ pub(super) fn form_details(
                         Align2::CENTER_CENTER,
                         t("profiles.change_image"),
                         FontId::proportional(12.0),
-                        Color32::WHITE,
+                        text_primary(),
                     );
                 }
                 if response.on_hover_text(t("profiles.choose_image")).clicked() {
@@ -98,14 +98,14 @@ pub(super) fn form_details(
                         RichText::new(&name)
                             .size(18.0)
                             .strong()
-                            .color(Color32::WHITE),
+                            .color(text_primary()),
                     );
                     if model.draft_is_primary() {
                         ui.label(
                             RichText::new(t("profiles.primary_badge").to_uppercase())
                                 .size(10.0)
                                 .color(metrics.text_secondary)
-                                .background_color(Color32::from_white_alpha(24)),
+                                .background_color(ink(24)),
                         );
                     }
                 });
@@ -234,7 +234,7 @@ pub(super) fn form_images(
                         ui,
                         assets.icon("Refresh"),
                         24.0,
-                        Color32::from_white_alpha(150),
+                        ink(150),
                         false,
                         false,
                         !model.busy,
@@ -279,10 +279,7 @@ pub(super) fn form_images(
                                 ui.painter().circle_stroke(
                                     center,
                                     tile * 0.5 + 2.0,
-                                    egui::Stroke::new(
-                                        2.0,
-                                        Color32::from_white_alpha(if selected { 255 } else { 90 }),
-                                    ),
+                                    egui::Stroke::new(2.0, ink(if selected { 255 } else { 90 })),
                                 );
                             }
                             let font = FontId::proportional(11.0);

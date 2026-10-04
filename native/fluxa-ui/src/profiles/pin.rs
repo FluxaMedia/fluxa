@@ -39,7 +39,7 @@ pub(super) fn draw_pin_prompt(
                     RichText::new(&profile.name)
                         .size(18.0)
                         .strong()
-                        .color(Color32::WHITE),
+                        .color(text_primary()),
                 );
                 ui.add_space(4.0);
                 ui.label(

@@ -103,7 +103,7 @@ pub fn draw_calendar(
                 RichText::new(localized("nav.library", &calendar.language))
                     .size(metrics.screen_title_size)
                     .strong()
-                    .color(Color32::WHITE),
+                    .color(text_primary()),
             );
         });
     crate::library::draw_library_sections(
@@ -150,7 +150,7 @@ pub fn draw_calendar(
                     let label = RichText::new(month_title.as_str())
                         .size(metrics.nav_label_size + 3.0)
                         .strong()
-                        .color(Color32::WHITE);
+                        .color(text_primary());
                     if compact {
                         ui.label(label.clone());
                     }
@@ -297,7 +297,7 @@ pub fn draw_calendar(
                 egui::Frame::new()
                     .fill(metrics.surface)
                     .corner_radius(metrics.card_radius)
-                    .stroke(egui::Stroke::new(1.0, Color32::from_white_alpha(40)))
+                    .stroke(egui::Stroke::new(1.0, ink(40)))
                     .inner_margin(metrics.card_content_padding)
                     .show(ui, |ui| {
                         ui.set_width((panel_width - metrics.card_content_padding * 2.0).max(1.0));
@@ -434,11 +434,7 @@ fn draw_calendar_cell(
         painter.rect_filled(
             rect,
             radius,
-            if entries.is_empty() {
-                Color32::from_white_alpha(6)
-            } else {
-                Color32::from_white_alpha(14)
-            },
+            if entries.is_empty() { ink(6) } else { ink(14) },
         );
     } else {
         if past {
@@ -475,7 +471,7 @@ fn draw_calendar_cell(
         painter.rect_stroke(
             rect,
             radius,
-            egui::Stroke::new(1.5, Color32::WHITE),
+            egui::Stroke::new(1.5, text_primary()),
             egui::StrokeKind::Inside,
         );
     }
@@ -486,7 +482,7 @@ fn draw_calendar_cell(
         } else {
             Rect::from_min_size(day_pos - Vec2::splat(size * 0.2), Vec2::splat(size))
         };
-        painter.circle_filled(badge.center(), size * 0.5, Color32::WHITE);
+        painter.circle_filled(badge.center(), size * 0.5, text_primary());
         painter.text(
             badge.center(),
             Align2::CENTER_CENTER,
@@ -505,9 +501,9 @@ fn draw_calendar_cell(
             day.to_string(),
             day_font,
             if entries.is_empty() {
-                Color32::from_white_alpha(if past { 70 } else { 150 })
+                ink(if past { 70 } else { 150 })
             } else {
-                Color32::WHITE
+                text_primary()
             },
         );
     }
@@ -524,7 +520,7 @@ fn draw_calendar_cell(
             galley.size() + Vec2::new(padding, padding * 0.5),
         );
         painter.rect_filled(pill, pill.height() * 0.5, Color32::from_black_alpha(170));
-        painter.galley(pill.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        painter.galley(pill.center() - galley.size() * 0.5, galley, text_primary());
     }
     let Some(entry) = entries.first() else {
         return;
@@ -555,7 +551,7 @@ fn draw_calendar_cell(
         Align2::LEFT_BOTTOM,
         truncate_to_width(&painter, &show, &title_font, text_width),
         title_font,
-        Color32::WHITE,
+        text_primary(),
     );
 }
 

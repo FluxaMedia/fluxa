@@ -393,7 +393,7 @@ impl Chrome<'_> {
             align,
             truncate_to_width(self.painter, text, &font, max_width),
             font,
-            Color32::from_white_alpha(alpha),
+            ink(alpha),
         );
     }
 
@@ -499,13 +499,7 @@ impl Chrome<'_> {
         }
         let y = track.center().y;
         if duration <= 0.0 {
-            painter_bar(
-                self.painter,
-                track,
-                thickness,
-                Color32::from_white_alpha(95),
-                track.width(),
-            );
+            painter_bar(self.painter, track, thickness, ink(95), track.width());
             return position;
         }
         let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;
@@ -535,7 +529,7 @@ impl Chrome<'_> {
             self.painter.circle_filled(
                 Pos2::new(track.left() + played, y),
                 thickness * 1.8,
-                Color32::WHITE,
+                text_primary(),
             );
         }
         let pointer = if self.viewport.form_factor == UiFormFactor::Mobile {

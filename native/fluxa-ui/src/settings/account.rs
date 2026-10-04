@@ -95,7 +95,7 @@ pub(super) fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMet
     let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
     painter.line_segment(
         [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-        egui::Stroke::new(1.0, Color32::from_white_alpha(12)),
+        egui::Stroke::new(1.0, ink(12)),
     );
 }
 
@@ -201,7 +201,7 @@ pub(super) fn draw_account(
             );
         }
         None => {
-            painter.circle_filled(avatar.center(), 26.0, Color32::from_white_alpha(22));
+            painter.circle_filled(avatar.center(), 26.0, ink(22));
             let initials = name
                 .split_whitespace()
                 .take(2)
@@ -213,7 +213,7 @@ pub(super) fn draw_account(
                 Align2::CENTER_CENTER,
                 initials,
                 FontId::proportional(20.0),
-                Color32::WHITE,
+                text_primary(),
             );
         }
     }
@@ -224,7 +224,7 @@ pub(super) fn draw_account(
         .layout_no_wrap(
             switch_label.clone(),
             FontId::proportional(label_size),
-            Color32::WHITE,
+            text_primary(),
         )
         .size()
         .x
@@ -247,7 +247,7 @@ pub(super) fn draw_account(
     let mut name_job = egui::text::LayoutJob::simple_singleline(
         name,
         crate::fonts::regular(label_size + 4.0),
-        Color32::WHITE,
+        text_primary(),
     );
     name_job.wrap.max_width = (name_right - name_left).max(1.0);
     name_job.wrap.max_rows = 1;
@@ -256,7 +256,7 @@ pub(super) fn draw_account(
     painter.galley(
         Pos2::new(name_left, card.center().y - name_galley.size().y * 0.5),
         name_galley,
-        Color32::WHITE,
+        text_primary(),
     );
 
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -341,7 +341,7 @@ pub(super) fn draw_account(
                         right - row.left() - label_left,
                     ),
                     status_font,
-                    Color32::from_white_alpha(if on { 200 } else { 160 }),
+                    ink(if on { 200 } else { 160 }),
                 );
             } else {
                 painter.text(
@@ -360,7 +360,7 @@ pub(super) fn draw_account(
                 );
             }
             if slot.is_some() && viewport.platform != UiPlatform::Android {
-                let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(110));
+                let stroke = egui::Stroke::new(1.6, ink(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }
@@ -387,7 +387,7 @@ pub(super) fn draw_account(
                 .layout_no_wrap(
                     action.clone(),
                     FontId::proportional(label_size),
-                    Color32::WHITE,
+                    text_primary(),
                 )
                 .size()
                 .x
@@ -411,7 +411,7 @@ pub(super) fn draw_account(
             Align2::RIGHT_CENTER,
             status,
             crate::fonts::regular(metrics.screen_card_subtitle_size),
-            Color32::from_white_alpha(if on { 200 } else { 110 }),
+            ink(if on { 200 } else { 110 }),
         );
     }
 
@@ -469,7 +469,7 @@ pub(super) fn draw_account(
                     value_font,
                     metrics.text_secondary,
                 );
-                let stroke = egui::Stroke::new(1.6, Color32::from_white_alpha(110));
+                let stroke = egui::Stroke::new(1.6, ink(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }

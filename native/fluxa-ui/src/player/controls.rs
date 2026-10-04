@@ -97,11 +97,9 @@ impl Chrome<'_> {
         };
         let ratio = (shown / max).clamp(0.0, 1.0);
         let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
-        self.painter
-            .rect_filled(bar, 2.0, Color32::from_white_alpha(alpha / 3));
+        self.painter.rect_filled(bar, 2.0, ink(alpha / 3));
         let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
-        self.painter
-            .rect_filled(filled, 2.0, Color32::from_white_alpha(alpha));
+        self.painter.rect_filled(filled, 2.0, ink(alpha));
         if player.boost {
             let mark = bar.left() + bar.width() * 0.5;
             self.painter.line_segment(
@@ -109,20 +107,20 @@ impl Chrome<'_> {
                     Pos2::new(mark, bar.center().y - 5.0),
                     Pos2::new(mark, bar.center().y + 5.0),
                 ],
-                egui::Stroke::new(1.5, Color32::from_white_alpha(alpha / 2)),
+                egui::Stroke::new(1.5, ink(alpha / 2)),
             );
         }
         self.painter.circle_filled(
             Pos2::new(filled.right(), bar.center().y),
             6.0 * amount,
-            Color32::WHITE,
+            text_primary(),
         );
         self.painter.text(
             Pos2::new(filled.right(), bar.center().y - 20.0),
             Align2::CENTER_CENTER,
             format!("{}%", shown.round() as i32),
             FontId::proportional(12.0),
-            Color32::from_white_alpha(alpha),
+            ink(alpha),
         );
         x + full + 8.0
     }
@@ -480,7 +478,7 @@ pub(super) fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focu
             .rect_stroke(
                 rect.expand(3.0),
                 rect.height().min(rect.width()) * 0.5,
-                egui::Stroke::new(2.0, Color32::WHITE),
+                egui::Stroke::new(2.0, text_primary()),
                 egui::StrokeKind::Outside,
             );
     }
@@ -525,16 +523,16 @@ pub(super) fn control(
             rect,
             rect.width() * 0.5,
             if prominent {
-                Color32::from_white_alpha(30)
+                ink(30)
             } else {
                 Color32::from_black_alpha(75)
             },
         );
     }
     let color = if response.hovered() {
-        Color32::WHITE
+        text_primary()
     } else {
-        Color32::from_white_alpha(235)
+        ink(235)
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);

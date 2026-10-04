@@ -75,7 +75,7 @@ pub(super) fn draw_panel(
         Align2::LEFT_TOP,
         &panel.title,
         FontId::proportional(text * 1.15),
-        Color32::WHITE,
+        text_primary(),
     );
     y += text * 2.2;
     if let Some(message) = panel.message.as_deref() {
@@ -84,7 +84,7 @@ pub(super) fn draw_panel(
             Align2::LEFT_TOP,
             truncate_to_width(&veil, message, &FontId::proportional(text), inner.width()),
             FontId::proportional(text),
-            Color32::from_white_alpha(170),
+            ink(170),
         );
         y += message_height;
     }
@@ -228,7 +228,7 @@ fn draw_list(
             Align2::LEFT_CENTER,
             &panel.title,
             FontId::proportional(text * 1.1),
-            Color32::WHITE,
+            text_primary(),
         );
         top += title_h;
     }
@@ -241,7 +241,7 @@ fn draw_list(
                 Align2::LEFT_CENTER,
                 *heading,
                 FontId::proportional(text * 0.85),
-                Color32::from_white_alpha(140),
+                ink(140),
             );
         }
         let rows_top = top + head_h;
@@ -291,7 +291,7 @@ fn draw_list(
                         Align2::LEFT_CENTER,
                         &row.label,
                         FontId::proportional(text * 0.8),
-                        Color32::from_white_alpha(120),
+                        ink(120),
                     );
                 }
                 continue;
@@ -307,11 +307,11 @@ fn draw_list(
             );
             let on = chrome.focused == Some(node);
             let fill = if on {
-                Color32::WHITE
+                text_primary()
             } else if row.selected {
-                Color32::from_white_alpha(22)
+                ink(22)
             } else if response.hovered() {
-                Color32::from_white_alpha(12)
+                ink(12)
             } else {
                 Color32::TRANSPARENT
             };
@@ -319,7 +319,7 @@ fn draw_list(
             let ink = if on {
                 Color32::BLACK
             } else {
-                Color32::from_white_alpha(if row.selected { 255 } else { 215 })
+                ink(if row.selected { 255 } else { 215 })
             };
             let mut right = rect.right() - 12.0;
             if rich {
@@ -327,7 +327,7 @@ fn draw_list(
                     rect.min + Vec2::new(8.0, 8.0),
                     Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
                 );
-                veil.rect_filled(art, 6.0, Color32::from_white_alpha(14));
+                veil.rect_filled(art, 6.0, crate::ink(14));
                 components::rounded_artwork(
                     &veil,
                     art,

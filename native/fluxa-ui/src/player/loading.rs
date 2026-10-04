@@ -49,7 +49,7 @@ pub(super) fn draw_warnings(
             Vec2::new(3.0, bar * ramp(elapsed / WARNING_BAR)),
         ),
         1.5,
-        Color32::from_white_alpha((230.0 * box_alpha) as u8),
+        ink((230.0 * box_alpha) as u8),
     );
     let fade_out_start = total - WARNING_BAR - rows as f32 * WARNING_STAGGER - WARNING_FADE;
     for (index, line) in lines.into_iter().enumerate() {
@@ -61,7 +61,7 @@ pub(super) fn draw_warnings(
             Align2::LEFT_CENTER,
             line,
             font.clone(),
-            Color32::from_white_alpha((255.0 * alpha) as u8),
+            ink((255.0 * alpha) as u8),
         );
     }
 }
@@ -153,7 +153,7 @@ pub(super) fn draw_loading(
                     Align2::CENTER_CENTER,
                     &player.title,
                     FontId::proportional(40.0),
-                    Color32::WHITE,
+                    text_primary(),
                 );
             }
         }
@@ -165,7 +165,7 @@ pub(super) fn draw_loading(
             Align2::CENTER_CENTER,
             localized("player.playback_error", &player.language),
             FontId::proportional(22.0),
-            Color32::WHITE,
+            text_primary(),
         );
         painter.text(
             center + Vec2::new(0.0, 16.0),

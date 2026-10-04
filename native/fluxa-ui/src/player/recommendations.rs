@@ -82,7 +82,7 @@ pub(super) fn draw_recommendations(
                 let mut job = egui::text::LayoutJob::simple(
                     hero.description.clone(),
                     FontId::proportional(if compact { 14.0 } else { 16.0 }),
-                    Color32::from_white_alpha(text_alpha.min(225)),
+                    ink(text_alpha.min(225)),
                     panel_width,
                 );
                 job.wrap.max_rows = if compact { 3 } else { 4 };
@@ -92,7 +92,7 @@ pub(super) fn draw_recommendations(
                 painter.galley(
                     Pos2::new(panel_left + slide, description_bottom - height),
                     galley,
-                    Color32::WHITE,
+                    text_primary(),
                 );
                 height + 14.0
             };
@@ -108,7 +108,7 @@ pub(super) fn draw_recommendations(
                         panel_width,
                     ),
                     FontId::proportional(14.0),
-                    Color32::from_white_alpha(text_alpha.min(190)),
+                    ink(text_alpha.min(190)),
                 );
                 cursor -= 30.0;
             }
@@ -142,7 +142,7 @@ pub(super) fn draw_recommendations(
                         Align2::LEFT_BOTTOM,
                         truncate_to_width(&painter, &hero.title, &font, panel_width),
                         font,
-                        Color32::from_white_alpha(text_alpha),
+                        ink(text_alpha),
                     );
                 }
             }
@@ -165,7 +165,7 @@ pub(super) fn draw_recommendations(
                     painter.circle_filled(
                         center,
                         if active { 4.5 } else { 3.5 },
-                        Color32::from_white_alpha(if active {
+                        ink(if active {
                             255
                         } else if response.hovered() {
                             170

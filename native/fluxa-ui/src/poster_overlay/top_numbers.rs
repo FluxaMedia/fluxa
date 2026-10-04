@@ -72,7 +72,7 @@ fn paint_number(
     surface: Color32,
 ) {
     let tone = match numbers.color {
-        NumberColor::White => Color32::WHITE,
+        NumberColor::White => text_primary(),
         NumberColor::Gray => Color32::from_gray(150),
         NumberColor::Accent => accent,
     };

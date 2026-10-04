@@ -185,7 +185,7 @@ pub fn draw_shorts(
                         ui,
                         assets.icon(if saved { "Check" } else { "Plus" }),
                         Vec2::splat(button_height),
-                        Color32::WHITE,
+                        text_primary(),
                         true,
                         saved,
                         true,
@@ -201,7 +201,7 @@ pub fn draw_shorts(
                         ui,
                         assets.icon("Info"),
                         Vec2::splat(button_height),
-                        Color32::WHITE,
+                        text_primary(),
                         true,
                         false,
                         true,
@@ -236,7 +236,7 @@ pub fn draw_shorts(
                             ui,
                             assets.icon(icon),
                             size,
-                            Color32::WHITE,
+                            text_primary(),
                             true,
                             false,
                             enabled,
@@ -327,14 +327,14 @@ fn draw_page(
         let mut job = egui::text::LayoutJob::simple(
             hero.description.clone(),
             crate::fonts::regular(14.0 * scale),
-            Color32::from_white_alpha(235),
+            ink(235),
             width,
         );
         job.wrap.max_rows = 3;
         job.wrap.overflow_character = Some('…');
         let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
         y -= galley.size().y;
-        clipped.galley(Pos2::new(rect.left() + pad, y), galley, Color32::WHITE);
+        clipped.galley(Pos2::new(rect.left() + pad, y), galley, text_primary());
         y -= 10.0 * scale;
     }
     if !hero.eyebrow.is_empty() {
@@ -378,7 +378,7 @@ fn draw_page(
                 Align2::LEFT_BOTTOM,
                 truncate_text(&hero.title, 28),
                 FontId::proportional(28.0 * scale),
-                Color32::WHITE,
+                text_primary(),
             );
         }
     }

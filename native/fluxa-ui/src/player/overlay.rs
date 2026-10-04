@@ -114,14 +114,7 @@ pub(super) fn segmented_track(
             0.0
         };
         let width = (right - left - trailing).max(1.0);
-        painter_bar_at(
-            painter,
-            track,
-            left,
-            width,
-            thickness,
-            Color32::from_white_alpha(95),
-        );
+        painter_bar_at(painter, track, left, width, thickness, ink(95));
         let filled = (played - left + track.left()).clamp(0.0, width);
         if filled > 0.0 {
             painter_bar_at(
@@ -130,7 +123,7 @@ pub(super) fn segmented_track(
                 left,
                 filled,
                 thickness + 0.5,
-                Color32::WHITE,
+                text_primary(),
             );
         }
     }

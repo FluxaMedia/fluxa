@@ -149,7 +149,7 @@ fn section_title(painter: &egui::Painter, pos: Pos2, text: &str, size: f32) {
         Align2::LEFT_TOP,
         text,
         FontId::proportional(size),
-        Color32::WHITE,
+        text_primary(),
     );
 }
 
@@ -334,7 +334,7 @@ pub fn draw_detail(
                                 })
                                 .size(metrics.text.display)
                                 .strong()
-                                .color(Color32::WHITE),
+                                .color(text_primary()),
                             )
                             .halign(egui::Align::Center),
                         );
@@ -358,7 +358,7 @@ pub fn draw_detail(
                         egui::Label::new(
                             RichText::new(facts)
                                 .size(metrics.text.meta)
-                                .color(Color32::WHITE),
+                                .color(text_primary()),
                         )
                         .halign(egui::Align::Center),
                     );
@@ -533,7 +533,7 @@ pub fn draw_detail(
                     })
                     .size(metrics.text.display)
                     .strong()
-                    .color(Color32::WHITE),
+                    .color(text_primary()),
                 );
             }
             ui.add_space(space::XL);
@@ -568,7 +568,7 @@ pub fn draw_detail(
                         RichText::new(score)
                             .size(metrics.text.meta)
                             .strong()
-                            .color(Color32::WHITE),
+                            .color(text_primary()),
                     );
                     ui.add_space(space::XS);
                 }
@@ -612,7 +612,7 @@ pub fn draw_detail(
                             .layout_no_wrap(
                                 play_label.clone(),
                                 egui::FontId::proportional(metrics.text.subtitle),
-                                Color32::WHITE,
+                                text_primary(),
                             )
                             .size()
                             .x
@@ -639,7 +639,7 @@ pub fn draw_detail(
                     ui,
                     assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
                     Vec2::splat(height),
-                    Color32::WHITE,
+                    text_primary(),
                     true,
                     detail.in_watchlist,
                     true,
@@ -691,7 +691,7 @@ pub fn draw_detail(
                         ui,
                         assets.icon(icon),
                         Vec2::splat(height),
-                        Color32::WHITE,
+                        text_primary(),
                         true,
                         active,
                         true,
@@ -768,7 +768,7 @@ pub fn draw_detail(
                 ui,
                 assets.icon("ArrowLeft"),
                 40.0,
-                Color32::WHITE,
+                text_primary(),
                 true,
                 false,
                 true,
@@ -1028,7 +1028,7 @@ pub fn draw_detail(
                                     Align2::CENTER_TOP,
                                     truncate_to_width(painter, &member.name, &font, rect.width()),
                                     font,
-                                    Color32::WHITE,
+                                    text_primary(),
                                 );
                                 if let Some(role) = member.role.as_deref() {
                                     let font = FontId::proportional(12.0);

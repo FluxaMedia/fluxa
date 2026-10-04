@@ -13,7 +13,7 @@ pub(super) fn draw_mini_player(
         rect.min + Vec2::splat(if compact { 16.0 } else { 24.0 }),
         Vec2::new(width, width * 9.0 / 16.0),
     );
-    painter.rect_filled(mini.expand(1.0), 8.0, Color32::from_white_alpha(28));
+    painter.rect_filled(mini.expand(1.0), 8.0, ink(28));
     match player.video {
         Some(texture) => {
             painter.add(
@@ -93,7 +93,7 @@ pub(super) fn draw_seek_preview(
         Align2::CENTER_BOTTOM,
         format_time(time),
         label_font.clone(),
-        Color32::WHITE,
+        text_primary(),
     );
     bottom -= 18.0;
     if let Some(chapter) = chapter {
@@ -111,7 +111,7 @@ pub(super) fn draw_seek_preview(
             Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
             Pos2::new(x + width * 0.5, bottom),
         );
-        painter.rect_filled(frame.expand(1.0), 4.0, Color32::from_white_alpha(40));
+        painter.rect_filled(frame.expand(1.0), 4.0, ink(40));
         painter.image(texture, frame, full_uv(), Color32::WHITE);
     }
 }
@@ -139,7 +139,7 @@ pub(super) fn draw_pause_info(
     let left = rect.left() + 64.0;
     let width = (rect.width() * 0.42).clamp(260.0, 620.0);
     let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
-    let muted = Color32::from_white_alpha(190);
+    let muted = ink(190);
 
     let label = localized("player.youre_watching", &player.language);
     blocks.push((
@@ -176,11 +176,11 @@ pub(super) fn draw_pause_info(
         )),
         None => {
             let galley =
-                components::wrapped_text(painter, &player.title, 40.0, Color32::WHITE, width, 2);
+                components::wrapped_text(painter, &player.title, 40.0, text_primary(), width, 2);
             blocks.push((
                 galley.size().y + 12.0,
                 Box::new(move |painter, y| {
-                    painter.galley(Pos2::new(left, y), galley.clone(), Color32::WHITE)
+                    painter.galley(Pos2::new(left, y), galley.clone(), text_primary())
                 }),
             ));
         }

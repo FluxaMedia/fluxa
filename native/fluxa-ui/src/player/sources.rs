@@ -56,7 +56,7 @@ pub(super) fn draw_sources(
                 Align2::LEFT_CENTER,
                 localized("player.streams", language),
                 title_font,
-                Color32::WHITE,
+                text_primary(),
             );
             let subtitle = player.episode_title.as_deref().unwrap_or(&player.title);
             let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
@@ -211,7 +211,7 @@ fn draw_info_panel(
         None => Some(text(
             &player.title,
             FontId::proportional(metrics.screen_title_size),
-            Color32::WHITE,
+            text_primary(),
             2,
         )),
     };
@@ -219,7 +219,7 @@ fn draw_info_panel(
         text(
             episode,
             FontId::proportional(metrics.screen_card_title_size + 6.0),
-            Color32::WHITE,
+            text_primary(),
             2,
         )
     });
@@ -272,8 +272,8 @@ fn draw_info_panel(
         y = logo_rect.bottom() + 24.0;
     }
     for (galley, gap, color) in [
-        (title, 20.0, Color32::WHITE),
-        (episode, 14.0, Color32::WHITE),
+        (title, 20.0, text_primary()),
+        (episode, 14.0, text_primary()),
         (synopsis, 0.0, metrics.text_secondary),
     ] {
         if let Some(galley) = galley {

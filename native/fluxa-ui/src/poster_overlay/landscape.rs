@@ -43,7 +43,7 @@ pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
         painter.galley(
             badge.center() - galley.size() * 0.5 + Vec2::new(logo_width * 0.5, 0.0),
             galley,
-            Color32::WHITE,
+            text_primary(),
         );
     }
     if overlays.quality {
@@ -105,7 +105,7 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
     painter.galley(
         Pos2::new(band.left() + inset, band.center().y - galley.size().y * 0.5),
         galley,
-        Color32::WHITE,
+        text_primary(),
     );
 }
 
@@ -118,7 +118,7 @@ pub(super) fn watched_mark(painter: &Painter, rect: Rect) {
     let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
     painter.line(
         vec![at(0.28, 0.52), at(0.44, 0.67), at(0.73, 0.36)],
-        Stroke::new(rect.width() * 0.11, Color32::WHITE),
+        Stroke::new(rect.width() * 0.11, text_primary()),
     );
 }
 
@@ -136,12 +136,12 @@ pub(super) fn saved_mark(painter: &Painter, rect: Rect) {
             at(0.66, 0.74),
             at(0.5, 0.62),
         ],
-        Color32::WHITE,
+        text_primary(),
         Stroke::NONE,
     ));
     painter.add(Shape::convex_polygon(
         vec![at(0.34, 0.26), at(0.5, 0.62), at(0.34, 0.74)],
-        Color32::WHITE,
+        text_primary(),
         Stroke::NONE,
     ));
 }

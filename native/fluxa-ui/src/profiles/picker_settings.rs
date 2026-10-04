@@ -27,7 +27,7 @@ pub(super) fn draw_picker_settings(
                     RichText::new(t("profiles.picker_background"))
                         .size(19.0)
                         .strong()
-                        .color(Color32::WHITE),
+                        .color(text_primary()),
                 );
                 ui.add_space(16.0);
                 let has_background = model.picker.background_url.is_some();
@@ -50,7 +50,7 @@ pub(super) fn draw_picker_settings(
                         ui,
                         assets.icon("ImagePlus"),
                         44.0,
-                        Color32::from_white_alpha(200),
+                        ink(200),
                         true,
                         false,
                         true,
@@ -65,7 +65,7 @@ pub(super) fn draw_picker_settings(
                             ui,
                             assets.icon("Delete"),
                             44.0,
-                            Color32::from_white_alpha(200),
+                            ink(200),
                             true,
                             false,
                             true,
@@ -89,7 +89,7 @@ pub(super) fn draw_picker_settings(
                     RichText::new(t("profiles.avatar_packs"))
                         .size(19.0)
                         .strong()
-                        .color(Color32::WHITE),
+                        .color(text_primary()),
                 );
                 ui.add_space(6.0);
                 ui.label(
@@ -134,7 +134,7 @@ pub(super) fn draw_picker_settings(
                 for pack in model.picker.avatar_packs.clone() {
                     components::surface(
                         ui,
-                        Color32::from_white_alpha(8),
+                        ink(8),
                         10.0,
                         egui::Margin::symmetric(14, 12),
                         |ui| {
@@ -203,7 +203,7 @@ pub(super) fn draw_picker_settings(
                                             ui,
                                             assets.icon("Refresh"),
                                             32.0,
-                                            Color32::from_white_alpha(170),
+                                            ink(170),
                                             false,
                                             false,
                                             !model.busy,

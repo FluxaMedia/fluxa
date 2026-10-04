@@ -989,7 +989,7 @@ pub(super) fn expanded_poster_card(
             url,
             artwork_target_size(backdrop_bounds, painter.ctx().pixels_per_point()),
             ArtworkPriority::Visible,
-            metrics.ink(alpha),
+            Color32::from_white_alpha(alpha),
             assets,
         );
         if let Some(texture) = trailer {
@@ -1002,7 +1002,7 @@ pub(super) fn expanded_poster_card(
                 egui::epaint::RectShape::filled(
                     rect,
                     radius,
-                    metrics.ink((f32::from(alpha) * fade) as u8),
+                    Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
                 )
                 .with_texture(texture, cover_uv([1920, 1080], rect)),
             );
@@ -1373,7 +1373,7 @@ fn poster_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        metrics.ink(235),
+        Color32::from_white_alpha(235),
         assets,
     );
     let has_static_artwork = match super::poster_overlay::custom_url(painter.ctx(), card) {
@@ -1387,7 +1387,7 @@ fn poster_card_body(
                     painter.ctx().pixels_per_point(),
                 ),
                 ArtworkPriority::Visible,
-                metrics.ink(235),
+                Color32::from_white_alpha(235),
                 assets,
             ) || has_static_artwork
         }
@@ -1547,7 +1547,7 @@ fn continue_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        metrics.ink(235),
+        Color32::from_white_alpha(235),
         assets,
     );
 

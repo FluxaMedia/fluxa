@@ -102,15 +102,15 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             );
                             slots[index] = rect;
                             let fill = if response.hovered() && !active {
-                                Color32::from_white_alpha(12)
+                                ink(12)
                             } else {
                                 Color32::TRANSPARENT
                             };
                             ui.painter().rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, fill);
                             let color = if active || response.hovered() {
-                                Color32::WHITE
+                                text_primary()
                             } else {
-                                Color32::from_white_alpha(160)
+                                ink(160)
                             };
                             let galley =
                                 ui.painter()
@@ -149,11 +149,8 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         slots[4] = rect;
                         let profile_active = active_route == 4;
                         if !profile_active && response.hovered() {
-                            ui.painter().rect_filled(
-                                rect,
-                                NAV_ITEM_HEIGHT * 0.5,
-                                Color32::from_white_alpha(12),
-                            );
+                            ui.painter()
+                                .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(12));
                         }
                         let target = slots[active_route.min(4)];
                         let x = ui.ctx().animate_value_with_time(
@@ -175,18 +172,15 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                     Vec2::new(width + stretch, NAV_ITEM_HEIGHT),
                                 ),
                                 NAV_ITEM_HEIGHT * 0.5,
-                                Color32::from_white_alpha(18),
+                                ink(18),
                             ),
                         );
                         let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
                         if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
                         } else {
-                            ui.painter().circle_filled(
-                                center,
-                                NAV_AVATAR_RADIUS,
-                                Color32::from_white_alpha(30),
-                            );
+                            ui.painter()
+                                .circle_filled(center, NAV_AVATAR_RADIUS, ink(30));
                             if let Some(icon) = assets.icon("Account") {
                                 ui.painter().image(
                                     icon,
@@ -208,9 +202,9 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             ),
                             font.clone(),
                             if profile_active || response.hovered() {
-                                Color32::WHITE
+                                text_primary()
                             } else {
-                                Color32::from_white_alpha(200)
+                                ink(200)
                             },
                         );
                         if response.clicked() {
@@ -294,7 +288,7 @@ fn nav_accent(assets: &impl HomeAssets) -> (Color32, Color32) {
             let [r, g, b, _] = accent.to_array();
             (accent, Color32::from_rgba_unmultiplied(r, g, b, 46))
         }
-        _ => (Color32::WHITE, Color32::from_white_alpha(18)),
+        _ => (text_primary(), ink(18)),
     }
 }
 
@@ -466,11 +460,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     let active = index == highlighted;
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::new(slot_width, bar.height()), Sense::click());
-                    let color = if active {
-                        accent
-                    } else {
-                        Color32::from_white_alpha(130)
-                    };
+                    let color = if active { accent } else { ink(130) };
                     let center = if labels {
                         rect.center() - Vec2::new(0.0, 9.0)
                     } else {

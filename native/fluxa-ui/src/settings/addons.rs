@@ -381,7 +381,7 @@ pub(super) fn draw_addons(
             rect,
             y + 8.0,
             &localized("settings.addon_empty", language),
-            Color32::from_white_alpha(140),
+            ink(140),
         );
     }
     for (index, addon) in settings.addons.iter().enumerate() {
@@ -441,7 +441,7 @@ pub(super) fn draw_plugins(
             rect,
             y + 8.0,
             &localized("settings.plugin_empty", language),
-            Color32::from_white_alpha(140),
+            ink(140),
         );
         y += 56.0;
     }
@@ -486,7 +486,7 @@ pub(super) fn draw_plugins(
                     row.left_top() + Vec2::new(16.0, 0.0),
                     row.right_top() - Vec2::new(16.0, 0.0),
                 ],
-                egui::Stroke::new(1.0, Color32::from_white_alpha(14)),
+                egui::Stroke::new(1.0, ink(14)),
             );
         }
         let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -519,7 +519,7 @@ pub(super) fn draw_plugins(
             Align2::LEFT_CENTER,
             truncate_to_width(&painter, name, &title_font, text_width),
             title_font,
-            Color32::WHITE,
+            text_primary(),
         );
         if let Some(detail) = detail {
             let font = crate::fonts::regular(14.0);
@@ -574,7 +574,7 @@ fn draw_card(
     );
     let inner = frame.shrink(CARD_PADDING);
     let logo = Rect::from_min_size(inner.min, Vec2::splat(LOGO));
-    painter.rect_filled(logo, 12.0, Color32::from_white_alpha(14));
+    painter.rect_filled(logo, 12.0, ink(14));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
     if let Some(texture) = texture {
         let size = context
@@ -617,7 +617,7 @@ fn draw_card(
     let galley = painter.layout_no_wrap(title, title_font, Color32::WHITE);
     let title_pos = Pos2::new(text_left, logo.top() + 2.0);
     let title_width = galley.size().x;
-    painter.galley(title_pos, galley, Color32::WHITE);
+    painter.galley(title_pos, galley, text_primary());
     if let Some(version) = card.version {
         painter.text(
             Pos2::new(title_pos.x + title_width + 8.0, title_pos.y + 4.0),
@@ -648,7 +648,7 @@ fn draw_card(
         painter.galley(
             Pos2::new(inner.left(), y),
             painter.layout_job(job),
-            Color32::WHITE,
+            text_primary(),
         );
         y += 44.0;
     }
@@ -666,13 +666,13 @@ fn draw_card(
             painter.rect_stroke(
                 chip_rect,
                 8.0,
-                egui::Stroke::new(1.0, Color32::from_white_alpha(40)),
+                egui::Stroke::new(1.0, ink(40)),
                 egui::StrokeKind::Inside,
             );
             painter.galley(
                 chip_rect.center() - galley.size() * 0.5,
                 galley,
-                Color32::WHITE,
+                text_primary(),
             );
             x += width + 8.0;
         }
@@ -702,15 +702,8 @@ fn draw_card(
             .fixed_pos(button.min)
             .order(egui::Order::Foreground)
             .show(context, |ui| {
-                let response = components::icon_button(
-                    ui,
-                    texture,
-                    ACTION,
-                    Color32::from_white_alpha(220),
-                    false,
-                    false,
-                    enabled,
-                );
+                let response =
+                    components::icon_button(ui, texture, ACTION, ink(220), false, false, enabled);
                 if enabled && response.clicked() {
                     layout.activated = Some(node);
                 }
@@ -771,7 +764,7 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
             prompt.code,
             prompt.url
         ),
-        Color32::from_white_alpha(200),
+        ink(200),
     ))
 }
 
@@ -900,7 +893,7 @@ pub(super) fn draw_servers(
             rect,
             y + 8.0,
             &localized("settings.server_empty", language),
-            Color32::from_white_alpha(140),
+            ink(140),
         );
         y += 56.0;
     }

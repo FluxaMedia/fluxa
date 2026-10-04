@@ -86,7 +86,7 @@ pub(super) fn score_bar(
         return;
     };
     let pill = bar_height * 0.5;
-    painter.rect_filled(track, pill, Color32::from_white_alpha(45));
+    painter.rect_filled(track, pill, ink(45));
     let fill = Rect::from_min_size(
         track.min,
         Vec2::new(track.width() * score / 10.0, bar_height),
@@ -109,7 +109,7 @@ pub(super) fn score_bar(
             Pos2::new(fill.left() + pill, fill.top() + 1.0),
             Pos2::new(fill.right(), fill.top() + 1.0),
         ],
-        Stroke::new(1.0, Color32::from_white_alpha(60)),
+        Stroke::new(1.0, ink(60)),
     );
 }
 
@@ -141,7 +141,7 @@ pub(super) fn score_number(
             score_colors(score).0,
         );
         bottom -= galley.size().y * 0.9;
-        painter.galley(Pos2::new(left, bottom), galley, Color32::WHITE);
+        painter.galley(Pos2::new(left, bottom), galley, text_primary());
     }
     (rect.bottom() - bottom) / rect.height() + 0.02
 }
@@ -195,22 +195,19 @@ pub(super) fn score_frosted(
         },
         Color32::from_black_alpha(165),
     );
-    painter.line_segment(
-        [bar.left_top(), bar.right_top()],
-        Stroke::new(1.0, Color32::from_white_alpha(35)),
-    );
+    painter.line_segment([bar.left_top(), bar.right_top()], Stroke::new(1.0, ink(35)));
     let size = height * 0.45;
     let pad = rect.width() * 0.05;
     if let Some(score) = rating {
         let galley = painter.layout_no_wrap(
             format!("★ {score:.1}"),
             FontId::proportional(size),
-            Color32::WHITE,
+            text_primary(),
         );
         painter.galley(
             Pos2::new(bar.left() + pad, bar.center().y - galley.size().y * 0.5),
             galley,
-            Color32::WHITE,
+            text_primary(),
         );
     }
     if !caption.is_empty() {

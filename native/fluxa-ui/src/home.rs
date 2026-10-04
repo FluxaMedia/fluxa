@@ -440,7 +440,7 @@ pub(crate) fn draw_home_with_options(
         };
         let synopsis_size = style.synopsis_size;
         let synopsis_width = style.synopsis_width();
-        let synopsis_color = Color32::from_white_alpha(240);
+        let synopsis_color = ink(240);
         let synopsis_galley = if !style.shows_synopsis || hero.description.is_empty() {
             None
         } else {
@@ -518,7 +518,7 @@ pub(crate) fn draw_home_with_options(
                             title_anchor,
                             title,
                             egui::FontId::proportional(style.title_size),
-                            Color32::WHITE,
+                            text_primary(),
                         );
                     }
                     ui.add_space(style.title_gap);
@@ -578,7 +578,7 @@ pub(crate) fn draw_home_with_options(
                                 .layout_no_wrap(
                                     text.to_owned(),
                                     egui::FontId::proportional(text_size),
-                                    Color32::WHITE,
+                                    text_primary(),
                                 )
                                 .size()
                                 .x
@@ -613,7 +613,7 @@ pub(crate) fn draw_home_with_options(
                             ui,
                             assets.icon(if saved { "Check" } else { "Plus" }),
                             Vec2::splat(play_height),
-                            Color32::WHITE,
+                            text_primary(),
                             true,
                             saved,
                             true,

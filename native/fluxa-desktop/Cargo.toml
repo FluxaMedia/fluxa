@@ -9,6 +9,7 @@ description = "Native desktop shell for Fluxa's Rust renderer migration."
 egui = "0.34.2"
 fluxa-effects = { path = "../fluxa-effects" }
 fluxa-host = { path = "../fluxa-host" }
+fluxa-theme = { path = "../fluxa-theme" }
 fluxa-mpv = { path = "../fluxa-mpv" }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 gilrs = "0.11.2"

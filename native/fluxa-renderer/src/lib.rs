@@ -128,14 +128,20 @@ fn ambient_light(u: f32, v: f32) -> f32 {
 const AMBIENT_SIZE: (u32, u32) = (640, 360);
 
 pub fn ambient_background() -> image::RgbaImage {
+    ambient_background_tinted(Color::rgba(6.0 / 255.0, 6.0 / 255.0, 6.0 / 255.0, 1.0))
+}
+
+pub fn ambient_background_tinted(background: Color) -> image::RgbaImage {
     let (width, height) = AMBIENT_SIZE;
+    let lift = [background.r, background.g, background.b].map(|channel| channel * 255.0 - 6.0);
     image::RgbaImage::from_fn(width, height, |x, y| {
         let light = 24.0 * ambient_light(x as f32 / width as f32, y as f32 / height as f32);
         let hash =
             (x.wrapping_mul(374_761_393) ^ y.wrapping_mul(668_265_263)).wrapping_mul(1_274_126_177);
         let grain = ((hash >> 24) as f32 / 255.0 - 0.5) * 3.0;
-        let value = (17.0 + light + grain).clamp(0.0, 255.0) as u8;
-        image::Rgba([value, value, value, 255])
+        let value = 17.0 + light + grain;
+        let [r, g, b] = lift.map(|offset| (value + offset).clamp(0.0, 255.0) as u8);
+        image::Rgba([r, g, b, 255])
     })
 }
 

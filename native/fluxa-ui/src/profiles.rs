@@ -64,7 +64,7 @@ pub fn draw_profiles(
                     RichText::new(t("profiles.delete_confirm_title"))
                         .size(22.0)
                         .strong()
-                        .color(Color32::WHITE),
+                        .color(text_primary()),
                 );
                 ui.add_space(8.0);
                 ui.label(
@@ -112,7 +112,7 @@ pub fn draw_profiles(
                                 ui,
                                 assets.icon("Close"),
                                 22.0,
-                                Color32::from_white_alpha(170),
+                                ink(170),
                                 false,
                                 false,
                                 true,
@@ -189,16 +189,9 @@ fn close_button(
     ui.add_space(20.0);
     ui.horizontal(|ui| {
         ui.add_space(28.0);
-        let response = components::icon_button(
-            ui,
-            assets.icon("Close"),
-            36.0,
-            Color32::from_white_alpha(190),
-            true,
-            false,
-            true,
-        )
-        .on_hover_text(t("common.close"));
+        let response =
+            components::icon_button(ui, assets.icon("Close"), 36.0, ink(190), true, false, true)
+                .on_hover_text(t("common.close"));
         if response.clicked() {
             model.mode = ProfilesMode::Select;
         }

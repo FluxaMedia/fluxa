@@ -288,6 +288,19 @@ impl ApplicationHandler<AccessEvent> for App {
         ));
         window.set_visible(true);
         let data_dir = fluxa_effects::storage::data_dir().ok();
+        if let Some(path) = data_dir
+            .as_ref()
+            .map(|directory| directory.join("theme.css"))
+            && path.exists()
+        {
+            match fluxa_theme::css::set_user_theme_from_path(&path) {
+                Ok(report) => report
+                    .rejected
+                    .iter()
+                    .for_each(|entry| eprintln!("[fluxa-desktop] theme.css: {entry}")),
+                Err(error) => eprintln!("[fluxa-desktop] theme.css: {error:?}"),
+            }
+        }
         let host = FluxaHost::new(
             window.scale_factor() as f32,
             data_dir

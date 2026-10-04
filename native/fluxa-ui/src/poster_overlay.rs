@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
-use super::{HomeCard, HomeRowKind, localized};
+use super::{HomeCard, HomeRowKind, ink, localized, text_primary};
 
 mod enrichment;
 mod landscape;
@@ -351,7 +351,7 @@ pub(super) fn paint(
         let galley = painter.layout_no_wrap(
             certification.to_owned(),
             FontId::proportional(size),
-            Color32::WHITE,
+            text_primary(),
         );
         let badge = Rect::from_min_size(
             Pos2::new(corner.x, corner.y + (mark - size * 1.6) * 0.5),
@@ -361,10 +361,10 @@ pub(super) fn paint(
         painter.rect_stroke(
             badge,
             3.0,
-            Stroke::new(1.0, Color32::from_white_alpha(170)),
+            Stroke::new(1.0, ink(170)),
             egui::StrokeKind::Inside,
         );
-        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         corner.x += badge.width() + 3.0;
     }
     if corner.x > rect.left() + inset {
@@ -516,7 +516,7 @@ pub(super) fn paint(
             painter.galley(
                 banner.center() - galley.size() * 0.5,
                 galley,
-                Color32::WHITE,
+                text_primary(),
             );
             stacks[Placement::BottomLeft as usize] += height;
             stacks[Placement::BottomRight as usize] += height;
@@ -553,7 +553,7 @@ pub(super) fn paint(
         painter.rect_stroke(
             badge,
             size.y * 0.3,
-            Stroke::new(1.0, Color32::from_white_alpha(28)),
+            Stroke::new(1.0, ink(28)),
             egui::StrokeKind::Inside,
         );
         let height = galley.size().y;
@@ -566,7 +566,7 @@ pub(super) fn paint(
         painter.galley(
             badge.min + pad + Vec2::new(logo_width, 0.0),
             galley,
-            Color32::WHITE,
+            text_primary(),
         );
     }
 }
@@ -587,10 +587,10 @@ fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality:
         painter.rect_stroke(
             badge,
             3.0,
-            Stroke::new(1.0, Color32::from_white_alpha(60)),
+            Stroke::new(1.0, ink(60)),
             egui::StrokeKind::Inside,
         );
-        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         y += badge.height() + 3.0;
     }
     y

@@ -66,7 +66,7 @@ pub fn draw_discover(
                     RichText::new(localized("nav.discover", &discover.language))
                         .size(metrics.screen_title_size)
                         .strong()
-                        .color(Color32::WHITE),
+                        .color(text_primary()),
                 );
             });
         });
@@ -408,7 +408,7 @@ pub fn draw_discover(
                         egui::Align2::LEFT_CENTER,
                         title,
                         egui::FontId::proportional(metrics.screen_section_title_size),
-                        Color32::WHITE,
+                        text_primary(),
                     );
                 }
                 let grid_top = block_top + block.header;

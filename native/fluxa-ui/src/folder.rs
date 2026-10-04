@@ -130,7 +130,7 @@ pub fn draw_folder(
                 ui,
                 assets.icon("ArrowLeft"),
                 40.0,
-                Color32::WHITE,
+                text_primary(),
                 true,
                 false,
                 true,
@@ -166,7 +166,7 @@ pub fn draw_folder(
         let galley = painter.layout_job(crate::emoji::job(
             emoji,
             FontId::proportional(HEADER_ART * 0.55),
-            Color32::WHITE,
+            text_primary(),
             art.width(),
         ));
         let pos = art.center() - galley.size() * 0.5;

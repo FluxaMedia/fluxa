@@ -35,7 +35,7 @@ pub(super) fn draw_select(
     let title = ui.painter().layout_no_wrap(
         t("profiles.who_watching"),
         FontId::proportional(metrics.profile_title_size),
-        Color32::WHITE,
+        text_primary(),
     );
     let (title_rect, _) = ui.allocate_exact_size(Vec2::new(width, 46.0), Sense::hover());
     let title_pos = Pos2::new(
@@ -43,7 +43,7 @@ pub(super) fn draw_select(
         title_rect.center().y - title.size().y * 0.5,
     );
     let title_right = title_pos.x + title.size().x;
-    ui.painter().galley(title_pos, title, Color32::WHITE);
+    ui.painter().galley(title_pos, title, text_primary());
     let gear_rect = Rect::from_center_size(
         Pos2::new(title_right + 38.0, title_rect.center().y),
         Vec2::splat(44.0),
@@ -93,7 +93,7 @@ pub(super) fn draw_select(
             ui.painter().circle(
                 avatar_center,
                 r,
-                Color32::from_white_alpha(if response.hovered() { 26 } else { 10 }),
+                ink(if response.hovered() { 26 } else { 10 }),
                 egui::Stroke::new(1.0, metrics.border),
             );
             if let Some(icon) = assets.icon("Plus") {
@@ -142,7 +142,7 @@ pub(super) fn draw_select(
                 badge,
                 17.0,
                 Color32::from_rgba_unmultiplied(12, 12, 12, 235),
-                egui::Stroke::new(1.0, Color32::from_white_alpha(38)),
+                egui::Stroke::new(1.0, ink(38)),
             );
             if let Some(icon) = assets.icon("Lock") {
                 ui.painter().image(
@@ -161,7 +161,7 @@ pub(super) fn draw_select(
             Align2::CENTER_CENTER,
             name,
             name_font,
-            Color32::from_white_alpha(if response.hovered() { 255 } else { 215 }),
+            ink(if response.hovered() { 255 } else { 215 }),
         );
         let mut actions_y = name_y + 24.0;
         if model.primary_id.as_ref() == Some(&profile.id) {
@@ -175,10 +175,9 @@ pub(super) fn draw_select(
                 Pos2::new(avatar_center.x, name_y + 22.0),
                 galley.size() + Vec2::new(14.0, 6.0),
             );
+            ui.painter().rect_filled(badge, 4.0, ink(24));
             ui.painter()
-                .rect_filled(badge, 4.0, Color32::from_white_alpha(24));
-            ui.painter()
-                .galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+                .galley(badge.center() - galley.size() * 0.5, galley, text_primary());
             actions_y += 20.0;
         }
         let alpha = if card_hovered { 230 } else { 120 };
@@ -198,10 +197,9 @@ pub(super) fn draw_select(
                 )
                 .on_hover_text(label);
             if action.hovered() {
-                ui.painter()
-                    .rect_filled(rect, 6.0, Color32::from_white_alpha(18));
+                ui.painter().rect_filled(rect, 6.0, ink(18));
             }
-            let color = Color32::from_white_alpha(if action.hovered() { 255 } else { alpha });
+            let color = ink(if action.hovered() { 255 } else { alpha });
             if let Some(texture) = assets.icon(icon) {
                 ui.painter().image(
                     texture,

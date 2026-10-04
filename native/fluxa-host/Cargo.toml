@@ -11,6 +11,7 @@ fluxa-artwork = { path = "../fluxa-artwork" }
 fluxa-effects = { path = "../fluxa-effects", default-features = false }
 fluxa-renderer = { path = "../fluxa-renderer", default-features = false }
 fluxa-ui = { path = "../fluxa-ui" }
+fluxa-theme = { path = "../fluxa-theme" }
 image = { version = "0.25.10", default-features = false, features = ["gif", "jpeg", "png", "webp"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

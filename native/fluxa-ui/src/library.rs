@@ -369,7 +369,7 @@ pub(crate) fn draw_library_sections(
                             ui,
                             assets.icon(if list { "LayoutGrid" } else { "List" }),
                             metrics.screen_control_height,
-                            Color32::WHITE,
+                            text_primary(),
                             true,
                             false,
                             true,

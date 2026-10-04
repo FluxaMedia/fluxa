@@ -153,11 +153,7 @@ pub(crate) fn draw_loading_screen(
     let radius = 12.0 * unit;
     let spinner_center = center + Vec2::new(0.0, mark_size * 0.5 + 44.0 * unit);
     let stroke = 3.0 * unit;
-    painter.circle_stroke(
-        spinner_center,
-        radius,
-        egui::Stroke::new(stroke, Color32::from_white_alpha(50)),
-    );
+    painter.circle_stroke(spinner_center, radius, egui::Stroke::new(stroke, ink(50)));
     let start = time * std::f32::consts::TAU / 0.8;
     let arc: Vec<Pos2> = (0..=24)
         .map(|step| {
@@ -165,10 +161,7 @@ pub(crate) fn draw_loading_screen(
             spinner_center + Vec2::angled(angle) * radius
         })
         .collect();
-    painter.add(egui::Shape::line(
-        arc,
-        egui::Stroke::new(stroke, Color32::from_white_alpha(220)),
-    ));
+    painter.add(egui::Shape::line(arc, egui::Stroke::new(stroke, ink(220))));
     context.request_repaint();
 }
 
@@ -342,7 +335,7 @@ pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: 
     let galley = painter.layout(
         text.to_owned(),
         egui::FontId::proportional(size),
-        Color32::WHITE,
+        text_primary(),
         rect.width() * 0.6,
     );
     let size = galley.size() + Vec2::new(24.0, 12.0);
@@ -352,6 +345,6 @@ pub(crate) fn paint_trailer_subtitle(context: &egui::Context, rect: Rect, text: 
     painter.galley(
         backdrop.center() - galley.size() * 0.5,
         galley,
-        Color32::WHITE,
+        text_primary(),
     );
 }

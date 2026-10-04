@@ -488,8 +488,11 @@ impl Gpu {
             "Surface configured: {:?}, {}x{}, {:?} of {:?}",
             format, config.width, config.height, config.present_mode, capabilities.present_modes
         ));
-        let clear = fluxa_renderer::theme::theme("fluxa-dark")
+        let background = fluxa_theme::theme::active_theme("fluxa-dark")
             .and_then(|theme| theme.color("background"))
+            .ok();
+        let clear = background
+            .ok_or(())
             .map(|color| wgpu::Color {
                 r: f64::from(color.r),
                 g: f64::from(color.g),
@@ -505,7 +508,7 @@ impl Gpu {
         let egui_context = egui::Context::default();
         egui_context.set_fonts(fluxa_ui::fonts::definitions());
         let background_image = {
-            let image = fluxa_renderer::ambient_background();
+            let image = fluxa_renderer::ambient_background_tinted(background.unwrap_or(fluxa_renderer::Color::rgba(6.0 / 255.0, 6.0 / 255.0, 6.0 / 255.0, 1.0)));
             egui::ColorImage::from_rgba_unmultiplied(
                 [image.width() as usize, image.height() as usize],
                 image.as_raw(),
