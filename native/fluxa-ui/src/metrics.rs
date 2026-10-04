@@ -1,4 +1,5 @@
 use super::*;
+use std::sync::atomic::{AtomicU32, Ordering};
 
 /// Geometry consumed by every shared Rust screen.
 ///
@@ -156,7 +157,39 @@ pub mod space {
 
 const CONTINUE_CARD_SCALE: f32 = 1.05;
 
+static TEXT_PRIMARY: AtomicU32 = AtomicU32::new(u32::MAX);
+static BACKGROUND: AtomicU32 = AtomicU32::new(0xFF06_0606);
+
+fn pack(color: Color32) -> u32 {
+    u32::from_be_bytes(color.to_srgba_unmultiplied())
+}
+
+fn publish_palette(text_primary: Color32, background: Color32) {
+    TEXT_PRIMARY.store(pack(text_primary), Ordering::Relaxed);
+    BACKGROUND.store(pack(background), Ordering::Relaxed);
+}
+
+pub fn text_primary() -> Color32 {
+    let [r, g, b, a] = TEXT_PRIMARY.load(Ordering::Relaxed).to_be_bytes();
+    Color32::from_rgba_unmultiplied(r, g, b, a)
+}
+
+pub fn background() -> Color32 {
+    let [r, g, b, a] = BACKGROUND.load(Ordering::Relaxed).to_be_bytes();
+    Color32::from_rgba_unmultiplied(r, g, b, a)
+}
+
+pub fn ink(alpha: u8) -> Color32 {
+    let [r, g, b, a] = TEXT_PRIMARY.load(Ordering::Relaxed).to_be_bytes();
+    Color32::from_rgba_unmultiplied(r, g, b, (u16::from(a) * u16::from(alpha) / 255) as u8)
+}
+
 impl UiMetrics {
+    pub fn ink(&self, alpha: u8) -> Color32 {
+        let [r, g, b, a] = self.text_primary.to_srgba_unmultiplied();
+        Color32::from_rgba_unmultiplied(r, g, b, (u16::from(a) * u16::from(alpha) / 255) as u8)
+    }
+
     pub fn for_viewport(viewport: Viewport) -> Self {
         let tokens = active_shared_ui_tokens().expect("shared Fluxa tokens must be valid");
         let dark = active_theme("fluxa-dark").expect("shared Fluxa theme must be valid");
@@ -493,6 +526,7 @@ impl UiMetrics {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;
         }
+        publish_palette(metrics.text_primary, metrics.background);
         metrics
     }
 

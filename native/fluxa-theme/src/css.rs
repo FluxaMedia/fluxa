@@ -38,7 +38,7 @@ const COLOR_PROPERTIES: [&str; 18] = [
     "scrim",
 ];
 
-const RADIUS_PROPERTIES: [&str; 3] = ["card-radius", "control-radius", "dialog-radius"];
+const RADIUS_PROPERTIES: [&str; 2] = ["card-radius", "dialog-radius"];
 
 static USER_THEME: OnceLock<RwLock<UserTheme>> = OnceLock::new();
 
@@ -97,7 +97,6 @@ pub(crate) fn apply_user_theme(theme: &mut ThemePack) {
     for (name, value) in &user.radii {
         match *name {
             "card-radius" => theme.shape.card_radius = *value,
-            "control-radius" => theme.shape.control_radius = *value,
             _ => theme.shape.dialog_radius = *value,
         }
     }

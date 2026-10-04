@@ -10,7 +10,7 @@ use std::hash::{Hash, Hasher};
 
 use super::{
     ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, UiMetrics, Viewport, artwork_target_size,
-    cover_uv, full_uv, paint_vertical_gradient, truncate_to_width,
+    background, cover_uv, full_uv, ink, paint_vertical_gradient, text_primary, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -32,11 +32,8 @@ pub(super) fn toast(
         Id::new("fluxa-player-toast"),
     ));
     let font = FontId::proportional(size);
-    let galley = painter.layout_no_wrap(
-        text.to_owned(),
-        font,
-        Color32::from_white_alpha((255.0 * opacity) as u8),
-    );
+    let galley =
+        painter.layout_no_wrap(text.to_owned(), font, metrics.ink((255.0 * opacity) as u8));
     let gap = 14.0;
     let width = galley.size().x + pad * 2.0 + level.map_or(0.0, |_| bar + gap);
     let rect = Rect::from_min_size(
@@ -45,34 +42,26 @@ pub(super) fn toast(
     );
     painter.rect_filled(
         rect,
-        16.0,
-        Color32::from_rgba_unmultiplied(0x13, 0x13, 0x13, (245.0 * opacity) as u8),
+        metrics.dialog_radius,
+        metrics.surface.gamma_multiply(245.0 / 255.0 * opacity),
     );
     painter.rect_stroke(
         rect,
-        16.0,
-        egui::Stroke::new(1.0, Color32::from_white_alpha((20.0 * opacity) as u8)),
+        metrics.dialog_radius,
+        egui::Stroke::new(1.0, metrics.ink((20.0 * opacity) as u8)),
         egui::StrokeKind::Inside,
     );
     let text_pos = Pos2::new(rect.left() + pad, rect.center().y - galley.size().y * 0.5);
     let text_width = galley.size().x;
-    painter.galley(text_pos, galley, Color32::WHITE);
+    painter.galley(text_pos, galley, metrics.text_primary);
     if let Some(level) = level {
         let track = Rect::from_min_size(
             Pos2::new(text_pos.x + text_width + gap, rect.center().y - 2.5),
             Vec2::new(bar, 5.0),
         );
-        painter.rect_filled(
-            track,
-            2.5,
-            Color32::from_white_alpha((60.0 * opacity) as u8),
-        );
+        painter.rect_filled(track, 2.5, metrics.ink((60.0 * opacity) as u8));
         let filled = Rect::from_min_size(track.min, Vec2::new(bar * level.clamp(0.0, 1.0), 5.0));
-        painter.rect_filled(
-            filled,
-            2.5,
-            Color32::from_white_alpha((255.0 * opacity) as u8),
-        );
+        painter.rect_filled(filled, 2.5, metrics.ink((255.0 * opacity) as u8));
     }
 }
 
@@ -106,7 +95,7 @@ pub(super) fn calendar_release_row(
         Align2::LEFT_TOP,
         truncate_to_width(ui.painter(), &card.title, &title_font, text_width),
         title_font,
-        Color32::WHITE,
+        metrics.text_primary,
     );
     ui.painter().text(
         egui::Pos2::new(text_x, rect.bottom() - metrics.control_gap),
@@ -174,11 +163,11 @@ pub(super) fn season_tile(
         ui.allocate_exact_size(Vec2::new(size.x, size.y + label_height), Sense::click());
     let painter = ui.painter();
     let image = Rect::from_min_size(rect.min, size);
-    painter.rect_filled(image, 8.0, Color32::from_white_alpha(14));
+    painter.rect_filled(image, 8.0, metrics.ink(14));
     let tint = if selected {
-        Color32::WHITE
+        metrics.text_primary
     } else {
-        Color32::from_white_alpha(150)
+        metrics.ink(150)
     };
     rounded_artwork(
         painter,
@@ -194,7 +183,7 @@ pub(super) fn season_tile(
         painter.rect_stroke(
             image,
             8.0,
-            egui::Stroke::new(2.0, Color32::WHITE),
+            egui::Stroke::new(2.0, metrics.text_primary),
             egui::StrokeKind::Inside,
         );
     }
@@ -223,7 +212,7 @@ pub(super) fn episode_artwork(
     selected: bool,
     metrics: UiMetrics,
 ) {
-    painter.rect_filled(rect, 10.0, Color32::from_white_alpha(14));
+    painter.rect_filled(rect, 10.0, metrics.ink(14));
     if hide_still
         || !rounded_artwork(
             painter,
@@ -251,32 +240,32 @@ pub(super) fn episode_artwork(
                 icon,
                 Rect::from_center_size(rect.center(), Vec2::splat(34.0)),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                Color32::WHITE,
+                metrics.text_primary,
             );
         }
     }
     if episode.watched {
         let center = rect.right_top() + Vec2::new(-16.0, 16.0);
-        painter.circle_filled(center, 10.0, Color32::WHITE);
+        painter.circle_filled(center, 10.0, metrics.text_primary);
         painter.text(
             center,
             Align2::CENTER_CENTER,
             "✓",
             FontId::proportional(13.0),
-            Color32::BLACK,
+            background(),
         );
     } else if episode.progress > 0.0 {
         let bar = Rect::from_min_size(
             Pos2::new(rect.left(), rect.bottom() - 3.0),
             Vec2::new(rect.width() * episode.progress, 3.0),
         );
-        painter.rect_filled(bar, 0.0, Color32::WHITE);
+        painter.rect_filled(bar, 0.0, metrics.text_primary);
     }
     if selected {
         painter.rect_stroke(
             rect,
             10.0,
-            egui::Stroke::new(2.0, Color32::WHITE),
+            egui::Stroke::new(2.0, metrics.text_primary),
             egui::StrokeKind::Inside,
         );
     }
@@ -301,10 +290,10 @@ pub(super) fn episode_text(
         Align2::LEFT_TOP,
         truncate_to_width(painter, &title, &font, width),
         font,
-        Color32::WHITE,
+        text_primary(),
     );
     if let Some((overview, rows)) = overview {
-        let color = Color32::from_white_alpha(140);
+        let color = ink(140);
         let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
         painter.galley(Pos2::new(origin.x, origin.y + 22.0), galley, color);
     }
@@ -407,22 +396,20 @@ pub(super) fn icon_button_sized(
         } else {
             18
         };
-        ui.painter()
-            .rect_filled(rect, radius, Color32::from_white_alpha(fill));
+        ui.painter().rect_filled(rect, radius, ink(fill));
         ui.painter().rect_stroke(
             rect.shrink(0.5),
             radius,
-            egui::Stroke::new(1.0, Color32::from_white_alpha(if active { 90 } else { 36 })),
+            egui::Stroke::new(1.0, ink(if active { 90 } else { 36 })),
             egui::StrokeKind::Inside,
         );
     } else if hovered {
-        ui.painter()
-            .rect_filled(rect, radius, Color32::from_white_alpha(18));
+        ui.painter().rect_filled(rect, radius, ink(18));
     }
     let tint = if !enabled {
         color.gamma_multiply(0.4)
     } else if hovered {
-        Color32::WHITE
+        text_primary()
     } else {
         color
     };
@@ -450,20 +437,16 @@ pub(super) fn labeled_action(
     let painter = ui.painter();
     let center = Pos2::new(rect.center().x, rect.top() + 18.0);
     if active {
-        painter.circle_filled(center, 18.0, Color32::WHITE);
+        painter.circle_filled(center, 18.0, text_primary());
     } else if response.hovered() {
-        painter.circle_filled(center, 18.0, Color32::from_white_alpha(24));
+        painter.circle_filled(center, 18.0, ink(24));
     }
     if let Some(icon) = icon {
         painter.image(
             icon,
             Rect::from_center_size(center, Vec2::splat(20.0)),
             full_uv(),
-            if active {
-                Color32::BLACK
-            } else {
-                Color32::WHITE
-            },
+            if active { background() } else { text_primary() },
         );
     }
     painter.text(
@@ -471,7 +454,7 @@ pub(super) fn labeled_action(
         Align2::CENTER_BOTTOM,
         label,
         FontId::proportional(text_size),
-        Color32::WHITE,
+        text_primary(),
     );
     response
 }
@@ -647,7 +630,7 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
             egui::Pos2::new(x, text_rect.center().y - half),
             egui::Pos2::new(x, text_rect.center().y + half),
         ],
-        egui::Stroke::new(1.6, Color32::WHITE),
+        egui::Stroke::new(1.6, text_primary()),
     );
 }
 
@@ -687,9 +670,8 @@ pub(super) fn search_field(
 ) -> Response {
     let radius = height * 0.5;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    ui.painter()
-        .rect_filled(rect, radius, Color32::from_white_alpha(12));
-    let icon_color = Color32::from_white_alpha(140);
+    ui.painter().rect_filled(rect, radius, metrics.ink(12));
+    let icon_color = metrics.ink(140);
     let icon = egui::Pos2::new(rect.left() + radius, rect.center().y);
     ui.painter().circle_stroke(
         icon - Vec2::splat(1.5),
@@ -712,7 +694,7 @@ pub(super) fn search_field(
             .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
-            .text_color(Color32::WHITE)
+            .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),
     );
     record_native_focus(ui, &output, InputKind::Search, query, hint);
@@ -725,7 +707,7 @@ pub(super) fn search_field(
         crate::fonts::regular(metrics.screen_body_size + 1.0),
     );
     let stroke = if response.has_focus() {
-        egui::Stroke::new(1.0, Color32::from_white_alpha(120))
+        egui::Stroke::new(1.0, metrics.ink(120))
     } else {
         egui::Stroke::new(1.0, metrics.border)
     };
@@ -776,8 +758,7 @@ fn text_edit(
 ) -> Response {
     let radius = size.y * 0.5;
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    ui.painter()
-        .rect_filled(rect, radius, Color32::from_white_alpha(10));
+    ui.painter().rect_filled(rect, radius, metrics.ink(10));
     let text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
     let edit = if kind == InputKind::Multiline {
         egui::TextEdit::multiline(value).desired_rows(1)
@@ -792,7 +773,7 @@ fn text_edit(
             .font(FontId::proportional(font_size))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
-            .text_color(Color32::WHITE)
+            .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),
     );
     record_native_focus(ui, &output, kind, value, hint);
@@ -804,7 +785,7 @@ fn text_edit(
     };
     paint_caret(ui, rect, text_rect, &shown, FontId::proportional(font_size));
     let stroke = if response.has_focus() {
-        egui::Stroke::new(1.0, Color32::from_white_alpha(120))
+        egui::Stroke::new(1.0, metrics.ink(120))
     } else {
         egui::Stroke::new(1.0, metrics.border)
     };
@@ -833,11 +814,11 @@ pub(super) fn text_tabs(
             let (rect, response) =
                 ui.allocate_exact_size(Vec2::new(galley.size().x, height), Sense::click());
             let color = if active {
-                Color32::WHITE
+                metrics.text_primary
             } else if response.hovered() {
-                Color32::from_white_alpha(200)
+                metrics.ink(200)
             } else {
-                Color32::from_white_alpha(130)
+                metrics.ink(130)
             };
             ui.painter().galley(
                 egui::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
@@ -851,7 +832,7 @@ pub(super) fn text_tabs(
                         rect.right_bottom(),
                     ),
                     1.0,
-                    Color32::WHITE,
+                    metrics.text_primary,
                 );
             }
             responses.push(response);
@@ -922,13 +903,13 @@ pub(super) fn button_with_text_size(
     metrics: UiMetrics,
 ) -> Response {
     let fill = match kind {
-        ButtonKind::Primary => Color32::WHITE,
-        ButtonKind::Secondary => Color32::from_white_alpha(28),
+        ButtonKind::Primary => metrics.text_primary,
+        ButtonKind::Secondary => metrics.ink(28),
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent,
     };
     let text_color = match kind {
-        ButtonKind::Primary => Color32::from_rgb(10, 10, 10),
-        ButtonKind::Secondary => Color32::WHITE,
+        ButtonKind::Primary => metrics.background,
+        ButtonKind::Secondary => metrics.text_primary,
         ButtonKind::Accent | ButtonKind::Selected => metrics.accent_foreground,
     };
     ui.add_sized(
@@ -1008,7 +989,7 @@ pub(super) fn expanded_poster_card(
             url,
             artwork_target_size(backdrop_bounds, painter.ctx().pixels_per_point()),
             ArtworkPriority::Visible,
-            Color32::from_white_alpha(alpha),
+            metrics.ink(alpha),
             assets,
         );
         if let Some(texture) = trailer {
@@ -1021,7 +1002,7 @@ pub(super) fn expanded_poster_card(
                 egui::epaint::RectShape::filled(
                     rect,
                     radius,
-                    Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
+                    metrics.ink((f32::from(alpha) * fade) as u8),
                 )
                 .with_texture(texture, cover_uv([1920, 1080], rect)),
             );
@@ -1063,7 +1044,7 @@ pub(super) fn expanded_poster_card(
                     &card.title,
                     FontId::proportional(size),
                     rect.width() * 0.6,
-                    Color32::from_white_alpha(alpha),
+                    metrics.ink(alpha),
                 );
             }
         }
@@ -1097,7 +1078,7 @@ pub(super) fn hover_preview_rect(
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
     let mut job = egui::text::LayoutJob::single_section(
         synopsis.to_owned(),
-        egui::TextFormat::simple(crate::fonts::regular(body), Color32::from_white_alpha(150)),
+        egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(150)),
     );
     job.wrap.max_width = width - PREVIEW_PAD * 2.0;
     job.wrap.max_rows = rows;
@@ -1232,7 +1213,7 @@ pub(super) fn hover_preview(
                     &card.title,
                     FontId::proportional(title_size),
                     text_width,
-                    Color32::WHITE,
+                    metrics.text_primary,
                 ),
             }
 
@@ -1251,11 +1232,11 @@ pub(super) fn hover_preview(
                     &meta_line,
                     crate::fonts::regular(body_size),
                     text_width,
-                    Color32::from_white_alpha(200),
+                    metrics.ink(200),
                 );
             }
             y += body_size + 12.0;
-            painter.galley(Pos2::new(left, y), synopsis, Color32::WHITE);
+            painter.galley(Pos2::new(left, y), synopsis, metrics.text_primary);
 
             let gap = 10.0;
             let row_y = rect.bottom() - PREVIEW_PAD - PREVIEW_BUTTON_HEIGHT;
@@ -1290,11 +1271,7 @@ pub(super) fn hover_preview(
                 Sense::click(),
             );
             let fill = if watchlist.hovered() { 46 } else { 28 };
-            painter.rect_filled(
-                icon_rect,
-                PREVIEW_BUTTON_HEIGHT * 0.5,
-                Color32::from_white_alpha(fill),
-            );
+            painter.rect_filled(icon_rect, PREVIEW_BUTTON_HEIGHT * 0.5, metrics.ink(fill));
             if let Some(icon) = assets.icon(if saved { "Check" } else { "Plus" }) {
                 painter.image(
                     icon,
@@ -1344,7 +1321,7 @@ pub(super) fn library_row(
         &card.title,
         FontId::proportional(title_size),
         text_width,
-        Color32::WHITE,
+        metrics.text_primary,
     );
     paint_elided_text(
         painter,
@@ -1352,14 +1329,14 @@ pub(super) fn library_row(
         &card.subtitle,
         crate::fonts::regular(metrics.screen_card_subtitle_size),
         text_width,
-        Color32::from_white_alpha(185),
+        metrics.ink(185),
     );
     if card.progress > 0.0 {
         let bar = Rect::from_min_size(
             egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
             Vec2::new(text_width.min(220.0), metrics.card_progress_height),
         );
-        painter.rect_filled(bar, 2.0, Color32::from_white_alpha(40));
+        painter.rect_filled(bar, 2.0, metrics.ink(40));
         painter.rect_filled(
             Rect::from_min_size(
                 bar.min,
@@ -1396,7 +1373,7 @@ fn poster_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        Color32::from_white_alpha(235),
+        metrics.ink(235),
         assets,
     );
     let has_static_artwork = match super::poster_overlay::custom_url(painter.ctx(), card) {
@@ -1410,7 +1387,7 @@ fn poster_card_body(
                     painter.ctx().pixels_per_point(),
                 ),
                 ArtworkPriority::Visible,
-                Color32::from_white_alpha(235),
+                metrics.ink(235),
                 assets,
             ) || has_static_artwork
         }
@@ -1471,7 +1448,7 @@ fn poster_card_body(
         &card.title,
         title_font,
         rect.width(),
-        Color32::WHITE,
+        metrics.text_primary,
     );
     paint_elided_text(
         painter,
@@ -1479,7 +1456,7 @@ fn poster_card_body(
         &card.subtitle,
         subtitle_font,
         rect.width(),
-        Color32::from_white_alpha(185),
+        metrics.ink(185),
     );
 }
 
@@ -1570,7 +1547,7 @@ fn continue_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        Color32::from_white_alpha(235),
+        metrics.ink(235),
         assets,
     );
 
@@ -1637,7 +1614,7 @@ fn continue_card_body(
             Align2::LEFT_TOP,
             truncate_to_width(painter, &card.title, &title_font, content_width),
             title_font,
-            Color32::WHITE,
+            metrics.text_primary,
         );
     }
     if has_subtitle {
@@ -1646,7 +1623,7 @@ fn continue_card_body(
             Align2::LEFT_TOP,
             truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
             subtitle_font.clone(),
-            Color32::from_white_alpha(210),
+            metrics.ink(210),
         );
     }
     let badge_pad = metrics.screen_card_subtitle_size * 0.45;
@@ -1665,7 +1642,11 @@ fn continue_card_body(
         };
         let badge = Rect::from_min_size(origin, size);
         painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
-        painter.galley(badge.center() - galley.size() * 0.5, galley, Color32::WHITE);
+        painter.galley(
+            badge.center() - galley.size() * 0.5,
+            galley,
+            metrics.text_primary,
+        );
     }
     let bar_origin = egui::Pos2::new(rect.left() + metrics.card_content_padding, bar_top);
     painter.rect_filled(
@@ -1674,7 +1655,7 @@ fn continue_card_body(
             Vec2::new(content_width, metrics.card_progress_height),
         ),
         2.0,
-        Color32::from_white_alpha(70),
+        metrics.ink(70),
     );
     painter.rect_filled(
         Rect::from_min_size(
@@ -1864,27 +1845,27 @@ pub(super) fn choice_field(
         .animate_bool_with_time(id.with("chevron"), open, 0.14);
     let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
-        Color32::from_white_alpha(5)
+        metrics.ink(5)
     } else if open {
-        Color32::from_white_alpha(22)
+        metrics.ink(22)
     } else if response.hovered() {
-        Color32::from_white_alpha(16)
+        metrics.ink(16)
     } else {
-        Color32::from_white_alpha(10)
+        metrics.ink(10)
     };
     let painter = ui.painter();
     painter.rect(
         rect,
         radius,
         fill,
-        egui::Stroke::new(1.0, Color32::from_white_alpha(if open { 70 } else { 26 })),
+        egui::Stroke::new(1.0, metrics.ink(if open { 70 } else { 26 })),
         egui::StrokeKind::Inside,
     );
     let font = FontId::proportional(text_size);
     let text_color = if enabled {
-        Color32::from_rgb(242, 243, 246)
+        metrics.text_primary
     } else {
-        Color32::from_white_alpha(110)
+        metrics.ink(110)
     };
     painter.text(
         rect.left_center() + Vec2::new(14.0, 0.0),
@@ -1902,7 +1883,7 @@ pub(super) fn choice_field(
         painter,
         rect.right_center() - Vec2::new(18.0, 0.0),
         turn,
-        Color32::from_white_alpha(if enabled { 190 } else { 80 }),
+        metrics.ink(if enabled { 190 } else { 80 }),
     );
     if !enabled || sheet {
         return response;
@@ -1947,11 +1928,7 @@ pub(super) fn choice_field(
                             ui.painter().rect_filled(
                                 row,
                                 8.0,
-                                Color32::from_white_alpha(if row_response.hovered() {
-                                    18
-                                } else {
-                                    9
-                                }),
+                                metrics.ink(if row_response.hovered() { 18 } else { 9 }),
                             );
                         }
                         ui.painter().text(
@@ -1965,14 +1942,14 @@ pub(super) fn choice_field(
                             ),
                             font.clone(),
                             if active {
-                                Color32::WHITE
+                                metrics.text_primary
                             } else {
-                                Color32::from_white_alpha(195)
+                                metrics.ink(195)
                             },
                         );
                         if active {
                             let c = row.right_center() - Vec2::new(18.0, 0.0);
-                            let stroke = egui::Stroke::new(1.8, Color32::WHITE);
+                            let stroke = egui::Stroke::new(1.8, metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
                                 stroke,
@@ -2053,10 +2030,10 @@ pub(super) fn pill_button(
     let painter = ui.painter();
     crate::motion::press_scale(painter, rect, || {
         let (fill, ink) = match (primary, response.hovered()) {
-            (true, false) => (Color32::WHITE, Color32::BLACK),
-            (true, true) => (Color32::from_gray(225), Color32::BLACK),
-            (false, false) => (Color32::from_white_alpha(28), Color32::WHITE),
-            (false, true) => (Color32::from_white_alpha(46), Color32::WHITE),
+            (true, false) => (text_primary(), background()),
+            (true, true) => (ink(225), background()),
+            (false, false) => (ink(28), text_primary()),
+            (false, true) => (ink(46), text_primary()),
         };
         if primary {
             painter.rect_filled(rect, height * 0.5, fill);
@@ -2118,13 +2095,13 @@ pub(super) fn progress_pill(
     let font = FontId::proportional(text_size);
     crate::motion::press_scale(painter, rect, || {
         let base = if response.hovered() { 46 } else { 28 };
-        glass(painter, rect, radius, Color32::from_white_alpha(base));
+        glass(painter, rect, radius, ink(base));
         painter.text(
             rect.center(),
             Align2::CENTER_CENTER,
             label,
             font.clone(),
-            Color32::WHITE,
+            text_primary(),
         );
         let filled = rect.width() * fraction.clamp(0.0, 1.0);
         if filled > 0.5 {
@@ -2132,13 +2109,13 @@ pub(super) fn progress_pill(
                 rect.min,
                 Vec2::new(filled, rect.height()),
             ));
-            covered.rect_filled(rect, radius, Color32::WHITE);
+            covered.rect_filled(rect, radius, text_primary());
             covered.text(
                 rect.center(),
                 Align2::CENTER_CENTER,
                 label,
                 font,
-                Color32::BLACK,
+                background(),
             );
         }
     });
@@ -2344,7 +2321,7 @@ pub fn draw_action_menu(
                 );
             }
             let panel = layout.panel.translate(offset);
-            let fill = Color32::from_rgb(20, 20, 22);
+            let fill = metrics.surface;
             let border = egui::Stroke::new(1.0, metrics.border);
             if sheet && liquid_glass() {
                 glass(&painter, panel.with_max_y(panel.max.y + 40.0), 20.0, fill);
@@ -2354,7 +2331,7 @@ pub fn draw_action_menu(
                         Vec2::new(36.0, 4.0),
                     ),
                     2.0,
-                    Color32::from_white_alpha(60),
+                    metrics.ink(60),
                 );
             } else if liquid_glass() && tv {
                 glass(&painter, panel, 12.0, fill);
@@ -2377,7 +2354,7 @@ pub fn draw_action_menu(
                         Vec2::new(36.0, 4.0),
                     ),
                     2.0,
-                    Color32::from_white_alpha(60),
+                    metrics.ink(60),
                 );
             } else {
                 painter.rect_filled(
@@ -2388,7 +2365,7 @@ pub fn draw_action_menu(
                 painter.rect(
                     panel,
                     12.0,
-                    Color32::from_rgb(19, 19, 19),
+                    metrics.surface,
                     border,
                     egui::StrokeKind::Inside,
                 );
@@ -2405,7 +2382,7 @@ pub fn draw_action_menu(
                         header.width() - inset * 2.0,
                     ),
                     FontId::proportional(metrics.text.title),
-                    Color32::WHITE,
+                    metrics.text_primary,
                 );
                 painter.hline(
                     panel.x_range().shrink(style.rule_shrink()),
@@ -2428,11 +2405,11 @@ pub fn draw_action_menu(
                 );
                 let focused = selected == Some(index);
                 let (bg, ink) = if tv && focused {
-                    (Color32::WHITE, Color32::BLACK)
+                    (metrics.text_primary, metrics.background)
                 } else if focused || response.hovered() {
-                    (Color32::from_white_alpha(18), Color32::WHITE)
+                    (metrics.ink(18), metrics.text_primary)
                 } else {
-                    (Color32::TRANSPARENT, Color32::WHITE)
+                    (Color32::TRANSPARENT, metrics.text_primary)
                 };
                 painter.rect_filled(row, style.row_radius(), bg);
                 let inset = style.row_inset();
@@ -2445,7 +2422,7 @@ pub fn draw_action_menu(
                             Vec2::splat(size),
                         ),
                         full_uv(),
-                        Color32::WHITE,
+                        metrics.text_primary,
                     );
                     if let Some(check) = assets.icon(item.icon) {
                         painter.image(
@@ -2505,11 +2482,11 @@ pub(crate) fn brand_lockup(
     let galley = painter.layout_no_wrap(
         "fluxa".to_owned(),
         FontId::proportional(font_size),
-        Color32::WHITE,
+        text_primary(),
     );
     let width = mark_size + gap + galley.size().x;
     let left = center.x - width * 0.5;
-    let tint = Color32::from_white_alpha(alpha);
+    let tint = ink(alpha);
     if let Some(mark) = assets.brand_mark() {
         painter.image(
             mark,
@@ -2552,8 +2529,8 @@ pub(super) fn toggle(
     );
     let knob_color = lerp_color(
         Color32::from_rgb(168, 172, 178),
-        if metrics.accent_foreground == Color32::WHITE {
-            Color32::WHITE
+        if metrics.accent_foreground == metrics.text_primary {
+            metrics.text_primary
         } else {
             Color32::from_rgb(24, 25, 28)
         },
@@ -2586,7 +2563,7 @@ pub(super) fn focus_ring(
         painter.rect_stroke(
             rect.expand(metrics.focus_ring_expand),
             metrics.focus_ring_radius,
-            egui::Stroke::new(metrics.focus_ring_width, Color32::WHITE),
+            egui::Stroke::new(metrics.focus_ring_width, metrics.text_primary),
             egui::StrokeKind::Outside,
         );
     }
@@ -2684,7 +2661,7 @@ fn readable_on(fill: Color32) -> Color32 {
     if luminance > 150.0 {
         Color32::BLACK
     } else {
-        Color32::WHITE
+        text_primary()
     }
 }
 
@@ -2697,19 +2674,16 @@ pub(crate) fn paint_badge_chip(
 ) {
     let rounding = chip.height() * 0.5;
     let text = if badge.outline {
-        let color = badge
-            .border
-            .or(badge.fill)
-            .unwrap_or(Color32::from_white_alpha(90));
+        let color = badge.border.or(badge.fill).unwrap_or(ink(90));
         painter.rect_stroke(
             chip,
             rounding,
             egui::Stroke::new(1.0, color),
             egui::StrokeKind::Inside,
         );
-        badge.text.or(badge.fill).unwrap_or(Color32::WHITE)
+        badge.text.or(badge.fill).unwrap_or(text_primary())
     } else {
-        let fill = badge.fill.unwrap_or(Color32::from_white_alpha(24));
+        let fill = badge.fill.unwrap_or(ink(24));
         painter.rect_filled(chip, rounding, fill);
         if let Some(border) = badge.border {
             painter.rect_stroke(
@@ -2721,7 +2695,7 @@ pub(crate) fn paint_badge_chip(
         }
         badge.text.unwrap_or(match badge.fill {
             Some(fill) => readable_on(fill),
-            None => Color32::from_white_alpha(230),
+            None => ink(230),
         })
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;
@@ -2742,7 +2716,7 @@ pub(crate) fn paint_badge_chip(
             texture,
             icon,
             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
+            text_primary(),
         );
     }
     if badge.image.is_some() {
@@ -2776,7 +2750,7 @@ fn stream_row_layout(
     let mut name_job = crate::emoji::job(
         &source.name,
         FontId::proportional(metrics.screen_card_title_size + 3.0),
-        Color32::WHITE,
+        metrics.text_primary,
         text_width - addon_width,
     );
     name_job.wrap.max_rows = 3;
@@ -2864,7 +2838,7 @@ pub(super) fn stream_row(
             rect.right() - STREAM_ROW_PAD - addon.size().x,
             origin.y + 2.0,
         );
-        painter.galley(pos, addon, Color32::WHITE);
+        painter.galley(pos, addon, metrics.text_primary);
     }
     let mut below = name_height + 8.0;
     if let Some(detail) = detail {
@@ -2897,7 +2871,7 @@ pub(super) fn heading(
         RichText::new(title)
             .size(36.0)
             .strong()
-            .color(Color32::WHITE),
+            .color(metrics.text_primary),
     );
     ui.add_space(8.0);
     ui.label(RichText::new(subtitle).size(14.0).color(metrics.text_muted));
@@ -2925,9 +2899,9 @@ pub(super) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> eg
             RichText::new(label)
                 .size(13.0)
                 .strong()
-                .color(Color32::WHITE),
+                .color(text_primary()),
         )
-        .fill(Color32::from_white_alpha(28))
+        .fill(ink(28))
         .corner_radius(22.0),
     )
 }
@@ -2941,15 +2915,11 @@ pub(super) fn primary_button(
     ui.add_enabled(
         enabled,
         egui::Button::new(RichText::new(label).size(13.0).strong().color(if enabled {
-            Color32::BLACK
+            background()
         } else {
-            Color32::from_white_alpha(80)
+            ink(80)
         }))
-        .fill(if enabled {
-            Color32::WHITE
-        } else {
-            Color32::from_white_alpha(24)
-        })
+        .fill(if enabled { text_primary() } else { ink(24) })
         .corner_radius(22.0)
         .min_size(Vec2::new(width, 44.0)),
     )
@@ -2967,7 +2937,7 @@ pub(super) fn danger_button(
             RichText::new(label)
                 .size(13.0)
                 .strong()
-                .color(Color32::WHITE),
+                .color(metrics.text_primary),
         )
         .fill(metrics.danger)
         .corner_radius(22.0),
@@ -3013,14 +2983,7 @@ pub(super) fn modal(
 }
 
 pub(super) fn text_button(ui: &mut Ui, label: &str, size: f32, alpha: u8) -> Response {
-    ui.add(
-        egui::Button::new(
-            RichText::new(label)
-                .size(size)
-                .color(Color32::from_white_alpha(alpha)),
-        )
-        .frame(false),
-    )
+    ui.add(egui::Button::new(RichText::new(label).size(size).color(ink(alpha))).frame(false))
 }
 
 pub(super) fn surface(
