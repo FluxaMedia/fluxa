@@ -13,6 +13,7 @@ pub struct UserTheme {
     row_order: Vec<String>,
     hero_actions: Option<Vec<String>>,
     detail_actions: Option<Vec<String>>,
+    nav_items: Option<Vec<String>>,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -92,6 +93,13 @@ pub fn detail_actions() -> Option<Vec<String>> {
         .read()
         .ok()
         .and_then(|user| user.detail_actions.clone())
+}
+
+pub fn nav_items() -> Option<Vec<String>> {
+    user_theme()
+        .read()
+        .ok()
+        .and_then(|user| user.nav_items.clone())
 }
 
 pub fn clear_user_theme() {
@@ -179,9 +187,11 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, CssReport) {
                 theme.row_order = list;
             }
             report.applied += 1;
-        } else if name == "hero-actions" || name == "detail-actions" {
+        } else if name == "hero-actions" || name == "detail-actions" || name == "nav-items" {
             let known: &[&str] = if name == "hero-actions" {
                 &["play", "watchlist"]
+            } else if name == "nav-items" {
+                &["home", "discover", "library", "shorts"]
             } else {
                 &[
                     "play",
@@ -201,6 +211,8 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, CssReport) {
             }
             if name == "hero-actions" {
                 theme.hero_actions = Some(list);
+            } else if name == "nav-items" {
+                theme.nav_items = Some(list);
             } else {
                 theme.detail_actions = Some(list);
             }

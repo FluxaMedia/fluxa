@@ -87,20 +87,17 @@ pub(crate) fn draw_navigation_bar_with_profile(
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing.x = NAV_ITEM_GAP;
                         let pill = ui.painter().add(egui::Shape::Noop);
-                        let mut slots = [Rect::NOTHING; 5];
-                        let labels = nav_labels();
-                        for (index, (label, icon)) in labels
-                            .iter()
-                            .zip(["Home", "Discover", "Library", "Shorts"])
-                            .enumerate()
-                        {
-                            let active = index == active_route;
+                        let entries = nav_entries();
+                        let mut slots = vec![Rect::NOTHING; entries.len() + 1];
+                        for (position, (original, label)) in entries.iter().enumerate() {
+                            let icon = ["Home", "Discover", "Library", "Shorts"][*original];
+                            let active = *original == active_route;
                             let width = metrics.navigation_item_width(label);
                             let (rect, response) = ui.allocate_exact_size(
                                 Vec2::new(width, NAV_ITEM_HEIGHT),
                                 Sense::click(),
                             );
-                            slots[index] = rect;
+                            slots[position] = rect;
                             let fill = if response.hovered() && !active {
                                 ink(12)
                             } else {
@@ -137,22 +134,21 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 color,
                             );
                             if response.clicked() {
-                                activated = Some(
-                                    [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_SHORTS][index],
-                                );
+                                activated = Some(NAV_ITEM_NODES[*original]);
                             }
                         }
                         let (rect, response) = ui.allocate_exact_size(
                             Vec2::new(profile_width, NAV_ITEM_HEIGHT),
                             Sense::click(),
                         );
-                        slots[4] = rect;
+                        let profile_slot = entries.len();
+                        slots[profile_slot] = rect;
                         let profile_active = active_route == 4;
                         if !profile_active && response.hovered() {
                             ui.painter()
                                 .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(12));
                         }
-                        let target = slots[active_route.min(4)];
+                        let target = slots[nav_slot(active_route)];
                         let x = ui.ctx().animate_value_with_time(
                             Id::new("fluxa-top-bar-indicator-x"),
                             target.center().x,
@@ -244,9 +240,39 @@ pub fn set_nav_language(language: &str) {
     }
 }
 
+const NAV_KEYS: [&str; 4] = ["home", "discover", "library", "shorts"];
+const NAV_ITEM_NODES: [u64; 4] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_SHORTS];
+
 pub(crate) fn nav_labels() -> [String; 4] {
     let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
     ["nav.home", "nav.discover", "nav.library", "nav.shorts"].map(|key| localized(key, &language))
+}
+
+pub(crate) fn nav_entries() -> Vec<(usize, String)> {
+    let labels = nav_labels();
+    let order =
+        fluxa_theme::css::nav_items().unwrap_or_else(|| NAV_KEYS.map(str::to_owned).to_vec());
+    order
+        .iter()
+        .filter_map(|key| NAV_KEYS.iter().position(|known| known == key))
+        .map(|index| (index, labels[index].clone()))
+        .collect()
+}
+
+fn nav_nodes() -> Vec<u64> {
+    nav_entries()
+        .iter()
+        .map(|(index, _)| NAV_ITEM_NODES[*index])
+        .chain([NODE_PROFILE])
+        .collect()
+}
+
+fn nav_slot(active_route: usize) -> usize {
+    let entries = nav_entries();
+    entries
+        .iter()
+        .position(|(index, _)| *index == active_route)
+        .unwrap_or(entries.len())
 }
 
 pub fn set_mobile_nav_drag(x: Option<f32>) {
@@ -292,14 +318,6 @@ fn nav_accent(assets: &impl HomeAssets) -> (Color32, Color32) {
     }
 }
 
-const MOBILE_NODES: [u64; 5] = [
-    NODE_HOME,
-    NODE_DISCOVER,
-    NODE_LIBRARY,
-    NODE_SHORTS,
-    NODE_PROFILE,
-];
-
 pub fn mobile_nav_rect(viewport: Viewport) -> Rect {
     let height = 64.0;
     if NAV_FLOATING.load(Ordering::Relaxed) {
@@ -321,9 +339,12 @@ pub fn mobile_nav_reserve(viewport: Viewport) -> f32 {
 
 pub fn mobile_nav_node_at(viewport: Viewport, x: f32) -> u64 {
     let rect = mobile_nav_rect(viewport);
-    let slot = rect.width() / 5.0;
-    let index = ((x - rect.left()) / slot).floor().clamp(0.0, 3.0) as usize;
-    MOBILE_NODES[index]
+    let nodes = nav_nodes();
+    let slot = rect.width() / nodes.len() as f32;
+    let index = ((x - rect.left()) / slot)
+        .floor()
+        .clamp(0.0, nodes.len().saturating_sub(2) as f32) as usize;
+    nodes[index]
 }
 
 pub(crate) fn draw_mobile_navigation_bar(
@@ -338,12 +359,13 @@ pub(crate) fn draw_mobile_navigation_bar(
     let floating = NAV_FLOATING.load(Ordering::Relaxed);
     let labels = NAV_LABELS.load(Ordering::Relaxed);
     let bar = mobile_nav_rect(viewport);
-    let slot_width = bar.width() / 5.0;
+    let nodes = nav_nodes();
+    let slot_width = bar.width() / nodes.len() as f32;
     let (accent, indicator_fill) = nav_accent(assets);
     let [r, g, b, _] = metrics.background.to_array();
     let solid = Color32::from_rgb(r, g, b);
     let drag = mobile_nav_drag();
-    let active_x = bar.left() + slot_width * (active_route.min(4) as f32 + 0.5);
+    let active_x = bar.left() + slot_width * (nav_slot(active_route) as f32 + 0.5);
     let target = drag
         .map(|x| {
             x.clamp(
@@ -358,12 +380,12 @@ pub(crate) fn draw_mobile_navigation_bar(
     let stretch = (target - indicator_x).abs().min(slot_width * 0.6);
     let highlighted = drag
         .map(|x| {
-            MOBILE_NODES
+            nodes
                 .iter()
                 .position(|node| *node == mobile_nav_node_at(viewport, x))
         })
         .flatten()
-        .unwrap_or(active_route);
+        .unwrap_or_else(|| nav_slot(active_route));
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-bottom-bar"))
         .fixed_pos(bar.min)
@@ -446,17 +468,18 @@ pub(crate) fn draw_mobile_navigation_bar(
             }
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 0.0;
-                let [home, discover, library, shorts] = nav_labels();
-                for (index, (label, icon, node)) in [
-                    (home.as_str(), "Home", NODE_HOME),
-                    (discover.as_str(), "Discover", NODE_DISCOVER),
-                    (library.as_str(), "Library", NODE_LIBRARY),
-                    (shorts.as_str(), "Shorts", NODE_SHORTS),
-                    (profile_name, "Account", NODE_PROFILE),
-                ]
-                .into_iter()
-                .enumerate()
-                {
+                let items: Vec<(String, &str, u64)> = nav_entries()
+                    .into_iter()
+                    .map(|(original, label)| {
+                        (
+                            label,
+                            ["Home", "Discover", "Library", "Shorts"][original],
+                            NAV_ITEM_NODES[original],
+                        )
+                    })
+                    .chain([(profile_name.to_owned(), "Account", NODE_PROFILE)])
+                    .collect();
+                for (index, (label, icon, node)) in items.into_iter().enumerate() {
                     let active = index == highlighted;
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::new(slot_width, bar.height()), Sense::click());
@@ -466,7 +489,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     } else {
                         rect.center()
                     };
-                    let avatar = (index == 3)
+                    let avatar = (node == NODE_PROFILE)
                         .then(|| assets.cached_texture(profile_avatar_url))
                         .flatten();
                     if let Some(avatar) = avatar {
@@ -490,7 +513,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                         let galley = ui.painter().layout_job(egui::text::LayoutJob {
                             wrap: egui::text::TextWrapping::truncate_at_width(slot_width - 8.0),
                             ..egui::text::LayoutJob::simple_singleline(
-                                label.to_owned(),
+                                label.clone(),
                                 FontId::proportional(metrics.text.label - 1.0),
                                 color,
                             )
@@ -520,8 +543,9 @@ pub(crate) fn draw_mobile_navigation_bar(
 pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u64, Rect)> {
     if viewport.is_compact() {
         let bar = mobile_nav_rect(viewport);
-        let slot = bar.width() / 5.0;
-        MOBILE_NODES
+        let nodes = nav_nodes();
+        let slot = bar.width() / nodes.len() as f32;
+        nodes
             .into_iter()
             .enumerate()
             .map(|(index, node)| {
@@ -535,17 +559,19 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             })
             .collect()
     } else {
-        let widths = nav_labels().map(|label| metrics.navigation_item_width(&label));
+        let entries = nav_entries();
+        let widths: Vec<f32> = entries
+            .iter()
+            .map(|(_, label)| metrics.navigation_item_width(label))
+            .collect();
         let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
         let y = NAV_BAR_TOP + NAV_BAR_PADDING;
         let mut left = x;
         let mut rects = Vec::with_capacity(5);
-        for (index, node) in [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_SHORTS]
-            .into_iter()
-            .enumerate()
-        {
-            let item_width = widths[index];
+        for (position, (original, _)) in entries.iter().enumerate() {
+            let node = NAV_ITEM_NODES[*original];
+            let item_width = widths[position];
             rects.push((
                 node,
                 Rect::from_min_size(Pos2::new(left, y), Vec2::new(item_width, NAV_ITEM_HEIGHT)),

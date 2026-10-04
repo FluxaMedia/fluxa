@@ -562,14 +562,17 @@ impl UiMetrics {
         } else {
             self.page_padding
         };
-        let nav_width = crate::navigation::nav_labels()
+        let entries = crate::navigation::nav_entries();
+        let nav_width = entries
             .iter()
-            .map(|label| self.navigation_item_width(label))
+            .map(|(_, label)| self.navigation_item_width(label))
             .sum::<f32>();
         (if compact {
             (viewport.width - margin * 2.0).max(280.0)
         } else {
-            nav_width + NAV_ITEM_GAP * 5.0 + self.navigation_profile_width(profile_name)
+            nav_width
+                + NAV_ITEM_GAP * (entries.len() + 1) as f32
+                + self.navigation_profile_width(profile_name)
         })
         .min((viewport.width - margin * 2.0).max(1.0))
     }
