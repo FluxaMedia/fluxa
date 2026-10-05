@@ -675,6 +675,37 @@ pub(super) fn control(
                 stroke,
             );
         }
+        "retry" | "retry-spin" => {
+            let radius = 8.0 * s;
+            let turn = if icon == "retry-spin" {
+                ui.ctx().request_repaint();
+                (ui.input(|input| input.time) as f32 * 540.0) % 360.0
+            } else {
+                0.0
+            };
+            let at = |degrees: f32| {
+                let angle = (degrees + turn).to_radians();
+                c + radius * Vec2::new(angle.cos(), angle.sin())
+            };
+            let points: Vec<Pos2> = (0..=40)
+                .map(|step| at(step as f32 * 290.0 / 40.0))
+                .collect();
+            let end = points[40];
+            let angle = (290.0_f32 + turn).to_radians();
+            let forward = Vec2::new(-angle.sin(), angle.cos());
+            let side = Vec2::new(-forward.y, forward.x);
+            painter.circle_filled(points[0], stroke.width * 0.5, color);
+            painter.add(egui::Shape::line(points, stroke));
+            painter.add(egui::Shape::convex_polygon(
+                vec![
+                    end + forward * 5.5 * s,
+                    end + side * 3.5 * s,
+                    end - side * 3.5 * s,
+                ],
+                color,
+                egui::Stroke::NONE,
+            ));
+        }
         "fullscreen" => {
             for (a, b) in [
                 ((-8.0, -3.0), (-8.0, -8.0)),

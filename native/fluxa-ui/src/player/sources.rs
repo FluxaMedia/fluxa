@@ -86,7 +86,29 @@ pub(super) fn draw_sources(
             let filters = std::iter::once((None, all.as_str()))
                 .filter(|_| !addons.is_empty())
                 .chain(addons.iter().map(|addon| (Some(*addon), *addon)));
-            let mut x = left;
+            let retry = Rect::from_min_size(
+                Pos2::new(left, chips_top),
+                Vec2::splat(metrics.screen_control_height),
+            );
+            let painter = ui.painter().clone();
+            let response = control(
+                ui,
+                &painter,
+                retry,
+                if player.sources_loading {
+                    "retry-spin"
+                } else {
+                    "retry"
+                },
+                true,
+            );
+            layout
+                .focusable
+                .push((NODE_PLAYER_SOURCES_RETRY, response.rect));
+            if response.clicked() {
+                layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
+            }
+            let mut x = retry.right() + 8.0;
             for (index, (addon, label)) in filters.enumerate() {
                 let selected = player.source_filter.as_deref() == addon;
                 let kind = if selected {
@@ -110,32 +132,6 @@ pub(super) fn draw_sources(
                 }
                 x = response.rect.right() + 8.0;
             }
-            if !player.sources_loading {
-                let response = ui
-                    .scope_builder(
-                        egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                            Pos2::new(x, chips_top),
-                            Vec2::new(rect.right() - x, metrics.screen_control_height),
-                        )),
-                        |ui| {
-                            components::button_auto_width(
-                                ui,
-                                &localized("player.streams_retry", language),
-                                components::ButtonKind::Secondary,
-                                chip_size,
-                                metrics,
-                            )
-                        },
-                    )
-                    .inner;
-                layout
-                    .focusable
-                    .push((NODE_PLAYER_SOURCES_RETRY, response.rect));
-                if response.clicked() {
-                    layout.activated = Some(NODE_PLAYER_SOURCES_RETRY);
-                }
-            }
-
             if wide {
                 draw_info_panel(
                     ui,
