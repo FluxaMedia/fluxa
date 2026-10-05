@@ -136,25 +136,30 @@ pub(super) fn draw_pause_info(
             Color32::from_black_alpha((200.0 * fade.powf(1.4)).round() as u8),
         );
     }
-    let left = rect.left() + 64.0;
-    let width = (rect.width() * 0.42).clamp(260.0, 620.0);
+    let compact = rect.width() < 900.0 || rect.height() < 520.0;
+    let left = rect.left() + if compact { 28.0 } else { 64.0 };
+    let width = (rect.width() * if compact { 0.5 } else { 0.42 }).clamp(240.0, 620.0);
     let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
     let muted = ink(190);
 
     let label = localized("player.youre_watching", &player.language);
     blocks.push((
-        28.0,
+        if compact { 20.0 } else { 28.0 },
         Box::new(move |painter, y| {
             painter.text(
                 Pos2::new(left, y),
                 Align2::LEFT_TOP,
                 &label,
-                FontId::proportional(16.0),
+                FontId::proportional(if compact { 12.0 } else { 16.0 }),
                 muted,
             );
         }),
     ));
-    let max_logo = Vec2::new(width.min(420.0), 96.0);
+    let max_logo = if compact {
+        Vec2::new(width.min(220.0), 56.0)
+    } else {
+        Vec2::new(width.min(420.0), 96.0)
+    };
     let logo = components::title_logo(
         context.pixels_per_point(),
         player.logo.as_deref(),
@@ -175,8 +180,14 @@ pub(super) fn draw_pause_info(
             }),
         )),
         None => {
-            let galley =
-                components::wrapped_text(painter, &player.title, 40.0, text_primary(), width, 2);
+            let galley = components::wrapped_text(
+                painter,
+                &player.title,
+                if compact { 24.0 } else { 40.0 },
+                text_primary(),
+                width,
+                2,
+            );
             blocks.push((
                 galley.size().y + 12.0,
                 Box::new(move |painter, y| {
@@ -188,15 +199,21 @@ pub(super) fn draw_pause_info(
     let chapter = player
         .chapter_at(player.position)
         .map(|title| format!("{}: {title}", localized("player.chapter", &player.language)));
+    let scale = if compact { 0.75 } else { 1.0 };
+    let description_size = 16.0 * scale;
     for (text, size) in [
-        (player.episode_title.clone(), 20.0),
-        (chapter, 15.0),
-        (player.description.clone(), 16.0),
+        (player.episode_title.clone(), 20.0 * scale),
+        (chapter, 15.0 * scale),
+        (player.description.clone(), description_size),
     ] {
         let Some(text) = text else {
             continue;
         };
-        let rows = if size == 16.0 { 5 } else { 1 };
+        let rows = if size == description_size {
+            if compact { 2 } else { 5 }
+        } else {
+            1
+        };
         let galley = components::wrapped_text(painter, &text, size, muted, width, rows);
         blocks.push((
             galley.size().y + 10.0,
@@ -204,7 +221,7 @@ pub(super) fn draw_pause_info(
         ));
     }
     let height: f32 = blocks.iter().map(|(height, _)| height).sum();
-    let mut y = rect.bottom() - 120.0 - height;
+    let mut y = rect.bottom() - if compact { 56.0 } else { 120.0 } - height;
     for (height, draw) in blocks {
         draw(painter, y);
         y += height;

@@ -479,10 +479,9 @@ impl PlayerSession {
             show_pause_info: self.status.paused
                 && self.status.has_frame
                 && !self.controls_visible(),
-            logo: self
-                .meta
-                .get("logo")
-                .or_else(|| self.meta.get("logoUrl"))
+            logo: ["logo", "logoUrl", "titleLogo", "titleLogoUrl"]
+                .iter()
+                .find_map(|key| self.meta.get(*key))
                 .and_then(Value::as_str)
                 .filter(|url| !url.trim().is_empty())
                 .map(ToOwned::to_owned),
