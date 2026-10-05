@@ -670,6 +670,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var selectLongPressed = false
     private var imeShown = false
     private var inputEditable: android.text.Editable? = null
+    private var lastLocalEditAt = 0L
 
     private val editableSync = object : Runnable {
         override fun run() {
@@ -679,7 +680,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 return
             }
             val current = NativeRenderer.focusedTextNative(nativeHandle)
-            if (current != editable.toString()) {
+            val settled = android.os.SystemClock.uptimeMillis() - lastLocalEditAt > LOCAL_EDIT_SETTLE_MS
+            if (settled && current != editable.toString()) {
                 editable.replace(0, editable.length, current)
                 val selection = accessSelection
                 val start = (selection?.get(0) ?: editable.length).coerceIn(0, editable.length)
@@ -766,6 +768,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         val connection = object : BaseInputConnection(this, true) {
             private fun sync(result: Boolean): Boolean {
                 if (nativeHandle != 0L) {
+                    lastLocalEditAt = android.os.SystemClock.uptimeMillis()
                     NativeRenderer.setFocusedTextNative(nativeHandle, editable.toString())
                 }
                 if (batch == 0) editable?.let { reportSelection(it) }
@@ -921,6 +924,7 @@ private const val POINTER_UP = 2
 private const val HOST_VIEW_ID = -1
 private const val ACCESSIBILITY_POLL_MS = 250L
 private const val EDITABLE_POLL_MS = 200L
+private const val LOCAL_EDIT_SETTLE_MS = 500L
 private const val SEEK_STEP_SECONDS = 10.0
 
 private class AccessNode(
