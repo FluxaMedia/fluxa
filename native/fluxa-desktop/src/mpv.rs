@@ -381,6 +381,7 @@ impl MpvPlayer {
             client.apply_options(&[
                 ("mute".to_owned(), "yes".to_owned()),
                 ("loop-file".to_owned(), "inf".to_owned()),
+                ("panscan".to_owned(), "1.0".to_owned()),
             ])?;
         }
         client.load(url, None)?;
