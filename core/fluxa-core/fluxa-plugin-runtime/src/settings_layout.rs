@@ -18,6 +18,7 @@ pub(super) async fn run_settings_layout(code: String, scraper_id: String) -> Str
         Err(_) => return "[]".to_string(),
     };
     qjs_rt.set_memory_limit(plugin_memory_limit()).await;
+    qjs_rt.set_max_stack_size(crate::PLUGIN_STACK_LIMIT).await;
     let deadline = std::time::Instant::now() + Duration::from_secs(PLUGIN_TIMEOUT_SECS);
     qjs_rt
         .set_interrupt_handler(Some(Box::new(move || std::time::Instant::now() > deadline)))

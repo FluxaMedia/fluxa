@@ -78,6 +78,7 @@ pub(super) async fn run(
 ) -> Result<String, String> {
     let (qjs_rt, ctx, new_context) = quickjs_context(&context_key).await?;
     qjs_rt.set_memory_limit(plugin_memory_limit()).await;
+    qjs_rt.set_max_stack_size(crate::PLUGIN_STACK_LIMIT).await;
     let deadline = std::time::Instant::now() + Duration::from_secs(PLUGIN_TIMEOUT_SECS);
     qjs_rt
         .set_interrupt_handler(Some(Box::new(move || std::time::Instant::now() > deadline)))

@@ -236,6 +236,7 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         .sum();
     let scrapers = scrapers(settings).len();
     header_height(metrics)
+        + PLUGIN_RISK_HEIGHT
         + APPEARANCE_GROUP_HEADING_HEIGHT
         + if plugin_error(settings).is_some() {
             32.0
@@ -323,6 +324,19 @@ fn notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color3
 }
 
 const ERROR: Color32 = Color32::from_rgb(255, 125, 110);
+const PLUGIN_RISK_HEIGHT: f32 = 76.0;
+
+fn wrapped_notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color32) {
+    let mut job = egui::text::LayoutJob::simple(
+        text.to_owned(),
+        crate::fonts::regular(15.0),
+        color,
+        rect.width() - 8.0,
+    );
+    job.wrap.max_rows = 3;
+    let galley = painter.layout_job(job);
+    painter.galley(Pos2::new(rect.left() + 4.0, y), galley, color);
+}
 
 #[allow(clippy::too_many_arguments)]
 pub(super) fn draw_addons(
@@ -419,6 +433,14 @@ pub(super) fn draw_plugins(
         metrics,
         layout,
     );
+    wrapped_notice(
+        &painter,
+        rect,
+        y + 4.0,
+        &localized("settings.plugin_risk", language),
+        ink(140),
+    );
+    y += PLUGIN_RISK_HEIGHT;
     let repos = repositories(settings);
     y = heading(
         &painter,

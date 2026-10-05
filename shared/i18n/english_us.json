@@ -246,6 +246,7 @@
   "settings.addon_type.tv": "TV",
   "settings.plugin_url": "Plugin repository manifest URL",
   "settings.plugin_add": "Add repository",
+  "settings.plugin_risk": "Plugins are third-party code that runs inside Fluxa with limited isolation. Only add repositories you trust; you accept the remaining risk.",
   "settings.plugin_refresh": "Refresh",
   "settings.plugin_remove": "Remove",
   "settings.plugin_enabled": "Enabled",

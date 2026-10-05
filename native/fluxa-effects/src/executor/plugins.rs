@@ -315,7 +315,7 @@ impl EffectExecutor {
         let (season, episode) = (target.season, target.episode);
         let output = tokio::task::spawn_blocking(move || {
             execute_scraper(
-                Arc::new(PluginClient),
+                Arc::new(PluginClient::default()),
                 code,
                 repository_url,
                 scraper_id,
@@ -384,10 +384,26 @@ fn install_plugin_logger() {
     });
 }
 
-struct PluginClient;
+const MAX_PLUGIN_REQUESTS: usize = 80;
+const MAX_PLUGIN_BYTES: usize = 32 * 1024 * 1024;
+
+#[derive(Default)]
+struct PluginClient {
+    requests: std::sync::atomic::AtomicUsize,
+    bytes: std::sync::atomic::AtomicUsize,
+}
 
 impl PluginHttpClient for PluginClient {
     fn fetch(&self, request: PluginHttpRequest) -> PluginHttpResponse {
+        use std::sync::atomic::Ordering::Relaxed;
+        let over_budget = self.requests.fetch_add(1, Relaxed) >= MAX_PLUGIN_REQUESTS
+            || self.bytes.load(Relaxed) >= MAX_PLUGIN_BYTES;
+        if over_budget {
+            return PluginHttpResponse {
+                error: Some("plugin request budget exceeded".to_owned()),
+                ..Default::default()
+            };
+        }
         let (sender, receiver) = std::sync::mpsc::channel();
         let spawned = std::thread::Builder::new()
             .name("fluxa-plugin-http".to_owned())
@@ -407,7 +423,10 @@ impl PluginHttpClient for PluginClient {
             return failed("plugin network thread unavailable".to_owned());
         }
         match receiver.recv_timeout(Duration::from_secs(40)) {
-            Ok(Ok(response)) => response,
+            Ok(Ok(response)) => {
+                self.bytes.fetch_add(response.body.len(), Relaxed);
+                response
+            }
             Ok(Err(error)) => failed(error),
             Err(_) => failed("plugin request timed out".to_owned()),
         }

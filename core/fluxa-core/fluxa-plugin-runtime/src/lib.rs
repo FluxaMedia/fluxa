@@ -21,7 +21,12 @@ use std::time::{Duration, Instant};
 use url::Url;
 
 pub(crate) const PLUGIN_TIMEOUT_SECS: u64 = 60;
-pub(crate) const PLUGIN_MEMORY_LIMIT: usize = 256 * 1024 * 1024;
+pub(crate) const PLUGIN_MEMORY_LIMIT: usize = if cfg!(target_os = "android") {
+    96 * 1024 * 1024
+} else {
+    256 * 1024 * 1024
+};
+pub(crate) const PLUGIN_STACK_LIMIT: usize = 1024 * 1024;
 pub const PLUGIN_MAX_REQUEST_BODY_BYTES: usize = 1_048_576;
 pub const PLUGIN_MAX_RESPONSE_BODY_BYTES: usize = 8 * 1_048_576;
 

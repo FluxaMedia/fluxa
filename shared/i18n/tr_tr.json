@@ -246,6 +246,7 @@
   "settings.addon_type.tv": "TV",
   "settings.plugin_url": "Plugin deposu manifest URL'si",
   "settings.plugin_add": "Depo ekle",
+  "settings.plugin_risk": "Plugin'ler Fluxa içinde sınırlı izolasyonla çalışan üçüncü taraf kodudur. Yalnızca güvendiğin depoları ekle; kalan risk sana aittir.",
   "settings.plugin_refresh": "Yenile",
   "settings.plugin_remove": "Kaldır",
   "settings.plugin_enabled": "Etkin",
