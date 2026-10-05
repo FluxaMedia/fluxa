@@ -343,8 +343,18 @@ pub fn mobile_nav_node_at(viewport: Viewport, x: f32) -> u64 {
     let slot = rect.width() / nodes.len() as f32;
     let index = ((x - rect.left()) / slot)
         .floor()
-        .clamp(0.0, nodes.len().saturating_sub(2) as f32) as usize;
+        .clamp(0.0, nodes.len().saturating_sub(1) as f32) as usize;
     nodes[index]
+}
+
+pub fn mobile_nav_slot_center(viewport: Viewport, x: f32) -> f32 {
+    let rect = mobile_nav_rect(viewport);
+    let count = nav_nodes().len();
+    let slot = rect.width() / count as f32;
+    let index = ((x - rect.left()) / slot)
+        .floor()
+        .clamp(0.0, count.saturating_sub(1) as f32);
+    rect.left() + slot * (index + 0.5)
 }
 
 pub(crate) fn draw_mobile_navigation_bar(

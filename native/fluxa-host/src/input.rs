@@ -232,6 +232,27 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
+    if state.profiles.is_some() {
+        let pos = Pos2::new(position[0], position[1]);
+        let button = |pressed| egui::Event::PointerButton {
+            pos,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: state.modifiers,
+        };
+        match phase {
+            PointerPhase::Move => state.egui_events.push(egui::Event::PointerMoved(pos)),
+            PointerPhase::Down => {
+                state.egui_events.push(egui::Event::PointerMoved(pos));
+                state.egui_events.push(button(true));
+            }
+            PointerPhase::Up => {
+                state.egui_events.push(button(false));
+                state.egui_events.push(egui::Event::PointerGone);
+            }
+        }
+        return;
+    }
     let viewport = logical_viewport(state);
     if phase == PointerPhase::Down
         && state.player.is_none()
@@ -241,11 +262,10 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     {
         state.keyboard_focus_visible = false;
         state.nav_dragging = true;
-        let bar = fluxa_ui::mobile_nav_rect(viewport);
-        let slot = bar.width() / 5.0;
-        let center =
-            bar.left() + slot * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5);
-        fluxa_ui::set_mobile_nav_drag(Some(center));
+        fluxa_ui::set_mobile_nav_drag(Some(fluxa_ui::mobile_nav_slot_center(
+            viewport,
+            position[0],
+        )));
         state.touch_start = Some(position);
         return;
     }
@@ -265,13 +285,10 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
             _ => {
                 state.nav_dragging = false;
                 state.touch_start = None;
-                let bar = fluxa_ui::mobile_nav_rect(viewport);
-                let slot = bar.width() / 5.0;
-                fluxa_ui::set_mobile_nav_pending(
-                    bar.left()
-                        + slot
-                            * (((position[0] - bar.left()) / slot).floor().clamp(0.0, 4.0) + 0.5),
-                );
+                fluxa_ui::set_mobile_nav_pending(fluxa_ui::mobile_nav_slot_center(
+                    viewport,
+                    position[0],
+                ));
                 let node = fluxa_ui::mobile_nav_node_at(viewport, position[0]);
                 rebuild_current_ui(state);
                 remember_actions(state, vec![UiAction::Activated(node)]);
