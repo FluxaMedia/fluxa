@@ -1274,7 +1274,7 @@ fn pack_animation_atlas(
 /// Versioned because older caches used straight-alpha upload/resampling.
 /// Those rasters can contain halos around transparent logos and must not be
 /// reused by the premultiplied-alpha renderer.
-const CACHE_MAGIC: &[u8] = b"FXAR3";
+const CACHE_MAGIC: &[u8] = b"FXAR4";
 
 fn resize_rgba_preserving_alpha(image: RgbaImage, target_size: [u32; 2]) -> RgbaImage {
     resize_rgba_preserving_alpha_with_filter(image, target_size, FilterType::Lanczos3)
