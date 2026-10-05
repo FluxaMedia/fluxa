@@ -683,9 +683,15 @@ pub(super) fn search_field(
         [icon + Vec2::splat(3.0), icon + Vec2::splat(7.0)],
         egui::Stroke::new(1.6, icon_color),
     );
-    let text_rect = Rect::from_min_max(
-        egui::Pos2::new(rect.left() + radius + 16.0, rect.top()),
-        egui::Pos2::new(rect.right() - radius * 0.6, rect.bottom()),
+    let row = ui.fonts_mut(|fonts| {
+        fonts.row_height(&crate::fonts::regular(metrics.screen_body_size + 1.0))
+    });
+    let text_rect = Rect::from_center_size(
+        egui::Pos2::new(
+            (rect.left() + radius + 16.0 + rect.right() - radius * 0.6) * 0.5,
+            rect.center().y,
+        ),
+        Vec2::new(rect.width() - radius * 1.6 - 16.0, row),
     );
     let output = put_edit(
         ui,
@@ -760,7 +766,11 @@ fn text_edit(
     let radius = size.y * 0.5;
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
     ui.painter().rect_filled(rect, radius, metrics.ink(10));
-    let text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
+    let mut text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
+    if kind != InputKind::Multiline {
+        let row = ui.fonts_mut(|fonts| fonts.row_height(&FontId::proportional(font_size)));
+        text_rect = Rect::from_center_size(rect.center(), Vec2::new(text_rect.width(), row));
+    }
     let edit = if kind == InputKind::Multiline {
         egui::TextEdit::multiline(value).desired_rows(1)
     } else {
@@ -2008,12 +2018,15 @@ pub(super) fn pill_button(
     progress: Option<f32>,
 ) -> Response {
     let font = FontId::proportional(text_size);
+    let lead = if icon.is_some() { 44.0 } else { 16.0 };
+    let trail = if icon.is_some() { 26.0 } else { 16.0 };
     let measure = |text: &str| {
         ui.painter()
             .layout_no_wrap(text.to_owned(), font.clone(), Color32::BLACK)
             .size()
             .x
-            + 70.0
+            + lead
+            + trail
     };
     let mut label = label.to_owned();
     if let Some(limit) = width {
@@ -2054,7 +2067,7 @@ pub(super) fn pill_button(
             );
         }
         painter.text(
-            rect.left_center() + Vec2::new(inset + 44.0, -lift),
+            rect.left_center() + Vec2::new(inset + lead, -lift),
             Align2::LEFT_CENTER,
             label,
             font,
@@ -2062,7 +2075,7 @@ pub(super) fn pill_button(
         );
         if let Some(progress) = progress {
             let track = Rect::from_min_max(
-                Pos2::new(rect.left() + 44.0, rect.center().y + text_size * 0.5 + 2.0),
+                Pos2::new(rect.left() + lead, rect.center().y + text_size * 0.5 + 2.0),
                 Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
             );
             painter.rect_filled(track, 1.5, ink.gamma_multiply(0.16));

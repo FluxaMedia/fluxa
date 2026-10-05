@@ -34,7 +34,7 @@ pub(super) fn account_height(metrics: UiMetrics) -> f32 {
         + ACCOUNT_PROFILE_CARD_HEIGHT
         + settings_group_card_height(ACCOUNT_SERVICES.len(), metrics)
         + settings_group_card_height(ACCOUNT_SOURCES.len(), metrics)
-        + FIELD_HEIGHT * 2.0
+        + FIELD_HEIGHT * 5.0
 }
 
 pub(super) fn account_group(
