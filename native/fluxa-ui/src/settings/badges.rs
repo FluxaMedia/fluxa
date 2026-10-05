@@ -380,7 +380,7 @@ pub(super) fn draw_badges(
         context, &painter, settings, language, rect, top, metrics, layout,
     );
     draw_formatter(
-        context, &painter, settings, language, rect, top, metrics, layout,
+        context, &painter, settings, assets, language, rect, top, metrics, layout,
     );
 }
 
@@ -569,6 +569,7 @@ fn draw_formatter(
     context: &egui::Context,
     painter: &egui::Painter,
     settings: &SettingsModel,
+    assets: &mut impl HomeAssets,
     language: &str,
     rect: Rect,
     mut top: f32,
@@ -755,21 +756,42 @@ fn draw_formatter(
             rule.replacement.clone()
         };
         let font = crate::fonts::regular(size);
+        let color = if rule.enabled {
+            metrics.text_primary
+        } else {
+            metrics.text_muted
+        };
+        let arrow = 16.0;
+        let gap = 10.0;
+        let avail = right - row.left() - 12.0;
+        let pattern = painter.layout_no_wrap(rule.pattern.clone(), font.clone(), color);
+        let pattern_width = pattern.size().x.min(avail * 0.5);
         painter.text(
             Pos2::new(row.left(), row.center().y),
             Align2::LEFT_CENTER,
-            truncate_to_width(
-                painter,
-                &format!("{}  →  {replacement}", rule.pattern),
-                &font,
-                right - row.left() - 12.0,
-            ),
+            truncate_to_width(painter, &rule.pattern, &font, pattern_width),
+            font.clone(),
+            color,
+        );
+        let arrow_left = row.left() + pattern_width + gap;
+        if let Some(icon) = assets.icon("ArrowRight") {
+            painter.image(
+                icon,
+                Rect::from_center_size(
+                    Pos2::new(arrow_left + arrow / 2.0, row.center().y),
+                    Vec2::splat(arrow),
+                ),
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                color,
+            );
+        }
+        let text_left = arrow_left + arrow + gap;
+        painter.text(
+            Pos2::new(text_left, row.center().y),
+            Align2::LEFT_CENTER,
+            truncate_to_width(painter, &replacement, &font, row.left() + avail - text_left),
             font,
-            if rule.enabled {
-                metrics.text_primary
-            } else {
-                metrics.text_muted
-            },
+            color,
         );
     }
 }

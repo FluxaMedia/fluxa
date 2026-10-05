@@ -247,13 +247,14 @@ pub(super) fn episode_artwork(
     if episode.watched {
         let center = rect.right_top() + Vec2::new(-16.0, 16.0);
         painter.circle_filled(center, 10.0, metrics.text_primary);
-        painter.text(
-            center,
-            Align2::CENTER_CENTER,
-            "✓",
-            FontId::proportional(13.0),
-            background(),
-        );
+        if let Some(icon) = assets.icon("Check") {
+            painter.image(
+                icon,
+                Rect::from_center_size(center, Vec2::splat(14.0)),
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                background(),
+            );
+        }
     } else if episode.progress > 0.0 {
         let bar = Rect::from_min_size(
             Pos2::new(rect.left(), rect.bottom() - 3.0),
