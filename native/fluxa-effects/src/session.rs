@@ -264,6 +264,10 @@ impl SessionHandle {
         self.executor.fetch_addon_subtitles(content_type, id)
     }
 
+    pub fn fetch_meta_streams_progressive(&self, meta: Value) -> Receiver<(usize, Vec<Value>)> {
+        self.executor.fetch_meta_streams_progressive(meta)
+    }
+
     pub fn request_ok(&self, plan: Value) -> Receiver<bool> {
         self.executor.request_ok(plan)
     }

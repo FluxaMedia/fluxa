@@ -166,6 +166,10 @@ pub(crate) struct PlayerSession {
     cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
+    stream_rx: Option<Receiver<(usize, Vec<Value>)>>,
+    stream_parts: std::collections::BTreeMap<usize, Vec<Value>>,
+    streams_requested: bool,
+    streams_done: bool,
     chosen: Option<usize>,
     source_filter: Option<String>,
     pub(crate) sources_scroll_max: f32,
@@ -241,6 +245,10 @@ impl PlayerSession {
             recommendation_index: 0,
             load_progress: 0.0,
             sources: None,
+            stream_rx: None,
+            stream_parts: std::collections::BTreeMap::new(),
+            streams_requested: false,
+            streams_done: false,
             chosen: None,
             source_filter: None,
             sources_scroll_max: 0.0,
@@ -378,6 +386,49 @@ impl PlayerSession {
                 == "manual";
     }
 
+    fn streams_listing(&self) -> bool {
+        self.stream_rx.is_some() && !self.streams_done
+    }
+
+    fn listed_streams(&self) -> Vec<Value> {
+        self.stream_parts.values().flatten().cloned().collect()
+    }
+
+    fn poll_streams(&mut self, session: &fluxa_effects::SessionHandle) {
+        if self.manual && !self.local && !self.streams_requested && self.chosen.is_none() {
+            self.streams_requested = true;
+            self.stream_rx = Some(session.fetch_meta_streams_progressive(self.meta.clone()));
+        }
+        let Some(rx) = self
+            .stream_rx
+            .as_ref()
+            .filter(|_| !self.streams_done && self.chosen.is_none())
+        else {
+            return;
+        };
+        let mut changed = false;
+        loop {
+            match rx.try_recv() {
+                Ok((index, streams)) => {
+                    self.stream_parts.insert(index, streams);
+                    changed = true;
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => break,
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.streams_done = true;
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        if changed && self.chosen.is_none() {
+            let listed = self.listed_streams();
+            if !listed.is_empty() || self.streams_done {
+                self.sources = Some(listed);
+            }
+        }
+    }
+
     fn saved_stream_failed(&self) -> bool {
         let saved = ["lastStreamUrl", "lastStream"].iter().any(|key| {
             self.meta
@@ -479,9 +530,18 @@ impl PlayerSession {
                 }
                 None => None,
             },
-            sources_loading: self.sources.is_none(),
-            sources_pending: if self.sources.is_none() {
-                self.stream_addons.clone()
+            sources_loading: self.sources.is_none() || self.streams_listing(),
+            sources_pending: if self.sources.is_none() || self.streams_listing() {
+                let listed = self.listed_streams();
+                self.stream_addons
+                    .iter()
+                    .filter(|addon| {
+                        !listed.iter().any(|stream| {
+                            stream.get("addonName").and_then(Value::as_str) == Some(addon.as_str())
+                        })
+                    })
+                    .cloned()
+                    .collect()
             } else {
                 Vec::new()
             },
@@ -751,6 +811,7 @@ pub(crate) fn pump(state: &mut RendererState) {
         player.warnings_rx =
             content_warning_url(&player.meta, &snapshot).map(|url| session.fetch_json(url));
     }
+    player.poll_streams(session);
     tick_warnings(player);
     if shuffle.is_none() && !player.local {
         tick_recommendations(player, session, settings, &snapshot);

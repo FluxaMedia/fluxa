@@ -40,13 +40,24 @@ pub(super) fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -
     {
         return None;
     }
-    let streams = snapshot
-        .pointer("/player/directPlaybackTarget/streams")
-        .and_then(Value::as_array)?;
-    if streams.is_empty() {
-        player.error = Some("No streams were found for this title".to_owned());
-        return None;
-    }
+    let listed = player
+        .chosen
+        .map(|_| player.listed_streams())
+        .filter(|streams| !streams.is_empty());
+    let streams = match listed {
+        Some(streams) => streams,
+        None => {
+            let streams = snapshot
+                .pointer("/player/directPlaybackTarget/streams")
+                .and_then(Value::as_array)?;
+            if streams.is_empty() {
+                player.error = Some("No streams were found for this title".to_owned());
+                return None;
+            }
+            streams.clone()
+        }
+    };
+    let streams = &streams;
     let Some(content_id) = meta.get("id").and_then(Value::as_str) else {
         player.error = Some("This title has no content id".to_owned());
         return None;
@@ -82,7 +93,7 @@ pub(super) fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -
                 .any(|stream| stream.get("bingeGroup").and_then(Value::as_str) == Some(group))
         });
     if mode == "manual" && player.chosen.is_none() && !group_match {
-        if player.sources.is_none() {
+        if player.sources.is_none() && !player.streams_requested {
             player.sources = Some(streams.clone());
         }
         return None;

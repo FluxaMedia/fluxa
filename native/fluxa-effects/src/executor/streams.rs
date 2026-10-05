@@ -1,11 +1,7 @@
 use super::*;
 
 impl EffectExecutor {
-    pub(super) async fn prepare_direct_playback(&self, payload: &Value) -> Result<Value, String> {
-        let meta = payload
-            .get("meta")
-            .filter(|value| value.is_object())
-            .ok_or_else(|| "direct playback is missing meta".to_owned())?;
+    async fn direct_streams_request(&self, meta: &Value) -> Result<Value, String> {
         let content_type = meta.get("type").and_then(Value::as_str).unwrap_or("movie");
         let id = meta
             .get("lastVideoId")
@@ -23,6 +19,40 @@ impl EffectExecutor {
             "addons": self.account_addons().await?,
         });
         request["detail"] = meta.clone();
+        Ok(request)
+    }
+
+    pub fn fetch_meta_streams_progressive(
+        &self,
+        meta: Value,
+    ) -> std::sync::mpsc::Receiver<(usize, Vec<Value>)> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let executor = self.clone();
+        let task = async move {
+            if let Ok(request) = executor.direct_streams_request(&meta).await {
+                let _ = executor.fetch_streams_into(&request, Some(sender)).await;
+            }
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+
+    pub(super) async fn prepare_direct_playback(&self, payload: &Value) -> Result<Value, String> {
+        let meta = payload
+            .get("meta")
+            .filter(|value| value.is_object())
+            .ok_or_else(|| "direct playback is missing meta".to_owned())?;
+        let request = self.direct_streams_request(meta).await?;
+        let id = meta
+            .get("lastVideoId")
+            .and_then(Value::as_str)
+            .filter(|id| !id.is_empty())
+            .or_else(|| meta.get("id").and_then(Value::as_str))
+            .or_else(|| meta.get("imdb_id").and_then(Value::as_str))
+            .unwrap_or_default();
         let streams = self.fetch_streams(&request).await?;
         let has_stream_providers = !streams.is_empty();
         let available_addons = core_value(
@@ -100,6 +130,14 @@ impl EffectExecutor {
     }
 
     pub(super) async fn fetch_streams(&self, request: &Value) -> Result<Vec<Value>, String> {
+        self.fetch_streams_into(request, None).await
+    }
+
+    async fn fetch_streams_into(
+        &self,
+        request: &Value,
+        progress: Option<std::sync::mpsc::Sender<(usize, Vec<Value>)>>,
+    ) -> Result<Vec<Value>, String> {
         let policy = core_value("resourceFetchExecutionPolicy", request.clone())
             .ok_or_else(|| "Fluxa Core could not create a stream fetch plan".to_owned())?;
         let requests = policy
@@ -112,16 +150,14 @@ impl EffectExecutor {
         }
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
-            .native_timeout(Duration::from_secs(60))
+            .native_timeout(Duration::from_secs(25))
             .build()
             .map_err(|error| error.to_string())?;
-        // Stream providers are independent. The old loop waited for every
-        // addon serially, so one dead provider delayed the entire player by
-        // its full timeout. Fan them out and flatten in request order.
         let mut jobs = Vec::new();
         for (index, item) in requests.into_iter().enumerate() {
             let client = client.clone();
             let request_resource = request.get("resource").cloned();
+            let progress = progress.clone();
             jobs.push(async move {
                 let Some(url) = item.get("url").and_then(Value::as_str) else {
                     return (index, Vec::new());
@@ -173,11 +209,18 @@ impl EffectExecutor {
                     })
                 })
                 .unwrap_or_default();
+                if let Some(progress) = &progress {
+                    let _ = progress.send((index, streams.clone()));
+                }
                 (index, streams)
             });
         }
 
-        let mut results = futures::future::join_all(jobs).await;
+        let mut results = if progress.is_some() {
+            futures::future::join_all(jobs).await
+        } else {
+            collect_with_grace(jobs).await
+        };
         results.sort_by_key(|(index, _)| *index);
         Ok(results
             .into_iter()
@@ -267,4 +310,43 @@ pub(super) fn stream_request_ids(
     })
     .filter(|values| !values.is_empty())
     .ok_or_else(|| "Fluxa Core could not resolve stream request IDs".to_owned())
+}
+
+#[cfg(target_arch = "wasm32")]
+async fn collect_with_grace<F>(jobs: Vec<F>) -> Vec<(usize, Vec<Value>)>
+where
+    F: std::future::Future<Output = (usize, Vec<Value>)>,
+{
+    futures::future::join_all(jobs).await
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+async fn collect_with_grace<F>(jobs: Vec<F>) -> Vec<(usize, Vec<Value>)>
+where
+    F: std::future::Future<Output = (usize, Vec<Value>)>,
+{
+    use futures::StreamExt;
+    const GRACE: Duration = Duration::from_millis(2500);
+    let mut pending = jobs
+        .into_iter()
+        .collect::<futures::stream::FuturesUnordered<_>>();
+    let mut results = Vec::new();
+    let mut deadline = None;
+    loop {
+        let next = match deadline {
+            Some(deadline) => match tokio::time::timeout_at(deadline, pending.next()).await {
+                Ok(next) => next,
+                Err(_) => break,
+            },
+            None => pending.next().await,
+        };
+        let Some((index, streams)) = next else {
+            break;
+        };
+        if deadline.is_none() && !streams.is_empty() {
+            deadline = Some(tokio::time::Instant::now() + GRACE);
+        }
+        results.push((index, streams));
+    }
+    results
 }
