@@ -1324,6 +1324,21 @@ pub fn draw_settings(
     assets: &mut impl HomeAssets,
     focused: Option<u64>,
 ) -> HomeLayout {
+    let layout = draw_settings_page(context, viewport, settings, assets, focused);
+    context.move_to_top(egui::LayerId::new(
+        egui::Order::Foreground,
+        Id::new("fluxa-shared-top-bar"),
+    ));
+    layout
+}
+
+fn draw_settings_page(
+    context: &egui::Context,
+    viewport: Viewport,
+    settings: &SettingsModel,
+    assets: &mut impl HomeAssets,
+    focused: Option<u64>,
+) -> HomeLayout {
     let language = settings
         .values
         .get("language")
@@ -1534,31 +1549,38 @@ pub fn draw_settings(
         } else {
             metrics.settings_nav_item_gap_desktop
         };
-        let nav_panel = Rect::from_min_size(
-            Pos2::new(margin, section_top - scroll_y),
-            Vec2::new(
-                nav_width,
-                (viewport.height - section_top + scroll_y - margin).max(nav_item_height),
-            ),
-        );
-        painter.rect_filled(
-            nav_panel,
-            metrics.card_radius,
-            if desktop {
-                Color32::from_rgb(10, 10, 10)
-            } else {
-                metrics.surface
-            },
-        );
-        painter.rect_stroke(
-            nav_panel,
-            metrics.card_radius,
-            egui::Stroke::new(1.0, metrics.border),
-            egui::StrokeKind::Inside,
-        );
+        let nav_x = if desktop { 0.0 } else { margin };
+        let nav_inset = if desktop { 16.0 } else { metrics.control_gap };
+        let panel_width = if desktop { nav_width + margin } else { nav_width };
+        let nav_panel = if desktop {
+            Rect::from_min_size(Pos2::ZERO, Vec2::new(panel_width, viewport.height))
+        } else {
+            Rect::from_min_size(
+                Pos2::new(margin, section_top - scroll_y),
+                Vec2::new(
+                    nav_width,
+                    (viewport.height - section_top + scroll_y - margin).max(nav_item_height),
+                ),
+            )
+        };
+        if desktop {
+            painter.rect_filled(nav_panel, 0.0, Color32::from_rgb(10, 10, 10));
+            painter.line_segment(
+                [nav_panel.right_top(), nav_panel.right_bottom()],
+                egui::Stroke::new(1.0, metrics.border),
+            );
+        } else {
+            painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface);
+            painter.rect_stroke(
+                nav_panel,
+                metrics.card_radius,
+                egui::Stroke::new(1.0, metrics.border),
+                egui::StrokeKind::Inside,
+            );
+        }
         if desktop {
             painter.text(
-                nav_panel.left_top() + Vec2::new(metrics.control_gap + 2.0, 18.0),
+                Pos2::new(nav_x + nav_inset + 2.0, section_top - scroll_y + 18.0),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
                 crate::fonts::bold(metrics.settings_section_title_size_desktop + 2.0),
@@ -1570,10 +1592,10 @@ pub fn draw_settings(
             &mut layout,
             Rect::from_min_size(
                 Pos2::new(
-                    margin + metrics.control_gap,
+                    nav_x + nav_inset,
                     section_top + search_top - scroll_y,
                 ),
-                Vec2::new(nav_width - metrics.control_gap * 2.0, search_height),
+                Vec2::new(panel_width - nav_inset * 2.0, search_height),
             ),
         );
         let nav_top_inset = search_top + search_height + metrics.control_gap * 1.5;
@@ -1583,11 +1605,11 @@ pub fn draw_settings(
             let node = NODE_SETTINGS_SECTION_BASE + index as u64;
             let rect = Rect::from_min_size(
                 Pos2::new(
-                    margin + metrics.control_gap,
+                    nav_x + nav_inset,
                     section_top + nav_top_inset + slot as f32 * (nav_item_height + nav_item_gap)
                         - scroll_y,
                 ),
-                Vec2::new(nav_width - metrics.control_gap * 2.0, nav_item_height),
+                Vec2::new(panel_width - nav_inset * 2.0, nav_item_height),
             );
             layout.focusable.push((node, rect));
             let mut clicked = false;
