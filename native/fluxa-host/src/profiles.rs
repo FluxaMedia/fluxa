@@ -502,7 +502,7 @@ fn spawn_discovery(executor: EffectExecutor, repositories: Vec<String>, adding: 
 }
 
 fn parse_pack(
-    fetch: &impl Fn(&str) -> Option<Value>,
+    fetch: &(impl Fn(&str) -> Option<Value> + Sync),
     manifest_url: &str,
     repository: &str,
 ) -> Option<ProfileAvatarPack> {
@@ -524,7 +524,7 @@ fn parse_pack(
 }
 
 fn discover(
-    fetch: &impl Fn(&str) -> Option<Value>,
+    fetch: &(impl Fn(&str) -> Option<Value> + Sync),
     repository: &str,
 ) -> Result<Vec<ProfileAvatarPack>, String> {
     if let Some(plan) = core_value(
@@ -576,10 +576,15 @@ fn discover(
     if manifests.is_empty() {
         return Err("no_packs_found".to_owned());
     }
-    let packs = manifests
-        .iter()
-        .filter_map(|manifest| parse_pack(fetch, manifest, repository))
-        .collect::<Vec<_>>();
+    let packs = std::thread::scope(|scope| {
+        manifests
+            .iter()
+            .map(|manifest| scope.spawn(|| parse_pack(fetch, manifest, repository)))
+            .collect::<Vec<_>>()
+            .into_iter()
+            .filter_map(|handle| handle.join().ok().flatten())
+            .collect::<Vec<_>>()
+    });
     if packs.is_empty() {
         return Err("no_valid_avatars".to_owned());
     }

@@ -11,10 +11,10 @@ pub(super) fn draw_select(
 ) {
     let count = model.profiles.len() + 1;
     let (radius, cell, gap) = if viewport.is_compact() {
-        let gap = 18.0;
-        let cell_width = ((viewport.width - 32.0 - gap * 2.0) / 3.0).min(150.0);
-        let radius = (cell_width * 0.43).min(65.0);
-        (radius, Vec2::new(cell_width, radius * 2.0 + 64.0), gap)
+        let gap = 28.0;
+        let cell_width = ((viewport.width - 32.0 - gap) / 2.0).min(180.0);
+        let radius = cell_width * 0.325;
+        (radius, Vec2::new(cell_width, radius * 2.0 + 72.0), gap)
     } else {
         (65.0, Vec2::new(150.0, 222.0), 40.0)
     };
@@ -24,7 +24,11 @@ pub(super) fn draw_select(
     let rows = count.div_ceil(per_row);
     let grid_height = rows as f32 * cell.y + (rows - 1) as f32 * gap;
     let content_height = 60.0 + 24.0 + 46.0 + 52.0 + grid_height;
-    let top = ((viewport.height - content_height) * 0.5).max(48.0);
+    let top = if viewport.is_compact() {
+        56.0
+    } else {
+        ((viewport.height - content_height) * 0.5).max(48.0)
+    };
     ui.add_space(top);
 
     let width = ui.available_width();
@@ -62,6 +66,7 @@ pub(super) fn draw_select(
     if gear.clicked() {
         model.background_input = model.picker.background_url.clone().unwrap_or_default();
         model.mode = ProfilesMode::Settings;
+        ui.ctx().request_repaint();
     }
     ui.add_space(52.0);
 
@@ -70,7 +75,11 @@ pub(super) fn draw_select(
     for index in 0..count {
         let row = index / per_row;
         let column = index % per_row;
-        let in_row = (count - row * per_row).min(per_row);
+        let in_row = if viewport.is_compact() {
+            per_row
+        } else {
+            (count - row * per_row).min(per_row)
+        };
         let row_width = in_row as f32 * cell.x + (in_row - 1) as f32 * gap;
         let origin = Pos2::new(
             grid_rect.center().x - row_width * 0.5 + column as f32 * (cell.x + gap),

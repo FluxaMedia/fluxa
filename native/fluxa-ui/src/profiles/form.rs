@@ -9,21 +9,29 @@ pub(super) fn draw_form(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<ProfilesRequest>,
 ) {
-    close_button(ui, model, assets, t);
-    let width = (viewport.width - 56.0).min(1100.0);
+    let compact = viewport.is_compact();
+    let title = if model.draft.editing.is_some() {
+        t("profiles.edit")
+    } else {
+        t("profiles.create_new")
+    };
+    if compact {
+        if components::screen_bar(ui, assets, &title, &t("common.back")) {
+            model.mode = ProfilesMode::Select;
+        }
+    } else {
+        close_button(ui, model, assets, t);
+    }
+    let width = if compact {
+        viewport.width - 32.0
+    } else {
+        (viewport.width - 56.0).min(1100.0)
+    };
     let stacked = width < 760.0;
     centered_column(ui, width, |ui| {
-        components::heading(
-            ui,
-            &t("profiles.settings"),
-            &if model.draft.editing.is_some() {
-                t("profiles.edit")
-            } else {
-                t("profiles.create_new")
-            },
-            &t("profiles.form_subtitle"),
-            metrics,
-        );
+        if !compact {
+            components::heading(ui, &t("profiles.settings"), &title, &t("profiles.form_subtitle"), metrics);
+        }
         let left_width = if stacked {
             width
         } else {
@@ -35,14 +43,14 @@ pub(super) fn draw_form(
             width - left_width - 14.0
         };
         if stacked {
-            form_details(ui, model, assets, t, request, left_width, metrics);
+            form_details(ui, model, assets, t, request, left_width, metrics, compact);
             ui.add_space(14.0);
-            form_images(ui, model, assets, t, request, right_width, metrics);
+            form_images(ui, model, assets, t, request, right_width, metrics, compact);
         } else {
             ui.horizontal_top(|ui| {
                 ui.spacing_mut().item_spacing.x = 14.0;
-                ui.vertical(|ui| form_details(ui, model, assets, t, request, left_width, metrics));
-                ui.vertical(|ui| form_images(ui, model, assets, t, request, right_width, metrics));
+                ui.vertical(|ui| form_details(ui, model, assets, t, request, left_width, metrics, false));
+                ui.vertical(|ui| form_images(ui, model, assets, t, request, right_width, metrics, false));
             });
         }
         ui.add_space(48.0);
@@ -57,11 +65,14 @@ pub(super) fn form_details(
     request: &mut Option<ProfilesRequest>,
     width: f32,
     metrics: UiMetrics,
+    compact: bool,
 ) {
-    components::panel(
+    components::section(
         ui,
+        compact,
+        metrics,
         |ui| {
-            ui.set_width(width - 44.0);
+            ui.set_width(if compact { width } else { width - 44.0 });
             ui.vertical_centered(|ui| {
                 let (rect, response) = ui.allocate_exact_size(Vec2::splat(128.0), Sense::click());
                 let name = if model.draft.name.trim().is_empty() {
@@ -93,22 +104,20 @@ pub(super) fn form_details(
                     *request = Some(ProfilesRequest::PickAvatarImage);
                 }
                 ui.add_space(16.0);
-                ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(&name)
+                        .size(18.0)
+                        .strong()
+                        .color(text_primary()),
+                );
+                if model.draft_is_primary() {
                     ui.label(
-                        RichText::new(&name)
-                            .size(18.0)
-                            .strong()
-                            .color(text_primary()),
+                        RichText::new(t("profiles.primary_badge").to_uppercase())
+                            .size(10.0)
+                            .color(metrics.text_secondary)
+                            .background_color(ink(24)),
                     );
-                    if model.draft_is_primary() {
-                        ui.label(
-                            RichText::new(t("profiles.primary_badge").to_uppercase())
-                                .size(10.0)
-                                .color(metrics.text_secondary)
-                                .background_color(ink(24)),
-                        );
-                    }
-                });
+                }
                 if model.draft.avatar_url.is_some()
                     && components::text_button(ui, &t("profiles.use_initials"), 12.0, 110).clicked()
                 {
@@ -181,7 +190,9 @@ pub(super) fn form_details(
             let half = (field_width - 8.0) * 0.5;
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 8.0;
-                if components::secondary_button(ui, &t("common.cancel"), half).clicked() {
+                if !compact
+                    && components::secondary_button(ui, &t("common.cancel"), half).clicked()
+                {
                     model.mode = ProfilesMode::Select;
                 }
                 let label = if model.busy {
@@ -191,12 +202,11 @@ pub(super) fn form_details(
                 } else {
                     t("profiles.create")
                 };
-                if components::primary_button(ui, &label, half, model.can_save()).clicked() {
+                if components::primary_button(ui, &label, if compact { field_width } else { half }, model.can_save()).clicked() {
                     *request = Some(ProfilesRequest::Save);
                 }
             });
         },
-        metrics,
     );
 }
 
@@ -208,11 +218,14 @@ pub(super) fn form_images(
     request: &mut Option<ProfilesRequest>,
     width: f32,
     metrics: UiMetrics,
+    compact: bool,
 ) {
-    components::panel(
+    components::section(
         ui,
+        compact,
+        metrics,
         |ui| {
-            ui.set_width(width - 44.0);
+            ui.set_width(if compact { width } else { width - 44.0 });
             let inner = ui.available_width();
             if components::secondary_button(ui, &t("profiles.choose_image"), inner).clicked() {
                 *request = Some(ProfilesRequest::PickAvatarImage);
@@ -247,22 +260,43 @@ pub(super) fn form_images(
             });
             let tile = 64.0;
             let gap = 10.0;
-            let per_row = (((inner + gap) / (tile + gap)).floor() as usize).max(1);
+            let step = tile + gap;
             for pack in model.picker.avatar_packs.clone() {
-                ui.add_space(12.0);
-                ui.label(
-                    RichText::new(&pack.title)
-                        .size(13.0)
-                        .strong()
-                        .color(metrics.text_primary),
-                );
+                ui.add_space(14.0);
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(&pack.title)
+                            .size(14.0)
+                            .strong()
+                            .color(metrics.text_primary),
+                    );
+                    ui.label(
+                        RichText::new(pack.avatars.len().to_string())
+                            .size(13.0)
+                            .color(metrics.text_muted),
+                    );
+                });
                 ui.add_space(8.0);
-                for chunk in pack.avatars.chunks(per_row) {
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = gap;
-                        for avatar in chunk {
-                            let (rect, response) = ui
-                                .allocate_exact_size(Vec2::new(tile, tile + 20.0), Sense::click());
+                let count = pack.avatars.len();
+                egui::ScrollArea::horizontal()
+                    .id_salt(("fluxa-avatar-pack", &pack.id))
+                    .auto_shrink([false, true])
+                    .show(ui, |ui| {
+                        let (strip, _) = ui.allocate_exact_size(
+                            Vec2::new(count as f32 * step - gap, tile + 20.0),
+                            Sense::hover(),
+                        );
+                        for index in 0..count {
+                            let avatar = &pack.avatars[index];
+                            let rect = Rect::from_min_size(
+                                Pos2::new(strip.left() + index as f32 * step, strip.top()),
+                                Vec2::new(tile, tile + 20.0),
+                            );
+                            let response = ui.interact(
+                                rect,
+                                Id::new(("fluxa-avatar", &pack.id, index)),
+                                Sense::click(),
+                            );
                             let center = Pos2::new(rect.center().x, rect.top() + tile * 0.5);
                             components::avatar(
                                 ui.painter(),
@@ -290,15 +324,12 @@ pub(super) fn form_images(
                                 font,
                                 metrics.text_secondary,
                             );
-                            if response.on_hover_text(&avatar.name).clicked() {
+                            if response.clicked() {
                                 model.draft.avatar_url = Some(avatar.url.clone());
                             }
                         }
                     });
-                    ui.add_space(gap);
-                }
             }
         },
-        metrics,
     );
 }

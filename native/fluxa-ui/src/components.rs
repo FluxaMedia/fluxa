@@ -123,6 +123,11 @@ pub(super) fn artwork_image(
     rounded_artwork(painter, rect, 0.0, url, target_size, priority, tint, assets)
 }
 
+fn near_screen(painter: &Painter, rect: Rect) -> bool {
+    let screen = painter.ctx().content_rect();
+    screen.expand2(screen.size()).intersects(rect)
+}
+
 #[allow(clippy::too_many_arguments)]
 pub(super) fn rounded_artwork(
     painter: &Painter,
@@ -134,6 +139,12 @@ pub(super) fn rounded_artwork(
     tint: Color32,
     assets: &mut impl HomeAssets,
 ) -> bool {
+    if !painter.clip_rect().intersects(rect) {
+        if near_screen(painter, rect) {
+            assets.prefetch_for(url, target_size, ArtworkPriority::Prefetch);
+        }
+        return false;
+    }
     let Some(texture) = assets.texture_for(url, target_size, priority) else {
         return false;
     };
@@ -944,6 +955,13 @@ pub(super) fn poster_card(
     assets: &mut impl HomeAssets,
     motion_active: bool,
 ) {
+    if !painter.clip_rect().intersects(rect) {
+        if near_screen(painter, rect) {
+            let target = artwork_target_size(rect.size(), painter.ctx().pixels_per_point());
+            assets.prefetch_for(card.poster_art(), target, ArtworkPriority::Prefetch);
+        }
+        return;
+    }
     crate::motion::press_scale(painter, rect, || {
         poster_card_body(painter, rect, card, metrics, assets, motion_active, true)
     });
@@ -3097,4 +3115,42 @@ pub(super) fn surface(
         .corner_radius(radius)
         .inner_margin(margin)
         .show(ui, add);
+}
+
+pub(super) fn screen_bar(
+    ui: &mut egui::Ui,
+    assets: &impl HomeAssets,
+    title: &str,
+    back_label: &str,
+) -> bool {
+    ui.add_space(20.0);
+    let mut back = false;
+    ui.horizontal(|ui| {
+        ui.add_space(12.0);
+        back = icon_button(ui, assets.icon("ArrowLeft"), 44.0, ink(230), false, false, true)
+            .on_hover_text(back_label)
+            .clicked();
+        ui.add_space(4.0);
+        ui.label(
+            RichText::new(title)
+                .size(20.0)
+                .strong()
+                .color(text_primary()),
+        );
+    });
+    ui.add_space(20.0);
+    back
+}
+
+pub(super) fn section(
+    ui: &mut egui::Ui,
+    flat: bool,
+    metrics: UiMetrics,
+    add: impl FnOnce(&mut egui::Ui),
+) {
+    if flat {
+        ui.vertical(add);
+    } else {
+        panel(ui, add, metrics);
+    }
 }
