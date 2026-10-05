@@ -232,7 +232,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
-    if state.profiles.is_some() {
+    if state.profiles.is_some() || state.player.is_some() {
         let pos = Pos2::new(position[0], position[1]);
         let button = |pressed| egui::Event::PointerButton {
             pos,

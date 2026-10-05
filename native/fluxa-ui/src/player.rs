@@ -399,6 +399,9 @@ impl Chrome<'_> {
     }
 
     fn surface(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, area: Rect) {
+        if self.player.panel.is_some() {
+            return;
+        }
         let mobile = self.viewport.form_factor == UiFormFactor::Mobile;
         let sense = if mobile {
             Sense::click_and_drag()

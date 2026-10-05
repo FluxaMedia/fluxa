@@ -198,20 +198,19 @@ fn draw_list(
         egui::Order::Foreground,
         Id::new("fluxa-player-panel-veil"),
     ));
-    if form_factor == UiFormFactor::Desktop {
-        let outside = ui.interact(
-            chrome.rect,
-            Id::new("fluxa-player-panel-outside"),
-            Sense::click(),
-        );
-        if outside.clicked()
-            && !outside
-                .interact_pointer_pos()
-                .is_some_and(|pos| card.contains(pos))
-        {
-            layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
-        }
-    } else {
+    let outside = ui.interact(
+        chrome.rect,
+        Id::new("fluxa-player-panel-outside"),
+        Sense::click(),
+    );
+    if outside.clicked()
+        && !outside
+            .interact_pointer_pos()
+            .is_some_and(|pos| card.contains(pos))
+    {
+        layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
+    }
+    if form_factor != UiFormFactor::Desktop {
         veil.rect_filled(chrome.rect, 0.0, Color32::from_black_alpha(150));
     }
     veil.rect_filled(card, tokens.card_radius, tokens.surface);
@@ -275,6 +274,19 @@ fn draw_list(
                 start = (start as i32 + step).clamp(0, rows.len().saturating_sub(visible) as i32)
                     as usize;
             }
+        }
+        let drag = ui.interact(
+            column_rect,
+            Id::new(("fluxa-player-panel-drag", column)),
+            Sense::drag(),
+        );
+        if drag.dragged() {
+            let carry_id = Id::new(("fluxa-player-panel-carry", column));
+            let carry: f32 = ui.data(|data| data.get_temp(carry_id)).unwrap_or(0.0)
+                - drag.drag_delta().y / row_h;
+            let whole = carry.trunc();
+            ui.data_mut(|data| data.insert_temp(carry_id, carry - whole));
+            start = (start as i32 + whole as i32).max(0) as usize;
         }
         start = start.min(rows.len().saturating_sub(visible));
         ui.data_mut(|data| data.insert_temp(state_id, start));
