@@ -232,7 +232,7 @@ impl EffectExecutor {
             .nuvio_session(profile)
             .await?
             .ok_or_else(|| "no Nuvio session".to_owned())?;
-        let scope = self.nuvio_addons_profile_index(&session).await;
+        let scope = self.nuvio_profile_scope(&session, "addons").await;
         let rows = session
             .rest(&format!(
                 "addons?select=*&profile_id=eq.{scope}&order=sort_order"
@@ -615,7 +615,7 @@ impl EffectExecutor {
         }
     }
 
-    async fn nuvio_addons_profile_index(&self, session: &NuvioSession) -> i64 {
+    pub(super) async fn nuvio_profile_scope(&self, session: &NuvioSession, entity: &str) -> i64 {
         if session.profile_index == 1 {
             return 1;
         }
@@ -636,7 +636,7 @@ impl EffectExecutor {
             "nuvioEffectiveProfileScopes",
             json!({"profileIndex": session.profile_index, "profiles": remote_profiles}),
         )
-        .and_then(|scopes| scopes.get("addons").and_then(Value::as_i64))
+        .and_then(|scopes| scopes.get(entity).and_then(Value::as_i64))
         .unwrap_or(session.profile_index)
     }
 }

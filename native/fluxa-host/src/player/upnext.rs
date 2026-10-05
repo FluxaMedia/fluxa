@@ -172,11 +172,19 @@ pub(super) fn synopsis(meta: &Value, snapshot: &Value) -> Option<String> {
 }
 
 pub(super) fn stream_addon_names(snapshot: &Value) -> Vec<String> {
+    let scrapers = snapshot
+        .pointer("/plugins/scrapers")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|scraper| scraper.get("enabled").and_then(Value::as_bool) != Some(false))
+        .filter_map(|scraper| scraper.get("name").and_then(Value::as_str))
+        .map(ToOwned::to_owned);
     let Some(installed) = snapshot
         .pointer("/addons/installed")
         .and_then(Value::as_array)
     else {
-        return Vec::new();
+        return scrapers.collect();
     };
     installed
         .iter()
@@ -193,6 +201,7 @@ pub(super) fn stream_addon_names(snapshot: &Value) -> Vec<String> {
         })
         .filter_map(|manifest| manifest.get("name").and_then(Value::as_str))
         .map(ToOwned::to_owned)
+        .chain(scrapers)
         .collect()
 }
 

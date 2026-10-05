@@ -2,7 +2,6 @@ use super::support::Scenario;
 use serde_json::json;
 
 #[test]
-#[ignore = "effect fetchPluginManifest has no native implementation yet"]
 fn plugin_repository_can_be_added_from_a_manifest_url() {
     let scenario = Scenario::start();
     scenario.world.respond("addon.test", "GET", "/plugins/manifest.json", 200, json!({
@@ -20,7 +19,7 @@ fn plugin_repository_can_be_added_from_a_manifest_url() {
         1
     );
     assert_eq!(
-        app.at("/addons/plugins/repositories")
+        app.at("/plugins/repositories")
             .as_array()
             .map(Vec::len),
         Some(1)

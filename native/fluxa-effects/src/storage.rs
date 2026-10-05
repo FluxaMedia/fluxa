@@ -21,6 +21,10 @@ impl Storage {
         format!("prefs_{}", sanitize_key(profile_id))
     }
 
+    pub fn plugins_key(profile_id: &str) -> String {
+        format!("plugins_{}", sanitize_key(profile_id))
+    }
+
     pub fn addons_key(owner_id: &str) -> String {
         format!("addons_{}", sanitize_key(owner_id))
     }

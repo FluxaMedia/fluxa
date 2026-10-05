@@ -13,6 +13,7 @@ struct AppSession {
     runtime: FluxaRuntime,
     storage: Storage,
     persisted_addons: Value,
+    persisted_plugins: Value,
     executor: EffectExecutor,
     sender: Sender<EffectCompletion>,
     outstanding: usize,
@@ -22,6 +23,7 @@ impl AppSession {
     fn open(storage: Storage, sender: Sender<EffectCompletion>) -> Result<Self, String> {
         let state = persisted_runtime_state(&storage, json!({}));
         let persisted_addons = state["addons"]["installed"].clone();
+        let persisted_plugins = state["plugins"].clone();
         let active_id = state["profile"]["activeProfileId"]
             .as_str()
             .unwrap_or("guest")
@@ -33,6 +35,7 @@ impl AppSession {
             runtime,
             storage,
             persisted_addons,
+            persisted_plugins,
             executor,
             sender,
             outstanding: 0,
@@ -42,6 +45,7 @@ impl AppSession {
     fn dispatch(&mut self, action: Value) -> Result<(), String> {
         let update = self.runtime.dispatch(action)?;
         self.persist_addons();
+        self.persist_plugins();
         self.schedule(update.effects);
         Ok(())
     }
@@ -73,6 +77,7 @@ impl AppSession {
         match result {
             Ok(update) => {
                 self.persist_addons();
+                self.persist_plugins();
                 self.schedule(update.effects);
             }
             Err(error) => crate::log!(
@@ -117,6 +122,31 @@ impl AppSession {
         {
             Ok(()) => self.persisted_addons = installed,
             Err(error) => crate::log!("[fluxa-session] saving add-ons failed: {error}"),
+        }
+    }
+
+    fn persist_plugins(&mut self) {
+        let snapshot = self.runtime.snapshot();
+        let Some(plugins) = snapshot.get("plugins").filter(|value| value.is_object()) else {
+            return;
+        };
+        if *plugins == self.persisted_plugins {
+            return;
+        }
+        let active_id = snapshot
+            .pointer("/profile/activeProfileId")
+            .and_then(Value::as_str)
+            .unwrap_or("guest");
+        let stored = json!({
+            "repositories": plugins.get("repositories"),
+            "scrapers": plugins.get("scrapers"),
+        });
+        match self
+            .storage
+            .write_json(&Storage::plugins_key(active_id), &stored)
+        {
+            Ok(()) => self.persisted_plugins = plugins.clone(),
+            Err(error) => crate::log!("[fluxa-session] saving plugins failed: {error}"),
         }
     }
 
@@ -417,5 +447,11 @@ pub fn persisted_runtime_state(storage: &Storage, default_prefs: Value) -> Value
         "settings": {"values": prefs},
         "profile": {"active": active_profile, "activeProfileId": active_id},
         "addons": {"installed": addons},
+        "plugins": storage
+            .read_json(&Storage::plugins_key(&active_id))
+            .ok()
+            .flatten()
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({"repositories": [], "scrapers": []})),
     })
 }

@@ -145,20 +145,25 @@ impl EffectExecutor {
             .and_then(Value::as_array)
             .cloned()
             .unwrap_or_default();
-        if requests.is_empty() {
+        #[cfg(not(target_arch = "wasm32"))]
+        let scrapers = self.enabled_scrapers(request).await;
+        #[cfg(target_arch = "wasm32")]
+        let scrapers: Vec<Value> = Vec::new();
+        if requests.is_empty() && scrapers.is_empty() {
             return Ok(Vec::new());
         }
+        let request_count = requests.len();
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(25))
             .build()
             .map_err(|error| error.to_string())?;
-        let mut jobs = Vec::new();
+        let mut jobs: Vec<JobFuture> = Vec::new();
         for (index, item) in requests.into_iter().enumerate() {
             let client = client.clone();
             let request_resource = request.get("resource").cloned();
             let progress = progress.clone();
-            jobs.push(async move {
+            jobs.push(Box::pin(async move {
                 let Some(url) = item.get("url").and_then(Value::as_str) else {
                     return (index, Vec::new());
                 };
@@ -213,7 +218,34 @@ impl EffectExecutor {
                     let _ = progress.send((index, streams.clone()));
                 }
                 (index, streams)
-            });
+            }));
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        let target = if scrapers.is_empty() {
+            None
+        } else {
+            let target = self.plugin_target(request).await;
+            if target.is_none() {
+                crate::log!("[fluxa-native] plugin target unresolved: no TMDB id for this title");
+            }
+            target
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(target) = target {
+            let target = std::sync::Arc::new(target);
+            for (offset, scraper) in scrapers.into_iter().enumerate() {
+                let executor = self.clone();
+                let target = target.clone();
+                let progress = progress.clone();
+                let index = request_count + offset;
+                jobs.push(Box::pin(async move {
+                    let streams = executor.run_plugin_scraper(scraper, target).await;
+                    if let Some(progress) = &progress {
+                        let _ = progress.send((index, streams.clone()));
+                    }
+                    (index, streams)
+                }));
+            }
         }
 
         let mut results = if progress.is_some() {
@@ -350,3 +382,8 @@ where
     }
     results
 }
+
+#[cfg(not(target_arch = "wasm32"))]
+type JobFuture = futures::future::BoxFuture<'static, (usize, Vec<Value>)>;
+#[cfg(target_arch = "wasm32")]
+type JobFuture = futures::future::LocalBoxFuture<'static, (usize, Vec<Value>)>;

@@ -12,6 +12,8 @@ mod home;
 mod http;
 mod library;
 mod mediaserver;
+#[cfg(not(target_arch = "wasm32"))]
+mod plugins;
 mod providers;
 mod streams;
 mod tmdb;
@@ -187,6 +189,10 @@ impl EffectExecutor {
             }
             fluxa_core::runtime::EffectKind::FetchAddonManifest => {
                 self.fetch_addon_manifest(&payload).await
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::FetchPluginManifest => {
+                self.fetch_plugin_manifest(&payload).await
             }
             fluxa_core::runtime::EffectKind::FetchAddonResource => {
                 self.fetch_addon_resource(&payload).await
