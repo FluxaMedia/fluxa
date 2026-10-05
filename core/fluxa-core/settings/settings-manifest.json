@@ -919,13 +919,6 @@
       "category": "general"
     },
     {
-      "key": "reducedEffects",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "appearance"
-    },
-    {
       "key": "rememberLastProfile",
       "type": "boolean",
       "default": null,
