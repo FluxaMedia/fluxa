@@ -148,7 +148,7 @@ fn section_title(painter: &egui::Painter, pos: Pos2, text: &str, size: f32) {
         pos,
         Align2::LEFT_TOP,
         text,
-        FontId::proportional(size),
+        crate::fonts::bold(size),
         text_primary(),
     );
 }

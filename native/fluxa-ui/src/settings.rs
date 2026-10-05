@@ -1457,7 +1457,7 @@ pub fn draw_settings(
                 Pos2::new(margin, top - scroll_y),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
-                FontId::proportional(metrics.screen_title_size),
+                crate::fonts::bold(metrics.screen_title_size),
                 text_primary(),
             );
             search_field(
@@ -1561,7 +1561,7 @@ pub fn draw_settings(
                 nav_panel.left_top() + Vec2::new(metrics.control_gap + 2.0, 18.0),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
-                FontId::proportional(metrics.settings_section_title_size_desktop + 2.0),
+                crate::fonts::bold(metrics.settings_section_title_size_desktop + 2.0),
                 text_primary(),
             );
         }

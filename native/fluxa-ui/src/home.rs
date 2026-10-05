@@ -392,7 +392,7 @@ pub(crate) fn draw_home_with_options(
                 screen.center(),
                 Align2::CENTER_CENTER,
                 "Home",
-                FontId::proportional(metrics.screen_title_size),
+                crate::fonts::bold(metrics.screen_title_size),
                 metrics.text_primary,
             );
         }
@@ -517,7 +517,7 @@ pub(crate) fn draw_home_with_options(
                             title_rect.min,
                             title_anchor,
                             title,
-                            egui::FontId::proportional(style.title_size),
+                            crate::fonts::bold(style.title_size),
                             text_primary(),
                         );
                     }

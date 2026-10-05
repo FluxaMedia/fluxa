@@ -407,7 +407,7 @@ pub fn draw_discover(
                         Pos2::new(margin, block_top + block.header * 0.5),
                         egui::Align2::LEFT_CENTER,
                         title,
-                        egui::FontId::proportional(metrics.screen_section_title_size),
+                        crate::fonts::bold(metrics.screen_section_title_size),
                         text_primary(),
                     );
                 }

@@ -210,7 +210,7 @@ fn draw_info_panel(
         Some(_) => None,
         None => Some(text(
             &player.title,
-            FontId::proportional(metrics.screen_title_size),
+            crate::fonts::bold(metrics.screen_title_size),
             text_primary(),
             2,
         )),

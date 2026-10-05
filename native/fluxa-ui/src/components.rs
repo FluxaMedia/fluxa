@@ -88,7 +88,7 @@ pub(super) fn calendar_release_row(
     );
     let text_width = (rect.width() - thumb.width() - metrics.control_gap * 3.0).max(1.0);
     let text_x = thumb.right() + metrics.control_gap;
-    let title_font = FontId::proportional(metrics.screen_card_title_size);
+    let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     ui.painter().text(
         egui::Pos2::new(text_x, rect.top() + metrics.control_gap),
@@ -494,7 +494,7 @@ pub(super) fn empty_state(
 ) {
     let center = rect.center();
     let icon_size = 36.0;
-    let title_font = FontId::proportional(metrics.screen_section_title_size);
+    let title_font = crate::fonts::bold(metrics.screen_section_title_size);
     let description_font = crate::fonts::regular(metrics.screen_body_size);
     let mut y = center.y - (icon_size + metrics.section_gap + title_font.size * 2.6) * 0.5;
     if let Some(icon) = icon {
@@ -1212,7 +1212,7 @@ pub(super) fn hover_preview(
                     &painter,
                     Pos2::new(left, info.top() - 14.0 - title_size),
                     &card.title,
-                    FontId::proportional(title_size),
+                    crate::fonts::medium(title_size),
                     text_width,
                     metrics.text_primary,
                 ),
@@ -1320,7 +1320,7 @@ pub(super) fn library_row(
         painter,
         egui::Pos2::new(text_x, title_y),
         &card.title,
-        FontId::proportional(title_size),
+        crate::fonts::medium(title_size),
         text_width,
         metrics.text_primary,
     );
@@ -1440,7 +1440,7 @@ fn poster_card_body(
     if !labels || card.hide_title && card.row_kind == super::HomeRowKind::Collection {
         return;
     }
-    let title_font = FontId::proportional(metrics.screen_card_title_size);
+    let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let label_y = rect.bottom() + metrics.control_gap;
     paint_elided_text(
@@ -1569,7 +1569,7 @@ fn continue_card_body(
         Color32::from_black_alpha(190),
         Color32::from_black_alpha(245),
     );
-    let title_font = FontId::proportional(metrics.screen_card_title_size);
+    let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
     let content_width = (rect.width() - metrics.card_content_padding * 2.0).max(1.0);
     let bar_top = rect.bottom() - metrics.card_content_padding - metrics.card_progress_height;

@@ -443,7 +443,7 @@
       },
       "typography": {
         "displayFont": "Archivo",
-        "bodyFont": "Montserrat",
+        "bodyFont": "Archivo",
         "titleWeight": 700,
         "bodyWeight": 400
       },
@@ -496,7 +496,7 @@
       },
       "typography": {
         "displayFont": "Archivo",
-        "bodyFont": "Montserrat",
+        "bodyFont": "Archivo",
         "titleWeight": 700,
         "bodyWeight": 400
       },
@@ -549,7 +549,7 @@
       },
       "typography": {
         "displayFont": "Archivo",
-        "bodyFont": "Montserrat",
+        "bodyFont": "Archivo",
         "titleWeight": 700,
         "bodyWeight": 400
       },

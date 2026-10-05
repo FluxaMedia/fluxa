@@ -34,7 +34,7 @@ pub(super) fn draw_select(
 
     let title = ui.painter().layout_no_wrap(
         t("profiles.who_watching"),
-        FontId::proportional(metrics.profile_title_size),
+        crate::fonts::bold(metrics.profile_title_size),
         text_primary(),
     );
     let (title_rect, _) = ui.allocate_exact_size(Vec2::new(width, 46.0), Sense::hover());

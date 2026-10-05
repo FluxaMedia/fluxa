@@ -848,8 +848,7 @@ fn decode_target(bytes: &[u8], target_size: [u32; 2]) -> Result<RgbaImage, Strin
             .map_err(|error| error.to_string())?;
         let size = tree.size();
         let scale = (target_size[0] as f32 / size.width().max(1.0))
-            .min(target_size[1] as f32 / size.height().max(1.0))
-            .min(1.0);
+            .min(target_size[1] as f32 / size.height().max(1.0));
         let width = (size.width() * scale).round().max(1.0) as u32;
         let height = (size.height() * scale).round().max(1.0) as u32;
         let mut pixmap = tiny_skia::Pixmap::new(width, height)
