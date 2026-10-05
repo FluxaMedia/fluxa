@@ -319,6 +319,8 @@ impl ArtworkFetcher {
                 if queued.animation_started_at.is_none() {
                     queued.animation_started_at = animation_started_at;
                 }
+                queued.sequence = self.next_sequence;
+                self.next_sequence = self.next_sequence.wrapping_add(1);
             }
             return Some(key);
         }
@@ -650,7 +652,11 @@ fn next_queued_index(queued: &[QueuedArtwork]) -> Option<usize> {
             (
                 priority_rank(item.priority),
                 item.animated,
-                Reverse(item.sequence),
+                if item.priority == Priority::Prefetch {
+                    Reverse(item.sequence)
+                } else {
+                    Reverse(u64::MAX - item.sequence)
+                },
             )
         })
         .map(|(index, _)| index)
@@ -1802,6 +1808,23 @@ mod tests {
                 queued[4].clone(),
             ]),
             Some(3)
+        );
+    }
+
+    #[test]
+    fn most_recently_requested_visible_artwork_starts_first() {
+        let item = |key: &str, sequence| QueuedArtwork {
+            key: key.to_owned(),
+            source_url: String::new(),
+            target_size: [1, 1],
+            priority: Priority::Visible,
+            sequence,
+            animated: false,
+            animation_started_at: None,
+        };
+        assert_eq!(
+            next_queued_index(&[item("scrolled-past", 1), item("on-screen", 9)]),
+            Some(1)
         );
     }
 

@@ -260,6 +260,13 @@ pub fn draw_library(
                 };
                 let visible = rect.intersect(clip);
                 if !visible.is_positive() {
+                    if !library.list_view {
+                        let poster = Rect::from_min_size(
+                            rect.min,
+                            Vec2::new(grid.card_width, grid.poster_height),
+                        );
+                        components::poster_card(ui.painter(), poster, card, metrics, assets, false);
+                    }
                     continue;
                 }
                 let node = NODE_CARD_BASE + index as u64;

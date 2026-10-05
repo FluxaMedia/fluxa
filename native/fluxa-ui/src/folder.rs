@@ -238,6 +238,11 @@ pub fn draw_folder(
                     let rect = grid.cell(origin, index);
                     let visible = rect.intersect(clip);
                     if !visible.is_positive() {
+                        let poster = Rect::from_min_size(
+                            rect.min,
+                            Vec2::new(grid.card_width, grid.poster_height),
+                        );
+                        components::poster_card(ui.painter(), poster, card, metrics, assets, false);
                         continue;
                     }
                     let node = NODE_CARD_BASE + index as u64;

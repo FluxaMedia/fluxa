@@ -5,6 +5,22 @@ pub(super) const MAX_ARTWORK_SIDE: u32 = 1536;
 // is still bounded, but avoids evicting visible cards while the remaining
 // shelves finish decoding.
 pub(super) const MAX_ARTWORK_TEXTURES: usize = 128;
+const MAX_DECODED_BYTES: usize = 96 * 1024 * 1024;
+
+struct ImageWeight;
+
+impl clru::WeightScale<String, Arc<egui::ColorImage>> for ImageWeight {
+    fn weight(&self, _key: &String, image: &Arc<egui::ColorImage>) -> usize {
+        image.pixels.len() * 4
+    }
+}
+
+type DecodedCache = clru::CLruCache<
+    String,
+    Arc<egui::ColorImage>,
+    std::collections::hash_map::RandomState,
+    ImageWeight,
+>;
 
 pub(super) struct ArtworkLoader {
     pub(super) fetcher: ArtworkFetcher,
@@ -17,6 +33,11 @@ pub(super) struct ArtworkLoader {
     animation_slots: HashSet<String>,
     latest_keys: HashMap<String, String>,
     texture_last_used: HashMap<String, u64>,
+    texture_frame: HashMap<String, u64>,
+    prefetch_keys: HashSet<String>,
+    decoded: DecodedCache,
+    context: Option<egui::Context>,
+    frame: u64,
     transparent_pixel_ratio: HashMap<String, f32>,
     pub(super) tones: HashMap<String, [[u8; 3]; 2]>,
     access_counter: u64,
@@ -43,6 +64,14 @@ impl ArtworkLoader {
             animation_slots: HashSet::new(),
             latest_keys: HashMap::new(),
             texture_last_used: HashMap::new(),
+            texture_frame: HashMap::new(),
+            prefetch_keys: HashSet::new(),
+            decoded: DecodedCache::with_config(
+                clru::CLruCacheConfig::new(std::num::NonZeroUsize::new(MAX_DECODED_BYTES).unwrap())
+                    .with_scale(ImageWeight),
+            ),
+            context: None,
+            frame: 0,
             transparent_pixel_ratio: HashMap::new(),
             tones: HashMap::new(),
             access_counter: 0,
@@ -87,6 +116,7 @@ impl ArtworkLoader {
     }
 
     pub(super) fn poll(&mut self, context: &egui::Context) {
+        self.context.get_or_insert_with(|| context.clone());
         self.rasterize_emoji(context);
         for prepared in self.fetcher.poll(2) {
             let url = prepared.source_url;
@@ -124,9 +154,19 @@ impl ArtworkLoader {
             );
             let transparent_ratio = prepared.transparent_ratio;
             let tones = prepared.tones;
+            let image = Arc::new(image);
+            if !animation_requested {
+                self.transparent_pixel_ratio
+                    .insert(key.clone(), transparent_ratio);
+                self.tones.insert(key.clone(), tones);
+                let _ = self.decoded.put_with_weight(key.clone(), image.clone());
+                if self.prefetch_keys.remove(&key) {
+                    continue;
+                }
+            }
             let texture = context.load_texture(
                 format!("fluxa-native-artwork-{key}"),
-                image,
+                egui::ImageData::Color(image),
                 egui::TextureOptions::LINEAR,
             );
             if !animation_requested {
@@ -138,9 +178,6 @@ impl ArtworkLoader {
             self.access_counter = self.access_counter.wrapping_add(1);
             self.texture_last_used
                 .insert(key.clone(), self.access_counter);
-            self.transparent_pixel_ratio
-                .insert(key.clone(), transparent_ratio);
-            self.tones.insert(key.clone(), tones);
             self.textures.insert(key.clone(), texture);
             if let Some(atlas) = animation_atlas.filter(|atlas| atlas.frames.len() > 1) {
                 self.animations.insert(
@@ -154,9 +191,16 @@ impl ArtworkLoader {
                 );
             }
             while self.textures.len() > MAX_ARTWORK_TEXTURES {
+                let frame = self.frame;
+                let texture_frame = &self.texture_frame;
                 let Some(oldest) = self
                     .texture_last_used
                     .iter()
+                    .filter(|(key, _)| {
+                        texture_frame
+                            .get(*key)
+                            .is_none_or(|used| used + 1 < frame)
+                    })
                     .min_by_key(|(_, last_used)| *last_used)
                     .map(|(key, _)| key.clone())
                 else {
@@ -164,8 +208,7 @@ impl ArtworkLoader {
                 };
                 self.textures.remove(&oldest);
                 self.texture_last_used.remove(&oldest);
-                self.transparent_pixel_ratio.remove(&oldest);
-                self.tones.remove(&oldest);
+                self.texture_frame.remove(&oldest);
                 self.animations.remove(&oldest);
                 self.animation_checked.remove(&oldest);
             }
@@ -207,6 +250,7 @@ impl ArtworkLoader {
     }
 
     pub(super) fn begin_frame(&mut self) {
+        self.frame = self.frame.wrapping_add(1);
         self.active_animations.clear();
         self.animation_slots.clear();
     }
@@ -243,6 +287,7 @@ impl ArtworkLoader {
         if self.textures.contains_key(&key) {
             self.texture_last_used
                 .insert(key.clone(), self.access_counter);
+            self.texture_frame.insert(key.clone(), self.frame);
         }
         if self.animations.contains_key(&key) {
             let now = Instant::now();
@@ -305,6 +350,27 @@ impl ArtworkLoader {
             .prefetch_animated(Some(&source_url), target_size, priority);
     }
 
+    fn upload(
+        &mut self,
+        context: &egui::Context,
+        url: String,
+        key: String,
+        image: Arc<egui::ColorImage>,
+    ) -> egui::TextureId {
+        let texture = context.load_texture(
+            format!("fluxa-native-artwork-{key}"),
+            egui::ImageData::Color(image),
+            egui::TextureOptions::LINEAR,
+        );
+        let id = texture.id();
+        self.latest_keys.insert(url, key.clone());
+        self.texture_last_used
+            .insert(key.clone(), self.access_counter);
+        self.texture_frame.insert(key.clone(), self.frame);
+        self.textures.insert(key, texture);
+        id
+    }
+
     pub(super) fn texture(&mut self, url: Option<&str>) -> Option<egui::TextureId> {
         self.texture_for_priority(url, [MAX_ARTWORK_SIDE; 2], ArtworkFetchPriority::Visible)
     }
@@ -326,8 +392,24 @@ impl ArtworkLoader {
         let key = fluxa_artwork::request_key(&url, target_size);
         self.access_counter = self.access_counter.wrapping_add(1);
         if let Some(texture) = self.textures.get(&key) {
-            self.texture_last_used.insert(key, self.access_counter);
+            if priority != ArtworkFetchPriority::Prefetch {
+                self.texture_last_used.insert(key.clone(), self.access_counter);
+                self.texture_frame.insert(key, self.frame);
+            }
             return Some(texture.id());
+        }
+        if priority == ArtworkFetchPriority::Prefetch {
+            if self.decoded.contains(&key) {
+                return None;
+            }
+            self.prefetch_keys.insert(key);
+        } else {
+            self.prefetch_keys.remove(&key);
+            if let Some(image) = self.decoded.get(&key).cloned()
+                && let Some(context) = self.context.clone()
+            {
+                return Some(self.upload(&context, url, key, image));
+            }
         }
         let _ = self.fetcher.request(Some(&url), target_size, priority);
         None
