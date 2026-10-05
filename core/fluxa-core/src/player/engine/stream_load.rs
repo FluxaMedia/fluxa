@@ -70,6 +70,14 @@ pub(crate) fn dispatch_next_episode_prefetch(
     language: Option<String>,
     profile: Option<Value>,
 ) -> Vec<EffectEnvelope> {
+    if profile
+        .as_ref()
+        .and_then(|profile| profile.get("preloadNextEpisodeSources"))
+        .and_then(Value::as_bool)
+        == Some(false)
+    {
+        return vec![];
+    }
     let already_prefetching = engine
         .state
         .player
@@ -237,6 +245,25 @@ pub(crate) fn dispatch_load_streams(
     save_effects
 }
 
+fn saved_stream_reusable(item: &Value, profile: Option<&Value>) -> bool {
+    let prefs = profile.unwrap_or(&Value::Null);
+    if prefs.get("reuseLastStream").and_then(Value::as_bool) == Some(false) {
+        return false;
+    }
+    let ttl_hours = prefs
+        .get("reuseLastStreamTtlHours")
+        .and_then(|value| value.as_i64().or_else(|| value.as_str()?.parse().ok()))
+        .unwrap_or(24);
+    let Some(saved_at) = item
+        .get("savedAt")
+        .and_then(Value::as_str)
+        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
+    else {
+        return true;
+    };
+    chrono::Utc::now().signed_duration_since(saved_at).num_hours() < ttl_hours
+}
+
 pub(crate) fn dispatch_continue_watching_playback(
     engine: &mut HeadlessEngine,
     item: Value,
@@ -306,7 +333,7 @@ pub(crate) fn dispatch_continue_watching_playback(
                 .is_some_and(|v| !v.is_empty())
         });
 
-    if has_saved_source && !current_video_id.is_empty() {
+    if has_saved_source && !current_video_id.is_empty() && saved_stream_reusable(&item, profile.as_ref()) {
         engine.state.player.direct_playback_target = Value::Null;
         return dispatch_load_streams(
             engine,

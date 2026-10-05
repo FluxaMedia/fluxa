@@ -219,6 +219,10 @@ fn section_label(title: &str, language: &str) -> String {
     )
 }
 
+fn row_enabled(key: &str, settings: &SettingsModel) -> bool {
+    key != "reuseLastStreamTtlHours" || settings.bool_value("reuseLastStream")
+}
+
 pub(super) fn visible_groups(
     settings: &SettingsModel,
     viewport: Viewport,
@@ -233,7 +237,7 @@ pub(super) fn visible_groups(
                 .rows
                 .iter()
                 .enumerate()
-                .filter(|(_, row)| row_applies(row.key, viewport))
+                .filter(|(_, row)| row_applies(row.key, viewport) && row_enabled(row.key, settings))
                 .filter(|(_, row)| {
                     settings_row_label(row, language)
                         .to_lowercase()
@@ -259,7 +263,7 @@ pub(super) fn visible_groups(
     for &(count, key) in SETTINGS_SECTIONS[active].groups {
         let end = start + count;
         let visible: Vec<usize> = (start..end)
-            .filter(|&index| row_applies(rows[index].key, viewport))
+            .filter(|&index| row_applies(rows[index].key, viewport) && row_enabled(rows[index].key, settings))
             .map(|index| offset + index)
             .collect();
         if !visible.is_empty() {
@@ -525,6 +529,10 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         | "autoPlayCountdownSecs"
         | "playerForwardBufferSeconds"
         | "playerBackBufferSeconds" => format!("{value}s"),
+        "reuseLastStreamTtlHours" => match value.parse::<u32>() {
+            Ok(hours) if hours >= 24 => format!("{}d", hours / 24),
+            _ => format!("{value}h"),
+        },
         "holdSpeed" => format!("{value}x"),
         "playerBufferCacheMb" => format!("{value} MB"),
         _ => localized_or(&format!("settings.option.{value}"), value, language),

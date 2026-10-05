@@ -521,7 +521,7 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 6] = [
     (7, "settings.group.poster_top_numbers"),
     (4, "settings.group.expanded_posters"),
 ];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 32] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -543,7 +543,7 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
         options: &["5", "7", "10", "15"],
     },
     SettingsRow {
-        label: "Try binge group",
+        label: "Prefer binge group",
         key: "tryBingeGroup",
         options: &[],
     },
@@ -555,6 +555,26 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
     SettingsRow {
         label: "Picture in picture",
         key: "pictureInPicture",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Reuse last stream",
+        key: "reuseLastStream",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Reuse last stream TTL",
+        key: "reuseLastStreamTtlHours",
+        options: &["1", "2", "3", "4", "5", "6", "24", "48", "72", "96", "120", "144"],
+    },
+    SettingsRow {
+        label: "Preload next episode sources",
+        key: "preloadNextEpisodeSources",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Reuse binge group",
+        key: "reuseBingeGroup",
         options: &[],
     },
     SettingsRow {
@@ -663,8 +683,9 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 28] = [
         options: &["0", "15", "30", "60", "120", "300"],
     },
 ];
-pub(super) const PLAYBACK_GROUPS: [(usize, &str); 5] = [
+pub(super) const PLAYBACK_GROUPS: [(usize, &str); 6] = [
     (7, "settings.group.playback"),
+    (4, "settings.group.stream_reuse"),
     (4, "settings.group.sources_video"),
     (9, "settings.group.skip_controls"),
     (4, "settings.group.upscaling_motion"),

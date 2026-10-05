@@ -919,6 +919,34 @@
       "category": "general"
     },
     {
+      "key": "preloadNextEpisodeSources",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "reuseBingeGroup",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "reuseLastStream",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "reuseLastStreamTtlHours",
+      "type": "string",
+      "default": "24",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "rememberLastProfile",
       "type": "boolean",
       "default": null,

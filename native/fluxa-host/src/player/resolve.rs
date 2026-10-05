@@ -60,11 +60,28 @@ pub(super) fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -
         .pointer("/profile/active")
         .cloned()
         .unwrap_or(Value::Null);
-    let mode = profile
-        .get("streamSourceSelectionMode")
+    let mode = if player.manual {
+        "manual"
+    } else {
+        profile
+            .get("streamSourceSelectionMode")
+            .and_then(Value::as_str)
+            .unwrap_or("manual")
+    };
+    let preferred_group = meta
+        .get("preferredBingeGroup")
         .and_then(Value::as_str)
-        .unwrap_or("manual");
-    if mode == "manual" && player.chosen.is_none() {
+        .filter(|group| !group.is_empty());
+    let group_match = profile
+        .get("tryBingeGroup")
+        .and_then(Value::as_bool)
+        .unwrap_or(false)
+        && preferred_group.is_some_and(|group| {
+            streams
+                .iter()
+                .any(|stream| stream.get("bingeGroup").and_then(Value::as_str) == Some(group))
+        });
+    if mode == "manual" && player.chosen.is_none() && !group_match {
         if player.sources.is_none() {
             player.sources = Some(streams.clone());
         }
@@ -89,6 +106,7 @@ pub(super) fn resolution_command(snapshot: &Value, player: &mut PlayerSession) -
         "savedTitle": meta.get("lastStreamTitle").cloned().unwrap_or(Value::Null),
         "sourceSelectionMode": mode,
         "regexPattern": profile.get("streamSourceRegexPattern"),
+        "preferredBingeGroup": preferred_group,
         "title": meta.get("name").or_else(|| meta.get("title")),
         "originalName": meta.get("originalName"),
         "year": meta_year(meta),

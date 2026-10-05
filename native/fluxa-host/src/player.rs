@@ -370,11 +370,25 @@ impl PlayerSession {
     }
 
     pub(crate) fn pick_manually(&mut self, snapshot: Option<&Value>) {
-        self.manual = snapshot
-            .and_then(|snapshot| snapshot.pointer("/profile/active/streamSourceSelectionMode"))
-            .and_then(Value::as_str)
-            .unwrap_or("manual")
-            == "manual";
+        self.manual = self.meta.get("pickSource").is_some()
+            || snapshot
+                .and_then(|snapshot| snapshot.pointer("/profile/active/streamSourceSelectionMode"))
+                .and_then(Value::as_str)
+                .unwrap_or("manual")
+                == "manual";
+    }
+
+    fn saved_stream_failed(&self) -> bool {
+        let saved = ["lastStreamUrl", "lastStream"].iter().any(|key| {
+            self.meta
+                .get(*key)
+                .is_some_and(|value| !value.is_null() && value.as_str() != Some(""))
+        });
+        saved
+            && self.chosen.is_none()
+            && !self.local
+            && !self.status.has_frame
+            && (self.error.is_some() || self.status.error.is_some())
     }
 
     fn load_stage(&self) -> String {
@@ -566,7 +580,27 @@ pub(crate) fn open_file(state: &mut RendererState, uri: &str, title: &str) -> Va
     json!({"type": "playerResolvePlaybackRequested", "url": uri, "title": title})
 }
 
+fn fall_back_to_sources(state: &mut RendererState) {
+    if !state.player.as_ref().is_some_and(PlayerSession::saved_stream_failed) {
+        return;
+    }
+    let Some(mut item) = state.player.as_ref().map(|player| player.meta.clone()) else {
+        return;
+    };
+    if let Some(fields) = item.as_object_mut() {
+        for key in ["lastStream", "lastStreamUrl", "lastStreamTitle", "lastStreamIndex"] {
+            fields.remove(key);
+        }
+        fields.insert("pickSource".to_owned(), true.into());
+    }
+    close(state);
+    state
+        .pending_native_actions
+        .push(NativeAction::StartPlayback { item });
+}
+
 pub(crate) fn pump(state: &mut RendererState) {
+    fall_back_to_sources(state);
     if let Some((time, _)) = state
         .player
         .as_mut()
@@ -808,6 +842,18 @@ fn play_next(state: &mut RendererState) {
     start_next(state, false);
 }
 
+fn current_binge_group(state: &RendererState) -> Option<String> {
+    let snapshot = state.session.as_ref()?.snapshot();
+    let index = snapshot.pointer("/player/currentStreamIndex")?.as_u64()? as usize;
+    snapshot
+        .pointer("/player/currentStreams")?
+        .as_array()?
+        .get(index)?
+        .get("bingeGroup")?
+        .as_str()
+        .map(ToOwned::to_owned)
+}
+
 fn start_next(state: &mut RendererState, any: bool) {
     let Some(player) = state.player.as_ref() else {
         return;
@@ -824,9 +870,19 @@ fn start_next(state: &mut RendererState, any: bool) {
         return;
     };
     let mut item = player.meta.clone();
+    let group = state
+        .settings
+        .bool_value("reuseBingeGroup")
+        .then(|| current_binge_group(state))
+        .flatten();
     if let Some(fields) = item.as_object_mut() {
-        fields.retain(|key, _| !key.starts_with("last") && key != "timeOffset");
+        fields.retain(|key, _| {
+            !key.starts_with("last") && key != "timeOffset" && key != "preferredBingeGroup"
+        });
         fields.insert("lastVideoId".to_owned(), json!(id));
+        if let Some(group) = group {
+            fields.insert("preferredBingeGroup".to_owned(), json!(group));
+        }
     }
     close(state);
     state

@@ -255,6 +255,11 @@ pub(super) fn native_action_for_node(
                 id: card.id.as_ref()?.clone(),
             });
         }
+        if card.row_kind == fluxa_ui::HomeRowKind::Continue && !card.upcoming {
+            return Some(NativeAction::StartPlayback {
+                item: playback_item(&card.raw, Some(card), None),
+            });
+        }
         (card.id.as_ref()?, card.item_type.as_ref()?, &card.raw)
     } else {
         return None;
