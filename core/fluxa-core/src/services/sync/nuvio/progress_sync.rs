@@ -112,6 +112,23 @@ pub(crate) fn progress_meta_needs_json(args_json: &str) -> Option<String> {
             Some(json!({ "contentId": content_id, "contentType": content_type, "progressKey": progress_key }))
         })
         .collect();
+    let mut needs = needs;
+    for item in &library {
+        let (Some(id), Some(content_type)) = (
+            item.get("content_id").and_then(Value::as_str).map(str::trim),
+            item.get("content_type").and_then(Value::as_str).map(str::trim),
+        ) else {
+            continue;
+        };
+        let has_genres = item
+            .get("genres")
+            .and_then(Value::as_array)
+            .is_some_and(|genres| !genres.is_empty());
+        if id.is_empty() || content_type.is_empty() || has_genres || !seen.insert((id, content_type)) {
+            continue;
+        }
+        needs.push(json!({ "contentId": id, "contentType": content_type, "progressKey": id }));
+    }
     Some(Value::Array(needs).to_string())
 }
 

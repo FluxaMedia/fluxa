@@ -6,10 +6,26 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
     let args = parse(args_json)?;
     let library = args.get("library")?.as_array()?.clone();
     let progress = super::delta_state::projection(args.get("progress")?.as_array()?);
-    let watchlist: Value = serde_json::from_str(&library_to_watchlist_json(
+    let metas = args.get("metas").and_then(Value::as_object);
+    let mut watchlist: Value = serde_json::from_str(&library_to_watchlist_json(
         &json!({"library": library.clone()}).to_string(),
     )?)
     .ok()?;
+    for entry in watchlist.as_array_mut()?.iter_mut().filter_map(Value::as_object_mut) {
+        let Some(meta) = entry
+            .get("id")
+            .and_then(Value::as_str)
+            .and_then(|id| metas?.get(id))
+        else {
+            continue;
+        };
+        for field in ["genres", "releaseInfo", "imdbRating"] {
+            let missing = entry.get(field).is_none_or(|value| value.is_null());
+            if let Some(value) = meta.get(field).filter(|value| missing && !value.is_null()) {
+                entry.insert(field.to_owned(), value.clone());
+            }
+        }
+    }
     let watching: Value = serde_json::from_str(&resolve_continue_watching_json(
         &json!({"progress": progress, "addonMetas": {}}).to_string(),
     )?)
@@ -18,7 +34,6 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
         .iter()
         .filter_map(|item| Some((item.get("content_id")?.as_str()?, item)))
         .collect();
-    let metas = args.get("metas").and_then(Value::as_object);
     let watching = watching
         .as_array()?
         .iter()
