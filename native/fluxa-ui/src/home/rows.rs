@@ -104,6 +104,7 @@ pub(crate) fn draw_home_rows(
     };
     context.data_mut(|data| data.insert_temp(expand_id, expand.clone()));
     let mut expanded_card: Option<ExpandedPoster> = None;
+    let mut expanded_panels: Vec<(u64, Rect, &HomeCard, f32)> = Vec::new();
     for (row_index, (title, cards, kind)) in home
         .content_rows_with_kind()
         .into_iter()
@@ -357,6 +358,7 @@ pub(crate) fn draw_home_rows(
                                         card.id.as_deref() == Some(trailer.item_id.as_str())
                                     })
                                     .and_then(|trailer| trailer.texture);
+                                expanded_panels.push((node_id, rect, card, ease));
                                 components::expanded_poster_card(
                                     ui.painter(),
                                     rect,
@@ -406,6 +408,14 @@ pub(crate) fn draw_home_rows(
                 });
             });
         row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
+    }
+    for (node, rect, card, ease) in expanded_panels {
+        let synopsis =
+            first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
+        let meta = hero_meta_line(&card.raw, &home.language);
+        components::expanded_info_panel(
+            context, node, rect, screen, &meta, &synopsis, ease, metrics,
+        );
     }
     context.data_mut(|data| match expanded_card {
         Some(card) => {

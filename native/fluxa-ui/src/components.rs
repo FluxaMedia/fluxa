@@ -993,9 +993,10 @@ pub(super) fn expanded_poster_card(
         let alpha = (255.0 * progress) as u8;
         let url = card.backdrop_url.as_deref().or(card.artwork_url.as_deref());
         let (backdrop_bounds, logo_bounds) = expanded_bounds(rect.height());
+        let image = Rect::from_min_max(rect.min, Pos2::new(rect.right(), rect.bottom() + radius));
         rounded_artwork(
             painter,
-            rect,
+            image,
             radius,
             url,
             artwork_target_size(backdrop_bounds, painter.ctx().pixels_per_point()),
@@ -1011,11 +1012,11 @@ pub(super) fn expanded_poster_card(
             );
             painter.add(
                 egui::epaint::RectShape::filled(
-                    rect,
+                    image,
                     radius,
                     Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
                 )
-                .with_texture(texture, cover_uv([1920, 1080], rect)),
+                .with_texture(texture, cover_uv([1920, 1080], image)),
             );
         }
         let scrim = Rect::from_min_max(
@@ -1060,6 +1061,82 @@ pub(super) fn expanded_poster_card(
             }
         }
     });
+}
+
+pub(super) fn expanded_info_panel(
+    context: &egui::Context,
+    node: u64,
+    rect: Rect,
+    clip: Rect,
+    meta: &str,
+    synopsis: &str,
+    progress: f32,
+    metrics: UiMetrics,
+) {
+    let pad = 14.0;
+    let body = preview_body_size(metrics);
+    let alpha = (255.0 * progress) as u8;
+    let mut job = egui::text::LayoutJob::single_section(
+        synopsis.to_owned(),
+        egui::TextFormat::simple(crate::fonts::regular(body), Color32::WHITE),
+    );
+    job.wrap.max_width = rect.width() - pad * 2.0;
+    job.wrap.max_rows = 2;
+    let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
+    let meta_height = if meta.is_empty() {
+        0.0
+    } else {
+        body * 1.25 + 6.0
+    };
+    let full = pad * 2.0 + meta_height + galley.size().y;
+    let radius = metrics.card_radius;
+    let corner = egui::CornerRadius::from(radius);
+    egui::Area::new(Id::new(("fluxa-expanded-info", node)))
+        .order(egui::Order::Tooltip)
+        .fixed_pos(rect.left_bottom())
+        .interactable(false)
+        .constrain(false)
+        .show(context, |ui| {
+            let panel =
+                Rect::from_min_size(rect.left_bottom(), Vec2::new(rect.width(), full * progress));
+            let painter = ui
+                .painter()
+                .with_clip_rect(clip.intersect(panel.expand(2.0)));
+            painter.rect_filled(
+                panel,
+                egui::CornerRadius {
+                    nw: 0,
+                    ne: 0,
+                    sw: corner.sw,
+                    se: corner.se,
+                },
+                metrics.surface,
+            );
+            painter.rect_stroke(
+                Rect::from_min_max(rect.min, panel.max),
+                radius,
+                egui::Stroke::new(1.0, metrics.border),
+                egui::StrokeKind::Inside,
+            );
+            let left = rect.left() + pad;
+            let mut y = panel.top() + pad;
+            if !meta.is_empty() {
+                paint_elided_text(
+                    &painter,
+                    Pos2::new(left, y),
+                    meta,
+                    crate::fonts::regular(body),
+                    rect.width() - pad * 2.0,
+                    metrics.ink(alpha),
+                );
+                y += meta_height;
+            }
+            painter.galley_with_override_text_color(
+                Pos2::new(left, y),
+                galley,
+                metrics.ink(((150.0 * progress) as u8).max(1)),
+            );
+        });
 }
 
 const PREVIEW_PAD: f32 = 18.0;
