@@ -164,6 +164,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         NativeRenderer.videoStatusNative(position, duration, paused, muted, hasFrame, buffering, error)
     }
 
+    fun reportVideoTracks(json: String) {
+        NativeRenderer.videoTracksNative(json)
+    }
+
     fun coreSnapshotJson(): String =
         if (nativeHandle == 0L) "{}" else NativeRenderer.snapshotNative(nativeHandle)
 
@@ -883,6 +887,7 @@ private object NativeRenderer {
         buffering: Float,
         error: String?,
     )
+    @JvmStatic external fun videoTracksNative(json: String)
     @JvmStatic external fun accessibilityTreeNative(handle: Long): String?
     @JvmStatic external fun focusNodeNative(handle: Long, node: Long)
     @JvmStatic external fun activateNodeNative(handle: Long, node: Long)

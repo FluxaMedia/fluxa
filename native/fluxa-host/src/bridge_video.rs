@@ -1,12 +1,13 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{VideoBackend, VideoCommand, VideoStatus};
+use crate::{VideoBackend, VideoCommand, VideoStatus, VideoTrack};
 use serde_json::{Value, json};
 
 #[derive(Default)]
 pub struct VideoBridge {
     requests: Vec<Value>,
     status: VideoStatus,
+    tracks: Vec<VideoTrack>,
 }
 
 impl VideoBridge {
@@ -16,6 +17,10 @@ impl VideoBridge {
 
     pub fn set_status(&mut self, status: VideoStatus) {
         self.status = status;
+    }
+
+    pub fn set_tracks(&mut self, tracks: Vec<VideoTrack>) {
+        self.tracks = tracks;
     }
 }
 
@@ -52,6 +57,7 @@ impl VideoBackend for BridgeVideo {
     fn load(&mut self, _instance: &wgpu::Instance, _device: &wgpu::Device, url: &str) {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();
+            bridge.tracks.clear();
         }
         self.send(json!({"type": "load", "url": url}));
     }
@@ -59,6 +65,7 @@ impl VideoBackend for BridgeVideo {
     fn stop(&mut self) {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();
+            bridge.tracks.clear();
         }
         self.send(json!({"type": "stop"}));
     }
@@ -75,9 +82,30 @@ impl VideoBackend for BridgeVideo {
             VideoCommand::ToggleMute => json!({"type": "toggleMute"}),
             VideoCommand::SetVolume(volume) => json!({"type": "setVolume", "value": volume}),
             VideoCommand::SetSpeed(rate) => json!({"type": "setSpeed", "value": rate}),
-            VideoCommand::Shaders(_) | VideoCommand::SelectTracks(_) | VideoCommand::Mpv(_) => {
-                return;
+            VideoCommand::SelectTracks(selection) => {
+                if let Ok(mut bridge) = self.0.lock() {
+                    for track in bridge.tracks.iter_mut() {
+                        let chosen = if track.subtitle {
+                            selection.subtitle.as_ref()
+                        } else {
+                            selection.audio.as_ref()
+                        };
+                        if let Some(id) = chosen {
+                            track.selected = &track.id == id;
+                        } else if track.subtitle && selection.subtitles_off {
+                            track.selected = false;
+                        }
+                    }
+                }
+                json!({
+                    "type": "selectTracks",
+                    "audio": selection.audio,
+                    "subtitle": selection.subtitle,
+                    "subtitlesOff": selection.subtitles_off,
+                })
             }
+            VideoCommand::Mpv(args) => json!({"type": "mpv", "args": args}),
+            VideoCommand::Shaders(_) => return,
         };
         self.send(request);
     }
@@ -90,6 +118,13 @@ impl VideoBackend for BridgeVideo {
         self.0
             .lock()
             .map(|bridge| bridge.status.clone())
+            .unwrap_or_default()
+    }
+
+    fn tracks(&mut self) -> Vec<VideoTrack> {
+        self.0
+            .lock()
+            .map(|bridge| bridge.tracks.clone())
             .unwrap_or_default()
     }
 

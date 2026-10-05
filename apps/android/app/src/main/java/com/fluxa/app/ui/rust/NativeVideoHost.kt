@@ -28,10 +28,20 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     }
     var onPlayingChanged: ((Boolean) -> Unit)? = null
 
+    private var lastTracks = ""
+    private var tick = 0
+
     private val reportStatus = object : Runnable {
         override fun run() {
             val player = player ?: return
             player.poll()
+            if (tick++ % 4 == 0) {
+                val tracks = player.trackListJson()
+                if (tracks != lastTracks) {
+                    lastTracks = tracks
+                    renderer.reportVideoTracks(tracks)
+                }
+            }
             if (BuildConfig.IS_TV) applyDisplayMode(player.displayModeHint)
             renderer.reportVideoStatus(
                 player.position,
@@ -79,6 +89,14 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 "setVolume" -> player?.setVolume(request.optDouble("value"))
                 "mediaSession" -> request.optJSONObject("plan")?.let(mediaSession::update)
                 "setSpeed" -> player?.setSpeed(request.optDouble("value"))
+                "selectTracks" -> player?.selectTracks(
+                    request.optString("audio").takeUnless { request.isNull("audio") || it.isBlank() },
+                    request.optString("subtitle").takeUnless { request.isNull("subtitle") || it.isBlank() },
+                    request.optBoolean("subtitlesOff"),
+                )
+                "mpv" -> request.optJSONArray("args")?.let { args ->
+                    player?.mpvCommand(Array(args.length()) { args.optString(it) })
+                }
             }
         }
     }
@@ -88,6 +106,8 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         stop()
         val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, videoOptions) }.getOrNull() ?: return
         this.player = player
+        lastTracks = ""
+        tick = 0
         onPlayingChanged?.invoke(true)
         player.load(url, audioLanguage, subtitleLanguage)
         videoSurface.video = player

@@ -65,6 +65,35 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
             return if (width > 0 && height > 0 && rate > 0f) DisplayModeHint(width, height, rate) else null
         }
 
+    fun trackListJson(): String {
+        val count = Mpv.getProperty(mpv, "track-list/count")?.toIntOrNull() ?: 0
+        val tracks = org.json.JSONArray()
+        for (index in 0 until count) {
+            val prefix = "track-list/$index"
+            val type = Mpv.getProperty(mpv, "$prefix/type")
+            if (type != "audio" && type != "sub") continue
+            tracks.put(
+                org.json.JSONObject()
+                    .put("id", Mpv.getProperty(mpv, "$prefix/id"))
+                    .put("subtitle", type == "sub")
+                    .put("language", Mpv.getProperty(mpv, "$prefix/lang"))
+                    .put("title", Mpv.getProperty(mpv, "$prefix/title") ?: Mpv.getProperty(mpv, "$prefix/codec")?.uppercase())
+                    .put("selected", Mpv.getProperty(mpv, "$prefix/selected") == "yes")
+                    .put("external", Mpv.getProperty(mpv, "$prefix/external") == "yes"),
+            )
+        }
+        return tracks.toString()
+    }
+
+    fun selectTracks(audio: String?, subtitle: String?, subtitlesOff: Boolean) {
+        if (audio != null) Mpv.setProperty(mpv, "aid", audio)
+        if (subtitle != null) Mpv.setProperty(mpv, "sid", subtitle) else if (subtitlesOff) Mpv.setProperty(mpv, "sid", "no")
+    }
+
+    fun mpvCommand(args: Array<String>) {
+        Mpv.command(mpv, args)
+    }
+
     private fun double(name: String) = Mpv.getProperty(mpv, name)?.toDoubleOrNull() ?: 0.0
 
     fun poll() {

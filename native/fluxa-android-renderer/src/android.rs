@@ -203,6 +203,47 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoTracksNative(
+    mut env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    json: JString<'_>,
+) {
+    let Some(text) = string(&mut env, &json) else {
+        return;
+    };
+    let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(&text) else {
+        return;
+    };
+    let text_of = |item: &serde_json::Value, key: &str| {
+        item.get(key)
+            .and_then(serde_json::Value::as_str)
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned)
+    };
+    let flag = |item: &serde_json::Value, key: &str| {
+        item.get(key)
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false)
+    };
+    let tracks = items
+        .iter()
+        .filter_map(|item| {
+            Some(fluxa_host::VideoTrack {
+                id: text_of(item, "id")?,
+                subtitle: flag(item, "subtitle"),
+                language: text_of(item, "language"),
+                title: text_of(item, "title"),
+                selected: flag(item, "selected"),
+                external: flag(item, "external"),
+            })
+        })
+        .collect();
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_tracks(tracks);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_startSessionNative(
     mut env: JNIEnv<'_>,
     _class: JClass<'_>,
