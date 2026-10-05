@@ -5,3 +5,4 @@ pub(crate) mod sources;
 pub(crate) mod streams;
 
 pub use plugins::network as plugin_network;
+pub use plugins::streams as plugin_streams;
