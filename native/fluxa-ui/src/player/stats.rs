@@ -100,14 +100,56 @@ pub(super) fn draw_stats(chrome: &Chrome) {
                 inner.width() * 0.4,
                 150,
             );
-            chrome.text(
-                Pos2::new(inner.right(), y),
-                Align2::RIGHT_TOP,
-                value,
-                metrics.text,
-                inner.width() * 0.58,
-                230,
-            );
+            let max = inner.width() * 0.58;
+            match value.split_once(" → ") {
+                Some((from, to)) => {
+                    let arrow = metrics.text;
+                    let gap = metrics.text * 0.4;
+                    let font = FontId::proportional(metrics.text);
+                    let to_width = chrome
+                        .painter
+                        .layout_no_wrap(to.to_owned(), font.clone(), ink(230))
+                        .size()
+                        .x
+                        .min(max * 0.5);
+                    chrome.text(
+                        Pos2::new(inner.right(), y),
+                        Align2::RIGHT_TOP,
+                        to,
+                        metrics.text,
+                        to_width,
+                        230,
+                    );
+                    let arrow_right = inner.right() - to_width - gap;
+                    if let Some(icon) = chrome.icons.get("ArrowRight") {
+                        chrome.painter.image(
+                            icon,
+                            Rect::from_min_size(
+                                Pos2::new(arrow_right - arrow, y + (line - arrow) * 0.5 - 1.0),
+                                Vec2::splat(arrow),
+                            ),
+                            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                            ink(230),
+                        );
+                    }
+                    chrome.text(
+                        Pos2::new(arrow_right - arrow - gap, y),
+                        Align2::RIGHT_TOP,
+                        from,
+                        metrics.text,
+                        max - to_width - arrow - gap * 2.0,
+                        230,
+                    );
+                }
+                None => chrome.text(
+                    Pos2::new(inner.right(), y),
+                    Align2::RIGHT_TOP,
+                    value,
+                    metrics.text,
+                    max,
+                    230,
+                ),
+            }
             y += line;
         }
     }

@@ -340,10 +340,10 @@ impl Chord {
             }
         }
         parts.push(match self.key.as_str() {
-            "left" => "←".to_owned(),
-            "right" => "→".to_owned(),
-            "up" => "↑".to_owned(),
-            "down" => "↓".to_owned(),
+            "left" => "Left".to_owned(),
+            "right" => "Right".to_owned(),
+            "up" => "Up".to_owned(),
+            "down" => "Down".to_owned(),
             "comma" => ",".to_owned(),
             "plus" => "+".to_owned(),
             "minus" => "-".to_owned(),

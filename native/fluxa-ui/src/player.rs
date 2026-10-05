@@ -136,6 +136,7 @@ const PLAYER_ICONS: &[&str] = &[
     "Flag",
     "Sparkles",
     "Check",
+    "ArrowRight",
 ];
 
 struct Icons(Vec<(&'static str, TextureId)>);
