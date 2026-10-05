@@ -457,9 +457,27 @@ pub(crate) fn draw_home_with_options(
         let synopsis_height = synopsis_galley
             .as_ref()
             .map_or(0.0, |galley| galley.size().y);
+        let trailer_playing = home
+            .trailer
+            .as_ref()
+            .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
+            .is_some_and(|trailer| trailer.texture.is_some());
+        let text_fade = 1.0
+            - context.animate_bool_with_time(
+                Id::new("fluxa-hero-text-fade"),
+                trailer_playing,
+                0.4,
+            );
+        let metadata_gap = style.metadata_gap * text_fade;
+        let metadata_height = metadata_height * text_fade;
+        let synopsis_height = synopsis_height * text_fade;
         let play_height = style.button_height;
-        let block_height =
-            title_height + metadata_height + synopsis_height + play_height + style.stack_extra;
+        let block_height = title_height
+            + metadata_height
+            + synopsis_height
+            + play_height
+            + style.stack_extra
+            - style.metadata_gap * (1.0 - text_fade);
         let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
             - scroll_offset
             + hero_slide_offset;
@@ -542,10 +560,10 @@ pub(crate) fn draw_home_with_options(
                             },
                             truncate_text(&hero.eyebrow, style.metadata_chars),
                             egui::FontId::proportional(style.metadata_size),
-                            metrics.text_secondary,
+                            metrics.text_secondary.gamma_multiply(text_fade),
                         );
                     }
-                    ui.add_space(style.metadata_gap);
+                    ui.add_space(metadata_gap);
                     if let Some(galley) = synopsis_galley.as_ref() {
                         let synopsis_rect = ui
                             .allocate_exact_size(
@@ -558,10 +576,10 @@ pub(crate) fn draw_home_with_options(
                         } else {
                             synopsis_rect.left()
                         };
-                        ui.painter().galley(
+                        ui.painter().galley_with_override_text_color(
                             Pos2::new(synopsis_x, synopsis_rect.top()),
                             galley.clone(),
-                            synopsis_color,
+                            synopsis_color.gamma_multiply(text_fade),
                         );
                     }
                     ui.add_space(style.button_gap);
