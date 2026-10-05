@@ -166,7 +166,8 @@ pub(crate) struct PlayerSession {
     cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
-    stream_rx: Option<Receiver<(usize, Vec<Value>)>>,
+    opened_ms: u128,
+    feed_version: u64,
     stream_parts: std::collections::BTreeMap<usize, Vec<Value>>,
     streams_requested: bool,
     streams_done: bool,
@@ -245,7 +246,10 @@ impl PlayerSession {
             recommendation_index: 0,
             load_progress: 0.0,
             sources: None,
-            stream_rx: None,
+            opened_ms: std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_or(0, |elapsed| elapsed.as_millis()),
+            feed_version: 0,
             stream_parts: std::collections::BTreeMap::new(),
             streams_requested: false,
             streams_done: false,
@@ -387,7 +391,7 @@ impl PlayerSession {
     }
 
     fn streams_listing(&self) -> bool {
-        self.stream_rx.is_some() && !self.streams_done
+        self.streams_requested && !self.streams_done
     }
 
     fn listed_streams(&self) -> Vec<Value> {
@@ -395,38 +399,24 @@ impl PlayerSession {
     }
 
     fn poll_streams(&mut self, session: &fluxa_effects::SessionHandle) {
-        if self.manual && !self.local && !self.streams_requested && self.chosen.is_none() {
-            self.streams_requested = true;
-            self.stream_rx = Some(session.fetch_meta_streams_progressive(self.meta.clone()));
+        if !self.manual || self.local || self.chosen.is_some() || self.streams_done {
+            return;
         }
-        let Some(rx) = self
-            .stream_rx
-            .as_ref()
-            .filter(|_| !self.streams_done && self.chosen.is_none())
-        else {
+        self.streams_requested = true;
+        let Some(feed) = session.stream_feed_since(self.opened_ms, self.feed_version) else {
             return;
         };
-        let mut changed = false;
-        loop {
-            match rx.try_recv() {
-                Ok((index, streams)) => {
-                    self.stream_parts.insert(index, streams);
-                    changed = true;
-                }
-                Err(std::sync::mpsc::TryRecvError::Empty) => break,
-                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
-                    self.streams_done = true;
-                    changed = true;
-                    break;
-                }
-            }
+        self.feed_version = feed.version;
+        self.stream_parts = feed.parts;
+        self.streams_done = feed.done;
+        let listed = self.listed_streams();
+        if !listed.is_empty() || self.streams_done {
+            self.sources = Some(listed);
         }
-        if changed && self.chosen.is_none() {
-            let listed = self.listed_streams();
-            if !listed.is_empty() || self.streams_done {
-                self.sources = Some(listed);
-            }
-        }
+    }
+
+    pub(crate) fn wants_landscape(&self) -> bool {
+        !(self.manual && self.chosen.is_none())
     }
 
     fn saved_stream_failed(&self) -> bool {

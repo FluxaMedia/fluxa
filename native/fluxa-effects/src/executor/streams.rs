@@ -22,22 +22,44 @@ impl EffectExecutor {
         Ok(request)
     }
 
-    pub fn fetch_meta_streams_progressive(
-        &self,
-        meta: Value,
-    ) -> std::sync::mpsc::Receiver<(usize, Vec<Value>)> {
-        let (sender, receiver) = std::sync::mpsc::channel();
-        let executor = self.clone();
-        let task = async move {
-            if let Ok(request) = executor.direct_streams_request(&meta).await {
-                let _ = executor.fetch_streams_into(&request, Some(sender)).await;
+    pub fn stream_feed_since(&self, opened_ms: u128, version: u64) -> Option<FeedSnapshot> {
+        let feed = self.feed.lock().ok()?;
+        (feed.started_ms >= opened_ms && feed.version != version).then(|| FeedSnapshot {
+            version: feed.version,
+            parts: feed.parts.clone(),
+            done: feed.done,
+        })
+    }
+
+    fn begin_stream_feed(&self) -> u64 {
+        let mut feed = self.feed.lock().unwrap_or_else(|error| error.into_inner());
+        feed.generation += 1;
+        feed.version += 1;
+        feed.parts.clear();
+        feed.done = false;
+        feed.started_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map_or(0, |elapsed| elapsed.as_millis());
+        feed.generation
+    }
+
+    fn feed_progress(&self, generation: u64) -> Progress {
+        let feed = self.feed.clone();
+        std::sync::Arc::new(move |index, streams| {
+            let mut feed = feed.lock().unwrap_or_else(|error| error.into_inner());
+            if feed.generation == generation {
+                feed.parts.insert(index, streams);
+                feed.version += 1;
             }
-        };
-        #[cfg(target_arch = "wasm32")]
-        wasm_bindgen_futures::spawn_local(task);
-        #[cfg(not(target_arch = "wasm32"))]
-        super::runtime().spawn(task);
-        receiver
+        })
+    }
+
+    fn finish_stream_feed(&self, generation: u64) {
+        let mut feed = self.feed.lock().unwrap_or_else(|error| error.into_inner());
+        if feed.generation == generation {
+            feed.done = true;
+            feed.version += 1;
+        }
     }
 
     pub(super) async fn prepare_direct_playback(&self, payload: &Value) -> Result<Value, String> {
@@ -53,7 +75,22 @@ impl EffectExecutor {
             .or_else(|| meta.get("id").and_then(Value::as_str))
             .or_else(|| meta.get("imdb_id").and_then(Value::as_str))
             .unwrap_or_default();
-        let streams = self.fetch_streams(&request).await?;
+        let manual = meta.get("pickSource").is_some()
+            || payload
+                .pointer("/profile/streamSourceSelectionMode")
+                .and_then(Value::as_str)
+                .unwrap_or("manual")
+                == "manual";
+        let streams = if manual {
+            let generation = self.begin_stream_feed();
+            let result = self
+                .fetch_streams_into(&request, Some(self.feed_progress(generation)))
+                .await;
+            self.finish_stream_feed(generation);
+            result?
+        } else {
+            self.fetch_streams(&request).await?
+        };
         let has_stream_providers = !streams.is_empty();
         let available_addons = core_value(
             "detailStreamResultPlan",
@@ -136,7 +173,7 @@ impl EffectExecutor {
     async fn fetch_streams_into(
         &self,
         request: &Value,
-        progress: Option<std::sync::mpsc::Sender<(usize, Vec<Value>)>>,
+        progress: Option<Progress>,
     ) -> Result<Vec<Value>, String> {
         let policy = core_value("resourceFetchExecutionPolicy", request.clone())
             .ok_or_else(|| "Fluxa Core could not create a stream fetch plan".to_owned())?;
@@ -215,7 +252,7 @@ impl EffectExecutor {
                 })
                 .unwrap_or_default();
                 if let Some(progress) = &progress {
-                    let _ = progress.send((index, streams.clone()));
+                    progress(index, streams.clone());
                 }
                 (index, streams)
             }));
@@ -241,7 +278,7 @@ impl EffectExecutor {
                 jobs.push(Box::pin(async move {
                     let streams = executor.run_plugin_scraper(scraper, target).await;
                     if let Some(progress) = &progress {
-                        let _ = progress.send((index, streams.clone()));
+                        progress(index, streams.clone());
                     }
                     (index, streams)
                 }));
@@ -387,3 +424,20 @@ where
 type JobFuture = futures::future::BoxFuture<'static, (usize, Vec<Value>)>;
 #[cfg(target_arch = "wasm32")]
 type JobFuture = futures::future::LocalBoxFuture<'static, (usize, Vec<Value>)>;
+
+type Progress = std::sync::Arc<dyn Fn(usize, Vec<Value>) + Send + Sync>;
+
+#[derive(Default)]
+pub struct StreamFeed {
+    generation: u64,
+    version: u64,
+    started_ms: u128,
+    parts: std::collections::BTreeMap<usize, Vec<Value>>,
+    done: bool,
+}
+
+pub struct FeedSnapshot {
+    pub version: u64,
+    pub parts: std::collections::BTreeMap<usize, Vec<Value>>,
+    pub done: bool,
+}

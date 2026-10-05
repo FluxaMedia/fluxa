@@ -294,8 +294,12 @@ impl SessionHandle {
         self.executor.fetch_addon_subtitles(content_type, id)
     }
 
-    pub fn fetch_meta_streams_progressive(&self, meta: Value) -> Receiver<(usize, Vec<Value>)> {
-        self.executor.fetch_meta_streams_progressive(meta)
+    pub fn stream_feed_since(
+        &self,
+        opened_ms: u128,
+        version: u64,
+    ) -> Option<crate::executor::FeedSnapshot> {
+        self.executor.stream_feed_since(opened_ms, version)
     }
 
     pub fn request_ok(&self, plan: Value) -> Receiver<bool> {

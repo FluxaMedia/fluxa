@@ -51,7 +51,10 @@ pub struct EffectExecutor {
     storage: Storage,
     profile_id: Option<std::sync::Arc<str>>,
     cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
+    feed: std::sync::Arc<std::sync::Mutex<streams::StreamFeed>>,
 }
+
+pub use streams::FeedSnapshot;
 
 pub struct EffectCompletion {
     pub effect_id: String,
@@ -69,6 +72,7 @@ impl EffectExecutor {
             storage,
             profile_id: None,
             cancelled: Default::default(),
+            feed: Default::default(),
         }
     }
 
