@@ -17,6 +17,7 @@ struct AppSession {
     executor: EffectExecutor,
     sender: Sender<EffectCompletion>,
     outstanding: usize,
+    plugin_queue: Vec<String>,
 }
 
 impl AppSession {
@@ -39,6 +40,7 @@ impl AppSession {
             executor,
             sender,
             outstanding: 0,
+            plugin_queue: Vec::new(),
         })
     }
 
@@ -84,6 +86,48 @@ impl AppSession {
                 "[fluxa-session] effect {} completion rejected: {error}",
                 completion.effect_id
             ),
+        }
+    }
+
+    fn queue_plugin_repositories(&mut self, urls: Vec<String>) {
+        let known = self
+            .runtime
+            .snapshot()
+            .pointer("/plugins/repositories")
+            .and_then(Value::as_array)
+            .map(|repos| {
+                repos
+                    .iter()
+                    .filter_map(|repo| repo.get("manifestUrl").and_then(Value::as_str))
+                    .map(|url| url.trim_end_matches('/').to_owned())
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        self.plugin_queue = urls
+            .into_iter()
+            .filter(|url| !known.contains(&url.trim_end_matches('/').to_owned()))
+            .collect();
+        self.add_next_plugin_repository();
+    }
+
+    fn add_next_plugin_repository(&mut self) {
+        if self.plugin_queue.is_empty() {
+            return;
+        }
+        let adding = self
+            .runtime
+            .snapshot()
+            .pointer("/plugins/addingRepositoryUrl")
+            .is_some_and(|value| !value.is_null());
+        if adding {
+            return;
+        }
+        let url = self.plugin_queue.remove(0);
+        if let Err(error) = self.dispatch(json!({
+            "type": "pluginRepositoryAddRequested",
+            "manifestUrl": url,
+        })) {
+            crate::log!("[fluxa-session] plugin sync failed: {error}");
         }
     }
 
@@ -173,6 +217,7 @@ impl AppSession {
 enum Command {
     Dispatch(Value),
     Completed(EffectCompletion),
+    NuvioPlugins(Vec<String>),
     Stop,
 }
 
@@ -219,6 +264,20 @@ impl SessionHandle {
             .name("fluxa-session".to_owned())
             .spawn(move || run(session, inbox, shared, pending))
             .map_err(|error| error.to_string())?;
+        #[cfg(not(target_arch = "wasm32"))]
+        let sync = commands.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        let nuvio = executor.clone();
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::executor::runtime().spawn(async move {
+            match nuvio.nuvio_plugin_urls().await {
+                Ok(urls) if !urls.is_empty() => {
+                    let _ = sync.send(Command::NuvioPlugins(urls));
+                }
+                Ok(_) => {}
+                Err(error) => crate::log!("[fluxa-session] Nuvio plugin sync failed: {error}"),
+            }
+        });
         Ok(Self {
             commands,
             published,
@@ -340,7 +399,11 @@ fn run(
                         crate::log!("[fluxa-session] dispatch failed: {error}");
                     }
                 }
-                Command::Completed(completion) => session.complete(completion),
+                Command::Completed(completion) => {
+                    session.complete(completion);
+                    session.add_next_plugin_repository();
+                }
+                Command::NuvioPlugins(urls) => session.queue_plugin_repositories(urls),
                 Command::Stop => return,
             }
             next = inbox.try_recv().ok();

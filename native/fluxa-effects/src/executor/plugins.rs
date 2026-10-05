@@ -59,24 +59,13 @@ impl EffectExecutor {
         let Ok(Some(profile_id)) = self.current_profile_id() else {
             return Vec::new();
         };
-        let mut scrapers = self
+        let scrapers = self
             .storage
             .read_json(&Storage::plugins_key(&profile_id))
             .ok()
             .flatten()
             .and_then(|state| state.get("scrapers").and_then(Value::as_array).cloned())
             .unwrap_or_default();
-        for scraper in self.nuvio_scrapers(&profile_id).await {
-            let key = |value: &Value| {
-                (
-                    value.get("repositoryUrl").cloned(),
-                    value.get("id").cloned(),
-                )
-            };
-            if !scrapers.iter().any(|known| key(known) == key(&scraper)) {
-                scrapers.push(scraper);
-            }
-        }
         scrapers
             .into_iter()
             .filter(|scraper| {
@@ -85,29 +74,7 @@ impl EffectExecutor {
             .collect()
     }
 
-    async fn nuvio_scrapers(&self, profile_id: &str) -> Vec<Value> {
-        static CACHE: OnceLock<Mutex<HashMap<String, (i64, Vec<Value>)>>> = OnceLock::new();
-        let cache = CACHE.get_or_init(Default::default);
-        let now = chrono_unix_seconds();
-        if let Some((at, scrapers)) = cache
-            .lock()
-            .ok()
-            .and_then(|cache| cache.get(profile_id).cloned())
-            && now - at < 600
-        {
-            return scrapers;
-        }
-        let scrapers = self.fetch_nuvio_scrapers().await.unwrap_or_else(|error| {
-            crate::log!("[fluxa-native] Nuvio plugin sync failed: {error}");
-            Vec::new()
-        });
-        if let Ok(mut cache) = cache.lock() {
-            cache.insert(profile_id.to_owned(), (now, scrapers.clone()));
-        }
-        scrapers
-    }
-
-    async fn fetch_nuvio_scrapers(&self) -> Result<Vec<Value>, String> {
+    pub async fn nuvio_plugin_urls(&self) -> Result<Vec<String>, String> {
         let (_, profile, _) = self.active_profile()?;
         let Some(session) = self.nuvio_session(&profile).await? else {
             return Ok(Vec::new());
@@ -124,50 +91,14 @@ impl EffectExecutor {
             .json::<Value>()
             .await
             .map_err(|error| format!("plugin list response invalid: {error}"))?;
-        let urls = rows
+        Ok(rows
             .as_array()
             .into_iter()
             .flatten()
             .filter(|row| row.get("enabled").and_then(Value::as_bool) != Some(false))
             .filter_map(|row| row.get("url").and_then(Value::as_str))
             .map(ToOwned::to_owned)
-            .collect::<Vec<_>>();
-        let client = &session.client;
-        let manifests = futures::future::join_all(urls.iter().map(|url| async move {
-            let manifest = client
-                .get(url)
-                .send()
-                .await
-                .and_then(reqwest::Response::error_for_status)
-                .map_err(|error| error.to_string())?
-                .json::<Value>()
-                .await
-                .map_err(|error| error.to_string());
-            if let Err(error) = &manifest {
-                crate::log!(
-                    "[fluxa-native] plugin manifest failed for {}: {error}",
-                    url_without_query(url)
-                );
-            }
-            manifest.map(|manifest| (url.clone(), manifest))
-        }))
-        .await;
-        let mut scrapers = Vec::new();
-        for (url, manifest) in manifests.into_iter().flatten() {
-            for mut scraper in manifest
-                .get("scrapers")
-                .and_then(Value::as_array)
-                .cloned()
-                .unwrap_or_default()
-            {
-                if let Some(fields) = scraper.as_object_mut() {
-                    fields.insert("repositoryUrl".to_owned(), json!(url));
-                    fields.entry("settings").or_insert_with(|| json!({}));
-                }
-                scrapers.push(scraper);
-            }
-        }
-        Ok(scrapers)
+            .collect())
     }
 
     pub(super) async fn plugin_target(&self, request: &Value) -> Option<PluginTarget> {
