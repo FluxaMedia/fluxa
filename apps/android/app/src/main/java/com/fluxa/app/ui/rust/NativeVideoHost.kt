@@ -18,6 +18,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private val handler = Handler(Looper.getMainLooper())
     private var player: MpvVideo? = null
     private var mpvOptions = ""
+    private var shaders = emptyList<String>()
     private var audioProcessingMode = "reference"
     private var videoOptions = emptyMap<String, String>()
     private var audioLanguage: String? = null
@@ -87,6 +88,11 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 "seekTo" -> player?.seekTo(request.optDouble("seconds"))
                 "toggleMute" -> player?.toggleMute()
                 "setVolume" -> player?.setVolume(request.optDouble("value"))
+                "shaders" -> {
+                    val files = request.optJSONArray("files")
+                    shaders = List(files?.length() ?: 0) { files!!.optString(it) }
+                    player?.setShaders(shaders)
+                }
                 "mediaSession" -> request.optJSONObject("plan")?.let(mediaSession::update)
                 "setSpeed" -> player?.setSpeed(request.optDouble("value"))
                 "selectTracks" -> player?.selectTracks(
@@ -107,6 +113,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         stop()
         val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, videoOptions) }.getOrNull() ?: return
         this.player = player
+        player.setShaders(shaders)
         lastTracks = ""
         tick = 0
         onPlayingChanged?.invoke(true)

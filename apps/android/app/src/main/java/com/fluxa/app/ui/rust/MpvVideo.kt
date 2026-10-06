@@ -15,6 +15,7 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
     private var surface = 0L
     private var pendingUrl: String? = null
     private var loaded = false
+    private var shaders = emptyList<String>()
     var error: String? = null
         private set
 
@@ -158,11 +159,36 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
         Mpv.setProperty(mpv, "speed", rate.coerceIn(0.25, 4.0).toString())
     }
 
+    private fun applyOutput() {
+        if (shaders.isEmpty()) {
+            Mpv.setProperty(mpv, "glsl-shaders", "")
+            Mpv.setProperty(mpv, "hwdec", "mediacodec")
+            Mpv.setProperty(mpv, "vo", "mediacodec_embed")
+        } else {
+            val dir = appContext.filesDir.resolve("mpv/anime4k").apply { mkdirs() }
+            val paths = shaders.map { name ->
+                dir.resolve(name).also { file ->
+                    if (!file.exists()) appContext.assets.open("anime4k/$name").use { input -> file.outputStream().use { input.copyTo(it) } }
+                }.absolutePath
+            }
+            Mpv.setProperty(mpv, "hwdec", "mediacodec")
+            Mpv.setProperty(mpv, "gpu-context", "android")
+            Mpv.setProperty(mpv, "vo", "gpu-next")
+            Mpv.setProperty(mpv, "glsl-shaders", paths.joinToString(":"))
+        }
+    }
+
+    fun setShaders(files: List<String>) {
+        if (files == shaders) return
+        shaders = files
+        if (surface != 0L) runCatching { applyOutput() }
+    }
+
     fun attach(holder: SurfaceHolder, width: Int, height: Int) {
         if (surface != 0L) return
         surface = Mpv.attach(mpv, holder.surface)
         resize(width, height)
-        Mpv.setProperty(mpv, "vo", "mediacodec_embed")
+        applyOutput()
         pendingUrl?.let { pendingUrl = null; start(it) }
     }
 
