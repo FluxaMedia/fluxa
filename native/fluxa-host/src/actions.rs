@@ -1038,6 +1038,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             let mut player = player::PlayerSession::new(item.clone())
                 .with_logo_hint(known_logo(state, item));
             player.pick_manually(state.core_snapshot.as_deref());
+            player.stale = session.snapshot().get("player").cloned();
             state.player = Some(player);
             state.screen_scroll_offsets.remove(&Route::Player);
             state.ui = UiTree::default();

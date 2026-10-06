@@ -128,6 +128,7 @@ pub trait VideoBackend: Send {
 
 pub(crate) struct PlayerSession {
     pub(crate) stale: Option<Value>,
+    stale_until: Instant,
     snapshot_logo: Option<String>,
     logo_requested: bool,
     meta: Value,
@@ -237,6 +238,7 @@ impl PlayerSession {
     pub(crate) fn new(meta: Value) -> Self {
         Self {
             stale: None,
+            stale_until: Instant::now() + STALE_GRACE,
             snapshot_logo: None,
             logo_requested: false,
             meta,
@@ -677,6 +679,8 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
     }
 }
 
+const STALE_GRACE: Duration = Duration::from_secs(3);
+
 pub(crate) fn direct_playback_command(item: &Value, profile: &Value) -> Value {
     if stream_policy::resumes_saved_stream(item, Some(profile)) {
         return json!({
@@ -840,7 +844,7 @@ pub(crate) fn pump(state: &mut RendererState) {
         player.snapshot_logo = detail_logo(&snapshot, &player.meta);
     }
     if player.stale.is_some() {
-        if player.stale.as_ref() == snapshot.get("player") {
+        if player.stale.as_ref() == snapshot.get("player") && Instant::now() < player.stale_until {
             return;
         }
         player.stale = None;
