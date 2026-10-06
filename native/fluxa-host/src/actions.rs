@@ -327,6 +327,16 @@ pub(super) fn playback_item(
     } else if let Some(video) = first_video {
         fields.insert("lastVideoId".to_owned(), video.into());
     }
+    let foreign = fields
+        .get("lastVideoId")
+        .and_then(Value::as_str)
+        .is_some_and(|video| !player::video_belongs_to(video, &Value::Object(fields.clone())));
+    if foreign {
+        fields.retain(|key, _| {
+            !key.starts_with("last")
+                && !matches!(key.as_str(), "timeOffset" | "duration" | "videoId" | "video_id")
+        });
+    }
     item
 }
 
