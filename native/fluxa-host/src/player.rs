@@ -1184,6 +1184,7 @@ fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Val
     if player.local || player.status.duration <= 0.0 || player.status.position < 5.0 {
         return;
     }
+    let stream = overlay::current_stream(player, snapshot);
     let command = json!({
         "type": "savePlaybackProgressRequested",
         "profile": session.active_profile(),
@@ -1192,6 +1193,9 @@ fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Val
         "duration": player.status.duration as i64,
         "lastVideoId": snapshot.pointer("/player/currentVideoId"),
         "lastEpisodeName": player.episode_title,
+        "lastStreamIndex": snapshot.pointer("/player/currentStreamIndex"),
+        "lastStreamUrl": stream.and_then(|stream| stream.get("playableUrl").or_else(|| stream.get("url"))),
+        "lastStreamTitle": stream.and_then(|stream| stream.get("title").or_else(|| stream.get("name"))),
     });
     if let Err(error) = session.dispatch(command) {
         host_log(format!("core dispatch failed: {error}"));

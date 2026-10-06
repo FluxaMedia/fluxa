@@ -30,6 +30,8 @@ pub(super) struct Overlay {
     tracks_applied: bool,
     last_scrobble: Option<String>,
     last_saved_at_ms: i64,
+    last_paused: Option<bool>,
+    last_position: Option<(f64, Instant)>,
 }
 
 struct Lookup {
@@ -459,6 +461,9 @@ fn refresh_plan(player: &mut PlayerSession) {
     }
 }
 
+const SEEK_JUMP_SECONDS: f64 = 3.0;
+const EVENT_SAVE_GAP_MS: i64 = 2000;
+
 fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
     let now = now_ms();
     let plan = core_value(
@@ -480,7 +485,25 @@ fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: 
         player.overlay.last_scrobble = Some(action.to_owned());
         super::scrobble(session, player, snapshot, action);
     }
-    if plan["saveProgress"].as_bool() == Some(true) {
+    let moved = player.overlay.last_position.map(|(position, at)| {
+        let elapsed = at.elapsed().as_secs_f64();
+        let drift = player.status.position - position;
+        if player.overlay.last_paused == Some(true) {
+            drift.abs() > SEEK_JUMP_SECONDS / 2.0
+        } else {
+            (drift - elapsed * player.speed).abs() > SEEK_JUMP_SECONDS
+        }
+    });
+    let toggled = player
+        .overlay
+        .last_paused
+        .is_some_and(|paused| paused != player.status.paused);
+    player.overlay.last_paused = Some(player.status.paused);
+    player.overlay.last_position = Some((player.status.position, Instant::now()));
+    let on_event = player.status.has_frame
+        && (toggled || moved == Some(true))
+        && now - player.overlay.last_saved_at_ms > EVENT_SAVE_GAP_MS;
+    if plan["saveProgress"].as_bool() == Some(true) || on_event {
         player.overlay.last_saved_at_ms = now;
         super::save_progress(session, player, snapshot);
     }
@@ -669,6 +692,21 @@ fn auto_skip(player: &mut PlayerSession, video: &mut dyn VideoBackend) {
     video.command(VideoCommand::SeekTo(target as f64 / 1000.0));
 }
 
+pub(super) fn current_stream<'a>(
+    player: &'a PlayerSession,
+    snapshot: &'a Value,
+) -> Option<&'a Value> {
+    snapshot
+        .pointer("/player/currentStreamIndex")
+        .and_then(Value::as_u64)
+        .and_then(|index| snapshot.pointer("/player/currentStreams")?.get(index as usize))
+        .or_else(|| {
+            player
+                .chosen
+                .and_then(|index| player.sources.as_ref()?.get(index))
+        })
+}
+
 pub(super) fn finish(
     player: &PlayerSession,
     session: &SessionHandle,
@@ -678,15 +716,7 @@ pub(super) fn finish(
     if !player.status.has_frame {
         return;
     }
-    let stream = snapshot
-        .pointer("/player/currentStreamIndex")
-        .and_then(Value::as_u64)
-        .and_then(|index| snapshot.pointer("/player/currentStreams")?.get(index as usize))
-        .or_else(|| {
-            player
-                .chosen
-                .and_then(|index| player.sources.as_ref()?.get(index))
-        });
+    let stream = current_stream(player, snapshot);
     let plan = core_value(
         "playbackClosePlan",
         json!({
