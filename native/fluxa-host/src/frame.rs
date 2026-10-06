@@ -288,8 +288,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     player::speed_hold(state, layout.player_speed_hold);
                 }
                 player::hover_seek(state, layout.seek_hover);
-                if let (Some(max), Some(player)) = (layout.scroll_max, state.player.as_mut()) {
-                    player.sources_scroll_max = max;
+                if let Some(player) = state.player.as_mut() {
+                    player.sources_scroll_max = layout.scroll_max.unwrap_or(0.0);
                 }
                 if let Some(delta) = layout.short_step {
                     shorts::step(state, delta);

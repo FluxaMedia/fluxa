@@ -4,7 +4,7 @@ impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
             let viewport = logical_viewport(state);
-            if state.route == Route::Home {
+            if active_route(state) == Route::Home {
                 let max = fluxa_ui::home_scroll_max(viewport, &state.home);
                 state.home.scroll_offset = (state.home.scroll_offset + delta_y).clamp(0.0, max);
             } else {

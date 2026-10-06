@@ -603,11 +603,11 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     if delta.abs() < 0.5 {
         return;
     }
-    if state.route == Route::Home {
+    if active_route(state) == Route::Home {
         let max_offset = fluxa_ui::home_scroll_max(viewport, &state.home);
         state.home.scroll_offset = (state.home.scroll_offset + delta).clamp(0.0, max_offset);
     } else {
-        let route = state.route;
+        let route = active_route(state);
         let max_offset = screen_scroll_max(state, viewport);
         let offset = state.screen_scroll_offsets.entry(route).or_default();
         *offset = (*offset + delta).clamp(0.0, max_offset);

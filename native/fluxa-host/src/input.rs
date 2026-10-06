@@ -233,6 +233,9 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         return;
     }
     if state.profiles.is_some() || state.player.is_some() {
+        if state.player.as_ref().is_some_and(|player| player.sources_scroll_max > 0.0) {
+            drag_sources(state, phase, position);
+        }
         let pos = Pos2::new(position[0], position[1]);
         let button = |pressed| egui::Event::PointerButton {
             pos,
@@ -319,7 +322,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
             }
             if state.active_scroll.is_none() && state.touch_scrolled {
                 let viewport = logical_viewport(state);
-                if state.route == Route::Home {
+                if active_route(state) == Route::Home {
                     if total_x.abs() > total_y.abs() * 1.15 {
                         state.active_scroll =
                             fluxa_ui::home_row_at_y(viewport, &state.home, start[1])
@@ -713,4 +716,48 @@ pub(super) fn request_discover_search(state: &mut RendererState) {
     state
         .pending_native_actions
         .push(NativeAction::CoreCommand { command });
+}
+
+fn drag_sources(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
+    let now = Instant::now();
+    match phase {
+        PointerPhase::Down => {
+            state.touch_start = Some(position);
+            state.touch_last = Some(position);
+            state.touch_last_at = Some(now);
+            state.touch_scrolled = false;
+            state.active_scroll = None;
+            state.scroll_velocity = 0.0;
+            state.scroll_animation_at = now;
+        }
+        PointerPhase::Move => {
+            let (Some(start), Some(last)) = (state.touch_start, state.touch_last) else {
+                return;
+            };
+            if (start[0] - position[0]).hypot(start[1] - position[1]) > 8.0 {
+                state.touch_scrolled = true;
+            }
+            if !state.touch_scrolled {
+                return;
+            }
+            let delta = last[1] - position[1];
+            let seconds = state
+                .touch_last_at
+                .map_or(1.0 / 60.0, |at| now.duration_since(at).as_secs_f32())
+                .clamp(1.0 / 240.0, 0.08);
+            let viewport = logical_viewport(state);
+            update_screen_scroll(state, delta, viewport);
+            state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
+            state.scroll_velocity = (delta / seconds * 2.0).clamp(-14_000.0, 14_000.0);
+            state.scroll_animation_at = now;
+            state.touch_last = Some(position);
+            state.touch_last_at = Some(now);
+        }
+        PointerPhase::Up => {
+            state.touch_start = None;
+            state.touch_last = None;
+            state.touch_last_at = None;
+            state.touch_scrolled = false;
+        }
+    }
 }
