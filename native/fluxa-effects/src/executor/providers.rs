@@ -227,6 +227,10 @@ impl EffectExecutor {
             if provider == "mdblist" {
                 credentials["listId"] = json!(self.provider_pref(profile, "mdblistLibraryListId"));
             }
+            if provider == "simkl" {
+                credentials["animeIdPreference"] =
+                    json!(self.provider_pref(profile, "simklAnimeIdPreference"));
+            }
             credentials
         })
     }
@@ -576,6 +580,7 @@ impl EffectExecutor {
                 "state": state.unwrap_or(Value::Null),
                 "activities": activities,
                 "responses": responses,
+                "animeIdPreference": str_field(credentials, "animeIdPreference"),
             }),
         )
         .ok_or_else(|| "Fluxa Core could not build the Simkl library".to_owned())?;
@@ -740,7 +745,10 @@ impl EffectExecutor {
         let cached = self.cached_provider_library("simkl", profile_id);
         let state = cached
             .as_ref()
-            .and_then(|_| self.storage.read_json(&state_key).ok().flatten());
+            .and_then(|_| self.storage.read_json(&state_key).ok().flatten())
+            .filter(|state| {
+                str_field(state, "animeIdPreference") == str_field(&credentials, "animeIdPreference")
+            });
         match self.simkl_pull(&state_key, &credentials, state).await {
             Ok(Some(snapshot)) => {
                 self.store_provider_library("simkl", profile_id, &snapshot);

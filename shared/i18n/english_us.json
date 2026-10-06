@@ -3148,5 +3148,11 @@
   "a11y.previous_episode": "Previous episode",
   "a11y.text_field": "Text field",
   "settings.mdblist_library_list": "MDBList library list",
-  "settings.mdblist_watchlist": "Watchlist"
+  "settings.mdblist_watchlist": "Watchlist",
+  "settings.simkl_anime_id": "Simkl anime ID",
+  "settings.anime_id.auto": "Automatic",
+  "settings.anime_id.imdb": "IMDb",
+  "settings.anime_id.mal": "MyAnimeList",
+  "settings.anime_id.kitsu": "Kitsu",
+  "settings.anime_id.tvdb": "TVDB"
 }

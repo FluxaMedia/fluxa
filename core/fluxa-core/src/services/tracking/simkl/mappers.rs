@@ -35,7 +35,28 @@ fn simkl_anime_id(source: &Value) -> Option<String> {
 }
 
 pub(crate) fn simkl_content_id(source: &Value) -> Option<String> {
+    simkl_content_id_for(source, "")
+}
+
+fn simkl_preferred_id(ids: &Value, preference: &str) -> Option<String> {
+    let id = ids.get(preference)?;
+    let id = id
+        .as_str()
+        .map(str::to_string)
+        .or_else(|| id.as_i64().map(|n| n.to_string()))
+        .filter(|id| !id.is_empty())?;
+    Some(if preference == "imdb" {
+        id
+    } else {
+        format!("{preference}:{id}")
+    })
+}
+
+pub(crate) fn simkl_content_id_for(source: &Value, preference: &str) -> Option<String> {
     let ids = source.get("ids")?;
+    if let Some(id) = simkl_preferred_id(ids, preference) {
+        return Some(id);
+    }
     if let Some(id) = simkl_anime_id(source) {
         return Some(id);
     }
@@ -112,7 +133,11 @@ fn simkl_last_watched_episode(entry: &Value) -> Option<(i64, i64)> {
         .max()
 }
 
-pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) -> Option<String> {
+pub(crate) fn simkl_watching_to_items_json(
+    shows_json: &str,
+    movies_json: &str,
+    preference: &str,
+) -> Option<String> {
     let shows = simkl_entries(shows_json, "shows");
     let movies = simkl_entries(movies_json, "movies");
     let mut items: Vec<Value> = Vec::new();
@@ -120,7 +145,7 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
         let Some(show) = entry.get("show") else {
             continue;
         };
-        let Some(id) = simkl_content_id(show) else {
+        let Some(id) = simkl_content_id_for(show, preference) else {
             continue;
         };
         let title = show.get("title").and_then(Value::as_str).unwrap_or("");
@@ -157,7 +182,7 @@ pub(crate) fn simkl_watching_to_items_json(shows_json: &str, movies_json: &str) 
         let Some(movie) = entry.get("movie") else {
             continue;
         };
-        let Some(id) = simkl_content_id(movie) else {
+        let Some(id) = simkl_content_id_for(movie, preference) else {
             continue;
         };
         let title = movie.get("title").and_then(Value::as_str).unwrap_or("");
@@ -191,7 +216,10 @@ struct SimklPlaybackEntry {
     is_anime: bool,
 }
 
-fn simkl_playback_progress_entries(playback_json: &str) -> Vec<SimklPlaybackEntry> {
+fn simkl_playback_progress_entries(
+    playback_json: &str,
+    preference: &str,
+) -> Vec<SimklPlaybackEntry> {
     simkl_entries(playback_json, "")
         .iter()
         .filter_map(|entry| {
@@ -204,7 +232,7 @@ fn simkl_playback_progress_entries(playback_json: &str) -> Vec<SimklPlaybackEntr
                 .get("movie")
                 .or_else(|| entry.get("show"))
                 .or_else(|| entry.get("anime"))?;
-            let id = simkl_content_id(source)?;
+            let id = simkl_content_id_for(source, preference)?;
             let episode = entry.get("episode").and_then(|e| {
                 Some((
                     e.get("season").and_then(Value::as_i64)?,
@@ -232,9 +260,10 @@ fn simkl_playback_progress_entries(playback_json: &str) -> Vec<SimklPlaybackEntr
 pub(crate) fn simkl_merge_playback_progress_json(
     items_json: &str,
     playback_json: &str,
+    preference: &str,
 ) -> Option<String> {
     let mut items: Vec<Value> = serde_json::from_str(items_json).ok()?;
-    let playback = simkl_playback_progress_entries(playback_json);
+    let playback = simkl_playback_progress_entries(playback_json, preference);
     for entry in &playback {
         let SimklPlaybackEntry {
             id,
@@ -275,7 +304,11 @@ pub(crate) fn simkl_merge_playback_progress_json(
     serde_json::to_string(&items).ok()
 }
 
-pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -> Option<String> {
+pub(crate) fn simkl_library_to_items_json(
+    shows_json: &str,
+    movies_json: &str,
+    preference: &str,
+) -> Option<String> {
     let shows = simkl_entries(shows_json, "shows");
     let movies = simkl_entries(movies_json, "movies");
     let mut items: Vec<Value> = Vec::new();
@@ -284,7 +317,7 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
             continue;
         };
         let anime = simkl_is_anime(entry, show);
-        let Some(id) = simkl_content_id(show) else {
+        let Some(id) = simkl_content_id_for(show, preference) else {
             continue;
         };
         let title = show.get("title").and_then(Value::as_str).unwrap_or("");
@@ -304,7 +337,7 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
         let Some(movie) = entry.get("movie") else {
             continue;
         };
-        let Some(id) = simkl_content_id(movie) else {
+        let Some(id) = simkl_content_id_for(movie, preference) else {
             continue;
         };
         let title = movie.get("title").and_then(Value::as_str).unwrap_or("");
@@ -318,17 +351,21 @@ pub(crate) fn simkl_library_to_items_json(shows_json: &str, movies_json: &str) -
     serde_json::to_string(&items).ok()
 }
 
-pub(crate) fn simkl_watched_to_ids_json(shows_json: &str, movies_json: &str) -> Option<String> {
+pub(crate) fn simkl_watched_to_ids_json(
+    shows_json: &str,
+    movies_json: &str,
+    preference: &str,
+) -> Option<String> {
     let shows = simkl_entries(shows_json, "shows");
     let movies = simkl_entries(movies_json, "movies");
     let mut ids: serde_json::Map<String, Value> = serde_json::Map::new();
     for entry in &shows {
-        if let Some(id) = entry.get("show").and_then(simkl_content_id) {
+        if let Some(id) = entry.get("show").and_then(|show| simkl_content_id_for(show, preference)) {
             ids.insert(id, Value::Bool(true));
         }
     }
     for entry in &movies {
-        if let Some(id) = entry.get("movie").and_then(simkl_content_id) {
+        if let Some(id) = entry.get("movie").and_then(|movie| simkl_content_id_for(movie, preference)) {
             ids.insert(id, Value::Bool(true));
         }
     }

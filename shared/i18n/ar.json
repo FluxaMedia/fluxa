@@ -3142,5 +3142,11 @@
   "settings.language.he": "עברית",
   "settings.option.he": "עברית",
   "settings.mdblist_library_list": "قائمة مكتبة MDBList",
-  "settings.mdblist_watchlist": "قائمة المشاهدة"
+  "settings.mdblist_watchlist": "قائمة المشاهدة",
+  "settings.simkl_anime_id": "معرّف الأنمي في Simkl",
+  "settings.anime_id.auto": "تلقائي",
+  "settings.anime_id.imdb": "IMDb",
+  "settings.anime_id.mal": "MyAnimeList",
+  "settings.anime_id.kitsu": "Kitsu",
+  "settings.anime_id.tvdb": "TVDB"
 }
