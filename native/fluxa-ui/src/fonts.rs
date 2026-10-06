@@ -47,19 +47,55 @@ pub fn definitions() -> FontDefinitions {
         ))
         .into(),
     );
+    let mut scripts = Vec::new();
+    for (weight, arabic, hebrew) in [
+        (
+            "regular",
+            &include_bytes!("../fonts/noto_sans_arabic_regular.ttf")[..],
+            &include_bytes!("../fonts/noto_sans_hebrew_regular.ttf")[..],
+        ),
+        (
+            "medium",
+            &include_bytes!("../fonts/noto_sans_arabic_medium.ttf")[..],
+            &include_bytes!("../fonts/noto_sans_hebrew_medium.ttf")[..],
+        ),
+        (
+            "bold",
+            &include_bytes!("../fonts/noto_sans_arabic_bold.ttf")[..],
+            &include_bytes!("../fonts/noto_sans_hebrew_bold.ttf")[..],
+        ),
+    ] {
+        let arabic_name = format!("noto-arabic-{weight}");
+        let hebrew_name = format!("noto-hebrew-{weight}");
+        fonts
+            .font_data
+            .insert(arabic_name.clone(), FontData::from_static(arabic).into());
+        fonts
+            .font_data
+            .insert(hebrew_name.clone(), FontData::from_static(hebrew).into());
+        scripts.push((weight, [arabic_name, hebrew_name]));
+    }
+    let script_fonts = |weight: &str| -> Vec<String> {
+        scripts
+            .iter()
+            .find(|(name, _)| *name == weight)
+            .map(|(_, names)| names.to_vec())
+            .unwrap_or_default()
+    };
     let fallbacks = fonts.families[&FontFamily::Proportional].clone();
     fonts
         .families
         .get_mut(&FontFamily::Proportional)
         .unwrap()
         .insert(0, SEMIBOLD.to_owned());
-    for (name, first) in [
-        ("archivo", SEMIBOLD),
-        (REGULAR, REGULAR),
-        (MEDIUM, MEDIUM),
-        (BOLD, BOLD),
+    for (name, first, weight) in [
+        ("archivo", SEMIBOLD, "medium"),
+        (REGULAR, REGULAR, "regular"),
+        (MEDIUM, MEDIUM, "medium"),
+        (BOLD, BOLD, "bold"),
     ] {
         let mut family = vec![first.to_owned()];
+        family.extend(script_fonts(weight));
         family.extend(fallbacks.iter().cloned());
         fonts.families.insert(FontFamily::Name(name.into()), family);
     }

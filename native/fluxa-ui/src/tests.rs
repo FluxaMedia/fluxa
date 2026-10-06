@@ -1678,3 +1678,37 @@ fn folder_all_tab_merges_sources_without_duplicates() {
     assert_eq!(folder.cards(0).len(), 3);
     assert_eq!(folder.cards(2).len(), 2);
 }
+
+fn rtl_galley(text: &str) -> std::sync::Arc<egui::Galley> {
+    let context = egui::Context::default();
+    context.set_fonts(crate::fonts::definitions());
+    for _ in 0..2 {
+        let _ = context.run_ui(egui::RawInput::default(), |_| {});
+    }
+    context.fonts_mut(|fonts| {
+        fonts.layout_no_wrap(text.to_owned(), crate::fonts::regular(20.0), Color32::WHITE)
+    })
+}
+
+#[test]
+fn arabic_word_is_joined_and_drawn_right_to_left() {
+    let galley = rtl_galley("با");
+    let glyphs = &galley.rows[0].glyphs;
+    assert_eq!(glyphs[0].chr, '\u{FE8E}');
+    assert_eq!(glyphs[1].chr, '\u{FE91}');
+    assert!(glyphs.iter().all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0)));
+}
+
+#[test]
+fn hebrew_title_has_glyphs_and_keeps_numbers_in_order() {
+    let galley = rtl_galley("שלום 2024");
+    let chars: String = galley.rows[0].glyphs.iter().map(|glyph| glyph.chr).collect();
+    assert!(chars.starts_with("2024"));
+    assert!(
+        galley.rows[0]
+            .glyphs
+            .iter()
+            .filter(|glyph| !glyph.chr.is_whitespace())
+            .all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0))
+    );
+}

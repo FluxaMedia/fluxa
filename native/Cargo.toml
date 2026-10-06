@@ -2,6 +2,9 @@
 resolver = "2"
 members = ["fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artwork", "fluxa-desktop", "fluxa-android-renderer", "fluxa-host", "fluxa-effects", "fluxa-mpv", "fluxa-web", "fluxa-apple-renderer"]
 
+[patch.crates-io]
+epaint = { path = "vendor/epaint" }
+
 [workspace.package]
 edition = "2024"
 license = "MIT"
