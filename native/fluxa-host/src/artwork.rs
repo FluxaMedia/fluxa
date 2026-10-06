@@ -196,11 +196,7 @@ impl ArtworkLoader {
                 let Some(oldest) = self
                     .texture_last_used
                     .iter()
-                    .filter(|(key, _)| {
-                        texture_frame
-                            .get(*key)
-                            .is_none_or(|used| used + 1 < frame)
-                    })
+                    .filter(|(key, _)| texture_frame.get(*key).is_none_or(|used| used + 1 < frame))
                     .min_by_key(|(_, last_used)| *last_used)
                     .map(|(key, _)| key.clone())
                 else {
@@ -393,7 +389,8 @@ impl ArtworkLoader {
         self.access_counter = self.access_counter.wrapping_add(1);
         if let Some(texture) = self.textures.get(&key) {
             if priority != ArtworkFetchPriority::Prefetch {
-                self.texture_last_used.insert(key.clone(), self.access_counter);
+                self.texture_last_used
+                    .insert(key.clone(), self.access_counter);
                 self.texture_frame.insert(key, self.frame);
             }
             return Some(texture.id());

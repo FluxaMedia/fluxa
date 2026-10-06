@@ -570,7 +570,9 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 32] = [
     SettingsRow {
         label: "Reuse last stream TTL",
         key: "reuseLastStreamTtlHours",
-        options: &["1", "2", "3", "4", "5", "6", "24", "48", "72", "96", "120", "144"],
+        options: &[
+            "1", "2", "3", "4", "5", "6", "24", "48", "72", "96", "120", "144",
+        ],
     },
     SettingsRow {
         label: "Preload next episode sources",

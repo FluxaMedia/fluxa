@@ -233,7 +233,11 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         return;
     }
     if state.profiles.is_some() || state.player.is_some() {
-        if state.player.as_ref().is_some_and(|player| player.sources_scroll_max > 0.0) {
+        if state
+            .player
+            .as_ref()
+            .is_some_and(|player| player.sources_scroll_max > 0.0)
+        {
             drag_sources(state, phase, position);
         }
         let pos = Pos2::new(position[0], position[1]);

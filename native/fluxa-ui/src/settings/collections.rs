@@ -1,7 +1,7 @@
-use crate::draw_text;
 use super::account::account_group;
 use super::badges::{account_divider_at, pills_right};
 use super::*;
+use crate::draw_text;
 
 const ROW: f32 = 52.0;
 const STATUS_HEIGHT: f32 = 24.0;

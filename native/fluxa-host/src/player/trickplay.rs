@@ -31,7 +31,9 @@ pub(super) fn from_snapshot(snapshot: &Value) -> Option<Trickplay> {
 }
 
 fn decode(bytes: &[u8]) -> Option<RgbaImage> {
-    image::load_from_memory(bytes).ok().map(|image| image.to_rgba8())
+    image::load_from_memory(bytes)
+        .ok()
+        .map(|image| image.to_rgba8())
 }
 
 fn decode_off_thread(bytes: Vec<u8>) -> Receiver<Option<RgbaImage>> {
@@ -128,7 +130,8 @@ impl Trickplay {
                 else {
                     if self.fetching.is_none() && self.decoding.is_none() {
                         self.fetching_sheet = tile.sheet;
-                        self.fetching = Some(session.fetch_bytes(format::sheet_url(&url, tile.sheet)));
+                        self.fetching =
+                            Some(session.fetch_bytes(format::sheet_url(&url, tile.sheet)));
                     }
                     return None;
                 };

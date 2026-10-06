@@ -1,6 +1,6 @@
-use crate::draw_text;
 use super::account::{account_divider, account_group, account_row};
 use super::*;
+use crate::draw_text;
 
 const FORM_ROW: f32 = 52.0;
 const IMPORT_HEIGHT: f32 = 76.0;

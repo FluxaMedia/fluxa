@@ -1,5 +1,5 @@
-use crate::draw_text;
 use super::*;
+use crate::draw_text;
 
 #[derive(Clone, Debug, Default)]
 pub struct ShortsModel {

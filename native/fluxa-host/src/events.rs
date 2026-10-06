@@ -23,8 +23,7 @@ impl FluxaHost {
 
     pub fn mouse_moved(&self, x: f32, y: f32) {
         self.with_state(|state| {
-            let position =
-                state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
+            let position = state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
             if let Some(player) = state.player.as_mut() {
@@ -36,8 +35,7 @@ impl FluxaHost {
 
     pub fn mouse_button(&self, button: MouseButton, pressed: bool, x: f32, y: f32) {
         self.with_state(|state| {
-            let position =
-                state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
+            let position = state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
             if pressed

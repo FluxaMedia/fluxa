@@ -699,7 +699,11 @@ pub(super) fn current_stream<'a>(
     snapshot
         .pointer("/player/currentStreamIndex")
         .and_then(Value::as_u64)
-        .and_then(|index| snapshot.pointer("/player/currentStreams")?.get(index as usize))
+        .and_then(|index| {
+            snapshot
+                .pointer("/player/currentStreams")?
+                .get(index as usize)
+        })
         .or_else(|| {
             player
                 .chosen

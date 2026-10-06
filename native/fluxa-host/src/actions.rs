@@ -334,7 +334,10 @@ pub(super) fn playback_item(
     if foreign {
         fields.retain(|key, _| {
             !key.starts_with("last")
-                && !matches!(key.as_str(), "timeOffset" | "duration" | "videoId" | "video_id")
+                && !matches!(
+                    key.as_str(),
+                    "timeOffset" | "duration" | "videoId" | "video_id"
+                )
         });
     }
     item
@@ -1035,8 +1038,8 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         }
         if let NativeAction::StartPlayback { item } = &action {
             player::keep_shuffle_for(&mut state.shuffle, item);
-            let mut player = player::PlayerSession::new(item.clone())
-                .with_logo_hint(known_logo(state, item));
+            let mut player =
+                player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
             player.pick_manually(state.core_snapshot.as_deref());
             player.stale = session.snapshot().get("player").cloned();
             state.player = Some(player);

@@ -1,5 +1,5 @@
-use crate::draw_text;
 use super::*;
+use crate::draw_text;
 
 pub(super) fn draw_warnings(
     context: &egui::Context,

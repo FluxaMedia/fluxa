@@ -490,7 +490,10 @@ impl PlayerSession {
             .get("hash")
             .and_then(Value::as_str)
             .is_none_or(str::is_empty);
-        let peers = status.get("total_peers").and_then(Value::as_u64).unwrap_or(0);
+        let peers = status
+            .get("total_peers")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
         unresolved
             && peers > 0
             && self
@@ -767,7 +770,10 @@ fn detail_logo(snapshot: &Value, meta: &Value) -> Option<String> {
     };
     let played = id(meta)?;
     let same = id(detail).is_some_and(|id| id == played)
-        || detail.get("meta").and_then(id).is_some_and(|id| id == played);
+        || detail
+            .get("meta")
+            .and_then(id)
+            .is_some_and(|id| id == played);
     if !same {
         return None;
     }
@@ -780,14 +786,23 @@ fn detail_logo(snapshot: &Value, meta: &Value) -> Option<String> {
 }
 
 fn fall_back_to_sources(state: &mut RendererState) {
-    if !state.player.as_ref().is_some_and(PlayerSession::saved_stream_failed) {
+    if !state
+        .player
+        .as_ref()
+        .is_some_and(PlayerSession::saved_stream_failed)
+    {
         return;
     }
     let Some(mut item) = state.player.as_ref().map(|player| player.meta.clone()) else {
         return;
     };
     if let Some(fields) = item.as_object_mut() {
-        for key in ["lastStream", "lastStreamUrl", "lastStreamTitle", "lastStreamIndex"] {
+        for key in [
+            "lastStream",
+            "lastStreamUrl",
+            "lastStreamTitle",
+            "lastStreamIndex",
+        ] {
             fields.remove(key);
         }
         fields.insert("pickSource".to_owned(), true.into());
@@ -1138,7 +1153,11 @@ pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
         return;
     };
     player.touch();
-    if let Some(trickplay) = player.trickplay.as_mut().filter(|trickplay| trickplay.usable()) {
+    if let Some(trickplay) = player
+        .trickplay
+        .as_mut()
+        .filter(|trickplay| trickplay.usable())
+    {
         trickplay.request(time);
         return;
     }
@@ -1186,7 +1205,11 @@ pub(crate) fn close(state: &mut RendererState) {
 
 pub(crate) fn video_belongs_to(video: &str, meta: &Value) -> bool {
     let id = meta.get("id").and_then(Value::as_str).unwrap_or_default();
-    id.is_empty() || video == id || video.strip_prefix(id).is_some_and(|rest| rest.starts_with(':'))
+    id.is_empty()
+        || video == id
+        || video
+            .strip_prefix(id)
+            .is_some_and(|rest| rest.starts_with(':'))
 }
 
 fn save_progress(session: &SessionHandle, player: &PlayerSession, snapshot: &Value) {

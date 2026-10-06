@@ -1,5 +1,5 @@
-use crate::draw_text;
 use super::*;
+use crate::draw_text;
 
 const CARD_PADDING: f32 = 16.0;
 const LOGO: f32 = 48.0;

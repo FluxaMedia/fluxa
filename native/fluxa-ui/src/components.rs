@@ -10,9 +10,9 @@ use std::hash::{Hash, Hasher};
 
 use super::{
     ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
-    artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color, full_uv,
-    icon_button_size, ink, paint_vertical_gradient, radius, shade, size, stroke, text_primary,
-    tone, draw_text, truncate_to_width,
+    artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color, draw_text,
+    full_uv, icon_button_size, ink, paint_vertical_gradient, radius, shade, size, stroke,
+    text_primary, tone, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -307,7 +307,15 @@ pub(super) fn episode_text(
         format!("{number}. {title}")
     };
     let font = FontId::proportional(15.0);
-    draw_text(painter, origin, Align2::LEFT_TOP, &title, font, text_primary(), Some(width));
+    draw_text(
+        painter,
+        origin,
+        Align2::LEFT_TOP,
+        &title,
+        font,
+        text_primary(),
+        Some(width),
+    );
     if let Some((overview, rows)) = overview {
         let color = ink(tone::MUTED);
         let galley = wrapped_text(painter, overview, 13.0, color, width, rows);

@@ -1696,13 +1696,21 @@ fn arabic_word_is_joined_and_drawn_right_to_left() {
     let glyphs = &galley.rows[0].glyphs;
     assert_eq!(glyphs[0].chr, '\u{FE8E}');
     assert_eq!(glyphs[1].chr, '\u{FE91}');
-    assert!(glyphs.iter().all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0)));
+    assert!(
+        glyphs
+            .iter()
+            .all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0))
+    );
 }
 
 #[test]
 fn hebrew_title_has_glyphs_and_keeps_numbers_in_order() {
     let galley = rtl_galley("שלום 2024");
-    let chars: String = galley.rows[0].glyphs.iter().map(|glyph| glyph.chr).collect();
+    let chars: String = galley.rows[0]
+        .glyphs
+        .iter()
+        .map(|glyph| glyph.chr)
+        .collect();
     assert!(chars.starts_with("2024"));
     assert!(
         galley.rows[0]

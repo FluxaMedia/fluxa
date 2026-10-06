@@ -1,5 +1,5 @@
-use crate::draw_text;
 use super::*;
+use crate::draw_text;
 
 mod overlay;
 mod panel;
@@ -393,7 +393,15 @@ impl Chrome<'_> {
 
     fn text(&self, pos: Pos2, align: Align2, text: &str, size: f32, max_width: f32, alpha: u8) {
         let font = FontId::proportional(size);
-        draw_text(self.painter, pos, align, text, font, ink(alpha), Some(max_width));
+        draw_text(
+            self.painter,
+            pos,
+            align,
+            text,
+            font,
+            ink(alpha),
+            Some(max_width),
+        );
     }
 
     fn surface(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, area: Rect) {

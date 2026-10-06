@@ -1,5 +1,5 @@
-use crate::draw_text;
 use super::*;
+use crate::draw_text;
 
 pub(super) const ACCOUNT_PROFILE_CARD_HEIGHT: f32 = 92.0;
 pub(super) const ACCOUNT_SERVICES: [(&str, &str); 4] = [
@@ -27,10 +27,7 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 3] = [
         "settings.continue_watching_source",
         "continueWatchingSource",
     ),
-    (
-        "settings.mdblist_library_list",
-        "mdblistLibraryListId",
-    ),
+    ("settings.mdblist_library_list", "mdblistLibraryListId"),
 ];
 
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
