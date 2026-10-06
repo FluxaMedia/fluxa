@@ -725,7 +725,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 6] = [
+pub const POSTER_FIELDS: [PosterField; 7] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -767,6 +767,13 @@ pub const POSTER_FIELDS: [PosterField; 6] = [
         help: "settings.skipdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_SKIPDB_KEY,
+    },
+    PosterField {
+        key: "mdblistLibraryListId",
+        label: "settings.mdblist_library_list",
+        help: "settings.mdblist_library_list_help",
+        hint: "settings.mdblist_library_list_placeholder",
+        input: NODE_SETTINGS_MDBLIST_LIST,
     },
 ];
 

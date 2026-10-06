@@ -53,3 +53,13 @@ fn builds_sync_and_watchlist_mutation_plans() {
 
 
 
+
+#[test]
+fn chosen_list_replaces_the_watchlist_request() {
+    let url = |args: Value| {
+        let requests = crate::services::mdblist::mdblist_library_requests(&args).unwrap();
+        requests[0]["url"].as_str().unwrap().to_owned()
+    };
+    assert!(url(json!({"apiKey": "k", "listId": "42"})).contains("/lists/42/items"));
+    assert!(url(json!({"apiKey": "k", "listId": ""})).contains("/watchlist/items"));
+}

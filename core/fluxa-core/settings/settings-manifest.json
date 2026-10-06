@@ -569,6 +569,13 @@
       "category": "account"
     },
     {
+      "key": "mdblistLibraryListId",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "account"
+    },
+    {
       "key": "movieRecommendationOutroPercent",
       "type": "string",
       "default": "85",

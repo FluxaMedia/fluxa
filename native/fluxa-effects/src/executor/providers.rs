@@ -130,7 +130,7 @@ pub(super) async fn send(client: &Client, plan: &Value) -> Result<(u16, Value), 
 }
 
 impl EffectExecutor {
-    fn provider_api_key(&self, profile: &Value) -> String {
+    fn provider_pref(&self, profile: &Value, key: &str) -> String {
         let profile_id = str_field(profile, "id");
         [
             Some(profile.clone()),
@@ -143,13 +143,17 @@ impl EffectExecutor {
         .flatten()
         .find_map(|source| {
             source
-                .get("mdblistApiKey")
+                .get(key)
                 .and_then(Value::as_str)
                 .map(str::trim)
-                .filter(|key| !key.is_empty())
+                .filter(|value| !value.is_empty())
                 .map(ToOwned::to_owned)
         })
         .unwrap_or_default()
+    }
+
+    fn provider_api_key(&self, profile: &Value) -> String {
+        self.provider_pref(profile, "mdblistApiKey")
     }
 
     pub(super) async fn fetch_mdblist_ratings(
@@ -190,12 +194,16 @@ impl EffectExecutor {
             _ => !token.is_empty() && !client_id(provider).is_empty(),
         };
         connected.then(|| {
-            json!({
+            let mut credentials = json!({
                 "provider": provider,
                 "token": token,
                 "clientId": client_id(provider),
                 "apiKey": api_key,
-            })
+            });
+            if provider == "mdblist" {
+                credentials["listId"] = json!(self.provider_pref(profile, "mdblistLibraryListId"));
+            }
+            credentials
         })
     }
 

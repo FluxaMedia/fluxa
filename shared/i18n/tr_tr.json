@@ -3146,5 +3146,8 @@
   "a11y.forward": "10 saniye ileri",
   "a11y.next_episode": "Sonraki bölüm",
   "a11y.previous_episode": "Önceki bölüm",
-  "a11y.text_field": "Metin alanı"
+  "a11y.text_field": "Metin alanı",
+  "settings.mdblist_library_list": "MDBList kütüphane listesi",
+  "settings.mdblist_library_list_help": "Kütüphane olarak izleme listesi yerine MDBList listelerinden birini kullan. Sayısal liste kimliğini gir; boş bırakırsan izleme listesi kullanılır.",
+  "settings.mdblist_library_list_placeholder": "Liste kimliği (isteğe bağlı)"
 }

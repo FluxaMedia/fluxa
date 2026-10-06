@@ -190,11 +190,19 @@ pub(crate) fn mdblist_library_requests(args: &Value) -> Option<Vec<Value>> {
         plan["key"] = json!(key);
         plan
     };
+    let list_id = args
+        .get("listId")
+        .and_then(|id| id.as_str().and_then(|id| id.trim().parse::<i64>().ok()))
+        .or_else(|| args.get("listId").and_then(Value::as_i64));
+    let watchlist_url = match list_id {
+        Some(id) => crate::services::mdblist::mdblist_list_items_url(
+            &json!({"listId": id}).to_string(),
+            "{}",
+        )?,
+        None => crate::services::mdblist::mdblist_watchlist_items_url(None, "{}"),
+    };
     Some(vec![
-        get(
-            "watchlist",
-            crate::services::mdblist::mdblist_watchlist_items_url(None, "{}"),
-        ),
+        get("watchlist", watchlist_url),
         get(
             "watched",
             crate::services::mdblist::mdblist_sync_get_url("watched", r#"{"limit":1000}"#)?,

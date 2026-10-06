@@ -3140,5 +3140,8 @@
   "settings.language.ar": "العربية",
   "settings.option.ar": "العربية",
   "settings.language.he": "עברית",
-  "settings.option.he": "עברית"
+  "settings.option.he": "עברית",
+  "settings.mdblist_library_list": "רשימת הספרייה של MDBList",
+  "settings.mdblist_library_list_help": "השתמש באחת מרשימות ה-MDBList שלך כספרייה במקום רשימת הצפייה. הזן את המזהה המספרי של הרשימה; השאר ריק כדי להשתמש ברשימת הצפייה.",
+  "settings.mdblist_library_list_placeholder": "מזהה רשימה (אופציונלי)"
 }

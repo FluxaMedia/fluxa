@@ -35,7 +35,7 @@ pub(super) fn account_height(metrics: UiMetrics) -> f32 {
         + ACCOUNT_PROFILE_CARD_HEIGHT
         + settings_group_card_height(ACCOUNT_SERVICES.len(), metrics)
         + settings_group_card_height(ACCOUNT_SOURCES.len(), metrics)
-        + FIELD_HEIGHT * 5.0
+        + FIELD_HEIGHT * 6.0
 }
 
 pub(super) fn account_group(
@@ -560,7 +560,7 @@ pub(super) fn draw_account(
         rect,
         card.bottom() + APPEARANCE_GROUP_GAP,
         &localized("settings.group.api_keys", language),
-        &[1, 2, 3, 4, 5],
+        &[1, 2, 3, 4, 5, 6],
         metrics,
         compact,
         layout,
