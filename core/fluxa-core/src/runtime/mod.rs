@@ -4,5 +4,6 @@ pub(crate) mod core_error;
 pub mod effects;
 pub mod env;
 pub mod log_sink;
+pub mod text_direction;
 
 pub use effects::{EffectEnvelope, EffectKind};

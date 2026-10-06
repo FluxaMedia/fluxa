@@ -23,7 +23,8 @@ impl FluxaHost {
 
     pub fn mouse_moved(&self, x: f32, y: f32) {
         self.with_state(|state| {
-            let position = Pos2::new(x, y) * (state.density / state.scale());
+            let position =
+                state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
             if let Some(player) = state.player.as_mut() {
@@ -35,7 +36,8 @@ impl FluxaHost {
 
     pub fn mouse_button(&self, button: MouseButton, pressed: bool, x: f32, y: f32) {
         self.with_state(|state| {
-            let position = Pos2::new(x, y) * (state.density / state.scale());
+            let position =
+                state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
             if pressed
@@ -67,6 +69,7 @@ impl FluxaHost {
 
     pub fn wheel(&self, delta_x: f32, delta_y: f32) {
         self.with_state(|state| {
+            let delta_x = if state.mirrored() { -delta_x } else { delta_x };
             let (delta_x, delta_y) = if state.modifiers.shift && delta_x == 0.0 {
                 (delta_y, 0.0)
             } else {
@@ -122,7 +125,30 @@ impl FluxaHost {
     }
 
     pub fn egui_event(&self, event: egui::Event) {
-        self.with_state(|state| state.egui_events.push(event));
+        self.with_state(|state| {
+            let event = if state.mirrored() {
+                match event {
+                    egui::Event::PointerMoved(pos) => {
+                        egui::Event::PointerMoved(state.mirror_position(pos))
+                    }
+                    egui::Event::PointerButton {
+                        pos,
+                        button,
+                        pressed,
+                        modifiers,
+                    } => egui::Event::PointerButton {
+                        pos: state.mirror_position(pos),
+                        button,
+                        pressed,
+                        modifiers,
+                    },
+                    other => other,
+                }
+            } else {
+                event
+            };
+            state.egui_events.push(event)
+        });
     }
 
     pub fn wants_keyboard(&self) -> bool {
@@ -137,12 +163,29 @@ impl FluxaHost {
     pub fn pointer(&self, phase: PointerPhase, x: f32, y: f32) {
         self.with_state(|state| {
             let ratio = state.density / state.scale();
-            pointer_event(state, phase, [x * ratio, y * ratio])
+            pointer_event(state, phase, [state.mirror_x(x * ratio), y * ratio])
         });
     }
 
     pub fn key_down(&self, input: KeyInput) {
-        self.with_state(|state| key_down(state, input));
+        self.with_state(|state| {
+            let input = if state.mirrored() {
+                match input {
+                    KeyInput::Key(Key::Left) => KeyInput::Key(Key::Right),
+                    KeyInput::Key(Key::Right) => KeyInput::Key(Key::Left),
+                    KeyInput::Gamepad(GamepadButton::DPadLeft) => {
+                        KeyInput::Gamepad(GamepadButton::DPadRight)
+                    }
+                    KeyInput::Gamepad(GamepadButton::DPadRight) => {
+                        KeyInput::Gamepad(GamepadButton::DPadLeft)
+                    }
+                    other => other,
+                }
+            } else {
+                input
+            };
+            key_down(state, input)
+        });
     }
 
     pub fn shortcut(&self, chord: &str, repeat: bool) -> bool {

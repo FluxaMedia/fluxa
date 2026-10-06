@@ -211,6 +211,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     if let Some(gpu) = state.gpu.as_ref() {
         fluxa_ui::set_input_caret(&gpu.egui_context, caret);
     }
+    let mirrored = state.mirrored();
     let render_result = {
         let RendererState {
             gpu,
@@ -234,6 +235,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         let modifiers = *modifiers;
         gpu.as_mut().map(|gpu| {
             gpu.density = scale;
+            gpu.mirror = mirrored;
             gpu.render(
                 route,
                 home,

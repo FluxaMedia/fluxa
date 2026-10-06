@@ -43,6 +43,7 @@ pub(super) struct Gpu {
     pub(super) artwork: ArtworkLoader,
     started_at: Instant,
     pub(super) density: f32,
+    pub(super) mirror: bool,
     adapter_name: String,
     pub(super) collect_text: bool,
 }
@@ -128,6 +129,7 @@ pub(super) struct HostAssets<'a> {
     profile_name: Option<&'a str>,
     profile_avatar_url: Option<&'a str>,
     custom_background: Option<&'a str>,
+    mirror: bool,
 }
 
 impl HomeAssets for HostAssets<'_> {
@@ -244,6 +246,12 @@ impl HomeAssets for HostAssets<'_> {
         self.artwork.cached_texture(url)
     }
     fn icon(&self, name: &str) -> Option<egui::TextureId> {
+        let name = match (self.mirror, name) {
+            (true, "ArrowLeft") => "ArrowRight",
+            (true, "ArrowRight") => "ArrowLeft",
+            (true, "ChevronRight") => "ChevronLeft",
+            _ => name,
+        };
         self.icons.texture(name)
     }
     fn logo(&self, name: &str) -> Option<(egui::TextureId, egui::Vec2)> {
@@ -584,6 +592,7 @@ impl Gpu {
             artwork: ArtworkLoader::new(artwork_cache_dir),
             started_at: Instant::now(),
             density,
+            mirror: false,
             adapter_name,
             collect_text: false,
         })
@@ -730,7 +739,7 @@ impl Gpu {
             [96, 96],
             ArtworkFetchPriority::Visible,
         );
-        let output = self.egui_context.run_ui(raw_input, |ui| {
+        let mut output = self.egui_context.run_ui(raw_input, |ui| {
             let mut assets = HostAssets {
                 background: self.background_texture.id(),
                 brand_mark: self.brand_mark.as_ref().map(egui::TextureHandle::id),
@@ -746,6 +755,7 @@ impl Gpu {
                 profile_name: home.profile_name.as_deref(),
                 profile_avatar_url: home.profile_avatar_url.as_deref(),
                 custom_background,
+                mirror: self.mirror,
             };
             let viewport = Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
                 .with_platform(home.platform)
@@ -811,6 +821,9 @@ impl Gpu {
             }
         });
         timer.mark("draw");
+        if self.mirror {
+            fluxa_renderer::mirror::mirror_shapes(&mut output.shapes, logical_size[0] as f32);
+        }
         let text_runs = if self.collect_text {
             collect_text_runs(
                 &output.shapes,

@@ -234,6 +234,22 @@ fn current_presence(state: &RendererState) -> presence::Presence {
 }
 
 impl RendererState {
+    fn mirrored(&self) -> bool {
+        self.player.is_none() && fluxa_core::text_direction::is_rtl_language(&self.home.language)
+    }
+
+    fn mirror_x(&self, x: f32) -> f32 {
+        if self.mirrored() {
+            logical_viewport(self).width - x
+        } else {
+            x
+        }
+    }
+
+    fn mirror_position(&self, position: Pos2) -> Pos2 {
+        Pos2::new(self.mirror_x(position.x), position.y)
+    }
+
     fn scale(&self) -> f32 {
         let fit = if self.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop {
             let width = self.size[0] as f32 / self.density;

@@ -21,7 +21,7 @@ mod settings;
 
 pub mod ffi;
 pub mod runtime;
-pub use runtime::{app_icon, env, log_sink};
+pub use runtime::{app_icon, env, log_sink, text_direction};
 pub mod types;
 
 pub mod bindings;
