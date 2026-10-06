@@ -329,6 +329,17 @@ impl EffectExecutor {
         }
     }
 
+    pub(super) fn expire_nuvio_snapshot(&self, profile: &Value, resource: &str) {
+        let source = account_source(profile, resource);
+        let Some(key) = source.get("snapshotKey").and_then(Value::as_str) else {
+            return;
+        };
+        if let Ok(Some(mut state)) = self.storage.read_json(key) {
+            state["checkedAt"] = json!(0);
+            let _ = self.storage.write_json(key, &state);
+        }
+    }
+
     pub(super) async fn push_nuvio_write(
         &self,
         profile: &Value,

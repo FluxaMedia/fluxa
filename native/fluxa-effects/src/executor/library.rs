@@ -461,6 +461,7 @@ impl EffectExecutor {
             .is_some_and(|items| {
                 items.iter().any(|item| {
                     item.get("id")
+            self.expire_nuvio_snapshot(&profile, "progress");
                         .and_then(Value::as_str)
                         .is_some_and(|id| ids.contains(&id))
                 })
