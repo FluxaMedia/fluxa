@@ -50,7 +50,7 @@ pub(super) fn draw_select(
     ui.painter().galley(title_pos, title, text_primary());
     let gear_rect = Rect::from_center_size(
         Pos2::new(title_right + 38.0, title_rect.center().y),
-        Vec2::splat(44.0),
+        Vec2::splat(metrics.icon_button_size),
     );
     let gear = ui
         .interact(gear_rect, Id::new("fluxa-profiles-gear"), Sense::click())
@@ -110,7 +110,7 @@ pub(super) fn draw_select(
                     icon,
                     Rect::from_center_size(avatar_center, Vec2::splat(36.0)),
                     full_uv(),
-                    Color32::from_white_alpha(140),
+                    ink(tone::MUTED),
                 );
             }
             ui.painter().text(
@@ -151,14 +151,14 @@ pub(super) fn draw_select(
                 badge,
                 17.0,
                 background().gamma_multiply(0.92),
-                egui::Stroke::new(stroke::HAIRLINE, ink(38)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
             );
             if let Some(icon) = assets.icon("Lock") {
                 ui.painter().image(
                     icon,
                     Rect::from_center_size(badge, Vec2::splat(16.0)),
                     full_uv(),
-                    Color32::from_white_alpha(220),
+                    ink(tone::BODY),
                 );
             }
         }
@@ -184,7 +184,8 @@ pub(super) fn draw_select(
                 Pos2::new(avatar_center.x, name_y + 22.0),
                 galley.size() + Vec2::new(14.0, 6.0),
             );
-            ui.painter().rect_filled(badge, radius::CHIP, ink(24));
+            ui.painter()
+                .rect_filled(badge, radius::chip(), ink(tone::SOFT));
             ui.painter()
                 .galley(badge.center() - galley.size() * 0.5, galley, text_primary());
             actions_y += 20.0;
@@ -206,7 +207,8 @@ pub(super) fn draw_select(
                 )
                 .on_hover_text(label);
             if action.hovered() {
-                ui.painter().rect_filled(rect, radius::CONTROL, ink(18));
+                ui.painter()
+                    .rect_filled(rect, radius::control(), ink(tone::SOFT));
             }
             let color = ink(if action.hovered() { 255 } else { alpha });
             if let Some(texture) = assets.icon(icon) {

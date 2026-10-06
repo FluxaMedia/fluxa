@@ -215,7 +215,7 @@ pub(super) fn draw_recommendations(
                 &painter,
                 Rect::from_center_size(
                     Pos2::new(rect.right() - margin * 0.5 - 20.0, rect.top() + 36.0),
-                    Vec2::splat(42.0),
+                    Vec2::splat(metrics.icon_button_size),
                 ),
                 "close",
                 false,

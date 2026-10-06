@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
-use super::{HomeCard, HomeRowKind, components, ink, localized, stroke, text_primary};
+use super::{HomeCard, HomeRowKind, components, ink, localized, stroke, text_primary, tone};
 
 mod enrichment;
 mod landscape;
@@ -357,7 +357,7 @@ pub(super) fn paint(
             Pos2::new(corner.x, corner.y + (mark - size * 1.6) * 0.5),
             Vec2::new(galley.size().x + size * 0.7, size * 1.6),
         );
-        components::overlay_chip(&painter, badge, Some(ink(170)));
+        components::overlay_chip(&painter, badge, Some(ink(tone::SUBTLE)));
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         corner.x += badge.width() + 3.0;
     }
@@ -407,32 +407,14 @@ pub(super) fn paint(
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     } else if let Some(rank) = trending {
         let label = format!("#{rank} {}", overlays.trending_label);
-        sash(
-            &painter,
-            rect,
-            (
-                Color32::from_rgb(150, 30, 40),
-                Color32::from_rgb(235, 90, 90),
-            ),
-            &label,
-        );
+        sash(&painter, rect, trending_colors(), &label);
         stacks[Placement::TopRight as usize] = rect.width() * 0.34;
     } else if let Some(won) = enrichment
         .as_deref()
         .and_then(|enrichment| enrichment.graded(facts)?.oscar)
         .filter(|_| overlays.awards)
     {
-        let colors = if won {
-            (
-                Color32::from_rgb(150, 115, 30),
-                Color32::from_rgb(235, 200, 90),
-            )
-        } else {
-            (
-                Color32::from_rgb(70, 70, 75),
-                Color32::from_rgb(190, 190, 195),
-            )
-        };
+        let colors = award_colors(won);
         sash(
             &painter,
             rect,
@@ -543,7 +525,7 @@ pub(super) fn paint(
             ),
         };
         let badge = anchor.anchor_size(Pos2::new(x, y), size);
-        components::overlay_chip(&painter, badge, Some(ink(28)));
+        components::overlay_chip(&painter, badge, Some(ink(tone::RAISED)));
         let height = galley.size().y;
         draw_logo(
             &painter,
@@ -571,7 +553,7 @@ fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality:
             Pos2::new(right - galley.size().x - size * 0.8, y),
             Vec2::new(galley.size().x + size * 0.8, size * 1.5),
         );
-        components::overlay_chip(&painter, badge, Some(ink(60)));
+        components::overlay_chip(&painter, badge, Some(ink(tone::STRONG)));
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         y += badge.height() + 3.0;
     }

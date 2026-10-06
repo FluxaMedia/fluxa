@@ -10,8 +10,9 @@ use std::hash::{Hash, Hasher};
 
 use super::{
     ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
-    artwork_target_size, background, badge_fill, cover_uv, danger_color, full_uv, ink,
-    paint_vertical_gradient, radius, shade, size, stroke, text_primary, truncate_to_width,
+    artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color, full_uv,
+    icon_button_size, ink, paint_vertical_gradient, radius, shade, size, stroke, text_primary,
+    tone, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -175,11 +176,11 @@ pub(super) fn season_tile(
         ui.allocate_exact_size(Vec2::new(size.x, size.y + label_height), Sense::click());
     let painter = ui.painter();
     let image = Rect::from_min_size(rect.min, size);
-    painter.rect_filled(image, radius::CONTROL, metrics.ink(14));
+    painter.rect_filled(image, radius::control(), metrics.ink(tone::FAINT));
     let tint = if selected {
         metrics.text_primary
     } else {
-        metrics.ink(150)
+        metrics.ink(tone::SUBTLE)
     };
     rounded_artwork(
         painter,
@@ -194,7 +195,7 @@ pub(super) fn season_tile(
     if selected {
         painter.rect_stroke(
             image,
-            radius::CONTROL,
+            radius::control(),
             egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
             egui::StrokeKind::Inside,
         );
@@ -224,7 +225,7 @@ pub(super) fn episode_artwork(
     selected: bool,
     metrics: UiMetrics,
 ) {
-    painter.rect_filled(rect, radius::CONTROL, metrics.ink(14));
+    painter.rect_filled(rect, radius::control(), metrics.ink(tone::FAINT));
     if hide_still
         || !rounded_artwork(
             painter,
@@ -246,7 +247,7 @@ pub(super) fn episode_artwork(
         );
     }
     if hovered {
-        painter.rect_filled(rect, radius::CONTROL, shade(Shade::Faint));
+        painter.rect_filled(rect, radius::control(), shade(Shade::Faint));
         if let Some(icon) = assets.icon("PlayFilled") {
             painter.image(
                 icon,
@@ -277,7 +278,7 @@ pub(super) fn episode_artwork(
     if selected {
         painter.rect_stroke(
             rect,
-            radius::CONTROL,
+            radius::control(),
             egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
             egui::StrokeKind::Inside,
         );
@@ -306,7 +307,7 @@ pub(super) fn episode_text(
         text_primary(),
     );
     if let Some((overview, rows)) = overview {
-        let color = ink(140);
+        let color = ink(tone::MUTED);
         let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
         painter.galley(Pos2::new(origin.x, origin.y + 22.0), galley, color);
     }
@@ -360,7 +361,7 @@ pub(super) fn avatar(
         .filter_map(|word| word.chars().next())
         .flat_map(char::to_uppercase)
         .collect::<String>();
-    painter.circle_filled(center, radius, ink(32));
+    painter.circle_filled(center, radius, ink(tone::RAISED));
     painter.text(
         center,
         Align2::CENTER_CENTER,
@@ -417,7 +418,7 @@ pub(super) fn icon_button_sized(
             egui::StrokeKind::Inside,
         );
     } else if hovered {
-        ui.painter().rect_filled(rect, radius, ink(18));
+        ui.painter().rect_filled(rect, radius, ink(tone::SOFT));
     }
     let tint = if !enabled {
         color.gamma_multiply(0.4)
@@ -440,19 +441,19 @@ pub(super) fn icon_button_sized(
 pub(super) fn back_button(
     ui: &mut Ui,
     icon: Option<egui::TextureId>,
-    size: f32,
     metrics: UiMetrics,
 ) -> Response {
+    let size = metrics.icon_button_size;
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), Sense::click());
     let painter = ui.painter();
     painter.circle_filled(rect.center(), size * 0.5, metrics.surface);
     if response.hovered() {
-        painter.circle_filled(rect.center(), size * 0.5, ink(18));
+        painter.circle_filled(rect.center(), size * 0.5, ink(tone::SOFT));
     }
     painter.circle_stroke(
         rect.center(),
         size * 0.5 - 0.5,
-        egui::Stroke::new(stroke::HAIRLINE, ink(30)),
+        egui::Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
     );
     if let Some(icon) = icon {
         painter.image(
@@ -519,16 +520,19 @@ pub(super) fn sticky_bar(
             ui.painter().rect_filled(strip, 0.0, metrics.background);
             ui.painter().line_segment(
                 [strip.left_bottom(), strip.right_bottom()],
-                egui::Stroke::new(stroke::HAIRLINE, ink(20)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::SOFT)),
             );
             let mut output = StickyOutput {
                 clicked: None,
                 rects: Vec::new(),
             };
-            let back_rect = Rect::from_min_size(Pos2::new(margin, top + 4.0), Vec2::splat(40.0));
+            let back_rect = Rect::from_min_size(
+                Pos2::new(margin, top + 4.0),
+                Vec2::splat(metrics.icon_button_size),
+            );
             let back = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(back_rect), |ui| {
-                    back_button(ui, bar.back_icon, 40.0, metrics)
+                    back_button(ui, bar.back_icon, metrics)
                 })
                 .inner;
             output.rects.push((bar.back_node, back_rect));
@@ -537,14 +541,16 @@ pub(super) fn sticky_bar(
             }
             let mut right = viewport.width - margin;
             for action in bar.actions.iter().rev() {
-                let rect =
-                    Rect::from_min_size(Pos2::new(right - 40.0, top + 4.0), Vec2::splat(40.0));
+                let rect = Rect::from_min_size(
+                    Pos2::new(right - metrics.icon_button_size, top + 4.0),
+                    Vec2::splat(metrics.icon_button_size),
+                );
                 let response = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                         icon_button(
                             ui,
                             action.icon,
-                            40.0,
+                            metrics.icon_button_size,
                             text_primary(),
                             true,
                             action.active,
@@ -605,7 +611,7 @@ pub(super) fn labeled_action(
     if active {
         painter.circle_filled(center, 18.0, text_primary());
     } else if response.hovered() {
-        painter.circle_filled(center, 18.0, ink(24));
+        painter.circle_filled(center, 18.0, ink(tone::SOFT));
     }
     if let Some(icon) = icon {
         painter.image(
@@ -836,8 +842,9 @@ pub(super) fn search_field(
 ) -> Response {
     let radius = height * 0.5;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
-    ui.painter().rect_filled(rect, radius, metrics.ink(12));
-    let icon_color = metrics.ink(140);
+    ui.painter()
+        .rect_filled(rect, radius, metrics.ink(tone::FAINT));
+    let icon_color = metrics.ink(tone::MUTED);
     let icon = egui::Pos2::new(rect.left() + radius, rect.center().y);
     ui.painter().circle_stroke(
         icon - Vec2::splat(1.5),
@@ -879,7 +886,7 @@ pub(super) fn search_field(
         crate::fonts::regular(metrics.screen_body_size + 1.0),
     );
     let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(120))
+        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::MUTED))
     } else {
         egui::Stroke::new(stroke::HAIRLINE, metrics.border)
     };
@@ -916,7 +923,15 @@ pub(super) fn text_input(
     kind: InputKind,
     metrics: UiMetrics,
 ) -> Response {
-    text_edit(ui, value, hint, Vec2::new(width, 44.0), 14.0, kind, metrics)
+    text_edit(
+        ui,
+        value,
+        hint,
+        Vec2::new(width, button_height()),
+        metrics.text.body,
+        kind,
+        metrics,
+    )
 }
 
 fn text_edit(
@@ -930,7 +945,8 @@ fn text_edit(
 ) -> Response {
     let radius = size.y * 0.5;
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    ui.painter().rect_filled(rect, radius, metrics.ink(10));
+    ui.painter()
+        .rect_filled(rect, radius, metrics.ink(tone::FAINT));
     let mut text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
     if kind != InputKind::Multiline {
         let row = ui.fonts_mut(|fonts| fonts.row_height(&FontId::proportional(font_size)));
@@ -961,7 +977,7 @@ fn text_edit(
     };
     paint_caret(ui, rect, text_rect, &shown, FontId::proportional(font_size));
     let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(120))
+        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::MUTED))
     } else {
         egui::Stroke::new(stroke::HAIRLINE, metrics.border)
     };
@@ -992,9 +1008,9 @@ pub(super) fn text_tabs(
             let color = if active {
                 metrics.text_primary
             } else if response.hovered() {
-                metrics.ink(200)
+                metrics.ink(tone::BODY)
             } else {
-                metrics.ink(130)
+                metrics.ink(tone::MUTED)
             };
             ui.painter().galley(
                 egui::Pos2::new(rect.left(), rect.center().y - galley.size().y * 0.5),
@@ -1071,11 +1087,11 @@ pub(super) fn button_auto_width(
 }
 
 pub(crate) fn overlay_chip(painter: &Painter, rect: Rect, outline: Option<Color32>) {
-    painter.rect_filled(rect, radius::CHIP, badge_fill());
+    painter.rect_filled(rect, radius::chip(), badge_fill());
     if let Some(color) = outline {
         painter.rect_stroke(
             rect,
-            radius::CHIP,
+            radius::chip(),
             egui::Stroke::new(stroke::HAIRLINE, color),
             egui::StrokeKind::Inside,
         );
@@ -1162,12 +1178,12 @@ fn kind_colors(
             },
             metrics.accent_foreground,
         ),
-        (_, None) => (ink(28), text_primary()),
+        (_, None) => (ink(tone::RAISED), text_primary()),
     };
     if enabled {
         (fill, text)
     } else {
-        (ink(24), ink(80))
+        (ink(tone::SOFT), ink(tone::DIM))
     }
 }
 
@@ -1441,7 +1457,7 @@ pub(super) fn hover_preview_rect(
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
     let mut job = egui::text::LayoutJob::single_section(
         synopsis.to_owned(),
-        egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(150)),
+        egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(tone::SUBTLE)),
     );
     job.wrap.max_width = width - PREVIEW_PAD * 2.0;
     job.wrap.max_rows = rows;
@@ -1591,7 +1607,7 @@ pub(super) fn hover_preview(
                     &meta_line,
                     crate::fonts::regular(body_size),
                     text_width,
-                    metrics.ink(200),
+                    metrics.ink(tone::BODY),
                 );
             }
             y += body_size + 12.0;
@@ -1688,14 +1704,14 @@ pub(super) fn library_row(
         &card.subtitle,
         crate::fonts::regular(metrics.screen_card_subtitle_size),
         text_width,
-        metrics.ink(185),
+        metrics.ink(tone::SUBTLE),
     );
     if card.progress > 0.0 {
         let bar = Rect::from_min_size(
             egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
             Vec2::new(text_width.min(220.0), metrics.card_progress_height),
         );
-        painter.rect_filled(bar, radius::BAR, metrics.ink(40));
+        painter.rect_filled(bar, radius::BAR, metrics.ink(tone::RAISED));
         painter.rect_filled(
             Rect::from_min_size(
                 bar.min,
@@ -1732,7 +1748,7 @@ fn poster_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        Color32::from_white_alpha(235),
+        ink(tone::TEXT),
         assets,
     );
     let has_static_artwork = match super::poster_overlay::custom_url(painter.ctx(), card) {
@@ -1746,7 +1762,7 @@ fn poster_card_body(
                     painter.ctx().pixels_per_point(),
                 ),
                 ArtworkPriority::Visible,
-                Color32::from_white_alpha(235),
+                ink(tone::TEXT),
                 assets,
             ) || has_static_artwork
         }
@@ -1815,7 +1831,7 @@ fn poster_card_body(
         &card.subtitle,
         subtitle_font,
         rect.width(),
-        metrics.ink(185),
+        metrics.ink(tone::SUBTLE),
     );
 }
 
@@ -1906,7 +1922,7 @@ fn continue_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        Color32::from_white_alpha(235),
+        ink(tone::TEXT),
         assets,
     );
 
@@ -1982,7 +1998,7 @@ fn continue_card_body(
             Align2::LEFT_TOP,
             truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
             subtitle_font.clone(),
-            metrics.ink(210),
+            metrics.ink(tone::BODY),
         );
     }
     let badge_pad = metrics.screen_card_subtitle_size * 0.45;
@@ -2014,7 +2030,7 @@ fn continue_card_body(
             Vec2::new(content_width, metrics.card_progress_height),
         ),
         2.0,
-        metrics.ink(70),
+        metrics.ink(tone::STRONG),
     );
     painter.rect_filled(
         Rect::from_min_size(
@@ -2204,13 +2220,13 @@ pub(super) fn choice_field(
         .animate_bool_with_time(id.with("chevron"), open, 0.14);
     let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
-        metrics.ink(5)
+        metrics.ink(tone::FAINT)
     } else if open {
-        metrics.ink(22)
+        metrics.ink(tone::SOFT)
     } else if response.hovered() {
-        metrics.ink(16)
+        metrics.ink(tone::SOFT)
     } else {
-        metrics.ink(10)
+        metrics.ink(tone::FAINT)
     };
     let painter = ui.painter();
     painter.rect(
@@ -2224,7 +2240,7 @@ pub(super) fn choice_field(
     let text_color = if enabled {
         metrics.text_primary
     } else {
-        metrics.ink(110)
+        metrics.ink(tone::MUTED)
     };
     painter.text(
         rect.left_center() + Vec2::new(14.0, 0.0),
@@ -2286,7 +2302,7 @@ pub(super) fn choice_field(
                         if row_response.hovered() || active {
                             ui.painter().rect_filled(
                                 row,
-                                radius::CONTROL,
+                                radius::control(),
                                 metrics.ink(if row_response.hovered() { 18 } else { 9 }),
                             );
                         }
@@ -2303,7 +2319,7 @@ pub(super) fn choice_field(
                             if active {
                                 metrics.text_primary
                             } else {
-                                metrics.ink(195)
+                                metrics.ink(tone::BODY)
                             },
                         );
                         if active {
@@ -2389,9 +2405,9 @@ pub(super) fn pill_button(
     crate::motion::press_scale(painter, rect, || {
         let (fill, ink) = match (primary, response.hovered()) {
             (true, false) => (text_primary(), background()),
-            (true, true) => (ink(225), background()),
-            (false, false) => (ink(28), text_primary()),
-            (false, true) => (ink(46), text_primary()),
+            (true, true) => (ink(tone::BODY), background()),
+            (false, false) => (ink(tone::RAISED), text_primary()),
+            (false, true) => (ink(tone::STRONG), text_primary()),
         };
         if primary {
             painter.rect_filled(rect, height * 0.5, fill);
@@ -2696,7 +2712,7 @@ pub fn draw_action_menu(
                         Vec2::new(36.0, 4.0),
                     ),
                     2.0,
-                    metrics.ink(60),
+                    metrics.ink(tone::STRONG),
                 );
             } else if liquid_glass() && tv {
                 glass(&painter, panel, metrics.card_radius, fill);
@@ -2719,7 +2735,7 @@ pub fn draw_action_menu(
                         Vec2::new(36.0, 4.0),
                     ),
                     2.0,
-                    metrics.ink(60),
+                    metrics.ink(tone::STRONG),
                 );
             } else {
                 painter.rect_filled(
@@ -2772,7 +2788,7 @@ pub fn draw_action_menu(
                 let (bg, ink) = if tv && focused {
                     (metrics.text_primary, metrics.background)
                 } else if focused || response.hovered() {
-                    (metrics.ink(18), metrics.text_primary)
+                    (metrics.ink(tone::SOFT), metrics.text_primary)
                 } else {
                     (Color32::TRANSPARENT, metrics.text_primary)
                 };
@@ -2876,7 +2892,7 @@ pub(super) fn toggle(
     metrics: UiMetrics,
 ) {
     let t = context.animate_bool_with_time_and_easing(id, on, 0.22, egui::emath::easing::cubic_out);
-    let off_track = metrics.ink(40);
+    let off_track = metrics.ink(tone::RAISED);
     painter.rect_filled(
         track,
         track.height() * 0.5,
@@ -2893,7 +2909,7 @@ pub(super) fn toggle(
         Vec2::new(radius * 2.0 + stretch, radius * 2.0),
     );
     let knob_color = lerp_color(
-        metrics.ink(170),
+        metrics.ink(tone::SUBTLE),
         if metrics.accent_foreground == metrics.text_primary {
             metrics.text_primary
         } else {
@@ -3039,7 +3055,7 @@ pub(crate) fn paint_badge_chip(
 ) {
     let rounding = chip.height() * 0.5;
     let text = if badge.outline {
-        let color = badge.border.or(badge.fill).unwrap_or(ink(90));
+        let color = badge.border.or(badge.fill).unwrap_or(ink(tone::DIM));
         painter.rect_stroke(
             chip,
             rounding,
@@ -3048,7 +3064,7 @@ pub(crate) fn paint_badge_chip(
         );
         badge.text.or(badge.fill).unwrap_or(text_primary())
     } else {
-        let fill = badge.fill.unwrap_or(ink(24));
+        let fill = badge.fill.unwrap_or(ink(tone::SOFT));
         painter.rect_filled(chip, rounding, fill);
         if let Some(border) = badge.border {
             painter.rect_stroke(
@@ -3060,7 +3076,7 @@ pub(crate) fn paint_badge_chip(
         }
         badge.text.unwrap_or(match badge.fill {
             Some(fill) => readable_on(fill),
-            None => ink(230),
+            None => ink(tone::TEXT),
         })
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;
@@ -3270,7 +3286,7 @@ pub(super) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> eg
         ui,
         label,
         width,
-        size::BUTTON_HEIGHT,
+        button_height(),
         ButtonKind::Secondary,
         size::BUTTON_TEXT,
         true,
@@ -3288,7 +3304,7 @@ pub(super) fn primary_button(
         ui,
         label,
         width,
-        size::BUTTON_HEIGHT,
+        button_height(),
         ButtonKind::Primary,
         size::BUTTON_TEXT,
         enabled,
@@ -3306,7 +3322,7 @@ pub(super) fn danger_button(
         ui,
         label,
         width,
-        size::BUTTON_HEIGHT,
+        button_height(),
         ButtonKind::Danger,
         size::BUTTON_TEXT,
         true,
@@ -3377,32 +3393,51 @@ pub(super) fn screen_bar(
     assets: &impl HomeAssets,
     title: &str,
     back_label: &str,
+    metrics: UiMetrics,
 ) -> bool {
-    ui.add_space(20.0);
+    ui.add_space(metrics.section_gap);
     let mut back = false;
     ui.horizontal(|ui| {
-        ui.add_space(12.0);
-        back = icon_button(
-            ui,
-            assets.icon("ArrowLeft"),
-            44.0,
-            ink(230),
-            false,
-            false,
-            true,
-        )
-        .on_hover_text(back_label)
-        .clicked();
-        ui.add_space(4.0);
+        ui.add_space(metrics.control_gap);
+        back = back_button(ui, assets.icon("ArrowLeft"), metrics)
+            .on_hover_text(back_label)
+            .clicked();
+        ui.add_space(crate::space::XS);
         ui.label(
             RichText::new(title)
-                .size(20.0)
+                .size(metrics.text.title)
                 .strong()
                 .color(text_primary()),
         );
     });
-    ui.add_space(20.0);
+    ui.add_space(metrics.section_gap);
     back
+}
+
+pub(super) fn close_button(
+    ui: &mut egui::Ui,
+    assets: &impl HomeAssets,
+    label: &str,
+    metrics: UiMetrics,
+) -> bool {
+    ui.add_space(metrics.section_gap);
+    let mut clicked = false;
+    ui.horizontal(|ui| {
+        ui.add_space(metrics.control_gap);
+        clicked = icon_button(
+            ui,
+            assets.icon("Close"),
+            metrics.icon_button_size,
+            ink(tone::BODY),
+            true,
+            false,
+            true,
+        )
+        .on_hover_text(label)
+        .clicked();
+    });
+    ui.add_space(metrics.section_gap);
+    clicked
 }
 
 pub(super) fn section(

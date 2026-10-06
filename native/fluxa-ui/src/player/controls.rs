@@ -224,7 +224,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         ui,
         layout,
         close_center,
-        42.0,
+        chrome.icon(),
         "ArrowLeft",
         NODE_PLAYER_CLOSE,
     );
@@ -240,7 +240,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         layout,
         rect.right() - margin,
         header_y,
-        44.0,
+        chrome.icon(),
         &chrome.header_actions(false),
     );
     chrome.heading(
@@ -264,7 +264,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
     );
     let position = chrome.seek_bar(ui, layout, track, 3.0);
     let y = rect.bottom() - 48.0 - chrome.viewport.safe_bottom;
-    let mut x = chrome.row_left(ui, layout, margin, y, 44.0, &chrome.transport());
+    let mut x = chrome.row_left(ui, layout, margin, y, chrome.icon(), &chrome.transport());
     if player.options.volume {
         let mute = if player.muted {
             "VolumeMuted"
@@ -275,7 +275,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             ui,
             layout,
             Pos2::new(x + 22.0, y),
-            44.0,
+            chrome.icon(),
             mute,
             NODE_PLAYER_MUTE,
         );
@@ -286,7 +286,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             ui,
             layout,
             Pos2::new(x + 18.0, y),
-            40.0,
+            chrome.icon_small(),
             bolt,
             NODE_PLAYER_BOOST,
         );
@@ -299,11 +299,11 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             layout,
             right,
             y,
-            44.0,
+            chrome.icon(),
             &[("Maximize", NODE_PLAYER_FULLSCREEN)],
         );
     }
-    let right = chrome.row_right(ui, layout, right, y, 44.0, &chrome.actions(false));
+    let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions(false));
     chrome.text(
         Pos2::new(x + 8.0, y),
         Align2::LEFT_CENTER,
@@ -324,7 +324,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
             ui,
             layout,
             close_center,
-            42.0,
+            chrome.icon(),
             "ArrowLeft",
             NODE_PLAYER_CLOSE,
         );
@@ -339,7 +339,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         ui,
         layout,
         close_center,
-        42.0,
+        chrome.icon(),
         "ArrowLeft",
         NODE_PLAYER_CLOSE,
     );
@@ -348,7 +348,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         layout,
         rect.right() - margin,
         header_y,
-        40.0,
+        chrome.icon_small(),
         &chrome.header_actions(true),
     );
     let title_x = close_center.x + 34.0;
@@ -418,7 +418,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         bottom.extend(chrome.transport());
     }
     bottom.extend(chrome.secondary());
-    chrome.row_left(ui, layout, margin - 6.0, y, 40.0, &bottom);
+    chrome.row_left(ui, layout, margin - 6.0, y, chrome.icon_small(), &bottom);
 }
 
 pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
@@ -465,7 +465,7 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     );
     let mut actions = chrome.transport();
     actions.extend(chrome.actions(false));
-    chrome.row_left(ui, layout, margin - 8.0, y, 56.0, &actions);
+    chrome.row_left(ui, layout, margin - 8.0, y, chrome.icon(), &actions);
 }
 
 pub(super) fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focused: Option<u64>) {
@@ -541,7 +541,7 @@ pub(super) fn control_with_id(
             rect,
             rect.width() * 0.5,
             if prominent {
-                ink(30)
+                ink(tone::RAISED)
             } else {
                 shade(Shade::Faint)
             },
@@ -550,7 +550,7 @@ pub(super) fn control_with_id(
     let color = if response.hovered() {
         text_primary()
     } else {
-        ink(235)
+        ink(tone::TEXT)
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);

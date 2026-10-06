@@ -50,7 +50,7 @@ impl HeroStyle {
                 synopsis_size: metrics.card_title_size + 1.0,
                 synopsis_rows: 2,
                 button_gap: 6.0,
-                button_height: 42.0,
+                button_height: metrics.button_height,
                 stack_extra: 26.0,
             };
         }
@@ -101,7 +101,7 @@ impl HeroStyle {
             },
             synopsis_rows: 3,
             button_gap: 22.0,
-            button_height: 44.0,
+            button_height: metrics.button_height,
             stack_extra: 20.0 + 22.0,
         }
     }
@@ -110,7 +110,7 @@ impl HeroStyle {
         if self.centered {
             Rect::from_min_size(
                 Pos2::new((width - 108.0) * 0.5, -92.0),
-                Vec2::new(108.0, 42.0),
+                Vec2::new(108.0, metrics.button_height),
             )
         } else {
             Rect::from_min_size(

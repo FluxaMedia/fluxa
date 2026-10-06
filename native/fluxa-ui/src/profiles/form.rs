@@ -15,13 +15,7 @@ pub(super) fn draw_form(
     } else {
         t("profiles.create_new")
     };
-    if compact {
-        if components::screen_bar(ui, assets, &title, &t("common.back")) {
-            model.mode = ProfilesMode::Select;
-        }
-    } else {
-        close_button(ui, model, assets, t);
-    }
+    profile_header(ui, model, assets, metrics, compact, &title, t);
     let width = if compact {
         viewport.width - 32.0
     } else {
@@ -121,7 +115,7 @@ pub(super) fn form_details(
                     RichText::new(t("profiles.primary_badge").to_uppercase())
                         .size(metrics.text.label)
                         .color(metrics.text_secondary)
-                        .background_color(ink(24)),
+                        .background_color(ink(tone::SOFT)),
                 );
             }
             if model.draft.avatar_url.is_some()
@@ -253,7 +247,7 @@ pub(super) fn form_images(
                     ui,
                     assets.icon("Refresh"),
                     24.0,
-                    ink(150),
+                    ink(tone::SUBTLE),
                     false,
                     false,
                     !model.busy,

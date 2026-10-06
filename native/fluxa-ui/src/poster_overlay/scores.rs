@@ -1,5 +1,5 @@
 use super::*;
-use crate::{Shade, shade, stroke};
+use crate::{Shade, shade, stroke, tone};
 
 pub(super) fn bottom_vignette(
     painter: &Painter,
@@ -87,7 +87,7 @@ pub(super) fn score_bar(
         return;
     };
     let pill = bar_height * 0.5;
-    painter.rect_filled(track, pill, ink(45));
+    painter.rect_filled(track, pill, ink(tone::STRONG));
     let fill = Rect::from_min_size(
         track.min,
         Vec2::new(track.width() * score / 10.0, bar_height),
@@ -110,7 +110,7 @@ pub(super) fn score_bar(
             Pos2::new(fill.left() + pill, fill.top() + 1.0),
             Pos2::new(fill.right(), fill.top() + 1.0),
         ],
-        Stroke::new(stroke::HAIRLINE, ink(60)),
+        Stroke::new(stroke::HAIRLINE, ink(tone::STRONG)),
     );
 }
 
@@ -198,7 +198,7 @@ pub(super) fn score_frosted(
     );
     painter.line_segment(
         [bar.left_top(), bar.right_top()],
-        Stroke::new(stroke::HAIRLINE, ink(35)),
+        Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
     );
     let size = height * 0.45;
     let pad = rect.width() * 0.05;
@@ -237,6 +237,27 @@ pub(super) fn sash_colors(status: PosterStatus) -> (Color32, Color32) {
         PosterStatus::NewRelease => ([160, 130, 40], [212, 175, 55]),
     };
     (Color32::from_rgb(r, g, b), Color32::from_rgb(br, bg, bb))
+}
+
+pub(super) fn trending_colors() -> (Color32, Color32) {
+    (
+        Color32::from_rgb(150, 30, 40),
+        Color32::from_rgb(235, 90, 90),
+    )
+}
+
+pub(super) fn award_colors(won: bool) -> (Color32, Color32) {
+    if won {
+        (
+            Color32::from_rgb(150, 115, 30),
+            Color32::from_rgb(235, 200, 90),
+        )
+    } else {
+        (
+            Color32::from_rgb(70, 70, 75),
+            Color32::from_rgb(190, 190, 195),
+        )
+    }
 }
 
 pub(super) fn sash(

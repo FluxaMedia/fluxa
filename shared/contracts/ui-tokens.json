@@ -232,6 +232,8 @@
     "platforms": {
       "mobile": {
         "dp": {
+          "buttonHeight": 44,
+          "iconButtonSize": 40,
           "posterVisibleCards": 2.6,
           "posterCardMin": 110,
           "posterCardMax": 170,
@@ -265,6 +267,8 @@
       },
       "desktop": {
         "dp": {
+          "buttonHeight": 44,
+          "iconButtonSize": 40,
           "posterVisibleCards": 7,
           "posterCardMin": 140,
           "posterCardMax": 200,
@@ -298,6 +302,8 @@
       },
       "tv": {
         "dp": {
+          "buttonHeight": 56,
+          "iconButtonSize": 52,
           "posterVisibleCards": 6,
           "posterCardMin": 120,
           "posterCardMax": 180,

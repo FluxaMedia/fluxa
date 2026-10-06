@@ -95,7 +95,7 @@ pub(super) fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMet
     let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
     painter.line_segment(
         [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-        egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+        egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
     );
 }
 
@@ -201,7 +201,7 @@ pub(super) fn draw_account(
             );
         }
         None => {
-            painter.circle_filled(avatar.center(), 26.0, ink(22));
+            painter.circle_filled(avatar.center(), 26.0, ink(tone::SOFT));
             let initials = name
                 .split_whitespace()
                 .take(2)
@@ -360,7 +360,7 @@ pub(super) fn draw_account(
                 );
             }
             if slot.is_some() && viewport.platform != UiPlatform::Android {
-                let stroke = egui::Stroke::new(stroke::ICON, ink(110));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }
@@ -469,7 +469,7 @@ pub(super) fn draw_account(
                     value_font,
                     metrics.text_secondary,
                 );
-                let stroke = egui::Stroke::new(stroke::ICON, ink(110));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }

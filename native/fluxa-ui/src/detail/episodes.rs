@@ -127,7 +127,8 @@ pub(super) fn draw_episodes(
                     Vec2::new(thumb_width, thumb_width * 9.0 / 16.0),
                 );
                 if response.hovered() {
-                    ui.painter().rect_filled(rect, radius::CONTROL, ink(10));
+                    ui.painter()
+                        .rect_filled(rect, radius::control(), ink(tone::FAINT));
                 }
                 let view = cx.detail.episode_view(episode);
                 components::episode_artwork(
@@ -300,8 +301,8 @@ fn draw_numbers(
     ui.painter().rect(
         panel,
         12.0,
-        ink(8),
-        egui::Stroke::new(stroke::HAIRLINE, ink(20)),
+        ink(tone::FAINT),
+        egui::Stroke::new(stroke::HAIRLINE, ink(tone::SOFT)),
         egui::StrokeKind::Inside,
     );
     let thumb_width = if compact {

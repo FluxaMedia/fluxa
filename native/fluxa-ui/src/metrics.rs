@@ -52,6 +52,8 @@ pub struct UiMetrics {
     pub settings_extended_action_height: f32,
     pub settings_extended_action_gap: f32,
     pub settings_extended_addon_action_width: f32,
+    pub button_height: f32,
+    pub icon_button_size: f32,
     pub screen_control_height: f32,
     pub screen_control_radius: f32,
     pub focus_ring_expand: f32,
@@ -161,6 +163,9 @@ static TEXT_PRIMARY: AtomicU32 = AtomicU32::new(u32::MAX);
 static BACKGROUND: AtomicU32 = AtomicU32::new(0xFF06_0606);
 static SURFACE: AtomicU32 = AtomicU32::new(0xFF14_1416);
 static SURFACE_RAISED: AtomicU32 = AtomicU32::new(0xFF1C_1C1F);
+static BUTTON_HEIGHT: AtomicU32 = AtomicU32::new(0x4230_0000);
+static ICON_BUTTON: AtomicU32 = AtomicU32::new(0x4220_0000);
+static CONTROL_RADIUS: AtomicU32 = AtomicU32::new(0x4110_0000);
 static DANGER: AtomicU32 = AtomicU32::new(0xFFFF_6B6B);
 
 fn pack(color: Color32) -> u32 {
@@ -173,6 +178,9 @@ fn publish_palette(metrics: &UiMetrics) {
     SURFACE.store(pack(metrics.surface), Ordering::Relaxed);
     SURFACE_RAISED.store(pack(metrics.surface_raised), Ordering::Relaxed);
     DANGER.store(pack(metrics.danger), Ordering::Relaxed);
+    CONTROL_RADIUS.store(metrics.screen_control_radius.to_bits(), Ordering::Relaxed);
+    BUTTON_HEIGHT.store(metrics.button_height.to_bits(), Ordering::Relaxed);
+    ICON_BUTTON.store(metrics.icon_button_size.to_bits(), Ordering::Relaxed);
 }
 
 fn unpack(cell: &AtomicU32) -> Color32 {
@@ -186,6 +194,18 @@ pub fn surface_color() -> Color32 {
 
 pub fn raised_color() -> Color32 {
     unpack(&SURFACE_RAISED)
+}
+
+pub fn button_height() -> f32 {
+    f32::from_bits(BUTTON_HEIGHT.load(Ordering::Relaxed))
+}
+
+pub fn icon_button_size() -> f32 {
+    f32::from_bits(ICON_BUTTON.load(Ordering::Relaxed))
+}
+
+pub fn control_radius() -> f32 {
+    f32::from_bits(CONTROL_RADIUS.load(Ordering::Relaxed))
 }
 
 pub fn danger_color() -> Color32 {
@@ -317,6 +337,8 @@ impl UiMetrics {
             settings_extended_action_height: common_dp("settingsExtendedActionHeight", 38.0),
             settings_extended_action_gap: common_dp("settingsExtendedActionGap", 10.0),
             settings_extended_addon_action_width: common_dp("settingsAddonActionWidth", 148.0),
+            button_height: platform_dp("buttonHeight", 44.0),
+            icon_button_size: platform_dp("iconButtonSize", 40.0),
             screen_control_height: common_dp("screenControlHeight", 36.0),
             screen_control_radius: common_dp("screenControlRadius", 9.0),
             focus_ring_expand: common_dp("focusRingExpand", 3.0),

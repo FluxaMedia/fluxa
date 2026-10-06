@@ -353,6 +353,14 @@ impl Chrome<'_> {
         (self.rect.width() * 0.035).clamp(min, 64.0)
     }
 
+    fn icon(&self) -> f32 {
+        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).icon
+    }
+
+    fn icon_small(&self) -> f32 {
+        self.icon() - 4.0
+    }
+
     fn toast_top(&self) -> f32 {
         tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).toast_top
     }
@@ -498,7 +506,13 @@ impl Chrome<'_> {
         }
         let y = track.center().y;
         if duration <= 0.0 {
-            painter_bar(self.painter, track, thickness, ink(95), track.width());
+            painter_bar(
+                self.painter,
+                track,
+                thickness,
+                ink(tone::DIM),
+                track.width(),
+            );
             return position;
         }
         let played = track.width() * (position / duration).clamp(0.0, 1.0) as f32;

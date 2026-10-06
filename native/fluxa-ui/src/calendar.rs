@@ -302,7 +302,7 @@ pub fn draw_calendar(
                 egui::Frame::new()
                     .fill(metrics.surface)
                     .corner_radius(metrics.card_radius)
-                    .stroke(egui::Stroke::new(stroke::HAIRLINE, ink(40)))
+                    .stroke(egui::Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)))
                     .inner_margin(metrics.card_content_padding)
                     .show(ui, |ui| {
                         ui.set_width((panel_width - metrics.card_content_padding * 2.0).max(1.0));
@@ -434,7 +434,11 @@ fn draw_calendar_cell(
         painter.rect_filled(
             rect,
             radius,
-            if entries.is_empty() { ink(6) } else { ink(14) },
+            if entries.is_empty() {
+                ink(tone::FAINT)
+            } else {
+                ink(tone::FAINT)
+            },
         );
     } else {
         if past {

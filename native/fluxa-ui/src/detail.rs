@@ -816,11 +816,11 @@ pub fn draw_detail(
     let sticky_on = scroll_y > viewport.height * 0.45;
     let back_rect = Rect::from_min_size(
         Pos2::new(margin, metrics.detail_back_top - scroll_y),
-        Vec2::splat(40.0),
+        Vec2::splat(metrics.icon_button_size),
     );
     if !sticky_on {
         components::placed_front(context, Id::new("fluxa-detail-back"), back_rect.min, |ui| {
-            let response = components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics)
+            let response = components::back_button(ui, assets.icon("ArrowLeft"), metrics)
                 .on_hover_text(t("auto.back"));
             if response.clicked() {
                 layout.activated = Some(NODE_DETAIL_BACK);

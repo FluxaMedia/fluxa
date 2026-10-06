@@ -395,7 +395,7 @@ pub(super) fn draw_addons(
             rect,
             y + 8.0,
             &localized("settings.addon_empty", language),
-            ink(140),
+            ink(tone::MUTED),
         );
     }
     for (index, addon) in settings.addons.iter().enumerate() {
@@ -438,7 +438,7 @@ pub(super) fn draw_plugins(
         rect,
         y + 4.0,
         &localized("settings.plugin_risk", language),
-        ink(140),
+        ink(tone::MUTED),
     );
     y += PLUGIN_RISK_HEIGHT;
     let repos = repositories(settings);
@@ -463,7 +463,7 @@ pub(super) fn draw_plugins(
             rect,
             y + 8.0,
             &localized("settings.plugin_empty", language),
-            ink(140),
+            ink(tone::MUTED),
         );
         y += 56.0;
     }
@@ -508,7 +508,7 @@ pub(super) fn draw_plugins(
                     row.left_top() + Vec2::new(16.0, 0.0),
                     row.right_top() - Vec2::new(16.0, 0.0),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(14)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
             );
         }
         let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -597,7 +597,7 @@ fn draw_card(
     );
     let inner = frame.shrink(CARD_PADDING);
     let logo = Rect::from_min_size(inner.min, Vec2::splat(LOGO));
-    painter.rect_filled(logo, radius::CONTROL, ink(14));
+    painter.rect_filled(logo, radius::control(), ink(tone::FAINT));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
     if let Some(texture) = texture {
         let size = context
@@ -622,7 +622,7 @@ fn draw_card(
             icon,
             Rect::from_center_size(logo.center(), Vec2::splat(24.0)),
             full_uv(),
-            Color32::from_white_alpha(200),
+            ink(tone::BODY),
         );
     } else {
         painter.text(
@@ -679,8 +679,7 @@ fn draw_card(
         let font = crate::fonts::regular(metrics.text.meta);
         let mut x = inner.left();
         for chip in &card.chips {
-            let galley =
-                painter.layout_no_wrap(chip.clone(), font.clone(), Color32::from_white_alpha(210));
+            let galley = painter.layout_no_wrap(chip.clone(), font.clone(), ink(tone::BODY));
             let width = galley.size().x + 20.0;
             if x + width > inner.right() {
                 break;
@@ -688,8 +687,8 @@ fn draw_card(
             let chip_rect = Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, CHIP_HEIGHT));
             painter.rect_stroke(
                 chip_rect,
-                radius::CONTROL,
-                egui::Stroke::new(stroke::HAIRLINE, ink(40)),
+                radius::control(),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
                 egui::StrokeKind::Inside,
             );
             painter.galley(
@@ -725,8 +724,15 @@ fn draw_card(
             Id::new(("fluxa-addon-action", node)),
             button.min,
             |ui| {
-                let response =
-                    components::icon_button(ui, texture, ACTION, ink(220), false, false, enabled);
+                let response = components::icon_button(
+                    ui,
+                    texture,
+                    ACTION,
+                    ink(tone::BODY),
+                    false,
+                    false,
+                    enabled,
+                );
                 if enabled && response.clicked() {
                     layout.activated = Some(node);
                 }
@@ -791,7 +797,7 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
             prompt.code,
             prompt.url
         ),
-        ink(200),
+        ink(tone::BODY),
     ))
 }
 
@@ -922,7 +928,7 @@ pub(super) fn draw_servers(
             rect,
             y + 8.0,
             &localized("settings.server_empty", language),
-            ink(140),
+            ink(tone::MUTED),
         );
         y += 56.0;
     }

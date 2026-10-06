@@ -13,7 +13,7 @@ pub(super) fn draw_mini_player(
         rect.min + Vec2::splat(if compact { 16.0 } else { 24.0 }),
         Vec2::new(width, width * 9.0 / 16.0),
     );
-    painter.rect_filled(mini.expand(1.0), radius::CONTROL, ink(28));
+    painter.rect_filled(mini.expand(1.0), radius::control(), ink(tone::RAISED));
     match player.video {
         Some(texture) => {
             painter.add(
@@ -22,7 +22,7 @@ pub(super) fn draw_mini_player(
             );
         }
         None => {
-            painter.rect_filled(mini, radius::CONTROL, Color32::BLACK);
+            painter.rect_filled(mini, radius::control(), Color32::BLACK);
         }
     }
     let hovered = ui.rect_contains_pointer(mini);
@@ -108,7 +108,7 @@ pub(super) fn draw_seek_preview(
             Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
             Pos2::new(x + width * 0.5, bottom),
         );
-        painter.rect_filled(frame.expand(1.0), radius::CHIP, ink(40));
+        painter.rect_filled(frame.expand(1.0), radius::chip(), ink(tone::RAISED));
         painter.image(texture, frame, full_uv(), Color32::WHITE);
     }
 }
@@ -137,7 +137,7 @@ pub(super) fn draw_pause_info(
     let left = rect.left() + if compact { 28.0 } else { 64.0 };
     let width = (rect.width() * if compact { 0.5 } else { 0.42 }).clamp(240.0, 620.0);
     let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
-    let muted = ink(190);
+    let muted = ink(tone::BODY);
 
     let label = localized("player.youre_watching", &player.language);
     blocks.push((

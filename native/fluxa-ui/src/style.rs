@@ -2,8 +2,27 @@ use super::*;
 
 pub(crate) mod radius {
     pub const BAR: f32 = 2.0;
-    pub const CHIP: f32 = 4.0;
-    pub const CONTROL: f32 = 10.0;
+
+    pub fn control() -> f32 {
+        crate::control_radius()
+    }
+
+    pub fn chip() -> f32 {
+        crate::control_radius() * 0.45
+    }
+}
+
+pub(crate) mod tone {
+    pub const FAINT: u8 = 10;
+    pub const SOFT: u8 = 20;
+    pub const RAISED: u8 = 30;
+    pub const STRONG: u8 = 50;
+    pub const DIM: u8 = 90;
+    pub const MUTED: u8 = 130;
+    pub const SUBTLE: u8 = 170;
+    pub const BODY: u8 = 210;
+    pub const TEXT: u8 = 235;
+    pub const FULL: u8 = 255;
 }
 
 pub(crate) mod stroke {
@@ -13,7 +32,6 @@ pub(crate) mod stroke {
 }
 
 pub(crate) mod size {
-    pub const BUTTON_HEIGHT: f32 = 44.0;
     pub const BUTTON_TEXT: f32 = 13.0;
 }
 

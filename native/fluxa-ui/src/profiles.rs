@@ -114,7 +114,7 @@ pub fn draw_profiles(
                                 ui,
                                 assets.icon("Close"),
                                 22.0,
-                                ink(170),
+                                ink(tone::SUBTLE),
                                 false,
                                 false,
                                 true,
@@ -178,21 +178,21 @@ fn centered_column(ui: &mut egui::Ui, width: f32, add: impl FnOnce(&mut egui::Ui
     });
 }
 
-fn close_button(
+fn profile_header(
     ui: &mut egui::Ui,
     model: &mut ProfilesModel,
     assets: &impl HomeAssets,
+    metrics: UiMetrics,
+    compact: bool,
+    title: &str,
     t: &dyn Fn(&str) -> String,
 ) {
-    ui.add_space(20.0);
-    ui.horizontal(|ui| {
-        ui.add_space(28.0);
-        let response =
-            components::icon_button(ui, assets.icon("Close"), 36.0, ink(190), true, false, true)
-                .on_hover_text(t("common.close"));
-        if response.clicked() {
-            model.mode = ProfilesMode::Select;
-        }
-    });
-    ui.add_space(24.0);
+    let leave = if compact {
+        components::screen_bar(ui, assets, title, &t("common.back"), metrics)
+    } else {
+        components::close_button(ui, assets, &t("common.close"), metrics)
+    };
+    if leave {
+        model.mode = ProfilesMode::Select;
+    }
 }

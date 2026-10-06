@@ -77,7 +77,7 @@ pub(super) fn draw_panel(
             Align2::LEFT_TOP,
             truncate_to_width(&veil, message, &FontId::proportional(text), inner.width()),
             FontId::proportional(text),
-            ink(170),
+            ink(tone::SUBTLE),
         );
         y += message_height;
     }
@@ -231,7 +231,7 @@ fn draw_list(
                 Align2::LEFT_CENTER,
                 *heading,
                 FontId::proportional(text * 0.85),
-                ink(140),
+                ink(tone::MUTED),
             );
         }
         let rows_top = top + head_h;
@@ -294,7 +294,7 @@ fn draw_list(
                         Align2::LEFT_CENTER,
                         &row.label,
                         FontId::proportional(text * 0.8),
-                        ink(120),
+                        ink(tone::MUTED),
                     );
                 }
                 continue;
@@ -312,9 +312,9 @@ fn draw_list(
             let fill = if on {
                 text_primary()
             } else if row.selected {
-                ink(22)
+                ink(tone::SOFT)
             } else if response.hovered() {
-                ink(12)
+                ink(tone::FAINT)
             } else {
                 Color32::TRANSPARENT
             };
@@ -330,7 +330,7 @@ fn draw_list(
                     rect.min + Vec2::new(8.0, 8.0),
                     Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
                 );
-                veil.rect_filled(art, radius::CONTROL, crate::ink(14));
+                veil.rect_filled(art, radius::control(), crate::ink(tone::FAINT));
                 components::rounded_artwork(
                     &veil,
                     art,

@@ -26,9 +26,9 @@ pub enum SkipKind {
 impl SkipKind {
     fn tint(self) -> Color32 {
         match self {
-            SkipKind::Intro => ink(210),
-            SkipKind::Recap => ink(150),
-            SkipKind::Outro => ink(95),
+            SkipKind::Intro => ink(tone::BODY),
+            SkipKind::Recap => ink(tone::SUBTLE),
+            SkipKind::Outro => ink(tone::DIM),
         }
     }
 
@@ -78,7 +78,7 @@ pub(super) fn segmented_track(
             0.0
         };
         let width = (right - left - trailing).max(1.0);
-        painter_bar_at(painter, track, left, width, thickness, ink(95));
+        painter_bar_at(painter, track, left, width, thickness, ink(tone::DIM));
         let filled = (played - left + track.left()).clamp(0.0, width);
         if filled > 0.0 {
             painter_bar_at(
@@ -134,15 +134,13 @@ fn painter_bar_at(
 }
 
 fn card_bottom(chrome: &Chrome) -> f32 {
-    let (rect, safe) = (chrome.rect, chrome.viewport.safe_bottom);
-    let visible = chrome.player.controls_visible;
-    match chrome.viewport.form_factor {
-        UiFormFactor::Desktop if visible => rect.bottom() - 93.0 - safe - 26.0,
-        UiFormFactor::Mobile if visible => rect.bottom() - 44.0 - safe - 40.0,
-        UiFormFactor::Tv if visible => rect.bottom() - 64.0 - safe - 72.0 - 70.0,
-        UiFormFactor::Tv => rect.bottom() - 64.0 - safe,
-        _ => rect.bottom() - 32.0 - safe,
-    }
+    let tokens = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let lift = if chrome.player.controls_visible {
+        tokens.card_lift_visible
+    } else {
+        tokens.card_lift_hidden
+    };
+    chrome.rect.bottom() - lift - chrome.viewport.safe_bottom
 }
 
 fn card_right(chrome: &Chrome) -> f32 {

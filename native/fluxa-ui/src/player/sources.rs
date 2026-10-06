@@ -17,7 +17,7 @@ pub(super) fn draw_sources(
         player.background.as_deref(),
         target,
         ArtworkPriority::Visible,
-        Color32::from_white_alpha(40),
+        ink(tone::RAISED),
         assets,
     );
     paint_vertical_gradient(&painter, rect, shade(Shade::Veil), shade(Shade::Strong));
@@ -189,13 +189,15 @@ pub(super) fn draw_sources(
             let close = Rect::from_min_size(
                 Pos2::new(
                     left,
-                    natural.max(inset + (metrics.screen_control_height - 42.0) / 2.0),
+                    natural.max(
+                        inset + (metrics.screen_control_height - metrics.icon_button_size) / 2.0,
+                    ),
                 ),
-                Vec2::splat(42.0),
+                Vec2::splat(metrics.icon_button_size),
             );
             let back = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(close), |ui| {
-                    components::back_button(ui, assets.icon("ArrowLeft"), 42.0, metrics)
+                    components::back_button(ui, assets.icon("ArrowLeft"), metrics)
                 })
                 .inner;
             layout

@@ -11,7 +11,7 @@ struct FolderGeometry {
 
 fn folder_geometry(viewport: Viewport, metrics: UiMetrics, folder: &FolderModel) -> FolderGeometry {
     let page = PageLayout::new(viewport, metrics, false);
-    let header_height = HEADER_ART.max(40.0);
+    let header_height = HEADER_ART;
     let show_tabs = folder.view_mode == FolderViewMode::TabbedGrid && folder.tabs.len() > 1;
     let mut y = page.top + header_height + metrics.section_gap;
     let tabs_top = show_tabs.then_some(y);
@@ -117,14 +117,14 @@ pub fn draw_folder(
     let back_rect = Rect::from_min_size(
         Pos2::new(
             page.margin,
-            page.top + (geometry.header_height - 40.0) * 0.5 - scroll_y,
+            page.top + (geometry.header_height - metrics.icon_button_size) * 0.5 - scroll_y,
         ),
-        Vec2::splat(40.0),
+        Vec2::splat(metrics.icon_button_size),
     );
     let sticky_on = scroll_y > geometry.content_top * 0.6;
     if !sticky_on {
         components::placed_front(context, Id::new("fluxa-folder-back"), back_rect.min, |ui| {
-            let response = components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
+            let response = components::back_button(ui, assets.icon("ArrowLeft"), metrics);
             if response.clicked() {
                 layout.activated = Some(NODE_FOLDER_BACK);
             }

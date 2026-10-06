@@ -10,18 +10,15 @@ pub(super) fn draw_picker_settings(
     request: &mut Option<ProfilesRequest>,
 ) {
     let compact = viewport.is_compact();
-    if compact {
-        if components::screen_bar(
-            ui,
-            assets,
-            &t("profiles.picker_settings"),
-            &t("common.back"),
-        ) {
-            model.mode = ProfilesMode::Select;
-        }
-    } else {
-        close_button(ui, model, assets, t);
-    }
+    profile_header(
+        ui,
+        model,
+        assets,
+        metrics,
+        compact,
+        &t("profiles.picker_settings"),
+        t,
+    );
     let width = if compact {
         viewport.width - 32.0
     } else {
@@ -77,8 +74,8 @@ pub(super) fn draw_picker_settings(
                 if components::icon_button(
                     ui,
                     assets.icon("ImagePlus"),
-                    44.0,
-                    ink(200),
+                    metrics.icon_button_size,
+                    ink(tone::BODY),
                     true,
                     false,
                     true,
@@ -92,8 +89,8 @@ pub(super) fn draw_picker_settings(
                     && components::icon_button(
                         ui,
                         assets.icon("Delete"),
-                        44.0,
-                        ink(200),
+                        metrics.icon_button_size,
+                        ink(tone::BODY),
                         true,
                         false,
                         true,
@@ -172,7 +169,7 @@ pub(super) fn draw_picker_settings(
                     if compact {
                         Color32::TRANSPARENT
                     } else {
-                        ink(8)
+                        ink(tone::FAINT)
                     },
                     10.0,
                     egui::Margin::symmetric(14, 12),
@@ -257,7 +254,7 @@ pub(super) fn draw_picker_settings(
                                         ui,
                                         assets.icon("Refresh"),
                                         32.0,
-                                        ink(170),
+                                        ink(tone::SUBTLE),
                                         false,
                                         false,
                                         !model.busy,

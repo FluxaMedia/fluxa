@@ -15,6 +15,12 @@ pub(super) struct PlayerTokens {
     pub rich_row: f32,
     pub rich_width: f32,
     pub toast_top: f32,
+    pub icon: f32,
+    pub stats_width: f32,
+    pub stats_text: f32,
+    pub stats_pad: f32,
+    pub card_lift_visible: f32,
+    pub card_lift_hidden: f32,
 }
 
 impl PlayerTokens {
@@ -34,6 +40,12 @@ impl PlayerTokens {
                 rich_row: 128.0,
                 rich_width: 760.0,
                 toast_top: 48.0,
+                icon: 56.0,
+                stats_width: 520.0,
+                stats_text: 20.0,
+                stats_pad: 22.0,
+                card_lift_visible: 206.0,
+                card_lift_hidden: 64.0,
             },
             UiFormFactor::Mobile => Self {
                 card_width: 300.0,
@@ -49,6 +61,12 @@ impl PlayerTokens {
                 rich_row: 88.0,
                 rich_width: 420.0,
                 toast_top: 30.0,
+                icon: 42.0,
+                stats_width: 250.0,
+                stats_text: 11.5,
+                stats_pad: 10.0,
+                card_lift_visible: 84.0,
+                card_lift_hidden: 32.0,
             },
             UiFormFactor::Desktop => Self {
                 card_width: 380.0,
@@ -64,6 +82,12 @@ impl PlayerTokens {
                 rich_row: 92.0,
                 rich_width: 460.0,
                 toast_top: 28.0,
+                icon: 44.0,
+                stats_width: 310.0,
+                stats_text: 12.5,
+                stats_pad: 14.0,
+                card_lift_visible: 119.0,
+                card_lift_hidden: 32.0,
             },
         }
     }

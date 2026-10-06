@@ -39,7 +39,7 @@ pub(super) fn draw_warnings(
     );
     painter.rect_filled(
         panel,
-        radius::CONTROL,
+        radius::control(),
         Color32::from_black_alpha((173.0 * box_alpha) as u8),
     );
     let bar = panel.height() - 20.0;
@@ -83,7 +83,7 @@ pub(super) fn draw_loading(
         url,
         target,
         ArtworkPriority::Visible,
-        Color32::from_white_alpha(89),
+        ink(tone::DIM),
         assets,
     );
     paint_vertical_gradient(

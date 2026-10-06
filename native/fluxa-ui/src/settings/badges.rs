@@ -147,7 +147,10 @@ pub(super) fn draw_badges(
     );
     let row = Rect::from_min_size(
         card.left_top() + Vec2::new(metrics.settings_row_inset, 20.0),
-        Vec2::new(card.width() - metrics.settings_row_inset * 2.0, 36.0),
+        Vec2::new(
+            card.width() - metrics.settings_row_inset * 2.0,
+            metrics.screen_control_height,
+        ),
     );
     let right = pills_right(
         context,
@@ -799,6 +802,6 @@ fn draw_formatter(
 pub(super) fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
     painter.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
-        egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+        egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
     );
 }

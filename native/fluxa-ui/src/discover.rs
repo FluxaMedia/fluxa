@@ -72,11 +72,11 @@ pub fn draw_discover(
             });
         },
     );
-    egui::Area::new(Id::new("fluxa-shared-discover-search"))
-        .constrain(false)
-        .order(egui::Order::Foreground)
-        .fixed_pos(page.search.min)
-        .show(context, |ui| {
+    components::placed_front(
+        context,
+        Id::new("fluxa-shared-discover-search"),
+        page.search.min,
+        |ui| {
             let mut query = discover.query.clone();
             let search = components::search_field(
                 ui,
@@ -91,12 +91,13 @@ pub fn draw_discover(
                 layout.text_input = Some(query);
                 layout.text_input_node = Some(NODE_DISCOVER_SEARCH);
             }
-        });
-    egui::Area::new(Id::new("fluxa-shared-discover-header"))
-        .constrain(false)
-        .order(egui::Order::Foreground)
-        .fixed_pos(Pos2::new(margin, page.filters_top))
-        .show(context, |ui| {
+        },
+    );
+    components::placed_front(
+        context,
+        Id::new("fluxa-shared-discover-header"),
+        Pos2::new(margin, page.filters_top),
+        |ui| {
             ui.set_min_width(filter_row_width);
             ui.set_max_width(filter_row_width);
             let catalogs = discover
@@ -358,7 +359,8 @@ pub fn draw_discover(
                         draw_filter_controls(ui);
                     });
                 });
-        });
+        },
+    );
 
     let results_width = page.width;
     let grid = PosterGrid::new(results_width, metrics);

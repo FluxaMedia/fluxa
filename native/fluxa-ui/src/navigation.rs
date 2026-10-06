@@ -99,7 +99,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             );
                             slots[position] = rect;
                             let fill = if response.hovered() && !active {
-                                ink(12)
+                                ink(tone::FAINT)
                             } else {
                                 Color32::TRANSPARENT
                             };
@@ -107,7 +107,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             let color = if active || response.hovered() {
                                 text_primary()
                             } else {
-                                ink(160)
+                                ink(tone::SUBTLE)
                             };
                             let galley =
                                 ui.painter()
@@ -146,7 +146,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         let profile_active = active_route == 4;
                         if !profile_active && response.hovered() {
                             ui.painter()
-                                .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(12));
+                                .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::FAINT));
                         }
                         let target = slots[nav_slot(active_route)];
                         let x = ui.ctx().animate_value_with_time(
@@ -168,21 +168,24 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                     Vec2::new(width + stretch, NAV_ITEM_HEIGHT),
                                 ),
                                 NAV_ITEM_HEIGHT * 0.5,
-                                ink(18),
+                                ink(tone::SOFT),
                             ),
                         );
                         let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
                         if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
                         } else {
-                            ui.painter()
-                                .circle_filled(center, NAV_AVATAR_RADIUS, ink(30));
+                            ui.painter().circle_filled(
+                                center,
+                                NAV_AVATAR_RADIUS,
+                                ink(tone::RAISED),
+                            );
                             if let Some(icon) = assets.icon("Account") {
                                 ui.painter().image(
                                     icon,
                                     Rect::from_center_size(center, Vec2::splat(16.0)),
                                     full_uv(),
-                                    Color32::from_white_alpha(215),
+                                    ink(tone::BODY),
                                 );
                             }
                         }
@@ -200,7 +203,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             if profile_active || response.hovered() {
                                 text_primary()
                             } else {
-                                ink(200)
+                                ink(tone::BODY)
                             },
                         );
                         if response.clicked() {
@@ -314,7 +317,7 @@ fn nav_accent(assets: &impl HomeAssets) -> (Color32, Color32) {
             let [r, g, b, _] = accent.to_array();
             (accent, Color32::from_rgba_unmultiplied(r, g, b, 46))
         }
-        _ => (text_primary(), ink(18)),
+        _ => (text_primary(), ink(tone::SOFT)),
     }
 }
 
@@ -484,7 +487,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     let active = index == highlighted;
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::new(slot_width, bar.height()), Sense::click());
-                    let color = if active { accent } else { ink(130) };
+                    let color = if active { accent } else { ink(tone::MUTED) };
                     let center = if labels {
                         rect.center() - Vec2::new(0.0, 9.0)
                     } else {

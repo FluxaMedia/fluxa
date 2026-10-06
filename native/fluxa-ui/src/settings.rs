@@ -159,7 +159,7 @@ fn draw_page_cards(
                     Pos2::new(row.left() + 20.0, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
             );
         }
         let title = section_label(SETTINGS_SECTIONS[page].title, language);
@@ -178,7 +178,8 @@ fn draw_page_cards(
             |ui| {
                 let (rect, response) = ui.allocate_exact_size(row.size(), Sense::click());
                 if response.hovered() || response.is_pointer_button_down_on() {
-                    ui.painter().rect_filled(rect, metrics.card_radius, ink(8));
+                    ui.painter()
+                        .rect_filled(rect, metrics.card_radius, ink(tone::FAINT));
                 }
                 let text_width = (rect.width() - 72.0).max(1.0);
                 let title_font = crate::fonts::regular(title_size);
@@ -199,7 +200,7 @@ fn draw_page_cards(
                     metrics.text_muted,
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::ICON, ink(120));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
@@ -437,7 +438,7 @@ fn settings_panel_line(
                 Pos2::new(row_left, y + metrics.settings_extended_line_spacing - 1.0),
                 Pos2::new(row_right, y + metrics.settings_extended_line_spacing - 1.0),
             ],
-            egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+            egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
         );
     } else {
         painter.text(
@@ -800,7 +801,7 @@ fn draw_field(
         help_font,
         metrics.text_muted,
     );
-    let height = 36.0;
+    let height = metrics.screen_control_height;
     let input = Rect::from_min_max(
         Pos2::new(inner.left(), inner.bottom() - height),
         inner.right_bottom(),
@@ -848,7 +849,7 @@ fn draw_field_group(
                     Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
                     Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
             );
         }
         draw_field(context, settings, index, area, metrics, compact, layout);
@@ -1282,7 +1283,7 @@ fn draw_compact_settings_list(
                     Pos2::new(rect.left() + 52.0, rect.top()),
                     Pos2::new(rect.right(), rect.top()),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
             );
         }
         let mut clicked = false;
@@ -1293,7 +1294,8 @@ fn draw_compact_settings_list(
             |ui| {
                 let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                 if response.is_pointer_button_down_on() {
-                    ui.painter().rect_filled(row, metrics.card_radius, ink(10));
+                    ui.painter()
+                        .rect_filled(row, metrics.card_radius, ink(tone::FAINT));
                 }
                 settings_category_icon(
                     assets,
@@ -1310,7 +1312,7 @@ fn draw_compact_settings_list(
                     text_primary(),
                 );
                 let tip = row.right_center() - Vec2::new(20.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::ICON, ink(120));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
@@ -1489,8 +1491,10 @@ fn draw_settings_page(
                 ),
             );
         } else {
-            let back_rect =
-                Rect::from_min_size(Pos2::new(margin - 8.0, top - scroll_y), Vec2::splat(40.0));
+            let back_rect = Rect::from_min_size(
+                Pos2::new(margin - 8.0, top - scroll_y),
+                Vec2::splat(metrics.icon_button_size),
+            );
             let page_title = if settings.page_open {
                 section_label(SETTINGS_SECTIONS[active_section].title, language)
             } else {
@@ -1504,7 +1508,7 @@ fn draw_settings_page(
                     back_rect.min,
                     |ui| {
                         let response =
-                            components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
+                            components::back_button(ui, assets.icon("ArrowLeft"), metrics);
                         if response.clicked() {
                             layout.activated = Some(NODE_SETTINGS_BACK);
                         }
@@ -1641,8 +1645,11 @@ fn draw_settings_page(
                     let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                     let active = section.category == active_category && !searching;
                     if active {
-                        ui.painter()
-                            .rect_filled(item_rect, metrics.screen_control_radius, ink(12));
+                        ui.painter().rect_filled(
+                            item_rect,
+                            metrics.screen_control_radius,
+                            ink(tone::FAINT),
+                        );
                         ui.painter().rect_filled(
                             Rect::from_min_max(
                                 item_rect.left_top() + Vec2::new(1.0, 9.0),
@@ -1657,14 +1664,22 @@ fn draw_settings_page(
                         ui.painter(),
                         item_rect.left_center() + Vec2::new(22.0, 0.0),
                         section.category,
-                        if active { text_primary() } else { ink(150) },
+                        if active {
+                            text_primary()
+                        } else {
+                            ink(tone::SUBTLE)
+                        },
                     );
                     ui.painter().text(
                         item_rect.left_center() + Vec2::new(42.0, 0.0),
                         Align2::LEFT_CENTER,
                         section_label(section.category, language),
                         FontId::proportional(metrics.nav_label_size + if tv { 0.0 } else { 2.0 }),
-                        if active { text_primary() } else { ink(185) },
+                        if active {
+                            text_primary()
+                        } else {
+                            ink(tone::SUBTLE)
+                        },
                     );
                     clicked = response.clicked();
                 },
@@ -1842,7 +1857,7 @@ fn draw_settings_page(
                     Pos2::new(row_rect.left(), y),
                     Pos2::new(row_rect.right(), y),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
             );
         }
         let is_toggle = setting.options.is_empty();
@@ -1983,7 +1998,7 @@ fn draw_settings_page(
                 ),
                 subtitle_font,
                 if value_below || is_app_icon || is_swatches {
-                    ink(160)
+                    ink(tone::SUBTLE)
                 } else {
                     ink(if compact { 100 } else { 120 })
                 },
@@ -2013,7 +2028,7 @@ fn draw_settings_page(
                                 ui.allocate_exact_size(Vec2::splat(size), Sense::click());
                             let glass = *option == "glass";
                             let color = if glass {
-                                ink(80)
+                                ink(tone::DIM)
                             } else {
                                 Color32::from_hex(option).unwrap_or(text_primary())
                             };
@@ -2034,12 +2049,12 @@ fn draw_settings_page(
                                 ui.painter().circle_stroke(
                                     center,
                                     radius,
-                                    egui::Stroke::new(stroke::ICON, ink(190)),
+                                    egui::Stroke::new(stroke::ICON, ink(tone::BODY)),
                                 );
                                 ui.painter().circle_filled(
                                     center - Vec2::splat(radius * 0.38),
                                     radius * 0.26,
-                                    ink(170),
+                                    ink(tone::SUBTLE),
                                 );
                             }
                             if active {
@@ -2052,7 +2067,7 @@ fn draw_settings_page(
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(stroke::HAIRLINE, ink(90)),
+                                    egui::Stroke::new(stroke::HAIRLINE, ink(tone::DIM)),
                                 );
                             }
                             let name = match *option {
@@ -2083,7 +2098,7 @@ fn draw_settings_page(
         } else if sheet_row {
             if !value_below && !is_app_icon {
                 let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::ICON, ink(110));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }

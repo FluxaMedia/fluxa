@@ -56,7 +56,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             } else {
                 (metrics.horizontal_card_width * 0.46).max(160.0)
             },
-            if compact { 42.0 } else { 50.0 },
+            metrics.button_height,
         );
         let play = Rect::from_min_size(
             Pos2::new(
