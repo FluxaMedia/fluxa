@@ -33,16 +33,9 @@ pub(super) fn draw_panel(
         return;
     }
     let tokens = UiMetrics::for_viewport(chrome.viewport);
-    let (pill_height, text, pad) = match chrome.viewport.form_factor {
-        UiFormFactor::Tv => (60.0, 22.0, 24.0),
-        UiFormFactor::Mobile => (42.0, 14.0, 14.0),
-        UiFormFactor::Desktop => (44.0, 15.0, 18.0),
-    };
-    let base: f32 = match chrome.viewport.form_factor {
-        UiFormFactor::Tv => 560.0,
-        UiFormFactor::Mobile => 320.0,
-        UiFormFactor::Desktop => 400.0,
-    };
+    let player_tokens = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
+    let (pill_height, text, pad) = (player_tokens.pill, player_tokens.text, player_tokens.pad);
+    let base = player_tokens.menu_width;
     let width = base.min(chrome.rect.width() - chrome.margin() * 2.0);
     let rows = panel.rows.len().min(PLAYER_PANEL_ROW_LIMIT);
     let message_height = if panel.message.is_some() {
@@ -60,12 +53,12 @@ pub(super) fn draw_panel(
         egui::Order::Foreground,
         Id::new("fluxa-player-panel-veil"),
     ));
-    veil.rect_filled(chrome.rect, 0.0, Color32::from_black_alpha(150));
+    veil.rect_filled(chrome.rect, 0.0, shade(Shade::Veil));
     veil.rect_filled(card, tokens.card_radius, tokens.surface);
     veil.rect_stroke(
         card,
         tokens.card_radius,
-        egui::Stroke::new(1.0, tokens.border),
+        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = card.shrink(pad);
@@ -132,21 +125,19 @@ fn draw_list(
 ) {
     let tokens = UiMetrics::for_viewport(chrome.viewport);
     let form_factor = chrome.viewport.form_factor;
-    let (mut row_h, text, pad, mut base) = match form_factor {
-        UiFormFactor::Tv => (58.0, 21.0, 26.0, 400.0),
-        UiFormFactor::Mobile => (44.0, 15.0, 14.0, 250.0),
-        UiFormFactor::Desktop => (38.0, 14.0, 12.0, 270.0),
-    };
+    let player_tokens = super::tokens::PlayerTokens::for_form_factor(form_factor);
+    let (mut row_h, text, pad, mut base) = (
+        player_tokens.list_row,
+        player_tokens.list_text,
+        player_tokens.list_pad,
+        player_tokens.list_width,
+    );
     let rich = panel
         .rows
         .iter()
         .any(|row| row.thumbnail.is_some() || row.detail.is_some());
     if rich {
-        (row_h, base) = match form_factor {
-            UiFormFactor::Tv => (128.0, 760.0),
-            UiFormFactor::Mobile => (88.0, 420.0),
-            UiFormFactor::Desktop => (92.0, 460.0),
-        };
+        (row_h, base) = (player_tokens.rich_row, player_tokens.rich_width);
     }
     let mut columns: Vec<(Option<&str>, Vec<(usize, &PanelRow)>)> = Vec::new();
     for (index, row) in panel.rows.iter().enumerate().take(PLAYER_PANEL_ROW_LIMIT) {
@@ -211,13 +202,13 @@ fn draw_list(
         layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
     }
     if form_factor != UiFormFactor::Desktop {
-        veil.rect_filled(chrome.rect, 0.0, Color32::from_black_alpha(150));
+        veil.rect_filled(chrome.rect, 0.0, shade(Shade::Veil));
     }
     veil.rect_filled(card, tokens.card_radius, tokens.surface);
     veil.rect_stroke(
         card,
         tokens.card_radius,
-        egui::Stroke::new(1.0, tokens.border),
+        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
         egui::StrokeKind::Inside,
     );
     let mut top = card.top() + pad;
@@ -339,7 +330,7 @@ fn draw_list(
                     rect.min + Vec2::new(8.0, 8.0),
                     Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
                 );
-                veil.rect_filled(art, 6.0, crate::ink(14));
+                veil.rect_filled(art, radius::CONTROL, crate::ink(14));
                 components::rounded_artwork(
                     &veil,
                     art,

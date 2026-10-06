@@ -60,11 +60,11 @@ pub(super) fn draw_stats(chrome: &Chrome) {
     );
     chrome
         .painter
-        .rect_filled(panel, tokens.card_radius, Color32::from_black_alpha(200));
+        .rect_filled(panel, tokens.card_radius, shade(Shade::Strong));
     chrome.painter.rect_stroke(
         panel,
         tokens.card_radius,
-        egui::Stroke::new(1.0, tokens.border),
+        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.pad);

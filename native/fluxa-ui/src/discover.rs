@@ -56,10 +56,11 @@ pub fn draw_discover(
         .catalogs
         .iter()
         .any(|catalog| catalog.content_type == discover.content_type);
-    egui::Area::new(Id::new("fluxa-shared-discover-title"))
-        .constrain(false)
-        .fixed_pos(Pos2::new(margin, page.top))
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-discover-title"),
+        Pos2::new(margin, page.top),
+        |ui| {
             ui.horizontal(|ui| {
                 ui.set_min_height(page.title_height);
                 ui.label(
@@ -69,7 +70,8 @@ pub fn draw_discover(
                         .color(text_primary()),
                 );
             });
-        });
+        },
+    );
     egui::Area::new(Id::new("fluxa-shared-discover-search"))
         .constrain(false)
         .order(egui::Order::Foreground)
@@ -367,7 +369,7 @@ pub fn draw_discover(
     painter.hline(
         margin..=margin + page.width,
         page.content_top - metrics.section_gap * 0.75,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
     );
     let results_clip = Rect::from_min_max(
         Pos2::new(margin, results_view_top),
@@ -377,10 +379,11 @@ pub fn draw_discover(
         ),
     );
     let row_top = results_view_top - scroll_y;
-    egui::Area::new(Id::new("fluxa-shared-discover-results"))
-        .constrain(false)
-        .fixed_pos(Pos2::new(margin, row_top))
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-discover-results"),
+        Pos2::new(margin, row_top),
+        |ui| {
             // An Area otherwise sizes itself to its contents. Explicitly bind
             // its width to the viewport so horizontal_wrapped can choose the
             // correct number of columns for phones, tablets, and desktops.
@@ -525,7 +528,8 @@ pub fn draw_discover(
             // still include every row in the catalog.
             ui.add_space(metrics.control_gap);
             ui.allocate_space(Vec2::new(results_width, grid_height));
-        });
+        },
+    );
     if discover.results.is_empty() {
         let title = if discover.is_loading || discover.catalogs_loading {
             localized("common.loading", &discover.language)

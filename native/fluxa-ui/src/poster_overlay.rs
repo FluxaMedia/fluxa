@@ -4,7 +4,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 
-use super::{HomeCard, HomeRowKind, ink, localized, text_primary};
+use super::{HomeCard, HomeRowKind, components, ink, localized, stroke, text_primary};
 
 mod enrichment;
 mod landscape;
@@ -322,7 +322,7 @@ pub(super) fn paint(
     {
         let height = (rect.height() * 0.018).max(3.0);
         let track = Rect::from_min_max(Pos2::new(rect.left(), rect.bottom() - height), rect.max);
-        painter.rect_filled(track, 0.0, Color32::from_black_alpha(160));
+        painter.rect_filled(track, 0.0, crate::shade(crate::Shade::Scrim));
         painter.rect_filled(
             Rect::from_min_size(
                 track.min,
@@ -357,13 +357,7 @@ pub(super) fn paint(
             Pos2::new(corner.x, corner.y + (mark - size * 1.6) * 0.5),
             Vec2::new(galley.size().x + size * 0.7, size * 1.6),
         );
-        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(180));
-        painter.rect_stroke(
-            badge,
-            3.0,
-            Stroke::new(1.0, ink(170)),
-            egui::StrokeKind::Inside,
-        );
+        components::overlay_chip(&painter, badge, Some(ink(170)));
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         corner.x += badge.width() + 3.0;
     }
@@ -511,7 +505,7 @@ pub(super) fn paint(
                     sw: corner,
                     se: corner,
                 },
-                Color32::from_black_alpha(190),
+                crate::shade(crate::Shade::Scrim),
             );
             painter.galley(
                 banner.center() - galley.size() * 0.5,
@@ -549,13 +543,7 @@ pub(super) fn paint(
             ),
         };
         let badge = anchor.anchor_size(Pos2::new(x, y), size);
-        painter.rect_filled(badge, size.y * 0.3, Color32::from_black_alpha(180));
-        painter.rect_stroke(
-            badge,
-            size.y * 0.3,
-            Stroke::new(1.0, ink(28)),
-            egui::StrokeKind::Inside,
-        );
+        components::overlay_chip(&painter, badge, Some(ink(28)));
         let height = galley.size().y;
         draw_logo(
             &painter,
@@ -583,13 +571,7 @@ fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality:
             Pos2::new(right - galley.size().x - size * 0.8, y),
             Vec2::new(galley.size().x + size * 0.8, size * 1.5),
         );
-        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
-        painter.rect_stroke(
-            badge,
-            3.0,
-            Stroke::new(1.0, ink(60)),
-            egui::StrokeKind::Inside,
-        );
+        components::overlay_chip(&painter, badge, Some(ink(60)));
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         y += badge.height() + 3.0;
     }

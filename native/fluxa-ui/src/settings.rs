@@ -138,7 +138,7 @@ fn draw_page_cards(
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
         egui::StrokeKind::Inside,
     );
     let title_size = if viewport.is_tv() {
@@ -159,7 +159,7 @@ fn draw_page_cards(
                     Pos2::new(row.left() + 20.0, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
-                egui::Stroke::new(1.0, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
             );
         }
         let title = section_label(SETTINGS_SECTIONS[page].title, language);
@@ -171,10 +171,11 @@ fn draw_page_cards(
             language,
         );
         let mut clicked = false;
-        egui::Area::new(Id::new(("fluxa-settings-page-card", node)))
-            .constrain(false)
-            .fixed_pos(row.min)
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new(("fluxa-settings-page-card", node)),
+            row.min,
+            |ui| {
                 let (rect, response) = ui.allocate_exact_size(row.size(), Sense::click());
                 if response.hovered() || response.is_pointer_button_down_on() {
                     ui.painter().rect_filled(rect, metrics.card_radius, ink(8));
@@ -198,13 +199,14 @@ fn draw_page_cards(
                     metrics.text_muted,
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let stroke = egui::Stroke::new(1.6, ink(120));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(120));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
                 clicked = response.clicked();
-            });
+            },
+        );
         layout.focusable.push((node, row));
         if clicked {
             layout.activated = Some(node);
@@ -263,7 +265,9 @@ pub(super) fn visible_groups(
     for &(count, key) in SETTINGS_SECTIONS[active].groups {
         let end = start + count;
         let visible: Vec<usize> = (start..end)
-            .filter(|&index| row_applies(rows[index].key, viewport) && row_enabled(rows[index].key, settings))
+            .filter(|&index| {
+                row_applies(rows[index].key, viewport) && row_enabled(rows[index].key, settings)
+            })
             .map(|index| offset + index)
             .collect();
         if !visible.is_empty() {
@@ -414,15 +418,11 @@ fn settings_panel_line(
             Pos2::new(row_right - value_width * 0.5 - 10.0, baseline_y),
             Vec2::new(value_width + 20.0, metrics.screen_control_height.min(30.0)),
         );
-        painter.rect_filled(
-            chip,
-            metrics.screen_control_radius,
-            Color32::from_rgb(35, 35, 35),
-        );
+        painter.rect_filled(chip, metrics.screen_control_radius, raised_color());
         painter.rect_stroke(
             chip,
             metrics.screen_control_radius,
-            egui::Stroke::new(1.0, metrics.border),
+            egui::Stroke::new(stroke::HAIRLINE, metrics.border),
             egui::StrokeKind::Inside,
         );
         painter.text(
@@ -437,7 +437,7 @@ fn settings_panel_line(
                 Pos2::new(row_left, y + metrics.settings_extended_line_spacing - 1.0),
                 Pos2::new(row_right, y + metrics.settings_extended_line_spacing - 1.0),
             ],
-            egui::Stroke::new(1.0, ink(12)),
+            egui::Stroke::new(stroke::HAIRLINE, ink(12)),
         );
     } else {
         painter.text(
@@ -621,28 +621,27 @@ fn settings_panel_button(
     selected: bool,
     metrics: UiMetrics,
 ) {
-    layout.focusable.push((id, rect));
-    egui::Area::new(Id::new(("fluxa-settings-panel-action", id)))
-        .constrain(false)
-        .fixed_pos(rect.min)
-        .order(egui::Order::Foreground)
-        .show(context, |ui| {
+    let kind = if selected {
+        components::ButtonKind::Selected
+    } else {
+        components::ButtonKind::Secondary
+    };
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-panel-action", id)),
+        rect.min,
+        |ui| {
             let response = components::button(
                 ui,
                 label.as_ref(),
                 rect.width(),
                 rect.height(),
-                if selected {
-                    components::ButtonKind::Selected
-                } else {
-                    components::ButtonKind::Secondary
-                },
+                kind,
                 metrics,
             );
-            if response.clicked() {
-                layout.activated = Some(id);
-            }
-        });
+            components::focus_action(layout, id, &response);
+        },
+    );
 }
 
 fn settings_panel_input(
@@ -655,11 +654,11 @@ fn settings_panel_input(
     metrics: UiMetrics,
 ) {
     let mut next_value = value.to_owned();
-    egui::Area::new(Id::new(("fluxa-settings-panel-input", id)))
-        .constrain(false)
-        .fixed_pos(rect.min)
-        .order(egui::Order::Foreground)
-        .show(context, |ui| {
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-panel-input", id)),
+        rect.min,
+        |ui| {
             let response = components::text_field(
                 ui,
                 &mut next_value,
@@ -674,7 +673,8 @@ fn settings_panel_input(
                 layout.text_input = Some(next_value.clone());
                 layout.text_input_node = Some(id);
             }
-        });
+        },
+    );
 }
 
 fn pill_button(
@@ -685,12 +685,11 @@ fn pill_button(
     label: &str,
     size: f32,
 ) {
-    layout.focusable.push((id, rect));
-    egui::Area::new(Id::new(("fluxa-settings-pill", id)))
-        .constrain(false)
-        .fixed_pos(rect.min)
-        .order(egui::Order::Foreground)
-        .show(context, |ui| {
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-pill", id)),
+        rect.min,
+        |ui| {
             let response = components::pill_button(
                 ui,
                 None,
@@ -701,10 +700,9 @@ fn pill_button(
                 false,
                 None,
             );
-            if response.clicked() {
-                layout.activated = Some(id);
-            }
-        });
+            components::focus_action(layout, id, &response);
+        },
+    );
 }
 
 pub struct PosterField {
@@ -850,7 +848,7 @@ fn draw_field_group(
                     Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
                     Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
                 ],
-                egui::Stroke::new(1.0, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
             );
         }
         draw_field(context, settings, index, area, metrics, compact, layout);
@@ -1261,7 +1259,7 @@ fn draw_compact_settings_list(
         painter.rect_stroke(
             card,
             metrics.card_radius,
-            egui::Stroke::new(1.0, metrics.border),
+            egui::Stroke::new(stroke::HAIRLINE, metrics.border),
             egui::StrokeKind::Inside,
         );
     };
@@ -1284,14 +1282,15 @@ fn draw_compact_settings_list(
                     Pos2::new(rect.left() + 52.0, rect.top()),
                     Pos2::new(rect.right(), rect.top()),
                 ],
-                egui::Stroke::new(1.0, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
             );
         }
         let mut clicked = false;
-        egui::Area::new(Id::new(("fluxa-settings-compact-row", node)))
-            .constrain(false)
-            .fixed_pos(rect.min)
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new(("fluxa-settings-compact-row", node)),
+            rect.min,
+            |ui| {
                 let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                 if response.is_pointer_button_down_on() {
                     ui.painter().rect_filled(row, metrics.card_radius, ink(10));
@@ -1311,13 +1310,14 @@ fn draw_compact_settings_list(
                     text_primary(),
                 );
                 let tip = row.right_center() - Vec2::new(20.0, 0.0);
-                let stroke = egui::Stroke::new(1.6, ink(120));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(120));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
                 clicked = response.clicked();
-            });
+            },
+        );
         layout.focusable.push((node, rect));
         if clicked {
             layout.activated = Some(node);
@@ -1359,7 +1359,7 @@ fn draw_settings_page(
         .and_then(parse_settings_color)
         .unwrap_or(text_primary());
     metrics.accent_foreground = if accent_needs_dark_foreground(metrics.accent) {
-        Color32::from_rgb(20, 20, 22)
+        background()
     } else {
         text_primary()
     };
@@ -1381,10 +1381,11 @@ fn draw_settings_page(
     let top = metrics.settings_top;
     let mut header_bottom = top;
     if tv {
-        egui::Area::new(Id::new("fluxa-shared-settings-header"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(margin, top - scroll_y))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-shared-settings-header"),
+            Pos2::new(margin, top - scroll_y),
+            |ui| {
                 ui.label(
                     RichText::new(localized("nav.settings", language))
                         .size(metrics.screen_title_size)
@@ -1407,10 +1408,7 @@ fn draw_settings_page(
                         metrics.nav_label_size + 2.0,
                         metrics,
                     );
-                    layout.focusable.push((NODE_SETTINGS_BACK, back.rect));
-                    if back.clicked() {
-                        layout.activated = Some(NODE_SETTINGS_BACK);
-                    }
+                    components::focus_action(&mut layout, NODE_SETTINGS_BACK, &back);
                     let switch = components::button_auto_width(
                         ui,
                         &localized("settings.switch_profiles", language),
@@ -1426,7 +1424,8 @@ fn draw_settings_page(
                     }
                 });
                 header_bottom = ui.min_rect().bottom() + scroll_y;
-            });
+            },
+        );
     }
     let active_section = settings.active_section.min(SETTINGS_SECTIONS.len() - 1);
     let section_top = if desktop {
@@ -1451,26 +1450,22 @@ fn draw_settings_page(
     let searching = !settings.search.trim().is_empty();
     let search_height = metrics.screen_control_height;
     let search_field = |layout: &mut HomeLayout, rect: Rect| {
-        egui::Area::new(Id::new("fluxa-settings-search"))
-            .constrain(false)
-            .fixed_pos(rect.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
-                let mut query = settings.search.clone();
-                let response = components::search_field(
-                    ui,
-                    &mut query,
-                    &localized("settings.search_placeholder", language),
-                    rect.width(),
-                    rect.height(),
-                    metrics,
-                );
-                layout.focusable.push((NODE_SETTINGS_SEARCH, response.rect));
-                if response.changed() {
-                    layout.text_input = Some(query);
-                    layout.text_input_node = Some(NODE_SETTINGS_SEARCH);
-                }
-            });
+        components::placed_front(context, Id::new("fluxa-settings-search"), rect.min, |ui| {
+            let mut query = settings.search.clone();
+            let response = components::search_field(
+                ui,
+                &mut query,
+                &localized("settings.search_placeholder", language),
+                rect.width(),
+                rect.height(),
+                metrics,
+            );
+            layout.focusable.push((NODE_SETTINGS_SEARCH, response.rect));
+            if response.changed() {
+                layout.text_input = Some(query);
+                layout.text_input_node = Some(NODE_SETTINGS_SEARCH);
+            }
+        });
     };
     if compact {
         let width = (viewport.width - margin * 2.0).max(1.0);
@@ -1503,17 +1498,18 @@ fn draw_settings_page(
             };
             let sticky_on = scroll_y > 60.0;
             if !sticky_on {
-                egui::Area::new(Id::new("fluxa-settings-back"))
-                    .constrain(false)
-                    .fixed_pos(back_rect.min)
-                    .order(egui::Order::Foreground)
-                    .show(context, |ui| {
+                components::placed_front(
+                    context,
+                    Id::new("fluxa-settings-back"),
+                    back_rect.min,
+                    |ui| {
                         let response =
                             components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
                         if response.clicked() {
                             layout.activated = Some(NODE_SETTINGS_BACK);
                         }
-                    });
+                    },
+                );
                 layout.focusable.push((NODE_SETTINGS_BACK, back_rect));
             }
             if let Some(sticky) = components::sticky_bar(
@@ -1574,7 +1570,11 @@ fn draw_settings_page(
         };
         let nav_x = if desktop { 0.0 } else { margin };
         let nav_inset = if desktop { 16.0 } else { metrics.control_gap };
-        let panel_width = if desktop { nav_width + margin } else { nav_width };
+        let panel_width = if desktop {
+            nav_width + margin
+        } else {
+            nav_width
+        };
         let nav_panel = if desktop {
             Rect::from_min_size(Pos2::ZERO, Vec2::new(panel_width, viewport.height))
         } else {
@@ -1587,17 +1587,17 @@ fn draw_settings_page(
             )
         };
         if desktop {
-            painter.rect_filled(nav_panel, 0.0, Color32::from_rgb(10, 10, 10));
+            painter.rect_filled(nav_panel, 0.0, surface_color());
             painter.line_segment(
                 [nav_panel.right_top(), nav_panel.right_bottom()],
-                egui::Stroke::new(1.0, metrics.border),
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
             );
         } else {
             painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface);
             painter.rect_stroke(
                 nav_panel,
                 metrics.card_radius,
-                egui::Stroke::new(1.0, metrics.border),
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
                 egui::StrokeKind::Inside,
             );
         }
@@ -1614,10 +1614,7 @@ fn draw_settings_page(
         search_field(
             &mut layout,
             Rect::from_min_size(
-                Pos2::new(
-                    nav_x + nav_inset,
-                    section_top + search_top - scroll_y,
-                ),
+                Pos2::new(nav_x + nav_inset, section_top + search_top - scroll_y),
                 Vec2::new(panel_width - nav_inset * 2.0, search_height),
             ),
         );
@@ -1636,10 +1633,11 @@ fn draw_settings_page(
             );
             layout.focusable.push((node, rect));
             let mut clicked = false;
-            egui::Area::new(Id::new(("fluxa-settings-category", node)))
-                .constrain(false)
-                .fixed_pos(rect.min)
-                .show(context, |ui| {
+            components::placed(
+                context,
+                Id::new(("fluxa-settings-category", node)),
+                rect.min,
+                |ui| {
                     let (item_rect, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                     let active = section.category == active_category && !searching;
                     if active {
@@ -1669,7 +1667,8 @@ fn draw_settings_page(
                         if active { text_primary() } else { ink(185) },
                     );
                     clicked = response.clicked();
-                });
+                },
+            );
             if clicked {
                 layout.activated = Some(node);
             }
@@ -1743,7 +1742,7 @@ fn draw_settings_page(
             painter.rect_stroke(
                 *card,
                 metrics.card_radius,
-                egui::Stroke::new(1.0, metrics.border),
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
                 egui::StrokeKind::Inside,
             );
         }
@@ -1843,7 +1842,7 @@ fn draw_settings_page(
                     Pos2::new(row_rect.left(), y),
                     Pos2::new(row_rect.right(), y),
                 ],
-                egui::Stroke::new(1.0, ink(12)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(12)),
             );
         }
         let is_toggle = setting.options.is_empty();
@@ -1857,14 +1856,15 @@ fn draw_settings_page(
         }
         if is_toggle {
             layout.focusable.push((node, row_rect));
-            egui::Area::new(Id::new(("fluxa-settings-row", node)))
-                .constrain(false)
-                .fixed_pos(row_rect.min)
-                .order(egui::Order::Foreground)
-                .show(context, |ui| {
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-row", node)),
+                row_rect.min,
+                |ui| {
                     let (_, response) = ui.allocate_exact_size(row_rect.size(), Sense::click());
                     clicked = response.clicked();
-                });
+                },
+            );
         }
         let row_label_size = if !compact && !tv {
             metrics.settings_row_label_size_desktop
@@ -2001,11 +2001,11 @@ fn draw_settings_page(
                 Vec2::new(count * size + (count - 1.0) * gap, size),
             );
             layout.focusable.push((node, strip.expand(6.0)));
-            egui::Area::new(Id::new(("fluxa-settings-swatches", node)))
-                .constrain(false)
-                .fixed_pos(strip.min)
-                .order(egui::Order::Foreground)
-                .show(context, |ui| {
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-swatches", node)),
+                strip.min,
+                |ui| {
                     ui.spacing_mut().item_spacing.x = gap;
                     ui.horizontal(|ui| {
                         for option in setting.options {
@@ -2034,7 +2034,7 @@ fn draw_settings_page(
                                 ui.painter().circle_stroke(
                                     center,
                                     radius,
-                                    egui::Stroke::new(1.2, ink(190)),
+                                    egui::Stroke::new(stroke::ICON, ink(190)),
                                 );
                                 ui.painter().circle_filled(
                                     center - Vec2::splat(radius * 0.38),
@@ -2046,13 +2046,13 @@ fn draw_settings_page(
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(2.0, text_primary()),
+                                    egui::Stroke::new(stroke::EMPHASIS, text_primary()),
                                 );
                             } else if response.hovered() {
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(1.0, ink(90)),
+                                    egui::Stroke::new(stroke::HAIRLINE, ink(90)),
                                 );
                             }
                             let name = match *option {
@@ -2078,11 +2078,12 @@ fn draw_settings_page(
                             }
                         }
                     });
-                });
+                },
+            );
         } else if sheet_row {
             if !value_below && !is_app_icon {
                 let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-                let stroke = egui::Stroke::new(1.6, ink(110));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }
@@ -2110,11 +2111,11 @@ fn draw_settings_page(
                 ),
             );
             let mut selected = raw_value.to_owned();
-            egui::Area::new(Id::new(("fluxa-settings-dropdown", node)))
-                .constrain(false)
-                .fixed_pos(value_rect.min)
-                .order(egui::Order::Foreground)
-                .show(context, |ui| {
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-dropdown", node)),
+                value_rect.min,
+                |ui| {
                     ui.set_min_size(value_rect.size());
                     ui.set_max_size(value_rect.size());
                     let choices = setting
@@ -2139,7 +2140,8 @@ fn draw_settings_page(
                         metrics,
                     );
                     layout.focusable.push((node, response.rect));
-                });
+                },
+            );
             if selected != raw_value {
                 layout.setting_change =
                     Some((setting.key.to_owned(), serde_json::Value::String(selected)));
@@ -2171,8 +2173,8 @@ fn draw_settings_page(
             Pos2::new(margin, viewport.height - 24.0),
             Align2::LEFT_BOTTOM,
             error,
-            crate::fonts::regular(15.0),
-            Color32::from_rgb(255, 145, 125),
+            crate::fonts::regular(metrics.text.body),
+            danger_color(),
         );
     }
     layout

@@ -26,9 +26,9 @@ pub enum SkipKind {
 impl SkipKind {
     fn tint(self) -> Color32 {
         match self {
-            SkipKind::Intro => Color32::from_rgb(86, 190, 120),
-            SkipKind::Recap => Color32::from_rgb(232, 180, 70),
-            SkipKind::Outro => Color32::from_rgb(96, 150, 230),
+            SkipKind::Intro => ink(210),
+            SkipKind::Recap => ink(150),
+            SkipKind::Outro => ink(95),
         }
     }
 
@@ -54,42 +54,6 @@ pub struct NextEpisodeCard {
     pub title: String,
     pub thumbnail: Option<String>,
     pub countdown: Option<u32>,
-}
-
-struct CardMetrics {
-    width: f32,
-    pill: f32,
-    text: f32,
-    title: f32,
-    pad: f32,
-}
-
-impl CardMetrics {
-    fn for_form_factor(form_factor: UiFormFactor) -> Self {
-        match form_factor {
-            UiFormFactor::Tv => Self {
-                width: 500.0,
-                pill: 60.0,
-                text: 22.0,
-                title: 24.0,
-                pad: 22.0,
-            },
-            UiFormFactor::Mobile => Self {
-                width: 300.0,
-                pill: 40.0,
-                text: 14.0,
-                title: 15.0,
-                pad: 14.0,
-            },
-            UiFormFactor::Desktop => Self {
-                width: 380.0,
-                pill: 44.0,
-                text: 15.0,
-                title: 17.0,
-                pad: 16.0,
-            },
-        }
-    }
 }
 
 pub(super) fn segmented_track(
@@ -212,17 +176,14 @@ pub(super) fn pill(
             )
         })
         .inner;
-    layout.focusable.push((node, response.rect));
-    if response.clicked() {
-        layout.activated = Some(node);
-    }
+    crate::components::focus_action(layout, node, &response);
 }
 
 pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let Some(card) = chrome.player.skip.as_ref() else {
         return;
     };
-    let metrics = CardMetrics::for_form_factor(chrome.viewport.form_factor);
+    let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let label = localized(card.kind.label_key(), &chrome.player.language);
     let width = (label.chars().count() as f32 * metrics.text * 0.62 + 84.0).max(150.0);
     let right = card_right(chrome);
@@ -235,10 +196,7 @@ pub(super) fn draw_skip_card(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut Ho
             crate::components::progress_pill(ui, rect, &label, metrics.text, card.progress)
         })
         .inner;
-    layout.focusable.push((NODE_PLAYER_SKIP, response.rect));
-    if response.clicked() {
-        layout.activated = Some(NODE_PLAYER_SKIP);
-    }
+    components::focus_action(layout, NODE_PLAYER_SKIP, &response);
 }
 
 pub(super) fn draw_next_episode_card(
@@ -251,10 +209,10 @@ pub(super) fn draw_next_episode_card(
         return;
     };
     let tokens = UiMetrics::for_viewport(chrome.viewport);
-    let metrics = CardMetrics::for_form_factor(chrome.viewport.form_factor);
+    let metrics = super::tokens::PlayerTokens::for_form_factor(chrome.viewport.form_factor);
     let language = &chrome.player.language;
     let width = metrics
-        .width
+        .card_width
         .min(chrome.rect.width() - chrome.margin() * 2.0);
     let image_height = thumbnail.map_or(0.0, |_| (width - metrics.pad * 2.0) * 9.0 / 16.0);
     let text_height = metrics.title * 2.9;
@@ -269,7 +227,7 @@ pub(super) fn draw_next_episode_card(
     chrome.painter.rect_stroke(
         panel,
         tokens.card_radius,
-        egui::Stroke::new(1.0, tokens.border),
+        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.pad);

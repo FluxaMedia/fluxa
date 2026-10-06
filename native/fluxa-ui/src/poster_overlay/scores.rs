@@ -1,4 +1,5 @@
 use super::*;
+use crate::{Shade, shade, stroke};
 
 pub(super) fn bottom_vignette(
     painter: &Painter,
@@ -109,7 +110,7 @@ pub(super) fn score_bar(
             Pos2::new(fill.left() + pill, fill.top() + 1.0),
             Pos2::new(fill.right(), fill.top() + 1.0),
         ],
-        Stroke::new(1.0, ink(60)),
+        Stroke::new(stroke::HAIRLINE, ink(60)),
     );
 }
 
@@ -193,9 +194,12 @@ pub(super) fn score_frosted(
             sw: r,
             se: r,
         },
-        Color32::from_black_alpha(165),
+        shade(Shade::Scrim),
     );
-    painter.line_segment([bar.left_top(), bar.right_top()], Stroke::new(1.0, ink(35)));
+    painter.line_segment(
+        [bar.left_top(), bar.right_top()],
+        Stroke::new(stroke::HAIRLINE, ink(35)),
+    );
     let size = height * 0.45;
     let pad = rect.width() * 0.05;
     if let Some(score) = rating {
@@ -262,7 +266,7 @@ pub(super) fn sash(
         .collect();
     painter.add(Shape::convex_polygon(
         shadow,
-        Color32::from_black_alpha(90),
+        shade(Shade::Faint),
         Stroke::NONE,
     ));
     painter.add(Shape::convex_polygon(band(0.0), border, Stroke::NONE));
@@ -282,7 +286,7 @@ pub(super) fn sash(
     let font = FontId::proportional(size);
     let angle = std::f32::consts::FRAC_PI_4;
     for (offset, color) in [
-        (Vec2::splat(size * 0.08), Color32::from_black_alpha(180)),
+        (Vec2::splat(size * 0.08), shade(Shade::Scrim)),
         (Vec2::ZERO, Color32::from_gray(225)),
     ] {
         let galley = painter.layout_no_wrap(text.clone(), font.clone(), color);

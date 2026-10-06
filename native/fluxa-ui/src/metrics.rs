@@ -159,14 +159,37 @@ const CONTINUE_CARD_SCALE: f32 = 1.05;
 
 static TEXT_PRIMARY: AtomicU32 = AtomicU32::new(u32::MAX);
 static BACKGROUND: AtomicU32 = AtomicU32::new(0xFF06_0606);
+static SURFACE: AtomicU32 = AtomicU32::new(0xFF14_1416);
+static SURFACE_RAISED: AtomicU32 = AtomicU32::new(0xFF1C_1C1F);
+static DANGER: AtomicU32 = AtomicU32::new(0xFFFF_6B6B);
 
 fn pack(color: Color32) -> u32 {
     u32::from_be_bytes(color.to_srgba_unmultiplied())
 }
 
-fn publish_palette(text_primary: Color32, background: Color32) {
-    TEXT_PRIMARY.store(pack(text_primary), Ordering::Relaxed);
-    BACKGROUND.store(pack(background), Ordering::Relaxed);
+fn publish_palette(metrics: &UiMetrics) {
+    TEXT_PRIMARY.store(pack(metrics.text_primary), Ordering::Relaxed);
+    BACKGROUND.store(pack(metrics.background), Ordering::Relaxed);
+    SURFACE.store(pack(metrics.surface), Ordering::Relaxed);
+    SURFACE_RAISED.store(pack(metrics.surface_raised), Ordering::Relaxed);
+    DANGER.store(pack(metrics.danger), Ordering::Relaxed);
+}
+
+fn unpack(cell: &AtomicU32) -> Color32 {
+    let [r, g, b, a] = cell.load(Ordering::Relaxed).to_be_bytes();
+    Color32::from_rgba_unmultiplied(r, g, b, a)
+}
+
+pub fn surface_color() -> Color32 {
+    unpack(&SURFACE)
+}
+
+pub fn raised_color() -> Color32 {
+    unpack(&SURFACE_RAISED)
+}
+
+pub fn danger_color() -> Color32 {
+    unpack(&DANGER)
 }
 
 pub fn text_primary() -> Color32 {
@@ -526,7 +549,7 @@ impl UiMetrics {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;
         }
-        publish_palette(metrics.text_primary, metrics.background);
+        publish_palette(&metrics);
         metrics
     }
 

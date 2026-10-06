@@ -1,4 +1,6 @@
 use super::*;
+use crate::{Shade, shade};
+use crate::{badge_fill, components};
 
 pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
     let Some(overlays) = current(painter.ctx()) else {
@@ -31,8 +33,7 @@ pub(crate) fn paint_landscape(painter: &Painter, rect: Rect, card: &HomeCard) {
             rect.left_top() + Vec2::splat(inset),
             galley.size() + Vec2::new(size * 0.9 + logo_width, size * 0.5),
         );
-        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
-        painter.rect_stroke(badge, 3.0, Stroke::new(1.0, fill), egui::StrokeKind::Inside);
+        components::overlay_chip(&painter, badge, Some(fill));
         let height = galley.size().y;
         draw_logo(
             &painter,
@@ -98,7 +99,7 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
         &painter,
         Rect::from_min_max(Pos2::new(rect.left(), band.top() - size * 2.0), rect.max),
         Color32::TRANSPARENT,
-        Color32::from_black_alpha(200),
+        shade(Shade::Strong),
     );
     let inset = size * 0.8;
     let galley = painter.layout_no_wrap(text, FontId::proportional(size), Color32::WHITE);
@@ -110,11 +111,7 @@ pub(crate) fn paint_landscape_band(painter: &Painter, rect: Rect, card: &HomeCar
 }
 
 pub(super) fn watched_mark(painter: &Painter, rect: Rect) {
-    painter.circle_filled(
-        rect.center(),
-        rect.width() * 0.5,
-        Color32::from_black_alpha(190),
-    );
+    painter.circle_filled(rect.center(), rect.width() * 0.5, badge_fill());
     let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
     painter.line(
         vec![at(0.28, 0.52), at(0.44, 0.67), at(0.73, 0.36)],
@@ -123,11 +120,7 @@ pub(super) fn watched_mark(painter: &Painter, rect: Rect) {
 }
 
 pub(super) fn saved_mark(painter: &Painter, rect: Rect) {
-    painter.circle_filled(
-        rect.center(),
-        rect.width() * 0.5,
-        Color32::from_black_alpha(190),
-    );
+    painter.circle_filled(rect.center(), rect.width() * 0.5, badge_fill());
     let at = |x: f32, y: f32| rect.min + rect.size() * Vec2::new(x, y);
     painter.add(Shape::convex_polygon(
         vec![

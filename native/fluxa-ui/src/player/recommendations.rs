@@ -38,13 +38,13 @@ pub(super) fn draw_recommendations(
         &painter,
         Rect::from_min_max(Pos2::new(rect.left(), fade_top), rect.right_bottom()),
         Color32::TRANSPARENT,
-        Color32::from_black_alpha(235),
+        shade(Shade::Opaque),
     );
     paint_horizontal_gradient(
         &painter,
         Rect::from_min_max(Pos2::new(rect.center().x, rect.top()), rect.right_bottom()),
         Color32::TRANSPARENT,
-        Color32::from_black_alpha(170),
+        shade(Shade::Scrim),
     );
 
     let margin = if compact { 16.0 } else { 56.0 };
@@ -104,10 +104,10 @@ pub(super) fn draw_recommendations(
                     truncate_to_width(
                         &painter,
                         &hero.eyebrow,
-                        &FontId::proportional(14.0),
+                        &FontId::proportional(metrics.text.body),
                         panel_width,
                     ),
-                    FontId::proportional(14.0),
+                    FontId::proportional(metrics.text.body),
                     ink(text_alpha.min(190)),
                 );
                 cursor -= 30.0;

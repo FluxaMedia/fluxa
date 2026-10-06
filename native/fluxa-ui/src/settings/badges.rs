@@ -799,6 +799,6 @@ fn draw_formatter(
 pub(super) fn account_divider_at(painter: &egui::Painter, left: f32, right: f32, y: f32) {
     painter.line_segment(
         [Pos2::new(left, y), Pos2::new(right, y)],
-        egui::Stroke::new(1.0, ink(12)),
+        egui::Stroke::new(stroke::HAIRLINE, ink(12)),
     );
 }

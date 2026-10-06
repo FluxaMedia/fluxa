@@ -39,7 +39,7 @@ pub(super) fn draw_warnings(
     );
     painter.rect_filled(
         panel,
-        6.0,
+        radius::CONTROL,
         Color32::from_black_alpha((173.0 * box_alpha) as u8),
     );
     let bar = panel.height() - 20.0;
@@ -90,7 +90,7 @@ pub(super) fn draw_loading(
         painter,
         rect,
         Color32::from_black_alpha(26),
-        Color32::from_black_alpha(166),
+        shade(Shade::Scrim),
     );
 
     let center = rect.center();
@@ -164,7 +164,7 @@ pub(super) fn draw_loading(
             center - Vec2::new(0.0, 16.0),
             Align2::CENTER_CENTER,
             localized("player.playback_error", &player.language),
-            FontId::proportional(22.0),
+            FontId::proportional(metrics.text.title),
             text_primary(),
         );
         painter.text(
@@ -173,10 +173,10 @@ pub(super) fn draw_loading(
             truncate_to_width(
                 painter,
                 error,
-                &FontId::proportional(14.0),
+                &FontId::proportional(metrics.text.body),
                 rect.width() - 64.0,
             ),
-            FontId::proportional(14.0),
+            FontId::proportional(metrics.text.body),
             metrics.text_secondary,
         );
         return;
@@ -186,7 +186,7 @@ pub(super) fn draw_loading(
             Pos2::new(center.x, below),
             Align2::CENTER_CENTER,
             episode,
-            FontId::proportional(16.0),
+            FontId::proportional(metrics.text.subtitle),
             metrics.text_primary,
         );
         below += 28.0;
@@ -200,32 +200,26 @@ pub(super) fn draw_loading(
         Pos2::new(center.x, below),
         Align2::CENTER_CENTER,
         status,
-        FontId::proportional(14.0),
+        FontId::proportional(metrics.text.body),
         metrics.text_secondary,
     );
 }
 
 pub(super) fn scrims(painter: &egui::Painter, rect: Rect) {
-    let band = 18.0;
-    for index in 0..16 {
-        let fade = 1.0 - index as f32 / 16.0;
-        let top = rect.top() + index as f32 * band;
-        painter.rect_filled(
-            Rect::from_min_max(
-                Pos2::new(rect.left(), top),
-                Pos2::new(rect.right(), (top + band).min(rect.bottom())),
-            ),
-            0.0,
-            Color32::from_black_alpha((152.0 * fade.powf(1.7)).round() as u8),
-        );
-        let bottom = rect.bottom() - index as f32 * band;
-        painter.rect_filled(
-            Rect::from_min_max(
-                Pos2::new(rect.left(), (bottom - band).max(rect.top())),
-                Pos2::new(rect.right(), bottom),
-            ),
-            0.0,
-            Color32::from_black_alpha((218.0 * fade.powf(1.45)).round() as u8),
-        );
-    }
+    let reach = (rect.height() * 0.5).min(288.0);
+    paint_vertical_gradient(
+        painter,
+        Rect::from_min_size(rect.min, Vec2::new(rect.width(), reach)),
+        shade(Shade::Veil),
+        Color32::TRANSPARENT,
+    );
+    paint_vertical_gradient(
+        painter,
+        Rect::from_min_max(
+            Pos2::new(rect.left(), rect.bottom() - reach),
+            rect.right_bottom(),
+        ),
+        Color32::TRANSPARENT,
+        shade(Shade::Strong),
+    );
 }

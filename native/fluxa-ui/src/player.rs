@@ -3,6 +3,7 @@ use super::*;
 mod overlay;
 mod panel;
 mod stats;
+mod tokens;
 
 pub use overlay::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
 pub use panel::{PanelRow, PlayerPanel};
@@ -353,11 +354,7 @@ impl Chrome<'_> {
     }
 
     fn toast_top(&self) -> f32 {
-        match self.viewport.form_factor {
-            UiFormFactor::Tv => 48.0,
-            UiFormFactor::Mobile => 30.0,
-            UiFormFactor::Desktop => 28.0,
-        }
+        tokens::PlayerTokens::for_form_factor(self.viewport.form_factor).toast_top
     }
 
     fn button(
@@ -382,10 +379,7 @@ impl Chrome<'_> {
                 0.6
             },
         );
-        layout.focusable.push((node, response.rect));
-        if response.clicked() {
-            layout.activated = Some(node);
-        }
+        components::focus_action(layout, node, &response);
     }
 
     fn text(&self, pos: Pos2, align: Align2, text: &str, size: f32, max_width: f32, alpha: u8) {

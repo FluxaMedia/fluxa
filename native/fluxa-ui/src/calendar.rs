@@ -94,10 +94,11 @@ pub fn draw_calendar(
     } else {
         String::new()
     };
-    egui::Area::new(Id::new("fluxa-shared-calendar-header"))
-        .constrain(false)
-        .fixed_pos(Pos2::new(grid.margin, grid.top - scroll_y))
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-calendar-header"),
+        Pos2::new(grid.margin, grid.top - scroll_y),
+        |ui| {
             ui.spacing_mut().item_spacing = Vec2::ZERO;
             ui.label(
                 RichText::new(localized("nav.library", &calendar.language))
@@ -105,7 +106,8 @@ pub fn draw_calendar(
                     .strong()
                     .color(text_primary()),
             );
-        });
+        },
+    );
     crate::library::draw_library_sections(
         context,
         &mut layout,
@@ -136,10 +138,11 @@ pub fn draw_calendar(
                     - scroll_y,
             )
         };
-        egui::Area::new(Id::new("fluxa-shared-calendar-month"))
-            .constrain(false)
-            .fixed_pos(nav_pos)
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-shared-calendar-month"),
+            nav_pos,
+            |ui| {
                 ui.set_width(if compact {
                     viewport.width - grid.margin * 2.0
                 } else {
@@ -194,7 +197,8 @@ pub fn draw_calendar(
                         }
                     });
                 });
-            });
+            },
+        );
         let weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
         let grid_painter = context.layer_painter(egui::LayerId::new(
             egui::Order::Middle,
@@ -232,10 +236,11 @@ pub fn draw_calendar(
             );
         }
         let total = days_in_month(calendar.year, calendar.month) as u32;
-        egui::Area::new(Id::new("fluxa-shared-calendar-cells"))
-            .constrain(false)
-            .fixed_pos(origin + Vec2::new(0.0, grid.weekday_height))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-shared-calendar-cells"),
+            origin + Vec2::new(0.0, grid.weekday_height),
+            |ui| {
                 for day in 1..=total {
                     let index = grid.leading + day as usize - 1;
                     let rect = Rect::from_min_size(
@@ -248,15 +253,14 @@ pub fn draw_calendar(
                     );
                     draw_calendar_cell(ui, rect, day, calendar, metrics, assets, &mut layout);
                 }
-            });
+            },
+        );
     } else {
-        egui::Area::new(Id::new("fluxa-shared-calendar-empty"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(
-                grid.margin,
-                grid.top + metrics.calendar_empty_offset,
-            ))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-shared-calendar-empty"),
+            Pos2::new(grid.margin, grid.top + metrics.calendar_empty_offset),
+            |ui| {
                 ui.label(
                     RichText::new(localized("calendar.empty", &calendar.language))
                         .size(if tv {
@@ -266,7 +270,8 @@ pub fn draw_calendar(
                         })
                         .strong(),
                 );
-            });
+            },
+        );
     }
     if let Some(day) = calendar
         .selected_day
@@ -288,16 +293,16 @@ pub fn draw_calendar(
         } else {
             grid.top
         };
-        egui::Area::new(Id::new("fluxa-calendar-day-panel"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(panel_x, panel_top))
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
+        components::placed_front(
+            context,
+            Id::new("fluxa-calendar-day-panel"),
+            Pos2::new(panel_x, panel_top),
+            |ui| {
                 ui.set_width(panel_width);
                 egui::Frame::new()
                     .fill(metrics.surface)
                     .corner_radius(metrics.card_radius)
-                    .stroke(egui::Stroke::new(1.0, ink(40)))
+                    .stroke(egui::Stroke::new(stroke::HAIRLINE, ink(40)))
                     .inner_margin(metrics.card_content_padding)
                     .show(ui, |ui| {
                         ui.set_width((panel_width - metrics.card_content_padding * 2.0).max(1.0));
@@ -326,10 +331,7 @@ pub fn draw_calendar(
                                 metrics.nav_label_size + 3.0,
                                 metrics,
                             );
-                            layout.focusable.push((NODE_CALENDAR_CLOSE_DAY, close.rect));
-                            if close.clicked() {
-                                layout.activated = Some(NODE_CALENDAR_CLOSE_DAY);
-                            }
+                            components::focus_action(&mut layout, NODE_CALENDAR_CLOSE_DAY, &close);
                         });
                         let entries: Vec<_> = calendar.entries_for_day(day).collect();
                         ui.label(
@@ -361,14 +363,12 @@ pub fn draw_calendar(
                                 assets,
                             );
                             let node = NODE_CALENDAR_EVENT_BASE + index as u64;
-                            layout.focusable.push((node, response.rect));
-                            if response.clicked() {
-                                layout.activated = Some(node);
-                            }
+                            components::focus_action(&mut layout, node, &response);
                             ui.add_space(metrics.control_gap);
                         }
                     });
-            });
+            },
+        );
     }
     if calendar.selected_day.is_some() {
         layout.focusable.retain(|(id, _)| {
@@ -438,14 +438,14 @@ fn draw_calendar_cell(
         );
     } else {
         if past {
-            painter.rect_filled(rect, radius, Color32::from_black_alpha(110));
+            painter.rect_filled(rect, radius, shade(Shade::Veil));
         }
         let scrim_top = rect.top() + rect.height() * 0.35;
         paint_vertical_gradient(
             &painter,
             Rect::from_min_max(Pos2::new(rect.left(), scrim_top), rect.right_bottom()),
             Color32::TRANSPARENT,
-            Color32::from_black_alpha(220),
+            shade(Shade::Strong),
         );
         paint_vertical_gradient(
             &painter,
@@ -456,7 +456,7 @@ fn draw_calendar_cell(
                     rect.top() + metrics.screen_card_title_size * 2.4,
                 ),
             ),
-            Color32::from_black_alpha(140),
+            shade(Shade::Veil),
             Color32::TRANSPARENT,
         );
     }
@@ -471,7 +471,7 @@ fn draw_calendar_cell(
         painter.rect_stroke(
             rect,
             radius,
-            egui::Stroke::new(1.5, text_primary()),
+            egui::Stroke::new(stroke::ICON, text_primary()),
             egui::StrokeKind::Inside,
         );
     }
@@ -488,7 +488,7 @@ fn draw_calendar_cell(
             Align2::CENTER_CENTER,
             day.to_string(),
             day_font,
-            Color32::from_rgb(6, 6, 6),
+            background(),
         );
     } else {
         painter.text(
@@ -519,7 +519,7 @@ fn draw_calendar_cell(
             ),
             galley.size() + Vec2::new(padding, padding * 0.5),
         );
-        painter.rect_filled(pill, pill.height() * 0.5, Color32::from_black_alpha(170));
+        painter.rect_filled(pill, pill.height() * 0.5, shade(Shade::Scrim));
         painter.galley(pill.center() - galley.size() * 0.5, galley, text_primary());
     }
     let Some(entry) = entries.first() else {

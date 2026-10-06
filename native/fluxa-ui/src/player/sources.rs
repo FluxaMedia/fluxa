@@ -20,12 +20,7 @@ pub(super) fn draw_sources(
         Color32::from_white_alpha(40),
         assets,
     );
-    paint_vertical_gradient(
-        &painter,
-        rect,
-        Color32::from_black_alpha(120),
-        Color32::from_black_alpha(230),
-    );
+    paint_vertical_gradient(&painter, rect, shade(Shade::Veil), shade(Shade::Strong));
     let metrics = metrics_for_assets(viewport, assets);
     let margin = metrics.overlay_margin;
     let wide = rect.width() >= 900.0;
@@ -107,10 +102,7 @@ pub(super) fn draw_sources(
                     .inner;
                 y = response.rect.bottom() + 12.0;
                 let node = NODE_PLAYER_SOURCE_BASE + index as u64;
-                layout.focusable.push((node, response.rect));
-                if response.clicked() {
-                    layout.activated = Some(node);
-                }
+                components::focus_action(layout, node, &response);
             }
             let pinned_top = chips_top.max(inset);
             let shift = ((inset + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;
@@ -128,15 +120,14 @@ pub(super) fn draw_sources(
                         pinned_top + metrics.screen_control_height + 10.0,
                     ),
                 );
-                ui.painter()
-                    .rect_filled(strip, 0.0, Color32::from_black_alpha(245));
+                ui.painter().rect_filled(strip, 0.0, shade(Shade::Opaque));
                 paint_vertical_gradient(
                     ui.painter(),
                     Rect::from_min_max(
                         Pos2::new(strip.left(), strip.bottom()),
                         Pos2::new(strip.right(), strip.bottom() + 14.0),
                     ),
-                    Color32::from_black_alpha(245),
+                    shade(Shade::Opaque),
                     Color32::TRANSPARENT,
                 );
             }
@@ -189,10 +180,7 @@ pub(super) fn draw_sources(
                     )
                     .inner;
                 let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
-                layout.focusable.push((node, response.rect));
-                if response.clicked() {
-                    layout.activated = Some(node);
-                }
+                components::focus_action(layout, node, &response);
                 x = response.rect.right() + 8.0;
             }
             let chip_count = layout.focusable.len() - chips_from;

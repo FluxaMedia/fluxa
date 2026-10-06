@@ -463,28 +463,22 @@ pub(crate) fn draw_home_with_options(
             .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
             .is_some_and(|trailer| trailer.texture.is_some());
         let text_fade = 1.0
-            - context.animate_bool_with_time(
-                Id::new("fluxa-hero-text-fade"),
-                trailer_playing,
-                0.4,
-            );
+            - context.animate_bool_with_time(Id::new("fluxa-hero-text-fade"), trailer_playing, 0.4);
         let metadata_gap = style.metadata_gap * text_fade;
         let metadata_height = metadata_height * text_fade;
         let synopsis_height = synopsis_height * text_fade;
         let play_height = style.button_height;
-        let block_height = title_height
-            + metadata_height
-            + synopsis_height
-            + play_height
-            + style.stack_extra
-            - style.metadata_gap * (1.0 - text_fade);
+        let block_height =
+            title_height + metadata_height + synopsis_height + play_height + style.stack_extra
+                - style.metadata_gap * (1.0 - text_fade);
         let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
             - scroll_offset
             + hero_slide_offset;
-        egui::Area::new(Id::new("fluxa-shared-hero"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(margin, content_top))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-shared-hero"),
+            Pos2::new(margin, content_top),
+            |ui| {
                 // The Compose hero owns a fixed 3:4/12:5 slide. Clip every
                 // label/control to that slide so long metadata cannot paint
                 // over the next shelf.
@@ -659,7 +653,8 @@ pub(crate) fn draw_home_with_options(
                         }
                     });
                 });
-            });
+            },
+        );
     }
 
     let row_start = home_row_start(viewport, metrics, hero_height, show_hero);

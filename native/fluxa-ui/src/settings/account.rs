@@ -51,7 +51,7 @@ pub(super) fn account_group(
             Pos2::new(rect.left() + 16.0, top),
             Align2::LEFT_TOP,
             title,
-            crate::fonts::regular(15.0),
+            crate::fonts::regular(metrics.text.body),
             metrics.text_muted,
         );
     } else {
@@ -59,7 +59,7 @@ pub(super) fn account_group(
             Pos2::new(rect.left() + 8.0, top),
             Align2::LEFT_TOP,
             title.to_uppercase(),
-            crate::fonts::regular(13.0),
+            crate::fonts::regular(metrics.text.meta),
             metrics.text_secondary,
         );
     }
@@ -71,7 +71,7 @@ pub(super) fn account_group(
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
         egui::StrokeKind::Inside,
     );
     card
@@ -95,7 +95,7 @@ pub(super) fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMet
     let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
     painter.line_segment(
         [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-        egui::Stroke::new(1.0, ink(12)),
+        egui::Stroke::new(stroke::HAIRLINE, ink(12)),
     );
 }
 
@@ -212,7 +212,7 @@ pub(super) fn draw_account(
                 avatar.center(),
                 Align2::CENTER_CENTER,
                 initials,
-                FontId::proportional(20.0),
+                FontId::proportional(metrics.text.title),
                 text_primary(),
             );
         }
@@ -360,7 +360,7 @@ pub(super) fn draw_account(
                 );
             }
             if slot.is_some() && viewport.platform != UiPlatform::Android {
-                let stroke = egui::Stroke::new(1.6, ink(110));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }
@@ -469,7 +469,7 @@ pub(super) fn draw_account(
                     value_font,
                     metrics.text_secondary,
                 );
-                let stroke = egui::Stroke::new(1.6, ink(110));
+                let stroke = egui::Stroke::new(stroke::ICON, ink(110));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }
@@ -494,11 +494,11 @@ pub(super) fn draw_account(
             0.0,
             -metrics.screen_control_height.min(row.height() - 4.0) * 0.5,
         ));
-        egui::Area::new(Id::new(("fluxa-settings-account-choice", *key)))
-            .constrain(false)
-            .fixed_pos(value_rect.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
+        components::placed_front(
+            context,
+            Id::new(("fluxa-settings-account-choice", *key)),
+            value_rect.min,
+            |ui| {
                 ui.set_min_size(value_rect.size());
                 ui.set_max_size(value_rect.size());
                 let response = components::choice_field(
@@ -518,7 +518,8 @@ pub(super) fn draw_account(
                     NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
                     response.rect,
                 ));
-            });
+            },
+        );
         if selected != current {
             layout.setting_change = Some(((*key).to_owned(), serde_json::Value::String(selected)));
         }

@@ -256,7 +256,7 @@ pub fn draw_detail(
     paint_vertical_gradient(
         &painter,
         Rect::from_min_size(hero.left_top(), Vec2::new(hero.width(), 120.0)),
-        Color32::from_black_alpha(150),
+        shade(Shade::Veil),
         Color32::TRANSPARENT,
     );
 
@@ -819,18 +819,13 @@ pub fn draw_detail(
         Vec2::splat(40.0),
     );
     if !sticky_on {
-        egui::Area::new(Id::new("fluxa-detail-back"))
-            .constrain(false)
-            .fixed_pos(back_rect.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
-                let response =
-                    components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics)
-                        .on_hover_text(t("auto.back"));
-                if response.clicked() {
-                    layout.activated = Some(NODE_DETAIL_BACK);
-                }
-            });
+        components::placed_front(context, Id::new("fluxa-detail-back"), back_rect.min, |ui| {
+            let response = components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics)
+                .on_hover_text(t("auto.back"));
+            if response.clicked() {
+                layout.activated = Some(NODE_DETAIL_BACK);
+            }
+        });
         layout.focusable.push((NODE_DETAIL_BACK, back_rect));
     }
     let sticky_logo = components::title_logo(
@@ -901,10 +896,11 @@ pub fn draw_detail(
             &t("auto.episodes"),
             title_size,
         );
-        egui::Area::new(Id::new("fluxa-detail-seasons"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-detail-seasons"),
+            Pos2::new(margin, top + SECTION_TITLE),
+            |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width - margin);
                 let output =
@@ -1002,14 +998,16 @@ pub fn draw_detail(
                         });
                     });
                 record_row_max(0, &output);
-            });
+            },
+        );
         let thumb = Vec2::new(EPISODE_WIDTH, EPISODE_WIDTH * 9.0 / 16.0);
         let episodes_pos = Pos2::new(margin, top + SECTION_TITLE + season_row(detail));
         if detail.episode_layout_for(compact) == EpisodeLayout::Cards {
-            egui::Area::new(Id::new("fluxa-detail-episodes"))
-                .constrain(false)
-                .fixed_pos(episodes_pos)
-                .show(context, |ui| {
+            components::placed(
+                context,
+                Id::new("fluxa-detail-episodes"),
+                episodes_pos,
+                |ui| {
                     ui.set_clip_rect(visible);
                     ui.set_max_width(row_width);
                     let output = row_scroll(
@@ -1061,7 +1059,8 @@ pub fn draw_detail(
                         });
                     });
                     record_row_max(1, &output);
-                });
+                },
+            );
         } else {
             let context_data = episodes::EpisodeContext {
                 viewport,
@@ -1071,13 +1070,15 @@ pub fn draw_detail(
                 metrics,
                 margin,
             };
-            egui::Area::new(Id::new("fluxa-detail-episodes"))
-                .constrain(false)
-                .fixed_pos(episodes_pos)
-                .show(context, |ui| {
+            components::placed(
+                context,
+                Id::new("fluxa-detail-episodes"),
+                episodes_pos,
+                |ui| {
                     ui.set_clip_rect(visible);
                     episodes::draw_episodes(ui, &context_data, assets, &mut layout);
-                });
+                },
+            );
         }
     }
 
@@ -1093,10 +1094,11 @@ pub fn draw_detail(
             }),
             title_size,
         );
-        egui::Area::new(Id::new("fluxa-detail-cast"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-detail-cast"),
+            Pos2::new(margin, top + SECTION_TITLE),
+            |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
                 let output =
@@ -1125,7 +1127,7 @@ pub fn draw_detail(
                                     member.photo.as_deref(),
                                     metrics,
                                 );
-                                let font = FontId::proportional(13.5);
+                                let font = FontId::proportional(metrics.text.meta);
                                 painter.text(
                                     Pos2::new(rect.center().x, circle.bottom() + 10.0),
                                     Align2::CENTER_TOP,
@@ -1134,7 +1136,7 @@ pub fn draw_detail(
                                     text_primary(),
                                 );
                                 if let Some(role) = member.role.as_deref() {
-                                    let font = FontId::proportional(12.0);
+                                    let font = FontId::proportional(metrics.text.label);
                                     painter.text(
                                         Pos2::new(rect.center().x, circle.bottom() + 28.0),
                                         Align2::CENTER_TOP,
@@ -1147,7 +1149,8 @@ pub fn draw_detail(
                         });
                     });
                 record_row_max(2, &output);
-            });
+            },
+        );
     }
 
     if let Some(top) = geometry.similar_top {
@@ -1159,10 +1162,11 @@ pub fn draw_detail(
             title_size,
         );
         let (poster, slot_height) = similar_size(metrics);
-        egui::Area::new(Id::new("fluxa-detail-similar"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(margin, top + SECTION_TITLE))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-detail-similar"),
+            Pos2::new(margin, top + SECTION_TITLE),
+            |ui| {
                 ui.set_clip_rect(visible);
                 ui.set_max_width(row_width);
                 let output =
@@ -1194,7 +1198,8 @@ pub fn draw_detail(
                         });
                     });
                 record_row_max(3, &output);
-            });
+            },
+        );
     }
 
     layout

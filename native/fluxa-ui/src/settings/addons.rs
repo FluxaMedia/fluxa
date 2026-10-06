@@ -288,15 +288,16 @@ fn draw_header(
             Vec2::new(width, metrics.settings_extended_action_height),
         );
         layout.focusable.push((*node, button));
-        egui::Area::new(Id::new(("fluxa-addon-top", *node)))
-            .constrain(false)
-            .fixed_pos(button.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
+        components::placed_front(
+            context,
+            Id::new(("fluxa-addon-top", *node)),
+            button.min,
+            |ui| {
                 if components::button(ui, label, width, button.height(), *kind, metrics).clicked() {
                     layout.activated = Some(*node);
                 }
-            });
+            },
+        );
     }
     y + metrics.settings_extended_action_height + 24.0
 }
@@ -306,7 +307,7 @@ fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String, metrics: 
         Pos2::new(rect.left() + 4.0, y),
         Align2::LEFT_TOP,
         label,
-        crate::fonts::regular(15.0),
+        crate::fonts::regular(metrics.text.body),
         metrics.text_muted,
     );
     y + APPEARANCE_GROUP_HEADING_HEIGHT
@@ -323,7 +324,6 @@ fn notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color3
     );
 }
 
-const ERROR: Color32 = Color32::from_rgb(255, 125, 110);
 const PLUGIN_RISK_HEIGHT: f32 = 76.0;
 
 fn wrapped_notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color32) {
@@ -386,7 +386,7 @@ pub(super) fn draw_addons(
         metrics,
     );
     if let Some(error) = settings.addon_error.as_deref() {
-        notice(&painter, rect, y, error, ERROR);
+        notice(&painter, rect, y, error, danger_color());
         y += 32.0;
     }
     if count == 0 {
@@ -454,7 +454,7 @@ pub(super) fn draw_plugins(
         metrics,
     );
     if let Some(error) = plugin_error(settings) {
-        notice(&painter, rect, y, error, ERROR);
+        notice(&painter, rect, y, error, danger_color());
         y += 32.0;
     }
     if repos.is_empty() {
@@ -494,7 +494,7 @@ pub(super) fn draw_plugins(
     painter.rect_stroke(
         group,
         metrics.card_radius,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
         egui::StrokeKind::Inside,
     );
     for (index, scraper) in scrapers.iter().enumerate() {
@@ -508,7 +508,7 @@ pub(super) fn draw_plugins(
                     row.left_top() + Vec2::new(16.0, 0.0),
                     row.right_top() - Vec2::new(16.0, 0.0),
                 ],
-                egui::Stroke::new(1.0, ink(14)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(14)),
             );
         }
         let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -530,7 +530,7 @@ pub(super) fn draw_plugins(
             ),
         );
         let text_width = track.left() - row.left() - 32.0;
-        let title_font = crate::fonts::regular(17.0);
+        let title_font = crate::fonts::regular(metrics.text.subtitle);
         let title_y = if detail.is_some() {
             row.center().y - 11.0
         } else {
@@ -544,7 +544,7 @@ pub(super) fn draw_plugins(
             text_primary(),
         );
         if let Some(detail) = detail {
-            let font = crate::fonts::regular(14.0);
+            let font = crate::fonts::regular(metrics.text.body);
             painter.text(
                 Pos2::new(row.left() + 16.0, row.center().y + 12.0),
                 Align2::LEFT_CENTER,
@@ -561,15 +561,16 @@ pub(super) fn draw_plugins(
             enabled,
             metrics,
         );
-        egui::Area::new(Id::new(("fluxa-scraper-row", node)))
-            .constrain(false)
-            .fixed_pos(row.min)
-            .order(egui::Order::Middle)
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new(("fluxa-scraper-row", node)),
+            row.min,
+            |ui| {
                 if ui.allocate_rect(row, Sense::click()).clicked() {
                     layout.activated = Some(node);
                 }
-            });
+            },
+        );
     }
 }
 
@@ -591,12 +592,12 @@ fn draw_card(
     painter.rect_stroke(
         frame,
         metrics.card_radius,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
         egui::StrokeKind::Inside,
     );
     let inner = frame.shrink(CARD_PADDING);
     let logo = Rect::from_min_size(inner.min, Vec2::splat(LOGO));
-    painter.rect_filled(logo, 12.0, ink(14));
+    painter.rect_filled(logo, radius::CONTROL, ink(14));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
     if let Some(texture) = texture {
         let size = context
@@ -628,13 +629,13 @@ fn draw_card(
             logo.center(),
             Align2::CENTER_CENTER,
             capitalize(&card.title.chars().take(1).collect::<String>()),
-            crate::fonts::regular(20.0),
+            crate::fonts::regular(metrics.text.title),
             metrics.text_primary,
         );
     }
     let text_left = logo.right() + 14.0;
     let text_width = inner.right() - text_left;
-    let title_font = crate::fonts::regular(18.0);
+    let title_font = crate::fonts::regular(metrics.text.subtitle);
     let title = truncate_to_width(painter, card.title, &title_font, text_width * 0.75);
     let galley = painter.layout_no_wrap(title, title_font, Color32::WHITE);
     let title_pos = Pos2::new(text_left, logo.top() + 2.0);
@@ -645,11 +646,11 @@ fn draw_card(
             Pos2::new(title_pos.x + title_width + 8.0, title_pos.y + 4.0),
             Align2::LEFT_TOP,
             format!("v{}", version.trim_start_matches('v')),
-            crate::fonts::regular(13.0),
+            crate::fonts::regular(metrics.text.meta),
             metrics.text_muted,
         );
     }
-    let subtitle_font = crate::fonts::regular(14.0);
+    let subtitle_font = crate::fonts::regular(metrics.text.body);
     painter.text(
         Pos2::new(text_left, logo.top() + 28.0),
         Align2::LEFT_TOP,
@@ -661,7 +662,7 @@ fn draw_card(
     if let Some(description) = card.description {
         let mut job = egui::text::LayoutJob::simple(
             description.to_owned(),
-            crate::fonts::regular(15.0),
+            crate::fonts::regular(metrics.text.body),
             metrics.text_secondary,
             inner.width(),
         );
@@ -675,7 +676,7 @@ fn draw_card(
         y += 44.0;
     }
     if !card.chips.is_empty() {
-        let font = crate::fonts::regular(13.0);
+        let font = crate::fonts::regular(metrics.text.meta);
         let mut x = inner.left();
         for chip in &card.chips {
             let galley =
@@ -687,8 +688,8 @@ fn draw_card(
             let chip_rect = Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, CHIP_HEIGHT));
             painter.rect_stroke(
                 chip_rect,
-                8.0,
-                egui::Stroke::new(1.0, ink(40)),
+                radius::CONTROL,
+                egui::Stroke::new(stroke::HAIRLINE, ink(40)),
                 egui::StrokeKind::Inside,
             );
             painter.galley(
@@ -719,17 +720,18 @@ fn draw_card(
             layout.focusable.push((node, button));
         }
         let texture = assets.icon(icon);
-        egui::Area::new(Id::new(("fluxa-addon-action", node)))
-            .constrain(false)
-            .fixed_pos(button.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
+        components::placed_front(
+            context,
+            Id::new(("fluxa-addon-action", node)),
+            button.min,
+            |ui| {
                 let response =
                     components::icon_button(ui, texture, ACTION, ink(220), false, false, enabled);
                 if enabled && response.clicked() {
                     layout.activated = Some(node);
                 }
-            });
+            },
+        );
     }
     frame.bottom()
 }
@@ -777,7 +779,10 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
         .as_ref()
         .filter(|prompt| matches!(prompt.provider.as_str(), "plex" | "jellyfin" | "emby"))?;
     if prompt.failed {
-        return Some((localized("settings.server_failed", language), ERROR));
+        return Some((
+            localized("settings.server_failed", language),
+            danger_color(),
+        ));
     }
     Some((
         format!(
@@ -835,11 +840,11 @@ pub(super) fn draw_servers(
             Vec2::new(rect.width(), metrics.settings_extended_input_height),
         );
         let mut value = settings.server_fields[index].clone();
-        egui::Area::new(Id::new(("fluxa-server-input", *node)))
-            .constrain(false)
-            .fixed_pos(field.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
+        components::placed_front(
+            context,
+            Id::new(("fluxa-server-input", *node)),
+            field.min,
+            |ui| {
                 let response = components::text_input(
                     ui,
                     &mut value,
@@ -853,7 +858,8 @@ pub(super) fn draw_servers(
                     layout.text_input = Some(value.clone());
                     layout.text_input_node = Some(*node);
                 }
-            });
+            },
+        );
         y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
     }
     let gap = metrics.settings_extended_action_gap;
@@ -883,15 +889,16 @@ pub(super) fn draw_servers(
             Vec2::new(width, metrics.settings_extended_action_height),
         );
         layout.focusable.push((*node, button));
-        egui::Area::new(Id::new(("fluxa-server-add", *node)))
-            .constrain(false)
-            .fixed_pos(button.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
+        components::placed_front(
+            context,
+            Id::new(("fluxa-server-add", *node)),
+            button.min,
+            |ui| {
                 if components::button(ui, label, width, button.height(), *kind, metrics).clicked() {
                     layout.activated = Some(*node);
                 }
-            });
+            },
+        );
     }
     y += metrics.settings_extended_action_height + 24.0;
     y = heading(

@@ -37,14 +37,14 @@ pub(super) fn draw_pin_prompt(
                 ui.add_space(12.0);
                 ui.label(
                     RichText::new(&profile.name)
-                        .size(18.0)
+                        .size(metrics.text.subtitle)
                         .strong()
                         .color(text_primary()),
                 );
                 ui.add_space(4.0);
                 ui.label(
                     RichText::new(t("profiles.pin_prompt"))
-                        .size(13.0)
+                        .size(metrics.text.meta)
                         .color(metrics.text_secondary),
                 );
             });

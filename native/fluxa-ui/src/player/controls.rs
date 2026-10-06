@@ -97,9 +97,9 @@ impl Chrome<'_> {
         };
         let ratio = (shown / max).clamp(0.0, 1.0);
         let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
-        self.painter.rect_filled(bar, 2.0, ink(alpha / 3));
+        self.painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
         let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
-        self.painter.rect_filled(filled, 2.0, ink(alpha));
+        self.painter.rect_filled(filled, radius::BAR, ink(alpha));
         if player.boost {
             let mark = bar.left() + bar.width() * 0.5;
             self.painter.line_segment(
@@ -107,7 +107,7 @@ impl Chrome<'_> {
                     Pos2::new(mark, bar.center().y - 5.0),
                     Pos2::new(mark, bar.center().y + 5.0),
                 ],
-                egui::Stroke::new(1.5, ink(alpha / 2)),
+                egui::Stroke::new(stroke::ICON, ink(alpha / 2)),
             );
         }
         self.painter.circle_filled(
@@ -478,7 +478,7 @@ pub(super) fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focu
             .rect_stroke(
                 rect.expand(3.0),
                 rect.height().min(rect.width()) * 0.5,
-                egui::Stroke::new(2.0, text_primary()),
+                egui::Stroke::new(stroke::EMPHASIS, text_primary()),
                 egui::StrokeKind::Outside,
             );
     }
@@ -543,7 +543,7 @@ pub(super) fn control_with_id(
             if prominent {
                 ink(30)
             } else {
-                Color32::from_black_alpha(75)
+                shade(Shade::Faint)
             },
         );
     }
@@ -554,7 +554,7 @@ pub(super) fn control_with_id(
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);
-    let stroke = egui::Stroke::new(2.0, color);
+    let stroke = egui::Stroke::new(stroke::EMPHASIS, color);
     match icon {
         "play" => {
             painter.add(egui::Shape::convex_polygon(
@@ -626,7 +626,7 @@ pub(super) fn control_with_id(
                 egui::Stroke::NONE,
             ));
             if icon == "mute" {
-                let thin = egui::Stroke::new(1.8, color);
+                let thin = egui::Stroke::new(stroke::ICON, color);
                 painter.line_segment(
                     [c + s * Vec2::new(5.0, -5.0), c + s * Vec2::new(11.0, 5.0)],
                     thin,
@@ -643,7 +643,7 @@ pub(super) fn control_with_id(
                             c + s * Vec2::new(angle.cos() * 10.0, angle.sin() * 10.0)
                         })
                         .collect(),
-                    egui::Stroke::new(1.5, color),
+                    egui::Stroke::new(stroke::ICON, color),
                 ));
             }
         }

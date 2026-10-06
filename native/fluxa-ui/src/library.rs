@@ -25,10 +25,11 @@ pub fn draw_library(
     let page = PageLayout::new(viewport, metrics, false).with_sections(viewport, metrics);
     let cards = library.cards(tab);
 
-    egui::Area::new(Id::new("fluxa-shared-library-title"))
-        .constrain(false)
-        .fixed_pos(Pos2::new(page.margin, page.top))
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-library-title"),
+        Pos2::new(page.margin, page.top),
+        |ui| {
             ui.horizontal(|ui| {
                 ui.set_min_height(page.title_height);
                 ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
@@ -46,7 +47,8 @@ pub fn draw_library(
                     );
                 }
             });
-        });
+        },
+    );
 
     draw_library_sections(
         context,
@@ -82,10 +84,11 @@ pub fn draw_library(
         return layout;
     }
 
-    egui::Area::new(Id::new("fluxa-shared-library-search"))
-        .constrain(false)
-        .fixed_pos(page.search.min)
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-library-search"),
+        page.search.min,
+        |ui| {
             let mut query = library.query.clone();
             let search = components::search_field(
                 ui,
@@ -100,7 +103,8 @@ pub fn draw_library(
                 layout.text_input = Some(query);
                 layout.text_input_node = Some(NODE_LIBRARY_SEARCH);
             }
-        });
+        },
+    );
 
     let status_options = LibraryTab::ALL
         .iter()
@@ -156,10 +160,11 @@ pub fn draw_library(
     };
     let gap = metrics.control_gap;
     let has_status = !status_options.is_empty();
-    egui::Area::new(Id::new("fluxa-shared-library-controls"))
-        .constrain(false)
-        .fixed_pos(Pos2::new(page.margin, page.filters_top))
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-library-controls"),
+        Pos2::new(page.margin, page.filters_top),
+        |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = gap;
                 let mut controls = vec![
@@ -227,11 +232,12 @@ pub fn draw_library(
                     }
                 }
             });
-        });
+        },
+    );
     painter.hline(
         page.margin..=page.margin + page.width,
         page.content_top - metrics.section_gap * 0.75,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
     );
 
     let grid = PosterGrid::new(page.width, metrics);
@@ -244,10 +250,11 @@ pub fn draw_library(
             viewport.height - mobile_scroll_reserve(viewport),
         ),
     );
-    egui::Area::new(Id::new("fluxa-shared-library-grid"))
-        .constrain(false)
-        .fixed_pos(origin)
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-library-grid"),
+        origin,
+        |ui| {
             ui.set_clip_rect(ui.clip_rect().intersect(clip));
             for (index, card) in cards.iter().take(LIBRARY_CARD_LIMIT).enumerate() {
                 let rect = if library.list_view {
@@ -296,7 +303,8 @@ pub fn draw_library(
                     );
                 }
             }
-        });
+        },
+    );
     if cards.is_empty() {
         let bottom = viewport.height - mobile_scroll_reserve(viewport);
         let state_rect = Rect::from_min_max(
@@ -350,10 +358,11 @@ pub(crate) fn draw_library_sections(
         localized("nav.calendar", language),
         localized("library.downloads", language),
     ];
-    egui::Area::new(Id::new("fluxa-shared-library-sections"))
-        .constrain(false)
-        .fixed_pos(pos)
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-shared-library-sections"),
+        pos,
+        |ui| {
             ui.set_width(width);
             ui.horizontal(|ui| {
                 let tabs = components::text_tabs(
@@ -365,10 +374,7 @@ pub(crate) fn draw_library_sections(
                 );
                 for (index, response) in tabs.into_iter().enumerate() {
                     let node = NODE_LIBRARY_SECTION_BASE + index as u64;
-                    layout.focusable.push((node, response.rect));
-                    if response.clicked() {
-                        layout.activated = Some(node);
-                    }
+                    components::focus_action(layout, node, &response);
                 }
                 if let Some(list) = list_view {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -381,12 +387,10 @@ pub(crate) fn draw_library_sections(
                             false,
                             true,
                         );
-                        layout.focusable.push((NODE_LIBRARY_VIEW, response.rect));
-                        if response.clicked() {
-                            layout.activated = Some(NODE_LIBRARY_VIEW);
-                        }
+                        components::focus_action(layout, NODE_LIBRARY_VIEW, &response);
                     });
                 }
             });
-        });
+        },
+    );
 }

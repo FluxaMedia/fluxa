@@ -29,6 +29,7 @@ mod poster_overlay;
 mod profiles;
 mod settings;
 mod shorts;
+mod style;
 
 pub use home::*;
 pub use layout::*;
@@ -37,6 +38,7 @@ pub use model::*;
 pub use navigation::*;
 pub use nodes::*;
 use paint::*;
+use style::*;
 
 pub use calendar::draw_calendar;
 pub use components::{

@@ -9,8 +9,9 @@ use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText,
 use std::hash::{Hash, Hasher};
 
 use super::{
-    ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, UiMetrics, Viewport, artwork_target_size,
-    background, cover_uv, full_uv, ink, paint_vertical_gradient, text_primary, truncate_to_width,
+    ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
+    artwork_target_size, background, badge_fill, cover_uv, danger_color, full_uv, ink,
+    paint_vertical_gradient, radius, shade, size, stroke, text_primary, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -48,7 +49,7 @@ pub(super) fn toast(
     painter.rect_stroke(
         rect,
         metrics.dialog_radius,
-        egui::Stroke::new(1.0, metrics.ink((20.0 * opacity) as u8)),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.ink((20.0 * opacity) as u8)),
         egui::StrokeKind::Inside,
     );
     let text_pos = Pos2::new(rect.left() + pad, rect.center().y - galley.size().y * 0.5);
@@ -59,9 +60,9 @@ pub(super) fn toast(
             Pos2::new(text_pos.x + text_width + gap, rect.center().y - 2.5),
             Vec2::new(bar, 5.0),
         );
-        painter.rect_filled(track, 2.5, metrics.ink((60.0 * opacity) as u8));
+        painter.rect_filled(track, radius::BAR, metrics.ink((60.0 * opacity) as u8));
         let filled = Rect::from_min_size(track.min, Vec2::new(bar * level.clamp(0.0, 1.0), 5.0));
-        painter.rect_filled(filled, 2.5, metrics.ink((255.0 * opacity) as u8));
+        painter.rect_filled(filled, radius::BAR, metrics.ink((255.0 * opacity) as u8));
     }
 }
 
@@ -174,7 +175,7 @@ pub(super) fn season_tile(
         ui.allocate_exact_size(Vec2::new(size.x, size.y + label_height), Sense::click());
     let painter = ui.painter();
     let image = Rect::from_min_size(rect.min, size);
-    painter.rect_filled(image, 8.0, metrics.ink(14));
+    painter.rect_filled(image, radius::CONTROL, metrics.ink(14));
     let tint = if selected {
         metrics.text_primary
     } else {
@@ -193,8 +194,8 @@ pub(super) fn season_tile(
     if selected {
         painter.rect_stroke(
             image,
-            8.0,
-            egui::Stroke::new(2.0, metrics.text_primary),
+            radius::CONTROL,
+            egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
             egui::StrokeKind::Inside,
         );
     }
@@ -223,7 +224,7 @@ pub(super) fn episode_artwork(
     selected: bool,
     metrics: UiMetrics,
 ) {
-    painter.rect_filled(rect, 10.0, metrics.ink(14));
+    painter.rect_filled(rect, radius::CONTROL, metrics.ink(14));
     if hide_still
         || !rounded_artwork(
             painter,
@@ -240,12 +241,12 @@ pub(super) fn episode_artwork(
             rect.center(),
             Align2::CENTER_CENTER,
             format!("E{}", episode.number),
-            FontId::proportional(22.0),
+            FontId::proportional(metrics.text.title),
             metrics.text_muted,
         );
     }
     if hovered {
-        painter.rect_filled(rect, 10.0, Color32::from_black_alpha(90));
+        painter.rect_filled(rect, radius::CONTROL, shade(Shade::Faint));
         if let Some(icon) = assets.icon("PlayFilled") {
             painter.image(
                 icon,
@@ -276,8 +277,8 @@ pub(super) fn episode_artwork(
     if selected {
         painter.rect_stroke(
             rect,
-            10.0,
-            egui::Stroke::new(2.0, metrics.text_primary),
+            radius::CONTROL,
+            egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
             egui::StrokeKind::Inside,
         );
     }
@@ -412,7 +413,7 @@ pub(super) fn icon_button_sized(
         ui.painter().rect_stroke(
             rect.shrink(0.5),
             radius,
-            egui::Stroke::new(1.0, ink(if active { 90 } else { 36 })),
+            egui::Stroke::new(stroke::HAIRLINE, ink(if active { 90 } else { 36 })),
             egui::StrokeKind::Inside,
         );
     } else if hovered {
@@ -451,7 +452,7 @@ pub(super) fn back_button(
     painter.circle_stroke(
         rect.center(),
         size * 0.5 - 0.5,
-        egui::Stroke::new(1.0, ink(30)),
+        egui::Stroke::new(stroke::HAIRLINE, ink(30)),
     );
     if let Some(icon) = icon {
         painter.image(
@@ -510,18 +511,21 @@ pub(super) fn sticky_bar(
         .show(context, |ui| {
             ui.set_opacity(fade);
             let strip = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, height));
-            ui.interact(strip, Id::new((id, "sticky-block")), Sense::click_and_drag());
+            ui.interact(
+                strip,
+                Id::new((id, "sticky-block")),
+                Sense::click_and_drag(),
+            );
             ui.painter().rect_filled(strip, 0.0, metrics.background);
             ui.painter().line_segment(
                 [strip.left_bottom(), strip.right_bottom()],
-                egui::Stroke::new(1.0, ink(20)),
+                egui::Stroke::new(stroke::HAIRLINE, ink(20)),
             );
             let mut output = StickyOutput {
                 clicked: None,
                 rects: Vec::new(),
             };
-            let back_rect =
-                Rect::from_min_size(Pos2::new(margin, top + 4.0), Vec2::splat(40.0));
+            let back_rect = Rect::from_min_size(Pos2::new(margin, top + 4.0), Vec2::splat(40.0));
             let back = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(back_rect), |ui| {
                     back_button(ui, bar.back_icon, 40.0, metrics)
@@ -533,10 +537,8 @@ pub(super) fn sticky_bar(
             }
             let mut right = viewport.width - margin;
             for action in bar.actions.iter().rev() {
-                let rect = Rect::from_min_size(
-                    Pos2::new(right - 40.0, top + 4.0),
-                    Vec2::splat(40.0),
-                );
+                let rect =
+                    Rect::from_min_size(Pos2::new(right - 40.0, top + 4.0), Vec2::splat(40.0));
                 let response = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                         icon_button(
@@ -566,10 +568,7 @@ pub(super) fn sticky_bar(
                     let size = size * scale;
                     ui.painter().image(
                         texture,
-                        Rect::from_min_size(
-                            Pos2::new(left, center - size.y * 0.5),
-                            size,
-                        ),
+                        Rect::from_min_size(Pos2::new(left, center - size.y * 0.5), size),
                         full_uv(),
                         Color32::WHITE,
                     );
@@ -797,7 +796,7 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
             egui::Pos2::new(x, text_rect.center().y - half),
             egui::Pos2::new(x, text_rect.center().y + half),
         ],
-        egui::Stroke::new(1.6, text_primary()),
+        egui::Stroke::new(stroke::ICON, text_primary()),
     );
 }
 
@@ -843,11 +842,11 @@ pub(super) fn search_field(
     ui.painter().circle_stroke(
         icon - Vec2::splat(1.5),
         6.0,
-        egui::Stroke::new(1.6, icon_color),
+        egui::Stroke::new(stroke::ICON, icon_color),
     );
     ui.painter().line_segment(
         [icon + Vec2::splat(3.0), icon + Vec2::splat(7.0)],
-        egui::Stroke::new(1.6, icon_color),
+        egui::Stroke::new(stroke::ICON, icon_color),
     );
     let row = ui.fonts_mut(|fonts| {
         fonts.row_height(&crate::fonts::regular(metrics.screen_body_size + 1.0))
@@ -880,9 +879,9 @@ pub(super) fn search_field(
         crate::fonts::regular(metrics.screen_body_size + 1.0),
     );
     let stroke = if response.has_focus() {
-        egui::Stroke::new(1.0, metrics.ink(120))
+        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(120))
     } else {
-        egui::Stroke::new(1.0, metrics.border)
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
     };
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
@@ -962,9 +961,9 @@ fn text_edit(
     };
     paint_caret(ui, rect, text_rect, &shown, FontId::proportional(font_size));
     let stroke = if response.has_focus() {
-        egui::Stroke::new(1.0, metrics.ink(120))
+        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(120))
     } else {
-        egui::Stroke::new(1.0, metrics.border)
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
     };
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
@@ -1024,6 +1023,7 @@ pub(super) enum ButtonKind {
     Secondary,
     Accent,
     Selected,
+    Danger,
 }
 
 pub(super) fn button(
@@ -1070,6 +1070,50 @@ pub(super) fn button_auto_width(
     )
 }
 
+pub(crate) fn overlay_chip(painter: &Painter, rect: Rect, outline: Option<Color32>) {
+    painter.rect_filled(rect, radius::CHIP, badge_fill());
+    if let Some(color) = outline {
+        painter.rect_stroke(
+            rect,
+            radius::CHIP,
+            egui::Stroke::new(stroke::HAIRLINE, color),
+            egui::StrokeKind::Inside,
+        );
+    }
+}
+
+pub(super) fn focus_action(layout: &mut HomeLayout, node: u64, response: &Response) {
+    layout.focusable.push((node, response.rect));
+    if response.clicked() {
+        layout.activated = Some(node);
+    }
+}
+
+pub(super) fn placed<R>(
+    context: &egui::Context,
+    id: Id,
+    pos: Pos2,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> egui::InnerResponse<R> {
+    egui::Area::new(id)
+        .constrain(false)
+        .fixed_pos(pos)
+        .show(context, add)
+}
+
+pub(super) fn placed_front<R>(
+    context: &egui::Context,
+    id: Id,
+    pos: Pos2,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> egui::InnerResponse<R> {
+    egui::Area::new(id)
+        .constrain(false)
+        .fixed_pos(pos)
+        .order(egui::Order::Foreground)
+        .show(context, add)
+}
+
 pub(super) fn button_with_text_size(
     ui: &mut Ui,
     label: &str,
@@ -1079,27 +1123,85 @@ pub(super) fn button_with_text_size(
     text_size: f32,
     metrics: UiMetrics,
 ) -> Response {
-    let fill = match kind {
-        ButtonKind::Primary => metrics.text_primary,
-        ButtonKind::Secondary => metrics.ink(28),
-        ButtonKind::Accent | ButtonKind::Selected => metrics.accent,
-    };
-    let text_color = match kind {
-        ButtonKind::Primary => metrics.background,
-        ButtonKind::Secondary => metrics.text_primary,
-        ButtonKind::Accent | ButtonKind::Selected => metrics.accent_foreground,
-    };
-    ui.add_sized(
-        [width, height],
-        egui::Button::new(
-            RichText::new(label)
-                .size(text_size)
-                .strong()
-                .color(text_color),
-        )
-        .fill(fill)
-        .corner_radius(height * 0.5),
+    button_core(
+        ui,
+        label,
+        width,
+        height,
+        kind,
+        text_size,
+        true,
+        Some(metrics),
     )
+}
+
+fn kind_colors(
+    kind: ButtonKind,
+    hovered: bool,
+    enabled: bool,
+    metrics: Option<UiMetrics>,
+) -> (Color32, Color32) {
+    let (fill, text) = match (kind, metrics) {
+        (ButtonKind::Primary, _) | (_, None) if kind != ButtonKind::Danger => {
+            (ink(if hovered { 225 } else { 255 }), background())
+        }
+        (ButtonKind::Secondary, _) => (ink(if hovered { 46 } else { 28 }), text_primary()),
+        (ButtonKind::Danger, _) => (
+            if hovered {
+                danger_color().gamma_multiply(0.85)
+            } else {
+                danger_color()
+            },
+            text_primary(),
+        ),
+        (_, Some(metrics)) => (
+            if hovered {
+                metrics.accent.gamma_multiply(0.85)
+            } else {
+                metrics.accent
+            },
+            metrics.accent_foreground,
+        ),
+        (_, None) => (ink(28), text_primary()),
+    };
+    if enabled {
+        (fill, text)
+    } else {
+        (ink(24), ink(80))
+    }
+}
+
+fn button_core(
+    ui: &mut Ui,
+    label: &str,
+    width: f32,
+    height: f32,
+    kind: ButtonKind,
+    text_size: f32,
+    enabled: bool,
+    metrics: Option<UiMetrics>,
+) -> Response {
+    let (rect, response) = ui.allocate_exact_size(
+        Vec2::new(width, height),
+        if enabled {
+            Sense::click()
+        } else {
+            Sense::hover()
+        },
+    );
+    let (fill, text) = kind_colors(kind, enabled && response.hovered(), enabled, metrics);
+    let painter = ui.painter();
+    crate::motion::press_scale(painter, rect, || {
+        painter.rect_filled(rect, height * 0.5, fill);
+        painter.text(
+            rect.center(),
+            Align2::CENTER_CENTER,
+            label,
+            crate::fonts::bold(text_size),
+            text,
+        );
+    });
+    response
 }
 
 pub(super) fn poster_card(
@@ -1288,7 +1390,7 @@ pub(super) fn expanded_info_panel(
             painter.rect_stroke(
                 Rect::from_min_max(rect.min, panel.max),
                 radius,
-                egui::Stroke::new(1.0, metrics.border),
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
                 egui::StrokeKind::Inside,
             );
             let left = rect.left() + pad;
@@ -1406,11 +1508,7 @@ pub(super) fn hover_preview(
             let radius = metrics.card_radius;
             let corner = egui::CornerRadius::from(radius);
             let painter = ui.painter().clone();
-            painter.rect_filled(
-                rect.expand(1.0),
-                radius + 1.0,
-                Color32::from_black_alpha(120),
-            );
+            painter.rect_filled(rect.expand(1.0), radius + 1.0, shade(Shade::Veil));
             painter.rect_filled(rect, radius, metrics.surface);
 
             let image_height = rect.width() * 9.0 / 16.0;
@@ -1447,7 +1545,7 @@ pub(super) fn hover_preview(
             painter.rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(1.0, metrics.border),
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
                 egui::StrokeKind::Inside,
             );
 
@@ -1560,7 +1658,7 @@ pub(super) fn library_row(
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
         egui::StrokeKind::Inside,
     );
     let inset = metrics.control_gap;
@@ -1597,7 +1695,7 @@ pub(super) fn library_row(
             egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
             Vec2::new(text_width.min(220.0), metrics.card_progress_height),
         );
-        painter.rect_filled(bar, 2.0, metrics.ink(40));
+        painter.rect_filled(bar, radius::BAR, metrics.ink(40));
         painter.rect_filled(
             Rect::from_min_size(
                 bar.min,
@@ -1821,13 +1919,13 @@ fn continue_card_body(
             egui::Pos2::new(rect.right(), scrim_mid),
         ),
         Color32::TRANSPARENT,
-        Color32::from_black_alpha(190),
+        shade(Shade::Scrim),
     );
     paint_vertical_gradient(
         painter,
         Rect::from_min_max(egui::Pos2::new(rect.left(), scrim_mid), rect.right_bottom()),
-        Color32::from_black_alpha(190),
-        Color32::from_black_alpha(245),
+        shade(Shade::Scrim),
+        shade(Shade::Opaque),
     );
     let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
@@ -1902,7 +2000,7 @@ fn continue_card_body(
             egui::Pos2::new(rect.left() + inset, rect.top() + inset)
         };
         let badge = Rect::from_min_size(origin, size);
-        painter.rect_filled(badge, 3.0, Color32::from_black_alpha(190));
+        overlay_chip(painter, badge, None);
         painter.galley(
             badge.center() - galley.size() * 0.5,
             galley,
@@ -2074,7 +2172,7 @@ fn dropdown_inner(
 
 fn paint_chevron(painter: &Painter, center: Pos2, open: f32, color: Color32) {
     let flip = 1.0 - 2.0 * open;
-    let stroke = egui::Stroke::new(1.6, color);
+    let stroke = egui::Stroke::new(stroke::ICON, color);
     let tip = center + Vec2::new(0.0, 2.5 * flip);
     painter.line_segment([center + Vec2::new(-4.5, -2.0 * flip), tip], stroke);
     painter.line_segment([tip, center + Vec2::new(4.5, -2.0 * flip)], stroke);
@@ -2119,7 +2217,7 @@ pub(super) fn choice_field(
         rect,
         radius,
         fill,
-        egui::Stroke::new(1.0, metrics.ink(if open { 70 } else { 26 })),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(if open { 70 } else { 26 })),
         egui::StrokeKind::Inside,
     );
     let font = FontId::proportional(text_size);
@@ -2162,14 +2260,14 @@ pub(super) fn choice_field(
                 } else {
                     metrics.surface_raised
                 })
-                .stroke(egui::Stroke::new(1.0, metrics.border))
+                .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(egui::Margin::same(5))
                 .shadow(egui::epaint::Shadow {
                     offset: [0, 10],
                     blur: 28,
                     spread: 0,
-                    color: Color32::from_black_alpha(150),
+                    color: shade(Shade::Veil),
                 }),
         )
         .show(|ui| {
@@ -2188,7 +2286,7 @@ pub(super) fn choice_field(
                         if row_response.hovered() || active {
                             ui.painter().rect_filled(
                                 row,
-                                8.0,
+                                radius::CONTROL,
                                 metrics.ink(if row_response.hovered() { 18 } else { 9 }),
                             );
                         }
@@ -2210,7 +2308,7 @@ pub(super) fn choice_field(
                         );
                         if active {
                             let c = row.right_center() - Vec2::new(18.0, 0.0);
-                            let stroke = egui::Stroke::new(1.8, metrics.text_primary);
+                            let stroke = egui::Stroke::new(stroke::ICON, metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
                                 stroke,
@@ -2270,23 +2368,19 @@ pub(super) fn pill_button(
     let font = FontId::proportional(text_size);
     let lead = if icon.is_some() { 44.0 } else { 16.0 };
     let trail = if icon.is_some() { 26.0 } else { 16.0 };
+    let chrome = lead + trail;
+    let label = match width {
+        Some(limit) => truncate_to_width(ui.painter(), label, &font, limit - chrome),
+        None => label.to_owned(),
+    };
+    let label = label.as_str();
     let measure = |text: &str| {
         ui.painter()
             .layout_no_wrap(text.to_owned(), font.clone(), Color32::BLACK)
             .size()
             .x
-            + lead
-            + trail
+            + chrome
     };
-    let mut label = label.to_owned();
-    if let Some(limit) = width {
-        while measure(&label) > limit && label.chars().count() > 1 {
-            label = label.trim_end_matches('…').to_owned();
-            label.pop();
-            label = format!("{}…", label.trim_end());
-        }
-    }
-    let label = label.as_str();
     let natural = measure(label);
     let width = width.unwrap_or(natural).max(natural);
     let inset = (width - natural) * 0.5;
@@ -2328,7 +2422,7 @@ pub(super) fn pill_button(
                 Pos2::new(rect.left() + lead, rect.center().y + text_size * 0.5 + 2.0),
                 Pos2::new(rect.right() - 24.0, rect.center().y + text_size * 0.5 + 5.0),
             );
-            painter.rect_filled(track, 1.5, ink.gamma_multiply(0.16));
+            painter.rect_filled(track, radius::BAR, ink.gamma_multiply(0.16));
             painter.rect_filled(
                 Rect::from_min_size(
                     track.min,
@@ -2359,7 +2453,7 @@ pub(super) fn progress_pill(
     let font = FontId::proportional(text_size);
     crate::motion::press_scale(painter, rect, || {
         let base = if response.hovered() { 46 } else { 28 };
-        painter.rect_filled(rect, radius, Color32::from_black_alpha(165));
+        painter.rect_filled(rect, radius, shade(Shade::Scrim));
         glass(painter, rect, radius, ink(base));
         painter.text(
             rect.center(),
@@ -2587,7 +2681,7 @@ pub fn draw_action_menu(
             }
             let panel = layout.panel.translate(offset);
             let fill = metrics.surface;
-            let border = egui::Stroke::new(1.0, metrics.border);
+            let border = egui::Stroke::new(stroke::HAIRLINE, metrics.border);
             let sheet_radius = metrics.dialog_radius + 4.0;
             if sheet && liquid_glass() {
                 glass(
@@ -2631,7 +2725,7 @@ pub fn draw_action_menu(
                 painter.rect_filled(
                     panel.expand(1.0).translate(Vec2::new(0.0, 6.0)),
                     metrics.card_radius + 2.0,
-                    Color32::from_black_alpha(90),
+                    shade(Shade::Faint),
                 );
                 painter.rect(
                     panel,
@@ -2658,7 +2752,7 @@ pub fn draw_action_menu(
                 painter.hline(
                     panel.x_range().shrink(style.rule_shrink()),
                     header.bottom() - 0.5,
-                    egui::Stroke::new(1.0, metrics.border),
+                    egui::Stroke::new(stroke::HAIRLINE, metrics.border),
                 );
             }
             let label_size = if style.large_rows() {
@@ -2949,7 +3043,7 @@ pub(crate) fn paint_badge_chip(
         painter.rect_stroke(
             chip,
             rounding,
-            egui::Stroke::new(1.0, color),
+            egui::Stroke::new(stroke::HAIRLINE, color),
             egui::StrokeKind::Inside,
         );
         badge.text.or(badge.fill).unwrap_or(text_primary())
@@ -2960,7 +3054,7 @@ pub(crate) fn paint_badge_chip(
             painter.rect_stroke(
                 chip,
                 rounding,
-                egui::Stroke::new(1.0, border),
+                egui::Stroke::new(stroke::HAIRLINE, border),
                 egui::StrokeKind::Inside,
             );
         }
@@ -3091,7 +3185,7 @@ pub(super) fn stream_row(
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(1.0, metrics.border),
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
         egui::StrokeKind::Inside,
     );
     let mut origin = rect.min + Vec2::splat(STREAM_ROW_PAD);
@@ -3134,7 +3228,7 @@ pub(super) fn heading(
 ) {
     ui.label(
         RichText::new(eyebrow.to_uppercase())
-            .size(11.0)
+            .size(metrics.text.label)
             .color(metrics.text_muted),
     );
     ui.add_space(10.0);
@@ -3145,14 +3239,18 @@ pub(super) fn heading(
             .color(metrics.text_primary),
     );
     ui.add_space(8.0);
-    ui.label(RichText::new(subtitle).size(14.0).color(metrics.text_muted));
+    ui.label(
+        RichText::new(subtitle)
+            .size(metrics.text.body)
+            .color(metrics.text_muted),
+    );
     ui.add_space(28.0);
 }
 
 pub(super) fn field_label(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
     ui.label(
         RichText::new(text.to_uppercase())
-            .size(10.0)
+            .size(metrics.text.label)
             .color(metrics.text_muted),
     );
     ui.add_space(6.0);
@@ -3160,20 +3258,23 @@ pub(super) fn field_label(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
 
 pub(super) fn note(ui: &mut egui::Ui, text: &str, metrics: UiMetrics) {
     ui.add_space(4.0);
-    ui.label(RichText::new(text).size(12.0).color(metrics.text_secondary));
+    ui.label(
+        RichText::new(text)
+            .size(metrics.text.label)
+            .color(metrics.text_secondary),
+    );
 }
 
 pub(super) fn secondary_button(ui: &mut egui::Ui, label: &str, width: f32) -> egui::Response {
-    ui.add_sized(
-        [width, 44.0],
-        egui::Button::new(
-            RichText::new(label)
-                .size(13.0)
-                .strong()
-                .color(text_primary()),
-        )
-        .fill(ink(28))
-        .corner_radius(22.0),
+    button_core(
+        ui,
+        label,
+        width,
+        size::BUTTON_HEIGHT,
+        ButtonKind::Secondary,
+        size::BUTTON_TEXT,
+        true,
+        None,
     )
 }
 
@@ -3183,16 +3284,15 @@ pub(super) fn primary_button(
     width: f32,
     enabled: bool,
 ) -> egui::Response {
-    ui.add_enabled(
+    button_core(
+        ui,
+        label,
+        width,
+        size::BUTTON_HEIGHT,
+        ButtonKind::Primary,
+        size::BUTTON_TEXT,
         enabled,
-        egui::Button::new(RichText::new(label).size(13.0).strong().color(if enabled {
-            background()
-        } else {
-            ink(80)
-        }))
-        .fill(if enabled { text_primary() } else { ink(24) })
-        .corner_radius(22.0)
-        .min_size(Vec2::new(width, 44.0)),
+        None,
     )
 }
 
@@ -3202,23 +3302,22 @@ pub(super) fn danger_button(
     width: f32,
     metrics: UiMetrics,
 ) -> egui::Response {
-    ui.add_sized(
-        [width, 44.0],
-        egui::Button::new(
-            RichText::new(label)
-                .size(13.0)
-                .strong()
-                .color(metrics.text_primary),
-        )
-        .fill(metrics.danger)
-        .corner_radius(22.0),
+    button_core(
+        ui,
+        label,
+        width,
+        size::BUTTON_HEIGHT,
+        ButtonKind::Danger,
+        size::BUTTON_TEXT,
+        true,
+        Some(metrics),
     )
 }
 
 pub(super) fn panel(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui), metrics: UiMetrics) {
     egui::Frame::NONE
         .fill(metrics.surface)
-        .stroke(egui::Stroke::new(1.0, metrics.border))
+        .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
         .corner_radius(metrics.dialog_radius)
         .inner_margin(egui::Margin::same(22))
         .show(ui, add);
@@ -3236,14 +3335,14 @@ pub(super) fn modal(
             egui::Order::Middle,
             Id::new((id, "scrim")),
         ))
-        .rect_filled(screen, 0.0, Color32::from_black_alpha(170));
+        .rect_filled(screen, 0.0, shade(Shade::Scrim));
     egui::Area::new(Id::new(id))
         .order(egui::Order::Foreground)
         .anchor(Align2::CENTER_CENTER, Vec2::ZERO)
         .show(context, |ui| {
             egui::Frame::NONE
                 .fill(metrics.surface_raised)
-                .stroke(egui::Stroke::new(1.0, metrics.border))
+                .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(egui::Margin::same(26))
                 .show(ui, |ui| {
@@ -3267,7 +3366,7 @@ pub(super) fn surface(
 ) {
     egui::Frame::NONE
         .fill(fill)
-        .stroke(egui::Stroke::new(1.0, metrics.border))
+        .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
         .corner_radius(radius)
         .inner_margin(margin)
         .show(ui, add);
@@ -3283,9 +3382,17 @@ pub(super) fn screen_bar(
     let mut back = false;
     ui.horizontal(|ui| {
         ui.add_space(12.0);
-        back = icon_button(ui, assets.icon("ArrowLeft"), 44.0, ink(230), false, false, true)
-            .on_hover_text(back_label)
-            .clicked();
+        back = icon_button(
+            ui,
+            assets.icon("ArrowLeft"),
+            44.0,
+            ink(230),
+            false,
+            false,
+            true,
+        )
+        .on_hover_text(back_label)
+        .clicked();
         ui.add_space(4.0);
         ui.label(
             RichText::new(title)

@@ -13,7 +13,7 @@ pub(super) fn draw_mini_player(
         rect.min + Vec2::splat(if compact { 16.0 } else { 24.0 }),
         Vec2::new(width, width * 9.0 / 16.0),
     );
-    painter.rect_filled(mini.expand(1.0), 8.0, ink(28));
+    painter.rect_filled(mini.expand(1.0), radius::CONTROL, ink(28));
     match player.video {
         Some(texture) => {
             painter.add(
@@ -22,7 +22,7 @@ pub(super) fn draw_mini_player(
             );
         }
         None => {
-            painter.rect_filled(mini, 7.0, Color32::BLACK);
+            painter.rect_filled(mini, radius::CONTROL, Color32::BLACK);
         }
     }
     let hovered = ui.rect_contains_pointer(mini);
@@ -60,10 +60,7 @@ pub(super) fn draw_mini_player(
             icon,
             false,
         );
-        layout.focusable.push((node, button.rect));
-        if button.clicked() {
-            layout.activated = Some(node);
-        }
+        components::focus_action(layout, node, &button);
     }
 }
 
@@ -87,7 +84,7 @@ pub(super) fn draw_seek_preview(
     let width = if thumbnail.is_some() { 240.0 } else { 160.0 };
     let x = pointer_x.clamp(track.left() + width * 0.5, track.right() - width * 0.5);
     let mut bottom = track.top() - 10.0;
-    let label_font = FontId::proportional(13.0);
+    let label_font = FontId::proportional(metrics.text.meta);
     painter.text(
         Pos2::new(x, bottom),
         Align2::CENTER_BOTTOM,
@@ -111,7 +108,7 @@ pub(super) fn draw_seek_preview(
             Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
             Pos2::new(x + width * 0.5, bottom),
         );
-        painter.rect_filled(frame.expand(1.0), 4.0, ink(40));
+        painter.rect_filled(frame.expand(1.0), radius::CHIP, ink(40));
         painter.image(texture, frame, full_uv(), Color32::WHITE);
     }
 }

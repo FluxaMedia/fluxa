@@ -123,17 +123,12 @@ pub fn draw_folder(
     );
     let sticky_on = scroll_y > geometry.content_top * 0.6;
     if !sticky_on {
-        egui::Area::new(Id::new("fluxa-folder-back"))
-            .constrain(false)
-            .fixed_pos(back_rect.min)
-            .order(egui::Order::Foreground)
-            .show(context, |ui| {
-                let response =
-                    components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
-                if response.clicked() {
-                    layout.activated = Some(NODE_FOLDER_BACK);
-                }
-            });
+        components::placed_front(context, Id::new("fluxa-folder-back"), back_rect.min, |ui| {
+            let response = components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
+            if response.clicked() {
+                layout.activated = Some(NODE_FOLDER_BACK);
+            }
+        });
         layout.focusable.push((NODE_FOLDER_BACK, back_rect));
     }
     if let Some(sticky) = components::sticky_bar(
@@ -186,10 +181,11 @@ pub fn draw_folder(
         let pos = art.center() - galley.size() * 0.5;
         crate::emoji::paint(&painter, pos, galley, assets);
     }
-    egui::Area::new(Id::new("fluxa-folder-title"))
-        .constrain(false)
-        .fixed_pos(Pos2::new(text_left, page.top))
-        .show(context, |ui| {
+    components::placed(
+        context,
+        Id::new("fluxa-folder-title"),
+        Pos2::new(text_left, page.top),
+        |ui| {
             ui.set_height(geometry.header_height);
             ui.set_max_width((viewport.width - text_left - page.margin).max(1.0));
             ui.with_layout(egui::Layout::left_to_right(egui::Align::Center), |ui| {
@@ -200,14 +196,16 @@ pub fn draw_folder(
                         .color(metrics.text_primary),
                 );
             });
-        });
+        },
+    );
 
     if let Some(tabs_top) = geometry.tabs_top {
         let labels: Vec<String> = folder.tabs.iter().map(FolderTab::full_label).collect();
-        egui::Area::new(Id::new("fluxa-folder-tabs"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(page.margin, tabs_top))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-folder-tabs"),
+            Pos2::new(page.margin, tabs_top),
+            |ui| {
                 ui.set_width(page.width);
                 egui::ScrollArea::horizontal()
                     .id_salt("fluxa-folder-tabs-scroll")
@@ -221,13 +219,11 @@ pub fn draw_folder(
                         );
                         for (index, response) in responses.into_iter().enumerate() {
                             let node = NODE_FOLDER_TAB_BASE + index as u64;
-                            layout.focusable.push((node, response.rect));
-                            if response.clicked() {
-                                layout.activated = Some(node);
-                            }
+                            components::focus_action(&mut layout, node, &response);
                         }
                     });
-            });
+            },
+        );
     }
 
     let grid = PosterGrid::new(page.width, metrics);
@@ -240,40 +236,34 @@ pub fn draw_folder(
         ),
     );
     let mut any_cards = false;
-    egui::Area::new(Id::new("fluxa-folder-grid"))
-        .constrain(false)
-        .fixed_pos(origin)
-        .show(context, |ui| {
-            ui.set_clip_rect(ui.clip_rect().intersect(clip));
-            if folder.view_mode == FolderViewMode::TabbedGrid {
-                let cards = folder.cards(tab);
-                any_cards = !cards.is_empty();
-                for (index, card) in cards.iter().take(FOLDER_CARD_LIMIT).enumerate() {
-                    let rect = grid.cell(origin, index);
-                    let visible = rect.intersect(clip);
-                    if !visible.is_positive() {
-                        let poster = Rect::from_min_size(
-                            rect.min,
-                            Vec2::new(grid.card_width, grid.poster_height),
-                        );
-                        components::poster_card(ui.painter(), poster, card, metrics, assets, false);
-                        continue;
-                    }
-                    let node = NODE_CARD_BASE + index as u64;
-                    let response =
-                        ui.interact(rect, Id::new(("folder-card", node)), Sense::click());
-                    layout.focusable.push((node, visible));
-                    if response.clicked() {
-                        layout.activated = Some(node);
-                    }
+    components::placed(context, Id::new("fluxa-folder-grid"), origin, |ui| {
+        ui.set_clip_rect(ui.clip_rect().intersect(clip));
+        if folder.view_mode == FolderViewMode::TabbedGrid {
+            let cards = folder.cards(tab);
+            any_cards = !cards.is_empty();
+            for (index, card) in cards.iter().take(FOLDER_CARD_LIMIT).enumerate() {
+                let rect = grid.cell(origin, index);
+                let visible = rect.intersect(clip);
+                if !visible.is_positive() {
                     let poster = Rect::from_min_size(
                         rect.min,
                         Vec2::new(grid.card_width, grid.poster_height),
                     );
                     components::poster_card(ui.painter(), poster, card, metrics, assets, false);
+                    continue;
                 }
+                let node = NODE_CARD_BASE + index as u64;
+                let response = ui.interact(rect, Id::new(("folder-card", node)), Sense::click());
+                layout.focusable.push((node, visible));
+                if response.clicked() {
+                    layout.activated = Some(node);
+                }
+                let poster =
+                    Rect::from_min_size(rect.min, Vec2::new(grid.card_width, grid.poster_height));
+                components::poster_card(ui.painter(), poster, card, metrics, assets, false);
             }
-        });
+        }
+    });
     if folder.view_mode != FolderViewMode::TabbedGrid {
         let home = rows_home(folder);
         any_cards = !home.rows.is_empty();

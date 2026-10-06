@@ -72,7 +72,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
         .fixed_pos(Pos2::new(bar_x, NAV_BAR_TOP))
         .order(egui::Order::Foreground)
         .show(context, |ui| {
-            let fill = Color32::from_rgba_unmultiplied(22, 22, 24, 242);
+            let fill = overlay_panel();
             let backdrop = ui.painter().add(egui::Shape::Noop);
             let frame = egui::Frame::NONE
                 .fill(if liquid_glass() {
@@ -80,7 +80,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                 } else {
                     fill
                 })
-                .stroke(egui::Stroke::new(1.0, metrics.border))
+                .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
                 .corner_radius(NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING)
                 .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
                 .show(ui, |ui| {
@@ -403,12 +403,7 @@ pub(crate) fn draw_mobile_navigation_bar(
         .show(context, |ui| {
             let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
             if floating && liquid_glass() {
-                glass(
-                    &painter,
-                    bar,
-                    bar.height() * 0.5,
-                    Color32::from_rgba_unmultiplied(22, 22, 24, 242),
-                );
+                glass(&painter, bar, bar.height() * 0.5, overlay_panel());
             } else if floating {
                 paint_vertical_gradient(
                     &painter,
@@ -427,15 +422,11 @@ pub(crate) fn draw_mobile_navigation_bar(
                     0.0,
                     solid,
                 );
-                painter.rect_filled(
-                    bar,
-                    bar.height() * 0.5,
-                    Color32::from_rgba_unmultiplied(22, 22, 24, 242),
-                );
+                painter.rect_filled(bar, bar.height() * 0.5, overlay_panel());
                 painter.rect_stroke(
                     bar,
                     bar.height() * 0.5,
-                    egui::Stroke::new(1.0, metrics.border),
+                    egui::Stroke::new(stroke::HAIRLINE, metrics.border),
                     egui::StrokeKind::Inside,
                 );
             } else {
@@ -508,7 +499,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                             ui.painter().circle_stroke(
                                 center,
                                 15.0,
-                                egui::Stroke::new(1.5, accent),
+                                egui::Stroke::new(stroke::ICON, accent),
                             );
                         }
                     } else if let Some(icon) = assets.icon(icon) {

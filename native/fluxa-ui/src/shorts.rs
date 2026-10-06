@@ -155,10 +155,11 @@ pub fn draw_shorts(
     let hero = &shorts.items[index];
     let settled = (position - index as f32).abs() < 0.02;
     if settled {
-        egui::Area::new(Id::new("fluxa-shorts-actions"))
-            .constrain(false)
-            .fixed_pos(Pos2::new(column.left() + pad, button_top))
-            .show(context, |ui| {
+        components::placed(
+            context,
+            Id::new("fluxa-shorts-actions"),
+            Pos2::new(column.left() + pad, button_top),
+            |ui| {
                 ui.spacing_mut().item_spacing.x = 12.0 * scale;
                 ui.horizontal(|ui| {
                     let text_size = metrics.nav_label_size + 2.0;
@@ -212,7 +213,8 @@ pub fn draw_shorts(
                     }
                     layout.focusable.push((NODE_SHORTS_INFO, info.rect));
                 });
-            });
+            },
+        );
     }
 
     if !compact && !viewport.is_tv() {
@@ -228,10 +230,11 @@ pub fn draw_shorts(
                 } else {
                     index + 1 < shorts.items.len()
                 };
-                egui::Area::new(Id::new(("fluxa-shorts-step", step)))
-                    .constrain(false)
-                    .fixed_pos(Pos2::new(x, y))
-                    .show(context, |ui| {
+                components::placed(
+                    context,
+                    Id::new(("fluxa-shorts-step", step)),
+                    Pos2::new(x, y),
+                    |ui| {
                         let response = components::icon_button_sized(
                             ui,
                             assets.icon(icon),
@@ -244,7 +247,8 @@ pub fn draw_shorts(
                         if response.clicked() {
                             layout.short_step = Some(step);
                         }
-                    });
+                    },
+                );
             }
         }
     }

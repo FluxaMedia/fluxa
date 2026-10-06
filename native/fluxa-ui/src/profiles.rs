@@ -62,14 +62,14 @@ pub fn draw_profiles(
             |ui| {
                 ui.label(
                     RichText::new(t("profiles.delete_confirm_title"))
-                        .size(22.0)
+                        .size(metrics.text.title)
                         .strong()
                         .color(text_primary()),
                 );
                 ui.add_space(8.0);
                 ui.label(
                     RichText::new(t("profiles.delete_confirm_body").replacen("%s", &name, 1))
-                        .size(14.0)
+                        .size(metrics.text.body)
                         .color(metrics.text_secondary),
                 );
                 ui.add_space(20.0);
@@ -96,7 +96,7 @@ pub fn draw_profiles(
             .show(context, |ui| {
                 egui::Frame::NONE
                     .fill(metrics.surface_raised)
-                    .stroke(egui::Stroke::new(1.0, metrics.border))
+                    .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
                     .corner_radius(10.0)
                     .inner_margin(egui::Margin::symmetric(16, 12))
                     .show(ui, |ui| {
@@ -104,7 +104,9 @@ pub fn draw_profiles(
                         ui.horizontal(|ui| {
                             ui.add(
                                 egui::Label::new(
-                                    RichText::new(notice).size(14.0).color(metrics.text_primary),
+                                    RichText::new(notice)
+                                        .size(metrics.text.body)
+                                        .color(metrics.text_primary),
                                 )
                                 .wrap(),
                             );
@@ -151,11 +153,7 @@ fn paint_backdrop(
         Color32::WHITE,
         assets,
     ) {
-        painter.rect_filled(
-            screen,
-            0.0,
-            Color32::from_rgba_unmultiplied(12, 12, 12, 210),
-        );
+        painter.rect_filled(screen, 0.0, background().gamma_multiply(0.82));
     }
 }
 

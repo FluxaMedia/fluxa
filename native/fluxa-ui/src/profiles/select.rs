@@ -103,7 +103,7 @@ pub(super) fn draw_select(
                 avatar_center,
                 r,
                 ink(if response.hovered() { 26 } else { 10 }),
-                egui::Stroke::new(1.0, metrics.border),
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
             );
             if let Some(icon) = assets.icon("Plus") {
                 ui.painter().image(
@@ -117,7 +117,7 @@ pub(super) fn draw_select(
                 Pos2::new(avatar_center.x, avatar_center.y + radius + 24.0),
                 Align2::CENTER_CENTER,
                 t("profiles.add_profile"),
-                FontId::proportional(14.0),
+                FontId::proportional(metrics.text.body),
                 metrics.text_muted,
             );
             if response.clicked() {
@@ -150,8 +150,8 @@ pub(super) fn draw_select(
             ui.painter().circle(
                 badge,
                 17.0,
-                Color32::from_rgba_unmultiplied(12, 12, 12, 235),
-                egui::Stroke::new(1.0, ink(38)),
+                background().gamma_multiply(0.92),
+                egui::Stroke::new(stroke::HAIRLINE, ink(38)),
             );
             if let Some(icon) = assets.icon("Lock") {
                 ui.painter().image(
@@ -162,7 +162,7 @@ pub(super) fn draw_select(
                 );
             }
         }
-        let name_font = FontId::proportional(16.0);
+        let name_font = FontId::proportional(metrics.text.subtitle);
         let name = truncate_to_width(ui.painter(), &profile.name, &name_font, cell.x);
         let name_y = avatar_center.y + radius + 24.0;
         ui.painter().text(
@@ -177,14 +177,14 @@ pub(super) fn draw_select(
             let label = t("profiles.primary_badge").to_uppercase();
             let galley = ui.painter().layout_no_wrap(
                 label,
-                FontId::proportional(10.0),
+                FontId::proportional(metrics.text.label),
                 metrics.text_secondary,
             );
             let badge = Rect::from_center_size(
                 Pos2::new(avatar_center.x, name_y + 22.0),
                 galley.size() + Vec2::new(14.0, 6.0),
             );
-            ui.painter().rect_filled(badge, 4.0, ink(24));
+            ui.painter().rect_filled(badge, radius::CHIP, ink(24));
             ui.painter()
                 .galley(badge.center() - galley.size() * 0.5, galley, text_primary());
             actions_y += 20.0;
@@ -206,7 +206,7 @@ pub(super) fn draw_select(
                 )
                 .on_hover_text(label);
             if action.hovered() {
-                ui.painter().rect_filled(rect, 6.0, ink(18));
+                ui.painter().rect_filled(rect, radius::CONTROL, ink(18));
             }
             let color = ink(if action.hovered() { 255 } else { alpha });
             if let Some(texture) = assets.icon(icon) {

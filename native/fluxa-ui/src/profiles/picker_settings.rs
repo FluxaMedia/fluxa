@@ -11,7 +11,12 @@ pub(super) fn draw_picker_settings(
 ) {
     let compact = viewport.is_compact();
     if compact {
-        if components::screen_bar(ui, assets, &t("profiles.picker_settings"), &t("common.back")) {
+        if components::screen_bar(
+            ui,
+            assets,
+            &t("profiles.picker_settings"),
+            &t("common.back"),
+        ) {
             model.mode = ProfilesMode::Select;
         }
     } else {
@@ -36,7 +41,7 @@ pub(super) fn draw_picker_settings(
             ui.set_width(if compact { width } else { width - 44.0 });
             ui.label(
                 RichText::new(t("profiles.picker_background"))
-                    .size(19.0)
+                    .size(metrics.text.title)
                     .strong()
                     .color(text_primary()),
             );
@@ -46,7 +51,7 @@ pub(super) fn draw_picker_settings(
             if compact {
                 ui.label(
                     RichText::new(t("profiles.picker_background_desc"))
-                        .size(14.0)
+                        .size(metrics.text.body)
                         .color(metrics.text_muted),
                 );
                 ui.add_space(12.0);
@@ -106,14 +111,14 @@ pub(super) fn draw_picker_settings(
             ui.set_width(if compact { width } else { width - 44.0 });
             ui.label(
                 RichText::new(t("profiles.avatar_packs"))
-                    .size(19.0)
+                    .size(metrics.text.title)
                     .strong()
                     .color(text_primary()),
             );
             ui.add_space(6.0);
             ui.label(
                 RichText::new(t("profiles.avatar_packs_desc"))
-                    .size(14.0)
+                    .size(metrics.text.body)
                     .color(metrics.text_muted),
             );
             ui.add_space(16.0);
@@ -157,7 +162,7 @@ pub(super) fn draw_picker_settings(
             if model.picker.avatar_packs.is_empty() {
                 ui.label(
                     RichText::new(t("profiles.no_avatar_packs"))
-                        .size(14.0)
+                        .size(metrics.text.body)
                         .color(metrics.text_muted),
                 );
             }
@@ -195,11 +200,7 @@ pub(super) fn draw_picker_settings(
                                     rect.left() + 24.0 + index as f32 * 32.0,
                                     rect.center().y,
                                 );
-                                ui.painter().circle_filled(
-                                    center,
-                                    24.5,
-                                    Color32::from_rgb(20, 20, 20),
-                                );
+                                ui.painter().circle_filled(center, 24.5, surface_color());
                                 components::avatar(
                                     ui.painter(),
                                     assets,
@@ -227,7 +228,7 @@ pub(super) fn draw_picker_settings(
                                                 pack.title,
                                                 pack.avatars.len()
                                             ))
-                                            .size(14.0)
+                                            .size(metrics.text.body)
                                             .color(metrics.text_primary),
                                         )
                                         .truncate(),
@@ -241,7 +242,7 @@ pub(super) fn draw_picker_settings(
                                         ui,
                                         assets.icon("Delete"),
                                         32.0,
-                                        Color32::from_rgb(211, 74, 74),
+                                        danger_color(),
                                         false,
                                         false,
                                         true,
@@ -286,4 +287,3 @@ pub(super) fn draw_picker_settings(
         ui.add_space(48.0);
     });
 }
-
