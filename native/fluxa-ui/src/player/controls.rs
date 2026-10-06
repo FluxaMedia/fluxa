@@ -115,12 +115,14 @@ impl Chrome<'_> {
             6.0 * amount,
             text_primary(),
         );
-        self.painter.text(
+        draw_text(
+            self.painter,
             Pos2::new(filled.right(), bar.center().y - 20.0),
             Align2::CENTER_CENTER,
             format!("{}%", shown.round() as i32),
             FontId::proportional(12.0),
             ink(alpha),
+            None,
         );
         x + full + 8.0
     }
@@ -601,12 +603,14 @@ pub(super) fn control_with_id(
                     .collect(),
                 egui::Stroke::new(1.8 * s, color),
             ));
-            painter.text(
+            draw_text(
+                painter,
                 c + s * Vec2::new(0.0, 7.0),
                 Align2::CENTER_CENTER,
                 "10",
                 FontId::proportional(9.0 * s),
                 color,
+                None,
             );
         }
         "volume" | "mute" => {

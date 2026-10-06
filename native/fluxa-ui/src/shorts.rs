@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 #[derive(Clone, Debug, Default)]
@@ -100,12 +101,14 @@ pub fn draw_shorts(
         if shorts.loading {
             draw_loading_screen(context, &painter, screen, assets);
         } else {
-            painter.text(
+            draw_text(
+                &painter,
                 screen.center(),
                 Align2::CENTER_CENTER,
                 localized("shorts.empty", &shorts.language),
                 FontId::proportional(metrics.nav_label_size + 2.0),
                 metrics.text_secondary,
+                None,
             );
         }
         return layout;
@@ -338,12 +341,14 @@ fn draw_page(
     }
     if !hero.eyebrow.is_empty() {
         y -= 18.0 * scale;
-        clipped.text(
+        draw_text(
+            &clipped,
             Pos2::new(rect.left() + pad, y),
             Align2::LEFT_TOP,
             truncate_text(&hero.eyebrow, 60),
             FontId::proportional(13.0 * scale),
             metrics.text_secondary,
+            None,
         );
         y -= 12.0 * scale;
     }
@@ -372,12 +377,14 @@ fn draw_page(
             clipped.image(texture, logo_rect, full_uv(), Color32::WHITE);
         }
         None => {
-            clipped.text(
+            draw_text(
+                &clipped,
                 Pos2::new(rect.left() + pad, y + logo_height),
                 Align2::LEFT_BOTTOM,
                 truncate_text(&hero.title, 28),
                 FontId::proportional(28.0 * scale),
                 text_primary(),
+                None,
             );
         }
     }

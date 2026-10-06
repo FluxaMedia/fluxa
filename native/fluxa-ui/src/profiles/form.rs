@@ -92,12 +92,14 @@ pub(super) fn form_details(
             if response.hovered() {
                 ui.painter()
                     .circle_filled(rect.center(), 64.0, shade(Shade::Faint));
-                ui.painter().text(
+                draw_text(
+                    ui.painter(),
                     rect.center(),
                     Align2::CENTER_CENTER,
                     t("profiles.change_image"),
                     FontId::proportional(metrics.text.label),
                     text_primary(),
+                    None,
                 );
             }
             if response.on_hover_text(t("profiles.choose_image")).clicked() {
@@ -320,12 +322,14 @@ pub(super) fn form_images(
                             );
                         }
                         let font = FontId::proportional(metrics.text.label);
-                        ui.painter().text(
+                        draw_text(
+                            ui.painter(),
                             Pos2::new(center.x, rect.bottom() - 6.0),
                             Align2::CENTER_CENTER,
-                            truncate_to_width(ui.painter(), &avatar.name, &font, tile),
+                            &avatar.name,
                             font,
                             metrics.text_secondary,
+                            Some(tile),
                         );
                         if response.clicked() {
                             model.draft.avatar_url = Some(avatar.url.clone());

@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::account::{account_divider, account_group, account_row};
 use super::*;
 
@@ -173,12 +174,14 @@ pub(super) fn draw_badges(
         metrics,
     );
     if let Some(status) = &settings.badge_status {
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(row.left(), row.bottom() + 8.0),
             Align2::LEFT_TOP,
-            truncate_to_width(&painter, status, &muted, row.width()),
+            status,
             muted.clone(),
             metrics.text_muted,
+            Some(row.width()),
         );
     }
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -195,12 +198,14 @@ pub(super) fn draw_badges(
     );
     if settings.badge_packs.is_empty() {
         let row = account_row(card, 0, metrics);
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(row.left(), row.center().y),
             Align2::LEFT_CENTER,
             localized("settings.badges_no_packs", language),
             muted.clone(),
             metrics.text_muted,
+            None,
         );
     }
     for (index, pack) in settings.badge_packs.iter().enumerate() {
@@ -230,7 +235,8 @@ pub(super) fn draw_badges(
             ],
             size,
         );
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(row.left(), row.center().y - 9.0),
             Align2::LEFT_CENTER,
             truncate_to_width(
@@ -245,8 +251,10 @@ pub(super) fn draw_badges(
             } else {
                 metrics.text_muted
             },
+            None,
         );
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(row.left(), row.center().y + 11.0),
             Align2::LEFT_CENTER,
             format!(
@@ -256,6 +264,7 @@ pub(super) fn draw_badges(
             ),
             muted.clone(),
             metrics.text_muted,
+            None,
         );
     }
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -281,12 +290,14 @@ pub(super) fn draw_badges(
         if index > 1 {
             account_divider_at(&painter, row.left(), row.right(), row.top());
         }
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(row.left(), row.center().y),
             Align2::LEFT_CENTER,
             localized(FIELD_LABELS[index], language),
             crate::fonts::regular(size),
             metrics.text_primary,
+            None,
         );
         let input = Rect::from_min_max(
             Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
@@ -320,12 +331,14 @@ pub(super) fn draw_badges(
         style_row.right(),
         style_row.top(),
     );
-    painter.text(
+    draw_text(
+        &painter,
         Pos2::new(style_row.left(), style_row.center().y),
         Align2::LEFT_CENTER,
         localized("settings.badges_field_style", language),
         crate::fonts::regular(size),
         metrics.text_primary,
+        None,
     );
     let style_key = if settings.badge_outline {
         "settings.option.outline"
@@ -484,12 +497,14 @@ fn draw_layout(
         Vec2::new(card.width() - inset * 2.0, lines),
     );
     if settings.layout_preview.is_empty() {
-        painter.text(
+        draw_text(
+            painter,
             preview.left_top(),
             Align2::LEFT_TOP,
             localized("settings.layout_original", language),
             crate::fonts::regular(size),
             metrics.text_muted,
+            None,
         );
     }
     for (index, line) in settings.layout_preview.iter().enumerate() {
@@ -498,16 +513,18 @@ fn draw_layout(
         } else {
             crate::fonts::regular(size)
         };
-        painter.text(
+        draw_text(
+            painter,
             preview.left_top() + Vec2::new(0.0, index as f32 * LAYOUT_PREVIEW_LINE),
             Align2::LEFT_TOP,
-            truncate_to_width(painter, line, &font, preview.width()),
+            line,
             font,
             if index == 0 {
                 metrics.text_primary
             } else {
                 metrics.text_muted
             },
+            Some(preview.width()),
         );
     }
     let form_top = preview.bottom() + LAYOUT_PREVIEW_PAD - 6.0;
@@ -517,12 +534,14 @@ fn draw_layout(
             Vec2::new(card.width() - inset * 2.0, FORM_ROW),
         );
         account_divider_at(painter, row.left(), row.right(), row.top());
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row.left(), row.center().y),
             Align2::LEFT_CENTER,
             localized(FIELD_LABELS[index], language),
             crate::fonts::regular(size),
             metrics.text_primary,
+            None,
         );
         let input = Rect::from_min_max(
             Pos2::new(row.left() + row.width() * 0.3, row.center().y - 18.0),
@@ -613,23 +632,27 @@ fn draw_formatter(
         );
         let font = crate::fonts::regular(size);
         let width = right - row.left() - 12.0;
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row.left(), row.center().y - 9.0),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, &preset.name, &font, width),
+            &preset.name,
             font,
             if preset.enabled {
                 metrics.text_primary
             } else {
                 metrics.text_muted
             },
+            Some(width),
         );
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row.left(), row.center().y + 11.0),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, &preset.description, &muted, width),
+            &preset.description,
             muted.clone(),
             metrics.text_muted,
+            Some(width),
         );
     }
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -651,12 +674,14 @@ fn draw_formatter(
         if slot > 0 {
             account_divider_at(painter, row.left(), row.right(), row.top());
         }
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row.left(), row.center().y),
             Align2::LEFT_CENTER,
             localized(FIELD_LABELS[index], language),
             crate::fonts::regular(size),
             metrics.text_primary,
+            None,
         );
         let input = Rect::from_min_max(
             Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
@@ -700,12 +725,14 @@ fn draw_formatter(
         size,
     );
     if let Some(status) = &settings.formatter_status {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(action_row.left(), action_row.center().y),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, status, &muted, right - action_row.left() - 12.0),
+            status,
             muted.clone(),
             metrics.text_muted,
+            Some(right - action_row.left() - 12.0),
         );
     }
     top = card.bottom() + APPEARANCE_GROUP_GAP;
@@ -769,12 +796,14 @@ fn draw_formatter(
         let avail = right - row.left() - 12.0;
         let pattern = painter.layout_no_wrap(rule.pattern.clone(), font.clone(), color);
         let pattern_width = pattern.size().x.min(avail * 0.5);
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row.left(), row.center().y),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, &rule.pattern, &font, pattern_width),
+            &rule.pattern,
             font.clone(),
             color,
+            Some(pattern_width),
         );
         let arrow_left = row.left() + pattern_width + gap;
         if let Some(icon) = assets.icon("ArrowRight") {
@@ -789,12 +818,14 @@ fn draw_formatter(
             );
         }
         let text_left = arrow_left + arrow + gap;
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(text_left, row.center().y),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, &replacement, &font, row.left() + avail - text_left),
+            &replacement,
             font,
             color,
+            Some(row.left() + avail - text_left),
         );
     }
 }

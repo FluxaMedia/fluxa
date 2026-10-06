@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 const CARD_PADDING: f32 = 16.0;
@@ -303,24 +304,28 @@ fn draw_header(
 }
 
 fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String, metrics: UiMetrics) -> f32 {
-    painter.text(
+    draw_text(
+        painter,
         Pos2::new(rect.left() + 4.0, y),
         Align2::LEFT_TOP,
         label,
         crate::fonts::regular(metrics.text.body),
         metrics.text_muted,
+        None,
     );
     y + APPEARANCE_GROUP_HEADING_HEIGHT
 }
 
 fn notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color32) {
     let font = crate::fonts::regular(15.0);
-    painter.text(
+    draw_text(
+        painter,
         Pos2::new(rect.left() + 4.0, y),
         Align2::LEFT_TOP,
-        truncate_to_width(painter, text, &font, rect.width()),
+        text,
         font,
         color,
+        Some(rect.width()),
     );
 }
 
@@ -536,21 +541,25 @@ pub(super) fn draw_plugins(
         } else {
             row.center().y
         };
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(row.left() + 16.0, title_y),
             Align2::LEFT_CENTER,
-            truncate_to_width(&painter, name, &title_font, text_width),
+            name,
             title_font,
             text_primary(),
+            Some(text_width),
         );
         if let Some(detail) = detail {
             let font = crate::fonts::regular(metrics.text.body);
-            painter.text(
+            draw_text(
+                &painter,
                 Pos2::new(row.left() + 16.0, row.center().y + 12.0),
                 Align2::LEFT_CENTER,
-                truncate_to_width(&painter, detail, &font, text_width),
+                detail,
                 font,
                 metrics.text_muted,
+                Some(text_width),
             );
         }
         components::toggle(
@@ -625,12 +634,14 @@ fn draw_card(
             ink(tone::BODY),
         );
     } else {
-        painter.text(
+        draw_text(
+            painter,
             logo.center(),
             Align2::CENTER_CENTER,
             capitalize(&card.title.chars().take(1).collect::<String>()),
             crate::fonts::regular(metrics.text.title),
             metrics.text_primary,
+            None,
         );
     }
     let text_left = logo.right() + 14.0;
@@ -642,21 +653,25 @@ fn draw_card(
     let title_width = galley.size().x;
     painter.galley(title_pos, galley, text_primary());
     if let Some(version) = card.version {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(title_pos.x + title_width + 8.0, title_pos.y + 4.0),
             Align2::LEFT_TOP,
             format!("v{}", version.trim_start_matches('v')),
             crate::fonts::regular(metrics.text.meta),
             metrics.text_muted,
+            None,
         );
     }
     let subtitle_font = crate::fonts::regular(metrics.text.body);
-    painter.text(
+    draw_text(
+        painter,
         Pos2::new(text_left, logo.top() + 28.0),
         Align2::LEFT_TOP,
-        truncate_to_width(painter, card.subtitle, &subtitle_font, text_width),
+        card.subtitle,
         subtitle_font,
         metrics.text_muted,
+        Some(text_width),
     );
     let mut y = logo.bottom() + 12.0;
     if let Some(description) = card.description {

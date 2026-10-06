@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 pub(super) struct CalendarGrid {
@@ -211,7 +212,8 @@ pub fn draw_calendar(
                 &calendar.language,
             );
             let column_x = column as f32 * (grid.cell_width + grid.gap);
-            grid_painter.text(
+            draw_text(
+                &grid_painter,
                 origin
                     + Vec2::new(
                         if compact {
@@ -233,6 +235,7 @@ pub fn draw_calendar(
                 },
                 crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0),
                 metrics.text_muted,
+                None,
             );
         }
         let total = days_in_month(calendar.year, calendar.month) as u32;
@@ -487,15 +490,18 @@ fn draw_calendar_cell(
             Rect::from_min_size(day_pos - Vec2::splat(size * 0.2), Vec2::splat(size))
         };
         painter.circle_filled(badge.center(), size * 0.5, text_primary());
-        painter.text(
+        draw_text(
+            &painter,
             badge.center(),
             Align2::CENTER_CENTER,
             day.to_string(),
             day_font,
             background(),
+            None,
         );
     } else {
-        painter.text(
+        draw_text(
+            &painter,
             day_pos,
             if centered {
                 Align2::CENTER_CENTER
@@ -509,6 +515,7 @@ fn draw_calendar_cell(
             } else {
                 text_primary()
             },
+            None,
         );
     }
     let text_width = rect.width() - padding * 2.0;
@@ -536,12 +543,14 @@ fn draw_calendar_cell(
     let episode_font = crate::fonts::regular(metrics.screen_card_subtitle_size - 1.0);
     let mut baseline = rect.bottom() - padding;
     if !entry.episode.is_empty() {
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(rect.left() + padding, baseline),
             Align2::LEFT_BOTTOM,
-            truncate_to_width(&painter, &entry.episode, &episode_font, text_width),
+            &entry.episode,
             episode_font.clone(),
             metrics.text_secondary,
+            Some(text_width),
         );
         baseline -= episode_font.size * 1.35;
     }
@@ -550,12 +559,14 @@ fn draw_calendar_cell(
     } else {
         entry.show.clone()
     };
-    painter.text(
+    draw_text(
+        &painter,
         Pos2::new(rect.left() + padding, baseline),
         Align2::LEFT_BOTTOM,
-        truncate_to_width(&painter, &show, &title_font, text_width),
+        &show,
         title_font,
         text_primary(),
+        Some(text_width),
     );
 }
 

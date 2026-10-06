@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 mod hero;
@@ -388,12 +389,14 @@ pub(crate) fn draw_home_with_options(
         if loading_screen {
             draw_loading_screen(context, &painter, screen, assets);
         } else {
-            painter.text(
+            draw_text(
+                &painter,
                 screen.center(),
                 Align2::CENTER_CENTER,
                 "Home",
                 crate::fonts::bold(metrics.screen_title_size),
                 metrics.text_primary,
+                None,
             );
         }
         components::focus_ring(
@@ -525,12 +528,14 @@ pub(crate) fn draw_home_with_options(
                         }
                     } else {
                         let title = truncate_text(&hero.title, style.title_chars);
-                        ui.painter().text(
+                        draw_text(
+                            ui.painter(),
                             title_rect.min,
                             title_anchor,
                             title,
                             crate::fonts::bold(style.title_size),
                             text_primary(),
+                            None,
                         );
                     }
                     ui.add_space(style.title_gap);
@@ -541,7 +546,8 @@ pub(crate) fn draw_home_with_options(
                                 Sense::hover(),
                             )
                             .0;
-                        ui.painter().text(
+                        draw_text(
+                            ui.painter(),
                             if style.centered {
                                 metadata_rect.center_top()
                             } else {
@@ -555,6 +561,7 @@ pub(crate) fn draw_home_with_options(
                             truncate_text(&hero.eyebrow, style.metadata_chars),
                             egui::FontId::proportional(style.metadata_size),
                             metrics.text_secondary.gamma_multiply(text_fade),
+                            None,
                         );
                     }
                     ui.add_space(metadata_gap);

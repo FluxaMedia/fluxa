@@ -12,7 +12,7 @@ use super::{
     ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
     artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color, full_uv,
     icon_button_size, ink, paint_vertical_gradient, radius, shade, size, stroke, text_primary,
-    tone, truncate_to_width,
+    tone, draw_text, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -92,19 +92,23 @@ pub(super) fn calendar_release_row(
     let text_x = thumb.right() + metrics.control_gap;
     let title_font = crate::fonts::medium(metrics.screen_card_title_size);
     let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-    ui.painter().text(
+    draw_text(
+        ui.painter(),
         egui::Pos2::new(text_x, rect.top() + metrics.control_gap),
         Align2::LEFT_TOP,
-        truncate_to_width(ui.painter(), &card.title, &title_font, text_width),
+        &card.title,
         title_font,
         metrics.text_primary,
+        Some(text_width),
     );
-    ui.painter().text(
+    draw_text(
+        ui.painter(),
         egui::Pos2::new(text_x, rect.bottom() - metrics.control_gap),
         Align2::LEFT_BOTTOM,
-        truncate_to_width(ui.painter(), &card.subtitle, &subtitle_font, text_width),
+        &card.subtitle,
         subtitle_font,
         metrics.text_secondary,
+        Some(text_width),
     );
     response
 }
@@ -201,16 +205,18 @@ pub(super) fn season_tile(
         );
     }
     let font = FontId::proportional(metrics.text.meta);
-    painter.text(
+    draw_text(
+        painter,
         Pos2::new(rect.center().x, image.bottom() + 6.0),
         Align2::CENTER_TOP,
-        truncate_to_width(painter, label, &font, size.x),
+        label,
         font,
         if selected {
             metrics.text_primary
         } else {
             metrics.text_muted
         },
+        Some(size.x),
     );
     response
 }
@@ -238,12 +244,14 @@ pub(super) fn episode_artwork(
             assets,
         )
     {
-        painter.text(
+        draw_text(
+            painter,
             rect.center(),
             Align2::CENTER_CENTER,
             format!("E{}", episode.number),
             FontId::proportional(metrics.text.title),
             metrics.text_muted,
+            None,
         );
     }
     if hovered {
@@ -299,13 +307,7 @@ pub(super) fn episode_text(
         format!("{number}. {title}")
     };
     let font = FontId::proportional(15.0);
-    painter.text(
-        origin,
-        Align2::LEFT_TOP,
-        truncate_to_width(painter, &title, &font, width),
-        font,
-        text_primary(),
-    );
+    draw_text(painter, origin, Align2::LEFT_TOP, &title, font, text_primary(), Some(width));
     if let Some((overview, rows)) = overview {
         let color = ink(tone::MUTED);
         let galley = wrapped_text(painter, overview, 13.0, color, width, rows);
@@ -362,12 +364,14 @@ pub(super) fn avatar(
         .flat_map(char::to_uppercase)
         .collect::<String>();
     painter.circle_filled(center, radius, ink(tone::RAISED));
-    painter.text(
+    draw_text(
+        painter,
         center,
         Align2::CENTER_CENTER,
         initials,
         FontId::proportional(radius * 0.72),
         metrics.text_primary,
+        None,
     );
 }
 
@@ -581,12 +585,14 @@ pub(super) fn sticky_bar(
                 }
                 None => {
                     let font = crate::fonts::bold(metrics.text.subtitle);
-                    ui.painter().text(
+                    draw_text(
+                        ui.painter(),
                         Pos2::new(left, center),
                         Align2::LEFT_CENTER,
-                        truncate_to_width(ui.painter(), bar.title, &font, room),
+                        bar.title,
                         font,
                         text_primary(),
+                        Some(room),
                     );
                 }
             }
@@ -621,12 +627,14 @@ pub(super) fn labeled_action(
             if active { background() } else { text_primary() },
         );
     }
-    painter.text(
+    draw_text(
+        painter,
         Pos2::new(rect.center().x, rect.bottom()),
         Align2::CENTER_BOTTOM,
         label,
         FontId::proportional(text_size),
         text_primary(),
+        None,
     );
     response
 }
@@ -677,19 +685,23 @@ pub(super) fn empty_state(
         y += icon_size + metrics.section_gap;
     }
     let width = rect.width() - metrics.section_gap * 2.0;
-    painter.text(
+    draw_text(
+        painter,
         egui::Pos2::new(center.x, y),
         Align2::CENTER_TOP,
-        truncate_to_width(painter, title, &title_font, width),
+        title,
         title_font.clone(),
         metrics.text_primary,
+        Some(width),
     );
-    painter.text(
+    draw_text(
+        painter,
         egui::Pos2::new(center.x, y + title_font.size * 1.5),
         Align2::CENTER_TOP,
-        truncate_to_width(painter, description, &description_font, width),
+        description,
         description_font,
         metrics.text_secondary,
+        Some(width),
     );
 }
 
@@ -1209,12 +1221,14 @@ fn button_core(
     let painter = ui.painter();
     crate::motion::press_scale(painter, rect, || {
         painter.rect_filled(rect, height * 0.5, fill);
-        painter.text(
+        draw_text(
+            painter,
             rect.center(),
             Align2::CENTER_CENTER,
             label,
             crate::fonts::bold(text_size),
             text,
+            None,
         );
     });
     response
@@ -1984,21 +1998,25 @@ fn continue_card_body(
             Color32::WHITE,
         );
     } else {
-        painter.text(
+        draw_text(
+            painter,
             egui::Pos2::new(rect.left() + metrics.card_content_padding, title_top),
             Align2::LEFT_TOP,
-            truncate_to_width(painter, &card.title, &title_font, content_width),
+            &card.title,
             title_font,
             metrics.text_primary,
+            Some(content_width),
         );
     }
     if has_subtitle {
-        painter.text(
+        draw_text(
+            painter,
             egui::Pos2::new(rect.left() + metrics.card_content_padding, subtitle_top),
             Align2::LEFT_TOP,
-            truncate_to_width(painter, &card.subtitle, &subtitle_font, content_width),
+            &card.subtitle,
             subtitle_font.clone(),
             metrics.ink(tone::BODY),
+            Some(content_width),
         );
     }
     let badge_pad = metrics.screen_card_subtitle_size * 0.45;
@@ -2242,7 +2260,8 @@ pub(super) fn choice_field(
     } else {
         metrics.ink(tone::MUTED)
     };
-    painter.text(
+    draw_text(
+        painter,
         rect.left_center() + Vec2::new(14.0, 0.0),
         Align2::LEFT_CENTER,
         truncate_to_width(
@@ -2253,6 +2272,7 @@ pub(super) fn choice_field(
         ),
         font.clone(),
         text_color,
+        None,
     );
     paint_chevron(
         painter,
@@ -2306,7 +2326,8 @@ pub(super) fn choice_field(
                                 metrics.ink(if row_response.hovered() { 18 } else { 9 }),
                             );
                         }
-                        ui.painter().text(
+                        draw_text(
+                            ui.painter(),
                             row.left_center() + Vec2::new(12.0, 0.0),
                             Align2::LEFT_CENTER,
                             truncate_to_width(
@@ -2321,6 +2342,7 @@ pub(super) fn choice_field(
                             } else {
                                 metrics.ink(tone::BODY)
                             },
+                            None,
                         );
                         if active {
                             let c = row.right_center() - Vec2::new(18.0, 0.0);
@@ -2426,12 +2448,14 @@ pub(super) fn pill_button(
                 ink,
             );
         }
-        painter.text(
+        draw_text(
+            painter,
             rect.left_center() + Vec2::new(inset + lead, -lift),
             Align2::LEFT_CENTER,
             label,
             font,
             ink,
+            None,
         );
         if let Some(progress) = progress {
             let track = Rect::from_min_max(
@@ -2471,12 +2495,14 @@ pub(super) fn progress_pill(
         let base = if response.hovered() { 46 } else { 28 };
         painter.rect_filled(rect, radius, shade(Shade::Scrim));
         glass(painter, rect, radius, ink(base));
-        painter.text(
+        draw_text(
+            painter,
             rect.center(),
             Align2::CENTER_CENTER,
             label,
             font.clone(),
             text_primary(),
+            None,
         );
         let filled = rect.width() * fraction.clamp(0.0, 1.0);
         if filled > 0.5 {
@@ -2753,7 +2779,8 @@ pub fn draw_action_menu(
             }
             if let Some(header) = layout.header.map(|header| header.translate(offset)) {
                 let inset = style.header_inset();
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(header.left() + inset, header.center().y),
                     Align2::LEFT_CENTER,
                     truncate_to_width(
@@ -2764,6 +2791,7 @@ pub fn draw_action_menu(
                     ),
                     FontId::proportional(metrics.text.title),
                     metrics.text_primary,
+                    None,
                 );
                 painter.hline(
                     panel.x_range().shrink(style.rule_shrink()),
@@ -2827,12 +2855,14 @@ pub fn draw_action_menu(
                         ink,
                     );
                 }
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(row.left() + inset * 2.0 + icon_size, row.center().y),
                     Align2::LEFT_CENTER,
                     &item.label,
                     FontId::proportional(label_size),
                     ink,
+                    None,
                 );
                 if response.clicked() {
                     outcome = Some(ActionMenuOutcome::Pick(index));

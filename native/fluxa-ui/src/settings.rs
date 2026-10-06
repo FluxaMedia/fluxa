@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 mod account;
@@ -185,19 +186,23 @@ fn draw_page_cards(
                 let title_font = crate::fonts::regular(title_size);
                 let subtitle_font = crate::fonts::regular(subtitle_size);
                 let text_top = rect.center().y - (title_size + 4.0 + subtitle_size) * 0.5;
-                ui.painter().text(
+                draw_text(
+                    ui.painter(),
                     Pos2::new(rect.left() + 20.0, text_top),
                     Align2::LEFT_TOP,
-                    truncate_to_width(ui.painter(), &title, &title_font, text_width),
+                    &title,
                     title_font,
                     text_primary(),
+                    Some(text_width),
                 );
-                ui.painter().text(
+                draw_text(
+                    ui.painter(),
                     Pos2::new(rect.left() + 20.0, text_top + title_size + 4.0),
                     Align2::LEFT_TOP,
-                    truncate_to_width(ui.painter(), &description, &subtitle_font, text_width),
+                    &description,
                     subtitle_font,
                     metrics.text_muted,
+                    Some(text_width),
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
                 let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
@@ -402,12 +407,14 @@ fn settings_panel_line(
     let row_right = rect.right() - metrics.settings_extended_line_inset;
     let baseline_y = y + metrics.settings_extended_line_spacing * 0.5;
     if let Some((label, value)) = text.split_once("  ·  ") {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row_left + 2.0, baseline_y),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, label, &font, (row_right - row_left) * 0.58),
+            label,
             font.clone(),
             color,
+            Some((row_right - row_left) * 0.58),
         );
         let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
         let value_width = painter
@@ -426,12 +433,14 @@ fn settings_panel_line(
             egui::Stroke::new(stroke::HAIRLINE, metrics.border),
             egui::StrokeKind::Inside,
         );
-        painter.text(
+        draw_text(
+            painter,
             chip.center(),
             Align2::CENTER_CENTER,
-            truncate_to_width(painter, value, &value_font, chip.width() - 12.0),
+            value,
             value_font,
             metrics.text_primary,
+            Some(chip.width() - 12.0),
         );
         painter.line_segment(
             [
@@ -441,12 +450,14 @@ fn settings_panel_line(
             egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
         );
     } else {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(row_left + 2.0, baseline_y),
             Align2::LEFT_CENTER,
-            truncate_to_width(painter, text, &font, row_right - row_left - 4.0),
+            text,
             font,
             color,
+            Some(row_right - row_left - 4.0),
         );
     }
 }
@@ -781,15 +792,18 @@ fn draw_field(
         metrics.settings_row_label_size_desktop
     };
     let inner = area.shrink2(Vec2::new(metrics.settings_row_inset + 4.0, 16.0));
-    painter.text(
+    draw_text(
+        &painter,
         inner.left_top(),
         Align2::LEFT_TOP,
         localized(field.label, language),
         crate::fonts::regular(label_size),
         metrics.text_primary,
+        None,
     );
     let help_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-    painter.text(
+    draw_text(
+        &painter,
         inner.left_top() + Vec2::new(0.0, label_size + 6.0),
         Align2::LEFT_TOP,
         truncate_to_width(
@@ -800,6 +814,7 @@ fn draw_field(
         ),
         help_font,
         metrics.text_muted,
+        None,
     );
     let height = metrics.screen_control_height;
     let input = Rect::from_min_max(
@@ -884,12 +899,14 @@ fn draw_shortcut_group(
         if position > 0 {
             account_divider(painter, row, metrics);
         }
-        painter.text(
+        draw_text(
+            painter,
             row.left_center() + Vec2::new(4.0, 0.0),
             Align2::LEFT_CENTER,
             localized(&format!("shortcuts.{}", shortcut.id), language),
             FontId::proportional(size),
             metrics.text_primary,
+            None,
         );
         let recording = settings.shortcut_recording.as_deref() == Some(shortcut.id.as_str());
         let label = if recording {
@@ -967,19 +984,23 @@ fn draw_binding_group(
         if index > 0 {
             account_divider(painter, row, metrics);
         }
-        painter.text(
+        draw_text(
+            painter,
             row.left_center() + Vec2::new(4.0, 0.0),
             Align2::LEFT_CENTER,
             localized(action, language),
             label_font.clone(),
             metrics.text_primary,
+            None,
         );
-        painter.text(
+        draw_text(
+            painter,
             row.right_center() - Vec2::new(6.0, 0.0),
             Align2::RIGHT_CENTER,
             *keys,
             value_font.clone(),
             metrics.text_secondary,
+            None,
         );
     }
     card
@@ -1016,12 +1037,14 @@ fn draw_summary(
             false,
             metrics,
         );
-        painter.text(
+        draw_text(
+            painter,
             account_row(card, 0, metrics).left_center() + Vec2::new(4.0, 0.0),
             Align2::LEFT_CENTER,
             localized("settings.summary_empty", language),
             crate::fonts::regular(metrics.settings_row_value_size_desktop),
             metrics.text_secondary,
+            None,
         );
         return;
     }
@@ -1304,12 +1327,14 @@ fn draw_compact_settings_list(
                     icon,
                     text_primary(),
                 );
-                ui.painter().text(
+                draw_text(
+                    ui.painter(),
                     row.left_center() + Vec2::new(52.0, 0.0),
                     Align2::LEFT_CENTER,
                     label,
                     crate::fonts::regular(metrics.nav_label_size + 2.0),
                     text_primary(),
+                    None,
                 );
                 let tip = row.right_center() - Vec2::new(20.0, 0.0);
                 let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
@@ -1473,12 +1498,14 @@ fn draw_settings_page(
         let width = (viewport.width - margin * 2.0).max(1.0);
         let root = !settings.section_open || searching;
         if root {
-            painter.text(
+            draw_text(
+                &painter,
                 Pos2::new(margin, top - scroll_y),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
                 crate::fonts::bold(metrics.screen_title_size),
                 text_primary(),
+                None,
             );
             search_field(
                 &mut layout,
@@ -1534,12 +1561,14 @@ fn draw_settings_page(
                 layout.focusable.extend(sticky.rects);
                 layout.activated = sticky.clicked.or(layout.activated);
             }
-            painter.text(
+            draw_text(
+                &painter,
                 back_rect.right_center() + Vec2::new(4.0, 0.0),
                 Align2::LEFT_CENTER,
                 page_title,
                 FontId::proportional(metrics.text.title),
                 text_primary(),
+                None,
             );
         }
         if !settings.section_open && !searching {
@@ -1606,12 +1635,14 @@ fn draw_settings_page(
             );
         }
         if desktop {
-            painter.text(
+            draw_text(
+                &painter,
                 Pos2::new(nav_x + nav_inset + 2.0, section_top - scroll_y + 18.0),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
                 crate::fonts::bold(metrics.settings_section_title_size_desktop + 2.0),
                 text_primary(),
+                None,
             );
         }
         let search_top = if desktop { 58.0 } else { metrics.control_gap };
@@ -1670,7 +1701,8 @@ fn draw_settings_page(
                             ink(tone::SUBTLE)
                         },
                     );
-                    ui.painter().text(
+                    draw_text(
+                        ui.painter(),
                         item_rect.left_center() + Vec2::new(42.0, 0.0),
                         Align2::LEFT_CENTER,
                         section_label(section.category, language),
@@ -1680,6 +1712,7 @@ fn draw_settings_page(
                         } else {
                             ink(tone::SUBTLE)
                         },
+                        None,
                     );
                     clicked = response.clicked();
                 },
@@ -1735,7 +1768,8 @@ fn draw_settings_page(
     let page_title = section_label(section.title, language);
     for ((title, _), card) in groups.iter().zip(&cards) {
         if !(compact && !searching && *title == page_title) {
-            painter.text(
+            draw_text(
+                &painter,
                 Pos2::new(
                     rect.left() + if compact { 16.0 } else { 8.0 },
                     card.top() - APPEARANCE_GROUP_HEADING_HEIGHT,
@@ -1750,6 +1784,7 @@ fn draw_settings_page(
                     metrics.screen_card_subtitle_size + if compact { 1.0 } else { 0.0 },
                 ),
                 ink(if compact { 120 } else { 145 }),
+                None,
             );
         }
         painter.rect_filled(*card, metrics.card_radius, metrics.surface);
@@ -1777,7 +1812,8 @@ fn draw_settings_page(
     } else {
         String::new()
     };
-    painter.text(
+    draw_text(
+        &painter,
         header.left_top() + Vec2::new(metrics.settings_card_padding, metrics.settings_title_top),
         Align2::LEFT_TOP,
         heading,
@@ -1789,9 +1825,11 @@ fn draw_settings_page(
             metrics.screen_section_title_size
         }),
         text_primary(),
+        None,
     );
     if tv && !searching {
-        painter.text(
+        draw_text(
+            &painter,
             header.left_top()
                 + Vec2::new(
                     metrics.settings_card_padding,
@@ -1807,6 +1845,7 @@ fn draw_settings_page(
             ),
             crate::fonts::regular(metrics.screen_card_subtitle_size),
             metrics.text_muted,
+            None,
         );
     }
     if !searching {
@@ -1949,7 +1988,8 @@ fn draw_settings_page(
         let subtitle_font = crate::fonts::regular(subtitle_size);
         let text_height = row_label_size + 4.0 + subtitle_size;
         let text_top = text_center_y - text_height * 0.5;
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(text_left, text_top),
             Align2::LEFT_TOP,
             truncate_to_width(
@@ -1960,6 +2000,7 @@ fn draw_settings_page(
             ),
             label_font.clone(),
             metrics.text_primary,
+            None,
         );
         let subtitle_top = text_top + row_label_size + 4.0;
         if is_app_icon {
@@ -1980,7 +2021,8 @@ fn draw_settings_page(
             }
         }
         {
-            painter.text(
+            draw_text(
+                &painter,
                 Pos2::new(text_left, subtitle_top),
                 Align2::LEFT_TOP,
                 truncate_to_width(
@@ -2002,6 +2044,7 @@ fn draw_settings_page(
                 } else {
                     ink(if compact { 100 } else { 120 })
                 },
+                None,
             );
         }
         if is_swatches {
@@ -2104,7 +2147,8 @@ fn draw_settings_page(
             }
             if !value_below && !is_app_icon {
                 let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-                painter.text(
+                draw_text(
+                    &painter,
                     tip - Vec2::new(16.0, 0.0),
                     Align2::RIGHT_CENTER,
                     truncate_to_width(
@@ -2115,6 +2159,7 @@ fn draw_settings_page(
                     ),
                     value_font,
                     metrics.text_secondary,
+                    None,
                 );
             }
         } else if let (Some(raw_value), Some(value)) = (raw_value, value) {
@@ -2184,12 +2229,14 @@ fn draw_settings_page(
         }
     }
     if let Some(error) = settings.last_write_error.as_deref() {
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(margin, viewport.height - 24.0),
             Align2::LEFT_BOTTOM,
             error,
             crate::fonts::regular(metrics.text.body),
             danger_color(),
+            None,
         );
     }
     layout

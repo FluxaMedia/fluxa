@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 pub(super) fn draw_sources(
@@ -61,13 +62,15 @@ pub(super) fn draw_sources(
             let waiting = player.sources_loading && !player.sources_pending.is_empty();
             let chips_top = base + if waiting { 30.0 } else { 0.0 };
             if waiting {
-                ui.painter().text(
+                draw_text(
+                    ui.painter(),
                     Pos2::new(left, base + 8.0),
                     Align2::LEFT_TOP,
                     localized("player.streams_waiting", language)
                         .replace("%s", &player.sources_pending.join(", ")),
                     crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
                     metrics.text_secondary,
+                    None,
                 );
             }
             if wide {
@@ -211,12 +214,14 @@ pub(super) fn draw_sources(
                 (y + viewport.scroll_y + 24.0 + viewport.safe_bottom - rect.height()).max(0.0),
             );
             if empty && !player.sources_loading {
-                ui.painter().text(
+                draw_text(
+                    ui.painter(),
                     Pos2::new(left, y + 12.0),
                     Align2::LEFT_TOP,
                     localized("player.streams_empty", language),
                     crate::fonts::regular(metrics.screen_card_subtitle_size),
                     metrics.text_secondary,
+                    None,
                 );
             }
         });
@@ -349,12 +354,14 @@ fn draw_hero(
     if let Some(episode) = player.episode_title.as_deref() {
         let font = FontId::proportional(metrics.screen_card_title_size + 2.0);
         let text = truncate_to_width(&painter, episode, &font, width);
-        let rect = painter.text(
+        let rect = draw_text(
+            &painter,
             Pos2::new(left, y),
             Align2::LEFT_BOTTOM,
             text,
             font,
             text_primary(),
+            None,
         );
         y = rect.top() - 4.0;
     }
@@ -362,12 +369,14 @@ fn draw_hero(
         let label = localized("player.next_episode_number_format", &player.language)
             .replacen("%s", &season.to_string(), 1)
             .replacen("%s", &episode.to_string(), 1);
-        let rect = painter.text(
+        let rect = draw_text(
+            &painter,
             Pos2::new(left, y),
             Align2::LEFT_BOTTOM,
             label,
             crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
             metrics.text_secondary,
+            None,
         );
         y = rect.top() - 10.0;
     }
@@ -385,12 +394,14 @@ fn draw_hero(
         }
         None => {
             let font = crate::fonts::bold(metrics.screen_title_size);
-            painter.text(
+            draw_text(
+                &painter,
                 Pos2::new(left, y),
                 Align2::LEFT_BOTTOM,
-                truncate_to_width(&painter, &player.title, &font, width),
+                &player.title,
                 font,
                 text_primary(),
+                Some(width),
             );
         }
     }

@@ -36,6 +36,23 @@ pub(crate) fn today_iso() -> String {
     format!("{year:04}-{month:02}-{day:02}")
 }
 
+pub(crate) fn draw_text(
+    painter: &egui::Painter,
+    pos: Pos2,
+    align: Align2,
+    text: impl AsRef<str>,
+    font: FontId,
+    color: Color32,
+    max_width: Option<f32>,
+) -> Rect {
+    let text = text.as_ref();
+    let text = match max_width {
+        Some(width) => truncate_to_width(painter, text, &font, width),
+        None => text.to_owned(),
+    };
+    painter.text(pos, align, text, font, color)
+}
+
 pub(crate) fn truncate_to_width(
     painter: &egui::Painter,
     text: &str,

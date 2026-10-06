@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 pub(super) fn draw_recommendations(
@@ -98,7 +99,8 @@ pub(super) fn draw_recommendations(
             };
             let mut cursor = description_bottom - description_height;
             if !hero.eyebrow.is_empty() {
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(panel_left + slide, cursor),
                     Align2::LEFT_BOTTOM,
                     truncate_to_width(
@@ -109,6 +111,7 @@ pub(super) fn draw_recommendations(
                     ),
                     FontId::proportional(metrics.text.body),
                     ink(text_alpha.min(190)),
+                    None,
                 );
                 cursor -= 30.0;
             }
@@ -137,12 +140,14 @@ pub(super) fn draw_recommendations(
                 }
                 None => {
                     let font = FontId::proportional(if compact { 28.0 } else { 40.0 });
-                    painter.text(
+                    draw_text(
+                        &painter,
                         Pos2::new(panel_left + slide, cursor),
                         Align2::LEFT_BOTTOM,
-                        truncate_to_width(&painter, &hero.title, &font, panel_width),
+                        &hero.title,
                         font,
                         ink(text_alpha),
+                        Some(panel_width),
                     );
                 }
             }

@@ -190,7 +190,8 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             }
                         }
                         let label_left = center.x + NAV_AVATAR_RADIUS + 8.0;
-                        ui.painter().text(
+                        draw_text(
+                            ui.painter(),
                             Pos2::new(label_left, rect.center().y),
                             Align2::LEFT_CENTER,
                             truncate_to_width(
@@ -205,6 +206,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             } else {
                                 ink(tone::BODY)
                             },
+                            None,
                         );
                         if response.clicked() {
                             activated = Some(NODE_PROFILE);

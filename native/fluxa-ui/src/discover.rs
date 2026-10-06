@@ -408,12 +408,14 @@ pub fn draw_discover(
                     continue;
                 }
                 if let Some(title) = block.title {
-                    ui.painter().text(
+                    draw_text(
+                        ui.painter(),
                         Pos2::new(margin, block_top + block.header * 0.5),
                         egui::Align2::LEFT_CENTER,
                         title,
                         crate::fonts::bold(metrics.screen_section_title_size),
                         text_primary(),
+                        None,
                     );
                 }
                 let grid_top = block_top + block.header;

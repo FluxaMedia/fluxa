@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 pub(super) const ACCOUNT_PROFILE_CARD_HEIGHT: f32 = 92.0;
@@ -47,20 +48,24 @@ pub(super) fn account_group(
     metrics: UiMetrics,
 ) -> Rect {
     if compact {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(rect.left() + 16.0, top),
             Align2::LEFT_TOP,
             title,
             crate::fonts::regular(metrics.text.body),
             metrics.text_muted,
+            None,
         );
     } else {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(rect.left() + 8.0, top),
             Align2::LEFT_TOP,
             title.to_uppercase(),
             crate::fonts::regular(metrics.text.meta),
             metrics.text_secondary,
+            None,
         );
     }
     let card = Rect::from_min_size(
@@ -208,12 +213,14 @@ pub(super) fn draw_account(
                 .filter_map(|word| word.chars().next())
                 .flat_map(char::to_uppercase)
                 .collect::<String>();
-            painter.text(
+            draw_text(
+                &painter,
                 avatar.center(),
                 Align2::CENTER_CENTER,
                 initials,
                 FontId::proportional(metrics.text.title),
                 text_primary(),
+                None,
             );
         }
     }
@@ -324,14 +331,17 @@ pub(super) fn draw_account(
             };
             if viewport.platform == UiPlatform::Android {
                 let text_top = row.center().y - (label_size + 4.0 + status_font.size) * 0.5;
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(row.left() + label_left, text_top),
                     Align2::LEFT_TOP,
                     *label,
                     crate::fonts::regular(label_size),
                     metrics.text_primary,
+                    None,
                 );
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(row.left() + label_left, text_top + label_size + 4.0),
                     Align2::LEFT_TOP,
                     truncate_to_width(
@@ -342,21 +352,26 @@ pub(super) fn draw_account(
                     ),
                     status_font,
                     ink(if on { 200 } else { 160 }),
+                    None,
                 );
             } else {
-                painter.text(
+                draw_text(
+                    &painter,
                     row.left_center() + Vec2::new(label_left, 0.0),
                     Align2::LEFT_CENTER,
                     *label,
                     crate::fonts::regular(label_size),
                     metrics.text_primary,
+                    None,
                 );
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(right, row.center().y),
                     Align2::RIGHT_CENTER,
                     status,
                     status_font,
                     metrics.text_secondary,
+                    None,
                 );
             }
             if slot.is_some() && viewport.platform != UiPlatform::Android {
@@ -366,12 +381,14 @@ pub(super) fn draw_account(
             }
             continue;
         }
-        painter.text(
+        draw_text(
+            &painter,
             row.left_center() + Vec2::new(label_left, 0.0),
             Align2::LEFT_CENTER,
             *label,
             FontId::proportional(label_size),
             metrics.text_primary,
+            None,
         );
         let mut status_right = 8.0;
         if let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider) {
@@ -406,12 +423,14 @@ pub(super) fn draw_account(
             );
             status_right += width + 12.0;
         }
-        painter.text(
+        draw_text(
+            &painter,
             row.right_center() - Vec2::new(status_right, 0.0),
             Align2::RIGHT_CENTER,
             status,
             crate::fonts::regular(metrics.screen_card_subtitle_size),
             ink(if on { 200 } else { 110 }),
+            None,
         );
     }
 
@@ -440,34 +459,42 @@ pub(super) fn draw_account(
             let tip = row.right_center() - Vec2::new(6.0, 0.0);
             if viewport.platform == UiPlatform::Android {
                 let text_top = row.center().y - (label_size + 4.0 + value_font.size) * 0.5;
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(row.left() + 4.0, text_top),
                     Align2::LEFT_TOP,
                     title,
                     crate::fonts::regular(label_size),
                     metrics.text_primary,
+                    None,
                 );
-                painter.text(
+                draw_text(
+                    &painter,
                     Pos2::new(row.left() + 4.0, text_top + label_size + 4.0),
                     Align2::LEFT_TOP,
                     current_label,
                     value_font,
                     metrics.text_secondary,
+                    None,
                 );
             } else {
-                painter.text(
+                draw_text(
+                    &painter,
                     row.left_center() + Vec2::new(4.0, 0.0),
                     Align2::LEFT_CENTER,
                     title,
                     crate::fonts::regular(label_size),
                     metrics.text_primary,
+                    None,
                 );
-                painter.text(
+                draw_text(
+                    &painter,
                     tip - Vec2::new(16.0, 0.0),
                     Align2::RIGHT_CENTER,
                     current_label,
                     value_font,
                     metrics.text_secondary,
+                    None,
                 );
                 let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
@@ -475,12 +502,14 @@ pub(super) fn draw_account(
             }
             continue;
         }
-        painter.text(
+        draw_text(
+            &painter,
             row.left_center() + Vec2::new(4.0, 0.0),
             Align2::LEFT_CENTER,
             localized(label_key, language),
             FontId::proportional(label_size),
             metrics.text_primary,
+            None,
         );
         let value_width = if compact { 132.0 } else { 176.0 };
         let value_rect = Rect::from_min_size(

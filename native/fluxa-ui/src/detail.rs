@@ -144,12 +144,14 @@ pub fn detail_scroll_max(viewport: Viewport, detail: &DetailModel) -> f32 {
 }
 
 fn section_title(painter: &egui::Painter, pos: Pos2, text: &str, size: f32) {
-    painter.text(
+    draw_text(
+        painter,
         pos,
         Align2::LEFT_TOP,
         text,
         crate::fonts::bold(size),
         text_primary(),
+        None,
     );
 }
 
@@ -1128,21 +1130,25 @@ pub fn draw_detail(
                                     metrics,
                                 );
                                 let font = FontId::proportional(metrics.text.meta);
-                                painter.text(
+                                draw_text(
+                                    painter,
                                     Pos2::new(rect.center().x, circle.bottom() + 10.0),
                                     Align2::CENTER_TOP,
-                                    truncate_to_width(painter, &member.name, &font, rect.width()),
+                                    &member.name,
                                     font,
                                     text_primary(),
+                                    Some(rect.width()),
                                 );
                                 if let Some(role) = member.role.as_deref() {
                                     let font = FontId::proportional(metrics.text.label);
-                                    painter.text(
+                                    draw_text(
+                                        painter,
                                         Pos2::new(rect.center().x, circle.bottom() + 28.0),
                                         Align2::CENTER_TOP,
-                                        truncate_to_width(painter, role, &font, rect.width()),
+                                        role,
                                         font,
                                         metrics.text_muted,
+                                        Some(rect.width()),
                                     );
                                 }
                             }

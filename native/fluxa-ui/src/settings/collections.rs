@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::account::account_group;
 use super::badges::{account_divider_at, pills_right};
 use super::*;
@@ -335,12 +336,14 @@ pub(super) fn draw_collections(
     let size = metrics.settings_row_label_size_desktop;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     if let Some(status) = &settings.collection_status {
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(rect.left() + metrics.settings_row_inset, top),
             Align2::LEFT_TOP,
-            truncate_to_width(&painter, status, &muted, rect.width()),
+            status,
             muted.clone(),
             metrics.text_muted,
+            Some(rect.width()),
         );
         top += STATUS_HEIGHT;
     }
@@ -388,12 +391,14 @@ fn draw_line(
     };
     match line {
         Line::Input { node, label, hint } => {
-            painter.text(
+            draw_text(
+                painter,
                 Pos2::new(row.left(), row.center().y),
                 Align2::LEFT_CENTER,
                 label,
                 crate::fonts::regular(size),
                 metrics.text_primary,
+                None,
             );
             let input = Rect::from_min_max(
                 Pos2::new(row.left() + row.width() * 0.4, row.center().y - 18.0),
@@ -418,12 +423,14 @@ fn draw_line(
         }
         Line::Choice { label, pills } => {
             pills_right(context, painter, layout, row, pills, size);
-            painter.text(
+            draw_text(
+                painter,
                 Pos2::new(row.left(), row.center().y),
                 Align2::LEFT_CENTER,
                 label,
                 crate::fonts::regular(size),
                 metrics.text_primary,
+                None,
             );
         }
         Line::Item {
@@ -434,30 +441,36 @@ fn draw_line(
             let right = pills_right(context, painter, layout, row, pills, size);
             let font = crate::fonts::regular(size);
             let offset = if detail.is_empty() { 0.0 } else { 9.0 };
-            painter.text(
+            draw_text(
+                painter,
                 Pos2::new(row.left(), row.center().y - offset),
                 Align2::LEFT_CENTER,
-                truncate_to_width(painter, title, &font, right - row.left() - 12.0),
+                title,
                 font,
                 metrics.text_primary,
+                Some(right - row.left() - 12.0),
             );
             if !detail.is_empty() {
-                painter.text(
+                draw_text(
+                    painter,
                     Pos2::new(row.left(), row.center().y + 11.0),
                     Align2::LEFT_CENTER,
                     detail,
                     muted.clone(),
                     metrics.text_muted,
+                    None,
                 );
             }
         }
         Line::Note(text) => {
-            painter.text(
+            draw_text(
+                painter,
                 Pos2::new(row.left(), row.center().y),
                 Align2::LEFT_CENTER,
                 text,
                 muted.clone(),
                 metrics.text_muted,
+                None,
             );
         }
     }

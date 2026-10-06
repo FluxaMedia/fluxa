@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 pub(super) fn draw_mini_player(
@@ -85,21 +86,25 @@ pub(super) fn draw_seek_preview(
     let x = pointer_x.clamp(track.left() + width * 0.5, track.right() - width * 0.5);
     let mut bottom = track.top() - 10.0;
     let label_font = FontId::proportional(metrics.text.meta);
-    painter.text(
+    draw_text(
+        &painter,
         Pos2::new(x, bottom),
         Align2::CENTER_BOTTOM,
         format_time(time),
         label_font.clone(),
         text_primary(),
+        None,
     );
     bottom -= 18.0;
     if let Some(chapter) = chapter {
-        painter.text(
+        draw_text(
+            &painter,
             Pos2::new(x, bottom),
             Align2::CENTER_BOTTOM,
-            truncate_to_width(&painter, chapter, &label_font, width),
+            chapter,
             label_font,
             metrics.text_primary,
+            Some(width),
         );
         bottom -= 20.0;
     }
@@ -143,12 +148,14 @@ pub(super) fn draw_pause_info(
     blocks.push((
         if compact { 20.0 } else { 28.0 },
         Box::new(move |painter, y| {
-            painter.text(
+            draw_text(
+                painter,
                 Pos2::new(left, y),
                 Align2::LEFT_TOP,
                 &label,
                 FontId::proportional(if compact { 12.0 } else { 16.0 }),
                 muted,
+                None,
             );
         }),
     ));

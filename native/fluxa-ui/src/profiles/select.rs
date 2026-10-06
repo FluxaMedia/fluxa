@@ -113,12 +113,14 @@ pub(super) fn draw_select(
                     ink(tone::MUTED),
                 );
             }
-            ui.painter().text(
+            draw_text(
+                ui.painter(),
                 Pos2::new(avatar_center.x, avatar_center.y + radius + 24.0),
                 Align2::CENTER_CENTER,
                 t("profiles.add_profile"),
                 FontId::proportional(metrics.text.body),
                 metrics.text_muted,
+                None,
             );
             if response.clicked() {
                 model.open_form(None);
@@ -165,12 +167,14 @@ pub(super) fn draw_select(
         let name_font = FontId::proportional(metrics.text.subtitle);
         let name = truncate_to_width(ui.painter(), &profile.name, &name_font, cell.x);
         let name_y = avatar_center.y + radius + 24.0;
-        ui.painter().text(
+        draw_text(
+            ui.painter(),
             Pos2::new(avatar_center.x, name_y),
             Align2::CENTER_CENTER,
             name,
             name_font,
             ink(if response.hovered() { 255 } else { 215 }),
+            None,
         );
         let mut actions_y = name_y + 24.0;
         if model.primary_id.as_ref() == Some(&profile.id) {

@@ -1,3 +1,4 @@
+use crate::draw_text;
 use super::*;
 
 pub(super) fn draw_warnings(
@@ -56,12 +57,14 @@ pub(super) fn draw_warnings(
         let appear = ramp((elapsed - WARNING_BAR - index as f32 * WARNING_STAGGER) / WARNING_FADE);
         let leave = fade_out_start + (rows - 1 - index) as f32 * WARNING_STAGGER;
         let alpha = appear.min(1.0 - ramp((elapsed - leave) / WARNING_FADE));
-        painter.text(
+        draw_text(
+            &painter,
             panel.min + Vec2::new(24.0, 10.0 + index as f32 * row_height + row_height * 0.5),
             Align2::LEFT_CENTER,
             line,
             font.clone(),
             ink((255.0 * alpha) as u8),
+            None,
         );
     }
 }
@@ -148,26 +151,31 @@ pub(super) fn draw_loading(
                 below = logo_rect.bottom() + 28.0;
             }
             None => {
-                painter.text(
+                draw_text(
+                    painter,
                     center,
                     Align2::CENTER_CENTER,
                     &player.title,
                     FontId::proportional(40.0),
                     text_primary(),
+                    None,
                 );
             }
         }
     }
 
     if let Some(error) = player.error.as_deref() {
-        painter.text(
+        draw_text(
+            painter,
             center - Vec2::new(0.0, 16.0),
             Align2::CENTER_CENTER,
             localized("player.playback_error", &player.language),
             FontId::proportional(metrics.text.title),
             text_primary(),
+            None,
         );
-        painter.text(
+        draw_text(
+            painter,
             center + Vec2::new(0.0, 16.0),
             Align2::CENTER_CENTER,
             truncate_to_width(
@@ -178,16 +186,19 @@ pub(super) fn draw_loading(
             ),
             FontId::proportional(metrics.text.body),
             metrics.text_secondary,
+            None,
         );
         return;
     }
     if let Some(episode) = player.episode_title.as_deref() {
-        painter.text(
+        draw_text(
+            painter,
             Pos2::new(center.x, below),
             Align2::CENTER_CENTER,
             episode,
             FontId::proportional(metrics.text.subtitle),
             metrics.text_primary,
+            None,
         );
         below += 28.0;
     }
@@ -196,12 +207,14 @@ pub(super) fn draw_loading(
         .as_ref()
         .map(|(headline, _)| headline.clone())
         .unwrap_or_else(|| localized("player.status_starting_playback", &player.language));
-    painter.text(
+    draw_text(
+        painter,
         Pos2::new(center.x, below),
         Align2::CENTER_CENTER,
         status,
         FontId::proportional(metrics.text.body),
         metrics.text_secondary,
+        None,
     );
 }
 
