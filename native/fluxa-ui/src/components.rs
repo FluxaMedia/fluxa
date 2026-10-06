@@ -2355,6 +2355,7 @@ pub(super) fn progress_pill(
     let font = FontId::proportional(text_size);
     crate::motion::press_scale(painter, rect, || {
         let base = if response.hovered() { 46 } else { 28 };
+        painter.rect_filled(rect, radius, Color32::from_black_alpha(165));
         glass(painter, rect, radius, ink(base));
         painter.text(
             rect.center(),
