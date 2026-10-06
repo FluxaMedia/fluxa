@@ -31,7 +31,6 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 2] = [
         "settings.mdblist_library_list",
         "mdblistLibraryListId",
     ),
-    ("settings.simkl_anime_id", "simklAnimeIdPreference"),
 ];
 
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
@@ -131,17 +130,6 @@ pub fn account_source_state(
             ))
             .chain(settings.mdblist_lists.iter().cloned())
             .collect()
-        } else {
-            Vec::new()
-        }
-    } else if key == "simklAnimeIdPreference" {
-        if account_connected(settings, "simklAccessToken") {
-            ["", "imdb", "mal", "kitsu", "tvdb"]
-                .map(|id| {
-                    let key = if id.is_empty() { "auto" } else { id };
-                    (id.to_owned(), localized(&format!("settings.anime_id.{key}"), language))
-                })
-                .to_vec()
         } else {
             Vec::new()
         }

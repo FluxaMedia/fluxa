@@ -7,7 +7,6 @@ fn simkl_library_items_share_watchlist_metadata_mapping() {
     let items = simkl_library_to_items_json(
         r#"[{"show":{"title":"Example","poster":"poster","fanart":"fanart","ids":{"imdb":"tt42"}}}]"#,
         r#"[{"movie":{"title":"Film","ids":{"tmdb":7}}}]"#,
-        "",
     )
     .expect("items");
     let items: Value = serde_json::from_str(&items).unwrap();
@@ -23,7 +22,6 @@ fn simkl_library_items_preserve_string_and_fallback_ids() {
     let items = simkl_library_to_items_json(
         r#"[{"show":{"title":"Slug show","ids":{"simkl":5,"slug":"slug-show"}}}]"#,
         r#"[{"movie":{"title":"String movie","ids":{"tmdb":"7"}}}]"#,
-        "",
     )
     .expect("items");
     let items: Value = serde_json::from_str(&items).unwrap();
@@ -43,7 +41,6 @@ fn simkl_anime_seasons_get_distinct_anime_ids() {
                 {"show":{"title":"Plain","ids":{"simkl":3,"imdb":"tt1"}}}
             ]}"#,
             "[]",
-            "",
         )
         .unwrap(),
     )
@@ -97,12 +94,11 @@ fn simkl_writes_accept_native_anime_ids() {
 #[test]
 fn simkl_anime_playback_lines_up_with_the_anime_library_id() {
     let watching = r#"{"shows":[{"anime":true,"show":{"title":"Frieren","ids":{"simkl":7,"mal":52991,"imdb":"tt22248376"}},"last_watched":"S01E04","next_to_watch":"S01E05"}]}"#;
-    let items = simkl_watching_to_items_json(watching, "[]", "").unwrap();
+    let items = simkl_watching_to_items_json(watching, "[]").unwrap();
     let merged: Value = serde_json::from_str(
         &simkl_merge_playback_progress_json(
             &items,
             r#"[{"id":9,"progress":30,"type":"episode","episode":{"season":1,"number":5},"anime":{"title":"Frieren","ids":{"simkl":7,"mal":52991,"imdb":"tt22248376"}}}]"#,
-            "",
         )
         .unwrap(),
     )
@@ -149,7 +145,6 @@ fn simkl_library_id_falls_back_to_tvdb_then_simkl_number() {
                 {"show":{"title":"B","ids":{"simkl":2,"slug":"b"}}}
             ]}"#,
             "[]",
-            "",
         )
         .unwrap(),
     )
@@ -216,29 +211,13 @@ fn rewatch_marks_the_item_and_pins_the_session() {
 }
 
 #[test]
-fn anime_id_preference_picks_the_matching_external_id() {
-    let shows = r#"{"shows":[{"anime_type":"tv","show":{"title":"Frieren","ids":{"simkl":7,"mal":52991,"kitsu":46474,"tvdb":424536,"imdb":"tt22248376"}}}]}"#;
-    let id = |preference: &str| {
-        let items: Value =
-            serde_json::from_str(&simkl_library_to_items_json(shows, "[]", preference).unwrap())
-                .unwrap();
-        items[0]["id"].as_str().unwrap().to_owned()
-    };
-    assert_eq!(id(""), "kitsu:46474");
-    assert_eq!(id("imdb"), "tt22248376");
-    assert_eq!(id("tvdb"), "tvdb:424536");
-    assert_eq!(id("mal"), "mal:52991");
-    assert_eq!(id("anidb"), "kitsu:46474");
-}
-
-#[test]
 fn watched_map_answers_to_every_id_scheme_an_addon_may_use() {
     let shows = r#"{"shows":[
         {"show":{"title":"Plain","ids":{"simkl":1,"imdb":"tt1","tmdb":11,"tvdb":111}}},
         {"anime_type":"tv","show":{"title":"Frieren","ids":{"simkl":7,"mal":52991,"kitsu":46474,"tvdb":424536,"imdb":"tt22248376"}}}
     ]}"#;
     let watched: Value =
-        serde_json::from_str(&simkl_watched_to_ids_json(shows, "[]", "").unwrap()).unwrap();
+        serde_json::from_str(&simkl_watched_to_ids_json(shows, "[]").unwrap()).unwrap();
     for id in ["tt1", "tmdb:11", "tvdb:111", "mal:52991", "kitsu:46474"] {
         assert_eq!(watched[id], true, "{id}");
     }

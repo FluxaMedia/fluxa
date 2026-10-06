@@ -1038,13 +1038,6 @@
       "category": "general"
     },
     {
-      "key": "simklAnimeIdPreference",
-      "type": "string",
-      "default": "",
-      "scope": "profile",
-      "category": "account"
-    },
-    {
       "key": "skipDbApiKey",
       "type": "string",
       "default": "",

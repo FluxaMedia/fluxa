@@ -41,29 +41,26 @@ pub(crate) fn simkl_bucket(responses: &Value, status: &str) -> (String, String) 
     (shows.to_string(), movies.to_string())
 }
 
-pub(crate) fn simkl_library_snapshot(args: &Value, responses: &Value) -> Value {
-    let preference = str_field(args, "animeIdPreference");
+pub(crate) fn simkl_library_snapshot(_args: &Value, responses: &Value) -> Value {
     let items = |status: &str| {
         let (shows, movies) = simkl_bucket(&responses, status);
-        parsed(simkl_library_to_items_json(&shows, &movies, preference))
+        parsed(simkl_library_to_items_json(&shows, &movies))
     };
     let (completed_shows, completed_movies) = simkl_bucket(&responses, "completed");
     let (watching_shows, watching_movies) = simkl_bucket(&responses, "watching");
     let watching = parsed(simkl_watching_to_items_json(
         &watching_shows,
         &watching_movies,
-        preference,
     ));
     let continue_watching = parsed(simkl_merge_playback_progress_json(
         &watching.to_string(),
         &response_str(&responses, "playback"),
-        preference,
     ));
     json!({
         "watchlist": items("plantowatch"),
         "liked": [],
         "completed": items("completed"),
-        "watched": parsed(simkl_watched_to_ids_json(&completed_shows, &completed_movies, preference)),
+        "watched": parsed(simkl_watched_to_ids_json(&completed_shows, &completed_movies)),
         "dropped": items("dropped"),
         "onHold": items("hold"),
         "continueWatching": continue_watching,

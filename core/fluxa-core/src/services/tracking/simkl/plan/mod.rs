@@ -201,11 +201,11 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
     }
     buckets.insert("playback".to_owned(), playback.clone());
     let snapshot: Value = serde_json::from_str(&provider_library_snapshot_json(
-        &json!({"provider": "simkl", "responses": buckets, "animeIdPreference": args.get("animeIdPreference")}).to_string(),
+        &json!({"provider": "simkl", "responses": buckets}).to_string(),
     )?)
     .ok()?;
     serde_json::to_string(&json!({
-        "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "fullAt": full_at, "animeIdPreference": args.get("animeIdPreference")},
+        "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "fullAt": full_at},
         "snapshot": snapshot
     }))
     .ok()
