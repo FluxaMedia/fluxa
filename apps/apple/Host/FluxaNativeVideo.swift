@@ -21,6 +21,7 @@ final class FluxaNativeVideo {
     private var audioProcessingMode = ""
     private var loaded = false
     private var error: String?
+    private var matchedRate = 0.0
 
     init() {
         layer.backgroundColor = UIColor.black.cgColor
@@ -135,6 +136,7 @@ final class FluxaNativeVideo {
         }
         error = nil
         loaded = true
+        matchedRate = 0
         layer.isHidden = false
         command("loadfile", url, "replace")
         mpv_set_property_string(mpv, "pause", "no")
@@ -148,8 +150,22 @@ final class FluxaNativeVideo {
         self.mpv = nil
         loaded = false
         layer.isHidden = true
+        matchDisplayRate(0)
         nowPlaying.deactivate()
         onPlayingChanged?(false)
+    }
+
+    private func matchDisplayRate(_ fps: Double) {
+        #if os(tvOS)
+        guard fps == 0 || double("video-params/w") > 0 else { return }
+        matchedRate = fps
+        let window = UIApplication.shared.connectedScenes
+            .compactMap { ($0 as? UIWindowScene)?.windows.first }
+            .first
+        window?.avDisplayManager.preferredDisplayCriteria = fps > 0
+            ? AVDisplayCriteria(refreshRate: Float(fps), videoDynamicRange: 0)
+            : nil
+        #endif
     }
 
     private func command(_ args: String...) {
@@ -196,6 +212,7 @@ final class FluxaNativeVideo {
 
     private func report() {
         guard mpv != nil, loaded else { return }
+        if matchedRate == 0, double("container-fps") > 0 { matchDisplayRate(double("container-fps")) }
         let paused = flag("pause")
         let buffering = flag("paused-for-cache") || (flag("core-idle") && !paused)
         fluxa_renderer_video_status(
