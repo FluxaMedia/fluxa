@@ -1496,33 +1496,48 @@ fn draw_settings_page(
         } else {
             let back_rect =
                 Rect::from_min_size(Pos2::new(margin - 8.0, top - scroll_y), Vec2::splat(40.0));
-            egui::Area::new(Id::new("fluxa-settings-back"))
-                .constrain(false)
-                .fixed_pos(back_rect.min)
-                .order(egui::Order::Foreground)
-                .show(context, |ui| {
-                    let response = components::icon_button(
-                        ui,
-                        assets.icon("ArrowLeft"),
-                        40.0,
-                        text_primary(),
-                        false,
-                        false,
-                        true,
-                    );
-                    if response.clicked() {
-                        layout.activated = Some(NODE_SETTINGS_BACK);
-                    }
-                });
-            layout.focusable.push((NODE_SETTINGS_BACK, back_rect));
+            let page_title = if settings.page_open {
+                section_label(SETTINGS_SECTIONS[active_section].title, language)
+            } else {
+                section_label(SETTINGS_SECTIONS[active_section].category, language)
+            };
+            let sticky_on = scroll_y > 60.0;
+            if !sticky_on {
+                egui::Area::new(Id::new("fluxa-settings-back"))
+                    .constrain(false)
+                    .fixed_pos(back_rect.min)
+                    .order(egui::Order::Foreground)
+                    .show(context, |ui| {
+                        let response =
+                            components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
+                        if response.clicked() {
+                            layout.activated = Some(NODE_SETTINGS_BACK);
+                        }
+                    });
+                layout.focusable.push((NODE_SETTINGS_BACK, back_rect));
+            }
+            if let Some(sticky) = components::sticky_bar(
+                context,
+                "fluxa-settings",
+                viewport,
+                margin - 8.0,
+                sticky_on,
+                components::StickyBar {
+                    back_node: NODE_SETTINGS_BACK,
+                    back_icon: assets.icon("ArrowLeft"),
+                    logo: None,
+                    title: &page_title,
+                    actions: Vec::new(),
+                },
+                metrics,
+            ) {
+                layout.focusable.extend(sticky.rects);
+                layout.activated = sticky.clicked.or(layout.activated);
+            }
             painter.text(
                 back_rect.right_center() + Vec2::new(4.0, 0.0),
                 Align2::LEFT_CENTER,
-                if settings.page_open {
-                    section_label(SETTINGS_SECTIONS[active_section].title, language)
-                } else {
-                    section_label(SETTINGS_SECTIONS[active_section].category, language)
-                },
+                page_title,
                 FontId::proportional(metrics.text.title),
                 text_primary(),
             );

@@ -813,30 +813,75 @@ pub fn draw_detail(
         });
     layout.focusable.extend(action_rects);
 
+    let sticky_on = scroll_y > viewport.height * 0.45;
     let back_rect = Rect::from_min_size(
         Pos2::new(margin, metrics.detail_back_top - scroll_y),
         Vec2::splat(40.0),
     );
-    egui::Area::new(Id::new("fluxa-detail-back"))
-        .constrain(false)
-        .fixed_pos(back_rect.min)
-        .order(egui::Order::Foreground)
-        .show(context, |ui| {
-            let response = components::icon_button(
-                ui,
-                assets.icon("ArrowLeft"),
-                40.0,
-                text_primary(),
-                true,
-                false,
-                true,
-            )
-            .on_hover_text(t("auto.back"));
-            if response.clicked() {
-                layout.activated = Some(NODE_DETAIL_BACK);
-            }
-        });
-    layout.focusable.push((NODE_DETAIL_BACK, back_rect));
+    if !sticky_on {
+        egui::Area::new(Id::new("fluxa-detail-back"))
+            .constrain(false)
+            .fixed_pos(back_rect.min)
+            .order(egui::Order::Foreground)
+            .show(context, |ui| {
+                let response =
+                    components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics)
+                        .on_hover_text(t("auto.back"));
+                if response.clicked() {
+                    layout.activated = Some(NODE_DETAIL_BACK);
+                }
+            });
+        layout.focusable.push((NODE_DETAIL_BACK, back_rect));
+    }
+    let sticky_logo = components::title_logo(
+        ppp,
+        detail.logo_url.as_deref(),
+        Vec2::new(180.0, 30.0),
+        ArtworkPriority::Visible,
+        assets,
+    );
+    let sticky = components::sticky_bar(
+        context,
+        "fluxa-detail",
+        viewport,
+        margin,
+        sticky_on,
+        components::StickyBar {
+            back_node: NODE_DETAIL_BACK,
+            back_icon: assets.icon("ArrowLeft"),
+            logo: sticky_logo,
+            title: detail.title.as_str(),
+            actions: vec![
+                components::StickyAction {
+                    node: NODE_DETAIL_PLAY,
+                    icon: assets.icon("PlayFilled"),
+                    active: false,
+                    hint: t("common.play"),
+                },
+                components::StickyAction {
+                    node: NODE_DETAIL_WATCHLIST,
+                    icon: assets.icon(if detail.in_watchlist { "Check" } else { "Plus" }),
+                    active: detail.in_watchlist,
+                    hint: t("library.watchlist"),
+                },
+            ],
+        },
+        metrics,
+    );
+    if let Some(sticky) = sticky {
+        for (node, rect) in sticky.rects {
+            layout.focusable.retain(|(existing, _)| *existing != node);
+            layout.focusable.push((node, rect));
+        }
+        layout.activated = match sticky.clicked {
+            Some(NODE_DETAIL_PLAY) => Some(match play_target {
+                _ if detail.resume.is_some() => NODE_DETAIL_PLAY,
+                Some((index, _)) if detail.is_series() => NODE_DETAIL_EPISODE_BASE + index as u64,
+                _ => NODE_DETAIL_PLAY,
+            }),
+            other => other.or(layout.activated),
+        };
+    }
 
     let title_size = metrics.detail_title_size;
     let row_width = viewport.width - margin;

@@ -117,29 +117,43 @@ pub fn draw_folder(
     let back_rect = Rect::from_min_size(
         Pos2::new(
             page.margin,
-            page.top + (geometry.header_height - 40.0) * 0.5,
+            page.top + (geometry.header_height - 40.0) * 0.5 - scroll_y,
         ),
         Vec2::splat(40.0),
     );
-    egui::Area::new(Id::new("fluxa-folder-back"))
-        .constrain(false)
-        .fixed_pos(back_rect.min)
-        .order(egui::Order::Foreground)
-        .show(context, |ui| {
-            let response = components::icon_button(
-                ui,
-                assets.icon("ArrowLeft"),
-                40.0,
-                text_primary(),
-                true,
-                false,
-                true,
-            );
-            if response.clicked() {
-                layout.activated = Some(NODE_FOLDER_BACK);
-            }
-        });
-    layout.focusable.push((NODE_FOLDER_BACK, back_rect));
+    let sticky_on = scroll_y > geometry.content_top * 0.6;
+    if !sticky_on {
+        egui::Area::new(Id::new("fluxa-folder-back"))
+            .constrain(false)
+            .fixed_pos(back_rect.min)
+            .order(egui::Order::Foreground)
+            .show(context, |ui| {
+                let response =
+                    components::back_button(ui, assets.icon("ArrowLeft"), 40.0, metrics);
+                if response.clicked() {
+                    layout.activated = Some(NODE_FOLDER_BACK);
+                }
+            });
+        layout.focusable.push((NODE_FOLDER_BACK, back_rect));
+    }
+    if let Some(sticky) = components::sticky_bar(
+        context,
+        "fluxa-folder",
+        viewport,
+        page.margin,
+        sticky_on,
+        components::StickyBar {
+            back_node: NODE_FOLDER_BACK,
+            back_icon: assets.icon("ArrowLeft"),
+            logo: None,
+            title: folder.title.as_str(),
+            actions: Vec::new(),
+        },
+        metrics,
+    ) {
+        layout.focusable.extend(sticky.rects);
+        layout.activated = sticky.clicked.or(layout.activated);
+    }
 
     let art = Rect::from_min_size(
         Pos2::new(back_rect.right() + metrics.control_gap * 1.5, page.top),
