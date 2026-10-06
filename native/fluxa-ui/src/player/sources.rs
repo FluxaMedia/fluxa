@@ -43,41 +43,96 @@ pub(super) fn draw_sources(
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
-            let close = Rect::from_min_size(Pos2::new(left, top), Vec2::splat(42.0));
-            let painter = ui.painter().clone();
-            let response = control(ui, &painter, close, "close", false);
-            layout.focusable.push((NODE_PLAYER_CLOSE, response.rect));
-            if response.clicked() {
-                layout.activated = Some(NODE_PLAYER_CLOSE);
+            let origin = -viewport.scroll_y;
+            let hero_height = if wide { 0.0 } else { 240.0 };
+            let hero = Rect::from_min_size(
+                Pos2::new(rect.left(), origin),
+                Vec2::new(rect.width(), hero_height),
+            );
+            if !wide {
+                draw_hero(ui, hero, left, width, player, metrics, assets);
             }
-            let title_font = FontId::proportional(metrics.screen_card_title_size + 6.0);
-            ui.painter().text(
-                Pos2::new(close.right() + 12.0, close.center().y - 10.0),
-                Align2::LEFT_CENTER,
-                localized("player.streams", language),
-                title_font,
-                text_primary(),
-            );
-            let subtitle = player.episode_title.as_deref().unwrap_or(&player.title);
-            let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
-            ui.painter().text(
-                Pos2::new(close.right() + 12.0, close.center().y + 12.0),
-                Align2::LEFT_CENTER,
-                truncate_to_width(ui.painter(), subtitle, &subtitle_font, width - 60.0),
-                subtitle_font,
-                metrics.text_secondary,
-            );
-
+            let arrow_slot = layout.focusable.len();
+            let base = if wide {
+                top + 62.0
+            } else {
+                hero.bottom() + 16.0
+            };
             let waiting = player.sources_loading && !player.sources_pending.is_empty();
-            let chips_top = top + 62.0 + if waiting { 30.0 } else { 0.0 };
+            let chips_top = base + if waiting { 30.0 } else { 0.0 };
             if waiting {
                 ui.painter().text(
-                    Pos2::new(left, top + 62.0 + 8.0),
+                    Pos2::new(left, base + 8.0),
                     Align2::LEFT_TOP,
                     localized("player.streams_waiting", language)
                         .replace("%s", &player.sources_pending.join(", ")),
                     crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
                     metrics.text_secondary,
+                );
+            }
+            if wide {
+                draw_info_panel(
+                    ui,
+                    Rect::from_min_size(
+                        Pos2::new(left - panel_gap - panel_width, 24.0),
+                        Vec2::new(panel_width, rect.height() - 48.0),
+                    ),
+                    player,
+                    metrics,
+                    assets,
+                );
+            }
+
+            let chips_start = layout.focusable.len();
+            let show_addon = player.source_filter.is_none();
+            let mut y = chips_top + metrics.screen_control_height + 20.0;
+            let mut empty = true;
+            for (slot, (index, source)) in player.visible_sources().enumerate() {
+                empty = false;
+                let response = ui
+                    .scope_builder(
+                        egui::UiBuilder::new()
+                            .id_salt(("source-row", slot))
+                            .max_rect(Rect::from_min_size(
+                                Pos2::new(left, y),
+                                Vec2::new(width, f32::INFINITY),
+                            )),
+                        |ui| components::stream_row(ui, source, show_addon, width, metrics, assets),
+                    )
+                    .inner;
+                y = response.rect.bottom() + 12.0;
+                let node = NODE_PLAYER_SOURCE_BASE + index as u64;
+                layout.focusable.push((node, response.rect));
+                if response.clicked() {
+                    layout.activated = Some(node);
+                }
+            }
+            let pinned_top = chips_top.max(24.0);
+            let shift = ((24.0 + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;
+            let chips_from = layout.focusable.len();
+            if pinned_top > chips_top {
+                let (strip_left, strip_right) = if wide {
+                    (left - 12.0, left + width + 12.0)
+                } else {
+                    (rect.left(), rect.right())
+                };
+                let strip = Rect::from_min_max(
+                    Pos2::new(strip_left, rect.top()),
+                    Pos2::new(
+                        strip_right,
+                        pinned_top + metrics.screen_control_height + 10.0,
+                    ),
+                );
+                ui.painter()
+                    .rect_filled(strip, 0.0, Color32::from_black_alpha(245));
+                paint_vertical_gradient(
+                    ui.painter(),
+                    Rect::from_min_max(
+                        Pos2::new(strip.left(), strip.bottom()),
+                        Pos2::new(strip.right(), strip.bottom() + 14.0),
+                    ),
+                    Color32::from_black_alpha(245),
+                    Color32::TRANSPARENT,
                 );
             }
             let chip_size = metrics.screen_card_subtitle_size + 2.0;
@@ -87,11 +142,11 @@ pub(super) fn draw_sources(
                 .filter(|_| !addons.is_empty())
                 .chain(addons.iter().map(|addon| (Some(*addon), *addon)));
             let retry = Rect::from_min_size(
-                Pos2::new(left, chips_top),
+                Pos2::new(left + shift, pinned_top),
                 Vec2::splat(metrics.screen_control_height),
             );
             let painter = ui.painter().clone();
-            let response = control(
+            let response = control_with_id(
                 ui,
                 &painter,
                 retry,
@@ -101,6 +156,7 @@ pub(super) fn draw_sources(
                     "retry"
                 },
                 true,
+                Id::new("fluxa-player-sources-retry"),
             );
             layout
                 .focusable
@@ -118,10 +174,12 @@ pub(super) fn draw_sources(
                 };
                 let response = ui
                     .scope_builder(
-                        egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                            Pos2::new(x, chips_top),
-                            Vec2::new(rect.right() - x, metrics.screen_control_height),
-                        )),
+                        egui::UiBuilder::new()
+                            .id_salt(("source-chip", index))
+                            .max_rect(Rect::from_min_size(
+                                Pos2::new(x, pinned_top),
+                                Vec2::new(rect.right() - x, metrics.screen_control_height),
+                            )),
                         |ui| components::button_auto_width(ui, label, kind, chip_size, metrics),
                     )
                     .inner;
@@ -132,40 +190,28 @@ pub(super) fn draw_sources(
                 }
                 x = response.rect.right() + 8.0;
             }
-            if wide {
-                draw_info_panel(
-                    ui,
-                    Rect::from_min_size(
-                        Pos2::new(left - panel_gap - panel_width, 24.0),
-                        Vec2::new(panel_width, rect.height() - 48.0),
-                    ),
-                    player,
-                    metrics,
-                    assets,
-                );
+            let chip_count = layout.focusable.len() - chips_from;
+            layout.focusable[chips_start..].rotate_right(chip_count);
+            let natural = if wide { top } else { origin + 16.0 };
+            let close = Rect::from_min_size(
+                Pos2::new(
+                    left,
+                    natural.max(24.0 + (metrics.screen_control_height - 42.0) / 2.0),
+                ),
+                Vec2::splat(42.0),
+            );
+            let back = ui
+                .scope_builder(egui::UiBuilder::new().max_rect(close), |ui| {
+                    components::back_button(ui, assets.icon("ArrowLeft"), 42.0, metrics)
+                })
+                .inner;
+            layout
+                .focusable
+                .insert(arrow_slot, (NODE_PLAYER_CLOSE, close));
+            if back.clicked() {
+                layout.activated = Some(NODE_PLAYER_CLOSE);
             }
 
-            let show_addon = player.source_filter.is_none();
-            let mut y = chips_top + metrics.screen_control_height + 20.0;
-            let mut empty = true;
-            for (index, source) in player.visible_sources() {
-                empty = false;
-                let response = ui
-                    .scope_builder(
-                        egui::UiBuilder::new().max_rect(Rect::from_min_size(
-                            Pos2::new(left, y),
-                            Vec2::new(width, f32::INFINITY),
-                        )),
-                        |ui| components::stream_row(ui, source, show_addon, width, metrics, assets),
-                    )
-                    .inner;
-                y = response.rect.bottom() + 12.0;
-                let node = NODE_PLAYER_SOURCE_BASE + index as u64;
-                layout.focusable.push((node, response.rect));
-                if response.clicked() {
-                    layout.activated = Some(node);
-                }
-            }
             layout.scroll_max = Some(
                 (y + viewport.scroll_y + 24.0 + viewport.safe_bottom - rect.height()).max(0.0),
             );
@@ -276,6 +322,81 @@ fn draw_info_panel(
             let height = galley.size().y;
             painter.galley(Pos2::new(rect.left(), y), galley, color);
             y += height + gap;
+        }
+    }
+}
+
+fn draw_hero(
+    ui: &mut egui::Ui,
+    hero: Rect,
+    left: f32,
+    width: f32,
+    player: &PlayerModel,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+) {
+    let painter = ui.painter().clone();
+    let ppp = ui.ctx().pixels_per_point();
+    components::artwork_image(
+        &painter,
+        hero,
+        player
+            .episode_image
+            .as_deref()
+            .or(player.background.as_deref()),
+        backdrop_target_size(hero.width(), ppp),
+        ArtworkPriority::Visible,
+        Color32::WHITE,
+        assets,
+    );
+    paint_vertical_gradient(&painter, hero, Color32::TRANSPARENT, Color32::BLACK);
+    let mut y = hero.bottom() - 16.0;
+    if let Some(episode) = player.episode_title.as_deref() {
+        let font = FontId::proportional(metrics.screen_card_title_size + 2.0);
+        let text = truncate_to_width(&painter, episode, &font, width);
+        let rect = painter.text(
+            Pos2::new(left, y),
+            Align2::LEFT_BOTTOM,
+            text,
+            font,
+            text_primary(),
+        );
+        y = rect.top() - 4.0;
+    }
+    if let Some((season, episode)) = player.season_episode {
+        let label = localized("player.next_episode_number_format", &player.language)
+            .replacen("%s", &season.to_string(), 1)
+            .replacen("%s", &episode.to_string(), 1);
+        let rect = painter.text(
+            Pos2::new(left, y),
+            Align2::LEFT_BOTTOM,
+            label,
+            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
+            metrics.text_secondary,
+        );
+        y = rect.top() - 10.0;
+    }
+    let logo = components::title_logo(
+        ppp,
+        player.logo.as_deref(),
+        Vec2::new(width * 0.6, 64.0),
+        ArtworkPriority::Visible,
+        assets,
+    );
+    match logo {
+        Some((texture, size)) => {
+            let rect = Rect::from_min_size(Pos2::new(left, y - size.y), size);
+            painter.image(texture, rect, full_uv(), Color32::WHITE);
+        }
+        None => {
+            let font = crate::fonts::bold(metrics.screen_title_size);
+            painter.text(
+                Pos2::new(left, y),
+                Align2::LEFT_BOTTOM,
+                truncate_to_width(&painter, &player.title, &font, width),
+                font,
+                text_primary(),
+            );
         }
     }
 }

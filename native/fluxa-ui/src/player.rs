@@ -45,6 +45,7 @@ pub struct PlayerModel {
     pub logo: Option<String>,
     pub episode_title: Option<String>,
     pub episode_image: Option<String>,
+    pub season_episode: Option<(i64, i64)>,
     pub synopsis: Option<String>,
     pub description: Option<String>,
     pub chapters: Vec<(f64, String)>,

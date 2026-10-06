@@ -142,6 +142,7 @@ pub(crate) struct PlayerSession {
     description: Option<String>,
     episode_title: Option<String>,
     episode_image: Option<String>,
+    season_episode: Option<(i64, i64)>,
     synopsis: Option<String>,
     stream_addons: Vec<String>,
     warnings_rx: Option<Receiver<Option<Value>>>,
@@ -228,6 +229,7 @@ impl PlayerSession {
             description: None,
             episode_title: None,
             episode_image: None,
+            season_episode: None,
             synopsis: None,
             stream_addons: Vec::new(),
             warnings_rx: None,
@@ -477,6 +479,7 @@ impl PlayerSession {
                 .map(ToOwned::to_owned),
             episode_title: self.episode_title.clone(),
             episode_image: self.episode_image.clone(),
+            season_episode: self.season_episode,
             synopsis: self.synopsis.clone(),
             description: self.description.clone(),
             chapters: self.status.chapters.clone(),
@@ -781,6 +784,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     player.episode_title = episode_title(&player.meta, &snapshot);
     player.episode_image = episode_image(&player.meta, &snapshot);
+    player.season_episode = season_episode(&player.meta, &snapshot);
     player.synopsis = synopsis(&player.meta, &snapshot);
     player.stream_addons = stream_addon_names(&snapshot);
     if !player.warnings_requested {

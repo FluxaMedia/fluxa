@@ -158,6 +158,16 @@ pub(super) fn episode_title(meta: &Value, snapshot: &Value) -> Option<String> {
         .or_else(|| first_text(meta, &["lastEpisodeName"]))
 }
 
+pub(super) fn season_episode(meta: &Value, snapshot: &Value) -> Option<(i64, i64)> {
+    let video = current_video(meta, snapshot)?;
+    let season = video.get("season").and_then(Value::as_i64)?;
+    let episode = video
+        .get("episode")
+        .or_else(|| video.get("number"))
+        .and_then(Value::as_i64)?;
+    Some((season, episode))
+}
+
 pub(super) fn episode_image(meta: &Value, snapshot: &Value) -> Option<String> {
     first_text(
         current_video(meta, snapshot)?,

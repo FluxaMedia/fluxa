@@ -516,7 +516,25 @@ pub(super) fn control(
     icon: &str,
     prominent: bool,
 ) -> egui::Response {
-    let response = ui.interact(rect, Id::new(("fluxa-player-button", icon)), Sense::click());
+    control_with_id(
+        ui,
+        painter,
+        rect,
+        icon,
+        prominent,
+        Id::new(("fluxa-player-button", icon)),
+    )
+}
+
+pub(super) fn control_with_id(
+    ui: &mut egui::Ui,
+    painter: &egui::Painter,
+    rect: Rect,
+    icon: &str,
+    prominent: bool,
+    id: Id,
+) -> egui::Response {
+    let response = ui.interact(rect, id, Sense::click());
     if prominent || response.hovered() || response.is_pointer_button_down_on() {
         crate::components::glass(
             painter,
