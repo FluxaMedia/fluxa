@@ -1712,3 +1712,14 @@ fn hebrew_title_has_glyphs_and_keeps_numbers_in_order() {
             .all(|glyph| glyph.uv_rect.size != egui::vec2(0.0, 0.0))
     );
 }
+
+#[test]
+fn hero_meta_line_ends_with_imdb_and_tomato_scores() {
+    let item = serde_json::json!({
+        "type": "movie",
+        "year": 2010,
+        "mdblistRatings": {"imdb": 8.8, "tomatoes": 86.0, "trakt": 87.0}
+    });
+    let line = crate::hero_meta_line(&item, "en");
+    assert!(line.ends_with("IMDb 8.8  RT 86%"), "{line}");
+}

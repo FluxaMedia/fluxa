@@ -478,6 +478,13 @@
       "category": "appearance"
     },
     {
+      "key": "homeHeroRatings",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "homeHeroAutoplayTrailer",
       "type": "boolean",
       "default": false,

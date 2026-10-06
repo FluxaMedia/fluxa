@@ -250,6 +250,19 @@ impl EffectExecutor {
                     .and_then(|items| items.first())
                     .cloned()
             });
+        let mut billboard = billboard;
+        if prefs.get("homeHeroRatings").and_then(Value::as_bool) != Some(false)
+            && let Some(Value::Object(item)) = billboard.as_mut()
+        {
+            let content_type = item.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let id = item.get("id").and_then(Value::as_str).unwrap_or_default();
+            let ratings = self
+                .fetch_mdblist_ratings(&profile, content_type, id)
+                .await;
+            if !ratings.is_null() {
+                item.insert("mdblistRatings".to_owned(), ratings);
+            }
+        }
         if all_categories.is_empty() {
             if let Some(Value::Object(mut cached)) = self.storage.read_json(&cache_key)? {
                 cached.insert("stale".to_owned(), Value::Bool(false));

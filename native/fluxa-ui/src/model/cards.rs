@@ -175,6 +175,20 @@ pub(crate) fn first_value_string(value: &serde_json::Value, keys: &[&str]) -> Op
     keys.iter().find_map(|key| value_string(value, key))
 }
 
+fn hero_ratings(value: &serde_json::Value) -> Option<String> {
+    let ratings = value.get("mdblistRatings")?;
+    let imdb = ratings
+        .get("imdb")
+        .and_then(serde_json::Value::as_f64)
+        .map(|score| format!("IMDb {score:.1}"));
+    let tomatoes = ratings
+        .get("tomatoes")
+        .and_then(serde_json::Value::as_f64)
+        .map(|score| format!("RT {}%", score.round() as i64));
+    let parts = [imdb, tomatoes].into_iter().flatten().collect::<Vec<_>>();
+    (!parts.is_empty()).then(|| parts.join("  "))
+}
+
 pub(crate) fn hero_meta_line(value: &serde_json::Value, language: &str) -> String {
     let series = matches!(
         value_string(value, "type").as_deref(),
@@ -206,7 +220,8 @@ pub(crate) fn hero_meta_line(value: &serde_json::Value, language: &str) -> Strin
                 .join(", ")
         })
         .filter(|genres| !genres.is_empty());
-    [series, year, runtime, genres]
+    let ratings = hero_ratings(value);
+    [series, year, runtime, genres, ratings]
         .into_iter()
         .flatten()
         .filter(|part| !part.is_empty())

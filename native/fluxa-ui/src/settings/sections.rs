@@ -150,7 +150,7 @@ pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
     (6, "settings.group.color_and_motion"),
     (6, "settings.group.navigation"),
 ];
-pub(super) const HOME_SETTINGS: [SettingsRow; 13] = [
+pub(super) const HOME_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Show hero section",
         key: "showHeroSection",
@@ -159,6 +159,11 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 13] = [
     SettingsRow {
         label: "Hero season posters",
         key: "homeSeasonPostersOnHero",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Hero ratings",
+        key: "homeHeroRatings",
         options: &[],
     },
     SettingsRow {
