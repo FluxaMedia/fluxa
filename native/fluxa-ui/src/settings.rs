@@ -725,7 +725,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 7] = [
+pub const POSTER_FIELDS: [PosterField; 6] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",

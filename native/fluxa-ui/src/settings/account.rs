@@ -18,7 +18,7 @@ pub const SOURCE_TOKENS: [(&str, &str); 6] = [
 ];
 
 pub const ACCOUNT_PROVIDERS: [&str; 4] = ["trakt", "simkl", "mdblist", "anilist"];
-pub(super) const ACCOUNT_SOURCES: [(&str, &str); 2] = [
+pub(super) const ACCOUNT_SOURCES: [(&str, &str); 3] = [
     (
         "settings.integration_library_source",
         "integrationLibrarySource",
