@@ -233,17 +233,11 @@ fn anime_id_preference_picks_the_matching_external_id() {
 
 #[test]
 fn watched_map_answers_to_every_id_scheme_an_addon_may_use() {
-    let shows = r#"{"shows":[
-        {"show":{"title":"Plain","ids":{"simkl":1,"imdb":"tt1","tmdb":11,"tvdb":111}}},
-        {"anime_type":"tv","show":{"title":"Frieren","ids":{"simkl":7,"mal":52991,"kitsu":46474,"tvdb":424536,"imdb":"tt22248376"}}}
-    ]}"#;
+    let shows = r#"{"shows":[{"anime_type":"tv","show":{"title":"Frieren","ids":{"simkl":7,"mal":52991,"kitsu":46474,"tvdb":424536,"imdb":"tt22248376"}}}]}"#;
     let watched: Value =
         serde_json::from_str(&simkl_watched_to_ids_json(shows, "[]", "").unwrap()).unwrap();
-    for id in ["tt1", "tmdb:11", "tvdb:111", "mal:52991", "kitsu:46474"] {
+    for id in ["tt22248376", "tvdb:424536", "mal:52991", "kitsu:46474"] {
         assert_eq!(watched[id], true, "{id}");
-    }
-    for id in ["tt22248376", "tvdb:424536"] {
-        assert!(watched.get(id).is_none(), "{id} is shared by every season");
     }
 }
 

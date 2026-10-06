@@ -351,14 +351,9 @@ pub(crate) fn simkl_library_to_items_json(
     serde_json::to_string(&items).ok()
 }
 
-fn simkl_alias_ids(entry: &Value, source: &Value, preference: &str) -> Vec<String> {
+fn simkl_alias_ids(source: &Value, preference: &str) -> Vec<String> {
     let mut aliases: Vec<String> = simkl_content_id_for(source, preference).into_iter().collect();
-    let keys: &[&str] = if simkl_is_anime(entry, source) {
-        &["mal", "kitsu", "anilist", "anidb"]
-    } else {
-        &["imdb", "tmdb", "tvdb"]
-    };
-    for key in keys.iter().copied() {
+    for key in ["imdb", "tmdb", "tvdb", "mal", "kitsu", "anilist", "anidb"] {
         if let Some(id) = source.get("ids").and_then(|ids| simkl_preferred_id(ids, key))
             && !aliases.contains(&id)
         {
@@ -379,7 +374,7 @@ pub(crate) fn simkl_watched_to_ids_json(
     for entry in &shows {
         for id in entry
             .get("show")
-            .map(|show| simkl_alias_ids(entry, show, preference))
+            .map(|show| simkl_alias_ids(show, preference))
             .unwrap_or_default()
         {
             ids.insert(id, Value::Bool(true));
@@ -388,7 +383,7 @@ pub(crate) fn simkl_watched_to_ids_json(
     for entry in &movies {
         for id in entry
             .get("movie")
-            .map(|movie| simkl_alias_ids(entry, movie, preference))
+            .map(|movie| simkl_alias_ids(movie, preference))
             .unwrap_or_default()
         {
             ids.insert(id, Value::Bool(true));
