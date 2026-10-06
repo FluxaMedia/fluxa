@@ -210,8 +210,14 @@ impl EffectExecutor {
                     .ok_or_else(|| "Fluxa Core could not resolve stream subtitles".to_owned())
             }
             fluxa_core::runtime::EffectKind::FetchMetaDetail => {
-                let meta = self.fetch_meta_detail(&payload).await?;
-                Ok(json!({"meta": meta, "mdblistRatings": null}))
+                let profile = payload.get("profile").cloned().unwrap_or(Value::Null);
+                let content_type = payload["contentType"].as_str().unwrap_or_default();
+                let id = payload["id"].as_str().unwrap_or_default();
+                let (meta, ratings) = futures::join!(
+                    self.fetch_meta_detail(&payload),
+                    self.fetch_mdblist_ratings(&profile, content_type, id),
+                );
+                Ok(json!({"meta": meta?, "mdblistRatings": ratings}))
             }
             fluxa_core::runtime::EffectKind::FetchMetaDetailLookup => {
                 self.fetch_meta_detail(&payload).await

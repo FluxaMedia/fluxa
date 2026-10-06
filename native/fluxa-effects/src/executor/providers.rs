@@ -152,6 +152,36 @@ impl EffectExecutor {
         .unwrap_or_default()
     }
 
+    pub(super) async fn fetch_mdblist_ratings(
+        &self,
+        profile: &Value,
+        content_type: &str,
+        id: &str,
+    ) -> Value {
+        let key = self.provider_api_key(profile);
+        let imdb_id = id.split(':').next().unwrap_or_default();
+        if key.is_empty() || !imdb_id.starts_with("tt") {
+            return Value::Null;
+        }
+        let Some(url) = core_value(
+            "mdblistMediaRatingsPlan",
+            json!({"contentType": content_type, "id": imdb_id}),
+        )
+        .and_then(|plan| plan.get("url").and_then(Value::as_str).map(str::to_owned)) else {
+            return Value::Null;
+        };
+        let Ok(client) = Client::builder()
+            .native_timeout(Duration::from_secs(8))
+            .build()
+        else {
+            return Value::Null;
+        };
+        let Ok(response) = super::fetch_json(&client, &format!("{url}?apikey={key}")).await else {
+            return Value::Null;
+        };
+        core_value("mdblistMediaRatings", json!({"response": response})).unwrap_or(Value::Null)
+    }
+
     fn provider_credentials(&self, provider: &str, profile: &Value) -> Option<Value> {
         let token = str_field(profile, &token_field(provider));
         let api_key = self.provider_api_key(profile);
