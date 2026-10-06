@@ -4,10 +4,32 @@ use egui::epaint::{ClippedShape, CornerRadiusF32, Shape};
 use egui::{Pos2, Rect, TextureId, pos2};
 
 pub fn mirror_shapes(shapes: &mut [ClippedShape], width: f32) {
+    let mut last_text: Option<(Rect, f32)> = None;
     for clipped in shapes {
+        let caret = last_text.and_then(|(span, shift)| caret_x(&clipped.shape, span, shift));
+        if let Shape::Text(text) = &clipped.shape {
+            let extent = text.galley.rect.translate(text.pos.to_vec2());
+            let moved = width - text.pos.x - text.galley.rect.max.x - text.galley.rect.min.x;
+            last_text = Some((extent, moved - text.pos.x));
+        }
         clipped.clip_rect = mirror_rect(clipped.clip_rect, width);
         mirror_shape(&mut clipped.shape, width);
+        if let (Some(x), Shape::LineSegment { points, .. }) = (caret, &mut clipped.shape) {
+            points.iter_mut().for_each(|point| point.x = x);
+        }
     }
+}
+
+fn caret_x(shape: &Shape, span: Rect, shift: f32) -> Option<f32> {
+    let Shape::LineSegment { points, .. } = shape else {
+        return None;
+    };
+    let [from, to] = *points;
+    let vertical = (from.x - to.x).abs() < 0.01;
+    let inside = span.x_range().contains(from.x)
+        && span.y_range().contains(from.y.min(to.y))
+        && span.y_range().contains(from.y.max(to.y));
+    (vertical && inside).then_some(from.x + shift)
 }
 
 fn mirror_x(x: f32, width: f32) -> f32 {
@@ -152,6 +174,41 @@ mod tests {
         let right = |row: &egui::epaint::text::PlacedRow| row.pos.x + row.row.size.x;
         let first = right(&text.galley.rows[0]);
         assert!(text.galley.rows.iter().all(|row| (right(row) - first).abs() < 0.01));
+    }
+
+    #[test]
+    fn caret_stays_on_its_glyph_boundary_after_mirroring() {
+        let context = egui::Context::default();
+        context.set_fonts(egui::FontDefinitions::default());
+        let _ = context.run_ui(egui::RawInput::default(), |_| {});
+        let galley = context.fonts_mut(|fonts| {
+            fonts.layout_no_wrap(
+                "abcd".to_owned(),
+                egui::FontId::proportional(14.0),
+                Color32::WHITE,
+            )
+        });
+        let height = galley.rect.height();
+        let caret_at = 10.0 + galley.rect.width() * 0.25;
+        let mut shapes = vec![
+            clipped(Shape::Text(egui::epaint::TextShape::new(
+                pos2(10.0, 0.0),
+                galley,
+                Color32::WHITE,
+            ))),
+            clipped(Shape::LineSegment {
+                points: [pos2(caret_at, 0.0), pos2(caret_at, height)],
+                stroke: egui::Stroke::new(1.0, Color32::WHITE).into(),
+            }),
+        ];
+        mirror_shapes(&mut shapes, 200.0);
+        let (Shape::Text(text), Shape::LineSegment { points, .. }) =
+            (&shapes[0].shape, &shapes[1].shape)
+        else {
+            panic!("unexpected shapes")
+        };
+        let expected = text.pos.x + text.galley.rect.width() * 0.25;
+        assert!((points[0].x - expected).abs() < 0.01);
     }
 
     #[test]
