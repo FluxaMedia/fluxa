@@ -222,6 +222,16 @@ pub(crate) fn mdblist_library_requests(args: &Value) -> Option<Vec<Value>> {
     ])
 }
 
+pub(crate) fn mdblist_user_lists_plan(args: &Value) -> Value {
+    request(
+        "mdblist",
+        args,
+        "GET",
+        crate::services::mdblist::mdblist_lists_user_url(None, "{}"),
+        Value::Null,
+    )
+}
+
 pub(crate) fn mdblist_library_snapshot(_args: &Value, responses: &Value) -> Value {
     let empty = json!({});
     let watched_body = responses.get("watched").unwrap_or(&empty);

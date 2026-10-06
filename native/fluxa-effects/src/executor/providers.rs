@@ -186,6 +186,30 @@ impl EffectExecutor {
         core_value("mdblistMediaRatings", json!({"response": response})).unwrap_or(Value::Null)
     }
 
+    pub fn fetch_mdblist_lists(&self, profile: Value) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let Some(credentials) = executor.provider_credentials("mdblist", &profile) else {
+                return Vec::new();
+            };
+            let Some(plan) = core_value("mdblistUserListsPlan", credentials) else {
+                return Vec::new();
+            };
+            let Ok(client) = http_client() else {
+                return Vec::new();
+            };
+            let Ok((status, response)) = send(&client, &plan).await else {
+                return Vec::new();
+            };
+            if !(200..300).contains(&status) {
+                return Vec::new();
+            }
+            core_value("mdblistUserLists", json!({"response": response}))
+                .and_then(|lists| lists.as_array().cloned())
+                .unwrap_or_default()
+        })
+    }
+
     fn provider_credentials(&self, provider: &str, profile: &Value) -> Option<Value> {
         let token = str_field(profile, &token_field(provider));
         let api_key = self.provider_api_key(profile);

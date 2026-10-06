@@ -768,13 +768,6 @@ pub const POSTER_FIELDS: [PosterField; 7] = [
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_SKIPDB_KEY,
     },
-    PosterField {
-        key: "mdblistLibraryListId",
-        label: "settings.mdblist_library_list",
-        help: "settings.mdblist_library_list_help",
-        hint: "settings.mdblist_library_list_placeholder",
-        input: NODE_SETTINGS_MDBLIST_LIST,
-    },
 ];
 
 pub fn poster_field(input: u64) -> Option<usize> {

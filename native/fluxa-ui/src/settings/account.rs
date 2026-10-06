@@ -27,6 +27,10 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 2] = [
         "settings.continue_watching_source",
         "continueWatchingSource",
     ),
+    (
+        "settings.mdblist_library_list",
+        "mdblistLibraryListId",
+    ),
 ];
 
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
@@ -35,7 +39,7 @@ pub(super) fn account_height(metrics: UiMetrics) -> f32 {
         + ACCOUNT_PROFILE_CARD_HEIGHT
         + settings_group_card_height(ACCOUNT_SERVICES.len(), metrics)
         + settings_group_card_height(ACCOUNT_SOURCES.len(), metrics)
-        + FIELD_HEIGHT * 6.0
+        + FIELD_HEIGHT * 5.0
 }
 
 pub(super) fn account_group(
@@ -116,11 +120,26 @@ pub fn account_source_state(
     key: &str,
 ) -> (Vec<(String, String)>, String, String) {
     let language = settings.language();
-    let options = SOURCE_TOKENS
-        .into_iter()
-        .filter(|(_, token_key)| account_connected(settings, token_key))
-        .map(|(source, _)| (source.to_owned(), source_label(source, language)))
-        .collect::<Vec<_>>();
+    let options = if key == "mdblistLibraryListId" {
+        if account_connected(settings, "mdblistAccessToken")
+            || account_connected(settings, "mdblistApiKey")
+        {
+            std::iter::once((
+                String::new(),
+                localized("settings.mdblist_watchlist", language),
+            ))
+            .chain(settings.mdblist_lists.iter().cloned())
+            .collect()
+        } else {
+            Vec::new()
+        }
+    } else {
+        SOURCE_TOKENS
+            .into_iter()
+            .filter(|(_, token_key)| account_connected(settings, token_key))
+            .map(|(source, _)| (source.to_owned(), source_label(source, language)))
+            .collect::<Vec<_>>()
+    };
     let current = settings
         .value(key)
         .and_then(serde_json::Value::as_str)
@@ -560,7 +579,7 @@ pub(super) fn draw_account(
         rect,
         card.bottom() + APPEARANCE_GROUP_GAP,
         &localized("settings.group.api_keys", language),
-        &[1, 2, 3, 4, 5, 6],
+        &[1, 2, 3, 4, 5],
         metrics,
         compact,
         layout,

@@ -35,6 +35,29 @@ pub(crate) fn route_mdblist(method: &str, args_json: &str) -> Outcome {
                 &field(&args, "response")?.to_string(),
             ))
         }
+        "mdblistUserListsPlan" => {
+            let args = object(args_json)?;
+            opt_json(Some(
+                services::mdblist::mdblist_user_lists_plan(&json!(args)).to_string(),
+            ))
+        }
+        "mdblistUserLists" => {
+            let args = object(args_json)?;
+            let response = field(&args, "response")?;
+            let lists = response
+                .as_array()
+                .or_else(|| response.get("lists").and_then(|lists| lists.as_array()))
+                .into_iter()
+                .flatten()
+                .filter_map(|list| {
+                    Some(json!({
+                        "id": list.get("id")?.as_i64()?.to_string(),
+                        "name": list.get("name")?.as_str()?,
+                    }))
+                })
+                .collect::<Vec<_>>();
+            opt_json(Some(serde_json::Value::Array(lists).to_string()))
+        }
         _ => Err(unknown_method()),
     }
 }

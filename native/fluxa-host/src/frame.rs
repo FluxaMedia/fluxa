@@ -106,6 +106,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
     timer.mark("snapshot");
     profiles::poll(state);
     accounts::poll(state);
+    if state.route == Route::Settings {
+        accounts::poll_mdblist_lists(state);
+    }
     stream_badges::poll(state);
     collections::poll(state);
     player::pump(state);

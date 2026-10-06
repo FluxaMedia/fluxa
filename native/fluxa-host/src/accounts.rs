@@ -104,6 +104,51 @@ fn profile_id(session: &fluxa_effects::SessionHandle) -> String {
         .to_owned()
 }
 
+#[derive(Default)]
+pub(crate) struct MdblistLists {
+    key: String,
+    lists: Vec<(String, String)>,
+    rx: Option<std::sync::mpsc::Receiver<Vec<Value>>>,
+}
+
+pub(crate) fn poll_mdblist_lists(state: &mut RendererState) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let profile = session.active_profile();
+    let token = profile
+        .get("mdblistAccessToken")
+        .and_then(Value::as_str)
+        .unwrap_or_default();
+    let api_key = state.settings.str_value("mdblistApiKey").unwrap_or_default();
+    let key = if token.is_empty() && api_key.is_empty() {
+        String::new()
+    } else {
+        format!("{}|{token}|{api_key}", profile_id(session))
+    };
+    let fetch = &mut state.mdblist_lists;
+    if fetch.key != key {
+        fetch.key = key.clone();
+        fetch.lists.clear();
+        fetch.rx = (!key.is_empty()).then(|| session.executor().fetch_mdblist_lists(profile));
+    }
+    if let Some(lists) = fetch.rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        fetch.rx = None;
+        fetch.lists = lists
+            .iter()
+            .filter_map(|list| {
+                Some((
+                    list.get("id")?.as_str()?.to_owned(),
+                    list.get("name")?.as_str()?.to_owned(),
+                ))
+            })
+            .collect();
+    }
+    if state.settings.mdblist_lists != state.mdblist_lists.lists {
+        state.settings.mdblist_lists = state.mdblist_lists.lists.clone();
+    }
+}
+
 pub(crate) fn refresh_servers(state: &mut RendererState) {
     state.settings.media_servers = state
         .session

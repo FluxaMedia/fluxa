@@ -10,7 +10,9 @@ mod user;
 mod watchlist_sync;
 
 pub(crate) use api::*;
-pub(crate) use lists::{mdblist_list_items_response_to_metas_json, mdblist_list_items_url};
+pub(crate) use lists::{
+    mdblist_list_items_response_to_metas_json, mdblist_list_items_url, mdblist_lists_user_url,
+};
 pub(crate) use media_ratings::{
     mdblist_content_type, mdblist_media_info_batch_plan, mdblist_media_info_url,
     mdblist_media_ratings_from_response_json,

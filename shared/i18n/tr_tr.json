@@ -3148,6 +3148,5 @@
   "a11y.previous_episode": "Önceki bölüm",
   "a11y.text_field": "Metin alanı",
   "settings.mdblist_library_list": "MDBList kütüphane listesi",
-  "settings.mdblist_library_list_help": "Kütüphane olarak izleme listesi yerine MDBList listelerinden birini kullan. Sayısal liste kimliğini gir; boş bırakırsan izleme listesi kullanılır.",
-  "settings.mdblist_library_list_placeholder": "Liste kimliği (isteğe bağlı)"
+  "settings.mdblist_watchlist": "İzleme listesi"
 }

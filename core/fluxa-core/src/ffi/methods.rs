@@ -66,6 +66,8 @@ static METHODS: &[(&str, Router)] = &[
     ("mdblistMediaInfoBatchPlan", route_mdblist),
     ("mdblistMediaRatings", route_mdblist),
     ("mdblistMediaRatingsPlan", route_mdblist),
+    ("mdblistUserLists", route_mdblist),
+    ("mdblistUserListsPlan", route_mdblist),
     ("mediaServerParse", route_mediaserver),
     ("mediaServerRequest", route_mediaserver),
     ("mergeDiscoverSources", route_search_plan),

@@ -3148,6 +3148,5 @@
   "a11y.previous_episode": "Previous episode",
   "a11y.text_field": "Text field",
   "settings.mdblist_library_list": "MDBList library list",
-  "settings.mdblist_library_list_help": "Use one of your MDBList lists as the library instead of the watchlist. Enter its numeric list ID; leave empty for the watchlist.",
-  "settings.mdblist_library_list_placeholder": "List ID (optional)"
+  "settings.mdblist_watchlist": "Watchlist"
 }
