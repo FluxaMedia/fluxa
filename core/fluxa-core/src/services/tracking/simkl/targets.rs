@@ -95,6 +95,36 @@ pub(crate) fn simkl_target(video_id: &str) -> Option<SimklTarget> {
     })
 }
 
+fn same_family_ids(provider_ids: Option<&Value>, target_ids: Value) -> Value {
+    let family: Option<&[&str]> = target_ids.as_object().and_then(|ids| {
+        if SIMKL_ANIME_ID_KEYS.iter().any(|key| ids.contains_key(*key)) {
+            Some(&SIMKL_ANIME_ID_KEYS[..])
+        } else if ["imdb", "tmdb", "tvdb"].iter().any(|key| ids.contains_key(*key)) {
+            Some(&["imdb", "tmdb", "tvdb"][..])
+        } else {
+            None
+        }
+    });
+    let Some(provider_ids) = provider_ids else {
+        return target_ids;
+    };
+    let Some(family) = family else {
+        return provider_ids.clone();
+    };
+    let kept: serde_json::Map<String, Value> = provider_ids
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(key, _)| family.contains(&key.as_str()))
+        .map(|(key, value)| (key.clone(), value.clone()))
+        .collect();
+    if kept.is_empty() {
+        target_ids
+    } else {
+        Value::Object(kept)
+    }
+}
+
 pub(crate) fn simkl_mark_watched_body_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let video_ids = args.get("videoIds")?.as_array()?;
@@ -125,7 +155,7 @@ pub(crate) fn simkl_mark_watched_body_json(args_json: &str) -> Option<String> {
         let tvdb_numbering = ["imdb", "tmdb", "tvdb"]
             .iter()
             .any(|key| target.ids.get(key).is_some());
-        let ids = provider_ids.clone().unwrap_or(target.ids);
+        let ids = same_family_ids(provider_ids.as_ref(), target.ids);
         if let Some(episode) = target.episode {
             let season = target.season;
             let key = format!("{ids}{tvdb_numbering}");

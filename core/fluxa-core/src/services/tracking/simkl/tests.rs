@@ -267,3 +267,24 @@ fn tvdb_season_flag_follows_the_video_id_not_the_merged_provider_ids() {
     assert_eq!(flag("kitsu:46474:5"), false);
     assert_eq!(flag("tt22248376:2:5"), true);
 }
+
+#[test]
+fn provider_ids_from_another_family_never_ride_along_with_a_video_id() {
+    let ids = |video_id: &str| {
+        let body: Value = serde_json::from_str(
+            &simkl_mark_watched_body_json(
+                &json!({
+                    "videoIds": [video_id],
+                    "meta": {"type": "series"},
+                    "providerIds": {"simkl": 7, "imdb": "tt22248376", "tvdb": 424536, "mal": 52991, "kitsu": 46474}
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        body["shows"][0]["ids"].clone()
+    };
+    assert_eq!(ids("kitsu:46474:5"), json!({"mal": 52991, "kitsu": 46474}));
+    assert_eq!(ids("tt22248376:2:5"), json!({"imdb": "tt22248376", "tvdb": 424536}));
+}
