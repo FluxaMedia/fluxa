@@ -716,6 +716,13 @@
       "category": "playback"
     },
     {
+      "key": "playerVideoFit",
+      "type": "string",
+      "default": "fit",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "playerAudioBoost",
       "type": "boolean",
       "default": false,

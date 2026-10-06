@@ -34,6 +34,16 @@ pub fn list_tracks(client: &fluxa_mpv::MpvClientHandle) -> Vec<VideoTrack> {
         .collect()
 }
 
+pub fn set_fit(client: &fluxa_mpv::MpvClientHandle, mode: &str) -> Result<(), String> {
+    let (keepaspect, panscan) = match mode {
+        "fill" => ("yes", "1"),
+        "stretch" => ("no", "0"),
+        _ => ("yes", "0"),
+    };
+    client.command(&["set", "keepaspect", keepaspect])?;
+    client.command(&["set", "panscan", panscan])
+}
+
 pub fn select_tracks(
     client: &fluxa_mpv::MpvClientHandle,
     selection: &TrackSelection,

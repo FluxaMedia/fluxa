@@ -118,6 +118,7 @@ impl VideoBackend for BridgeVideo {
             }
             VideoCommand::Mpv(args) => json!({"type": "mpv", "args": args}),
             VideoCommand::Shaders(files) => json!({"type": "shaders", "files": files}),
+            VideoCommand::Fit(mode) => json!({"type": "fit", "mode": mode}),
         };
         self.send(request);
     }

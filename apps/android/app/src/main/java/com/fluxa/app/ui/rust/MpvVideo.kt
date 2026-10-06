@@ -61,6 +61,12 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
     val paused get() = Mpv.getProperty(mpv, "pause") == "yes"
     val buffering get() = Mpv.getProperty(mpv, "paused-for-cache") == "yes" || (loaded && Mpv.getProperty(mpv, "core-idle") == "yes" && !paused)
     val hasFrame get() = double("video-params/w") > 0
+    val aspect: Double
+        get() {
+            val width = double("video-out-params/dw")
+            val height = double("video-out-params/dh")
+            return if (width > 0 && height > 0) width / height else 0.0
+        }
     val displayModeHint: DisplayModeHint?
         get() {
             val width = double("display-mode-hint/width").toInt()

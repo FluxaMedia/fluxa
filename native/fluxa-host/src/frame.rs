@@ -151,7 +151,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
     timer.mark("rebuild");
     let route = active_route(state);
     let mode = player::upscaling(&state.settings).to_owned();
+    let fit = player::video_fit(&state.settings);
     if let Some(player) = state.player.as_mut() {
+        player.fit = fit;
         player.anime4k = mode != "off";
         player.upscaling = mode;
     }

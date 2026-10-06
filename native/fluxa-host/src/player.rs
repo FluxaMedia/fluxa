@@ -85,6 +85,7 @@ pub enum VideoCommand {
     SetVolume(f64),
     SetSpeed(f64),
     Shaders(Vec<String>),
+    Fit(String),
     SelectTracks(TrackSelection),
     Mpv(Vec<String>),
 }
@@ -199,6 +200,7 @@ pub(crate) struct PlayerSession {
     resume_at: Option<f64>,
     pub(crate) anime4k: bool,
     pub(crate) upscaling: String,
+    pub(crate) fit: &'static str,
     pub(crate) stats_visible: bool,
     stats: Vec<fluxa_ui::StatsSection>,
     stats_at: Option<Instant>,
@@ -312,6 +314,7 @@ impl PlayerSession {
             resume_at: None,
             anime4k: false,
             upscaling: String::new(),
+            fit: "fit",
             stats_visible: false,
             stats: Vec::new(),
             stats_at: None,
@@ -1046,6 +1049,10 @@ fn publish_media(player: &mut PlayerSession, video: &mut Option<Box<dyn VideoBac
 }
 
 pub(crate) fn media_command(state: &mut RendererState, name: &str, value: f64) {
+    if name == "fitStep" {
+        step_fit(state, value as i32, false);
+        return;
+    }
     let Some(player) = state.player.as_ref() else {
         return;
     };
@@ -1144,6 +1151,7 @@ fn load_resolved(
                 video.configure(&settings.values);
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
+                video.command(VideoCommand::Fit(video_fit(settings).to_owned()));
                 apply_subtitle_style(video.as_mut(), &settings.values);
                 player.loaded_url = Some(url.to_owned());
                 player.trickplay = trickplay::from_snapshot(snapshot);
@@ -1337,6 +1345,41 @@ pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
         Some(mode @ ("b" | "c")) => mode,
         _ => "a",
     }
+}
+
+const FITS: [&str; 3] = ["fit", "fill", "stretch"];
+
+pub(crate) fn video_fit(settings: &SettingsModel) -> &'static str {
+    FITS.into_iter()
+        .find(|fit| settings.str_value("playerVideoFit") == Some(*fit))
+        .unwrap_or(FITS[0])
+}
+
+pub(crate) fn step_fit(state: &mut RendererState, direction: i32, wrap: bool) {
+    let current = FITS
+        .iter()
+        .position(|fit| *fit == video_fit(&state.settings))
+        .unwrap_or(0) as i32;
+    let count = FITS.len() as i32;
+    let next = if wrap {
+        (current + direction).rem_euclid(count)
+    } else {
+        (current + direction).clamp(0, count - 1)
+    };
+    if next == current {
+        return;
+    }
+    let value = json!(FITS[next as usize]);
+    if let Some(values) = state.settings.values.as_object_mut() {
+        values.insert("playerVideoFit".to_owned(), value.clone());
+    }
+    state
+        .pending_native_actions
+        .push(crate::NativeAction::SettingsChange {
+            key: "playerVideoFit".to_owned(),
+            value,
+        });
+    command(state, VideoCommand::Fit(FITS[next as usize].to_owned()));
 }
 
 fn apply_subtitle_style(video: &mut dyn VideoBackend, settings: &Value) {

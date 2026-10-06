@@ -229,6 +229,7 @@ impl VideoBackend for AppleBackend {
                 let args: Vec<&str> = args.iter().map(String::as_str).collect();
                 player.client.command(&args)
             }
+            VideoCommand::Fit(mode) => crate::mpv_common::set_fit(&player.client, &mode),
             VideoCommand::Shaders(_) => Ok(()),
         };
         if let Err(error) = result {

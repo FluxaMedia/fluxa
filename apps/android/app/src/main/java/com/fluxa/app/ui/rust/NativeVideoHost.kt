@@ -5,6 +5,9 @@ import android.content.Context
 import android.content.ContextWrapper
 import android.os.Handler
 import android.os.Looper
+import android.view.Gravity
+import android.view.MotionEvent
+import android.view.ScaleGestureDetector
 import android.view.ViewGroup
 import android.widget.FrameLayout
 import com.fluxa.app.BuildConfig
@@ -19,6 +22,8 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var player: MpvVideo? = null
     private var mpvOptions = ""
     private var shaders = emptyList<String>()
+    private var fit = "fit"
+    private var videoAspect = 0.0
     private var audioProcessingMode = "reference"
     private var videoOptions = emptyMap<String, String>()
     private var audioLanguage: String? = null
@@ -44,6 +49,10 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 }
             }
             if (BuildConfig.IS_TV) applyDisplayMode(player.displayModeHint)
+            player.aspect.takeIf { it != videoAspect }?.let {
+                videoAspect = it
+                layoutVideo()
+            }
             renderer.reportVideoStatus(
                 player.position,
                 player.duration,
@@ -62,6 +71,68 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         addView(videoSurface, match)
         addView(renderer, LayoutParams(match))
         renderer.onVideoRequest = ::onVideoRequest
+    }
+
+    private val pinch = ScaleGestureDetector(context, object : ScaleGestureDetector.SimpleOnScaleGestureListener() {
+        private var factor = 1f
+        private var stepped = false
+
+        override fun onScaleBegin(detector: ScaleGestureDetector): Boolean {
+            factor = 1f
+            stepped = false
+            return player != null
+        }
+
+        override fun onScale(detector: ScaleGestureDetector): Boolean {
+            factor *= detector.scaleFactor
+            if (!stepped && (factor > PINCH_STEP || factor < 1f / PINCH_STEP)) {
+                stepped = true
+                renderer.pushAction(JSONObject(mapOf("type" to "mediaCommand", "command" to "fitStep", "value" to if (factor > 1f) 1.0 else -1.0)).toString())
+            }
+            return true
+        }
+    }).apply { isQuickScaleEnabled = false }
+
+    private var pinching = false
+
+    override fun dispatchTouchEvent(event: MotionEvent): Boolean {
+        if (player == null) return super.dispatchTouchEvent(event)
+        pinch.onTouchEvent(event)
+        if (pinch.isInProgress && !pinching) {
+            pinching = true
+            val cancel = MotionEvent.obtain(event).apply { action = MotionEvent.ACTION_CANCEL }
+            super.dispatchTouchEvent(cancel)
+            cancel.recycle()
+        }
+        if (pinching) {
+            if (event.actionMasked == MotionEvent.ACTION_UP || event.actionMasked == MotionEvent.ACTION_CANCEL) pinching = false
+            return true
+        }
+        return super.dispatchTouchEvent(event)
+    }
+
+    override fun onSizeChanged(width: Int, height: Int, oldWidth: Int, oldHeight: Int) {
+        super.onSizeChanged(width, height, oldWidth, oldHeight)
+        layoutVideo()
+    }
+
+    private fun layoutVideo() {
+        if (width <= 0 || height <= 0) return
+        val aspect = videoAspect.takeIf { it > 0 && fit != "stretch" }
+        val (w, h) = when {
+            aspect == null -> width to height
+            fit == "fill" -> {
+                val w = maxOf(width.toDouble(), height * aspect)
+                w.toInt() to (w / aspect).toInt()
+            }
+            else -> {
+                val w = minOf(width.toDouble(), height * aspect)
+                w.toInt() to (w / aspect).toInt()
+            }
+        }
+        val params = videoSurface.layoutParams as LayoutParams
+        if (params.width == w && params.height == h) return
+        videoSurface.layoutParams = LayoutParams(w, h, Gravity.CENTER)
     }
 
     private fun onVideoRequest(json: String) {
@@ -93,6 +164,10 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                     shaders = List(files?.length() ?: 0) { files!!.optString(it) }
                     player?.setShaders(shaders)
                 }
+                "fit" -> {
+                    fit = request.optString("mode").ifBlank { "fit" }
+                    layoutVideo()
+                }
                 "mediaSession" -> request.optJSONObject("plan")?.let(mediaSession::update)
                 "setSpeed" -> player?.setSpeed(request.optDouble("value"))
                 "selectTracks" -> player?.selectTracks(
@@ -116,6 +191,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         player.setShaders(shaders)
         lastTracks = ""
         tick = 0
+        videoAspect = 0.0
         onPlayingChanged?.invoke(true)
         player.load(url, audioLanguage, subtitleLanguage)
         videoSurface.video = player
@@ -165,3 +241,5 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         super.onDetachedFromWindow()
     }
 }
+
+private const val PINCH_STEP = 1.15f

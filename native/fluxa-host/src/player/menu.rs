@@ -26,6 +26,7 @@ enum Item {
     Sleep,
     Upscaling,
     UpscalingMode,
+    Fit,
     Stats,
     Language(bool, String),
     LanguageBack,
@@ -319,6 +320,12 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
             }
             rows.extend([
                 row(
+                    text("player.video_fit"),
+                    Some(text(&format!("player.fit_{}", player.fit))),
+                    false,
+                    Item::Fit,
+                ),
+                row(
                     text("player.aspect_ratio"),
                     Some(aspect),
                     false,
@@ -437,6 +444,7 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         }
         Item::Upscaling => super::toggle_upscaling(state),
         Item::UpscalingMode => super::step_upscaling_mode(state, 1),
+        Item::Fit => super::step_fit(state, 1, true),
         Item::Stats => super::toggle_stats(state),
         Item::Sleep => {
             player.sleep = (player.sleep + 1) % SLEEP_MINUTES.len();
