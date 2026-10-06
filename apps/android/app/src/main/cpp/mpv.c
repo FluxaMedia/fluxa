@@ -100,15 +100,17 @@ JNIEXPORT jint JNICALL FN(command)(JNIEnv *env, jclass cls, jlong handle, jobjec
     return r;
 }
 
-JNIEXPORT jboolean JNICALL FN(drain)(JNIEnv *env, jclass cls, jlong handle)
+JNIEXPORT jint JNICALL FN(drain)(JNIEnv *env, jclass cls, jlong handle)
 {
-    bool failed = false;
+    int flags = 0;
     mpv_event *ev;
     while ((ev = mpv_wait_event(H, 0))->event_id != MPV_EVENT_NONE) {
-        if (ev->event_id == MPV_EVENT_END_FILE)
-            failed |= ((mpv_event_end_file *)ev->data)->reason == MPV_END_FILE_REASON_ERROR;
+        if (ev->event_id == MPV_EVENT_END_FILE && ((mpv_event_end_file *)ev->data)->reason == MPV_END_FILE_REASON_ERROR)
+            flags |= 1;
+        if (ev->event_id == MPV_EVENT_FILE_LOADED)
+            flags |= 2;
     }
-    return failed;
+    return flags;
 }
 
 JNIEXPORT jbyteArray JNICALL FN(thumbnail)(JNIEnv *env, jclass cls, jlong handle, jdouble seconds)

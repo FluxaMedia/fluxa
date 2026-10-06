@@ -88,10 +88,8 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
         return tracks.toString()
     }
 
-    fun chapterCount(): Int = Mpv.getProperty(mpv, "chapter-list/count")?.toIntOrNull() ?: 0
-
     fun chapterListJson(): String {
-        val count = chapterCount()
+        val count = Mpv.getProperty(mpv, "chapter-list/count")?.toIntOrNull() ?: 0
         val chapters = org.json.JSONArray()
         for (index in 0 until count) {
             val prefix = "chapter-list/$index"
@@ -118,10 +116,12 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
 
     private fun double(name: String) = Mpv.getProperty(mpv, name)?.toDoubleOrNull() ?: 0.0
 
-    fun poll() {
-        if (Mpv.drain(mpv)) {
+    fun poll(): Boolean {
+        val flags = Mpv.drain(mpv)
+        if (flags and 1 != 0) {
             error = (Mpv.getProperty(mpv, "last-error/message") ?: Mpv.getProperty(mpv, "last-error/error"))?.trim()?.take(180)
         }
+        return flags and 2 != 0
     }
 
     fun load(url: String, audioLanguage: String?, subtitleLanguage: String?) {
