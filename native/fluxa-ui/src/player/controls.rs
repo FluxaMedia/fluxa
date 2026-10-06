@@ -46,12 +46,8 @@ impl Chrome<'_> {
         actions
     }
 
-    fn header_actions(&self, mobile: bool) -> Vec<Action> {
-        let mut actions = if mobile {
-            self.actions(true)
-        } else {
-            Vec::new()
-        };
+    fn header_actions(&self) -> Vec<Action> {
+        let mut actions = Vec::new();
         if self.player.options.cast {
             actions.push(("Cast", NODE_PLAYER_CAST));
         }
@@ -243,7 +239,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         rect.right() - margin,
         header_y,
         chrome.icon(),
-        &chrome.header_actions(false),
+        &chrome.header_actions(),
     );
     chrome.heading(
         close_center.x + 34.0,
@@ -306,10 +302,14 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         );
     }
     let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions(false));
+    chrome.toggle_remaining(
+        ui,
+        Rect::from_min_size(Pos2::new(x + 8.0, y - 14.0), Vec2::new(96.0, 28.0)),
+    );
     chrome.text(
         Pos2::new(x + 8.0, y),
         Align2::LEFT_CENTER,
-        &chrome.times(position),
+        &chrome.times(ui, position),
         13.0,
         (right - x - 24.0).max(0.0),
         218,
@@ -351,7 +351,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         rect.right() - margin,
         header_y,
         chrome.icon_small(),
-        &chrome.header_actions(true),
+        &chrome.header_actions(),
     );
     let title_x = close_center.x + 34.0;
     chrome.heading(
@@ -398,29 +398,31 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         Vec2::new((rect.width() - margin * 2.0).max(80.0), 20.0),
     );
     let position = chrome.seek_bar(ui, layout, track, 3.0);
-    let label_y = track.top() - 6.0;
-    chrome.text(
-        Pos2::new(track.left(), label_y),
-        Align2::LEFT_BOTTOM,
-        &format_time(position),
-        13.0,
-        120.0,
-        218,
-    );
-    chrome.text(
-        Pos2::new(track.right(), label_y),
-        Align2::RIGHT_BOTTOM,
-        &format_time(player.duration.max(0.0)),
-        13.0,
-        120.0,
-        218,
-    );
-    let mut bottom = Vec::new();
+    let mut left = Vec::new();
     if !options.center_controls {
-        bottom.extend(chrome.transport());
+        left.extend(chrome.transport());
     }
-    bottom.extend(chrome.secondary());
-    chrome.row_left(ui, layout, margin - 6.0, y, chrome.icon_small(), &bottom);
+    left.extend(chrome.actions(true));
+    let after = chrome.row_left(ui, layout, margin - 6.0, y, chrome.icon_small(), &left);
+    let mut right = Vec::new();
+    if options.settings {
+        right.push(("Settings", NODE_PLAYER_SETTINGS));
+    }
+    right.extend(chrome.secondary());
+    let right_edge = chrome.row_right(ui, layout, rect.right() - margin + 6.0, y, chrome.icon_small(), &right);
+    let time_width = (right_edge - after - 12.0).max(0.0);
+    chrome.toggle_remaining(
+        ui,
+        Rect::from_min_size(Pos2::new(after + 4.0, y - 16.0), Vec2::new(time_width, 32.0)),
+    );
+    chrome.text(
+        Pos2::new(after + 8.0, y),
+        Align2::LEFT_CENTER,
+        &chrome.times(ui, position),
+        13.0,
+        time_width,
+        218,
+    );
 }
 
 pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
@@ -460,7 +462,7 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     chrome.text(
         Pos2::new(track.right(), track.top() - 16.0),
         Align2::RIGHT_BOTTOM,
-        &chrome.times(position),
+        &chrome.times(ui, position),
         17.0,
         track.width() * 0.3,
         218,

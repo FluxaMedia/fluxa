@@ -181,6 +181,7 @@ pub struct SourceBadge {
     pub image: Option<String>,
 }
 
+const GESTURE_EDGE: f32 = 0.28;
 const WARNING_BAR: f32 = 0.3;
 const WARNING_STAGGER: f32 = 0.08;
 const WARNING_FADE: f32 = 0.25;
@@ -450,16 +451,21 @@ impl Chrome<'_> {
         if response.dragged()
             && self.player.options.gestures
             && !holding
-            && let Some(pointer) = response.interact_pointer_pos()
         {
+            let origin = ui
+                .input(|input| input.pointer.press_origin())
+                .or_else(|| response.interact_pointer_pos());
             let delta = response.drag_delta();
-            if delta.y.abs() > delta.x.abs() {
+            if let Some(origin) = origin
+                && delta.y.abs() > delta.x.abs()
+            {
                 let fraction = -delta.y / (area.height() * 0.8);
-                layout.player_gesture = Some(if pointer.x < area.center().x {
-                    PlayerGesture::Brightness(fraction)
-                } else {
-                    PlayerGesture::Volume(fraction)
-                });
+                let edge = area.width() * GESTURE_EDGE;
+                if origin.x < area.left() + edge {
+                    layout.player_gesture = Some(PlayerGesture::Brightness(fraction));
+                } else if origin.x > area.right() - edge {
+                    layout.player_gesture = Some(PlayerGesture::Volume(fraction));
+                }
             }
             return;
         }
@@ -570,12 +576,68 @@ impl Chrome<'_> {
         position
     }
 
-    fn times(&self, position: f64) -> String {
-        format!(
-            "{}  /  {}",
-            format_time(position),
-            format_time(self.player.duration.max(0.0))
-        )
+    fn skippable(&self, from: f64) -> f64 {
+        let duration = self.player.duration.max(0.0);
+        self.player
+            .segment_spans
+            .iter()
+            .map(|span| {
+                let start = (span.start_fraction as f64 * duration).max(from);
+                let end = span.end_fraction as f64 * duration;
+                (end - start).max(0.0)
+            })
+            .sum()
+    }
+
+    fn remaining_mode(&self, ui: &egui::Ui) -> bool {
+        ui.data(|data| data.get_temp(Id::new("fluxa-player-remaining")))
+            .unwrap_or(false)
+    }
+
+    fn toggle_remaining(&self, ui: &mut egui::Ui, rect: Rect) {
+        if ui
+            .interact(rect, Id::new("fluxa-player-remaining-hit"), Sense::click())
+            .clicked()
+        {
+            let id = Id::new("fluxa-player-remaining");
+            let now = self.remaining_mode(ui);
+            ui.data_mut(|data| data.insert_temp(id, !now));
+        }
+    }
+
+    fn with_skips(&self, total: f64, skipped: f64, sign: &str) -> String {
+        let base = format!("{sign}{}", format_time(total));
+        if skipped >= 1.0 {
+            format!("{base} ({sign}{})", format_time((total - skipped).max(0.0)))
+        } else {
+            base
+        }
+    }
+
+    fn elapsed_label(&self, ui: &egui::Ui, position: f64) -> String {
+        if self.remaining_mode(ui) {
+            let left = (self.player.duration - position).max(0.0);
+            self.with_skips(left, self.skippable(position), "-")
+        } else {
+            format_time(position)
+        }
+    }
+
+    fn duration_label(&self) -> String {
+        let duration = self.player.duration.max(0.0);
+        self.with_skips(duration, self.skippable(0.0), "")
+    }
+
+    fn times(&self, ui: &egui::Ui, position: f64) -> String {
+        let times = format!(
+            "{} / {}",
+            self.elapsed_label(ui, position),
+            self.duration_label()
+        );
+        match self.player.chapter_at(position) {
+            Some(chapter) => format!("{times}  {chapter}"),
+            None => times,
+        }
     }
 }
 
