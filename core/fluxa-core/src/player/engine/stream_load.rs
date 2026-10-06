@@ -154,6 +154,7 @@ pub(crate) fn dispatch_load_streams(
             progress.last_episode_thumbnail,
             progress.last_stream_url,
             progress.last_stream_title,
+            None,
             progress.last_audio_language,
             progress.last_subtitle_language,
             progress.scrobble_trakt_pause,

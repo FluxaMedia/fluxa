@@ -302,6 +302,7 @@ impl HeadlessEngine {
                 action.last_episode_thumbnail,
                 action.last_stream_url,
                 action.last_stream_title,
+                action.last_stream,
                 action.last_audio_language,
                 action.last_subtitle_language,
                 action.scrobble_trakt_pause,

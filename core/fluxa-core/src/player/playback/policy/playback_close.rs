@@ -80,6 +80,7 @@ pub(crate) fn playback_close_plan_json(input: &str) -> Option<String> {
             last_stream_title: include_stream
                 .then(|| text_field(stream, &["title", "name"]))
                 .flatten(),
+            last_stream: include_stream.then(|| stream.cloned()).flatten(),
             last_audio_language: None,
             last_subtitle_language: None,
             scrobble_trakt_pause: Some(scrobble),
