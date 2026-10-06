@@ -16,11 +16,7 @@ fn all_extra_label(name: &str, language: &str) -> String {
         })
         .collect::<Vec<_>>()
         .join(" ");
-    if language.starts_with("tr") {
-        format!("Tüm {readable_name}")
-    } else {
-        format!("All {readable_name}")
-    }
+    localized("discover.all_filter_values", language).replacen("%s", &readable_name, 1)
 }
 
 pub fn draw_discover(
