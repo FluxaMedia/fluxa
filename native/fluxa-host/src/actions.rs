@@ -278,6 +278,32 @@ pub(super) fn native_action_for_node(
     }
 }
 
+fn known_logo(state: &RendererState, item: &Value) -> Option<String> {
+    let id = item.get("id").and_then(Value::as_str)?;
+    let home = &state.home;
+    home.hero_slides
+        .iter()
+        .find(|hero| hero.item_id.as_deref() == Some(id))
+        .and_then(|hero| hero.logo_url.clone())
+        .or_else(|| {
+            (home.item_id.as_deref() == Some(id))
+                .then(|| home.logo_url.clone())
+                .flatten()
+        })
+        .or_else(|| {
+            home.cards
+                .iter()
+                .chain(home.rows.iter().flat_map(|row| row.cards.iter()))
+                .find(|card| card.id.as_deref() == Some(id))
+                .and_then(|card| card.logo_url.clone())
+        })
+        .or_else(|| {
+            (state.detail.id == id)
+                .then(|| state.detail.logo_url.clone())
+                .flatten()
+        })
+}
+
 pub(super) fn playback_item(
     item: &Value,
     resume: Option<&HomeCard>,
@@ -999,7 +1025,8 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         }
         if let NativeAction::StartPlayback { item } = &action {
             player::keep_shuffle_for(&mut state.shuffle, item);
-            let mut player = player::PlayerSession::new(item.clone());
+            let mut player = player::PlayerSession::new(item.clone())
+                .with_logo_hint(known_logo(state, item));
             player.pick_manually(state.core_snapshot.as_deref());
             state.player = Some(player);
             state.screen_scroll_offsets.remove(&Route::Player);
@@ -1063,7 +1090,8 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
         };
         player::keep_shuffle_for(&mut state.shuffle, item);
         let command = player::direct_playback_command(item, &profile);
-        let mut player = player::PlayerSession::new(item.clone());
+        let mut player =
+            player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
         player.pick_manually(state.core_snapshot.as_deref());
         player.stale = state
             .core_snapshot

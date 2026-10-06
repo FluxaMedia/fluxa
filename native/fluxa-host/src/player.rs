@@ -127,6 +127,8 @@ pub trait VideoBackend: Send {
 
 pub(crate) struct PlayerSession {
     pub(crate) stale: Option<Value>,
+    snapshot_logo: Option<String>,
+    logo_requested: bool,
     meta: Value,
     local: bool,
     started: bool,
@@ -211,9 +213,29 @@ impl PlayerSession {
         player
     }
 
+    fn model_logo_from_meta(&self) -> Option<&str> {
+        ["logo", "logoUrl", "clearLogo", "titleLogo", "titleLogoUrl"]
+            .iter()
+            .find_map(|key| {
+                self.meta
+                    .get(*key)
+                    .and_then(Value::as_str)
+                    .filter(|url| !url.trim().is_empty())
+            })
+    }
+
+    pub(crate) fn with_logo_hint(mut self, logo: Option<String>) -> Self {
+        if logo.is_some() {
+            self.snapshot_logo = logo;
+        }
+        self
+    }
+
     pub(crate) fn new(meta: Value) -> Self {
         Self {
             stale: None,
+            snapshot_logo: None,
+            logo_requested: false,
             meta,
             local: false,
             started: false,
@@ -471,12 +493,16 @@ impl PlayerSession {
             show_pause_info: self.status.paused
                 && self.status.has_frame
                 && !self.controls_visible(),
-            logo: ["logo", "logoUrl", "titleLogo", "titleLogoUrl"]
+            logo: ["logo", "logoUrl", "clearLogo", "titleLogo", "titleLogoUrl"]
                 .iter()
-                .find_map(|key| self.meta.get(*key))
-                .and_then(Value::as_str)
-                .filter(|url| !url.trim().is_empty())
-                .map(ToOwned::to_owned),
+                .find_map(|key| {
+                    self.meta
+                        .get(*key)
+                        .and_then(Value::as_str)
+                        .filter(|url| !url.trim().is_empty())
+                })
+                .map(ToOwned::to_owned)
+                .or_else(|| self.snapshot_logo.clone()),
             episode_title: self.episode_title.clone(),
             episode_image: self.episode_image.clone(),
             season_episode: self.season_episode,
@@ -632,6 +658,76 @@ pub(crate) fn open_file(state: &mut RendererState, uri: &str, title: &str) -> Va
     json!({"type": "playerResolvePlaybackRequested", "url": uri, "title": title})
 }
 
+fn seek_logo(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
+    if player.snapshot_logo.is_some() {
+        return;
+    }
+    let id = player
+        .meta
+        .get("id")
+        .and_then(Value::as_str)
+        .map(|id| id.split(':').next().unwrap_or_default().to_owned())
+        .filter(|id| !id.is_empty());
+    let Some(id) = id else {
+        return;
+    };
+    if !player.logo_requested {
+        if player.model_logo_from_meta().is_some() {
+            return;
+        }
+        player.logo_requested = true;
+        let content_type = player
+            .meta
+            .get("type")
+            .and_then(Value::as_str)
+            .unwrap_or("movie");
+        let _ = session.dispatch(json!({
+            "type": "metaDetailRequested",
+            "contentType": content_type,
+            "id": id,
+            "language": player.language,
+            "profile": snapshot.pointer("/profile/active"),
+        }));
+        return;
+    }
+    let found = snapshot.pointer("/lookup/metaDetail").and_then(|detail| {
+        let meta = detail.get("meta").unwrap_or(detail);
+        let same = meta
+            .get("id")
+            .and_then(Value::as_str)
+            .is_some_and(|found| found.split(':').next() == Some(id.as_str()));
+        same.then(|| meta.get("logo").and_then(Value::as_str))
+            .flatten()
+            .filter(|url| !url.is_empty())
+            .map(str::to_owned)
+    });
+    if found.is_some() {
+        player.snapshot_logo = found;
+    }
+}
+
+fn detail_logo(snapshot: &Value, meta: &Value) -> Option<String> {
+    let detail = snapshot.get("detail")?;
+    let id = |value: &Value| {
+        ["id", "itemId"]
+            .iter()
+            .find_map(|key| value.get(*key).and_then(Value::as_str))
+            .map(|id| id.split(':').next().unwrap_or_default().to_owned())
+    };
+    let played = id(meta)?;
+    let same = id(detail).is_some_and(|id| id == played)
+        || detail.get("meta").and_then(id).is_some_and(|id| id == played);
+    if !same {
+        return None;
+    }
+    detail
+        .pointer("/fanartArtwork/hdLogo")
+        .or_else(|| detail.pointer("/meta/logo"))
+        .and_then(Value::as_str)
+        .filter(|url| !url.is_empty())
+        .map(str::to_owned)
+}
+
 fn fall_back_to_sources(state: &mut RendererState) {
     if !state.player.as_ref().is_some_and(PlayerSession::saved_stream_failed) {
         return;
@@ -693,6 +789,9 @@ pub(crate) fn pump(state: &mut RendererState) {
         (None, None) => return,
     };
     player.passthrough = video.as_ref().is_some_and(|video| video.passthrough());
+    if player.snapshot_logo.is_none() {
+        player.snapshot_logo = detail_logo(&snapshot, &player.meta);
+    }
     if player.stale.is_some() {
         if player.stale.as_ref() == snapshot.get("player") {
             return;
@@ -787,6 +886,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     player.season_episode = season_episode(&player.meta, &snapshot);
     player.synopsis = synopsis(&player.meta, &snapshot);
     player.stream_addons = stream_addon_names(&snapshot);
+    seek_logo(player, session, &snapshot);
     if !player.warnings_requested {
         player.warnings_requested = true;
         player.language =
