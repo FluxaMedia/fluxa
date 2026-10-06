@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 
 const CARD_KINDS: [&str; 3] = ["intro", "recap", "outro"];
 const MIN_CHAPTER_FRACTION: f64 = 0.004;
+const POST_CREDITS_MS: i64 = 45_000;
 const SKIP_LEAD_MS: i64 = 400;
 
 #[derive(Default, Deserialize)]
@@ -246,15 +247,19 @@ fn next_card(input: &OverlayInput, duration: i64) -> Option<NextCard> {
     if input.next_dismissed || duration <= 0 {
         return None;
     }
-    let outro_start = merged_segments(input, duration)
+    let outro = merged_segments(input, duration)
         .into_iter()
-        .filter(|segment| segment.kind == "outro")
-        .map(|segment| segment.start_time)
-        .filter(|start| *start > duration / 2)
-        .min();
+        .filter(|segment| segment.kind == "outro" && segment.start_time > duration / 2)
+        .min_by_key(|segment| segment.start_time);
     let threshold_ms =
         (duration as f64 * input.prefs.next_episode_threshold_percent / 100.0) as i64;
-    let show_at = outro_start.map_or(threshold_ms, |start| start.min(threshold_ms));
+    let show_at = match outro {
+        Some(outro) if duration - outro.end_time > POST_CREDITS_MS => {
+            threshold_ms.max(outro.end_time)
+        }
+        Some(outro) => outro.start_time.min(threshold_ms),
+        None => threshold_ms,
+    };
     (input.position_ms >= show_at).then(|| NextCard {
         title: next.title.clone(),
         season: next.season,
@@ -347,6 +352,21 @@ mod tests {
         }));
         assert_eq!(result["next"]["episode"], 2);
         assert!(result["skip"].is_null());
+    }
+
+    #[test]
+    fn next_card_waits_out_a_post_credits_scene() {
+        let segments = json!([{"type": "outro", "startTime": 1300000, "endTime": 1400000}]);
+        let during_credits = plan(json!({
+            "positionMs": 1350000, "durationMs": 1500000,
+            "segments": segments, "nextEpisode": {"title": "Pilot"}
+        }));
+        assert!(during_credits["next"].is_null());
+        let after_scene_starts = plan(json!({
+            "positionMs": 1460000, "durationMs": 1500000,
+            "segments": segments, "nextEpisode": {"title": "Pilot"}
+        }));
+        assert_eq!(after_scene_starts["next"]["title"], "Pilot");
     }
 
     #[test]
