@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{VideoBackend, VideoCommand, VideoStatus, VideoTrack};
+use crate::{Thumbnail, VideoBackend, VideoCommand, VideoStatus, VideoTrack};
 use serde_json::{Value, json};
 
 #[derive(Default)]
@@ -8,6 +8,7 @@ pub struct VideoBridge {
     requests: Vec<Value>,
     status: VideoStatus,
     tracks: Vec<VideoTrack>,
+    thumbnail: Option<Thumbnail>,
 }
 
 impl VideoBridge {
@@ -15,8 +16,17 @@ impl VideoBridge {
         std::mem::take(&mut self.requests)
     }
 
-    pub fn set_status(&mut self, status: VideoStatus) {
+    pub fn set_status(&mut self, mut status: VideoStatus) {
+        status.chapters = std::mem::take(&mut self.status.chapters);
         self.status = status;
+    }
+
+    pub fn set_thumbnail(&mut self, thumbnail: Thumbnail) {
+        self.thumbnail = Some(thumbnail);
+    }
+
+    pub fn set_chapters(&mut self, chapters: Vec<(f64, String)>) {
+        self.status.chapters = chapters;
     }
 
     pub fn set_tracks(&mut self, tracks: Vec<VideoTrack>) {
@@ -58,6 +68,7 @@ impl VideoBackend for BridgeVideo {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
+            bridge.thumbnail = None;
         }
         self.send(json!({"type": "load", "url": url}));
     }
@@ -66,6 +77,7 @@ impl VideoBackend for BridgeVideo {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
+            bridge.thumbnail = None;
         }
         self.send(json!({"type": "stop"}));
     }
@@ -126,6 +138,14 @@ impl VideoBackend for BridgeVideo {
             .lock()
             .map(|bridge| bridge.tracks.clone())
             .unwrap_or_default()
+    }
+
+    fn request_thumbnail(&mut self, time: f64) {
+        self.send(json!({"type": "thumbnail", "time": time}));
+    }
+
+    fn take_thumbnail(&mut self) -> Option<Thumbnail> {
+        self.0.lock().ok()?.thumbnail.take()
     }
 
     fn passthrough(&self) -> bool {

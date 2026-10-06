@@ -11,7 +11,7 @@ use fluxa_host::{
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
     JNIEnv, JavaVM,
-    objects::{GlobalRef, JClass, JIntArray, JObject, JString, JValue},
+    objects::{GlobalRef, JByteArray, JClass, JIntArray, JObject, JString, JValue},
     sys::{jboolean, jdouble, jfloat, jint, jlong},
 };
 use raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawWindowHandle};
@@ -240,6 +240,61 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoTra
         .collect();
     if let Ok(mut bridge) = video_bridge().lock() {
         bridge.set_tracks(tracks);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoChaptersNative(
+    mut env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    json: JString<'_>,
+) {
+    let Some(text) = string(&mut env, &json) else {
+        return;
+    };
+    let Ok(items) = serde_json::from_str::<Vec<serde_json::Value>>(&text) else {
+        return;
+    };
+    let chapters = items
+        .iter()
+        .filter_map(|item| {
+            Some((
+                item.get("startMs")?.as_u64()? as f64 / 1000.0,
+                item.get("title")?.as_str()?.to_owned(),
+            ))
+        })
+        .collect();
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_chapters(chapters);
+    }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThumbnailNative(
+    env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    data: JByteArray<'_>,
+) {
+    let Ok(bytes) = env.convert_byte_array(&data) else {
+        return;
+    };
+    let Some((head, rgba)) = bytes.split_at_checked(12) else {
+        return;
+    };
+    let field = |index: usize| {
+        i32::from_le_bytes(head[index * 4..index * 4 + 4].try_into().unwrap_or_default())
+    };
+    let (width, height) = (field(0).max(0) as usize, field(1).max(0) as usize);
+    if width == 0 || height == 0 || rgba.len() != width * height * 4 {
+        return;
+    }
+    let thumbnail = fluxa_host::Thumbnail {
+        time: field(2) as f64 / 1000.0,
+        size: [width, height],
+        rgba: rgba.to_vec(),
+    };
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_thumbnail(thumbnail);
     }
 }
 

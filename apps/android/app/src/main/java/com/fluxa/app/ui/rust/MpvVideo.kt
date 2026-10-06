@@ -40,6 +40,9 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
             "sub-ass-override" to "scale",
             "audio-display" to "no",
             "idle" to "once",
+            "thumbnails" to "yes",
+            "thumbnail-width" to "320",
+            "thumbnail-cache-dir" to appContext.cacheDir.resolve("thumbnails").apply { mkdirs() }.absolutePath,
         ).plus(videoOptions).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
         options.lines().map(String::trim).filter { it.isNotEmpty() && !it.startsWith('#') }.forEach { line ->
             val key = line.substringBefore('=', "").trim()
@@ -84,6 +87,23 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
         }
         return tracks.toString()
     }
+
+    fun chapterListJson(): String {
+        val count = Mpv.getProperty(mpv, "chapter-list/count")?.toIntOrNull() ?: 0
+        val chapters = org.json.JSONArray()
+        for (index in 0 until count) {
+            val prefix = "chapter-list/$index"
+            val start = Mpv.getProperty(mpv, "$prefix/time")?.toDoubleOrNull() ?: continue
+            chapters.put(
+                org.json.JSONObject()
+                    .put("startMs", (start * 1000).toLong())
+                    .put("title", Mpv.getProperty(mpv, "$prefix/title")?.takeIf { it.isNotBlank() } ?: "Chapter ${index + 1}"),
+            )
+        }
+        return chapters.toString()
+    }
+
+    fun thumbnail(seconds: Double): ByteArray? = Mpv.thumbnail(mpv, seconds)
 
     fun selectTracks(audio: String?, subtitle: String?, subtitlesOff: Boolean) {
         if (audio != null) Mpv.setProperty(mpv, "aid", audio)

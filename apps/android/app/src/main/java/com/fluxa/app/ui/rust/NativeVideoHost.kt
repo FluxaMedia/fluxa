@@ -29,6 +29,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     var onPlayingChanged: ((Boolean) -> Unit)? = null
 
     private var lastTracks = ""
+    private var lastChapters = ""
     private var tick = 0
 
     private val reportStatus = object : Runnable {
@@ -40,6 +41,11 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 if (tracks != lastTracks) {
                     lastTracks = tracks
                     renderer.reportVideoTracks(tracks)
+                }
+                val chapters = player.chapterListJson()
+                if (chapters != lastChapters) {
+                    lastChapters = chapters
+                    renderer.reportVideoChapters(chapters)
                 }
             }
             if (BuildConfig.IS_TV) applyDisplayMode(player.displayModeHint)
@@ -94,6 +100,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                     request.optString("subtitle").takeUnless { request.isNull("subtitle") || it.isBlank() },
                     request.optBoolean("subtitlesOff"),
                 )
+                "thumbnail" -> player?.thumbnail(request.optDouble("time"))?.let(renderer::reportVideoThumbnail)
                 "mpv" -> request.optJSONArray("args")?.let { args ->
                     player?.mpvCommand(Array(args.length()) { args.optString(it) })
                 }
@@ -107,6 +114,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, videoOptions) }.getOrNull() ?: return
         this.player = player
         lastTracks = ""
+        lastChapters = ""
         tick = 0
         onPlayingChanged?.invoke(true)
         player.load(url, audioLanguage, subtitleLanguage)

@@ -14,6 +14,7 @@ internal object Mpv {
     @JvmStatic external fun setProperty(handle: Long, key: String, value: String): Int
     @JvmStatic external fun getProperty(handle: Long, key: String): String?
     @JvmStatic external fun command(handle: Long, args: Array<String>): Int
+    @JvmStatic external fun thumbnail(handle: Long, seconds: Double): ByteArray?
     @JvmStatic external fun drain(handle: Long): Boolean
     @JvmStatic external fun attach(handle: Long, surface: Surface): Long
     @JvmStatic external fun detach(handle: Long, ref: Long)

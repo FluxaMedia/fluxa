@@ -175,6 +175,14 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         NativeRenderer.videoTracksNative(json)
     }
 
+    fun reportVideoThumbnail(data: ByteArray) {
+        NativeRenderer.videoThumbnailNative(data)
+    }
+
+    fun reportVideoChapters(json: String) {
+        NativeRenderer.videoChaptersNative(json)
+    }
+
     fun coreSnapshotJson(): String =
         if (nativeHandle == 0L) "{}" else NativeRenderer.snapshotNative(nativeHandle)
 
@@ -896,6 +904,8 @@ private object NativeRenderer {
         error: String?,
     )
     @JvmStatic external fun videoTracksNative(json: String)
+    @JvmStatic external fun videoChaptersNative(json: String)
+    @JvmStatic external fun videoThumbnailNative(data: ByteArray)
     @JvmStatic external fun accessibilityTreeNative(handle: Long): String?
     @JvmStatic external fun focusNodeNative(handle: Long, node: Long)
     @JvmStatic external fun activateNodeNative(handle: Long, node: Long)
