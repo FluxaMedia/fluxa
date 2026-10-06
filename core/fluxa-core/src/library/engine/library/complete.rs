@@ -115,6 +115,16 @@ pub(crate) fn complete(
                         engine.state.library.pending_playback_progress.clone();
                     engine.state.library.pending_playback_progress = Value::Null;
                     engine.state.library.last_write_error = Value::Null;
+                    let closing = engine
+                        .state
+                        .library
+                        .saved_playback_progress
+                        .get("refreshExternalContinueWatching")
+                        .and_then(Value::as_bool)
+                        == Some(true);
+                    if closing {
+                        return home::dispatch_refresh_continue_watching(engine, None, None, None);
+                    }
                 } else {
                     engine.state.library.last_write_error = normalize_error(result.error.clone());
                 }

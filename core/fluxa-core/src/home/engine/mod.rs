@@ -154,7 +154,9 @@ pub(crate) fn dispatch_refresh_continue_watching(
         RefreshContinueWatchingPayload {
             profile_id,
             profile: profile_value,
-            language: language.unwrap_or_else(|| "en".to_string()),
+            language: language
+                .or_else(|| Some(engine.state.home.language.clone()).filter(|l| !l.is_empty()))
+                .unwrap_or_else(|| "en".to_string()),
             source,
         },
     )]
