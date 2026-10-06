@@ -35,6 +35,7 @@ const TORRENT_UNRESPONSIVE_AFTER: Duration = Duration::from_secs(20);
 const MIN_BRIGHTNESS: f32 = 0.15;
 const MEDIA_DRIFT: f64 = 1.5;
 const FAST_SPEED: f64 = 2.0;
+const SEEK_RUN: Duration = Duration::from_millis(1400);
 const TOAST_FADE: Duration = Duration::from_millis(250);
 const THUMBNAIL_INTERVAL: Duration = Duration::from_millis(75);
 
@@ -182,6 +183,7 @@ pub(crate) struct PlayerSession {
     pub(crate) sources_scroll_max: f32,
     manual: bool,
     toast: Option<(Value, Instant)>,
+    seek_run: Option<(f64, Instant)>,
     media_sent: Option<(Instant, String, f64)>,
     brightness: f32,
     speed_held: bool,
@@ -294,6 +296,7 @@ impl PlayerSession {
             cast: crate::cast::Cast::default(),
             trailer: None,
             toast: None,
+            seek_run: None,
             media_sent: None,
             brightness: 1.0,
             speed_held: false,
@@ -356,6 +359,15 @@ impl PlayerSession {
         if let Some(plan) = core_value("playerToastPlan", json!({"kind": kind, "value": value})) {
             self.toast = Some((plan, Instant::now()));
         }
+    }
+
+    pub(crate) fn toast_seek(&mut self, delta: f64) {
+        let total = match self.seek_run {
+            Some((total, at)) if at.elapsed() < SEEK_RUN && total * delta > 0.0 => total + delta,
+            _ => delta,
+        };
+        self.seek_run = Some((total, Instant::now()));
+        self.toast("seek", total);
     }
 
     pub(crate) fn toast_skip(&mut self) {
@@ -1272,7 +1284,7 @@ pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
     if let Some(player) = state.player.as_mut() {
         player.touch();
         match &command {
-            VideoCommand::Seek(delta) => player.toast("seek", *delta),
+            VideoCommand::Seek(delta) => player.toast_seek(*delta),
             VideoCommand::ToggleMute => player.toast("muted", f64::from(!player.status.muted)),
             VideoCommand::SetSpeed(rate) => player.toast("speed", *rate),
             _ => {}
