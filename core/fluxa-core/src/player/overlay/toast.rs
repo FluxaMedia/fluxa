@@ -64,6 +64,7 @@ pub(crate) fn player_toast_plan_json(args_json: &str) -> Option<String> {
             };
             json!({"key": key, "holdMs": HOLD_MS})
         }
+        "fit" => json!({"key": "player.toast.fit", "value": input.label?, "holdMs": HOLD_MS}),
         "audio" => json!({"key": "player.toast.audio", "value": input.label?, "holdMs": HOLD_MS}),
         "subtitle" => match input.label {
             Some(label) => {

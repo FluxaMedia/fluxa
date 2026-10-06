@@ -1380,6 +1380,12 @@ pub(crate) fn step_fit(state: &mut RendererState, direction: i32, wrap: bool) {
             value,
         });
     command(state, VideoCommand::Fit(FITS[next as usize].to_owned()));
+    if let Some(player) = state.player.as_mut() {
+        let label = fluxa_ui::localized(&format!("player.fit_{}", FITS[next as usize]), &player.language);
+        if let Some(plan) = core_value("playerToastPlan", json!({"kind": "fit", "label": label})) {
+            player.toast = Some((plan, Instant::now()));
+        }
+    }
 }
 
 fn apply_subtitle_style(video: &mut dyn VideoBackend, settings: &Value) {

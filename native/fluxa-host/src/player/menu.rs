@@ -5,6 +5,7 @@ const SPEEDS: [f64; 7] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 const ASPECTS: [&str; 5] = ["-1", "16:9", "4:3", "21:9", "1:1"];
 const SLEEP_MINUTES: [u32; 5] = [0, 15, 30, 45, 60];
 const DELAY_STEP: f64 = 0.1;
+const DELAY_COARSE_STEP: f64 = 0.5;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(super) enum Menu {
@@ -12,6 +13,7 @@ pub(super) enum Menu {
     Speed,
     Episodes,
     Settings,
+    Delay(bool),
 }
 
 enum Item {
@@ -23,6 +25,8 @@ enum Item {
     Aspect,
     AudioDelay(f64),
     SubtitleDelay(f64),
+    OpenDelay(bool),
+    DelayReset(bool),
     Sleep,
     Upscaling,
     UpscalingMode,
@@ -332,33 +336,46 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                     Item::Aspect,
                 ),
                 row(
-                    text("player.audio_delay_earlier"),
+                    text("player.audio_delay"),
                     Some(delay(player.audio_delay)),
                     false,
-                    Item::AudioDelay(-DELAY_STEP),
+                    Item::OpenDelay(false),
                 ),
                 row(
-                    text("player.audio_delay_later"),
-                    Some(delay(player.audio_delay)),
-                    false,
-                    Item::AudioDelay(DELAY_STEP),
-                ),
-                row(
-                    text("player.subtitle_delay_earlier"),
+                    text("player.subtitle_delay"),
                     Some(delay(player.subtitle_delay)),
                     false,
-                    Item::SubtitleDelay(-DELAY_STEP),
-                ),
-                row(
-                    text("player.subtitle_delay_later"),
-                    Some(delay(player.subtitle_delay)),
-                    false,
-                    Item::SubtitleDelay(DELAY_STEP),
+                    Item::OpenDelay(true),
                 ),
                 row(text("player.sleep_timer"), Some(sleep), false, Item::Sleep),
                 stats,
             ]);
             (text("player.settings"), rows)
+        }
+        Menu::Delay(subtitles) => {
+            let current = if subtitles {
+                player.subtitle_delay
+            } else {
+                player.audio_delay
+            };
+            let step = |value: f64| {
+                let item = if subtitles {
+                    Item::SubtitleDelay(value)
+                } else {
+                    Item::AudioDelay(value)
+                };
+                row(format!("{value:+.1}s"), None, false, item)
+            };
+            let rows = vec![
+                heading(format!("{current:+.1}s")),
+                step(DELAY_COARSE_STEP),
+                step(DELAY_STEP),
+                row(text("player.delay_reset"), None, false, Item::DelayReset(subtitles)),
+                step(-DELAY_STEP),
+                step(-DELAY_COARSE_STEP),
+            ];
+            let title = if subtitles { "player.subtitle_delay" } else { "player.audio_delay" };
+            (text(title), rows)
         }
     }
 }
@@ -441,6 +458,16 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
             player.subtitle_delay = ((player.subtitle_delay + step) * 10.0).round() / 10.0;
             let value = player.subtitle_delay.to_string();
             mpv(state, "sub-delay", &value);
+        }
+        Item::OpenDelay(subtitles) => player.panel = Some(Panel::Menu(Menu::Delay(subtitles))),
+        Item::DelayReset(subtitles) => {
+            if subtitles {
+                player.subtitle_delay = 0.0;
+                mpv(state, "sub-delay", "0");
+            } else {
+                player.audio_delay = 0.0;
+                mpv(state, "audio-delay", "0");
+            }
         }
         Item::Upscaling => super::toggle_upscaling(state),
         Item::UpscalingMode => super::step_upscaling_mode(state, 1),
