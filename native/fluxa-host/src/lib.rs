@@ -509,6 +509,11 @@ impl FluxaHost {
         self.with_state(|state| state.video = Some(backend));
     }
 
+    pub fn wants_landscape(&self) -> bool {
+        self.with_state(|state| state.player.as_ref().is_some_and(player::PlayerSession::wants_landscape))
+            .unwrap_or(false)
+    }
+
     pub fn is_playing(&self) -> bool {
         self.with_state(|state| state.player.is_some())
             .unwrap_or(false)

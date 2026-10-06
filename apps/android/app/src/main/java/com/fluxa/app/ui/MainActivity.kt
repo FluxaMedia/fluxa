@@ -27,6 +27,15 @@ class MainActivity : Activity() {
 
         host = NativeVideoHost(this)
         host.onPlayingChanged = ::setPlaying
+        host.renderer.onPlayerScreenChanged = { onPlayer ->
+            if (!com.fluxa.app.BuildConfig.IS_TV) {
+                requestedOrientation = if (onPlayer) {
+                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                } else {
+                    android.content.pm.ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
+            }
+        }
         host.renderer.sessionDataDir = filesDir.resolve("fluxa-native").absolutePath
         host.renderer.legacyProfilesJson = { legacyProfilesJson(this) }
         host.renderer.onAppIcon = { AppIcons.apply(this, it) }
