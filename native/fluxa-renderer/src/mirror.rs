@@ -51,6 +51,12 @@ fn mirror_shape(shape: &mut Shape, width: f32) {
         }
         Shape::Text(text) => {
             let extent = text.galley.rect;
+            if text.galley.rows.len() > 1 && text.galley.job.halign == egui::Align::Min {
+                let galley = Arc::make_mut(&mut text.galley);
+                for placed in &mut galley.rows {
+                    placed.pos.x = extent.max.x - placed.row.size.x;
+                }
+            }
             text.pos.x = width - text.pos.x - extent.max.x - extent.min.x;
         }
         Shape::Mesh(mesh) if mesh.texture_id == TextureId::Managed(0) => Arc::make_mut(mesh)
@@ -118,6 +124,34 @@ mod tests {
         assert_eq!(mirrored.corner_radius.ne, 8);
         assert_eq!(mirrored.corner_radius.se, 4);
         assert_eq!(mirrored.corner_radius.nw, 0);
+    }
+
+    #[test]
+    fn wrapped_rows_end_on_the_same_edge() {
+        let context = egui::Context::default();
+        context.set_fonts(egui::FontDefinitions::default());
+        let _ = context.run_ui(egui::RawInput::default(), |_| {});
+        let galley = context.fonts_mut(|fonts| {
+            fonts.layout(
+                "aaaa aaaa a".to_owned(),
+                egui::FontId::proportional(14.0),
+                Color32::WHITE,
+                40.0,
+            )
+        });
+        assert!(galley.rows.len() > 1);
+        let mut shapes = vec![clipped(Shape::Text(egui::epaint::TextShape::new(
+            pos2(0.0, 0.0),
+            galley,
+            Color32::WHITE,
+        )))];
+        mirror_shapes(&mut shapes, 100.0);
+        let Shape::Text(text) = &shapes[0].shape else {
+            panic!("expected text")
+        };
+        let right = |row: &egui::epaint::text::PlacedRow| row.pos.x + row.row.size.x;
+        let first = right(&text.galley.rows[0]);
+        assert!(text.galley.rows.iter().all(|row| (right(row) - first).abs() < 0.01));
     }
 
     #[test]
