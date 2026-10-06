@@ -88,8 +88,10 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
         return tracks.toString()
     }
 
+    fun chapterCount(): Int = Mpv.getProperty(mpv, "chapter-list/count")?.toIntOrNull() ?: 0
+
     fun chapterListJson(): String {
-        val count = Mpv.getProperty(mpv, "chapter-list/count")?.toIntOrNull() ?: 0
+        val count = chapterCount()
         val chapters = org.json.JSONArray()
         for (index in 0 until count) {
             val prefix = "chapter-list/$index"
