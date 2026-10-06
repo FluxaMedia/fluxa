@@ -116,24 +116,27 @@ pub(crate) fn simkl_mark_watched_body_json(args_json: &str) -> Option<String> {
     let mut movies = Vec::new();
     let mut shows: std::collections::HashMap<
         String,
-        (Value, std::collections::BTreeMap<i64, Vec<i64>>),
+        (Value, std::collections::BTreeMap<i64, Vec<i64>>, bool),
     > = std::collections::HashMap::new();
     for video_id in video_ids.iter().filter_map(Value::as_str) {
         let Some(target) = simkl_target(video_id) else {
             continue;
         };
+        let tvdb_numbering = ["imdb", "tmdb", "tvdb"]
+            .iter()
+            .any(|key| target.ids.get(key).is_some());
         let ids = provider_ids.clone().unwrap_or(target.ids);
         if let Some(episode) = target.episode {
             let season = target.season;
-            let key = ids.to_string();
+            let key = format!("{ids}{tvdb_numbering}");
             let entry = shows
                 .entry(key)
-                .or_insert_with(|| (ids, std::collections::BTreeMap::new()));
+                .or_insert_with(|| (ids, std::collections::BTreeMap::new(), tvdb_numbering));
             entry.1.entry(season).or_default().push(episode);
         } else if meta_type == "series" {
             shows
-                .entry(ids.to_string())
-                .or_insert_with(|| (ids, std::collections::BTreeMap::new()));
+                .entry(format!("{ids}{tvdb_numbering}"))
+                .or_insert_with(|| (ids, std::collections::BTreeMap::new(), tvdb_numbering));
         } else {
             let mut movie = json!({"ids": ids, "watched_at": watched_at.clone().unwrap_or_else(|| "now".to_string())});
             mark_rewatch(&mut movie, rewatch, rewatch_id);
@@ -142,8 +145,7 @@ pub(crate) fn simkl_mark_watched_body_json(args_json: &str) -> Option<String> {
     }
     let show_values = shows
         .into_values()
-        .map(|(ids, seasons)| {
-            let tvdb_seasons = ids.get("imdb").is_some() || ids.get("tmdb").is_some();
+        .map(|(ids, seasons, tvdb_seasons)| {
             let mut show = if seasons.is_empty() {
                 json!({"ids": ids, "use_tvdb_anime_seasons": tvdb_seasons})
             } else {

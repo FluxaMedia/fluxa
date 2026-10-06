@@ -240,3 +240,24 @@ fn watched_map_answers_to_every_id_scheme_an_addon_may_use() {
         assert_eq!(watched[id], true, "{id}");
     }
 }
+
+#[test]
+fn tvdb_season_flag_follows_the_video_id_not_the_merged_provider_ids() {
+    let flag = |video_id: &str| {
+        let body: Value = serde_json::from_str(
+            &simkl_mark_watched_body_json(
+                &json!({
+                    "videoIds": [video_id],
+                    "meta": {"type": "series"},
+                    "providerIds": {"simkl": 7, "imdb": "tt22248376", "kitsu": 46474}
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        body["shows"][0]["use_tvdb_anime_seasons"].clone()
+    };
+    assert_eq!(flag("kitsu:46474:5"), false);
+    assert_eq!(flag("tt22248376:2:5"), true);
+}
