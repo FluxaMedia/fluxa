@@ -517,7 +517,9 @@ impl Gpu {
         egui_context.set_fonts(fluxa_ui::fonts::definitions());
         egui_context.all_styles_mut(|style| style.debug.warn_if_rect_changes_id = false);
         let background_image = {
-            let image = fluxa_renderer::ambient_background_tinted(background.unwrap_or(fluxa_renderer::Color::rgba(6.0 / 255.0, 6.0 / 255.0, 6.0 / 255.0, 1.0)));
+            let image = fluxa_renderer::ambient_background_tinted(background.unwrap_or(
+                fluxa_renderer::Color::rgba(6.0 / 255.0, 6.0 / 255.0, 6.0 / 255.0, 1.0),
+            ));
             egui::ColorImage::from_rgba_unmultiplied(
                 [image.width() as usize, image.height() as usize],
                 image.as_raw(),
@@ -661,6 +663,7 @@ impl Gpu {
         modifiers: egui::Modifiers,
         pre_present: Option<&PrePresent>,
         menu: Option<&card_menu::MenuView>,
+        splash: Option<(&str, Option<&str>, f32)>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         let passthrough =
@@ -722,7 +725,12 @@ impl Gpu {
                 }
             }
         }
-        fluxa_ui::set_liquid_glass(settings.value("accentColorArgb").and_then(serde_json::Value::as_str) == Some("glass"));
+        fluxa_ui::set_liquid_glass(
+            settings
+                .value("accentColorArgb")
+                .and_then(serde_json::Value::as_str)
+                == Some("glass"),
+        );
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
         fluxa_ui::set_mobile_nav_style(
@@ -806,6 +814,16 @@ impl Gpu {
                 route as u64
             };
             fluxa_ui::page_transition(ui.ctx(), page, &[egui::Id::new("fluxa-shared-bottom-bar")]);
+            if let Some((name, avatar, elapsed)) = splash {
+                fluxa_ui::draw_profile_splash(
+                    ui.ctx(),
+                    viewport,
+                    name,
+                    avatar,
+                    elapsed,
+                    &mut assets,
+                );
+            }
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     ui.ctx(),

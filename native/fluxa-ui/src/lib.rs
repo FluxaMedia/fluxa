@@ -63,8 +63,9 @@ pub use player::{
     content_warning_duration, draw_player, format_time, torrent_status_lines,
 };
 pub use profiles::{
-    PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft, ProfileEntry,
-    ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest, draw_profiles,
+    PROFILE_SPLASH_SECS, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
+    ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
+    draw_profile_splash, draw_profiles,
 };
 use settings::settings_card_height;
 pub use settings::{

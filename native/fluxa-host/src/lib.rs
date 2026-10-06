@@ -197,6 +197,7 @@ struct RendererState {
     profiles: Option<fluxa_ui::ProfilesModel>,
     account_auth: Option<accounts::AccountAuth>,
     pack_job: Option<profiles::PackJob>,
+    profile_splash: Option<(Instant, String, Option<String>)>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
@@ -373,6 +374,7 @@ impl FluxaHost {
             profiles: None,
             account_auth: None,
             pack_job: None,
+            profile_splash: None,
             picker_background: None,
             image_picker: None,
             pre_present: None,
@@ -491,6 +493,20 @@ impl FluxaHost {
             state.picker_background = background;
             if pick {
                 profiles::open(state);
+            } else if let Some(Value::String(id)) = state.session.as_ref().and_then(|session| {
+                session
+                    .storage()
+                    .read_json("active_profile_id")
+                    .ok()
+                    .flatten()
+            }) {
+                let storage = state
+                    .session
+                    .as_ref()
+                    .map(|session| session.storage().clone());
+                if let Some(storage) = storage {
+                    profiles::splash(state, &storage, &id);
+                }
             }
         });
         Ok(())
@@ -526,8 +542,13 @@ impl FluxaHost {
     }
 
     pub fn wants_landscape(&self) -> bool {
-        self.with_state(|state| state.player.as_ref().is_some_and(player::PlayerSession::wants_landscape))
-            .unwrap_or(false)
+        self.with_state(|state| {
+            state
+                .player
+                .as_ref()
+                .is_some_and(player::PlayerSession::wants_landscape)
+        })
+        .unwrap_or(false)
     }
 
     pub fn is_playing(&self) -> bool {

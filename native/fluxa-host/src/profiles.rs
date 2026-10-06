@@ -1,5 +1,6 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
+use std::time::Instant;
 
 use fluxa_effects::{EffectExecutor, SessionHandle, Storage};
 use fluxa_ui::{
@@ -288,8 +289,17 @@ fn new_profile_id() -> String {
     format!("{nanos:x}-{:x}", std::process::id())
 }
 
+pub(crate) fn splash(state: &mut RendererState, storage: &Storage, id: &str) {
+    state.profile_splash = stored_profiles(storage)
+        .iter()
+        .map(entry)
+        .find(|profile| profile.id == id)
+        .map(|profile| (Instant::now(), profile.name, profile.avatar_url));
+}
+
 fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     write(storage, "active_profile_id", &json!(id));
+    splash(state, storage, id);
     match SessionHandle::open(storage.clone()) {
         Ok(session) => {
             if let Err(error) = load_profile(&session) {

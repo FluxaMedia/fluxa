@@ -229,8 +229,21 @@ pub(super) fn render_frame(state: &mut RendererState) {
             egui_events,
             modifiers,
             pre_present,
+            profile_splash,
             ..
         } = state;
+        if profile_splash.as_ref().is_some_and(|(started, _, _)| {
+            started.elapsed().as_secs_f32() > fluxa_ui::PROFILE_SPLASH_SECS
+        }) {
+            *profile_splash = None;
+        }
+        let splash = profile_splash.as_ref().map(|(started, name, avatar)| {
+            (
+                name.clone(),
+                avatar.clone(),
+                started.elapsed().as_secs_f32(),
+            )
+        });
         let events = std::mem::take(egui_events);
         let modifiers = *modifiers;
         gpu.as_mut().map(|gpu| {
@@ -258,6 +271,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 modifiers,
                 pre_present.as_ref(),
                 menu.as_ref(),
+                splash
+                    .as_ref()
+                    .map(|(name, avatar, elapsed)| (name.as_str(), avatar.as_deref(), *elapsed)),
                 &mut timer,
             )
         })
