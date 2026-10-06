@@ -126,6 +126,53 @@ impl EffectExecutor {
         items
     }
 
+    fn with_saved_streams(&self, profile_id: &str, mut items: Value) -> Value {
+        let Some(list) = items.as_array_mut() else {
+            return items;
+        };
+        let local = self
+            .storage
+            .read_json(&Storage::library_key(profile_id))
+            .ok()
+            .flatten()
+            .and_then(|library| library.get("progress").cloned())
+            .unwrap_or(Value::Null);
+        let Some(local) = local.as_object() else {
+            return items;
+        };
+        let text = |value: &Value, key: &str| {
+            value
+                .get(key)
+                .and_then(Value::as_str)
+                .filter(|text| !text.is_empty())
+                .map(ToOwned::to_owned)
+        };
+        for item in list.iter_mut() {
+            let id = text(item, "id");
+            let video = text(item, "lastVideoId");
+            let saved = local.values().find(|entry| {
+                let entry_video = text(entry, "lastVideoId");
+                entry.pointer("/meta/id").and_then(Value::as_str) == id.as_deref()
+                    && (video.is_none() || entry_video.is_none() || entry_video == video)
+            });
+            let (Some(saved), Some(fields)) = (saved, item.as_object_mut()) else {
+                continue;
+            };
+            for key in [
+                "lastStreamUrl",
+                "lastStreamTitle",
+                "lastStream",
+                "lastStreamIndex",
+                "savedAt",
+            ] {
+                if let Some(value) = saved.get(key).filter(|value| !value.is_null()) {
+                    fields.insert(key.to_owned(), value.clone());
+                }
+            }
+        }
+        items
+    }
+
     async fn raw_continue_watching(
         &self,
         profile_id: &str,
@@ -155,9 +202,10 @@ impl EffectExecutor {
                     })
                     .ok()
                     .flatten();
-                return Ok(snapshot
+                let items = snapshot
                     .and_then(|snapshot| snapshot.get("continueWatching").cloned())
-                    .unwrap_or_else(|| json!([])));
+                    .unwrap_or_else(|| json!([]));
+                return Ok(self.with_saved_streams(profile_id, items));
             }
             Some(other) if providers::is_provider(other) => {
                 let snapshot = self
@@ -167,9 +215,10 @@ impl EffectExecutor {
                         crate::log!("[fluxa-native] {other} continue watching failed: {error}")
                     })
                     .ok();
-                return Ok(snapshot
+                let items = snapshot
                     .and_then(|snapshot| snapshot.get("continueWatching").cloned())
-                    .unwrap_or_else(|| json!([])));
+                    .unwrap_or_else(|| json!([]));
+                return Ok(self.with_saved_streams(profile_id, items));
             }
             Some(other) => {
                 crate::log!(
@@ -412,6 +461,7 @@ impl EffectExecutor {
             let mut action = external.clone();
             action["kind"] = json!("progress");
             self.push_nuvio_write(&profile, &action).await?;
+            self.expire_nuvio_snapshot(&profile, "progress");
         }
         if let Some(updated) = plan.get("library").filter(|value| value.is_object()) {
             self.storage.write_json(&key, updated)?;
@@ -461,7 +511,6 @@ impl EffectExecutor {
             .is_some_and(|items| {
                 items.iter().any(|item| {
                     item.get("id")
-            self.expire_nuvio_snapshot(&profile, "progress");
                         .and_then(Value::as_str)
                         .is_some_and(|id| ids.contains(&id))
                 })

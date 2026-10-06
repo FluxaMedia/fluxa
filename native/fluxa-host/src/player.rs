@@ -193,6 +193,7 @@ pub(crate) struct PlayerSession {
     sleep: usize,
     sleep_at: Option<Instant>,
     tracks_restored: bool,
+    resume_at: Option<f64>,
     pub(crate) anime4k: bool,
     pub(crate) upscaling: String,
     pub(crate) stats_visible: bool,
@@ -303,6 +304,7 @@ impl PlayerSession {
             sleep: 0,
             sleep_at: None,
             tracks_restored: false,
+            resume_at: None,
             anime4k: false,
             upscaling: String::new(),
             stats_visible: false,
@@ -409,12 +411,19 @@ impl PlayerSession {
     }
 
     pub(crate) fn pick_manually(&mut self, snapshot: Option<&Value>) {
+        let profile = snapshot.and_then(|snapshot| snapshot.pointer("/profile/active"));
         self.manual = self.meta.get("pickSource").is_some()
-            || snapshot
-                .and_then(|snapshot| snapshot.pointer("/profile/active/streamSourceSelectionMode"))
+            || (profile
+                .and_then(|profile| profile.get("streamSourceSelectionMode"))
                 .and_then(Value::as_str)
                 .unwrap_or("manual")
-                == "manual";
+                == "manual"
+                && !stream_policy::resumes_saved_stream(&self.meta, profile));
+        self.resume_at = self
+            .meta
+            .get("timeOffset")
+            .and_then(Value::as_f64)
+            .filter(|offset| *offset > 5.0);
     }
 
     fn streams_listing(&self) -> bool {
@@ -669,6 +678,14 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
 }
 
 pub(crate) fn direct_playback_command(item: &Value, profile: &Value) -> Value {
+    if stream_policy::resumes_saved_stream(item, Some(profile)) {
+        return json!({
+            "type": "continueWatchingPlaybackRequested",
+            "item": item,
+            "language": profile_language(profile),
+            "profile": profile,
+        });
+    }
     json!({
         "type": "directPlaybackRequested",
         "meta": item,
@@ -870,6 +887,9 @@ pub(crate) fn pump(state: &mut RendererState) {
         if player.status.has_frame && !player.tracks_restored {
             player.tracks_restored = true;
             menu::restore_tracks(player, video.as_mut(), settings);
+            if let Some(at) = player.resume_at.take() {
+                video.command(VideoCommand::SeekTo(at));
+            }
         }
         advance = overlay::tick(player, session, video.as_mut(), &snapshot);
         refresh_stats(player, video.as_mut());

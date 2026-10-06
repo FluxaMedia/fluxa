@@ -678,9 +678,15 @@ pub(super) fn finish(
     if !player.status.has_frame {
         return;
     }
-    let stream = player
-        .chosen
-        .and_then(|index| player.sources.as_ref()?.get(index));
+    let stream = snapshot
+        .pointer("/player/currentStreamIndex")
+        .and_then(Value::as_u64)
+        .and_then(|index| snapshot.pointer("/player/currentStreams")?.get(index as usize))
+        .or_else(|| {
+            player
+                .chosen
+                .and_then(|index| player.sources.as_ref()?.get(index))
+        });
     let plan = core_value(
         "playbackClosePlan",
         json!({

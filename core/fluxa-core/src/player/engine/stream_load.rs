@@ -4,6 +4,7 @@ use crate::headless_engine::home;
 use crate::headless_engine::library;
 use crate::headless_engine::state::GenerationKey;
 use crate::player::playback::flow::{self, PlayerFlowAction};
+use crate::player::stream_policy::saved_stream_reusable;
 use crate::runtime::{EffectEnvelope, EffectKind};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -243,25 +244,6 @@ pub(crate) fn dispatch_load_streams(
         Some(engine.effect(kind, generation, payload))
     }));
     save_effects
-}
-
-fn saved_stream_reusable(item: &Value, profile: Option<&Value>) -> bool {
-    let prefs = profile.unwrap_or(&Value::Null);
-    if prefs.get("reuseLastStream").and_then(Value::as_bool) == Some(false) {
-        return false;
-    }
-    let ttl_hours = prefs
-        .get("reuseLastStreamTtlHours")
-        .and_then(|value| value.as_i64().or_else(|| value.as_str()?.parse().ok()))
-        .unwrap_or(24);
-    let Some(saved_at) = item
-        .get("savedAt")
-        .and_then(Value::as_str)
-        .and_then(|value| chrono::DateTime::parse_from_rfc3339(value).ok())
-    else {
-        return true;
-    };
-    chrono::Utc::now().signed_duration_since(saved_at).num_hours() < ttl_hours
 }
 
 pub(crate) fn dispatch_continue_watching_playback(
