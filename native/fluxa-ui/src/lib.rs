@@ -85,6 +85,8 @@ pub fn localized(key: &str, language: &str) -> String {
 pub fn localized_or(key: &str, fallback: &str, language: &str) -> String {
     static ENGLISH: OnceLock<serde_json::Value> = OnceLock::new();
     static TURKISH: OnceLock<serde_json::Value> = OnceLock::new();
+    static ARABIC: OnceLock<serde_json::Value> = OnceLock::new();
+    static HEBREW: OnceLock<serde_json::Value> = OnceLock::new();
     let english = ENGLISH.get_or_init(|| {
         serde_json::from_str(include_str!("../../../shared/i18n/english_us.json"))
             .expect("English translations")
@@ -93,6 +95,16 @@ pub fn localized_or(key: &str, fallback: &str, language: &str) -> String {
         TURKISH.get_or_init(|| {
             serde_json::from_str(include_str!("../../../shared/i18n/tr_tr.json"))
                 .expect("Turkish translations")
+        })
+    } else if language.starts_with("ar") {
+        ARABIC.get_or_init(|| {
+            serde_json::from_str(include_str!("../../../shared/i18n/ar.json"))
+                .expect("Arabic translations")
+        })
+    } else if language.starts_with("he") || language.starts_with("iw") {
+        HEBREW.get_or_init(|| {
+            serde_json::from_str(include_str!("../../../shared/i18n/he.json"))
+                .expect("Hebrew translations")
         })
     } else {
         english

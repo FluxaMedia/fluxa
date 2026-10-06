@@ -18,7 +18,7 @@ pub(super) const GENERAL_SETTINGS: [SettingsRow; 9] = [
     SettingsRow {
         label: "Language",
         key: "language",
-        options: &["en", "tr"],
+        options: &["en", "tr", "ar", "he"],
     },
     SettingsRow {
         label: "Start page",

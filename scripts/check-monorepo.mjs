@@ -11,6 +11,8 @@ const requiredPaths = [
   "shared/contracts/headless-actions.json",
   "shared/i18n/english_us.json",
   "shared/i18n/tr_tr.json",
+  "shared/i18n/ar.json",
+  "shared/i18n/he.json",
   "native/Cargo.toml",
   ".github/workflows",
   ".github/PULL_REQUEST_TEMPLATE.md",

@@ -11,6 +11,8 @@ pub(crate) fn tmdb_language(language: &str) -> String {
     match language {
         "" | DEFAULT_LANGUAGE | "english_us" => "en-US".to_string(),
         "tr" | "tr_tr" => "tr-TR".to_string(),
+        "ar" => "ar-SA".to_string(),
+        "he" | "iw" => "he-IL".to_string(),
         lang if lang.contains('-') => lang.to_string(),
         lang => format!("{}-{}", lang, lang.to_uppercase()),
     }

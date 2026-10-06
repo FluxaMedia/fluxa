@@ -1723,3 +1723,10 @@ fn hero_meta_line_ends_with_imdb_and_tomato_scores() {
     let line = crate::hero_meta_line(&item, "en");
     assert!(line.ends_with("IMDb 8.8  RT 86%"), "{line}");
 }
+
+#[test]
+fn arabic_and_hebrew_load_their_own_files() {
+    assert_eq!(localized("nav.library", "ar"), "المكتبة");
+    assert_eq!(localized("nav.library", "he"), "ספרייה");
+    assert_eq!(localized("nav.library", "iw"), "ספרייה");
+}
