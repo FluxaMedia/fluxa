@@ -497,7 +497,11 @@ pub(super) fn sticky_bar(
     if fade <= 0.0 {
         return None;
     }
-    let top = metrics.detail_back_top;
+    let top = if viewport.is_compact() {
+        metrics.content_header_top_mobile - 8.0
+    } else {
+        metrics.detail_back_top
+    };
     let height = top + 48.0;
     egui::Area::new(Id::new((id, "sticky")))
         .constrain(false)

@@ -37,6 +37,11 @@ pub(super) fn draw_sources(
     } else {
         (rect.width() - width) / 2.0
     };
+    let inset = if viewport.is_compact() {
+        metrics.content_header_top_mobile - 8.0
+    } else {
+        24.0
+    };
     let top = 24.0 - viewport.scroll_y;
     let language = &player.language;
     egui::Area::new(Id::new("fluxa-player-sources"))
@@ -44,7 +49,7 @@ pub(super) fn draw_sources(
         .show(context, |ui| {
             ui.set_min_size(rect.size());
             let origin = -viewport.scroll_y;
-            let hero_height = if wide { 0.0 } else { 240.0 };
+            let hero_height = if wide { 0.0 } else { 240.0 + inset };
             let hero = Rect::from_min_size(
                 Pos2::new(rect.left(), origin),
                 Vec2::new(rect.width(), hero_height),
@@ -107,8 +112,8 @@ pub(super) fn draw_sources(
                     layout.activated = Some(node);
                 }
             }
-            let pinned_top = chips_top.max(24.0);
-            let shift = ((24.0 + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;
+            let pinned_top = chips_top.max(inset);
+            let shift = ((inset + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;
             let chips_from = layout.focusable.len();
             if pinned_top > chips_top {
                 let (strip_left, strip_right) = if wide {
@@ -192,11 +197,11 @@ pub(super) fn draw_sources(
             }
             let chip_count = layout.focusable.len() - chips_from;
             layout.focusable[chips_start..].rotate_right(chip_count);
-            let natural = if wide { top } else { origin + 16.0 };
+            let natural = if wide { top } else { origin + inset };
             let close = Rect::from_min_size(
                 Pos2::new(
                     left,
-                    natural.max(24.0 + (metrics.screen_control_height - 42.0) / 2.0),
+                    natural.max(inset + (metrics.screen_control_height - 42.0) / 2.0),
                 ),
                 Vec2::splat(42.0),
             );
