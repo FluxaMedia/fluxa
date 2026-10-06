@@ -2210,6 +2210,8 @@
   "player.status_loading_stream": "Yayın yükleniyor",
   "player.status_connecting_source": "Kaynağa bağlanılıyor",
   "player.status_buffering_percent": "Arabelleğe alınıyor · %s%",
+  "player.torrent_unresponsive": "Bu kaynak yavaş yanıt veriyor",
+  "player.torrent_unresponsive_hint": "Eşler bulundu ama henüz hiçbirinde torrent bilgisi yok. Beklemeye devam ederse başka bir kaynak dene.",
   "player.status_buffering": "Arabelleğe alınıyor",
   "player.status_starting_playback": "Oynatma başlatılıyor",
   "player.status_trying_next_source": "Sonraki kaynak deneniyor",

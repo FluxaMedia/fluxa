@@ -2210,6 +2210,8 @@
   "player.status_loading_stream": "Loading stream",
   "player.status_connecting_source": "Connecting to source",
   "player.status_buffering_percent": "Buffering · %s%",
+  "player.torrent_unresponsive": "This source is slow to respond",
+  "player.torrent_unresponsive_hint": "Peers were found but none has the torrent metadata yet. Try another source if this keeps waiting.",
   "player.status_buffering": "Buffering",
   "player.status_starting_playback": "Starting playback",
   "player.status_trying_next_source": "Trying next source",

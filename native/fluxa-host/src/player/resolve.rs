@@ -169,6 +169,7 @@ pub(super) fn poll_torrent(
         .and_then(Value::as_u64)
         .map(|index| index as usize);
     player.torrent_link = Some(link.clone());
+    player.torrent_since = Some(Instant::now());
     player.torrent_status = None;
     player.torrent_rx = Some(session.poll_torrent_status(link, file_id));
 }

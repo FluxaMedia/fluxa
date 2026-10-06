@@ -31,6 +31,7 @@ use upnext::*;
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const DEFAULT_SEEK_STEP: f64 = 10.0;
 const SCRUB_COMMIT: Duration = Duration::from_millis(900);
+const TORRENT_UNRESPONSIVE_AFTER: Duration = Duration::from_secs(20);
 const MIN_BRIGHTNESS: f32 = 0.15;
 const MEDIA_DRIFT: f64 = 1.5;
 const FAST_SPEED: f64 = 2.0;
@@ -136,6 +137,7 @@ pub(crate) struct PlayerSession {
     pub(crate) texture: Option<egui::TextureId>,
     last_activity: Instant,
     torrent_link: Option<String>,
+    torrent_since: Option<Instant>,
     torrent_rx: Option<Receiver<Value>>,
     torrent_status: Option<Value>,
     error: Option<String>,
@@ -243,6 +245,7 @@ impl PlayerSession {
             texture: None,
             last_activity: Instant::now(),
             torrent_link: None,
+            torrent_since: None,
             torrent_rx: None,
             torrent_status: None,
             error: None,
@@ -468,11 +471,38 @@ impl PlayerSession {
         }
     }
 
+    fn torrent_unresponsive(&self) -> bool {
+        let Some(status) = self.torrent_status.as_ref() else {
+            return false;
+        };
+        let unresolved = status
+            .get("hash")
+            .and_then(Value::as_str)
+            .is_none_or(str::is_empty);
+        let peers = status.get("total_peers").and_then(Value::as_u64).unwrap_or(0);
+        unresolved
+            && peers > 0
+            && self
+                .torrent_since
+                .is_some_and(|since| since.elapsed() >= TORRENT_UNRESPONSIVE_AFTER)
+    }
+
+    fn torrent_lines(&self) -> (String, String) {
+        if self.torrent_unresponsive() {
+            let text = |key: &str| fluxa_ui::localized(key, &self.language);
+            return (
+                text("player.torrent_unresponsive"),
+                text("player.torrent_unresponsive_hint"),
+            );
+        }
+        fluxa_ui::torrent_status_lines(self.torrent_status.as_ref())
+    }
+
     pub(crate) fn model(&self) -> PlayerModel {
         let status = if self.texture.is_some() {
             None
         } else if self.torrent_link.is_some() {
-            Some(fluxa_ui::torrent_status_lines(self.torrent_status.as_ref()))
+            Some(self.torrent_lines())
         } else {
             Some((self.load_stage(), String::new()))
         };
