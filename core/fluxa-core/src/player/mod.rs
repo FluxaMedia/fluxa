@@ -7,6 +7,7 @@ pub(crate) mod segments;
 pub(crate) mod sessions;
 pub(crate) mod streams;
 pub(crate) mod subtitles;
+pub(crate) mod xray;
 pub mod trickplay;
 
 pub use sessions::watch_together;
