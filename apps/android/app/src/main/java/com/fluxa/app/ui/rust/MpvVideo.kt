@@ -8,14 +8,22 @@ import android.os.Build
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import com.fluxa.app.BuildConfig
+import org.json.JSONObject
 
-class MpvVideo(context: Context, options: String, audioProcessingMode: String, videoOptions: Map<String, String>) {
+class MpvVideo(
+    context: Context,
+    options: String,
+    audioProcessingMode: String,
+    videoOptions: Map<String, String>,
+    thumbnails: JSONObject?,
+) {
     private val appContext = context.applicationContext
     private val mpv = Mpv.create().also { require(it != 0L) { "libmpv could not be created" } }
     private var surface = 0L
     private var pendingUrl: String? = null
     private var loaded = false
     private var shaders = emptyList<String>()
+    private var held = thumbnails?.optBoolean("hold") == true
     var error: String? = null
         private set
 
@@ -41,10 +49,9 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
             "sub-ass-override" to "scale",
             "audio-display" to "no",
             "idle" to "once",
-            "thumbnails" to "yes",
             "thumbnail-width" to "320",
             "thumbnail-cache-dir" to appContext.cacheDir.resolve("thumbnails").apply { mkdirs() }.absolutePath,
-        ).plus(videoOptions).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
+        ).plus(thumbnailOptions(thumbnails)).plus(videoOptions).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
         options.lines().map(String::trim).filter { it.isNotEmpty() && !it.startsWith('#') }.forEach { line ->
             val key = line.substringBefore('=', "").trim()
             if (key.isNotEmpty() && key !in routeOwnedAudioOptions) {
@@ -110,6 +117,24 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
         return chapters.toString()
     }
 
+    val thumbnailProgress: Pair<Int, Int>?
+        get() {
+            val count = Mpv.getProperty(mpv, "thumbnail-info/count")?.toIntOrNull() ?: return null
+            val done = Mpv.getProperty(mpv, "thumbnail-info/done")?.toIntOrNull() ?: return null
+            return if (count > 0) done to count else null
+        }
+
+    fun retargetThumbnails(plan: JSONObject) {
+        thumbnailOptions(plan).forEach { (key, value) -> Mpv.setProperty(mpv, key, value) }
+        Mpv.command(mpv, arrayOf("thumbnail-reload"))
+    }
+
+    fun releaseStart() {
+        if (!held) return
+        held = false
+        if (loaded) setPaused(false)
+    }
+
     fun thumbnail(seconds: Double): ByteArray? = Mpv.thumbnail(mpv, seconds)
 
     fun selectTracks(audio: String?, subtitle: String?, subtitlesOff: Boolean) {
@@ -142,7 +167,7 @@ class MpvVideo(context: Context, options: String, audioProcessingMode: String, v
         loaded = true
         error = null
         Mpv.command(mpv, arrayOf("loadfile", url, "replace"))
-        setPaused(false)
+        setPaused(held)
     }
 
     fun setPaused(paused: Boolean) {
@@ -258,6 +283,25 @@ class MpvSurface(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
 }
 
 data class DisplayModeHint(val width: Int, val height: Int, val refreshRate: Float)
+
+private fun thumbnailOptions(plan: JSONObject?): Map<String, String> {
+    if (plan == null) return mapOf("thumbnails" to "yes")
+    if (!plan.optBoolean("enabled", true)) return mapOf("thumbnails" to "no")
+    val headers = plan.optJSONArray("headers")
+    val fields = List(headers?.length() ?: 0) { index ->
+        val pair = headers!!.optJSONArray(index)
+        "${pair?.optString(0)}: ${pair?.optString(1)}".replace(",", "\\,")
+    }
+    val url = plan.optString("url").takeUnless { plan.isNull("url") }
+    return mapOf(
+        "thumbnail-url" to url.orEmpty(),
+        "thumbnail-http-header-fields" to fields.joinToString(","),
+        "thumbnail-interval" to plan.optDouble("interval", 10.0).coerceAtLeast(1.0).toString(),
+        "thumbnail-sweep" to if (plan.optBoolean("sheet", true)) "yes" else "no",
+        "thumbnail-delay" to if (plan.optBoolean("hold")) "0" else "3",
+        "thumbnails" to "yes",
+    )
+}
 
 private val routeOwnedAudioOptions = setOf("audio-spdif", "audio-channels", "af")
 

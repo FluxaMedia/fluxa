@@ -30,6 +30,10 @@ pub(super) fn from_snapshot(snapshot: &Value) -> Option<Trickplay> {
     format::source_from_stream(stream).map(Trickplay::new)
 }
 
+pub(super) fn from_source(source: Source) -> Trickplay {
+    Trickplay::new(source)
+}
+
 fn decode(bytes: &[u8]) -> Option<RgbaImage> {
     image::load_from_memory(bytes)
         .ok()

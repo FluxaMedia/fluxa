@@ -21,6 +21,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private val handler = Handler(Looper.getMainLooper())
     private var player: MpvVideo? = null
     private var mpvOptions = ""
+    private var thumbnailPlan: org.json.JSONObject? = null
     private var shaders = emptyList<String>()
     private var fit = "fit"
     private var videoAspect = 0.0
@@ -53,6 +54,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                 videoAspect = it
                 layoutVideo()
             }
+            player.thumbnailProgress?.let { (done, count) -> renderer.reportVideoThumbnailProgress(done, count) }
             renderer.reportVideoStatus(
                 player.position,
                 player.duration,
@@ -152,6 +154,11 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
                     audioLanguage = request.optString("audioLanguage").takeUnless { it.isBlank() || it == "none" }
                     subtitleLanguage = request.optString("subtitleLanguage").takeUnless { it.isBlank() || it == "none" }
                 }
+                "thumbnails" -> {
+                    thumbnailPlan = request
+                    player?.retargetThumbnails(request)
+                }
+                "releaseStart" -> player?.releaseStart()
                 "load" -> load(request.optString("url"))
                 "stop" -> stop()
                 "togglePause" -> player?.let { it.setPaused(!it.paused) }
@@ -186,7 +193,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private fun load(url: String) {
         if (url.isBlank()) return
         stop()
-        val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, videoOptions) }.getOrNull() ?: return
+        val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, videoOptions, thumbnailPlan) }.getOrNull() ?: return
         this.player = player
         player.setShaders(shaders)
         lastTracks = ""

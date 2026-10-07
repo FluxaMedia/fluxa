@@ -1,6 +1,6 @@
 use std::ffi::c_void;
 
-use fluxa_host::{Thumbnail, VideoBackend, VideoCommand, VideoStatus};
+use fluxa_host::{Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus};
 use objc2::encode::{Encode, Encoding};
 use objc2::rc::{Allocated, Retained};
 use objc2::runtime::AnyObject;
@@ -8,7 +8,7 @@ use objc2::{class, msg_send, msg_send_id};
 use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
 use winit::window::Window;
 
-use crate::mpv_common::{Chapters, ThumbnailWorker, buffering, thumbnail_url};
+use crate::mpv_common::{Chapters, SeekPreview, buffering, enable_thumbnails};
 
 #[link(name = "AVFoundation", kind = "framework")]
 unsafe extern "C" {}
@@ -106,7 +106,9 @@ pub struct AppleBackend {
     error: Option<String>,
     url: Option<String>,
     shaders: Vec<String>,
-    thumbnails: Option<ThumbnailWorker>,
+    seek_preview: SeekPreview,
+    thumbnail_cache: Option<std::path::PathBuf>,
+    plan: ThumbnailPlan,
 }
 
 struct Player {
@@ -116,21 +118,27 @@ struct Player {
 }
 
 impl AppleBackend {
-    pub fn new(layer: usize) -> Self {
+    pub fn new(layer: usize, thumbnail_cache: Option<std::path::PathBuf>) -> Self {
         Self {
             layer,
             player: None,
             error: None,
             url: None,
             shaders: Vec::new(),
-            thumbnails: None,
+            seek_preview: SeekPreview::default(),
+            thumbnail_cache,
+            plan: ThumbnailPlan::default(),
         }
     }
 
     fn start(&mut self, url: &str, start_at: Option<u64>) {
         self.stop();
+        let cache = self.thumbnail_cache.as_deref();
+        let plan = self.plan.clone();
         let result = fluxa_mpv::MpvClientHandle::new_with_apple_layer(self.layer, &self.shaders)
             .and_then(|(mut client, render)| {
+                enable_thumbnails(&client, url, &plan, cache);
+                client.hold_start(plan.hold && plan.enabled);
                 client.load(url, start_at)?;
                 Ok(Player {
                     client,
@@ -190,7 +198,7 @@ impl VideoBackend for AppleBackend {
         }
         self.error = None;
         self.url = None;
-        self.thumbnails = None;
+        self.seek_preview.clear();
     }
 
     fn command(&mut self, command: VideoCommand) {
@@ -274,18 +282,38 @@ impl VideoBackend for AppleBackend {
         }
     }
 
-    fn request_thumbnail(&mut self, time: f64) {
-        let Some(url) = self.url.as_deref() else {
+    fn thumbnails(&mut self, plan: &ThumbnailPlan) {
+        if self.plan == *plan {
+            return;
+        }
+        self.plan = plan.clone();
+        let (Some(player), Some(url)) = (self.player.as_ref(), self.url.as_deref()) else {
             return;
         };
-        let worker = self
-            .thumbnails
-            .get_or_insert_with(|| ThumbnailWorker::spawn(thumbnail_url(url)));
-        let _ = worker.requests.send(time);
+        enable_thumbnails(&player.client, url, plan, self.thumbnail_cache.as_deref());
+        let _ = player.client.reload_thumbnails();
+    }
+
+    fn thumbnail_progress(&mut self) -> Option<ThumbnailProgress> {
+        let (done, count) = self.player.as_ref()?.client.thumbnail_progress()?;
+        Some(ThumbnailProgress { done, count })
+    }
+
+    fn release_start(&mut self) {
+        if let Some(player) = self.player.as_mut() {
+            player.client.release_start();
+        }
+    }
+
+    fn request_thumbnail(&mut self, time: f64) {
+        if let Some(player) = self.player.as_ref() {
+            self.seek_preview.request(&player.client, time);
+        }
     }
 
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
-        self.thumbnails.as_ref()?.latest()
+        let player = self.player.as_ref()?;
+        self.seek_preview.take(&player.client)
     }
 
     fn passthrough(&self) -> bool {

@@ -63,6 +63,49 @@ impl MpvClientHandle {
         }
     }
 
+    pub fn thumbnail(&self, time: f64) -> Option<SeekThumbnail> {
+        let time_arg = CString::new(format!("{time:.3}")).ok()?;
+        let args = [c"thumbnail".as_ptr(), time_arg.as_ptr(), ptr::null()];
+        let mut node = MpvNode {
+            data: MpvNodeData { int64: 0 },
+            format: 0,
+        };
+        let result = unsafe { (self.api.mpv_command_ret)(self.handle, args.as_ptr(), &mut node) };
+        if result < 0 {
+            return None;
+        }
+        let thumbnail = unsafe { read_thumbnail(&node) };
+        unsafe { (self.api.mpv_free_node_contents)(&mut node) };
+        thumbnail
+    }
+
+    pub fn thumbnail_progress(&self) -> Option<(usize, usize)> {
+        let count = self.get_i64_property("thumbnail-info/count")?;
+        let done = self.get_i64_property("thumbnail-info/done")?;
+        Some((done.max(0) as usize, count.max(0) as usize))
+    }
+
+    pub fn reload_thumbnails(&self) -> Result<(), String> {
+        self.command(&["thumbnail-reload"])
+    }
+
+    pub fn hold_start(&mut self, hold: bool) {
+        self.hold_unpause = hold;
+    }
+
+    pub fn release_start(&mut self) {
+        self.hold_unpause = false;
+        if self.pending_unpause
+            && !self
+                .frame_state
+                .waiting_for_seek_restart
+                .load(Ordering::Acquire)
+        {
+            self.pending_unpause = false;
+            let _ = self.command_args(&["set", "pause", "no"]);
+        }
+    }
+
     pub fn set_option(&self, name: &str, value: &str) -> Result<(), String> {
         let c_name = CString::new(name).map_err(|error| error.to_string())?;
         let c_value = CString::new(value).map_err(|error| error.to_string())?;
@@ -125,4 +168,46 @@ impl MpvClientHandle {
         }
         Ok(())
     }
+}
+
+unsafe fn read_thumbnail(node: &MpvNode) -> Option<SeekThumbnail> {
+    if node.format != MPV_FORMAT_NODE_MAP {
+        return None;
+    }
+    let list = unsafe { node.data.list.as_ref()? };
+    let (mut width, mut height, mut stride, mut time, mut exact) = (0, 0, 0, 0.0, false);
+    let mut bytes: Option<&[u8]> = None;
+    for index in 0..list.count.max(0) as usize {
+        let key = unsafe { CStr::from_ptr(*list.keys.add(index)) }.to_bytes();
+        let value = unsafe { &*list.values.add(index) };
+        match key {
+            b"w" => width = unsafe { value.data.int64 } as usize,
+            b"h" => height = unsafe { value.data.int64 } as usize,
+            b"stride" => stride = unsafe { value.data.int64 } as usize,
+            b"time" => time = unsafe { value.data.double },
+            b"exact" => exact = unsafe { value.data.flag } != 0,
+            b"data" if value.format == MPV_FORMAT_BYTE_ARRAY => {
+                let array = unsafe { value.data.bytes.as_ref()? };
+                bytes = Some(unsafe { std::slice::from_raw_parts(array.data, array.size) });
+            }
+            _ => {}
+        }
+    }
+    let bytes = bytes?;
+    if width == 0 || height == 0 || stride < width * 4 || bytes.len() < stride * height {
+        return None;
+    }
+    let mut rgba = Vec::with_capacity(width * height * 4);
+    for row in bytes.chunks(stride).take(height) {
+        for pixel in row[..width * 4].chunks_exact(4) {
+            rgba.extend_from_slice(&[pixel[2], pixel[1], pixel[0], pixel[3]]);
+        }
+    }
+    Some(SeekThumbnail {
+        width,
+        height,
+        time,
+        exact,
+        rgba,
+    })
 }

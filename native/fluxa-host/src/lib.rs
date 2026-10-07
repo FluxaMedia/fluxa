@@ -117,7 +117,8 @@ use sync::*;
 pub type PrePresent = Box<dyn Fn() + Send>;
 
 pub use player::{
-    DeviceOpener, PlaybackStats, Thumbnail, TrackSelection, VideoBackend, VideoCommand,
+    DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, TrackSelection,
+    VideoBackend, VideoCommand,
     VideoStatus, VideoTrack,
 };
 pub use semantics::{AccessNode, AccessTree, Role};

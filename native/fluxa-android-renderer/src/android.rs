@@ -299,6 +299,21 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThu
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThumbnailProgressNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    done: jint,
+    count: jint,
+) {
+    if let Ok(mut bridge) = video_bridge().lock() {
+        bridge.set_thumbnail_progress(fluxa_host::ThumbnailProgress {
+            done: done.max(0) as usize,
+            count: count.max(0) as usize,
+        });
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_startSessionNative(
     mut env: JNIEnv<'_>,
     _class: JClass<'_>,

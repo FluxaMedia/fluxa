@@ -27,6 +27,7 @@ impl MpvClientHandle {
             frame_state: frame_state.clone(),
             log_ring: std::collections::VecDeque::new(),
             pending_unpause: false,
+            hold_unpause: false,
             pending_seek_seconds: None,
             current_url: None,
             static_properties: HashMap::new(),

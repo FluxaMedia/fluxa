@@ -4,12 +4,13 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::{self, Receiver, TryRecvError},
 };
+use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use ash::vk::Handle as _;
-use fluxa_host::{DeviceOpener, PlaybackStats, Thumbnail, VideoBackend, VideoCommand, VideoStatus};
+use fluxa_host::{DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus};
 
-use crate::mpv_common::{Chapters, ThumbnailWorker, buffering, shader_dir, thumbnail_url};
+use crate::mpv_common::{Chapters, SeekPreview, buffering, enable_thumbnails, shader_dir};
 
 const FRAME_SIZE: [u32; 2] = [1920, 1080];
 
@@ -18,19 +19,23 @@ pub struct MpvBackend {
     player: Option<MpvPlayer>,
     error: Option<String>,
     url: Option<String>,
-    thumbnails: Option<ThumbnailWorker>,
+    seek_preview: SeekPreview,
+    thumbnail_cache: Option<PathBuf>,
+    plan: ThumbnailPlan,
     shaders: Vec<String>,
     preview: bool,
 }
 
 impl MpvBackend {
-    pub fn new() -> Self {
+    pub fn new(thumbnail_cache: Option<PathBuf>) -> Self {
         Self {
             pending: None,
             player: None,
             error: None,
             url: None,
-            thumbnails: None,
+            seek_preview: SeekPreview::default(),
+            thumbnail_cache,
+            plan: ThumbnailPlan::default(),
             shaders: Vec::new(),
             preview: false,
         }
@@ -49,8 +54,10 @@ impl MpvBackend {
         let device = device.clone();
         let url = url.to_owned();
         let target = url.clone();
+        let cache = self.thumbnail_cache.clone();
+        let plan = self.plan.clone();
         std::thread::spawn(move || {
-            let _ = sender.send(MpvPlayer::new(&instance, &device, &target, preview));
+            let _ = sender.send(MpvPlayer::new(&instance, &device, &target, preview, &plan, cache.as_deref()));
         });
         self.url = Some(url.clone());
         self.pending = Some(receiver);
@@ -87,7 +94,7 @@ impl VideoBackend for MpvBackend {
         self.pending = None;
         self.error = None;
         self.url = None;
-        self.thumbnails = None;
+        self.seek_preview.clear();
     }
 
     fn command(&mut self, command: VideoCommand) {
@@ -248,18 +255,39 @@ impl VideoBackend for MpvBackend {
         })
     }
 
-    fn request_thumbnail(&mut self, time: f64) {
-        let Some(url) = self.url.as_deref() else {
+    fn thumbnails(&mut self, plan: &ThumbnailPlan) {
+        if self.plan == *plan {
+            return;
+        }
+        self.plan = plan.clone();
+        let (Some(player), Some(url)) = (self.player.as_ref().filter(|_| !self.preview), self.url.as_deref()) else {
             return;
         };
-        let worker = self
-            .thumbnails
-            .get_or_insert_with(|| ThumbnailWorker::spawn(thumbnail_url(url)));
-        let _ = worker.requests.send(time);
+        enable_thumbnails(&player.client, url, plan, self.thumbnail_cache.as_deref());
+        let _ = player.client.reload_thumbnails();
+    }
+
+    fn thumbnail_progress(&mut self) -> Option<ThumbnailProgress> {
+        let player = self.player.as_ref().filter(|_| !self.preview)?;
+        let (done, count) = player.client.thumbnail_progress()?;
+        Some(ThumbnailProgress { done, count })
+    }
+
+    fn release_start(&mut self) {
+        if let Some(player) = self.player.as_mut() {
+            player.client.release_start();
+        }
+    }
+
+    fn request_thumbnail(&mut self, time: f64) {
+        if let Some(player) = self.player.as_ref().filter(|_| !self.preview) {
+            self.seek_preview.request(&player.client, time);
+        }
     }
 
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
-        self.thumbnails.as_ref()?.latest()
+        let player = self.player.as_ref().filter(|_| !self.preview)?;
+        self.seek_preview.take(&player.client)
     }
 }
 
@@ -346,6 +374,8 @@ impl MpvPlayer {
         device: &wgpu::Device,
         url: &str,
         preview: bool,
+        plan: &ThumbnailPlan,
+        thumbnail_cache: Option<&Path>,
     ) -> Result<Self, String> {
         let local =
             preview || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:");
@@ -384,6 +414,10 @@ impl MpvPlayer {
                 ("loop-file".to_owned(), "inf".to_owned()),
                 ("panscan".to_owned(), "1.0".to_owned()),
             ])?;
+        }
+        if !preview {
+            enable_thumbnails(&client, url, plan, thumbnail_cache);
+            client.hold_start(plan.hold && plan.enabled);
         }
         client.load(url, None)?;
         let frames = Arc::new(FrameSlot::default());

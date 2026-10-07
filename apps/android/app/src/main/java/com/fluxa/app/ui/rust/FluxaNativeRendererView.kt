@@ -179,6 +179,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         NativeRenderer.videoThumbnailNative(data)
     }
 
+    fun reportVideoThumbnailProgress(done: Int, count: Int) {
+        NativeRenderer.videoThumbnailProgressNative(done, count)
+    }
+
     fun reportVideoChapters(json: String) {
         NativeRenderer.videoChaptersNative(json)
     }
@@ -906,6 +910,7 @@ private object NativeRenderer {
     @JvmStatic external fun videoTracksNative(json: String)
     @JvmStatic external fun videoChaptersNative(json: String)
     @JvmStatic external fun videoThumbnailNative(data: ByteArray)
+    @JvmStatic external fun videoThumbnailProgressNative(done: Int, count: Int)
     @JvmStatic external fun accessibilityTreeNative(handle: Long): String?
     @JvmStatic external fun focusNodeNative(handle: Long, node: Long)
     @JvmStatic external fun activateNodeNative(handle: Long, node: Long)

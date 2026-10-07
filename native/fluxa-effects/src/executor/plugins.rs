@@ -66,10 +66,18 @@ impl EffectExecutor {
             .flatten()
             .and_then(|state| state.get("scrapers").and_then(Value::as_array).cloned())
             .unwrap_or_default();
+        let only = request.get("onlyScrapers").and_then(Value::as_array);
         scrapers
             .into_iter()
             .filter(|scraper| {
                 fluxa_core::addons::plugin_streams::plugin_scraper_enabled_for(scraper, media_type)
+            })
+            .filter(|scraper| {
+                only.is_none_or(|only| {
+                    scraper
+                        .get("id")
+                        .is_some_and(|id| only.iter().any(|wanted| wanted == id))
+                })
             })
             .collect()
     }

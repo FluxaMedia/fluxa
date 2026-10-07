@@ -19,6 +19,7 @@ mod shuffle;
 mod stats;
 mod submit;
 mod trailer;
+mod seek_previews;
 mod trickplay;
 mod upnext;
 pub(crate) use input::*;
@@ -56,6 +57,22 @@ pub struct Thumbnail {
     pub time: f64,
     pub size: [usize; 2],
     pub rgba: Vec<u8>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct ThumbnailPlan {
+    pub enabled: bool,
+    pub url: Option<String>,
+    pub headers: Vec<(String, String)>,
+    pub interval: f64,
+    pub sheet: bool,
+    pub hold: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct ThumbnailProgress {
+    pub done: usize,
+    pub count: usize,
 }
 
 #[derive(Clone, Debug)]
@@ -116,6 +133,11 @@ pub trait VideoBackend: Send {
     fn tracks(&mut self) -> Vec<VideoTrack> {
         Vec::new()
     }
+    fn thumbnails(&mut self, _plan: &ThumbnailPlan) {}
+    fn thumbnail_progress(&mut self) -> Option<ThumbnailProgress> {
+        None
+    }
+    fn release_start(&mut self) {}
     fn request_thumbnail(&mut self, _time: f64) {}
     fn take_thumbnail(&mut self) -> Option<Thumbnail> {
         None
@@ -160,6 +182,7 @@ pub(crate) struct PlayerSession {
     thumbnail: Option<(f64, egui::TextureHandle)>,
     thumbnail_requested: Option<(f64, Instant)>,
     trickplay: Option<trickplay::Trickplay>,
+    seek_previews: Option<seek_previews::SeekPreviews>,
     outro_reached: bool,
     recommendations_rx: Option<Receiver<Vec<Value>>>,
     recommendations: Vec<Value>,
@@ -272,6 +295,7 @@ impl PlayerSession {
             thumbnail: None,
             thumbnail_requested: None,
             trickplay: None,
+            seek_previews: None,
             outro_reached: false,
             recommendations_rx: None,
             recommendations: Vec::new(),
@@ -488,7 +512,15 @@ impl PlayerSession {
     fn load_stage(&self) -> String {
         let text = |key: &str| fluxa_ui::localized(key, &self.language);
         if self.loaded_url.is_none() {
-            return text("player.status_preparing");
+            let previews = self.seek_previews.as_ref().is_some_and(|p| p.preparing());
+            return text(if previews { "player.status_seek_previews" } else { "player.status_preparing" });
+        }
+        if let Some(progress) = self.seek_previews.as_ref().and_then(|p| p.holding()) {
+            let label = text("player.status_seek_previews");
+            return match progress {
+                Some(progress) => format!("{label} {}%", progress.done * 100 / progress.count.max(1)),
+                None => label,
+            };
         }
         match self.status.buffering {
             Some(fraction) => text("player.status_buffering_percent")
@@ -528,7 +560,8 @@ impl PlayerSession {
     }
 
     pub(crate) fn model(&self) -> PlayerModel {
-        let status = if self.texture.is_some() {
+        let holding = self.seek_previews.as_ref().is_some_and(|p| p.holding().is_some());
+        let status = if self.texture.is_some() && !holding {
             None
         } else if self.torrent_link.is_some() {
             Some(self.torrent_lines())
@@ -897,7 +930,7 @@ pub(crate) fn pump(state: &mut RendererState) {
         }
     }
     let Some(session) = session else {
-        load_resolved(player, video, gpu, settings, &snapshot);
+        load_resolved(player, video, gpu, settings, None, &snapshot);
         if let Some(video) = video.as_mut() {
             player.status = video.status();
         }
@@ -914,7 +947,7 @@ pub(crate) fn pump(state: &mut RendererState) {
         return;
     }
     poll_torrent(player, session, &snapshot);
-    load_resolved(player, video, gpu, settings, &snapshot);
+    load_resolved(player, video, gpu, settings, Some(session), &snapshot);
     let mut advance = false;
     if let Some(video) = video.as_mut() {
         player.status = video.status();
@@ -923,6 +956,12 @@ pub(crate) fn pump(state: &mut RendererState) {
             menu::restore_tracks(player, video.as_mut(), settings);
             if let Some(at) = player.resume_at.take() {
                 video.command(VideoCommand::SeekTo(at));
+            }
+        }
+        if let Some(previews) = player.seek_previews.as_mut() {
+            previews.tick(video.as_mut());
+            if let Some(source) = previews.server_source() {
+                player.trickplay = Some(trickplay::from_source(source));
             }
         }
         advance = overlay::tick(player, session, video.as_mut(), &snapshot);
@@ -1137,6 +1176,7 @@ fn load_resolved(
     video: &mut Option<Box<dyn VideoBackend>>,
     gpu: &Option<crate::Gpu>,
     settings: &SettingsModel,
+    session: Option<&SessionHandle>,
     snapshot: &Value,
 ) {
     if player.loaded_url.is_none()
@@ -1147,14 +1187,29 @@ fn load_resolved(
     {
         match (video.as_mut(), gpu.as_ref()) {
             (Some(video), Some(gpu)) => {
+                let trickplay = trickplay::from_snapshot(snapshot);
+                let previews = player.seek_previews.get_or_insert_with(|| {
+                    seek_previews::SeekPreviews::begin(
+                        settings,
+                        snapshot,
+                        &player.meta,
+                        session,
+                        trickplay.is_some(),
+                    )
+                });
+                if !previews.ready_to_load() {
+                    return;
+                }
                 host_log(format!("loading player url: {url}"));
                 video.configure(&settings.values);
+                video.thumbnails(&previews.initial_plan());
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
                 video.command(VideoCommand::Fit(video_fit(settings).to_owned()));
                 apply_subtitle_style(video.as_mut(), &settings.values);
                 player.loaded_url = Some(url.to_owned());
-                player.trickplay = trickplay::from_snapshot(snapshot);
+                previews.loaded();
+                player.trickplay = trickplay;
             }
             (None, _) => player.error = Some("No video backend on this platform".to_owned()),
             _ => {}

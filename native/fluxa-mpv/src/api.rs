@@ -9,6 +9,8 @@ pub(super) struct MpvApi {
     pub(super) mpv_command: MpvCommand,
     pub(super) mpv_command_string: MpvCommandString,
     pub(super) mpv_command_async: MpvCommandAsync,
+    pub(super) mpv_command_ret: MpvCommandRet,
+    pub(super) mpv_free_node_contents: MpvFreeNodeContents,
     pub(super) mpv_get_property: MpvGetProperty,
     pub(super) mpv_free: MpvFree,
     pub(super) mpv_error_string: MpvErrorString,
@@ -54,6 +56,12 @@ impl MpvApi {
             let mpv_command_async = *library
                 .get::<MpvCommandAsync>(b"mpv_command_async\0")
                 .map_err(load_error)?;
+            let mpv_command_ret = *library
+                .get::<MpvCommandRet>(b"mpv_command_ret\0")
+                .map_err(load_error)?;
+            let mpv_free_node_contents = *library
+                .get::<MpvFreeNodeContents>(b"mpv_free_node_contents\0")
+                .map_err(load_error)?;
             let mpv_get_property = *library
                 .get::<MpvGetProperty>(b"mpv_get_property\0")
                 .map_err(load_error)?;
@@ -97,6 +105,8 @@ impl MpvApi {
                 mpv_command,
                 mpv_command_string,
                 mpv_command_async,
+                mpv_command_ret,
+                mpv_free_node_contents,
                 mpv_get_property,
                 mpv_free,
                 mpv_error_string,

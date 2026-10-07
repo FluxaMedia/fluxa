@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{Thumbnail, VideoBackend, VideoCommand, VideoStatus, VideoTrack};
+use crate::{Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus, VideoTrack};
 use serde_json::{Value, json};
 
 #[derive(Default)]
@@ -9,6 +9,7 @@ pub struct VideoBridge {
     status: VideoStatus,
     tracks: Vec<VideoTrack>,
     thumbnail: Option<Thumbnail>,
+    thumbnail_progress: Option<ThumbnailProgress>,
 }
 
 impl VideoBridge {
@@ -23,6 +24,10 @@ impl VideoBridge {
 
     pub fn set_thumbnail(&mut self, thumbnail: Thumbnail) {
         self.thumbnail = Some(thumbnail);
+    }
+
+    pub fn set_thumbnail_progress(&mut self, progress: ThumbnailProgress) {
+        self.thumbnail_progress = Some(progress);
     }
 
     pub fn set_chapters(&mut self, chapters: Vec<(f64, String)>) {
@@ -69,6 +74,7 @@ impl VideoBackend for BridgeVideo {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
             bridge.thumbnail = None;
+            bridge.thumbnail_progress = None;
         }
         self.send(json!({"type": "load", "url": url}));
     }
@@ -78,6 +84,7 @@ impl VideoBackend for BridgeVideo {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
             bridge.thumbnail = None;
+            bridge.thumbnail_progress = None;
         }
         self.send(json!({"type": "stop"}));
     }
@@ -139,6 +146,26 @@ impl VideoBackend for BridgeVideo {
             .lock()
             .map(|bridge| bridge.tracks.clone())
             .unwrap_or_default()
+    }
+
+    fn thumbnails(&mut self, plan: &ThumbnailPlan) {
+        self.send(json!({
+            "type": "thumbnails",
+            "enabled": plan.enabled,
+            "url": plan.url,
+            "headers": plan.headers,
+            "interval": plan.interval,
+            "sheet": plan.sheet,
+            "hold": plan.hold && plan.enabled,
+        }));
+    }
+
+    fn thumbnail_progress(&mut self) -> Option<ThumbnailProgress> {
+        self.0.lock().ok()?.thumbnail_progress
+    }
+
+    fn release_start(&mut self) {
+        self.send(json!({"type": "releaseStart"}));
     }
 
     fn request_thumbnail(&mut self, time: f64) {

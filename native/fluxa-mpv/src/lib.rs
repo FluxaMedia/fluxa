@@ -218,6 +218,9 @@ type MpvSetOptionString =
     unsafe extern "C" fn(*mut MpvHandle, *const c_char, *const c_char) -> c_int;
 type MpvCommand = unsafe extern "C" fn(*mut MpvHandle, *const *const c_char) -> c_int;
 type MpvCommandString = unsafe extern "C" fn(*mut MpvHandle, *const c_char) -> c_int;
+type MpvCommandRet =
+    unsafe extern "C" fn(*mut MpvHandle, *const *const c_char, *mut MpvNode) -> c_int;
+type MpvFreeNodeContents = unsafe extern "C" fn(*mut MpvNode);
 type MpvCommandAsync = unsafe extern "C" fn(*mut MpvHandle, u64, *const *const c_char) -> c_int;
 type MpvGetProperty =
     unsafe extern "C" fn(*mut MpvHandle, *const c_char, c_int, *mut c_void) -> c_int;
@@ -235,6 +238,40 @@ type MpvRenderContextFree = unsafe extern "C" fn(*mut MpvRenderContext);
 type MpvWaitEvent = unsafe extern "C" fn(*mut MpvHandle, f64) -> *mut MpvEvent;
 type MpvRequestLogMessages = unsafe extern "C" fn(*mut MpvHandle, *const c_char) -> c_int;
 type MpvObserveProperty = unsafe extern "C" fn(*mut MpvHandle, u64, *const c_char, c_int) -> c_int;
+
+const MPV_FORMAT_NODE_MAP: c_int = 8;
+const MPV_FORMAT_BYTE_ARRAY: c_int = 9;
+
+#[repr(C)]
+struct MpvNode {
+    data: MpvNodeData,
+    format: c_int,
+}
+
+#[repr(C)]
+union MpvNodeData {
+    string: *mut c_char,
+    flag: c_int,
+    int64: i64,
+    double: f64,
+    list: *mut MpvNodeList,
+    bytes: *mut MpvByteArray,
+}
+
+#[repr(C)]
+struct MpvNodeList {
+    count: c_int,
+    values: *mut MpvNode,
+    keys: *mut *mut c_char,
+}
+
+pub struct SeekThumbnail {
+    pub width: usize,
+    pub height: usize,
+    pub time: f64,
+    pub exact: bool,
+    pub rgba: Vec<u8>,
+}
 
 pub struct MpvFrameState {
     loaded: AtomicBool,
@@ -272,6 +309,7 @@ pub struct MpvClientHandle {
     frame_state: Arc<MpvFrameState>,
     log_ring: std::collections::VecDeque<(c_int, String)>,
     pending_unpause: bool,
+    hold_unpause: bool,
     pending_seek_seconds: Option<f64>,
     current_url: Option<String>,
     static_properties: HashMap<String, Option<String>>,

@@ -341,6 +341,10 @@ impl SessionHandle {
         self.executor.fetch_bytes(url)
     }
 
+    pub fn resolve_trickplay_source(&self, payload: Value) -> Receiver<Option<Value>> {
+        self.executor.resolve_trickplay_source(payload)
+    }
+
     pub fn request_json(&self, plan: Value) -> Receiver<Option<Value>> {
         self.executor.request_json(plan)
     }

@@ -272,6 +272,7 @@ impl MpvClientHandle {
                             .store(false, Ordering::Release);
                     }
                     if self.pending_unpause
+                        && !self.hold_unpause
                         && !self
                             .frame_state
                             .waiting_for_seek_restart
@@ -622,7 +623,7 @@ impl MpvClientHandle {
         (!chapters.is_empty()).then(|| serde_json::json!({ "chapters": chapters }).to_string())
     }
 
-    fn get_i64_property(&self, name: &str) -> Option<i64> {
+    pub(super) fn get_i64_property(&self, name: &str) -> Option<i64> {
         let c_name = CString::new(name).ok()?;
         let mut value = 0i64;
         let result = unsafe {

@@ -1,10 +1,11 @@
-use std::path::PathBuf;
-use std::sync::mpsc::{self, Receiver, Sender};
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
-use fluxa_host::{Thumbnail, TrackSelection, VideoTrack};
+use fluxa_host::{Thumbnail, ThumbnailPlan, TrackSelection, VideoTrack};
 
-const THUMBNAIL_SIZE: [usize; 2] = [320, 180];
+const THUMBNAIL_WIDTH: &str = "320";
+const THUMBNAIL_RETRY: Duration = Duration::from_millis(150);
+const THUMBNAIL_PATIENCE: Duration = Duration::from_secs(4);
 const CHAPTER_REFRESH: Duration = Duration::from_secs(2);
 
 pub fn thumbnail_url(url: &str) -> String {
@@ -60,68 +61,92 @@ pub fn select_tracks(
     client.command(&["set", "secondary-sid", secondary])
 }
 
-pub struct ThumbnailWorker {
-    pub requests: Sender<f64>,
-    pub results: Receiver<Thumbnail>,
-}
-
-impl ThumbnailWorker {
-    pub fn spawn(url: String) -> Self {
-        let (requests, request_rx) = mpsc::channel::<f64>();
-        let (result_tx, results) = mpsc::channel();
-        std::thread::spawn(move || {
-            let mut renderer = match fluxa_mpv::MpvThumbnailRenderer::new()
-                .and_then(|mut renderer| renderer.load_thumbnail(&url).map(|_| renderer))
-            {
-                Ok(renderer) => renderer,
-                Err(error) => {
-                    eprintln!("[fluxa-desktop] seek thumbnails unavailable: {error}");
-                    return;
-                }
-            };
-            while let Ok(mut time) = request_rx.recv() {
-                while let Ok(next) = request_rx.try_recv() {
-                    time = next;
-                }
-                match render_thumbnail(&mut renderer, time) {
-                    Ok(rgba) => {
-                        let thumbnail = Thumbnail {
-                            time,
-                            size: THUMBNAIL_SIZE,
-                            rgba,
-                        };
-                        if result_tx.send(thumbnail).is_err() {
-                            return;
-                        }
-                    }
-                    Err(error) => eprintln!("[fluxa-desktop] seek thumbnail failed: {error}"),
-                }
-            }
-        });
-        Self { requests, results }
+pub fn enable_thumbnails(
+    client: &fluxa_mpv::MpvClientHandle,
+    url: &str,
+    plan: &ThumbnailPlan,
+    cache: Option<&Path>,
+) {
+    if !plan.enabled {
+        let _ = client.set_option("thumbnails", "no");
+        return;
     }
-
-    pub fn latest(&self) -> Option<Thumbnail> {
-        let mut latest = None;
-        while let Ok(thumbnail) = self.results.try_recv() {
-            latest = Some(thumbnail);
+    let source = plan.url.clone().unwrap_or_else(|| thumbnail_url(url));
+    if source != url {
+        if client.set_option("thumbnail-url", &source).is_err() {
+            return;
         }
-        latest
+        let headers = plan
+            .headers
+            .iter()
+            .map(|(name, value)| format!("{name}: {value}").replace(',', "\\,"))
+            .collect::<Vec<_>>()
+            .join(",");
+        let _ = client.set_option("thumbnail-http-header-fields", &headers);
+    }
+    let cache = cache.map(|cache| cache.to_string_lossy().into_owned());
+    let tuning = [
+        ("thumbnail-width", Some(THUMBNAIL_WIDTH.to_owned())),
+        ("thumbnail-interval", Some(plan.interval.max(1.0).to_string())),
+        ("thumbnail-sweep", Some(if plan.sheet { "yes" } else { "no" }.to_owned())),
+        ("thumbnail-delay", Some(if plan.hold { "0" } else { "3" }.to_owned())),
+        ("thumbnail-cache-dir", cache),
+    ];
+    for (name, value) in tuning {
+        if let Some(value) = value {
+            let _ = client.set_option(name, &value);
+        }
+    }
+    if let Err(error) = client.set_option("thumbnails", "yes") {
+        eprintln!("[fluxa-desktop] seek thumbnails unavailable: {error}");
     }
 }
 
-fn render_thumbnail(
-    renderer: &mut fluxa_mpv::MpvThumbnailRenderer,
-    time: f64,
-) -> Result<Vec<u8>, String> {
-    renderer.set_paused(false)?;
-    renderer.seek_thumbnail_to(time)?;
-    renderer.pump_events();
-    std::thread::sleep(Duration::from_millis(50));
-    renderer.set_paused(true)?;
-    renderer.pump_events();
-    std::thread::sleep(Duration::from_millis(20));
-    renderer.render_thumbnail(THUMBNAIL_SIZE[0] as i32, THUMBNAIL_SIZE[1] as i32)
+#[derive(Default)]
+pub struct SeekPreview {
+    wanted: Option<(f64, Instant)>,
+    tried: Option<Instant>,
+    ready: Option<Thumbnail>,
+}
+
+impl SeekPreview {
+    pub fn request(&mut self, client: &fluxa_mpv::MpvClientHandle, time: f64) {
+        self.wanted = Some((time, Instant::now()));
+        self.attempt(client);
+    }
+
+    pub fn take(&mut self, client: &fluxa_mpv::MpvClientHandle) -> Option<Thumbnail> {
+        let due = self.tried.is_none_or(|at| at.elapsed() >= THUMBNAIL_RETRY);
+        if due && self.wanted.is_some() {
+            self.attempt(client);
+        }
+        self.ready.take()
+    }
+
+    pub fn clear(&mut self) {
+        *self = Self::default();
+    }
+
+    fn attempt(&mut self, client: &fluxa_mpv::MpvClientHandle) {
+        let Some((time, since)) = self.wanted else {
+            return;
+        };
+        if since.elapsed() >= THUMBNAIL_PATIENCE {
+            self.wanted = None;
+            return;
+        }
+        self.tried = Some(Instant::now());
+        if let Some(found) = client.thumbnail(time) {
+            if found.exact {
+                self.wanted = None;
+            }
+            self.ready = Some(Thumbnail {
+                time: found.time,
+                size: [found.width, found.height],
+                rgba: found.rgba,
+            });
+        }
+    }
 }
 
 #[derive(Default)]
