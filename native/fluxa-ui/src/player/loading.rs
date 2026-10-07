@@ -220,28 +220,28 @@ pub(super) fn draw_loading(
 
 pub(super) fn scrims(painter: &egui::Painter, rect: Rect) {
     let reach = (rect.height() * 0.5).min(420.0);
-    let stops = [(0.0, 255u8), (0.35, 215), (0.7, 90), (1.0, 0)];
+    scrim_edge(painter, rect, reach, true, 255);
+    scrim_edge(painter, rect, reach, false, 255);
+}
+
+pub(super) fn scrim_edge(painter: &egui::Painter, rect: Rect, reach: f32, top: bool, peak: u8) {
+    let stops = [(0.0, 1.0), (0.35, 0.84), (0.7, 0.35), (1.0, 0.0)];
     for pair in stops.windows(2) {
         let ((from, dense), (to, sparse)) = (pair[0], pair[1]);
-        let band = |edge: f32, near: f32, far: f32| {
-            let (top, bottom) = if edge == rect.top() {
-                (edge + near * reach, edge + far * reach)
-            } else {
-                (edge - far * reach, edge - near * reach)
-            };
-            Rect::from_min_max(Pos2::new(rect.left(), top), Pos2::new(rect.right(), bottom))
-        };
-        paint_vertical_gradient(
-            painter,
-            band(rect.top(), from, to),
-            Color32::from_black_alpha(dense),
-            Color32::from_black_alpha(sparse),
-        );
-        paint_vertical_gradient(
-            painter,
-            band(rect.bottom(), from, to),
-            Color32::from_black_alpha(sparse),
-            Color32::from_black_alpha(dense),
-        );
+        let dense = Color32::from_black_alpha((dense * peak as f32) as u8);
+        let sparse = Color32::from_black_alpha((sparse * peak as f32) as u8);
+        if top {
+            let band = Rect::from_min_max(
+                Pos2::new(rect.left(), rect.top() + from * reach),
+                Pos2::new(rect.right(), rect.top() + to * reach),
+            );
+            paint_vertical_gradient(painter, band, dense, sparse);
+        } else {
+            let band = Rect::from_min_max(
+                Pos2::new(rect.left(), rect.bottom() - to * reach),
+                Pos2::new(rect.right(), rect.bottom() - from * reach),
+            );
+            paint_vertical_gradient(painter, band, sparse, dense);
+        }
     }
 }

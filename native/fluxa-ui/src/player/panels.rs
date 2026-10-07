@@ -131,6 +131,7 @@ pub(super) fn draw_pause_info(
         Color32::from_black_alpha(200),
         Color32::TRANSPARENT,
     );
+    scrim_edge(painter, rect, (rect.height() * 0.8).min(640.0), false, 255);
     let compact = rect.width() < 900.0 || rect.height() < 520.0;
     let left = rect.left() + if compact { 28.0 } else { 64.0 };
     let width = (rect.width() * if compact { 0.5 } else { 0.42 }).clamp(240.0, 620.0);
