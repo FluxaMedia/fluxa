@@ -1213,6 +1213,48 @@
       "category": "system"
     },
     {
+      "key": "trickplayInterval",
+      "type": "string",
+      "default": "10",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "trickplayMode",
+      "type": "string",
+      "default": "async",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "trickplayRegex",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "trickplayServerUrl",
+      "type": "string",
+      "default": "",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "trickplaySheet",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
+      "key": "trickplaySource",
+      "type": "string",
+      "default": "stream",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "tmdbApiKey",
       "type": "string",
       "default": "",

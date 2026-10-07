@@ -177,6 +177,10 @@ static METHODS: &[(&str, Router)] = &[
     ("trailerYoutubeVideoIds", route_trailer_subtitles),
     ("traktRemapVideoIds", route_trakt),
     ("traktShowIdFromEpisodeId", route_trakt),
+    ("trickplayPickSource", route_player_policy),
+    ("trickplayPlan", route_player_policy),
+    ("trickplayServerManifest", route_player_policy),
+    ("trickplayServerSource", route_player_policy),
 ];
 
 #[cfg(test)]

@@ -1,5 +1,6 @@
+use regex::RegexBuilder;
 use serde::Deserialize;
-use serde_json::Value;
+use serde_json::{Value, json};
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 #[serde(tag = "kind", rename_all = "lowercase", rename_all_fields = "camelCase")]
@@ -97,6 +98,148 @@ pub fn frame_at(frames: &[BifFrame], time_ms: u64) -> Option<&BifFrame> {
     frames.get(after.saturating_sub(1))
 }
 
+pub fn plan_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let settings = args.get("settings").unwrap_or(&Value::Null);
+    let text = |key: &str| {
+        settings
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .trim()
+    };
+    let flag = |key: &str, default: bool| {
+        settings
+            .get(key)
+            .and_then(Value::as_bool)
+            .unwrap_or(default)
+    };
+    let (kind, id) = match text("trickplaySource").split_once(':') {
+        Some((kind @ ("addon" | "plugin"), id)) if !id.is_empty() => (kind, id),
+        _ if text("trickplaySource") == "server" && !text("trickplayServerUrl").is_empty() => {
+            ("server", text("trickplayServerUrl"))
+        }
+        _ => ("stream", ""),
+    };
+    let interval = text("trickplayInterval")
+        .parse::<f64>()
+        .ok()
+        .filter(|value| value.is_finite())
+        .map_or(10.0, |value| value.clamp(1.0, 3600.0));
+    let sheet = flag("trickplaySheet", true);
+    Some(
+        json!({
+            "enabled": flag("seekThumbnailEnabled", true),
+            "source": {"kind": kind, "id": id},
+            "regex": text("trickplayRegex"),
+            "interval": interval,
+            "sheet": sheet,
+            "pregenerate": sheet && text("trickplayMode") == "pregenerate",
+        })
+        .to_string(),
+    )
+}
+
+fn server_base(base: &str, video_id: &str) -> Option<String> {
+    let base = base.trim().trim_end_matches('/');
+    if !base.starts_with("http") || video_id.is_empty() {
+        return None;
+    }
+    let path = video_id
+        .split(':')
+        .map(|part| part.trim())
+        .collect::<Vec<_>>()
+        .join("/");
+    Some(format!("{base}/{path}"))
+}
+
+pub fn server_manifest_url_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let base = server_base(
+        args.get("base")?.as_str()?,
+        args.get("videoId")?.as_str()?,
+    )?;
+    Some(json!(format!("{base}/manifest.json")).to_string())
+}
+
+pub fn server_source_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let base = server_base(
+        args.get("base")?.as_str()?,
+        args.get("videoId")?.as_str()?,
+    )?;
+    let manifest = args.get("manifest")?;
+    let number = |key: &str| manifest.get(key).and_then(Value::as_u64).filter(|n| *n > 0);
+    Some(
+        json!({
+            "kind": "sheets",
+            "url": format!("{base}/{{sheet}}.jpg"),
+            "interval": number("intervalMs")?,
+            "tileWidth": number("columns")?,
+            "tileHeight": number("rows")?,
+            "count": number("count")?,
+        })
+        .to_string(),
+    )
+}
+
+fn headers_of(stream: &Value) -> Vec<(String, String)> {
+    let hints = stream.get("behaviorHints");
+    [
+        stream.get("headers"),
+        hints.and_then(|hints| hints.get("requestHeaders")),
+        hints.and_then(|hints| hints.pointer("/proxyHeaders/request")),
+    ]
+    .into_iter()
+    .flatten()
+    .filter_map(Value::as_object)
+    .flatten()
+    .filter_map(|(name, value)| Some((name.clone(), value.as_str()?.to_owned())))
+    .collect()
+}
+
+pub fn pick_source_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let pattern = args.get("pattern").and_then(Value::as_str).unwrap_or("").trim();
+    let matcher = if pattern.is_empty() {
+        None
+    } else {
+        Some(RegexBuilder::new(pattern).case_insensitive(true).build().ok()?)
+    };
+    let text = |stream: &Value, key: &str| {
+        stream
+            .get(key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let found = args
+        .get("streams")?
+        .as_array()?
+        .iter()
+        .filter(|stream| {
+            stream
+                .get("url")
+                .and_then(Value::as_str)
+                .is_some_and(|url| url.starts_with("http"))
+        })
+        .find(|stream| {
+            matcher.as_ref().is_none_or(|matcher| {
+                let haystack = ["name", "title", "description", "addonName", "url"]
+                    .iter()
+                    .map(|key| text(stream, key))
+                    .collect::<Vec<_>>()
+                    .join("\n");
+                matcher.is_match(&haystack)
+            })
+        })?;
+    let headers: Vec<Value> = headers_of(found)
+        .into_iter()
+        .map(|(name, value)| json!([name, value]))
+        .collect();
+    Some(json!({"url": found.get("url")?, "headers": headers}).to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -156,5 +299,92 @@ mod tests {
         assert!(source_from_stream(&json!({"url": "x"})).is_none());
         let stream = json!({"trickplay": {"kind": "bif", "url": "u"}});
         assert_eq!(source_from_stream(&stream), Some(Source::Bif { url: "u".into() }));
+    }
+
+    #[test]
+    fn pick_uses_first_http_stream_without_pattern() {
+        let streams = json!([
+            {"name": "torrent", "infoHash": "abc"},
+            {"name": "Low", "url": "https://a/low.m3u8", "behaviorHints": {"proxyHeaders": {"request": {"Referer": "https://r/"}}}},
+            {"name": "High", "url": "https://a/high.mkv"}
+        ]);
+        let picked: Value = serde_json::from_str(
+            &pick_source_json(&json!({"streams": streams, "pattern": ""}).to_string()).unwrap(),
+        )
+        .unwrap();
+        assert_eq!(picked["url"], "https://a/low.m3u8");
+        assert_eq!(picked["headers"], json!([["Referer", "https://r/"]]));
+    }
+
+    #[test]
+    fn pick_filters_by_regex_and_rejects_bad_patterns() {
+        let streams = json!([
+            {"name": "Debrid", "title": "2160p remux", "url": "https://a/4k.mkv"},
+            {"name": "Debrid", "title": "480P web", "url": "https://a/480.mp4"}
+        ]);
+        let pick = |pattern: &str| {
+            pick_source_json(&json!({"streams": streams, "pattern": pattern}).to_string())
+        };
+        assert!(pick("480p").unwrap().contains("480.mp4"));
+        assert!(pick("1080p").is_none());
+        assert!(pick("(").is_none());
+    }
+
+    #[test]
+    fn server_urls_follow_movie_and_episode_ids() {
+        let url = |id: &str| {
+            let args = json!({"base": "https://api.example.app/static/trickplay/", "videoId": id});
+            server_manifest_url_json(&args.to_string()).map(|text| serde_json::from_str::<String>(&text).unwrap())
+        };
+        assert_eq!(
+            url("tt0111161").unwrap(),
+            "https://api.example.app/static/trickplay/tt0111161/manifest.json"
+        );
+        assert_eq!(
+            url("tt0903747:1:1").unwrap(),
+            "https://api.example.app/static/trickplay/tt0903747/1/1/manifest.json"
+        );
+        assert!(url("").is_none());
+    }
+
+    #[test]
+    fn server_manifest_becomes_sheet_source() {
+        let args = json!({
+            "base": "https://api.example.app/static/trickplay",
+            "videoId": "tt0903747:1:1",
+            "manifest": {"intervalMs": 10000, "count": 350, "width": 320, "height": 180, "columns": 5, "rows": 5},
+        });
+        let source: Source = serde_json::from_str(&server_source_json(&args.to_string()).unwrap()).unwrap();
+        assert_eq!(
+            source,
+            Source::Sheets {
+                url: "https://api.example.app/static/trickplay/tt0903747/1/1/{sheet}.jpg".to_owned(),
+                interval: 10000,
+                tile_width: 5,
+                tile_height: 5,
+                count: 350,
+            }
+        );
+    }
+
+    #[test]
+    fn plan_reads_settings_and_clamps_interval() {
+        let plan = |settings: Value| -> Value {
+            serde_json::from_str(&plan_json(&json!({"settings": settings}).to_string()).unwrap())
+                .unwrap()
+        };
+        let defaults = plan(json!({}));
+        assert_eq!(defaults["source"]["kind"], "stream");
+        assert_eq!(defaults["interval"], 10.0);
+        assert_eq!(defaults["pregenerate"], false);
+        let custom = plan(json!({
+            "trickplaySource": "plugin:trickplay", "trickplayInterval": "0.2",
+            "trickplayMode": "pregenerate", "trickplaySheet": true
+        }));
+        assert_eq!(custom["source"]["id"], "trickplay");
+        assert_eq!(custom["interval"], 1.0);
+        assert_eq!(custom["pregenerate"], true);
+        let no_sheet = plan(json!({"trickplayMode": "pregenerate", "trickplaySheet": false}));
+        assert_eq!(no_sheet["pregenerate"], false);
     }
 }
