@@ -306,7 +306,7 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 if people.is_empty() {
                     continue;
                 }
-                rows.push(heading(text(title)));
+                rows.push(heading(format!("{} ({})", text(title), people.len())));
                 for person in people {
                     let Some(id) = person["id"].as_i64() else {
                         continue;

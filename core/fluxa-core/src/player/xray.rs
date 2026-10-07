@@ -31,14 +31,23 @@ pub(crate) fn player_xray_credits_plan_json(args_json: &str) -> Option<String> {
     let series = input.media_type == "tv";
     let plan = match (input.tmdb_id, input.imdb_id.as_deref()) {
         (Some(id), _) => {
-            let path = match (series, input.season, input.episode) {
-                (true, Some(season), Some(episode)) => {
-                    format!("3/tv/{id}/season/{season}/episode/{episode}/credits")
-                }
-                (true, _, _) => format!("3/tv/{id}/credits"),
-                _ => format!("3/movie/{id}/credits"),
-            };
-            json!({ "url": tmdb_api_url(&path, &input.api_key, &input.language, &[]) })
+            let (path, extra): (String, &[(&str, &str)]) =
+                match (series, input.season, input.episode) {
+                    (true, Some(season), Some(episode)) => (
+                        format!("3/tv/{id}/season/{season}/episode/{episode}"),
+                        &[("append_to_response", "credits")],
+                    ),
+                    (true, _, _) => (format!("3/tv/{id}/credits"), &[]),
+                    _ => (format!("3/movie/{id}/credits"), &[]),
+                };
+            let mut plan = json!({
+                "url": tmdb_api_url(&path, &input.api_key, &input.language, extra)
+            });
+            if let (true, Some(_), Some(_)) = (series, input.season, input.episode) {
+                let path = format!("3/tv/{id}/credits");
+                plan["seriesUrl"] = json!(tmdb_api_url(&path, &input.api_key, &input.language, &[]));
+            }
+            plan
         }
         (None, Some(imdb)) => json!({
             "findUrl": tmdb_api_url(
@@ -66,9 +75,18 @@ pub(crate) fn player_xray_find_id_json(args_json: &str) -> Option<String> {
 
 pub(crate) fn player_xray_cast_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let credits = args.get("credits")?;
+    let empty = json!({});
+    let episode = args.get("credits").unwrap_or(&empty);
+    let series = args.get("series").unwrap_or(&empty);
     let mut cast: Vec<Value> = Vec::new();
-    for key in ["cast", "guest_stars"] {
+    let nested = episode.get("credits").unwrap_or(&empty);
+    for (credits, key) in [
+        (nested, "cast"),
+        (episode, "cast"),
+        (episode, "guest_stars"),
+        (nested, "guest_stars"),
+        (series, "cast"),
+    ] {
         for person in credits.get(key).and_then(Value::as_array).into_iter().flatten() {
             let (Some(id), Some(name)) = (
                 person.get("id").and_then(Value::as_i64),
@@ -179,6 +197,34 @@ mod tests {
         assert_eq!(cast["cast"].as_array().unwrap().len(), 2);
         assert_eq!(cast["cast"][0]["photo"], "https://image.tmdb.org/t/p/w185/a.jpg");
         assert!(cast["cast"][1]["character"].is_null());
+    }
+
+    #[test]
+    fn series_cast_follows_episode_cast() {
+        let args = json!({
+            "credits": { "cast": [{ "id": 1, "name": "A" }] },
+            "series": { "cast": [{ "id": 1, "name": "A" }, { "id": 3, "name": "C" }] }
+        });
+        let cast = parse(player_xray_cast_json(&args.to_string()));
+        let ids: Vec<i64> = cast["cast"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|person| person["id"].as_i64().unwrap())
+            .collect();
+        assert_eq!(ids, [1, 3]);
+    }
+
+    #[test]
+    fn episode_details_guest_stars_are_read() {
+        let args = json!({
+            "credits": {
+                "guest_stars": [{ "id": 7, "name": "G" }],
+                "credits": { "cast": [{ "id": 1, "name": "A" }] }
+            }
+        });
+        let cast = parse(player_xray_cast_json(&args.to_string()));
+        assert_eq!(cast["cast"].as_array().unwrap().len(), 2);
     }
 
     #[test]

@@ -27,7 +27,12 @@ pub(super) struct XRay {
     version: u64,
     find_rx: Option<Receiver<Option<Value>>>,
     credits_rx: Option<Receiver<Option<Value>>>,
+    series_rx: Option<Receiver<Option<Value>>>,
+    credits_done: Option<Option<Value>>,
+    series_done: Option<Option<Value>>,
 }
+
+const RECORD_VERSION: i64 = 4;
 
 impl XRay {
     pub(super) fn people(&self, group: &str) -> Vec<&Value> {
@@ -76,16 +81,29 @@ fn request_credits(state: &mut RendererState) {
     ));
     let plan = core_value("playerXrayCreditsPlan", args);
     let executor = session.executor();
-    let url = |key: &str| plan.as_ref()?.get(key)?.as_str().map(str::to_owned);
-    if let Some(url) = url("url") {
+    let url_of = |key: &str| plan.as_ref()?.get(key)?.as_str().map(str::to_owned);
+    if let Some(url) = url_of("url") {
         player.xray.credits_rx = Some(executor.fetch_json(url));
+        player.xray.series_rx = url_of("seriesUrl").map(|url| executor.fetch_json(url));
         player.xray.status = Status::Loading;
-    } else if let Some(url) = url("findUrl") {
+    } else if let Some(url) = url_of("findUrl") {
         player.xray.find_rx = Some(executor.fetch_json(url));
         player.xray.status = Status::Loading;
     } else {
         player.xray.status = Status::Unavailable;
     }
+}
+
+fn episode_from_id(player: &PlayerSession, snapshot: &Value) -> Option<(i64, i64)> {
+    let id = snapshot
+        .pointer("/player/currentVideoId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+        .or_else(|| player.meta.get("lastVideoId").and_then(Value::as_str))?;
+    let mut parts = id.rsplit(':');
+    let episode = parts.next()?.parse().ok()?;
+    let season = parts.next()?.parse().ok()?;
+    Some((season, episode))
 }
 
 pub(super) fn load(state: &mut RendererState) {
@@ -95,10 +113,20 @@ pub(super) fn load(state: &mut RendererState) {
     let Some(player) = state.player.as_mut() else {
         return;
     };
-    let Some(ctx) = overlay::lookup_context(player, &session.snapshot()) else {
+    let snapshot = session.snapshot();
+    let Some(mut ctx) = overlay::lookup_context(player, &snapshot) else {
         player.xray.status = Status::Unavailable;
         return;
     };
+    let numbers = player
+        .season_episode
+        .or_else(|| episode_from_id(player, &snapshot));
+    if let (Some((season, episode)), "tv") =
+        (numbers, ctx["mediaType"].as_str().unwrap_or_default())
+    {
+        ctx["season"] = json!(season);
+        ctx["episode"] = json!(episode);
+    }
     let Some(key) = storage_key(&ctx) else {
         player.xray.status = Status::Unavailable;
         return;
@@ -114,7 +142,9 @@ pub(super) fn load(state: &mut RendererState) {
         ..Default::default()
     };
     if let Some(stored) = stored {
-        player.xray.cast = stored["cast"].as_array().cloned().unwrap_or_default();
+        if stored["v"].as_i64() == Some(RECORD_VERSION) {
+            player.xray.cast = stored["cast"].as_array().cloned().unwrap_or_default();
+        }
         player.xray.marks = stored["marks"].as_object().cloned().unwrap_or_default();
     }
     if player.xray.cast.is_empty() {
@@ -128,7 +158,7 @@ fn save(session: &crate::SessionHandle, xray: &XRay) {
     let Some(key) = xray.key.as_deref() else {
         return;
     };
-    let value = json!({ "cast": xray.cast, "marks": xray.marks });
+    let value = json!({ "v": RECORD_VERSION, "cast": xray.cast, "marks": xray.marks });
     if let Err(error) = session.storage().write_json(key, &value) {
         host_log(format!("X-Ray write failed: {error}"));
     }
@@ -157,13 +187,23 @@ pub(super) fn pump(state: &mut RendererState) {
         }
         return;
     }
-    let credits = xray.credits_rx.as_ref().and_then(|rx| rx.try_recv().ok());
-    if let Some(credits) = credits {
+    if let Some(credits) = xray.credits_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
         xray.credits_rx = None;
-        let cast = credits
-            .and_then(|credits| core_value("playerXrayCast", json!({ "credits": credits })))
-            .and_then(|value| value["cast"].as_array().cloned())
-            .filter(|cast| !cast.is_empty());
+        xray.credits_done = Some(credits);
+    }
+    if let Some(series) = xray.series_rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        xray.series_rx = None;
+        xray.series_done = Some(series);
+    }
+    if xray.credits_rx.is_none() && xray.series_rx.is_none() && xray.credits_done.is_some() {
+        let credits = xray.credits_done.take().flatten();
+        let series = xray.series_done.take().flatten();
+        let cast = core_value(
+            "playerXrayCast",
+            json!({ "credits": credits, "series": series }),
+        )
+        .and_then(|value| value["cast"].as_array().cloned())
+        .filter(|cast| !cast.is_empty());
         match cast {
             Some(cast) => {
                 xray.cast = cast;
