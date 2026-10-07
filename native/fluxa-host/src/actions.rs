@@ -1016,6 +1016,9 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             continue;
         }
         if let NativeAction::PlayTrailer { item, urls } = &action {
+            if let Some(video) = state.video.as_mut() {
+                video.stop();
+            }
             state.player = Some(player::PlayerSession::trailer(item.clone(), urls));
             state.screen_scroll_offsets.remove(&Route::Player);
             state.ui = UiTree::default();
@@ -1042,6 +1045,9 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                 player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
             player.pick_manually(state.core_snapshot.as_deref());
             player.stale = session.snapshot().get("player").cloned();
+            if let Some(video) = state.video.as_mut() {
+                video.stop();
+            }
             state.player = Some(player);
             state.screen_scroll_offsets.remove(&Route::Player);
             state.ui = UiTree::default();
