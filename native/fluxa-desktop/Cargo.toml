@@ -23,6 +23,7 @@ accesskit_winit = "0.34.1"
 
 [target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
 ash = "0.38"
+arboard = { version = "3.6", default-features = false, features = ["wayland-data-control"] }
 
 [target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
 fontdb = "0.23"

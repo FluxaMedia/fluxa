@@ -109,6 +109,7 @@ fn collect_text_runs(shapes: &[egui::epaint::ClippedShape], viewport: egui::Rect
 pub(super) struct FrameOutput {
     pub(super) layout: HomeLayout,
     pub(super) cursor: egui::CursorIcon,
+    pub(super) copied: Option<String>,
     pub(super) wants_keyboard: bool,
     pub(super) text_runs: Vec<TextRun>,
     pub(super) field: Option<fluxa_ui::FocusedField>,
@@ -920,6 +921,15 @@ impl Gpu {
         Ok(FrameOutput {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,
+            copied: output
+                .platform_output
+                .commands
+                .iter()
+                .rev()
+                .find_map(|command| match command {
+                    egui::OutputCommand::CopyText(text) => Some(text.clone()),
+                    _ => None,
+                }),
             wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
             text_runs,
             field: fluxa_ui::focused_field(&self.egui_context),

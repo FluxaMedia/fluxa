@@ -57,6 +57,7 @@ struct App {
     held: Option<(GamepadButton, Instant)>,
     cursor_hidden: bool,
     ime_allowed: bool,
+    clipboard: Option<arboard::Clipboard>,
     modifiers: ModifiersState,
     cursor: egui::CursorIcon,
     pointer: [f32; 2],
@@ -79,6 +80,7 @@ impl App {
             held: None,
             cursor_hidden: false,
             ime_allowed: false,
+            clipboard: arboard::Clipboard::new().ok(),
             modifiers: ModifiersState::empty(),
             cursor: egui::CursorIcon::Default,
             pointer: [0.0, 0.0],
@@ -161,9 +163,36 @@ impl App {
         }
     }
 
-    fn key(&self, host: &FluxaHost, key: &WinitKey, text: Option<&str>, pressed: bool) {
+    fn edit_chord(&mut self, host: &FluxaHost, key: &WinitKey) -> bool {
+        if !(self.modifiers.control_key() || self.modifiers.super_key()) {
+            return false;
+        }
+        let WinitKey::Character(text) = key else {
+            return false;
+        };
+        match text.to_lowercase().as_str() {
+            "v" => {
+                if let Some(text) = self
+                    .clipboard
+                    .as_mut()
+                    .and_then(|clipboard| clipboard.get_text().ok())
+                {
+                    host.egui_paste(&text);
+                }
+            }
+            "c" => host.egui_event(egui::Event::Copy),
+            "x" => host.egui_event(egui::Event::Cut),
+            _ => return false,
+        }
+        true
+    }
+
+    fn key(&mut self, host: &FluxaHost, key: &WinitKey, text: Option<&str>, pressed: bool) {
         let egui_key = egui_key(key);
         if host.wants_keyboard() {
+            if pressed && self.edit_chord(host, key) {
+                return;
+            }
             if let Some(egui_key) = egui_key {
                 host.egui_key(egui_key, pressed);
             }
@@ -235,6 +264,11 @@ impl App {
                 Icon::from_rgba(image.to_vec(), image.width(), image.height()).ok()
             });
             window.set_window_icon(icon);
+        }
+        if let Some(text) = host.take_copied()
+            && let Some(clipboard) = self.clipboard.as_mut()
+        {
+            let _ = clipboard.set_text(text);
         }
         let editing = host.text_input_focused() || host.wants_keyboard();
         if editing != self.ime_allowed {

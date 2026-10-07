@@ -122,6 +122,14 @@ impl FluxaHost {
         self.with_state(|state| state.egui_events.push(egui::Event::Text(text.to_owned())));
     }
 
+    pub fn egui_paste(&self, text: &str) {
+        self.with_state(|state| state.egui_events.push(egui::Event::Paste(text.to_owned())));
+    }
+
+    pub fn take_copied(&self) -> Option<String> {
+        self.with_state(|state| state.copied.take()).flatten()
+    }
+
     pub fn egui_event(&self, event: egui::Event) {
         self.with_state(|state| {
             let event = if state.mirrored() {

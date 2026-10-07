@@ -287,6 +287,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
         match render_result {
             Ok(frame) => {
                 state.cursor = frame.cursor;
+                if frame.copied.is_some() {
+                    state.copied = frame.copied;
+                }
                 state.wants_keyboard = frame.wants_keyboard;
                 state.access = AccessFrame {
                     runs: frame.text_runs,
