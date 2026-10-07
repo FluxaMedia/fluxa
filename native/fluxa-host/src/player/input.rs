@@ -43,7 +43,6 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_TRACKS => open_menu(state, menu::Menu::Tracks),
         fluxa_ui::NODE_PLAYER_SPEED => open_menu(state, menu::Menu::Speed),
         fluxa_ui::NODE_PLAYER_EPISODES => open_menu(state, menu::Menu::Episodes),
-        fluxa_ui::NODE_PLAYER_XRAY => open_menu(state, menu::Menu::XRay),
         fluxa_ui::NODE_PLAYER_SETTINGS => open_menu(state, menu::Menu::Settings),
         fluxa_ui::NODE_PLAYER_NEXT => start_next(state, true),
         fluxa_ui::NODE_PLAYER_PREVIOUS => menu::previous(state),

@@ -32,9 +32,6 @@ impl Chrome<'_> {
         if options.episodes && player.has_episodes {
             actions.push(("ListVideo", NODE_PLAYER_EPISODES));
         }
-        if options.xray {
-            actions.push(("Users", NODE_PLAYER_XRAY));
-        }
         if options.settings && self.viewport.form_factor == UiFormFactor::Desktop {
             actions.push(("Settings", NODE_PLAYER_SETTINGS));
         }

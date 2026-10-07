@@ -117,7 +117,6 @@ fn player_label(state: &RendererState, id: u64) -> Option<String> {
         fluxa_ui::NODE_PLAYER_TRACKS => text("player.audio_and_subtitles"),
         fluxa_ui::NODE_PLAYER_SPEED => text("player.speed"),
         fluxa_ui::NODE_PLAYER_EPISODES => text("player.episodes"),
-        fluxa_ui::NODE_PLAYER_XRAY => text("player.xray"),
         fluxa_ui::NODE_PLAYER_NEXT | fluxa_ui::NODE_PLAYER_NEXT_PLAY => text("a11y.next_episode"),
         fluxa_ui::NODE_PLAYER_PREVIOUS => text("a11y.previous_episode"),
         fluxa_ui::NODE_PLAYER_NEXT_DISMISS => text("player.close"),
