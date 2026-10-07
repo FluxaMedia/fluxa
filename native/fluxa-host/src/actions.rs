@@ -655,7 +655,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             if state.route == Route::Settings
                 && (logical_viewport(state).is_compact() || logical_viewport(state).is_tv())
                 && let Some(index) = node.checked_sub(fluxa_ui::NODE_SETTINGS_ACCOUNT_SOURCE_BASE)
-                && index < 2
+                && (index < 2 || index == 3)
             {
                 card_menu::open_source(state, index as usize);
                 continue;

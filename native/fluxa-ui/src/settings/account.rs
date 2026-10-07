@@ -117,7 +117,9 @@ pub fn account_source_state(
     key: &str,
 ) -> (Vec<(String, String)>, String, String) {
     let language = settings.language();
-    let options = if key == "mdblistLibraryListId" {
+    let options = if key == "trickplaySource" {
+        trickplay_sources(settings)
+    } else if key == "mdblistLibraryListId" {
         if account_connected(settings, "mdblistAccessToken")
             || account_connected(settings, "mdblistApiKey")
         {
@@ -144,6 +146,7 @@ pub fn account_source_state(
         .to_owned();
     let label = match options.iter().find(|(source, _)| *source == current) {
         Some((_, label)) => label.clone(),
+        None if key == "trickplaySource" => localized("settings.trickplay_source_stream", language),
         None if options.is_empty() => localized("settings.not_connected", language),
         None => localized("settings.option.none", language),
     };
@@ -151,7 +154,90 @@ pub fn account_source_state(
 }
 
 pub fn account_source(index: usize) -> Option<(&'static str, &'static str)> {
-    ACCOUNT_SOURCES.get(index).copied()
+    ACCOUNT_SOURCES
+        .get(index)
+        .copied()
+        .or((index == TRICKPLAY_SOURCE_INDEX).then_some(TRICKPLAY_SOURCE))
+}
+
+const TRICKPLAY_SOURCE_INDEX: usize = 3;
+const TRICKPLAY_SOURCE: (&str, &str) = ("settings.trickplay_source", "trickplaySource");
+
+pub(super) fn draw_source_group(
+    context: &egui::Context,
+    viewport: Viewport,
+    settings: &SettingsModel,
+    rect: Rect,
+    top: f32,
+    (index, title): (usize, &str),
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) -> f32 {
+    let language = settings.language();
+    let painter = context.layer_painter(egui::LayerId::background());
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        settings_group_card_height(1, metrics),
+        &localized(title, language),
+        viewport.is_compact(),
+        metrics,
+    );
+    let Some(source) = account_source(index) else {
+        return card.bottom();
+    };
+    source_row(
+        context,
+        &painter,
+        viewport,
+        settings,
+        account_row(card, 0, metrics),
+        NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
+        source,
+        metrics,
+        layout,
+    );
+    card.bottom()
+}
+
+fn trickplay_sources(settings: &SettingsModel) -> Vec<(String, String)> {
+    let language = settings.language();
+    let text = |value: &serde_json::Value, key: &str| {
+        value
+            .get(key)
+            .and_then(serde_json::Value::as_str)
+            .filter(|text| !text.trim().is_empty())
+            .map(str::to_owned)
+    };
+    let addons = settings.addons.iter().filter_map(|addon| {
+        let url = addon_transport_url(addon)?;
+        let manifest = addon.get("manifest").unwrap_or(addon);
+        let name = text(manifest, "name").unwrap_or_else(|| url.to_owned());
+        Some((format!("addon:{url}"), name))
+    });
+    let plugins = settings
+        .plugins
+        .get("scrapers")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|scraper| {
+            let id = text(scraper, "id")?;
+            let name = text(scraper, "name").unwrap_or_else(|| id.clone());
+            Some((format!("plugin:{id}"), name))
+        });
+    std::iter::once((
+        "stream".to_owned(),
+        localized("settings.trickplay_source_stream", language),
+    ))
+    .chain(std::iter::once((
+        "server".to_owned(),
+        localized("settings.trickplay_source_server", language),
+    )))
+    .chain(addons)
+    .chain(plugins)
+    .collect()
 }
 
 pub(super) fn account_connected(settings: &SettingsModel, key: &str) -> bool {
@@ -161,6 +247,126 @@ pub(super) fn account_connected(settings: &SettingsModel, key: &str) -> bool {
         .or_else(|| settings.value(key))
         .and_then(serde_json::Value::as_str)
         .is_some_and(|token| !token.is_empty())
+}
+
+fn source_row(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    viewport: Viewport,
+    settings: &SettingsModel,
+    row: Rect,
+    node: u64,
+    (label_key, key): (&'static str, &'static str),
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let language = settings.language();
+    let compact = viewport.is_compact();
+    let sheet = compact || viewport.is_tv();
+    let label_size = if compact {
+        metrics.screen_body_size
+    } else {
+        metrics.settings_row_label_size_desktop
+    };
+    let (options, current, current_label) = account_source_state(settings, key);
+    let mut selected = current.clone();
+    if sheet {
+        layout.focusable.push((node, row));
+        let title = localized(label_key, language);
+        let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+        let tip = row.right_center() - Vec2::new(6.0, 0.0);
+        if viewport.platform == UiPlatform::Android {
+            let text_top = row.center().y - (label_size + 4.0 + value_font.size) * 0.5;
+            draw_text(
+                painter,
+                Pos2::new(row.left() + 4.0, text_top),
+                Align2::LEFT_TOP,
+                title,
+                crate::fonts::regular(label_size),
+                metrics.text_primary,
+                None,
+            );
+            draw_text(
+                painter,
+                Pos2::new(row.left() + 4.0, text_top + label_size + 4.0),
+                Align2::LEFT_TOP,
+                current_label,
+                value_font,
+                metrics.text_secondary,
+                None,
+            );
+        } else {
+            draw_text(
+                painter,
+                row.left_center() + Vec2::new(4.0, 0.0),
+                Align2::LEFT_CENTER,
+                title,
+                crate::fonts::regular(label_size),
+                metrics.text_primary,
+                None,
+            );
+            draw_text(
+                painter,
+                tip - Vec2::new(16.0, 0.0),
+                Align2::RIGHT_CENTER,
+                current_label,
+                value_font,
+                metrics.text_secondary,
+                None,
+            );
+            let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
+            painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
+            painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
+        }
+        return;
+    }
+    draw_text(
+        painter,
+        row.left_center() + Vec2::new(4.0, 0.0),
+        Align2::LEFT_CENTER,
+        localized(label_key, language),
+        FontId::proportional(label_size),
+        metrics.text_primary,
+        None,
+    );
+    let value_width = if compact { 132.0 } else { 176.0 };
+    let value_rect = Rect::from_min_size(
+        Pos2::new(row.right() - 2.0 - value_width, row.center().y),
+        Vec2::new(
+            value_width,
+            metrics.screen_control_height.min(row.height() - 4.0),
+        ),
+    )
+    .translate(Vec2::new(
+        0.0,
+        -metrics.screen_control_height.min(row.height() - 4.0) * 0.5,
+    ));
+    components::placed_front(
+        context,
+        Id::new(("fluxa-settings-account-choice", key)),
+        value_rect.min,
+        |ui| {
+            ui.set_min_size(value_rect.size());
+            ui.set_max_size(value_rect.size());
+            let response = components::choice_field(
+                ui,
+                Id::new(("settings-account", key)),
+                value_rect.size(),
+                metrics.settings_row_value_size_desktop,
+                &current_label,
+                &options,
+                &mut selected,
+                value_rect.width(),
+                !options.is_empty(),
+                false,
+                metrics,
+            );
+            layout.focusable.push((node, response.rect));
+        },
+    );
+    if selected != current {
+        layout.setting_change = Some(((key).to_owned(), serde_json::Value::String(selected)));
+    }
 }
 
 pub(super) fn draw_account(
@@ -460,114 +666,22 @@ pub(super) fn draw_account(
         compact,
         metrics,
     );
-    for (index, (label_key, key)) in ACCOUNT_SOURCES.iter().enumerate() {
+    for (index, &(label_key, key)) in ACCOUNT_SOURCES.iter().enumerate() {
         let row = account_row(card, index, metrics);
         if index > 0 {
             account_divider(&painter, row, metrics);
         }
-        let (options, current, current_label) = account_source_state(settings, key);
-        let mut selected = current.clone();
-        if sheet {
-            let node = NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64;
-            layout.focusable.push((node, row));
-            let title = localized(label_key, language);
-            let value_font = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
-            let tip = row.right_center() - Vec2::new(6.0, 0.0);
-            if viewport.platform == UiPlatform::Android {
-                let text_top = row.center().y - (label_size + 4.0 + value_font.size) * 0.5;
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left() + 4.0, text_top),
-                    Align2::LEFT_TOP,
-                    title,
-                    crate::fonts::regular(label_size),
-                    metrics.text_primary,
-                    None,
-                );
-                draw_text(
-                    &painter,
-                    Pos2::new(row.left() + 4.0, text_top + label_size + 4.0),
-                    Align2::LEFT_TOP,
-                    current_label,
-                    value_font,
-                    metrics.text_secondary,
-                    None,
-                );
-            } else {
-                draw_text(
-                    &painter,
-                    row.left_center() + Vec2::new(4.0, 0.0),
-                    Align2::LEFT_CENTER,
-                    title,
-                    crate::fonts::regular(label_size),
-                    metrics.text_primary,
-                    None,
-                );
-                draw_text(
-                    &painter,
-                    tip - Vec2::new(16.0, 0.0),
-                    Align2::RIGHT_CENTER,
-                    current_label,
-                    value_font,
-                    metrics.text_secondary,
-                    None,
-                );
-                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
-                painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
-                painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
-            }
-            continue;
-        }
-        draw_text(
-            &painter,
-            row.left_center() + Vec2::new(4.0, 0.0),
-            Align2::LEFT_CENTER,
-            localized(label_key, language),
-            FontId::proportional(label_size),
-            metrics.text_primary,
-            None,
-        );
-        let value_width = if compact { 132.0 } else { 176.0 };
-        let value_rect = Rect::from_min_size(
-            Pos2::new(row.right() - 2.0 - value_width, row.center().y),
-            Vec2::new(
-                value_width,
-                metrics.screen_control_height.min(row.height() - 4.0),
-            ),
-        )
-        .translate(Vec2::new(
-            0.0,
-            -metrics.screen_control_height.min(row.height() - 4.0) * 0.5,
-        ));
-        components::placed_front(
+        source_row(
             context,
-            Id::new(("fluxa-settings-account-choice", *key)),
-            value_rect.min,
-            |ui| {
-                ui.set_min_size(value_rect.size());
-                ui.set_max_size(value_rect.size());
-                let response = components::choice_field(
-                    ui,
-                    Id::new(("settings-account", *key)),
-                    value_rect.size(),
-                    metrics.settings_row_value_size_desktop,
-                    &current_label,
-                    &options,
-                    &mut selected,
-                    value_rect.width(),
-                    !options.is_empty(),
-                    false,
-                    metrics,
-                );
-                layout.focusable.push((
-                    NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
-                    response.rect,
-                ));
-            },
+            &painter,
+            viewport,
+            settings,
+            row,
+            NODE_SETTINGS_ACCOUNT_SOURCE_BASE + index as u64,
+            (label_key, key),
+            metrics,
+            layout,
         );
-        if selected != current {
-            layout.setting_change = Some(((*key).to_owned(), serde_json::Value::String(selected)));
-        }
     }
 
     draw_field_group(

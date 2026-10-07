@@ -526,6 +526,24 @@ pub(super) const POSTERS_GROUPS: [(usize, &str); 6] = [
     (7, "settings.group.poster_top_numbers"),
     (4, "settings.group.expanded_posters"),
 ];
+pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
+    SettingsRow {
+        label: "Generation mode",
+        key: "trickplayMode",
+        options: &["async", "pregenerate"],
+    },
+    SettingsRow {
+        label: "Frame interval",
+        key: "trickplayInterval",
+        options: &["2", "5", "10", "20", "30", "60"],
+    },
+    SettingsRow {
+        label: "Preview sheet",
+        key: "trickplaySheet",
+        options: &[],
+    },
+];
+pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(3, "settings.group.seek_previews")];
 pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 32] = [
     SettingsRow {
         label: "Playback destination",
@@ -1018,7 +1036,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 18] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 19] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1081,6 +1099,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 18] = [
         description: "Overlay, controls and gestures while watching",
         rows: &PLAYER_SETTINGS,
         groups: &PLAYER_GROUPS,
+    },
+    SettingsSection {
+        title: "Previews",
+        category: "Playback",
+        description: "Seek thumbnails, their source and how they are built",
+        rows: &PREVIEWS_SETTINGS,
+        groups: &PREVIEWS_GROUPS,
     },
     SettingsSection {
         title: "Badges",

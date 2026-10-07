@@ -368,6 +368,15 @@ pub(super) fn settings_card_height(
                 + FIELD_HEIGHT
                 + APPEARANCE_GROUP_GAP
         }
+        "Previews" => {
+            groups_height(&groups, rows_metrics)
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + settings_group_card_height(1, metrics)
+                + APPEARANCE_GROUP_GAP
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + FIELD_HEIGHT * 2.0
+                + APPEARANCE_GROUP_GAP
+        }
         "Badges" => groups_height(&groups, rows_metrics) + badges::badges_height(settings, metrics),
         "Collections" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -492,6 +501,8 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         ("frameInterpolationMode", "display_resample") => {
             Some("settings.frame_interpolation_display_resample")
         }
+        ("trickplayMode", "pregenerate") => Some("settings.trickplay_mode_pregenerate"),
+        ("trickplayMode", _) => Some("settings.trickplay_mode_async"),
         ("frameInterpolationMode", "smooth") => Some("settings.frame_interpolation_smooth"),
         ("audioProcessingMode", _) => Some(match value {
             "balanced" => "settings.audio_processing_balanced",
@@ -540,7 +551,8 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         | "trailerOnExpandedPostersDelay"
         | "autoPlayCountdownSecs"
         | "playerForwardBufferSeconds"
-        | "playerBackBufferSeconds" => format!("{value}s"),
+        | "playerBackBufferSeconds"
+        | "trickplayInterval" => format!("{value}s"),
         "reuseLastStreamTtlHours" => match value.parse::<u32>() {
             Ok(hours) if hours >= 24 => format!("{}d", hours / 24),
             _ => format!("{value}h"),
@@ -725,7 +737,7 @@ pub struct PosterField {
     pub input: u64,
 }
 
-pub const POSTER_FIELDS: [PosterField; 6] = [
+pub const POSTER_FIELDS: [PosterField; 8] = [
     PosterField {
         key: "posterUrlTemplate",
         label: "settings.poster_url_template",
@@ -767,6 +779,20 @@ pub const POSTER_FIELDS: [PosterField; 6] = [
         help: "settings.skipdb_api_key_help",
         hint: "settings.tmdb_api_key_placeholder",
         input: NODE_SETTINGS_SKIPDB_KEY,
+    },
+    PosterField {
+        key: "trickplayRegex",
+        label: "settings.trickplay_regex",
+        help: "settings.trickplay_regex_help",
+        hint: "settings.trickplay_regex_hint",
+        input: NODE_SETTINGS_TRICKPLAY_REGEX,
+    },
+    PosterField {
+        key: "trickplayServerUrl",
+        label: "settings.trickplay_server_url",
+        help: "settings.trickplay_server_url_help",
+        hint: "settings.trickplay_server_url_hint",
+        input: NODE_SETTINGS_TRICKPLAY_SERVER,
     },
 ];
 
@@ -1168,6 +1194,38 @@ fn draw_settings_extended_section(
                 top,
                 &localized("settings.group.custom_poster", language),
                 &[0],
+                metrics,
+                viewport.is_compact(),
+                layout,
+            );
+        }
+        "Previews" => {
+            let top = group_cards(
+                rect,
+                &visible_groups(settings, viewport),
+                described(metrics),
+            )
+            .last()
+            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
+                card.bottom() + APPEARANCE_GROUP_GAP
+            });
+            let top = account::draw_source_group(
+                context,
+                viewport,
+                settings,
+                rect,
+                top,
+                (3, "settings.group.seek_preview_source"),
+                metrics,
+                layout,
+            ) + APPEARANCE_GROUP_GAP;
+            draw_field_group(
+                context,
+                settings,
+                rect,
+                top,
+                &localized("settings.group.seek_preview_filter", language),
+                &[6, 7],
                 metrics,
                 viewport.is_compact(),
                 layout,
