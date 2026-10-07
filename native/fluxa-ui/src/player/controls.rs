@@ -221,6 +221,9 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
     let margin = chrome.margin();
     let header_y = rect.top() + 36.0;
     let close_center = Pos2::new(margin + 20.0, header_y);
+    if player.has_video() && player.controls_visible {
+        scrims(chrome.painter, rect);
+    }
     chrome.button(
         ui,
         layout,
@@ -235,7 +238,6 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         }
         return;
     }
-    scrims(chrome.painter, rect);
     let header_right = chrome.row_right(
         ui,
         layout,

@@ -219,20 +219,29 @@ pub(super) fn draw_loading(
 }
 
 pub(super) fn scrims(painter: &egui::Painter, rect: Rect) {
-    let reach = (rect.height() * 0.5).min(288.0);
-    paint_vertical_gradient(
-        painter,
-        Rect::from_min_size(rect.min, Vec2::new(rect.width(), reach)),
-        shade(Shade::Veil),
-        Color32::TRANSPARENT,
-    );
-    paint_vertical_gradient(
-        painter,
-        Rect::from_min_max(
-            Pos2::new(rect.left(), rect.bottom() - reach),
-            rect.right_bottom(),
-        ),
-        Color32::TRANSPARENT,
-        shade(Shade::Strong),
-    );
+    let reach = (rect.height() * 0.5).min(420.0);
+    let stops = [(0.0, 255u8), (0.35, 215), (0.7, 90), (1.0, 0)];
+    for pair in stops.windows(2) {
+        let ((from, dense), (to, sparse)) = (pair[0], pair[1]);
+        let band = |edge: f32, near: f32, far: f32| {
+            let (top, bottom) = if edge == rect.top() {
+                (edge + near * reach, edge + far * reach)
+            } else {
+                (edge - far * reach, edge - near * reach)
+            };
+            Rect::from_min_max(Pos2::new(rect.left(), top), Pos2::new(rect.right(), bottom))
+        };
+        paint_vertical_gradient(
+            painter,
+            band(rect.top(), from, to),
+            Color32::from_black_alpha(dense),
+            Color32::from_black_alpha(sparse),
+        );
+        paint_vertical_gradient(
+            painter,
+            band(rect.bottom(), from, to),
+            Color32::from_black_alpha(sparse),
+            Color32::from_black_alpha(dense),
+        );
+    }
 }

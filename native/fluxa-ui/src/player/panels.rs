@@ -125,19 +125,12 @@ pub(super) fn draw_pause_info(
     player: &PlayerModel,
     assets: &mut impl HomeAssets,
 ) {
-    let band = rect.width() / 24.0;
-    for index in 0..24 {
-        let fade = 1.0 - index as f32 / 24.0;
-        let left = rect.left() + index as f32 * band;
-        painter.rect_filled(
-            Rect::from_min_max(
-                Pos2::new(left, rect.top()),
-                Pos2::new(left + band, rect.bottom()),
-            ),
-            0.0,
-            Color32::from_black_alpha((200.0 * fade.powf(1.4)).round() as u8),
-        );
-    }
+    paint_horizontal_gradient(
+        painter,
+        rect,
+        Color32::from_black_alpha(200),
+        Color32::TRANSPARENT,
+    );
     let compact = rect.width() < 900.0 || rect.height() < 520.0;
     let left = rect.left() + if compact { 28.0 } else { 64.0 };
     let width = (rect.width() * if compact { 0.5 } else { 0.42 }).clamp(240.0, 620.0);
