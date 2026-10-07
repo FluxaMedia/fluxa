@@ -11,6 +11,7 @@ pub struct PanelRow {
     pub switch: Option<bool>,
     pub thumbnail: Option<String>,
     pub detail: Option<String>,
+    pub portrait: bool,
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -326,17 +327,27 @@ fn draw_list(
             };
             let mut right = rect.right() - 12.0;
             if rich {
+                let art_width = if row.portrait {
+                    row_h - 16.0
+                } else {
+                    (row_h - 16.0) * 16.0 / 9.0
+                };
                 let art = Rect::from_min_size(
                     rect.min + Vec2::new(8.0, 8.0),
-                    Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
+                    Vec2::new(art_width, row_h - 16.0),
                 );
-                veil.rect_filled(art, radius::control(), crate::ink(tone::FAINT));
+                let art_radius = if row.portrait { art_width * 0.5 } else { 6.0 };
+                veil.rect_filled(
+                    art,
+                    if row.portrait { art_radius } else { radius::control() },
+                    crate::ink(tone::FAINT),
+                );
                 components::rounded_artwork(
                     &veil,
                     art,
-                    6.0,
+                    art_radius,
                     row.thumbnail.as_deref(),
-                    [320, 180],
+                    if row.portrait { [185, 185] } else { [320, 180] },
                     ArtworkPriority::Visible,
                     Color32::WHITE,
                     assets,

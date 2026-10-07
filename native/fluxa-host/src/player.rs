@@ -22,6 +22,7 @@ mod trailer;
 mod seek_previews;
 mod trickplay;
 mod upnext;
+mod xray;
 pub(crate) use input::*;
 use overlay::Overlay;
 use resolve::*;
@@ -193,6 +194,7 @@ pub(crate) struct PlayerSession {
     passthrough: bool,
     dispatched: Option<Value>,
     overlay: Overlay,
+    xray: xray::XRay,
     panel: Option<Panel>,
     cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
@@ -318,6 +320,7 @@ impl PlayerSession {
             scrub: None,
             scrub_streak: 0,
             overlay: Overlay::default(),
+            xray: xray::XRay::default(),
             panel: None,
             cast: crate::cast::Cast::default(),
             trailer: None,
@@ -882,6 +885,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     advance_shuffle(state);
     menu::tick_sleep(state);
+    xray::pump(state);
     let RendererState {
         shuffle,
         player,
@@ -1368,6 +1372,7 @@ pub(crate) fn apply_options(model: &mut PlayerModel, settings: &SettingsModel) {
         episodes: on("playerShowEpisodes"),
         next_episode: on("playerShowNextEpisode"),
         settings: on("playerShowSettings"),
+        xray: true,
         volume: on("playerShowVolume"),
         fullscreen: on("playerShowFullscreen"),
         cast: on("playerShowCast"),

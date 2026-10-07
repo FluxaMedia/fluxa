@@ -13,6 +13,7 @@ pub(super) enum Menu {
     Speed,
     Episodes,
     Settings,
+    XRay,
     Delay(bool),
 }
 
@@ -32,6 +33,7 @@ enum Item {
     UpscalingMode,
     Fit,
     Stats,
+    XRay(i64),
     Language(bool, String),
     LanguageBack,
 }
@@ -294,6 +296,31 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 .collect();
             (text("player.episodes"), rows)
         }
+        Menu::XRay => {
+            let mut rows = Vec::new();
+            for (group, title) in [
+                ("appeared", "player.xray_appeared"),
+                ("pending", "player.xray_pending"),
+            ] {
+                let people = player.xray.people(group);
+                if people.is_empty() {
+                    continue;
+                }
+                rows.push(heading(text(title)));
+                for person in people {
+                    let Some(id) = person["id"].as_i64() else {
+                        continue;
+                    };
+                    let name = person["name"].as_str().unwrap_or_default().to_owned();
+                    let mut entry = row(name, None, group == "appeared", Item::XRay(id));
+                    entry.0.thumbnail = person["photo"].as_str().map(str::to_owned);
+                    entry.0.detail = person["character"].as_str().map(str::to_owned);
+                    entry.0.portrait = true;
+                    rows.push(entry);
+                }
+            }
+            (text("player.xray"), rows)
+        }
         Menu::Settings => {
             let delay = |value: f64| format!("{value:+.1}s");
             let aspect = match ASPECTS[player.aspect] {
@@ -382,9 +409,15 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
 
 pub(super) fn model(player: &PlayerSession, menu: Menu) -> PlayerPanel {
     let (title, rows) = items(player, menu);
+    let message = match (menu, player.xray.status) {
+        (Menu::XRay, xray::Status::Loading) => Some("player.xray_loading"),
+        (Menu::XRay, xray::Status::NoKey) => Some("player.xray_no_key"),
+        (Menu::XRay, xray::Status::Unavailable) => Some("player.xray_unavailable"),
+        _ => None,
+    };
     PlayerPanel {
         title,
-        message: None,
+        message: message.map(|key| localized(key, &player.language)),
         rows: rows.into_iter().map(|(row, _)| row).collect(),
         list: true,
     }
@@ -396,6 +429,9 @@ pub(super) fn open(state: &mut RendererState, menu: Menu) {
         && let Some(player) = state.player.as_mut()
     {
         player.tracks = video.tracks();
+    }
+    if matches!(menu, Menu::XRay) {
+        super::xray::load(state);
     }
     if let Some(player) = state.player.as_mut() {
         player.track_lang = None;
@@ -473,6 +509,7 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         Item::UpscalingMode => super::step_upscaling_mode(state, 1),
         Item::Fit => super::step_fit(state, 1, true),
         Item::Stats => super::toggle_stats(state),
+        Item::XRay(id) => super::xray::toggle(state, id),
         Item::Sleep => {
             player.sleep = (player.sleep + 1) % SLEEP_MINUTES.len();
             player.sleep_at = (SLEEP_MINUTES[player.sleep] > 0).then(|| {
