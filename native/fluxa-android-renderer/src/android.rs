@@ -356,6 +356,18 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeB
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setWindowFocusedNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    focused: jboolean,
+) {
+    if let Some(host) = host(handle) {
+        host.set_window_focused(focused != 0);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFormFactorNative(
     mut env: JNIEnv<'_>,
     _class: JClass<'_>,

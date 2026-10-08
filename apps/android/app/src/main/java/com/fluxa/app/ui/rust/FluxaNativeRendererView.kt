@@ -247,6 +247,12 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         renderThread = null
     }
 
+    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+        super.onWindowFocusChanged(hasWindowFocus)
+        val handle = nativeHandle
+        if (handle != 0L) NativeRenderer.setWindowFocusedNative(handle, hasWindowFocus)
+    }
+
     override fun onDetachedFromWindow() {
         inputEditable = null
         stopRenderThread()
@@ -878,6 +884,7 @@ private object NativeRenderer {
 
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
+    @JvmStatic external fun setWindowFocusedNative(handle: Long, focused: Boolean)
     @JvmStatic external fun setHomeStateNative(handle: Long, json: String)
     @JvmStatic external fun setFormFactorNative(handle: Long, formFactor: String)
     @JvmStatic external fun setCoreSnapshotNative(handle: Long, snapshot: String)

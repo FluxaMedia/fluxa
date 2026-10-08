@@ -45,6 +45,7 @@ void fluxa_renderer_surface_destroyed(const FluxaRenderer *renderer);
 void fluxa_renderer_render(const FluxaRenderer *renderer);
 
 void fluxa_renderer_set_safe_bottom_inset(const FluxaRenderer *renderer, float inset);
+void fluxa_renderer_set_window_focused(const FluxaRenderer *renderer, bool focused);
 void fluxa_renderer_set_form_factor(const FluxaRenderer *renderer, const char *form_factor);
 void fluxa_renderer_set_home_state(const FluxaRenderer *renderer, const char *json);
 void fluxa_renderer_set_core_snapshot(const FluxaRenderer *renderer, const char *json);

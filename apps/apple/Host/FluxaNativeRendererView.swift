@@ -39,6 +39,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         }
         installIndirectInput()
         observeControllers()
+        observeAppActivity()
     }
 
     required init?(coder: NSCoder) {
@@ -367,6 +368,23 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
                 MainActor.assumeIsolated { self?.bind(controller) }
             }
         )
+    }
+
+    private func observeAppActivity() {
+        for (name, focused) in [
+            (UIApplication.didBecomeActiveNotification, true),
+            (UIApplication.willResignActiveNotification, false),
+        ] {
+            controllerObservers.append(
+                NotificationCenter.default.addObserver(forName: name, object: nil, queue: .main) {
+                    [weak self] _ in
+                    MainActor.assumeIsolated {
+                        guard let self else { return }
+                        fluxa_renderer_set_window_focused(self.renderer, focused)
+                    }
+                }
+            )
+        }
     }
 
     private func bind(_ controller: GCController) {
