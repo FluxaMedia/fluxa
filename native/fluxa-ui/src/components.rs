@@ -1961,40 +1961,15 @@ fn continue_card_body(
     } else {
         subtitle_top - title_height
     };
-    let logo_box = Vec2::new(content_width * 0.6, title_height * 1.6);
-    let logo = title_logo(
-        painter.ctx().pixels_per_point(),
-        card.logo_url.as_deref(),
-        logo_box,
-        ArtworkPriority::Visible,
-        assets,
+    draw_text(
+        painter,
+        egui::Pos2::new(rect.left() + metrics.card_content_padding, title_top),
+        Align2::LEFT_TOP,
+        &card.title,
+        title_font,
+        metrics.text_primary,
+        Some(content_width),
     );
-    if let Some((texture, logo_size)) = logo {
-        let logo_rect = Rect::from_min_size(
-            egui::Pos2::new(
-                rect.left() + metrics.card_content_padding,
-                title_top + title_height - logo_size.y,
-            ),
-            logo_size,
-        );
-        texture_image(
-            painter,
-            texture,
-            logo_rect,
-            Rect::from_min_max(egui::Pos2::ZERO, egui::Pos2::new(1.0, 1.0)),
-            Color32::WHITE,
-        );
-    } else {
-        draw_text(
-            painter,
-            egui::Pos2::new(rect.left() + metrics.card_content_padding, title_top),
-            Align2::LEFT_TOP,
-            &card.title,
-            title_font,
-            metrics.text_primary,
-            Some(content_width),
-        );
-    }
     if has_subtitle {
         draw_text(
             painter,
