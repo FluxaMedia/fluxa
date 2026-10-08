@@ -52,7 +52,7 @@ package_windows() {
     win_dist="$(cygpath -w "$dist")"
     ISCC="$(command -v iscc || echo "/c/Program Files (x86)/Inno Setup 6/ISCC.exe")"
     MSYS2_ARG_CONV_EXCL="*" "$ISCC" "/DAppVersion=$version" "/DSourceDir=$win_app" "/DOutputDir=$win_dist" "$(cygpath -w "$root/packaging/windows/fluxa.iss")"
-    wix build "$(cygpath -w "$root/packaging/windows/fluxa.wxs")" -arch x64 -sval \
+    wix build "$(cygpath -w "$root/packaging/windows/fluxa.wxs")" -arch x64 \
         -d "Version=${version%%-*}" -d "SourceDir=$win_app" -o "$win_dist\\$name.msi"
 }
 
