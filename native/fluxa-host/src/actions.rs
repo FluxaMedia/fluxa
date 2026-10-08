@@ -984,6 +984,19 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         start_playback_without_session(state);
         return;
     };
+    if home_refresh_due(state) {
+        let profile = session.active_profile();
+        let command = json!({
+            "type": "refreshContinueWatchingRequested",
+            "profile": profile,
+            "language": profile_language(&profile),
+            "source": "poll",
+        });
+        state.home_refreshed_at = Instant::now();
+        if let Err(error) = session.dispatch(command) {
+            host_log(format!("core dispatch failed: {error}"));
+        }
+    }
     if state.pending_native_actions.is_empty() {
         return;
     }
@@ -1163,4 +1176,11 @@ fn close_settings_section(state: &mut RendererState) {
     }
     state.screen_scroll_offsets.remove(&Route::Settings);
     reset_ui(state);
+}
+
+pub(super) fn home_refresh_due(state: &RendererState) -> bool {
+    state.window_focused
+        && state.route == Route::Home
+        && state.player.is_none()
+        && state.home_refreshed_at.elapsed() >= HOME_REFRESH_INTERVAL
 }

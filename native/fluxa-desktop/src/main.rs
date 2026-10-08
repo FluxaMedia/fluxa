@@ -445,6 +445,7 @@ impl ApplicationHandler<AccessEvent> for App {
                 host.surface_destroyed();
                 event_loop.exit();
             }
+            WindowEvent::Focused(focused) => host.set_window_focused(focused),
             WindowEvent::Resized(size) => host.surface_changed(size.width, size.height),
             #[cfg(target_os = "macos")]
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {

@@ -39,6 +39,9 @@ pub fn set_emoji_rasterizer(rasterizer: EmojiRasterizer) {
     let _ = EMOJI_RASTERIZER.set(rasterizer);
 }
 
+const HOME_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
+const HOME_REFRESH_FOCUS_MIN: Duration = Duration::from_secs(10);
+
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
     fluxa_effects::set_logger(logger);
@@ -156,6 +159,8 @@ struct RendererState {
     active_scroll: Option<HomeScrollTarget>,
     scroll_velocity: f32,
     scroll_animation_at: Instant,
+    window_focused: bool,
+    home_refreshed_at: Instant,
     route: Route,
     screen_scroll_offsets: HashMap<Route, f32>,
     home: HomeModel,
@@ -335,6 +340,8 @@ impl FluxaHost {
             active_scroll: None,
             scroll_velocity: 0.0,
             scroll_animation_at: Instant::now(),
+            window_focused: true,
+            home_refreshed_at: Instant::now(),
             route: Route::Home,
             screen_scroll_offsets: HashMap::new(),
             home: HomeModel::default(),
@@ -400,6 +407,15 @@ impl FluxaHost {
             } else {
                 0.0
             };
+        });
+    }
+
+    pub fn set_window_focused(&self, focused: bool) {
+        self.with_state(|state| {
+            state.window_focused = focused;
+            if focused && state.home_refreshed_at.elapsed() >= HOME_REFRESH_FOCUS_MIN {
+                state.home_refreshed_at = Instant::now() - HOME_REFRESH_INTERVAL;
+            }
         });
     }
 

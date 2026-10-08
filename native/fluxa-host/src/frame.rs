@@ -41,6 +41,11 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .projector
         .pending()
         .then(|| now + Duration::from_millis(8));
+    let home_refresh = (state.session.is_some()
+        && state.window_focused
+        && state.route == Route::Home
+        && state.player.is_none())
+    .then(|| state.home_refreshed_at + HOME_REFRESH_INTERVAL);
     let trailer = trailer::next_redraw(state, now);
     let caret = state
         .ui
@@ -48,7 +53,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .and_then(|node| state.ui.node(node))
         .is_some_and(|node| node.kind == UiNodeKind::Input)
         .then(|| now + Duration::from_millis(265));
-    let artwork = [artwork, projecting, animation, effects, trailer, caret]
+    let artwork = [artwork, projecting, animation, effects, trailer, caret, home_refresh]
         .into_iter()
         .flatten()
         .min();
