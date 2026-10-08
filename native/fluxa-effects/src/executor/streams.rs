@@ -258,25 +258,29 @@ impl EffectExecutor {
             }));
         }
         #[cfg(not(target_arch = "wasm32"))]
-        let target = if scrapers.is_empty() {
-            None
-        } else {
-            let target = self.plugin_target(request).await;
-            if target.is_none() {
-                crate::log!("[fluxa-native] plugin target unresolved: no TMDB id for this title");
+        if !scrapers.is_empty() {
+            use futures::FutureExt;
+            let resolver = self.clone();
+            let lookup = request.clone();
+            let target = async move {
+                let target = resolver.plugin_target(&lookup).await;
+                if target.is_none() {
+                    crate::log!("[fluxa-native] plugin target unresolved: no TMDB id for this title");
+                }
+                target.map(std::sync::Arc::new)
             }
-            target
-        };
-        #[cfg(not(target_arch = "wasm32"))]
-        if let Some(target) = target {
-            let target = std::sync::Arc::new(target);
+            .boxed()
+            .shared();
             for (offset, scraper) in scrapers.into_iter().enumerate() {
                 let executor = self.clone();
                 let target = target.clone();
                 let progress = progress.clone();
                 let index = request_count + offset;
                 jobs.push(Box::pin(async move {
-                    let streams = executor.run_plugin_scraper(scraper, target).await;
+                    let streams = match target.await {
+                        Some(target) => executor.run_plugin_scraper(scraper, target).await,
+                        None => Vec::new(),
+                    };
                     if let Some(progress) = &progress {
                         progress(index, streams.clone());
                     }
