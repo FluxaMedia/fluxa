@@ -25,6 +25,8 @@ val appVersionName = providers.gradleProperty("fluxaVersion").orNull
     ?: System.getenv("GITHUB_REF_NAME")?.removePrefix("v")
     ?: "1.0.0"
 
+val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+
 android {
     namespace = "com.fluxa.app"
     compileSdk = 36
@@ -35,8 +37,10 @@ android {
         targetSdk = 36
         versionCode = 700
         versionName = appVersionName
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+        if (!isReleaseBuild) {
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a", "x86_64")
+            }
         }
     }
 
@@ -48,7 +52,7 @@ android {
 
     splits {
         abi {
-            isEnable = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
+            isEnable = isReleaseBuild
             reset()
             include("arm64-v8a", "armeabi-v7a", "x86_64")
             isUniversalApk = false

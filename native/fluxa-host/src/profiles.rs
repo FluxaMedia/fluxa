@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
-use std::time::Instant;
+use web_time::Instant;
 
 use fluxa_effects::{EffectExecutor, SessionHandle, Storage};
 use fluxa_ui::{
