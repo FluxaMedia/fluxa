@@ -461,9 +461,6 @@ fn refresh_plan(player: &mut PlayerSession) {
     }
 }
 
-const SEEK_JUMP_SECONDS: f64 = 3.0;
-const EVENT_SAVE_GAP_MS: i64 = 2000;
-
 fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: &Value) {
     let now = now_ms();
     let plan = core_value(
@@ -476,6 +473,10 @@ fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: 
             "nowMs": now,
             "lastSavedAtMs": player.overlay.last_saved_at_ms,
             "lastScrobble": player.overlay.last_scrobble,
+            "speed": player.speed,
+            "lastPaused": player.overlay.last_paused,
+            "lastPositionMs": player.overlay.last_position.map(|(position, _)| (position * 1000.0) as i64),
+            "elapsedMs": player.overlay.last_position.map_or(0, |(_, at)| at.elapsed().as_millis() as i64),
         }),
     );
     let Some(plan) = plan else {
@@ -485,25 +486,9 @@ fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: 
         player.overlay.last_scrobble = Some(action.to_owned());
         super::scrobble(session, player, snapshot, action);
     }
-    let moved = player.overlay.last_position.map(|(position, at)| {
-        let elapsed = at.elapsed().as_secs_f64();
-        let drift = player.status.position - position;
-        if player.overlay.last_paused == Some(true) {
-            drift.abs() > SEEK_JUMP_SECONDS / 2.0
-        } else {
-            (drift - elapsed * player.speed).abs() > SEEK_JUMP_SECONDS
-        }
-    });
-    let toggled = player
-        .overlay
-        .last_paused
-        .is_some_and(|paused| paused != player.status.paused);
     player.overlay.last_paused = Some(player.status.paused);
     player.overlay.last_position = Some((player.status.position, Instant::now()));
-    let on_event = player.status.has_frame
-        && (toggled || moved == Some(true))
-        && now - player.overlay.last_saved_at_ms > EVENT_SAVE_GAP_MS;
-    if plan["saveProgress"].as_bool() == Some(true) || on_event {
+    if plan["saveProgress"].as_bool() == Some(true) {
         player.overlay.last_saved_at_ms = now;
         super::save_progress(session, player, snapshot);
     }

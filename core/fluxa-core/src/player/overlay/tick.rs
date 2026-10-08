@@ -12,6 +12,10 @@ struct TickInput {
     last_saved_at_ms: i64,
     last_scrobble: Option<String>,
     ended: bool,
+    speed: f64,
+    last_paused: Option<bool>,
+    last_position_ms: Option<i64>,
+    elapsed_ms: i64,
 }
 
 #[derive(Serialize)]
@@ -20,6 +24,28 @@ struct TickPlan {
     scrobble: Option<&'static str>,
     save_progress: bool,
     progress_percent: f32,
+}
+
+const SEEK_JUMP_SECONDS: f64 = 3.0;
+const EVENT_SAVE_GAP_MS: i64 = 2000;
+
+impl TickInput {
+    fn seeked(&self) -> bool {
+        let Some(last) = self.last_position_ms else {
+            return false;
+        };
+        let drift = (self.position_ms - last) as f64 / 1000.0;
+        if self.last_paused == Some(true) {
+            return drift.abs() > SEEK_JUMP_SECONDS / 2.0;
+        }
+        let speed = if self.speed > 0.0 { self.speed } else { 1.0 };
+        let expected = self.elapsed_ms as f64 / 1000.0 * speed;
+        (drift - expected).abs() > SEEK_JUMP_SECONDS
+    }
+
+    fn toggled(&self) -> bool {
+        self.last_paused.is_some_and(|paused| paused != self.paused)
+    }
 }
 
 pub(crate) fn player_tick_plan_json(input: &str) -> Option<String> {
@@ -36,9 +62,13 @@ pub(crate) fn player_tick_plan_json(input: &str) -> Option<String> {
     };
     let scrobble_action = wanted.filter(|action| input.last_scrobble.as_deref() != Some(*action));
     let playing = input.has_frame && !input.paused;
+    let on_event = input.has_frame
+        && (input.toggled() || input.seeked())
+        && input.now_ms - input.last_saved_at_ms > EVENT_SAVE_GAP_MS;
     let save_progress = input.duration_ms > 0
         && scrobble::should_save_on_dispose(input.position_ms)
         && (scrobble::should_save_periodic_progress(playing, input.now_ms, input.last_saved_at_ms)
+            || on_event
             || (scrobble_action == Some("pause")
                 && scrobble::should_save_event_progress(input.now_ms, input.last_saved_at_ms)));
     serde_json::to_string(&TickPlan {
@@ -70,5 +100,28 @@ mod tests {
             "durationMs": 100000, "lastScrobble": "start"
         }));
         assert_eq!(paused["scrobble"], "pause");
+    }
+
+    #[test]
+    fn seek_and_pause_toggle_save_progress_once_per_gap() {
+        let tick = |input: Value| -> Value {
+            serde_json::from_str(&player_tick_plan_json(&input.to_string()).unwrap()).unwrap()
+        };
+        let base = json!({
+            "hasFrame": true, "durationMs": 100000, "nowMs": 100000, "lastSavedAtMs": 90000,
+            "lastScrobble": "start", "speed": 1.0, "lastPaused": false,
+            "lastPositionMs": 20000, "elapsedMs": 250
+        });
+        let with = |extra: Value| {
+            let mut input = base.clone();
+            input.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            input
+        };
+        assert_eq!(tick(with(json!({"positionMs": 20250})))["saveProgress"], false);
+        assert_eq!(tick(with(json!({"positionMs": 60000})))["saveProgress"], true);
+        assert_eq!(
+            tick(with(json!({"positionMs": 60000, "lastSavedAtMs": 99000})))["saveProgress"],
+            false
+        );
     }
 }
