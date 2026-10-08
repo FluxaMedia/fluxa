@@ -151,11 +151,37 @@ pub(crate) fn playback_progress_merge_plan_json(request_json: &str) -> Option<St
     let incoming_video_id = incoming.get("lastVideoId").and_then(Value::as_str);
     let video_changed = incoming_video_id.is_some() && incoming_video_id != existing_video_id;
 
+    let id_parts = incoming_video_id.and_then(|id| {
+        let mut parts = id.rsplitn(3, ':');
+        let episode = parts.next()?.parse::<i64>().ok()?;
+        let season = parts.next()?.parse::<i64>().ok()?;
+        parts.next()?;
+        Some((season, episode))
+    });
+
     let resolve_field = |key: &str| -> Value {
-        incoming
-            .get(key)
-            .filter(|v| !v.is_null())
-            .cloned()
+        let incoming_value = incoming.get(key).filter(|v| !v.is_null()).cloned();
+        let episode_field = matches!(
+            key,
+            "lastEpisodeName"
+                | "lastEpisodeSeason"
+                | "lastEpisodeNumber"
+                | "lastEpisodeThumbnail"
+                | "lastStreamUrl"
+                | "lastStreamTitle"
+                | "lastStreamIndex"
+                | "lastBingeGroup"
+        );
+        if video_changed && episode_field {
+            return incoming_value
+                .or_else(|| match (key, id_parts) {
+                    ("lastEpisodeSeason", Some((season, _))) => Some(json!(season)),
+                    ("lastEpisodeNumber", Some((_, episode))) => Some(json!(episode)),
+                    _ => None,
+                })
+                .unwrap_or(Value::Null);
+        }
+        incoming_value
             .or_else(|| existing.get(key).cloned())
             .unwrap_or(Value::Null)
     };
@@ -179,4 +205,22 @@ pub(crate) fn playback_progress_merge_plan_json(request_json: &str) -> Option<St
         "videoChanged": video_changed
     }))
     .ok()
+}
+
+#[cfg(test)]
+mod progress_merge_tests {
+    use super::playback_progress_merge_plan_json;
+    use serde_json::Value;
+
+    #[test]
+    fn changed_episode_drops_stale_season_and_number() {
+        let plan = playback_progress_merge_plan_json(
+            r#"{"existing":{"lastVideoId":"tt1:2:2","lastEpisodeSeason":2,"lastEpisodeNumber":2,"lastEpisodeName":"Old"},"incoming":{"lastVideoId":"tt1:1:1","timeOffset":10,"duration":100}}"#,
+        )
+        .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+        .unwrap();
+        assert_eq!(plan["lastEpisodeSeason"], 1);
+        assert_eq!(plan["lastEpisodeNumber"], 1);
+        assert!(plan["lastEpisodeName"].is_null());
+    }
 }
