@@ -35,6 +35,7 @@ const MPV_EVENT_NONE: c_int = 0;
 const MPV_EVENT_LOG_MESSAGE: c_int = 2;
 const MPV_EVENT_COMMAND_REPLY: c_int = 5;
 const MPV_EVENT_END_FILE: c_int = 7;
+const MPV_EVENT_FILE_LOADED: c_int = 8;
 const MPV_EVENT_PLAYBACK_RESTART: c_int = 21;
 const MPV_EVENT_PROPERTY_CHANGE: c_int = 22;
 const MPV_END_FILE_REASON_EOF: c_int = 0;
@@ -112,6 +113,7 @@ struct MpvEventLogMessage {
 pub enum PlayerEvent {
     EndFile { eof: bool, error: Option<String> },
     PauseChanged(bool),
+    FileLoaded,
 }
 
 #[derive(Clone, Copy, Debug, Default)]

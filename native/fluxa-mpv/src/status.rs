@@ -166,6 +166,7 @@ impl MpvClientHandle {
                         }
                     }
                 }
+                MPV_EVENT_FILE_LOADED => events.push(PlayerEvent::FileLoaded),
                 MPV_EVENT_END_FILE if !event.data.is_null() => {
                     let end_file = unsafe { &*(event.data as *const MpvEventEndFile) };
                     if end_file.reason == MPV_END_FILE_REASON_ERROR {

@@ -6,7 +6,6 @@ use fluxa_host::{Thumbnail, ThumbnailPlan, TrackSelection, VideoTrack};
 const THUMBNAIL_WIDTH: &str = "320";
 const THUMBNAIL_RETRY: Duration = Duration::from_millis(150);
 const THUMBNAIL_PATIENCE: Duration = Duration::from_secs(4);
-const CHAPTER_REFRESH: Duration = Duration::from_secs(2);
 
 pub fn thumbnail_url(url: &str) -> String {
     if url.contains("/stream/fname") {
@@ -152,31 +151,30 @@ impl SeekPreview {
 #[derive(Default)]
 pub struct Chapters {
     list: Vec<(f64, String)>,
-    at: Option<Instant>,
 }
 
 impl Chapters {
-    pub fn get(&mut self, client: &fluxa_mpv::MpvClientHandle) -> &[(f64, String)] {
-        if self.at.is_none_or(|at| at.elapsed() >= CHAPTER_REFRESH) {
-            self.at = Some(Instant::now());
-            self.list = client
-                .chapters_json()
-                .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
-                .and_then(|value| {
-                    value.get("chapters")?.as_array().map(|chapters| {
-                        chapters
-                            .iter()
-                            .filter_map(|chapter| {
-                                Some((
-                                    chapter.get("startMs")?.as_u64()? as f64 / 1000.0,
-                                    chapter.get("title")?.as_str()?.to_owned(),
-                                ))
-                            })
-                            .collect()
-                    })
+    pub fn load(&mut self, client: &fluxa_mpv::MpvClientHandle) {
+        self.list = client
+            .chapters_json()
+            .and_then(|json| serde_json::from_str::<serde_json::Value>(&json).ok())
+            .and_then(|value| {
+                value.get("chapters")?.as_array().map(|chapters| {
+                    chapters
+                        .iter()
+                        .filter_map(|chapter| {
+                            Some((
+                                chapter.get("startMs")?.as_u64()? as f64 / 1000.0,
+                                chapter.get("title")?.as_str()?.to_owned(),
+                            ))
+                        })
+                        .collect()
                 })
-                .unwrap_or_default();
-        }
+            })
+            .unwrap_or_default();
+    }
+
+    pub fn list(&self) -> &[(f64, String)] {
         &self.list
     }
 }

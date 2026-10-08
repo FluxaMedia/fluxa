@@ -200,7 +200,7 @@ impl VideoBackend for MpvBackend {
             volume: number(status.volume.as_deref()).unwrap_or(100.0),
             has_frame: player.first_frame,
             error: self.error.clone(),
-            chapters: player.chapters.get(&player.client).to_vec(),
+            chapters: player.chapters.list().to_vec(),
             buffering: buffering(&position),
         }
     }
@@ -439,11 +439,12 @@ impl MpvPlayer {
 
     fn render(&mut self) -> Result<Option<wgpu::TextureView>, String> {
         for event in self.client.poll_events() {
-            if let fluxa_mpv::PlayerEvent::EndFile {
-                error: Some(error), ..
-            } = event
-            {
-                return Err(error);
+            match event {
+                fluxa_mpv::PlayerEvent::EndFile {
+                    error: Some(error), ..
+                } => return Err(error),
+                fluxa_mpv::PlayerEvent::FileLoaded => self.chapters.load(&self.client),
+                _ => {}
             }
         }
         let mut latest = self.frames.latest.lock().unwrap_or_else(|e| e.into_inner());

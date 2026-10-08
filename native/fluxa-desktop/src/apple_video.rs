@@ -177,11 +177,12 @@ impl AppleBackend {
             return;
         };
         for event in player.client.poll_events() {
-            if let fluxa_mpv::PlayerEvent::EndFile {
-                error: Some(error), ..
-            } = event
-            {
-                self.error = Some(error);
+            match event {
+                fluxa_mpv::PlayerEvent::EndFile {
+                    error: Some(error), ..
+                } => self.error = Some(error),
+                fluxa_mpv::PlayerEvent::FileLoaded => player.chapters.load(&player.client),
+                _ => {}
             }
         }
     }
@@ -277,7 +278,7 @@ impl VideoBackend for AppleBackend {
             volume: number(status.volume.as_deref()).unwrap_or(100.0),
             has_frame: status.vo_configured.as_deref() == Some("yes"),
             error: self.error.clone(),
-            chapters: player.chapters.get(&player.client).to_vec(),
+            chapters: player.chapters.list().to_vec(),
             buffering: buffering(&position),
         }
     }
