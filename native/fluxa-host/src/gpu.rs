@@ -516,6 +516,7 @@ impl Gpu {
             });
         let egui_context = egui::Context::default();
         egui_context.set_fonts(fluxa_ui::fonts::definitions());
+        #[cfg(debug_assertions)]
         egui_context.all_styles_mut(|style| style.debug.warn_if_rect_changes_id = false);
         let background_image = {
             let image = fluxa_renderer::ambient_background_tinted(background.unwrap_or(
