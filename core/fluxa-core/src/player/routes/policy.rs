@@ -18,6 +18,9 @@ pub(crate) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         "subtitleStylePlan" => opt_json(crate::player::playback::policy::subtitle_style_plan_json(
             args_json,
         )),
+        "videoConfigPlan" => opt_json(crate::player::playback::policy::video_config_plan_json(
+            args_json,
+        )),
         "trickplayPickSource" => opt_json(crate::player::trickplay::pick_source_json(args_json)),
         "trickplayServerManifest" => {
             opt_json(crate::player::trickplay::server_manifest_url_json(args_json))

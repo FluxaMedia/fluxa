@@ -25,7 +25,8 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var shaders = emptyList<String>()
     private var fit = "fit"
     private var videoAspect = 0.0
-    private var audioProcessingMode = "reference"
+    private var audioFilter = ""
+    private var passthrough = false
     private var videoOptions = emptyMap<String, String>()
     private var audioLanguage: String? = null
     private var subtitleLanguage: String? = null
@@ -145,14 +146,15 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
             when (request.optString("type")) {
                 "configure" -> {
                     mpvOptions = request.optString("mpvOptions")
-                    audioProcessingMode = request.optString("audioProcessingMode").ifBlank { "reference" }
+                    audioFilter = request.optString("audioFilter")
+                    passthrough = request.optBoolean("passthrough")
                     videoOptions = mapOf(
-                        "hwdec-dolby-vision" to request.optString("dolbyVisionMode").replace('_', '-').ifBlank { "auto" },
-                        "android-dovi-tonemap" to request.optString("dolbyVisionTonemap").ifBlank { "auto" },
-                        "android-display-peak" to request.optString("displayPeakNits").ifBlank { "0" },
+                        "hwdec-dolby-vision" to request.optString("dolbyVisionMode"),
+                        "android-dovi-tonemap" to request.optString("dolbyVisionTonemap"),
+                        "android-display-peak" to request.optString("displayPeakNits"),
                     )
-                    audioLanguage = request.optString("audioLanguage").takeUnless { it.isBlank() || it == "none" }
-                    subtitleLanguage = request.optString("subtitleLanguage").takeUnless { it.isBlank() || it == "none" }
+                    audioLanguage = request.optString("audioLanguage").ifEmpty { null }
+                    subtitleLanguage = request.optString("subtitleLanguage").ifEmpty { null }
                 }
                 "thumbnails" -> {
                     thumbnailPlan = request
@@ -193,7 +195,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private fun load(url: String) {
         if (url.isBlank()) return
         stop()
-        val player = runCatching { MpvVideo(context, mpvOptions, audioProcessingMode, videoOptions, thumbnailPlan) }.getOrNull() ?: return
+        val player = runCatching { MpvVideo(context, mpvOptions, audioFilter, passthrough, videoOptions, thumbnailPlan) }.getOrNull() ?: return
         this.player = player
         player.setShaders(shaders)
         lastTracks = ""

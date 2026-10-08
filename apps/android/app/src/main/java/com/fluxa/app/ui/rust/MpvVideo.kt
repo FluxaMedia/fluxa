@@ -13,7 +13,8 @@ import org.json.JSONObject
 class MpvVideo(
     context: Context,
     options: String,
-    audioProcessingMode: String,
+    audioFilter: String,
+    passthrough: Boolean,
     videoOptions: Map<String, String>,
     thumbnails: JSONObject?,
 ) {
@@ -52,14 +53,11 @@ class MpvVideo(
             "thumbnail-width" to "320",
             "thumbnail-cache-dir" to appContext.cacheDir.resolve("thumbnails").apply { mkdirs() }.absolutePath,
         ).plus(thumbnailOptions(thumbnails)).plus(videoOptions).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
-        options.lines().map(String::trim).filter { it.isNotEmpty() && !it.startsWith('#') }.forEach { line ->
-            val key = line.substringBefore('=', "").trim()
-            if (key.isNotEmpty() && key !in routeOwnedAudioOptions) {
-                Mpv.setOption(mpv, key, line.substringAfter('=').trim())
-            }
+        options.lines().filter { it.isNotEmpty() }.forEach { line ->
+            Mpv.setOption(mpv, line.substringBefore('='), line.substringAfter('='))
         }
-        if (audioProcessingMode == "reference") spdif()?.let { Mpv.setOption(mpv, "audio-spdif", it) }
-        filters[audioProcessingMode]?.let { Mpv.setOption(mpv, "af", it) }
+        if (passthrough) spdif()?.let { Mpv.setOption(mpv, "audio-spdif", it) }
+        if (audioFilter.isNotEmpty()) Mpv.setOption(mpv, "af", audioFilter)
         check(Mpv.initialize(mpv) >= 0) { "libmpv could not be initialized" }
     }
 
@@ -302,10 +300,3 @@ private fun thumbnailOptions(plan: JSONObject?): Map<String, String> {
         "thumbnails" to "yes",
     )
 }
-
-private val routeOwnedAudioOptions = setOf("audio-spdif", "audio-channels", "af")
-
-private val filters = mapOf(
-    "balanced" to "lavfi=[acompressor=threshold=0.78:ratio=1.5:attack=30:release=300:link=maximum,alimiter=limit=0.98]",
-    "night" to "lavfi=[acompressor=threshold=0.55:ratio=3:attack=20:release=250:link=maximum,alimiter=limit=0.98]",
-)

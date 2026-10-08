@@ -1,6 +1,7 @@
 use std::sync::{Arc, Mutex};
 
 use crate::{Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus, VideoTrack};
+use fluxa_effects::core_value;
 use serde_json::{Value, json};
 
 #[derive(Default)]
@@ -51,22 +52,11 @@ impl BridgeVideo {
 
 impl VideoBackend for BridgeVideo {
     fn configure(&mut self, settings: &Value) {
-        let text = |key: &str| {
-            settings
-                .get(key)
-                .and_then(Value::as_str)
-                .unwrap_or_default()
+        let Some(Value::Object(mut plan)) = core_value("videoConfigPlan", settings.clone()) else {
+            return;
         };
-        self.send(json!({
-            "type": "configure",
-            "mpvOptions": text("mpvCustomOptions"),
-            "audioProcessingMode": text("audioProcessingMode"),
-            "dolbyVisionMode": text("dolbyVisionMode"),
-            "dolbyVisionTonemap": text("dolbyVisionTonemap"),
-            "displayPeakNits": text("displayPeakNits"),
-            "audioLanguage": text("preferredAudioLanguage"),
-            "subtitleLanguage": text("preferredSubtitleLanguage"),
-        }));
+        plan.insert("type".to_owned(), json!("configure"));
+        self.send(Value::Object(plan));
     }
 
     fn load(&mut self, _instance: &wgpu::Instance, _device: &wgpu::Device, url: &str) {

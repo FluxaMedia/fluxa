@@ -18,7 +18,7 @@ final class FluxaNativeVideo {
     private var audioLanguage = ""
     private var subtitleLanguage = ""
     private var customOptions = ""
-    private var audioProcessingMode = ""
+    private var audioFilter = ""
     private var loaded = false
     private var error: String?
     private var matchedRate = 0.0
@@ -46,7 +46,7 @@ final class FluxaNativeVideo {
             audioLanguage = request["audioLanguage"] as? String ?? ""
             subtitleLanguage = request["subtitleLanguage"] as? String ?? ""
             customOptions = request["mpvOptions"] as? String ?? ""
-            audioProcessingMode = request["audioProcessingMode"] as? String ?? ""
+            audioFilter = request["audioFilter"] as? String ?? ""
         case "load":
             guard let url = request["url"] as? String else { return }
             load(url)
@@ -104,15 +104,11 @@ final class FluxaNativeVideo {
         ]
         options.forEach { mpv_set_option_string(mpv, $0.0, $0.1) }
         for line in customOptions.split(whereSeparator: \.isNewline) {
-            let line = line.trimmingCharacters(in: .whitespaces)
-            guard !line.isEmpty, !line.hasPrefix("#"), let eq = line.firstIndex(of: "=") else { continue }
-            let key = line[..<eq].trimmingCharacters(in: .whitespaces)
-            if !["audio-spdif", "audio-channels", "af"].contains(key) {
-                mpv_set_option_string(mpv, key, line[line.index(after: eq)...].trimmingCharacters(in: .whitespaces))
-            }
+            let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+            mpv_set_option_string(mpv, String(parts[0]), parts.count > 1 ? String(parts[1]) : "")
         }
-        if let filter = filters[audioProcessingMode] {
-            mpv_set_option_string(mpv, "af", filter)
+        if !audioFilter.isEmpty {
+            mpv_set_option_string(mpv, "af", audioFilter)
         }
         guard mpv_initialize(mpv) >= 0 else {
             mpv_terminate_destroy(mpv)
@@ -225,8 +221,3 @@ final class FluxaNativeVideo {
         )
     }
 }
-
-private let filters = [
-    "balanced": "lavfi=[acompressor=threshold=0.78:ratio=1.5:attack=30:release=300:link=maximum,alimiter=limit=0.98]",
-    "night": "lavfi=[acompressor=threshold=0.55:ratio=3:attack=20:release=250:link=maximum,alimiter=limit=0.98]",
-]

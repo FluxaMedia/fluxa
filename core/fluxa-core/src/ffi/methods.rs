@@ -181,6 +181,7 @@ static METHODS: &[(&str, Router)] = &[
     ("trickplayPlan", route_player_policy),
     ("trickplayServerManifest", route_player_policy),
     ("trickplayServerSource", route_player_policy),
+    ("videoConfigPlan", route_player_policy),
 ];
 
 #[cfg(test)]
