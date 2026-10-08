@@ -53,6 +53,9 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
                             out.insert(field.to_owned(), value.clone());
                         }
                     }
+                    if let Some(logo) = meta.get("logo").filter(|value| !value.is_null()) {
+                        out.insert("titleLogo".to_owned(), logo.clone());
+                    }
                     if let Some(video) = episode_video(meta, entry) {
                         let text = |field| {
                             video
