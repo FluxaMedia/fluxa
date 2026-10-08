@@ -18,6 +18,7 @@ pub mod player;
 mod profile;
 mod services;
 mod settings;
+pub mod update;
 
 pub mod ffi;
 pub mod runtime;
