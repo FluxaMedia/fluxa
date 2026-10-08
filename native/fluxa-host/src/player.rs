@@ -908,6 +908,9 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     if player.stale.is_some() {
         if player.stale.as_ref() == snapshot.get("player") && Instant::now() < player.stale_until {
+            if let Some(session) = session {
+                refresh_display(player, session, settings, &snapshot);
+            }
             return;
         }
         player.stale = None;
@@ -1004,12 +1007,29 @@ pub(crate) fn pump(state: &mut RendererState) {
             player.load_progress = player.load_progress.max(progress.clamp(0.045, 1.0));
         }
     }
-    player.episode_title = episode_title(&player.meta, &snapshot);
-    player.episode_image = episode_image(&player.meta, &snapshot);
-    player.season_episode = season_episode(&player.meta, &snapshot);
-    player.synopsis = synopsis(&player.meta, &snapshot);
-    player.stream_addons = stream_addon_names(&snapshot);
-    seek_logo(player, session, &snapshot);
+    refresh_display(player, session, settings, &snapshot);
+    tick_warnings(player);
+    if shuffle.is_none() && !player.local {
+        tick_recommendations(player, session, settings, &snapshot);
+    }
+    publish_media(player, video);
+    if advance {
+        play_next(state);
+    }
+}
+
+fn refresh_display(
+    player: &mut PlayerSession,
+    session: &SessionHandle,
+    settings: &SettingsModel,
+    snapshot: &Value,
+) {
+    player.episode_title = episode_title(&player.meta, snapshot);
+    player.episode_image = episode_image(&player.meta, snapshot);
+    player.season_episode = season_episode(&player.meta, snapshot);
+    player.synopsis = synopsis(&player.meta, snapshot);
+    player.stream_addons = stream_addon_names(snapshot);
+    seek_logo(player, session, snapshot);
     if !player.warnings_requested {
         player.warnings_requested = true;
         player.language =
@@ -1028,17 +1048,9 @@ pub(crate) fn pump(state: &mut RendererState) {
                     .unwrap_or_else(|| text.to_owned())
             });
         player.warnings_rx =
-            content_warning_url(&player.meta, &snapshot).map(|url| session.fetch_json(url));
+            content_warning_url(&player.meta, snapshot).map(|url| session.fetch_json(url));
     }
     player.poll_streams(session);
-    tick_warnings(player);
-    if shuffle.is_none() && !player.local {
-        tick_recommendations(player, session, settings, &snapshot);
-    }
-    publish_media(player, video);
-    if advance {
-        play_next(state);
-    }
 }
 
 fn publish_media(player: &mut PlayerSession, video: &mut Option<Box<dyn VideoBackend>>) {
