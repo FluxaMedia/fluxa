@@ -13,12 +13,6 @@ env:
   NDK_VERSION: "28.2.13676358"
   RUST_VERSION: "1.94.0"
   RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
-  FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-  FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-  FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-  FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
-  FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
-  FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
 
 permissions:
   contents: write
@@ -66,7 +60,9 @@ jobs:
           node-version: "22"
 
       - name: Stamp version
-        run: node scripts/set-version.mjs "$RELEASE_TAG"
+        run: |
+          node scripts/set-version.mjs "$RELEASE_TAG"
+          echo "FLUXA_VERSION=${RELEASE_TAG#v}" >> "$GITHUB_ENV"
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@master
@@ -93,7 +89,6 @@ jobs:
       - name: Build release APKs (per-ABI split)
         working-directory: apps/android
         env:
-          FLUXA_VERSION: ${{ startsWith(env.RELEASE_TAG, 'v') && substring(env.RELEASE_TAG, 1) || env.RELEASE_TAG }}
           FLUXA_RELEASE_STORE_FILE: release.keystore.jks
           FLUXA_RELEASE_STORE_PASSWORD: ${{ secrets.FLUXA_RELEASE_STORE_PASSWORD }}
           FLUXA_RELEASE_KEY_ALIAS: ${{ secrets.FLUXA_RELEASE_KEY_ALIAS }}
@@ -128,6 +123,13 @@ jobs:
   desktop:
     name: desktop (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    env:
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+      FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -190,6 +192,13 @@ jobs:
   apple:
     name: apple (${{ matrix.name }})
     runs-on: macos-latest
+    env:
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+      FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
