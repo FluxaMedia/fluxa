@@ -116,7 +116,10 @@ impl EffectExecutor {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_owned();
-            if executor.cancelled.load(std::sync::atomic::Ordering::Relaxed) {
+            if executor
+                .cancelled
+                .load(std::sync::atomic::Ordering::Relaxed)
+            {
                 return;
             }
             let completion = match executor.execute(&effect).await {
@@ -330,9 +333,7 @@ impl EffectExecutor {
         let active_id = self
             .current_profile_id()?
             .unwrap_or_else(|| "guest".to_owned());
-        let mut settings = self
-            .profile_prefs(&active_id)?
-            .unwrap_or_else(|| json!({}));
+        let mut settings = self.profile_prefs(&active_id)?.unwrap_or_else(|| json!({}));
         if !settings.is_object() {
             settings = json!({});
         }
@@ -405,6 +406,20 @@ async fn fetch_json(client: &Client, url: &str) -> Result<Value, String> {
 }
 
 async fn fetch_text(client: &Client, url: &str) -> Result<(i32, Option<String>), String> {
+    let result = fetch_text_unrecorded(client, url).await;
+    let failure = match &result {
+        Err(error) => Some(error.clone()),
+        Ok((status, _)) if *status >= 500 => Some(format!("HTTP {status}")),
+        Ok(_) => None,
+    };
+    crate::addon_health::record(url, failure);
+    result
+}
+
+async fn fetch_text_unrecorded(
+    client: &Client,
+    url: &str,
+) -> Result<(i32, Option<String>), String> {
     let parsed = reqwest::Url::parse(url).map_err(|error| error.to_string())?;
     if !matches!(parsed.scheme(), "http" | "https") {
         return Err(format!(
@@ -419,7 +434,7 @@ async fn fetch_text(client: &Client, url: &str) -> Result<(i32, Option<String>),
         .get(parsed)
         .send()
         .await
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| crate::addon_health::request_error(&error))?;
     let status = i32::from(response.status().as_u16());
     let body = response.text().await.map_err(|error| error.to_string())?;
     Ok((status, Some(body)))
@@ -657,15 +672,29 @@ mod tests {
         storage
             .write_json("profiles", &json!([{"id": "a"}, {"id": "b"}]))
             .unwrap();
-        storage.write_json("active_profile_id", &json!("a")).unwrap();
+        storage
+            .write_json("active_profile_id", &json!("a"))
+            .unwrap();
         storage
             .write_json("library", &json!({"completed": [{"id": "tt1"}]}))
             .unwrap();
         crate::persisted_runtime_state(&storage, json!({}));
-        assert!(storage.read_json(&Storage::library_key("a")).unwrap().is_some());
-        storage.write_json("active_profile_id", &json!("b")).unwrap();
+        assert!(
+            storage
+                .read_json(&Storage::library_key("a"))
+                .unwrap()
+                .is_some()
+        );
+        storage
+            .write_json("active_profile_id", &json!("b"))
+            .unwrap();
         crate::persisted_runtime_state(&storage, json!({}));
-        assert!(storage.read_json(&Storage::library_key("b")).unwrap().is_none());
+        assert!(
+            storage
+                .read_json(&Storage::library_key("b"))
+                .unwrap()
+                .is_none()
+        );
         let _ = std::fs::remove_dir_all(directory);
     }
 
@@ -688,10 +717,18 @@ mod tests {
             })))
             .expect("write settings");
         assert_eq!(
-            storage.read_json(&Storage::prefs_key("mine")).unwrap().unwrap()["tmdbApiKey"],
+            storage
+                .read_json(&Storage::prefs_key("mine"))
+                .unwrap()
+                .unwrap()["tmdbApiKey"],
             "secret"
         );
-        assert!(storage.read_json(&Storage::prefs_key("other")).unwrap().is_none());
+        assert!(
+            storage
+                .read_json(&Storage::prefs_key("other"))
+                .unwrap()
+                .is_none()
+        );
         assert!(storage.read_json("prefs").unwrap().is_none());
         let _ = std::fs::remove_dir_all(directory);
     }

@@ -8,6 +8,7 @@ pub struct SettingsModel {
     pub profile: serde_json::Value,
     pub addons: Vec<serde_json::Value>,
     pub addon_error: Option<String>,
+    pub unreachable_addon_hosts: Vec<(String, String)>,
     pub plugins: serde_json::Value,
     pub addon_url: String,
     pub plugin_url: String,
@@ -217,6 +218,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
             .and_then(serde_json::Value::as_array)
             .cloned()
             .unwrap_or_default(),
+        unreachable_addon_hosts: Vec::new(),
         addon_error: addon_state
             .get("error")
             .and_then(|v| v.get("message"))

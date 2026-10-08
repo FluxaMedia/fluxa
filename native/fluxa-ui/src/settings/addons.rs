@@ -90,6 +90,7 @@ fn addon_chips(addon: &serde_json::Value, language: &str) -> Vec<String> {
 
 struct Card<'a> {
     title: &'a str,
+    warning: Option<String>,
     version: Option<&'a str>,
     subtitle: &'a str,
     description: Option<&'a str>,
@@ -106,7 +107,7 @@ impl Card<'_> {
             44.0
         } else {
             0.0
-        };
+        } + if self.warning.is_some() { 24.0 } else { 0.0 };
         let chips = if self.chips.is_empty() {
             0.0
         } else {
@@ -121,16 +122,34 @@ fn addon_card<'a>(
     index: usize,
     count: usize,
     language: &str,
+    unreachable: &[(String, String)],
 ) -> Card<'a> {
     let url = addon_transport_url(addon);
+    let failure = url.and_then(|url| {
+        unreachable
+            .iter()
+            .find(|(failing, _)| failing == host(url))
+            .map(|(_, detail)| detail.clone())
+    });
+    let resolved = failure.is_none();
     Card {
-        title: text(addon, "name").unwrap_or("Add-on"),
-        version: text(addon, "version"),
+        title: if resolved {
+            text(addon, "name").unwrap_or("Add-on")
+        } else {
+            url.and_then(|url| url.rsplit('/').find(|part| !part.is_empty()))
+                .unwrap_or("Add-on")
+        },
+        warning: failure,
+        version: text(addon, "version").filter(|_| resolved),
         subtitle: url.map(host).unwrap_or_default(),
-        description: text(addon, "description"),
-        logo: text(addon, "logo"),
+        description: text(addon, "description").filter(|_| resolved),
+        logo: text(addon, "logo").filter(|_| resolved),
         icon: None,
-        chips: addon_chips(addon, language),
+        chips: if resolved {
+            addon_chips(addon, language)
+        } else {
+            Vec::new()
+        },
         leading: vec![
             (addon_action_node(index, 0), "ChevronUp", index > 0),
             (
@@ -154,6 +173,7 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
         .unwrap_or(0);
     Card {
         title: text(repo, "name").unwrap_or("Plugin repository"),
+        warning: None,
         version: text(repo, "version"),
         subtitle: host(url),
         description: text(repo, "description"),
@@ -215,7 +235,17 @@ pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, langua
         .addons
         .iter()
         .enumerate()
-        .map(|(index, addon)| addon_card(addon, index, count, language).height() + CARD_GAP)
+        .map(|(index, addon)| {
+            addon_card(
+                addon,
+                index,
+                count,
+                language,
+                &settings.unreachable_addon_hosts,
+            )
+            .height()
+                + CARD_GAP
+        })
         .sum();
     header_height(metrics)
         + APPEARANCE_GROUP_HEADING_HEIGHT
@@ -404,7 +434,13 @@ pub(super) fn draw_addons(
         );
     }
     for (index, addon) in settings.addons.iter().enumerate() {
-        let card = addon_card(addon, index, count, language);
+        let card = addon_card(
+            addon,
+            index,
+            count,
+            language,
+            &settings.unreachable_addon_hosts,
+        );
         y = draw_card(context, &painter, &card, assets, rect, y, layout, metrics) + CARD_GAP;
     }
 }
@@ -674,6 +710,18 @@ fn draw_card(
         Some(text_width),
     );
     let mut y = logo.bottom() + 12.0;
+    if let Some(warning) = card.warning.as_deref() {
+        draw_text(
+            painter,
+            Pos2::new(inner.left(), y),
+            Align2::LEFT_TOP,
+            warning,
+            crate::fonts::regular(metrics.text.body),
+            danger_color(),
+            Some(inner.width()),
+        );
+        y += 24.0;
+    }
     if let Some(description) = card.description {
         let mut job = egui::text::LayoutJob::simple(
             description.to_owned(),
@@ -780,6 +828,7 @@ fn server_card<'a>(server: &'a serde_json::Value, index: usize, language: &str) 
         .map_or(0, Vec::len);
     Card {
         title: text(server, "name").unwrap_or("Server"),
+        warning: None,
         version: None,
         subtitle: text(server, "baseUrl").map(host).unwrap_or_default(),
         description: None,

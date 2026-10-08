@@ -21,6 +21,7 @@ macro_rules! log {
     };
 }
 
+mod addon_health;
 mod executor;
 #[cfg(not(target_arch = "wasm32"))]
 mod fetch_text;
@@ -29,6 +30,7 @@ mod range_proxy;
 mod session;
 pub mod storage;
 
+pub use addon_health::unreachable_addon_hosts;
 pub use executor::{
     EffectCompletion, EffectExecutor, core_value, media_servers, remove_media_server,
 };
