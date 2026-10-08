@@ -97,14 +97,8 @@ class MainActivity : Activity() {
             openFile(data)
             return
         }
-        if (intent.action == Intent.ACTION_VIEW && data?.scheme == "fluxa" && data.host == "oauth") {
-            host.renderer.pushAction(gson.toJson(mapOf("type" to "oauthCallback", "url" to data.toString())))
-            return
-        }
-        if (intent.action == Intent.ACTION_VIEW && data?.scheme == "app" && data.host == "play") {
-            val id = data.getQueryParameter("id")?.takeIf(String::isNotBlank) ?: return
-            val type = data.getQueryParameter("type")?.takeIf(String::isNotBlank) ?: return
-            host.renderer.pushAction(gson.toJson(mapOf("type" to "detail", "id" to id, "itemType" to type)))
+        if (intent.action == Intent.ACTION_VIEW && data != null) {
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "openLink", "url" to data.toString())))
         }
     }
 

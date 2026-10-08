@@ -20,6 +20,17 @@ fn trakt_calendar_plan_covers_the_whole_month() {
 
 
 #[test]
+fn deep_links_route_to_oauth_or_detail() {
+    let action = |url: &str| deep_link_action_json(&json!({"url": url}).to_string());
+    let oauth = value(action("fluxa://oauth/simkl?code=abc"));
+    assert_eq!(oauth["type"], "oauthCallback");
+    let detail = value(action("app://play?id=tt1&type=series"));
+    assert_eq!((detail["id"].as_str(), detail["itemType"].as_str()), (Some("tt1"), Some("series")));
+    assert!(action("app://play?id=tt1&type=").is_none());
+    assert!(action("https://example.com/?id=tt1&type=movie").is_none());
+}
+
+#[test]
 fn oauth_callback_yields_code_and_state() {
     let callback = value(provider_auth_callback_json(
         r#"{"url":"fluxa://oauth/simkl?code=abc&state=st"}"#,

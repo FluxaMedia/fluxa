@@ -111,6 +111,9 @@ pub(super) enum NativeAction {
     OauthCallback {
         url: String,
     },
+    OpenLink {
+        url: String,
+    },
     OpenFile {
         uri: String,
         title: String,

@@ -127,6 +127,29 @@ pub(crate) fn provider_authorize_url_json(args_json: &str) -> Option<String> {
     serde_json::to_string(&json!({"url": url})).ok()
 }
 
+pub(crate) fn deep_link_action_json(args_json: &str) -> Option<String> {
+    let args: Value = serde_json::from_str(args_json).ok()?;
+    let link = str_field(&args, "url");
+    let url = url::Url::parse(link).ok()?;
+    if !matches!(url.scheme(), "app" | "fluxa" | "fluxaapple") {
+        return None;
+    }
+    if url.scheme() == "fluxa" && url.host_str() == Some("oauth") {
+        return serde_json::to_string(&json!({"type": "oauthCallback", "url": link})).ok();
+    }
+    let query = |name: &str| {
+        url.query_pairs()
+            .find(|(key, value)| key == name && !value.trim().is_empty())
+            .map(|(_, value)| value.into_owned())
+    };
+    serde_json::to_string(&json!({
+        "type": "detail",
+        "id": query("id")?,
+        "itemType": query("type")?,
+    }))
+    .ok()
+}
+
 pub(crate) fn provider_auth_callback_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let url = url::Url::parse(str_field(&args, "url")).ok()?;

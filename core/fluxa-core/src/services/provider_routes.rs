@@ -6,6 +6,7 @@ pub(crate) fn route_provider_library(method: &str, args_json: &str) -> Outcome {
             args_json,
         )),
         "providerRegistry" => opt_json(Some(crate::services::registry::provider_registry_json())),
+        "deepLinkAction" => opt_json(crate::services::deep_link_action_json(args_json)),
         "providerAuthCallback" => opt_json(crate::services::provider_auth_callback_json(args_json)),
         "providerAuthorizeUrl" => opt_json(crate::services::provider_authorize_url_json(args_json)),
         "providerAuthRequest" => opt_json(crate::services::provider_auth_request_json(args_json)),

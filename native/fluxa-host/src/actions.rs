@@ -972,7 +972,8 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         | NativeAction::MediaServer { .. }
         | NativeAction::MediaCommand { .. }
         | NativeAction::OpenFile { .. }
-        | NativeAction::OauthCallback { .. } => return None,
+        | NativeAction::OauthCallback { .. }
+        | NativeAction::OpenLink { .. } => return None,
     };
     Some(commands)
 }
@@ -994,6 +995,17 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let mut files = Vec::new();
     let mut media = Vec::new();
     for action in std::mem::take(&mut state.pending_native_actions) {
+        let action = match action {
+            NativeAction::OpenLink { url } => {
+                match core_value("deepLinkAction", json!({"url": url}))
+                    .and_then(|action| serde_json::from_value(action).ok())
+                {
+                    Some(action) => action,
+                    None => continue,
+                }
+            }
+            action => action,
+        };
         if let NativeAction::MediaCommand { command, value } = action {
             media.push((command, value));
             continue;
