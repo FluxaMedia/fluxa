@@ -1,5 +1,7 @@
 mod install;
 
+pub use install::Applied;
+
 use fluxa_core::update;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
@@ -10,6 +12,21 @@ use std::sync::{Arc, Mutex};
 
 const MANIFEST_URL: &str = "https://github.com/FluxaMedia/fluxa/releases/latest/download/latest.json";
 const PUBLIC_KEY: &str = include_str!("../../../shared/update-public-key.txt");
+
+#[derive(Clone)]
+struct Source {
+    manifest_url: String,
+    public_key: String,
+}
+
+impl Default for Source {
+    fn default() -> Self {
+        Self {
+            manifest_url: MANIFEST_URL.to_owned(),
+            public_key: PUBLIC_KEY.to_owned(),
+        }
+    }
+}
 
 pub const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -31,11 +48,16 @@ struct Staged {
 #[derive(Clone)]
 pub struct Updater {
     dir: PathBuf,
+    source: Source,
     status: Arc<Mutex<Status>>,
 }
 
 impl Updater {
     pub fn new(data_dir: &Path) -> Self {
+        Self::with_source(data_dir, Source::default())
+    }
+
+    fn with_source(data_dir: &Path, source: Source) -> Self {
         let dir = data_dir.join("updates");
         install::remove_leftovers();
         let status = match staged_version(&dir) {
@@ -47,6 +69,7 @@ impl Updater {
         };
         Self {
             dir,
+            source,
             status: Arc::new(Mutex::new(status)),
         }
     }
@@ -55,7 +78,7 @@ impl Updater {
         self.status.lock().map(|status| status.clone()).unwrap_or(Status::Idle)
     }
 
-    pub fn check(&self) {
+    pub fn check(&self, variant: &str) {
         {
             let Ok(mut status) = self.status.lock() else {
                 return;
@@ -66,22 +89,47 @@ impl Updater {
             *status = Status::Checking;
         }
         let dir = self.dir.clone();
+        let source = self.source.clone();
         let status = self.status.clone();
+        let variant = variant.to_owned();
         std::thread::spawn(move || {
-            let outcome = run(&dir, &status).unwrap_or_else(Status::Failed);
+            let outcome = run(&dir, &source, &status, &variant).unwrap_or_else(Status::Failed);
             if let Ok(mut status) = status.lock() {
                 *status = outcome;
             }
         });
     }
 
-    pub fn apply(&self) -> Result<(), String> {
+    pub fn apply(&self) -> Result<Applied, String> {
         let Status::Ready { .. } = self.status() else {
             return Err("no update is ready".to_owned());
         };
-        install::apply(&self.dir.join("staged"))?;
-        let _ = fs::remove_dir_all(&self.dir);
-        Ok(())
+        let applied = install::apply(&self.dir.join("staged"))?;
+        if matches!(applied, Applied::Restart) {
+            let _ = fs::remove_dir_all(&self.dir);
+        }
+        Ok(applied)
+    }
+}
+
+fn platform(variant: &str) -> String {
+    #[cfg(target_os = "android")]
+    {
+        let abi = match std::env::consts::ARCH {
+            "aarch64" => "arm64-v8a",
+            "arm" => "armeabi-v7a",
+            other => other,
+        };
+        format!("android-{variant}-{abi}")
+    }
+    #[cfg(not(target_os = "android"))]
+    {
+        let _ = variant;
+        let mut key = update::platform_key(std::env::consts::OS, std::env::consts::ARCH);
+        if install::appimage_path().is_some() {
+            key.push_str("-appimage");
+        }
+        key
     }
 }
 
@@ -97,22 +145,23 @@ fn set(status: &Mutex<Status>, value: Status) {
     }
 }
 
-fn run(dir: &Path, status: &Mutex<Status>) -> Result<Status, String> {
+fn run(dir: &Path, source: &Source, status: &Mutex<Status>, variant: &str) -> Result<Status, String> {
     let client = reqwest::blocking::Client::builder()
         .user_agent(concat!("fluxa/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|error| error.to_string())?;
-    let manifest = fetch(&client, MANIFEST_URL)?;
-    let signature = fetch(&client, &format!("{MANIFEST_URL}.sig"))?;
-    let platform = update::platform_key(std::env::consts::OS, std::env::consts::ARCH);
+    let manifest = fetch(&client, &source.manifest_url)?;
+    let signature = fetch(&client, &format!("{}.sig", source.manifest_url))?;
+    let platform = platform(variant);
     let signature = String::from_utf8_lossy(&signature).into_owned();
-    let release = update::check(&manifest, &signature, PUBLIC_KEY, CURRENT_VERSION, &platform)
+    let release = update::check(&manifest, &signature, &source.public_key, CURRENT_VERSION, &platform)
         .map_err(|error| error.to_string())?;
     let Some(release) = release else {
         return Ok(Status::UpToDate);
     };
 
+    install::check_writable()?;
     let _ = fs::remove_dir_all(dir);
     let downloads = dir.join("download");
     fs::create_dir_all(&downloads).map_err(|error| error.to_string())?;
@@ -187,3 +236,6 @@ fn download(
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests;

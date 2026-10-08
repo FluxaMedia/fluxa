@@ -42,6 +42,7 @@ class MainActivity : Activity() {
         host.renderer.onOpenUrl = { url ->
             runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
         }
+        host.renderer.onInstallApk = { path -> ApkInstaller.install(this, path) }
         host.renderer.onNativeAction = { Log.i("FluxaNativeRenderer", "Unhandled native actions: $it") }
         host.renderer.dispatchCoreCommand(
             gson.toJson(mapOf("formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile"))

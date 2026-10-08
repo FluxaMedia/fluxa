@@ -14,3 +14,7 @@ serde_json = "1.0"
 sha2 = "0.11.0"
 tar = { version = "0.4", default-features = false }
 zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+
+[dev-dependencies]
+ed25519-dalek = { version = "3", default-features = false, features = ["alloc"] }
+base64 = "0.22"

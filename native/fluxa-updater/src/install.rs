@@ -2,11 +2,53 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+pub enum Applied {
+    Restart,
+    InstallApk(PathBuf),
+}
+
+pub(crate) fn appimage_path() -> Option<PathBuf> {
+    #[cfg(target_os = "linux")]
+    return std::env::var_os("APPIMAGE").map(PathBuf::from);
+    #[cfg(not(target_os = "linux"))]
+    None
+}
+
+#[cfg(target_os = "android")]
+pub(crate) fn check_writable() -> Result<(), String> {
+    Ok(())
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn check_writable() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+    let target = match appimage_path() {
+        Some(path) => path,
+        None if cfg!(target_os = "macos") => exe.ancestors().nth(3).map(Path::to_path_buf).unwrap_or(exe),
+        None => exe,
+    };
+    let parent = target.parent().ok_or("cannot locate the install directory")?;
+    let probe = parent.join(".fluxa-update-probe");
+    fs::write(&probe, b"").map_err(|_| {
+        "Fluxa is installed system-wide. Update it with your package manager or reinstall the new version.".to_owned()
+    })?;
+    let _ = fs::remove_file(probe);
+    Ok(())
+}
+
 pub(crate) fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
     let _ = fs::remove_dir_all(dest);
     fs::create_dir_all(dest).map_err(|error| error.to_string())?;
     let name = archive.to_string_lossy();
-    if name.ends_with(".tar.gz") {
+    if name.ends_with(".apk") {
+        fs::copy(archive, dest.join("update.apk"))
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    } else if name.ends_with(".AppImage") {
+        fs::copy(archive, dest.join("Fluxa.AppImage"))
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    } else if name.ends_with(".tar.gz") {
         let file = fs::File::open(archive).map_err(|error| error.to_string())?;
         tar::Archive::new(flate2::read::GzDecoder::new(file))
             .unpack(dest)
@@ -48,11 +90,42 @@ fn single_child(dir: &Path) -> Result<PathBuf, String> {
     }
 }
 
-pub(crate) fn apply(staged: &Path) -> Result<(), String> {
-    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
+#[cfg(target_os = "android")]
+pub(crate) fn apply(staged: &Path) -> Result<Applied, String> {
+    Ok(Applied::InstallApk(single_child(staged)?))
+}
+
+#[cfg(not(target_os = "android"))]
+pub(crate) fn apply(staged: &Path) -> Result<Applied, String> {
     let root = single_child(staged)?;
+    if let Some(target) = appimage_path() {
+        replace_appimage(&root, &target)?;
+        relaunch(&target)?;
+        return Ok(Applied::Restart);
+    }
+    let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     replace(&root, &exe)?;
-    relaunch(&exe)
+    relaunch(&exe)?;
+    Ok(Applied::Restart)
+}
+
+#[cfg(not(target_os = "android"))]
+fn replace_appimage(staged: &Path, target: &Path) -> Result<(), String> {
+    let mut name = target.file_name().unwrap_or_default().to_owned();
+    name.push(".old");
+    let backup = target.with_file_name(name);
+    let _ = fs::remove_file(&backup);
+    fs::rename(target, &backup).map_err(|error| format!("cannot replace {}: {error}", target.display()))?;
+    if let Err(error) = fs::copy(staged, target) {
+        let _ = fs::rename(&backup, target);
+        return Err(error.to_string());
+    }
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = fs::set_permissions(target, fs::Permissions::from_mode(0o755));
+    }
+    Ok(())
 }
 
 #[cfg(target_os = "macos")]
@@ -74,14 +147,14 @@ fn replace(staged_app: &Path, exe: &Path) -> Result<(), String> {
     Ok(())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
 fn replace(staged_root: &Path, exe: &Path) -> Result<(), String> {
     let install_dir = exe.parent().ok_or("cannot locate the install directory")?;
     copy_tree(staged_root, install_dir)
         .map_err(|error| format!("cannot write to {}: {error}", install_dir.display()))
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
 fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
     fs::create_dir_all(to)?;
     for entry in fs::read_dir(from)? {
@@ -122,7 +195,7 @@ fn relaunch(exe: &Path) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
 fn relaunch(exe: &Path) -> Result<(), String> {
     Command::new(exe)
         .args(std::env::args_os().skip(1))
@@ -131,6 +204,10 @@ fn relaunch(exe: &Path) -> Result<(), String> {
         .map_err(|error| error.to_string())
 }
 
+#[cfg(target_os = "android")]
+pub(crate) fn remove_leftovers() {}
+
+#[cfg(not(target_os = "android"))]
 pub(crate) fn remove_leftovers() {
     let Ok(exe) = std::env::current_exe() else {
         return;
@@ -145,7 +222,7 @@ pub(crate) fn remove_leftovers() {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "android")))]
 fn remove_old_files(dir: &Path, depth: u8) {
     let Ok(entries) = fs::read_dir(dir) else {
         return;
@@ -163,7 +240,7 @@ fn remove_old_files(dir: &Path, depth: u8) {
     }
 }
 
-#[cfg(all(test, not(target_os = "macos")))]
+#[cfg(all(test, not(any(target_os = "macos", target_os = "android"))))]
 mod tests {
     use super::*;
 

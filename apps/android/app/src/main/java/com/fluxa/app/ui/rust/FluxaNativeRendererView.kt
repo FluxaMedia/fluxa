@@ -59,6 +59,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var playerScreen = false
     var onAppIcon: ((String) -> Unit)? = null
     var onOpenUrl: ((String) -> Unit)? = null
+    var onInstallApk: ((String) -> Unit)? = null
     private var renderThread: HandlerThread? = null
     private var renderHandler: Handler? = null
     private val artworkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -86,6 +87,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             val openUrl = NativeRenderer.takeOpenUrlNative(nativeHandle)
             if (!openUrl.isNullOrEmpty()) {
                 post { onOpenUrl?.invoke(openUrl) }
+            }
+            val installApk = NativeRenderer.takeInstallApkNative(nativeHandle)
+            if (!installApk.isNullOrEmpty()) {
+                post { onInstallApk?.invoke(installApk) }
             }
             val onPlayerScreen = NativeRenderer.wantsLandscapeNative(nativeHandle)
             if (onPlayerScreen != playerScreen) {
@@ -900,6 +905,7 @@ private object NativeRenderer {
     @JvmStatic external fun pollActionsNative(handle: Long): String
     @JvmStatic external fun takeAppIconNative(handle: Long): String?
     @JvmStatic external fun takeOpenUrlNative(handle: Long): String?
+    @JvmStatic external fun takeInstallApkNative(handle: Long): String?
     @JvmStatic external fun launcherFeedNative(handle: Long): String?
     @JvmStatic external fun backNative(handle: Long): Boolean
     @JvmStatic external fun isPlayingNative(handle: Long): Boolean

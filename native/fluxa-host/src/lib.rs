@@ -605,6 +605,10 @@ impl FluxaHost {
             .unwrap_or(false)
     }
 
+    pub fn take_install_apk(&self) -> Option<String> {
+        self.with_state(|state| state.updates.install_apk.take()).flatten()
+    }
+
     pub fn take_app_icon(&self) -> Option<String> {
         self.with_state(|state| {
             let icon = fluxa_core::app_icon::resolve_app_icon(state.settings.app_icon());

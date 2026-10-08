@@ -74,7 +74,14 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
 }
 
 pub fn section_applies(title: &str, viewport: Viewport) -> bool {
-    !matches!(title, "Shortcuts" | "Updates") || !(viewport.is_compact() || viewport.is_tv())
+    match title {
+        "Shortcuts" => !(viewport.is_compact() || viewport.is_tv()),
+        "Updates" => matches!(
+            viewport.platform,
+            UiPlatform::Android | UiPlatform::Windows | UiPlatform::Macos | UiPlatform::Linux
+        ),
+        _ => true,
+    }
 }
 
 pub fn settings_page_for_node(node: u64) -> Option<usize> {

@@ -72,7 +72,7 @@ pub fn check(
     let Some(asset) = manifest.assets.get(platform) else {
         return Ok(None);
     };
-    if !asset.url.starts_with("https://") || asset.sha256.len() != 64 {
+    if !secure_url(&asset.url) || asset.sha256.len() != 64 {
         return Err(UpdateError::Malformed);
     }
     Ok(Some(Release {
@@ -80,6 +80,10 @@ pub fn check(
         notes: manifest.notes,
         asset: asset.clone(),
     }))
+}
+
+fn secure_url(url: &str) -> bool {
+    url.starts_with("https://") || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:")
 }
 
 pub fn sha256_matches(actual_hex: &str, asset: &Asset) -> bool {
