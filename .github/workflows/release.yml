@@ -4,30 +4,59 @@ on:
   push:
     tags: ["v*"]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing tag to build and publish (for example v0.2.0)
+        required: true
 
 env:
   NDK_VERSION: "28.2.13676358"
   RUST_VERSION: "1.94.0"
+  RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+  FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
+  FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
+  FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
+  FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+  FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+  FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
 
 permissions:
   contents: write
   pull-requests: read
 
-defaults:
-  run:
-    working-directory: apps/android
+concurrency:
+  group: release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
 
 jobs:
-  build-and-release:
+  notes:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
         with:
+          ref: ${{ env.RELEASE_TAG }}
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Set up JDK
-        uses: actions/setup-java@v5
+      - name: Build release notes from commits
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        working-directory: apps/android
+        run: ../../.github/scripts/build-release-notes.sh "$RELEASE_TAG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: notes
+          path: apps/android/notes.md
+
+  android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
@@ -51,10 +80,13 @@ jobs:
           echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/${{ env.NDK_VERSION }}" >> "$GITHUB_ENV"
 
       - name: Decode release keystore
+        working-directory: apps/android
         run: echo "${{ secrets.FLUXA_RELEASE_KEYSTORE_BASE64 }}" | base64 -d > release.keystore.jks
 
       - name: Build release APKs (per-ABI split)
+        working-directory: apps/android
         env:
+          FLUXA_VERSION: ${{ startsWith(env.RELEASE_TAG, 'v') && substring(env.RELEASE_TAG, 1) || env.RELEASE_TAG }}
           FLUXA_RELEASE_STORE_FILE: release.keystore.jks
           FLUXA_RELEASE_STORE_PASSWORD: ${{ secrets.FLUXA_RELEASE_STORE_PASSWORD }}
           FLUXA_RELEASE_KEY_ALIAS: ${{ secrets.FLUXA_RELEASE_KEY_ALIAS }}
@@ -63,26 +95,270 @@ jobs:
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
           SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
           ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
-          FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
-          FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         run: ./gradlew :app:assembleMobileRelease :app:assembleTvRelease --no-daemon
 
       - name: Remove release keystore
         if: always()
+        working-directory: apps/android
         run: rm -f release.keystore.jks
 
-      - name: Build release notes from commits
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Collect APKs
         run: |
-          ../../.github/scripts/build-release-notes.sh "${{ github.ref_name }}"
+          mkdir -p out
+          for flavor in mobile tv; do
+            for apk in apps/android/app/build/outputs/apk/$flavor/release/*.apk; do
+              abi="$(basename "$apk" .apk | grep -oE 'arm64-v8a|armeabi-v7a|x86_64|x86|universal' | head -n 1)"
+              cp "$apk" "out/fluxa-${RELEASE_TAG#v}-android-$flavor-${abi:-universal}.apk"
+            done
+          done
+          ls -l out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: out/*.apk
+
+  desktop:
+    name: desktop (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-x86_64
+            os: ubuntu-24.04
+          - name: windows-x86_64
+            os: windows-latest
+          - name: macos-arm64
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: release-${{ matrix.name }}
+
+      - name: Install macOS packaging tools
+        if: runner.os == 'macOS'
+        run: brew install librsvg
+
+      - name: Stamp version
+        shell: bash
+        run: node scripts/set-version.mjs "$RELEASE_TAG"
+
+      - name: Fetch libmpv
+        shell: bash
+        run: native/fluxa-mpv/fetch-libmpv.sh
+
+      - name: Package
+        shell: bash
+        run: scripts/package-desktop.sh "$RELEASE_TAG"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.name }}
+          path: dist/fluxa-*
+
+  apple:
+    name: apple (${{ matrix.name }})
+    runs-on: macos-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: ios
+            scheme: FluxaIos
+            sdk: iphoneos
+            destination: generic/platform=iOS
+          - name: tvos
+            scheme: FluxaTvos
+            sdk: appletvos
+            destination: generic/platform=tvOS
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+
+      - name: Set up nightly Rust for tvOS
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
+          components: rust-src
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: release-apple-${{ matrix.name }}
+
+      - name: Stamp version
+        run: node scripts/set-version.mjs "$RELEASE_TAG"
+
+      - name: Build Rust renderer
+        env:
+          CONFIGURATION: Release
+        run: apps/apple/scripts/build-rust-core-xcframework.sh
+
+      - name: Fetch libmpv
+        run: apps/apple/scripts/fetch-libmpv.sh
+
+      - name: Set up XcodeGen
+        run: command -v xcodegen >/dev/null || brew install xcodegen
+
+      - name: Generate Apple host project
+        working-directory: apps/apple
+        run: xcodegen generate
+
+      - name: Build unsigned app
+        env:
+          FLUXA_SKIP_RUST_CORE_BUILD: "1"
+        working-directory: apps/apple
+        run: >-
+          xcodebuild
+          -project FluxaApple.xcodeproj
+          -scheme ${{ matrix.scheme }}
+          -sdk ${{ matrix.sdk }}
+          -destination '${{ matrix.destination }}'
+          -configuration Release
+          -derivedDataPath build
+          MARKETING_VERSION="${RELEASE_TAG#v}"
+          CURRENT_PROJECT_VERSION="${GITHUB_RUN_NUMBER}"
+          CODE_SIGNING_ALLOWED=NO
+          build
+
+      - name: Package unsigned ipa
+        run: |
+          app="$(find apps/apple/build/Build/Products -maxdepth 2 -name '*.app' | head -n 1)"
+          mkdir -p out/Payload
+          cp -R "$app" out/Payload/
+          (cd out && zip -qry "fluxa-${RELEASE_TAG#v}-${{ matrix.name }}-unsigned.ipa" Payload)
+          rm -rf out/Payload
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: apple-${{ matrix.name }}
+          path: out/*.ipa
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: wasm32-unknown-unknown
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: release-web
+
+      - name: Stamp version
+        run: node scripts/set-version.mjs "$RELEASE_TAG"
+
+      - name: Build wasm bundle
+        env:
+          RUSTFLAGS: --cfg getrandom_backend="wasm_js"
+        run: |
+          cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
+          cargo build --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown --release
+          wasm-bindgen --target web --out-dir native/fluxa-web/www/pkg native/target/wasm32-unknown-unknown/release/fluxa_web.wasm
+
+      - name: Zip site
+        run: |
+          mkdir -p out
+          (cd native/fluxa-web/www && zip -qr "$GITHUB_WORKSPACE/out/fluxa-${RELEASE_TAG#v}-web.zip" . -x 'pkg/.gitignore')
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: web
+          path: out/*.zip
+
+  publish:
+    needs: [notes, android, desktop, apple, web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Gather release files
+        run: |
+          mkdir -p release
+          find artifacts -type f ! -name notes.md -exec cp {} release/ \;
+          (cd release && sha256sum * > SHA256SUMS)
+          ls -l release
+
+      - name: Build signed update manifest
+        env:
+          FLUXA_UPDATE_PRIVATE_KEY: ${{ secrets.FLUXA_UPDATE_PRIVATE_KEY }}
+        run: |
+          assets=()
+          for file in release/*; do
+            name="$(basename "$file")"
+            case "$name" in
+              *-linux-*.tar.gz) key="linux-$(echo "$name" | sed -E 's/.*-linux-([^.]*)\.tar\.gz/\1/')" ;;
+              *-windows-*.zip) key="windows-$(echo "$name" | sed -E 's/.*-windows-([^.]*)\.zip/\1/')" ;;
+              *-macos-*.zip) key="macos-$(echo "$name" | sed -E 's/.*-macos-([^.]*)\.zip/\1/')" ;;
+              *-android-*.apk) key="$(echo "$name" | sed -E 's/.*-(android-[a-z]+-[^.]*)\.apk/\1/')" ;;
+              *) continue ;;
+            esac
+            assets+=(--asset "$key=$file")
+          done
+          node scripts/update-manifest.mjs build \
+            --version "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --notes artifacts/notes/notes.md \
+            --out release/latest.json \
+            "${assets[@]}"
 
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: "Fluxa ${{ github.ref_name }}"
-          body_path: apps/android/notes.md
-          files: |
-            apps/android/app/build/outputs/apk/mobile/release/*.apk
-            apps/android/app/build/outputs/apk/tv/release/*.apk
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: "Fluxa ${{ env.RELEASE_TAG }}"
+          body_path: artifacts/notes/notes.md
+          files: release/*
