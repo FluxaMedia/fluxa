@@ -79,18 +79,7 @@ class MainActivity : Activity() {
         if (intent == null) return
         val query = intent.getStringExtra(android.app.SearchManager.QUERY) ?: intent.getStringExtra("query")
         if (query != null && intent.action in searchActions) {
-            host.renderer.pushAction(
-                gson.toJson(
-                    mapOf(
-                        "type" to "discoverCatalog",
-                        "contentType" to "movie",
-                        "catalogKey" to "",
-                        "extraName" to "",
-                        "extraValue" to "",
-                        "query" to query,
-                    )
-                )
-            )
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "search", "query" to query)))
         }
         val data = intent.data
         if (intent.action == Intent.ACTION_VIEW && (data?.scheme == "content" || data?.scheme == "file")) {

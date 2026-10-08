@@ -973,7 +973,8 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         | NativeAction::MediaCommand { .. }
         | NativeAction::OpenFile { .. }
         | NativeAction::OauthCallback { .. }
-        | NativeAction::OpenLink { .. } => return None,
+        | NativeAction::OpenLink { .. }
+        | NativeAction::Search { .. } => return None,
     };
     Some(commands)
 }
@@ -1002,6 +1003,20 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                 {
                     Some(action) => action,
                     None => continue,
+                }
+            }
+            NativeAction::Search { query } => {
+                let command = json!({
+                    "type": "searchRequested",
+                    "query": query.trim(),
+                    "language": state.discover.language,
+                });
+                state.discover.query = query;
+                state
+                    .pending_native_actions
+                    .push(NativeAction::CoreCommand { command });
+                NativeAction::Navigate {
+                    destination: Route::Discover,
                 }
             }
             action => action,

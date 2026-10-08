@@ -114,6 +114,9 @@ pub(super) enum NativeAction {
     OpenLink {
         url: String,
     },
+    Search {
+        query: String,
+    },
     OpenFile {
         uri: String,
         title: String,
