@@ -208,6 +208,30 @@ impl EffectExecutor {
         if chrono_unix_seconds() - checked_at < REMOTE_CHECK_SECONDS {
             return Ok(snapshot_addons(&snapshot));
         }
+        if snapshot.is_object() {
+            let mut checked = snapshot.clone();
+            checked["checkedAt"] = json!(chrono_unix_seconds());
+            self.storage.write_json(key, &checked)?;
+            let executor = self.clone();
+            let profile = profile.clone();
+            let key = key.to_owned();
+            let stale = snapshot.clone();
+            let task = async move {
+                match executor.refresh_nuvio_addons(&profile, &stale).await {
+                    Ok(fresh) => {
+                        let _ = executor.storage.write_json(&key, &fresh);
+                    }
+                    Err(error) => {
+                        crate::log!("[fluxa-native] Nuvio add-on refresh failed: {error}")
+                    }
+                }
+            };
+            #[cfg(target_arch = "wasm32")]
+            wasm_bindgen_futures::spawn_local(task);
+            #[cfg(not(target_arch = "wasm32"))]
+            super::runtime().spawn(task);
+            return Ok(snapshot_addons(&snapshot));
+        }
         match self.refresh_nuvio_addons(profile, &snapshot).await {
             Ok(fresh) => {
                 self.storage.write_json(key, &fresh)?;
