@@ -68,7 +68,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ env.RUST_VERSION }}
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -165,7 +165,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pkg-config libudev-dev librsvg2-bin rpm
+          sudo apt-get install -y pkg-config libudev-dev librsvg2-bin rpm desktop-file-utils
 
       - name: Install macOS packaging tools
         if: runner.os == 'macOS'

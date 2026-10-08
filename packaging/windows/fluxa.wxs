@@ -2,7 +2,7 @@
   <Package Name="Fluxa" Manufacturer="Fluxa" Version="$(var.Version)" UpgradeCode="3D8B5C70-92A4-4E1B-A6F3-0C7D1E9B4A52" Scope="perUser" InstallerVersion="500">
     <MajorUpgrade DowngradeErrorMessage="A newer version of Fluxa is already installed." />
     <MediaTemplate EmbedCab="yes" />
-    <Icon Id="FluxaIcon" SourceFile="..\icons\fluxa.ico" />
+    <Icon Id="FluxaIcon" SourceFile="$(var.IconFile)" />
     <Property Id="ARPPRODUCTICON" Value="FluxaIcon" />
 
     <StandardDirectory Id="LocalAppDataFolder">

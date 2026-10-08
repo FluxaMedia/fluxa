@@ -53,7 +53,7 @@ package_windows() {
     ISCC="$(command -v iscc || echo "/c/Program Files (x86)/Inno Setup 6/ISCC.exe")"
     MSYS2_ARG_CONV_EXCL="*" "$ISCC" "/DAppVersion=$version" "/DSourceDir=$win_app" "/DOutputDir=$win_dist" "$(cygpath -w "$root/packaging/windows/fluxa.iss")"
     wix build "$(cygpath -w "$root/packaging/windows/fluxa.wxs")" -arch x64 \
-        -d "Version=${version%%-*}" -d "SourceDir=$win_app" -o "$win_dist\\$name.msi"
+        -d "Version=${version%%-*}" -d "SourceDir=$win_app" -d "IconFile=$(cygpath -w "$root/packaging/icons/fluxa.ico")" -o "$win_dist\\$name.msi"
 }
 
 package_macos() {
