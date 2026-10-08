@@ -192,6 +192,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub follow_focus_hero: bool,
     #[serde(skip)]
+    pub focus_driven: bool,
+    #[serde(skip)]
     pub expanded_posters: bool,
     #[serde(skip)]
     pub expanded_posters_delay: f64,
@@ -282,6 +284,7 @@ impl HomeModel {
             trailer: None,
             poster_trailer: None,
             follow_focus_hero: false,
+            focus_driven: false,
             expanded_posters: false,
             expanded_posters_delay: 1.0,
             expanded_node: None,

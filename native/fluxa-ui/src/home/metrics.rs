@@ -226,7 +226,7 @@ pub(crate) fn home_shows_hero(home: &HomeModel) -> bool {
 }
 
 pub(crate) fn home_hero_pinned(viewport: Viewport, home: &HomeModel) -> bool {
-    home.follow_focus_hero && home_shows_hero(home) && !viewport.is_compact()
+    home.follow_focus_hero && home.focus_driven && home_shows_hero(home) && !viewport.is_compact()
 }
 
 pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 {

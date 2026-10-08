@@ -230,6 +230,11 @@ pub(super) fn render_frame(state: &mut RendererState) {
     if let Some(gpu) = state.gpu.as_ref() {
         fluxa_ui::set_input_caret(&gpu.egui_context, caret);
     }
+    let focus_driven = state.keyboard_focus_visible;
+    if state.home.focus_driven != focus_driven {
+        state.home.focus_driven = focus_driven;
+        state.home.scroll_offset = 0.0;
+    }
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
     let render_result = {

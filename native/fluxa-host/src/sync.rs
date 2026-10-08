@@ -36,8 +36,10 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let scroll_offset = state.home.scroll_offset;
     let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
     let platform = state.home.platform;
+    let focus_driven = state.home.focus_driven;
     state.home = projection.home;
     state.home.platform = platform;
+    state.home.focus_driven = focus_driven;
     state.home.scroll_offset = scroll_offset;
     state.home.row_scroll_offsets = row_scroll_offsets;
     if HOME_SYNC_LOGS.fetch_add(1, Ordering::Relaxed) % 120 == 0 {
