@@ -60,12 +60,16 @@ if [[ "$(uname -s)" == "Darwin" ]]; then
     test -f "$LIB_DIR/libMoltenVK.dylib"
     compgen -G "$LIB_DIR/libplacebo*.dylib" >/dev/null
     otool -L "$LIB_DIR/libmpv.dylib" | grep -F libplacebo
+    case "$ASSET" in
+        *arm64*) expected_arches="arm64" ;;
+        *x86_64*) expected_arches="x86_64" ;;
+        *) expected_arches="arm64 x86_64" ;;
+    esac
     for dylib in "$LIB_DIR"/*.dylib; do
         arches="$(lipo -archs "$dylib")"
         echo "$dylib: $arches"
-        echo "$arches" | grep -qw arm64
-        echo "$arches" | grep -qw x86_64
-        for arch in arm64 x86_64; do
+        for arch in $expected_arches; do
+            echo "$arches" | grep -qw "$arch"
             if otool -arch "$arch" -L "$dylib" | tail -n +3 | grep -Eq '^[[:space:]]+(/opt/homebrew/|/usr/local/)'; then
                 echo "non-portable macOS dependency in $dylib ($arch)" >&2
                 exit 1

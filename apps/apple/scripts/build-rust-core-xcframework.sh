@@ -23,7 +23,7 @@ sdk_for() {
 build() {
     local target="$1" sdk_path
     sdk_path="$(xcrun --sdk "$(sdk_for "$target")" --show-sdk-path)"
-    local cmd=(cargo build -p fluxa-apple-renderer --target "$target")
+    local cmd=(cargo "+${FLUXA_IOS_TOOLCHAIN:-stable}" build -p fluxa-apple-renderer --target "$target")
     if [[ "$target" == *tvos* ]]; then
         cmd=(cargo "+${FLUXA_TVOS_TOOLCHAIN:-nightly}" build -Zbuild-std=std,panic_abort -p fluxa-apple-renderer --target "$target")
     fi
