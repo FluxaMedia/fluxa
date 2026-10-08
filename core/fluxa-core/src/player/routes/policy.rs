@@ -6,6 +6,9 @@ pub(crate) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
         "anime4kShaderChain" => opt_json(
             crate::player::playback::policy::anime4k_shader_chain_json(args_json),
         ),
+        "playerEpisodes" => opt_json(crate::player::playback::policy::player_episodes_json(
+            args_json,
+        )),
         "playbackClosePlan" => opt_json(crate::player::playback::policy::playback_close_plan_json(
             args_json,
         )),

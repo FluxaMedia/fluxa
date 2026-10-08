@@ -164,26 +164,12 @@ pub(super) fn back(player: &mut PlayerSession) -> bool {
     player.track_lang.take().is_some()
 }
 
-fn episodes(player: &PlayerSession) -> Vec<&Value> {
-    let mut videos: Vec<&Value> = player
-        .meta
-        .get("videos")
-        .and_then(Value::as_array)
-        .map(|videos| videos.iter().collect())
-        .unwrap_or_default();
-    let key = |video: &Value| {
-        let number = |key: &str| video.get(key).and_then(Value::as_i64).unwrap_or(0);
-        (
-            number("season"),
-            video
-                .get("episode")
-                .and_then(Value::as_i64)
-                .unwrap_or_else(|| number("number")),
-        )
-    };
-    videos.retain(|video| key(video).0 > 0);
-    videos.sort_by_key(|video| key(video));
-    videos
+fn episodes(player: &PlayerSession) -> Vec<Value> {
+    let videos = player.meta.get("videos").cloned().unwrap_or(Value::Null);
+    match core_value("playerEpisodes", json!({"videos": videos})) {
+        Some(Value::Array(videos)) => videos,
+        _ => Vec::new(),
+    }
 }
 
 pub(super) fn has_episodes(player: &PlayerSession) -> bool {

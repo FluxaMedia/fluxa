@@ -93,6 +93,7 @@ static METHODS: &[(&str, Router)] = &[
     ("playbackPreferencesPlan", route_player_policy),
     ("playbackPreparePlan", route_resource_plan),
     ("playbackProgressWritePlan", route_watchlist),
+    ("playerEpisodes", route_player_policy),
     ("playerMediaCommandPlan", route_media_session),
     ("playerMediaSessionPlan", route_media_session),
     ("playerOverlayPlan", route_player_overlay),

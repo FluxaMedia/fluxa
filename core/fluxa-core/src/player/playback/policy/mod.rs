@@ -3,6 +3,7 @@ mod audio_channels;
 mod audio_tracks;
 mod backend_selection;
 mod buffer_targets;
+mod episodes;
 mod next_episode;
 mod playback_close;
 mod retry_and_ordering;
@@ -14,6 +15,7 @@ mod video_config;
 
 pub(crate) use anime4k::anime4k_shader_chain_json;
 pub(crate) use audio_tracks::select_audio_track_json;
+pub(crate) use episodes::player_episodes_json;
 pub(crate) use playback_close::{playback_close_plan_json, playback_preferences_plan_json};
 pub(crate) use shuffle::shuffle_episode_pick_json;
 pub(crate) use subtitle_style::subtitle_style_plan_json;
