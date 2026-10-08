@@ -1,0 +1,29 @@
+name: fluxa
+arch: amd64
+platform: linux
+version: ${FLUXA_VERSION}
+section: video
+priority: optional
+maintainer: Fluxa <noreply@fluxa.invalid>
+description: Fluxa media center
+homepage: https://github.com/FluxaMedia/fluxa
+license: MIT
+contents:
+  - src: ${FLUXA_APP_DIR}/
+    dst: /opt/fluxa
+    type: tree
+  - src: /opt/fluxa/fluxa-desktop
+    dst: /usr/bin/fluxa-desktop
+    type: symlink
+  - src: packaging/linux/fluxa.desktop
+    dst: /usr/share/applications/fluxa.desktop
+  - src: packaging/icons/fluxa.png
+    dst: /usr/share/icons/hicolor/512x512/apps/fluxa.png
+overrides:
+  deb:
+    depends:
+      - libc6
+      - libvulkan1
+  rpm:
+    depends:
+      - vulkan-loader

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Fluxa
+Comment=Media center
+Exec=fluxa-desktop %U
+Icon=fluxa
+Terminal=false
+Categories=AudioVideo;Video;Player;
+StartupWMClass=fluxa-desktop

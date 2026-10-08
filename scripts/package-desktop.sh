@@ -36,6 +36,9 @@ package_linux() {
     install -m 755 "$bin" "$app/fluxa-desktop"
     bundled_libs -exec cp -a {} "$app/lib/" \;
     tar -C "$stage" -czf "$dist/$name.tar.gz" fluxa
+    if [[ "$arch" == x86_64 ]]; then
+        "$root/scripts/package-linux-installers.sh" "$app" "$version" "$dist"
+    fi
 }
 
 package_windows() {
@@ -44,6 +47,13 @@ package_windows() {
     cp "$bin" "$app/fluxa-desktop.exe"
     cp "$mpv_lib"/*.dll "$app/"
     (cd "$stage" && 7z a -tzip "$dist/$name.zip" Fluxa >/dev/null)
+    local win_app win_dist
+    win_app="$(cygpath -w "$app")"
+    win_dist="$(cygpath -w "$dist")"
+    ISCC="$(command -v iscc || echo "/c/Program Files (x86)/Inno Setup 6/ISCC.exe")"
+    MSYS2_ARG_CONV_EXCL="*" "$ISCC" "/DAppVersion=$version" "/DSourceDir=$win_app" "/DOutputDir=$win_dist" "$(cygpath -w "$root/packaging/windows/fluxa.iss")"
+    wix build "$(cygpath -w "$root/packaging/windows/fluxa.wxs")" -arch x64 -sval \
+        -d "Version=${version%%-*}" -d "SourceDir=$win_app" -o "$win_dist\\$name.msi"
 }
 
 package_macos() {

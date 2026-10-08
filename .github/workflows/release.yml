@@ -156,6 +156,13 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install librsvg
 
+      - name: Install Windows packaging tools
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          choco install innosetup -y --no-progress
+          dotnet tool install --global wix --version 5.0.2
+
       - name: Stamp version
         shell: bash
         run: node scripts/set-version.mjs "$RELEASE_TAG"
@@ -340,6 +347,7 @@ jobs:
           for file in release/*; do
             name="$(basename "$file")"
             case "$name" in
+              *-linux-x86_64.AppImage) key="linux-x86_64-appimage" ;;
               *-linux-*.tar.gz) key="linux-$(echo "$name" | sed -E 's/.*-linux-([^.]*)\.tar\.gz/\1/')" ;;
               *-windows-*.zip) key="windows-$(echo "$name" | sed -E 's/.*-windows-([^.]*)\.zip/\1/')" ;;
               *-macos-*.zip) key="macos-$(echo "$name" | sed -E 's/.*-macos-([^.]*)\.zip/\1/')" ;;
