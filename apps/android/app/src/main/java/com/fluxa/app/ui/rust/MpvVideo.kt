@@ -181,11 +181,11 @@ class MpvVideo(
     }
 
     fun setVolume(volume: Double) {
-        Mpv.setProperty(mpv, "volume", volume.coerceIn(0.0, 100.0).toString())
+        Mpv.setProperty(mpv, "volume", volume.toString())
     }
 
     fun setSpeed(rate: Double) {
-        Mpv.setProperty(mpv, "speed", rate.coerceIn(0.25, 4.0).toString())
+        Mpv.setProperty(mpv, "speed", rate.toString())
     }
 
     private fun applyOutput() {

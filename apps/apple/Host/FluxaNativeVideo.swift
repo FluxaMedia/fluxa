@@ -67,10 +67,10 @@ final class FluxaNativeVideo {
             command("cycle", "mute")
         case "setVolume":
             guard let value = request["value"] as? Double else { return }
-            command("set", "volume", String(min(max(value, 0), 100)))
+            command("set", "volume", String(value))
         case "setSpeed":
             guard let value = request["value"] as? Double else { return }
-            command("set", "speed", String(min(max(value, 0.25), 4)))
+            command("set", "speed", String(value))
         default:
             break
         }
