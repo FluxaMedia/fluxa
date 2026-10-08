@@ -116,7 +116,7 @@ impl EffectExecutor {
                 continue;
             };
             if let (Some(object), Some(status)) = (item.as_object_mut(), status.as_object()) {
-                for field in ["episodesLeft", "upcoming", "airsAt"] {
+                for field in ["newEpisodes", "upcoming", "airsAt"] {
                     if let Some(value) = status.get(field) {
                         object.insert(field.to_owned(), value.clone());
                     }

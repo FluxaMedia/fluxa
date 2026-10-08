@@ -1620,8 +1620,6 @@
   "calendar.upcoming": "בקרוב",
   "home.cw.percent_watched": "%s נצפו",
   "home.cw.time_left": "%s נותרו",
-  "home.cw.episode_left": "נותר פרק אחד",
-  "home.cw.episodes_left": "נותרו %s פרקים",
   "home.cw.airs_in": "ישודר בעוד %s",
   "settings.continueProgressLabel": "תגית המשך צפייה",
   "settings.row.continueProgressLabel.description": "הצג את הזמן שנותר או אחוז הצפייה בכרטיסי המשך צפייה",

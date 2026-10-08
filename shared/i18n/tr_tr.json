@@ -1624,8 +1624,6 @@
   "calendar.upcoming": "Yaklaşan",
   "home.cw.percent_watched": "%s izlendi",
   "home.cw.time_left": "%s kaldı",
-  "home.cw.episode_left": "1 böl. kaldı",
-  "home.cw.episodes_left": "%s böl. kaldı",
   "home.cw.airs_in": "%s sonra yayında",
   "settings.continueProgressLabel": "İzlemeye Devam Et rozeti",
   "settings.row.continueProgressLabel.description": "İzlemeye Devam Et kartlarında kalan süreyi veya izlenme yüzdesini gösterir",

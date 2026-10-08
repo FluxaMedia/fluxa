@@ -1620,8 +1620,6 @@
   "calendar.upcoming": "قريبًا",
   "home.cw.percent_watched": "تمت مشاهدة %s",
   "home.cw.time_left": "متبقي %s",
-  "home.cw.episode_left": "متبقية حلقة واحدة",
-  "home.cw.episodes_left": "متبقية %s حلقات",
   "home.cw.airs_in": "يُعرض خلال %s",
   "settings.continueProgressLabel": "شارة متابعة المشاهدة",
   "settings.row.continueProgressLabel.description": "اعرض الوقت المتبقي أو نسبة المشاهدة على بطاقات متابعة المشاهدة",

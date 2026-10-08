@@ -146,11 +146,8 @@ pub(crate) fn continue_detail(
                 .replace("%s", &compact_duration((duration - offset) as i64))
         };
     }
-    let episodes = match item.get("episodesLeft").and_then(serde_json::Value::as_i64) {
-        Some(1) => localized("home.cw.episode_left", language),
-        Some(count) if count > 1 => {
-            localized("home.cw.episodes_left", language).replace("%s", &count.to_string())
-        }
+    let episodes = match item.get("newEpisodes").and_then(serde_json::Value::as_i64) {
+        Some(count) if count > 0 => format!("+{count}"),
         _ => String::new(),
     };
     (detail, episodes)

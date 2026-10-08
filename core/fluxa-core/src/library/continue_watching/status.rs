@@ -17,6 +17,15 @@ fn release_ms(video: &Value) -> Option<i64> {
         .map(|date| date.timestamp_millis())
 }
 
+fn watched_at_ms(item: &Value) -> Option<i64> {
+    item.get("savedAt")
+        .and_then(Value::as_str)
+        .and_then(|saved| chrono::DateTime::parse_from_rfc3339(saved).ok())
+        .map(|date| date.timestamp_millis())
+        .or_else(|| item.get("last_watched").and_then(Value::as_i64))
+        .filter(|at| *at > 0)
+}
+
 pub(crate) fn continue_watching_episode_status(item: &Value, videos: &[Value], now_ms: i64) -> Value {
     let regular: Vec<&Value> = videos.iter().filter(|v| video_key(v).0 > 0).collect();
     let video_id = item.get("lastVideoId").and_then(Value::as_str);
@@ -33,7 +42,7 @@ pub(crate) fn continue_watching_episode_status(item: &Value, videos: &[Value], n
         }),
     };
     let Some(current) = current else {
-        return json!({"episodesLeft": null, "upcoming": false, "airsAt": null});
+        return json!({"newEpisodes": 0, "upcoming": false, "airsAt": null});
     };
     let from = (current.0, current.1 - 1);
     let mut remaining: Vec<&Value> = regular
@@ -45,10 +54,16 @@ pub(crate) fn continue_watching_episode_status(item: &Value, videos: &[Value], n
         .iter()
         .filter(|v| release_ms(v).is_none_or(|at| at <= now_ms))
         .count();
+    let new_episodes = watched_at_ms(item).map_or(0, |watched| {
+        remaining
+            .iter()
+            .filter(|v| release_ms(v).is_some_and(|at| at > watched && at <= now_ms))
+            .count()
+    });
     let next = remaining.first().and_then(|v| release_ms(v));
     let upcoming = released == 0 && next.is_some_and(|at| at > now_ms);
     json!({
-        "episodesLeft": released,
+        "newEpisodes": new_episodes,
         "upcoming": upcoming,
         "airsAt": if upcoming { json!(next) } else { Value::Null },
     })
@@ -75,11 +90,17 @@ mod tests {
     }
 
     #[test]
-    fn counts_released_episodes_including_the_current_one() {
-        let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 2, "timeOffset": 300});
+    fn counts_only_episodes_released_after_watching() {
+        let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 1, "savedAt": "2026-01-10T00:00:00Z"});
         let status = continue_watching_episode_status(&item, &videos(), 1_800_000_000_000);
-        assert_eq!(status["episodesLeft"], 2);
-        assert_eq!(status["upcoming"], false);
+        assert_eq!(status["newEpisodes"], 1);
+    }
+
+    #[test]
+    fn unknown_watch_time_shows_no_new_episodes() {
+        let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 1});
+        let status = continue_watching_episode_status(&item, &videos(), 1_800_000_000_000);
+        assert_eq!(status["newEpisodes"], 0);
     }
 
     #[test]
@@ -87,6 +108,6 @@ mod tests {
         let item = json!({"lastEpisodeSeason": 1, "lastEpisodeNumber": 4, "continueWatchingBadge": "upNext"});
         let status = continue_watching_episode_status(&item, &videos(), 1_800_000_000_000);
         assert_eq!(status["upcoming"], true);
-        assert_eq!(status["episodesLeft"], 0);
+        assert_eq!(status["newEpisodes"], 0);
     }
 }

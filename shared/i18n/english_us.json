@@ -1624,8 +1624,6 @@
   "calendar.upcoming": "Upcoming",
   "home.cw.percent_watched": "%s watched",
   "home.cw.time_left": "%s left",
-  "home.cw.episode_left": "1 ep left",
-  "home.cw.episodes_left": "%s eps left",
   "home.cw.airs_in": "Airs in %s",
   "settings.continueProgressLabel": "Continue Watching badge",
   "settings.row.continueProgressLabel.description": "Show time left or percent watched on Continue Watching cards",
