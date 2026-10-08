@@ -1301,12 +1301,12 @@ pub(super) fn expanded_poster_card(
     assets: &mut impl HomeAssets,
 ) {
     crate::motion::press_scale(painter, rect, || {
-        poster_card_body(painter, rect, card, metrics, assets, false, true);
+        poster_card_body(painter, rect, card, metrics, assets, false, false);
         let radius = metrics.card_radius;
         let alpha = (255.0 * progress) as u8;
         let url = card.backdrop_url.as_deref().or(card.artwork_url.as_deref());
         let (backdrop_bounds, logo_bounds) = expanded_bounds(rect.height());
-        let image = Rect::from_min_max(rect.min, Pos2::new(rect.right(), rect.bottom() + radius));
+        let image = rect;
         rounded_artwork(
             painter,
             image,
@@ -1386,7 +1386,7 @@ pub(super) fn expanded_info_panel(
     progress: f32,
     metrics: UiMetrics,
 ) {
-    let pad = 14.0;
+    let pad = 4.0;
     let body = preview_body_size(metrics);
     let alpha = (255.0 * progress) as u8;
     let mut job = egui::text::LayoutJob::single_section(
@@ -1401,38 +1401,19 @@ pub(super) fn expanded_info_panel(
     } else {
         body * 1.25 + 6.0
     };
-    let full = pad * 2.0 + meta_height + galley.size().y;
-    let radius = metrics.card_radius;
-    let corner = egui::CornerRadius::from(radius);
+    let top_gap = metrics.focus_ring_expand + metrics.focus_ring_width + 8.0;
+    let full = top_gap + meta_height + galley.size().y;
+    let origin = rect.left_bottom();
     egui::Area::new(Id::new(("fluxa-expanded-info", node)))
         .order(egui::Order::Tooltip)
-        .fixed_pos(rect.left_bottom())
+        .fixed_pos(origin)
         .interactable(false)
         .constrain(false)
         .show(context, |ui| {
-            let panel =
-                Rect::from_min_size(rect.left_bottom(), Vec2::new(rect.width(), full * progress));
-            let painter = ui
-                .painter()
-                .with_clip_rect(clip.intersect(panel.expand(2.0)));
-            painter.rect_filled(
-                panel,
-                egui::CornerRadius {
-                    nw: 0,
-                    ne: 0,
-                    sw: corner.sw,
-                    se: corner.se,
-                },
-                metrics.surface,
-            );
-            painter.rect_stroke(
-                Rect::from_min_max(rect.min, panel.max),
-                radius,
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
-                egui::StrokeKind::Inside,
-            );
+            let panel = Rect::from_min_size(origin, Vec2::new(rect.width(), full * progress));
+            let painter = ui.painter().with_clip_rect(clip.intersect(panel));
             let left = rect.left() + pad;
-            let mut y = panel.top() + pad;
+            let mut y = panel.top() + top_gap;
             if !meta.is_empty() {
                 paint_elided_text(
                     &painter,
@@ -1485,14 +1466,12 @@ pub(super) fn hover_preview_rect(
     job.wrap.max_rows = rows;
     let galley = context.fonts_mut(|fonts| fonts.layout_job(job));
     let height = fixed + galley.size().y;
-    let x = (anchor.center().x - width * 0.5).clamp(
-        screen.left() + margin,
-        (screen.right() - margin - width).max(screen.left()),
-    );
-    let y = (anchor.center().y - height * 0.5).clamp(
-        screen.top() + margin,
-        (screen.bottom() - margin - height).max(screen.top()),
-    );
+    let left = screen.left() + margin;
+    let top = screen.top() + margin;
+    let x =
+        (anchor.center().x - width * 0.5).clamp(left, (screen.right() - margin - width).max(left));
+    let y =
+        (anchor.center().y - height * 0.5).clamp(top, (screen.bottom() - margin - height).max(top));
     (
         Rect::from_min_size(Pos2::new(x, y), Vec2::new(width, height)),
         galley,

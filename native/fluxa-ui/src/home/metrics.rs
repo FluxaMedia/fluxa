@@ -220,6 +220,36 @@ pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
     base_height * 0.93
 }
 
+pub(crate) fn home_shows_hero(home: &HomeModel) -> bool {
+    home.show_hero_section
+        && (home.item_id.is_some() || !home.cards.is_empty() || !home.rows.is_empty())
+}
+
+pub(crate) fn home_hero_pinned(viewport: Viewport, home: &HomeModel) -> bool {
+    home.follow_focus_hero && home_shows_hero(home) && !viewport.is_compact()
+}
+
+pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 {
+    if home_hero_pinned(viewport, home) {
+        (viewport.height * 0.55).max(300.0)
+    } else {
+        home_hero_height(viewport)
+    }
+}
+
+/// Where the focused shelf snaps while the hero is pinned: the screen y of
+/// its heading and the heading height.
+pub fn home_pinned_rows(viewport: Viewport, home: &HomeModel) -> Option<(f32, f32)> {
+    home_hero_pinned(viewport, home).then(|| {
+        let metrics = home_metrics(viewport);
+        let hero_height = home_hero_height_for(viewport, home);
+        (
+            home_row_start(viewport, metrics, hero_height, true),
+            home_row_heading_height(metrics),
+        )
+    })
+}
+
 /// The first shelf starts after the complete hero viewport, not after an
 /// estimate of where the hero buttons happen to land. This keeps the hero
 /// controls and the shelf heading in separate visual blocks on every size.

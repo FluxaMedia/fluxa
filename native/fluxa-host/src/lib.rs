@@ -85,6 +85,7 @@ mod gpu;
 mod input;
 mod launcher;
 mod layout;
+mod logos;
 mod player;
 mod poster_data;
 mod presence;
@@ -121,8 +122,7 @@ pub type PrePresent = Box<dyn Fn() + Send>;
 
 pub use player::{
     DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, TrackSelection,
-    VideoBackend, VideoCommand,
-    VideoStatus, VideoTrack,
+    VideoBackend, VideoCommand, VideoStatus, VideoTrack,
 };
 pub use semantics::{AccessNode, AccessTree, Role};
 
@@ -160,6 +160,8 @@ struct RendererState {
     scroll_velocity: f32,
     scroll_animation_at: Instant,
     window_focused: bool,
+    focus_before_blur: bool,
+    focus_gained_at: Option<Instant>,
     home_refreshed_at: Instant,
     route: Route,
     screen_scroll_offsets: HashMap<Route, f32>,
@@ -210,6 +212,7 @@ struct RendererState {
     image_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
+    logos: logos::Logos,
     shorts: fluxa_ui::ShortsModel,
     poster_data: poster_data::PosterData,
 }
@@ -341,6 +344,8 @@ impl FluxaHost {
             scroll_velocity: 0.0,
             scroll_animation_at: Instant::now(),
             window_focused: true,
+            focus_before_blur: false,
+            focus_gained_at: None,
             home_refreshed_at: Instant::now(),
             route: Route::Home,
             screen_scroll_offsets: HashMap::new(),
@@ -391,6 +396,7 @@ impl FluxaHost {
             image_picker: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
+            logos: logos::Logos::default(),
             shorts: Default::default(),
             poster_data: poster_data::PosterData::default(),
         })))
@@ -412,6 +418,13 @@ impl FluxaHost {
 
     pub fn set_window_focused(&self, focused: bool) {
         self.with_state(|state| {
+            if !focused && state.window_focused {
+                state.focus_before_blur = state.keyboard_focus_visible;
+            }
+            if focused && !state.window_focused {
+                state.keyboard_focus_visible |= state.focus_before_blur;
+                state.focus_gained_at = Some(Instant::now());
+            }
             state.window_focused = focused;
             if focused && state.home_refreshed_at.elapsed() >= HOME_REFRESH_FOCUS_MIN {
                 state.home_refreshed_at = Instant::now() - HOME_REFRESH_INTERVAL;
@@ -514,20 +527,6 @@ impl FluxaHost {
             state.picker_background = background;
             if pick {
                 profiles::open(state);
-            } else if let Some(Value::String(id)) = state.session.as_ref().and_then(|session| {
-                session
-                    .storage()
-                    .read_json("active_profile_id")
-                    .ok()
-                    .flatten()
-            }) {
-                let storage = state
-                    .session
-                    .as_ref()
-                    .map(|session| session.storage().clone());
-                if let Some(storage) = storage {
-                    profiles::splash(state, &storage, &id);
-                }
             }
         });
         Ok(())

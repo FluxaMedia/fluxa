@@ -53,10 +53,18 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .and_then(|node| state.ui.node(node))
         .is_some_and(|node| node.kind == UiNodeKind::Input)
         .then(|| now + Duration::from_millis(265));
-    let artwork = [artwork, projecting, animation, effects, trailer, caret, home_refresh]
-        .into_iter()
-        .flatten()
-        .min();
+    let artwork = [
+        artwork,
+        projecting,
+        animation,
+        effects,
+        trailer,
+        caret,
+        home_refresh,
+    ]
+    .into_iter()
+    .flatten()
+    .min();
     match (state.redraw_at, artwork) {
         (Some(a), Some(b)) => Some(a.min(b)),
         (a, b) => a.or(b),
@@ -136,6 +144,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     sync_home_from_core_snapshot(state);
     shorts::tick(state);
     trailer::tick(state);
+    logos::tick(state);
     layout::sync_expanded(state);
     poster_data::tick(state);
     timer.mark("sync");
@@ -222,6 +231,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         fluxa_ui::set_input_caret(&gpu.egui_context, caret);
     }
     let mirrored = state.mirrored();
+    state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
     let render_result = {
         let RendererState {
             gpu,

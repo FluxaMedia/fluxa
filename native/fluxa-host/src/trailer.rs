@@ -103,24 +103,31 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
     match state.route {
-        Route::Home if settings.bool_value("trailerOnExpandedPosters") => {
+        Route::Home => {
             let context = &state.gpu.as_ref()?.egui_context;
-            let poster = fluxa_ui::expanded_poster(context)?;
+            if settings.bool_value("trailerOnExpandedPosters")
+                && let Some(poster) = fluxa_ui::expanded_poster(context)
+            {
+                return Some(Wanted {
+                    urls: state.trailers.urls_for(&poster.id, &poster.raw),
+                    key: poster.id,
+                    delay: delay("trailerOnExpandedPostersDelay"),
+                    poster: true,
+                });
+            }
+            if !settings.bool_value("homeHeroAutoplayTrailer") || !state.home.show_hero_section {
+                return None;
+            }
+            let hero = focus_hero(state)?;
+            let key = hero.item_id.clone()?;
+            let urls = if hero.trailers.is_empty() {
+                state.trailers.fetched_urls(&key)
+            } else {
+                hero.trailers
+            };
             Some(Wanted {
-                urls: state.trailers.urls_for(&poster.id, &poster.raw),
-                key: poster.id,
-                delay: delay("trailerOnExpandedPostersDelay"),
-                poster: true,
-            })
-        }
-        Route::Home
-            if settings.bool_value("homeHeroAutoplayTrailer") && state.home.show_hero_section =>
-        {
-            let context = &state.gpu.as_ref()?.egui_context;
-            let hero = fluxa_ui::active_home_hero(context, &state.home)?;
-            Some(Wanted {
-                key: hero.item_id.clone()?,
-                urls: hero.trailers.clone(),
+                key,
+                urls,
                 delay: delay("homeHeroAutoplayTrailerDelaySecs"),
                 poster: false,
             })
@@ -151,6 +158,42 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
             })
         }
         _ => None,
+    }
+}
+
+fn focus_hero(state: &RendererState) -> Option<fluxa_ui::HomeHero> {
+    let context = &state.gpu.as_ref()?.egui_context;
+    fluxa_ui::pinned_focus_hero(context)
+        .or_else(|| fluxa_ui::active_home_hero(context, &state.home).cloned())
+}
+
+fn queue_focus_hero(state: &mut RendererState) {
+    if state.route != Route::Home || !state.settings.bool_value("homeHeroAutoplayTrailer") {
+        return;
+    }
+    let Some(context) = state.gpu.as_ref().map(|gpu| &gpu.egui_context) else {
+        return;
+    };
+    let Some(hero) = fluxa_ui::pinned_focus_hero(context) else {
+        return;
+    };
+    let Some(id) = hero.item_id.clone() else {
+        return;
+    };
+    let trailers = &mut state.trailers;
+    let id = Value::String(id);
+    let queued = trailers
+        .targets
+        .iter()
+        .any(|target| target.get("id") == Some(&id));
+    if hero.trailers.is_empty()
+        && trailers
+            .fetched_urls(id.as_str().unwrap_or_default())
+            .is_empty()
+        && !queued
+        && !trailers.fetched_ids.contains(&id)
+    {
+        trailers.targets.push(hero.raw);
     }
 }
 
@@ -303,6 +346,7 @@ fn queue_expanded(state: &mut RendererState) {
 pub(crate) fn tick(state: &mut RendererState) {
     queue_shorts(state);
     queue_expanded(state);
+    queue_focus_hero(state);
     fetch(state);
     let wanted = wanted(state);
     let current = state

@@ -150,10 +150,15 @@ pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
     (6, "settings.group.color_and_motion"),
     (6, "settings.group.navigation"),
 ];
-pub(super) const HOME_SETTINGS: [SettingsRow; 15] = [
+pub(super) const HOME_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "Show hero section",
         key: "showHeroSection",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Hero follows focus",
+        key: "followFocusHero",
         options: &[],
     },
     SettingsRow {
@@ -228,7 +233,7 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 15] = [
     },
 ];
 pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
-    (6, "settings.group.home"),
+    (7, "settings.group.home"),
     (8, "settings.group.continue_watching"),
 ];
 pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [

@@ -190,6 +190,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub poster_trailer: Option<HeroTrailer>,
     #[serde(skip)]
+    pub follow_focus_hero: bool,
+    #[serde(skip)]
     pub expanded_posters: bool,
     #[serde(skip)]
     pub expanded_posters_delay: f64,
@@ -279,6 +281,7 @@ impl HomeModel {
             row_scroll_offsets: Vec::new(),
             trailer: None,
             poster_trailer: None,
+            follow_focus_hero: false,
             expanded_posters: false,
             expanded_posters_delay: 1.0,
             expanded_node: None,

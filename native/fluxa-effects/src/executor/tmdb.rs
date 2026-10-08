@@ -82,6 +82,40 @@ impl EffectExecutor {
         receiver
     }
 
+    pub fn fetch_logos(
+        &self,
+        items: Vec<Value>,
+    ) -> std::sync::mpsc::Receiver<Vec<(String, String)>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let executor = self.clone();
+        let task = async move {
+            let mut found = Vec::new();
+            for item in items {
+                let (Some(id), Some(content_type)) = (
+                    item.get("id").and_then(Value::as_str),
+                    item.get("type").and_then(Value::as_str),
+                ) else {
+                    continue;
+                };
+                let base = id.split(':').next().unwrap_or(id);
+                let payload = json!({"contentType": content_type, "id": base});
+                let logo = executor
+                    .fetch_meta_detail(&payload)
+                    .await
+                    .ok()
+                    .and_then(|meta| meta.get("logo").and_then(Value::as_str).map(str::to_owned))
+                    .filter(|logo| !logo.is_empty());
+                found.push((id.to_owned(), logo.unwrap_or_default()));
+            }
+            let _ = sender.send(found);
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+
     pub fn fetch_similar(
         &self,
         item: Value,

@@ -30,6 +30,24 @@ impl HomeModel {
         continue_row.chain(rows).chain(fallback)
     }
 
+    pub fn apply_logos(&mut self, logos: &serde_json::Map<String, serde_json::Value>) {
+        let cards = self
+            .cards
+            .iter_mut()
+            .chain(self.rows.iter_mut().flat_map(|row| row.cards.iter_mut()));
+        for card in cards {
+            if card.logo_url.is_some() {
+                continue;
+            }
+            card.logo_url = card
+                .id
+                .as_deref()
+                .and_then(|id| logos.get(id))
+                .and_then(serde_json::Value::as_str)
+                .map(ToOwned::to_owned);
+        }
+    }
+
     pub fn card_at(&self, index: usize) -> Option<&HomeCard> {
         if let Some(card) = self.cards.get(index) {
             return Some(card);
@@ -120,6 +138,10 @@ pub fn home_model_from_core_snapshot(
             .pointer("/settings/values/gifAutoplayEnabled")
             .and_then(serde_json::Value::as_bool)
             .unwrap_or(true),
+        follow_focus_hero: snapshot
+            .pointer("/settings/values/followFocusHero")
+            .and_then(serde_json::Value::as_bool)
+            .unwrap_or(false),
         expanded_posters: snapshot
             .pointer("/settings/values/expandedPosters")
             .and_then(serde_json::Value::as_bool)

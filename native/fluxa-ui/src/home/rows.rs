@@ -263,7 +263,7 @@ pub(crate) fn draw_home_rows(
             ))
             .constrain(false)
             .show(context, |ui| {
-                ui.set_clip_rect(ui.clip_rect().intersect(row_clip));
+                ui.set_clip_rect(ui.clip_rect().intersect(row_clip).intersect(screen));
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = metrics.horizontal_spacing;
                     for (index, card) in cards.iter().enumerate() {
@@ -432,8 +432,13 @@ pub(crate) fn draw_home_rows(
         .filter(|(id, _, _)| *id == node_id)
         .map_or(now, |(_, since, _)| since);
     let synopsis = first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
-    let (area, synopsis) =
-        components::hover_preview_rect(context, anchor, screen, &synopsis, metrics);
+    let (area, synopsis) = components::hover_preview_rect(
+        context,
+        anchor,
+        Rect::from_min_max(Pos2::ZERO, screen.max),
+        &synopsis,
+        metrics,
+    );
     context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
     let remaining = HOVER_PREVIEW_DELAY - (now - since);
     if remaining > 0.0 {

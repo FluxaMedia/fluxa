@@ -158,25 +158,45 @@ pub(crate) fn draw_home_with_options(
         trailers: Vec::new(),
         raw: serde_json::Value::Null,
     };
-    let mut hero = home
-        .hero_slides
-        .get(active_hero_index)
-        .unwrap_or(&fallback_hero)
-        .clone();
-    let show_hero = home.show_hero_section && hero.item_id.is_some();
-    let hero_height = home_hero_height(viewport);
+    let pinned = home_hero_pinned(viewport, home);
+    context.data_mut(|data| data.insert_temp(Id::new("fluxa-hero-pinned"), pinned));
+    let mut hero = pinned
+        .then(|| focus_hero(context, home, focused))
+        .flatten()
+        .unwrap_or_else(|| {
+            home.hero_slides
+                .get(active_hero_index)
+                .unwrap_or(&fallback_hero)
+                .clone()
+        });
+    let hero_has_item = hero.item_id.is_some();
+    let show_hero = home.show_hero_section
+        && (hero_has_item || !home.cards.is_empty() || !home.rows.is_empty());
+    let hero_height = home_hero_height_for(viewport, home);
+    let hero_scroll = if pinned { 0.0 } else { scroll_offset };
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
+    let rows_screen = if pinned {
+        let rows_top = home_row_start(viewport, metrics, hero_height, true);
+        Rect::from_min_max(Pos2::new(0.0, rows_top), screen.max)
+    } else {
+        screen
+    };
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let hero_rect = Rect::from_min_size(
-        Pos2::new(0.0, -scroll_offset),
+        Pos2::new(0.0, -hero_scroll),
         Vec2::new(viewport.width, hero_height),
     );
     // The content geometry ends at `hero_rect`, but the artwork must continue
     // underneath the gap before the first shelf. This is what gives the web
     // and Compose heroes their soft fade instead of a hard image-to-black
     // edge.
-    let style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
+    let mut style = HeroStyle::new(viewport, metrics, metrics.screen_margin);
+    if pinned {
+        style.synopsis_rows = 2;
+        style.bottom_padding = 28.0;
+        style.logo_height = style.logo_height.min(hero_height * 0.22);
+    }
     let hero_fade_height = style.fade_height;
     let hero_visual_rect = Rect::from_min_size(
         hero_rect.min,
@@ -198,6 +218,22 @@ pub(crate) fn draw_home_with_options(
                 full_target,
                 ArtworkPriority::Prefetch,
             );
+        }
+    }
+    if pinned
+        && let Some(node) =
+            focused.filter(|node| (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node))
+    {
+        let full_target = backdrop_target_size(viewport.width, context.pixels_per_point());
+        let flat = (node - NODE_CARD_BASE) as usize;
+        for index in flat.saturating_sub(3)..flat + 4 {
+            if let Some(card) = home.card_at(index) {
+                assets.prefetch_for(
+                    focus_backdrop(card).as_deref(),
+                    full_target,
+                    ArtworkPriority::Prefetch,
+                );
+            }
         }
     }
     if show_hero {
@@ -230,7 +266,7 @@ pub(crate) fn draw_home_with_options(
                 );
             });
             (Some(texture), size)
-        } else if let Some(last_ready) = last_ready {
+        } else if let Some(last_ready) = last_ready.filter(|_| hero_has_item) {
             // Keep the previous *complete* hero during a carousel transition
             // or an artwork decode gap. Pairing its texture with the new
             // slide's title/logo made backgrounded windows resume with mixed
@@ -347,7 +383,7 @@ pub(crate) fn draw_home_with_options(
     let mut activated = None;
     let mut hero_actions: Option<Rect> = None;
     let mut hero_watchlist: Option<Rect> = None;
-    let has_home_content = show_hero || !home.cards.is_empty() || !home.rows.is_empty();
+    let has_home_content = hero_has_item || !home.cards.is_empty() || !home.rows.is_empty();
     let loading_screen = !has_home_content && home.is_loading;
     if draw_top_bar && !loading_screen {
         let profile_avatar_url = home
@@ -409,7 +445,7 @@ pub(crate) fn draw_home_with_options(
         return layout;
     }
     let hero_width = style.width;
-    if show_hero {
+    if show_hero && hero_has_item {
         let has_logo = hero
             .logo_url
             .as_deref()
@@ -470,12 +506,12 @@ pub(crate) fn draw_home_with_options(
         let metadata_gap = style.metadata_gap * text_fade;
         let metadata_height = metadata_height * text_fade;
         let synopsis_height = synopsis_height * text_fade;
-        let play_height = style.button_height;
+        let play_height = if pinned { 0.0 } else { style.button_height };
         let block_height =
             title_height + metadata_height + synopsis_height + play_height + style.stack_extra
                 - style.metadata_gap * (1.0 - text_fade);
         let content_top = (hero_height - style.bottom_padding - block_height).max(style.min_top)
-            - scroll_offset
+            - hero_scroll
             + hero_slide_offset;
         components::placed(
             context,
@@ -584,81 +620,83 @@ pub(crate) fn draw_home_with_options(
                         );
                     }
                     ui.add_space(style.button_gap);
-                    ui.horizontal(|ui| {
-                        ui.spacing_mut().item_spacing.x = 12.0;
-                        let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
-                        let series =
-                            matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
-                        let label =
-                            play_label(&home.language, resume, series.then_some((1, 1, None)));
-                        let text_size = metrics.nav_label_size + 2.0;
-                        let measure = |ui: &egui::Ui, text: &str| {
-                            ui.painter()
-                                .layout_no_wrap(
-                                    text.to_owned(),
-                                    egui::FontId::proportional(text_size),
-                                    text_primary(),
-                                )
-                                .size()
-                                .x
-                        };
-                        let play_width = (measure(ui, &label) + 70.0).min(320.0);
-                        let watchlist_label = localized("library.watchlist", &home.language);
-                        let slots = fluxa_theme::css::hero_actions();
-                        let total: f32 = slots
-                            .iter()
-                            .map(|slot| {
+                    if !pinned {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 12.0;
+                            let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
+                            let series =
+                                matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
+                            let label =
+                                play_label(&home.language, resume, series.then_some((1, 1, None)));
+                            let text_size = metrics.nav_label_size + 2.0;
+                            let measure = |ui: &egui::Ui, text: &str| {
+                                ui.painter()
+                                    .layout_no_wrap(
+                                        text.to_owned(),
+                                        egui::FontId::proportional(text_size),
+                                        text_primary(),
+                                    )
+                                    .size()
+                                    .x
+                            };
+                            let play_width = (measure(ui, &label) + 70.0).min(320.0);
+                            let watchlist_label = localized("library.watchlist", &home.language);
+                            let slots = fluxa_theme::css::hero_actions();
+                            let total: f32 = slots
+                                .iter()
+                                .map(|slot| {
+                                    if slot == "play" {
+                                        play_width
+                                    } else {
+                                        play_height
+                                    }
+                                })
+                                .sum::<f32>()
+                                + 12.0 * slots.len().saturating_sub(1) as f32;
+                            if style.centered {
+                                ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
+                            }
+                            for slot in &slots {
                                 if slot == "play" {
-                                    play_width
+                                    let play = components::play_button(
+                                        ui,
+                                        assets,
+                                        &label,
+                                        Some(play_width),
+                                        play_height,
+                                        text_size,
+                                        resume
+                                            .map(|card| card.progress)
+                                            .filter(|progress| *progress > 0.0),
+                                    );
+                                    hero_actions = Some(play.rect);
+                                    if play.clicked() {
+                                        activated = Some(NODE_PLAY);
+                                    }
                                 } else {
-                                    play_height
-                                }
-                            })
-                            .sum::<f32>()
-                            + 12.0 * slots.len().saturating_sub(1) as f32;
-                        if style.centered {
-                            ui.add_space(((ui.available_width() - total) * 0.5).max(0.0));
-                        }
-                        for slot in &slots {
-                            if slot == "play" {
-                                let play = components::play_button(
-                                    ui,
-                                    assets,
-                                    &label,
-                                    Some(play_width),
-                                    play_height,
-                                    text_size,
-                                    resume
-                                        .map(|card| card.progress)
-                                        .filter(|progress| *progress > 0.0),
-                                );
-                                hero_actions = Some(play.rect);
-                                if play.clicked() {
-                                    activated = Some(NODE_PLAY);
-                                }
-                            } else {
-                                let saved = hero
-                                    .item_id
-                                    .as_deref()
-                                    .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
-                                    .is_some_and(|personal| personal.saved);
-                                let watchlist = components::icon_button_sized(
-                                    ui,
-                                    assets.icon(if saved { "Check" } else { "Plus" }),
-                                    Vec2::splat(play_height),
-                                    text_primary(),
-                                    true,
-                                    saved,
-                                    true,
-                                )
-                                .on_hover_text(&watchlist_label);
-                                hero_watchlist = Some(watchlist.rect);
-                                if watchlist.clicked() {
-                                    activated = Some(NODE_HERO_WATCHLIST);
+                                    let saved = hero
+                                        .item_id
+                                        .as_deref()
+                                        .and_then(|id| poster_overlay::personal_for(ui.ctx(), id))
+                                        .is_some_and(|personal| personal.saved);
+                                    let watchlist = components::icon_button_sized(
+                                        ui,
+                                        assets.icon(if saved { "Check" } else { "Plus" }),
+                                        Vec2::splat(play_height),
+                                        text_primary(),
+                                        true,
+                                        saved,
+                                        true,
+                                    )
+                                    .on_hover_text(&watchlist_label);
+                                    hero_watchlist = Some(watchlist.rect);
+                                    if watchlist.clicked() {
+                                        activated = Some(NODE_HERO_WATCHLIST);
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
                 });
             },
         );
@@ -677,7 +715,7 @@ pub(crate) fn draw_home_with_options(
         row_start,
         prefetch_home_artwork,
         margin,
-        screen,
+        rows_screen,
         &mut layout,
         &mut activated,
     );
@@ -690,7 +728,9 @@ pub(crate) fn draw_home_with_options(
     });
     if activated.is_none()
         && show_hero
+        && hero_has_item
         && !compact
+        && !pinned
         && hero_click.is_some_and(|pos| pos.y > 80.0 && hero_rect.intersect(screen).contains(pos))
     {
         activated = Some(NODE_MORE_INFO);
@@ -699,7 +739,7 @@ pub(crate) fn draw_home_with_options(
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
-    if show_hero {
+    if show_hero && hero_has_item && !pinned {
         layout
             .focusable
             .push((NODE_MORE_INFO, hero_rect.intersect(screen)));
@@ -710,6 +750,8 @@ pub(crate) fn draw_home_with_options(
     if let Some(play) = hero_actions {
         layout.focusable.push((NODE_PLAY, play));
     } else if show_hero
+        && hero_has_item
+        && !pinned
         && fluxa_theme::css::hero_actions()
             .iter()
             .any(|slot| slot == "play")
@@ -728,6 +770,56 @@ pub(crate) fn draw_home_with_options(
         metrics,
     );
     layout
+}
+
+#[derive(Clone)]
+struct FocusHeroMemo(HomeHero);
+
+pub fn pinned_focus_hero(context: &egui::Context) -> Option<HomeHero> {
+    let pinned = context
+        .data(|data| data.get_temp::<bool>(Id::new("fluxa-hero-pinned")))
+        .unwrap_or(false);
+    pinned
+        .then(|| {
+            context.data(|data| data.get_temp::<FocusHeroMemo>(Id::new("fluxa-focus-hero-memo")))
+        })
+        .flatten()
+        .map(|memo| memo.0)
+}
+
+fn focus_backdrop(card: &HomeCard) -> Option<String> {
+    card.backdrop_url
+        .clone()
+        .or_else(|| card.artwork_url.clone())
+}
+
+fn focus_hero(context: &egui::Context, home: &HomeModel, focused: Option<u64>) -> Option<HomeHero> {
+    let memo_id = Id::new("fluxa-focus-hero-memo");
+    let card = focused
+        .filter(|node| (NODE_CARD_BASE..NODE_PREVIEW_BASE).contains(node))
+        .and_then(|node| home.card_at((node - NODE_CARD_BASE) as usize))
+        .filter(|card| card.id.is_some());
+    let Some(card) = card else {
+        return context.data(|data| data.get_temp::<FocusHeroMemo>(memo_id).map(|memo| memo.0));
+    };
+    let mut eyebrow = hero_meta_line(&card.raw, &home.language);
+    if eyebrow.is_empty() {
+        eyebrow = card.subtitle.clone();
+    }
+    let hero = HomeHero {
+        title: card.title.clone(),
+        eyebrow,
+        description: first_value_string(&card.raw, &["description", "overview"])
+            .unwrap_or_default(),
+        background_url: focus_backdrop(card),
+        logo_url: card.logo_url.clone(),
+        item_id: card.id.clone(),
+        item_type: card.item_type.clone(),
+        trailers: trailer_urls(&card.raw),
+        raw: card.raw.clone(),
+    };
+    context.data_mut(|data| data.insert_temp(memo_id, FocusHeroMemo(hero.clone())));
+    Some(hero)
 }
 
 fn mostly_visible(rect: Rect, viewport: Rect) -> bool {
