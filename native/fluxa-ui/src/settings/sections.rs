@@ -1046,7 +1046,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 19] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 20] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1177,6 +1177,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 19] = [
         title: "Shortcuts",
         category: "Shortcuts",
         description: "Keyboard and controller bindings",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
+        title: "Updates",
+        category: "Updates",
+        description: "Check for new versions",
         rows: &EMPTY_SETTINGS,
         groups: &[],
     },

@@ -3170,5 +3170,17 @@
   "settings.language.he": "עברית",
   "settings.option.he": "עברית",
   "settings.mdblist_library_list": "قائمة مكتبة MDBList",
-  "settings.mdblist_watchlist": "قائمة المشاهدة"
+  "settings.mdblist_watchlist": "قائمة المشاهدة",
+  "settings.section.updates": "التحديثات",
+  "settings.section.updates.description": "التحقق من الإصدارات الجديدة",
+  "settings.updates.version": "الإصدار",
+  "settings.updates.idle": "لم يتم التحقق بعد",
+  "settings.updates.checking": "جارٍ التحقق من التحديثات…",
+  "settings.updates.up_to_date": "أنت تستخدم أحدث إصدار",
+  "settings.updates.downloading": "جارٍ تنزيل التحديث",
+  "settings.updates.ready": "التحديث جاهز:",
+  "settings.updates.restart": "أعد التشغيل للتحديث",
+  "settings.updates.check": "التحقق من التحديثات",
+  "settings.updates.failed": "فشل التحديث",
+  "settings.updates.unsupported": "التحديثات غير متاحة على هذا الجهاز"
 }

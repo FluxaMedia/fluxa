@@ -74,7 +74,7 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
 }
 
 pub fn section_applies(title: &str, viewport: Viewport) -> bool {
-    title != "Shortcuts" || !(viewport.is_compact() || viewport.is_tv())
+    !matches!(title, "Shortcuts" | "Updates") || !(viewport.is_compact() || viewport.is_tv())
 }
 
 pub fn settings_page_for_node(node: u64) -> Option<usize> {
@@ -351,6 +351,11 @@ pub(super) fn settings_card_height(
         "Account" => account_height(metrics),
         "Summary" => {
             APPEARANCE_PAGE_HEADER_HEIGHT + summary_height(&settings.playback_summary, metrics)
+        }
+        "Updates" => {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + settings_group_card_height(2, metrics)
         }
         "Shortcuts" => {
             let player = settings.shortcuts.iter().filter(|row| row.player).count();
@@ -1032,6 +1037,115 @@ fn draw_binding_group(
     card
 }
 
+fn draw_updates(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    settings: &SettingsModel,
+    language: &str,
+    rect: Rect,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let update = &settings.update;
+    let card = account_group(
+        painter,
+        rect,
+        rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT,
+        settings_group_card_height(2, metrics),
+        &localized("settings.section.updates", language),
+        false,
+        metrics,
+    );
+    let label_font = FontId::proportional(metrics.settings_row_label_size_desktop);
+    let value_font = crate::fonts::regular(metrics.settings_row_value_size_desktop);
+
+    let version_row = account_row(card, 0, metrics);
+    draw_text(
+        painter,
+        version_row.left_center() + Vec2::new(4.0, 0.0),
+        Align2::LEFT_CENTER,
+        localized("settings.updates.version", language),
+        label_font.clone(),
+        metrics.text_primary,
+        None,
+    );
+    draw_text(
+        painter,
+        version_row.right_center() - Vec2::new(6.0, 0.0),
+        Align2::RIGHT_CENTER,
+        &update.current,
+        value_font.clone(),
+        metrics.text_secondary,
+        None,
+    );
+
+    let status_row = account_row(card, 1, metrics);
+    account_divider(painter, status_row, metrics);
+    let (status, action) = match &update.state {
+        _ if !update.supported => (localized("settings.updates.unsupported", language), None),
+        UpdateState::Idle => (
+            localized("settings.updates.idle", language),
+            Some("settings.updates.check"),
+        ),
+        UpdateState::Checking => (localized("settings.updates.checking", language), None),
+        UpdateState::UpToDate => (
+            localized("settings.updates.up_to_date", language),
+            Some("settings.updates.check"),
+        ),
+        UpdateState::Downloading(percent) => (
+            format!("{} {percent}%", localized("settings.updates.downloading", language)),
+            None,
+        ),
+        UpdateState::Ready(version) => (
+            format!("{} {version}", localized("settings.updates.ready", language)),
+            Some("settings.updates.restart"),
+        ),
+        UpdateState::Failed(reason) => (
+            format!("{}: {reason}", localized("settings.updates.failed", language)),
+            Some("settings.updates.check"),
+        ),
+    };
+    let button_width = action
+        .map(|key| {
+            painter
+                .layout_no_wrap(
+                    localized(key, language),
+                    FontId::proportional(metrics.settings_row_label_size_desktop),
+                    Color32::WHITE,
+                )
+                .size()
+                .x
+                + 32.0
+        })
+        .unwrap_or(0.0);
+    draw_text(
+        painter,
+        status_row.left_center() + Vec2::new(4.0, 0.0),
+        Align2::LEFT_CENTER,
+        status,
+        value_font,
+        metrics.text_secondary,
+        Some((status_row.width() - button_width - 24.0).max(40.0)),
+    );
+    if let Some(key) = action {
+        let button = Rect::from_center_size(
+            Pos2::new(
+                status_row.right() - 4.0 - button_width * 0.5,
+                status_row.center().y,
+            ),
+            Vec2::new(button_width, 32.0_f32.min(status_row.height() - 4.0)),
+        );
+        pill_button(
+            context,
+            layout,
+            NODE_SETTINGS_UPDATE_ACTION,
+            button,
+            &localized(key, language),
+            metrics.settings_row_label_size_desktop,
+        );
+    }
+}
+
 fn summary_height(sections: &[crate::StatsSection], metrics: UiMetrics) -> f32 {
     let groups = sections.len().max(1);
     let rows: f32 = if sections.is_empty() {
@@ -1112,6 +1226,7 @@ fn draw_settings_extended_section(
         "Summary" => {
             draw_summary(&painter, settings, language, rect, metrics);
         }
+        "Updates" => draw_updates(context, &painter, settings, language, rect, metrics, layout),
         "Shortcuts" => {
             let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
             for (title, player) in [

@@ -37,6 +37,7 @@ pub struct SettingsModel {
     pub collections: Vec<CollectionListRow>,
     pub collection_edit: Option<CollectionEdit>,
     pub collection_status: Option<String>,
+    pub update: UpdateView,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -89,6 +90,24 @@ pub struct FormatterRow {
     pub pattern: String,
     pub replacement: String,
     pub enabled: bool,
+}
+
+#[derive(Clone, Debug, Default, PartialEq)]
+pub enum UpdateState {
+    #[default]
+    Idle,
+    Checking,
+    UpToDate,
+    Downloading(u8),
+    Ready(String),
+    Failed(String),
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct UpdateView {
+    pub supported: bool,
+    pub current: String,
+    pub state: UpdateState,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -259,5 +278,6 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         collections: Vec::new(),
         collection_edit: None,
         collection_status: None,
+        update: UpdateView::default(),
     }
 }

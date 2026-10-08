@@ -414,6 +414,10 @@ impl ApplicationHandler<AccessEvent> for App {
         let (Some(host), Some(window)) = (self.host.as_ref(), self.window.as_ref()) else {
             return;
         };
+        if host.take_exit_request() {
+            event_loop.exit();
+            return;
+        }
         let mut wake = host.next_redraw();
         let now = Instant::now();
         if wake.is_some_and(|at| at <= now) {

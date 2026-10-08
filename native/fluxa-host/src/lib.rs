@@ -106,6 +106,7 @@ mod stream_badges;
 mod surface;
 mod sync;
 mod trailer;
+mod updates;
 
 use actions::*;
 use artwork::*;
@@ -202,6 +203,7 @@ struct RendererState {
     collections: collections::State,
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
+    updates: updates::State,
     open_url: Option<String>,
     profiles: Option<fluxa_ui::ProfilesModel>,
     account_auth: Option<accounts::AccountAuth>,
@@ -386,6 +388,7 @@ impl FluxaHost {
             collections: Default::default(),
             stream_badges: Default::default(),
             applied_app_icon: None,
+            updates: Default::default(),
             open_url: None,
             profiles: None,
             account_auth: None,
@@ -518,11 +521,12 @@ impl FluxaHost {
     }
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
-        let session = SessionHandle::open(Storage::open(data_dir)?)?;
+        let session = SessionHandle::open(Storage::open(data_dir.clone())?)?;
         profiles::load_profile(&session)?;
         let pick = profiles::should_pick_on_start(session.storage());
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
+            updates::start(state, &data_dir);
             state.session = Some(session);
             state.picker_background = background;
             if pick {
@@ -594,6 +598,11 @@ impl FluxaHost {
             Some(launcher::feed(&snapshot).to_string())
         })
         .flatten()
+    }
+
+    pub fn take_exit_request(&self) -> bool {
+        self.with_state(|state| std::mem::take(&mut state.updates.exit_requested))
+            .unwrap_or(false)
     }
 
     pub fn take_app_icon(&self) -> Option<String> {

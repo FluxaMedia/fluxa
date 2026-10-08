@@ -32,4 +32,5 @@ fluxa_core = { path = "../../core/fluxa-core", default-features = false, feature
 wasm-bindgen-futures = "0.4"
 
 [target.'cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))'.dependencies]
+fluxa-updater = { path = "../fluxa-updater" }
 discord-rich-presence = "1"

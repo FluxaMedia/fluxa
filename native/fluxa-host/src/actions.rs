@@ -558,6 +558,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
         }
         if let Some(node) = node {
             if shortcuts::activate_node(state, node)
+                || updates::activate_node(state, node)
                 || stream_badges::activate_node(state, node)
                 || collections::activate_node(state, node)
             {

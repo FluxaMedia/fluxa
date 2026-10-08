@@ -1,0 +1,93 @@
+use super::*;
+use fluxa_ui::{NODE_SETTINGS_UPDATE_ACTION, UpdateState};
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+const RECHECK: Duration = Duration::from_secs(6 * 60 * 60);
+
+#[derive(Default)]
+pub(crate) struct State {
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    updater: Option<fluxa_updater::Updater>,
+    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+    last_check: Option<Instant>,
+    pub(crate) exit_requested: bool,
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+pub(crate) fn start(state: &mut RendererState, data_dir: &std::path::Path) {
+    state.updates.updater = Some(fluxa_updater::Updater::new(data_dir));
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+pub(crate) fn start(_state: &mut RendererState, _data_dir: &std::path::Path) {}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+pub(crate) fn poll(state: &mut RendererState) {
+    use fluxa_updater::Status;
+    let Some(updater) = state.updates.updater.clone() else {
+        return;
+    };
+    let automatic = state
+        .settings
+        .values
+        .get("automaticUpdates")
+        .and_then(Value::as_bool)
+        .unwrap_or(true);
+    let loaded = state.settings.values.is_object();
+    let due = state
+        .updates
+        .last_check
+        .is_none_or(|at| at.elapsed() >= RECHECK);
+    if automatic && loaded && due {
+        state.updates.last_check = Some(Instant::now());
+        updater.check();
+    }
+    state.settings.update.supported = true;
+    state.settings.update.current = fluxa_updater::CURRENT_VERSION.to_owned();
+    state.settings.update.state = match updater.status() {
+        Status::Idle => UpdateState::Idle,
+        Status::Checking => UpdateState::Checking,
+        Status::UpToDate => UpdateState::UpToDate,
+        Status::Downloading { percent, .. } => UpdateState::Downloading(percent),
+        Status::Ready { version } => UpdateState::Ready(version),
+        Status::Failed(reason) => UpdateState::Failed(reason),
+    };
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+pub(crate) fn poll(_state: &mut RendererState) {}
+
+pub(crate) fn busy(state: &RendererState) -> bool {
+    matches!(
+        state.settings.update.state,
+        UpdateState::Checking | UpdateState::Downloading(_)
+    )
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
+pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
+    if node != NODE_SETTINGS_UPDATE_ACTION {
+        return false;
+    }
+    let Some(updater) = state.updates.updater.clone() else {
+        return true;
+    };
+    if matches!(state.settings.update.state, UpdateState::Ready(_)) {
+        match updater.apply() {
+            Ok(()) => state.updates.exit_requested = true,
+            Err(error) => {
+                host_log(format!("update could not be applied: {error}"));
+                state.settings.update.state = UpdateState::Failed(error);
+            }
+        }
+    } else {
+        state.updates.last_check = Some(Instant::now());
+        updater.check();
+    }
+    true
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
+pub(crate) fn activate_node(_state: &mut RendererState, node: u64) -> bool {
+    node == NODE_SETTINGS_UPDATE_ACTION
+}

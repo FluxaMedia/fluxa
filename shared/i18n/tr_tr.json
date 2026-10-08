@@ -3176,5 +3176,17 @@
   "a11y.previous_episode": "Önceki bölüm",
   "a11y.text_field": "Metin alanı",
   "settings.mdblist_library_list": "MDBList kütüphane listesi",
-  "settings.mdblist_watchlist": "İzleme listesi"
+  "settings.mdblist_watchlist": "İzleme listesi",
+  "settings.section.updates": "Güncellemeler",
+  "settings.section.updates.description": "Yeni sürümleri denetle",
+  "settings.updates.version": "Sürüm",
+  "settings.updates.idle": "Henüz denetlenmedi",
+  "settings.updates.checking": "Güncellemeler denetleniyor…",
+  "settings.updates.up_to_date": "En son sürümü kullanıyorsunuz",
+  "settings.updates.downloading": "Güncelleme indiriliyor",
+  "settings.updates.ready": "Güncelleme hazır:",
+  "settings.updates.restart": "Güncellemek için yeniden başlat",
+  "settings.updates.check": "Güncellemeleri denetle",
+  "settings.updates.failed": "Güncelleme başarısız",
+  "settings.updates.unsupported": "Bu cihazda güncelleme kullanılamıyor"
 }

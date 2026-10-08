@@ -2231,6 +2231,7 @@ dependencies = [
  "fluxa-renderer",
  "fluxa-theme",
  "fluxa-ui",
+ "fluxa-updater",
  "fluxa_core",
  "image",
  "mdns-sd",

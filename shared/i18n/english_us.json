@@ -3176,5 +3176,17 @@
   "a11y.previous_episode": "Previous episode",
   "a11y.text_field": "Text field",
   "settings.mdblist_library_list": "MDBList library list",
-  "settings.mdblist_watchlist": "Watchlist"
+  "settings.mdblist_watchlist": "Watchlist",
+  "settings.section.updates": "Updates",
+  "settings.section.updates.description": "Check for new versions",
+  "settings.updates.version": "Version",
+  "settings.updates.idle": "Not checked yet",
+  "settings.updates.checking": "Checking for updates…",
+  "settings.updates.up_to_date": "You're on the latest version",
+  "settings.updates.downloading": "Downloading update",
+  "settings.updates.ready": "Update ready:",
+  "settings.updates.restart": "Restart to update",
+  "settings.updates.check": "Check for updates",
+  "settings.updates.failed": "Update failed",
+  "settings.updates.unsupported": "Updates aren't available on this device"
 }

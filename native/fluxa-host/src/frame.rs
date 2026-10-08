@@ -37,6 +37,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .gpu
         .as_ref()
         .and_then(|gpu| gpu.artwork.next_animation_frame());
+    let updating = updates::busy(state).then(|| now + Duration::from_millis(500));
     let projecting = state
         .projector
         .pending()
@@ -61,6 +62,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         trailer,
         caret,
         home_refresh,
+        updating,
     ]
     .into_iter()
     .flatten()
@@ -116,6 +118,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     route_actions_to_session(state);
     timer.mark("actions");
     pull_session_snapshot(state);
+    updates::poll(state);
     timer.mark("snapshot");
     profiles::poll(state);
     accounts::poll(state);

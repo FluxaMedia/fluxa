@@ -3170,5 +3170,17 @@
   "settings.language.he": "עברית",
   "settings.option.he": "עברית",
   "settings.mdblist_library_list": "רשימת הספרייה של MDBList",
-  "settings.mdblist_watchlist": "רשימת צפייה"
+  "settings.mdblist_watchlist": "רשימת צפייה",
+  "settings.section.updates": "עדכונים",
+  "settings.section.updates.description": "בדיקת גרסאות חדשות",
+  "settings.updates.version": "גרסה",
+  "settings.updates.idle": "טרם נבדק",
+  "settings.updates.checking": "בודק עדכונים…",
+  "settings.updates.up_to_date": "הגרסה שלך מעודכנת",
+  "settings.updates.downloading": "מוריד עדכון",
+  "settings.updates.ready": "העדכון מוכן:",
+  "settings.updates.restart": "הפעל מחדש כדי לעדכן",
+  "settings.updates.check": "בדוק עדכונים",
+  "settings.updates.failed": "העדכון נכשל",
+  "settings.updates.unsupported": "עדכונים אינם זמינים במכשיר זה"
 }
