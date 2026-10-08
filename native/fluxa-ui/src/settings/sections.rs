@@ -150,7 +150,7 @@ pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
     (6, "settings.group.color_and_motion"),
     (6, "settings.group.navigation"),
 ];
-pub(super) const HOME_SETTINGS: [SettingsRow; 14] = [
+pub(super) const HOME_SETTINGS: [SettingsRow; 15] = [
     SettingsRow {
         label: "Show hero section",
         key: "showHeroSection",
@@ -175,6 +175,11 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 14] = [
         label: "Home trailer delay",
         key: "homeHeroAutoplayTrailerDelaySecs",
         options: &["2", "4", "6", "10"],
+    },
+    SettingsRow {
+        label: "Shorten synopsis",
+        key: "shortenSynopsis",
+        options: &[],
     },
     SettingsRow {
         label: "Catalog type suffix",
@@ -223,7 +228,7 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 14] = [
     },
 ];
 pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
-    (5, "settings.group.home"),
+    (6, "settings.group.home"),
     (8, "settings.group.continue_watching"),
 ];
 pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [

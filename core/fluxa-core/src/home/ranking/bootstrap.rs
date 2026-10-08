@@ -181,6 +181,10 @@ pub fn home_hero_plan(request: &Value) -> Value {
         .take(8);
     let fetched_trailers = request.get("fetchedTrailers").and_then(Value::as_object);
     let fetched_logos = request.get("fetchedLogos").and_then(Value::as_object);
+    let shorten = prefs
+        .get("shortenSynopsis")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
     let prepare = |item: &Value| {
         let mut item = item.clone();
         let id = item.get("id").and_then(Value::as_str).map(str::to_owned);
@@ -206,11 +210,12 @@ pub fn home_hero_plan(request: &Value) -> Value {
         {
             fields.insert("logo".to_owned(), logo.clone());
         }
-        if let Some(shortened) = fields
-            .get("description")
-            .and_then(Value::as_str)
-            .filter(|value| !value.trim().is_empty())
-            .map(crate::catalog::identity::shorten_synopsis)
+        if shorten
+            && let Some(shortened) = fields
+                .get("description")
+                .and_then(Value::as_str)
+                .filter(|value| !value.trim().is_empty())
+                .map(crate::catalog::identity::shorten_synopsis)
         {
             fields.insert("description".to_owned(), Value::String(shortened));
         }

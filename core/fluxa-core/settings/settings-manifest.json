@@ -492,6 +492,13 @@
       "category": "appearance"
     },
     {
+      "key": "shortenSynopsis",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "homeHeroAutoplayTrailerDelaySecs",
       "type": "string",
       "default": "2",

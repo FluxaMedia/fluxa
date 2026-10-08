@@ -1020,6 +1020,9 @@ pub(crate) fn pump(state: &mut RendererState) {
             .and_then(Value::as_str)
             .filter(|text| !text.trim().is_empty())
             .map(|text| {
+                if !settings.bool_value("shortenSynopsis") {
+                    return text.to_owned();
+                }
                 core_value("shortenSynopsis", json!({"text": text}))
                     .and_then(|value| value.as_str().map(ToOwned::to_owned))
                     .unwrap_or_else(|| text.to_owned())
