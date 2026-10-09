@@ -104,6 +104,9 @@ pub trait HomeAssets {
     fn accent_color(&self) -> Option<Color32> {
         None
     }
+    fn playback_unavailable(&self) -> Option<&str> {
+        None
+    }
 }
 
 pub fn draw_home(
@@ -408,7 +411,7 @@ pub(crate) fn draw_home_with_options(
         );
     }
     if !has_home_content {
-        let layout = HomeLayout {
+        let mut layout = HomeLayout {
             focusable: if loading_screen {
                 Vec::new()
             } else {
@@ -425,15 +428,37 @@ pub(crate) fn draw_home_with_options(
         if loading_screen {
             draw_loading_screen(context, &painter, screen, assets);
         } else {
-            draw_text(
+            let state_rect = screen.translate(Vec2::new(0.0, -metrics.screen_title_size));
+            components::empty_state(
                 &painter,
-                screen.center(),
-                Align2::CENTER_CENTER,
-                "Home",
-                crate::fonts::bold(metrics.screen_title_size),
-                metrics.text_primary,
-                None,
+                state_rect,
+                assets.icon("Discover"),
+                &localized("home.no_catalogs", &home.language),
+                &localized("home.no_catalogs_hint", &home.language),
+                metrics,
             );
+            let title_size = metrics.screen_section_title_size;
+            let button_top = state_rect.center().y
+                + (36.0 + metrics.section_gap + title_size * 2.6) * 0.5
+                + metrics.screen_body_size * 2.4
+                + metrics.section_gap;
+            let label = localized("home.open_addons", &home.language);
+            let width = (screen.width() - margin * 2.0).min(280.0);
+            let mut button_rect = None;
+            let mut clicked = false;
+            egui::Area::new(Id::new("fluxa-home-open-addons"))
+                .fixed_pos(Pos2::new(screen.center().x - width * 0.5, button_top))
+                .show(context, |ui| {
+                    let response = components::primary_button(ui, &label, width, true);
+                    button_rect = Some(response.rect);
+                    clicked = response.clicked();
+                });
+            if let Some(rect) = button_rect {
+                layout.focusable.push((NODE_HOME_ADD_ADDONS, rect));
+            }
+            if clicked {
+                layout.activated = Some(NODE_HOME_ADD_ADDONS);
+            }
         }
         components::focus_ring(
             &painter,
@@ -626,8 +651,9 @@ pub(crate) fn draw_home_with_options(
                             let resume = hero.item_id.as_deref().and_then(|id| home.resume_for(id));
                             let series =
                                 matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
-                            let label =
-                                play_label(&home.language, resume, series.then_some((1, 1, None)));
+                            let label = home.playback_unavailable.clone().unwrap_or_else(|| {
+                                play_label(&home.language, resume, series.then_some((1, 1, None)))
+                            });
                             let text_size = metrics.nav_label_size + 2.0;
                             let measure = |ui: &egui::Ui, text: &str| {
                                 ui.painter()

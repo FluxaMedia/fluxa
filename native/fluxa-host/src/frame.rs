@@ -38,6 +38,10 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .as_ref()
         .and_then(|gpu| gpu.artwork.next_animation_frame());
     let updating = updates::busy(state).then(|| now + Duration::from_millis(500));
+    let notice = state
+        .notice
+        .is_some()
+        .then(|| now + Duration::from_millis(16));
     let projecting = state
         .projector
         .pending()
@@ -63,6 +67,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         caret,
         home_refresh,
         updating,
+        notice,
     ]
     .into_iter()
     .flatten()
@@ -145,6 +150,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         gpu.resize(size);
     }
     sync_home_from_core_snapshot(state);
+    apply_notice(state);
     shorts::tick(state);
     trailer::tick(state);
     logos::tick(state);

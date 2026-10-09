@@ -557,6 +557,21 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             continue;
         }
         if let Some(node) = node {
+            let episode = state.route == Route::Detail
+                && (fluxa_ui::NODE_DETAIL_EPISODE_BASE..fluxa_ui::NODE_DETAIL_EPISODE_BASE + 1000)
+                    .contains(&node);
+            if (episode
+                || matches!(
+                    node,
+                    fluxa_ui::NODE_PLAY
+                        | fluxa_ui::NODE_DETAIL_PLAY
+                        | fluxa_ui::NODE_SHORTS_PLAY
+                ))
+                && playback_blocked(state)
+            {
+                show_notice(state, "playback.no_sources");
+                continue;
+            }
             if shortcuts::activate_node(state, node)
                 || updates::activate_node(state, node)
                 || stream_badges::activate_node(state, node)
@@ -572,6 +587,18 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 .map(|(_, request)| request.clone());
             if let Some(request) = request {
                 card_menu::open_choice(state, request);
+                continue;
+            }
+            if state.route == Route::Home && node == fluxa_ui::NODE_HOME_ADD_ADDONS {
+                state.settings.active_section = fluxa_ui::addons_page();
+                state.settings.section_open = true;
+                state.settings.page_open = true;
+                state.settings.search.clear();
+                state.screen_scroll_offsets.remove(&Route::Settings);
+                state.pending_native_actions.push(NativeAction::Navigate {
+                    destination: Route::Settings,
+                });
+                reset_ui(state);
                 continue;
             }
             if node == fluxa_ui::NODE_LIBRARY {

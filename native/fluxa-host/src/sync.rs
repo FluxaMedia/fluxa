@@ -1,4 +1,7 @@
 use super::*;
+use fluxa_ui::localized;
+
+const NOTICE_SECONDS: f32 = 2.5;
 
 pub(super) fn request_projection(state: &mut RendererState) {
     let Some(snapshot) = state.core_snapshot.clone() else {
@@ -9,6 +12,7 @@ pub(super) fn request_projection(state: &mut RendererState) {
         return;
     }
     state.last_snapshot_revision = Some(revision);
+    state.stream_providers = has_stream_providers(&snapshot);
     state.projector.submit(projection::Request {
         revision,
         snapshot,
@@ -22,6 +26,53 @@ pub(super) fn request_projection(state: &mut RendererState) {
         hero_trailers: state.trailers.inputs(),
         hero_logos: state.logos.inputs(),
     });
+}
+
+fn has_stream_providers(snapshot: &Value) -> bool {
+    let addons = snapshot
+        .pointer("/addons/installed")
+        .cloned()
+        .unwrap_or_else(|| json!([]));
+    let plugin_names = snapshot
+        .pointer("/plugins/scrapers")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter(|scraper| scraper.get("enabled").and_then(Value::as_bool) != Some(false))
+        .filter_map(|scraper| scraper.get("name").cloned())
+        .collect::<Vec<_>>();
+    core_value(
+        "providerAvailabilityPlan",
+        json!({"addons": addons, "pluginNames": plugin_names}),
+    )
+    .and_then(|plan| plan.get("hasStreamProviders").and_then(Value::as_bool))
+    .unwrap_or(true)
+}
+
+pub(super) fn playback_blocked(state: &RendererState) -> bool {
+    !state.stream_providers && state.settings.media_servers.is_empty()
+}
+
+pub(super) fn show_notice(state: &mut RendererState, key: &str) {
+    let language = state.settings.language().to_owned();
+    state.notice = Some((localized(key, &language), Instant::now()));
+}
+
+pub(super) fn apply_notice(state: &mut RendererState) {
+    let language = state.settings.language().to_owned();
+    state.home.playback_unavailable =
+        playback_blocked(state).then(|| localized("playback.unavailable", &language));
+    state.home.notice = None;
+    let Some((text, shown)) = state.notice.as_ref() else {
+        return;
+    };
+    let elapsed = shown.elapsed().as_secs_f32();
+    if elapsed > NOTICE_SECONDS {
+        state.notice = None;
+        return;
+    }
+    let opacity = ((NOTICE_SECONDS - elapsed) / 0.4).clamp(0.0, 1.0);
+    state.home.notice = Some((text.clone(), opacity));
 }
 
 pub(super) fn apply_projection(state: &mut RendererState, projection: projection::Projection) {
@@ -42,6 +93,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.home.focus_driven = focus_driven;
     state.home.scroll_offset = scroll_offset;
     state.home.row_scroll_offsets = row_scroll_offsets;
+    apply_notice(state);
     if HOME_SYNC_LOGS.fetch_add(1, Ordering::Relaxed) % 120 == 0 {
         let titles = state
             .home

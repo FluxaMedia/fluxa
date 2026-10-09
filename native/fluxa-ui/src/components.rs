@@ -2343,15 +2343,17 @@ pub(super) fn play_button(
     text_size: f32,
     progress: Option<f32>,
 ) -> Response {
-    pill_button(
+    let unavailable = assets.playback_unavailable().map(str::to_owned);
+    pill_button_styled(
         ui,
         assets.icon("PlayFilled"),
-        label,
+        unavailable.as_deref().unwrap_or(label),
         width,
         height,
         text_size,
         true,
-        progress,
+        progress.filter(|_| unavailable.is_none()),
+        unavailable.is_some(),
     )
 }
 
@@ -2364,6 +2366,22 @@ pub(super) fn pill_button(
     text_size: f32,
     primary: bool,
     progress: Option<f32>,
+) -> Response {
+    pill_button_styled(
+        ui, icon, label, width, height, text_size, primary, progress, false,
+    )
+}
+
+fn pill_button_styled(
+    ui: &mut Ui,
+    icon: Option<egui::TextureId>,
+    label: &str,
+    width: Option<f32>,
+    height: f32,
+    text_size: f32,
+    primary: bool,
+    progress: Option<f32>,
+    muted: bool,
 ) -> Response {
     let font = FontId::proportional(text_size);
     let lead = if icon.is_some() { 44.0 } else { 16.0 };
@@ -2387,13 +2405,17 @@ pub(super) fn pill_button(
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     let painter = ui.painter();
     crate::motion::press_scale(painter, rect, || {
-        let (fill, ink) = match (primary, response.hovered()) {
-            (true, false) => (text_primary(), background()),
-            (true, true) => (ink(tone::BODY), background()),
-            (false, false) => (ink(tone::RAISED), text_primary()),
-            (false, true) => (ink(tone::STRONG), text_primary()),
+        let (fill, ink) = if muted {
+            (ink(tone::SOFT), ink(tone::MUTED))
+        } else {
+            match (primary, response.hovered()) {
+                (true, false) => (text_primary(), background()),
+                (true, true) => (ink(tone::BODY), background()),
+                (false, false) => (ink(tone::RAISED), text_primary()),
+                (false, true) => (ink(tone::STRONG), text_primary()),
+            }
         };
-        if primary {
+        if primary && !muted {
             painter.rect_filled(rect, height * 0.5, fill);
         } else {
             glass(painter, rect, height * 0.5, fill);

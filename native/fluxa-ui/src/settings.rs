@@ -92,6 +92,13 @@ pub fn settings_page_for_node(node: u64) -> Option<usize> {
         .map(|base| (node - base) as usize)
 }
 
+pub fn addons_page() -> usize {
+    SETTINGS_SECTIONS
+        .iter()
+        .position(|section| section.title == "Add-ons")
+        .unwrap_or_default()
+}
+
 pub fn category_pages(index: usize) -> impl Iterator<Item = usize> {
     let category = SETTINGS_SECTIONS[index.min(SETTINGS_SECTIONS.len() - 1)].category;
     (0..SETTINGS_SECTIONS.len()).filter(move |&page| SETTINGS_SECTIONS[page].category == category)
@@ -1100,15 +1107,24 @@ fn draw_updates(
             Some("settings.updates.check"),
         ),
         UpdateState::Downloading(percent) => (
-            format!("{} {percent}%", localized("settings.updates.downloading", language)),
+            format!(
+                "{} {percent}%",
+                localized("settings.updates.downloading", language)
+            ),
             None,
         ),
         UpdateState::Ready(version) => (
-            format!("{} {version}", localized("settings.updates.ready", language)),
+            format!(
+                "{} {version}",
+                localized("settings.updates.ready", language)
+            ),
             Some("settings.updates.restart"),
         ),
         UpdateState::Failed(reason) => (
-            format!("{}: {reason}", localized("settings.updates.failed", language)),
+            format!(
+                "{}: {reason}",
+                localized("settings.updates.failed", language)
+            ),
             Some("settings.updates.check"),
         ),
     };

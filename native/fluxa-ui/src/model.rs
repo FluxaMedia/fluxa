@@ -163,6 +163,10 @@ pub struct HomeModel {
     pub profile_avatar_url: Option<String>,
     #[serde(rename = "profileName")]
     pub profile_name: Option<String>,
+    #[serde(skip)]
+    pub playback_unavailable: Option<String>,
+    #[serde(skip)]
+    pub notice: Option<(String, f32)>,
     #[serde(rename = "itemId")]
     pub item_id: Option<String>,
     #[serde(rename = "itemType")]
@@ -269,6 +273,8 @@ impl HomeModel {
             logo_url: None,
             profile_avatar_url: None,
             profile_name: None,
+            playback_unavailable: None,
+            notice: None,
             item_id: None,
             item_type: None,
             hero_slides: Vec::new(),

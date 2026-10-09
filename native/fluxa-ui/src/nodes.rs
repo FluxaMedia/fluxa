@@ -7,6 +7,7 @@ pub const NODE_SHORTS: u64 = 15;
 pub const NODE_PLAY: u64 = 20;
 pub const NODE_MORE_INFO: u64 = 21;
 pub const NODE_HERO_WATCHLIST: u64 = 22;
+pub const NODE_HOME_ADD_ADDONS: u64 = 23;
 pub const NODE_LIBRARY_STATUS: u64 = 30;
 pub const NODE_LIBRARY_SEARCH: u64 = 80;
 pub const NODE_PLAYER_CLOSE: u64 = 700;

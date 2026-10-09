@@ -72,13 +72,25 @@ pub use settings::{
     ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit,
     CollectionListRow, FolderEdit, FormatterPresetRow, FormatterRow, POSTER_FIELDS,
     SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, ShortcutRow, UpdateState,
-    UpdateView, account_source,
-    account_source_state, addon_action, addon_transport_url, badge_input, badge_input_label,
-    category_pages, collection_input, collection_input_label, collection_view_modes, draw_settings,
-    option_label, poster_field, server_index, server_input, settings_model_from_core_snapshot,
-    settings_page_for_node, settings_row_by_index, settings_row_label,
+    UpdateView, account_source, account_source_state, addon_action, addon_transport_url,
+    addons_page, badge_input, badge_input_label, category_pages, collection_input,
+    collection_input_label, collection_view_modes, draw_settings, option_label, poster_field,
+    server_index, server_input, settings_model_from_core_snapshot, settings_page_for_node,
+    settings_row_by_index, settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
+
+pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opacity: f32) {
+    let top = (viewport.height * 0.08).max(48.0);
+    components::toast(
+        context,
+        viewport,
+        egui::Pos2::new(viewport.width * 0.5, top),
+        text,
+        None,
+        opacity,
+    );
+}
 
 pub fn localized(key: &str, language: &str) -> String {
     localized_or(key, key, language)

@@ -130,6 +130,7 @@ pub(super) struct HostAssets<'a> {
     profile_name: Option<&'a str>,
     profile_avatar_url: Option<&'a str>,
     custom_background: Option<&'a str>,
+    playback_unavailable: Option<&'a str>,
     mirror: bool,
 }
 
@@ -139,6 +140,9 @@ impl HomeAssets for HostAssets<'_> {
     }
     fn active_profile_name(&self) -> Option<&str> {
         self.profile_name
+    }
+    fn playback_unavailable(&self) -> Option<&str> {
+        self.playback_unavailable
     }
     fn brand_mark(&self) -> Option<egui::TextureId> {
         self.brand_mark
@@ -765,6 +769,7 @@ impl Gpu {
                 profile_name: home.profile_name.as_deref(),
                 profile_avatar_url: home.profile_avatar_url.as_deref(),
                 custom_background,
+                playback_unavailable: home.playback_unavailable.as_deref(),
                 mirror: self.mirror,
             };
             let viewport = Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
@@ -838,6 +843,9 @@ impl Gpu {
                     menu.anchor,
                     menu.serial,
                 );
+            }
+            if let Some((text, opacity)) = home.notice.as_ref() {
+                fluxa_ui::draw_notice(ui.ctx(), viewport, text, *opacity);
             }
         });
         timer.mark("draw");
