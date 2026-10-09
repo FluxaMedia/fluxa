@@ -4,7 +4,7 @@
     {
       "key": "accentColorArgb",
       "type": "string",
-      "default": "glass",
+      "default": "#FFFFFF",
       "scope": "profile",
       "category": "appearance"
     },
