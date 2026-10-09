@@ -25,6 +25,10 @@ val appVersionName = providers.gradleProperty("fluxaVersion").orNull
     ?: System.getenv("GITHUB_REF_NAME")?.removePrefix("v")
     ?: "1.0.0"
 
+val appVersionCode = appVersionName.substringBefore('-').split('.').let { (major, minor, patch) ->
+    major.toInt() * 1_000_000 + minor.toInt() * 1_000 + patch.toInt()
+}
+
 val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release", ignoreCase = true) }
 
 android {
@@ -35,7 +39,7 @@ android {
         applicationId = "com.fluxa.app"
         minSdk = 24
         targetSdk = 36
-        versionCode = 700
+        versionCode = appVersionCode
         versionName = appVersionName
         if (!isReleaseBuild) {
             ndk {
