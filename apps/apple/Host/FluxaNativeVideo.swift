@@ -1,4 +1,6 @@
 import AVFoundation
+import AVKit
+import CoreMedia
 import FluxaRendererFFI
 import Libmpv
 import QuartzCore
@@ -158,9 +160,20 @@ final class FluxaNativeVideo {
         let window = UIApplication.shared.connectedScenes
             .compactMap { ($0 as? UIWindowScene)?.windows.first }
             .first
-        window?.avDisplayManager.preferredDisplayCriteria = fps > 0
-            ? AVDisplayCriteria(refreshRate: Float(fps), videoDynamicRange: 0)
-            : nil
+        var format: CMVideoFormatDescription?
+        if fps > 0 {
+            CMVideoFormatDescriptionCreate(
+                allocator: kCFAllocatorDefault,
+                codecType: kCMVideoCodecType_HEVC,
+                width: Int32(double("video-params/w")),
+                height: Int32(double("video-params/h")),
+                extensions: nil,
+                formatDescriptionOut: &format
+            )
+        }
+        window?.avDisplayManager.preferredDisplayCriteria = format.map {
+            AVDisplayCriteria(refreshRate: Float(fps), formatDescription: $0)
+        }
         #endif
     }
 

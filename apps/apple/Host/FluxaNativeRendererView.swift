@@ -27,7 +27,9 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
             .appendingPathComponent("fluxa-artwork").path ?? ""
         renderer = fluxa_renderer_create(Float(UIScreen.main.scale), cacheDir)!
         super.init(frame: frame)
+        #if !os(tvOS)
         isMultipleTouchEnabled = false
+        #endif
         metalLayer.isOpaque = false
         metalLayer.pixelFormat = .bgra8Unorm_srgb
         fluxa_renderer_set_form_factor(
