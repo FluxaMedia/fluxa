@@ -263,7 +263,7 @@ impl EffectExecutor {
                 item.insert("mdblistRatings".to_owned(), ratings);
             }
         }
-        if all_categories.is_empty() {
+        if all_categories.is_empty() && !metadata_feeds.is_empty() {
             if let Some(Value::Object(mut cached)) = self.storage.read_json(&cache_key)? {
                 cached.insert("stale".to_owned(), Value::Bool(false));
                 return Ok(Value::Object(cached));

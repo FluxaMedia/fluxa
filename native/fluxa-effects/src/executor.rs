@@ -519,6 +519,39 @@ mod tests {
     }
 
     #[test]
+    fn home_bootstrap_drops_cached_shelves_when_no_addons_remain() {
+        let directory = temporary_directory();
+        let storage = Storage::open(directory.clone()).expect("open storage");
+        let cache_key = format!("home_bootstrap_v1_{}_en", Storage::library_key("guest"));
+        storage
+            .write_json(
+                &cache_key,
+                &json!({
+                    "categories": [{"id": "catalog", "items": [{"id": "tt1", "name": "Cached title"}]}],
+                    "continueWatching": [],
+                    "metadataFeeds": [],
+                    "billboard": {"id": "tt1", "name": "Cached title"}
+                }),
+            )
+            .expect("write cache");
+        let executor = EffectExecutor::new(storage);
+        let effect = json!({
+            "type": "readHomeBootstrap",
+            "payload": {"profileId": "guest", "language": "en", "force": true}
+        });
+        let runtime = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .expect("create runtime");
+        let value = runtime
+            .block_on(executor.execute(&effect))
+            .expect("execute forced effect");
+        assert_eq!(value["categories"], json!([]));
+        assert!(value["billboard"].is_null());
+        let _ = std::fs::remove_dir_all(directory);
+    }
+
+    #[test]
     fn catalog_page_effect_uses_the_shared_catalog_executor_path() {
         let directory = temporary_directory();
         let executor = EffectExecutor::new(Storage::open(directory.clone()).expect("open storage"));
