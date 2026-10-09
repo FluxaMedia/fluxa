@@ -54,6 +54,7 @@ package_windows() {
     MSYS2_ARG_CONV_EXCL="*" "$ISCC" "/DAppVersion=$version" "/DSourceDir=$win_app" "/DOutputDir=$win_dist" "$(cygpath -w "$root/packaging/windows/fluxa.iss")"
     wix build "$(cygpath -w "$root/packaging/windows/fluxa.wxs")" -arch x64 \
         -d "Version=${version%%-*}" -d "SourceDir=$win_app" -d "IconFile=$(cygpath -w "$root/packaging/icons/fluxa.ico")" -o "$win_dist\\$name.msi"
+    rm -f "$dist/$name.wixpdb"
 }
 
 package_macos() {
