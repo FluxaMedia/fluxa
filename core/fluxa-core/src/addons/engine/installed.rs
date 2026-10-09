@@ -102,6 +102,7 @@ pub(crate) fn dispatch_remove(
         items.retain(|addon| addon_url(addon) != Some(transport_url));
         let addons = engine.state.addons.installed.clone();
         home::set_user_addons(engine, addons);
+        return home::reload(engine);
     }
     vec![]
 }
@@ -125,7 +126,7 @@ pub(crate) fn dispatch_move(
     items.insert(to, addon);
     let addons = engine.state.addons.installed.clone();
     home::set_user_addons(engine, addons);
-    vec![]
+    home::reload(engine)
 }
 
 pub(crate) fn dispatch_resource(
@@ -184,6 +185,9 @@ pub(crate) fn complete(
                     }
                     engine.state.addons.installing = Value::Null;
                     engine.state.addons.error = Value::Null;
+                    let addons = engine.state.addons.installed.clone();
+                    home::set_user_addons(engine, addons);
+                    return home::reload(engine);
                 } else {
                     engine.state.addons.installing = Value::Null;
                     engine.state.addons.error = normalize_error(result.error.clone());

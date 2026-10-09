@@ -176,6 +176,11 @@ pub(crate) fn set_user_addons(engine: &mut HeadlessEngine, addons: Value) {
     engine.state.home.user_addons = addons;
 }
 
+pub(crate) fn reload(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
+    let language = Some(engine.state.home.language.clone()).filter(|l| !l.is_empty());
+    dispatch_load(engine, None, language, Some(true))
+}
+
 pub(crate) fn dispatch_load(
     engine: &mut HeadlessEngine,
     profile: Option<Value>,
