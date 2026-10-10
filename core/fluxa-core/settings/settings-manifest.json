@@ -1381,13 +1381,6 @@
       "category": "account"
     },
     {
-      "key": "tmdbPreferOverAddons",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "account"
-    },
-    {
       "key": "tmdbProductionsEnabled",
       "type": "boolean",
       "default": null,

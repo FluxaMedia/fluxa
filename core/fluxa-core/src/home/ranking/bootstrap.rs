@@ -346,15 +346,7 @@ pub(crate) fn home_bootstrap_preparation_plan_json(request_json: &str) -> Option
         .get("builtinAddon")
         .filter(|value| value.is_object())
     {
-        if prefs
-            .get("tmdbPreferOverAddons")
-            .and_then(Value::as_bool)
-            .unwrap_or(false)
-        {
-            addons.insert(0, builtin.clone());
-        } else {
-            addons.push(builtin.clone());
-        }
+        addons.insert(0, builtin.clone());
     }
     let local = library
         .get("continueWatching")

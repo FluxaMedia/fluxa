@@ -56,11 +56,7 @@ impl EffectExecutor {
             }) {
                 if let Some(items) = addons.as_array_mut() {
                     let descriptor = json!({"transportUrl": "tmdb://builtin", "manifest": manifest, "apiKey": api_key});
-                    if prefs.get("tmdbPreferOverAddons").and_then(Value::as_bool) == Some(true) {
-                        items.insert(0, descriptor);
-                    } else {
-                        items.push(descriptor);
-                    }
+                    items.insert(0, descriptor);
                 }
             }
         }
