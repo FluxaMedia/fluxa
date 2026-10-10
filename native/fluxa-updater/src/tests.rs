@@ -137,3 +137,44 @@ fn same_version_is_reported_up_to_date() {
     assert_eq!(status, Status::UpToDate);
     let _ = fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn manifest_built_by_the_release_script_is_accepted() {
+    let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/update-manifest.mjs");
+    let Ok(keys) = std::process::Command::new("node").arg(&script).arg("keygen").output() else {
+        return;
+    };
+    let keys = String::from_utf8(keys.stdout).unwrap();
+    let key = |name: &str| {
+        keys.lines()
+            .find_map(|line| line.strip_prefix(name))
+            .unwrap()
+            .to_owned()
+    };
+    let dir = scratch("script");
+    let asset = dir.join("fluxa-9.9.9-linux-x86_64.tar.gz");
+    fs::write(&asset, archive()).unwrap();
+    let out = dir.join("latest.json");
+    let built = std::process::Command::new("node")
+        .arg(&script)
+        .args(["build", "--version", "v9.9.9", "--repo", "FluxaMedia/fluxa", "--asset"])
+        .arg(format!("linux-x86_64={}", asset.display()))
+        .arg("--out")
+        .arg(&out)
+        .env("FLUXA_UPDATE_PRIVATE_KEY", key("FLUXA_UPDATE_PRIVATE_KEY="))
+        .status()
+        .unwrap();
+    assert!(built.success());
+    let release = update::check(
+        &fs::read(&out).unwrap(),
+        &fs::read_to_string(dir.join("latest.json.sig")).unwrap(),
+        &key("FLUXA_UPDATE_PUBLIC_KEY="),
+        CURRENT_VERSION,
+        "linux-x86_64",
+    )
+    .unwrap()
+    .unwrap();
+    assert_eq!(release.version, "9.9.9");
+    assert!(release.asset.url.ends_with("/v9.9.9/fluxa-9.9.9-linux-x86_64.tar.gz"));
+    let _ = fs::remove_dir_all(dir);
+}
