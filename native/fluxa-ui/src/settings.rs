@@ -123,7 +123,11 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
     match key {
         "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "navFloating"
         | "navLabels" | "posterHoverPreview" => !compact,
-        "discordRichPresenceEnabled" | "automaticUpdates" => desktop,
+        "discordRichPresenceEnabled" => desktop,
+        "automaticUpdates" => matches!(
+            viewport.platform,
+            UiPlatform::Android | UiPlatform::Windows | UiPlatform::Macos | UiPlatform::Linux
+        ),
         "backgroundPlayback" | "pictureInPicture" | "torrentWifiOnly" => !desktop,
         "playerShowSettings" | "playerShowVolume" | "playerShowFullscreen" => desktop,
         "playerGestures" | "playerDoubleTapSeek" | "playerCenterControls" => compact,
