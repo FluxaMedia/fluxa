@@ -149,6 +149,7 @@ pub(crate) fn draw_home_with_options(
     } else {
         home.scroll_offset
     };
+    let scroll_offset = scroll_offset - home.top_inset;
     let active_hero_index = home_hero_index(context, home);
     let fallback_hero = HomeHero {
         title: home.title.clone(),
@@ -527,7 +528,12 @@ pub(crate) fn draw_home_with_options(
             .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
             .is_some_and(|trailer| trailer.texture.is_some());
         let text_fade = 1.0
-            - context.animate_bool_with_time(Id::new("fluxa-hero-text-fade"), trailer_playing, 0.4);
+            - crate::motion::toggle(
+                context,
+                Id::new("fluxa-hero-text-fade"),
+                trailer_playing,
+                0.4,
+            );
         let metadata_gap = style.metadata_gap * text_fade;
         let metadata_height = metadata_height * text_fade;
         let synopsis_height = synopsis_height * text_fade;

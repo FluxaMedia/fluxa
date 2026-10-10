@@ -111,6 +111,8 @@ pub struct UpdateView {
     pub current: String,
     pub state: UpdateState,
     pub prompt: bool,
+    pub reveal: f32,
+    pub top: f32,
 }
 
 #[derive(Clone, Debug, Default)]

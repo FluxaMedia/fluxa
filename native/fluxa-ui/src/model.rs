@@ -188,6 +188,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub scroll_offset: f32,
     #[serde(skip)]
+    pub top_inset: f32,
+    #[serde(skip)]
     pub row_scroll_offsets: Vec<f32>,
     #[serde(skip)]
     pub trailer: Option<HeroTrailer>,
@@ -286,6 +288,7 @@ impl HomeModel {
             form_factor: UiFormFactorJson::Desktop,
             platform: UiPlatform::default(),
             scroll_offset: 0.0,
+            top_inset: 0.0,
             row_scroll_offsets: Vec::new(),
             trailer: None,
             poster_trailer: None,

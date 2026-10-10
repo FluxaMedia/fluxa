@@ -8,6 +8,7 @@ use sha2::{Digest, Sha256};
 use std::fs;
 use std::io::{Read, Write};
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 const MANIFEST_URL: &str = "https://github.com/FluxaMedia/fluxa/releases/latest/download/latest.json";
@@ -52,6 +53,7 @@ pub struct Updater {
     source: Source,
     status: Arc<Mutex<Status>>,
     release: Arc<Mutex<Option<update::Release>>>,
+    cancelled: Arc<AtomicBool>,
 }
 
 impl Updater {
@@ -74,6 +76,7 @@ impl Updater {
             source,
             status: Arc::new(Mutex::new(status)),
             release: Arc::default(),
+            cancelled: Arc::default(),
         }
     }
 
@@ -127,12 +130,24 @@ impl Updater {
                 percent: 0,
             };
         }
+        self.cancelled.store(false, Ordering::Relaxed);
         let dir = self.dir.clone();
         let status = self.status.clone();
+        let cancelled = self.cancelled.clone();
         std::thread::spawn(move || {
-            let outcome = stage(&dir, &release, &status).unwrap_or_else(Status::Failed);
+            let outcome = match stage(&dir, &release, &status, &cancelled) {
+                Ok(ready) => ready,
+                Err(_) if cancelled.load(Ordering::Relaxed) => Status::Available {
+                    version: release.version.clone(),
+                },
+                Err(error) => Status::Failed(error),
+            };
             set(&status, outcome);
         });
+    }
+
+    pub fn cancel(&self) {
+        self.cancelled.store(true, Ordering::Relaxed);
     }
 
     pub fn apply(&self) -> Result<Applied, String> {
@@ -197,7 +212,12 @@ fn find(source: &Source, variant: &str) -> Result<Option<update::Release>, Strin
         .map_err(|error| error.to_string())
 }
 
-fn stage(dir: &Path, release: &update::Release, status: &Mutex<Status>) -> Result<Status, String> {
+fn stage(
+    dir: &Path,
+    release: &update::Release,
+    status: &Mutex<Status>,
+    cancelled: &AtomicBool,
+) -> Result<Status, String> {
     let client = client()?;
     install::check_writable()?;
     let _ = fs::remove_dir_all(dir);
@@ -205,7 +225,7 @@ fn stage(dir: &Path, release: &update::Release, status: &Mutex<Status>) -> Resul
     fs::create_dir_all(&downloads).map_err(|error| error.to_string())?;
     let name = release.asset.url.rsplit('/').next().unwrap_or("update");
     let archive = downloads.join(name);
-    download(&client, release, &archive, |percent| {
+    download(&client, release, &archive, cancelled, |percent| {
         set(
             status,
             Status::Downloading {
@@ -241,6 +261,7 @@ fn download(
     client: &reqwest::blocking::Client,
     release: &update::Release,
     path: &Path,
+    cancelled: &AtomicBool,
     progress: impl Fn(u8),
 ) -> Result<(), String> {
     let mut response = client
@@ -254,6 +275,10 @@ fn download(
     let mut written = 0u64;
     let mut last = 255u8;
     loop {
+        if cancelled.load(Ordering::Relaxed) {
+            let _ = fs::remove_file(path);
+            return Err("cancelled".to_owned());
+        }
         let read = response.read(&mut buffer).map_err(|error| error.to_string())?;
         let Some(chunk) = buffer.get(..read).filter(|chunk| !chunk.is_empty()) else {
             break;

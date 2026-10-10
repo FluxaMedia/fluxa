@@ -2,6 +2,94 @@ use egui::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjus
 
 const PAGE_SECONDS: f32 = 0.26;
 
+#[derive(Clone, Copy)]
+pub(crate) enum Ease {
+    Linear,
+    Out,
+}
+
+#[derive(Clone, Copy)]
+struct Tween {
+    from: f32,
+    to: f32,
+    t: f32,
+    frame: u64,
+}
+
+impl Tween {
+    fn value(&self, ease: Ease) -> f32 {
+        let t = match ease {
+            Ease::Linear => self.t,
+            Ease::Out => egui::emath::easing::cubic_out(self.t),
+        };
+        self.from + (self.to - self.from) * t
+    }
+}
+
+pub(crate) fn ease(context: &egui::Context, id: Id, target: f32, seconds: f32, ease: Ease) -> f32 {
+    let frame = context.cumulative_frame_nr();
+    let mut tween = context
+        .data(|data| data.get_temp::<Tween>(id))
+        .unwrap_or(Tween {
+            from: target,
+            to: target,
+            t: 1.0,
+            frame,
+        });
+    if tween.to != target {
+        tween.from = tween.value(ease);
+        tween.to = target;
+        tween.t = 0.0;
+        tween.frame = frame;
+    } else if tween.t < 1.0 && tween.frame != frame {
+        let dt = context.input(|input| input.stable_dt).min(1.0 / 30.0);
+        tween.t = (tween.t + dt / seconds.max(0.001)).min(1.0);
+        tween.frame = frame;
+    }
+    if tween.t < 1.0 {
+        context.request_repaint();
+    }
+    context.data_mut(|data| data.insert_temp(id, tween));
+    tween.value(ease)
+}
+
+pub(crate) fn appear(context: &egui::Context, id: Id, seconds: f32, curve: Ease) -> f32 {
+    if context.data(|data| data.get_temp::<Tween>(id)).is_none() {
+        let tween = Tween {
+            from: 0.0,
+            to: 1.0,
+            t: 0.0,
+            frame: context.cumulative_frame_nr(),
+        };
+        context.data_mut(|data| data.insert_temp(id, tween));
+    }
+    ease(context, id, 1.0, seconds, curve)
+}
+
+pub(crate) fn reset(context: &egui::Context, id: Id) {
+    context.data_mut(|data| data.remove::<Tween>(id));
+}
+
+pub(crate) fn toggle(context: &egui::Context, id: Id, on: bool, seconds: f32) -> f32 {
+    ease(
+        context,
+        id,
+        if on { 1.0 } else { 0.0 },
+        seconds,
+        Ease::Linear,
+    )
+}
+
+pub(crate) fn presence(context: &egui::Context, id: Id, shown: bool, seconds: f32) -> f32 {
+    ease(
+        context,
+        id,
+        if shown { 1.0 } else { 0.0 },
+        seconds,
+        Ease::Out,
+    )
+}
+
 pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
     let state = Id::new("fluxa-page-transition");
     let dt = context.input(|input| input.stable_dt).min(1.0 / 30.0);
@@ -65,8 +153,7 @@ pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl 
         rect.min.y as i32,
         layer.id,
     ));
-    let t =
-        context.animate_bool_with_time_and_easing(id, held, 0.14, egui::emath::easing::cubic_out);
+    let t = presence(context, id, held, 0.14);
     if t <= 0.0 {
         return;
     }

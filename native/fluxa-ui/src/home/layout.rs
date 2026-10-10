@@ -49,7 +49,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     }
     let hero_height = home_hero_height_for(viewport, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
-        let play_y = hero_height - if compact { 92.0 } else { 194.0 } - home.scroll_offset;
+        let play_y = hero_height - if compact { 92.0 } else { 194.0 } - home.scroll_offset + home.top_inset;
         let size = Vec2::new(
             if compact {
                 108.0
@@ -82,7 +82,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     {
         let (_, _, body_height) = home_row_dimensions(metrics, kind);
         let row_height = home_row_heading_height(metrics) + body_height;
-        let visible_y = row_y - home.scroll_offset;
+        let visible_y = row_y - home.scroll_offset + home.top_inset;
         if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
             row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
             flat += cards.len();
@@ -135,7 +135,7 @@ pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usi
     let show_hero = home_shows_hero(home);
     let hero_height = home_hero_height_for(viewport, home);
     let mut row_y = home_row_start(viewport, metrics, hero_height, show_hero);
-    let content_y = y + home.scroll_offset;
+    let content_y = y + home.scroll_offset - home.top_inset;
     for (index, (_, cards, kind)) in home.content_rows_with_kind().into_iter().enumerate() {
         let body_height = home_row_body_height(metrics, cards, kind);
         let heading_height = home_row_heading_height(metrics);
@@ -223,5 +223,9 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     } else {
         0.0
     };
-    (content_height - viewport.height + bottom_navigation_reserve + metrics.page_padding).max(0.0)
+    (content_height - viewport.height
+        + bottom_navigation_reserve
+        + metrics.page_padding
+        + home.top_inset)
+        .max(0.0)
 }

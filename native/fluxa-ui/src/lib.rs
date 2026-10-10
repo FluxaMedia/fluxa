@@ -92,133 +92,88 @@ pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opac
     );
 }
 
+const UPDATE_BANNER_HEIGHT: f32 = 44.0;
+
+pub fn update_reveal(context: &egui::Context, shown: bool) -> f32 {
+    motion::presence(context, egui::Id::new("fluxa-update-reveal"), shown, 0.32)
+}
+
+pub fn update_banner_space(top: f32) -> f32 {
+    top + UPDATE_BANNER_HEIGHT
+}
+
 pub fn draw_update_prompt(
     context: &egui::Context,
     viewport: Viewport,
     update: &UpdateView,
+    scroll: f32,
     language: &str,
+    assets: &impl HomeAssets,
     layout: &mut HomeLayout,
 ) {
-    if !update.prompt {
+    if update.reveal <= 0.0 {
         return;
     }
-    let metrics = UiMetrics::for_viewport(viewport);
-    let (title, version, percent) = match &update.state {
-        UpdateState::Available(version) | UpdateState::Ready(version) => {
-            ("settings.updates.available", version.as_str(), None)
-        }
-        UpdateState::Downloading(percent) => ("settings.updates.downloading", "", Some(*percent)),
+    let id = egui::Id::new("fluxa-update-prompt");
+    if let UpdateState::Available(version) | UpdateState::Ready(version) = &update.state {
+        context.data_mut(|data| data.insert_temp(id, version.clone()));
+    }
+    let version = context
+        .data(|data| data.get_temp::<String>(id))
+        .unwrap_or_default();
+    let (title, trailing, action, progress) = match &update.state {
+        UpdateState::Available(_) | UpdateState::Ready(_) => (
+            format!("v{version}"),
+            String::new(),
+            Some("settings.updates.install"),
+            None,
+        ),
+        UpdateState::Downloading(percent) => (
+            format!("v{version}"),
+            format!("{percent}%"),
+            None,
+            Some(f32::from(*percent) / 100.0),
+        ),
+        UpdateState::Failed(_) => (
+            localized("settings.updates.failed_detail", language),
+            String::new(),
+            Some("common.retry"),
+            None,
+        ),
         _ => return,
     };
-    let width = (viewport.width - 32.0).min(440.0);
-    let pad = 18.0;
-    let title_size = metrics.nav_label_size + 3.0;
-    let body_size = metrics.screen_card_subtitle_size + 2.0;
-    let button_height = 40.0;
-    let height = pad * 2.0
-        + title_size
-        + 6.0
-        + body_size
-        + if percent.is_some() { 20.0 } else { 16.0 + button_height };
-    let card = egui::Rect::from_min_size(
-        egui::Pos2::new(
-            (viewport.width - width) * 0.5,
-            (viewport.height * 0.06).max(40.0),
-        ),
-        egui::vec2(width, height),
+    let metrics = UiMetrics::for_viewport(viewport);
+    let bottom = update_banner_space(update.top) * update.reveal - scroll;
+    let rect = egui::Rect::from_min_max(
+        egui::Pos2::new(0.0, bottom - UPDATE_BANNER_HEIGHT),
+        egui::Pos2::new(viewport.width, bottom),
     );
-    let left = card.left() + pad;
-    let body_top = card.top() + pad + title_size + 6.0;
-    let body = match percent {
-        Some(percent) => format!("{percent}%"),
-        None => format!("Fluxa {version}"),
-    };
-    let gap = 10.0;
-    let button_width = (width - pad * 2.0 - gap) * 0.5;
-    let mut clicked = None;
-    egui::Area::new(egui::Id::new("fluxa-update-prompt"))
-        .constrain(false)
-        .fixed_pos(card.min)
-        .order(egui::Order::Tooltip)
-        .show(context, |ui| {
-            ui.allocate_rect(card, egui::Sense::click());
-            let painter = ui.painter().clone();
-            painter.rect_filled(card, metrics.dialog_radius, metrics.surface_raised);
-            painter.rect_stroke(
-                card,
-                metrics.dialog_radius,
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
-                egui::StrokeKind::Inside,
-            );
-            draw_text(
-                &painter,
-                egui::Pos2::new(left, card.top() + pad),
-                egui::Align2::LEFT_TOP,
-                localized(title, language),
-                fonts::medium(title_size),
-                metrics.text_primary,
-                None,
-            );
-            draw_text(
-                &painter,
-                egui::Pos2::new(left, body_top),
-                egui::Align2::LEFT_TOP,
-                body,
-                fonts::regular(body_size),
-                metrics.text_muted,
-                None,
-            );
-            if let Some(percent) = percent {
-                let track = egui::Rect::from_min_size(
-                    egui::Pos2::new(left, body_top + body_size + 12.0),
-                    egui::vec2(width - pad * 2.0, 5.0),
-                );
-                painter.rect_filled(track, radius::BAR, metrics.ink(tone::STRONG));
-                painter.rect_filled(
-                    egui::Rect::from_min_size(
-                        track.min,
-                        egui::vec2(track.width() * f32::from(percent.min(100)) / 100.0, 5.0),
-                    ),
-                    radius::BAR,
-                    metrics.text_primary,
-                );
-                layout.focusable.push((NODE_UPDATE_INSTALL, card));
-                return;
-            }
-            let top = card.bottom() - pad - button_height;
-            for (slot, (node, key, primary)) in [
-                (NODE_UPDATE_LATER, "settings.updates.later", false),
-                (NODE_UPDATE_INSTALL, "settings.updates.install", true),
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                let rect = egui::Rect::from_min_size(
-                    egui::Pos2::new(left + slot as f32 * (button_width + gap), top),
-                    egui::vec2(button_width, button_height),
-                );
-                let response = ui
-                    .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
-                        components::pill_button(
-                            ui,
-                            None,
-                            &localized(key, language),
-                            Some(button_width),
-                            button_height,
-                            metrics.nav_label_size + 2.0,
-                            primary,
-                            None,
-                        )
-                    })
-                    .inner;
-                layout.focusable.push((node, rect));
-                if response.clicked() {
-                    clicked = Some(node);
-                }
-            }
-        });
-    if clicked.is_some() {
-        layout.activated = clicked;
+    let action = action.map(|key| localized(key, language));
+    let outcome = components::banner(
+        context,
+        id,
+        rect,
+        update.reveal,
+        components::Banner {
+            title: &title,
+            trailing: &trailing,
+            action: action.as_deref(),
+            close: assets.icon("Close"),
+            progress,
+        },
+        metrics,
+    );
+    if !update.prompt || rect.bottom() <= 0.0 {
+        return;
+    }
+    if let Some(button) = outcome.action {
+        layout.focusable.push((NODE_UPDATE_INSTALL, button));
+    }
+    layout.focusable.push((NODE_UPDATE_LATER, outcome.close));
+    if outcome.action_clicked {
+        layout.activated = Some(NODE_UPDATE_INSTALL);
+    } else if outcome.close_clicked {
+        layout.activated = Some(NODE_UPDATE_LATER);
     }
 }
 

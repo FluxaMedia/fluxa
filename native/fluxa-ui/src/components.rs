@@ -450,6 +450,133 @@ pub(super) fn icon_button_sized(
     response
 }
 
+pub(super) struct Banner<'a> {
+    pub title: &'a str,
+    pub trailing: &'a str,
+    pub action: Option<&'a str>,
+    pub close: Option<egui::TextureId>,
+    pub progress: Option<f32>,
+}
+
+pub(super) struct BannerOutcome {
+    pub action: Option<Rect>,
+    pub close: Rect,
+    pub action_clicked: bool,
+    pub close_clicked: bool,
+}
+
+pub(super) fn banner(
+    context: &egui::Context,
+    id: Id,
+    rect: Rect,
+    opacity: f32,
+    content: Banner,
+    metrics: UiMetrics,
+) -> BannerOutcome {
+    let mut outcome = BannerOutcome {
+        action: None,
+        close: Rect::NOTHING,
+        action_clicked: false,
+        close_clicked: false,
+    };
+    egui::Area::new(id)
+        .constrain(false)
+        .fixed_pos(rect.min)
+        .order(egui::Order::Middle)
+        .show(context, |ui| {
+            ui.multiply_opacity(opacity);
+            ui.allocate_rect(rect, Sense::hover());
+            let painter = ui.painter().clone();
+            painter.rect_filled(rect, 0.0, metrics.ink(tone::SOFT));
+            let control = rect.height() - 14.0;
+            let size = metrics.nav_label_size + 2.0;
+            let mut right = rect.right() - 16.0;
+            if content.close.is_some() {
+                outcome.close = Rect::from_center_size(
+                    Pos2::new(rect.right() - 8.0 - control * 0.5, rect.center().y),
+                    Vec2::splat(control),
+                );
+                outcome.close_clicked = ui
+                    .interact(outcome.close, id.with("close"), Sense::click())
+                    .clicked();
+                right = outcome.close.left() - 6.0;
+            }
+            if let Some(label) = content.action {
+                let width = painter
+                    .layout_no_wrap(label.to_owned(), FontId::proportional(size), Color32::WHITE)
+                    .size()
+                    .x
+                    + 36.0;
+                let button = Rect::from_min_size(
+                    Pos2::new(right - width, rect.center().y - control * 0.5),
+                    Vec2::new(width, control),
+                );
+                outcome.action_clicked = ui
+                    .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
+                        pill_button(ui, None, label, Some(width), control, size, true, None)
+                    })
+                    .inner
+                    .clicked();
+                outcome.action = Some(button);
+                right = button.left() - 12.0;
+            }
+            let row = |painter: &egui::Painter, ink: Color32| {
+                let mut right = right;
+                if let Some(icon) = content.close {
+                    painter.image(
+                        icon,
+                        Rect::from_center_size(outcome.close.center(), Vec2::splat(18.0)),
+                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                        ink.gamma_multiply(0.7),
+                    );
+                }
+                if !content.trailing.is_empty() {
+                    let drawn = draw_text(
+                        painter,
+                        Pos2::new(right - 4.0, rect.center().y),
+                        Align2::RIGHT_CENTER,
+                        content.trailing,
+                        crate::fonts::medium(size),
+                        ink.gamma_multiply(0.8),
+                        None,
+                    );
+                    right = drawn.left() - 12.0;
+                }
+                let left = rect.left() + 16.0;
+                draw_text(
+                    painter,
+                    Pos2::new(left, rect.center().y),
+                    Align2::LEFT_CENTER,
+                    content.title,
+                    crate::fonts::medium(size + 1.0),
+                    ink,
+                    Some((right - left).max(1.0)),
+                );
+            };
+            row(&painter, metrics.text_primary);
+            let progress = crate::motion::ease(
+                context,
+                id.with("fill"),
+                content.progress.unwrap_or(0.0),
+                0.35,
+                crate::motion::Ease::Linear,
+            );
+            if content.progress.is_some() && progress > 0.0 {
+                let filled = Rect::from_min_max(
+                    rect.min,
+                    Pos2::new(
+                        rect.left() + rect.width() * progress.min(1.0),
+                        rect.bottom(),
+                    ),
+                );
+                let painter = painter.with_clip_rect(filled.intersect(painter.clip_rect()));
+                painter.rect_filled(rect, 0.0, metrics.text_primary);
+                row(&painter, metrics.background);
+            }
+        });
+    outcome
+}
+
 pub(super) fn back_button(
     ui: &mut Ui,
     icon: Option<egui::TextureId>,
@@ -507,7 +634,7 @@ pub(super) fn sticky_bar(
     bar: StickyBar,
     metrics: UiMetrics,
 ) -> Option<StickyOutput> {
-    let fade = context.animate_bool_with_time(Id::new((id, "sticky-fade")), shown, 0.15);
+    let fade = crate::motion::toggle(context, Id::new((id, "sticky-fade")), shown, 0.15);
     if fade <= 0.0 {
         return None;
     }
@@ -1317,10 +1444,11 @@ pub(super) fn expanded_poster_card(
             assets,
         );
         if let Some(texture) = trailer {
-            let fade = painter.ctx().animate_bool_with_time(
+            let fade = crate::motion::appear(
+                painter.ctx(),
                 Id::new(("fluxa-poster-trailer-fade", texture)),
-                true,
                 0.6,
+                crate::motion::Ease::Linear,
             );
             painter.add(
                 egui::epaint::RectShape::filled(
@@ -1440,7 +1568,7 @@ fn preview_body_size(metrics: UiMetrics) -> f32 {
 }
 
 pub(super) fn hover_preview_reset(context: &egui::Context) {
-    context.animate_bool_with_time(Id::new("fluxa-hover-preview-appear"), false, 0.0);
+    crate::motion::reset(context, Id::new("fluxa-hover-preview-appear"));
 }
 
 pub(super) fn hover_preview_rect(
@@ -1503,11 +1631,11 @@ pub(super) fn hover_preview(
     let title_size = (metrics.screen_card_title_size + 7.0).max(22.0);
     let body_size = preview_body_size(metrics);
     let button_size = body_size + 1.0;
-    let appear = context.animate_bool_with_time_and_easing(
+    let appear = crate::motion::appear(
+        context,
         Id::new("fluxa-hover-preview-appear"),
-        true,
         0.18,
-        egui::emath::easing::cubic_out,
+        crate::motion::Ease::Out,
     );
     let scale = 0.92 + 0.08 * appear;
     context.set_transform_layer(
@@ -2194,9 +2322,7 @@ pub(super) fn choice_field(
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let popup_id = id.with("popup");
     let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
-    let turn = ui
-        .ctx()
-        .animate_bool_with_time(id.with("chevron"), open, 0.14);
+    let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, 0.14);
     let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
         metrics.ink(tone::FAINT)
@@ -2675,10 +2801,14 @@ pub fn draw_action_menu(
         != Some(serial)
     {
         context.data_mut(|data| data.insert_temp(Id::new("fluxa-action-menu-serial"), serial));
-        context.animate_bool_with_time(Id::new(("fluxa-action-menu", serial)), false, 0.0);
+        crate::motion::reset(context, Id::new(("fluxa-action-menu", serial)));
     }
-    let reveal = context.animate_bool_with_time(Id::new(("fluxa-action-menu", serial)), true, 0.25);
-    let eased = 1.0 - (1.0 - reveal).powi(3);
+    let eased = crate::motion::appear(
+        context,
+        Id::new(("fluxa-action-menu", serial)),
+        0.25,
+        crate::motion::Ease::Out,
+    );
     let offset = if sheet {
         Vec2::new(0.0, (1.0 - eased) * layout.panel.height())
     } else {
@@ -2858,7 +2988,7 @@ pub fn draw_action_menu(
                 outcome = Some(ActionMenuOutcome::Dismiss);
             }
         });
-    if reveal < 1.0 {
+    if eased < 1.0 {
         context.request_repaint();
     }
     outcome
@@ -2904,7 +3034,7 @@ pub(super) fn toggle(
     on: bool,
     metrics: UiMetrics,
 ) {
-    let t = context.animate_bool_with_time_and_easing(id, on, 0.22, egui::emath::easing::cubic_out);
+    let t = crate::motion::presence(context, id, on, 0.22);
     let off_track = metrics.ink(tone::STRONG);
     painter.rect_filled(
         track,

@@ -844,12 +844,14 @@ impl Gpu {
                     menu.serial,
                 );
             }
-            if profiles.is_none() && player.is_none() {
+            if profiles.is_none() && player.is_none() && route == Route::Home {
                 fluxa_ui::draw_update_prompt(
                     ui.ctx(),
                     viewport,
                     &settings.update,
+                    home.scroll_offset,
                     settings.language(),
+                    &assets,
                     &mut rendered_layout,
                 );
             }

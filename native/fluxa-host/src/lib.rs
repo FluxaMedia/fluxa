@@ -136,6 +136,7 @@ struct RendererState {
     density: f32,
     artwork_cache_dir: Option<PathBuf>,
     safe_bottom: f32,
+    safe_top: f32,
     pending_resize: Option<[u32; 2]>,
     gpu: Option<Gpu>,
     ui: UiTree,
@@ -323,6 +324,7 @@ impl FluxaHost {
             density,
             artwork_cache_dir,
             safe_bottom: 0.0,
+            safe_top: 0.0,
             pending_resize: None,
             gpu: None,
             ui: UiTree::default(),
@@ -416,6 +418,16 @@ impl FluxaHost {
     pub fn set_safe_bottom_inset(&self, inset_dp: f32) {
         self.with_state(|state| {
             state.safe_bottom = if inset_dp.is_finite() {
+                inset_dp.max(0.0)
+            } else {
+                0.0
+            };
+        });
+    }
+
+    pub fn set_safe_top_inset(&self, inset_dp: f32) {
+        self.with_state(|state| {
+            state.safe_top = if inset_dp.is_finite() {
                 inset_dp.max(0.0)
             } else {
                 0.0

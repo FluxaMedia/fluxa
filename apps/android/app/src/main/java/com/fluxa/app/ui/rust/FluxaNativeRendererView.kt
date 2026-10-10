@@ -44,6 +44,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var pendingFormFactor: String? = null
     private var lastCoreCommandJson: String? = null
     private var safeBottomInsetPx = 0
+    private var safeTopInsetPx = 0
     private var accessSignature = ""
     private var accessNodes = emptyMap<Int, AccessNode>()
     private var accessCaret: RectF? = null
@@ -117,6 +118,9 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             safeBottomInsetPx = insets
                 .getInsets(WindowInsetsCompat.Type.navigationBars())
                 .bottom
+            safeTopInsetPx = insets
+                .getInsets(WindowInsetsCompat.Type.statusBars() or WindowInsetsCompat.Type.displayCutout())
+                .top
             syncSafeInsets()
             val imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime())
             if (imeShown && !imeVisible && nativeHandle != 0L) {
@@ -231,6 +235,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         if (handle == 0L) return
         val density = resources.displayMetrics.density.coerceAtLeast(1f)
         NativeRenderer.setSafeBottomInsetNative(handle, safeBottomInsetPx / density)
+        NativeRenderer.setSafeTopInsetNative(handle, safeTopInsetPx / density)
     }
 
     override fun surfaceDestroyed(holder: SurfaceHolder) {
@@ -889,6 +894,7 @@ private object NativeRenderer {
 
     @JvmStatic external fun createNative(density: Float, artworkCacheDir: String): Long
     @JvmStatic external fun setSafeBottomInsetNative(handle: Long, insetDp: Float)
+    @JvmStatic external fun setSafeTopInsetNative(handle: Long, insetDp: Float)
     @JvmStatic external fun setWindowFocusedNative(handle: Long, focused: Boolean)
     @JvmStatic external fun setHomeStateNative(handle: Long, json: String)
     @JvmStatic external fun setFormFactorNative(handle: Long, formFactor: String)
