@@ -767,7 +767,7 @@ mod tests {
     }
 
     #[test]
-    fn desktop_does_not_apply_remote_library_commands_as_local_writes() {
+    fn unsupported_provider_write_is_not_stored_locally() {
         let directory = temporary_directory();
         let storage = Storage::open(directory.clone()).expect("open storage");
         let executor = EffectExecutor::new(storage.clone());
@@ -780,7 +780,7 @@ mod tests {
                 "type": "writeLibraryCommand",
                 "payload": {
                     "profileId": "guest",
-                    "source": "nuvio",
+                    "source": "letterboxd",
                     "command": {
                         "type": "toggleWatchlist",
                         "item": {"id": "tt-remote", "name": "Remote title", "type": "movie"}
@@ -788,7 +788,7 @@ mod tests {
                 }
             })))
             .expect_err("remote writes must not silently become local-only");
-        assert!(error.contains("provider 'nuvio'"));
+        assert!(error.contains("provider 'letterboxd'"));
         assert!(
             storage
                 .read_json(&Storage::library_key("guest"))
