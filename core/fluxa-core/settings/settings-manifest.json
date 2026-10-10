@@ -534,6 +534,13 @@
       "category": "appearance"
     },
     {
+      "key": "homeHeroArtwork",
+      "type": "string",
+      "default": "backdrop",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "homeSeasonPostersOnHero",
       "type": "boolean",
       "default": true,

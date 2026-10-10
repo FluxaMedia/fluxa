@@ -162,6 +162,13 @@ pub fn home_model_from_core_snapshot(
         language: snapshot_language(snapshot),
         ..HomeModel::default_empty()
     };
+    let posters = snapshot
+        .pointer("/settings/values/homeHeroArtwork")
+        .and_then(serde_json::Value::as_str)
+        == Some("poster");
+    if posters && let Some(poster) = first_value_string(billboard, &["poster", "posterUrl"]) {
+        model.background_url = Some(poster);
+    }
     let mut slide_keys = Vec::new();
     let mut hero_slides = Vec::new();
     for item in std::iter::once(billboard).chain(
@@ -171,7 +178,10 @@ pub fn home_model_from_core_snapshot(
             .into_iter()
             .flatten(),
     ) {
-        let hero = core_home_hero(item, &snapshot_language(snapshot));
+        let mut hero = core_home_hero(item, &snapshot_language(snapshot));
+        if posters && let Some(poster) = first_value_string(item, &["poster", "posterUrl"]) {
+            hero.background_url = Some(poster);
+        }
         let key = hero
             .item_id
             .clone()

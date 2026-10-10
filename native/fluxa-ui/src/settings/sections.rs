@@ -66,7 +66,7 @@ pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
     (5, "settings.group.general_behavior"),
     (2, "settings.group.general_calendar"),
 ];
-pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
+pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Accent color",
         key: "accentColorArgb",
@@ -95,16 +95,6 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Show catalog type",
         key: "showCatalogType",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Continue watching badge",
-        key: "continueProgressLabel",
-        options: &["remaining", "percent"],
-    },
-    SettingsRow {
-        label: "Upcoming row",
-        key: "showUpcomingRow",
         options: &[],
     },
     SettingsRow {
@@ -147,10 +137,10 @@ pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 14] = [
     },
 ];
 pub(super) const APPEARANCE_GROUPS: [(usize, &str); 2] = [
-    (6, "settings.group.color_and_motion"),
-    (6, "settings.group.navigation"),
+    (5, "settings.group.color_and_motion"),
+    (5, "settings.group.navigation"),
 ];
-pub(super) const HOME_SETTINGS: [SettingsRow; 16] = [
+pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "Show hero section",
         key: "showHeroSection",
@@ -160,6 +150,11 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 16] = [
         label: "Hero follows focus",
         key: "followFocusHero",
         options: &[],
+    },
+    SettingsRow {
+        label: "Hero artwork",
+        key: "homeHeroArtwork",
+        options: &["backdrop", "poster"],
     },
     SettingsRow {
         label: "Hero season posters",
@@ -231,10 +226,20 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 16] = [
         key: "continueWatchingShowThisWeek",
         options: &[],
     },
+    SettingsRow {
+        label: "Continue watching badge",
+        key: "continueProgressLabel",
+        options: &["remaining", "percent"],
+    },
+    SettingsRow {
+        label: "Upcoming row",
+        key: "showUpcomingRow",
+        options: &[],
+    },
 ];
 pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
-    (7, "settings.group.home"),
-    (8, "settings.group.continue_watching"),
+    (9, "settings.group.home"),
+    (10, "settings.group.continue_watching"),
 ];
 pub(super) const DETAILS_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
