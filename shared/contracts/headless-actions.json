@@ -31,6 +31,8 @@
     "savePlaybackProgressRequested",
     "markWatchedRequested",
     "addonInstallRequested",
+    "addonRemoveRequested",
+    "addonMoveRequested",
     "addonsRefreshRequested",
     "addonResourceRequested",
     "searchRequested",

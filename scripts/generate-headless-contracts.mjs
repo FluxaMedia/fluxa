@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const rustPath = path.join(root, 'core', 'fluxa-core', 'src', 'runtime', 'effects.rs');
+const rustPath = path.join(root, 'core', 'fluxa-core', 'src', 'runtime', 'effects', 'mod.rs');
 const source = fs.readFileSync(rustPath, 'utf8');
 const effects = [...source.matchAll(/EffectKind::([A-Za-z0-9_]+) => "([A-Za-z0-9.]+)"/g)].map((match) => ({
   variant: match[1],
@@ -14,9 +14,9 @@ if (new Set(effects.map(({ value }) => value)).size !== effects.length) {
   throw new Error('Duplicate headless effect value found');
 }
 
-const actionRustPath = path.join(root, 'core', 'fluxa-core', 'src', 'headless_engine', 'contracts.rs');
+const actionRustPath = path.join(root, 'core', 'fluxa-core', 'src', 'headless_engine', 'contracts', 'mod.rs');
 const actionSource = fs.readFileSync(actionRustPath, 'utf8');
-const actionEnum = actionSource.match(/pub\(super\) enum AppAction \{([\s\S]*?)\n\}\n\n#\[derive/);
+const actionEnum = actionSource.match(/pub\((?:super|crate)\) enum AppAction \{([\s\S]*?)\n\}\n\n#\[derive/);
 if (!actionEnum) throw new Error('AppAction enum not found');
 const actions = [...actionEnum[1].matchAll(/#\[serde\(rename = "([^"]+)"\)\]\s*\n\s*[A-Z][A-Za-z0-9_]*/g)].map((match) => match[1]);
 if (actions.length === 0) throw new Error('No AppAction mappings found');
