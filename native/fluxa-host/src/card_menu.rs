@@ -101,6 +101,14 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
         .value("integrationLibrarySource")
         .and_then(Value::as_str)
         == Some("simkl");
+    let simkl_rewatch = simkl_rewatch
+        && !state.session.as_ref().is_some_and(|session| {
+            let profile = session.active_profile();
+            fluxa_effects::simkl_plan_lacks_rewatch(
+                session.storage(),
+                profile.get("id").and_then(Value::as_str).unwrap_or("guest"),
+            )
+        });
     if simkl_rewatch && personal.is_some_and(|personal| personal.watched) {
         entries.push(Entry::Rewatch);
     }

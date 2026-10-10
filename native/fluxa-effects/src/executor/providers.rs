@@ -85,6 +85,18 @@ fn http_client() -> Result<Client, String> {
 const TRAKT_SEASONS_TTL: i64 = 24 * 60 * 60;
 const SIMKL_ACCOUNT_TTL: i64 = 86_400;
 
+fn simkl_account_key(profile_id: &str) -> String {
+    format!("simkl_account_{}", sanitize_key(profile_id))
+}
+
+pub fn simkl_plan_lacks_rewatch(storage: &Storage, profile_id: &str) -> bool {
+    storage
+        .read_json(&simkl_account_key(profile_id))
+        .ok()
+        .flatten()
+        .is_some_and(|cached| !matches!(str_field(&cached, "type"), "pro" | "vip"))
+}
+
 fn find_key<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     match value {
         Value::Object(map) => map
@@ -876,7 +888,7 @@ impl EffectExecutor {
         profile: &Value,
         credentials: &Value,
     ) -> Result<(), String> {
-        let key = format!("simkl_account_{}", sanitize_key(str_field(profile, "id")));
+        let key = simkl_account_key(str_field(profile, "id"));
         let now = chrono_unix_seconds();
         let cached = self
             .storage

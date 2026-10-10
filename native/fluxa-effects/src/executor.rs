@@ -24,6 +24,7 @@ use account::*;
 use addons::*;
 use catalog::*;
 pub use mediaserver::{media_servers, remove_media_server};
+pub use providers::simkl_plan_lacks_rewatch;
 use tmdb::*;
 use torrent::*;
 
