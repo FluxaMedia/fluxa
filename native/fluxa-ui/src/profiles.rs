@@ -97,7 +97,7 @@ pub fn draw_profiles(
                 egui::Frame::NONE
                     .fill(metrics.surface_raised)
                     .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
-                    .corner_radius(10.0)
+                    .corner_radius(radius::control())
                     .inner_margin(egui::Margin::symmetric(16, 12))
                     .show(ui, |ui| {
                         ui.set_width(320.0);
