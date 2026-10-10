@@ -89,6 +89,7 @@ mod logos;
 mod player;
 mod poster_data;
 mod presence;
+mod preview;
 mod profiles;
 mod projection;
 mod route;
@@ -543,6 +544,7 @@ impl FluxaHost {
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
             updates::start(state, &data_dir);
+            preview::start(state);
             state.session = Some(session);
             state.picker_background = background;
             if pick {
