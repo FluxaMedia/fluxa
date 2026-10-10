@@ -25,6 +25,7 @@ pub(crate) fn start(_state: &mut RendererState, _data_dir: &std::path::Path) {}
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
 pub(crate) fn poll(state: &mut RendererState) {
     use fluxa_updater::Status;
+    state.settings.update.current = fluxa_updater::CURRENT_VERSION.to_owned();
     let Some(updater) = state.updates.updater.clone().filter(|_| !cfg!(debug_assertions)) else {
         return;
     };
@@ -44,7 +45,6 @@ pub(crate) fn poll(state: &mut RendererState) {
         updater.check(variant(state));
     }
     state.settings.update.supported = true;
-    state.settings.update.current = fluxa_updater::CURRENT_VERSION.to_owned();
     state.settings.update.state = match updater.status() {
         Status::Idle => UpdateState::Idle,
         Status::Checking => UpdateState::Checking,

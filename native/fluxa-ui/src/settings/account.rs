@@ -30,13 +30,23 @@ pub(super) const ACCOUNT_SOURCES: [(&str, &str); 3] = [
     ("settings.mdblist_library_list", "mdblistLibraryListId"),
 ];
 
+const SYNC_SOURCES: usize = 2;
+pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
+
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
     APPEARANCE_PAGE_HEADER_HEIGHT
-        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 4.0
+        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
         + ACCOUNT_PROFILE_CARD_HEIGHT
-        + settings_group_card_height(ACCOUNT_SERVICES.len(), metrics)
-        + settings_group_card_height(ACCOUNT_SOURCES.len(), metrics)
-        + FIELD_HEIGHT * 5.0
+        + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
+        + settings_group_card_height(SYNC_SOURCES, metrics)
+}
+
+fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
+    if metrics.compact {
+        metrics.settings_row_height += 8.0;
+        metrics.settings_row_spacing += 8.0;
+    }
+    metrics
 }
 
 pub(super) fn account_group(
@@ -45,30 +55,9 @@ pub(super) fn account_group(
     top: f32,
     height: f32,
     title: &str,
-    compact: bool,
     metrics: UiMetrics,
 ) -> Rect {
-    if compact {
-        draw_text(
-            painter,
-            Pos2::new(rect.left() + 16.0, top),
-            Align2::LEFT_TOP,
-            title,
-            crate::fonts::regular(metrics.text.body),
-            metrics.text_muted,
-            None,
-        );
-    } else {
-        draw_text(
-            painter,
-            Pos2::new(rect.left() + 8.0, top),
-            Align2::LEFT_TOP,
-            title.to_uppercase(),
-            crate::fonts::regular(metrics.text.meta),
-            metrics.text_secondary,
-            None,
-        );
-    }
+    group_heading(painter, rect, top, title, metrics);
     let card = Rect::from_min_size(
         Pos2::new(rect.left(), top + APPEARANCE_GROUP_HEADING_HEIGHT),
         Vec2::new(rect.width(), height),
@@ -181,7 +170,6 @@ pub(super) fn draw_source_group(
         top,
         settings_group_card_height(1, metrics),
         &localized(title, language),
-        viewport.is_compact(),
         metrics,
     );
     let Some(source) = account_source(index) else {
@@ -401,7 +389,6 @@ pub(super) fn draw_account(
         top,
         ACCOUNT_PROFILE_CARD_HEIGHT,
         &localized("settings.group.account_profile", language),
-        compact,
         metrics,
     );
     let name = settings
@@ -493,26 +480,26 @@ pub(super) fn draw_account(
         &painter,
         rect,
         top,
-        settings_group_card_height(ACCOUNT_SERVICES.len(), metrics),
+        settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics)),
         &localized("settings.group.account_services", language),
-        compact,
         metrics,
     );
+    let logo_height = if metrics.compact { 36.0 } else { 22.0 };
     for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
-        let row = account_row(card, index, metrics);
+        let row = account_row(card, index, service_rows(metrics));
         if index > 0 {
-            account_divider(&painter, row, metrics);
+            account_divider(&painter, row, service_rows(metrics));
         }
         let mut label_left = 4.0;
         if let Some((texture, aspect)) = assets.logo(&label.to_lowercase()) {
-            let size = aspect * 22.0;
+            let size = aspect * logo_height;
             painter.image(
                 texture,
-                Rect::from_min_size(row.left_center() + Vec2::new(4.0, -11.0), size),
+                Rect::from_min_size(row.left_center() + Vec2::new(4.0, -logo_height * 0.5), size),
                 Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
                 Color32::WHITE,
             );
-            label_left += size.x + 12.0;
+            label_left += size.x + if metrics.compact { 16.0 } else { 12.0 };
         }
         let on = connected(key);
         let provider = label.to_lowercase();
@@ -596,7 +583,7 @@ pub(super) fn draw_account(
                     None,
                 );
             }
-            if slot.is_some() && viewport.platform != UiPlatform::Android {
+            if slot.is_some() {
                 let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
@@ -661,12 +648,11 @@ pub(super) fn draw_account(
         &painter,
         rect,
         top,
-        settings_group_card_height(ACCOUNT_SOURCES.len(), metrics),
+        settings_group_card_height(SYNC_SOURCES, metrics),
         &localized("settings.group.account_sync", language),
-        compact,
         metrics,
     );
-    for (index, &(label_key, key)) in ACCOUNT_SOURCES.iter().enumerate() {
+    for (index, &(label_key, key)) in ACCOUNT_SOURCES.iter().take(SYNC_SOURCES).enumerate() {
         let row = account_row(card, index, metrics);
         if index > 0 {
             account_divider(&painter, row, metrics);
@@ -683,16 +669,4 @@ pub(super) fn draw_account(
             layout,
         );
     }
-
-    draw_field_group(
-        context,
-        settings,
-        rect,
-        card.bottom() + APPEARANCE_GROUP_GAP,
-        &localized("settings.group.api_keys", language),
-        &[1, 2, 3, 4, 5],
-        metrics,
-        compact,
-        layout,
-    );
 }

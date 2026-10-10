@@ -171,6 +171,15 @@ fn start_flow(state: &mut RendererState, provider: &str, command: Value) {
 }
 
 pub(crate) fn media_server(state: &mut RendererState, node: u64) {
+    let kinds = [
+        fluxa_ui::NODE_SETTINGS_SERVER_JELLYFIN,
+        fluxa_ui::NODE_SETTINGS_SERVER_EMBY,
+        fluxa_ui::NODE_SETTINGS_SERVER_PLEX,
+    ];
+    if let Some(kind) = kinds.iter().position(|kind| *kind == node) {
+        state.settings.server_kind = kind;
+        return;
+    }
     let Some(session) = state.session.as_ref() else {
         return;
     };
@@ -192,7 +201,7 @@ pub(crate) fn media_server(state: &mut RendererState, node: u64) {
         reload_addons(state);
         return;
     }
-    if node == fluxa_ui::NODE_SETTINGS_SERVER_PLEX {
+    if state.settings.server_kind == 2 {
         start_flow(
             state,
             "plex",
@@ -200,7 +209,7 @@ pub(crate) fn media_server(state: &mut RendererState, node: u64) {
         );
         return;
     }
-    let provider = if node == fluxa_ui::NODE_SETTINGS_SERVER_EMBY {
+    let provider = if state.settings.server_kind == 1 {
         "emby"
     } else {
         "jellyfin"

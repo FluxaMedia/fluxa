@@ -11,6 +11,7 @@ use std::sync::atomic::{AtomicU32, Ordering};
 /// partially migrated custom token document.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct UiMetrics {
+    pub compact: bool,
     pub background: Color32,
     pub surface: Color32,
     pub surface_raised: Color32,
@@ -283,6 +284,7 @@ impl UiMetrics {
                 .unwrap_or(fallback)
         };
         let mut metrics = Self {
+            compact: viewport.is_compact(),
             background: color("background", Color32::from_rgb(7, 7, 9)),
             surface: color("surface", Color32::from_rgb(20, 20, 22)),
             surface_raised: color("surfaceRaised", Color32::from_rgb(28, 28, 31)),

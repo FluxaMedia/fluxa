@@ -963,13 +963,12 @@ fn text_edit(
     kind: InputKind,
     metrics: UiMetrics,
 ) -> Response {
-    let radius = size.y * 0.5;
+    let radius = radius::control();
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    ui.painter()
-        .rect_filled(rect, radius, metrics.ink(tone::FAINT));
-    let mut text_rect = rect.shrink2(Vec2::new(radius.max(12.0), 0.0));
+    ui.painter().rect_filled(rect, radius, metrics.surface_raised);
+    let mut text_rect = rect.shrink2(Vec2::new(14.0, 0.0));
     if kind != InputKind::Multiline {
-        let row = ui.fonts_mut(|fonts| fonts.row_height(&FontId::proportional(font_size)));
+        let row = ui.fonts_mut(|fonts| fonts.row_height(&crate::fonts::regular(font_size)));
         text_rect = Rect::from_center_size(rect.center(), Vec2::new(text_rect.width(), row));
     }
     let edit = if kind == InputKind::Multiline {
@@ -982,7 +981,7 @@ fn text_edit(
         text_rect,
         edit.frame(egui::Frame::NONE)
             .password(kind.secret())
-            .font(FontId::proportional(font_size))
+            .font(crate::fonts::regular(font_size))
             .vertical_align(egui::Align::Center)
             .hint_text(RichText::new(hint).color(metrics.text_muted))
             .text_color(metrics.text_primary)
@@ -995,7 +994,7 @@ fn text_edit(
     } else {
         value.clone()
     };
-    paint_caret(ui, rect, text_rect, &shown, FontId::proportional(font_size));
+    paint_caret(ui, rect, text_rect, &shown, crate::fonts::regular(font_size));
     let stroke = if response.has_focus() {
         egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::MUTED))
     } else {
@@ -2906,11 +2905,20 @@ pub(super) fn toggle(
     metrics: UiMetrics,
 ) {
     let t = context.animate_bool_with_time_and_easing(id, on, 0.22, egui::emath::easing::cubic_out);
-    let off_track = metrics.ink(tone::RAISED);
+    let off_track = metrics.ink(tone::STRONG);
     painter.rect_filled(
         track,
         track.height() * 0.5,
         lerp_color(off_track, metrics.accent, t),
+    );
+    painter.rect_stroke(
+        track,
+        track.height() * 0.5,
+        egui::Stroke::new(
+            stroke::HAIRLINE,
+            metrics.ink(tone::DIM).gamma_multiply(1.0 - t),
+        ),
+        egui::StrokeKind::Inside,
     );
     let radius = metrics
         .settings_toggle_knob_radius

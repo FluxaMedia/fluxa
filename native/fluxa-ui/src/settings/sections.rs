@@ -824,7 +824,7 @@ pub(super) const SUBTITLES_GROUPS: [(usize, &str); 2] = [
     (6, "settings.group.audio_subtitles"),
     (12, "settings.group.subtitle_style"),
 ];
-pub(super) const CONTENT_SETTINGS: [SettingsRow; 19] = [
+pub(super) const TMDB_SETTINGS: [SettingsRow; 16] = [
     SettingsRow {
         label: "TMDB artwork enrichment",
         key: "tmdbEnrichArtworkEnabled",
@@ -836,8 +836,13 @@ pub(super) const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
     SettingsRow {
-        label: "Prefer TMDB over add-ons",
-        key: "tmdbPreferOverAddons",
+        label: "TMDB cast images",
+        key: "tmdbCastImagesEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "TMDB episode stills",
+        key: "tmdbEpisodeImagesEnabled",
         options: &[],
     },
     SettingsRow {
@@ -853,21 +858,6 @@ pub(super) const CONTENT_SETTINGS: [SettingsRow; 19] = [
     SettingsRow {
         label: "TMDB cast and crew",
         key: "tmdbEnrichCastCrewEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB cast images",
-        key: "tmdbCastImagesEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB episode stills",
-        key: "tmdbEpisodeImagesEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "TMDB trailers",
-        key: "tmdbTrailersEnabled",
         options: &[],
     },
     SettingsRow {
@@ -901,6 +891,11 @@ pub(super) const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
     SettingsRow {
+        label: "TMDB trailers",
+        key: "tmdbTrailersEnabled",
+        options: &[],
+    },
+    SettingsRow {
         label: "TMDB recommendations",
         key: "tmdbRecommendationsEnabled",
         options: &[],
@@ -910,6 +905,13 @@ pub(super) const CONTENT_SETTINGS: [SettingsRow; 19] = [
         key: "tmdbSimilarResultsEnabled",
         options: &[],
     },
+];
+pub(super) const TMDB_GROUPS: [(usize, &str); 3] = [
+    (4, "settings.tmdb_group_images"),
+    (9, "settings.tmdb_group_media_info"),
+    (3, "settings.tmdb_group_discovery"),
+];
+pub(super) const CONTENT_SETTINGS: [SettingsRow; 2] = [
     SettingsRow {
         label: "Trakt comments",
         key: "traktCommentsEnabled",
@@ -921,10 +923,7 @@ pub(super) const CONTENT_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
-pub(super) const CONTENT_GROUPS: [(usize, &str); 2] = [
-    (14, "settings.group.metadata"),
-    (5, "settings.group.discovery"),
-];
+pub(super) const CONTENT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.account_services")];
 pub(super) const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
         label: "Torrent speed",
@@ -1046,11 +1045,32 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 20] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
     SettingsSection {
         title: "Account",
         category: "Account",
-        description: "Profile, connected services and API keys",
+        description: "Profile and connected services",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
+        title: "TMDB",
+        category: "Account",
+        description: "API key and metadata enrichment",
+        rows: &TMDB_SETTINGS,
+        groups: &TMDB_GROUPS,
+    },
+    SettingsSection {
+        title: "MDBList",
+        category: "Account",
+        description: "API key and library list",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
+        title: "Skip Segments",
+        category: "Account",
+        description: "IntroDB, TheIntroDB and SkipDB keys",
         rows: &EMPTY_SETTINGS,
         groups: &[],
     },
@@ -1181,9 +1201,16 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 20] = [
         groups: &[],
     },
     SettingsSection {
-        title: "Updates",
-        category: "Updates",
-        description: "Check for new versions",
+        title: "About",
+        category: "About",
+        description: "Version and updates",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
+        title: "Licenses",
+        category: "About",
+        description: "Open source and data credits",
         rows: &EMPTY_SETTINGS,
         groups: &[],
     },

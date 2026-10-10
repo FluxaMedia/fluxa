@@ -604,7 +604,11 @@ fn settings_choices_cycle_without_coercing_strings_to_booleans() {
         active_section: 0,
         ..Default::default()
     };
-    let language = settings_row_by_index(0).unwrap();
+    let language = SETTINGS_SECTIONS
+        .iter()
+        .flat_map(|section| section.rows)
+        .find(|row| row.key == "language")
+        .unwrap();
     assert_eq!(model.next_value(language), "tr");
     let compact = SETTINGS_SECTIONS
         .iter()
@@ -654,7 +658,10 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
             )
         });
         let mut settings = SettingsModel::default();
-        settings.active_section = 1;
+        settings.active_section = SETTINGS_SECTIONS
+            .iter()
+            .position(|section| section.title == "General")
+            .unwrap();
         settings.section_open = true;
         let settings_layout = draw_test_frame(viewport, |context, assets| {
             draw_settings(context, viewport, &settings, assets, None)
@@ -1208,16 +1215,24 @@ fn native_appearance_exposes_web_preferences_and_uses_white_default_accent() {
 fn native_appearance_groups_are_separate_cards() {
     let viewport = Viewport::new(1920, 1080, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);
+    let theme = SETTINGS_SECTIONS
+        .iter()
+        .position(|section| section.title == "Theme")
+        .unwrap();
     let settings = SettingsModel {
-        active_section: 2,
+        active_section: theme,
         page_open: true,
         ..Default::default()
     };
-    let height =
-        super::settings::settings_card_height(viewport, metrics, &SETTINGS_SECTIONS[2], &settings);
+    let height = super::settings::settings_card_height(
+        viewport,
+        metrics,
+        &SETTINGS_SECTIONS[theme],
+        &settings,
+    );
     let content = Rect::from_min_size(Pos2::ZERO, Vec2::new(1200.0, height));
     let groups = super::settings::visible_groups(&settings, viewport);
-    let cards = super::settings::group_cards(content, &groups, metrics);
+    let cards = super::settings::group_cards(content, &groups, "en", metrics);
     assert_eq!(cards.len(), 2);
     for pair in cards.windows(2) {
         assert!(

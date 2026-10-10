@@ -143,7 +143,6 @@ pub(super) fn draw_badges(
         top,
         import_height(settings),
         &localized("settings.group.badges_import", language),
-        false,
         metrics,
     );
     let row = Rect::from_min_size(
@@ -193,7 +192,6 @@ pub(super) fn draw_badges(
         top,
         settings_group_card_height(rows, metrics),
         &localized("settings.group.badges_packs", language),
-        false,
         metrics,
     );
     if settings.badge_packs.is_empty() {
@@ -275,7 +273,6 @@ pub(super) fn draw_badges(
         top,
         form_height(),
         &localized("settings.group.badges_custom", language),
-        false,
         metrics,
     );
     for index in 1..FORM_FIELDS {
@@ -419,7 +416,6 @@ fn draw_custom_list(
         top,
         settings_group_card_height(settings.badge_custom.len(), metrics),
         &localized("settings.group.badges_yours", language),
-        false,
         metrics,
     );
     for (index, custom) in settings.badge_custom.iter().enumerate() {
@@ -487,7 +483,6 @@ fn draw_layout(
         top,
         layout_height(settings),
         &localized("settings.group.layout", language),
-        false,
         metrics,
     );
     let inset = metrics.settings_row_inset;
@@ -606,7 +601,6 @@ fn draw_formatter(
         top,
         settings_group_card_height(settings.formatter_presets.len().max(1), metrics),
         &localized("settings.group.formatter_presets", language),
-        false,
         metrics,
     );
     for (index, preset) in settings.formatter_presets.iter().enumerate() {
@@ -663,7 +657,6 @@ fn draw_formatter(
         top,
         formatter_form_height(),
         &localized("settings.group.formatter", language),
-        false,
         metrics,
     );
     for (slot, index) in (FORM_FIELDS..BADGE_INPUT_COUNT).enumerate() {
@@ -746,7 +739,6 @@ fn draw_formatter(
         top,
         settings_group_card_height(settings.formatter_rules.len(), metrics),
         &localized("settings.group.formatter_rules", language),
-        false,
         metrics,
     );
     for (index, rule) in settings.formatter_rules.iter().enumerate() {

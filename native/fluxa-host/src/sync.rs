@@ -150,6 +150,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let search = std::mem::take(&mut state.settings.search);
     let poster_fields = std::mem::take(&mut state.settings.poster_fields);
     let server_fields = std::mem::take(&mut state.settings.server_fields);
+    let server_kind = state.settings.server_kind;
     let badge_fields = std::mem::take(&mut state.settings.badge_fields);
     let collection_fields = std::mem::take(&mut state.settings.collection_fields);
     let collections = std::mem::take(&mut state.settings.collections);
@@ -168,6 +169,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.plugin_url = plugin_url;
     state.settings.search = search;
     state.settings.server_fields = server_fields;
+    state.settings.server_kind = server_kind;
     state.settings.badge_fields = badge_fields;
     state.settings.collection_fields = collection_fields;
     state.settings.collections = collections;

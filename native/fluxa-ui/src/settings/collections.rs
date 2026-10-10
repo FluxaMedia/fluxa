@@ -354,7 +354,6 @@ pub(super) fn draw_collections(
             top,
             group.lines.len() as f32 * ROW + 12.0,
             &group.title,
-            false,
             metrics,
         );
         for (index, line) in group.lines.iter().enumerate() {

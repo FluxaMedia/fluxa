@@ -222,11 +222,18 @@ fn plugin_error(settings: &SettingsModel) -> Option<&str> {
         .and_then(serde_json::Value::as_str)
 }
 
-fn header_height(metrics: UiMetrics) -> f32 {
-    metrics.settings_extended_input_height
-        + metrics.settings_extended_action_gap
+const NOTE_HEIGHT: f32 = 48.0;
+const EMPTY_HEIGHT: f32 = 64.0;
+const PLUGIN_RISK_HEIGHT: f32 = 76.0;
+
+fn form_height(inputs: usize, metrics: UiMetrics) -> f32 {
+    inputs as f32 * (metrics.settings_extended_input_height + metrics.settings_extended_action_gap)
         + metrics.settings_extended_action_height
-        + 24.0
+        + CARD_PADDING * 2.0
+}
+
+fn header_height(metrics: UiMetrics) -> f32 {
+    APPEARANCE_GROUP_HEADING_HEIGHT + form_height(1, metrics) + APPEARANCE_GROUP_GAP
 }
 
 pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
@@ -250,11 +257,11 @@ pub(super) fn addons_height(settings: &SettingsModel, metrics: UiMetrics, langua
     header_height(metrics)
         + APPEARANCE_GROUP_HEADING_HEIGHT
         + if settings.addon_error.is_some() {
-            32.0
+            NOTE_HEIGHT
         } else {
             0.0
         }
-        + if count == 0 { 56.0 } else { 0.0 }
+        + if count == 0 { EMPTY_HEIGHT } else { 0.0 }
         + cards
 }
 
@@ -270,11 +277,11 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         + PLUGIN_RISK_HEIGHT
         + APPEARANCE_GROUP_HEADING_HEIGHT
         + if plugin_error(settings).is_some() {
-            32.0
+            NOTE_HEIGHT
         } else {
             0.0
         }
-        + if repos.is_empty() { 56.0 } else { 0.0 }
+        + if repos.is_empty() { EMPTY_HEIGHT } else { 0.0 }
         + cards
         + if scrapers > 0 {
             12.0 + APPEARANCE_GROUP_HEADING_HEIGHT + scrapers as f32 * SCRAPER_ROW
@@ -283,45 +290,51 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
         }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn draw_header(
+type FormInput<'a> = (u64, &'a str, String);
+type FormButton = (u64, String, components::ButtonKind);
+
+fn draw_form(
     context: &egui::Context,
-    rect: Rect,
-    top: f32,
-    input: (u64, &str, String),
-    buttons: &[(u64, String, components::ButtonKind)],
+    card: Rect,
+    inputs: &[FormInput],
+    buttons: &[FormButton],
     metrics: UiMetrics,
     layout: &mut HomeLayout,
-) -> f32 {
-    let mut y = top;
-    settings_panel_input(
-        context,
-        layout,
-        input.0,
-        Rect::from_min_size(
-            Pos2::new(rect.left(), y),
-            Vec2::new(rect.width(), metrics.settings_extended_input_height),
-        ),
-        input.1,
-        input.2,
-        metrics,
-    );
-    y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
-    let width = metrics
-        .settings_extended_addon_action_width
-        .min((rect.width() - metrics.settings_extended_action_gap) / 2.0);
+) {
+    let inner = card.shrink(CARD_PADDING);
+    let gap = metrics.settings_extended_action_gap;
+    let mut y = inner.top();
+    for (node, value, hint) in inputs {
+        settings_panel_input(
+            context,
+            layout,
+            *node,
+            Rect::from_min_size(
+                Pos2::new(inner.left(), y),
+                Vec2::new(inner.width(), metrics.settings_extended_input_height),
+            ),
+            value,
+            hint,
+            metrics,
+        );
+        y += metrics.settings_extended_input_height + gap;
+    }
+    let count = buttons.len().max(1) as f32;
+    let split = (inner.width() - gap * (count - 1.0)) / count;
+    let width = if metrics.compact {
+        split
+    } else {
+        metrics.settings_extended_addon_action_width.min(split)
+    };
     for (index, (node, label, kind)) in buttons.iter().enumerate() {
         let button = Rect::from_min_size(
-            Pos2::new(
-                rect.left() + index as f32 * (width + metrics.settings_extended_action_gap),
-                y,
-            ),
+            Pos2::new(inner.left() + index as f32 * (width + gap), y),
             Vec2::new(width, metrics.settings_extended_action_height),
         );
         layout.focusable.push((*node, button));
         components::placed_front(
             context,
-            Id::new(("fluxa-addon-top", *node)),
+            Id::new(("fluxa-settings-form", *node)),
             button.min,
             |ui| {
                 if components::button(ui, label, width, button.height(), *kind, metrics).clicked() {
@@ -330,47 +343,52 @@ fn draw_header(
             },
         );
     }
-    y + metrics.settings_extended_action_height + 24.0
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_header(
+    context: &egui::Context,
+    rect: Rect,
+    top: f32,
+    title: &str,
+    input: FormInput,
+    buttons: &[FormButton],
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) -> f32 {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let card = account_group(&painter, rect, top, form_height(1, metrics), title, metrics);
+    draw_form(context, card, &[input], buttons, metrics, layout);
+    card.bottom() + APPEARANCE_GROUP_GAP
 }
 
 fn heading(painter: &egui::Painter, rect: Rect, y: f32, label: String, metrics: UiMetrics) -> f32 {
-    draw_text(
-        painter,
-        Pos2::new(rect.left() + 4.0, y),
-        Align2::LEFT_TOP,
-        label,
-        crate::fonts::regular(metrics.text.body),
-        metrics.text_muted,
-        None,
-    );
+    group_heading(painter, rect, y, &label, metrics);
     y + APPEARANCE_GROUP_HEADING_HEIGHT
 }
 
-fn notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color32) {
-    let font = crate::fonts::regular(15.0);
-    draw_text(
-        painter,
-        Pos2::new(rect.left() + 4.0, y),
-        Align2::LEFT_TOP,
-        text,
-        font,
-        color,
-        Some(rect.width()),
-    );
-}
-
-const PLUGIN_RISK_HEIGHT: f32 = 76.0;
-
-fn wrapped_notice(painter: &egui::Painter, rect: Rect, y: f32, text: &str, color: Color32) {
+fn note(
+    painter: &egui::Painter,
+    rect: Rect,
+    y: f32,
+    text: &str,
+    color: Color32,
+    rows: usize,
+    metrics: UiMetrics,
+) {
+    let inset = if metrics.compact { 16.0 } else { 8.0 };
     let mut job = egui::text::LayoutJob::simple(
         text.to_owned(),
-        crate::fonts::regular(15.0),
+        crate::fonts::regular(metrics.text.body),
         color,
-        rect.width() - 8.0,
+        rect.width() - inset * 2.0,
     );
-    job.wrap.max_rows = 3;
-    let galley = painter.layout_job(job);
-    painter.galley(Pos2::new(rect.left() + 4.0, y), galley, color);
+    job.wrap.max_rows = rows;
+    painter.galley(
+        Pos2::new(rect.left() + inset, y),
+        painter.layout_job(job),
+        color,
+    );
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -389,10 +407,11 @@ pub(super) fn draw_addons(
         context,
         rect,
         top,
+        &localized("settings.addon_url", language),
         (
             NODE_SETTINGS_ADDON_URL,
             &settings.addon_url,
-            localized("settings.addon_url", language),
+            "https://".to_owned(),
         ),
         &[
             (
@@ -421,16 +440,18 @@ pub(super) fn draw_addons(
         metrics,
     );
     if let Some(error) = settings.addon_error.as_deref() {
-        notice(&painter, rect, y, error, danger_color());
-        y += 32.0;
+        note(&painter, rect, y, error, danger_color(), 2, metrics);
+        y += NOTE_HEIGHT;
     }
     if count == 0 {
-        notice(
+        note(
             &painter,
             rect,
-            y + 8.0,
+            y + 4.0,
             &localized("settings.addon_empty", language),
             ink(tone::MUTED),
+            3,
+            metrics,
         );
     }
     for (index, addon) in settings.addons.iter().enumerate() {
@@ -461,10 +482,11 @@ pub(super) fn draw_plugins(
         context,
         rect,
         top,
+        &localized("settings.plugin_url", language),
         (
             NODE_SETTINGS_PLUGIN_URL,
             &settings.plugin_url,
-            localized("settings.plugin_url", language),
+            "https://".to_owned(),
         ),
         &[(
             NODE_SETTINGS_PLUGIN_INSTALL,
@@ -474,12 +496,14 @@ pub(super) fn draw_plugins(
         metrics,
         layout,
     );
-    wrapped_notice(
+    note(
         &painter,
         rect,
-        y + 4.0,
+        y - APPEARANCE_GROUP_GAP + 10.0,
         &localized("settings.plugin_risk", language),
         ink(tone::MUTED),
+        4,
+        metrics,
     );
     y += PLUGIN_RISK_HEIGHT;
     let repos = repositories(settings);
@@ -495,18 +519,20 @@ pub(super) fn draw_plugins(
         metrics,
     );
     if let Some(error) = plugin_error(settings) {
-        notice(&painter, rect, y, error, danger_color());
-        y += 32.0;
+        note(&painter, rect, y, error, danger_color(), 2, metrics);
+        y += NOTE_HEIGHT;
     }
     if repos.is_empty() {
-        notice(
+        note(
             &painter,
             rect,
-            y + 8.0,
+            y + 4.0,
             &localized("settings.plugin_empty", language),
             ink(tone::MUTED),
+            3,
+            metrics,
         );
-        y += 56.0;
+        y += EMPTY_HEIGHT;
     }
     for (index, repo) in repos.iter().enumerate() {
         let card = repository_card(repo, index, language);
@@ -865,6 +891,23 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
     ))
 }
 
+const SERVER_KINDS: [(u64, &str); 3] = [
+    (NODE_SETTINGS_SERVER_JELLYFIN, "Jellyfin"),
+    (NODE_SETTINGS_SERVER_EMBY, "Emby"),
+    (NODE_SETTINGS_SERVER_PLEX, "Plex"),
+];
+const PLEX_KIND: usize = 2;
+const SERVER_TABS_HEIGHT: f32 = 44.0;
+const PLEX_HINT_HEIGHT: f32 = 48.0;
+
+fn server_form_height(settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    if settings.server_kind == PLEX_KIND {
+        PLEX_HINT_HEIGHT + form_height(0, metrics)
+    } else {
+        form_height(SERVER_INPUTS.len(), metrics)
+    }
+}
+
 pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, language: &str) -> f32 {
     let cards: f32 = settings
         .media_servers
@@ -872,14 +915,17 @@ pub(super) fn servers_height(settings: &SettingsModel, metrics: UiMetrics, langu
         .enumerate()
         .map(|(index, server)| server_card(server, index, language).height() + CARD_GAP)
         .sum();
-    let input = metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
-    input * 3.0
-        + metrics.settings_extended_action_height
-        + 24.0
+    SERVER_TABS_HEIGHT
+        + server_form_height(settings, metrics)
+        + APPEARANCE_GROUP_GAP
+        + if server_notice(settings, language).is_some() {
+            NOTE_HEIGHT
+        } else {
+            0.0
+        }
         + APPEARANCE_GROUP_HEADING_HEIGHT
-        + 32.0
         + if settings.media_servers.is_empty() {
-            56.0
+            EMPTY_HEIGHT
         } else {
             0.0
         }
@@ -898,79 +944,98 @@ pub(super) fn draw_servers(
     layout: &mut HomeLayout,
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
-    let mut y = top;
-    let hints = [
-        "settings.server_address",
-        "settings.server_username",
-        "settings.server_password",
-    ];
-    for (index, node) in SERVER_INPUTS.iter().enumerate() {
-        let field = Rect::from_min_size(
-            Pos2::new(rect.left(), y),
-            Vec2::new(rect.width(), metrics.settings_extended_input_height),
+    let inset = if metrics.compact { 16.0 } else { 8.0 };
+    let labels: Vec<String> = SERVER_KINDS
+        .iter()
+        .map(|(_, label)| (*label).to_owned())
+        .collect();
+    components::placed_front(
+        context,
+        Id::new("fluxa-server-kinds"),
+        Pos2::new(rect.left() + inset, top),
+        |ui| {
+            let tabs = components::text_tabs(
+                ui,
+                &labels,
+                settings.server_kind,
+                SERVER_TABS_HEIGHT - 12.0,
+                metrics,
+            );
+            for ((node, _), response) in SERVER_KINDS.iter().zip(tabs) {
+                components::focus_action(layout, *node, &response);
+            }
+        },
+    );
+
+    let card = Rect::from_min_size(
+        Pos2::new(rect.left(), top + SERVER_TABS_HEIGHT),
+        Vec2::new(rect.width(), server_form_height(settings, metrics)),
+    );
+    painter.rect_filled(card, metrics.card_radius, metrics.surface);
+    painter.rect_stroke(
+        card,
+        metrics.card_radius,
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::StrokeKind::Inside,
+    );
+    if settings.server_kind == PLEX_KIND {
+        note(
+            &painter,
+            card.shrink2(Vec2::new(CARD_PADDING - inset, 0.0)),
+            card.top() + CARD_PADDING,
+            &localized("settings.server_plex_hint", language),
+            metrics.text_secondary,
+            2,
+            metrics,
         );
-        let mut value = settings.server_fields[index].clone();
-        components::placed_front(
+        draw_form(
             context,
-            Id::new(("fluxa-server-input", *node)),
-            field.min,
-            |ui| {
-                let response = components::text_input(
-                    ui,
-                    &mut value,
-                    &localized(hints[index], language),
-                    field.width(),
-                    components::input_kind(*node),
-                    metrics,
-                );
-                layout.focusable.push((*node, response.rect));
-                if response.changed() {
-                    layout.text_input = Some(value.clone());
-                    layout.text_input_node = Some(*node);
-                }
-            },
+            card.with_min_y(card.top() + PLEX_HINT_HEIGHT),
+            &[],
+            &[(
+                NODE_SETTINGS_SERVER_CONNECT,
+                localized("auth.sign_in", language),
+                components::ButtonKind::Primary,
+            )],
+            metrics,
+            layout,
         );
-        y += metrics.settings_extended_input_height + metrics.settings_extended_action_gap;
-    }
-    let gap = metrics.settings_extended_action_gap;
-    let width = metrics
-        .settings_extended_addon_action_width
-        .min((rect.width() - gap * 2.0) / 3.0);
-    let buttons = [
-        (
-            NODE_SETTINGS_SERVER_JELLYFIN,
-            "Jellyfin",
-            components::ButtonKind::Primary,
-        ),
-        (
-            NODE_SETTINGS_SERVER_EMBY,
-            "Emby",
-            components::ButtonKind::Primary,
-        ),
-        (
-            NODE_SETTINGS_SERVER_PLEX,
-            "Plex",
-            components::ButtonKind::Secondary,
-        ),
-    ];
-    for (index, (node, label, kind)) in buttons.iter().enumerate() {
-        let button = Rect::from_min_size(
-            Pos2::new(rect.left() + index as f32 * (width + gap), y),
-            Vec2::new(width, metrics.settings_extended_action_height),
-        );
-        layout.focusable.push((*node, button));
-        components::placed_front(
+    } else {
+        let hints = [
+            "settings.server_address",
+            "settings.server_username",
+            "settings.server_password",
+        ];
+        let inputs: Vec<FormInput> = SERVER_INPUTS
+            .iter()
+            .enumerate()
+            .map(|(index, node)| {
+                (
+                    *node,
+                    settings.server_fields[index].as_str(),
+                    localized(hints[index], language),
+                )
+            })
+            .collect();
+        draw_form(
             context,
-            Id::new(("fluxa-server-add", *node)),
-            button.min,
-            |ui| {
-                if components::button(ui, label, width, button.height(), *kind, metrics).clicked() {
-                    layout.activated = Some(*node);
-                }
-            },
+            card,
+            &inputs,
+            &[(
+                NODE_SETTINGS_SERVER_CONNECT,
+                localized("settings.account_connect", language),
+                components::ButtonKind::Primary,
+            )],
+            metrics,
+            layout,
         );
     }
-    y += metrics.settings_extended_action_height + 24.0;
+
+    let mut y = card.bottom() + APPEARANCE_GROUP_GAP;
+    if let Some((message, color)) = server_notice(settings, language) {
+        note(&painter, rect, y - 8.0, &message, color, 2, metrics);
+        y += NOTE_HEIGHT;
+    }
     y = heading(
         &painter,
         rect,
@@ -982,19 +1047,16 @@ pub(super) fn draw_servers(
         ),
         metrics,
     );
-    if let Some((message, color)) = server_notice(settings, language) {
-        notice(&painter, rect, y, &message, color);
-    }
-    y += 32.0;
     if settings.media_servers.is_empty() {
-        notice(
+        note(
             &painter,
             rect,
-            y + 8.0,
+            y + 4.0,
             &localized("settings.server_empty", language),
             ink(tone::MUTED),
+            3,
+            metrics,
         );
-        y += 56.0;
     }
     for (index, server) in settings.media_servers.iter().enumerate() {
         let card = server_card(server, index, language);

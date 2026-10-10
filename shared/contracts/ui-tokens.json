@@ -483,8 +483,8 @@
       "colors": {
         "background": "#000000",
         "backgroundElevated": "#000000",
-        "surface": "#080808",
-        "surfaceRaised": "#141414",
+        "surface": "#141416",
+        "surfaceRaised": "#222226",
         "navigation": "#000000",
         "textPrimary": "#FFFFFF",
         "textSecondary": "#B8B8BE",

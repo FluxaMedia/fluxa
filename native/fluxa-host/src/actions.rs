@@ -110,6 +110,7 @@ pub(super) fn native_action_for_node(
             fluxa_ui::NODE_SETTINGS_SERVER_JELLYFIN
                 | fluxa_ui::NODE_SETTINGS_SERVER_EMBY
                 | fluxa_ui::NODE_SETTINGS_SERVER_PLEX
+                | fluxa_ui::NODE_SETTINGS_SERVER_CONNECT
         ) || fluxa_ui::server_index(node).is_some()
         {
             return Some(NativeAction::MediaServer { node });
@@ -700,7 +701,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             {
                 state.settings.active_section = index;
                 state.settings.section_open = true;
-                state.settings.page_open = node >= fluxa_ui::NODE_SETTINGS_PAGE_BASE;
+                state.settings.page_open = node < fluxa_ui::NODE_SETTINGS_SECTION_BASE;
                 state.settings.search.clear();
                 state.screen_scroll_offsets.remove(&Route::Settings);
                 reset_ui(state);
