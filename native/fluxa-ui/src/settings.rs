@@ -124,6 +124,7 @@ pub(super) fn row_applies(key: &str, viewport: Viewport) -> bool {
         "navLayout" | "navMode" | "navSidebarMode" | "interfaceDensity" | "navFloating"
         | "navLabels" | "posterHoverPreview" => !compact,
         "discordRichPresenceEnabled" => desktop,
+        "detailSeasonPostersOnHero" => false,
         "automaticUpdates" => matches!(
             viewport.platform,
             UiPlatform::Android | UiPlatform::Windows | UiPlatform::Macos | UiPlatform::Linux

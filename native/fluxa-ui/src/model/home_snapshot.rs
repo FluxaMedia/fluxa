@@ -166,8 +166,19 @@ pub fn home_model_from_core_snapshot(
         .pointer("/settings/values/homeHeroArtwork")
         .and_then(serde_json::Value::as_str)
         == Some("poster");
+    let season_posters = snapshot
+        .pointer("/settings/values/homeSeasonPostersOnHero")
+        .and_then(serde_json::Value::as_bool)
+        .unwrap_or(true);
+    let poster = |item: &serde_json::Value| {
+        season_posters
+            .then(|| detail_season_posters(item))
+            .and_then(|posters| posters.into_iter().max_by_key(|(season, _)| *season))
+            .map(|(_, url)| url)
+            .or_else(|| first_value_string(item, &["poster", "posterUrl"]))
+    };
     model.hero_poster = posters;
-    if posters && let Some(poster) = first_value_string(billboard, &["poster", "posterUrl"]) {
+    if posters && let Some(poster) = poster(billboard) {
         model.background_url = Some(poster);
     }
     let mut slide_keys = Vec::new();
@@ -180,7 +191,7 @@ pub fn home_model_from_core_snapshot(
             .flatten(),
     ) {
         let mut hero = core_home_hero(item, &snapshot_language(snapshot));
-        if posters && let Some(poster) = first_value_string(item, &["poster", "posterUrl"]) {
+        if posters && let Some(poster) = poster(item) {
             hero.background_url = Some(poster);
         }
         let key = hero
