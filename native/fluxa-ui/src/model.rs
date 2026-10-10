@@ -190,6 +190,8 @@ pub struct HomeModel {
     #[serde(skip)]
     pub top_inset: f32,
     #[serde(skip)]
+    pub hero_poster: bool,
+    #[serde(skip)]
     pub row_scroll_offsets: Vec<f32>,
     #[serde(skip)]
     pub trailer: Option<HeroTrailer>,
@@ -289,6 +291,7 @@ impl HomeModel {
             platform: UiPlatform::default(),
             scroll_offset: 0.0,
             top_inset: 0.0,
+            hero_poster: false,
             row_scroll_offsets: Vec::new(),
             trailer: None,
             poster_trailer: None,

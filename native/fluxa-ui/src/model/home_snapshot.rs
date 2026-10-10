@@ -166,6 +166,7 @@ pub fn home_model_from_core_snapshot(
         .pointer("/settings/values/homeHeroArtwork")
         .and_then(serde_json::Value::as_str)
         == Some("poster");
+    model.hero_poster = posters;
     if posters && let Some(poster) = first_value_string(billboard, &["poster", "posterUrl"]) {
         model.background_url = Some(poster);
     }

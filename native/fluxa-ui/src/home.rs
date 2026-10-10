@@ -495,7 +495,10 @@ pub(crate) fn draw_home_with_options(
         } else {
             None
         };
-        let title_height = if let Some((_, size)) = fitted_logo {
+        let titled = !home.hero_poster;
+        let title_height = if !titled {
+            0.0
+        } else if let Some((_, size)) = fitted_logo {
             size.y
         } else if has_logo {
             style.logo_height
@@ -583,7 +586,8 @@ pub(crate) fn draw_home_with_options(
                     } else {
                         egui::Align2::LEFT_TOP
                     };
-                    if has_logo {
+                    if !titled {
+                    } else if has_logo {
                         if let Some((texture, size)) = fitted_logo {
                             let logo_x = if style.centered {
                                 title_rect.center().x - size.x * 0.5
@@ -609,7 +613,9 @@ pub(crate) fn draw_home_with_options(
                             None,
                         );
                     }
-                    ui.add_space(style.title_gap);
+                    if titled {
+                        ui.add_space(style.title_gap);
+                    }
                     if !hero.eyebrow.is_empty() {
                         let metadata_rect = ui
                             .allocate_exact_size(
