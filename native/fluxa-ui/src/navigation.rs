@@ -153,14 +153,14 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             ui.ctx(),
                             Id::new("fluxa-top-bar-indicator-x"),
                             target.center().x,
-                            0.22,
+                            crate::motion::normal(),
                             crate::motion::Ease::Linear,
                         );
                         let width = crate::motion::ease(
                             ui.ctx(),
                             Id::new("fluxa-top-bar-indicator-w"),
                             target.width(),
-                            0.22,
+                            crate::motion::normal(),
                             crate::motion::Ease::Linear,
                         );
                         let stretch = (target.center().x - x).abs().min(target.width() * 0.5);
@@ -398,7 +398,7 @@ pub(crate) fn draw_mobile_navigation_bar(
         context,
         Id::new("fluxa-bottom-bar-indicator"),
         target,
-        0.22,
+        crate::motion::normal(),
         crate::motion::Ease::Linear,
     );
     let stretch = (target - indicator_x).abs().min(slot_width * 0.6);

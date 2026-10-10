@@ -117,7 +117,7 @@ pub(super) fn draw_loading(
                             context,
                             Id::new("fluxa-player-load-progress"),
                             progress,
-                            0.42,
+                            crate::motion::slow(),
                             crate::motion::Ease::Linear,
                         );
                         painter.image(

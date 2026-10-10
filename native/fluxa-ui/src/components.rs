@@ -558,7 +558,7 @@ pub(super) fn banner(
                 context,
                 id.with("fill"),
                 content.progress.unwrap_or(0.0),
-                0.35,
+                crate::motion::slow(),
                 crate::motion::Ease::Linear,
             );
             if content.progress.is_some() && progress > 0.0 {
@@ -634,7 +634,7 @@ pub(super) fn sticky_bar(
     bar: StickyBar,
     metrics: UiMetrics,
 ) -> Option<StickyOutput> {
-    let fade = crate::motion::toggle(context, Id::new((id, "sticky-fade")), shown, 0.15);
+    let fade = crate::motion::toggle(context, Id::new((id, "sticky-fade")), shown, crate::motion::fast());
     if fade <= 0.0 {
         return None;
     }
@@ -1447,7 +1447,7 @@ pub(super) fn expanded_poster_card(
             let fade = crate::motion::appear(
                 painter.ctx(),
                 Id::new(("fluxa-poster-trailer-fade", texture)),
-                0.6,
+                crate::motion::slow() * 2.0,
                 crate::motion::Ease::Linear,
             );
             painter.add(
@@ -1634,7 +1634,7 @@ pub(super) fn hover_preview(
     let appear = crate::motion::appear(
         context,
         Id::new("fluxa-hover-preview-appear"),
-        0.18,
+        crate::motion::normal(),
         crate::motion::Ease::Out,
     );
     let scale = 0.92 + 0.08 * appear;
@@ -2322,7 +2322,7 @@ pub(super) fn choice_field(
     let (rect, response) = ui.allocate_exact_size(size, sense);
     let popup_id = id.with("popup");
     let open = enabled && egui::Popup::is_id_open(ui.ctx(), popup_id);
-    let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, 0.14);
+    let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, crate::motion::fast());
     let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
         metrics.ink(tone::FAINT)
@@ -2806,7 +2806,7 @@ pub fn draw_action_menu(
     let eased = crate::motion::appear(
         context,
         Id::new(("fluxa-action-menu", serial)),
-        0.25,
+        crate::motion::normal(),
         crate::motion::Ease::Out,
     );
     let offset = if sheet {
@@ -3034,7 +3034,7 @@ pub(super) fn toggle(
     on: bool,
     metrics: UiMetrics,
 ) {
-    let t = crate::motion::presence(context, id, on, 0.22);
+    let t = crate::motion::presence(context, id, on, crate::motion::normal());
     let off_track = metrics.ink(tone::STRONG);
     painter.rect_filled(
         track,

@@ -64,7 +64,7 @@ impl Chrome<'_> {
         let id = Id::new("fluxa-player-volume");
         let dragging: bool = ui.data(|data| data.get_temp(id)).unwrap_or(false);
         let open = dragging || ui.rect_contains_pointer(zone);
-        let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, 0.16);
+        let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
         let width = full * amount;
         if width < 2.0 {
             return x + full + 8.0;

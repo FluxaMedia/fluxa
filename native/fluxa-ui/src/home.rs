@@ -532,7 +532,7 @@ pub(crate) fn draw_home_with_options(
                 context,
                 Id::new("fluxa-hero-text-fade"),
                 trailer_playing,
-                0.4,
+                crate::motion::slow(),
             );
         let metadata_gap = style.metadata_gap * text_fade;
         let metadata_height = metadata_height * text_fade;

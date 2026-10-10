@@ -2,6 +2,18 @@ use egui::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjus
 
 const PAGE_SECONDS: f32 = 0.26;
 
+pub(crate) fn fast() -> f32 {
+    crate::metrics::motion_seconds(0)
+}
+
+pub(crate) fn normal() -> f32 {
+    crate::metrics::motion_seconds(1)
+}
+
+pub(crate) fn slow() -> f32 {
+    crate::metrics::motion_seconds(2)
+}
+
 #[derive(Clone, Copy)]
 pub(crate) enum Ease {
     Linear,
@@ -153,7 +165,7 @@ pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl 
         rect.min.y as i32,
         layer.id,
     ));
-    let t = presence(context, id, held, 0.14);
+    let t = presence(context, id, held, fast());
     if t <= 0.0 {
         return;
     }

@@ -126,7 +126,7 @@ pub fn draw_shorts(
         context,
         Id::new("fluxa-shorts-position"),
         index as f32,
-        0.3,
+        crate::motion::slow(),
         crate::motion::Ease::Linear,
     );
     let first = position.floor().max(0.0) as usize;

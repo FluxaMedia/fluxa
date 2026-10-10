@@ -306,7 +306,7 @@ pub(crate) fn paint_trailer(
     let fade = crate::motion::appear(
         context,
         Id::new(("fluxa-trailer-fade", key, texture)),
-        0.6,
+        crate::motion::slow() * 2.0,
         crate::motion::Ease::Linear,
     );
     painter.with_clip_rect(rect).image(

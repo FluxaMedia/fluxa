@@ -21,7 +21,7 @@ pub(super) fn draw_recommendations(
     let reveal = crate::motion::appear(
         context,
         Id::new(("fluxa-player-recommendation-slide", index)),
-        0.35,
+        crate::motion::slow(),
         crate::motion::Ease::Out,
     );
     let url = hero.background_url.as_deref();

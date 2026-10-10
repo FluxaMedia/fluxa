@@ -95,7 +95,7 @@ pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opac
 const UPDATE_BANNER_HEIGHT: f32 = 44.0;
 
 pub fn update_reveal(context: &egui::Context, shown: bool) -> f32 {
-    motion::presence(context, egui::Id::new("fluxa-update-reveal"), shown, 0.32)
+    motion::presence(context, egui::Id::new("fluxa-update-reveal"), shown, crate::motion::slow())
 }
 
 pub fn update_banner_space(top: f32) -> f32 {

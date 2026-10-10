@@ -31,7 +31,7 @@ pub(super) fn draw_mini_player(
         ui.ctx(),
         Id::new("fluxa-player-mini-controls"),
         hovered,
-        0.2,
+        crate::motion::normal(),
     );
     if shown <= 0.0 {
         let hit = ui.interact(mini, Id::new("fluxa-player-mini"), Sense::click());

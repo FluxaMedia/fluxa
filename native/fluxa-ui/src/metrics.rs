@@ -18,6 +18,9 @@ pub struct UiMetrics {
     pub border: Color32,
     pub danger: Color32,
     pub dialog_radius: f32,
+    pub motion_fast: f32,
+    pub motion_normal: f32,
+    pub motion_slow: f32,
     pub navigation: Color32,
     pub text_primary: Color32,
     pub text_secondary: Color32,
@@ -168,6 +171,19 @@ static BUTTON_HEIGHT: AtomicU32 = AtomicU32::new(0x4230_0000);
 static ICON_BUTTON: AtomicU32 = AtomicU32::new(0x4220_0000);
 static CONTROL_RADIUS: AtomicU32 = AtomicU32::new(0x4110_0000);
 static DANGER: AtomicU32 = AtomicU32::new(0xFFFF_6B6B);
+static MOTION: [AtomicU32; 3] = [
+    AtomicU32::new(0x3DF5_C28F),
+    AtomicU32::new(0x3E38_51EC),
+    AtomicU32::new(0x3E99_999A),
+];
+
+fn seconds(enabled: bool, ms: u64) -> f32 {
+    if enabled { ms as f32 / 1000.0 } else { 0.0 }
+}
+
+pub(crate) fn motion_seconds(pace: usize) -> f32 {
+    f32::from_bits(MOTION[pace].load(Ordering::Relaxed))
+}
 
 fn pack(color: Color32) -> u32 {
     u32::from_be_bytes(color.to_srgba_unmultiplied())
@@ -182,6 +198,13 @@ fn publish_palette(metrics: &UiMetrics) {
     CONTROL_RADIUS.store(metrics.screen_control_radius.to_bits(), Ordering::Relaxed);
     BUTTON_HEIGHT.store(metrics.button_height.to_bits(), Ordering::Relaxed);
     ICON_BUTTON.store(metrics.icon_button_size.to_bits(), Ordering::Relaxed);
+    for (cell, value) in MOTION.iter().zip([
+        metrics.motion_fast,
+        metrics.motion_normal,
+        metrics.motion_slow,
+    ]) {
+        cell.store(value.to_bits(), Ordering::Relaxed);
+    }
 }
 
 fn unpack(cell: &AtomicU32) -> Color32 {
@@ -398,6 +421,9 @@ impl UiMetrics {
             control_gap: dark.spacing.control_gap,
             card_radius: dark.shape.card_radius,
             dialog_radius: dark.shape.dialog_radius,
+            motion_fast: seconds(dark.motion.enabled, dark.motion.fast_ms),
+            motion_normal: seconds(dark.motion.enabled, dark.motion.normal_ms),
+            motion_slow: seconds(dark.motion.enabled, dark.motion.slow_ms),
             card_progress_height: common_dp("cardProgressBarHeight", 4.0),
             card_title_size: common_sp("cardTitleSize", 12.0),
             horizontal_card_width: platform_dp("episodeCardWidth", 300.0),

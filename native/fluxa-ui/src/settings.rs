@@ -2613,7 +2613,7 @@ fn draw_settings_page(
                                 ui.ctx(),
                                 Id::new(("fluxa-swatch", *option)),
                                 active || response.hovered(),
-                                0.12,
+                                crate::motion::fast(),
                             );
                             let center = rect.center();
                             ui.painter().circle_filled(

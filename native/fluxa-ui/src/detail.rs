@@ -192,7 +192,7 @@ pub fn draw_detail(
     let fade = crate::motion::appear(
         context,
         Id::new(("fluxa-detail-backdrop", &detail.id)),
-        0.25,
+        crate::motion::normal(),
         crate::motion::Ease::Linear,
     );
     let image = if compact {
@@ -308,7 +308,7 @@ pub fn draw_detail(
     let reveal = crate::motion::appear(
         context,
         Id::new(("fluxa-detail-reveal", &detail.id)),
-        0.45,
+        crate::motion::slow(),
         crate::motion::Ease::Out,
     );
     egui::Area::new(Id::new("fluxa-detail-hero-content"))
