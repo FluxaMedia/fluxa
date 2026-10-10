@@ -122,7 +122,7 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
     let linear = if last == key {
         (progress + dt / PAGE_SECONDS).min(1.0)
     } else {
-        0.0
+        dt / PAGE_SECONDS
     };
     context.data_mut(|data| data.insert_temp(state, (key, linear)));
     if linear >= 1.0 {
@@ -134,7 +134,7 @@ pub fn page_transition(context: &egui::Context, key: u64, keep: &[Id]) -> f32 {
     let layers: Vec<LayerId> = context.memory(|memory| memory.layer_ids().collect());
     context.graphics_mut(|graphics| {
         for layer in layers {
-            if keep.contains(&layer.id) {
+            if layer.order == egui::Order::Background || keep.contains(&layer.id) {
                 continue;
             }
             let Some(list) = graphics.get_mut(layer) else {
