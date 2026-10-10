@@ -279,6 +279,54 @@ pub(crate) fn home_flow(viewport: Viewport, metrics: UiMetrics, home: &HomeModel
     }
 }
 
+pub(crate) struct Shelf<'a> {
+    pub index: usize,
+    pub top: f32,
+    pub heading: f32,
+    pub body: f32,
+    pub first_card: usize,
+    pub title: &'a str,
+    pub cards: &'a [HomeCard],
+    pub kind: HomeRowKind,
+}
+
+impl Shelf<'_> {
+    pub(crate) fn height(&self) -> f32 {
+        self.heading + self.body
+    }
+}
+
+pub(crate) fn shelf_gap(metrics: UiMetrics) -> f32 {
+    metrics.section_gap + metrics.vertical_spacing
+}
+
+pub(crate) fn home_shelves<'a>(
+    metrics: UiMetrics,
+    home: &'a HomeModel,
+    top: f32,
+) -> impl Iterator<Item = Shelf<'a>> + 'a {
+    let heading = home_row_heading_height(metrics);
+    let mut column = crate::flow::Column::from(top);
+    let mut first_card = 0;
+    home.content_rows_with_kind()
+        .enumerate()
+        .map(move |(index, (title, cards, kind))| {
+            let body = home_row_body_height(metrics, cards, kind);
+            let shelf = Shelf {
+                index,
+                top: column.place(heading + body + shelf_gap(metrics)),
+                heading,
+                body,
+                first_card,
+                title,
+                cards,
+                kind,
+            };
+            first_card += cards.len();
+            shelf
+        })
+}
+
 pub(crate) fn home_row_start(
     viewport: Viewport,
     metrics: UiMetrics,

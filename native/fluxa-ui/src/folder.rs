@@ -43,14 +43,9 @@ fn folder_content_height(metrics: UiMetrics, folder: &FolderModel, tab: usize, w
         return grid.height(folder.cards(tab).len().min(FOLDER_CARD_LIMIT));
     }
     let home = rows_home(folder);
-    home.content_rows_with_kind()
-        .map(|(_, cards, kind)| {
-            home_row_heading_height(metrics)
-                + home_row_body_height(metrics, cards, kind)
-                + metrics.section_gap
-                + metrics.vertical_spacing
-        })
-        .sum()
+    home_shelves(metrics, &home, 0.0)
+        .last()
+        .map_or(0.0, |shelf| shelf.top + shelf.height() + shelf_gap(metrics))
 }
 
 const FOLDER_CARD_LIMIT: usize = 600;
@@ -65,16 +60,14 @@ pub fn folder_row_at_y(
         return None;
     }
     let metrics = UiMetrics::for_viewport(viewport);
-    let mut row_y = folder_geometry(viewport, metrics, folder).content_top - scroll_y;
-    for (index, (_, cards, kind)) in rows_home(folder).content_rows_with_kind().enumerate() {
-        let heading = home_row_heading_height(metrics);
-        let body = home_row_body_height(metrics, cards, kind);
-        if y >= row_y + heading && y <= row_y + heading + body {
-            return Some(index);
-        }
-        row_y += heading + body + metrics.section_gap + metrics.vertical_spacing;
-    }
-    None
+    let top = folder_geometry(viewport, metrics, folder).content_top - scroll_y;
+    let home = rows_home(folder);
+    home_shelves(metrics, &home, top)
+        .find(|shelf| {
+            let cards_top = shelf.top + shelf.heading;
+            y >= cards_top && y <= cards_top + shelf.body
+        })
+        .map(|shelf| shelf.index)
 }
 
 pub fn folder_row_scroll_max(viewport: Viewport, folder: &FolderModel, row: usize) -> f32 {

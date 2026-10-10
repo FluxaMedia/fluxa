@@ -38,7 +38,6 @@ pub(crate) fn draw_home_rows(
     activated: &mut Option<u64>,
 ) {
     let mut flat_index = 0usize;
-    let mut row_y = row_start;
     let preview_id = Id::new("fluxa-hover-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
     let pointer = (viewport.form_factor == UiFormFactor::Desktop)
@@ -105,14 +104,11 @@ pub(crate) fn draw_home_rows(
     context.data_mut(|data| data.insert_temp(expand_id, expand.clone()));
     let mut expanded_card: Option<ExpandedPoster> = None;
     let mut expanded_panels: Vec<(u64, Rect, &HomeCard, f32)> = Vec::new();
-    for (row_index, (title, cards, kind)) in home
-        .content_rows_with_kind()
-        .into_iter()
-        .enumerate()
-        .take(64)
-    {
+    for shelf in home_shelves(metrics, home, row_start).take(64) {
+        let (row_index, title, cards, kind) = (shelf.index, shelf.title, shelf.cards, shelf.kind);
+        let row_y = shelf.top;
         let (card_width, card_height, _) = home_row_dimensions(metrics, kind);
-        let body_height = home_row_body_height(metrics, cards, kind);
+        let body_height = shelf.body;
         let expand_extra = if kind == HomeRowKind::Poster {
             let wide = card_height * 16.0 / 9.0;
             (0..cards.len())
@@ -164,7 +160,6 @@ pub(crate) fn draw_home_rows(
             }
         }
         if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
-            row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
             flat_index += cards.len();
             continue;
         }
@@ -407,7 +402,6 @@ pub(crate) fn draw_home_rows(
                     }
                 });
             });
-        row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
     }
     for (node, rect, card, ease) in expanded_panels {
         let synopsis =

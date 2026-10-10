@@ -74,26 +74,17 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         );
         layout.focusable.push((NODE_PLAY, play));
     }
-    let row_start = flow.rows_top;
-    let mut flat = 0;
-    let mut row_y = row_start;
-    for (row_index, (title, cards, kind)) in home
-        .content_rows_with_kind()
-        .into_iter()
-        .enumerate()
-        .take(64)
-    {
-        let (_, _, body_height) = home_row_dimensions(metrics, kind);
-        let row_height = home_row_heading_height(metrics) + body_height;
-        let visible_y = row_y - home.scroll_offset;
+    for shelf in home_shelves(metrics, home, flow.rows_top).take(64) {
+        let (title, cards, kind) = (shelf.title, shelf.cards, shelf.kind);
+        let row_height = shelf.height();
+        let visible_y = shelf.top - home.scroll_offset;
         if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
-            row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
-            flat += cards.len();
             continue;
         }
+        let mut flat = shelf.first_card;
         let row_scroll = home
             .row_scroll_offsets
-            .get(row_index)
+            .get(shelf.index)
             .copied()
             .unwrap_or(0.0);
         let mut card_x = margin - row_scroll;
@@ -103,14 +94,13 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             layout.focusable.push((
                 NODE_CARD_BASE + flat as u64,
                 Rect::from_min_size(
-                    Pos2::new(card_x + lead, visible_y + home_row_heading_height(metrics)),
+                    Pos2::new(card_x + lead, visible_y + shelf.heading),
                     Vec2::new(item_width, item_height),
                 ),
             ));
             card_x += lead + item_width + metrics.horizontal_spacing;
             flat += 1;
         }
-        row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
     }
     if compact {
         layout
@@ -135,21 +125,13 @@ pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
 /// than the hero or the space between shelves.
 pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usize> {
     let metrics = home_metrics(viewport);
-    let mut row_y = home_flow(viewport, metrics, home).rows_top;
     let content_y = y + home.scroll_offset;
-    for (index, (_, cards, kind)) in home.content_rows_with_kind().into_iter().enumerate() {
-        let body_height = home_row_body_height(metrics, cards, kind);
-        let heading_height = home_row_heading_height(metrics);
-        if content_y >= row_y + heading_height && content_y <= row_y + heading_height + body_height
-        {
-            return Some(index);
-        }
-        row_y += heading_height + body_height + metrics.section_gap + metrics.vertical_spacing;
-        if cards.is_empty() {
-            continue;
-        }
-    }
-    None
+    home_shelves(metrics, home, home_flow(viewport, metrics, home).rows_top)
+        .find(|shelf| {
+            let cards_top = shelf.top + shelf.heading;
+            content_y >= cards_top && content_y <= cards_top + shelf.body
+        })
+        .map(|shelf| shelf.index)
 }
 
 /// Maximum horizontal drag offset for a Home shelf.
@@ -201,24 +183,18 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     let hero_height = home_hero_height_for(viewport, home);
     let mut content_height = home_flow(viewport, metrics, home).rows_top;
     if home_hero_pinned(viewport, home) {
-        let mut last_row_top = 0.0;
-        for (_, cards, kind) in home.content_rows_with_kind().take(64) {
-            last_row_top = content_height;
-            content_height += home_row_heading_height(metrics)
-                + home_row_body_height(metrics, cards, kind)
-                + metrics.section_gap
-                + metrics.vertical_spacing;
-        }
+        let last_row_top = home_shelves(metrics, home, content_height)
+            .take(64)
+            .last()
+            .map_or(0.0, |shelf| shelf.top);
         let first_row_top = home_row_start(viewport, metrics, hero_height, show_hero);
         return (last_row_top - first_row_top).max(0.0);
     }
-    for (_, cards, kind) in home.content_rows_with_kind().into_iter().take(64) {
-        content_height += home_row_heading_height(metrics)
-            + home_row_body_height(metrics, cards, kind)
-            + metrics.section_gap
-            + metrics.vertical_spacing;
+    if let Some(last) = home_shelves(metrics, home, content_height).take(64).last() {
+        content_height = last.top + last.height();
+    } else {
+        content_height -= shelf_gap(metrics);
     }
-    content_height -= metrics.section_gap + metrics.vertical_spacing;
     let bottom_navigation_reserve = if compact {
         mobile_nav_reserve(viewport)
     } else {
