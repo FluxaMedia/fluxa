@@ -2307,7 +2307,7 @@ fn draw_settings_page(
     }
     let heading = if compact && !searching {
         String::new()
-    } else if !searching && settings.page_open {
+    } else if !searching && settings.page_open && section.category != section.title {
         format!(
             "{}  ›  {}",
             section_label(section.category, language),
