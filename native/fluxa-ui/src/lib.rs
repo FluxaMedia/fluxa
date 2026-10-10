@@ -144,11 +144,19 @@ pub fn draw_update_prompt(
         _ => return,
     };
     let metrics = UiMetrics::for_viewport(viewport);
-    let bottom = update_banner_space(update.top) * update.reveal - scroll;
-    let rect = egui::Rect::from_min_max(
-        egui::Pos2::new(0.0, bottom - UPDATE_BANNER_HEIGHT),
-        egui::Pos2::new(viewport.width, bottom),
-    );
+    let rect = if viewport.is_tv() {
+        let top = update.top.max(27.0) - (1.0 - update.reveal) * (UPDATE_BANNER_HEIGHT + 27.0);
+        egui::Rect::from_min_size(
+            egui::Pos2::new(48.0, top),
+            egui::vec2(viewport.width - 96.0, UPDATE_BANNER_HEIGHT),
+        )
+    } else {
+        let bottom = update_banner_space(update.top) * update.reveal - scroll;
+        egui::Rect::from_min_max(
+            egui::Pos2::new(0.0, bottom - UPDATE_BANNER_HEIGHT),
+            egui::Pos2::new(viewport.width, bottom),
+        )
+    };
     let action = action.map(|key| localized(key, language));
     let outcome = components::banner(
         context,
