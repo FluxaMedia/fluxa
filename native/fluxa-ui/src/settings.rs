@@ -98,7 +98,7 @@ fn row_extra(index: usize, width: f32, language: &str, metrics: UiMetrics) -> f3
         width - metrics.settings_row_inset * 2.0 - metrics.settings_toggle_width - 19.0;
     let size = metrics.screen_card_subtitle_size + 2.0;
     let description = localized(&format!("settings.row.{}.description", row.key), language);
-    if description.chars().count() as f32 * size * 0.5 > text_width {
+    if description.chars().count() as f32 * size * 0.45 > text_width {
         ROW_SUBTITLE_EXTRA
     } else {
         0.0
@@ -326,7 +326,16 @@ fn tmdb_ready(settings: &SettingsModel) -> bool {
 }
 
 fn row_enabled(key: &str, settings: &SettingsModel) -> bool {
-    key != "reuseLastStreamTtlHours" || settings.bool_value("reuseLastStream")
+    match key {
+        "reuseLastStreamTtlHours" => settings.bool_value("reuseLastStream"),
+        "homeSeasonPostersOnHero" => {
+            settings
+                .value("homeHeroArtwork")
+                .and_then(serde_json::Value::as_str)
+                == Some("poster")
+        }
+        _ => true,
+    }
 }
 
 pub(super) fn visible_groups(
@@ -425,6 +434,14 @@ fn groups_height(
                     + APPEARANCE_GROUP_GAP
             })
             .sum::<f32>()
+}
+
+pub fn accent_swatches() -> &'static [&'static str] {
+    SETTINGS_SECTIONS
+        .iter()
+        .flat_map(|section| section.rows.iter())
+        .find(|row| row.key == "accentColorArgb")
+        .map_or(&[], |row| row.options)
 }
 
 pub fn settings_row_by_index(index: usize) -> Option<&'static SettingsRow> {
@@ -2540,7 +2557,16 @@ fn draw_settings_page(
                 Pos2::new(row_rect.left() + 4.0, top),
                 Vec2::new(count * size + (count - 1.0) * gap, size),
             );
-            layout.focusable.push((node, strip.expand(6.0)));
+            for slot in 0..setting.options.len() {
+                layout.focusable.push((
+                    NODE_SETTINGS_SWATCH_BASE + slot as u64,
+                    Rect::from_min_size(
+                        strip.min + Vec2::new(slot as f32 * (size + gap), 0.0),
+                        Vec2::splat(size),
+                    )
+                    .expand(gap * 0.5),
+                ));
+            }
             components::placed_front(
                 context,
                 Id::new(("fluxa-settings-swatches", node)),
