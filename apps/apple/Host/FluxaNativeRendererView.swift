@@ -92,6 +92,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
         let height = UInt32(max(1, (bounds.height * scale).rounded()))
         metalLayer.drawableSize = CGSize(width: CGFloat(width), height: CGFloat(height))
         fluxa_renderer_set_safe_bottom_inset(renderer, Float(safeAreaInsets.bottom))
+        fluxa_renderer_set_safe_top_inset(renderer, Float(safeAreaInsets.top))
         guard window != nil else { return }
         if surfaceAttached {
             fluxa_renderer_surface_changed(renderer, width, height)

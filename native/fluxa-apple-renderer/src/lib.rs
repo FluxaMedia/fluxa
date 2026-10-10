@@ -226,6 +226,16 @@ pub unsafe extern "C" fn fluxa_renderer_set_safe_bottom_inset(
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_set_safe_top_inset(
+    renderer: *const FluxaRenderer,
+    inset: f32,
+) {
+    if let Some(renderer) = unsafe { renderer.as_ref() } {
+        renderer.set_safe_top_inset(inset);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_set_window_focused(
     renderer: *const FluxaRenderer,
     focused: bool,
