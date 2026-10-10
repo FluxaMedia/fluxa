@@ -253,6 +253,32 @@ pub fn home_pinned_rows(viewport: Viewport, home: &HomeModel) -> Option<(f32, f3
 /// The first shelf starts after the complete hero viewport, not after an
 /// estimate of where the hero buttons happen to land. This keeps the hero
 /// controls and the shelf heading in separate visual blocks on every size.
+pub(crate) struct HomeFlow {
+    pub hero_top: f32,
+    pub rows_top: f32,
+}
+
+pub(crate) fn home_flow(viewport: Viewport, metrics: UiMetrics, home: &HomeModel) -> HomeFlow {
+    let hero_height = home_hero_height_for(viewport, home);
+    let lead = if home_hero_pinned(viewport, home) {
+        0.0
+    } else {
+        home.top_inset
+    };
+    let mut column = crate::flow::Column::from(0.0);
+    column.place(lead);
+    let hero_top = column.place(home_row_start(
+        viewport,
+        metrics,
+        hero_height,
+        home_shows_hero(home),
+    ));
+    HomeFlow {
+        hero_top,
+        rows_top: column.end(),
+    }
+}
+
 pub(crate) fn home_row_start(
     viewport: Viewport,
     metrics: UiMetrics,

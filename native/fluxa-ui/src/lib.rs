@@ -13,6 +13,7 @@ mod components;
 mod detail;
 mod discover;
 mod emoji;
+mod flow;
 mod folder;
 pub mod fonts;
 mod home;

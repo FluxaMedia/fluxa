@@ -48,8 +48,11 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
             .extend(navigation_focus_rects(viewport, metrics));
     }
     let hero_height = home_hero_height_for(viewport, home);
+    let flow = home_flow(viewport, metrics, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
-        let play_y = hero_height - if compact { 92.0 } else { 194.0 } - home.scroll_offset + home.top_inset;
+        let play_y = flow.hero_top + hero_height
+            - if compact { 92.0 } else { 194.0 }
+            - home.scroll_offset;
         let size = Vec2::new(
             if compact {
                 108.0
@@ -71,7 +74,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         );
         layout.focusable.push((NODE_PLAY, play));
     }
-    let row_start = home_row_start(viewport, metrics, hero_height, show_hero);
+    let row_start = flow.rows_top;
     let mut flat = 0;
     let mut row_y = row_start;
     for (row_index, (title, cards, kind)) in home
@@ -82,7 +85,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     {
         let (_, _, body_height) = home_row_dimensions(metrics, kind);
         let row_height = home_row_heading_height(metrics) + body_height;
-        let visible_y = row_y - home.scroll_offset + home.top_inset;
+        let visible_y = row_y - home.scroll_offset;
         if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
             row_y += row_height + metrics.section_gap + metrics.vertical_spacing;
             flat += cards.len();
@@ -132,10 +135,8 @@ pub fn home_row_of_card(home: &HomeModel, card: usize) -> Option<usize> {
 /// than the hero or the space between shelves.
 pub fn home_row_at_y(viewport: Viewport, home: &HomeModel, y: f32) -> Option<usize> {
     let metrics = home_metrics(viewport);
-    let show_hero = home_shows_hero(home);
-    let hero_height = home_hero_height_for(viewport, home);
-    let mut row_y = home_row_start(viewport, metrics, hero_height, show_hero);
-    let content_y = y + home.scroll_offset - home.top_inset;
+    let mut row_y = home_flow(viewport, metrics, home).rows_top;
+    let content_y = y + home.scroll_offset;
     for (index, (_, cards, kind)) in home.content_rows_with_kind().into_iter().enumerate() {
         let body_height = home_row_body_height(metrics, cards, kind);
         let heading_height = home_row_heading_height(metrics);
@@ -198,7 +199,7 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     let show_hero = home_shows_hero(home);
     let metrics = home_metrics(viewport);
     let hero_height = home_hero_height_for(viewport, home);
-    let mut content_height = home_row_start(viewport, metrics, hero_height, show_hero);
+    let mut content_height = home_flow(viewport, metrics, home).rows_top;
     if home_hero_pinned(viewport, home) {
         let mut last_row_top = 0.0;
         for (_, cards, kind) in home.content_rows_with_kind().take(64) {
@@ -223,9 +224,5 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     } else {
         0.0
     };
-    (content_height - viewport.height
-        + bottom_navigation_reserve
-        + metrics.page_padding
-        + home.top_inset)
-        .max(0.0)
+    (content_height - viewport.height + bottom_navigation_reserve + metrics.page_padding).max(0.0)
 }

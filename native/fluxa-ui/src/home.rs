@@ -149,7 +149,7 @@ pub(crate) fn draw_home_with_options(
     } else {
         home.scroll_offset
     };
-    let scroll_offset = scroll_offset - home.top_inset;
+    let flow = home_flow(viewport, metrics, home);
     let active_hero_index = home_hero_index(context, home);
     let fallback_hero = HomeHero {
         title: home.title.clone(),
@@ -177,7 +177,11 @@ pub(crate) fn draw_home_with_options(
     let show_hero = home.show_hero_section
         && (hero_has_item || !home.cards.is_empty() || !home.rows.is_empty());
     let hero_height = home_hero_height_for(viewport, home);
-    let hero_scroll = if pinned { 0.0 } else { scroll_offset };
+    let hero_scroll = if pinned {
+        0.0
+    } else {
+        scroll_offset - flow.hero_top
+    };
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let rows_screen = if pinned {
         let rows_top = home_row_start(viewport, metrics, hero_height, true);
@@ -734,7 +738,7 @@ pub(crate) fn draw_home_with_options(
         );
     }
 
-    let row_start = home_row_start(viewport, metrics, hero_height, show_hero);
+    let row_start = flow.rows_top;
     let mut layout = HomeLayout::default();
     draw_home_rows(
         context,
@@ -791,7 +795,7 @@ pub(crate) fn draw_home_with_options(
         let play = style.fallback_play(metrics, viewport.width, margin);
         layout.focusable.push((
             NODE_PLAY,
-            play.translate(Vec2::new(0.0, hero_height - scroll_offset)),
+            play.translate(Vec2::new(0.0, flow.hero_top + hero_height - scroll_offset)),
         ));
     }
     components::focus_ring(
