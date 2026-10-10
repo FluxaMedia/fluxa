@@ -306,11 +306,27 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
     groups
 }
 
-fn group_height(group: &Group) -> f32 {
-    APPEARANCE_GROUP_HEADING_HEIGHT + group.lines.len() as f32 * ROW + 12.0 + APPEARANCE_GROUP_GAP
+fn line_height(line: &Line, compact: bool) -> f32 {
+    match line {
+        Line::Action { pills, .. } if compact && pills.len() > 1 => ROW + 40.0,
+        _ => ROW,
+    }
 }
 
-pub(super) fn collections_height(settings: &SettingsModel, language: &str) -> f32 {
+fn lines_height(group: &Group, compact: bool) -> f32 {
+    group
+        .lines
+        .iter()
+        .map(|line| line_height(line, compact))
+        .sum::<f32>()
+        + 12.0
+}
+
+fn group_height(group: &Group, compact: bool) -> f32 {
+    APPEARANCE_GROUP_HEADING_HEIGHT + lines_height(group, compact) + APPEARANCE_GROUP_GAP
+}
+
+pub(super) fn collections_height(settings: &SettingsModel, language: &str, compact: bool) -> f32 {
     let status = if settings.collection_status.is_some() {
         STATUS_HEIGHT
     } else {
@@ -318,7 +334,7 @@ pub(super) fn collections_height(settings: &SettingsModel, language: &str) -> f3
     };
     groups(settings, language)
         .iter()
-        .map(group_height)
+        .map(|group| group_height(group, compact))
         .sum::<f32>()
         + status
 }
@@ -334,6 +350,7 @@ pub(super) fn draw_collections(
 ) {
     let painter = context.layer_painter(egui::LayerId::background());
     let size = metrics.settings_row_label_size_desktop;
+    let compact = metrics.compact;
     let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     if let Some(status) = &settings.collection_status {
         draw_text(
@@ -352,15 +369,18 @@ pub(super) fn draw_collections(
             &painter,
             rect,
             top,
-            group.lines.len() as f32 * ROW + 12.0,
+            lines_height(&group, compact),
             &group.title,
             metrics,
         );
+        let mut offset = 6.0;
         for (index, line) in group.lines.iter().enumerate() {
+            let height = line_height(line, compact);
             let row = Rect::from_min_size(
-                card.left_top() + Vec2::new(metrics.settings_row_inset, 6.0 + index as f32 * ROW),
-                Vec2::new(card.width() - metrics.settings_row_inset * 2.0, ROW),
+                card.left_top() + Vec2::new(metrics.settings_row_inset, offset),
+                Vec2::new(card.width() - metrics.settings_row_inset * 2.0, height),
             );
+            offset += height;
             if index > 0 {
                 account_divider_at(&painter, row.left(), row.right(), row.top());
             }
@@ -406,14 +426,25 @@ fn draw_line(
             settings_panel_input(context, layout, *node, input, value(*node), hint, metrics);
         }
         Line::Action { node, hint, pills } => {
-            let right = pills_right(context, painter, layout, row, pills, size);
+            let stacked = row.height() > ROW;
+            let field = Rect::from_min_size(row.min, Vec2::new(row.width(), ROW));
+            let right = if stacked {
+                let buttons = Rect::from_min_max(
+                    Pos2::new(row.left(), field.bottom() - 4.0),
+                    Pos2::new(row.right() + 4.0, row.bottom() - 4.0),
+                );
+                pills_right(context, painter, layout, buttons, pills, size - 2.0);
+                row.right() + 4.0
+            } else {
+                pills_right(context, painter, layout, row, pills, size - 2.0)
+            };
             settings_panel_input(
                 context,
                 layout,
                 *node,
                 Rect::from_min_max(
-                    Pos2::new(row.left(), row.center().y - 18.0),
-                    Pos2::new(right - 4.0, row.center().y + 18.0),
+                    Pos2::new(row.left(), field.center().y - 18.0),
+                    Pos2::new(right - 4.0, field.center().y + 18.0),
                 ),
                 value(*node),
                 hint,
@@ -421,7 +452,7 @@ fn draw_line(
             );
         }
         Line::Choice { label, pills } => {
-            pills_right(context, painter, layout, row, pills, size);
+            pills_right(context, painter, layout, row, pills, size - 2.0);
             draw_text(
                 painter,
                 Pos2::new(row.left(), row.center().y),
@@ -437,7 +468,7 @@ fn draw_line(
             detail,
             pills,
         } => {
-            let right = pills_right(context, painter, layout, row, pills, size);
+            let right = pills_right(context, painter, layout, row, pills, size - 2.0);
             let font = crate::fonts::regular(size);
             let offset = if detail.is_empty() { 0.0 } else { 9.0 };
             draw_text(

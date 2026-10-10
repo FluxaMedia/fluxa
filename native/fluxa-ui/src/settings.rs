@@ -576,7 +576,7 @@ fn content_height(
         }
         "Collections" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
-                + collections::collections_height(settings, settings.language())
+                + collections::collections_height(settings, settings.language(), metrics.compact)
         }
         "Add-ons" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
