@@ -408,7 +408,7 @@ pub(crate) fn draw_home_with_options(
         }
         activated = draw_navigation_bar_with_profile(
             context,
-            viewport,
+            home_nav_viewport(viewport, home),
             0,
             assets,
             profile_avatar_url.as_deref(),
@@ -420,7 +420,7 @@ pub(crate) fn draw_home_with_options(
             focusable: if loading_screen {
                 Vec::new()
             } else {
-                navigation_focus_rects(viewport, metrics)
+                navigation_focus_rects(home_nav_viewport(viewport, home), metrics)
             },
             activated,
             text_input: None,
@@ -780,7 +780,7 @@ pub(crate) fn draw_home_with_options(
     layout.activated = activated;
     layout
         .focusable
-        .extend(navigation_focus_rects(viewport, metrics));
+        .extend(navigation_focus_rects(home_nav_viewport(viewport, home), metrics));
     if show_hero && hero_has_item && !pinned {
         layout
             .focusable

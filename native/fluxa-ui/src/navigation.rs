@@ -69,7 +69,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
     let font = FontId::proportional(label_size);
     let mut activated = None;
     egui::Area::new(Id::new("fluxa-shared-top-bar"))
-        .fixed_pos(Pos2::new(bar_x, NAV_BAR_TOP))
+        .fixed_pos(Pos2::new(bar_x, NAV_BAR_TOP + viewport.nav_lead))
         .order(egui::Order::Foreground)
         .show(context, |ui| {
             let fill = overlay_panel();
@@ -581,7 +581,7 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
             .collect();
         let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
-        let y = NAV_BAR_TOP + NAV_BAR_PADDING;
+        let y = NAV_BAR_TOP + viewport.nav_lead + NAV_BAR_PADDING;
         let mut left = x;
         let mut rects = Vec::with_capacity(5);
         for (position, (original, _)) in entries.iter().enumerate() {

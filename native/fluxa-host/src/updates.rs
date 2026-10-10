@@ -66,6 +66,7 @@ pub(crate) fn poll(state: &mut RendererState) {
         _ => {}
     }
     state.settings.update.prompt = !state.updates.dismissed
+        && !state.home.loading_screen()
         && match state.settings.update.state {
             UpdateState::Available(_) | UpdateState::Ready(_) => true,
             UpdateState::Downloading(_) | UpdateState::Failed(_) => {
@@ -83,8 +84,12 @@ fn reveal(state: &mut RendererState) {
     };
     let view = &mut state.settings.update;
     view.reveal = fluxa_ui::update_reveal(&context, view.prompt);
-    view.top = state.safe_top;
-    state.home.top_inset = view.reveal * fluxa_ui::update_banner_space(state.safe_top);
+    view.top = if state.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
+        state.safe_top.max(27.0)
+    } else {
+        state.safe_top
+    };
+    state.home.top_inset = view.reveal * fluxa_ui::update_banner_space(view.top);
 }
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]

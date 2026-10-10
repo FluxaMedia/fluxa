@@ -1,6 +1,10 @@
 use super::*;
 
 impl HomeModel {
+    pub fn loading_screen(&self) -> bool {
+        self.is_loading && self.item_id.is_none() && self.cards.is_empty() && self.rows.is_empty()
+    }
+
     pub fn content_rows(&self) -> Vec<(&str, &[HomeCard])> {
         self.content_rows_with_kind()
             .into_iter()

@@ -279,6 +279,18 @@ pub(crate) fn home_flow(viewport: Viewport, metrics: UiMetrics, home: &HomeModel
     }
 }
 
+pub(crate) fn home_nav_viewport(viewport: Viewport, home: &HomeModel) -> Viewport {
+    if viewport.is_compact() {
+        return viewport;
+    }
+    let scrolled = if home_hero_pinned(viewport, home) {
+        0.0
+    } else {
+        home.scroll_offset
+    };
+    viewport.with_nav_lead(home.top_inset - scrolled)
+}
+
 pub(crate) struct Shelf<'a> {
     pub index: usize,
     pub top: f32,

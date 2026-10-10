@@ -45,7 +45,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     if !compact {
         layout
             .focusable
-            .extend(navigation_focus_rects(viewport, metrics));
+            .extend(navigation_focus_rects(home_nav_viewport(viewport, home), metrics));
     }
     let hero_height = home_hero_height_for(viewport, home);
     let flow = home_flow(viewport, metrics, home);
@@ -105,7 +105,7 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     if compact {
         layout
             .focusable
-            .extend(navigation_focus_rects(viewport, metrics));
+            .extend(navigation_focus_rects(home_nav_viewport(viewport, home), metrics));
     }
     layout
 }

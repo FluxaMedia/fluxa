@@ -145,7 +145,7 @@ pub fn draw_update_prompt(
     };
     let metrics = UiMetrics::for_viewport(viewport);
     let rect = if viewport.is_tv() {
-        let top = update.top.max(27.0) - (1.0 - update.reveal) * (UPDATE_BANNER_HEIGHT + 27.0);
+        let top = update.top - (1.0 - update.reveal) * (UPDATE_BANNER_HEIGHT + update.top);
         egui::Rect::from_min_size(
             egui::Pos2::new(48.0, top),
             egui::vec2(viewport.width - 96.0, UPDATE_BANNER_HEIGHT),

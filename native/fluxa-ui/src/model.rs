@@ -82,6 +82,7 @@ pub struct Viewport {
     /// Vertical content offset supplied by the platform input adapter.
     /// Headers and navigation remain fixed while the screen body scrolls.
     pub scroll_y: f32,
+    pub nav_lead: f32,
 }
 
 impl Viewport {
@@ -93,7 +94,13 @@ impl Viewport {
             platform: UiPlatform::default(),
             safe_bottom: Self::min_safe_bottom(form_factor),
             scroll_y: 0.0,
+            nav_lead: 0.0,
         }
+    }
+
+    pub fn with_nav_lead(mut self, lead: f32) -> Self {
+        self.nav_lead = lead.max(0.0);
+        self
     }
 
     fn min_safe_bottom(form_factor: UiFormFactor) -> f32 {
