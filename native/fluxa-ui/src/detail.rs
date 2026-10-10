@@ -189,8 +189,12 @@ pub fn draw_detail(
         .as_deref()
         .or(detail.poster_url.as_deref());
     let target = backdrop_target_size(viewport.width, ppp);
-    let fade =
-        context.animate_bool_with_time(Id::new(("fluxa-detail-backdrop", &detail.id)), true, 0.25);
+    let fade = crate::motion::appear(
+        context,
+        Id::new(("fluxa-detail-backdrop", &detail.id)),
+        0.25,
+        crate::motion::Ease::Linear,
+    );
     let image = if compact {
         Rect::from_min_size(
             hero.min,
@@ -301,8 +305,12 @@ pub fn draw_detail(
         (viewport.width * 0.42).clamp(420.0, 560.0)
     };
     let mut action_rects = Vec::new();
-    let reveal =
-        context.animate_bool_with_time(Id::new(("fluxa-detail-reveal", &detail.id)), true, 0.45);
+    let reveal = crate::motion::appear(
+        context,
+        Id::new(("fluxa-detail-reveal", &detail.id)),
+        0.45,
+        crate::motion::Ease::Out,
+    );
     egui::Area::new(Id::new("fluxa-detail-hero-content"))
         .constrain(false)
         .pivot(Align2::LEFT_BOTTOM)

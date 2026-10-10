@@ -2609,7 +2609,8 @@ fn draw_settings_page(
                                 Color32::from_hex(option).unwrap_or(text_primary())
                             };
                             let active = option.eq_ignore_ascii_case(&current);
-                            let grow = ui.ctx().animate_bool_with_time(
+                            let grow = crate::motion::toggle(
+                                ui.ctx(),
                                 Id::new(("fluxa-swatch", *option)),
                                 active || response.hovered(),
                                 0.12,

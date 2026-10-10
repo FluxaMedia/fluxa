@@ -27,9 +27,12 @@ pub(super) fn draw_mini_player(
         }
     }
     let hovered = ui.rect_contains_pointer(mini);
-    let shown =
-        ui.ctx()
-            .animate_bool_with_time(Id::new("fluxa-player-mini-controls"), hovered, 0.2);
+    let shown = crate::motion::toggle(
+        ui.ctx(),
+        Id::new("fluxa-player-mini-controls"),
+        hovered,
+        0.2,
+    );
     if shown <= 0.0 {
         let hit = ui.interact(mini, Id::new("fluxa-player-mini"), Sense::click());
         if hit.clicked() {

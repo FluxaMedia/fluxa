@@ -18,10 +18,11 @@ pub(super) fn draw_recommendations(
     let painter = context.layer_painter(egui::LayerId::background());
     painter.rect_filled(rect, 0.0, Color32::BLACK);
 
-    let reveal = context.animate_value_with_time(
+    let reveal = crate::motion::appear(
+        context,
         Id::new(("fluxa-player-recommendation-slide", index)),
-        1.0,
         0.35,
+        crate::motion::Ease::Out,
     );
     let url = hero.background_url.as_deref();
     let target = backdrop_target_size(rect.width(), context.pixels_per_point());

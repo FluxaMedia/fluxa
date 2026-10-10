@@ -149,15 +149,19 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                 .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::FAINT));
                         }
                         let target = slots[nav_slot(active_route)];
-                        let x = ui.ctx().animate_value_with_time(
+                        let x = crate::motion::ease(
+                            ui.ctx(),
                             Id::new("fluxa-top-bar-indicator-x"),
                             target.center().x,
                             0.22,
+                            crate::motion::Ease::Linear,
                         );
-                        let width = ui.ctx().animate_value_with_time(
+                        let width = crate::motion::ease(
+                            ui.ctx(),
                             Id::new("fluxa-top-bar-indicator-w"),
                             target.width(),
                             0.22,
+                            crate::motion::Ease::Linear,
                         );
                         let stretch = (target.center().x - x).abs().min(target.width() * 0.5);
                         ui.painter().set(
@@ -390,8 +394,13 @@ pub(crate) fn draw_mobile_navigation_bar(
         })
         .or_else(|| mobile_nav_pending(active_x))
         .unwrap_or(active_x);
-    let indicator_x =
-        context.animate_value_with_time(Id::new("fluxa-bottom-bar-indicator"), target, 0.22);
+    let indicator_x = crate::motion::ease(
+        context,
+        Id::new("fluxa-bottom-bar-indicator"),
+        target,
+        0.22,
+        crate::motion::Ease::Linear,
+    );
     let stretch = (target - indicator_x).abs().min(slot_width * 0.6);
     let highlighted = drag
         .map(|x| {

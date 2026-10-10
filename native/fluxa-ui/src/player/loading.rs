@@ -113,10 +113,12 @@ pub(super) fn draw_loading(
                 let logo_rect = Rect::from_center_size(center, fitted);
                 match player.load_progress {
                     Some(progress) => {
-                        let shown = context.animate_value_with_time(
+                        let shown = crate::motion::ease(
+                            context,
                             Id::new("fluxa-player-load-progress"),
                             progress,
                             0.42,
+                            crate::motion::Ease::Linear,
                         );
                         painter.image(
                             texture,

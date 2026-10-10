@@ -122,8 +122,13 @@ pub fn draw_shorts(
     let stack_inset = viewport.height - button_top + 16.0 * scale;
     let index = shorts.index.min(shorts.items.len() - 1);
     layout.short_step = step_from_input(context, column);
-    let position =
-        context.animate_value_with_time(Id::new("fluxa-shorts-position"), index as f32, 0.3);
+    let position = crate::motion::ease(
+        context,
+        Id::new("fluxa-shorts-position"),
+        index as f32,
+        0.3,
+        crate::motion::Ease::Linear,
+    );
     let first = position.floor().max(0.0) as usize;
     let last = (position.ceil().max(0.0) as usize).min(shorts.items.len() - 1);
     for page in first..=last {
