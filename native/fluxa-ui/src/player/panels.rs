@@ -17,10 +17,7 @@ pub(super) fn draw_mini_player(
     painter.rect_filled(mini.expand(1.0), radius::control(), ink(tone::RAISED));
     match player.video {
         Some(texture) => {
-            painter.add(
-                egui::epaint::RectShape::filled(mini, 7.0, Color32::WHITE)
-                    .with_texture(texture, full_uv()),
-            );
+            components::rounded_image(&painter, texture, mini, 7.0, full_uv(), Color32::WHITE);
         }
         None => {
             painter.rect_filled(mini, radius::control(), Color32::BLACK);

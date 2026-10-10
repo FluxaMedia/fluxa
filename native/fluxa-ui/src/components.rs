@@ -159,7 +159,7 @@ pub(super) fn rounded_artwork(
         .map(|size| cover_uv(size, rect))
         .unwrap_or_else(full_uv);
     if radius > 0.0 {
-        painter.add(egui::epaint::RectShape::filled(rect, radius, tint).with_texture(texture, uv));
+        rounded_image(painter, texture, rect, radius, uv, tint);
     } else {
         texture_image(painter, texture, rect, uv, tint);
     }
@@ -561,17 +561,11 @@ pub(super) fn banner(
                 crate::motion::slow(),
                 crate::motion::Ease::Linear,
             );
-            if content.progress.is_some() && progress > 0.0 {
-                let filled = Rect::from_min_max(
-                    rect.min,
-                    Pos2::new(
-                        rect.left() + rect.width() * progress.min(1.0),
-                        rect.bottom(),
-                    ),
-                );
-                let painter = painter.with_clip_rect(filled.intersect(painter.clip_rect()));
-                painter.rect_filled(rect, 0.0, metrics.text_primary);
-                row(&painter, metrics.background);
+            if content.progress.is_some()
+                && let Some(filled) =
+                    crate::paint::fill_to(&painter, rect, 0.0, progress, metrics.text_primary)
+            {
+                row(&filled, metrics.background);
             }
         });
     outcome
@@ -796,6 +790,17 @@ pub(super) fn texture_image(
     tint: Color32,
 ) {
     painter.image(texture, rect, uv, tint);
+}
+
+pub(super) fn rounded_image(
+    painter: &Painter,
+    texture: egui::TextureId,
+    rect: Rect,
+    radius: impl Into<egui::CornerRadius>,
+    uv: Rect,
+    tint: Color32,
+) {
+    painter.add(egui::epaint::RectShape::filled(rect, radius, tint).with_texture(texture, uv));
 }
 
 pub(super) fn empty_state(
@@ -1450,13 +1455,13 @@ pub(super) fn expanded_poster_card(
                 crate::motion::slow() * 2.0,
                 crate::motion::Ease::Linear,
             );
-            painter.add(
-                egui::epaint::RectShape::filled(
-                    image,
-                    radius,
-                    Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
-                )
-                .with_texture(texture, cover_uv([1920, 1080], image)),
+            rounded_image(
+                painter,
+                texture,
+                image,
+                radius,
+                cover_uv([1920, 1080], image),
+                Color32::from_white_alpha((f32::from(alpha) * fade) as u8),
             );
         }
         let scrim = Rect::from_min_max(

@@ -404,9 +404,13 @@ pub(super) fn draw_account(
         .filter(|url| !url.starts_with("data:"));
     match assets.cached_texture(avatar_url) {
         Some(texture) => {
-            painter.add(
-                egui::epaint::RectShape::filled(avatar, 26.0, Color32::WHITE)
-                    .with_texture(texture, Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0))),
+            components::rounded_image(
+                &painter,
+                texture,
+                avatar,
+                26.0,
+                Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                Color32::WHITE,
             );
         }
         None => {

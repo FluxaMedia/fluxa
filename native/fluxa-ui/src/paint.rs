@@ -226,6 +226,28 @@ pub(crate) fn paint_hero_scrim(
     );
 }
 
+pub(crate) fn fill_to(
+    painter: &egui::Painter,
+    rect: Rect,
+    radius: f32,
+    fraction: f32,
+    fill: Color32,
+) -> Option<egui::Painter> {
+    if fraction <= 0.0 {
+        return None;
+    }
+    let part = Rect::from_min_max(
+        rect.min,
+        Pos2::new(
+            rect.left() + rect.width() * fraction.min(1.0),
+            rect.bottom(),
+        ),
+    );
+    let painter = painter.with_clip_rect(part.intersect(painter.clip_rect()));
+    painter.rect_filled(rect, radius, fill);
+    Some(painter)
+}
+
 pub(crate) fn paint_vertical_gradient(
     painter: &egui::Painter,
     rect: Rect,
