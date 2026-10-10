@@ -1052,13 +1052,6 @@
       "category": "library"
     },
     {
-      "key": "simklTrackRewatches",
-      "type": "boolean",
-      "default": false,
-      "scope": "profile",
-      "category": "general"
-    },
-    {
       "key": "skipDbApiKey",
       "type": "string",
       "default": "",

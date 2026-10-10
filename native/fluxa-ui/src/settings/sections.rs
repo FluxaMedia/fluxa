@@ -236,7 +236,7 @@ pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
     (7, "settings.group.home"),
     (8, "settings.group.continue_watching"),
 ];
-pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
+pub(super) const DETAILS_SETTINGS: [SettingsRow; 14] = [
     SettingsRow {
         label: "Detail hero collapses",
         key: "detailCollapsingHero",
@@ -283,6 +283,11 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
         options: &[],
     },
     SettingsRow {
+        label: "Trakt comments",
+        key: "traktCommentsEnabled",
+        options: &[],
+    },
+    SettingsRow {
         label: "Season selector style",
         key: "detailSeasonSelectorMode",
         options: &["posters", "chips", "dropdown"],
@@ -304,7 +309,7 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 13] = [
     },
 ];
 pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
-    (9, "settings.group.detail_page"),
+    (10, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
@@ -911,19 +916,6 @@ pub(super) const TMDB_GROUPS: [(usize, &str); 3] = [
     (9, "settings.tmdb_group_media_info"),
     (3, "settings.tmdb_group_discovery"),
 ];
-pub(super) const CONTENT_SETTINGS: [SettingsRow; 2] = [
-    SettingsRow {
-        label: "Trakt comments",
-        key: "traktCommentsEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Track rewatches on Simkl",
-        key: "simklTrackRewatches",
-        options: &[],
-    },
-];
-pub(super) const CONTENT_GROUPS: [(usize, &str); 1] = [(2, "settings.group.account_services")];
 pub(super) const DOWNLOADS_SETTINGS: [SettingsRow; 5] = [
     SettingsRow {
         label: "Torrent speed",
@@ -1154,9 +1146,9 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
     SettingsSection {
         title: "Content",
         category: "Content",
-        description: "Catalog and metadata preferences",
-        rows: &CONTENT_SETTINGS,
-        groups: &CONTENT_GROUPS,
+        description: "Collections, add-ons and plugins",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
     },
     SettingsSection {
         title: "Collections",

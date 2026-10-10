@@ -100,12 +100,7 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
         .settings
         .value("integrationLibrarySource")
         .and_then(Value::as_str)
-        == Some("simkl")
-        && state
-            .settings
-            .value("simklTrackRewatches")
-            .and_then(Value::as_bool)
-            == Some(true);
+        == Some("simkl");
     if simkl_rewatch && personal.is_some_and(|personal| personal.watched) {
         entries.push(Entry::Rewatch);
     }

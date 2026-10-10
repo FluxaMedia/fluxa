@@ -871,28 +871,11 @@ impl EffectExecutor {
         }
     }
 
-    fn profile_flag(&self, profile: &Value, key: &str) -> bool {
-        [
-            Some(profile.clone()),
-            self.storage
-                .read_json(&Storage::prefs_key(str_field(profile, "id")))
-                .ok()
-                .flatten(),
-        ]
-        .into_iter()
-        .flatten()
-        .find_map(|source| source.get(key).and_then(Value::as_bool))
-        .unwrap_or(false)
-    }
-
     async fn ensure_simkl_rewatch(
         &self,
         profile: &Value,
         credentials: &Value,
     ) -> Result<(), String> {
-        if !self.profile_flag(profile, "simklTrackRewatches") {
-            return Err("Simkl rewatch tracking is turned off".to_owned());
-        }
         let key = format!("simkl_account_{}", sanitize_key(str_field(profile, "id")));
         let now = chrono_unix_seconds();
         let cached = self
