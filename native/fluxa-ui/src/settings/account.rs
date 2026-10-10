@@ -377,12 +377,7 @@ pub(super) fn draw_account(
     };
     let connected = |key: &str| account_connected(settings, key);
 
-    let mut top = rect.top()
-        + if compact {
-            8.0
-        } else {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-        };
+    let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
     let card = account_group(
         &painter,
         rect,

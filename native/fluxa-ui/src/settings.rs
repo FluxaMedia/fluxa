@@ -310,11 +310,14 @@ fn field_group_height(fields: usize) -> f32 {
     APPEARANCE_GROUP_HEADING_HEIGHT + fields as f32 * FIELD_HEIGHT + APPEARANCE_GROUP_GAP
 }
 
-fn groups_lead(section: &SettingsSection, settings: &SettingsModel) -> f32 {
-    if section.title == "TMDB" && settings.search.trim().is_empty() {
-        field_group_height(1)
-    } else {
-        0.0
+fn groups_lead(section: &SettingsSection, settings: &SettingsModel, metrics: UiMetrics) -> f32 {
+    if !settings.search.trim().is_empty() {
+        return 0.0;
+    }
+    match section.title {
+        "TMDB" => field_group_height(1),
+        "Account" => account_height(metrics) - APPEARANCE_PAGE_HEADER_HEIGHT,
+        _ => 0.0,
     }
 }
 
@@ -505,9 +508,9 @@ fn content_height(
     let width = content_width(viewport, metrics);
     let language = settings.language();
     match section.title {
-        "Account" => account_height(metrics),
-        "TMDB" => {
-            groups_height(&groups, width, language, rows_metrics) + groups_lead(section, settings)
+        "Account" | "TMDB" => {
+            groups_height(&groups, width, language, rows_metrics)
+                + groups_lead(section, settings, metrics)
         }
         "MDBList" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -521,7 +524,7 @@ fn content_height(
             APPEARANCE_PAGE_HEADER_HEIGHT + summary_height(&settings.playback_summary, metrics)
         }
         "About" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
+            groups_height(&groups, width, language, rows_metrics)
                 + APPEARANCE_GROUP_HEADING_HEIGHT
                 + settings_group_card_height(2, metrics)
                 + APPEARANCE_GROUP_GAP
@@ -1215,17 +1218,20 @@ fn draw_about(
     settings: &SettingsModel,
     language: &str,
     rect: Rect,
+    top: Option<f32>,
     compact: bool,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
     let update = &settings.update;
-    let top = rect.top()
-        + if compact {
-            8.0
-        } else {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-        };
+    let top = top.unwrap_or(
+        rect.top()
+            + if compact {
+                8.0
+            } else {
+                APPEARANCE_PAGE_HEADER_HEIGHT
+            },
+    );
     let card = account_group(
         painter,
         rect,
@@ -1526,6 +1532,14 @@ fn draw_settings_extended_section(
             settings,
             language,
             rect,
+            group_cards(
+                rect,
+                &visible_groups(settings, viewport),
+                language,
+                described(metrics),
+            )
+            .last()
+            .map(|card| card.bottom() + APPEARANCE_GROUP_GAP),
             viewport.is_compact(),
             metrics,
             layout,
@@ -2236,7 +2250,7 @@ fn draw_settings_page(
     };
     let header = rect;
     let cards = group_cards(
-        rect.translate(Vec2::new(0.0, groups_lead(section, settings))),
+        rect.translate(Vec2::new(0.0, groups_lead(section, settings, metrics))),
         &groups,
         language,
         described(metrics),

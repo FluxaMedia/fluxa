@@ -14,16 +14,11 @@ pub struct SettingsSection {
     pub groups: &'static [(usize, &'static str)],
 }
 
-pub(super) const GENERAL_SETTINGS: [SettingsRow; 9] = [
+pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 3] = [
     SettingsRow {
         label: "Language",
         key: "language",
         options: &["en", "tr", "ar", "he"],
-    },
-    SettingsRow {
-        label: "Start page",
-        key: "startPage",
-        options: &["home", "library", "discover", "calendar"],
     },
     SettingsRow {
         label: "Notifications",
@@ -31,41 +26,18 @@ pub(super) const GENERAL_SETTINGS: [SettingsRow; 9] = [
         options: &[],
     },
     SettingsRow {
-        label: "Background playback",
-        key: "backgroundPlayback",
-        options: &[],
-    },
-    SettingsRow {
         label: "Discord Rich Presence",
         key: "discordRichPresenceEnabled",
         options: &[],
     },
-    SettingsRow {
-        label: "Automatic updates",
-        key: "automaticUpdates",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Search opens details",
-        key: "searchSuggestionsOpenDetail",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Upcoming episodes row",
-        key: "upcomingRowEnabled",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Timezone conversion",
-        key: "timezoneConversionEnabled",
-        options: &[],
-    },
 ];
-pub(super) const GENERAL_GROUPS: [(usize, &str); 3] = [
-    (2, "settings.group.general_startup"),
-    (5, "settings.group.general_behavior"),
-    (2, "settings.group.general_calendar"),
-];
+pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(3, "settings.group.preferences")];
+pub(super) const ABOUT_SETTINGS: [SettingsRow; 1] = [SettingsRow {
+    label: "Automatic updates",
+    key: "automaticUpdates",
+    options: &[],
+}];
+pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(1, "settings.group.updates")];
 pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Accent color",
@@ -564,7 +536,7 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
     },
 ];
 pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(3, "settings.group.seek_previews")];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 32] = [
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 33] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -593,6 +565,11 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 32] = [
     SettingsRow {
         label: "Retry next source",
         key: "autoRetryNextSource",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Background playback",
+        key: "backgroundPlayback",
         options: &[],
     },
     SettingsRow {
@@ -729,7 +706,7 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 32] = [
     },
 ];
 pub(super) const PLAYBACK_GROUPS: [(usize, &str); 6] = [
-    (7, "settings.group.playback"),
+    (8, "settings.group.playback"),
     (4, "settings.group.stream_reuse"),
     (4, "settings.group.sources_video"),
     (9, "settings.group.skip_controls"),
@@ -1042,13 +1019,13 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 23] = [
     SettingsSection {
         title: "Account",
         category: "Account",
-        description: "Profile and connected services",
-        rows: &EMPTY_SETTINGS,
-        groups: &[],
+        description: "Profile, language and services",
+        rows: &ACCOUNT_SETTINGS,
+        groups: &ACCOUNT_GROUPS,
     },
     SettingsSection {
         title: "TMDB",
@@ -1070,13 +1047,6 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
         description: "IntroDB, TheIntroDB and SkipDB keys",
         rows: &EMPTY_SETTINGS,
         groups: &[],
-    },
-    SettingsSection {
-        title: "General",
-        category: "General",
-        description: "How Fluxa starts and behaves",
-        rows: &GENERAL_SETTINGS,
-        groups: &GENERAL_GROUPS,
     },
     SettingsSection {
         title: "Theme",
@@ -1151,7 +1121,7 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
     SettingsSection {
         title: "Content",
         category: "Content",
-        description: "Collections, add-ons and plugins",
+        description: "Add-ons, plugins and servers",
         rows: &EMPTY_SETTINGS,
         groups: &[],
     },
@@ -1178,7 +1148,7 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
     },
     SettingsSection {
         title: "Servers",
-        category: "Servers",
+        category: "Content",
         description: "Jellyfin, Emby and Plex libraries",
         rows: &EMPTY_SETTINGS,
         groups: &[],
@@ -1201,8 +1171,8 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
         title: "About",
         category: "About",
         description: "Version and updates",
-        rows: &EMPTY_SETTINGS,
-        groups: &[],
+        rows: &ABOUT_SETTINGS,
+        groups: &ABOUT_GROUPS,
     },
     SettingsSection {
         title: "Licenses",

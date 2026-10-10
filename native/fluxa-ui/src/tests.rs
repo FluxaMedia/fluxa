@@ -660,7 +660,7 @@ fn secondary_screen_controls_stay_inside_mobile_and_tv_widths() {
         let mut settings = SettingsModel::default();
         settings.active_section = SETTINGS_SECTIONS
             .iter()
-            .position(|section| section.title == "General")
+            .position(|section| section.title == "Details")
             .unwrap();
         settings.section_open = true;
         let settings_layout = draw_test_frame(viewport, |context, assets| {
