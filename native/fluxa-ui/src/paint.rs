@@ -226,6 +226,16 @@ pub(crate) fn paint_hero_scrim(
     );
 }
 
+pub(crate) fn text_width(painter: &egui::Painter, text: &str, font: FontId) -> f32 {
+    if text.is_empty() {
+        return 0.0;
+    }
+    painter
+        .layout_no_wrap(text.to_owned(), font, Color32::WHITE)
+        .size()
+        .x
+}
+
 pub(crate) fn fill_to(
     painter: &egui::Painter,
     rect: Rect,

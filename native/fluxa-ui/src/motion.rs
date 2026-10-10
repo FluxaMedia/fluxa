@@ -82,6 +82,17 @@ pub(crate) fn reset(context: &egui::Context, id: Id) {
     context.data_mut(|data| data.remove::<Tween>(id));
 }
 
+pub(crate) fn hover(context: &egui::Context, response: &egui::Response) -> f32 {
+    let target = if response.is_pointer_button_down_on() {
+        1.0
+    } else if response.hovered() {
+        0.6
+    } else {
+        0.0
+    };
+    ease(context, response.id.with("hover"), target, fast(), Ease::Out)
+}
+
 pub(crate) fn toggle(context: &egui::Context, id: Id, on: bool, seconds: f32) -> f32 {
     ease(
         context,

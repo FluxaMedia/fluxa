@@ -490,67 +490,66 @@ pub(super) fn banner(
             painter.rect_filled(rect, 0.0, metrics.ink(tone::SOFT));
             let control = rect.height() - 14.0;
             let size = metrics.nav_label_size + 2.0;
-            let mut right = rect.right() - 16.0;
+            let label = crate::fonts::medium(size);
+            let inner = Rect::from_min_max(
+                Pos2::new(rect.left() + 16.0, rect.top()),
+                Pos2::new(rect.right() - 8.0, rect.bottom()),
+            );
+            let [title, trailing, action, close] = crate::flow::row(
+                inner,
+                10.0,
+                [
+                    crate::flow::Size::Fill,
+                    crate::flow::Size::Fixed(crate::paint::text_width(&painter, content.trailing, label.clone())),
+                    crate::flow::Size::Fixed(content.action.map_or(0.0, |text| {
+                        crate::paint::text_width(&painter, text, FontId::proportional(size)) + 36.0
+                    })),
+                    crate::flow::Size::Fixed(if content.close.is_some() { control } else { 0.0 }),
+                ],
+            );
             if content.close.is_some() {
-                outcome.close = Rect::from_center_size(
-                    Pos2::new(rect.right() - 8.0 - control * 0.5, rect.center().y),
-                    Vec2::splat(control),
-                );
-                outcome.close_clicked = ui
-                    .interact(outcome.close, id.with("close"), Sense::click())
-                    .clicked();
-                right = outcome.close.left() - 6.0;
+                outcome.close = Rect::from_center_size(close.center(), Vec2::splat(control));
+                let response = ui.interact(outcome.close, id.with("close"), Sense::click());
+                state_layer(ui, outcome.close, control * 0.5, &response);
+                outcome.close_clicked = response.clicked();
             }
-            if let Some(label) = content.action {
-                let width = painter
-                    .layout_no_wrap(label.to_owned(), FontId::proportional(size), Color32::WHITE)
-                    .size()
-                    .x
-                    + 36.0;
-                let button = Rect::from_min_size(
-                    Pos2::new(right - width, rect.center().y - control * 0.5),
-                    Vec2::new(width, control),
-                );
+            if let Some(text) = content.action {
+                let button =
+                    Rect::from_center_size(action.center(), Vec2::new(action.width(), control));
                 outcome.action_clicked = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
-                        pill_button(ui, None, label, Some(width), control, size, true, None)
+                        pill_button(ui, None, text, Some(button.width()), control, size, true, None)
                     })
                     .inner
                     .clicked();
                 outcome.action = Some(button);
-                right = button.left() - 12.0;
             }
             let row = |painter: &egui::Painter, ink: Color32| {
-                let mut right = right;
                 if let Some(icon) = content.close {
                     painter.image(
                         icon,
                         Rect::from_center_size(outcome.close.center(), Vec2::splat(18.0)),
-                        Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+                        full_uv(),
                         ink.gamma_multiply(0.7),
                     );
                 }
-                if !content.trailing.is_empty() {
-                    let drawn = draw_text(
-                        painter,
-                        Pos2::new(right - 4.0, rect.center().y),
-                        Align2::RIGHT_CENTER,
-                        content.trailing,
-                        crate::fonts::medium(size),
-                        ink.gamma_multiply(0.8),
-                        None,
-                    );
-                    right = drawn.left() - 12.0;
-                }
-                let left = rect.left() + 16.0;
                 draw_text(
                     painter,
-                    Pos2::new(left, rect.center().y),
+                    trailing.right_center(),
+                    Align2::RIGHT_CENTER,
+                    content.trailing,
+                    label.clone(),
+                    ink.gamma_multiply(0.8),
+                    None,
+                );
+                draw_text(
+                    painter,
+                    title.left_center(),
                     Align2::LEFT_CENTER,
                     content.title,
                     crate::fonts::medium(size + 1.0),
                     ink,
-                    Some((right - left).max(1.0)),
+                    Some(title.width().max(1.0)),
                 );
             };
             row(&painter, metrics.text_primary);
@@ -571,6 +570,14 @@ pub(super) fn banner(
     outcome
 }
 
+pub(super) fn state_layer(ui: &Ui, rect: Rect, radius: f32, response: &Response) {
+    let strength = crate::motion::hover(ui.ctx(), response);
+    if strength > 0.0 {
+        ui.painter()
+            .rect_filled(rect, radius, ink(tone::RAISED).gamma_multiply(strength));
+    }
+}
+
 pub(super) fn back_button(
     ui: &mut Ui,
     icon: Option<egui::TextureId>,
@@ -580,9 +587,7 @@ pub(super) fn back_button(
     let (rect, response) = ui.allocate_exact_size(Vec2::splat(size), Sense::click());
     let painter = ui.painter();
     painter.circle_filled(rect.center(), size * 0.5, metrics.surface);
-    if response.hovered() {
-        painter.circle_filled(rect.center(), size * 0.5, ink(tone::SOFT));
-    }
+    state_layer(ui, rect, size * 0.5, &response);
     painter.circle_stroke(
         rect.center(),
         size * 0.5 - 0.5,
