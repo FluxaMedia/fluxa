@@ -433,6 +433,13 @@ pub(super) fn rebuild_ui_from_layout(
                 node.order = 10_000;
             }
         }
+        if matches!(
+            node_id,
+            fluxa_ui::NODE_UPDATE_INSTALL | fluxa_ui::NODE_UPDATE_LATER
+        ) && let Some(node) = ui.node_mut(node_id)
+        {
+            node.order = 10_001;
+        }
     }
     let fallback = match state.route {
         Route::Library => state

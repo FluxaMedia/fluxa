@@ -1,5 +1,5 @@
 use super::*;
-use fluxa_ui::{NODE_SETTINGS_UPDATE_ACTION, UpdateState};
+use fluxa_ui::{NODE_SETTINGS_UPDATE_ACTION, NODE_UPDATE_INSTALL, NODE_UPDATE_LATER, UpdateState};
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
 const RECHECK: Duration = Duration::from_secs(6 * 60 * 60);
@@ -10,6 +10,8 @@ pub(crate) struct State {
     updater: Option<fluxa_updater::Updater>,
     #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
     last_check: Option<Instant>,
+    install_when_ready: bool,
+    dismissed: bool,
     pub(crate) exit_requested: bool,
     pub(crate) install_apk: Option<String>,
 }
@@ -49,10 +51,39 @@ pub(crate) fn poll(state: &mut RendererState) {
         Status::Idle => UpdateState::Idle,
         Status::Checking => UpdateState::Checking,
         Status::UpToDate => UpdateState::UpToDate,
+        Status::Available { version } => UpdateState::Available(version),
         Status::Downloading { percent, .. } => UpdateState::Downloading(percent),
         Status::Ready { version } => UpdateState::Ready(version),
         Status::Failed(reason) => UpdateState::Failed(reason),
     };
+    match state.settings.update.state {
+        UpdateState::Ready(_) if state.updates.install_when_ready => {
+            state.updates.install_when_ready = false;
+            state.updates.dismissed = true;
+            install(state, &updater);
+        }
+        UpdateState::Failed(_) => state.updates.install_when_ready = false,
+        _ => {}
+    }
+    state.settings.update.prompt = match state.settings.update.state {
+        UpdateState::Available(_) | UpdateState::Ready(_) => !state.updates.dismissed,
+        UpdateState::Downloading(_) => state.updates.install_when_ready && !state.updates.dismissed,
+        _ => false,
+    };
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+fn install(state: &mut RendererState, updater: &fluxa_updater::Updater) {
+    match updater.apply() {
+        Ok(fluxa_updater::Applied::Restart) => state.updates.exit_requested = true,
+        Ok(fluxa_updater::Applied::InstallApk(path)) => {
+            state.updates.install_apk = Some(path.to_string_lossy().into_owned());
+        }
+        Err(error) => {
+            host_log(format!("update could not be applied: {error}"));
+            state.settings.update.state = UpdateState::Failed(error);
+        }
+    }
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android")))]
@@ -67,26 +98,29 @@ pub(crate) fn busy(state: &RendererState) -> bool {
 
 #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
-    if node != NODE_SETTINGS_UPDATE_ACTION {
+    if node == NODE_UPDATE_LATER {
+        state.updates.dismissed = true;
+        return true;
+    }
+    if node != NODE_SETTINGS_UPDATE_ACTION && node != NODE_UPDATE_INSTALL {
         return false;
     }
     let Some(updater) = state.updates.updater.clone() else {
         return true;
     };
-    if matches!(state.settings.update.state, UpdateState::Ready(_)) {
-        match updater.apply() {
-            Ok(fluxa_updater::Applied::Restart) => state.updates.exit_requested = true,
-            Ok(fluxa_updater::Applied::InstallApk(path)) => {
-                state.updates.install_apk = Some(path.to_string_lossy().into_owned());
-            }
-            Err(error) => {
-                host_log(format!("update could not be applied: {error}"));
-                state.settings.update.state = UpdateState::Failed(error);
-            }
+    match state.settings.update.state {
+        UpdateState::Ready(_) => install(state, &updater),
+        UpdateState::Available(_) => {
+            state.updates.install_when_ready = true;
+            state.updates.dismissed = false;
+            updater.download();
         }
-    } else {
-        state.updates.last_check = Some(Instant::now());
-        updater.check(variant(state));
+        _ if node == NODE_SETTINGS_UPDATE_ACTION => {
+            state.updates.last_check = Some(Instant::now());
+            state.updates.dismissed = false;
+            updater.check(variant(state));
+        }
+        _ => {}
     }
     true
 }
@@ -104,5 +138,8 @@ fn variant(state: &RendererState) -> &'static str {
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android")))]
 pub(crate) fn activate_node(_state: &mut RendererState, node: u64) -> bool {
-    node == NODE_SETTINGS_UPDATE_ACTION
+    matches!(
+        node,
+        NODE_SETTINGS_UPDATE_ACTION | NODE_UPDATE_INSTALL | NODE_UPDATE_LATER
+    )
 }

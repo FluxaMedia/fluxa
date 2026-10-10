@@ -1311,6 +1311,13 @@ fn draw_about(
             localized("settings.updates.up_to_date", language),
             Some("settings.updates.check"),
         ),
+        UpdateState::Available(version) => (
+            format!(
+                "{} {version}",
+                localized("settings.updates.available", language)
+            ),
+            Some("settings.updates.install"),
+        ),
         UpdateState::Downloading(percent) => (
             format!(
                 "{} {percent}%",

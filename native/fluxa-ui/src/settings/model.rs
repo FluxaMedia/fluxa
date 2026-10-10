@@ -99,6 +99,7 @@ pub enum UpdateState {
     Idle,
     Checking,
     UpToDate,
+    Available(String),
     Downloading(u8),
     Ready(String),
     Failed(String),
@@ -109,6 +110,7 @@ pub struct UpdateView {
     pub supported: bool,
     pub current: String,
     pub state: UpdateState,
+    pub prompt: bool,
 }
 
 #[derive(Clone, Debug, Default)]

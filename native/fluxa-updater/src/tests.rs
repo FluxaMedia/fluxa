@@ -104,6 +104,9 @@ fn serve_on(port: u16, files: Vec<(String, Vec<u8>)>) -> String {
 fn newer_release_is_downloaded_verified_and_staged() {
     let Fixture { updater, dir } = fixture("ok", "9.9.9", false);
     updater.check("");
+    let found = wait_for(&updater, |status| matches!(status, Status::Available { .. } | Status::Failed(_)));
+    assert_eq!(found, Status::Available { version: "9.9.9".to_owned() });
+    updater.download();
     let status = wait_for(&updater, |status| matches!(status, Status::Ready { .. } | Status::Failed(_)));
     assert_eq!(status, Status::Ready { version: "9.9.9".to_owned() });
     let staged = fs::read_to_string(dir.join("updates/staged/fluxa/fluxa-desktop")).unwrap();
@@ -117,6 +120,9 @@ fn newer_release_is_downloaded_verified_and_staged() {
 fn corrupted_download_is_rejected() {
     let Fixture { updater, dir } = fixture("corrupt", "9.9.9", true);
     updater.check("");
+    let found = wait_for(&updater, |status| matches!(status, Status::Available { .. } | Status::Failed(_)));
+    assert_eq!(found, Status::Available { version: "9.9.9".to_owned() });
+    updater.download();
     let status = wait_for(&updater, |status| matches!(status, Status::Ready { .. } | Status::Failed(_)));
     assert!(matches!(status, Status::Failed(_)), "{status:?}");
     assert!(!dir.join("updates/staged").exists());

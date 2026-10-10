@@ -33,7 +33,7 @@ pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 3] = [
 ];
 pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(3, "settings.group.preferences")];
 pub(super) const ABOUT_SETTINGS: [SettingsRow; 1] = [SettingsRow {
-    label: "Automatic updates",
+    label: "Update checks",
     key: "automaticUpdates",
     options: &[],
 }];

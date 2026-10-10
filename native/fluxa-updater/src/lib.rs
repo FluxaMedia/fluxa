@@ -35,6 +35,7 @@ pub enum Status {
     Idle,
     Checking,
     UpToDate,
+    Available { version: String },
     Downloading { version: String, percent: u8 },
     Ready { version: String },
     Failed(String),
@@ -50,6 +51,7 @@ pub struct Updater {
     dir: PathBuf,
     source: Source,
     status: Arc<Mutex<Status>>,
+    release: Arc<Mutex<Option<update::Release>>>,
 }
 
 impl Updater {
@@ -71,6 +73,7 @@ impl Updater {
             dir,
             source,
             status: Arc::new(Mutex::new(status)),
+            release: Arc::default(),
         }
     }
 
@@ -88,15 +91,47 @@ impl Updater {
             }
             *status = Status::Checking;
         }
-        let dir = self.dir.clone();
         let source = self.source.clone();
         let status = self.status.clone();
+        let found = self.release.clone();
         let variant = variant.to_owned();
         std::thread::spawn(move || {
-            let outcome = run(&dir, &source, &status, &variant).unwrap_or_else(Status::Failed);
-            if let Ok(mut status) = status.lock() {
-                *status = outcome;
+            let outcome = match find(&source, &variant) {
+                Ok(Some(release)) => {
+                    let version = release.version.clone();
+                    if let Ok(mut found) = found.lock() {
+                        *found = Some(release);
+                    }
+                    Status::Available { version }
+                }
+                Ok(None) => Status::UpToDate,
+                Err(error) => Status::Failed(error),
+            };
+            set(&status, outcome);
+        });
+    }
+
+    pub fn download(&self) {
+        let Some(release) = self.release.lock().ok().and_then(|release| release.clone()) else {
+            return;
+        };
+        {
+            let Ok(mut status) = self.status.lock() else {
+                return;
+            };
+            if !matches!(*status, Status::Available { .. }) {
+                return;
             }
+            *status = Status::Downloading {
+                version: release.version.clone(),
+                percent: 0,
+            };
+        }
+        let dir = self.dir.clone();
+        let status = self.status.clone();
+        std::thread::spawn(move || {
+            let outcome = stage(&dir, &release, &status).unwrap_or_else(Status::Failed);
+            set(&status, outcome);
         });
     }
 
@@ -145,29 +180,32 @@ fn set(status: &Mutex<Status>, value: Status) {
     }
 }
 
-fn run(dir: &Path, source: &Source, status: &Mutex<Status>, variant: &str) -> Result<Status, String> {
-    let client = reqwest::blocking::Client::builder()
+fn client() -> Result<reqwest::blocking::Client, String> {
+    reqwest::blocking::Client::builder()
         .user_agent(concat!("fluxa/", env!("CARGO_PKG_VERSION")))
         .connect_timeout(std::time::Duration::from_secs(15))
         .build()
-        .map_err(|error| error.to_string())?;
+        .map_err(|error| error.to_string())
+}
+
+fn find(source: &Source, variant: &str) -> Result<Option<update::Release>, String> {
+    let client = client()?;
     let manifest = fetch(&client, &source.manifest_url)?;
     let signature = fetch(&client, &format!("{}.sig", source.manifest_url))?;
-    let platform = platform(variant);
     let signature = String::from_utf8_lossy(&signature).into_owned();
-    let release = update::check(&manifest, &signature, &source.public_key, CURRENT_VERSION, &platform)
-        .map_err(|error| error.to_string())?;
-    let Some(release) = release else {
-        return Ok(Status::UpToDate);
-    };
+    update::check(&manifest, &signature, &source.public_key, CURRENT_VERSION, &platform(variant))
+        .map_err(|error| error.to_string())
+}
 
+fn stage(dir: &Path, release: &update::Release, status: &Mutex<Status>) -> Result<Status, String> {
+    let client = client()?;
     install::check_writable()?;
     let _ = fs::remove_dir_all(dir);
     let downloads = dir.join("download");
     fs::create_dir_all(&downloads).map_err(|error| error.to_string())?;
     let name = release.asset.url.rsplit('/').next().unwrap_or("update");
     let archive = downloads.join(name);
-    download(&client, &release, &archive, |percent| {
+    download(&client, release, &archive, |percent| {
         set(
             status,
             Status::Downloading {
@@ -186,7 +224,7 @@ fn run(dir: &Path, source: &Source, status: &Mutex<Status>, variant: &str) -> Re
     .map_err(|error| error.to_string())?;
     fs::write(dir.join("ready.json"), marker).map_err(|error| error.to_string())?;
     Ok(Status::Ready {
-        version: release.version,
+        version: release.version.clone(),
     })
 }
 

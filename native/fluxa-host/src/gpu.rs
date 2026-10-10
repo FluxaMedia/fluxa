@@ -844,6 +844,15 @@ impl Gpu {
                     menu.serial,
                 );
             }
+            if profiles.is_none() && player.is_none() {
+                fluxa_ui::draw_update_prompt(
+                    ui.ctx(),
+                    viewport,
+                    &settings.update,
+                    settings.language(),
+                    &mut rendered_layout,
+                );
+            }
             if let Some((text, opacity)) = home.notice.as_ref() {
                 fluxa_ui::draw_notice(ui.ctx(), viewport, text, *opacity);
             }
