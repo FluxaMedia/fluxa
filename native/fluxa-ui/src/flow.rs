@@ -1,4 +1,4 @@
-use egui::{Pos2, Rect};
+use egui::{FontId, Painter, Pos2, Rect, Vec2};
 
 pub(crate) struct Column {
     cursor: f32,
@@ -85,4 +85,80 @@ pub(crate) fn stack<const N: usize>(rect: Rect, gap: f32, sizes: [Size; N]) -> [
             Pos2::new(rect.right(), top + height),
         )
     })
+}
+
+pub(crate) fn text(painter: &Painter, text: &str, font: FontId) -> Size {
+    Size::Fixed(crate::paint::text_width(painter, text, font))
+}
+
+#[derive(Clone, Copy)]
+pub(crate) enum Align {
+    Start,
+    Center,
+    End,
+}
+
+fn aligned(start: f32, room: f32, extent: f32, align: Align) -> f32 {
+    match align {
+        Align::Start => start,
+        Align::Center => start + (room - extent) * 0.5,
+        Align::End => start + room - extent,
+    }
+}
+
+pub(crate) fn place(slot: Rect, size: Vec2, x: Align, y: Align) -> Rect {
+    Rect::from_min_size(
+        Pos2::new(
+            aligned(slot.left(), slot.width(), size.x, x),
+            aligned(slot.top(), slot.height(), size.y, y),
+        ),
+        size,
+    )
+}
+
+pub(crate) fn wrap(rect: Rect, gap: Vec2, sizes: &[Vec2]) -> Vec<Rect> {
+    let mut cursor = rect.min;
+    let mut line = 0.0_f32;
+    sizes
+        .iter()
+        .map(|size| {
+            if cursor.x > rect.left() && cursor.x + size.x > rect.right() {
+                cursor = Pos2::new(rect.left(), cursor.y + line + gap.y);
+                line = 0.0;
+            }
+            let slot = Rect::from_min_size(cursor, *size);
+            cursor.x += size.x + gap.x;
+            line = line.max(size.y);
+            slot
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn area() -> Rect {
+        Rect::from_min_size(Pos2::ZERO, Vec2::new(100.0, 40.0))
+    }
+
+    #[test]
+    fn empty_child_gives_its_gap_to_the_fill() {
+        let [fill, hidden, last] = row(
+            area(),
+            10.0,
+            [Size::Fill, Size::Fixed(0.0), Size::Fixed(20.0)],
+        );
+        assert_eq!(fill.width(), 70.0);
+        assert_eq!(hidden.width(), 0.0);
+        assert_eq!(last.left(), 80.0);
+    }
+
+    #[test]
+    fn wrap_starts_a_new_line_below_the_tallest_item() {
+        let item = |height| Vec2::new(45.0, height);
+        let slots = wrap(area(), Vec2::new(10.0, 4.0), &[item(10.0), item(16.0), item(10.0)]);
+        assert_eq!(slots[1].left(), 55.0);
+        assert_eq!(slots[2].min, Pos2::new(0.0, 20.0));
+    }
 }

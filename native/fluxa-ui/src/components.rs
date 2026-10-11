@@ -506,7 +506,7 @@ pub(super) fn banner(
                 10.0,
                 [
                     Size::Fill,
-                    Size::Fixed(crate::paint::text_width(&painter, content.trailing, label.clone())),
+                    crate::flow::text(&painter, content.trailing, label.clone()),
                     Size::Fixed(content.action.map_or(0.0, |(_, text)| {
                         crate::paint::text_width(&painter, text, FontId::proportional(size)) + 36.0
                     })),
@@ -515,12 +515,15 @@ pub(super) fn banner(
             );
             if let Some((node, _)) = content.close {
                 close_slot = Rect::from_center_size(close.center(), Vec2::splat(control));
-                let response = ui.interact(close_slot, id.with("close"), Sense::click());
-                state_layer(ui, close_slot, control * 0.5, &response);
-                outcome.close_clicked = response.clicked();
-                if let Some(layout) = targets.as_deref_mut() {
-                    layout.focusable.push((node, close_slot));
-                }
+                outcome.close_clicked = tap(
+                    ui,
+                    id.with("close"),
+                    close_slot,
+                    control * 0.5,
+                    node,
+                    targets.as_deref_mut(),
+                )
+                .clicked();
             }
             if let Some((node, text)) = content.action {
                 let button =
@@ -579,6 +582,22 @@ pub(super) fn banner(
             }
         });
     outcome
+}
+
+pub(super) fn tap(
+    ui: &Ui,
+    id: Id,
+    rect: Rect,
+    radius: f32,
+    node: u64,
+    targets: Option<&mut HomeLayout>,
+) -> Response {
+    let response = ui.interact(rect, id, Sense::click());
+    state_layer(ui, rect, radius, &response);
+    if let Some(layout) = targets {
+        layout.focusable.push((node, rect));
+    }
+    response
 }
 
 pub(super) fn state_layer(ui: &Ui, rect: Rect, radius: f32, response: &Response) {
