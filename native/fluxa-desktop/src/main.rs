@@ -303,6 +303,7 @@ impl ApplicationHandler<AccessEvent> for App {
         if self.window.is_some() {
             return;
         }
+        let (width, height) = fluxa_host::preview_size().unwrap_or((1280.0, 800.0));
         let window = Arc::new(
             event_loop
                 .create_window(
@@ -310,8 +311,11 @@ impl ApplicationHandler<AccessEvent> for App {
                         .with_title("Fluxa")
                         .with_visible(false)
                         .with_transparent(cfg!(target_os = "macos"))
-                        .with_inner_size(winit::dpi::LogicalSize::new(1280.0, 800.0))
-                        .with_min_inner_size(winit::dpi::LogicalSize::new(640.0, 480.0)),
+                        .with_inner_size(winit::dpi::LogicalSize::new(width, height))
+                        .with_min_inner_size(winit::dpi::LogicalSize::new(
+                            width.min(640.0),
+                            height.min(480.0),
+                        )),
                 )
                 .expect("create Fluxa window"),
         );

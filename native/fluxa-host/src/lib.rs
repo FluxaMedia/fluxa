@@ -90,6 +90,7 @@ mod player;
 mod poster_data;
 mod presence;
 mod preview;
+pub use preview::size as preview_size;
 mod profiles;
 mod projection;
 mod route;
@@ -453,7 +454,7 @@ impl FluxaHost {
     }
 
     pub fn set_form_factor(&self, form_factor: &str) {
-        let form_factor = match form_factor {
+        let form_factor = match preview::form_factor(form_factor).as_str() {
             "mobile" => UiFormFactorJson::Mobile,
             "tv" => UiFormFactorJson::Tv,
             "desktop" => UiFormFactorJson::Desktop,
