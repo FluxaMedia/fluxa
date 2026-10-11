@@ -854,6 +854,7 @@ impl Gpu {
                     &assets,
                     &mut rendered_layout,
                 );
+                fluxa_ui::draw_top_focus(ui.ctx(), viewport, &rendered_layout, focused);
             }
             if let Some((text, opacity)) = home.notice.as_ref() {
                 fluxa_ui::draw_notice(ui.ctx(), viewport, text, *opacity);

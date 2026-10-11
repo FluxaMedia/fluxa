@@ -103,6 +103,29 @@ pub fn update_banner_space(top: f32) -> f32 {
     top + UPDATE_BANNER_HEIGHT
 }
 
+pub fn draw_top_focus(
+    context: &egui::Context,
+    viewport: Viewport,
+    layout: &HomeLayout,
+    focused: Option<u64>,
+) {
+    let focused = focused.filter(|node| {
+        navigation::is_navigation_node(*node)
+            || matches!(*node, NODE_UPDATE_INSTALL | NODE_UPDATE_LATER)
+    });
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Tooltip,
+        egui::Id::new("fluxa-top-focus"),
+    ));
+    components::focus_ring(
+        &painter,
+        &layout.focusable,
+        focused,
+        viewport,
+        UiMetrics::for_viewport(viewport),
+    );
+}
+
 pub fn draw_update_prompt(
     context: &egui::Context,
     viewport: Viewport,
