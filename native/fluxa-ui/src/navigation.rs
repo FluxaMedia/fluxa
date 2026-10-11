@@ -578,30 +578,18 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
         let widths: Vec<f32> = entries
             .iter()
             .map(|(_, label)| metrics.navigation_item_width(label))
+            .chain([metrics.navigation_profile_width("Profile")])
             .collect();
+        let nodes = entries
+            .iter()
+            .map(|(original, _)| NAV_ITEM_NODES[*original])
+            .chain([NODE_PROFILE]);
         let bar_width = metrics.navigation_bar_width(viewport, "Profile") + NAV_BAR_PADDING * 2.0;
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
         let y = NAV_BAR_TOP + viewport.nav_lead + NAV_BAR_PADDING;
-        let mut left = x;
-        let mut rects = Vec::with_capacity(5);
-        for (position, (original, _)) in entries.iter().enumerate() {
-            let node = NAV_ITEM_NODES[*original];
-            let item_width = widths[position];
-            rects.push((
-                node,
-                Rect::from_min_size(Pos2::new(left, y), Vec2::new(item_width, NAV_ITEM_HEIGHT)),
-            ));
-            left += item_width + NAV_ITEM_GAP;
-        }
-        let profile_width = metrics.navigation_profile_width("Profile");
-        rects.push((
-            NODE_PROFILE,
-            Rect::from_min_size(
-                Pos2::new(left, y),
-                Vec2::new(profile_width, NAV_ITEM_HEIGHT),
-            ),
-        ));
-        rects
+        let bar = Rect::from_min_size(Pos2::new(x, y), Vec2::new(bar_width, NAV_ITEM_HEIGHT));
+        let slots = crate::flow::line(bar, NAV_ITEM_GAP, &widths, crate::flow::Align::Start);
+        nodes.zip(slots).collect()
     }
 }
 

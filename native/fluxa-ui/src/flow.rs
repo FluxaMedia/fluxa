@@ -116,6 +116,22 @@ pub(crate) fn place(slot: Rect, size: Vec2, x: Align, y: Align) -> Rect {
     )
 }
 
+pub(crate) fn line(rect: Rect, gap: f32, widths: &[f32], align: Align) -> Vec<Rect> {
+    let total = widths.iter().sum::<f32>() + gap * widths.len().saturating_sub(1) as f32;
+    let mut left = aligned(rect.left(), rect.width(), total, align);
+    widths
+        .iter()
+        .map(|width| {
+            let slot = Rect::from_min_max(
+                Pos2::new(left, rect.top()),
+                Pos2::new(left + width, rect.bottom()),
+            );
+            left += width + gap;
+            slot
+        })
+        .collect()
+}
+
 pub(crate) fn wrap(rect: Rect, gap: Vec2, sizes: &[Vec2]) -> Vec<Rect> {
     let mut cursor = rect.min;
     let mut line = 0.0_f32;

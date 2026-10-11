@@ -106,21 +106,20 @@ pub(super) fn pills_right(
     pills: &[(u64, String)],
     size: f32,
 ) -> f32 {
-    let mut right = row.right() - 4.0;
-    for (id, label) in pills.iter().rev() {
-        let width = painter
-            .layout_no_wrap(label.clone(), FontId::proportional(size), Color32::WHITE)
-            .size()
-            .x
-            + 32.0;
-        let button = Rect::from_center_size(
-            Pos2::new(right - width * 0.5, row.center().y),
-            Vec2::new(width, 32.0_f32.min(row.height() - 4.0)),
-        );
+    let widths: Vec<f32> = pills
+        .iter()
+        .map(|(_, label)| {
+            crate::paint::text_width(painter, label, FontId::proportional(size)) + 32.0
+        })
+        .collect();
+    let height = 32.0_f32.min(row.height() - 4.0);
+    let area = Rect::from_min_max(row.min, Pos2::new(row.right() - 4.0, row.bottom()));
+    let slots = crate::flow::line(area, 8.0, &widths, crate::flow::Align::End);
+    for ((id, label), slot) in pills.iter().zip(&slots) {
+        let button = Rect::from_center_size(slot.center(), Vec2::new(slot.width(), height));
         pill_button(context, layout, *id, button, label, size);
-        right -= width + 8.0;
     }
-    right
+    slots.first().map_or(area.right(), |slot| slot.left() - 8.0)
 }
 
 pub(super) fn draw_badges(
