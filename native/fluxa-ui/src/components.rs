@@ -453,14 +453,12 @@ pub(super) fn icon_button_sized(
 pub(super) struct Banner<'a> {
     pub title: &'a str,
     pub trailing: &'a str,
-    pub action: Option<&'a str>,
-    pub close: Option<egui::TextureId>,
+    pub action: Option<(u64, &'a str)>,
+    pub close: Option<(u64, egui::TextureId)>,
     pub progress: Option<f32>,
 }
 
 pub(super) struct BannerOutcome {
-    pub action: Option<Rect>,
-    pub close: Rect,
     pub action_clicked: bool,
     pub close_clicked: bool,
 }
@@ -472,10 +470,10 @@ pub(super) fn banner(
     opacity: f32,
     content: Banner,
     metrics: UiMetrics,
+    mut targets: Option<&mut HomeLayout>,
 ) -> BannerOutcome {
+    let mut close_slot = Rect::NOTHING;
     let mut outcome = BannerOutcome {
-        action: None,
-        close: Rect::NOTHING,
         action_clicked: false,
         close_clicked: false,
     };
@@ -501,19 +499,22 @@ pub(super) fn banner(
                 [
                     crate::flow::Size::Fill,
                     crate::flow::Size::Fixed(crate::paint::text_width(&painter, content.trailing, label.clone())),
-                    crate::flow::Size::Fixed(content.action.map_or(0.0, |text| {
+                    crate::flow::Size::Fixed(content.action.map_or(0.0, |(_, text)| {
                         crate::paint::text_width(&painter, text, FontId::proportional(size)) + 36.0
                     })),
                     crate::flow::Size::Fixed(if content.close.is_some() { control } else { 0.0 }),
                 ],
             );
-            if content.close.is_some() {
-                outcome.close = Rect::from_center_size(close.center(), Vec2::splat(control));
-                let response = ui.interact(outcome.close, id.with("close"), Sense::click());
-                state_layer(ui, outcome.close, control * 0.5, &response);
+            if let Some((node, _)) = content.close {
+                close_slot = Rect::from_center_size(close.center(), Vec2::splat(control));
+                let response = ui.interact(close_slot, id.with("close"), Sense::click());
+                state_layer(ui, close_slot, control * 0.5, &response);
                 outcome.close_clicked = response.clicked();
+                if let Some(layout) = targets.as_deref_mut() {
+                    layout.focusable.push((node, close_slot));
+                }
             }
-            if let Some(text) = content.action {
+            if let Some((node, text)) = content.action {
                 let button =
                     Rect::from_center_size(action.center(), Vec2::new(action.width(), control));
                 outcome.action_clicked = ui
@@ -522,13 +523,15 @@ pub(super) fn banner(
                     })
                     .inner
                     .clicked();
-                outcome.action = Some(button);
+                if let Some(layout) = targets.as_deref_mut() {
+                    layout.focusable.push((node, button));
+                }
             }
             let row = |painter: &egui::Painter, ink: Color32| {
-                if let Some(icon) = content.close {
+                if let Some((_, icon)) = content.close {
                     painter.image(
                         icon,
-                        Rect::from_center_size(outcome.close.center(), Vec2::splat(18.0)),
+                        Rect::from_center_size(close_slot.center(), Vec2::splat(18.0)),
                         full_uv(),
                         ink.gamma_multiply(0.7),
                     );

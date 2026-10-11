@@ -181,6 +181,7 @@ pub fn draw_update_prompt(
         )
     };
     let action = action.map(|key| localized(key, language));
+    let live = update.prompt && rect.bottom() > 0.0;
     let outcome = components::banner(
         context,
         id,
@@ -189,19 +190,16 @@ pub fn draw_update_prompt(
         components::Banner {
             title: &title,
             trailing: &trailing,
-            action: action.as_deref(),
-            close: assets.icon("Close"),
+            action: action.as_deref().map(|label| (NODE_UPDATE_INSTALL, label)),
+            close: assets.icon("Close").map(|icon| (NODE_UPDATE_LATER, icon)),
             progress,
         },
         metrics,
+        live.then_some(&mut *layout),
     );
-    if !update.prompt || rect.bottom() <= 0.0 {
+    if !live {
         return;
     }
-    if let Some(button) = outcome.action {
-        layout.focusable.push((NODE_UPDATE_INSTALL, button));
-    }
-    layout.focusable.push((NODE_UPDATE_LATER, outcome.close));
     if outcome.action_clicked {
         layout.activated = Some(NODE_UPDATE_INSTALL);
     } else if outcome.close_clicked {
