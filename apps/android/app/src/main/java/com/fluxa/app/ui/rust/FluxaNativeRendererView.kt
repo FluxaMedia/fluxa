@@ -792,7 +792,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         return super.onKeyUp(keyCode, event)
     }
 
-    override fun onCheckIsTextEditor(): Boolean = true
+    override fun onCheckIsTextEditor(): Boolean =
+        nativeHandle != 0L && NativeRenderer.textInputFocusedNative(nativeHandle)
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         refreshAccessibility()
