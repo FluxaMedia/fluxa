@@ -8,6 +8,8 @@
 use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2};
 use std::hash::{Hash, Hasher};
 
+use crate::flow::Size;
+
 use super::{
     ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
     artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color, draw_text,
@@ -36,8 +38,8 @@ pub(super) fn toast(
     let font = FontId::proportional(size);
     let galley =
         painter.layout_no_wrap(text.to_owned(), font, metrics.ink((255.0 * opacity) as u8));
-    let gap = 14.0;
-    let width = galley.size().x + pad * 2.0 + level.map_or(0.0, |_| bar + gap);
+    let text_width = galley.size().x;
+    let width = text_width + pad * 2.0 + level.map_or(0.0, |_| bar + 14.0);
     let rect = Rect::from_min_size(
         Pos2::new(top_center.x - width * 0.5, top_center.y),
         Vec2::new(width, size * 2.6),
@@ -53,14 +55,18 @@ pub(super) fn toast(
         egui::Stroke::new(stroke::HAIRLINE, metrics.ink((20.0 * opacity) as u8)),
         egui::StrokeKind::Inside,
     );
-    let text_pos = Pos2::new(rect.left() + pad, rect.center().y - galley.size().y * 0.5);
-    let text_width = galley.size().x;
+    let [label, meter] = crate::flow::row(
+        rect.shrink2(Vec2::new(pad, 0.0)),
+        14.0,
+        [
+            Size::Fixed(text_width),
+            Size::Fixed(level.map_or(0.0, |_| bar)),
+        ],
+    );
+    let text_pos = Pos2::new(label.left(), rect.center().y - galley.size().y * 0.5);
     painter.galley(text_pos, galley, metrics.text_primary);
     if let Some(level) = level {
-        let track = Rect::from_min_size(
-            Pos2::new(text_pos.x + text_width + gap, rect.center().y - 2.5),
-            Vec2::new(bar, 5.0),
-        );
+        let track = Rect::from_center_size(meter.center(), Vec2::new(bar, 5.0));
         painter.rect_filled(track, radius::BAR, metrics.ink((60.0 * opacity) as u8));
         let filled = Rect::from_min_size(track.min, Vec2::new(bar * level.clamp(0.0, 1.0), 5.0));
         painter.rect_filled(filled, radius::BAR, metrics.ink((255.0 * opacity) as u8));
@@ -78,7 +84,12 @@ pub(super) fn calendar_release_row(
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, height), Sense::click());
     ui.painter()
         .rect_filled(rect, metrics.card_radius, metrics.surface_raised);
-    let thumb = Rect::from_min_size(rect.min, Vec2::new(height * 0.7, height));
+    let gap = metrics.control_gap;
+    let [thumb, text, _] = crate::flow::row(
+        rect,
+        gap,
+        [Size::Fixed(height * 0.7), Size::Fill, Size::Fixed(gap)],
+    );
     artwork_image(
         ui.painter(),
         thumb,
@@ -88,27 +99,24 @@ pub(super) fn calendar_release_row(
         Color32::WHITE,
         assets,
     );
-    let text_width = (rect.width() - thumb.width() - metrics.control_gap * 3.0).max(1.0);
-    let text_x = thumb.right() + metrics.control_gap;
-    let title_font = crate::fonts::medium(metrics.screen_card_title_size);
-    let subtitle_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
+    let text = text.shrink2(Vec2::new(0.0, gap));
     draw_text(
         ui.painter(),
-        egui::Pos2::new(text_x, rect.top() + metrics.control_gap),
+        text.left_top(),
         Align2::LEFT_TOP,
         &card.title,
-        title_font,
+        crate::fonts::medium(metrics.screen_card_title_size),
         metrics.text_primary,
-        Some(text_width),
+        Some(text.width().max(1.0)),
     );
     draw_text(
         ui.painter(),
-        egui::Pos2::new(text_x, rect.bottom() - metrics.control_gap),
+        text.left_bottom(),
         Align2::LEFT_BOTTOM,
         &card.subtitle,
-        subtitle_font,
+        crate::fonts::regular(metrics.screen_card_subtitle_size),
         metrics.text_secondary,
-        Some(text_width),
+        Some(text.width().max(1.0)),
     );
     response
 }
@@ -497,12 +505,12 @@ pub(super) fn banner(
                 inner,
                 10.0,
                 [
-                    crate::flow::Size::Fill,
-                    crate::flow::Size::Fixed(crate::paint::text_width(&painter, content.trailing, label.clone())),
-                    crate::flow::Size::Fixed(content.action.map_or(0.0, |(_, text)| {
+                    Size::Fill,
+                    Size::Fixed(crate::paint::text_width(&painter, content.trailing, label.clone())),
+                    Size::Fixed(content.action.map_or(0.0, |(_, text)| {
                         crate::paint::text_width(&painter, text, FontId::proportional(size)) + 36.0
                     })),
-                    crate::flow::Size::Fixed(if content.close.is_some() { control } else { 0.0 }),
+                    Size::Fixed(if content.close.is_some() { control } else { 0.0 }),
                 ],
             );
             if let Some((node, _)) = content.close {
@@ -667,9 +675,17 @@ pub(super) fn sticky_bar(
                 clicked: None,
                 rects: Vec::new(),
             };
-            let back_rect = Rect::from_min_size(
+            let button = metrics.icon_button_size;
+            let line = Rect::from_min_max(
                 Pos2::new(margin, top + 4.0),
-                Vec2::splat(metrics.icon_button_size),
+                Pos2::new(viewport.width - margin, top + 4.0 + button),
+            );
+            let count = bar.actions.len();
+            let trailing = button * count as f32 + 8.0 * count.saturating_sub(1) as f32;
+            let [back_rect, title, actions] = crate::flow::row(
+                line,
+                12.0,
+                [Size::Fixed(button), Size::Fill, Size::Fixed(trailing)],
             );
             let back = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(back_rect), |ui| {
@@ -680,18 +696,14 @@ pub(super) fn sticky_bar(
             if back.clicked() {
                 output.clicked = Some(bar.back_node);
             }
-            let mut right = viewport.width - margin;
-            for action in bar.actions.iter().rev() {
-                let rect = Rect::from_min_size(
-                    Pos2::new(right - metrics.icon_button_size, top + 4.0),
-                    Vec2::splat(metrics.icon_button_size),
-                );
+            let slots = crate::flow::row_of(actions, 8.0, &vec![Size::Fixed(button); count]);
+            for (action, rect) in bar.actions.iter().zip(slots) {
                 let response = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {
                         icon_button(
                             ui,
                             action.icon,
-                            metrics.icon_button_size,
+                            button,
                             text_primary(),
                             true,
                             action.active,
@@ -704,10 +716,9 @@ pub(super) fn sticky_bar(
                 if response.clicked() {
                     output.clicked = Some(action.node);
                 }
-                right = rect.left() - 8.0;
             }
-            let left = back_rect.right() + 12.0;
-            let room = (right - 4.0 - left).max(0.0);
+            let left = title.left();
+            let room = title.width();
             let center = top + 24.0;
             match bar.logo {
                 Some((texture, size)) => {

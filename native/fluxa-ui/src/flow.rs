@@ -26,7 +26,7 @@ pub(crate) enum Size {
     Fill,
 }
 
-fn spans<const N: usize>(start: f32, length: f32, gap: f32, sizes: [Size; N]) -> [(f32, f32); N] {
+fn spans(start: f32, length: f32, gap: f32, sizes: &[Size]) -> Vec<(f32, f32)> {
     let hidden = |size: &Size| matches!(size, Size::Fixed(extent) if *extent <= 0.0);
     let shown = sizes.iter().filter(|size| !hidden(size)).count();
     let fills = sizes
@@ -42,31 +42,44 @@ fn spans<const N: usize>(start: f32, length: f32, gap: f32, sizes: [Size; N]) ->
         .sum();
     let free = (length - fixed - gap * shown.saturating_sub(1) as f32).max(0.0);
     let mut cursor = start;
-    sizes.map(|size| {
-        if hidden(&size) {
-            return (cursor, 0.0);
-        }
-        let extent = match size {
-            Size::Fixed(extent) => extent,
-            Size::Fill => free / fills as f32,
-        };
-        let span = (cursor, extent);
-        cursor += extent + gap;
-        span
-    })
+    sizes
+        .iter()
+        .map(|size| {
+            if hidden(size) {
+                return (cursor, 0.0);
+            }
+            let extent = match size {
+                Size::Fixed(extent) => *extent,
+                Size::Fill => free / fills as f32,
+            };
+            let span = (cursor, extent);
+            cursor += extent + gap;
+            span
+        })
+        .collect()
+}
+
+pub(crate) fn row_of(rect: Rect, gap: f32, sizes: &[Size]) -> Vec<Rect> {
+    spans(rect.left(), rect.width(), gap, sizes)
+        .into_iter()
+        .map(|(left, width)| {
+            Rect::from_min_max(
+                Pos2::new(left, rect.top()),
+                Pos2::new(left + width, rect.bottom()),
+            )
+        })
+        .collect()
 }
 
 pub(crate) fn row<const N: usize>(rect: Rect, gap: f32, sizes: [Size; N]) -> [Rect; N] {
-    spans(rect.left(), rect.width(), gap, sizes).map(|(left, width)| {
-        Rect::from_min_max(
-            Pos2::new(left, rect.top()),
-            Pos2::new(left + width, rect.bottom()),
-        )
-    })
+    let slots = row_of(rect, gap, &sizes);
+    std::array::from_fn(|index| slots[index])
 }
 
 pub(crate) fn stack<const N: usize>(rect: Rect, gap: f32, sizes: [Size; N]) -> [Rect; N] {
-    spans(rect.top(), rect.height(), gap, sizes).map(|(top, height)| {
+    let slots = spans(rect.top(), rect.height(), gap, &sizes);
+    std::array::from_fn(|index| {
+        let (top, height) = slots[index];
         Rect::from_min_max(
             Pos2::new(rect.left(), top),
             Pos2::new(rect.right(), top + height),
