@@ -103,6 +103,28 @@ pub fn update_banner_space(top: f32) -> f32 {
     top + UPDATE_BANNER_HEIGHT
 }
 
+pub fn draw_target_outlines(context: &egui::Context, layout: &HomeLayout) {
+    let painter = context.layer_painter(egui::LayerId::new(
+        egui::Order::Debug,
+        egui::Id::new("fluxa-target-outlines"),
+    ));
+    for (node, rect) in &layout.focusable {
+        painter.rect_stroke(
+            *rect,
+            0.0,
+            egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 64, 160)),
+            egui::StrokeKind::Inside,
+        );
+        painter.text(
+            rect.left_top(),
+            egui::Align2::LEFT_TOP,
+            node.to_string(),
+            egui::FontId::monospace(9.0),
+            egui::Color32::from_rgb(255, 64, 160),
+        );
+    }
+}
+
 pub fn draw_top_focus(
     context: &egui::Context,
     viewport: Viewport,

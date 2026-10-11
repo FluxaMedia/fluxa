@@ -856,6 +856,9 @@ impl Gpu {
                 );
                 fluxa_ui::draw_top_focus(ui.ctx(), viewport, &rendered_layout, focused);
             }
+            if crate::preview::outlines() {
+                fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
+            }
             if let Some((text, opacity)) = home.notice.as_ref() {
                 fluxa_ui::draw_notice(ui.ctx(), viewport, text, *opacity);
             }

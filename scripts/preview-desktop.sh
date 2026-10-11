@@ -5,6 +5,7 @@ if [ $# -lt 2 ]; then
   echo "usage: $0 out.png route[/settings-page] [width] [height]" >&2
   echo "routes: home, library, discover, settings/N, detail/movie/tt0111161" >&2
   echo "env: FLUXA_PREVIEW_FORM=mobile|tv FLUXA_PREVIEW_SCROLL=px FLUXA_PREVIEW_ADDON=manifest-url" >&2
+  echo "     FLUXA_PREVIEW_OUTLINE=1 draws tap targets; FLUXA_PREVIEW_TOKENS=file reloads tokens on save" >&2
   exit 1
 fi
 out=$(realpath -m "$1")

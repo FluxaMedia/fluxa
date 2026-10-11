@@ -42,10 +42,9 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     } else {
         updates::busy(state).then(|| now + Duration::from_millis(120))
     };
-    let notice = state
-        .notice
-        .is_some()
-        .then(|| now + Duration::from_millis(16));
+    let notice = (state.notice.is_some())
+        .then(|| now + Duration::from_millis(16))
+        .or_else(preview::next_check);
     let projecting = state
         .projector
         .pending()
@@ -124,6 +123,7 @@ pub(super) const SLOW_FRAME: Duration = Duration::from_millis(24);
 
 pub(super) fn render_frame(state: &mut RendererState) {
     let mut timer = FrameTimer::start();
+    preview::reload_tokens();
     route_actions_to_session(state);
     timer.mark("actions");
     pull_session_snapshot(state);
