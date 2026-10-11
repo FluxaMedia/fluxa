@@ -15,12 +15,28 @@ pub(crate) fn form_factor(requested: &str) -> String {
 }
 
 pub(crate) fn start(state: &mut RendererState) {
+    if let Some(url) = setting("FLUXA_PREVIEW_ADDON") {
+        state.pending_native_actions.push(NativeAction::CoreCommand {
+            command: serde_json::json!({
+                "type": "addonInstallRequested",
+                "transportUrl": url,
+                "forceRefresh": false,
+            }),
+        });
+    }
     let Some(target) = setting("FLUXA_PREVIEW") else {
         return;
     };
-    let (route, page) = target.split_once('/').unwrap_or((&target, ""));
-    let destination = Route::parse(route);
-    if destination != Route::Home {
+    let mut parts = target.split('/');
+    let destination = Route::parse(parts.next().unwrap_or_default());
+    let first = parts.next().unwrap_or_default();
+    if destination == Route::Detail {
+        state.pending_native_actions.push(NativeAction::Detail {
+            item_type: first.to_owned(),
+            id: parts.next().unwrap_or_default().to_owned(),
+            preview: Value::Null,
+        });
+    } else if destination != Route::Home {
         state
             .pending_native_actions
             .push(NativeAction::Navigate { destination });
@@ -28,7 +44,7 @@ pub(crate) fn start(state: &mut RendererState) {
     if let Some(scroll) = setting("FLUXA_PREVIEW_SCROLL").and_then(|value| value.parse().ok()) {
         state.screen_scroll_offsets.insert(destination, scroll);
     }
-    if let Ok(page) = page.parse() {
+    if let Ok(page) = first.parse() {
         state.settings.active_section = page;
         state.settings.section_open = true;
         state.settings.page_open = true;

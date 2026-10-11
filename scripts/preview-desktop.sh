@@ -3,14 +3,15 @@ set -euo pipefail
 
 if [ $# -lt 2 ]; then
   echo "usage: $0 out.png route[/settings-page] [width] [height]" >&2
-  echo "env: FLUXA_PREVIEW_FORM=mobile|tv FLUXA_PREVIEW_SCROLL=px" >&2
+  echo "routes: home, library, discover, settings/N, detail/movie/tt0111161" >&2
+  echo "env: FLUXA_PREVIEW_FORM=mobile|tv FLUXA_PREVIEW_SCROLL=px FLUXA_PREVIEW_ADDON=manifest-url" >&2
   exit 1
 fi
 out=$(realpath -m "$1")
 width=${3:-1280}
 height=${4:-800}
 root=$(cd "$(dirname "$0")/.." && pwd)
-data=${FLUXA_DATA_DIR:-${TMPDIR:-$HOME/.cache/claude-tmp}/fluxa-preview}
+data=${FLUXA_DATA_DIR:-$root/.preview/data}
 mkdir -p "$data"
 
 cargo build --manifest-path "$root/native/Cargo.toml" -p fluxa-desktop --offline -q
