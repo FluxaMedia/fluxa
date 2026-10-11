@@ -1141,6 +1141,12 @@ pub(super) fn play_button(
     progress: Option<f32>,
 ) -> Response {
     let unavailable = assets.playback_unavailable().map(str::to_owned);
+    let width = match (&unavailable, width) {
+        (Some(reason), Some(limit)) => Some(limit.max(
+            crate::paint::text_width(ui.painter(), reason, FontId::proportional(text_size)) + 70.0,
+        )),
+        _ => width,
+    };
     pill_button_styled(
         ui,
         assets.icon("PlayFilled"),
