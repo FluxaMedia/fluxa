@@ -69,7 +69,11 @@ pub fn enable_thumbnails(
         let _ = client.set_option("thumbnails", "no");
         return;
     }
-    let source = plan.url.clone().unwrap_or_else(|| thumbnail_url(url));
+    let source = plan
+        .url
+        .clone()
+        .filter(|source| source != url)
+        .unwrap_or_else(|| thumbnail_url(url));
     if source != url {
         if client.set_option("thumbnail-url", &source).is_err() {
             return;
@@ -86,7 +90,7 @@ pub fn enable_thumbnails(
         ("thumbnail-width", Some(THUMBNAIL_WIDTH.to_owned())),
         ("thumbnail-interval", Some(plan.interval.max(1.0).to_string())),
         ("thumbnail-sweep", Some(if plan.sheet { "yes" } else { "no" }.to_owned())),
-        ("thumbnail-delay", Some(if plan.hold { "0" } else { "3" }.to_owned())),
+        ("thumbnail-delay", Some("0".to_owned())),
     ];
     for (name, value) in tuning {
         if let Some(value) = value {

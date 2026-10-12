@@ -105,7 +105,7 @@ impl SeekPreviews {
 
     pub(super) fn initial_plan(&mut self, stream_url: &str) -> ThumbnailPlan {
         let mut plan = self.plan.clone();
-        if plan.url.is_none() && self.resolving.is_none() {
+        if plan.url.is_none() && self.resolving.is_none() && !is_loopback(stream_url) {
             plan.url = Some(stream_url.to_owned());
         }
         if self.resolving.is_some() {
@@ -177,4 +177,10 @@ impl SeekPreviews {
         }
         true
     }
+}
+
+fn is_loopback(url: &str) -> bool {
+    ["http://127.0.0.1", "http://localhost", "http://[::1]"]
+        .iter()
+        .any(|prefix| url.starts_with(prefix))
 }

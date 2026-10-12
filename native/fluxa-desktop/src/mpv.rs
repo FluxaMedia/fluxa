@@ -413,6 +413,9 @@ impl MpvPlayer {
         if !preview {
             enable_thumbnails(&client, url, plan);
             client.hold_start(plan.hold && plan.enabled);
+            if plan.enabled && plan.url.as_deref().is_some_and(|source| source != url) {
+                let _ = client.reload_thumbnails();
+            }
         }
         client.load(url, None)?;
         let frames = Arc::new(FrameSlot::default());

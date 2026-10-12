@@ -136,6 +136,9 @@ impl AppleBackend {
             .and_then(|(mut client, render)| {
                 enable_thumbnails(&client, url, &plan);
                 client.hold_start(plan.hold && plan.enabled);
+                if plan.enabled && plan.url.as_deref().is_some_and(|source| source != url) {
+                    let _ = client.reload_thumbnails();
+                }
                 client.load(url, start_at)?;
                 Ok(Player {
                     client,
