@@ -1217,7 +1217,7 @@ fn load_resolved(
                 }
                 host_log(format!("loading player url: {url}"));
                 video.configure(&settings.values);
-                video.thumbnails(&previews.initial_plan());
+                video.thumbnails(&previews.initial_plan(url));
                 video.load(&gpu.instance, &gpu.device, url);
                 video.command(VideoCommand::Shaders(shader_chain(settings)));
                 video.command(VideoCommand::Fit(video_fit(settings).to_owned()));

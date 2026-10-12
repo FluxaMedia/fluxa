@@ -103,8 +103,11 @@ impl SeekPreviews {
         self.resolving.is_none()
     }
 
-    pub(super) fn initial_plan(&mut self) -> ThumbnailPlan {
+    pub(super) fn initial_plan(&mut self, stream_url: &str) -> ThumbnailPlan {
         let mut plan = self.plan.clone();
+        if plan.url.is_none() && self.resolving.is_none() {
+            plan.url = Some(stream_url.to_owned());
+        }
         if self.resolving.is_some() {
             plan.enabled = false;
         }
