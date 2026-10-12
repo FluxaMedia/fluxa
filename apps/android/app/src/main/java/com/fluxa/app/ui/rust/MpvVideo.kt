@@ -51,7 +51,6 @@ class MpvVideo(
             "audio-display" to "no",
             "idle" to "once",
             "thumbnail-width" to "320",
-            "thumbnail-cache-dir" to appContext.cacheDir.resolve("thumbnails").apply { mkdirs() }.absolutePath,
         ).plus(thumbnailOptions(thumbnails)).plus(videoOptions).forEach { (key, value) -> Mpv.setOption(mpv, key, value) }
         options.lines().filter { it.isNotEmpty() }.forEach { line ->
             Mpv.setOption(mpv, line.substringBefore('='), line.substringAfter('='))
@@ -283,7 +282,7 @@ class MpvSurface(context: Context) : SurfaceView(context), SurfaceHolder.Callbac
 data class DisplayModeHint(val width: Int, val height: Int, val refreshRate: Float)
 
 private fun thumbnailOptions(plan: JSONObject?): Map<String, String> {
-    if (plan == null) return mapOf("thumbnails" to "yes")
+    if (plan == null) return mapOf("thumbnails" to "no")
     if (!plan.optBoolean("enabled", true)) return mapOf("thumbnails" to "no")
     val headers = plan.optJSONArray("headers")
     val fields = List(headers?.length() ?: 0) { index ->

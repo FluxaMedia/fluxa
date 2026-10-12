@@ -107,7 +107,6 @@ pub struct AppleBackend {
     url: Option<String>,
     shaders: Vec<String>,
     seek_preview: SeekPreview,
-    thumbnail_cache: Option<std::path::PathBuf>,
     plan: ThumbnailPlan,
 }
 
@@ -118,7 +117,7 @@ struct Player {
 }
 
 impl AppleBackend {
-    pub fn new(layer: usize, thumbnail_cache: Option<std::path::PathBuf>) -> Self {
+    pub fn new(layer: usize) -> Self {
         Self {
             layer,
             player: None,
@@ -126,18 +125,16 @@ impl AppleBackend {
             url: None,
             shaders: Vec::new(),
             seek_preview: SeekPreview::default(),
-            thumbnail_cache,
             plan: ThumbnailPlan::default(),
         }
     }
 
     fn start(&mut self, url: &str, start_at: Option<u64>) {
         self.stop();
-        let cache = self.thumbnail_cache.as_deref();
         let plan = self.plan.clone();
         let result = fluxa_mpv::MpvClientHandle::new_with_apple_layer(self.layer, &self.shaders)
             .and_then(|(mut client, render)| {
-                enable_thumbnails(&client, url, &plan, cache);
+                enable_thumbnails(&client, url, &plan);
                 client.hold_start(plan.hold && plan.enabled);
                 client.load(url, start_at)?;
                 Ok(Player {
@@ -291,7 +288,7 @@ impl VideoBackend for AppleBackend {
         let (Some(player), Some(url)) = (self.player.as_ref(), self.url.as_deref()) else {
             return;
         };
-        enable_thumbnails(&player.client, url, plan, self.thumbnail_cache.as_deref());
+        enable_thumbnails(&player.client, url, plan);
         let _ = player.client.reload_thumbnails();
     }
 

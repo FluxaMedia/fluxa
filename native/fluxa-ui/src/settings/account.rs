@@ -135,7 +135,7 @@ pub fn account_source_state(
         .to_owned();
     let label = match options.iter().find(|(source, _)| *source == current) {
         Some((_, label)) => label.clone(),
-        None if key == "trickplaySource" => localized("settings.trickplay_source_stream", language),
+        None if key == "trickplaySource" => localized("settings.option.none", language),
         None if options.is_empty() => localized("settings.not_connected", language),
         None => localized("settings.option.none", language),
     };

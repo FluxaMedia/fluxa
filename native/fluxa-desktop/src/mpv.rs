@@ -4,7 +4,6 @@ use std::sync::{
     atomic::{AtomicBool, Ordering},
     mpsc::{self, Receiver, TryRecvError},
 };
-use std::path::{Path, PathBuf};
 use std::time::Duration;
 
 use ash::vk::Handle as _;
@@ -20,21 +19,19 @@ pub struct MpvBackend {
     error: Option<String>,
     url: Option<String>,
     seek_preview: SeekPreview,
-    thumbnail_cache: Option<PathBuf>,
     plan: ThumbnailPlan,
     shaders: Vec<String>,
     preview: bool,
 }
 
 impl MpvBackend {
-    pub fn new(thumbnail_cache: Option<PathBuf>) -> Self {
+    pub fn new() -> Self {
         Self {
             pending: None,
             player: None,
             error: None,
             url: None,
             seek_preview: SeekPreview::default(),
-            thumbnail_cache,
             plan: ThumbnailPlan::default(),
             shaders: Vec::new(),
             preview: false,
@@ -54,10 +51,9 @@ impl MpvBackend {
         let device = device.clone();
         let url = url.to_owned();
         let target = url.clone();
-        let cache = self.thumbnail_cache.clone();
         let plan = self.plan.clone();
         std::thread::spawn(move || {
-            let _ = sender.send(MpvPlayer::new(&instance, &device, &target, preview, &plan, cache.as_deref()));
+            let _ = sender.send(MpvPlayer::new(&instance, &device, &target, preview, &plan));
         });
         self.url = Some(url.clone());
         self.pending = Some(receiver);
@@ -263,7 +259,7 @@ impl VideoBackend for MpvBackend {
         let (Some(player), Some(url)) = (self.player.as_ref().filter(|_| !self.preview), self.url.as_deref()) else {
             return;
         };
-        enable_thumbnails(&player.client, url, plan, self.thumbnail_cache.as_deref());
+        enable_thumbnails(&player.client, url, plan);
         let _ = player.client.reload_thumbnails();
     }
 
@@ -375,7 +371,6 @@ impl MpvPlayer {
         url: &str,
         preview: bool,
         plan: &ThumbnailPlan,
-        thumbnail_cache: Option<&Path>,
     ) -> Result<Self, String> {
         let local =
             preview || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:");
@@ -416,7 +411,7 @@ impl MpvPlayer {
             ])?;
         }
         if !preview {
-            enable_thumbnails(&client, url, plan, thumbnail_cache);
+            enable_thumbnails(&client, url, plan);
             client.hold_start(plan.hold && plan.enabled);
         }
         client.load(url, None)?;

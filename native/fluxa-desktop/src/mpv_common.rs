@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
 use fluxa_host::{Thumbnail, ThumbnailPlan, TrackSelection, VideoTrack};
@@ -64,7 +64,6 @@ pub fn enable_thumbnails(
     client: &fluxa_mpv::MpvClientHandle,
     url: &str,
     plan: &ThumbnailPlan,
-    cache: Option<&Path>,
 ) {
     if !plan.enabled {
         let _ = client.set_option("thumbnails", "no");
@@ -83,13 +82,11 @@ pub fn enable_thumbnails(
             .join(",");
         let _ = client.set_option("thumbnail-http-header-fields", &headers);
     }
-    let cache = cache.map(|cache| cache.to_string_lossy().into_owned());
     let tuning = [
         ("thumbnail-width", Some(THUMBNAIL_WIDTH.to_owned())),
         ("thumbnail-interval", Some(plan.interval.max(1.0).to_string())),
         ("thumbnail-sweep", Some(if plan.sheet { "yes" } else { "no" }.to_owned())),
         ("thumbnail-delay", Some(if plan.hold { "0" } else { "3" }.to_owned())),
-        ("thumbnail-cache-dir", cache),
     ];
     for (name, value) in tuning {
         if let Some(value) = value {

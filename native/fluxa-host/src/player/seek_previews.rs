@@ -169,6 +169,9 @@ impl SeekPreviews {
                 })
                 .collect();
         }
+        if self.plan.url.is_none() {
+            self.plan.enabled = false;
+        }
         true
     }
 }
