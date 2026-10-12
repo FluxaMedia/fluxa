@@ -58,6 +58,7 @@ class MpvVideo(
         if (passthrough) spdif()?.let { Mpv.setOption(mpv, "audio-spdif", it) }
         if (audioFilter.isNotEmpty()) Mpv.setOption(mpv, "af", audioFilter)
         check(Mpv.initialize(mpv) >= 0) { "libmpv could not be initialized" }
+        if (thumbnailOptions(thumbnails)["thumbnail-url"].orEmpty().isNotEmpty()) Mpv.command(mpv, arrayOf("thumbnail-reload"))
     }
 
     val position get() = double("time-pos")
@@ -295,7 +296,7 @@ private fun thumbnailOptions(plan: JSONObject?): Map<String, String> {
         "thumbnail-http-header-fields" to fields.joinToString(","),
         "thumbnail-interval" to plan.optDouble("interval", 10.0).coerceAtLeast(1.0).toString(),
         "thumbnail-sweep" to if (plan.optBoolean("sheet", true)) "yes" else "no",
-        "thumbnail-delay" to if (plan.optBoolean("hold")) "0" else "3",
+        "thumbnail-delay" to "0",
         "thumbnails" to "yes",
     )
 }
