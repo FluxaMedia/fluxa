@@ -4,6 +4,7 @@ pub(super) const MAX_ARTWORK_SIDE: u32 = 1536;
 // Android uses the same initial-document prefetch contract as desktop. This
 // is still bounded, but avoids evicting visible cards while the remaining
 // shelves finish decoding.
+const MAX_CONVERTING: usize = 3;
 const MAX_ARTWORK_TEXTURES: usize = 128;
 const MAX_DECODED_BYTES: usize = 96 * 1024 * 1024;
 const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
@@ -55,6 +56,7 @@ struct ConvertedArtwork {
 pub(super) struct ArtworkLoader {
     converted_tx: std::sync::mpsc::Sender<ConvertedArtwork>,
     converted_rx: std::sync::mpsc::Receiver<ConvertedArtwork>,
+    converting: Arc<std::sync::atomic::AtomicUsize>,
     pub(super) fetcher: ArtworkFetcher,
     textures: HashMap<String, egui::TextureHandle>,
     emoji: HashMap<String, Option<egui::TextureHandle>>,
@@ -100,6 +102,7 @@ impl ArtworkLoader {
             animation_checked: HashSet::new(),
             converted_tx,
             converted_rx,
+            converting: Arc::new(std::sync::atomic::AtomicUsize::new(0)),
             active_animations: HashSet::new(),
             animation_slots: HashSet::new(),
             latest_keys: HashMap::new(),
@@ -166,7 +169,9 @@ impl ArtworkLoader {
         self.context.get_or_insert_with(|| context.clone());
         self.rasterize_emoji(context);
         let uploads = if fluxa_artwork::low_memory() { 1 } else { 2 };
-        for mut prepared in self.fetcher.poll(4) {
+        let room = MAX_CONVERTING
+            .saturating_sub(self.converting.load(std::sync::atomic::Ordering::Relaxed));
+        for mut prepared in self.fetcher.poll(room) {
             let mut animation_atlas = prepared.animation_atlas.take();
             let source = match animation_atlas.as_mut() {
                 Some(atlas) => &mut atlas.image,
@@ -175,6 +180,8 @@ impl ArtworkLoader {
             let (width, height) = (source.width(), source.height());
             let raw = std::mem::replace(source, image::RgbaImage::new(0, 0)).into_raw();
             let sender = self.converted_tx.clone();
+            self.converting
+                .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             let job = move || {
                 fluxa_artwork::lower_thread_priority();
                 let image = color_image([width as usize, height as usize], raw);
@@ -203,6 +210,8 @@ impl ArtworkLoader {
             .take(uploads)
             .collect::<Vec<_>>();
         for converted in ready {
+            self.converting
+                .fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
             let url = converted.source_url;
             let target_size = converted.target_size;
             let animation_requested = converted.animation_requested;
