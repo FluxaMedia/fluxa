@@ -32,7 +32,7 @@ use upnext::*;
 
 const CONTROLS_TIMEOUT: Duration = Duration::from_secs(3);
 const DEFAULT_SEEK_STEP: f64 = 10.0;
-const SCRUB_COMMIT: Duration = Duration::from_millis(900);
+const SCRUB_COMMIT: Duration = Duration::from_millis(1800);
 const TORRENT_UNRESPONSIVE_AFTER: Duration = Duration::from_secs(20);
 const MIN_BRIGHTNESS: f32 = 0.15;
 const MEDIA_DRIFT: f64 = 1.5;

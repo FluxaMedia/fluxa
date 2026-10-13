@@ -28,6 +28,8 @@ pub struct PlayerToast {
     pub opacity: f32,
 }
 
+const FINE_SEEK_LIFT: f32 = 44.0;
+
 #[derive(Clone, Debug, Default)]
 pub struct PlayerModel {
     pub title: String,
@@ -508,11 +510,57 @@ impl Chrome<'_> {
         let duration = player.duration.max(0.0);
         let ratio = |x: f32| ((x - track.left()) / track.width()).clamp(0.0, 1.0) as f64;
         let mut position = player.scrub.unwrap_or(player.position);
+        let metrics = UiMetrics::for_viewport(self.viewport);
+        let form_factor = self.viewport.form_factor;
+        let lifted = form_factor == UiFormFactor::Mobile
+            && duration > 0.0
+            && seek
+                .interact_pointer_pos()
+                .filter(|_| seek.dragged())
+                .is_some_and(|pointer| pointer.y < track.top() - FINE_SEEK_LIFT);
         if (seek.clicked() || seek.dragged())
+            && !lifted
             && let Some(pointer) = seek.interact_pointer_pos()
         {
             position = duration * ratio(pointer.x);
             layout.seek_to = Some(position);
+        }
+        let drag_id = Id::new("fluxa-filmstrip-drag");
+        let last_id = Id::new("fluxa-filmstrip-last");
+        let mut forced = None;
+        if lifted && let Some(pointer) = seek.interact_pointer_pos() {
+            let (start_time, start_x) = self
+                .context
+                .data(|data| data.get_temp::<(f64, f32)>(drag_id))
+                .unwrap_or((duration * ratio(pointer.x), pointer.x));
+            let pitch =
+                components::filmstrip_pitch(self.context, track, &player.filmstrip, metrics);
+            let center = (start_time
+                + ((pointer.x - start_x) / pitch) as f64 * player.filmstrip_step.max(1.0))
+            .clamp(0.0, duration);
+            self.context.data_mut(|data| {
+                data.insert_temp(drag_id, (start_time, start_x));
+                data.insert_temp(last_id, Some(center));
+            });
+            forced = Some(center);
+            position = center;
+        } else {
+            let last = self
+                .context
+                .data_mut(|data| {
+                    data.remove_temp::<(f64, f32)>(drag_id);
+                    let last = data.get_temp::<Option<f64>>(last_id).flatten();
+                    data.insert_temp(last_id, None::<f64>);
+                    last
+                })
+                .filter(|_| seek.drag_stopped());
+            if let Some(time) = last {
+                position = time;
+                layout.seek_to = Some(time);
+            }
+        }
+        if form_factor == UiFormFactor::Tv && duration > 0.0 {
+            forced = player.scrub;
         }
         let y = track.center().y;
         if duration <= 0.0 {
@@ -568,9 +616,11 @@ impl Chrome<'_> {
         let over_strip = components::filmstrip_area(self.context)
             .zip(self.context.input(|i| i.pointer.hover_pos()))
             .is_some_and(|(area, pointer)| area.contains(pointer));
-        let filmstrip = (seek.hovered() || over_strip)
-            && duration > 0.0
-            && self.context.input(|i| i.modifiers.shift);
+        let filmstrip = forced.is_some()
+            || (form_factor == UiFormFactor::Desktop
+                && (seek.hovered() || over_strip)
+                && duration > 0.0
+                && self.context.input(|i| i.modifiers.shift));
         if filmstrip {
             let output = components::seek_filmstrip(
                 self.context,
@@ -578,8 +628,10 @@ impl Chrome<'_> {
                 seek.hover_pos().map(|pointer| duration * ratio(pointer.x)),
                 duration,
                 player.filmstrip_step,
+                forced,
+                if lifted { FINE_SEEK_LIFT * 2.0 } else { 0.0 },
                 &player.filmstrip,
-                UiMetrics::for_viewport(self.viewport),
+                metrics,
             );
             layout.filmstrip = Some(output.slots);
             if let Some(time) = output.seek {

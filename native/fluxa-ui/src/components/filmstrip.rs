@@ -24,6 +24,28 @@ pub(crate) fn filmstrip_layout(
     FilmstripLayout { count, width, gap }
 }
 
+fn frame_layout(
+    context: &egui::Context,
+    track: Rect,
+    frames: &[(f64, egui::TextureId, Vec2)],
+    metrics: UiMetrics,
+) -> FilmstripLayout {
+    let native = frames
+        .first()
+        .map(|(_, _, size)| size.x / context.pixels_per_point());
+    filmstrip_layout(track.width(), native, metrics)
+}
+
+pub(crate) fn filmstrip_pitch(
+    context: &egui::Context,
+    track: Rect,
+    frames: &[(f64, egui::TextureId, Vec2)],
+    metrics: UiMetrics,
+) -> f32 {
+    let layout = frame_layout(context, track, frames, metrics);
+    layout.width + layout.gap
+}
+
 pub(crate) struct FilmstripOutput {
     pub slots: Vec<f64>,
     pub seek: Option<f64>,
@@ -61,19 +83,18 @@ pub(crate) fn seek_filmstrip(
     bar_time: Option<f64>,
     duration: f64,
     step: f64,
+    forced: Option<f64>,
+    lift: f32,
     frames: &[(f64, egui::TextureId, Vec2)],
     metrics: UiMetrics,
 ) -> FilmstripOutput {
-    let native = frames
-        .first()
-        .map(|(_, _, size)| size.x / context.pixels_per_point());
-    let FilmstripLayout { count, width, gap } = filmstrip_layout(track.width(), native, metrics);
+    let FilmstripLayout { count, width, gap } = frame_layout(context, track, frames, metrics);
     let painter = context.layer_painter(egui::LayerId::new(
         egui::Order::Foreground,
         Id::new("fluxa-player-seek-filmstrip"),
     ));
     let height = width * 9.0 / 16.0;
-    let bottom = track.top() - 18.0;
+    let bottom = track.top() - 18.0 - lift;
     let bases: Vec<Rect> = (0..count)
         .map(|index| {
             Rect::from_min_size(
@@ -122,15 +143,19 @@ pub(crate) fn seek_filmstrip(
         + scroll;
     let steps = (wheel / WHEEL_STEP).trunc();
     context.data_mut(|data| data.insert_temp(wheel_id(), wheel - steps * WHEEL_STEP));
-    let center = (center.or(bar_time).unwrap_or(0.0) + steps as f64 * step).clamp(0.0, duration);
+    let center = match forced {
+        Some(time) => time.clamp(0.0, duration),
+        None => (center.or(bar_time).unwrap_or(0.0) + steps as f64 * step).clamp(0.0, duration),
+    };
     let (slots, middle) = window(center);
-    let selected = over.unwrap_or(middle);
+    let selected = over.filter(|_| forced.is_none()).unwrap_or(middle);
     let fine = Some(center);
     context.data_mut(|data| {
         data.insert_temp(fine_id(), fine);
     });
 
     let seek = over
+        .filter(|_| forced.is_none())
         .filter(|_| context.input(|input| input.pointer.primary_clicked()))
         .map(|index| slots[index]);
 
