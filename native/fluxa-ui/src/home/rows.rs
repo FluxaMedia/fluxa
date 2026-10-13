@@ -282,7 +282,10 @@ pub(crate) fn draw_home_rows(
                             slot_rect.min + Vec2::new(lead, 0.0),
                             Vec2::new(item_width, item_height),
                         );
-                        let rect = if viewport.is_tv() && focused == Some(node_id) {
+                        let rect = if viewport.is_tv()
+                            && focused == Some(node_id)
+                            && kind != HomeRowKind::Collection
+                        {
                             Rect::from_center_size(
                                 rect.center(),
                                 rect.size() * metrics.focused_scale,
