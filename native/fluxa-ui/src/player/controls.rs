@@ -40,6 +40,7 @@ impl Chrome<'_> {
                 actions.push(("Flag", NODE_PLAYER_SUBMIT));
             }
         }
+        actions.push(("Info", NODE_PLAYER_INFO));
         actions
     }
 

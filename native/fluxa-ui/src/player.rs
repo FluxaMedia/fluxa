@@ -137,6 +137,7 @@ const PLAYER_ICONS: &[&str] = &[
     "Settings",
     "ListVideo",
     "Cast",
+    "Info",
     "Flag",
     "Sparkles",
     "Check",

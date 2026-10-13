@@ -40,6 +40,7 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                 casting::open(player);
             }
         }
+        fluxa_ui::NODE_PLAYER_INFO => toggle_stats(state),
         fluxa_ui::NODE_PLAYER_TRACKS => open_menu(state, menu::Menu::Tracks),
         fluxa_ui::NODE_PLAYER_SPEED => open_menu(state, menu::Menu::Speed),
         fluxa_ui::NODE_PLAYER_EPISODES => open_menu(state, menu::Menu::Episodes),
