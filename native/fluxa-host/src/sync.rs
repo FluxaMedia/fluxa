@@ -75,6 +75,30 @@ pub(super) fn apply_notice(state: &mut RendererState) {
     state.home.notice = Some((text.clone(), opacity));
 }
 
+pub(super) fn retire<T: Send + 'static>(value: T) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use std::sync::{OnceLock, mpsc};
+        type Junk = Box<dyn Send>;
+        static REAPER: OnceLock<mpsc::Sender<Junk>> = OnceLock::new();
+        let tx = REAPER.get_or_init(|| {
+            let (tx, rx) = mpsc::channel::<Junk>();
+            let _ = std::thread::Builder::new()
+                .name("fluxa-retire".into())
+                .spawn(move || {
+                    fluxa_artwork::lower_thread_priority();
+                    for junk in rx {
+                        drop(junk);
+                    }
+                });
+            tx
+        });
+        let _ = tx.send(Box::new(value));
+    }
+    #[cfg(target_arch = "wasm32")]
+    drop(value);
+}
+
 pub(super) fn apply_projection(state: &mut RendererState, projection: projection::Projection) {
     state
         .projector
@@ -88,7 +112,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let row_scroll_offsets = std::mem::take(&mut state.home.row_scroll_offsets);
     let platform = state.home.platform;
     let focus_driven = state.home.focus_driven;
-    state.home = projection.home;
+    retire(std::mem::replace(&mut state.home, projection.home));
     state.home.platform = platform;
     state.home.focus_driven = focus_driven;
     state.home.scroll_offset = scroll_offset;
@@ -111,29 +135,29 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
             titles,
         ));
     }
-    state.library = projection.library;
+    retire(std::mem::replace(&mut state.library, projection.library));
     let previous_folder = state.folder.id.clone();
     if state.folder.id != projection.folder.id {
         state.folder_tab = 0;
     }
     let folder_offsets = std::mem::take(&mut state.folder.row_scroll_offsets);
-    state.folder = projection.folder;
+    retire(std::mem::replace(&mut state.folder, projection.folder));
     if state.folder.id == previous_folder {
         state.folder.row_scroll_offsets = folder_offsets;
     }
     let query = std::mem::take(&mut state.discover.query);
-    state.discover = projection.discover;
+    retire(std::mem::replace(&mut state.discover, projection.discover));
     state.discover.query = query;
     let selected_day = state.calendar.selected_day;
     let previous_month = (state.calendar.year, state.calendar.month);
-    state.calendar = projection.calendar;
+    retire(std::mem::replace(&mut state.calendar, projection.calendar));
     if previous_month == (state.calendar.year, state.calendar.month) {
         state.calendar.selected_day = selected_day;
     }
-    let row_scroll_offsets = state.detail.row_scroll_offsets;
+    let row_scroll_offsets = std::mem::take(&mut state.detail.row_scroll_offsets);
     let selected_season = state.detail.selected_season;
     let same_detail = state.detail.id == projection.detail.id;
-    state.detail = projection.detail;
+    retire(std::mem::replace(&mut state.detail, projection.detail));
     if same_detail {
         state.detail.row_scroll_offsets = row_scroll_offsets;
         state.detail.selected_season = selected_season;
@@ -160,7 +184,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     let badge_status = state.settings.badge_status.take();
     let formatter_status = state.settings.formatter_status.take();
     let playback_summary = std::mem::take(&mut state.settings.playback_summary);
-    state.settings = projection.settings;
+    retire(std::mem::replace(&mut state.settings, projection.settings));
     state.settings.playback_summary = playback_summary;
     state.settings.active_section = settings_section.min(fluxa_ui::SETTINGS_SECTIONS.len() - 1);
     state.settings.section_open = section_open;

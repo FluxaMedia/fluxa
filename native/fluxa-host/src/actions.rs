@@ -848,7 +848,9 @@ pub(super) fn pull_session_snapshot(state: &mut RendererState) {
         return;
     }
     state.session_revision = Some(revision);
-    state.core_snapshot = Some(session.snapshot());
+    if let Some(old) = state.core_snapshot.replace(session.snapshot()) {
+        retire(old);
+    }
     state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
     sync_home_from_core_snapshot(state);
 }
