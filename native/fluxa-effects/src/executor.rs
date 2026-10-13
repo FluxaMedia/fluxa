@@ -26,6 +26,7 @@ use addons::*;
 use catalog::*;
 pub use mediaserver::{media_servers, remove_media_server};
 pub use providers::simkl_plan_lacks_rewatch;
+pub use welcome::OFFLINE as NUVIO_OFFLINE;
 use tmdb::*;
 use torrent::*;
 

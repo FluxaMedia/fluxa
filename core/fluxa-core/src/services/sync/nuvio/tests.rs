@@ -256,3 +256,28 @@ fn progress_metadata_plan_keeps_series_episode_metadata_but_skips_complete_movie
         }])
     );
 }
+
+#[test]
+fn remote_profiles_missing_locally_are_added_with_the_account_session() {
+    let session = json!({"id": "s1", "nuvioUserId": "u1", "nuvioAccessToken": "t", "nuvioProfileIndex": 1});
+    let next = profiles::apply_remote_profiles_json(
+        &json!({
+            "sessionProfile": session,
+            "profiles": [session],
+            "nuvioProfiles": [
+                {"profile_index": 1, "name": "Ali"},
+                {"profile_index": 2, "name": "Ayşe", "pin_enabled": true},
+            ],
+        })
+        .to_string(),
+    )
+    .unwrap();
+    let next: Vec<Value> = serde_json::from_str(&next).unwrap();
+    assert_eq!(next.len(), 2);
+    assert_eq!(next[1]["id"], "s1-2");
+    assert_eq!(next[1]["name"], "Ayşe");
+    assert_eq!(next[1]["nuvioAccessToken"], "t");
+    assert_eq!(next[1]["nuvioProfileIndex"], 2);
+    assert_eq!(next[1]["nuvioPinEnabled"], true);
+    assert_eq!(next[0]["nuvioPinEnabled"], false);
+}

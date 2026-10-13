@@ -66,7 +66,7 @@ pub use player::{
 };
 pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
 pub use profiles::{
-    PROFILE_SPLASH_SECS, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
+    PROFILE_SPLASH_SECS, PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
     draw_profile_splash, draw_profiles,
 };

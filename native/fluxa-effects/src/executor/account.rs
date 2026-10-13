@@ -119,35 +119,43 @@ impl EffectExecutor {
     }
 
     fn store_nuvio_tokens(&self, profile: &Value, refreshed: &Value) -> Result<(), String> {
-        let Some(id) = profile.get("id").and_then(Value::as_str) else {
-            return Ok(());
+        let text = |value: &Value, key: &str| {
+            value
+                .get(key)
+                .and_then(Value::as_str)
+                .filter(|text| !text.is_empty())
+                .map(ToOwned::to_owned)
         };
+        let id = text(profile, "id");
+        let account = text(profile, "nuvioUserId").or_else(|| text(profile, "nuvioEmail"));
         let mut profiles = self
             .storage
             .read_json("profiles")?
             .unwrap_or_else(|| json!([]));
-        let Some(stored) = profiles.as_array_mut().and_then(|items| {
-            items
-                .iter_mut()
-                .find(|item| item.get("id").and_then(Value::as_str) == Some(id))
-        }) else {
-            return Ok(());
-        };
-        let Some(fields) = stored.as_object_mut() else {
-            return Ok(());
-        };
-        fields.insert("nuvioAccessToken".into(), refreshed["access_token"].clone());
-        if let Some(refresh) = refreshed.get("refresh_token") {
-            fields.insert("nuvioRefreshToken".into(), refresh.clone());
-        }
         let expires_in = refreshed
             .get("expires_in")
             .and_then(Value::as_i64)
             .unwrap_or(3600);
-        fields.insert(
-            "nuvioTokenExpiresAt".into(),
-            json!(chrono_unix_seconds() + expires_in),
-        );
+        for stored in profiles.as_array_mut().into_iter().flatten() {
+            let same_profile = id.is_some() && text(stored, "id") == id;
+            let same_account = account.is_some()
+                && (text(stored, "nuvioUserId") == account
+                    || text(stored, "nuvioEmail") == account);
+            let Some(fields) = stored
+                .as_object_mut()
+                .filter(|_| same_profile || same_account)
+            else {
+                continue;
+            };
+            fields.insert("nuvioAccessToken".into(), refreshed["access_token"].clone());
+            if let Some(refresh) = refreshed.get("refresh_token") {
+                fields.insert("nuvioRefreshToken".into(), refresh.clone());
+            }
+            fields.insert(
+                "nuvioTokenExpiresAt".into(),
+                json!(chrono_unix_seconds() + expires_in),
+            );
+        }
         self.storage.write_json("profiles", &profiles)
     }
 

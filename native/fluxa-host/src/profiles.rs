@@ -4,7 +4,7 @@ use web_time::Instant;
 
 use fluxa_effects::{EffectExecutor, SessionHandle, Storage};
 use fluxa_ui::{
-    PinPrompt, PinPurpose, ProfileAvatarPack, ProfileEntry, ProfilePickerSettings, ProfilesMode,
+    PinFailure, PinPrompt, PinPurpose, ProfileAvatarPack, ProfileEntry, ProfilePickerSettings, ProfilesMode,
     ProfilesModel, ProfilesRequest, localized,
 };
 use serde_json::{Value, json};
@@ -12,6 +12,15 @@ use serde_json::{Value, json};
 use crate::{RendererState, core_value, discover_command, host_log, profile_language};
 
 pub type ImagePicker = Box<dyn Fn() -> Option<PathBuf> + Send>;
+
+pub(crate) struct PinJob {
+    prompt: PinPrompt,
+    receiver: Receiver<Result<Value, String>>,
+}
+
+pub(crate) struct PinChangeJob {
+    receiver: Receiver<Result<Value, String>>,
+}
 
 pub(crate) struct PackJob {
     adding: bool,
@@ -53,7 +62,7 @@ fn entry(profile: &Value) -> ProfileEntry {
         id: text("id").unwrap_or_default(),
         name: text("name").or_else(|| text("email")).unwrap_or_default(),
         avatar_url: text("avatarUrl").filter(|url| !url.starts_with("data:")),
-        locked: text("pinHash").is_some(),
+        locked: text("pinHash").is_some() || flag("nuvioPinEnabled"),
         uses_primary_addons: flag("usesPrimaryAddons"),
         uses_primary_plugins: flag("usesPrimaryPlugins"),
     }
@@ -111,7 +120,7 @@ pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
                     profile_id: id,
                     purpose: PinPurpose::Enter,
                     pin: String::new(),
-                    error: false,
+                    error: None,
                 });
             } else {
                 activate(state, &storage, &id);
@@ -124,6 +133,29 @@ pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
             let profile = stored_profiles(&storage).into_iter().find(|profile| {
                 profile.get("id").and_then(Value::as_str) == Some(&prompt.profile_id)
             });
+            if let Some(remote) = profile
+                .as_ref()
+                .filter(|profile| flag(profile, "nuvioPinEnabled"))
+                .cloned()
+            {
+                let locked_until = remote
+                    .get("nuvioPinLockedUntil")
+                    .and_then(Value::as_i64)
+                    .unwrap_or_default();
+                let now = chrono::Utc::now().timestamp();
+                if locked_until > now {
+                    model.pin_prompt = Some(PinPrompt {
+                        pin: String::new(),
+                        error: Some(PinFailure::Locked((locked_until - now) as u64)),
+                        ..prompt
+                    });
+                    return;
+                }
+                model.busy = true;
+                let receiver = executor.nuvio_verify_pin(remote, prompt.pin.clone());
+                state.pin_job = Some(PinJob { prompt, receiver });
+                return;
+            }
             let matches = profile.is_some_and(|profile| {
                 core_value(
                     "profilePinMatches",
@@ -135,21 +167,28 @@ pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
             if !matches {
                 model.pin_prompt = Some(PinPrompt {
                     pin: String::new(),
-                    error: true,
+                    error: Some(PinFailure::Incorrect),
                     ..prompt
                 });
                 return;
             }
-            match prompt.purpose {
-                PinPurpose::Enter => activate(state, &storage, &prompt.profile_id),
-                PinPurpose::Edit => {
-                    let profile = model.profile(&prompt.profile_id).cloned();
-                    model.open_form(profile.as_ref());
-                }
-                PinPurpose::Delete => model.confirm_delete = Some(prompt.profile_id),
+            unlock(state, &storage, prompt);
+        }
+        ProfilesRequest::Save => {
+            let change = save(model, &storage);
+            if let Some(change) = change {
+                let current = state
+                    .edit_pin
+                    .take()
+                    .filter(|(id, _)| *id == change.profile_id)
+                    .map(|(_, pin)| pin);
+                let receiver = match change.pin {
+                    Some(pin) => executor.nuvio_set_pin(change.profile, pin, current),
+                    None => executor.nuvio_clear_pin(change.profile, current),
+                };
+                state.pin_change_job = Some(PinChangeJob { receiver });
             }
         }
-        ProfilesRequest::Save => save(model, &storage),
         ProfilesRequest::Delete(id) => {
             let profiles = stored_profiles(&storage);
             if let Some(next) = core_value(
@@ -228,9 +267,15 @@ fn save_picker(model: &ProfilesModel, storage: &Storage) {
     }
 }
 
-fn save(model: &mut ProfilesModel, storage: &Storage) {
+struct PinChange {
+    profile_id: String,
+    profile: Value,
+    pin: Option<String>,
+}
+
+fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
     if !model.can_save() {
-        return;
+        return None;
     }
     let profiles = stored_profiles(storage);
     let draft = model.draft.clone();
@@ -252,14 +297,18 @@ fn save(model: &mut ProfilesModel, storage: &Storage) {
         }
     };
     let Some(fields) = profile.as_object_mut() else {
-        return;
+        return None;
     };
     fields.insert("name".into(), json!(draft.name.trim()));
     match &draft.avatar_url {
         Some(url) => fields.insert("avatarUrl".into(), json!(url)),
         None => fields.remove("avatarUrl"),
     };
-    if !draft.pin.is_empty() {
+    let remote = fields.contains_key("nuvioAccessToken");
+    let wants_change = !draft.pin.is_empty() || draft.remove_pin;
+    if remote {
+        fields.remove("pinHash");
+    } else if !draft.pin.is_empty() {
         if let Some(hash) = core_value("profilePinHash", json!({"pin": draft.pin})) {
             fields.insert("pinHash".into(), hash);
         }
@@ -279,6 +328,11 @@ fn save(model: &mut ProfilesModel, storage: &Storage) {
     }
     reload(model, storage);
     model.mode = ProfilesMode::Select;
+    (remote && wants_change).then(|| PinChange {
+        profile_id: profile["id"].as_str().unwrap_or_default().to_owned(),
+        profile,
+        pin: Some(draft.pin).filter(|pin| !pin.is_empty()),
+    })
 }
 
 fn new_profile_id() -> String {
@@ -601,7 +655,132 @@ fn discover(
     Ok(packs)
 }
 
+fn flag(profile: &Value, key: &str) -> bool {
+    profile.get(key).and_then(Value::as_bool).unwrap_or(false)
+}
+
+fn unlock(state: &mut RendererState, storage: &Storage, prompt: PinPrompt) {
+    let Some(model) = state.profiles.as_mut() else {
+        return;
+    };
+    match prompt.purpose {
+        PinPurpose::Enter => activate(state, storage, &prompt.profile_id),
+        PinPurpose::Edit => {
+            let profile = model.profile(&prompt.profile_id).cloned();
+            model.open_form(profile.as_ref());
+            state.edit_pin = Some((prompt.profile_id, prompt.pin));
+        }
+        PinPurpose::Delete => model.confirm_delete = Some(prompt.profile_id),
+    }
+}
+
+fn offline_check(storage: &Storage, prompt: &PinPrompt) -> Result<(), PinFailure> {
+    let mut profiles = stored_profiles(storage);
+    let Some(stored) = profiles
+        .iter_mut()
+        .find(|profile| profile.get("id").and_then(Value::as_str) == Some(&prompt.profile_id))
+    else {
+        return Err(PinFailure::Unavailable);
+    };
+    let Some(result) = core_value(
+        "nuvioPinOffline",
+        json!({
+            "profile": stored.clone(),
+            "pin": prompt.pin,
+            "now": chrono::Utc::now().timestamp(),
+        }),
+    ) else {
+        return Err(PinFailure::Unavailable);
+    };
+    if let Some(next) = result.get("profile") {
+        *stored = next.clone();
+        write(storage, "profiles", &Value::Array(profiles));
+    }
+    let retry_after = result
+        .get("retryAfter")
+        .and_then(Value::as_u64)
+        .unwrap_or_default();
+    match result.get("outcome").and_then(Value::as_str) {
+        Some("unlocked") => Ok(()),
+        Some("incorrect") => Err(PinFailure::Incorrect),
+        Some("locked") => Err(PinFailure::Locked(retry_after)),
+        _ => Err(PinFailure::Unavailable),
+    }
+}
+
+pub(crate) fn poll_pin(state: &mut RendererState) {
+    poll_pin_change(state);
+    let Some(job) = state.pin_job.as_ref() else {
+        return;
+    };
+    let Ok(outcome) = job.receiver.try_recv() else {
+        return;
+    };
+    let Some(PinJob { prompt, .. }) = state.pin_job.take() else {
+        return;
+    };
+    let Some(storage) = state
+        .session
+        .as_ref()
+        .map(|session| session.storage().clone())
+    else {
+        return;
+    };
+    let Some(model) = state.profiles.as_mut() else {
+        return;
+    };
+    model.busy = false;
+    let verdict = match outcome {
+        Ok(result) if result.get("unlocked").and_then(Value::as_bool) == Some(true) => Ok(()),
+        Ok(result) => {
+            let wait = result
+                .get("retry_after_seconds")
+                .and_then(Value::as_u64)
+                .unwrap_or_default();
+            Err(if wait > 0 {
+                PinFailure::Locked(wait)
+            } else {
+                PinFailure::Incorrect
+            })
+        }
+        Err(reason) if reason == fluxa_effects::NUVIO_OFFLINE => offline_check(&storage, &prompt),
+        Err(_) => Err(PinFailure::Incorrect),
+    };
+    match verdict {
+        Ok(()) => unlock(state, &storage, prompt),
+        Err(failure) => {
+            model.pin_prompt = Some(PinPrompt {
+                pin: String::new(),
+                error: Some(failure),
+                ..prompt
+            });
+        }
+    }
+}
+
+fn poll_pin_change(state: &mut RendererState) {
+    let Some(job) = state.pin_change_job.as_ref() else {
+        return;
+    };
+    let Ok(outcome) = job.receiver.try_recv() else {
+        return;
+    };
+    state.pin_change_job = None;
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let storage = session.storage().clone();
+    let Some(model) = state.profiles.as_mut() else {
+        return;
+    };
+    reload(model, &storage);
+    if let Err(key) = outcome {
+        model.notice = Some(localized(&key, &model.language));
+    }
+}
+
 pub(crate) fn poll(state: &mut RendererState) {
+    poll_pin(state);
     let Some(job) = state.pack_job.as_ref() else {
         return;
     };

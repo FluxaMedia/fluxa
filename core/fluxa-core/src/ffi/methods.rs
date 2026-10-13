@@ -85,6 +85,8 @@ static METHODS: &[(&str, Router)] = &[
     ("nuvioEffectiveProfileScopes", route_nuvio),
     ("nuvioHomeLayout", route_nuvio),
     ("nuvioMapCollections", route_nuvio),
+    ("nuvioPinCache", route_nuvio),
+    ("nuvioPinOffline", route_nuvio),
     ("nuvioProgressMetaNeeds", route_nuvio),
     ("nuvioProviderLibrarySnapshot", route_nuvio),
     ("nuvioSessionProfile", route_profile_contract),

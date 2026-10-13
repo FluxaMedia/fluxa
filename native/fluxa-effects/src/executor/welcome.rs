@@ -3,6 +3,7 @@ use super::*;
 const TV_LOGIN_URL: &str = "https://nuvio.tv/tv-login";
 const DEVICE_LOGIN_URL: &str = "https://nuvio.tv/link";
 const UNKNOWN: &str = "auth.error.unknown";
+pub const OFFLINE: &str = "offline";
 
 fn supabase() -> Result<(&'static str, &'static str), String> {
     match (
@@ -231,5 +232,155 @@ impl EffectExecutor {
             .map(|profiles| find_profile(profiles, &id))
             .filter(|found| found.get("id").is_some())
             .unwrap_or(profile))
+    }
+
+    pub fn nuvio_verify_pin(
+        &self,
+        profile: Value,
+        pin: String,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let (_, text) = executor
+                .nuvio_pin_rpc(
+                    &profile,
+                    "verify_profile_pin",
+                    |index| json!({"p_profile_id": index, "p_pin": pin}),
+                )
+                .await
+                .map_err(|failure| match failure {
+                    PinRpcFailure::Offline => OFFLINE.to_owned(),
+                    PinRpcFailure::Rejected(status, body) => error_key(status, &body),
+                })?;
+            let body = json_body(&text)?;
+            let result = body
+                .as_array()
+                .and_then(|rows| rows.first())
+                .cloned()
+                .unwrap_or(body);
+            if result.get("unlocked").and_then(Value::as_bool) == Some(true) {
+                executor.resync_nuvio_profiles(&profile).await;
+                executor.cache_nuvio_pin(&profile, &pin);
+            }
+            Ok(result)
+        })
+    }
+
+    pub fn nuvio_set_pin(
+        &self,
+        profile: Value,
+        pin: String,
+        current: Option<String>,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            executor
+                .nuvio_pin_rpc(&profile, "set_profile_pin", |index| {
+                    let mut body = json!({"p_profile_id": index, "p_pin": pin});
+                    if let Some(current) = &current {
+                        body["p_current_pin"] = json!(current);
+                    }
+                    body
+                })
+                .await
+                .map_err(pin_change_error)?;
+            executor.resync_nuvio_profiles(&profile).await;
+            executor.cache_nuvio_pin(&profile, &pin);
+            Ok(json!({}))
+        })
+    }
+
+    pub fn nuvio_clear_pin(
+        &self,
+        profile: Value,
+        current: Option<String>,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            executor
+                .nuvio_pin_rpc(&profile, "clear_profile_pin", |index| {
+                    let mut body = json!({"p_profile_id": index});
+                    if let Some(current) = &current {
+                        body["p_current_pin"] = json!(current);
+                    }
+                    body
+                })
+                .await
+                .map_err(pin_change_error)?;
+            executor.resync_nuvio_profiles(&profile).await;
+            Ok(json!({}))
+        })
+    }
+
+    async fn nuvio_pin_rpc(
+        &self,
+        profile: &Value,
+        name: &str,
+        body: impl FnOnce(i64) -> Value,
+    ) -> Result<(u16, String), PinRpcFailure> {
+        let session = match self.nuvio_session(profile).await {
+            Ok(Some(session)) => session,
+            _ => return Err(PinRpcFailure::Offline),
+        };
+        let response = session
+            .rpc(name)
+            .json(&body(session.profile_index))
+            .send()
+            .await
+            .map_err(|_| PinRpcFailure::Offline)?;
+        let status = response.status().as_u16();
+        let text = response.text().await.unwrap_or_default();
+        if (200..300).contains(&status) {
+            Ok((status, text))
+        } else {
+            Err(PinRpcFailure::Rejected(status, text))
+        }
+    }
+
+    async fn resync_nuvio_profiles(&self, profile: &Value) {
+        let _ = self
+            .storage
+            .write_json("nuvio_profiles_checked_at", &json!(0));
+        if let Ok(Some(nuvio)) = self.nuvio_session(profile).await {
+            self.refresh_nuvio_profiles(&nuvio, profile).await;
+        }
+    }
+
+    fn cache_nuvio_pin(&self, profile: &Value, pin: &str) {
+        let Some(id) = profile.get("id").and_then(Value::as_str) else {
+            return;
+        };
+        let Ok(Some(mut profiles)) = self.storage.read_json("profiles") else {
+            return;
+        };
+        let Some(salt) = super::providers::random_hex() else {
+            return;
+        };
+        let Some(stored) = profiles.as_array_mut().and_then(|items| {
+            items
+                .iter_mut()
+                .find(|item| item.get("id").and_then(Value::as_str) == Some(id))
+        }) else {
+            return;
+        };
+        if let Some(next) = core_value(
+            "nuvioPinCache",
+            json!({"profile": stored.clone(), "salt": &salt[..16], "pin": pin}),
+        ) {
+            *stored = next;
+            let _ = self.storage.write_json("profiles", &profiles);
+        }
+    }
+}
+
+enum PinRpcFailure {
+    Offline,
+    Rejected(u16, String),
+}
+
+fn pin_change_error(failure: PinRpcFailure) -> String {
+    match failure {
+        PinRpcFailure::Offline => "profiles.pin_requires_internet".to_owned(),
+        PinRpcFailure::Rejected(..) => "profiles.pin_save_failed".to_owned(),
     }
 }

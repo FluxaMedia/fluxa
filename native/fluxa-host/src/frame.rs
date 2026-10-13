@@ -7,6 +7,8 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         || state.touch_start.is_some()
         || state.scroll_velocity != 0.0
         || state.pack_job.is_some()
+        || state.pin_job.is_some()
+        || state.pin_change_job.is_some()
         || !state.pending_native_actions.is_empty()
         || state.pending_resize.is_some();
     if busy {

@@ -63,8 +63,14 @@ pub(super) fn draw_pin_prompt(
             }
             pin.retain(|character| character.is_ascii_digit());
             pin.truncate(4);
-            if prompt.error {
-                components::note(ui, &t("profiles.pin_error"), metrics);
+            if let Some(failure) = prompt.error {
+                let message = match failure {
+                    PinFailure::Incorrect => t("profiles.pin_error"),
+                    PinFailure::Unavailable => t("profiles.pin_unavailable"),
+                    PinFailure::Locked(seconds) => t("profiles.pin_locked")
+                        .replace("{time}", &format!("{}:{:02}", seconds / 60, seconds % 60)),
+                };
+                components::note(ui, &message, metrics);
             }
             ui.add_space(18.0);
             let submit = pin.len() == 4
@@ -91,7 +97,7 @@ pub(super) fn draw_pin_prompt(
         model.pin_prompt = None;
     } else if let Some(current) = model.pin_prompt.as_mut() {
         if current.pin != pin {
-            current.error = false;
+            current.error = None;
         }
         current.pin = pin;
     }

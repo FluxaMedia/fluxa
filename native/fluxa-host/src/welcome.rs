@@ -249,5 +249,9 @@ fn finish(state: &mut RendererState, profile: &Value) {
     };
     state.welcome = None;
     state.welcome_flow = None;
-    profiles::activate(state, &storage, id);
+    if profiles::stored_profiles(&storage).len() > 1 {
+        profiles::open(state);
+    } else {
+        profiles::activate(state, &storage, id);
+    }
 }

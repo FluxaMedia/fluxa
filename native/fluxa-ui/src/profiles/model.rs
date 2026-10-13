@@ -66,7 +66,14 @@ pub struct PinPrompt {
     pub profile_id: String,
     pub purpose: PinPurpose,
     pub pin: String,
-    pub error: bool,
+    pub error: Option<PinFailure>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum PinFailure {
+    Incorrect,
+    Locked(u64),
+    Unavailable,
 }
 
 #[derive(Clone, Debug, Default)]

@@ -234,7 +234,7 @@ pub(super) fn draw_select(
                         profile_id: profile.id.clone(),
                         purpose,
                         pin: String::new(),
-                        error: false,
+                        error: None,
                     });
                 } else if is_delete {
                     model.confirm_delete = Some(profile.id.clone());
@@ -249,7 +249,7 @@ pub(super) fn draw_select(
                     profile_id: profile.id.clone(),
                     purpose: PinPurpose::Enter,
                     pin: String::new(),
-                    error: false,
+                    error: None,
                 });
             } else {
                 *request = Some(ProfilesRequest::Select(profile.id.clone()));
