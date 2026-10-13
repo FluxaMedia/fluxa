@@ -1,0 +1,235 @@
+use super::*;
+
+const TV_LOGIN_URL: &str = "https://nuvio.tv/tv-login";
+const DEVICE_LOGIN_URL: &str = "https://nuvio.tv/link";
+const UNKNOWN: &str = "auth.error.unknown";
+
+fn supabase() -> Result<(&'static str, &'static str), String> {
+    match (
+        option_env!("FLUXA_NUVIO_SUPABASE_URL"),
+        option_env!("FLUXA_NUVIO_SUPABASE_KEY"),
+    ) {
+        (Some(url), Some(key)) => Ok((url.trim_end_matches('/'), key)),
+        _ => Err(UNKNOWN.to_owned()),
+    }
+}
+
+fn client() -> Result<Client, String> {
+    Client::builder()
+        .user_agent("Fluxa/1.0")
+        .native_timeout(Duration::from_secs(20))
+        .build()
+        .map_err(|_| UNKNOWN.to_owned())
+}
+
+fn error_key(status: u16, body: &str) -> String {
+    core_value("nuvioAuthError", json!({"status": status, "body": body}))
+        .and_then(|key| key.as_str().map(ToOwned::to_owned))
+        .unwrap_or_else(|| UNKNOWN.to_owned())
+}
+
+async fn send(
+    client: &Client,
+    url: String,
+    key: &str,
+    body: &Value,
+) -> Result<String, (u16, String)> {
+    let response = client
+        .post(url)
+        .header("apikey", key)
+        .json(body)
+        .send()
+        .await
+        .map_err(|_| (0, String::new()))?;
+    let status = response.status().as_u16();
+    let text = response.text().await.unwrap_or_default();
+    if (200..300).contains(&status) {
+        Ok(text)
+    } else {
+        Err((status, text))
+    }
+}
+
+async fn post(
+    client: &Client,
+    url: String,
+    key: &str,
+    body: &Value,
+) -> Result<(u16, String), String> {
+    send(client, url, key, body)
+        .await
+        .map(|text| (200, text))
+        .map_err(|(status, text)| error_key(status, &text))
+}
+
+fn json_body(text: &str) -> Result<Value, String> {
+    serde_json::from_str(text).map_err(|_| UNKNOWN.to_owned())
+}
+
+fn nonce() -> String {
+    super::providers::random_hex()
+        .map(|hex| hex[..48].to_owned())
+        .unwrap_or_else(|| chrono_unix_seconds().to_string())
+}
+
+impl EffectExecutor {
+    pub fn nuvio_sign_in(
+        &self,
+        email: String,
+        password: String,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let (base, key) = supabase()?;
+            let (_, text) = post(
+                &client()?,
+                format!("{base}/auth/v1/token?grant_type=password"),
+                key,
+                &json!({"email": email, "password": password}),
+            )
+            .await?;
+            executor
+                .finish_nuvio_login(&json_body(&text)?, &email)
+                .await
+        })
+    }
+
+    pub fn nuvio_tv_start(&self) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        super::detached(async move {
+            let (base, key) = supabase()?;
+            let client = client()?;
+            let nonce = nonce();
+            let device = send(
+                &client,
+                format!("{base}/rest/v1/rpc/start_device_login_session"),
+                key,
+                &json!({
+                    "p_device_nonce": nonce,
+                    "p_redirect_base_url": DEVICE_LOGIN_URL,
+                    "p_device_type": "tv",
+                    "p_device_name": "Fluxa",
+                }),
+            )
+            .await;
+            let (text, code_field, url_field) = match device {
+                Ok(text) => (text, "device_code", "verification_uri_complete"),
+                Err((_, body))
+                    if body.contains("start_device_login_session")
+                        && body.to_lowercase().contains("could not find the function") =>
+                {
+                    let (_, text) = post(
+                        &client,
+                        format!("{base}/rest/v1/rpc/start_tv_login_session"),
+                        key,
+                        &json!({"p_device_nonce": nonce, "p_redirect_base_url": TV_LOGIN_URL}),
+                    )
+                    .await?;
+                    (text, "code", "web_url")
+                }
+                Err((status, body)) => return Err(error_key(status, &body)),
+            };
+            let started = json_body(&text)?;
+            let row = started
+                .as_array()
+                .and_then(|rows| rows.first())
+                .unwrap_or(&started);
+            let text_of = |field: &str| row.get(field).and_then(Value::as_str).unwrap_or_default();
+            let expires_at = chrono::DateTime::parse_from_rfc3339(text_of("expires_at"))
+                .map(|time| time.timestamp())
+                .unwrap_or_else(|_| chrono_unix_seconds() + 300);
+            if text_of(code_field).is_empty() || text_of(url_field).is_empty() {
+                return Err(UNKNOWN.to_owned());
+            }
+            Ok(json!({
+                "code": text_of(code_field),
+                "webUrl": text_of(url_field),
+                "userCode": if code_field == "device_code" { text_of("user_code") } else { text_of(code_field) },
+                "verificationUri": if code_field == "device_code" { text_of("verification_uri") } else { TV_LOGIN_URL },
+                "expiresAt": expires_at,
+                "interval": row.get("poll_interval_seconds").and_then(Value::as_u64).unwrap_or(3).max(2),
+                "nonce": nonce,
+            }))
+        })
+    }
+
+    pub fn nuvio_tv_poll(
+        &self,
+        code: String,
+        nonce: String,
+    ) -> std::sync::mpsc::Receiver<Result<Value, String>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let (base, key) = supabase()?;
+            let client = client()?;
+            let (_, text) = post(
+                &client,
+                format!("{base}/rest/v1/rpc/poll_tv_login_session"),
+                key,
+                &json!({"p_code": code, "p_device_nonce": nonce}),
+            )
+            .await?;
+            let polled = json_body(&text)?;
+            let row = polled
+                .as_array()
+                .and_then(|rows| rows.first())
+                .unwrap_or(&polled);
+            let approved = row
+                .get("approved")
+                .and_then(Value::as_bool)
+                .unwrap_or(false)
+                || row
+                    .get("status")
+                    .and_then(Value::as_str)
+                    .is_some_and(|status| status.eq_ignore_ascii_case("approved"));
+            if !approved {
+                let ended = row
+                    .get("status")
+                    .and_then(Value::as_str)
+                    .is_some_and(|status| {
+                        ["expired", "used", "cancelled"]
+                            .iter()
+                            .any(|ended| status.eq_ignore_ascii_case(ended))
+                    });
+                return Ok(json!({"state": if ended { "ended" } else { "pending" }}));
+            }
+            let (_, text) = post(
+                &client,
+                format!("{base}/functions/v1/tv-logins-exchange"),
+                key,
+                &json!({"code": code, "device_nonce": nonce}),
+            )
+            .await?;
+            let session = json_body(&text)?;
+            let profile = executor.finish_nuvio_login(&session, "").await?;
+            Ok(json!({"state": "success", "profile": profile}))
+        })
+    }
+
+    async fn finish_nuvio_login(&self, session: &Value, email: &str) -> Result<Value, String> {
+        let id = nonce().chars().take(32).collect::<String>();
+        let profile = core_value(
+            "nuvioSessionProfile",
+            json!({
+                "id": id,
+                "email": email,
+                "nowSeconds": chrono_unix_seconds(),
+                "session": session,
+            }),
+        )
+        .filter(|profile| !profile.is_null())
+        .ok_or_else(|| UNKNOWN.to_owned())?;
+        self.save_profile(&profile);
+        let _ = self
+            .storage
+            .write_json("nuvio_profiles_checked_at", &json!(0));
+        if let Ok(Some(nuvio)) = self.nuvio_session(&profile).await {
+            self.refresh_nuvio_profiles(&nuvio, &profile).await;
+        }
+        let stored = self.storage.read_json("profiles").ok().flatten();
+        Ok(stored
+            .as_ref()
+            .map(|profiles| find_profile(profiles, &id))
+            .filter(|found| found.get("id").is_some())
+            .unwrap_or(profile))
+    }
+}

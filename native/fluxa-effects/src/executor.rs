@@ -19,6 +19,7 @@ mod streams;
 mod tmdb;
 mod torrent;
 mod trickplay;
+mod welcome;
 
 use account::*;
 use addons::*;

@@ -243,7 +243,7 @@ impl EffectExecutor {
         })
     }
 
-    fn save_profile(&self, profile: &Value) {
+    pub(super) fn save_profile(&self, profile: &Value) {
         let profiles = self
             .storage
             .read_json("profiles")

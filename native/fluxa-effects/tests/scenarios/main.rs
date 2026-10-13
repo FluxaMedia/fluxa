@@ -11,3 +11,4 @@ mod simkl;
 mod support;
 mod tmdb;
 mod trakt;
+mod welcome;
