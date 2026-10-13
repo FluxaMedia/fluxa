@@ -19,6 +19,7 @@ serde_json = "1.0"
 web-time = "1"
 wgpu = { version = "29.0.3", default-features = false, features = ["wgsl"] }
 clru = "0.6.3"
+bytemuck = "1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }

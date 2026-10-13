@@ -243,6 +243,7 @@ impl ArtworkFetcher {
             .max_blocking_threads(decode_concurrency + 1)
             .enable_all()
             .thread_name("fluxa-artwork")
+            .on_thread_start(lower_thread_priority)
             .build()
             .expect("Fluxa artwork runtime must start");
         Self {
@@ -443,7 +444,7 @@ impl ArtworkFetcher {
                                 match decode_animated_target(&bytes, target_size) {
                                     Ok(Some(frames)) if frames.len() > 1 => {
                                         let image = frames[0].image.clone();
-                                        match pack_animation_atlas(frames, MAX_ANIMATION_ATLAS_SIDE) {
+                                        match pack_animation_atlas(frames, animation_atlas_side()) {
                                             Ok(atlas) => PreparedImage {
                                                 image,
                                                 animation_atlas: atlas,
@@ -722,9 +723,25 @@ pub fn animation_size_for_frame_count(
     animation_size_for_frame_count_with_limits(
         target_size,
         frame_count,
-        MAX_ANIMATION_BYTES,
-        MAX_ANIMATION_ATLAS_SIDE,
+        animation_byte_budget(),
+        animation_atlas_side(),
     )
+}
+
+fn animation_byte_budget() -> usize {
+    if low_memory() {
+        MAX_ANIMATION_BYTES / 4
+    } else {
+        MAX_ANIMATION_BYTES
+    }
+}
+
+fn animation_atlas_side() -> u32 {
+    if low_memory() {
+        MAX_ANIMATION_ATLAS_SIDE / 2
+    } else {
+        MAX_ANIMATION_ATLAS_SIDE
+    }
 }
 
 pub fn animation_size_for_frame_count_with_limits(
@@ -791,6 +808,16 @@ pub fn fetch_url(source_url: &str, target_size: [u32; 2]) -> String {
     };
     format!("{}{variant}/{path}", &source_url[..path_start])
 }
+
+#[cfg(all(unix, not(target_arch = "wasm32")))]
+pub fn lower_thread_priority() {
+    unsafe {
+        libc::setpriority(libc::PRIO_PROCESS, 0, 10);
+    }
+}
+
+#[cfg(any(not(unix), target_arch = "wasm32"))]
+pub fn lower_thread_priority() {}
 
 pub fn request_key(source_url: &str, target_size: [u32; 2]) -> String {
     format!("{}#{}x{}", source_url, target_size[0], target_size[1])

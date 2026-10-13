@@ -10,6 +10,10 @@ const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
 const LOW_MEMORY_DECODED_BYTES: usize = 32 * 1024 * 1024;
 const LOW_MEMORY_TOTAL_KB: u64 = 3 * 1024 * 1024;
 
+fn color_image(size: [usize; 2], raw: Vec<u8>) -> egui::ColorImage {
+    egui::ColorImage::new(size, bytemuck::cast_slice(&raw).to_vec())
+}
+
 fn total_memory_kb() -> Option<u64> {
     std::fs::read_to_string("/proc/meminfo")
         .ok()?
@@ -36,7 +40,21 @@ type DecodedCache = clru::CLruCache<
     ImageWeight,
 >;
 
+struct ConvertedArtwork {
+    source_url: String,
+    target_size: [u32; 2],
+    animation_requested: bool,
+    frames: Option<Vec<fluxa_artwork::AnimatedAtlasFrame>>,
+    width: u32,
+    height: u32,
+    image: egui::ColorImage,
+    transparent_ratio: f32,
+    tones: [[u8; 3]; 2],
+}
+
 pub(super) struct ArtworkLoader {
+    converted_tx: std::sync::mpsc::Sender<ConvertedArtwork>,
+    converted_rx: std::sync::mpsc::Receiver<ConvertedArtwork>,
     pub(super) fetcher: ArtworkFetcher,
     textures: HashMap<String, egui::TextureHandle>,
     emoji: HashMap<String, Option<egui::TextureHandle>>,
@@ -72,6 +90,7 @@ impl ArtworkLoader {
         let workers = std::thread::available_parallelism()
             .map_or(2, |cores| cores.get() / 2)
             .clamp(2, 4);
+        let (converted_tx, converted_rx) = std::sync::mpsc::channel();
         Self {
             fetcher: ArtworkFetcher::new(cache_dir, workers),
             textures: HashMap::new(),
@@ -79,6 +98,8 @@ impl ArtworkLoader {
             emoji_pending: Vec::new(),
             animations: HashMap::new(),
             animation_checked: HashSet::new(),
+            converted_tx,
+            converted_rx,
             active_animations: HashSet::new(),
             animation_slots: HashSet::new(),
             latest_keys: HashMap::new(),
@@ -145,15 +166,47 @@ impl ArtworkLoader {
         self.context.get_or_insert_with(|| context.clone());
         self.rasterize_emoji(context);
         let uploads = if fluxa_artwork::low_memory() { 1 } else { 2 };
-        for prepared in self.fetcher.poll(uploads) {
-            let url = prepared.source_url;
-            let target_size = prepared.target_size;
-            let animation_requested = prepared.animation_requested;
-            let animation_atlas = prepared.animation_atlas;
-            let image_pixels = animation_atlas
-                .as_ref()
-                .map(|atlas| &atlas.image)
-                .unwrap_or(&prepared.image);
+        for mut prepared in self.fetcher.poll(4) {
+            let mut animation_atlas = prepared.animation_atlas.take();
+            let source = match animation_atlas.as_mut() {
+                Some(atlas) => &mut atlas.image,
+                None => &mut prepared.image,
+            };
+            let (width, height) = (source.width(), source.height());
+            let raw = std::mem::replace(source, image::RgbaImage::new(0, 0)).into_raw();
+            let sender = self.converted_tx.clone();
+            let job = move || {
+                fluxa_artwork::lower_thread_priority();
+                let image = color_image([width as usize, height as usize], raw);
+                let _ = sender.send(ConvertedArtwork {
+                    source_url: prepared.source_url,
+                    target_size: prepared.target_size,
+                    animation_requested: prepared.animation_requested,
+                    frames: animation_atlas.map(|atlas| atlas.frames),
+                    width,
+                    height,
+                    image,
+                    transparent_ratio: prepared.transparent_ratio,
+                    tones: prepared.tones,
+                });
+            };
+            #[cfg(not(target_arch = "wasm32"))]
+            let _ = std::thread::Builder::new()
+                .name("fluxa-convert".into())
+                .spawn(job);
+            #[cfg(target_arch = "wasm32")]
+            job();
+        }
+        let ready = self
+            .converted_rx
+            .try_iter()
+            .take(uploads)
+            .collect::<Vec<_>>();
+        for converted in ready {
+            let url = converted.source_url;
+            let target_size = converted.target_size;
+            let animation_requested = converted.animation_requested;
+            let (width, height) = (converted.width, converted.height);
             let base_key = fluxa_artwork::request_key(&url, target_size);
             let key = if animation_requested {
                 format!("{base_key}#animated-atlas")
@@ -164,24 +217,15 @@ impl ArtworkLoader {
             // straight-alpha constructor applies alpha a second time and
             // creates the dark/bright fringe visible around transparent logos.
             let max_side = context.input(|input| input.max_texture_side) as u32;
-            if image_pixels.width() > max_side || image_pixels.height() > max_side {
+            if width > max_side || height > max_side {
                 host_log(format!(
-                    "Artwork skipped: {}x{} exceeds {max_side}",
-                    image_pixels.width(),
-                    image_pixels.height()
+                    "Artwork skipped: {width}x{height} exceeds {max_side}"
                 ));
                 continue;
             }
-            let image = egui::ColorImage::from_rgba_premultiplied(
-                [
-                    image_pixels.width() as usize,
-                    image_pixels.height() as usize,
-                ],
-                image_pixels.as_raw(),
-            );
-            let transparent_ratio = prepared.transparent_ratio;
-            let tones = prepared.tones;
-            let image = Arc::new(image);
+            let transparent_ratio = converted.transparent_ratio;
+            let tones = converted.tones;
+            let image = Arc::new(converted.image);
             if !animation_requested {
                 self.transparent_pixel_ratio
                     .insert(key.clone(), transparent_ratio);
@@ -206,7 +250,7 @@ impl ArtworkLoader {
             self.texture_last_used
                 .insert(key.clone(), self.access_counter);
             self.textures.insert(key.clone(), texture);
-            if let Some(atlas) = animation_atlas.filter(|atlas| atlas.frames.len() > 1) {
+            if let Some(frames) = converted.frames.filter(|frames| frames.len() > 1) {
                 if fluxa_artwork::low_memory() {
                     let stale = self
                         .animations
@@ -225,7 +269,7 @@ impl ArtworkLoader {
                 self.animations.insert(
                     key,
                     ArtworkAnimation {
-                        frames: atlas.frames,
+                        frames,
                         frame_index: 0,
                         started_at: None,
                         next_frame_at: Instant::now(),
