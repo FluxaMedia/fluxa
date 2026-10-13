@@ -3,9 +3,11 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 
+mod nuvio_account;
 mod settings_migration;
 mod tokens;
 
+pub(crate) use nuvio_account::*;
 pub(crate) use settings_migration::*;
 pub(crate) use tokens::*;
 

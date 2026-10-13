@@ -124,3 +124,48 @@ fn settings_migration_preserves_an_explicitly_empty_addon_list() {
         Some(0)
     );
 }
+
+#[test]
+fn welcome_is_skipped_once_a_profile_exists_or_offline_was_chosen() {
+    assert!(welcome_required(&json!({"profiles": []})));
+    assert!(!welcome_required(&json!({"profiles": [{"id": "p1"}]})));
+    assert!(!welcome_required(
+        &json!({"profiles": [], "offlineChosen": true})
+    ));
+}
+
+#[test]
+fn nuvio_sign_in_profile_keeps_tokens_and_leaves_the_name_for_sync() {
+    let profile: Value = serde_json::from_str(
+        &nuvio_session_profile_json(
+            &json!({
+                "id": "p1",
+                "email": " me@example.com ",
+                "nowSeconds": 1000,
+                "session": {
+                    "access_token": "a",
+                    "refresh_token": "r",
+                    "expires_in": 60,
+                    "user": {"id": "u-1"},
+                },
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(profile["nuvioTokenExpiresAt"], 1060);
+    assert_eq!(profile["nuvioUserId"], "u-1");
+    assert_eq!(profile["nuvioEmail"], "me@example.com");
+    assert_eq!(profile["name"], "");
+}
+
+#[test]
+fn nuvio_auth_errors_map_to_translation_keys() {
+    let key = |status, body: &str| nuvio_auth_error_key(&json!({"status": status, "body": body}));
+    assert_eq!(key(400, "Invalid login credentials"), "auth.error.invalid_credentials");
+    assert_eq!(key(400, "email_not_confirmed"), "auth.error.email_not_confirmed");
+    assert_eq!(key(429, ""), "auth.error.rate_limited");
+    assert_eq!(key(503, ""), "auth.error.server");
+    assert_eq!(key(0, ""), "auth.error.network");
+}

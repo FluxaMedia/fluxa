@@ -80,12 +80,14 @@ static METHODS: &[(&str, Router)] = &[
     ("nuvioApplyDeltaSync", route_nuvio),
     ("nuvioApplyProgressSync", route_nuvio),
     ("nuvioApplyRemoteProfiles", route_nuvio),
+    ("nuvioAuthError", route_profile_contract),
     ("nuvioDeltaSyncRequestPlan", route_nuvio),
     ("nuvioEffectiveProfileScopes", route_nuvio),
     ("nuvioHomeLayout", route_nuvio),
     ("nuvioMapCollections", route_nuvio),
     ("nuvioProgressMetaNeeds", route_nuvio),
     ("nuvioProviderLibrarySnapshot", route_nuvio),
+    ("nuvioSessionProfile", route_profile_contract),
     ("nuvioWriteRequests", route_nuvio),
     ("parseAndPlanAddonResource", route_resource_plan),
     ("parseManifest", route_addon_protocol),
@@ -184,6 +186,7 @@ static METHODS: &[(&str, Router)] = &[
     ("trickplayServerManifest", route_player_policy),
     ("trickplayServerSource", route_player_policy),
     ("videoConfigPlan", route_player_policy),
+    ("welcomeRequired", route_profile_contract),
 ];
 
 #[cfg(test)]
