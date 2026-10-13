@@ -29,6 +29,13 @@ pub(super) fn native_action_for_node(
     if route == Route::Discover {
         if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
             return Some(NativeAction::DiscoverType {
+        if let Some(entry) =
+            fluxa_ui::discover_recent(node).and_then(|index| discover.recent_searches.get(index))
+        {
+            return Some(NativeAction::Search {
+                query: entry.clone(),
+            });
+        }
                 content_type: if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
                     "movie".to_owned()
                 } else {
@@ -542,6 +549,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
     }
     for action in &actions {
         if let UiAction::TextInput { node, value } = action {
+    recent_searches::save_left_query(state);
             edit_text(state, *node, |text| text.push_str(value));
             continue;
         }
@@ -1059,6 +1067,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                     .and_then(|action| serde_json::from_value(action).ok())
                 {
                     Some(action) => action,
+    let mut searched = false;
                     None => continue,
                 }
             }
@@ -1076,6 +1085,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                     destination: Route::Discover,
                 }
             }
+                searched = true;
             action => action,
         };
         if let NativeAction::MediaCommand { command, value } = action {
@@ -1163,6 +1173,11 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         accounts::toggle(state, &provider);
     }
     for node in servers {
+    if searched {
+        recent_searches::refresh(state);
+        reset_ui(state);
+        state.focus_hint = None;
+    }
         accounts::media_server(state, node);
     }
     for url in callbacks {

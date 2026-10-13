@@ -13,6 +13,7 @@ pub struct DiscoverCatalog {
 pub struct DiscoverModel {
     pub language: String,
     pub query: String,
+    pub recent_searches: Vec<String>,
     pub content_type: String,
     pub content_types: Vec<String>,
     pub selected_catalog_key: String,
@@ -209,6 +210,7 @@ pub(crate) fn discover_catalog_model(snapshot: &serde_json::Value) -> DiscoverMo
             .and_then(serde_json::Value::as_str)
             .unwrap_or_default()
             .to_owned(),
+        recent_searches: Vec::new(),
         catalogs,
         results: discover
             .get("results")

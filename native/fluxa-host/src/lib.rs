@@ -99,6 +99,7 @@ mod preview;
 pub use preview::size as preview_size;
 mod profiles;
 mod projection;
+mod recent_searches;
 mod route;
 mod semantics;
 

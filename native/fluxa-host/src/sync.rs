@@ -203,6 +203,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     state.settings.badge_status = badge_status;
     state.settings.formatter_status = formatter_status;
     shortcuts::refresh(state);
+    recent_searches::refresh(state);
     accounts::refresh_servers(state);
     for (field, typed) in state.settings.poster_fields.iter_mut().zip(poster_fields) {
         if !typed.is_empty() {

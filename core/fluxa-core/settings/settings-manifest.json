@@ -996,6 +996,13 @@
       "category": "account"
     },
     {
+      "key": "saveRecentSearches",
+      "type": "boolean",
+      "default": false,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
       "key": "searchSuggestionsOpenDetail",
       "type": "boolean",
       "default": false,

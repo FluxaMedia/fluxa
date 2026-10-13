@@ -14,7 +14,7 @@ pub struct SettingsSection {
     pub groups: &'static [(usize, &'static str)],
 }
 
-pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 3] = [
+pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 4] = [
     SettingsRow {
         label: "Language",
         key: "language",
@@ -30,8 +30,13 @@ pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 3] = [
         key: "discordRichPresenceEnabled",
         options: &[],
     },
+    SettingsRow {
+        label: "Save recent searches",
+        key: "saveRecentSearches",
+        options: &[],
+    },
 ];
-pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(3, "settings.group.preferences")];
+pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(4, "settings.group.preferences")];
 pub(super) const ABOUT_SETTINGS: [SettingsRow; 1] = [SettingsRow {
     label: "Update checks",
     key: "automaticUpdates",

@@ -22,7 +22,7 @@ pub mod update;
 
 pub mod ffi;
 pub mod runtime;
-pub use runtime::{app_icon, env, log_sink, text_direction};
+pub use runtime::{app_icon, env, log_sink, recent_searches, text_direction};
 pub mod types;
 
 pub mod bindings;

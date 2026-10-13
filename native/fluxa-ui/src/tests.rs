@@ -962,6 +962,38 @@ fn mobile_discover_search_sits_above_three_horizontal_filters() {
 }
 
 #[test]
+fn recent_searches_list_under_search_only_while_it_is_focused() {
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    let discover = DiscoverModel {
+        language: "en".to_owned(),
+        content_type: "movie".to_owned(),
+        recent_searches: vec!["dune".to_owned(), "alien".to_owned()],
+        ..Default::default()
+    };
+    let drawn = |focused| {
+        draw_test_frame(viewport, |context, assets| {
+            draw_discover(context, viewport, &discover, assets, focused)
+        })
+    };
+    let closed = drawn(None);
+    assert!(closed.focusable.iter().all(|(id, _)| discover_recent(*id).is_none()));
+    let open = drawn(Some(NODE_DISCOVER_SEARCH));
+    let search = open
+        .focusable
+        .iter()
+        .find(|(id, _)| *id == NODE_DISCOVER_SEARCH)
+        .map(|(_, rect)| *rect)
+        .unwrap();
+    let rows = open
+        .focusable
+        .iter()
+        .filter(|(id, _)| discover_recent(*id).is_some())
+        .collect::<Vec<_>>();
+    assert_eq!(rows.len(), 2);
+    assert!(rows.iter().all(|(_, rect)| rect.top() > search.bottom()));
+}
+
+#[test]
 fn discover_grid_fills_width_and_starts_after_filters() {
     let viewport = Viewport::new(1880, 920, UiFormFactor::Desktop);
     let metrics = UiMetrics::for_viewport(viewport);

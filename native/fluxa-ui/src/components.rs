@@ -14,12 +14,14 @@ mod input;
 mod cards;
 mod dropdown;
 mod menu;
+mod recent_searches;
 mod streams;
 
 pub use input::*;
 pub use cards::*;
 pub use dropdown::*;
 pub use menu::*;
+pub use recent_searches::*;
 pub use streams::*;
 
 use super::{

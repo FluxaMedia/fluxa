@@ -743,6 +743,7 @@ pub(super) fn request_discover_search(state: &mut RendererState) {
 
 fn drag_sources(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
     let now = Instant::now();
+    recent_searches::refresh(state);
     match phase {
         PointerPhase::Down => {
             state.touch_start = Some(position);

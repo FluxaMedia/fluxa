@@ -89,6 +89,16 @@ pub fn draw_discover(
             }
         },
     );
+    if components::recent_searches_open(focused, &discover.recent_searches) {
+        components::recent_searches(
+            context,
+            page.search,
+            &localized("search.recent_searches", &discover.language),
+            &discover.recent_searches,
+            &mut layout,
+            metrics,
+        );
+    }
     components::placed_front(
         context,
         Id::new("fluxa-shared-discover-header"),
