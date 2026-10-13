@@ -254,6 +254,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let render_result = {
         let RendererState {
             gpu,
+            welcome,
             home,
             library,
             discover,
@@ -289,7 +290,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
             gpu.density = scale;
             gpu.mirror = mirrored;
             gpu.render(
-            welcome,
                 route,
                 home,
                 library,
@@ -302,6 +302,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 detail,
                 settings,
                 profiles.as_mut(),
+                welcome.as_mut(),
                 picker_background.as_deref(),
                 player_model.as_ref(),
                 focused,
@@ -327,7 +328,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 }
                 state.wants_keyboard = frame.wants_keyboard;
                 state.access = AccessFrame {
-                welcome.as_mut(),
                     runs: frame.text_runs,
                     field: frame.field,
                     caret: frame.caret,
@@ -340,6 +340,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 if let Some(request) = layout.profiles.take() {
                     profiles::handle(state, request);
                 }
+                if let Some(request) = layout.welcome.take() {
+                    welcome::handle(state, request);
+                }
+                welcome::schedule(state);
                 if let Some(position) = layout.seek_to {
                     player::command(state, VideoCommand::SeekTo(position));
                 }
@@ -371,10 +375,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     let rows = state.home.content_rows_with_kind().count();
                     for row in 0..rows {
                         let live = state
-                if let Some(request) = layout.welcome.take() {
-                    welcome::handle(state, request);
-                }
-                welcome::schedule(state);
                             .gpu
                             .as_ref()
                             .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));
