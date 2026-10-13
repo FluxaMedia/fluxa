@@ -142,6 +142,7 @@ pub(crate) fn draw_home_rows(
                     ArtworkPriority::Prefetch,
                 );
                 if home.gif_autoplay_enabled
+                    && !viewport.is_tv()
                     && kind == HomeRowKind::Collection
                     && card.motion_enabled
                     && !row_is_visible
@@ -373,6 +374,7 @@ pub(crate) fn draw_home_rows(
                                     card.motion_enabled
                                         && card.motion_url.is_some()
                                         && ((home.gif_autoplay_enabled
+                                            && !viewport.is_tv()
                                             && mostly_visible(rect, screen.intersect(row_clip)))
                                             || focused == Some(node_id)
                                             || response

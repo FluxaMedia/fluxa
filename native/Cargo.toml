@@ -77,3 +77,9 @@ opt-level = 2
 
 [profile.dev.package.wgpu]
 opt-level = 2
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[profile.dev.package.fluxa-host]
+opt-level = 2

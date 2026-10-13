@@ -7,3 +7,5 @@
 
 -keep class com.fluxa.app.ui.rust.NativeRenderer { *; }
 -keep class com.fluxa.app.ui.rust.Mpv { *; }
+-keep class com.fluxa.app.ui.rust.EmojiRasterizer { *; }
+-keep class com.fluxa.app.ui.rust.ArtworkDecoder { *; }

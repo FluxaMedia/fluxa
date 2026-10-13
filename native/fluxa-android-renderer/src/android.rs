@@ -136,6 +136,41 @@ fn rasterize_emoji(text: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     Some((width, height, rgba))
 }
 
+static ARTWORK: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+
+fn decode_artwork(bytes: &[u8], target: [u32; 2]) -> Option<(u32, u32, Vec<u8>)> {
+    let (vm, class) = ARTWORK.get()?;
+    let mut env = vm.attach_current_thread().ok()?;
+    let input = env.byte_array_from_slice(bytes).ok()?;
+    let result = env
+        .call_static_method(
+            <&JClass>::from(class.as_obj()),
+            "decode",
+            "([BII)[B",
+            &[
+                JValue::Object(&input),
+                JValue::Int(target[0] as i32),
+                JValue::Int(target[1] as i32),
+            ],
+        )
+        .and_then(|value| value.l());
+    let array = match result {
+        Ok(array) if !array.is_null() => JByteArray::from(array),
+        _ => {
+            let _ = env.exception_clear();
+            return None;
+        }
+    };
+    let mut raw = env.convert_byte_array(&array).ok()?;
+    if raw.len() < 8 {
+        return None;
+    }
+    let width = u32::from_be_bytes(raw[0..4].try_into().ok()?);
+    let height = u32::from_be_bytes(raw[4..8].try_into().ok()?);
+    raw.drain(..8);
+    (raw.len() == width as usize * height as usize * 4).then_some((width, height, raw))
+}
+
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNative(
     mut env: JNIEnv<'_>,
@@ -151,6 +186,14 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
     {
         let _ = EMOJI.set((vm, class));
         fluxa_host::set_emoji_rasterizer(rasterize_emoji);
+    }
+    if let (Ok(vm), Ok(class)) = (
+        env.get_java_vm(),
+        env.find_class("com/fluxa/app/ui/rust/ArtworkDecoder"),
+    ) && let Ok(class) = env.new_global_ref(class)
+    {
+        let _ = ARTWORK.set((vm, class));
+        fluxa_host::set_artwork_decoder(decode_artwork);
     }
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
     let host = FluxaHost::new(density, artwork_cache_dir);

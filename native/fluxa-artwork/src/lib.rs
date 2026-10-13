@@ -55,6 +55,18 @@ pub const MAX_RESPONSE_BYTES: u64 = 16 * 1024 * 1024;
 pub const MAX_DECODE_SIDE: u32 = 4096;
 pub const MAX_ARTWORK_WIDTH: u32 = 1920;
 pub const MAX_ARTWORK_HEIGHT: u32 = 1080;
+const LOW_MEMORY_ARTWORK_WIDTH: u32 = 1280;
+const LOW_MEMORY_ARTWORK_HEIGHT: u32 = 720;
+
+static LOW_MEMORY: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
+pub fn set_low_memory(low: bool) {
+    LOW_MEMORY.store(low, std::sync::atomic::Ordering::Relaxed);
+}
+
+pub fn low_memory() -> bool {
+    LOW_MEMORY.load(std::sync::atomic::Ordering::Relaxed)
+}
 // A home feed can contain several shelves. Keep enough requests in flight to
 // prepare the initial document before the user scrolls, while still bounding
 // network and decode pressure. Decoding itself remains on the artwork worker
@@ -682,8 +694,13 @@ pub fn normalize_url(value: &str) -> Option<String> {
 pub fn bounded_target(target_size: [u32; 2]) -> [u32; 2] {
     let width = target_size[0].max(1);
     let height = target_size[1].max(1);
-    let scale = (MAX_ARTWORK_WIDTH as f32 / width as f32)
-        .min(MAX_ARTWORK_HEIGHT as f32 / height as f32)
+    let (max_width, max_height) = if low_memory() {
+        (LOW_MEMORY_ARTWORK_WIDTH, LOW_MEMORY_ARTWORK_HEIGHT)
+    } else {
+        (MAX_ARTWORK_WIDTH, MAX_ARTWORK_HEIGHT)
+    };
+    let scale = (max_width as f32 / width as f32)
+        .min(max_height as f32 / height as f32)
         .min(1.0);
     [
         (width as f32 * scale).round().max(1.0) as u32,
@@ -843,6 +860,14 @@ async fn fetch_bytes(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, Str
     Err(last_error)
 }
 
+pub type PlatformDecoder = fn(&[u8], [u32; 2]) -> Option<(u32, u32, Vec<u8>)>;
+
+static PLATFORM_DECODER: std::sync::OnceLock<PlatformDecoder> = std::sync::OnceLock::new();
+
+pub fn set_platform_decoder(decoder: PlatformDecoder) {
+    let _ = PLATFORM_DECODER.set(decoder);
+}
+
 fn decode_target(bytes: &[u8], target_size: [u32; 2]) -> Result<RgbaImage, String> {
     let without_bom = bytes.strip_prefix(&[0xEF, 0xBB, 0xBF]).unwrap_or(bytes);
     let trimmed = without_bom
@@ -869,6 +894,12 @@ fn decode_target(bytes: &[u8], target_size: [u32; 2]) -> Result<RgbaImage, Strin
         // pixels creates bright/dark fringes around transparent logos.
         return RgbaImage::from_raw(width, height, pixmap.data().to_vec())
             .ok_or_else(|| "SVG pixmap had an invalid RGBA buffer".to_owned());
+    }
+    if let Some(decoder) = PLATFORM_DECODER.get()
+        && let Some((width, height, pixels)) = decoder(bytes, target_size)
+        && let Some(image) = RgbaImage::from_raw(width, height, pixels)
+    {
+        return Ok(resize_premultiplied(image, target_size));
     }
     let mut reader = ImageReader::new(Cursor::new(bytes));
     reader = reader
@@ -1291,12 +1322,6 @@ fn resize_rgba_preserving_alpha_with_filter(
     target_size: [u32; 2],
     filter: FilterType,
 ) -> RgbaImage {
-    let (source_width, source_height) = image.dimensions();
-    let scale = (target_size[0] as f32 / source_width.max(1) as f32)
-        .min(target_size[1] as f32 / source_height.max(1) as f32)
-        .min(1.0);
-    let width = (source_width as f32 * scale).round().max(1.0) as u32;
-    let height = (source_height as f32 * scale).round().max(1.0) as u32;
     // Resampling straight-alpha RGB mixes hidden transparent RGB values into
     // edge pixels. Premultiply first and keep the result premultiplied for
     // egui-wgpu's `src_factor = One` blending.
@@ -1307,10 +1332,28 @@ fn resize_rgba_preserving_alpha_with_filter(
             pixel[channel] = ((pixel[channel] as u16 * alpha + 127) / 255) as u8;
         }
     }
+    resize_premultiplied_with_filter(premultiplied, target_size, filter)
+}
+
+fn resize_premultiplied(image: RgbaImage, target_size: [u32; 2]) -> RgbaImage {
+    resize_premultiplied_with_filter(image, target_size, FilterType::Lanczos3)
+}
+
+fn resize_premultiplied_with_filter(
+    image: RgbaImage,
+    target_size: [u32; 2],
+    filter: FilterType,
+) -> RgbaImage {
+    let (source_width, source_height) = image.dimensions();
+    let scale = (target_size[0] as f32 / source_width.max(1) as f32)
+        .min(target_size[1] as f32 / source_height.max(1) as f32)
+        .min(1.0);
+    let width = (source_width as f32 * scale).round().max(1.0) as u32;
+    let height = (source_height as f32 * scale).round().max(1.0) as u32;
     if width == source_width && height == source_height {
-        return premultiplied;
+        return image;
     }
-    image::imageops::resize(&premultiplied, width, height, filter)
+    image::imageops::resize(&image, width, height, filter)
 }
 
 /// Resize an already-composited animation canvas to an exact tile size.

@@ -4,8 +4,22 @@ pub(super) const MAX_ARTWORK_SIDE: u32 = 1536;
 // Android uses the same initial-document prefetch contract as desktop. This
 // is still bounded, but avoids evicting visible cards while the remaining
 // shelves finish decoding.
-pub(super) const MAX_ARTWORK_TEXTURES: usize = 128;
+const MAX_ARTWORK_TEXTURES: usize = 128;
 const MAX_DECODED_BYTES: usize = 96 * 1024 * 1024;
+const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
+const LOW_MEMORY_DECODED_BYTES: usize = 32 * 1024 * 1024;
+const LOW_MEMORY_TOTAL_KB: u64 = 3 * 1024 * 1024;
+
+fn total_memory_kb() -> Option<u64> {
+    std::fs::read_to_string("/proc/meminfo")
+        .ok()?
+        .lines()
+        .find_map(|line| line.strip_prefix("MemTotal:"))?
+        .split_whitespace()
+        .next()?
+        .parse()
+        .ok()
+}
 
 struct ImageWeight;
 
@@ -53,8 +67,13 @@ pub(super) struct ArtworkAnimation {
 
 impl ArtworkLoader {
     pub(super) fn new(cache_dir: Option<PathBuf>) -> Self {
+        let low_memory = total_memory_kb().is_some_and(|total| total < LOW_MEMORY_TOTAL_KB);
+        fluxa_artwork::set_low_memory(low_memory);
+        let workers = std::thread::available_parallelism()
+            .map_or(2, |cores| cores.get() / 2)
+            .clamp(2, 4);
         Self {
-            fetcher: ArtworkFetcher::new(cache_dir, 4),
+            fetcher: ArtworkFetcher::new(cache_dir, workers),
             textures: HashMap::new(),
             emoji: HashMap::new(),
             emoji_pending: Vec::new(),
@@ -67,8 +86,15 @@ impl ArtworkLoader {
             texture_frame: HashMap::new(),
             prefetch_keys: HashSet::new(),
             decoded: DecodedCache::with_config(
-                clru::CLruCacheConfig::new(std::num::NonZeroUsize::new(MAX_DECODED_BYTES).unwrap())
-                    .with_scale(ImageWeight),
+                clru::CLruCacheConfig::new(
+                    std::num::NonZeroUsize::new(if low_memory {
+                        LOW_MEMORY_DECODED_BYTES
+                    } else {
+                        MAX_DECODED_BYTES
+                    })
+                    .unwrap(),
+                )
+                .with_scale(ImageWeight),
             ),
             context: None,
             frame: 0,
@@ -118,7 +144,8 @@ impl ArtworkLoader {
     pub(super) fn poll(&mut self, context: &egui::Context) {
         self.context.get_or_insert_with(|| context.clone());
         self.rasterize_emoji(context);
-        for prepared in self.fetcher.poll(2) {
+        let uploads = if fluxa_artwork::low_memory() { 1 } else { 2 };
+        for prepared in self.fetcher.poll(uploads) {
             let url = prepared.source_url;
             let target_size = prepared.target_size;
             let animation_requested = prepared.animation_requested;
@@ -180,6 +207,21 @@ impl ArtworkLoader {
                 .insert(key.clone(), self.access_counter);
             self.textures.insert(key.clone(), texture);
             if let Some(atlas) = animation_atlas.filter(|atlas| atlas.frames.len() > 1) {
+                if fluxa_artwork::low_memory() {
+                    let stale = self
+                        .animations
+                        .keys()
+                        .filter(|other| **other != key)
+                        .cloned()
+                        .collect::<Vec<_>>();
+                    for other in stale {
+                        self.textures.remove(&other);
+                        self.texture_last_used.remove(&other);
+                        self.texture_frame.remove(&other);
+                        self.animations.remove(&other);
+                        self.animation_checked.remove(&other);
+                    }
+                }
                 self.animations.insert(
                     key,
                     ArtworkAnimation {
@@ -190,7 +232,12 @@ impl ArtworkLoader {
                     },
                 );
             }
-            while self.textures.len() > MAX_ARTWORK_TEXTURES {
+            let texture_cap = if fluxa_artwork::low_memory() {
+                LOW_MEMORY_ARTWORK_TEXTURES
+            } else {
+                MAX_ARTWORK_TEXTURES
+            };
+            while self.textures.len() > texture_cap {
                 let frame = self.frame;
                 let texture_frame = &self.texture_frame;
                 let Some(oldest) = self
@@ -320,7 +367,7 @@ impl ArtworkLoader {
         target_size: [u32; 2],
         priority: ArtworkFetchPriority,
     ) {
-        if self.disabled {
+        if self.disabled || fluxa_artwork::low_memory() {
             return;
         }
         let target_size = fluxa_artwork::bounded_target([

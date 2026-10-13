@@ -41,6 +41,10 @@ pub fn set_emoji_rasterizer(rasterizer: EmojiRasterizer) {
     let _ = EMOJI_RASTERIZER.set(rasterizer);
 }
 
+pub fn set_artwork_decoder(decoder: fluxa_artwork::PlatformDecoder) {
+    fluxa_artwork::set_platform_decoder(decoder);
+}
+
 const HOME_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const HOME_REFRESH_FOCUS_MIN: Duration = Duration::from_secs(10);
 
