@@ -247,12 +247,12 @@ pub fn draw_player(
     let rect = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     if !player.recommendations.is_empty() {
         draw_recommendations(context, viewport, rect, player, assets, &mut layout);
-        draw_focus_ring(context, &layout, focused);
+        draw_focus_ring(context, viewport, &layout, focused);
         return layout;
     }
     if player.sources.is_some() && !player.has_video() {
         draw_sources(context, viewport, rect, player, assets, &mut layout);
-        draw_focus_ring(context, &layout, focused);
+        draw_focus_ring(context, viewport, &layout, focused);
         return layout;
     }
     let painter = context.layer_painter(egui::LayerId::background());
@@ -331,7 +331,7 @@ pub fn draw_player(
             toast.opacity,
         );
     }
-    draw_focus_ring(context, &layout, focused);
+    draw_focus_ring(context, viewport, &layout, focused);
     layout
 }
 

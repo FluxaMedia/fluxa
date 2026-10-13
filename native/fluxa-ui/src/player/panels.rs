@@ -219,7 +219,7 @@ pub(super) fn draw_pause_info(
         ));
     }
     let height: f32 = blocks.iter().map(|(height, _)| height).sum();
-    let mut y = rect.bottom() - if compact { 56.0 } else { 120.0 } - height;
+    let mut y = rect.bottom() - if compact { 40.0 } else { 64.0 } - height;
     for (height, draw) in blocks {
         draw(painter, y);
         y += height;

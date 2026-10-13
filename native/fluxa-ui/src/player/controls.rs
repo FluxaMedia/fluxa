@@ -36,9 +36,6 @@ impl Chrome<'_> {
             actions.push(("Settings", NODE_PLAYER_SETTINGS));
         }
         if !mobile_header {
-            if options.cast && self.viewport.form_factor == UiFormFactor::Tv {
-                actions.push(("Cast", NODE_PLAYER_CAST));
-            }
             if options.mark_segment {
                 actions.push(("Flag", NODE_PLAYER_SUBMIT));
             }
@@ -432,19 +429,39 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     if !player.has_video() || !player.controls_visible {
         return;
     }
-    scrims(chrome.painter, rect);
+    scrim_edge(chrome.painter, rect, (rect.height() * 0.3).min(220.0), true, 110);
+    scrim_edge(chrome.painter, rect, (rect.height() * 0.5).min(420.0), false, 255);
     let margin = (rect.width() * 0.05).max(48.0);
-    let y = rect.bottom() - 64.0 - chrome.viewport.safe_bottom;
+    let header_y = rect.top() + 56.0;
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 20.0, header_y),
+        chrome.icon(),
+        "ArrowLeft",
+        NODE_PLAYER_CLOSE,
+    );
+    chrome.row_right(
+        ui,
+        layout,
+        rect.right() - margin,
+        header_y,
+        chrome.icon(),
+        &chrome.header_actions(),
+    );
+    let y = rect.bottom() - 44.0 - chrome.viewport.safe_bottom;
     let track = Rect::from_min_size(
-        Pos2::new(margin, y - 72.0),
+        Pos2::new(margin, y - 62.0),
         Vec2::new(rect.width() - margin * 2.0, 20.0),
     );
     let position = chrome.seek_bar(ui, layout, track, 4.0);
     let width = track.width() * 0.7;
     if player.options.title {
+        let top = rect.top() + 36.0;
+        let title_x = margin + 64.0;
         chrome.text(
-            Pos2::new(margin, track.top() - 46.0),
-            Align2::LEFT_BOTTOM,
+            Pos2::new(title_x, top),
+            Align2::LEFT_TOP,
             &player.title,
             28.0,
             width,
@@ -452,8 +469,8 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
         );
         if let Some(episode) = player.episode_title.as_deref() {
             chrome.text(
-                Pos2::new(margin, track.top() - 16.0),
-                Align2::LEFT_BOTTOM,
+                Pos2::new(title_x, top + 38.0),
+                Align2::LEFT_TOP,
                 episode,
                 17.0,
                 width,
@@ -474,8 +491,22 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     chrome.row_left(ui, layout, margin - 8.0, y, chrome.icon(), &actions);
 }
 
-pub(super) fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focused: Option<u64>) {
-    if let Some((_, rect)) = layout.focusable.iter().find(|(id, _)| Some(*id) == focused) {
+pub(super) fn draw_focus_ring(
+    context: &egui::Context,
+    viewport: Viewport,
+    layout: &HomeLayout,
+    focused: Option<u64>,
+) {
+    if let Some((node, rect)) = layout
+        .focusable
+        .iter()
+        .find(|(id, _)| Some(*id) == focused && *id != NODE_PLAYER_SEEK)
+    {
+        let radius = if (NODE_PLAYER_SOURCE_BASE..NODE_PLAYER_PANEL_ROW_BASE).contains(node) {
+            UiMetrics::for_viewport(viewport).card_radius + 3.0
+        } else {
+            rect.height().min(rect.width()) * 0.5
+        };
         context
             .layer_painter(egui::LayerId::new(
                 egui::Order::Foreground,
@@ -483,7 +514,7 @@ pub(super) fn draw_focus_ring(context: &egui::Context, layout: &HomeLayout, focu
             ))
             .rect_stroke(
                 rect.expand(3.0),
-                rect.height().min(rect.width()) * 0.5,
+                radius,
                 egui::Stroke::new(stroke::EMPHASIS, text_primary()),
                 egui::StrokeKind::Outside,
             );
