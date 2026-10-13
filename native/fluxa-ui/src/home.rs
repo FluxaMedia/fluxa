@@ -146,6 +146,12 @@ pub(crate) fn draw_home_with_options(
             Id::new("fluxa-screen-scroll-home"),
             home_scroll_max(viewport, home),
         )
+    } else if viewport.is_tv() {
+        crate::layout::ease_scroll(
+            context,
+            Id::new("fluxa-screen-scroll-home"),
+            home.scroll_offset,
+        )
     } else {
         home.scroll_offset
     };

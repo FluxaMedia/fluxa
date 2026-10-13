@@ -509,6 +509,9 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             | fluxa_ui::NODE_PROFILE
     );
     if is_navigation {
+        if state.route == Route::Home && state.home.form_factor == UiFormFactorJson::Tv {
+            state.home.scroll_offset = 0.0;
+        }
         return;
     }
     let viewport = Viewport::new(

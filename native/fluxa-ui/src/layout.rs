@@ -383,6 +383,29 @@ fn take_nudge_step(context: &egui::Context, id: Id) -> f32 {
     step
 }
 
+pub(crate) fn ease_scroll(context: &egui::Context, id: Id, target: f32) -> f32 {
+    let frame = context.cumulative_pass_nr();
+    let (shown, seen) = context
+        .data(|data| data.get_temp::<(f32, u64)>(id))
+        .unwrap_or((target, frame));
+    let shown = if frame.saturating_sub(seen) > 3 {
+        target
+    } else {
+        let dt = context.input(|input| input.stable_dt).clamp(0.001, 0.05);
+        let step = (target - shown) * (1.0 - (-dt * 14.0).exp());
+        if (target - shown - step).abs() < 0.5 {
+            target
+        } else {
+            shown + step
+        }
+    };
+    context.data_mut(|data| data.insert_temp(id, (shown, frame)));
+    if shown != target {
+        context.request_repaint();
+    }
+    shown
+}
+
 fn clear_nudge(context: &egui::Context, id: Id) {
     context.data_mut(|data| data.insert_temp(id, 0.0f32));
 }
@@ -399,6 +422,14 @@ pub(crate) fn resolve_screen_scroll(
 ) -> f32 {
     if viewport.form_factor == UiFormFactor::Mobile {
         return viewport.scroll_y.clamp(0.0, max_offset);
+    }
+    if viewport.is_tv() {
+        let target = viewport.scroll_y.clamp(0.0, max_offset);
+        let shown = ease_scroll(context, id, target);
+        context.data_mut(|data| {
+            data.insert_temp(Id::new(SCREEN_SCROLL_NUDGE), target - shown);
+        });
+        return shown;
     }
     // A dropdown menu owns wheel input while open. Without this guard both
     // its ScrollArea and the screen's custom document scroll consume the same
