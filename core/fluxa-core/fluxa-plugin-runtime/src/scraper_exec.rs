@@ -40,14 +40,15 @@ async fn quickjs_context(scraper_id: &str) -> Result<(AsyncRuntime, AsyncContext
     let context = AsyncContext::full(&runtime)
         .await
         .map_err(|e| e.to_string())?;
-    QUICKJS_STATE.with(|state| {
+    let evicted = QUICKJS_STATE.with(|state| {
         let mut state = state.borrow_mut();
+        let mut evicted = None;
         if state.len() >= MAX_QUICKJS_PLUGIN_CONTEXTS {
-            if let Some(evicted) = state.keys().next().cloned() {
+            if let Some(key) = state.keys().next().cloned() {
                 SCRAPER_CACHE.with(|cache| {
-                    cache.borrow_mut().retain(|(id, _), _| id != &evicted);
+                    cache.borrow_mut().retain(|(id, _), _| id != &key);
                 });
-                state.remove(&evicted);
+                evicted = state.remove(&key);
             }
         }
         state.insert(
@@ -57,7 +58,14 @@ async fn quickjs_context(scraper_id: &str) -> Result<(AsyncRuntime, AsyncContext
                 context: context.clone(),
             },
         );
+        evicted
     });
+    if let Some(old) = evicted {
+        old.runtime.idle().await;
+        old.runtime.run_gc().await;
+        drop(old.context);
+        drop(old.runtime);
+    }
     Ok((runtime, context, true))
 }
 
