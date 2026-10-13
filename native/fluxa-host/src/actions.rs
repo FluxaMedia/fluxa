@@ -27,8 +27,6 @@ pub(super) fn native_action_for_node(
         return Some(NativeAction::Navigate { destination });
     }
     if route == Route::Discover {
-        if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
-            return Some(NativeAction::DiscoverType {
         if let Some(entry) =
             fluxa_ui::discover_recent(node).and_then(|index| discover.recent_searches.get(index))
         {
@@ -38,6 +36,8 @@ pub(super) fn native_action_for_node(
         }
                 content_type: if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
                     "movie".to_owned()
+        if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
+            return Some(NativeAction::DiscoverType {
                 } else {
                     "series".to_owned()
                 },
@@ -572,9 +572,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             if (episode
                 || matches!(
                     node,
-                    fluxa_ui::NODE_PLAY
-                        | fluxa_ui::NODE_DETAIL_PLAY
-                        | fluxa_ui::NODE_SHORTS_PLAY
+                    fluxa_ui::NODE_PLAY | fluxa_ui::NODE_DETAIL_PLAY | fluxa_ui::NODE_SHORTS_PLAY
                 ))
                 && playback_blocked(state)
             {

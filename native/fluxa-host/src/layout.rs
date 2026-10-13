@@ -95,7 +95,11 @@ pub(super) fn rebuild_current_ui(state: &mut RendererState) {
         rebuild_ui_from_layout(state, &layout, size);
         return;
     }
-    if state.route != Route::Home || state.player.is_some() || state.profiles.is_some() || state.welcome.is_some() {
+    if state.route != Route::Home
+        || state.player.is_some()
+        || state.profiles.is_some()
+        || state.welcome.is_some()
+    {
         return;
     }
     rebuild_home_ui(&mut state.ui, size, &state.home, state.safe_bottom);
@@ -222,14 +226,14 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 "Series".to_owned()
             }
         }
-        id if id == fluxa_ui::NODE_DISCOVER_CATALOG_BASE => state
-            .discover
-            .catalogs
-            .iter()
         id if fluxa_ui::discover_recent(id).is_some() => fluxa_ui::discover_recent(id)
             .and_then(|index| state.discover.recent_searches.get(index))
             .cloned()
             .unwrap_or_default(),
+        id if id == fluxa_ui::NODE_DISCOVER_CATALOG_BASE => state
+            .discover
+            .catalogs
+            .iter()
             .filter(|catalog| catalog.content_type == state.discover.content_type)
             .nth((id - fluxa_ui::NODE_DISCOVER_CATALOG_BASE) as usize)
             .map(|catalog| catalog.label.clone())
@@ -448,15 +452,15 @@ pub(super) fn rebuild_ui_from_layout(
     let fallback = match state.route {
         Route::Library => state
             .library
-            .cards(state.library_tab)
-            .first()
-            .map(|_| NODE_CARD_BASE)
-            .unwrap_or(fluxa_ui::NODE_LIBRARY_STATUS),
         if fluxa_ui::discover_recent(node_id).is_some()
             && let Some(node) = ui.node_mut(node_id)
         {
             node.order = 10_002;
         }
+            .cards(state.library_tab)
+            .first()
+            .map(|_| NODE_CARD_BASE)
+            .unwrap_or(fluxa_ui::NODE_LIBRARY_STATUS),
         Route::Discover => state
             .discover
             .results
