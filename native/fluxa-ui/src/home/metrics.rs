@@ -217,6 +217,9 @@ pub(crate) fn home_hero_height(viewport: Viewport) -> f32 {
     } else {
         (viewport.height * 0.66 + 120.0).clamp(728.0, 984.0)
     };
+    if viewport.is_tv() {
+        return viewport.height * 0.70;
+    }
     base_height * 0.93
 }
 
@@ -231,6 +234,9 @@ pub(crate) fn home_hero_pinned(viewport: Viewport, home: &HomeModel) -> bool {
 
 pub(crate) fn home_hero_height_for(viewport: Viewport, home: &HomeModel) -> f32 {
     if home_hero_pinned(viewport, home) {
+        if viewport.is_tv() {
+            return viewport.height * 0.70;
+        }
         (viewport.height * 0.55).max(300.0)
     } else {
         home_hero_height(viewport)

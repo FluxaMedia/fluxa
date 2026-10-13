@@ -65,7 +65,7 @@ impl HeroStyle {
             shows_synopsis: true,
             width: (viewport.width * 0.58).min(width_cap),
             fade_height: 176.0,
-            bottom_padding: 48.0,
+            bottom_padding: if tv { 12.0 } else { 48.0 },
             min_top: metrics.nav_vertical_padding * 2.0,
             logo_height: if tv {
                 112.0
