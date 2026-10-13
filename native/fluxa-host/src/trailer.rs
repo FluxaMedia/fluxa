@@ -17,11 +17,17 @@ pub(crate) struct Trailers {
     requests: u64,
 }
 
+#[derive(Clone)]
+pub(crate) enum TrailerSource {
+    YouTube(String),
+    Direct(String),
+}
+
 struct Active {
     key: String,
     poster: bool,
     urls: Vec<String>,
-    ids: Vec<String>,
+    sources: Vec<TrailerSource>,
     next: usize,
     due: Instant,
     request: Option<String>,
@@ -299,6 +305,19 @@ fn youtube_ids(urls: &[String]) -> Vec<String> {
         .unwrap_or_default()
 }
 
+pub(crate) fn trailer_sources(urls: &[String]) -> Vec<TrailerSource> {
+    let mut youtube = Vec::new();
+    let mut direct = Vec::new();
+    for url in urls {
+        match youtube_ids(std::slice::from_ref(url)).pop() {
+            Some(id) => youtube.push(TrailerSource::YouTube(id)),
+            None => direct.push(TrailerSource::Direct(url.clone())),
+        }
+    }
+    youtube.extend(direct);
+    youtube
+}
+
 fn queue_shorts(state: &mut RendererState) {
     if state.route != Route::Shorts {
         return;
@@ -362,7 +381,7 @@ pub(crate) fn tick(state: &mut RendererState) {
         reset(state);
         if let Some(wanted) = wanted {
             state.trailers.active = Some(Active {
-                ids: youtube_ids(&wanted.urls),
+                sources: trailer_sources(&wanted.urls),
                 urls: wanted.urls,
                 key: wanted.key,
                 poster: wanted.poster,
@@ -384,7 +403,7 @@ pub(crate) fn tick(state: &mut RendererState) {
         && active.request.is_none()
         && active.urls != wanted.urls
     {
-        active.ids = youtube_ids(&wanted.urls);
+        active.sources = trailer_sources(&wanted.urls);
         active.urls = wanted.urls;
         active.next = 0;
         active.failed = false;
@@ -455,9 +474,24 @@ fn resolve(state: &mut RendererState) {
     if session.has_queued_dispatches() {
         return;
     }
-    let Some(video_id) = active.ids.get(active.next) else {
+    let Some(source) = active.sources.get(active.next).cloned() else {
         active.failed = true;
         return;
+    };
+    let video_id = match source {
+        TrailerSource::Direct(url) => {
+            if let (Some(video), Some(gpu)) = (video.as_mut(), gpu.as_ref()) {
+                let proxied = range_proxy(&url);
+                video.load_preview(
+                    &gpu.instance,
+                    &gpu.device,
+                    proxied.as_deref().unwrap_or(url.as_str()),
+                );
+                active.loaded = true;
+            }
+            return;
+        }
+        TrailerSource::YouTube(id) => id,
     };
     trailers.requests += 1;
     let request_id = format!("native-trailer-{}", trailers.requests);
@@ -491,7 +525,11 @@ fn play(state: &mut RendererState) {
     if video.status().error.is_some() {
         video.stop();
         active.loaded = false;
-        active.failed = true;
+        if active.next + 1 < active.sources.len() {
+            active.next += 1;
+        } else {
+            active.failed = true;
+        }
         if let Some(texture) = active.texture.take() {
             gpu.egui_renderer.free_texture(&texture);
         }

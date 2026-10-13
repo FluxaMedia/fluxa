@@ -1,10 +1,11 @@
 use serde_json::{Value, json};
 
 use super::{PlayerSession, VideoBackend, VideoCommand};
-use crate::{Gpu, SessionHandle, core_value};
+use crate::trailer::{TrailerSource, trailer_sources};
+use crate::{Gpu, SessionHandle};
 
 pub(super) struct TrailerPlay {
-    ids: Vec<String>,
+    sources: Vec<TrailerSource>,
     next: usize,
     request: Option<String>,
     requests: u64,
@@ -15,18 +16,8 @@ pub(super) struct TrailerPlay {
 
 impl TrailerPlay {
     pub(super) fn new(urls: &[String]) -> Self {
-        let ids = core_value("trailerYoutubeVideoIds", json!({"urls": urls}))
-            .and_then(|ids| {
-                ids.as_array().map(|ids| {
-                    ids.iter()
-                        .filter_map(Value::as_str)
-                        .map(ToOwned::to_owned)
-                        .collect()
-                })
-            })
-            .unwrap_or_default();
         Self {
-            ids,
+            sources: trailer_sources(urls),
             next: 0,
             request: None,
             requests: 0,
@@ -51,6 +42,12 @@ pub(super) fn tick(
         return;
     };
     if trailer.loaded {
+        if video.status().error.is_some() {
+            video.stop();
+            trailer.loaded = false;
+            trailer.next += 1;
+            return;
+        }
         if player.status.has_frame {
             for (command, url) in [
                 ("audio-add", trailer.audio.take()),
@@ -97,12 +94,20 @@ pub(super) fn tick(
     if session.has_queued_dispatches() {
         return;
     }
-    let Some(video_id) = trailer.ids.get(trailer.next) else {
+    let Some(source) = trailer.sources.get(trailer.next).cloned() else {
         player.error = Some(fluxa_ui::localized(
             "detail.trailer_unavailable",
             &player.language,
         ));
         return;
+    };
+    let video_id = match source {
+        TrailerSource::Direct(url) => {
+            video.load(&gpu.instance, &gpu.device, &url);
+            trailer.loaded = true;
+            return;
+        }
+        TrailerSource::YouTube(id) => id,
     };
     trailer.requests += 1;
     let request_id = format!("player-trailer-{}", trailer.requests);
