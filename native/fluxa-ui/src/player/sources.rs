@@ -18,15 +18,28 @@ pub(super) fn draw_sources(
         player.background.as_deref(),
         target,
         ArtworkPriority::Visible,
-        ink(tone::RAISED),
+        Color32::WHITE,
         assets,
     );
-    paint_vertical_gradient(&painter, rect, shade(Shade::Veil), shade(Shade::Strong));
+    paint_vertical_gradient(
+        &painter,
+        rect,
+        shade(Shade::Faint),
+        shade(Shade::Strong),
+    );
     let metrics = metrics_for_assets(viewport, assets);
     let margin = metrics.overlay_margin;
     let wide = rect.width() >= 900.0;
-    let panel_width = if wide { 440.0 } else { 0.0 };
-    let panel_gap = if wide { 56.0 } else { 0.0 };
+    let panel_width = if wide {
+        (rect.width() * 0.34).clamp(320.0, 440.0)
+    } else {
+        0.0
+    };
+    let panel_gap = if wide {
+        (rect.width() * 0.04).clamp(32.0, 56.0)
+    } else {
+        0.0
+    };
     let width = (rect.width() - margin * 2.0 - panel_width - panel_gap).min(900.0);
     let left = if wide {
         (rect.width() - width - panel_width - panel_gap) / 2.0 + panel_width + panel_gap
