@@ -1395,13 +1395,50 @@ pub(super) fn focus_ring(
         return;
     }
     if let Some((_, rect)) = focusable.iter().find(|(id, _)| Some(*id) == focused) {
+        let rect = rect.expand(metrics.focus_ring_expand);
+        let radius = if is_pill_node(focused.unwrap_or_default()) {
+            rect.height() * 0.5
+        } else {
+            metrics.focus_ring_radius
+        };
         painter.rect_stroke(
-            rect.expand(metrics.focus_ring_expand),
-            metrics.focus_ring_radius,
+            rect,
+            radius,
             egui::Stroke::new(metrics.focus_ring_width, metrics.text_primary),
             egui::StrokeKind::Outside,
         );
     }
+}
+
+fn is_pill_node(node: u64) -> bool {
+    use super::*;
+    matches!(
+        node,
+        NODE_HOME
+            | NODE_LIBRARY
+            | NODE_DISCOVER
+            | NODE_CALENDAR
+            | NODE_PROFILE
+            | NODE_SHORTS
+            | NODE_PLAY
+            | NODE_MORE_INFO
+            | NODE_HERO_WATCHLIST
+            | NODE_HOME_ADD_ADDONS
+            | NODE_DETAIL_BACK
+            | NODE_DETAIL_PLAY
+            | NODE_DETAIL_WATCHLIST
+            | NODE_DETAIL_COMPLETED
+            | NODE_DETAIL_DROPPED
+            | NODE_DETAIL_FAVORITE
+            | NODE_DETAIL_SHUFFLE
+            | NODE_DETAIL_TRAILER
+            | NODE_SHORTS_PLAY
+            | NODE_SHORTS_WATCHLIST
+            | NODE_SHORTS_INFO
+            | NODE_SETTINGS_BACK
+            | NODE_SETTINGS_SWITCH_PROFILE
+            | NODE_FOLDER_BACK
+    )
 }
 
 pub fn is_text_node(node: u64) -> bool {
