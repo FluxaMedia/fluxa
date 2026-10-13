@@ -408,11 +408,21 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
         right.push(("Settings", NODE_PLAYER_SETTINGS));
     }
     right.extend(chrome.secondary());
-    let right_edge = chrome.row_right(ui, layout, rect.right() - margin + 6.0, y, chrome.icon_small(), &right);
+    let right_edge = chrome.row_right(
+        ui,
+        layout,
+        rect.right() - margin + 6.0,
+        y,
+        chrome.icon_small(),
+        &right,
+    );
     let time_width = (right_edge - after - 12.0).max(0.0);
     chrome.toggle_remaining(
         ui,
-        Rect::from_min_size(Pos2::new(after + 4.0, y - 16.0), Vec2::new(time_width, 32.0)),
+        Rect::from_min_size(
+            Pos2::new(after + 4.0, y - 16.0),
+            Vec2::new(time_width, 32.0),
+        ),
     );
     chrome.text(
         Pos2::new(after + 8.0, y),
@@ -429,8 +439,20 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
     if !player.has_video() || !player.controls_visible {
         return;
     }
-    scrim_edge(chrome.painter, rect, (rect.height() * 0.3).min(220.0), true, 110);
-    scrim_edge(chrome.painter, rect, (rect.height() * 0.5).min(420.0), false, 255);
+    scrim_edge(
+        chrome.painter,
+        rect,
+        (rect.height() * 0.3).min(220.0),
+        true,
+        110,
+    );
+    scrim_edge(
+        chrome.painter,
+        rect,
+        (rect.height() * 0.5).min(420.0),
+        false,
+        255,
+    );
     let margin = (rect.width() * 0.05).max(48.0);
     let header_y = rect.top() + 56.0;
     chrome.button(

@@ -44,16 +44,16 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
     let margin = metrics.screen_margin;
     let mut layout = HomeLayout::default();
     if !compact {
-        layout
-            .focusable
-            .extend(navigation_focus_rects(home_nav_viewport(viewport, home), metrics));
+        layout.focusable.extend(navigation_focus_rects(
+            home_nav_viewport(viewport, home),
+            metrics,
+        ));
     }
     let hero_height = home_hero_height_for(viewport, home);
     let flow = home_flow(viewport, metrics, home);
     if show_hero && home.item_id.is_some() && !home_hero_pinned(viewport, home) {
-        let play_y = flow.hero_top + hero_height
-            - if compact { 92.0 } else { 194.0 }
-            - home.scroll_offset;
+        let play_y =
+            flow.hero_top + hero_height - if compact { 92.0 } else { 194.0 } - home.scroll_offset;
         let size = Vec2::new(
             if compact {
                 108.0
@@ -104,9 +104,10 @@ pub fn home_layout(viewport: Viewport, home: &HomeModel) -> HomeLayout {
         }
     }
     if compact {
-        layout
-            .focusable
-            .extend(navigation_focus_rects(home_nav_viewport(viewport, home), metrics));
+        layout.focusable.extend(navigation_focus_rects(
+            home_nav_viewport(viewport, home),
+            metrics,
+        ));
     }
     layout
 }

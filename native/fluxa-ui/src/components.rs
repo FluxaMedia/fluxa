@@ -10,16 +10,16 @@ use std::hash::{Hash, Hasher};
 
 use crate::flow::Size;
 
-mod input;
 mod cards;
 mod dropdown;
+mod input;
 mod menu;
 mod recent_searches;
 mod streams;
 
-pub use input::*;
 pub use cards::*;
 pub use dropdown::*;
+pub use input::*;
 pub use menu::*;
 pub use recent_searches::*;
 pub use streams::*;
@@ -524,7 +524,11 @@ pub(super) fn banner(
                     Size::Fixed(content.action.map_or(0.0, |(_, text)| {
                         crate::paint::text_width(&painter, text, FontId::proportional(size)) + 36.0
                     })),
-                    Size::Fixed(if content.close.is_some() { control } else { 0.0 }),
+                    Size::Fixed(if content.close.is_some() {
+                        control
+                    } else {
+                        0.0
+                    }),
                 ],
             );
             if let Some((node, _)) = content.close {
@@ -544,7 +548,16 @@ pub(super) fn banner(
                     Rect::from_center_size(action.center(), Vec2::new(action.width(), control));
                 outcome.action_clicked = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
-                        pill_button(ui, None, text, Some(button.width()), control, size, true, None)
+                        pill_button(
+                            ui,
+                            None,
+                            text,
+                            Some(button.width()),
+                            control,
+                            size,
+                            true,
+                            None,
+                        )
                     })
                     .inner
                     .clicked();
@@ -677,7 +690,12 @@ pub(super) fn sticky_bar(
     bar: StickyBar,
     metrics: UiMetrics,
 ) -> Option<StickyOutput> {
-    let fade = crate::motion::toggle(context, Id::new((id, "sticky-fade")), shown, crate::motion::fast());
+    let fade = crate::motion::toggle(
+        context,
+        Id::new((id, "sticky-fade")),
+        shown,
+        crate::motion::fast(),
+    );
     if fade <= 0.0 {
         return None;
     }

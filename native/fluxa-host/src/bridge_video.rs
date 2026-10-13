@@ -1,6 +1,9 @@
 use std::sync::{Arc, Mutex};
 
-use crate::{Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus, VideoTrack};
+use crate::{
+    Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus,
+    VideoTrack,
+};
 use fluxa_effects::core_value;
 use serde_json::{Value, json};
 

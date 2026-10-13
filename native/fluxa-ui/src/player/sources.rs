@@ -21,12 +21,7 @@ pub(super) fn draw_sources(
         Color32::WHITE,
         assets,
     );
-    paint_vertical_gradient(
-        &painter,
-        rect,
-        shade(Shade::Faint),
-        shade(Shade::Strong),
-    );
+    paint_vertical_gradient(&painter, rect, shade(Shade::Faint), shade(Shade::Strong));
     let metrics = metrics_for_assets(viewport, assets);
     let margin = metrics.overlay_margin;
     let wide = rect.width() >= 900.0;

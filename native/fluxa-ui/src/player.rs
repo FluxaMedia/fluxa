@@ -448,10 +448,7 @@ impl Chrome<'_> {
         }
         ui.data_mut(|data| data.insert_temp(held_id, holding));
         layout.player_speed_hold = holding;
-        if response.dragged()
-            && self.player.options.gestures
-            && !holding
-        {
+        if response.dragged() && self.player.options.gestures && !holding {
             let origin = ui
                 .input(|input| input.pointer.press_origin())
                 .or_else(|| response.interact_pointer_pos());

@@ -120,7 +120,10 @@ pub(crate) fn poll_mdblist_lists(state: &mut RendererState) {
         .get("mdblistAccessToken")
         .and_then(Value::as_str)
         .unwrap_or_default();
-    let api_key = state.settings.str_value("mdblistApiKey").unwrap_or_default();
+    let api_key = state
+        .settings
+        .str_value("mdblistApiKey")
+        .unwrap_or_default();
     let key = if token.is_empty() && api_key.is_empty() {
         String::new()
     } else {

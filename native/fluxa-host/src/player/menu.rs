@@ -356,11 +356,20 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 heading(format!("{current:+.1}s")),
                 step(DELAY_COARSE_STEP),
                 step(DELAY_STEP),
-                row(text("player.delay_reset"), None, false, Item::DelayReset(subtitles)),
+                row(
+                    text("player.delay_reset"),
+                    None,
+                    false,
+                    Item::DelayReset(subtitles),
+                ),
                 step(-DELAY_STEP),
                 step(-DELAY_COARSE_STEP),
             ];
-            let title = if subtitles { "player.subtitle_delay" } else { "player.audio_delay" };
+            let title = if subtitles {
+                "player.subtitle_delay"
+            } else {
+                "player.audio_delay"
+            };
             (text(title), rows)
         }
     }

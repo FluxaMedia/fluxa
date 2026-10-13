@@ -1,14 +1,29 @@
 use super::*;
 use fluxa_ui::{NODE_SETTINGS_UPDATE_ACTION, NODE_UPDATE_INSTALL, NODE_UPDATE_LATER, UpdateState};
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 const RECHECK: Duration = Duration::from_secs(6 * 60 * 60);
 
 #[derive(Default)]
 pub(crate) struct State {
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "android"
+    ))]
     updater: Option<fluxa_updater::Updater>,
-    #[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "macos",
+        target_os = "windows",
+        target_os = "android"
+    ))]
     last_check: Option<Instant>,
     install_when_ready: bool,
     dismissed: bool,
@@ -16,19 +31,39 @@ pub(crate) struct State {
     pub(crate) install_apk: Option<String>,
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 pub(crate) fn start(state: &mut RendererState, data_dir: &std::path::Path) {
     state.updates.updater = Some(fluxa_updater::Updater::new(data_dir));
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+)))]
 pub(crate) fn start(_state: &mut RendererState, _data_dir: &std::path::Path) {}
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 pub(crate) fn poll(state: &mut RendererState) {
     use fluxa_updater::Status;
     state.settings.update.current = fluxa_updater::CURRENT_VERSION.to_owned();
-    let Some(updater) = state.updates.updater.clone().filter(|_| !cfg!(debug_assertions)) else {
+    let Some(updater) = state
+        .updates
+        .updater
+        .clone()
+        .filter(|_| !cfg!(debug_assertions))
+    else {
         return;
     };
     let automatic = state
@@ -77,7 +112,12 @@ pub(crate) fn poll(state: &mut RendererState) {
     reveal(state);
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 fn reveal(state: &mut RendererState) {
     let Some(context) = state.gpu.as_ref().map(|gpu| gpu.egui_context.clone()) else {
         return;
@@ -92,7 +132,12 @@ fn reveal(state: &mut RendererState) {
     state.home.top_inset = view.reveal * fluxa_ui::update_banner_space(view.top);
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 fn install(state: &mut RendererState, updater: &fluxa_updater::Updater) {
     match updater.apply() {
         Ok(fluxa_updater::Applied::Restart) => state.updates.exit_requested = true,
@@ -106,7 +151,12 @@ fn install(state: &mut RendererState, updater: &fluxa_updater::Updater) {
     }
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+)))]
 pub(crate) fn poll(_state: &mut RendererState) {}
 
 pub(crate) fn revealing(state: &RendererState) -> bool {
@@ -121,7 +171,12 @@ pub(crate) fn busy(state: &RendererState) -> bool {
     )
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     if node == NODE_UPDATE_LATER {
         state.updates.dismissed = true;
@@ -155,7 +210,12 @@ pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     true
 }
 
-#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android"))]
+#[cfg(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+))]
 fn variant(state: &RendererState) -> &'static str {
     if cfg!(target_os = "android") && state.home.form_factor == fluxa_ui::UiFormFactorJson::Tv {
         "tv"
@@ -166,7 +226,12 @@ fn variant(state: &RendererState) -> &'static str {
     }
 }
 
-#[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows", target_os = "android")))]
+#[cfg(not(any(
+    target_os = "linux",
+    target_os = "macos",
+    target_os = "windows",
+    target_os = "android"
+)))]
 pub(crate) fn activate_node(_state: &mut RendererState, node: u64) -> bool {
     matches!(
         node,

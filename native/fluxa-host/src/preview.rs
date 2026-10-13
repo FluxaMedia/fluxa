@@ -49,13 +49,15 @@ pub(crate) fn reload_tokens() {
 
 pub(crate) fn start(state: &mut RendererState) {
     if let Some(url) = setting("FLUXA_PREVIEW_ADDON") {
-        state.pending_native_actions.push(NativeAction::CoreCommand {
-            command: serde_json::json!({
-                "type": "addonInstallRequested",
-                "transportUrl": url,
-                "forceRefresh": false,
-            }),
-        });
+        state
+            .pending_native_actions
+            .push(NativeAction::CoreCommand {
+                command: serde_json::json!({
+                    "type": "addonInstallRequested",
+                    "transportUrl": url,
+                    "forceRefresh": false,
+                }),
+            });
     }
     let Some(target) = setting("FLUXA_PREVIEW") else {
         return;

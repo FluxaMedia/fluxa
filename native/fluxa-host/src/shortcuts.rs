@@ -155,7 +155,8 @@ pub(crate) fn run(state: &mut RendererState, chord: &str, repeat: bool) -> bool 
     let Some(action) = plan["action"].as_str() else {
         return false;
     };
-    if (state.profiles.is_some() || state.welcome.is_some()) && action != "toggle_window_fullscreen" {
+    if (state.profiles.is_some() || state.welcome.is_some()) && action != "toggle_window_fullscreen"
+    {
         return false;
     }
     if repeat

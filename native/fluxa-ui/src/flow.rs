@@ -173,7 +173,11 @@ mod tests {
     #[test]
     fn wrap_starts_a_new_line_below_the_tallest_item() {
         let item = |height| Vec2::new(45.0, height);
-        let slots = wrap(area(), Vec2::new(10.0, 4.0), &[item(10.0), item(16.0), item(10.0)]);
+        let slots = wrap(
+            area(),
+            Vec2::new(10.0, 4.0),
+            &[item(10.0), item(16.0), item(10.0)],
+        );
         assert_eq!(slots[1].left(), 55.0);
         assert_eq!(slots[2].min, Pos2::new(0.0, 20.0));
     }

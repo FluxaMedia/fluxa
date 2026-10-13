@@ -90,7 +90,13 @@ pub(crate) fn hover(context: &egui::Context, response: &egui::Response) -> f32 {
     } else {
         0.0
     };
-    ease(context, response.id.with("hover"), target, fast(), Ease::Out)
+    ease(
+        context,
+        response.id.with("hover"),
+        target,
+        fast(),
+        Ease::Out,
+    )
 }
 
 pub(crate) fn toggle(context: &egui::Context, id: Id, on: bool, seconds: f32) -> f32 {

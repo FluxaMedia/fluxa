@@ -784,9 +784,10 @@ pub(crate) fn draw_home_with_options(
         activated = Some(NODE_MORE_INFO);
     }
     layout.activated = activated;
-    layout
-        .focusable
-        .extend(navigation_focus_rects(home_nav_viewport(viewport, home), metrics));
+    layout.focusable.extend(navigation_focus_rects(
+        home_nav_viewport(viewport, home),
+        metrics,
+    ));
     if show_hero && hero_has_item && !pinned {
         layout
             .focusable

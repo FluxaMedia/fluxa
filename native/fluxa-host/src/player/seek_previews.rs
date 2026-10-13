@@ -44,10 +44,17 @@ impl SeekPreviews {
             .then(|| source.get("id").and_then(Value::as_str))
             .flatten()
             .map(|base| (base.to_owned(), video_id.clone()));
-        let manifest = session.zip(server.as_ref()).filter(|_| enabled).and_then(|(session, (base, id))| {
-            let url = core_value("trickplayServerManifest", json!({"base": base, "videoId": id}))?;
-            Some(session.fetch_bytes(url.as_str()?.to_owned()))
-        });
+        let manifest =
+            session
+                .zip(server.as_ref())
+                .filter(|_| enabled)
+                .and_then(|(session, (base, id))| {
+                    let url = core_value(
+                        "trickplayServerManifest",
+                        json!({"base": base, "videoId": id}),
+                    )?;
+                    Some(session.fetch_bytes(url.as_str()?.to_owned()))
+                });
         let enabled = enabled && server.is_none();
         let external = external && server.is_none();
         let resolving = session.filter(|_| enabled && external).map(|session| {
@@ -64,7 +71,10 @@ impl SeekPreviews {
                 enabled,
                 url: None,
                 headers: Vec::new(),
-                interval: planned.get("interval").and_then(Value::as_f64).unwrap_or(10.0),
+                interval: planned
+                    .get("interval")
+                    .and_then(Value::as_f64)
+                    .unwrap_or(10.0),
                 sheet: flag("sheet"),
                 hold: false,
             },
@@ -137,7 +147,9 @@ impl SeekPreviews {
         let Some(loaded_at) = self.loaded_at.filter(|_| self.holding) else {
             return;
         };
-        self.progress = video.thumbnail_progress().filter(|progress| progress.count > 0);
+        self.progress = video
+            .thumbnail_progress()
+            .filter(|progress| progress.count > 0);
         let finished = self
             .progress
             .is_some_and(|progress| progress.done >= progress.count);
@@ -168,7 +180,10 @@ impl SeekPreviews {
                 .into_iter()
                 .flatten()
                 .filter_map(|pair| {
-                    Some((pair.get(0)?.as_str()?.to_owned(), pair.get(1)?.as_str()?.to_owned()))
+                    Some((
+                        pair.get(0)?.as_str()?.to_owned(),
+                        pair.get(1)?.as_str()?.to_owned(),
+                    ))
                 })
                 .collect();
         }

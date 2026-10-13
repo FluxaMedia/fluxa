@@ -252,7 +252,8 @@ fn text_edit(
 ) -> Response {
     let radius = radius::control();
     let (rect, _) = ui.allocate_exact_size(size, Sense::hover());
-    ui.painter().rect_filled(rect, radius, metrics.surface_raised);
+    ui.painter()
+        .rect_filled(rect, radius, metrics.surface_raised);
     let mut text_rect = rect.shrink2(Vec2::new(14.0, 0.0));
     if kind != InputKind::Multiline {
         let row = ui.fonts_mut(|fonts| fonts.row_height(&crate::fonts::regular(font_size)));
@@ -281,7 +282,13 @@ fn text_edit(
     } else {
         value.clone()
     };
-    paint_caret(ui, rect, text_rect, &shown, crate::fonts::regular(font_size));
+    paint_caret(
+        ui,
+        rect,
+        text_rect,
+        &shown,
+        crate::fonts::regular(font_size),
+    );
     let stroke = if response.has_focus() {
         egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::MUTED))
     } else {
