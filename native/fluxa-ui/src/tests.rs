@@ -976,7 +976,12 @@ fn recent_searches_list_under_search_only_while_it_is_focused() {
         })
     };
     let closed = drawn(None);
-    assert!(closed.focusable.iter().all(|(id, _)| discover_recent(*id).is_none()));
+    assert!(
+        closed
+            .focusable
+            .iter()
+            .all(|(id, _)| discover_recent(*id).is_none())
+    );
     let open = drawn(Some(NODE_DISCOVER_SEARCH));
     let search = open
         .focusable

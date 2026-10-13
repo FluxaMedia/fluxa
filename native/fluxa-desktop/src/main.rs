@@ -376,7 +376,8 @@ impl ApplicationHandler<AccessEvent> for App {
         {
             self.video_layer = apple_video::VideoLayer::attach(&window);
             match self.video_layer.as_ref() {
-                Some(layer) => host.set_video_backend(Box::new(apple_video::AppleBackend::new(layer.pointer()))),
+                Some(layer) => host
+                    .set_video_backend(Box::new(apple_video::AppleBackend::new(layer.pointer()))),
                 None => eprintln!("[fluxa-desktop] could not attach the video layer"),
             }
         }

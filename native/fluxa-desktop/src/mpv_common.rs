@@ -60,11 +60,7 @@ pub fn select_tracks(
     client.command(&["set", "secondary-sid", secondary])
 }
 
-pub fn enable_thumbnails(
-    client: &fluxa_mpv::MpvClientHandle,
-    url: &str,
-    plan: &ThumbnailPlan,
-) {
+pub fn enable_thumbnails(client: &fluxa_mpv::MpvClientHandle, url: &str, plan: &ThumbnailPlan) {
     if !plan.enabled {
         let _ = client.set_option("thumbnails", "no");
         return;
@@ -88,8 +84,14 @@ pub fn enable_thumbnails(
     }
     let tuning = [
         ("thumbnail-width", Some(THUMBNAIL_WIDTH.to_owned())),
-        ("thumbnail-interval", Some(plan.interval.max(1.0).to_string())),
-        ("thumbnail-sweep", Some(if plan.sheet { "yes" } else { "no" }.to_owned())),
+        (
+            "thumbnail-interval",
+            Some(plan.interval.max(1.0).to_string()),
+        ),
+        (
+            "thumbnail-sweep",
+            Some(if plan.sheet { "yes" } else { "no" }.to_owned()),
+        ),
         ("thumbnail-delay", Some("0".to_owned())),
     ];
     for (name, value) in tuning {
