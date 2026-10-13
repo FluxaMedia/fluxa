@@ -1,11 +1,10 @@
 use std::path::PathBuf;
 use std::sync::mpsc::{self, Receiver};
-use web_time::Instant;
 
 use fluxa_effects::{EffectExecutor, SessionHandle, Storage};
 use fluxa_ui::{
-    PinFailure, PinPrompt, PinPurpose, ProfileAvatarPack, ProfileEntry, ProfilePickerSettings, ProfilesMode,
-    ProfilesModel, ProfilesRequest, localized,
+    PinFailure, PinPrompt, PinPurpose, ProfileAvatarPack, ProfileEntry, ProfilePickerSettings,
+    ProfilesMode, ProfilesModel, ProfilesRequest, localized,
 };
 use serde_json::{Value, json};
 
@@ -343,17 +342,8 @@ fn new_profile_id() -> String {
     format!("{nanos:x}-{:x}", std::process::id())
 }
 
-pub(crate) fn splash(state: &mut RendererState, storage: &Storage, id: &str) {
-    state.profile_splash = stored_profiles(storage)
-        .iter()
-        .map(entry)
-        .find(|profile| profile.id == id)
-        .map(|profile| (Instant::now(), profile.name, profile.avatar_url));
-}
-
 pub(crate) fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     write(storage, "active_profile_id", &json!(id));
-    splash(state, storage, id);
     match SessionHandle::open(storage.clone()) {
         Ok(session) => {
             if let Err(error) = load_profile(&session) {

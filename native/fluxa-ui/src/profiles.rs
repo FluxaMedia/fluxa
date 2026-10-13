@@ -196,38 +196,3 @@ fn profile_header(
         model.mode = ProfilesMode::Select;
     }
 }
-
-pub const PROFILE_SPLASH_SECS: f32 = 1.7;
-
-pub fn draw_profile_splash(
-    context: &egui::Context,
-    viewport: Viewport,
-    name: &str,
-    avatar_url: Option<&str>,
-    elapsed: f32,
-    assets: &mut impl HomeAssets,
-) {
-    let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let fade_out = ((PROFILE_SPLASH_SECS - elapsed) / 0.4).clamp(0.0, 1.0);
-    let intro = egui::emath::easing::cubic_out((elapsed / 0.5).clamp(0.0, 1.0));
-    let painter = context.layer_painter(egui::LayerId::new(
-        egui::Order::Foreground,
-        egui::Id::new("fluxa-profile-splash"),
-    ));
-    painter.rect_filled(screen, 0.0, Color32::BLACK.gamma_multiply(fade_out));
-    let metrics = metrics_for_assets(viewport, assets);
-    let radius =
-        (viewport.width.min(viewport.height) * 0.14).clamp(48.0, 120.0) * (0.85 + 0.15 * intro);
-    let center = screen.center() - Vec2::new(0.0, radius * 0.25);
-    components::avatar(&painter, assets, center, radius, name, avatar_url, metrics);
-    draw_text(
-        &painter,
-        center + Vec2::new(0.0, radius + 28.0),
-        Align2::CENTER_CENTER,
-        name,
-        FontId::proportional((radius * 0.32).clamp(18.0, 34.0)),
-        metrics.text_primary.gamma_multiply(intro * fade_out),
-        Some(viewport.width * 0.8),
-    );
-    context.request_repaint();
-}

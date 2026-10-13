@@ -682,7 +682,6 @@ impl Gpu {
         modifiers: egui::Modifiers,
         pre_present: Option<&PrePresent>,
         menu: Option<&card_menu::MenuView>,
-        splash: Option<(&str, Option<&str>, f32)>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         let passthrough =
@@ -842,16 +841,6 @@ impl Gpu {
                 route as u64
             };
             fluxa_ui::page_transition(ui.ctx(), page, &[egui::Id::new("fluxa-shared-bottom-bar")]);
-            if let Some((name, avatar, elapsed)) = splash {
-                fluxa_ui::draw_profile_splash(
-                    ui.ctx(),
-                    viewport,
-                    name,
-                    avatar,
-                    elapsed,
-                    &mut assets,
-                );
-            }
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     ui.ctx(),
