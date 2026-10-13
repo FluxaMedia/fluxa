@@ -141,6 +141,10 @@ pub const ICONS: &[(&str, &str)] = &[
         r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></g></svg>"#,
     ),
     (
+        "Eye",
+        r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></g></svg>"#,
+    ),
+    (
         "EyeOff",
         r#"<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><g fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.7 5.1A10 10 0 0 1 12 5c7 0 10 7 10 7a13 13 0 0 1-1.7 2.7"/><path d="M6.6 6.6A13.5 13.5 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 1 0 4.2 4.2"/><path d="m2 2 20 20"/></g></svg>"#,
     ),
@@ -267,6 +271,7 @@ pub const ICONS: &[(&str, &str)] = &[
 ];
 
 pub const LOGO_SIZE: u32 = 96;
+pub const WORDMARK_SIZE: u32 = 512;
 
 pub const LOGOS: &[(&str, &str)] = &[
     ("anilist", include_str!("../assets/logos/anilist.svg")),
@@ -299,6 +304,7 @@ pub const LOGOS: &[(&str, &str)] = &[
     ("stremio", include_str!("../assets/logos/stremio.svg")),
     ("tmdb", include_str!("../assets/logos/tmdb.svg")),
     ("trakt", include_str!("../assets/logos/trakt.svg")),
+    ("wordmark", include_str!("../assets/logos/wordmark.svg")),
 ];
 
 pub fn source(name: &str) -> Option<&'static str> {

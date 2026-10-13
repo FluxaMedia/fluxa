@@ -3215,5 +3215,10 @@
   "settings.updates.restart": "Güncellemek için yeniden başlat",
   "settings.updates.check": "Güncellemeleri denetle",
   "settings.updates.failed": "Güncelleme başarısız",
-  "settings.updates.unsupported": "Bu cihazda güncelleme kullanılamıyor"
+  "settings.updates.unsupported": "Bu cihazda güncelleme kullanılamıyor",
+  "auth.tv.or_enter_code": "Ya da %s adresine gidip bu kodu gir",
+  "auth.tv.step_scan": "Telefonunun kamerasını koda tut",
+  "auth.tv.step_login": "Nuvio hesabınla giriş yap",
+  "auth.tv.step_return": "Buraya dön, seni otomatik giriş yaptıracağız",
+  "auth.error.server": "Sunucuda bir sorun oluştu, birazdan tekrar dene"
 }

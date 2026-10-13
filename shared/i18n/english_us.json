@@ -3215,5 +3215,10 @@
   "settings.updates.restart": "Restart to update",
   "settings.updates.check": "Check for updates",
   "settings.updates.failed": "Update failed",
-  "settings.updates.unsupported": "Updates aren't available on this device"
+  "settings.updates.unsupported": "Updates aren't available on this device",
+  "auth.tv.or_enter_code": "Or go to %s and enter this code",
+  "auth.tv.step_scan": "Point your phone camera at the code",
+  "auth.tv.step_login": "Log in with your Nuvio account",
+  "auth.tv.step_return": "Come back here, we will sign you in",
+  "auth.error.server": "The server had a problem, try again shortly"
 }

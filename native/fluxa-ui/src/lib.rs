@@ -31,6 +31,7 @@ mod profiles;
 mod settings;
 mod shorts;
 mod style;
+mod welcome;
 
 pub use home::*;
 pub use layout::*;
@@ -63,6 +64,7 @@ pub use player::{
     PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
     content_warning_duration, draw_player, format_time, torrent_status_lines,
 };
+pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
 pub use profiles::{
     PROFILE_SPLASH_SECS, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
     ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
