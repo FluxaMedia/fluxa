@@ -28,15 +28,20 @@ pub(crate) fn nuvio_session_profile_json(request_json: &str) -> Option<String> {
         .get("expires_in")
         .and_then(Value::as_i64)
         .unwrap_or(3600);
+    let claims = token_claims(token);
     let email = request
         .get("email")
         .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|email| !email.is_empty())
         .or_else(|| session.pointer("/user/email").and_then(Value::as_str))
+        .or_else(|| claims.get("email").and_then(Value::as_str))
         .unwrap_or_default()
         .trim();
     let user_id = session
         .pointer("/user/id")
         .or_else(|| request.get("userId"))
+        .or_else(|| claims.get("sub"))
         .cloned()
         .unwrap_or(Value::Null);
     Some(
@@ -53,6 +58,20 @@ pub(crate) fn nuvio_session_profile_json(request_json: &str) -> Option<String> {
         })
         .to_string(),
     )
+}
+
+fn token_claims(token: &str) -> Value {
+    use base64::Engine;
+    token
+        .split('.')
+        .nth(1)
+        .and_then(|payload| {
+            base64::engine::general_purpose::URL_SAFE_NO_PAD
+                .decode(payload.trim_end_matches('='))
+                .ok()
+        })
+        .and_then(|bytes| serde_json::from_slice(&bytes).ok())
+        .unwrap_or(Value::Null)
 }
 
 pub(crate) fn nuvio_auth_error_key(request: &Value) -> &'static str {

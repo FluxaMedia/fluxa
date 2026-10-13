@@ -161,6 +161,26 @@ fn nuvio_sign_in_profile_keeps_tokens_and_leaves_the_name_for_sync() {
 }
 
 #[test]
+fn qr_login_without_user_object_takes_identity_from_the_token() {
+    let payload = "eyJzdWIiOiJ1LTIiLCJlbWFpbCI6InFyQGV4YW1wbGUuY29tIn0";
+    let profile: Value = serde_json::from_str(
+        &nuvio_session_profile_json(
+            &json!({
+                "id": "p1",
+                "email": "",
+                "nowSeconds": 1000,
+                "session": {"access_token": format!("h.{payload}.s")},
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    assert_eq!(profile["nuvioUserId"], "u-2");
+    assert_eq!(profile["nuvioEmail"], "qr@example.com");
+}
+
+#[test]
 fn nuvio_auth_errors_map_to_translation_keys() {
     let key = |status, body: &str| nuvio_auth_error_key(&json!({"status": status, "body": body}));
     assert_eq!(key(400, "Invalid login credentials"), "auth.error.invalid_credentials");
