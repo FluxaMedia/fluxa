@@ -16,7 +16,9 @@ use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
 use fluxa_effects::{SessionHandle, Storage, core_value};
 use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
 use fluxa_renderer::platform::{GraphicsBackend, backends_for};
-use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, rasterize_svg};
+use fluxa_renderer::svg_icons::{
+    ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, WORDMARK_SIZE, rasterize_svg,
+};
 pub use fluxa_renderer::ui::{GamepadButton, Key};
 use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, UiTree};
 use fluxa_ui::{
@@ -109,6 +111,7 @@ mod surface;
 mod sync;
 mod trailer;
 mod updates;
+mod welcome;
 
 use actions::*;
 use artwork::*;
@@ -214,6 +217,8 @@ struct RendererState {
     account_auth: Option<accounts::AccountAuth>,
     mdblist_lists: accounts::MdblistLists,
     pack_job: Option<profiles::PackJob>,
+    welcome: Option<fluxa_ui::WelcomeModel>,
+    welcome_flow: Option<welcome::Flow>,
     profile_splash: Option<(Instant, String, Option<String>)>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
@@ -405,6 +410,8 @@ impl FluxaHost {
             profile_splash: None,
             picker_background: None,
             image_picker: None,
+            welcome: None,
+            welcome_flow: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
             logos: logos::Logos::default(),
@@ -548,7 +555,9 @@ impl FluxaHost {
             preview::start(state);
             state.session = Some(session);
             state.picker_background = background;
-            if pick {
+            if greet {
+                welcome::open(state);
+            } else if pick {
                 profiles::open(state);
             }
         });
@@ -568,6 +577,7 @@ impl FluxaHost {
 
     pub fn push_action_json(&self, json: &str) -> Result<(), String> {
         let action: NativeAction = serde_json::from_str(json).map_err(|error| error.to_string())?;
+        let greet = welcome::required(session.storage());
         self.with_state(|state| state.pending_native_actions.push(action));
         Ok(())
     }

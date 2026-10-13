@@ -217,7 +217,11 @@ impl FluxaHost {
 
     pub fn back(&self) -> bool {
         self.with_state(|state| {
-            if state.player.is_none() && state.profiles.is_none() && state.route == Route::Home {
+            if state.player.is_none()
+                && state.profiles.is_none()
+                && state.welcome.is_none()
+                && state.route == Route::Home
+            {
                 return false;
             }
             key_down(state, KeyInput::Key(Key::Back));

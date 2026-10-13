@@ -288,7 +288,12 @@ impl SvgIconRegistry {
         }
         let mut textures = HashMap::new();
         for (name, svg) in LOGOS {
-            let Ok(image) = rasterize_svg(svg.as_bytes(), LOGO_SIZE) else {
+            let side = if *name == "wordmark" {
+                WORDMARK_SIZE
+            } else {
+                LOGO_SIZE
+            };
+            let Ok(image) = rasterize_svg(svg.as_bytes(), side) else {
                 host_log(format!("failed to rasterize shared SVG logo {name}"));
                 continue;
             };
@@ -667,6 +672,7 @@ impl Gpu {
         scroll_y: f32,
         events: Vec<egui::Event>,
         modifiers: egui::Modifiers,
+        mut welcome: Option<&mut fluxa_ui::WelcomeModel>,
         pre_present: Option<&PrePresent>,
         menu: Option<&card_menu::MenuView>,
         splash: Option<(&str, Option<&str>, f32)>,
@@ -776,7 +782,9 @@ impl Gpu {
                 .with_platform(home.platform)
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
-            if let Some(profiles) = profiles.as_deref_mut() {
+            if let Some(welcome) = welcome.as_deref_mut() {
+                rendered_layout = fluxa_ui::draw_welcome(ui.ctx(), viewport, welcome, &mut assets);
+            } else if let Some(profiles) = profiles.as_deref_mut() {
                 rendered_layout =
                     fluxa_ui::draw_profiles(ui.ctx(), viewport, profiles, &mut assets);
             } else if let Some(player) = player {
@@ -813,7 +821,9 @@ impl Gpu {
             } else {
                 rendered_layout = draw_home(ui.ctx(), viewport, home, &mut assets, focused);
             }
-            let page = if profiles.is_some() {
+            let page = if welcome.is_some() {
+                102
+            } else if profiles.is_some() {
                 100
             } else if player.is_some() {
                 101

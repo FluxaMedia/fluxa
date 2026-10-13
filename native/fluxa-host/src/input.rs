@@ -232,7 +232,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
-    if state.profiles.is_some() || state.player.is_some() {
+    if state.profiles.is_some() || state.welcome.is_some() || state.player.is_some() {
         if state
             .player
             .as_ref()
@@ -264,6 +264,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     if phase == PointerPhase::Down
         && state.player.is_none()
         && state.profiles.is_none()
+        && state.welcome.is_none()
         && viewport.is_compact()
         && fluxa_ui::mobile_nav_rect(viewport).contains(Pos2::new(position[0], position[1]))
     {
@@ -519,7 +520,11 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if !matches!(input, KeyInput::Key(Key::Back | Key::Escape)) {
         hide_pointer(state);
     }
-    if state.route == Route::Shorts && state.player.is_none() && state.profiles.is_none() {
+    if state.route == Route::Shorts
+        && state.player.is_none()
+        && state.profiles.is_none()
+        && state.welcome.is_none()
+    {
         let delta = match input {
             KeyInput::Key(Key::Up) | KeyInput::Gamepad(GamepadButton::DPadUp) => Some(-1),
             KeyInput::Key(Key::Down) | KeyInput::Gamepad(GamepadButton::DPadDown) => Some(1),
@@ -590,7 +595,7 @@ fn focus_row_start(state: &mut RendererState, previous: Option<u64>) {
 }
 
 pub(super) fn active_route(state: &RendererState) -> Route {
-    if state.profiles.is_some() {
+    if state.profiles.is_some() || state.welcome.is_some() {
         Route::Profiles
     } else if state.player.is_some() {
         Route::Player

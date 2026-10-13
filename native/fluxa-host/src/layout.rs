@@ -95,7 +95,7 @@ pub(super) fn rebuild_current_ui(state: &mut RendererState) {
         rebuild_ui_from_layout(state, &layout, size);
         return;
     }
-    if state.route != Route::Home || state.player.is_some() || state.profiles.is_some() {
+    if state.route != Route::Home || state.player.is_some() || state.profiles.is_some() || state.welcome.is_some() {
         return;
     }
     rebuild_home_ui(&mut state.ui, size, &state.home, state.safe_bottom);

@@ -153,6 +153,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     {
         gpu.resize(size);
     }
+    welcome::poll(state);
     sync_home_from_core_snapshot(state);
     apply_notice(state);
     shorts::tick(state);
@@ -288,6 +289,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             gpu.density = scale;
             gpu.mirror = mirrored;
             gpu.render(
+            welcome,
                 route,
                 home,
                 library,
@@ -325,6 +327,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 }
                 state.wants_keyboard = frame.wants_keyboard;
                 state.access = AccessFrame {
+                welcome.as_mut(),
                     runs: frame.text_runs,
                     field: frame.field,
                     caret: frame.caret,
@@ -368,6 +371,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     let rows = state.home.content_rows_with_kind().count();
                     for row in 0..rows {
                         let live = state
+                if let Some(request) = layout.welcome.take() {
+                    welcome::handle(state, request);
+                }
+                welcome::schedule(state);
                             .gpu
                             .as_ref()
                             .and_then(|gpu| fluxa_ui::row_scroll_offset(&gpu.egui_context, row));

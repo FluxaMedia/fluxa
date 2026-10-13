@@ -18,17 +18,17 @@ pub(crate) struct PackJob {
     receiver: Receiver<Vec<(String, Result<Vec<ProfileAvatarPack>, String>)>>,
 }
 
-fn read(storage: &Storage, key: &str) -> Option<Value> {
+pub(crate) fn read(storage: &Storage, key: &str) -> Option<Value> {
     storage.read_json(key).ok().flatten()
 }
 
-fn write(storage: &Storage, key: &str, value: &Value) {
+pub(crate) fn write(storage: &Storage, key: &str, value: &Value) {
     if let Err(error) = storage.write_json(key, value) {
         host_log(format!("Storage write {key} failed: {error}"));
     }
 }
 
-fn stored_profiles(storage: &Storage) -> Vec<Value> {
+pub(crate) fn stored_profiles(storage: &Storage) -> Vec<Value> {
     read(storage, "profiles")
         .and_then(|value| value.as_array().cloned())
         .unwrap_or_default()
@@ -297,7 +297,7 @@ pub(crate) fn splash(state: &mut RendererState, storage: &Storage, id: &str) {
         .map(|profile| (Instant::now(), profile.name, profile.avatar_url));
 }
 
-fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
+pub(crate) fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     write(storage, "active_profile_id", &json!(id));
     splash(state, storage, id);
     match SessionHandle::open(storage.clone()) {
