@@ -1,4 +1,7 @@
-use std::sync::Arc;
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use std::time::{Duration, Instant};
 
 use fluxa_host::{FluxaHost, GamepadButton, Key, KeyInput, MouseButton, NativeSurface, egui};
@@ -51,6 +54,7 @@ struct App {
     access_at: Instant,
     host: Option<FluxaHost>,
     window: Option<Arc<Window>>,
+    redraw_asked: Arc<AtomicBool>,
     gamepad: Option<Gilrs>,
     axis_dirs: [i8; 2],
     right_stick_y: f32,
@@ -74,6 +78,7 @@ impl App {
             access_at: Instant::now(),
             host: None,
             window: None,
+            redraw_asked: Arc::default(),
             gamepad: Gilrs::new().ok(),
             axis_dirs: [0; 2],
             right_stick_y: 0.0,
@@ -158,6 +163,7 @@ impl App {
                     window.set_cursor_visible(false);
                     self.cursor_hidden = true;
                 }
+                self.redraw_asked.store(true, Ordering::Relaxed);
                 window.request_redraw();
             }
         }
@@ -358,7 +364,14 @@ impl ApplicationHandler<AccessEvent> for App {
         #[cfg(target_os = "linux")]
         mpris::start(host.clone());
         #[cfg(any(target_os = "linux", target_os = "windows"))]
-        host.set_video_backend(Box::new(mpv::MpvBackend::new()));
+        {
+            let window = window.clone();
+            let asked = self.redraw_asked.clone();
+            host.set_video_backend(Box::new(mpv::MpvBackend::new(Arc::new(move || {
+                asked.store(true, Ordering::Relaxed);
+                window.request_redraw();
+            }))));
+        }
         #[cfg(target_os = "macos")]
         {
             self.video_layer = apple_video::VideoLayer::attach(&window);
@@ -384,6 +397,7 @@ impl ApplicationHandler<AccessEvent> for App {
             })
         };
         host.surface_created(surface, size.width, size.height);
+        self.redraw_asked.store(true, Ordering::Relaxed);
         window.request_redraw();
         self.host = Some(host);
         self.window = Some(window);
@@ -401,6 +415,7 @@ impl ApplicationHandler<AccessEvent> for App {
             accesskit_winit::WindowEvent::ActionRequested(request) => {
                 access::handle(host, request);
                 if let Some(window) = self.window.as_ref() {
+                    self.redraw_asked.store(true, Ordering::Relaxed);
                     window.request_redraw();
                 }
             }
@@ -420,6 +435,7 @@ impl ApplicationHandler<AccessEvent> for App {
         let mut wake = host.next_redraw();
         let now = Instant::now();
         if wake.is_some_and(|at| at <= now) {
+            self.redraw_asked.store(true, Ordering::Relaxed);
             window.request_redraw();
             wake = None;
         }
@@ -438,10 +454,8 @@ impl ApplicationHandler<AccessEvent> for App {
             return;
         };
         let scale = self.scale();
-        if !matches!(event, WindowEvent::RedrawRequested)
-            && let Some(window) = self.window.as_ref()
-        {
-            window.request_redraw();
+        if !matches!(event, WindowEvent::RedrawRequested) {
+            host.invalidate();
         }
         match event {
             WindowEvent::CloseRequested => {
@@ -457,6 +471,9 @@ impl ApplicationHandler<AccessEvent> for App {
                 }
             }
             WindowEvent::RedrawRequested => {
+                if !self.redraw_asked.swap(false, Ordering::Relaxed) {
+                    host.expose();
+                }
                 host.render();
                 self.after_frame();
             }
@@ -525,6 +542,7 @@ impl ApplicationHandler<AccessEvent> for App {
                     && host.shortcut(&chord, event.repeat)
                 {
                     if let Some(window) = self.window.as_ref() {
+                        self.redraw_asked.store(true, Ordering::Relaxed);
                         window.request_redraw();
                     }
                     return;

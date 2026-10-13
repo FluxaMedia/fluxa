@@ -73,11 +73,23 @@ impl FluxaHost {
     }
 
     pub fn render(&self) {
-        self.with_state(render_frame);
+        self.peek(render_frame);
+    }
+
+    pub fn render_due(&self) -> bool {
+        self.peek(|state| {
+            let due = next_redraw(state)
+                .is_some_and(|at| at <= Instant::now() + Duration::from_millis(4));
+            if due {
+                render_frame(state);
+            }
+            due
+        })
+        .unwrap_or(false)
     }
 
     /// Returns when the next frame is due; `None` means the host is idle until input arrives.
     pub fn next_redraw(&self) -> Option<Instant> {
-        self.with_state(next_redraw).flatten()
+        self.peek(next_redraw).flatten()
     }
 }

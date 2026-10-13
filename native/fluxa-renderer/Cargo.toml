@@ -10,6 +10,7 @@ default = ["desktop-demo"]
 desktop-demo = ["dep:pollster", "dep:winit"]
 
 [dependencies]
+ahash = { version = "0.8", default-features = false }
 bytemuck = { version = "1.25", features = ["derive"] }
 egui = "0.34.2"
 egui-wgpu = "0.34.2"

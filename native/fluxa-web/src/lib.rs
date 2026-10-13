@@ -118,7 +118,7 @@ impl FluxaWeb {
     }
 
     pub fn frame(&self) -> Option<String> {
-        self.host.render();
+        self.host.render_due();
         self.host
             .take_actions_json()
             .filter(|actions| actions != "[]")

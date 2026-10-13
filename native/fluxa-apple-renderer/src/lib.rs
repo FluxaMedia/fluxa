@@ -211,7 +211,7 @@ pub unsafe extern "C" fn fluxa_renderer_surface_destroyed(renderer: *const Fluxa
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_render(renderer: *const FluxaRenderer) {
     if let Some(renderer) = unsafe { renderer.as_ref() } {
-        renderer.render();
+        renderer.render_due();
     }
 }
 

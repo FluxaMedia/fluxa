@@ -14,11 +14,11 @@ pub use egui;
 use egui::{Pos2, Rect as EguiRect, Vec2};
 use fluxa_artwork::{ArtworkFetcher, Priority as ArtworkFetchPriority};
 use fluxa_effects::{SessionHandle, Storage, core_value};
-use fluxa_renderer::egui_wgpu_backend::{EguiWgpuBackend, ScreenDescriptor};
-use fluxa_renderer::platform::{GraphicsBackend, backends_for};
-use fluxa_renderer::svg_icons::{
-    ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, WORDMARK_SIZE, rasterize_svg,
+use fluxa_renderer::egui_wgpu_backend::{
+    EguiWgpuBackend, Fingerprint, ScreenDescriptor, fingerprint,
 };
+use fluxa_renderer::platform::{GraphicsBackend, backends_for};
+use fluxa_renderer::svg_icons::{ICON_SIZE, ICONS, LOGO_SIZE, LOGOS, WORDMARK_SIZE, rasterize_svg};
 pub use fluxa_renderer::ui::{GamepadButton, Key};
 use fluxa_renderer::ui::{PointerButton, UiAction, UiEvent, UiNode, UiNodeKind, UiTree};
 use fluxa_ui::{
@@ -207,6 +207,9 @@ struct RendererState {
     wants_keyboard: bool,
     access: AccessFrame,
     redraw_at: Option<Instant>,
+    last_frame: Instant,
+    still_frames: u32,
+    unpresented: bool,
     focus_hint: Option<(Route, u64)>,
     player: Option<player::PlayerSession>,
     shuffle: Option<player::Shuffle>,
@@ -219,14 +222,14 @@ struct RendererState {
     updates: updates::State,
     open_url: Option<String>,
     profiles: Option<fluxa_ui::ProfilesModel>,
+    welcome: Option<fluxa_ui::WelcomeModel>,
+    welcome_flow: Option<welcome::Flow>,
     account_auth: Option<accounts::AccountAuth>,
     mdblist_lists: accounts::MdblistLists,
     pack_job: Option<profiles::PackJob>,
     pin_job: Option<profiles::PinJob>,
     pin_change_job: Option<profiles::PinChangeJob>,
     edit_pin: Option<(String, String)>,
-    welcome: Option<fluxa_ui::WelcomeModel>,
-    welcome_flow: Option<welcome::Flow>,
     profile_splash: Option<(Instant, String, Option<String>)>,
     picker_background: Option<String>,
     image_picker: Option<ImagePicker>,
@@ -400,6 +403,9 @@ impl FluxaHost {
             wants_keyboard: false,
             access: AccessFrame::default(),
             redraw_at: Some(Instant::now()),
+            last_frame: Instant::now(),
+            still_frames: 0,
+            unpresented: false,
             focus_hint: None,
             player: None,
             shuffle: None,
@@ -412,6 +418,8 @@ impl FluxaHost {
             updates: Default::default(),
             open_url: None,
             profiles: None,
+            welcome: None,
+            welcome_flow: None,
             account_auth: None,
             mdblist_lists: Default::default(),
             pack_job: None,
@@ -421,8 +429,6 @@ impl FluxaHost {
             profile_splash: None,
             picker_background: None,
             image_picker: None,
-            welcome: None,
-            welcome_flow: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
             logos: logos::Logos::default(),
@@ -432,7 +438,26 @@ impl FluxaHost {
     }
 
     fn with_state<T>(&self, f: impl FnOnce(&mut RendererState) -> T) -> Option<T> {
+        self.peek(|state| {
+            state.redraw_at = Some(Instant::now());
+            f(state)
+        })
+    }
+
+    fn peek<T>(&self, f: impl FnOnce(&mut RendererState) -> T) -> Option<T> {
         self.0.lock().ok().map(|mut state| f(&mut state))
+    }
+
+    pub fn invalidate(&self) {
+        self.with_state(|_| ());
+    }
+
+    pub fn expose(&self) {
+        self.with_state(|state| {
+            if let Some(gpu) = state.gpu.as_mut() {
+                gpu.presented = None;
+            }
+        });
     }
 
     pub fn set_safe_bottom_inset(&self, inset_dp: f32) {
@@ -525,9 +550,10 @@ impl FluxaHost {
     }
 
     pub fn accessibility_tree(&self) -> Option<semantics::AccessTree> {
-        self.with_state(|state| {
-            if let Some(gpu) = state.gpu.as_mut() {
+        self.peek(|state| {
+            if let Some(gpu) = state.gpu.as_mut().filter(|gpu| !gpu.collect_text) {
                 gpu.collect_text = true;
+                state.redraw_at = Some(Instant::now());
             }
             rebuild_current_ui(state);
             semantics::tree(state)
@@ -540,7 +566,7 @@ impl FluxaHost {
     }
 
     pub fn snapshot_json(&self) -> Option<String> {
-        self.with_state(|state| {
+        self.peek(|state| {
             state
                 .core_snapshot
                 .as_ref()
@@ -550,7 +576,7 @@ impl FluxaHost {
     }
 
     pub fn take_actions_json(&self) -> Option<String> {
-        self.with_state(|state| {
+        self.peek(|state| {
             route_actions_to_session(state);
             take_native_actions(state)
         })
@@ -560,6 +586,7 @@ impl FluxaHost {
         let session = SessionHandle::open(Storage::open(data_dir.clone())?)?;
         profiles::load_profile(&session)?;
         let pick = profiles::should_pick_on_start(session.storage());
+        let greet = welcome::required(session.storage());
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
             updates::start(state, &data_dir);
@@ -588,17 +615,16 @@ impl FluxaHost {
 
     pub fn push_action_json(&self, json: &str) -> Result<(), String> {
         let action: NativeAction = serde_json::from_str(json).map_err(|error| error.to_string())?;
-        let greet = welcome::required(session.storage());
         self.with_state(|state| state.pending_native_actions.push(action));
         Ok(())
     }
 
     pub fn set_image_picker(&self, picker: ImagePicker) {
-        self.with_state(|state| state.image_picker = Some(picker));
+        self.peek(|state| state.image_picker = Some(picker));
     }
 
     pub fn set_pre_present(&self, hook: PrePresent) {
-        self.with_state(|state| state.pre_present = Some(hook));
+        self.peek(|state| state.pre_present = Some(hook));
     }
 
     pub fn set_video_backend(&self, backend: Box<dyn VideoBackend>) {
@@ -606,7 +632,7 @@ impl FluxaHost {
     }
 
     pub fn wants_landscape(&self) -> bool {
-        self.with_state(|state| {
+        self.peek(|state| {
             state
                 .player
                 .as_ref()
@@ -616,21 +642,20 @@ impl FluxaHost {
     }
 
     pub fn is_playing(&self) -> bool {
-        self.with_state(|state| state.player.is_some())
-            .unwrap_or(false)
+        self.peek(|state| state.player.is_some()).unwrap_or(false)
     }
 
     pub fn take_fullscreen_toggle(&self) -> bool {
-        self.with_state(|state| std::mem::take(&mut state.fullscreen_toggle))
+        self.peek(|state| std::mem::take(&mut state.fullscreen_toggle))
             .unwrap_or(false)
     }
 
     pub fn take_open_url(&self) -> Option<String> {
-        self.with_state(|state| state.open_url.take()).flatten()
+        self.peek(|state| state.open_url.take()).flatten()
     }
 
     pub fn launcher_feed_json(&self) -> Option<String> {
-        self.with_state(|state| {
+        self.peek(|state| {
             let snapshot = match state.session.as_ref() {
                 Some(session) => session.snapshot(),
                 None => state.core_snapshot.clone()?,
@@ -641,16 +666,17 @@ impl FluxaHost {
     }
 
     pub fn take_exit_request(&self) -> bool {
-        self.with_state(|state| std::mem::take(&mut state.updates.exit_requested))
+        self.peek(|state| std::mem::take(&mut state.updates.exit_requested))
             .unwrap_or(false)
     }
 
     pub fn take_install_apk(&self) -> Option<String> {
-        self.with_state(|state| state.updates.install_apk.take()).flatten()
+        self.peek(|state| state.updates.install_apk.take())
+            .flatten()
     }
 
     pub fn take_app_icon(&self) -> Option<String> {
-        self.with_state(|state| {
+        self.peek(|state| {
             let icon = fluxa_core::app_icon::resolve_app_icon(state.settings.app_icon());
             if state.applied_app_icon.as_deref() == Some(icon.id.as_str()) {
                 return None;

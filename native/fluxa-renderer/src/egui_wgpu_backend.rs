@@ -4,6 +4,7 @@
 //! ownership of their native surface and frame lifecycle, but do not own or
 //! configure egui-wgpu's renderer/pipelines directly.
 
+use std::hash::{BuildHasher, Hasher};
 use std::ops::Range;
 
 use egui::epaint::{ImageDelta, PaintCallback, Primitive};
@@ -13,6 +14,55 @@ use egui_wgpu::{Renderer, RendererOptions};
 use crate::glass::{GlassPane, GlassPass, GlassStyle};
 
 pub use egui_wgpu::ScreenDescriptor;
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Fingerprint {
+    pub geometry: u64,
+    pub textures: u64,
+}
+
+pub fn fingerprint(
+    paint_jobs: &[ClippedPrimitive],
+    glass_of: impl Fn(&PaintCallback) -> Option<GlassStyle>,
+) -> Option<Fingerprint> {
+    let state = ahash::RandomState::with_seeds(0x51f0, 0x7c15, 0x9e37, 0x85eb);
+    let mut geometry = state.build_hasher();
+    let mut textures = state.build_hasher();
+    let rect = |hasher: &mut ahash::AHasher, rect: Rect| {
+        hasher.write(bytemuck::bytes_of(&[
+            rect.min.x, rect.min.y, rect.max.x, rect.max.y,
+        ]));
+    };
+    for job in paint_jobs {
+        rect(&mut geometry, job.clip_rect);
+        match &job.primitive {
+            Primitive::Mesh(mesh) => {
+                geometry.write_usize(mesh.vertices.len());
+                geometry.write(bytemuck::cast_slice(&mesh.vertices));
+                geometry.write(bytemuck::cast_slice(&mesh.indices));
+                match mesh.texture_id {
+                    TextureId::Managed(id) => textures.write_u64(id << 1),
+                    TextureId::User(id) => textures.write_u64(id << 1 | 1),
+                }
+            }
+            Primitive::Callback(callback) => {
+                let style = glass_of(callback)?;
+                rect(&mut geometry, callback.rect);
+                geometry.write(bytemuck::bytes_of(&[
+                    style.radius,
+                    style.refraction,
+                    style.bevel,
+                    style.rim,
+                ]));
+                geometry.write(&style.tint.to_array());
+            }
+        }
+    }
+    Some(Fingerprint {
+        geometry: geometry.finish(),
+        textures: textures.finish(),
+    })
+}
 
 pub struct EguiWgpuBackend {
     renderer: Renderer,
@@ -116,11 +166,29 @@ impl EguiWgpuBackend {
             self.glass.scene(),
             wgpu::LoadOp::Clear(clear),
         ));
+        let reach = BLUR_REACH_PX / descriptor.pixels_per_point + REFRACTION_REACH_PT;
+        let backdrop = |pane: &GlassPane| pane.rect.intersect(pane.clip).expand(reach);
+        let region = panes
+            .iter()
+            .map(backdrop)
+            .reduce(Rect::union)
+            .and_then(|rect| scissor(rect, descriptor));
+        let mut painted: Vec<Rect> = Vec::new();
+        let mut blurred = false;
         for (jobs, pane_range) in segments {
-            if !pane_range.is_empty() {
-                self.glass.blur(&mut encoder);
+            let stale = !blurred
+                || panes[pane_range.clone()].iter().any(|pane| {
+                    let backdrop = backdrop(pane);
+                    painted.iter().any(|rect| rect.intersects(backdrop))
+                });
+            if let Some(region) = region.filter(|_| stale && !pane_range.is_empty()) {
+                self.glass.blur(&mut encoder, region);
+                blurred = true;
+                painted.clear();
             }
+            painted.extend(panes[pane_range.clone()].iter().map(|pane| pane.rect));
             let jobs = &paint_jobs[jobs];
+            painted.extend(jobs.iter().filter_map(bounds));
             self.update_buffers(device, queue, &mut encoder, jobs, descriptor);
             let mut pass = begin(&mut encoder, self.glass.scene(), wgpu::LoadOp::Load);
             for index in pane_range {
@@ -215,6 +283,24 @@ fn begin(
             multiview_mask: None,
         })
         .forget_lifetime()
+}
+
+const BLUR_REACH_PX: f32 = 48.0;
+const REFRACTION_REACH_PT: f32 = 24.0;
+
+fn bounds(job: &ClippedPrimitive) -> Option<Rect> {
+    let rect = match &job.primitive {
+        Primitive::Mesh(mesh) => {
+            let mut rect = Rect::NOTHING;
+            for vertex in &mesh.vertices {
+                rect.extend_with(vertex.pos);
+            }
+            rect
+        }
+        Primitive::Callback(callback) => callback.rect,
+    }
+    .intersect(job.clip_rect);
+    rect.is_positive().then_some(rect)
 }
 
 fn scissor(clip: Rect, descriptor: &ScreenDescriptor) -> Option<[u32; 4]> {

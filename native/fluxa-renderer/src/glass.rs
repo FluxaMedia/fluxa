@@ -314,6 +314,7 @@ impl GlassPass {
         pipeline: &wgpu::RenderPipeline,
         source: &wgpu::BindGroup,
         target: &wgpu::TextureView,
+        scissor: Option<[u32; 4]>,
     ) {
         let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some("fluxa-glass-fullscreen"),
@@ -331,20 +332,34 @@ impl GlassPass {
             occlusion_query_set: None,
             multiview_mask: None,
         });
+        if let Some([x, y, width, height]) = scissor {
+            pass.set_scissor_rect(x, y, width, height);
+        }
         pass.set_pipeline(pipeline);
         pass.set_bind_group(0, source, &[]);
         pass.draw(0..3, 0..1);
     }
 
-    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder) {
+    pub fn blur(&self, encoder: &mut wgpu::CommandEncoder, region: [u32; 4]) {
         let targets = self.targets.as_ref().expect("prepare before blur");
+        let scaled = |shift: u32| {
+            let size = [
+                (targets.size[0] >> shift).max(1),
+                (targets.size[1] >> shift).max(1),
+            ];
+            let x0 = (region[0] >> shift).min(size[0] - 1);
+            let y0 = (region[1] >> shift).min(size[1] - 1);
+            let x1 = ((region[0] + region[2]).div_ceil(1 << shift) + 1).min(size[0]);
+            let y1 = ((region[1] + region[3]).div_ceil(1 << shift) + 1).min(size[1]);
+            Some([x0, y0, (x1 - x0).max(1), (y1 - y0).max(1)])
+        };
         let mut source = &targets.scene.bind;
-        for level in &targets.down {
-            Self::fullscreen(encoder, &self.down, source, &level.view);
+        for (index, level) in targets.down.iter().enumerate() {
+            Self::fullscreen(encoder, &self.down, source, &level.view, scaled(index as u32 + 1));
             source = &level.bind;
         }
-        for level in targets.up.iter().rev() {
-            Self::fullscreen(encoder, &self.up, source, &level.view);
+        for (index, level) in targets.up.iter().enumerate().rev() {
+            Self::fullscreen(encoder, &self.up, source, &level.view, scaled(index as u32 + 1));
             source = &level.bind;
         }
     }
@@ -372,6 +387,6 @@ impl GlassPass {
 
     pub fn present(&self, encoder: &mut wgpu::CommandEncoder, target: &wgpu::TextureView) {
         let targets = self.targets.as_ref().expect("prepare before present");
-        Self::fullscreen(encoder, &self.blit, &targets.scene.bind, target);
+        Self::fullscreen(encoder, &self.blit, &targets.scene.bind, target, None);
     }
 }

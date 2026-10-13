@@ -10,6 +10,10 @@ librqbit-dualstack-sockets = { path = "vendor/librqbit-dualstack-sockets" }
 edition = "2024"
 license = "MIT"
 
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
 # Keep CPU-heavy artwork decoding representative of release performance while
 # running the native app in the dev profile. Animated WebP decoding is handled
 # by this pure-Rust dependency, whose unoptimized loops otherwise dominate

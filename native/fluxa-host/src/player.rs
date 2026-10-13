@@ -15,11 +15,11 @@ mod input;
 mod menu;
 mod overlay;
 mod resolve;
+mod seek_previews;
 mod shuffle;
 mod stats;
 mod submit;
 mod trailer;
-mod seek_previews;
 mod trickplay;
 mod upnext;
 pub(crate) use input::*;
@@ -144,6 +144,9 @@ pub trait VideoBackend: Send {
     }
     fn passthrough(&self) -> bool {
         false
+    }
+    fn frame_driven(&self) -> bool {
+        self.passthrough()
     }
     fn stats(&mut self) -> Option<PlaybackStats> {
         None
@@ -513,12 +516,18 @@ impl PlayerSession {
         let text = |key: &str| fluxa_ui::localized(key, &self.language);
         if self.loaded_url.is_none() {
             let previews = self.seek_previews.as_ref().is_some_and(|p| p.preparing());
-            return text(if previews { "player.status_seek_previews" } else { "player.status_preparing" });
+            return text(if previews {
+                "player.status_seek_previews"
+            } else {
+                "player.status_preparing"
+            });
         }
         if let Some(progress) = self.seek_previews.as_ref().and_then(|p| p.holding()) {
             let label = text("player.status_seek_previews");
             return match progress {
-                Some(progress) => format!("{label} {}%", progress.done * 100 / progress.count.max(1)),
+                Some(progress) => {
+                    format!("{label} {}%", progress.done * 100 / progress.count.max(1))
+                }
                 None => label,
             };
         }
@@ -560,7 +569,10 @@ impl PlayerSession {
     }
 
     pub(crate) fn model(&self) -> PlayerModel {
-        let holding = self.seek_previews.as_ref().is_some_and(|p| p.holding().is_some());
+        let holding = self
+            .seek_previews
+            .as_ref()
+            .is_some_and(|p| p.holding().is_some());
         let status = if self.texture.is_some() && !holding {
             None
         } else if self.torrent_link.is_some() {
@@ -1451,7 +1463,10 @@ pub(crate) fn step_fit(state: &mut RendererState, direction: i32, wrap: bool) {
         });
     command(state, VideoCommand::Fit(FITS[next as usize].to_owned()));
     if let Some(player) = state.player.as_mut() {
-        let label = fluxa_ui::localized(&format!("player.fit_{}", FITS[next as usize]), &player.language);
+        let label = fluxa_ui::localized(
+            &format!("player.fit_{}", FITS[next as usize]),
+            &player.language,
+        );
         if let Some(plan) = core_value("playerToastPlan", json!({"kind": "fit", "label": label})) {
             player.toast = Some((plan, Instant::now()));
         }

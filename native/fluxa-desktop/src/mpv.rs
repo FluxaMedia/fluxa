@@ -13,7 +13,10 @@ use crate::mpv_common::{Chapters, SeekPreview, buffering, enable_thumbnails, sha
 
 const FRAME_SIZE: [u32; 2] = [1920, 1080];
 
+pub type Wake = Arc<dyn Fn() + Send + Sync>;
+
 pub struct MpvBackend {
+    wake: Wake,
     pending: Option<Receiver<Result<MpvPlayer, String>>>,
     player: Option<MpvPlayer>,
     error: Option<String>,
@@ -25,8 +28,9 @@ pub struct MpvBackend {
 }
 
 impl MpvBackend {
-    pub fn new() -> Self {
+    pub fn new(wake: Wake) -> Self {
         Self {
+            wake,
             pending: None,
             player: None,
             error: None,
@@ -52,8 +56,11 @@ impl MpvBackend {
         let url = url.to_owned();
         let target = url.clone();
         let plan = self.plan.clone();
+        let wake = self.wake.clone();
         std::thread::spawn(move || {
-            let _ = sender.send(MpvPlayer::new(&instance, &device, &target, preview, &plan));
+            let player = MpvPlayer::new(&instance, &device, &target, preview, &plan, wake.clone());
+            let _ = sender.send(player);
+            wake();
         });
         self.url = Some(url.clone());
         self.pending = Some(receiver);
@@ -134,6 +141,10 @@ impl VideoBackend for MpvBackend {
         if let Err(error) = result {
             eprintln!("[fluxa-desktop] mpv command failed: {error}");
         }
+    }
+
+    fn frame_driven(&self) -> bool {
+        true
     }
 
     fn render(&mut self, _device: &wgpu::Device) -> Option<wgpu::TextureView> {
@@ -371,6 +382,7 @@ impl MpvPlayer {
         url: &str,
         preview: bool,
         plan: &ThumbnailPlan,
+        wake: Wake,
     ) -> Result<Self, String> {
         let local =
             preview || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:");
@@ -423,7 +435,7 @@ impl MpvPlayer {
             let frames = frames.clone();
             std::thread::Builder::new()
                 .name("fluxa-mpv-render".to_owned())
-                .spawn(move || render_loop(render, targets, sync, frames))
+                .spawn(move || render_loop(render, targets, sync, frames, wake))
                 .map_err(|error| format!("spawn mpv render thread: {error}"))?
         };
         Ok(Self {
@@ -499,6 +511,7 @@ fn render_loop(
     mut targets: Vec<Target>,
     mut sync: VulkanSync,
     frames: Arc<FrameSlot>,
+    wake: Wake,
 ) {
     let mut next = 0;
     while !frames.stop.load(Ordering::Acquire) {
@@ -531,9 +544,13 @@ fn render_loop(
             }
             Err(error) => {
                 latest.error = Some(error);
+                drop(latest);
+                wake();
                 break;
             }
         }
+        drop(latest);
+        wake();
     }
     drop(render);
     sync.wait_idle();

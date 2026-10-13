@@ -34,6 +34,7 @@ pub(super) struct Gpu {
     clear_color: wgpu::Color,
     pub(super) egui_context: egui::Context,
     pub(super) egui_renderer: EguiWgpuBackend,
+    pub(super) presented: Option<(Fingerprint, bool)>,
     icons: SvgIconRegistry,
     background_texture: egui::TextureHandle,
     brand_mark: Option<egui::TextureHandle>,
@@ -115,6 +116,8 @@ pub(super) struct FrameOutput {
     pub(super) field: Option<fluxa_ui::FocusedField>,
     pub(super) caret: Option<[f32; 4]>,
     pub(super) repaint_delay: Duration,
+    pub(super) still: bool,
+    pub(super) presented: bool,
     pub(super) menu_outcome: Option<fluxa_ui::ActionMenuOutcome>,
 }
 
@@ -596,6 +599,7 @@ impl Gpu {
             clear_color: clear,
             egui_context,
             egui_renderer,
+            presented: None,
             icons,
             background_texture,
             brand_mark,
@@ -612,6 +616,7 @@ impl Gpu {
     }
 
     pub(super) fn resize(&mut self, size: [u32; 2]) {
+        self.presented = None;
         self.config.width = size[0].max(1);
         self.config.height = size[1].max(1);
         if let Some(surface) = self.surface.as_ref() {
@@ -623,6 +628,7 @@ impl Gpu {
     }
 
     pub(super) fn detach_surface(&mut self) {
+        self.presented = None;
         self.surface = None;
     }
 
@@ -647,6 +653,7 @@ impl Gpu {
             surface.configure(&self.device, &self.config);
         }
         self.surface = Some(surface);
+        self.presented = None;
         self._surface = native_surface;
         Ok(())
     }
@@ -665,6 +672,7 @@ impl Gpu {
         detail: &DetailModel,
         settings: &SettingsModel,
         mut profiles: Option<&mut fluxa_ui::ProfilesModel>,
+        mut welcome: Option<&mut fluxa_ui::WelcomeModel>,
         custom_background: Option<&str>,
         player: Option<&PlayerModel>,
         focused: Option<u64>,
@@ -672,7 +680,6 @@ impl Gpu {
         scroll_y: f32,
         events: Vec<egui::Event>,
         modifiers: egui::Modifiers,
-        mut welcome: Option<&mut fluxa_ui::WelcomeModel>,
         pre_present: Option<&PrePresent>,
         menu: Option<&card_menu::MenuView>,
         splash: Option<(&str, Option<&str>, f32)>,
@@ -898,72 +905,71 @@ impl Gpu {
             size_in_pixels: screen_size,
             pixels_per_point: output.pixels_per_point,
         };
-        let Some(surface) = self.surface.as_ref() else {
-            return Err("surface detached".to_owned());
-        };
-        let frame = match surface.get_current_texture() {
-            wgpu::CurrentSurfaceTexture::Success(frame)
-            | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
-            wgpu::CurrentSurfaceTexture::Timeout => return Err("surface timeout".to_owned()),
-            wgpu::CurrentSurfaceTexture::Occluded => return Err("surface occluded".to_owned()),
-            wgpu::CurrentSurfaceTexture::Outdated => return Err("surface outdated".to_owned()),
-            wgpu::CurrentSurfaceTexture::Lost => return Err("surface lost".to_owned()),
-            wgpu::CurrentSurfaceTexture::Validation => {
-                return Err("surface validation error".to_owned());
+        let drawn = fingerprint(&paint_jobs, glass_style).map(|print| (print, passthrough));
+        let fresh = !output.textures_delta.set.is_empty();
+        let still = !fresh
+            && drawn.zip(self.presented).is_some_and(|(drawn, shown)| {
+                drawn.0.geometry == shown.0.geometry && drawn.1 == shown.1
+            });
+        let present = fresh || drawn.is_none() || drawn != self.presented;
+        if present {
+            self.presented = None;
+            let Some(surface) = self.surface.as_ref() else {
+                return Err("surface detached".to_owned());
+            };
+            let frame = match surface.get_current_texture() {
+                wgpu::CurrentSurfaceTexture::Success(frame)
+                | wgpu::CurrentSurfaceTexture::Suboptimal(frame) => frame,
+                wgpu::CurrentSurfaceTexture::Timeout => return Err("surface timeout".to_owned()),
+                wgpu::CurrentSurfaceTexture::Occluded => return Err("surface occluded".to_owned()),
+                wgpu::CurrentSurfaceTexture::Outdated => return Err("surface outdated".to_owned()),
+                wgpu::CurrentSurfaceTexture::Lost => return Err("surface lost".to_owned()),
+                wgpu::CurrentSurfaceTexture::Validation => {
+                    return Err("surface validation error".to_owned());
+                }
+            };
+            timer.mark("acquire");
+            let view = frame
+                .texture
+                .create_view(&wgpu::TextureViewDescriptor::default());
+            let commands = self.egui_renderer.render_frame(
+                &self.device,
+                &self.queue,
+                &view,
+                if passthrough {
+                    wgpu::Color::TRANSPARENT
+                } else {
+                    self.clear_color
+                },
+                &paint_jobs,
+                &screen_descriptor,
+                glass_style,
+            );
+            {
+                let _queue = fluxa_renderer::queue_gate::guard();
+                self.queue.submit([commands]);
             }
-        };
-        timer.mark("acquire");
-        let view = frame
-            .texture
-            .create_view(&wgpu::TextureViewDescriptor::default());
-        let commands = self.egui_renderer.render_frame(
-            &self.device,
-            &self.queue,
-            &view,
-            if passthrough {
-                wgpu::Color::TRANSPARENT
-            } else {
-                self.clear_color
-            },
-            &paint_jobs,
-            &screen_descriptor,
-            |callback| {
-                let glass = callback.callback.downcast_ref::<fluxa_ui::Glass>()?;
-                Some(GlassStyle {
-                    radius: glass.radius,
-                    tint: glass.tint,
-                    refraction: glass.refraction,
-                    bevel: glass.bevel,
-                    rim: glass.rim,
-                })
-            },
-        );
-        {
-            let _queue = fluxa_renderer::queue_gate::guard();
-            self.queue.submit([commands]);
+            if let Some(pre_present) = pre_present {
+                pre_present();
+            }
+            {
+                let _queue = fluxa_renderer::queue_gate::guard();
+                frame.present();
+            }
+            timer.mark("present");
+            self.presented = drawn;
         }
-        if let Some(pre_present) = pre_present {
-            pre_present();
-        }
-        {
-            let _queue = fluxa_renderer::queue_gate::guard();
-            frame.present();
-        }
-        timer.mark("present");
         self.egui_renderer
             .free_texture_deltas(&output.textures_delta);
         Ok(FrameOutput {
             layout: rendered_layout,
             cursor: output.platform_output.cursor_icon,
-            copied: output
-                .platform_output
-                .commands
-                .iter()
-                .rev()
-                .find_map(|command| match command {
+            copied: output.platform_output.commands.iter().rev().find_map(
+                |command| match command {
                     egui::OutputCommand::CopyText(text) => Some(text.clone()),
                     _ => None,
-                }),
+                },
+            ),
             wants_keyboard: self.egui_context.egui_wants_keyboard_input(),
             text_runs,
             field: fluxa_ui::focused_field(&self.egui_context),
@@ -979,8 +985,21 @@ impl Gpu {
 }
 
 pub(super) const BRAND_MARK_BYTES: &[u8] = include_bytes!("../assets/fluxa.png");
+            still,
+            presented: present,
 
 fn hex_color(hex: &str) -> egui::Color32 {
     let value = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0xFFFFFF);
     egui::Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
 }
+fn glass_style(callback: &egui::epaint::PaintCallback) -> Option<GlassStyle> {
+    let glass = callback.callback.downcast_ref::<fluxa_ui::Glass>()?;
+    Some(GlassStyle {
+        radius: glass.radius,
+        tint: glass.tint,
+        refraction: glass.refraction,
+        bevel: glass.bevel,
+        rim: glass.rim,
+    })
+}
+

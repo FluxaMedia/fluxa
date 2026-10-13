@@ -702,7 +702,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_renderNa
     handle: jlong,
 ) {
     if let Some(host) = host(handle) {
-        host.render();
+        host.render_due();
     }
 }
 
