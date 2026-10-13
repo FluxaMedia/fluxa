@@ -44,10 +44,10 @@ async fn quickjs_context(scraper_id: &str) -> Result<(AsyncRuntime, AsyncContext
         let mut state = state.borrow_mut();
         if state.len() >= MAX_QUICKJS_PLUGIN_CONTEXTS {
             if let Some(evicted) = state.keys().next().cloned() {
-                state.remove(&evicted);
                 SCRAPER_CACHE.with(|cache| {
                     cache.borrow_mut().retain(|(id, _), _| id != &evicted);
                 });
+                state.remove(&evicted);
             }
         }
         state.insert(
