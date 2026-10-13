@@ -337,6 +337,10 @@ impl ArtworkLoader {
         }
     }
 
+    pub(super) fn converting(&self) -> bool {
+        self.converting.load(std::sync::atomic::Ordering::Relaxed) > 0
+    }
+
     pub(super) fn next_animation_frame(&self) -> Option<Instant> {
         self.active_animations
             .iter()

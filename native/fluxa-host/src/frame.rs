@@ -14,6 +14,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     if busy {
         return Some(now);
     }
+    let since = state.last_frame;
     let revision = state.session.as_ref().map(SessionHandle::revision);
     if revision.is_some() && revision != state.session_revision {
         return Some(now);
@@ -23,34 +24,34 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .as_ref()
         .is_some_and(SessionHandle::has_queued_dispatches)
     {
-        return Some(now + Duration::from_millis(4));
+        return Some(since + Duration::from_millis(4));
     }
     let effects = state
         .session
         .as_ref()
         .is_some_and(|session| session.has_outstanding_effects())
-        .then(|| now + Duration::from_millis(50));
+        .then(|| since + Duration::from_millis(50));
     let artwork = state
         .gpu
         .as_ref()
-        .is_some_and(|gpu| gpu.artwork.fetcher.has_pending())
-        .then(|| now + Duration::from_millis(50));
+        .is_some_and(|gpu| gpu.artwork.fetcher.has_pending() || gpu.artwork.converting())
+        .then(|| since + Duration::from_millis(50));
     let animation = state
         .gpu
         .as_ref()
         .and_then(|gpu| gpu.artwork.next_animation_frame());
     let updating = if updates::revealing(state) {
-        Some(now + Duration::from_millis(8))
+        Some(since + Duration::from_millis(8))
     } else {
-        updates::busy(state).then(|| now + Duration::from_millis(120))
+        updates::busy(state).then(|| since + Duration::from_millis(120))
     };
     let notice = (state.notice.is_some())
-        .then(|| now + Duration::from_millis(16))
+        .then(|| since + Duration::from_millis(16))
         .or_else(preview::next_check);
     let projecting = state
         .projector
         .pending()
-        .then(|| now + Duration::from_millis(8));
+        .then(|| since + Duration::from_millis(8));
     let home_refresh = (state.session.is_some()
         && state.window_focused
         && state.route == Route::Home
@@ -62,7 +63,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         .focused()
         .and_then(|node| state.ui.node(node))
         .is_some_and(|node| node.kind == UiNodeKind::Input)
-        .then(|| now + Duration::from_millis(265));
+        .then(|| since + Duration::from_millis(265));
     let artwork = [
         artwork,
         projecting,
@@ -124,6 +125,7 @@ impl FrameTimer {
 pub(super) const SLOW_FRAME: Duration = Duration::from_millis(24);
 
 pub(super) fn render_frame(state: &mut RendererState) {
+    state.last_frame = Instant::now();
     let mut timer = FrameTimer::start();
     preview::reload_tokens();
     route_actions_to_session(state);
