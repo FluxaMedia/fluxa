@@ -160,7 +160,8 @@ pub(crate) fn draw_home_rows(
                 }
             }
         }
-        if visible_y + row_height < 0.0 || visible_y > viewport.height + row_height {
+        let above_reach = if viewport.is_tv() { row_height } else { 0.0 };
+        if visible_y + row_height + above_reach < 0.0 || visible_y > viewport.height + row_height {
             flat_index += cards.len();
             continue;
         }

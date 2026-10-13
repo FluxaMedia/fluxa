@@ -5,6 +5,10 @@ use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
 pub(crate) const NAV_BAR_TOP: f32 = 14.0;
 pub(crate) const NAV_ITEM_HEIGHT: f32 = 44.0;
 pub(crate) const NAV_BAR_PADDING: f32 = 6.0;
+
+pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
+    NAV_BAR_TOP + viewport.nav_lead + NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0
+}
 pub(crate) const NAV_ITEM_GAP: f32 = 2.0;
 pub(crate) const NAV_AVATAR_RADIUS: f32 = 13.5;
 

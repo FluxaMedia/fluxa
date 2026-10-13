@@ -385,13 +385,25 @@ impl UiTree {
     }
 
     fn move_spatial(&mut self, direction: NavigationDirection) -> Option<UiAction> {
+        self.move_spatial_where(direction, |_| true)
+    }
+
+    pub fn move_up_where(&mut self, allow: impl Fn(NodeId) -> bool) -> Option<UiAction> {
+        self.move_spatial_where(NavigationDirection::Up, allow)
+    }
+
+    fn move_spatial_where(
+        &mut self,
+        direction: NavigationDirection,
+        allow: impl Fn(NodeId) -> bool,
+    ) -> Option<UiAction> {
         let current_id = self.focused?;
         let bounds = self.node(current_id)?.bounds;
         let current = bounds.center();
         let candidate = self
             .focusable_nodes()
             .into_iter()
-            .filter(|node| node.id != current_id)
+            .filter(|node| node.id != current_id && allow(node.id))
             .filter(|node| match direction {
                 NavigationDirection::Left | NavigationDirection::Right => {
                     node.bounds.y < bounds.y + bounds.height

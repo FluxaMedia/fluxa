@@ -518,8 +518,12 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     )
     .with_platform(state.home.platform)
     .with_safe_bottom(state.safe_bottom);
-    let top_inset = 12.0;
-    let bottom_inset = 12.0 + state.safe_bottom;
+    let top_inset = if viewport.is_tv() && state.route == Route::Home {
+        fluxa_ui::nav_bar_bottom(viewport) + 12.0
+    } else {
+        12.0
+    };
+    let bottom_inset = 12.0 + viewport.safe_bottom;
     let pinned_rows = (state.route == Route::Home)
         .then(|| fluxa_ui::home_pinned_rows(viewport, &state.home))
         .flatten();
@@ -528,8 +532,14 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
     let pending_y = state.gpu.as_ref().map_or(0.0, |gpu| {
         fluxa_ui::pending_screen_scroll(&gpu.egui_context)
     });
-    let node_top = node.bounds.y - pending_y;
-    let node_bottom = node.bounds.y + node.bounds.height - pending_y;
+    let grow = if viewport.is_tv() {
+        let metrics = fluxa_ui::UiMetrics::for_viewport(viewport);
+        node.bounds.height * (metrics.focused_scale - 1.0) * 0.5 + metrics.focus_ring_expand
+    } else {
+        0.0
+    };
+    let node_top = node.bounds.y - pending_y - grow;
+    let node_bottom = node.bounds.y + node.bounds.height - pending_y + grow;
     let delta = if let Some((rows_top, heading)) = pinned_rows
         && focused >= NODE_CARD_BASE
     {
@@ -538,7 +548,7 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
         } else {
             1.0
         };
-        let card_top = node_top + node.bounds.height * (1.0 - 1.0 / scale) * 0.5;
+        let card_top = (node_top + grow) + node.bounds.height * (1.0 - 1.0 / scale) * 0.5;
         card_top - heading - rows_top
     } else if node_top < visible_top {
         node_top - visible_top

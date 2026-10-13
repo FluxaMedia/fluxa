@@ -550,6 +550,20 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
             | KeyInput::Gamepad(GamepadButton::DPadUp | GamepadButton::DPadDown)
     );
     let previous = state.ui.focused();
+    let up = matches!(
+        input,
+        KeyInput::Key(Key::Up) | KeyInput::Gamepad(GamepadButton::DPadUp)
+    );
+    if up
+        && state.route == Route::Home
+        && previous.is_some_and(|id| id >= NODE_CARD_BASE)
+        && let Some(action) = state.ui.move_up_where(|id| id >= NODE_CARD_BASE)
+    {
+        remember_actions(state, vec![action]);
+        focus_row_start(state, previous);
+        ensure_focused_visible(state);
+        return;
+    }
     let actions = match input {
         KeyInput::Gamepad(button) => state.ui.dispatch(UiEvent::GamepadButton {
             button,

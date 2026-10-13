@@ -201,5 +201,14 @@ pub fn home_scroll_max(viewport: Viewport, home: &HomeModel) -> f32 {
     } else {
         0.0
     };
-    (content_height - viewport.height + bottom_navigation_reserve + metrics.page_padding).max(0.0)
+    let tv_bottom = if viewport.is_tv() {
+        viewport.safe_bottom
+    } else {
+        0.0
+    };
+    (content_height - viewport.height
+        + bottom_navigation_reserve
+        + metrics.page_padding
+        + tv_bottom)
+        .max(0.0)
 }
