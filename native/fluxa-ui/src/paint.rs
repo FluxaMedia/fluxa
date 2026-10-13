@@ -337,7 +337,7 @@ pub(crate) fn paint_trailer(
 ) {
     let fade = crate::motion::appear(
         context,
-        Id::new(("fluxa-trailer-fade", key, texture)),
+        Id::new(("fluxa-trailer-fade", key)),
         crate::motion::slow() * 2.0,
         crate::motion::Ease::Linear,
     );
