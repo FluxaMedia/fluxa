@@ -184,6 +184,7 @@ pub(super) fn draw_sources(
                 } else {
                     components::ButtonKind::Secondary
                 };
+                let backing = ui.painter().add(egui::Shape::Noop);
                 let response = ui
                     .scope_builder(
                         egui::UiBuilder::new()
@@ -195,6 +196,14 @@ pub(super) fn draw_sources(
                         |ui| components::button_auto_width(ui, label, kind, chip_size, metrics),
                     )
                     .inner;
+                ui.painter().set(
+                    backing,
+                    egui::Shape::rect_filled(
+                        response.rect,
+                        response.rect.height() * 0.5,
+                        shade(Shade::Opaque),
+                    ),
+                );
                 let node = NODE_PLAYER_SOURCE_FILTER_BASE + index as u64;
                 components::focus_action(layout, node, &response);
                 x = response.rect.right() + 8.0;
