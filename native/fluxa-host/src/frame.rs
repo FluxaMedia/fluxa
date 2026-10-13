@@ -177,6 +177,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         advance_home_inertia(state);
     }
     card_menu::tick(state);
+    apply_nav_layout(state);
     rebuild_current_ui(state);
     timer.mark("rebuild");
     let route = active_route(state);
@@ -200,6 +201,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         .keyboard_focus_visible
         .then(|| state.ui.focused())
         .flatten();
+    fluxa_ui::set_nav_focus(focused);
     let safe_bottom = state.safe_bottom;
     let logical_size = logical_surface_size(state);
     if route != Route::Home && route != Route::Player {
@@ -396,4 +398,23 @@ pub(super) fn render_frame(state: &mut RendererState) {
     }
     timer.mark("layout");
     timer.report(&format!("frame on {}", state.route.as_str()));
+}
+
+fn apply_nav_layout(state: &RendererState) {
+    let setting = |key: &str, fallback: &'static str| {
+        state
+            .settings
+            .value(key)
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or(fallback)
+            .to_owned()
+    };
+    let hosts_nav = state.player.is_none() && state.profiles.is_none() && state.welcome.is_none();
+    let layout = if hosts_nav && !state.mirrored() {
+        setting("navLayout", "topbar")
+    } else {
+        "topbar".to_owned()
+    };
+    fluxa_ui::set_nav_sidebar(&layout, &setting("navSidebarMode", "hover"));
+    fluxa_ui::set_nav_search(&state.discover.query);
 }

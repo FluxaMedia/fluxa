@@ -1466,6 +1466,7 @@ pub fn is_text_node(node: u64) -> bool {
         node,
         super::NODE_LIBRARY_SEARCH
             | super::NODE_DISCOVER_SEARCH
+            | super::NODE_SIDEBAR_SEARCH
             | super::NODE_SETTINGS_SEARCH
             | super::NODE_SETTINGS_ADDON_URL
             | super::NODE_SETTINGS_PLUGIN_URL

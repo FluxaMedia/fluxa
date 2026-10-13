@@ -330,7 +330,11 @@ impl UiMetrics {
             },
             screen_padding: dark.spacing.screen_padding,
             content_header_top_mobile: common_dp("contentHeaderTopMobile", 48.0),
-            content_header_top: common_dp("contentHeaderTop", 110.0),
+            content_header_top: if viewport.side_inset > 0.0 {
+                common_dp("contentHeaderTopSidebar", 48.0)
+            } else {
+                common_dp("contentHeaderTop", 110.0)
+            },
             detail_header_top_mobile: common_dp("detailHeaderTopMobile", 48.0),
             home_hero_content_max_width_desktop: common_dp("homeHeroContentMaxWidthDesktop", 980.0),
             home_hero_logo_max_width_desktop: common_dp("homeHeroLogoMaxWidthDesktop", 820.0),

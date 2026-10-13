@@ -19,7 +19,12 @@ pub fn draw_library(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 2, assets);
+    layout.activated = draw_navigation_bar(
+        context,
+        viewport,
+        if library.downloads_open { 6 } else { 2 },
+        assets,
+    );
 
     let compact = viewport.is_compact();
     let page = PageLayout::new(viewport, metrics, false).with_sections(viewport, metrics);

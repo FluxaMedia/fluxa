@@ -21,6 +21,8 @@ pub(super) fn native_action_for_node(
         NODE_CALENDAR => Some(Route::Calendar),
         fluxa_ui::NODE_SHORTS => Some(Route::Shorts),
         NODE_PROFILE => Some(Route::Settings),
+        fluxa_ui::NODE_SIDEBAR_SEARCH => Some(Route::Discover),
+        fluxa_ui::NODE_SIDEBAR_DOWNLOADS => Some(Route::Library),
         _ => None,
     };
     if let Some(destination) = destination {
@@ -34,10 +36,10 @@ pub(super) fn native_action_for_node(
                 query: entry.clone(),
             });
         }
-                content_type: if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
-                    "movie".to_owned()
         if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
             return Some(NativeAction::DiscoverType {
+                content_type: if node == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
+                    "movie".to_owned()
                 } else {
                     "series".to_owned()
                 },
@@ -455,6 +457,7 @@ pub(super) fn edit_text(
     let text = match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => &mut state.library_query,
         fluxa_ui::NODE_DISCOVER_SEARCH if route == Route::Discover => &mut state.discover.query,
+        fluxa_ui::NODE_SIDEBAR_SEARCH => &mut state.discover.query,
         fluxa_ui::NODE_SETTINGS_SEARCH if route == Route::Settings => &mut state.settings.search,
         fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => {
             &mut state.settings.addon_url
@@ -485,6 +488,7 @@ pub(super) fn edit_text(
     match node {
         fluxa_ui::NODE_LIBRARY_SEARCH => refresh_library_view(state),
         fluxa_ui::NODE_DISCOVER_SEARCH => request_discover_search(state),
+        fluxa_ui::NODE_SIDEBAR_SEARCH => search_from_sidebar(state),
         _ => {}
     }
     true
@@ -499,6 +503,7 @@ pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
     Some(match node {
         fluxa_ui::NODE_LIBRARY_SEARCH if route == Route::Library => state.library_query.clone(),
         fluxa_ui::NODE_DISCOVER_SEARCH if route == Route::Discover => state.discover.query.clone(),
+        fluxa_ui::NODE_SIDEBAR_SEARCH => state.discover.query.clone(),
         fluxa_ui::NODE_SETTINGS_SEARCH if route == Route::Settings => state.settings.search.clone(),
         fluxa_ui::NODE_SETTINGS_ADDON_URL if route == Route::Settings => {
             state.settings.addon_url.clone()
@@ -544,12 +549,12 @@ fn save_left_fields(state: &mut RendererState) {
 
 pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>) {
     save_left_fields(state);
+    recent_searches::save_left_query(state);
     if actions.is_empty() {
         return;
     }
     for action in &actions {
         if let UiAction::TextInput { node, value } = action {
-    recent_searches::save_left_query(state);
             edit_text(state, *node, |text| text.push_str(value));
             continue;
         }
@@ -610,6 +615,10 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             }
             if node == fluxa_ui::NODE_LIBRARY {
                 state.library_downloads = false;
+                refresh_library_view(state);
+            }
+            if node == fluxa_ui::NODE_SIDEBAR_DOWNLOADS {
+                state.library_downloads = true;
                 refresh_library_view(state);
             }
             if (fluxa_ui::NODE_LIBRARY_SECTION_BASE..fluxa_ui::NODE_LIBRARY_SECTION_BASE + 3)
@@ -1058,6 +1067,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let mut callbacks = Vec::new();
     let mut files = Vec::new();
     let mut media = Vec::new();
+    let mut searched = false;
     for action in std::mem::take(&mut state.pending_native_actions) {
         let action = match action {
             NativeAction::OpenLink { url } => {
@@ -1065,7 +1075,6 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                     .and_then(|action| serde_json::from_value(action).ok())
                 {
                     Some(action) => action,
-    let mut searched = false;
                     None => continue,
                 }
             }
@@ -1076,6 +1085,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                     "language": state.discover.language,
                 });
                 state.discover.query = query;
+                searched = true;
                 state
                     .pending_native_actions
                     .push(NativeAction::CoreCommand { command });
@@ -1083,7 +1093,6 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                     destination: Route::Discover,
                 }
             }
-                searched = true;
             action => action,
         };
         if let NativeAction::MediaCommand { command, value } = action {
@@ -1164,6 +1173,11 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         }
     }
     state.pending_native_actions = unhandled;
+    if searched {
+        recent_searches::refresh(state);
+        reset_ui(state);
+        state.focus_hint = None;
+    }
     for (command, value) in media {
         player::media_command(state, &command, value);
     }
@@ -1171,11 +1185,6 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         accounts::toggle(state, &provider);
     }
     for node in servers {
-    if searched {
-        recent_searches::refresh(state);
-        reset_ui(state);
-        state.focus_hint = None;
-    }
         accounts::media_server(state, node);
     }
     for url in callbacks {

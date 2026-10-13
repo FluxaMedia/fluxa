@@ -75,7 +75,7 @@ pub fn draw_calendar(
     let painter = context.layer_painter(egui::LayerId::background());
     paint_ambient(&painter, screen, assets);
     let mut layout = HomeLayout::default();
-    layout.activated = draw_navigation_bar(context, viewport, 2, assets);
+    layout.activated = draw_navigation_bar(context, viewport, 5, assets);
     let compact = viewport.is_compact();
     let tv = viewport.is_tv();
     let valid = calendar.year > 0 && (1..=12).contains(&calendar.month);

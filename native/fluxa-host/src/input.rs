@@ -622,6 +622,9 @@ pub(super) fn apply_pointer_results(state: &mut RendererState, route: Route, lay
     if let (Some(node), Some(value)) = (layout.text_input_node, layout.text_input.as_ref()) {
         set_text_value(state, node, value);
     }
+    if let Some(value) = fluxa_ui::take_nav_search() {
+        set_text_value(state, fluxa_ui::NODE_SIDEBAR_SEARCH, &value);
+    }
     if let Some((key, value)) = layout.filter_change.as_ref()
         && key.starts_with("library")
         && route == Route::Library
@@ -706,6 +709,10 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
             state.discover.query = value.to_owned();
             request_discover_search(state);
         }
+        fluxa_ui::NODE_SIDEBAR_SEARCH if state.discover.query != value => {
+            state.discover.query = value.to_owned();
+            search_from_sidebar(state);
+        }
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_SEARCH => state.settings.search = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
@@ -726,7 +733,17 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
     }
 }
 
+pub(super) fn search_from_sidebar(state: &mut RendererState) {
+    request_discover_search(state);
+    if state.route != Route::Discover {
+        state.pending_native_actions.push(NativeAction::Navigate {
+            destination: Route::Discover,
+        });
+    }
+}
+
 pub(super) fn request_discover_search(state: &mut RendererState) {
+    recent_searches::refresh(state);
     let query = state.discover.query.trim();
     if query.chars().count() == 1 {
         return;
@@ -743,7 +760,6 @@ pub(super) fn request_discover_search(state: &mut RendererState) {
 
 fn drag_sources(state: &mut RendererState, phase: PointerPhase, position: [f32; 2]) {
     let now = Instant::now();
-    recent_searches::refresh(state);
     match phase {
         PointerPhase::Down => {
             state.touch_start = Some(position);

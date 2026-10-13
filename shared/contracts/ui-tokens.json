@@ -46,6 +46,7 @@
         "dp": {
           "contentHeaderTopMobile": 48,
           "contentHeaderTop": 110,
+          "contentHeaderTopSidebar": 48,
           "detailHeaderTopMobile": 48,
           "homeHeroContentMaxWidthDesktop": 980,
           "homeHeroLogoMaxWidthDesktop": 820,
@@ -267,6 +268,8 @@
       },
       "desktop": {
         "dp": {
+          "navigationRailWidth": 76,
+          "navigationRailExpandedWidth": 232,
           "buttonHeight": 44,
           "iconButtonSize": 40,
           "posterVisibleCards": 7,
@@ -302,6 +305,8 @@
       },
       "tv": {
         "dp": {
+          "navigationRailWidth": 104,
+          "navigationRailExpandedWidth": 300,
           "buttonHeight": 56,
           "iconButtonSize": 52,
           "posterVisibleCards": 6,

@@ -132,7 +132,7 @@ impl FluxaHost {
     }
 
     pub fn take_copied(&self) -> Option<String> {
-        self.with_state(|state| state.copied.take()).flatten()
+        self.peek(|state| state.copied.take()).flatten()
     }
 
     pub fn egui_event(&self, event: egui::Event) {
@@ -163,12 +163,11 @@ impl FluxaHost {
     }
 
     pub fn wants_keyboard(&self) -> bool {
-        self.with_state(|state| state.wants_keyboard)
-            .unwrap_or(false)
+        self.peek(|state| state.wants_keyboard).unwrap_or(false)
     }
 
     pub fn cursor(&self) -> egui::CursorIcon {
-        self.with_state(|state| state.cursor).unwrap_or_default()
+        self.peek(|state| state.cursor).unwrap_or_default()
     }
 
     pub fn pointer(&self, phase: PointerPhase, x: f32, y: f32) {
@@ -211,7 +210,7 @@ impl FluxaHost {
     }
 
     pub fn shortcut_recording(&self) -> bool {
-        self.with_state(|state| shortcuts::recording(state))
+        self.peek(|state| shortcuts::recording(state))
             .unwrap_or(false)
     }
 
@@ -231,11 +230,11 @@ impl FluxaHost {
     }
 
     pub fn focused_node(&self) -> Option<u64> {
-        self.with_state(|state| state.ui.focused()).flatten()
+        self.peek(|state| state.ui.focused()).flatten()
     }
 
     pub fn text_input_focused(&self) -> bool {
-        self.with_state(|state| {
+        self.peek(|state| {
             state.access.field.is_some()
                 || state
                     .ui
@@ -247,14 +246,19 @@ impl FluxaHost {
     }
 
     pub fn caret_bounds(&self) -> Option<[f32; 4]> {
-        self.with_state(|state| state.access.caret).flatten()
+        self.peek(|state| {
+            let inset = logical_viewport(state).side_inset;
+            state.access.caret.map(|[x, y, w, h]| [x + inset, y, w, h])
+        })
+        .flatten()
     }
 
     pub fn focused_bounds(&self) -> Option<[f32; 4]> {
-        self.with_state(|state| {
+        self.peek(|state| {
+            let inset = logical_viewport(state).side_inset;
             if let Some(field) = &state.access.field {
                 return Some([
-                    field.rect.min.x,
+                    field.rect.min.x + inset,
                     field.rect.min.y,
                     field.rect.width(),
                     field.rect.height(),
@@ -262,7 +266,7 @@ impl FluxaHost {
             }
             let node = state.ui.node(state.ui.focused()?)?;
             Some([
-                node.bounds.x,
+                node.bounds.x + inset,
                 node.bounds.y,
                 node.bounds.width,
                 node.bounds.height,
@@ -304,7 +308,7 @@ impl FluxaHost {
     }
 
     pub fn focused_text(&self) -> Option<String> {
-        self.with_state(|state| match &state.access.field {
+        self.peek(|state| match &state.access.field {
             Some(field) => Some(field.text.clone()),
             None => actions::focused_text(state),
         })

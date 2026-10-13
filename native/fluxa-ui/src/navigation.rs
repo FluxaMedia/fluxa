@@ -7,6 +7,9 @@ pub(crate) const NAV_ITEM_HEIGHT: f32 = 44.0;
 pub(crate) const NAV_BAR_PADDING: f32 = 6.0;
 
 pub fn nav_bar_bottom(viewport: Viewport) -> f32 {
+    if viewport.side_inset > 0.0 {
+        return 0.0;
+    }
     NAV_BAR_TOP + viewport.nav_lead + NAV_ITEM_HEIGHT + NAV_BAR_PADDING * 2.0
 }
 pub(crate) const NAV_ITEM_GAP: f32 = 2.0;
@@ -54,6 +57,18 @@ pub(crate) fn draw_navigation_bar_with_profile(
 ) -> Option<u64> {
     let metrics = metrics_for_assets(viewport, assets);
     let compact = viewport.is_compact();
+    if viewport.side_inset > 0.0 {
+        return crate::sidebar::draw_sidebar(
+            context,
+            viewport,
+            active_route,
+            metrics,
+            assets,
+            profile_avatar_url,
+            profile_name,
+        );
+    }
+    let active_route = if active_route > 4 { 2 } else { active_route };
     if compact {
         return draw_mobile_navigation_bar(
             context,
@@ -254,7 +269,12 @@ pub fn set_nav_language(language: &str) {
 }
 
 const NAV_KEYS: [&str; 4] = ["home", "discover", "library", "shorts"];
-const NAV_ITEM_NODES: [u64; 4] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_SHORTS];
+pub(crate) const NAV_ITEM_NODES: [u64; 4] = [NODE_HOME, NODE_DISCOVER, NODE_LIBRARY, NODE_SHORTS];
+
+pub(crate) fn nav_text(key: &str) -> String {
+    let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
+    localized(key, &language)
+}
 
 pub(crate) fn nav_labels() -> [String; 4] {
     let language = NAV_LANGUAGE.read().map(|l| l.clone()).unwrap_or_default();
@@ -560,6 +580,9 @@ pub(crate) fn draw_mobile_navigation_bar(
 }
 
 pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u64, Rect)> {
+    if viewport.side_inset > 0.0 {
+        return crate::sidebar::item_rects(viewport);
+    }
     if viewport.is_compact() {
         let bar = mobile_nav_rect(viewport);
         let nodes = nav_nodes();
@@ -600,6 +623,13 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
 pub(crate) fn is_navigation_node(node: u64) -> bool {
     matches!(
         node,
-        NODE_HOME | NODE_LIBRARY | NODE_DISCOVER | NODE_SHORTS | NODE_PROFILE
+        NODE_HOME
+            | NODE_LIBRARY
+            | NODE_DISCOVER
+            | NODE_CALENDAR
+            | NODE_SHORTS
+            | NODE_PROFILE
+            | NODE_SIDEBAR_SEARCH
+            | NODE_SIDEBAR_DOWNLOADS
     )
 }

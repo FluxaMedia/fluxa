@@ -277,7 +277,7 @@ impl RendererState {
         if self.mirrored() {
             logical_viewport(self).width - x
         } else {
-            x
+            x - logical_viewport(self).side_inset
         }
     }
 

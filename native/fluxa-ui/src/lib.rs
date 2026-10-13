@@ -30,6 +30,7 @@ mod poster_overlay;
 mod profiles;
 mod settings;
 mod shorts;
+mod sidebar;
 mod style;
 mod welcome;
 
@@ -40,6 +41,7 @@ pub use model::*;
 pub use navigation::*;
 pub use nodes::*;
 use paint::*;
+pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
 
 pub use calendar::draw_calendar;
@@ -81,9 +83,9 @@ pub use settings::{
     settings_page_for_node, settings_row_by_index, settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
+pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
 
 pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opacity: f32) {
-pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
     let top = (viewport.height * 0.08).max(48.0);
     components::toast(
         context,

@@ -695,6 +695,9 @@ impl Gpu {
             (screen_size[0] as f32 / self.density).round().max(1.0) as u32,
             (screen_size[1] as f32 / self.density).round().max(1.0) as u32,
         ];
+        let side_inset =
+            fluxa_ui::Viewport::new(logical_size[0], logical_size[1], home.form_factor.into())
+                .side_inset;
         let raw_input = egui::RawInput {
             max_texture_side: Some(self.device.limits().max_texture_dimension_2d as usize),
             viewports: std::iter::once((
@@ -706,7 +709,7 @@ impl Gpu {
             ))
             .collect(),
             screen_rect: Some(EguiRect::from_min_size(
-                Pos2::ZERO,
+                Pos2::new(-side_inset, 0.0),
                 Vec2::new(logical_size[0] as f32, logical_size[1] as f32),
             )),
             time: Some(self.started_at.elapsed().as_secs_f64()),
@@ -881,6 +884,13 @@ impl Gpu {
             }
         });
         timer.mark("draw");
+        if side_inset > 0.0 {
+            let delta = egui::vec2(side_inset, 0.0);
+            for clipped in &mut output.shapes {
+                clipped.clip_rect = clipped.clip_rect.translate(delta);
+                clipped.shape.translate(delta);
+            }
+        }
         if self.mirror {
             fluxa_renderer::mirror::mirror_shapes(&mut output.shapes, logical_size[0] as f32);
         }
@@ -975,6 +985,8 @@ impl Gpu {
             field: fluxa_ui::focused_field(&self.egui_context),
             caret: fluxa_ui::caret_rect(&self.egui_context)
                 .map(|rect| [rect.min.x, rect.min.y, rect.width(), rect.height()]),
+            still,
+            presented: present,
             repaint_delay: output
                 .viewport_output
                 .get(&egui::ViewportId::ROOT)
@@ -985,13 +997,7 @@ impl Gpu {
 }
 
 pub(super) const BRAND_MARK_BYTES: &[u8] = include_bytes!("../assets/fluxa.png");
-            still,
-            presented: present,
 
-fn hex_color(hex: &str) -> egui::Color32 {
-    let value = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0xFFFFFF);
-    egui::Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
-}
 fn glass_style(callback: &egui::epaint::PaintCallback) -> Option<GlassStyle> {
     let glass = callback.callback.downcast_ref::<fluxa_ui::Glass>()?;
     Some(GlassStyle {
@@ -1003,3 +1009,7 @@ fn glass_style(callback: &egui::epaint::PaintCallback) -> Option<GlassStyle> {
     })
 }
 
+fn hex_color(hex: &str) -> egui::Color32 {
+    let value = u32::from_str_radix(hex.trim_start_matches('#'), 16).unwrap_or(0xFFFFFF);
+    egui::Color32::from_rgb((value >> 16) as u8, (value >> 8) as u8, value as u8)
+}

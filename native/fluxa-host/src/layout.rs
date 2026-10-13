@@ -33,6 +33,8 @@ pub(super) fn rebuild_home_ui(
             NODE_CALENDAR => "Calendar",
             fluxa_ui::NODE_SHORTS => "Shorts",
             NODE_PROFILE => "Profile",
+            fluxa_ui::NODE_SIDEBAR_SEARCH => "Search",
+            fluxa_ui::NODE_SIDEBAR_DOWNLOADS => "Downloads",
             NODE_PLAY => "Play",
             NODE_MORE_INFO => "More info",
             _ => home
@@ -112,6 +114,12 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_DISCOVER => "Discover".to_owned(),
         fluxa_ui::NODE_CALENDAR => "Calendar".to_owned(),
         fluxa_ui::NODE_SHORTS => "Shorts".to_owned(),
+        fluxa_ui::NODE_SIDEBAR_SEARCH => {
+            fluxa_ui::localized("nav.search_placeholder", &state.home.language)
+        }
+        fluxa_ui::NODE_SIDEBAR_DOWNLOADS => {
+            fluxa_ui::localized("library.downloads", &state.home.language)
+        }
         fluxa_ui::NODE_SHORTS_PLAY => "Play".to_owned(),
         fluxa_ui::NODE_SHORTS_WATCHLIST => "Watchlist".to_owned(),
         fluxa_ui::NODE_SHORTS_INFO => "More info".to_owned(),
@@ -218,6 +226,10 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
             }
         }
         fluxa_ui::NODE_LIBRARY_STATUS => state.library_tab.label().to_owned(),
+        id if fluxa_ui::discover_recent(id).is_some() => fluxa_ui::discover_recent(id)
+            .and_then(|index| state.discover.recent_searches.get(index))
+            .cloned()
+            .unwrap_or_default(),
         fluxa_ui::NODE_LIBRARY_TYPE => "Type".to_owned(),
         id if id == fluxa_ui::NODE_DISCOVER_TYPE_BASE => {
             if id == fluxa_ui::NODE_DISCOVER_TYPE_BASE {
@@ -226,10 +238,6 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 "Series".to_owned()
             }
         }
-        id if fluxa_ui::discover_recent(id).is_some() => fluxa_ui::discover_recent(id)
-            .and_then(|index| state.discover.recent_searches.get(index))
-            .cloned()
-            .unwrap_or_default(),
         id if id == fluxa_ui::NODE_DISCOVER_CATALOG_BASE => state
             .discover
             .catalogs
@@ -404,6 +412,7 @@ pub(super) fn rebuild_ui_from_layout(
                 id,
                 if id == fluxa_ui::NODE_LIBRARY_SEARCH
                     || id == fluxa_ui::NODE_DISCOVER_SEARCH
+                    || id == fluxa_ui::NODE_SIDEBAR_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
@@ -436,10 +445,17 @@ pub(super) fn rebuild_ui_from_layout(
                 | fluxa_ui::NODE_CALENDAR
                 | fluxa_ui::NODE_SHORTS
                 | fluxa_ui::NODE_PROFILE
+                | fluxa_ui::NODE_SIDEBAR_SEARCH
+                | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
         ) {
             if let Some(node) = ui.node_mut(node_id) {
                 node.order = 10_000;
             }
+        }
+        if fluxa_ui::discover_recent(node_id).is_some()
+            && let Some(node) = ui.node_mut(node_id)
+        {
+            node.order = 10_002;
         }
         if matches!(
             node_id,
@@ -452,11 +468,6 @@ pub(super) fn rebuild_ui_from_layout(
     let fallback = match state.route {
         Route::Library => state
             .library
-        if fluxa_ui::discover_recent(node_id).is_some()
-            && let Some(node) = ui.node_mut(node_id)
-        {
-            node.order = 10_002;
-        }
             .cards(state.library_tab)
             .first()
             .map(|_| NODE_CARD_BASE)
@@ -520,6 +531,8 @@ pub(super) fn ensure_focused_visible(state: &mut RendererState) {
             | fluxa_ui::NODE_CALENDAR
             | fluxa_ui::NODE_SHORTS
             | fluxa_ui::NODE_PROFILE
+            | fluxa_ui::NODE_SIDEBAR_SEARCH
+            | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
     );
     if is_navigation {
         if state.route == Route::Home && state.home.form_factor == UiFormFactorJson::Tv {
@@ -690,6 +703,8 @@ pub(super) fn follow_focus(state: &mut RendererState) {
                 | fluxa_ui::NODE_CALENDAR
                 | fluxa_ui::NODE_SHORTS
                 | fluxa_ui::NODE_PROFILE
+                | fluxa_ui::NODE_SIDEBAR_SEARCH
+                | fluxa_ui::NODE_SIDEBAR_DOWNLOADS
         )
     });
     remember_actions(state, action.into_iter().collect());

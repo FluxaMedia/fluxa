@@ -627,7 +627,7 @@
     {
       "key": "navLayout",
       "type": "string",
-      "default": "sidebar",
+      "default": "topbar",
       "scope": "profile",
       "category": "appearance"
     },

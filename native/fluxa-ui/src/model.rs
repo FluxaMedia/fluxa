@@ -83,12 +83,15 @@ pub struct Viewport {
     /// Headers and navigation remain fixed while the screen body scrolls.
     pub scroll_y: f32,
     pub nav_lead: f32,
+    pub side_inset: f32,
 }
 
 impl Viewport {
     pub fn new(width: u32, height: u32, form_factor: UiFormFactor) -> Self {
+        let inset = crate::sidebar::side_inset(width as f32, form_factor);
         Self {
-            width: width as f32,
+            width: width as f32 - inset,
+            side_inset: inset,
             height: height as f32,
             form_factor,
             platform: UiPlatform::default(),
