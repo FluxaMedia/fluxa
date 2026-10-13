@@ -398,44 +398,132 @@ impl UiTree {
         allow: impl Fn(NodeId) -> bool,
     ) -> Option<UiAction> {
         let current_id = self.focused?;
-        let bounds = self.node(current_id)?.bounds;
-        let current = bounds.center();
-        let candidate = self
-            .focusable_nodes()
-            .into_iter()
-            .filter(|node| node.id != current_id && allow(node.id))
-            .filter(|node| match direction {
-                NavigationDirection::Left | NavigationDirection::Right => {
-                    node.bounds.y < bounds.y + bounds.height
-                        && node.bounds.y + node.bounds.height > bounds.y
-                }
-                _ => true,
-            })
-            .filter_map(|node| {
-                let center = node.bounds.center();
-                let primary = match direction {
-                    NavigationDirection::Up if center[1] < current[1] => current[1] - center[1],
-                    NavigationDirection::Down if center[1] > current[1] => center[1] - current[1],
-                    NavigationDirection::Left if center[0] < current[0] => current[0] - center[0],
-                    NavigationDirection::Right if center[0] > current[0] => center[0] - current[0],
-                    _ => return None,
-                };
-                let secondary = match direction {
-                    NavigationDirection::Up | NavigationDirection::Down => {
-                        (center[0] - current[0]).abs()
-                    }
-                    NavigationDirection::Left | NavigationDirection::Right => {
-                        (center[1] - current[1]).abs()
-                    }
-                };
-                Some((primary * 1000.0 + secondary, node.id))
-            })
-            .min_by(|left, right| left.0.total_cmp(&right.0))?;
-        self.set_focus(Some(candidate.1))
+        let focused = self.node(current_id)?.bounds;
+        let mut best: Option<(Rect, NodeId)> = None;
+        for node in self.focusable_nodes() {
+            if node.id == current_id || !allow(node.id) {
+                continue;
+            }
+            let better = match best {
+                Some((rect, _)) => is_better_candidate(node.bounds, rect, focused, direction),
+                None => is_candidate(node.bounds, focused, direction),
+            };
+            if better {
+                best = Some((node.bounds, node.id));
+            }
+        }
+        let (_, id) = best?;
+        self.set_focus(Some(id))
+    }
+}
+
+fn is_candidate(rect: Rect, focused: Rect, direction: NavigationDirection) -> bool {
+    match direction {
+        NavigationDirection::Left => {
+            (focused.right() > rect.right() || focused.x >= rect.right()) && focused.x > rect.x
+        }
+        NavigationDirection::Right => {
+            (focused.x < rect.x || focused.right() <= rect.x) && focused.right() < rect.right()
+        }
+        NavigationDirection::Up => {
+            (focused.bottom() > rect.bottom() || focused.y >= rect.bottom()) && focused.y > rect.y
+        }
+        NavigationDirection::Down => {
+            (focused.y < rect.y || focused.bottom() <= rect.y) && focused.bottom() < rect.bottom()
+        }
+    }
+}
+
+fn major_distance(rect: Rect, focused: Rect, direction: NavigationDirection) -> f32 {
+    let distance = match direction {
+        NavigationDirection::Left => focused.x - rect.right(),
+        NavigationDirection::Right => rect.x - focused.right(),
+        NavigationDirection::Up => focused.y - rect.bottom(),
+        NavigationDirection::Down => rect.y - focused.bottom(),
+    };
+    distance.max(0.0)
+}
+
+fn minor_distance(rect: Rect, focused: Rect, direction: NavigationDirection) -> f32 {
+    let (a, b) = (focused.center(), rect.center());
+    match direction {
+        NavigationDirection::Left | NavigationDirection::Right => a[1] - b[1],
+        NavigationDirection::Up | NavigationDirection::Down => a[0] - b[0],
+    }
+}
+
+fn weighted_distance(rect: Rect, focused: Rect, direction: NavigationDirection) -> f32 {
+    let major = major_distance(rect, focused, direction);
+    let minor = minor_distance(rect, focused, direction);
+    13.0 * major * major + minor * minor
+}
+
+fn is_better_candidate(
+    proposed: Rect,
+    current: Rect,
+    focused: Rect,
+    direction: NavigationDirection,
+) -> bool {
+    if !is_candidate(proposed, focused, direction) {
+        return false;
+    }
+    if !is_candidate(current, focused, direction) {
+        return true;
+    }
+    if beam_beats(focused, proposed, current, direction) {
+        return true;
+    }
+    if beam_beats(focused, current, proposed, direction) {
+        return false;
+    }
+    weighted_distance(proposed, focused, direction) < weighted_distance(current, focused, direction)
+}
+
+fn beam_beats(source: Rect, first: Rect, second: Rect, direction: NavigationDirection) -> bool {
+    let in_beam = |rect: Rect| match direction {
+        NavigationDirection::Left | NavigationDirection::Right => {
+            rect.bottom() > source.y && rect.y < source.bottom()
+        }
+        NavigationDirection::Up | NavigationDirection::Down => {
+            rect.right() > source.x && rect.x < source.right()
+        }
+    };
+    let in_direction = |rect: Rect| match direction {
+        NavigationDirection::Left => source.x >= rect.right(),
+        NavigationDirection::Right => source.right() <= rect.x,
+        NavigationDirection::Up => source.y >= rect.bottom(),
+        NavigationDirection::Down => source.bottom() <= rect.y,
+    };
+    let far_edge = |rect: Rect| {
+        let distance = match direction {
+            NavigationDirection::Left => source.x - rect.x,
+            NavigationDirection::Right => rect.right() - source.right(),
+            NavigationDirection::Up => source.y - rect.y,
+            NavigationDirection::Down => rect.bottom() - source.bottom(),
+        };
+        distance.max(1.0)
+    };
+    if in_beam(second) || !in_beam(first) {
+        return false;
+    }
+    if !in_direction(second) {
+        return true;
+    }
+    match direction {
+        NavigationDirection::Left | NavigationDirection::Right => true,
+        _ => major_distance(first, source, direction) < far_edge(second),
     }
 }
 
 impl Rect {
+    fn right(self) -> f32 {
+        self.x + self.width
+    }
+
+    fn bottom(self) -> f32 {
+        self.y + self.height
+    }
+
     fn contains(self, position: [f32; 2]) -> bool {
         position[0] >= self.x
             && position[0] <= self.x + self.width
@@ -537,6 +625,47 @@ mod tests {
                 pressed: false,
             })
             .is_empty()
+        );
+    }
+
+    fn button(tree: &mut UiTree, id: u64, x: f32, y: f32, w: f32, h: f32) -> NodeId {
+        tree.add(
+            tree.root(),
+            UiNode::new(id, UiNodeKind::Button, Rect::new(x, y, w, h)).focusable(),
+        )
+        .expect("button")
+    }
+
+    #[test]
+    fn down_prefers_the_card_directly_below_over_a_diagonal_one() {
+        let mut tree = UiTree::default();
+        let top = button(&mut tree, 30, 100.0, 0.0, 100.0, 100.0);
+        let diagonal = button(&mut tree, 31, 230.0, 110.0, 100.0, 100.0);
+        let below = button(&mut tree, 32, 80.0, 120.0, 140.0, 100.0);
+        let _ = diagonal;
+        tree.set_focus(Some(top));
+        assert_eq!(
+            tree.dispatch(UiEvent::KeyDown(Key::Down)),
+            vec![UiAction::FocusChanged {
+                previous: Some(top),
+                current: Some(below)
+            }]
+        );
+    }
+
+    #[test]
+    fn right_ignores_other_rows_when_the_row_has_a_neighbour() {
+        let mut tree = UiTree::default();
+        let first = button(&mut tree, 40, 0.0, 0.0, 100.0, 100.0);
+        let same_row = button(&mut tree, 41, 300.0, 0.0, 100.0, 100.0);
+        let _other_row = button(&mut tree, 42, 120.0, 130.0, 100.0, 100.0);
+        tree.set_focus(Some(first));
+        assert_eq!(
+            tree.dispatch(UiEvent::KeyDown(Key::Right)),
+            vec![UiAction::FocusChanged {
+                previous: Some(first),
+                current: Some(same_row)
+            }]
         );
     }
 }

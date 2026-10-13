@@ -136,6 +136,23 @@ fn rasterize_emoji(text: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     Some((width, height, rgba))
 }
 
+static INPUT_FOCUS: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+
+fn input_focus_changed() {
+    let Some((vm, class)) = INPUT_FOCUS.get() else {
+        return;
+    };
+    let Ok(mut env) = vm.attach_current_thread() else {
+        return;
+    };
+    if env
+        .call_static_method(<&JClass>::from(class.as_obj()), "changed", "()V", &[])
+        .is_err()
+    {
+        let _ = env.exception_clear();
+    }
+}
+
 static ARTWORK: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
 
 fn decode_artwork(bytes: &[u8], target: [u32; 2]) -> Option<(u32, u32, Vec<u8>)> {
@@ -194,6 +211,14 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
     {
         let _ = ARTWORK.set((vm, class));
         fluxa_host::set_artwork_decoder(decode_artwork);
+    }
+    if let (Ok(vm), Ok(class)) = (
+        env.get_java_vm(),
+        env.find_class("com/fluxa/app/ui/rust/NativeInputFocus"),
+    ) && let Ok(class) = env.new_global_ref(class)
+    {
+        let _ = INPUT_FOCUS.set((vm, class));
+        fluxa_host::set_input_focus_listener(input_focus_changed);
     }
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
     let host = FluxaHost::new(density, artwork_cache_dir);
@@ -326,7 +351,11 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThu
         return;
     };
     let field = |index: usize| {
-        i32::from_le_bytes(head[index * 4..index * 4 + 4].try_into().unwrap_or_default())
+        i32::from_le_bytes(
+            head[index * 4..index * 4 + 4]
+                .try_into()
+                .unwrap_or_default(),
+        )
     };
     let (width, height) = (field(0).max(0) as usize, field(1).max(0) as usize);
     if width == 0 || height == 0 || rgba.len() != width * height * 4 {
@@ -767,15 +796,25 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedT
 }
 
 #[unsafe(no_mangle)]
-pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFocusedTextNative(
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFieldTextNative(
     mut env: JNIEnv<'_>,
     _class: JClass<'_>,
     handle: jlong,
+    field: jlong,
     text: JString<'_>,
 ) {
     if let (Some(host), Some(text)) = (host(handle), string(&mut env, &text)) {
-        host.set_focused_text(&text);
+        host.set_field_text(field as u64, &text);
     }
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedFieldIdNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jlong {
+    host(handle).map_or(0, FluxaHost::focused_field_id) as jlong
 }
 
 #[unsafe(no_mangle)]

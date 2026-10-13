@@ -264,7 +264,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     override fun onDetachedFromWindow() {
+        if (NativeInputFocus.listener === inputFocusChanged) NativeInputFocus.listener = null
         inputEditable = null
+        boundField = 0L
+        restartingFor = 0L
         stopRenderThread()
         artworkScope.cancel()
         if (nativeHandle != 0L) {
@@ -475,6 +478,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
+        NativeInputFocus.listener = inputFocusChanged
         accessibilityManager.addAccessibilityStateChangeListener(accessibilityStateListener)
         if (accessibilityManager.isEnabled) post(accessibilityPoll)
     }
@@ -661,7 +665,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
                 AccessibilityNodeInfo.ACTION_SET_TEXT -> {
                     val text = arguments?.getCharSequence(AccessibilityNodeInfo.ACTION_ARGUMENT_SET_TEXT_CHARSEQUENCE)
                     NativeRenderer.focusNodeNative(nativeHandle, virtualViewId.toLong())
-                    NativeRenderer.setFocusedTextNative(nativeHandle, text?.toString() ?: "")
+                    NativeRenderer.setFieldTextNative(nativeHandle, NativeRenderer.focusedFieldIdNative(nativeHandle), text?.toString() ?: "")
                     true
                 }
                 AccessibilityNodeInfo.AccessibilityAction.ACTION_SET_PROGRESS.id ->
@@ -710,12 +714,52 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private var imeShown = false
     private var inputEditable: android.text.Editable? = null
     private var lastLocalEditAt = 0L
+    private var boundField = 0L
+    private var restartingFor = 0L
+    private val inputMethod
+        get() = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager
+
+    private val inputFocusChanged = Runnable { post { reconcileInput(0) } }
+
+    private fun reconcileInput(settle: Int) {
+        val input = inputMethod ?: return
+        val field = if (NativeRenderer.textInputFocusedNative(nativeHandle)) {
+            NativeRenderer.focusedFieldIdNative(nativeHandle)
+        } else {
+            0L
+        }
+        if (field == 0L) {
+            if (boundField != 0L && settle < INPUT_SETTLE_FRAMES) {
+                postOnAnimation { reconcileInput(settle + 1) }
+                return
+            }
+            if (boundField != 0L) {
+                boundField = 0L
+                restartingFor = 0L
+                inputEditable = null
+                input.hideSoftInputFromWindow(windowToken, 0)
+            }
+            return
+        }
+        if (field == boundField) {
+            input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+            return
+        }
+        if (field == restartingFor) return
+        restartingFor = field
+        inputEditable?.let {
+            BaseInputConnection.removeComposingSpans(it)
+            input.updateSelection(this, it.length, it.length, -1, -1)
+        }
+        requestFocus()
+        input.restartInput(this)
+        input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+    }
 
     private val editableSync = object : Runnable {
         override fun run() {
             val editable = inputEditable ?: return
-            if (nativeHandle == 0L || !NativeRenderer.textInputFocusedNative(nativeHandle)) {
-                inputEditable = null
+            if (nativeHandle == 0L || NativeRenderer.focusedFieldIdNative(nativeHandle) != boundField) {
                 return
             }
             val current = NativeRenderer.focusedTextNative(nativeHandle)
@@ -754,19 +798,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         input.updateCursorAnchorInfo(this, anchor.build())
     }
 
-    private fun syncSoftKeyboard() {
-        val input = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager ?: return
-        post {
-            if (nativeHandle == 0L) return@post
-            if (NativeRenderer.textInputFocusedNative(nativeHandle)) {
-                requestFocus()
-                input.restartInput(this)
-                input.showSoftInput(this, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
-            } else {
-                input.hideSoftInputFromWindow(windowToken, 0)
-            }
-        }
-    }
+    private fun syncSoftKeyboard() = post { reconcileInput(0) }
 
     private fun isSelectKey(keyCode: Int) =
         keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER
@@ -798,6 +830,9 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         refreshAccessibility()
         val focusedNode = accessNodes[accessFocused]?.takeIf { it.isTextInput() }
+        val field = if (nativeHandle != 0L) NativeRenderer.focusedFieldIdNative(nativeHandle) else 0L
+        outAttrs.fieldId = (field xor (field ushr 32)).toInt()
+        outAttrs.fieldName = focusedNode?.label
         outAttrs.inputType = focusedNode?.inputType() ?: android.text.InputType.TYPE_CLASS_TEXT
         outAttrs.imeOptions = when (focusedNode?.role) {
             "search_input" -> EditorInfo.IME_ACTION_SEARCH
@@ -809,7 +844,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             private fun sync(result: Boolean): Boolean {
                 if (nativeHandle != 0L) {
                     lastLocalEditAt = android.os.SystemClock.uptimeMillis()
-                    NativeRenderer.setFocusedTextNative(nativeHandle, editable.toString())
+                    NativeRenderer.setFieldTextNative(nativeHandle, field, editable.toString())
                 }
                 if (batch == 0) editable?.let { reportSelection(it) }
                 return result
@@ -880,6 +915,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             }
             outAttrs.initialSelStart = current.length
             outAttrs.initialSelEnd = current.length
+            boundField = field
+            restartingFor = 0L
             inputEditable = connection.editable
             removeCallbacks(editableSync)
             postDelayed(editableSync, EDITABLE_POLL_MS)
@@ -942,7 +979,8 @@ private object NativeRenderer {
     @JvmStatic external fun blurTextInputNative(handle: Long)
     @JvmStatic external fun textInputNative(handle: Long, text: String)
     @JvmStatic external fun focusedTextNative(handle: Long): String
-    @JvmStatic external fun setFocusedTextNative(handle: Long, text: String)
+    @JvmStatic external fun setFieldTextNative(handle: Long, field: Long, text: String)
+    @JvmStatic external fun focusedFieldIdNative(handle: Long): Long
 
     fun isNavigationKey(keyCode: Int): Boolean = when (keyCode) {
         KeyEvent.KEYCODE_DPAD_UP,
@@ -972,6 +1010,7 @@ private const val POINTER_UP = 2
 private const val HOST_VIEW_ID = -1
 private const val ACCESSIBILITY_POLL_MS = 250L
 private const val EDITABLE_POLL_MS = 200L
+private const val INPUT_SETTLE_FRAMES = 3
 private const val LOCAL_EDIT_SETTLE_MS = 500L
 private const val SEEK_STEP_SECONDS = 10.0
 

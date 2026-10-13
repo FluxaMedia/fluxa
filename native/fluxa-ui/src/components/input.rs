@@ -38,6 +38,7 @@ pub fn input_kind(node: u64) -> InputKind {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct FocusedField {
+    pub id: u64,
     pub kind: InputKind,
     pub rect: Rect,
     pub text: String,
@@ -48,6 +49,44 @@ pub struct FocusedField {
 const CARET_FOCUS: &str = "fluxa-input-caret";
 const CARET_RECT: &str = "fluxa-caret-rect";
 const FOCUSED_FIELD: &str = "fluxa-focused-field";
+const PENDING_TEXT: &str = "fluxa-pending-field-text";
+const EGUI_FIELD_TAG: u64 = 1 << 62;
+
+fn field_id(id: Id) -> u64 {
+    id.value() | EGUI_FIELD_TAG
+}
+
+pub fn set_pending_field_text(context: &egui::Context, pending: Option<(u64, String)>) {
+    context.data_mut(|data| {
+        data.remove::<(u64, String)>(Id::new(PENDING_TEXT));
+        if let Some(pending) = pending {
+            data.insert_temp(Id::new(PENDING_TEXT), pending);
+        }
+    });
+}
+
+fn take_pending_text(ui: &Ui, id: Id, value: &mut String) {
+    let pending = ui.ctx().data_mut(|data| {
+        let key = Id::new(PENDING_TEXT);
+        match data.get_temp::<(u64, String)>(key) {
+            Some((target, text)) if target == field_id(id) => {
+                data.remove::<(u64, String)>(key);
+                Some(text)
+            }
+            _ => None,
+        }
+    });
+    let Some(text) = pending else {
+        return;
+    };
+    let end = text.chars().count();
+    *value = text;
+    let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(egui::text::CCursor::new(end))));
+    state.store(ui.ctx(), id);
+}
 
 pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
     context.data_mut(|data| {
@@ -130,6 +169,7 @@ fn record_native_focus(
     record_field(
         ui,
         FocusedField {
+            id: field_id(output.response.id),
             kind,
             rect: output.response.response.rect,
             text: value.to_owned(),
@@ -172,9 +212,14 @@ pub(crate) fn search_field(
         ),
         Vec2::new(rect.width() - radius * 1.6 - 16.0, row),
     );
+    let id = ui.id().with(("fluxa-input", hint));
+    take_pending_text(ui, id, query);
+    let hit = field_hit(ui, rect, id);
+    let len = query.chars().count();
     let output = put_edit(
         ui,
         text_rect,
+        id,
         egui::TextEdit::singleline(query)
             .frame(egui::Frame::NONE)
             .font(crate::fonts::regular(metrics.screen_body_size + 1.0))
@@ -183,6 +228,7 @@ pub(crate) fn search_field(
             .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),
     );
+    focus_on_hit(ui, &hit, id, len);
     record_native_focus(ui, &output, InputKind::Search, query, hint);
     let response = output.response.response.clone();
     paint_caret(
@@ -202,11 +248,36 @@ pub(crate) fn search_field(
     response
 }
 
-fn put_edit(ui: &mut Ui, rect: Rect, edit: egui::TextEdit<'_>) -> egui::text_edit::TextEditOutput {
+fn field_hit(ui: &Ui, rect: Rect, id: Id) -> Response {
+    ui.interact(rect, id.with("hit"), Sense::click())
+}
+
+fn focus_on_hit(ui: &Ui, hit: &Response, id: Id, len: usize) {
+    if !hit.clicked() || ui.memory(|memory| memory.has_focus(id)) {
+        return;
+    }
+    ui.memory_mut(|memory| memory.request_focus(id));
+    let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
+    state.cursor.set_char_range(Some(egui::text::CCursorRange::one(
+        egui::text::CCursor::new(len),
+    )));
+    state.store(ui.ctx(), id);
+}
+
+fn put_edit(
+    ui: &mut Ui,
+    rect: Rect,
+    id: Id,
+    edit: egui::TextEdit<'_>,
+) -> egui::text_edit::TextEditOutput {
     let layout = *ui.layout();
-    ui.scope_builder(egui::UiBuilder::new().max_rect(rect).layout(layout), |ui| {
-        edit.show(ui)
-    })
+    ui.scope_builder(
+        egui::UiBuilder::new()
+            .id_salt(id)
+            .max_rect(rect)
+            .layout(layout),
+        |ui| edit.id(id).show(ui),
+    )
     .inner
 }
 
@@ -259,6 +330,10 @@ fn text_edit(
         let row = ui.fonts_mut(|fonts| fonts.row_height(&crate::fonts::regular(font_size)));
         text_rect = Rect::from_center_size(rect.center(), Vec2::new(text_rect.width(), row));
     }
+    let id = ui.id().with(("fluxa-input", hint));
+    take_pending_text(ui, id, value);
+    let hit = field_hit(ui, rect, id);
+    let len = value.chars().count();
     let edit = if kind == InputKind::Multiline {
         egui::TextEdit::multiline(value).desired_rows(1)
     } else {
@@ -267,6 +342,7 @@ fn text_edit(
     let output = put_edit(
         ui,
         text_rect,
+        id,
         edit.frame(egui::Frame::NONE)
             .password(kind.secret())
             .font(crate::fonts::regular(font_size))
@@ -275,6 +351,7 @@ fn text_edit(
             .text_color(metrics.text_primary)
             .margin(Vec2::ZERO),
     );
+    focus_on_hit(ui, &hit, id, len);
     record_native_focus(ui, &output, kind, value, hint);
     let response = output.response.response.clone();
     let shown = if kind.secret() {

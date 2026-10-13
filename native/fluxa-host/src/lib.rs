@@ -48,6 +48,12 @@ pub fn set_artwork_decoder(decoder: fluxa_artwork::PlatformDecoder) {
 const HOME_REFRESH_INTERVAL: Duration = Duration::from_secs(60);
 const HOME_REFRESH_FOCUS_MIN: Duration = Duration::from_secs(10);
 
+static INPUT_FOCUS: OnceLock<fn()> = OnceLock::new();
+
+pub fn set_input_focus_listener(listener: fn()) {
+    let _ = INPUT_FOCUS.set(listener);
+}
+
 pub fn set_logger(logger: fn(&str)) {
     let _ = LOGGER.set(logger);
     fluxa_effects::set_logger(logger);
@@ -200,6 +206,8 @@ struct RendererState {
     session: Option<SessionHandle>,
     session_revision: Option<u64>,
     egui_events: Vec<egui::Event>,
+    field_text: Option<(u64, String)>,
+    notified_field: u64,
     modifiers: egui::Modifiers,
     mouse_position: Option<Pos2>,
     cursor: egui::CursorIcon,
@@ -395,6 +403,8 @@ impl FluxaHost {
             session: None,
             session_revision: None,
             egui_events: Vec::new(),
+            field_text: None,
+            notified_field: 0,
             modifiers: egui::Modifiers::NONE,
             mouse_position: None,
             cursor: egui::CursorIcon::Default,

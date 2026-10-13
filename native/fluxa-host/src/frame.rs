@@ -273,6 +273,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             profiles,
             picker_background,
             egui_events,
+            field_text,
             modifiers,
             pre_present,
             ..
@@ -282,6 +283,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         gpu.as_mut().map(|gpu| {
             gpu.density = scale;
             gpu.mirror = mirrored;
+            fluxa_ui::set_pending_field_text(&gpu.egui_context, field_text.take());
             gpu.render(
                 route,
                 home,
@@ -323,6 +325,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                     caret: frame.caret,
                 };
                 state.redraw_at = Instant::now().checked_add(frame.repaint_delay);
+                events::notify_input_focus(state);
                 let mut layout = frame.layout;
                 if let Some(outcome) = frame.menu_outcome {
                     card_menu::apply(state, outcome);

@@ -315,30 +315,23 @@ impl FluxaHost {
         .flatten()
     }
 
+    pub fn focused_field_id(&self) -> u64 {
+        self.peek(|state| field_id(state)).unwrap_or(0)
+    }
+
     pub fn set_focused_text(&self, text: &str) {
+        let id = self.focused_field_id();
+        self.set_field_text(id, text);
+    }
+
+    pub fn set_field_text(&self, id: u64, text: &str) {
         self.with_state(|state| {
-            if state.access.field.is_some() {
-                let ctrl = egui::Modifiers::COMMAND;
-                state.egui_events.push(egui::Event::Key {
-                    key: egui::Key::A,
-                    physical_key: None,
-                    pressed: true,
-                    repeat: false,
-                    modifiers: ctrl,
-                });
-                state.egui_events.push(if text.is_empty() {
-                    egui::Event::Key {
-                        key: egui::Key::Backspace,
-                        physical_key: None,
-                        pressed: true,
-                        repeat: false,
-                        modifiers: egui::Modifiers::NONE,
-                    }
-                } else {
-                    egui::Event::Text(text.to_owned())
-                });
-            } else if let Some(node) = state.ui.focused() {
-                actions::edit_text(state, node, |value| *value = text.to_owned());
+            if let Some(field) = &state.access.field {
+                if field.id == id && field.text != text {
+                    state.field_text = Some((id, text.to_owned()));
+                }
+            } else if id != 0 && state.ui.focused() == Some(id) {
+                actions::edit_text(state, id, |value| *value = text.to_owned());
             }
         });
     }
@@ -348,5 +341,32 @@ impl FluxaHost {
             let actions = state.ui.dispatch(UiEvent::TextInput(text.to_owned()));
             remember_actions(state, actions);
         });
+    }
+}
+
+pub(super) fn field_id(state: &RendererState) -> u64 {
+    if let Some(field) = &state.access.field {
+        return field.id;
+    }
+    state
+        .ui
+        .focused()
+        .filter(|node| {
+            state
+                .ui
+                .node(*node)
+                .is_some_and(|node| node.kind == UiNodeKind::Input)
+        })
+        .unwrap_or(0)
+}
+
+pub(super) fn notify_input_focus(state: &mut RendererState) {
+    let id = field_id(state);
+    if id == state.notified_field {
+        return;
+    }
+    state.notified_field = id;
+    if let Some(listener) = super::INPUT_FOCUS.get() {
+        listener();
     }
 }
