@@ -1313,33 +1313,19 @@ pub(super) fn progress_pill(
 pub(crate) fn brand_lockup(
     painter: &Painter,
     center: Pos2,
-    mark_size: f32,
-    font_size: f32,
+    height: f32,
     alpha: u8,
     assets: &impl HomeAssets,
 ) {
-    let gap = mark_size * 0.22;
-    let galley = painter.layout_no_wrap(
-        "fluxa".to_owned(),
-        FontId::proportional(font_size),
-        text_primary(),
+    let Some((texture, aspect)) = assets.logo("wordmark") else {
+        return;
+    };
+    painter.image(
+        texture,
+        Rect::from_center_size(center, Vec2::new(height * aspect.x, height)),
+        full_uv(),
+        Color32::WHITE.gamma_multiply_u8(alpha),
     );
-    let width = mark_size + gap + galley.size().x;
-    let left = center.x - width * 0.5;
-    let tint = ink(alpha);
-    if let Some(mark) = assets.brand_mark() {
-        painter.image(
-            mark,
-            Rect::from_center_size(
-                Pos2::new(left + mark_size * 0.5, center.y),
-                Vec2::splat(mark_size),
-            ),
-            full_uv(),
-            tint,
-        );
-    }
-    let text_pos = Pos2::new(left + mark_size + gap, center.y - galley.size().y * 0.5);
-    painter.galley(text_pos, galley, tint);
 }
 
 pub(super) fn toggle(

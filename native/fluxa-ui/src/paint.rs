@@ -164,11 +164,11 @@ pub(crate) fn draw_loading_screen(
     let unit = (screen.width().min(screen.height()) / 900.0).clamp(0.7, 1.6);
     let breathe = 0.5 - 0.5 * (time * std::f32::consts::TAU / 1.9).cos();
     let alpha = (0.72 + 0.28 * breathe) * 255.0;
-    let mark_size = 64.0 * unit;
+    let logo_height = 96.0 * unit;
     let center = screen.center() - Vec2::new(0.0, 24.0 * unit);
-    components::brand_lockup(painter, center, mark_size, 52.0 * unit, alpha as u8, assets);
+    components::brand_lockup(painter, center, logo_height, alpha as u8, assets);
     let radius = 12.0 * unit;
-    let spinner_center = center + Vec2::new(0.0, mark_size * 0.5 + 44.0 * unit);
+    let spinner_center = center + Vec2::new(0.0, logo_height * 0.5 + 36.0 * unit);
     let stroke = 3.0 * unit;
     painter.circle_stroke(
         spinner_center,
