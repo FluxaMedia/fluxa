@@ -12,6 +12,7 @@ use crate::flow::Size;
 
 mod cards;
 mod dropdown;
+mod filmstrip;
 mod input;
 mod menu;
 mod recent_searches;
@@ -19,6 +20,7 @@ mod streams;
 
 pub use cards::*;
 pub use dropdown::*;
+pub(crate) use filmstrip::*;
 pub use input::*;
 pub use menu::*;
 pub use recent_searches::*;

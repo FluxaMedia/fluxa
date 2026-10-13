@@ -255,6 +255,8 @@
           "posterCardWidth": 136,
           "posterCardHeight": 204,
           "horizontalCardBase": 196,
+          "seekFilmstripMinFrames": 4,
+          "seekFilmstripFrameWidth": 96,
           "gutter": 16
         },
         "sp": {
@@ -292,6 +294,8 @@
           "posterCardWidth": 160,
           "posterCardHeight": 240,
           "horizontalCardBase": 220,
+          "seekFilmstripMinFrames": 6,
+          "seekFilmstripFrameWidth": 150,
           "gutter": 48
         },
         "sp": {
@@ -329,6 +333,8 @@
           "posterCardWidth": 136,
           "posterCardHeight": 204,
           "horizontalCardBase": 260,
+          "seekFilmstripMinFrames": 5,
+          "seekFilmstripFrameWidth": 200,
           "gutter": 64
         },
         "sp": {

@@ -28,6 +28,7 @@ pub struct HomeLayout {
     pub load_more: Vec<serde_json::Value>,
     pub seek_to: Option<f64>,
     pub seek_hover: Option<f64>,
+    pub filmstrip: Option<Vec<f64>>,
     pub player_gesture: Option<PlayerGesture>,
     pub player_speed_hold: bool,
     pub profiles: Option<ProfilesRequest>,

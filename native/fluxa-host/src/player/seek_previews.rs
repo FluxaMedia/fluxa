@@ -88,6 +88,10 @@ impl SeekPreviews {
         }
     }
 
+    pub(super) fn interval(&self) -> f64 {
+        self.plan.interval
+    }
+
     pub(super) fn server_source(&mut self) -> Option<fluxa_core::player::trickplay::Source> {
         let bytes = self.manifest.as_ref()?.try_recv();
         let bytes = match bytes {

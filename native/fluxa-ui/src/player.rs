@@ -58,6 +58,8 @@ pub struct PlayerModel {
     pub skip: Option<SkipCard>,
     pub next_episode: Option<NextEpisodeCard>,
     pub thumbnail: Option<(f64, TextureId)>,
+    pub filmstrip: Vec<(f64, TextureId, Vec2)>,
+    pub filmstrip_step: f64,
     pub warnings: Vec<(String, String)>,
     pub warnings_elapsed: Option<f32>,
     pub language: String,
@@ -563,16 +565,39 @@ impl Chrome<'_> {
         let preview = pointer
             .map(|pointer| (pointer.x, duration * ratio(pointer.x)))
             .or_else(|| player.scrub.map(|time| (track.left() + played, time)));
-        if let Some((x, time)) = preview {
-            layout.seek_hover = Some(time);
-            draw_seek_preview(
+        let over_strip = components::filmstrip_area(self.context)
+            .zip(self.context.input(|i| i.pointer.hover_pos()))
+            .is_some_and(|(area, pointer)| area.contains(pointer));
+        let filmstrip = (seek.hovered() || over_strip)
+            && duration > 0.0
+            && self.context.input(|i| i.modifiers.shift);
+        if filmstrip {
+            let output = components::seek_filmstrip(
                 self.context,
                 track,
-                x,
-                time,
-                player,
+                seek.hover_pos().map(|pointer| duration * ratio(pointer.x)),
+                duration,
+                player.filmstrip_step,
+                &player.filmstrip,
                 UiMetrics::for_viewport(self.viewport),
             );
+            layout.filmstrip = Some(output.slots);
+            if let Some(time) = output.seek {
+                layout.seek_to = Some(time);
+            }
+        } else {
+            components::filmstrip_close(self.context);
+            if let Some((x, time)) = preview {
+                layout.seek_hover = Some(time);
+                draw_seek_preview(
+                    self.context,
+                    track,
+                    x,
+                    time,
+                    player,
+                    UiMetrics::for_viewport(self.viewport),
+                );
+            }
         }
         position
     }

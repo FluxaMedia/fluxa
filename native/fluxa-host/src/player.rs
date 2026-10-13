@@ -15,6 +15,7 @@ mod input;
 mod menu;
 mod overlay;
 mod resolve;
+mod filmstrip;
 mod seek_previews;
 mod shuffle;
 mod stats;
@@ -185,6 +186,7 @@ pub(crate) struct PlayerSession {
     last_pump: Instant,
     thumbnail: Option<(f64, egui::TextureHandle)>,
     thumbnail_requested: Option<(f64, Instant)>,
+    filmstrip: filmstrip::Filmstrip,
     trickplay: Option<trickplay::Trickplay>,
     seek_previews: Option<seek_previews::SeekPreviews>,
     outro_reached: bool,
@@ -298,6 +300,7 @@ impl PlayerSession {
             last_pump: Instant::now(),
             thumbnail: None,
             thumbnail_requested: None,
+            filmstrip: filmstrip::Filmstrip::default(),
             trickplay: None,
             seek_previews: None,
             outro_reached: false,
@@ -629,6 +632,8 @@ impl PlayerSession {
                 .thumbnail
                 .as_ref()
                 .map(|(time, texture)| (*time, texture.id())),
+            filmstrip: self.filmstrip.textures(),
+            filmstrip_step: self.filmstrip_step(),
             warnings: self.warnings.clone(),
             warnings_elapsed: self.warnings_clock,
             language: self.language.clone(),
@@ -988,6 +993,20 @@ pub(crate) fn pump(state: &mut RendererState) {
             .as_mut()
             .and_then(|trickplay| trickplay.poll(session))
             .or_else(|| video.take_thumbnail());
+        let thumbnail = match (thumbnail, gpu.as_ref()) {
+            (Some(thumbnail), Some(gpu)) => player.filmstrip.accept(thumbnail, &gpu.egui_context),
+            (thumbnail, _) => thumbnail,
+        };
+        if let Some(time) = player.filmstrip.next() {
+            match player
+                .trickplay
+                .as_mut()
+                .filter(|trickplay| trickplay.usable())
+            {
+                Some(trickplay) => trickplay.request(time),
+                None => video.request_thumbnail(time),
+            }
+        }
         if let (Some(thumbnail), Some(gpu)) = (thumbnail, gpu.as_ref()) {
             let image = egui::ColorImage::from_rgba_unmultiplied(thumbnail.size, &thumbnail.rgba);
             match player.thumbnail.as_mut() {
@@ -1246,6 +1265,25 @@ fn load_resolved(
     }
 }
 
+impl PlayerSession {
+    fn filmstrip_step(&self) -> f64 {
+        self.trickplay
+            .as_ref()
+            .and_then(|trickplay| trickplay.step())
+            .or_else(|| self.seek_previews.as_ref().map(|previews| previews.interval()))
+            .unwrap_or(10.0)
+    }
+}
+
+pub(crate) fn want_filmstrip(state: &mut RendererState, slots: Option<Vec<f64>>) {
+    if !state.settings.bool_value("seekThumbnailEnabled") {
+        return;
+    }
+    if let Some(player) = state.player.as_mut() {
+        player.filmstrip.want(slots);
+    }
+}
+
 pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
     if !state.settings.bool_value("seekThumbnailEnabled") {
         return;
@@ -1257,6 +1295,9 @@ pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
         return;
     };
     player.touch();
+    if player.filmstrip.active() {
+        return;
+    }
     if let Some(trickplay) = player
         .trickplay
         .as_mut()

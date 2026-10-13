@@ -77,6 +77,17 @@ impl Trickplay {
         !self.failed
     }
 
+    pub(super) fn step(&self) -> Option<f64> {
+        match (&self.source, &self.bif) {
+            (Source::Sheets { interval, .. }, _) => Some(*interval as f64 / 1000.0),
+            (_, Some((_, frames))) => match frames.as_slice() {
+                [first, second, ..] => Some((second.time_ms - first.time_ms) as f64 / 1000.0),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub(super) fn request(&mut self, time: f64) {
         self.wanted = Some(time);
     }

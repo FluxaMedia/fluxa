@@ -346,6 +346,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 if route == Route::Player {
                     player::speed_hold(state, layout.player_speed_hold);
                 }
+                player::want_filmstrip(state, layout.filmstrip.take());
                 player::hover_seek(state, layout.seek_hover);
                 if let Some(player) = state.player.as_mut() {
                     player.sources_scroll_max = layout.scroll_max.unwrap_or(0.0);
