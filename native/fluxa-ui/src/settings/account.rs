@@ -413,6 +413,9 @@ pub(super) fn draw_account(
                 Color32::WHITE,
             );
         }
+        None if avatar_url.is_some() => {
+            components::loading_circle(&painter, avatar.center(), 26.0);
+        }
         None => {
             painter.circle_filled(avatar.center(), 26.0, ink(tone::SOFT));
             let initials = name

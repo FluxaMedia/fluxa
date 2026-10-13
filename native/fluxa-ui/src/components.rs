@@ -157,6 +157,23 @@ fn near_screen(painter: &Painter, rect: Rect) -> bool {
 }
 
 #[allow(clippy::too_many_arguments)]
+fn loading_fill(painter: &Painter) -> Color32 {
+    let time = painter.ctx().input(|input| input.time) as f32;
+    painter
+        .ctx()
+        .request_repaint_after(std::time::Duration::from_millis(33));
+    let wave = (time * std::f32::consts::TAU / 1.4).sin() * 0.5 + 0.5;
+    ink(tone::FAINT + (wave * f32::from(tone::FAINT)) as u8)
+}
+
+pub(super) fn loading_rect(painter: &Painter, rect: Rect, radius: f32) {
+    painter.rect_filled(rect, radius, loading_fill(painter));
+}
+
+pub(super) fn loading_circle(painter: &Painter, center: Pos2, radius: f32) {
+    painter.circle_filled(center, radius, loading_fill(painter));
+}
+
 pub(super) fn rounded_artwork(
     painter: &Painter,
     rect: Rect,
@@ -174,6 +191,9 @@ pub(super) fn rounded_artwork(
         return false;
     }
     let Some(texture) = assets.texture_for(url, target_size, priority) else {
+        if url.is_some() {
+            loading_rect(painter, rect, radius);
+        }
         return false;
     };
     let uv = assets
@@ -385,6 +405,10 @@ pub(super) fn avatar(
         Color32::WHITE,
         assets,
     ) {
+        return;
+    }
+    if url.is_some() {
+        loading_circle(painter, center, radius);
         return;
     }
     let initials = name
