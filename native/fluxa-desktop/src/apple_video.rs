@@ -1,6 +1,8 @@
 use std::ffi::c_void;
 
-use fluxa_host::{Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus};
+use fluxa_host::{
+    Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus,
+};
 use objc2::encode::{Encode, Encoding};
 use objc2::rc::{Allocated, Retained};
 use objc2::runtime::AnyObject;
@@ -280,6 +282,7 @@ impl VideoBackend for AppleBackend {
             error: self.error.clone(),
             chapters: player.chapters.list().to_vec(),
             buffering: buffering(&position),
+            buffered: number(position.demuxer_cache_duration.as_deref()).unwrap_or(0.0),
         }
     }
 

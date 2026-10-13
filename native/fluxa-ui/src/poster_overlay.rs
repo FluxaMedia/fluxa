@@ -329,7 +329,7 @@ pub(super) fn paint(
                 Vec2::new(track.width() * personal.progress, height),
             ),
             0.0,
-            Color32::from_gray(235),
+            crate::accent(),
         );
     }
     let mark = (rect.width() * 0.13).clamp(14.0, 28.0) * overlays.scale;

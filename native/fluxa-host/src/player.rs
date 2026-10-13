@@ -51,6 +51,7 @@ pub struct VideoStatus {
     pub error: Option<String>,
     pub chapters: Vec<(f64, String)>,
     pub buffering: Option<f32>,
+    pub buffered: f64,
 }
 
 pub struct Thumbnail {
@@ -613,6 +614,7 @@ impl PlayerSession {
             synopsis: self.synopsis.clone(),
             description: self.description.clone(),
             chapters: self.status.chapters.clone(),
+            buffered: self.status.buffered,
             chapter_spans: self.overlay.chapter_spans(),
             segment_spans: self.overlay.segment_spans(),
             mark_preview: match &self.panel {

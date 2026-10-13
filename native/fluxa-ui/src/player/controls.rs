@@ -92,7 +92,8 @@ impl Chrome<'_> {
         let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
         self.painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
         let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
-        self.painter.rect_filled(filled, radius::BAR, ink(alpha));
+        self.painter
+            .rect_filled(filled, radius::BAR, accent().gamma_multiply(amount));
         if player.boost {
             let mark = bar.left() + bar.width() * 0.5;
             self.painter.line_segment(
@@ -106,7 +107,7 @@ impl Chrome<'_> {
         self.painter.circle_filled(
             Pos2::new(filled.right(), bar.center().y),
             6.0 * amount,
-            text_primary(),
+            accent(),
         );
         draw_text(
             self.painter,

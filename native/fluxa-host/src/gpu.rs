@@ -753,6 +753,7 @@ impl Gpu {
                 .and_then(serde_json::Value::as_str)
                 == Some("glass"),
         );
+        fluxa_ui::set_accent(home.accent);
         fluxa_ui::set_poster_landscape(settings.poster_landscape());
         fluxa_ui::set_nav_language(&home.language);
         fluxa_ui::set_mobile_nav_style(

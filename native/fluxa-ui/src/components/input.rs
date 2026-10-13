@@ -193,7 +193,7 @@ pub(crate) fn search_field(
         crate::fonts::regular(metrics.screen_body_size + 1.0),
     );
     let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::MUTED))
+        egui::Stroke::new(stroke::HAIRLINE, crate::accent())
     } else {
         egui::Stroke::new(stroke::HAIRLINE, metrics.border)
     };
@@ -290,7 +290,7 @@ fn text_edit(
         crate::fonts::regular(font_size),
     );
     let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::MUTED))
+        egui::Stroke::new(stroke::HAIRLINE, crate::accent())
     } else {
         egui::Stroke::new(stroke::HAIRLINE, metrics.border)
     };

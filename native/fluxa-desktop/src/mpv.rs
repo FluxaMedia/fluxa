@@ -7,7 +7,10 @@ use std::sync::{
 use std::time::Duration;
 
 use ash::vk::Handle as _;
-use fluxa_host::{DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend, VideoCommand, VideoStatus};
+use fluxa_host::{
+    DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, VideoBackend,
+    VideoCommand, VideoStatus,
+};
 
 use crate::mpv_common::{Chapters, SeekPreview, buffering, enable_thumbnails, shader_dir};
 
@@ -209,6 +212,7 @@ impl VideoBackend for MpvBackend {
             error: self.error.clone(),
             chapters: player.chapters.list().to_vec(),
             buffering: buffering(&position),
+            buffered: number(position.demuxer_cache_duration.as_deref()).unwrap_or(0.0),
         }
     }
 
@@ -267,7 +271,10 @@ impl VideoBackend for MpvBackend {
             return;
         }
         self.plan = plan.clone();
-        let (Some(player), Some(url)) = (self.player.as_ref().filter(|_| !self.preview), self.url.as_deref()) else {
+        let (Some(player), Some(url)) = (
+            self.player.as_ref().filter(|_| !self.preview),
+            self.url.as_deref(),
+        ) else {
             return;
         };
         enable_thumbnails(&player.client, url, plan);

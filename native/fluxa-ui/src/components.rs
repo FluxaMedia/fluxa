@@ -26,9 +26,9 @@ pub use streams::*;
 
 use super::{
     ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
-    artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color, draw_text,
-    full_uv, icon_button_size, ink, paint_vertical_gradient, radius, shade, size, stroke,
-    text_primary, tone, truncate_to_width,
+    accent, artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color,
+    draw_text, full_uv, icon_button_size, ink, paint_vertical_gradient, radius, shade, size,
+    stroke, text_primary, tone, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -222,7 +222,7 @@ pub(super) fn season_tile(
         painter.rect_stroke(
             image,
             radius::control(),
-            egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
+            egui::Stroke::new(stroke::EMPHASIS, accent()),
             egui::StrokeKind::Inside,
         );
     }
@@ -303,13 +303,13 @@ pub(super) fn episode_artwork(
             Pos2::new(rect.left(), rect.bottom() - 3.0),
             Vec2::new(rect.width() * episode.progress, 3.0),
         );
-        painter.rect_filled(bar, 0.0, metrics.text_primary);
+        painter.rect_filled(bar, 0.0, accent());
     }
     if selected {
         painter.rect_stroke(
             rect,
             radius::control(),
-            egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
+            egui::Stroke::new(stroke::EMPHASIS, accent()),
             egui::StrokeKind::Inside,
         );
     }
@@ -935,7 +935,7 @@ pub(super) fn text_tabs(
             let (rect, response) =
                 ui.allocate_exact_size(Vec2::new(galley.size().x, height), Sense::click());
             let color = if active {
-                metrics.text_primary
+                accent()
             } else if response.hovered() {
                 metrics.ink(tone::BODY)
             } else {
@@ -953,7 +953,7 @@ pub(super) fn text_tabs(
                         rect.right_bottom(),
                     ),
                     1.0,
-                    metrics.text_primary,
+                    accent(),
                 );
             }
             responses.push(response);
@@ -1424,7 +1424,7 @@ pub(super) fn focus_ring(
         painter.rect_stroke(
             rect,
             radius,
-            egui::Stroke::new(metrics.focus_ring_width, metrics.text_primary),
+            egui::Stroke::new(metrics.focus_ring_width, accent()),
             egui::StrokeKind::Outside,
         );
     }

@@ -184,7 +184,7 @@ pub(crate) fn draw_loading_screen(
         .collect();
     painter.add(egui::Shape::line(
         arc,
-        egui::Stroke::new(stroke, ink(tone::BODY)),
+        egui::Stroke::new(stroke, accent()),
     ));
     context.request_repaint();
 }

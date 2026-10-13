@@ -2794,7 +2794,7 @@ pub(super) fn parse_settings_color(value: &str) -> Option<Color32> {
     ))
 }
 
-fn accent_needs_dark_foreground(color: Color32) -> bool {
+pub(crate) fn accent_needs_dark_foreground(color: Color32) -> bool {
     let linear = |channel: u8| {
         let value = channel as f32 / 255.0;
         if value <= 0.04045 {

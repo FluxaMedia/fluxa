@@ -171,6 +171,7 @@ static BUTTON_HEIGHT: AtomicU32 = AtomicU32::new(0x4230_0000);
 static ICON_BUTTON: AtomicU32 = AtomicU32::new(0x4220_0000);
 static CONTROL_RADIUS: AtomicU32 = AtomicU32::new(0x4110_0000);
 static DANGER: AtomicU32 = AtomicU32::new(0xFFFF_6B6B);
+static ACCENT: AtomicU32 = AtomicU32::new(0);
 static MOTION: [AtomicU32; 3] = [
     AtomicU32::new(0x3DF5_C28F),
     AtomicU32::new(0x3E38_51EC),
@@ -230,6 +231,17 @@ pub fn icon_button_size() -> f32 {
 
 pub fn control_radius() -> f32 {
     f32::from_bits(CONTROL_RADIUS.load(Ordering::Relaxed))
+}
+
+pub fn set_accent(color: Option<Color32>) {
+    ACCENT.store(color.map_or(0, pack), Ordering::Relaxed);
+}
+
+pub fn accent() -> Color32 {
+    match ACCENT.load(Ordering::Relaxed) {
+        0 => text_primary(),
+        _ => unpack(&ACCENT),
+    }
 }
 
 pub fn danger_color() -> Color32 {
@@ -602,6 +614,15 @@ impl UiMetrics {
         if poster_overlay::landscape() {
             metrics.poster_card_width = metrics.home_continue_card_width;
             metrics.poster_card_height = metrics.poster_card_width * 0.5625;
+        }
+        if ACCENT.load(Ordering::Relaxed) != 0 {
+            metrics.accent = accent();
+            metrics.accent_foreground =
+                if crate::settings::accent_needs_dark_foreground(metrics.accent) {
+                    metrics.background
+                } else {
+                    metrics.text_primary
+                };
         }
         publish_palette(&metrics);
         metrics

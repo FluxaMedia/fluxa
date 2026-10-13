@@ -62,6 +62,7 @@ pub(super) fn segmented_track(
     thickness: f32,
     spans: &[ChapterSpan],
     played: f32,
+    buffered: f32,
 ) {
     let whole = [ChapterSpan {
         start_fraction: 0.0,
@@ -79,16 +80,20 @@ pub(super) fn segmented_track(
         };
         let width = (right - left - trailing).max(1.0);
         painter_bar_at(painter, track, left, width, thickness, ink(tone::DIM));
-        let filled = (played - left + track.left()).clamp(0.0, width);
-        if filled > 0.0 {
+        let ahead = (buffered - left + track.left()).clamp(0.0, width);
+        if ahead > 0.0 {
             painter_bar_at(
                 painter,
                 track,
                 left,
-                filled,
-                thickness + 0.5,
-                text_primary(),
+                ahead,
+                thickness,
+                accent().gamma_multiply(0.4),
             );
+        }
+        let filled = (played - left + track.left()).clamp(0.0, width);
+        if filled > 0.0 {
+            painter_bar_at(painter, track, left, filled, thickness + 0.5, accent());
         }
     }
 }

@@ -51,6 +51,7 @@ pub struct PlayerModel {
     pub synopsis: Option<String>,
     pub description: Option<String>,
     pub chapters: Vec<(f64, String)>,
+    pub buffered: f64,
     pub chapter_spans: Vec<ChapterSpan>,
     pub segment_spans: Vec<SegmentSpan>,
     pub mark_preview: Option<SegmentSpan>,
@@ -528,6 +529,8 @@ impl Chrome<'_> {
             thickness,
             &player.chapter_spans,
             played,
+            (track.width() * ((position + player.buffered) / duration).clamp(0.0, 1.0) as f32)
+                .max(played),
         );
         if player.options.segments {
             overlay::segment_tints(self.painter, track, thickness, &player.segment_spans);
@@ -548,7 +551,7 @@ impl Chrome<'_> {
             self.painter.circle_filled(
                 Pos2::new(track.left() + played, y),
                 thickness * 1.8,
-                text_primary(),
+                accent(),
             );
         }
         let pointer = if self.viewport.form_factor == UiFormFactor::Mobile {

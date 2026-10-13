@@ -346,7 +346,7 @@ fn draw_pairing(
                 ui.painter().rect_stroke(
                     response.rect.expand(metrics.focus_ring_expand),
                     response.rect.height() * 0.5 + metrics.focus_ring_expand,
-                    egui::Stroke::new(metrics.focus_ring_width, metrics.text_primary),
+                    egui::Stroke::new(metrics.focus_ring_width, accent()),
                     egui::StrokeKind::Outside,
                 );
                 let activated =
