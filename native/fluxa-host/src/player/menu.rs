@@ -14,6 +14,7 @@ pub(super) enum Menu {
     Episodes,
     Settings,
     Delay(bool),
+    Style,
 }
 
 enum Item {
@@ -32,6 +33,8 @@ enum Item {
     UpscalingMode,
     Fit,
     Stats,
+    OpenStyle,
+    Style(&'static str),
     Language(bool, String),
     LanguageBack,
 }
@@ -224,6 +227,12 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 Item::Subtitle(None),
             ));
             grouped(&mut rows, subtitles, language, true);
+            rows.push(row(
+                text("player.subtitle_style"),
+                None,
+                false,
+                Item::OpenStyle,
+            ));
             (String::new(), rows)
         }
         Menu::Speed => {
@@ -338,6 +347,28 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
             ]);
             (text("player.settings"), rows)
         }
+        Menu::Style => {
+            let rows = fluxa_ui::subtitle_style_rows(language)
+                .into_iter()
+                .map(|(key, label, options)| {
+                    let current = player.style.get(key);
+                    if options.is_empty() {
+                        let mut entry = row(label, None, false, Item::Style(key));
+                        entry.0.switch = Some(current.and_then(Value::as_bool).unwrap_or(false));
+                        entry
+                    } else {
+                        let value = current.and_then(Value::as_str).unwrap_or(options[0]);
+                        row(
+                            label,
+                            Some(fluxa_ui::option_label(key, value, language)),
+                            false,
+                            Item::Style(key),
+                        )
+                    }
+                })
+                .collect();
+            (text("player.subtitle_style"), rows)
+        }
         Menu::Delay(subtitles) => {
             let current = if subtitles {
                 player.subtitle_delay
@@ -382,6 +413,7 @@ pub(super) fn model(player: &PlayerSession, menu: Menu) -> PlayerPanel {
         message: None,
         rows: rows.into_iter().map(|(row, _)| row).collect(),
         list: true,
+        look: (menu == Menu::Style).then(|| fluxa_ui::SubtitleLook::from_values(&player.style)),
     }
 }
 
@@ -392,7 +424,9 @@ pub(super) fn open(state: &mut RendererState, menu: Menu) {
     {
         player.tracks = video.tracks();
     }
+    let style = state.settings.values.clone();
     if let Some(player) = state.player.as_mut() {
+        player.style = style;
         player.track_lang = None;
         let toggled = matches!(player.panel, Some(Panel::Menu(open)) if open == menu);
         player.panel = (!toggled).then_some(Panel::Menu(menu));
@@ -464,6 +498,8 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
                 mpv(state, "audio-delay", "0");
             }
         }
+        Item::OpenStyle => player.panel = Some(Panel::Menu(Menu::Style)),
+        Item::Style(key) => step_style(state, key),
         Item::Upscaling => super::toggle_upscaling(state),
         Item::UpscalingMode => super::step_upscaling_mode(state, 1),
         Item::Fit => super::step_fit(state, 1, true),
@@ -474,6 +510,54 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
                 Instant::now() + Duration::from_secs(u64::from(SLEEP_MINUTES[player.sleep]) * 60)
             });
         }
+    }
+}
+
+fn step_style(state: &mut RendererState, key: &'static str) {
+    let options = fluxa_ui::subtitle_style_rows("en")
+        .into_iter()
+        .find_map(|(name, _, options)| (name == key).then_some(options))
+        .unwrap_or_default();
+    let current = state.settings.values.get(key).cloned();
+    let value = if options.is_empty() {
+        json!(!current.and_then(|value| value.as_bool()).unwrap_or(false))
+    } else {
+        let at = current
+            .as_ref()
+            .and_then(Value::as_str)
+            .and_then(|current| options.iter().position(|option| *option == current))
+            .map_or(0, |at| (at + 1) % options.len());
+        json!(options[at])
+    };
+    if let Some(values) = state.settings.values.as_object_mut() {
+        values.insert(key.to_owned(), value.clone());
+    }
+    state
+        .pending_native_actions
+        .push(NativeAction::SettingsChange {
+            key: key.to_owned(),
+            value,
+        });
+    let style = state.settings.values.clone();
+    if let Some(video) = state.video.as_mut() {
+        super::apply_subtitle_style(video.as_mut(), &style);
+    }
+    if let Some(player) = state.player.as_mut() {
+        player.style = style;
+    }
+}
+
+pub(super) fn tick_style(state: &mut RendererState) {
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    let open = matches!(player.panel, Some(Panel::Menu(Menu::Style)));
+    if open && !player.style_hidden && player.tracks.iter().any(|t| t.subtitle && t.selected) {
+        player.style_hidden = true;
+        mpv(state, "sub-visibility", "no");
+    } else if !open && player.style_hidden {
+        player.style_hidden = false;
+        mpv(state, "sub-visibility", "yes");
     }
 }
 

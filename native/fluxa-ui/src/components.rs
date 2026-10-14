@@ -18,6 +18,7 @@ mod menu;
 mod mini_player;
 mod recent_searches;
 mod streams;
+mod subtitle_preview;
 mod slider;
 
 pub use cards::*;
@@ -28,13 +29,15 @@ pub use menu::*;
 pub use mini_player::*;
 pub use recent_searches::*;
 pub use streams::*;
+pub use subtitle_preview::SubtitleLook;
+pub(crate) use subtitle_preview::subtitle_sample;
 
 pub(crate) use slider::*;
 use super::{
     ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
     UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,
     cover_uv, danger_color, draw_text, full_uv, icon_button_size, ink, paint_vertical_gradient,
-    radius, shade, size, stroke, text_primary, tone, truncate_to_width,
+    radius, shade, size, stroke, text_primary, text_width, tone, truncate_to_width,
 };
 
 pub(super) fn toast(

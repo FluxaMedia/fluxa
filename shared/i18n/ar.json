@@ -2413,6 +2413,8 @@
   "player.casting_to": "البث إلى %s",
   "player.picture_in_picture": "المشغّل المصغّر",
   "player.settings": "الإعدادات",
+  "player.subtitle_style": "نمط الترجمة",
+  "settings.group.subtitle_preview": "معاينة",
   "player.anime4k": "Anime4K",
   "player.external": "خارجي",
   "player.language_unknown": "غير معروف",

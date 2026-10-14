@@ -2419,6 +2419,8 @@
   "player.casting_to": "Casting to %s",
   "player.picture_in_picture": "Mini player",
   "player.settings": "Settings",
+  "player.subtitle_style": "Subtitle style",
+  "settings.group.subtitle_preview": "Preview",
   "player.anime4k": "Anime4K",
   "player.external": "External",
   "player.language_unknown": "Unknown",

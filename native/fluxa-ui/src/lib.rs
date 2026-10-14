@@ -55,7 +55,7 @@ pub use ambient::{
 };
 pub use calendar::draw_calendar;
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, FocusedField, Glass, InputKind,
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, SubtitleLook, FocusedField, Glass, InputKind,
     NODE_DISCOVER_RECENT_BASE, action_menu_layout, caret_rect, discover_recent, draw_action_menu,
     focused_field, input_kind, is_text_node, set_input_caret, set_liquid_glass,
     set_pending_field_text, draw_mini_player_overlay,
@@ -90,6 +90,7 @@ pub use settings::{
     addon_action, addon_transport_url, addons_page, badge_input, badge_input_label, category_pages,
     collection_input, collection_input_label, collection_view_modes, draw_settings, option_label,
     poster_field, server_index, server_input, settings_model_from_core_snapshot,
+    subtitle_style_rows,
     settings_page_for_node, settings_row_by_index, settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};

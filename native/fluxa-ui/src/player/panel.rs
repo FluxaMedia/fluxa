@@ -19,6 +19,7 @@ pub struct PlayerPanel {
     pub message: Option<String>,
     pub rows: Vec<PanelRow>,
     pub list: bool,
+    pub look: Option<crate::SubtitleLook>,
 }
 
 pub(super) fn draw_panel(
@@ -167,7 +168,12 @@ fn draw_list(
         UiFormFactor::Desktop => 120.0 + chrome.viewport.safe_bottom,
         _ => 32.0,
     };
-    let max_body = chrome.rect.height() - reserved - chrome.margin() - pad * 2.0 - title_h - head_h;
+    let available_height = if panel.look.is_some() && form_factor != UiFormFactor::Desktop {
+        chrome.rect.height() * 0.62
+    } else {
+        chrome.rect.height()
+    };
+    let max_body = available_height - reserved - chrome.margin() - pad * 2.0 - title_h - head_h;
     let longest = columns
         .iter()
         .map(|(_, rows)| rows.len())
@@ -180,6 +186,13 @@ fn draw_list(
             Pos2::new(
                 chrome.rect.right() - chrome.margin() - width,
                 chrome.rect.bottom() - reserved - height,
+            ),
+            Vec2::new(width, height),
+        ),
+        _ if panel.look.is_some() => Rect::from_min_size(
+            Pos2::new(
+                chrome.rect.center().x - width * 0.5,
+                chrome.rect.top() + chrome.margin(),
             ),
             Vec2::new(width, height),
         ),
@@ -201,7 +214,17 @@ fn draw_list(
     {
         layout.activated = Some(NODE_PLAYER_PANEL_CLOSE);
     }
-    if form_factor != UiFormFactor::Desktop {
+    if let Some(look) = panel.look.as_ref() {
+        let bottom = chrome.rect.bottom() - chrome.viewport.safe_bottom - 24.0;
+        let area = Rect::from_min_max(chrome.rect.min, Pos2::new(chrome.rect.right(), bottom));
+        components::subtitle_sample(
+            &veil,
+            area,
+            look,
+            &localized("settings.subtitle_preview_text", &chrome.player.language),
+            chrome.rect.height() * 0.05,
+        );
+    } else if form_factor != UiFormFactor::Desktop {
         veil.rect_filled(chrome.rect, 0.0, shade(Shade::Veil));
     }
     veil.rect_filled(card, tokens.card_radius, tokens.surface);

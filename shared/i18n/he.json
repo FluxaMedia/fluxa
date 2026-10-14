@@ -2413,6 +2413,8 @@
   "player.casting_to": "משדר אל %s",
   "player.picture_in_picture": "נגן מיני",
   "player.settings": "הגדרות",
+  "player.subtitle_style": "סגנון כתוביות",
+  "settings.group.subtitle_preview": "תצוגה מקדימה",
   "player.anime4k": "Anime4K",
   "player.external": "חיצוני",
   "player.language_unknown": "לא ידוע",

@@ -39,6 +39,7 @@ const APPEARANCE_PAGE_HEADER_HEIGHT: f32 = 66.0;
 const APPEARANCE_GROUP_HEADING_HEIGHT: f32 = 22.0;
 const APPEARANCE_GROUP_GAP: f32 = 22.0;
 const FIELD_HEIGHT: f32 = 118.0;
+const SUBTITLE_PREVIEW_HEIGHT: f32 = 168.0;
 
 pub(super) fn group_heading(
     painter: &egui::Painter,
@@ -563,6 +564,12 @@ fn content_height(
                 + FIELD_HEIGHT
                 + APPEARANCE_GROUP_GAP
         }
+        "Subtitles" => {
+            groups_height(&groups, width, language, rows_metrics)
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + SUBTITLE_PREVIEW_HEIGHT
+                + APPEARANCE_GROUP_GAP
+        }
         "Previews" => {
             groups_height(&groups, width, language, rows_metrics)
                 + APPEARANCE_GROUP_HEADING_HEIGHT
@@ -689,6 +696,13 @@ fn color_name(value: &str) -> Option<&'static str> {
         "#FFE45C" => "auto.yellow",
         _ => return None,
     })
+}
+
+pub fn subtitle_style_rows(language: &str) -> Vec<(&'static str, String, &'static [&'static str])> {
+    SUBTITLES_SETTINGS[6..]
+        .iter()
+        .map(|row| (row.key, settings_row_label(row, language), row.options))
+        .collect()
 }
 
 pub fn option_label(key: &str, value: &str, language: &str) -> String {
@@ -1054,6 +1068,44 @@ fn draw_field(
         &settings.poster_fields[index],
         localized(field.hint, language),
         metrics,
+    );
+}
+
+fn draw_subtitle_preview(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    rect: Rect,
+    top: f32,
+    language: &str,
+    metrics: UiMetrics,
+) {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        SUBTITLE_PREVIEW_HEIGHT,
+        &localized("settings.group.subtitle_preview", language),
+        metrics,
+    );
+    let screen = card.shrink(12.0);
+    let radius = metrics.card_radius * 0.6;
+    painter.rect_filled(screen, radius, Color32::from_rgb(28, 32, 40));
+    paint_vertical_gradient(
+        &painter,
+        Rect::from_min_max(
+            Pos2::new(screen.left(), screen.center().y),
+            screen.right_bottom(),
+        ),
+        Color32::TRANSPARENT,
+        Color32::from_rgb(8, 9, 12),
+    );
+    components::subtitle_sample(
+        &painter,
+        screen,
+        &SubtitleLook::from_values(&settings.values),
+        &localized("settings.subtitle_preview_text", language),
+        screen.height() * 0.17,
     );
 }
 
@@ -1653,6 +1705,19 @@ fn draw_settings_extended_section(
                 viewport.is_compact(),
                 layout,
             );
+        }
+        "Subtitles" => {
+            let top = group_cards(
+                rect,
+                &visible_groups(settings, viewport),
+                language,
+                described(metrics),
+            )
+            .last()
+            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
+                card.bottom() + APPEARANCE_GROUP_GAP
+            });
+            draw_subtitle_preview(context, settings, rect, top, language, metrics);
         }
         "Previews" => {
             let top = group_cards(
