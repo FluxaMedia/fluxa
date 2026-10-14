@@ -11,7 +11,8 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-const MANIFEST_URL: &str = "https://github.com/FluxaMedia/fluxa/releases/latest/download/latest.json";
+const MANIFEST_URL: &str =
+    "https://github.com/FluxaMedia/fluxa/releases/latest/download/latest.json";
 const PUBLIC_KEY: &str = include_str!("../../../shared/update-public-key.txt");
 
 #[derive(Clone)]
@@ -81,7 +82,10 @@ impl Updater {
     }
 
     pub fn status(&self) -> Status {
-        self.status.lock().map(|status| status.clone()).unwrap_or(Status::Idle)
+        self.status
+            .lock()
+            .map(|status| status.clone())
+            .unwrap_or(Status::Idle)
     }
 
     pub fn check(&self, variant: &str) {
@@ -89,7 +93,10 @@ impl Updater {
             let Ok(mut status) = self.status.lock() else {
                 return;
             };
-            if matches!(*status, Status::Checking | Status::Downloading { .. } | Status::Ready { .. }) {
+            if matches!(
+                *status,
+                Status::Checking | Status::Downloading { .. } | Status::Ready { .. }
+            ) {
                 return;
             }
             *status = Status::Checking;
@@ -185,7 +192,8 @@ fn platform(variant: &str) -> String {
 
 fn staged_version(dir: &Path) -> Option<String> {
     let staged: Staged = serde_json::from_slice(&fs::read(dir.join("ready.json")).ok()?).ok()?;
-    let newer = update::compare_versions(&staged.version, CURRENT_VERSION).ok()? == std::cmp::Ordering::Greater;
+    let newer = update::compare_versions(&staged.version, CURRENT_VERSION).ok()?
+        == std::cmp::Ordering::Greater;
     (newer && dir.join("staged").is_dir()).then_some(staged.version)
 }
 
@@ -208,8 +216,14 @@ fn find(source: &Source, variant: &str) -> Result<Option<update::Release>, Strin
     let manifest = fetch(&client, &source.manifest_url)?;
     let signature = fetch(&client, &format!("{}.sig", source.manifest_url))?;
     let signature = String::from_utf8_lossy(&signature).into_owned();
-    update::check(&manifest, &signature, &source.public_key, CURRENT_VERSION, &platform(variant))
-        .map_err(|error| error.to_string())
+    update::check(
+        &manifest,
+        &signature,
+        &source.public_key,
+        CURRENT_VERSION,
+        &platform(variant),
+    )
+    .map_err(|error| error.to_string())
 }
 
 fn stage(
@@ -254,7 +268,10 @@ fn fetch(client: &reqwest::blocking::Client, url: &str) -> Result<Vec<u8>, Strin
         .send()
         .and_then(|response| response.error_for_status())
         .map_err(|error| error.to_string())?;
-    response.bytes().map(|bytes| bytes.to_vec()).map_err(|error| error.to_string())
+    response
+        .bytes()
+        .map(|bytes| bytes.to_vec())
+        .map_err(|error| error.to_string())
 }
 
 fn download(
@@ -279,7 +296,9 @@ fn download(
             let _ = fs::remove_file(path);
             return Err("cancelled".to_owned());
         }
-        let read = response.read(&mut buffer).map_err(|error| error.to_string())?;
+        let read = response
+            .read(&mut buffer)
+            .map_err(|error| error.to_string())?;
         let Some(chunk) = buffer.get(..read).filter(|chunk| !chunk.is_empty()) else {
             break;
         };
@@ -292,7 +311,11 @@ fn download(
             progress(percent);
         }
     }
-    let digest: String = hasher.finalize().iter().map(|byte| format!("{byte:02x}")).collect();
+    let digest: String = hasher
+        .finalize()
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
     if written != release.asset.size || !update::sha256_matches(&digest, &release.asset) {
         let _ = fs::remove_file(path);
         return Err("downloaded update does not match the signed checksum".to_owned());

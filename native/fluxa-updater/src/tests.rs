@@ -12,7 +12,8 @@ fn archive() -> Vec<u8> {
     header.set_size(body.len() as u64);
     header.set_mode(0o755);
     header.set_cksum();
-    tar.append_data(&mut header, "fluxa/fluxa-desktop", &body[..]).unwrap();
+    tar.append_data(&mut header, "fluxa/fluxa-desktop", &body[..])
+        .unwrap();
     let raw = tar.into_inner().unwrap();
     let mut gz = flate2::write::GzEncoder::new(Vec::new(), flate2::Compression::fast());
     gz.write_all(&raw).unwrap();
@@ -45,7 +46,10 @@ struct Fixture {
 fn fixture(name: &str, version: &str, tamper_asset: bool) -> Fixture {
     let key = SigningKey::from_bytes(&[7u8; 32]);
     let asset = archive();
-    let sha: String = Sha256::digest(&asset).iter().map(|byte| format!("{byte:02x}")).collect();
+    let sha: String = Sha256::digest(&asset)
+        .iter()
+        .map(|byte| format!("{byte:02x}"))
+        .collect();
     let listener_probe = TcpListener::bind("127.0.0.1:0").unwrap();
     let port = listener_probe.local_addr().unwrap().port();
     drop(listener_probe);
@@ -58,7 +62,11 @@ fn fixture(name: &str, version: &str, tamper_asset: bool) -> Fixture {
     })
     .to_string();
     let signature = STANDARD.encode(key.sign(manifest.as_bytes()).to_bytes());
-    let served_asset = if tamper_asset { vec![0u8; asset.len()] } else { asset };
+    let served_asset = if tamper_asset {
+        vec![0u8; asset.len()]
+    } else {
+        asset
+    };
     let files = vec![
         ("/latest.json".to_owned(), manifest.into_bytes()),
         ("/latest.json.sig".to_owned(), signature.into_bytes()),
@@ -88,11 +96,17 @@ fn serve_on(port: u16, files: Vec<(String, Vec<u8>)>) -> String {
             let path = head.split_whitespace().nth(1).unwrap_or("/").to_owned();
             match files.iter().find(|(name, _)| *name == path) {
                 Some((_, body)) => {
-                    let _ = write!(stream, "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n", body.len());
+                    let _ = write!(
+                        stream,
+                        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n",
+                        body.len()
+                    );
                     let _ = stream.write_all(body);
                 }
                 None => {
-                    let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                    let _ = stream.write_all(
+                        b"HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n",
+                    );
                 }
             }
         }
@@ -104,15 +118,34 @@ fn serve_on(port: u16, files: Vec<(String, Vec<u8>)>) -> String {
 fn newer_release_is_downloaded_verified_and_staged() {
     let Fixture { updater, dir } = fixture("ok", "9.9.9", false);
     updater.check("");
-    let found = wait_for(&updater, |status| matches!(status, Status::Available { .. } | Status::Failed(_)));
-    assert_eq!(found, Status::Available { version: "9.9.9".to_owned() });
+    let found = wait_for(&updater, |status| {
+        matches!(status, Status::Available { .. } | Status::Failed(_))
+    });
+    assert_eq!(
+        found,
+        Status::Available {
+            version: "9.9.9".to_owned()
+        }
+    );
     updater.download();
-    let status = wait_for(&updater, |status| matches!(status, Status::Ready { .. } | Status::Failed(_)));
-    assert_eq!(status, Status::Ready { version: "9.9.9".to_owned() });
+    let status = wait_for(&updater, |status| {
+        matches!(status, Status::Ready { .. } | Status::Failed(_))
+    });
+    assert_eq!(
+        status,
+        Status::Ready {
+            version: "9.9.9".to_owned()
+        }
+    );
     let staged = fs::read_to_string(dir.join("updates/staged/fluxa/fluxa-desktop")).unwrap();
     assert_eq!(staged, "new binary");
     let reopened = Updater::new(&dir);
-    assert_eq!(reopened.status(), Status::Ready { version: "9.9.9".to_owned() });
+    assert_eq!(
+        reopened.status(),
+        Status::Ready {
+            version: "9.9.9".to_owned()
+        }
+    );
     let _ = fs::remove_dir_all(&dir);
 }
 
@@ -120,10 +153,19 @@ fn newer_release_is_downloaded_verified_and_staged() {
 fn corrupted_download_is_rejected() {
     let Fixture { updater, dir } = fixture("corrupt", "9.9.9", true);
     updater.check("");
-    let found = wait_for(&updater, |status| matches!(status, Status::Available { .. } | Status::Failed(_)));
-    assert_eq!(found, Status::Available { version: "9.9.9".to_owned() });
+    let found = wait_for(&updater, |status| {
+        matches!(status, Status::Available { .. } | Status::Failed(_))
+    });
+    assert_eq!(
+        found,
+        Status::Available {
+            version: "9.9.9".to_owned()
+        }
+    );
     updater.download();
-    let status = wait_for(&updater, |status| matches!(status, Status::Ready { .. } | Status::Failed(_)));
+    let status = wait_for(&updater, |status| {
+        matches!(status, Status::Ready { .. } | Status::Failed(_))
+    });
     assert!(matches!(status, Status::Failed(_)), "{status:?}");
     assert!(!dir.join("updates/staged").exists());
     let _ = fs::remove_dir_all(&dir);
@@ -133,7 +175,9 @@ fn corrupted_download_is_rejected() {
 fn same_version_is_reported_up_to_date() {
     let Fixture { updater, dir } = fixture("same", CURRENT_VERSION, false);
     updater.check("");
-    let status = wait_for(&updater, |status| matches!(status, Status::UpToDate | Status::Failed(_)));
+    let status = wait_for(&updater, |status| {
+        matches!(status, Status::UpToDate | Status::Failed(_))
+    });
     assert_eq!(status, Status::UpToDate);
     let _ = fs::remove_dir_all(&dir);
 }
@@ -141,7 +185,11 @@ fn same_version_is_reported_up_to_date() {
 #[test]
 fn manifest_built_by_the_release_script_is_accepted() {
     let script = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../scripts/update-manifest.mjs");
-    let Ok(keys) = std::process::Command::new("node").arg(&script).arg("keygen").output() else {
+    let Ok(keys) = std::process::Command::new("node")
+        .arg(&script)
+        .arg("keygen")
+        .output()
+    else {
         return;
     };
     let keys = String::from_utf8(keys.stdout).unwrap();
@@ -157,7 +205,14 @@ fn manifest_built_by_the_release_script_is_accepted() {
     let out = dir.join("latest.json");
     let built = std::process::Command::new("node")
         .arg(&script)
-        .args(["build", "--version", "v9.9.9", "--repo", "FluxaMedia/fluxa", "--asset"])
+        .args([
+            "build",
+            "--version",
+            "v9.9.9",
+            "--repo",
+            "FluxaMedia/fluxa",
+            "--asset",
+        ])
         .arg(format!("linux-x86_64={}", asset.display()))
         .arg("--out")
         .arg(&out)
@@ -175,6 +230,11 @@ fn manifest_built_by_the_release_script_is_accepted() {
     .unwrap()
     .unwrap();
     assert_eq!(release.version, "9.9.9");
-    assert!(release.asset.url.ends_with("/v9.9.9/fluxa-9.9.9-linux-x86_64.tar.gz"));
+    assert!(
+        release
+            .asset
+            .url
+            .ends_with("/v9.9.9/fluxa-9.9.9-linux-x86_64.tar.gz")
+    );
     let _ = fs::remove_dir_all(dir);
 }

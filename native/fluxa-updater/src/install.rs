@@ -24,10 +24,14 @@ pub(crate) fn check_writable() -> Result<(), String> {
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let target = match appimage_path() {
         Some(path) => path,
-        None if cfg!(target_os = "macos") => exe.ancestors().nth(3).map(Path::to_path_buf).unwrap_or(exe),
+        None if cfg!(target_os = "macos") => {
+            exe.ancestors().nth(3).map(Path::to_path_buf).unwrap_or(exe)
+        }
         None => exe,
     };
-    let parent = target.parent().ok_or("cannot locate the install directory")?;
+    let parent = target
+        .parent()
+        .ok_or("cannot locate the install directory")?;
     let probe = parent.join(".fluxa-update-probe");
     fs::write(&probe, b"").map_err(|_| {
         "Fluxa is installed system-wide. Update it with your package manager or reinstall the new version.".to_owned()
@@ -62,7 +66,11 @@ pub(crate) fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 fn extract_zip(archive: &Path, dest: &Path) -> Result<(), String> {
-    run(Command::new("ditto").arg("-x").arg("-k").arg(archive).arg(dest))
+    run(Command::new("ditto")
+        .arg("-x")
+        .arg("-k")
+        .arg(archive)
+        .arg(dest))
 }
 
 #[cfg(not(target_os = "macos"))]
@@ -76,7 +84,10 @@ fn extract_zip(archive: &Path, dest: &Path) -> Result<(), String> {
 #[cfg(target_os = "macos")]
 fn run(command: &mut Command) -> Result<(), String> {
     let status = command.status().map_err(|error| error.to_string())?;
-    status.success().then_some(()).ok_or_else(|| format!("{:?} failed", command.get_program()))
+    status
+        .success()
+        .then_some(())
+        .ok_or_else(|| format!("{:?} failed", command.get_program()))
 }
 
 fn single_child(dir: &Path) -> Result<PathBuf, String> {
@@ -115,7 +126,8 @@ fn replace_appimage(staged: &Path, target: &Path) -> Result<(), String> {
     name.push(".old");
     let backup = target.with_file_name(name);
     let _ = fs::remove_file(&backup);
-    fs::rename(target, &backup).map_err(|error| format!("cannot replace {}: {error}", target.display()))?;
+    fs::rename(target, &backup)
+        .map_err(|error| format!("cannot replace {}: {error}", target.display()))?;
     if let Err(error) = fs::copy(staged, target) {
         let _ = fs::rename(&backup, target);
         return Err(error.to_string());
@@ -137,7 +149,8 @@ fn replace(staged_app: &Path, exe: &Path) -> Result<(), String> {
         .ok_or("Fluxa is not running from an app bundle")?;
     let backup = bundle.with_extension("app.old");
     let _ = fs::remove_dir_all(&backup);
-    fs::rename(bundle, &backup).map_err(|error| format!("cannot replace {}: {error}", bundle.display()))?;
+    fs::rename(bundle, &backup)
+        .map_err(|error| format!("cannot replace {}: {error}", bundle.display()))?;
     if let Err(error) = run(Command::new("ditto").arg(staged_app).arg(bundle)) {
         let _ = fs::remove_dir_all(bundle);
         let _ = fs::rename(&backup, bundle);
@@ -186,7 +199,10 @@ fn copy_tree(from: &Path, to: &Path) -> std::io::Result<()> {
 
 #[cfg(target_os = "macos")]
 fn relaunch(exe: &Path) -> Result<(), String> {
-    let bundle = exe.ancestors().nth(3).ok_or("cannot locate the app bundle")?;
+    let bundle = exe
+        .ancestors()
+        .nth(3)
+        .ok_or("cannot locate the app bundle")?;
     Command::new("open")
         .arg("-n")
         .arg(bundle)
@@ -264,8 +280,14 @@ mod tests {
 
         copy_tree(&staged, &installed).unwrap();
 
-        assert_eq!(fs::read_to_string(installed.join("fluxa-desktop")).unwrap(), "new");
-        assert_eq!(fs::read_to_string(installed.join("fluxa-desktop.old")).unwrap(), "old");
+        assert_eq!(
+            fs::read_to_string(installed.join("fluxa-desktop")).unwrap(),
+            "new"
+        );
+        assert_eq!(
+            fs::read_to_string(installed.join("fluxa-desktop.old")).unwrap(),
+            "old"
+        );
         assert!(installed.join("lib/libmpv.so").exists());
         remove_old_files(&installed, 3);
         assert!(!installed.join("fluxa-desktop.old").exists());
