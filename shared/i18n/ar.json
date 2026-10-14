@@ -3218,5 +3218,13 @@
   "settings.updates.restart": "أعد التشغيل للتحديث",
   "settings.updates.check": "التحقق من التحديثات",
   "settings.updates.failed": "فشل التحديث",
-  "settings.updates.unsupported": "التحديثات غير متاحة على هذا الجهاز"
+  "settings.updates.unsupported": "التحديثات غير متاحة على هذا الجهاز",
+  "settings.section.ambient_mode": "الوضع المحيطي",
+  "settings.section.ambient_mode.description": "عرض صور من الكتالوجات أثناء عدم استخدام التلفاز",
+  "ambient.enabled": "مفعّل",
+  "ambient.start_after": "البدء بعد",
+  "ambient.minutes": "%s د",
+  "ambient.catalogs": "الكتالوجات (حتى 3)",
+  "ambient.catalogs_count": "%1 من %2",
+  "ambient.same_as_hero": "مثل البانر الرئيسي"
 }

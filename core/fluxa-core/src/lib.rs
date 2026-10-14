@@ -10,6 +10,7 @@
 
 mod accounts;
 pub mod addons;
+pub mod ambient;
 mod catalog;
 mod headless_engine;
 mod home;
@@ -39,19 +40,18 @@ pub mod fuzz_targets {
     pub use crate::addons::sources::protocol::parse_manifest;
     pub use crate::catalog::identity::{
         contains_compact_episode, contains_spaced_episode, parse_episode_locator,
-        percent_decode_component
+        percent_decode_component,
     };
 }
 
 #[cfg(test)]
 mod tests {
     use crate::addons::sources::protocol::{
-        catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra
+        catalog_has_required_extra_except, catalog_requires_extra, catalog_supports_extra,
     };
     use crate::catalog::identity::stream_request_ids;
     use crate::player::streams::stream_policy::{
-        stream_playback_info_json, 
-        torrent_runtime_info_json 
+        stream_playback_info_json, torrent_runtime_info_json,
     };
     use serde_json::Value;
 
@@ -265,8 +265,6 @@ mod tests {
         );
     }
 
-
-
     #[test]
     fn catalog_extra_helpers_match_manifest_extra_shapes() {
         let modern =
@@ -280,5 +278,4 @@ mod tests {
         assert!(!catalog_has_required_extra_except(modern, r#"["search"]"#));
         assert!(catalog_has_required_extra_except(modern, "[]"));
     }
-
 }

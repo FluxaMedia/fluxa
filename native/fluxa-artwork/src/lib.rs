@@ -597,6 +597,16 @@ impl ArtworkFetcher {
         !self.pending.is_empty()
     }
 
+    pub fn request_is_backing_off(&self, source_url: &str, target_size: [u32; 2]) -> bool {
+        let Some(source_url) = normalize_url(source_url) else {
+            return false;
+        };
+        let key = request_key(&source_url, bounded_target(target_size));
+        self.failed
+            .get(&key)
+            .is_some_and(|failed_at| failed_at.elapsed() < FAILED_REQUEST_RETRY_DELAY)
+    }
+
     pub fn animated_request_is_backing_off(&self, source_url: &str, target_size: [u32; 2]) -> bool {
         let Some(source_url) = normalize_url(source_url) else {
             return false;

@@ -165,7 +165,7 @@ fn layout_preview(state: &RendererState) -> Vec<String> {
     lines
 }
 
-fn set_setting(state: &mut RendererState, key: &str, value: Value) {
+pub(crate) fn set_setting(state: &mut RendererState, key: &str, value: Value) {
     if let Some(values) = state.settings.values.as_object_mut() {
         values.insert(key.to_owned(), value.clone());
     }

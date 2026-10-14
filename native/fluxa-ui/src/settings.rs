@@ -4,6 +4,7 @@ use crate::draw_text;
 mod about;
 mod account;
 mod addons;
+mod ambient;
 mod badges;
 mod collections;
 mod model;
@@ -577,6 +578,10 @@ fn content_height(
         "Collections" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
                 + collections::collections_height(settings, settings.language(), metrics.compact)
+        }
+        "Ambient Mode" => {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+                + ambient::ambient_height(settings, settings.language(), metrics.compact)
         }
         "Add-ons" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -1692,6 +1697,15 @@ fn draw_settings_extended_section(
             );
         }
         "Collections" => collections::draw_collections(
+            context,
+            settings,
+            language,
+            rect,
+            rect.top() + metrics.settings_subpage_header_offset,
+            metrics,
+            layout,
+        ),
+        "Ambient Mode" => ambient::draw_ambient_settings(
             context,
             settings,
             language,

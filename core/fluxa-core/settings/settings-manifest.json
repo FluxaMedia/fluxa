@@ -1052,6 +1052,27 @@
       "category": "appearance"
     },
     {
+      "key": "ambientModeEnabled",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "ambientModeTimeoutMinutes",
+      "type": "string",
+      "default": "5",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
+      "key": "ambientModeCatalogs",
+      "type": "string[]",
+      "default": [],
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "followFocusHero",
       "type": "boolean",
       "default": false,

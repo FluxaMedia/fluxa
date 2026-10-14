@@ -8,6 +8,7 @@ use std::{
     time::Duration,
 };
 
+mod ambient;
 mod calendar;
 mod components;
 mod detail;
@@ -44,6 +45,11 @@ use paint::*;
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
 
+pub use ambient::{
+    AmbientView, MOTION_COUNT as AMBIENT_MOTIONS, OVERLAY_IN as AMBIENT_FADE_IN,
+    OVERLAY_OUT as AMBIENT_FADE_OUT, SLIDE_SECONDS as AMBIENT_SLIDE_SECONDS, draw_ambient,
+    next_motion as next_ambient_motion,
+};
 pub use calendar::draw_calendar;
 pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, FocusedField, Glass, InputKind,
@@ -68,14 +74,14 @@ pub use player::{
     content_warning_duration, draw_player, format_time, torrent_status_lines,
 };
 pub use profiles::{
-    PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack,
-    ProfileDraft, ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel,
-    ProfilesRequest, draw_profiles,
+    PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
+    ProfileEntry, ProfilePickerSettings, ProfilesMode, ProfilesModel, ProfilesRequest,
+    draw_profiles,
 };
 use settings::settings_card_height;
 pub use settings::{
-    ACCOUNT_PROVIDERS, AccountPrompt, BadgeCustomRow, BadgePackRow, CollectionEdit,
-    CollectionListRow, FolderEdit, FormatterPresetRow, FormatterRow, POSTER_FIELDS,
+    ACCOUNT_PROVIDERS, AccountPrompt, AmbientCatalogRow, BadgeCustomRow, BadgePackRow,
+    CollectionEdit, CollectionListRow, FolderEdit, FormatterPresetRow, FormatterRow, POSTER_FIELDS,
     SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection, ShortcutRow, UpdateState,
     UpdateView, accent_swatches, account_source, account_source_state, addon_action,
     addon_transport_url, addons_page, badge_input, badge_input_label, category_pages,

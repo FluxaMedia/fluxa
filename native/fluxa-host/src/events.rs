@@ -3,6 +3,9 @@ use super::*;
 impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return;
+            }
             let viewport = logical_viewport(state);
             if active_route(state) == Route::Home {
                 let max = fluxa_ui::home_scroll_max(viewport, &state.home);
@@ -23,6 +26,9 @@ impl FluxaHost {
 
     pub fn mouse_moved(&self, x: f32, y: f32) {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return;
+            }
             let position = state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             let regained = state
@@ -40,6 +46,16 @@ impl FluxaHost {
 
     pub fn mouse_button(&self, button: MouseButton, pressed: bool, x: f32, y: f32) {
         self.with_state(|state| {
+            if ambient::pointer(
+                state,
+                if pressed {
+                    PointerPhase::Down
+                } else {
+                    PointerPhase::Up
+                },
+            ) {
+                return;
+            }
             let position = state.mirror_position(Pos2::new(x, y) * (state.density / state.scale()));
             state.mouse_position = Some(position);
             state.keyboard_focus_visible = false;
@@ -72,6 +88,9 @@ impl FluxaHost {
 
     pub fn wheel(&self, delta_x: f32, delta_y: f32) {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return;
+            }
             let delta_x = if state.mirrored() { -delta_x } else { delta_x };
             let (delta_x, delta_y) = if state.modifiers.shift && delta_x == 0.0 {
                 (delta_y, 0.0)
@@ -113,6 +132,9 @@ impl FluxaHost {
 
     pub fn egui_key(&self, key: egui::Key, pressed: bool) {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return;
+            }
             state.egui_events.push(egui::Event::Key {
                 key,
                 physical_key: None,
@@ -137,6 +159,15 @@ impl FluxaHost {
 
     pub fn egui_event(&self, event: egui::Event) {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return;
+            }
+            if ambient::input(state) {
+                return;
+            }
+            if ambient::input(state) {
+                return;
+            }
             let event = if state.mirrored() {
                 match event {
                     egui::Event::PointerMoved(pos) => {
@@ -172,6 +203,9 @@ impl FluxaHost {
 
     pub fn pointer(&self, phase: PointerPhase, x: f32, y: f32) {
         self.with_state(|state| {
+            if ambient::pointer(state, phase) {
+                return;
+            }
             let ratio = state.density / state.scale();
             pointer_event(state, phase, [state.mirror_x(x * ratio), y * ratio])
         });
@@ -179,6 +213,9 @@ impl FluxaHost {
 
     pub fn key_down(&self, input: KeyInput) {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return;
+            }
             let input = if state.mirrored() {
                 match input {
                     KeyInput::Key(Key::Left) => KeyInput::Key(Key::Right),
@@ -200,6 +237,9 @@ impl FluxaHost {
 
     pub fn shortcut(&self, chord: &str, repeat: bool) -> bool {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return true;
+            }
             if shortcuts::recording(state) {
                 shortcuts::record(state, chord);
                 return true;
@@ -216,6 +256,9 @@ impl FluxaHost {
 
     pub fn back(&self) -> bool {
         self.with_state(|state| {
+            if ambient::input(state) {
+                return true;
+            }
             if state.player.is_none()
                 && state.profiles.is_none()
                 && state.welcome.is_none()

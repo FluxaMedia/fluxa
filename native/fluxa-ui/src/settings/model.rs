@@ -39,6 +39,15 @@ pub struct SettingsModel {
     pub collection_edit: Option<CollectionEdit>,
     pub collection_status: Option<String>,
     pub update: UpdateView,
+    pub ambient_catalogs: Vec<AmbientCatalogRow>,
+    pub ambient_minutes: u32,
+    pub ambient_limit: usize,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct AmbientCatalogRow {
+    pub name: String,
+    pub selected: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -263,6 +272,9 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         }),
         search: String::new(),
         account_auth: None,
+        ambient_catalogs: Vec::new(),
+        ambient_minutes: 5,
+        ambient_limit: 3,
         mdblist_lists: Vec::new(),
         media_servers: Vec::new(),
         server_fields: Default::default(),

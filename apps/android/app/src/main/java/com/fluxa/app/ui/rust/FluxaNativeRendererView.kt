@@ -58,6 +58,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     var onVideoRequest: ((String) -> Unit)? = null
     var onPlayerScreenChanged: ((Boolean) -> Unit)? = null
     private var playerScreen = false
+    private var keepAwake = false
     var onAppIcon: ((String) -> Unit)? = null
     var onOpenUrl: ((String) -> Unit)? = null
     var onInstallApk: ((String) -> Unit)? = null
@@ -97,6 +98,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             if (onPlayerScreen != playerScreen) {
                 playerScreen = onPlayerScreen
                 post { onPlayerScreenChanged?.invoke(onPlayerScreen) }
+            }
+            val awake = NativeRenderer.keepAwakeNative(nativeHandle)
+            if (awake != keepAwake) {
+                keepAwake = awake
+                post { keepScreenOn = awake }
             }
             val videoRequests = NativeRenderer.pollVideoNative()
             if (videoRequests != "[]") {
@@ -953,6 +959,7 @@ private object NativeRenderer {
     @JvmStatic external fun launcherFeedNative(handle: Long): String?
     @JvmStatic external fun backNative(handle: Long): Boolean
     @JvmStatic external fun isPlayingNative(handle: Long): Boolean
+    @JvmStatic external fun keepAwakeNative(handle: Long): Boolean
     @JvmStatic external fun wantsLandscapeNative(handle: Long): Boolean
     @JvmStatic external fun pollVideoNative(): String
     @JvmStatic external fun videoStatusNative(

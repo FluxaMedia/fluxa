@@ -213,6 +213,33 @@ impl EffectExecutor {
         }))
     }
 
+    pub fn fetch_ambient_items(
+        &self,
+        catalogs: Vec<Value>,
+    ) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let mut items = Vec::new();
+            for catalog in catalogs {
+                let field =
+                    |key: &str| catalog.get(key).and_then(Value::as_str).unwrap_or_default();
+                if let Ok(page) = executor
+                    .fetch_addon_catalog_items(
+                        field("transportUrl"),
+                        field("contentType"),
+                        field("catalogId"),
+                        &json!({}),
+                        "catalogPage",
+                    )
+                    .await
+                {
+                    items.extend(page);
+                }
+            }
+            items
+        })
+    }
+
     pub(super) async fn fetch_catalog_page(&self, payload: &Value) -> Result<Value, String> {
         if payload
             .get("remoteSource")
@@ -271,9 +298,7 @@ impl EffectExecutor {
             _ => 20,
         };
         let active_id = self.current_profile_id()?.unwrap_or_default();
-        let prefs = self
-            .profile_prefs(&active_id)?
-            .unwrap_or_else(|| json!({}));
+        let prefs = self.profile_prefs(&active_id)?.unwrap_or_else(|| json!({}));
         let language = self
             .storage
             .read_json("profiles")?
@@ -436,9 +461,7 @@ impl EffectExecutor {
         extra: &Value,
     ) -> Result<Vec<Value>, String> {
         let active_id = self.current_profile_id()?.unwrap_or_default();
-        let prefs = self
-            .profile_prefs(&active_id)?
-            .unwrap_or_else(|| json!({}));
+        let prefs = self.profile_prefs(&active_id)?.unwrap_or_else(|| json!({}));
         let api_key = prefs
             .get("tmdbApiKey")
             .and_then(Value::as_str)

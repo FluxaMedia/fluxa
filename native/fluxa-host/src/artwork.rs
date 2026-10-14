@@ -516,6 +516,16 @@ impl ArtworkLoader {
         None
     }
 
+    pub(super) fn failed(&self, url: &str, target_size: [u32; 2]) -> bool {
+        self.fetcher.request_is_backing_off(
+            url,
+            [
+                target_size[0].min(MAX_ARTWORK_SIDE),
+                target_size[1].min(MAX_ARTWORK_SIDE),
+            ],
+        )
+    }
+
     pub(super) fn size(&self, url: Option<&str>) -> Option<[u32; 2]> {
         let url = fluxa_artwork::normalize_url(url?)?;
         self.latest_keys

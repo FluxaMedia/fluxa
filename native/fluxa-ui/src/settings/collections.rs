@@ -45,7 +45,7 @@ pub fn collection_view_modes() -> &'static [&'static str] {
     &VIEW_MODES
 }
 
-enum Line {
+pub(super) enum Line {
     Input {
         node: u64,
         label: String,
@@ -68,9 +68,9 @@ enum Line {
     Note(String),
 }
 
-struct Group {
-    title: String,
-    lines: Vec<Line>,
+pub(super) struct Group {
+    pub(super) title: String,
+    pub(super) lines: Vec<Line>,
 }
 
 fn provider_index(provider: &str) -> usize {
@@ -81,7 +81,7 @@ fn provider_index(provider: &str) -> usize {
     }
 }
 
-fn toggle(label: &str, node: u64, on: bool, language: &str) -> Line {
+pub(super) fn toggle(label: &str, node: u64, on: bool, language: &str) -> Line {
     Line::Choice {
         label: localized(label, language),
         pills: vec![(
@@ -326,17 +326,20 @@ fn group_height(group: &Group, compact: bool) -> f32 {
     APPEARANCE_GROUP_HEADING_HEIGHT + lines_height(group, compact) + APPEARANCE_GROUP_GAP
 }
 
+pub(super) fn groups_height(groups: &[Group], compact: bool) -> f32 {
+    groups
+        .iter()
+        .map(|group| group_height(group, compact))
+        .sum::<f32>()
+}
+
 pub(super) fn collections_height(settings: &SettingsModel, language: &str, compact: bool) -> f32 {
     let status = if settings.collection_status.is_some() {
         STATUS_HEIGHT
     } else {
         0.0
     };
-    groups(settings, language)
-        .iter()
-        .map(|group| group_height(group, compact))
-        .sum::<f32>()
-        + status
+    groups_height(&groups(settings, language), compact) + status
 }
 
 pub(super) fn draw_collections(
@@ -348,28 +351,49 @@ pub(super) fn draw_collections(
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
-    let painter = context.layer_painter(egui::LayerId::background());
-    let size = metrics.settings_row_label_size_desktop;
-    let compact = metrics.compact;
-    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
     if let Some(status) = &settings.collection_status {
+        let painter = context.layer_painter(egui::LayerId::background());
         draw_text(
             &painter,
             Pos2::new(rect.left() + metrics.settings_row_inset, top),
             Align2::LEFT_TOP,
             status,
-            muted.clone(),
+            crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0),
             metrics.text_muted,
             Some(rect.width()),
         );
         top += STATUS_HEIGHT;
     }
-    for group in groups(settings, language) {
+    draw_groups(
+        context,
+        settings,
+        &groups(settings, language),
+        rect,
+        top,
+        metrics,
+        layout,
+    );
+}
+
+pub(super) fn draw_groups(
+    context: &egui::Context,
+    settings: &SettingsModel,
+    groups: &[Group],
+    rect: Rect,
+    mut top: f32,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let painter = context.layer_painter(egui::LayerId::background());
+    let size = metrics.settings_row_label_size_desktop;
+    let compact = metrics.compact;
+    let muted = crate::fonts::regular(metrics.screen_card_subtitle_size + 2.0);
+    for group in groups {
         let card = account_group(
             &painter,
             rect,
             top,
-            lines_height(&group, compact),
+            lines_height(group, compact),
             &group.title,
             metrics,
         );

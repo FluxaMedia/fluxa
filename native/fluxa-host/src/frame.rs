@@ -58,6 +58,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         && state.player.is_none())
     .then(|| state.home_refreshed_at + HOME_REFRESH_INTERVAL);
     let trailer = trailer::next_redraw(state, now);
+    let ambient = ambient::next_redraw(state);
     let caret = state
         .ui
         .focused()
@@ -72,6 +73,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         trailer,
         caret,
         home_refresh,
+        ambient,
         updating,
         notice,
     ]
@@ -161,6 +163,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
     sync_home_from_core_snapshot(state);
     apply_notice(state);
     shorts::tick(state);
+    ambient::tick(state);
+    ambient::sync_settings(state);
     trailer::tick(state);
     logos::tick(state);
     layout::sync_expanded(state);
@@ -236,6 +240,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     presence::update(current_presence(state));
     timer.mark("prepare");
     let menu = card_menu::view(state);
+    let ambient_view = ambient::view(state);
     let caret = state
         .ui
         .focused()
@@ -307,6 +312,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 modifiers,
                 pre_present.as_ref(),
                 menu.as_ref(),
+                ambient_view.as_ref(),
                 &mut timer,
             )
         })

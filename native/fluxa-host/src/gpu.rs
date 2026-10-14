@@ -682,6 +682,7 @@ impl Gpu {
         modifiers: egui::Modifiers,
         pre_present: Option<&PrePresent>,
         menu: Option<&card_menu::MenuView>,
+        ambient: Option<&fluxa_ui::AmbientView>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         let passthrough =
@@ -853,6 +854,9 @@ impl Gpu {
                     menu.anchor,
                     menu.serial,
                 );
+            }
+            if let Some(ambient) = ambient {
+                fluxa_ui::draw_ambient(ui.ctx(), viewport, ambient, &mut assets);
             }
             if profiles.is_none() && player.is_none() && route == Route::Home {
                 fluxa_ui::draw_update_prompt(

@@ -588,6 +588,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 || updates::activate_node(state, node)
                 || stream_badges::activate_node(state, node)
                 || collections::activate_node(state, node)
+                || ambient::activate_node(state, node)
             {
                 continue;
             }

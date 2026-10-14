@@ -86,6 +86,7 @@ impl NativeSurface {
 
 mod accounts;
 mod actions;
+mod ambient;
 mod artwork;
 mod bridge_video;
 mod card_menu;
@@ -225,6 +226,7 @@ struct RendererState {
     fullscreen_toggle: bool,
     shortcut_recording: Option<String>,
     collections: collections::State,
+    ambient: ambient::State,
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     updates: updates::State,
@@ -422,6 +424,7 @@ impl FluxaHost {
             fullscreen_toggle: false,
             shortcut_recording: None,
             collections: Default::default(),
+            ambient: Default::default(),
             stream_badges: Default::default(),
             applied_app_icon: None,
             updates: Default::default(),
@@ -651,6 +654,11 @@ impl FluxaHost {
 
     pub fn is_playing(&self) -> bool {
         self.peek(|state| state.player.is_some()).unwrap_or(false)
+    }
+
+    pub fn keep_awake(&self) -> bool {
+        self.peek(|state| state.player.is_some() || state.ambient.visible())
+            .unwrap_or(false)
     }
 
     pub fn take_fullscreen_toggle(&self) -> bool {

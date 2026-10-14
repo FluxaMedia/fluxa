@@ -3229,5 +3229,13 @@
   "auth.tv.step_scan": "Telefonunun kamerasını koda tut",
   "auth.tv.step_login": "Nuvio hesabınla giriş yap",
   "auth.tv.step_return": "Buraya dön, seni otomatik giriş yaptıracağız",
-  "auth.error.server": "Sunucuda bir sorun oluştu, birazdan tekrar dene"
+  "auth.error.server": "Sunucuda bir sorun oluştu, birazdan tekrar dene",
+  "settings.section.ambient_mode": "Ortam Modu",
+  "settings.section.ambient_mode.description": "TV boştayken kataloglarınızdaki görselleri gösterir",
+  "ambient.enabled": "Etkin",
+  "ambient.start_after": "Başlama Süresi",
+  "ambient.minutes": "%s dk",
+  "ambient.catalogs": "Kataloglar (en fazla 3)",
+  "ambient.catalogs_count": "%1 / %2",
+  "ambient.same_as_hero": "Ana banner ile aynı"
 }

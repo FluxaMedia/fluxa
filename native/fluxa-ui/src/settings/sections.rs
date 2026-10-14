@@ -1024,7 +1024,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 23] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1066,6 +1066,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 23] = [
         description: "Hero and rows on the home screen",
         rows: &HOME_SETTINGS,
         groups: &HOME_GROUPS,
+    },
+    SettingsSection {
+        title: "Ambient Mode",
+        category: "Appearance",
+        description: "Show artwork from your catalogs while the TV sits idle",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
     },
     SettingsSection {
         title: "Details",
