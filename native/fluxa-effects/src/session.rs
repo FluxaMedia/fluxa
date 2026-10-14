@@ -14,6 +14,7 @@ struct AppSession {
     storage: Storage,
     persisted_addons: Value,
     persisted_plugins: Value,
+    persisted_downloads: Vec<(String, String)>,
     executor: EffectExecutor,
     sender: Sender<EffectCompletion>,
     outstanding: usize,
@@ -29,7 +30,15 @@ impl AppSession {
             .as_str()
             .unwrap_or("guest")
             .to_owned();
-        let runtime = FluxaRuntime::new(state)?;
+        let mut runtime = FluxaRuntime::new(state)?;
+        let stored_downloads = storage
+            .read_json(&Storage::downloads_key(&active_id))
+            .ok()
+            .flatten()
+            .filter(Value::is_array);
+        if let Some(items) = stored_downloads {
+            let _ = runtime.dispatch(json!({"type": "offlineDownloadsRestored", "items": items}));
+        }
         let executor = EffectExecutor::bound_to(storage.clone(), &active_id);
         executor.warm_torrent_engine();
         Ok(Self {
@@ -37,6 +46,7 @@ impl AppSession {
             storage,
             persisted_addons,
             persisted_plugins,
+            persisted_downloads: Vec::new(),
             executor,
             sender,
             outstanding: 0,
@@ -48,6 +58,7 @@ impl AppSession {
         let update = self.runtime.dispatch(action)?;
         self.persist_addons();
         self.persist_plugins();
+        self.persist_downloads();
         self.schedule(update.effects);
         Ok(())
     }
@@ -80,6 +91,7 @@ impl AppSession {
             Ok(update) => {
                 self.persist_addons();
                 self.persist_plugins();
+                self.persist_downloads();
                 self.schedule(update.effects);
             }
             Err(error) => crate::log!(
@@ -194,6 +206,39 @@ impl AppSession {
         }
     }
 
+    fn persist_downloads(&mut self) {
+        let snapshot = self.runtime.snapshot();
+        let Some(items) = snapshot
+            .pointer("/offline/items")
+            .and_then(Value::as_array)
+        else {
+            return;
+        };
+        let signature = items
+            .iter()
+            .map(|item| {
+                (
+                    item["id"].as_str().unwrap_or_default().to_owned(),
+                    item["status"].as_str().unwrap_or_default().to_owned(),
+                )
+            })
+            .collect::<Vec<_>>();
+        if signature == self.persisted_downloads {
+            return;
+        }
+        let active_id = snapshot
+            .pointer("/profile/activeProfileId")
+            .and_then(Value::as_str)
+            .unwrap_or("guest");
+        match self
+            .storage
+            .write_json(&Storage::downloads_key(active_id), &Value::Array(items.clone()))
+        {
+            Ok(()) => self.persisted_downloads = signature,
+            Err(error) => crate::log!("[fluxa-session] saving downloads failed: {error}"),
+        }
+    }
+
     fn snapshot(&self) -> Arc<Value> {
         self.runtime.snapshot_shared()
     }
@@ -268,12 +313,14 @@ impl SessionHandle {
         {
             let sink = commands.clone();
             let pending = queued.clone();
-            executor.set_watch_sink(Arc::new(move |action| {
+            let forward: crate::ActionSink = Arc::new(move |action| {
                 pending.fetch_add(1, Ordering::AcqRel);
                 if sink.send(Command::Dispatch(action)).is_err() {
                     pending.fetch_sub(1, Ordering::AcqRel);
                 }
-            }));
+            });
+            executor.set_watch_sink(forward.clone());
+            executor.set_download_sink(forward);
         }
         #[cfg(not(target_arch = "wasm32"))]
         let sync = commands.clone();

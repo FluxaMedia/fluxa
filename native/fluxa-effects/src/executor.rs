@@ -9,6 +9,8 @@ pub(crate) mod account;
 mod addons;
 mod catalog;
 #[cfg(not(target_arch = "wasm32"))]
+mod downloads;
+#[cfg(not(target_arch = "wasm32"))]
 mod fluxa_account;
 mod home;
 mod http;
@@ -62,6 +64,8 @@ pub struct EffectExecutor {
     feed: std::sync::Arc<std::sync::Mutex<streams::StreamFeed>>,
     #[cfg(not(target_arch = "wasm32"))]
     watch: std::sync::Arc<watch_together::WatchTogether>,
+    #[cfg(not(target_arch = "wasm32"))]
+    downloads: std::sync::Arc<downloads::Downloads>,
 }
 
 pub use streams::FeedSnapshot;
@@ -87,6 +91,8 @@ impl EffectExecutor {
             feed: Default::default(),
             #[cfg(not(target_arch = "wasm32"))]
             watch: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            downloads: Default::default(),
         }
     }
 
@@ -256,6 +262,14 @@ impl EffectExecutor {
                 self.start_torrent_stream(&payload)
             }
             fluxa_core::runtime::EffectKind::StopTorrent => self.stop_torrent(),
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::EnqueueOfflineDownload => {
+                self.start_offline_download(&payload)
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::ControlOfflineDownload => {
+                self.control_offline_download(&payload)
+            }
             fluxa_core::runtime::EffectKind::ReadCalendarMonth => {
                 self.read_calendar_month(&payload).await
             }

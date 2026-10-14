@@ -13,6 +13,10 @@ impl Storage {
         format!("library_{}", sanitize_key(profile_id))
     }
 
+    pub fn downloads_key(profile_id: &str) -> String {
+        format!("downloads_{}", sanitize_key(profile_id))
+    }
+
     pub fn media_servers_key(profile_id: &str) -> String {
         format!("media_servers_{}", sanitize_key(profile_id))
     }
