@@ -231,7 +231,7 @@ pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.home"),
     (10, "settings.group.continue_watching"),
 ];
-pub(super) const DETAILS_SETTINGS: [SettingsRow; 14] = [
+pub(super) const DETAILS_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Detail hero collapses",
         key: "detailCollapsingHero",
@@ -263,18 +263,8 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 14] = [
         options: &["2", "4", "6", "10"],
     },
     SettingsRow {
-        label: "Show cast",
-        key: "detailShowCast",
-        options: &[],
-    },
-    SettingsRow {
         label: "Episode descriptions",
         key: "detailShowEpisodeDescriptions",
-        options: &[],
-    },
-    SettingsRow {
-        label: "Recommendations",
-        key: "detailShowRecommendations",
         options: &[],
     },
     SettingsRow {
@@ -304,7 +294,7 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 14] = [
     },
 ];
 pub(super) const DETAILS_GROUPS: [(usize, &str); 2] = [
-    (10, "settings.group.detail_page"),
+    (8, "settings.group.detail_page"),
     (4, "settings.group.episodes"),
 ];
 pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [

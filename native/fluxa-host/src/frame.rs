@@ -166,6 +166,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     shorts::tick(state);
     ambient::tick(state);
     ambient::sync_settings(state);
+    detail_sections::sync_settings(state);
     trailer::tick(state);
     logos::tick(state);
     layout::sync_expanded(state);

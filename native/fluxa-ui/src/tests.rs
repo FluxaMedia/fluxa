@@ -746,6 +746,7 @@ fn detail_actions_wrap_inside_a_narrow_mobile_layout() {
             title: "A long title that needs to wrap on a compact phone".to_owned(),
             meta_line: "Series · 2026 · Drama".to_owned(),
             description: "A longer synopsis that should wrap to the available width instead of pushing the action row off screen. ".repeat(3),
+            favorites_enabled: true,
             ..Default::default()
         };
     let layout = draw_test_frame(viewport, |context, assets| {
@@ -1661,6 +1662,65 @@ fn app_extras_feed_the_detail_model() {
     assert!(detail.info_lines[0].contains("2026-05-01"));
     assert!(detail.info_lines[0].contains("2026-07-01"));
     assert!(detail.info_lines[1].contains("Crunchyroll, Netflix"));
+}
+
+#[test]
+fn show_info_lists_crew_dates_and_country_from_addon_meta() {
+    let meta = json!({
+        "director": ["Rob Savage"],
+        "writer": ["Josh Malerman", "Nathan Elston"],
+        "year": "2026",
+        "released": "2026-10-08T00:00:00.000Z",
+        "runtime": "1h33min",
+        "country": "United States of America"
+    });
+    let info = detail_show_info(&meta, "en");
+    let values = info
+        .iter()
+        .map(|(_, value)| value.as_str())
+        .collect::<Vec<_>>();
+    assert_eq!(
+        values,
+        [
+            "Rob Savage",
+            "Josh Malerman, Nathan Elston",
+            "2026",
+            "2026-10-08",
+            "1h33min",
+            "United States of America"
+        ]
+    );
+    assert!(detail_show_info(&json!({}), "en").is_empty());
+}
+
+#[test]
+fn trailer_cards_keep_title_thumbnail_and_url() {
+    let detail = json!({"trailers": [
+        {"title": "Official Trailer 2", "url": "https://youtu.be/a", "thumbnail": "https://img/a.jpg"},
+        {"title": "No link"},
+        {"title": "Teaser", "url": "https://youtu.be/b"}
+    ]});
+    let cards = detail_trailer_cards(&detail);
+    assert_eq!(cards.len(), 2);
+    assert_eq!(cards[0].title, "Official Trailer 2");
+    assert_eq!(cards[0].thumbnail.as_deref(), Some("https://img/a.jpg"));
+    assert_eq!(cards[1].url, "https://youtu.be/b");
+}
+
+#[test]
+fn hidden_sections_take_no_space_and_order_is_respected() {
+    let viewport = Viewport::new(1280, 720, UiFormFactor::Desktop);
+    let mut detail = DetailModel {
+        trailer_cards: vec![DetailTrailer::default()],
+        show_info: vec![("Year".to_owned(), "2026".to_owned())],
+        ..Default::default()
+    };
+    let full = detail_scroll_max(viewport, &detail);
+    detail.sections = Some(vec![DetailSection::ShowInfo]);
+    let info_only = detail_scroll_max(viewport, &detail);
+    detail.sections = Some(Vec::new());
+    assert!(full > info_only);
+    assert!(info_only > detail_scroll_max(viewport, &detail));
 }
 
 #[test]

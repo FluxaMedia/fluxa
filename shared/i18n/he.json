@@ -3248,5 +3248,12 @@
   "settings.ambientModeEnabled": "מופעל",
   "settings.ambientModeTimeoutMinutes": "התחלה לאחר",
   "settings.row.ambientModeEnabled.description": "הצגת תמונות כשהאפליקציה במצב סרק",
-  "settings.row.ambientModeTimeoutMinutes.description": "זמן סרק לפני תחילת המצגת"
+  "settings.row.ambientModeTimeoutMinutes.description": "זמן סרק לפני תחילת המצגת",
+  "detail.trailers": "טריילרים",
+  "detail.show_info": "פרטי היצירה",
+  "detail.year": "שנה",
+  "detail.released": "תאריך יציאה",
+  "detail.runtime": "משך",
+  "detail.country": "מדינה",
+  "settings.detail_sections_hint": "הפעלה או כיבוי של מקטעים ושינוי הסדר שלהם."
 }

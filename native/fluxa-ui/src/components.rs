@@ -27,10 +27,10 @@ pub use recent_searches::*;
 pub use streams::*;
 
 use super::{
-    ArtworkPriority, DetailEpisode, HomeAssets, HomeCard, HomeLayout, Shade, UiMetrics, Viewport,
-    accent, artwork_target_size, background, badge_fill, button_height, cover_uv, danger_color,
-    draw_text, full_uv, icon_button_size, ink, paint_vertical_gradient, radius, shade, size,
-    stroke, text_primary, tone, truncate_to_width,
+    ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
+    UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,
+    cover_uv, danger_color, draw_text, full_uv, icon_button_size, ink, paint_vertical_gradient,
+    radius, shade, size, stroke, text_primary, tone, truncate_to_width,
 };
 
 pub(super) fn toast(
@@ -335,6 +335,51 @@ pub(super) fn episode_artwork(
             egui::StrokeKind::Inside,
         );
     }
+}
+
+pub(super) fn trailer_card(
+    painter: &Painter,
+    assets: &mut impl HomeAssets,
+    rect: Rect,
+    trailer: &DetailTrailer,
+    hovered: bool,
+    metrics: UiMetrics,
+) {
+    painter.rect_filled(rect, radius::control(), metrics.ink(tone::FAINT));
+    rounded_artwork(
+        painter,
+        rect,
+        10.0,
+        trailer.thumbnail.as_deref(),
+        artwork_target_size(rect.size(), painter.ctx().pixels_per_point()),
+        ArtworkPriority::Visible,
+        Color32::WHITE,
+        assets,
+    );
+    painter.rect_filled(
+        rect,
+        radius::control(),
+        shade(if hovered { Shade::Faint } else { Shade::Veil }),
+    );
+    let center = rect.center();
+    painter.circle_filled(center, 22.0, shade(Shade::Veil));
+    if let Some(icon) = assets.icon("PlayFilled") {
+        painter.image(
+            icon,
+            Rect::from_center_size(center, Vec2::splat(22.0)),
+            Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
+            metrics.text_primary,
+        );
+    }
+    draw_text(
+        painter,
+        Pos2::new(rect.left(), rect.bottom() + 10.0),
+        Align2::LEFT_TOP,
+        &trailer.title,
+        FontId::proportional(15.0),
+        text_primary(),
+        Some(rect.width()),
+    );
 }
 
 pub(super) fn episode_text(
@@ -1477,7 +1522,6 @@ fn is_pill_node(node: u64) -> bool {
             | NODE_DETAIL_DROPPED
             | NODE_DETAIL_FAVORITE
             | NODE_DETAIL_SHUFFLE
-            | NODE_DETAIL_TRAILER
             | NODE_SHORTS_PLAY
             | NODE_SHORTS_WATCHLIST
             | NODE_SHORTS_INFO

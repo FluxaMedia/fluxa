@@ -331,6 +331,34 @@
       "category": "general"
     },
     {
+      "key": "detailShowEpisodes",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailShowTrailers",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailShowInfo",
+      "type": "boolean",
+      "default": null,
+      "scope": "profile",
+      "category": "general"
+    },
+    {
+      "key": "detailSectionOrder",
+      "type": "string",
+      "default": "cast,episodes,trailers,recommendations,show_info",
+      "scope": "profile",
+      "category": "appearance"
+    },
+    {
       "key": "diagnosticMode",
       "type": "boolean",
       "default": false,

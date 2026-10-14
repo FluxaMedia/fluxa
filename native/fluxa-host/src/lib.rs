@@ -92,6 +92,7 @@ mod bridge_video;
 mod card_menu;
 mod cast;
 mod collections;
+mod detail_sections;
 mod events;
 mod frame;
 mod gpu;

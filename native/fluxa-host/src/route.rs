@@ -90,6 +90,9 @@ pub(super) enum NativeAction {
     ToggleWatchlist {
         item: Value,
     },
+    ToggleFavorite {
+        item: Value,
+    },
     SettingsChange {
         key: String,
         value: Value,

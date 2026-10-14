@@ -193,15 +193,7 @@ pub fn parse_user_theme(source: &str) -> (UserTheme, CssReport) {
             } else if name == "nav-items" {
                 &["home", "discover", "library", "shorts"]
             } else {
-                &[
-                    "play",
-                    "watchlist",
-                    "shuffle",
-                    "trailer",
-                    "completed",
-                    "dropped",
-                    "favorite",
-                ]
+                &["play", "watchlist", "shuffle", "completed", "dropped"]
             };
             let mut list: Vec<String> = Vec::new();
             for entry in value.split(',').map(|entry| entry.trim().to_lowercase()) {

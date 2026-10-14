@@ -7,6 +7,7 @@ mod addons;
 mod ambient;
 mod badges;
 mod collections;
+mod detail_sections;
 mod model;
 mod sections;
 pub use account::*;
@@ -582,6 +583,10 @@ fn content_height(
         "Ambient Mode" => {
             groups_height(&groups, width, language, rows_metrics)
                 + ambient::ambient_height(settings, language, metrics.compact)
+        }
+        "Details" => {
+            groups_height(&groups, width, language, rows_metrics)
+                + detail_sections::detail_sections_height(settings, language, metrics.compact)
         }
         "Add-ons" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -1718,6 +1723,21 @@ fn draw_settings_extended_section(
                 card.bottom() + APPEARANCE_GROUP_GAP
             });
             ambient::draw_ambient_settings(context, settings, language, rect, top, metrics, layout);
+        }
+        "Details" => {
+            let top = group_cards(
+                rect,
+                &visible_groups(settings, viewport),
+                language,
+                described(metrics),
+            )
+            .last()
+            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
+                card.bottom() + APPEARANCE_GROUP_GAP
+            });
+            detail_sections::draw_detail_sections(
+                context, settings, language, rect, top, metrics, layout,
+            );
         }
         "Add-ons" => addons::draw_addons(
             context,

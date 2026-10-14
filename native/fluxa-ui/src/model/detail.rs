@@ -20,6 +20,10 @@ pub struct DetailModel {
     pub ratings: Vec<(String, String)>,
     pub genres: Vec<String>,
     pub trailers: Vec<String>,
+    pub trailer_cards: Vec<DetailTrailer>,
+    pub show_info: Vec<(String, String)>,
+    pub favorites_enabled: bool,
+    pub sections: Option<Vec<DetailSection>>,
     pub trailer: Option<egui::TextureId>,
     pub trailer_subtitle: Option<String>,
     pub error: Option<String>,
@@ -38,7 +42,7 @@ pub struct DetailModel {
     pub hide_spoilers: bool,
     pub info_lines: Vec<String>,
     pub resume: Option<HomeCard>,
-    pub row_scroll_offsets: [f32; 4],
+    pub row_scroll_offsets: [f32; 5],
     pub selected_season: Option<i64>,
 }
 
@@ -99,6 +103,53 @@ pub struct EpisodeView<'a> {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct DetailTrailer {
+    pub title: String,
+    pub thumbnail: Option<String>,
+    pub url: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DetailSection {
+    Episodes,
+    Trailers,
+    ShowInfo,
+    Cast,
+    Recommendations,
+}
+
+impl DetailSection {
+    pub const ALL: [Self; 5] = [
+        Self::Cast,
+        Self::Episodes,
+        Self::Trailers,
+        Self::Recommendations,
+        Self::ShowInfo,
+    ];
+
+    pub fn from_key(key: &str) -> Option<Self> {
+        match key {
+            "episodes" => Some(Self::Episodes),
+            "trailers" => Some(Self::Trailers),
+            "show_info" => Some(Self::ShowInfo),
+            "cast" => Some(Self::Cast),
+            "recommendations" => Some(Self::Recommendations),
+            _ => None,
+        }
+    }
+
+    pub fn title_key(self) -> &'static str {
+        match self {
+            Self::Episodes => "auto.episodes",
+            Self::Trailers => "detail.trailers",
+            Self::ShowInfo => "detail.show_info",
+            Self::Cast => "detail.cast_crew",
+            Self::Recommendations => "player.recommendations",
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct DetailCastMember {
     pub name: String,
     pub role: Option<String>,
@@ -106,6 +157,18 @@ pub struct DetailCastMember {
 }
 
 impl DetailModel {
+    pub fn section_order(&self) -> Vec<DetailSection> {
+        self.sections
+            .clone()
+            .unwrap_or_else(|| DetailSection::ALL.to_vec())
+    }
+
+    pub fn shows(&self, section: DetailSection) -> bool {
+        self.sections
+            .as_ref()
+            .is_none_or(|sections| sections.contains(&section))
+    }
+
     pub fn season_selector_mode(&self) -> SeasonSelector {
         match self.season_selector {
             SeasonSelector::Posters if self.season_posters.is_empty() => SeasonSelector::Chips,
@@ -383,6 +446,75 @@ pub(crate) fn detail_info_lines(meta: &serde_json::Value, language: &str) -> Vec
     lines
 }
 
+pub(crate) fn detail_trailer_cards(detail: &serde_json::Value) -> Vec<DetailTrailer> {
+    detail
+        .get("trailers")
+        .and_then(serde_json::Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| {
+                    let url = first_value_string(item, &["url", "link"])?;
+                    Some(DetailTrailer {
+                        title: first_value_string(item, &["title", "name"]).unwrap_or_default(),
+                        thumbnail: first_value_string(item, &["thumbnail"]),
+                        url,
+                    })
+                })
+                .take(6)
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn info_names(meta: &serde_json::Value, keys: &[&str]) -> Option<String> {
+    let extras = app_extras(meta);
+    let value = keys
+        .iter()
+        .find_map(|key| meta.get(*key).or_else(|| extras?.get(*key)))?;
+    let names = match value {
+        serde_json::Value::Array(items) => items
+            .iter()
+            .filter_map(|item| {
+                item.as_str()
+                    .map(|name| name.trim().to_owned())
+                    .or_else(|| first_value_string(item, &["name"]))
+            })
+            .filter(|name| !name.is_empty())
+            .collect::<Vec<_>>(),
+        serde_json::Value::String(name) => vec![name.trim().to_owned()],
+        _ => Vec::new(),
+    };
+    (!names.is_empty()).then(|| names.join(", "))
+}
+
+pub(crate) fn detail_show_info(meta: &serde_json::Value, language: &str) -> Vec<(String, String)> {
+    let year = first_value_string(meta, &["year", "releaseInfo"]).or_else(|| {
+        meta.get("year")
+            .and_then(serde_json::Value::as_i64)
+            .map(|year| year.to_string())
+    });
+    let released = first_value_string(meta, &["released"])
+        .map(|date| date.chars().take(10).collect::<String>());
+    [
+        (
+            "detail.director",
+            info_names(meta, &["director", "directors"]),
+        ),
+        ("detail.writer", info_names(meta, &["writer", "writers"])),
+        ("detail.year", year),
+        ("detail.released", released),
+        ("detail.runtime", first_value_string(meta, &["runtime"])),
+        ("detail.country", info_names(meta, &["country"])),
+    ]
+    .into_iter()
+    .filter_map(|(label, value)| {
+        let value = value.filter(|value| !value.trim().is_empty())?;
+        Some((localized(label, language), value))
+    })
+    .collect()
+}
+
 pub(crate) fn detail_cast(meta: &serde_json::Value) -> Vec<DetailCastMember> {
     let mut cast = Vec::<DetailCastMember>::new();
     let sources = [
@@ -567,6 +699,13 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
             })
             .unwrap_or_default(),
         trailers: trailer_urls(detail),
+        trailer_cards: detail_trailer_cards(detail),
+        show_info: detail_show_info(meta, &language),
+        favorites_enabled: snapshot
+            .pointer("/settings/values/integrationLibrarySource")
+            .and_then(serde_json::Value::as_str)
+            == Some("trakt"),
+        sections: None,
         trailer: None,
         trailer_subtitle: None,
         error: detail
@@ -617,7 +756,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
         info_lines: detail_info_lines(meta, &language),
         resume: None,
         episodes,
-        row_scroll_offsets: [0.0; 4],
+        row_scroll_offsets: [0.0; 5],
         selected_season: None,
     }
 }

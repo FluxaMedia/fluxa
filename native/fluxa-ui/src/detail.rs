@@ -11,6 +11,10 @@ const SEASON_TILE_LABEL: f32 = 30.0;
 const EPISODE_WIDTH: f32 = 300.0;
 const CAST_SIZE: f32 = 92.0;
 const CAST_TEXT: f32 = 48.0;
+const TRAILER_WIDTH: f32 = 280.0;
+const TRAILER_TEXT: f32 = 34.0;
+const INFO_ROW: f32 = 38.0;
+const INFO_LABEL: f32 = 150.0;
 
 fn season_row(detail: &DetailModel) -> f32 {
     match detail.season_selector_mode() {
@@ -30,10 +34,44 @@ fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
 struct DetailGeometry {
     margin: f32,
     hero_height: f32,
-    episodes_top: Option<f32>,
-    cast_top: Option<f32>,
-    similar_top: Option<f32>,
+    tops: [Option<f32>; DetailSection::ALL.len()],
     bottom: f32,
+}
+
+impl DetailGeometry {
+    fn top(&self, section: DetailSection) -> Option<f32> {
+        self.tops[section as usize]
+    }
+}
+
+fn trailer_size(compact: bool) -> Vec2 {
+    let width = if compact { 240.0 } else { TRAILER_WIDTH };
+    Vec2::new(width, width * 9.0 / 16.0)
+}
+
+fn section_height(
+    section: DetailSection,
+    viewport: Viewport,
+    detail: &DetailModel,
+    metrics: UiMetrics,
+    margin: f32,
+) -> Option<f32> {
+    let body = match section {
+        DetailSection::Episodes => (!detail.episodes.is_empty())
+            .then(|| season_row(detail) + episodes::episodes_height(viewport, detail, margin))?,
+        DetailSection::Trailers => (!detail.trailer_cards.is_empty())
+            .then(|| trailer_size(viewport.is_compact()).y + TRAILER_TEXT)?,
+        DetailSection::ShowInfo => {
+            (!detail.show_info.is_empty()).then(|| detail.show_info.len() as f32 * INFO_ROW)?
+        }
+        DetailSection::Cast => {
+            (!detail.cast.is_empty() || !detail.crew.is_empty()).then_some(CAST_SIZE + CAST_TEXT)?
+        }
+        DetailSection::Recommendations => {
+            (!detail.similar.is_empty()).then(|| similar_size(metrics).1)?
+        }
+    };
+    Some(SECTION_TITLE + body + SECTION_GAP)
 }
 
 fn compact_image_height(viewport: Viewport) -> f32 {
@@ -50,35 +88,22 @@ fn detail_geometry(viewport: Viewport, detail: &DetailModel) -> DetailGeometry {
         (viewport.height * 0.84).clamp(480.0, 980.0)
     };
     let mut y = hero_height + 12.0;
-    let episodes_top = (!detail.episodes.is_empty()).then(|| {
-        let top = y;
-        y += SECTION_TITLE
-            + season_row(detail)
-            + episodes::episodes_height(viewport, detail, margin)
-            + SECTION_GAP;
-        top
-    });
-    let cast_top = (!detail.cast.is_empty() || !detail.crew.is_empty()).then(|| {
-        let top = y;
-        y += SECTION_TITLE + CAST_SIZE + CAST_TEXT + SECTION_GAP;
-        top
-    });
-    let similar_top = (!detail.similar.is_empty()).then(|| {
-        let top = y;
-        y += SECTION_TITLE + similar_size(metrics).1 + SECTION_GAP;
-        top
-    });
+    let mut tops = [None; DetailSection::ALL.len()];
+    for section in detail.section_order() {
+        if let Some(height) = section_height(section, viewport, detail, metrics, margin) {
+            tops[section as usize] = Some(y);
+            y += height;
+        }
+    }
     DetailGeometry {
         margin,
         hero_height,
-        episodes_top,
-        cast_top,
-        similar_top,
+        tops,
         bottom: y,
     }
 }
 
-static ROW_SCROLL_MAX: [AtomicU32; 4] = [const { AtomicU32::new(0) }; 4];
+static ROW_SCROLL_MAX: [AtomicU32; 5] = [const { AtomicU32::new(0) }; 5];
 
 pub fn detail_row_scroll_max(row: usize) -> f32 {
     ROW_SCROLL_MAX
@@ -94,7 +119,7 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
         .clamp(0.0, detail_scroll_max(viewport, detail));
     let y = y + scroll_y;
     let mut rows = Vec::new();
-    if let Some(top) = geometry.episodes_top {
+    if let Some(top) = geometry.top(DetailSection::Episodes) {
         let seasons = top + SECTION_TITLE;
         rows.push((0, seasons, seasons + season_row(detail)));
         let episodes = seasons + season_row(detail);
@@ -104,13 +129,21 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
             episodes + episodes::episodes_height(viewport, detail, geometry.margin),
         ));
     }
-    if let Some(top) = geometry.cast_top {
+    if let Some(top) = geometry.top(DetailSection::Cast) {
         let cast = top + SECTION_TITLE;
         rows.push((2, cast, cast + CAST_SIZE + CAST_TEXT));
     }
-    if let Some(top) = geometry.similar_top {
+    if let Some(top) = geometry.top(DetailSection::Recommendations) {
         let similar = top + SECTION_TITLE;
         rows.push((3, similar, similar + similar_size(metrics).1));
+    }
+    if let Some(top) = geometry.top(DetailSection::Trailers) {
+        let trailers = top + SECTION_TITLE;
+        rows.push((
+            4,
+            trailers,
+            trailers + trailer_size(viewport.is_compact()).y + TRAILER_TEXT,
+        ));
     }
     rows.into_iter()
         .find(|(_, start, end)| (*start..*end).contains(&y))
@@ -445,7 +478,9 @@ pub fn draw_detail(
                                 detail.dropped,
                                 t("library.dropped"),
                             ),
-                            (
+                        ];
+                        if detail.favorites_enabled {
+                            actions.push((
                                 NODE_DETAIL_FAVORITE,
                                 if detail.favorite {
                                     "HeartFilled"
@@ -454,14 +489,6 @@ pub fn draw_detail(
                                 },
                                 detail.favorite,
                                 t("library.favorites"),
-                            ),
-                        ];
-                        if !detail.trailers.is_empty() {
-                            actions.push((
-                                NODE_DETAIL_TRAILER,
-                                "Film",
-                                false,
-                                t("detail.watch_trailer"),
                             ));
                         }
                         if shuffle {
@@ -478,7 +505,6 @@ pub fn draw_detail(
                                 NODE_DETAIL_COMPLETED => "completed",
                                 NODE_DETAIL_DROPPED => "dropped",
                                 NODE_DETAIL_FAVORITE => "favorite",
-                                NODE_DETAIL_TRAILER => "trailer",
                                 _ => "shuffle",
                             };
                             actions
@@ -639,12 +665,6 @@ pub fn draw_detail(
                 let icons = vec![
                     (NODE_DETAIL_SHUFFLE, "Shuffle", false, t("common.shuffle")),
                     (
-                        NODE_DETAIL_TRAILER,
-                        "Film",
-                        false,
-                        t("detail.watch_trailer"),
-                    ),
-                    (
                         NODE_DETAIL_COMPLETED,
                         "CircleCheck",
                         detail.completed,
@@ -670,22 +690,12 @@ pub fn draw_detail(
                 let icons: Vec<_> = icons
                     .into_iter()
                     .filter(|(node, ..)| *node != NODE_DETAIL_SHUFFLE || shuffle)
-                    .filter(|(node, ..)| {
-                        *node != NODE_DETAIL_TRAILER || !detail.trailers.is_empty()
-                    })
+                    .filter(|(node, ..)| *node != NODE_DETAIL_FAVORITE || detail.favorites_enabled)
                     .collect();
                 let order = fluxa_theme::css::detail_actions().unwrap_or_else(|| {
-                    [
-                        "play",
-                        "watchlist",
-                        "shuffle",
-                        "trailer",
-                        "completed",
-                        "dropped",
-                        "favorite",
-                    ]
-                    .map(str::to_owned)
-                    .to_vec()
+                    ["play", "watchlist", "shuffle", "completed", "dropped"]
+                        .map(str::to_owned)
+                        .to_vec()
                 });
                 for slot in &order {
                     match slot.as_str() {
@@ -742,8 +752,8 @@ pub fn draw_detail(
                         other => {
                             let node = match other {
                                 "shuffle" => NODE_DETAIL_SHUFFLE,
-                                "trailer" => NODE_DETAIL_TRAILER,
                                 "completed" => NODE_DETAIL_COMPLETED,
+                                "dropped" => NODE_DETAIL_DROPPED,
                                 "dropped" => NODE_DETAIL_DROPPED,
                                 _ => NODE_DETAIL_FAVORITE,
                             };
@@ -898,7 +908,7 @@ pub fn draw_detail(
         ),
     );
 
-    if let Some(top) = geometry.episodes_top {
+    if let Some(top) = geometry.top(DetailSection::Episodes) {
         let top = top - scroll_y;
         section_title(
             &painter,
@@ -1092,7 +1102,7 @@ pub fn draw_detail(
         }
     }
 
-    if let Some(top) = geometry.cast_top {
+    if let Some(top) = geometry.top(DetailSection::Cast) {
         let top = top - scroll_y;
         section_title(
             &painter,
@@ -1167,7 +1177,7 @@ pub fn draw_detail(
         );
     }
 
-    if let Some(top) = geometry.similar_top {
+    if let Some(top) = geometry.top(DetailSection::Recommendations) {
         let top = top - scroll_y;
         section_title(
             &painter,
@@ -1216,6 +1226,99 @@ pub fn draw_detail(
         );
     }
 
+    if let Some(top) = geometry.top(DetailSection::Trailers) {
+        let top = top - scroll_y;
+        section_title(
+            &painter,
+            Pos2::new(margin, top),
+            &t(DetailSection::Trailers.title_key()),
+            title_size,
+        );
+        let size = trailer_size(compact);
+        components::placed(
+            context,
+            Id::new("fluxa-detail-trailers"),
+            Pos2::new(margin, top + SECTION_TITLE),
+            |ui| {
+                ui.set_clip_rect(visible);
+                ui.set_max_width(row_width);
+                let output =
+                    row_scroll(viewport, detail, 4, "fluxa-detail-trailer-scroll").show(ui, |ui| {
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 16.0;
+                            for (index, trailer) in detail.trailer_cards.iter().enumerate() {
+                                let (rect, response) = ui.allocate_exact_size(
+                                    Vec2::new(size.x, size.y + TRAILER_TEXT),
+                                    Sense::click(),
+                                );
+                                let node = NODE_DETAIL_TRAILER_BASE + index as u64;
+                                layout.focusable.push((node, rect));
+                                if response.clicked() {
+                                    layout.activated = Some(node);
+                                }
+                                if !ui.is_rect_visible(rect) {
+                                    continue;
+                                }
+                                components::trailer_card(
+                                    ui.painter(),
+                                    assets,
+                                    Rect::from_min_size(rect.min, size),
+                                    trailer,
+                                    response.hovered(),
+                                    metrics,
+                                );
+                            }
+                        });
+                    });
+                record_row_max(4, &output);
+            },
+        );
+    }
+
+    if let Some(top) = geometry.top(DetailSection::ShowInfo) {
+        let top = top - scroll_y;
+        section_title(
+            &painter,
+            Pos2::new(margin, top),
+            &t(DetailSection::ShowInfo.title_key()),
+            title_size,
+        );
+        let width = (viewport.width - margin * 2.0).min(720.0);
+        let label_width = if compact {
+            INFO_LABEL * 0.7
+        } else {
+            INFO_LABEL
+        };
+        for (index, (label, value)) in detail.show_info.iter().enumerate() {
+            let y = top + SECTION_TITLE + index as f32 * INFO_ROW + INFO_ROW * 0.5;
+            if index > 0 {
+                painter.hline(
+                    margin..=margin + width,
+                    y - INFO_ROW * 0.5,
+                    egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::FAINT)),
+                );
+            }
+            draw_text(
+                &painter,
+                Pos2::new(margin, y),
+                Align2::LEFT_CENTER,
+                label,
+                FontId::proportional(metrics.text.meta),
+                metrics.text_muted,
+                Some(label_width - 12.0),
+            );
+            draw_text(
+                &painter,
+                Pos2::new(margin + label_width, y),
+                Align2::LEFT_CENTER,
+                value,
+                FontId::proportional(metrics.text.meta),
+                text_primary(),
+                Some(width - label_width),
+            );
+        }
+    }
+
     layout
         .focusable
         .extend(navigation_focus_rects(viewport, metrics));
@@ -1233,18 +1336,34 @@ fn prefetch_artwork(
     assets: &mut impl HomeAssets,
 ) {
     let target = |size: Vec2| artwork_target_size(size, pixels_per_point);
-    for (_, url) in &detail.season_posters {
-        assets.prefetch_for(Some(url), target(SEASON_TILE), ArtworkPriority::Prefetch);
+    if detail.shows(DetailSection::Episodes) {
+        for (_, url) in &detail.season_posters {
+            assets.prefetch_for(Some(url), target(SEASON_TILE), ArtworkPriority::Prefetch);
+        }
+        episodes::prefetch(detail, episodes, viewport, margin, pixels_per_point, assets);
     }
-    episodes::prefetch(detail, episodes, viewport, margin, pixels_per_point, assets);
-    for member in detail.cast.iter().chain(&detail.crew) {
-        assets.prefetch_for(
-            member.photo.as_deref(),
-            target(Vec2::splat(CAST_SIZE)),
-            ArtworkPriority::Prefetch,
-        );
+    if detail.shows(DetailSection::Cast) {
+        for member in detail.cast.iter().chain(&detail.crew) {
+            assets.prefetch_for(
+                member.photo.as_deref(),
+                target(Vec2::splat(CAST_SIZE)),
+                ArtworkPriority::Prefetch,
+            );
+        }
     }
-    for card in &detail.similar {
-        assets.prefetch_for(card.poster_art(), target(poster), ArtworkPriority::Prefetch);
+    if detail.shows(DetailSection::Recommendations) {
+        for card in &detail.similar {
+            assets.prefetch_for(card.poster_art(), target(poster), ArtworkPriority::Prefetch);
+        }
+    }
+    if detail.shows(DetailSection::Trailers) {
+        let size = trailer_size(viewport.is_compact());
+        for trailer in &detail.trailer_cards {
+            assets.prefetch_for(
+                trailer.thumbnail.as_deref(),
+                target(size),
+                ArtworkPriority::Prefetch,
+            );
+        }
     }
 }

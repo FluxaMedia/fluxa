@@ -12,6 +12,7 @@ mod accounts;
 pub mod addons;
 pub mod ambient;
 mod catalog;
+pub mod detail_sections;
 mod headless_engine;
 mod home;
 mod library;

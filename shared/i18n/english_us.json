@@ -3259,5 +3259,12 @@
   "settings.ambientModeEnabled": "Enabled",
   "settings.ambientModeTimeoutMinutes": "Start After",
   "settings.row.ambientModeEnabled.description": "Show artwork when the app sits idle",
-  "settings.row.ambientModeTimeoutMinutes.description": "Idle time before the slideshow starts"
+  "settings.row.ambientModeTimeoutMinutes.description": "Idle time before the slideshow starts",
+  "detail.trailers": "Trailers",
+  "detail.show_info": "Show Info",
+  "detail.year": "Year",
+  "detail.released": "Released",
+  "detail.runtime": "Runtime",
+  "detail.country": "Country",
+  "settings.detail_sections_hint": "Turn sections on or off and change their order."
 }

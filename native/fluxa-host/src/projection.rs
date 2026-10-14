@@ -188,7 +188,7 @@ fn project(
             FolderModel::default()
         },
         calendar: fluxa_ui::calendar_model_from_core_snapshot(snapshot),
-        detail: detail_model_from_core_snapshot(snapshot),
+        detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
         trailer_targets,
         logo_targets,
@@ -289,4 +289,16 @@ impl Projector {
     }
 
     pub fn settle(&mut self, _revision: u64, _latest: u64) {}
+}
+
+fn detail_model(snapshot: &Value) -> fluxa_ui::DetailModel {
+    let mut detail = detail_model_from_core_snapshot(snapshot);
+    let values = snapshot.pointer("/settings/values").unwrap_or(&Value::Null);
+    detail.sections = Some(
+        fluxa_core::detail_sections::visible(values)
+            .into_iter()
+            .filter_map(fluxa_ui::DetailSection::from_key)
+            .collect(),
+    );
+    detail
 }

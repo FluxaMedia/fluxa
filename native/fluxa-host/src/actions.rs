@@ -152,10 +152,28 @@ pub(super) fn native_action_for_node(
                 item: detail.item.clone(),
             });
         }
-        if node == fluxa_ui::NODE_DETAIL_TRAILER {
+        if node == fluxa_ui::NODE_DETAIL_FAVORITE {
+            return Some(NativeAction::ToggleFavorite {
+                item: detail.item.clone(),
+            });
+        }
+        if let Some(index) = node
+            .checked_sub(fluxa_ui::NODE_DETAIL_TRAILER_BASE)
+            .map(|offset| offset as usize)
+            .filter(|index| *index < detail.trailer_cards.len())
+        {
+            let mut urls = vec![detail.trailer_cards[index].url.clone()];
+            urls.extend(
+                detail
+                    .trailer_cards
+                    .iter()
+                    .enumerate()
+                    .filter(|(other, _)| *other != index)
+                    .map(|(_, card)| card.url.clone()),
+            );
             return Some(NativeAction::PlayTrailer {
                 item: detail.item.clone(),
-                urls: detail.trailers.clone(),
+                urls,
             });
         }
         if node == fluxa_ui::NODE_DETAIL_PLAY {
@@ -589,6 +607,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 || stream_badges::activate_node(state, node)
                 || collections::activate_node(state, node)
                 || ambient::activate_node(state, node)
+                || detail_sections::activate_node(state, node)
             {
                 continue;
             }
@@ -1019,6 +1038,9 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         ],
         NativeAction::ToggleWatchlist { item } => {
             vec![json!({"type": "toggleWatchlistRequested", "item": item, "profile": profile})]
+        }
+        NativeAction::ToggleFavorite { item } => {
+            vec![json!({"type": "toggleLibraryStatusRequested", "list": "liked", "item": item})]
         }
         NativeAction::SettingsChange { key, value } => {
             vec![json!({"type": "settingsChanged", "key": key, "value": value})]

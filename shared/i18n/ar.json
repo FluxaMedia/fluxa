@@ -3248,5 +3248,12 @@
   "settings.ambientModeEnabled": "مفعّل",
   "settings.ambientModeTimeoutMinutes": "البدء بعد",
   "settings.row.ambientModeEnabled.description": "عرض الصور عندما يكون التطبيق خاملاً",
-  "settings.row.ambientModeTimeoutMinutes.description": "مدة الخمول قبل بدء العرض"
+  "settings.row.ambientModeTimeoutMinutes.description": "مدة الخمول قبل بدء العرض",
+  "detail.trailers": "الإعلانات التشويقية",
+  "detail.show_info": "معلومات العمل",
+  "detail.year": "السنة",
+  "detail.released": "تاريخ الصدور",
+  "detail.runtime": "المدة",
+  "detail.country": "البلد",
+  "settings.detail_sections_hint": "شغّل الأقسام أو أوقفها وغيّر ترتيبها."
 }

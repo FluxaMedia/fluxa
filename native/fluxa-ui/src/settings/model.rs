@@ -42,6 +42,13 @@ pub struct SettingsModel {
     pub ambient_catalogs: Vec<AmbientCatalogRow>,
     pub ambient_minutes: u32,
     pub ambient_limit: usize,
+    pub detail_sections: Vec<DetailSectionRow>,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct DetailSectionRow {
+    pub section: DetailSection,
+    pub enabled: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -275,6 +282,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         ambient_catalogs: Vec::new(),
         ambient_minutes: 5,
         ambient_limit: 3,
+        detail_sections: Vec::new(),
         mdblist_lists: Vec::new(),
         media_servers: Vec::new(),
         server_fields: Default::default(),

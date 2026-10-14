@@ -3259,5 +3259,12 @@
   "settings.ambientModeEnabled": "Etkin",
   "settings.ambientModeTimeoutMinutes": "Başlama Süresi",
   "settings.row.ambientModeEnabled.description": "Uygulama boştayken görselleri göster",
-  "settings.row.ambientModeTimeoutMinutes.description": "Slayt gösterisi başlamadan önceki boşta kalma süresi"
+  "settings.row.ambientModeTimeoutMinutes.description": "Slayt gösterisi başlamadan önceki boşta kalma süresi",
+  "detail.trailers": "Fragmanlar",
+  "detail.show_info": "Yapım Bilgisi",
+  "detail.year": "Yıl",
+  "detail.released": "Yayın Tarihi",
+  "detail.runtime": "Süre",
+  "detail.country": "Ülke",
+  "settings.detail_sections_hint": "Bölümleri aç veya kapat ve sıralarını değiştir."
 }

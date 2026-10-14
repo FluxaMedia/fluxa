@@ -71,6 +71,13 @@ pub(super) enum Line {
         node: u64,
         on: bool,
     },
+    Section {
+        label: String,
+        node: u64,
+        on: bool,
+        up: Option<u64>,
+        down: Option<u64>,
+    },
 }
 
 pub(super) struct Group {
@@ -559,6 +566,100 @@ fn draw_line(
                 crate::fonts::regular(size),
                 metrics.text_primary,
                 Some(track.left() - row.left() - 12.0),
+            );
+        }
+        Line::Section {
+            label,
+            node,
+            on,
+            up,
+            down,
+        } => {
+            let track = Rect::from_center_size(
+                row.right_center() - Vec2::new(metrics.settings_toggle_width * 0.5 + 3.0, 0.0),
+                Vec2::new(
+                    metrics.settings_toggle_width,
+                    metrics.settings_toggle_height,
+                ),
+            );
+            let hit = track.expand2(Vec2::new(6.0, 12.0));
+            layout.focusable.push((*node, hit));
+            let mut activated = None;
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-section-toggle", *node)),
+                hit.min,
+                |ui| {
+                    let (_, response) = ui.allocate_exact_size(hit.size(), Sense::click());
+                    if response.clicked() {
+                        activated = Some(*node);
+                    }
+                },
+            );
+            components::toggle(
+                context,
+                painter,
+                Id::new(("fluxa-settings-section-track", *node)),
+                track,
+                *on,
+                metrics,
+            );
+            let mut left = hit.left() - 8.0;
+            for (target, is_up) in [(*down, false), (*up, true)] {
+                let button = Rect::from_center_size(
+                    Pos2::new(left - 20.0, row.center().y),
+                    Vec2::splat(40.0),
+                );
+                left = button.left();
+                let color = if target.is_some() {
+                    metrics.text_primary
+                } else {
+                    metrics.ink(tone::FAINT)
+                };
+                let center = button.center();
+                let lift = if is_up { -3.0 } else { 3.0 };
+                let stroke = egui::Stroke::new(stroke::ICON, color);
+                painter.line_segment(
+                    [
+                        center + Vec2::new(-6.0, -lift),
+                        center + Vec2::new(0.0, lift),
+                    ],
+                    stroke,
+                );
+                painter.line_segment(
+                    [
+                        center + Vec2::new(0.0, lift),
+                        center + Vec2::new(6.0, -lift),
+                    ],
+                    stroke,
+                );
+                let Some(target) = target else {
+                    continue;
+                };
+                layout.focusable.push((target, button));
+                components::placed_front(
+                    context,
+                    Id::new(("fluxa-settings-section-move", target)),
+                    button.min,
+                    |ui| {
+                        let (_, response) = ui.allocate_exact_size(button.size(), Sense::click());
+                        if response.clicked() {
+                            activated = Some(target);
+                        }
+                    },
+                );
+            }
+            if activated.is_some() {
+                layout.activated = activated;
+            }
+            draw_text(
+                painter,
+                Pos2::new(row.left(), row.center().y),
+                Align2::LEFT_CENTER,
+                label,
+                crate::fonts::regular(size),
+                metrics.text_primary,
+                Some(left - row.left() - 12.0),
             );
         }
         Line::Note(text) => {
