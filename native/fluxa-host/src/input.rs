@@ -232,7 +232,11 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
-    if state.profiles.is_some() || state.welcome.is_some() || state.player_full() {
+    if state.profiles.is_some()
+        || state.welcome.is_some()
+        || state.player_full()
+        || state.detail_modal
+    {
         if state
             .player
             .as_ref()
@@ -509,7 +513,7 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if state.player_full() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
         return;
     }
-    if card_menu::key(state, input) {
+    if card_menu::key(state, input) || detail_modal::key(state, input) {
         return;
     }
     if matches!(input, KeyInput::Gamepad(GamepadButton::West)) {

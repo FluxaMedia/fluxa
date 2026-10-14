@@ -850,6 +850,7 @@ impl Gpu {
             if let Some(mini) = mini {
                 fluxa_ui::draw_mini_player_overlay(ui.ctx(), viewport, mini, &mut rendered_layout);
             }
+            fluxa_ui::draw_detail_modal(ui.ctx(), viewport, detail, &mut assets);
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     ui.ctx(),

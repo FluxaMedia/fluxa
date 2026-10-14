@@ -635,7 +635,7 @@ fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut i
 /// Lay out poster labels once with egui's native single-line ellipsis. The
 /// previous path measured each string repeatedly to find a fitting prefix,
 /// which multiplied text shaping work across every visible result per frame.
-fn paint_elided_text(
+pub(super) fn paint_elided_text(
     painter: &Painter,
     position: egui::Pos2,
     text: &str,

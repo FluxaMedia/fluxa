@@ -76,6 +76,13 @@ pub(super) enum NativeAction {
         #[serde(default)]
         preview: Value,
     },
+    DetailModal {
+        id: String,
+        item_type: String,
+        #[serde(default)]
+        preview: Value,
+    },
+    OpenDetailPage,
     Play {
         id: String,
         item_type: String,

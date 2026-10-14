@@ -822,7 +822,23 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 state.route,
                 hero,
             ) {
-                if let NativeAction::Detail { preview, .. } = &native_action {
+                let native_action = match native_action {
+                    NativeAction::Detail {
+                        id,
+                        item_type,
+                        preview,
+                    } if state.route != Route::Detail && !logical_viewport(state).is_tv() => {
+                        NativeAction::DetailModal {
+                            id,
+                            item_type,
+                            preview,
+                        }
+                    }
+                    action => action,
+                };
+                if let NativeAction::Detail { preview, .. }
+                | NativeAction::DetailModal { preview, .. } = &native_action
+                {
                     state.backdrop_prefetch = ["background", "poster"]
                         .into_iter()
                         .find_map(|key| preview.get(key).and_then(Value::as_str))
@@ -966,7 +982,11 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
     let commands = match action {
         NativeAction::CoreCommand { command } => vec![command.clone()],
         NativeAction::LoadMore { .. } => Vec::new(),
-        NativeAction::Folder { .. } => return None,
+        NativeAction::Folder { .. }
+        | NativeAction::DetailModal { .. }
+        | NativeAction::OpenDetailPage => {
+            return None;
+        }
         NativeAction::Back => vec![navigation(Route::Home)],
         NativeAction::Navigate { destination } => match destination {
             Route::Home => vec![
@@ -1165,6 +1185,36 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
                 if let Err(error) = session.dispatch(command) {
                     host_log(format!("core dispatch failed: {error}"));
                 }
+            }
+            continue;
+        }
+        if let NativeAction::DetailModal {
+            id,
+            item_type,
+            preview,
+        } = &action
+        {
+            let load = NativeAction::Detail {
+                id: id.clone(),
+                item_type: item_type.clone(),
+                preview: preview.clone(),
+            };
+            state.detail_modal = true;
+            for command in session_commands(&load, &profile)
+                .unwrap_or_default()
+                .into_iter()
+                .skip(1)
+            {
+                if let Err(error) = session.dispatch(command) {
+                    host_log(format!("core dispatch failed: {error}"));
+                }
+            }
+            continue;
+        }
+        if matches!(action, NativeAction::OpenDetailPage) {
+            state.detail_modal = false;
+            if let Err(error) = session.dispatch(navigation(Route::Detail)) {
+                host_log(format!("core dispatch failed: {error}"));
             }
             continue;
         }

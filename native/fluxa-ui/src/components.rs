@@ -11,30 +11,32 @@ use std::hash::{Hash, Hasher};
 use crate::flow::Size;
 
 mod cards;
-mod dropdown;
+mod detail_modal;
 mod downloads;
+mod dropdown;
 mod filmstrip;
 mod input;
 mod menu;
 mod mini_player;
 mod recent_searches;
+mod slider;
 mod streams;
 mod subtitle_preview;
-mod slider;
 
 pub use cards::*;
-pub use dropdown::*;
+pub use detail_modal::*;
 pub use downloads::*;
+pub use dropdown::*;
 pub(crate) use filmstrip::*;
 pub use input::*;
 pub use menu::*;
 pub use mini_player::*;
 pub use recent_searches::*;
+pub(crate) use slider::*;
 pub use streams::*;
 pub use subtitle_preview::SubtitleLook;
 pub(crate) use subtitle_preview::subtitle_sample;
 
-pub(crate) use slider::*;
 use super::{
     ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
     UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,

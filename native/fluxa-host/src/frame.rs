@@ -185,6 +185,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         advance_home_inertia(state);
     }
     card_menu::tick(state);
+    detail_modal::tick(state);
     apply_nav_layout(state);
     rebuild_current_ui(state);
     timer.mark("rebuild");
@@ -273,6 +274,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
     let watch_modal_hidden = state.player_full();
+    if let Some(gpu) = state.gpu.as_ref() {
+        fluxa_ui::set_detail_modal_open(&gpu.egui_context, state.detail_modal);
+    }
     let render_result = {
         let RendererState {
             gpu,
@@ -351,6 +355,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 if let Some(outcome) = frame.menu_outcome {
                     card_menu::apply(state, outcome);
                 }
+                detail_modal::apply(state);
                 if let Some(request) = layout.profiles.take() {
                     profiles::handle(state, request);
                 }

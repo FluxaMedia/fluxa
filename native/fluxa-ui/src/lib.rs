@@ -37,16 +37,19 @@ mod watch_together;
 mod welcome;
 mod window_button;
 
+pub use components::{
+    DetailModalOutcome, draw_detail_modal, set_detail_modal_open, take_detail_modal_outcome,
+};
 pub use home::*;
 pub use layout::*;
 pub use metrics::*;
 pub use model::*;
 pub use navigation::*;
-pub use window_button::draw_window_fullscreen_button;
 pub use nodes::*;
 use paint::*;
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
+pub use window_button::draw_window_fullscreen_button;
 
 pub use ambient::{
     AmbientView, MOTION_COUNT as AMBIENT_MOTIONS, OVERLAY_IN as AMBIENT_FADE_IN,
@@ -55,10 +58,10 @@ pub use ambient::{
 };
 pub use calendar::draw_calendar;
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, SubtitleLook, FocusedField, Glass, InputKind,
-    NODE_DISCOVER_RECENT_BASE, action_menu_layout, caret_rect, discover_recent, draw_action_menu,
-    focused_field, input_kind, is_text_node, set_input_caret, set_liquid_glass,
-    set_pending_field_text, draw_mini_player_overlay,
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, FocusedField, Glass, InputKind,
+    NODE_DISCOVER_RECENT_BASE, SubtitleLook, action_menu_layout, caret_rect, discover_recent,
+    draw_action_menu, draw_mini_player_overlay, focused_field, input_kind, is_text_node,
+    set_input_caret, set_liquid_glass, set_pending_field_text,
 };
 pub use motion::page_transition;
 pub use poster_overlay::{
@@ -90,8 +93,7 @@ pub use settings::{
     addon_action, addon_transport_url, addons_page, badge_input, badge_input_label, category_pages,
     collection_input, collection_input_label, collection_view_modes, draw_settings, option_label,
     poster_field, server_index, server_input, settings_model_from_core_snapshot,
-    subtitle_style_rows,
-    settings_page_for_node, settings_row_by_index, settings_row_label,
+    settings_page_for_node, settings_row_by_index, settings_row_label, subtitle_style_rows,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 pub use watch_together::{

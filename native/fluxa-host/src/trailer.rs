@@ -114,6 +114,14 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     }
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
+    if state.detail_modal && !state.detail.id.is_empty() {
+        return Some(Wanted {
+            key: state.detail.id.clone(),
+            urls: state.detail.trailers.clone(),
+            delay: delay("detailHeroAutoplayTrailerDelaySecs"),
+            poster: false,
+        });
+    }
     match state.route {
         Route::Home => {
             let context = &state.gpu.as_ref()?.egui_context;
@@ -607,10 +615,14 @@ fn publish(state: &mut RendererState) {
             subtitle: active.cue.clone(),
         });
     state.detail.trailer = active
-        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
+        .filter(|active| {
+            (state.route == Route::Detail || state.detail_modal) && active.key == state.detail.id
+        })
         .and_then(|active| active.texture);
     state.detail.trailer_subtitle = active
-        .filter(|active| state.route == Route::Detail && active.key == state.detail.id)
+        .filter(|active| {
+            (state.route == Route::Detail || state.detail_modal) && active.key == state.detail.id
+        })
         .and_then(|active| active.cue.clone());
 }
 

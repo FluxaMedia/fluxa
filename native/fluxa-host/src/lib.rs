@@ -92,6 +92,7 @@ mod bridge_video;
 mod card_menu;
 mod cast;
 mod collections;
+mod detail_modal;
 mod detail_sections;
 mod downloads;
 mod events;
@@ -143,7 +144,7 @@ pub type PrePresent = Box<dyn Fn() + Send>;
 
 pub use player::{
     DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, TrackSelection,
-    VideoBackend, VideoCommand, VideoStatus, VideoTrack,
+    SpeechEnergy, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
 };
 pub use semantics::{AccessNode, AccessTree, Role};
 
@@ -177,6 +178,7 @@ struct RendererState {
     touch_down_at: Option<Instant>,
     touch_menu_opened: bool,
     card_menu: Option<card_menu::CardMenu>,
+    detail_modal: bool,
     menu_serial: u64,
     active_scroll: Option<HomeScrollTarget>,
     scroll_velocity: f32,
@@ -396,6 +398,7 @@ impl FluxaHost {
             touch_down_at: None,
             touch_menu_opened: false,
             card_menu: None,
+            detail_modal: false,
             menu_serial: 0,
             active_scroll: None,
             scroll_velocity: 0.0,
