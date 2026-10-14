@@ -44,8 +44,9 @@ pub(crate) fn draw_home_rows(
     let mut flat_index = 0usize;
     let preview_id = Id::new("fluxa-hover-preview-state");
     let preview_state = context.data(|data| data.get_temp::<(u64, f64, Rect)>(preview_id));
-    let pointer = (viewport.form_factor == UiFormFactor::Desktop)
-        .then(|| context.input(|input| input.pointer.hover_pos()))
+    let pointer = (viewport.form_factor == UiFormFactor::Desktop
+        && !components::detail_modal_is_open(context))
+    .then(|| context.input(|input| input.pointer.hover_pos()))
         .flatten();
     let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
     let now = context.input(|input| input.time);
@@ -429,7 +430,7 @@ pub(crate) fn draw_home_rows(
     });
     let previewed_id = Id::new("fluxa-previewed-poster");
     let Some((node_id, anchor, card)) = hovered else {
-        components::hover_preview_reset(context);
+        components::hover_preview_reset(context, egui::Order::Tooltip);
         context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.data_mut(|data| data.remove::<(u64, f64, Rect)>(preview_id));
         return;
@@ -448,7 +449,7 @@ pub(crate) fn draw_home_rows(
     context.data_mut(|data| data.insert_temp(preview_id, (node_id, since, area)));
     let remaining = HOVER_PREVIEW_DELAY - (now - since);
     if remaining > 0.0 {
-        components::hover_preview_reset(context);
+        components::hover_preview_reset(context, egui::Order::Tooltip);
         context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
         return;
@@ -486,6 +487,7 @@ pub(crate) fn draw_home_rows(
         synopsis,
         &play_label,
         progress,
+        egui::Order::Tooltip,
         metrics,
         assets,
     );

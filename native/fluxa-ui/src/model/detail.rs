@@ -26,6 +26,7 @@ pub struct DetailModel {
     pub sections: Option<Vec<DetailSection>>,
     pub trailer: Option<egui::TextureId>,
     pub trailer_subtitle: Option<String>,
+    pub preview_trailer: Option<crate::HeroTrailer>,
     pub error: Option<String>,
     pub streams_error: Option<String>,
     pub similar: Vec<HomeCard>,
@@ -708,6 +709,7 @@ pub fn detail_model_from_core_snapshot(snapshot: &serde_json::Value) -> DetailMo
         sections: None,
         trailer: None,
         trailer_subtitle: None,
+        preview_trailer: None,
         error: detail
             .get("error")
             .and_then(serde_json::Value::as_str)

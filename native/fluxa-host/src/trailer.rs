@@ -115,6 +115,19 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
     let settings = &state.settings;
     let delay = |key: &str| settings.number_value(key).unwrap_or(2.0).max(0.0);
     if state.detail_modal && !state.detail.id.is_empty() {
+        if settings.bool_value("trailerOnExpandedPosters")
+            && let Some(poster) = state
+                .gpu
+                .as_ref()
+                .and_then(|gpu| fluxa_ui::previewed_poster(&gpu.egui_context))
+        {
+            return Some(Wanted {
+                urls: state.trailers.urls_for(&poster.id, &poster.raw),
+                key: poster.id,
+                delay: delay("trailerOnExpandedPostersDelay"),
+                poster: true,
+            });
+        }
         return Some(Wanted {
             key: state.detail.id.clone(),
             urls: state.detail.trailers.clone(),
@@ -354,7 +367,9 @@ fn queue_shorts(state: &mut RendererState) {
 }
 
 fn queue_expanded(state: &mut RendererState) {
-    if state.route != Route::Home || !state.settings.bool_value("trailerOnExpandedPosters") {
+    if !(state.route == Route::Home || state.detail_modal)
+        || !state.settings.bool_value("trailerOnExpandedPosters")
+    {
         return;
     }
     let Some(gpu) = state.gpu.as_ref() else {
@@ -600,6 +615,14 @@ fn publish(state: &mut RendererState) {
         });
     state.home.poster_trailer = active
         .filter(|active| state.route == Route::Home && active.poster)
+        .map(|active| HeroTrailer {
+            item_id: active.key.clone(),
+            texture: active.texture,
+            finished: active.finished,
+            subtitle: None,
+        });
+    state.detail.preview_trailer = active
+        .filter(|active| active.poster && state.detail_modal)
         .map(|active| HeroTrailer {
             item_id: active.key.clone(),
             texture: active.texture,

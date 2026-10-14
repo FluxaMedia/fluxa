@@ -3,7 +3,7 @@ use super::*;
 impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
-            if ambient::input(state) {
+            if ambient::input(state) || state.detail_modal {
                 return;
             }
             let viewport = logical_viewport(state);
@@ -103,6 +103,9 @@ impl FluxaHost {
                 phase: egui::TouchPhase::Move,
                 modifiers: state.modifiers,
             });
+            if state.detail_modal {
+                return;
+            }
             let viewport = logical_viewport(state);
             if state.route == Route::Home {
                 if delta_x != 0.0

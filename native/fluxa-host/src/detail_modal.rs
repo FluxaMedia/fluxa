@@ -11,7 +11,9 @@ pub(super) fn apply(state: &mut RendererState) {
     };
     if matches!(
         outcome,
-        DetailModalOutcome::Play | DetailModalOutcome::Episode(_)
+        DetailModalOutcome::Play
+            | DetailModalOutcome::Episode(_)
+            | DetailModalOutcome::SimilarPlay(_)
     ) && crate::sync::playback_blocked(state)
     {
         crate::sync::show_notice(state, "playback.no_sources");
@@ -59,6 +61,31 @@ pub(super) fn apply(state: &mut RendererState) {
                     item_type,
                     preview,
                 });
+        }
+        DetailModalOutcome::SimilarPlay(index) => {
+            let Some(card) = state.detail.similar.get(index) else {
+                return;
+            };
+            let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
+            let first = card
+                .id
+                .as_ref()
+                .filter(|_| series)
+                .map(|id| format!("{id}:1:1"));
+            let item = playback_item(&card.raw, None, first);
+            close(state);
+            state
+                .pending_native_actions
+                .push(NativeAction::StartPlayback { item });
+        }
+        DetailModalOutcome::SimilarWatchlist(index) => {
+            let Some(card) = state.detail.similar.get(index) else {
+                return;
+            };
+            let item = card.raw.clone();
+            state
+                .pending_native_actions
+                .push(NativeAction::ToggleWatchlist { item });
         }
         DetailModalOutcome::Play => {
             let id = state.detail.id.clone();

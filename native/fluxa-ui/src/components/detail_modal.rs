@@ -1,6 +1,7 @@
 use super::cards::paint_elided_text;
 use super::*;
 use crate::{DetailModel, localized, metrics_for_assets};
+use crate::{first_value_string, hero_meta_line};
 
 const PANEL_MAX_WIDTH: f32 = 980.0;
 const PANEL_MAX_HEIGHT: f32 = 900.0;
@@ -9,7 +10,7 @@ const BUTTON_HEIGHT: f32 = 48.0;
 const PAD: f32 = 28.0;
 const TITLE_HEIGHT: f32 = 48.0;
 const EPISODE_HEIGHT: f32 = 92.0;
-const CAST_SIZE: f32 = 76.0;
+const CAST_SIZE: f32 = 108.0;
 const SIMILAR_WIDTH: f32 = 128.0;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -20,6 +21,8 @@ pub enum DetailModalOutcome {
     OpenPage,
     Episode(usize),
     Similar(usize),
+    SimilarPlay(usize),
+    SimilarWatchlist(usize),
 }
 
 fn open_id() -> Id {
@@ -28,6 +31,12 @@ fn open_id() -> Id {
 
 fn outcome_id() -> Id {
     Id::new("fluxa-detail-modal-outcome")
+}
+
+pub(crate) fn detail_modal_is_open(context: &egui::Context) -> bool {
+    context
+        .data(|data| data.get_temp::<bool>(open_id()))
+        .unwrap_or(false)
 }
 
 pub fn set_detail_modal_open(context: &egui::Context, open: bool) {
@@ -127,6 +136,11 @@ pub fn draw_detail_modal(
         .unwrap_or_else(|| detail.current_season());
     let mut chosen_season = None;
     let mut outcome = None;
+    let preview_id = Id::new("fluxa-modal-preview-state");
+    let preview_state = context.data(|data| data.get_temp::<(usize, f64, Rect, Rect)>(preview_id));
+    let pointer = context.input(|input| input.pointer.hover_pos());
+    let now = context.input(|input| input.time);
+    let mut hovered_card: Option<(usize, Rect)> = None;
     egui::Area::new(Id::new("fluxa-detail-modal"))
         .fixed_pos(Pos2::ZERO)
         .order(egui::Order::Debug)
@@ -170,7 +184,10 @@ pub fn draw_detail_modal(
                             rounded_image(
                                 &painter,
                                 texture,
-                                image,
+                                Rect::from_min_size(
+                                    image.min,
+                                    Vec2::new(width, image_height + radius),
+                                ),
                                 radius,
                                 cover_uv([1920, 1080], image),
                                 Color32::WHITE,
@@ -183,6 +200,14 @@ pub fn draw_detail_modal(
                                 image.right_bottom(),
                             ),
                             Color32::TRANSPARENT,
+                            metrics.surface,
+                        );
+                        painter.rect_filled(
+                            Rect::from_min_size(
+                                image.left_bottom(),
+                                Vec2::new(width, radius + 1.0),
+                            ),
+                            0.0,
                             metrics.surface,
                         );
                         let logo = title_logo(
@@ -217,7 +242,7 @@ pub fn draw_detail_modal(
                         }
 
                         let (row, _) = ui.allocate_exact_size(
-                            Vec2::new(width, BUTTON_HEIGHT + PAD),
+                            Vec2::new(width, BUTTON_HEIGHT + PAD * 1.8),
                             Sense::hover(),
                         );
                         let row_y = row.top() + PAD * 0.5;
@@ -289,6 +314,7 @@ pub fn draw_detail_modal(
                             }
                         }
 
+                        ui.add_space(PAD);
                         let (block, _) = ui.allocate_exact_size(
                             Vec2::new(width, text_block + PAD * 0.5),
                             Sense::hover(),
@@ -481,7 +507,7 @@ pub fn draw_detail_modal(
                             horizontal_row(ui, ("fluxa-detail-modal-cast", &detail.id), |ui| {
                                 for person in people {
                                     let (rect, _) = ui.allocate_exact_size(
-                                        Vec2::new(CAST_SIZE + 16.0, CAST_SIZE + 44.0),
+                                        Vec2::new(CAST_SIZE + 24.0, CAST_SIZE + 48.0),
                                         Sense::hover(),
                                     );
                                     let photo = Rect::from_min_size(
@@ -542,6 +568,11 @@ pub fn draw_detail_modal(
                                         Sense::click(),
                                     );
                                     poster_card(ui.painter(), rect, card, metrics, assets, false);
+                                    if let Some(position) = pointer
+                                        && ui.clip_rect().intersect(rect).contains(position)
+                                    {
+                                        hovered_card = Some((index, rect));
+                                    }
                                     if response.clicked() {
                                         outcome = Some(DetailModalOutcome::Similar(index));
                                     }
@@ -581,6 +612,85 @@ pub fn draw_detail_modal(
                 egui::StrokeKind::Inside,
             );
         });
+    let hovered = hovered_card.or_else(|| {
+        preview_state
+            .filter(|state| pointer.is_some_and(|position| state.3.contains(position)))
+            .map(|state| (state.0, state.2))
+    });
+    let previewed_id = Id::new("fluxa-previewed-poster");
+    let preview_card = hovered.and_then(|(index, anchor)| {
+        detail
+            .similar
+            .get(index)
+            .filter(|card| card.id.is_some())
+            .map(|card| (index, anchor, card))
+    });
+    match preview_card {
+        None => {
+            hover_preview_reset(context, egui::Order::Debug);
+            context.data_mut(|data| {
+                data.remove::<(usize, f64, Rect, Rect)>(preview_id);
+                data.remove::<crate::ExpandedPoster>(previewed_id);
+            });
+        }
+        Some((index, anchor, card)) => {
+            let since = preview_state
+                .filter(|state| state.0 == index)
+                .map_or(now, |state| state.1);
+            let synopsis =
+                first_value_string(&card.raw, &["description", "overview"]).unwrap_or_default();
+            let (area, galley) = hover_preview_rect(context, anchor, screen, &synopsis, metrics);
+            context.data_mut(|data| data.insert_temp(preview_id, (index, since, anchor, area)));
+            let remaining = 0.5 - (now - since);
+            if remaining > 0.0 {
+                hover_preview_reset(context, egui::Order::Debug);
+                context.data_mut(|data| data.remove::<crate::ExpandedPoster>(previewed_id));
+                context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
+            } else {
+                if let Some(id) = card.id.clone() {
+                    context.data_mut(|data| {
+                        data.insert_temp(
+                            previewed_id,
+                            crate::ExpandedPoster {
+                                node: index as u64,
+                                id,
+                                raw: card.raw.clone(),
+                            },
+                        )
+                    });
+                }
+                let trailer = detail
+                    .preview_trailer
+                    .as_ref()
+                    .filter(|trailer| card.id.as_deref() == Some(trailer.item_id.as_str()))
+                    .and_then(|trailer| trailer.texture);
+                let meta = hero_meta_line(&card.raw, language);
+                let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
+                let label = crate::play_label(language, None, series.then_some((1, 1, None)));
+                let (response, action) = hover_preview(
+                    context,
+                    area,
+                    card,
+                    trailer,
+                    &meta,
+                    galley,
+                    &label,
+                    None,
+                    egui::Order::Debug,
+                    metrics,
+                    assets,
+                );
+                outcome = outcome.or(match action {
+                    Some(PreviewAction::Play) => Some(DetailModalOutcome::SimilarPlay(index)),
+                    Some(PreviewAction::Watchlist) => {
+                        Some(DetailModalOutcome::SimilarWatchlist(index))
+                    }
+                    None if response.clicked() => Some(DetailModalOutcome::Similar(index)),
+                    None => None,
+                });
+            }
+        }
+    }
     if let Some(number) = chosen_season {
         context.data_mut(|data| data.insert_temp(season_id, number));
     }

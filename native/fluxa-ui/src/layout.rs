@@ -448,7 +448,7 @@ pub(crate) fn resolve_screen_scroll(
     // A dropdown menu owns wheel input while open. Without this guard both
     // its ScrollArea and the screen's custom document scroll consume the same
     // wheel delta, moving posters behind the popup while the options scroll.
-    if egui::Popup::is_any_open(context) {
+    if egui::Popup::is_any_open(context) || crate::components::detail_modal_is_open(context) {
         return context.data_mut(|data| {
             data.get_temp::<f32>(id)
                 .unwrap_or(viewport.scroll_y)

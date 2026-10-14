@@ -78,7 +78,7 @@ pub(crate) fn expanded_poster_card(
         if let Some(texture) = trailer {
             let fade = crate::motion::appear(
                 painter.ctx(),
-                Id::new(("fluxa-poster-trailer-fade", texture)),
+                Id::new(("fluxa-poster-trailer-fade", card.id.as_deref())),
                 crate::motion::slow() * 2.0,
                 crate::motion::Ease::Linear,
             );
@@ -199,8 +199,8 @@ fn preview_body_size(metrics: UiMetrics) -> f32 {
     (metrics.screen_card_subtitle_size + 3.0).max(15.0)
 }
 
-pub(crate) fn hover_preview_reset(context: &egui::Context) {
-    crate::motion::reset(context, Id::new("fluxa-hover-preview-appear"));
+pub(crate) fn hover_preview_reset(context: &egui::Context, order: egui::Order) {
+    crate::motion::reset(context, Id::new(("fluxa-hover-preview-appear", order)));
 }
 
 pub(crate) fn hover_preview_rect(
@@ -253,6 +253,7 @@ pub(crate) fn hover_preview(
     synopsis: std::sync::Arc<egui::Galley>,
     play_label: &str,
     progress: Option<f32>,
+    order: egui::Order,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
 ) -> (Response, Option<PreviewAction>) {
@@ -266,17 +267,17 @@ pub(crate) fn hover_preview(
     let button_size = body_size + 1.0;
     let appear = crate::motion::appear(
         context,
-        Id::new("fluxa-hover-preview-appear"),
+        Id::new(("fluxa-hover-preview-appear", order)),
         crate::motion::normal(),
         crate::motion::Ease::Out,
     );
     let scale = 0.92 + 0.08 * appear;
     context.set_transform_layer(
-        egui::LayerId::new(egui::Order::Tooltip, Id::new("fluxa-hover-preview")),
+        egui::LayerId::new(order, Id::new("fluxa-hover-preview")),
         egui::emath::TSTransform::new(rect.center().to_vec2() * (1.0 - scale), scale),
     );
     egui::Area::new(Id::new("fluxa-hover-preview"))
-        .order(egui::Order::Tooltip)
+        .order(order)
         .fixed_pos(rect.min)
         .constrain(false)
         .show(context, |ui| {
@@ -305,7 +306,7 @@ pub(crate) fn hover_preview(
             if let Some(texture) = trailer {
                 let fade = crate::motion::appear(
                     context,
-                    Id::new(("fluxa-hover-trailer-fade", texture)),
+                    Id::new(("fluxa-hover-trailer-fade", card.id.as_deref())),
                     crate::motion::slow() * 2.0,
                     crate::motion::Ease::Linear,
                 );
