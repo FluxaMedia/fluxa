@@ -234,7 +234,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         }
         return;
     }
-    let header_right = chrome.row_right(
+    let mut header_right = chrome.row_right(
         ui,
         layout,
         rect.right() - margin,
@@ -242,6 +242,16 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         chrome.icon(),
         &chrome.header_actions(),
     );
+    if player.watch_button {
+        header_right = chrome.row_right(
+            ui,
+            layout,
+            header_right,
+            header_y,
+            chrome.icon(),
+            &[("Users", NODE_PLAYER_WATCH)],
+        );
+    }
     chrome.heading(
         close_center.x + 34.0,
         header_y,
@@ -300,16 +310,6 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             y,
             chrome.icon(),
             &[("Maximize", NODE_PLAYER_FULLSCREEN)],
-        );
-    }
-    if player.watch_button {
-        right = chrome.row_right(
-            ui,
-            layout,
-            right,
-            y,
-            chrome.icon(),
-            &[("Users", NODE_PLAYER_WATCH)],
         );
     }
     let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions(false));
