@@ -1,8 +1,13 @@
+use std::time::{Duration, Instant};
+
 use serde_json::{Value, json};
 
 use super::{PlayerSession, VideoBackend, VideoCommand};
-use crate::trailer::{TrailerSource, trailer_sources};
+use crate::trailer::{TrailerSource, range_proxy, trailer_sources};
 use crate::{Gpu, SessionHandle};
+
+const CLIENT_TRIES: usize = 4;
+const FIRST_FRAME_TIMEOUT: Duration = Duration::from_secs(12);
 
 pub(super) struct TrailerPlay {
     sources: Vec<TrailerSource>,
@@ -10,8 +15,12 @@ pub(super) struct TrailerPlay {
     request: Option<String>,
     requests: u64,
     loaded: bool,
+    loaded_at: Option<Instant>,
     audio: Option<String>,
     subtitle: Option<String>,
+    client: Option<usize>,
+    client_tries: usize,
+    next_client: Option<usize>,
 }
 
 impl TrailerPlay {
@@ -22,9 +31,32 @@ impl TrailerPlay {
             request: None,
             requests: 0,
             loaded: false,
+            loaded_at: None,
             audio: None,
             subtitle: None,
+            client: None,
+            client_tries: 0,
+            next_client: None,
         }
+    }
+}
+
+fn playback_failed(trailer: &mut TrailerPlay) {
+    trailer.loaded = false;
+    trailer.loaded_at = None;
+    trailer.audio = None;
+    trailer.subtitle = None;
+    let youtube = matches!(
+        trailer.sources.get(trailer.next),
+        Some(TrailerSource::YouTube(_))
+    );
+    if youtube && trailer.client_tries + 1 < CLIENT_TRIES {
+        trailer.client_tries += 1;
+        trailer.next_client = Some(trailer.client.map_or(0, |index| index + 1));
+    } else {
+        trailer.client_tries = 0;
+        trailer.next_client = None;
+        trailer.next += 1;
     }
 }
 
@@ -44,11 +76,12 @@ pub(super) fn tick(
     if trailer.loaded {
         if video.status().error.is_some() {
             video.stop();
-            trailer.loaded = false;
-            trailer.next += 1;
+            playback_failed(trailer);
             return;
         }
         if player.status.has_frame {
+            trailer.loaded_at = None;
+            trailer.client_tries = 0;
             for (command, url) in [
                 ("audio-add", trailer.audio.take()),
                 ("sub-add", trailer.subtitle.take()),
@@ -61,6 +94,12 @@ pub(super) fn tick(
                     ]));
                 }
             }
+        } else if trailer
+            .loaded_at
+            .is_some_and(|at| at.elapsed() > FIRST_FRAME_TIMEOUT)
+        {
+            video.stop();
+            playback_failed(trailer);
         }
         return;
     }
@@ -78,16 +117,29 @@ pub(super) fn tick(
             .filter(|_| resolution.get("status").and_then(Value::as_str) == Some("ok"));
         match url {
             Some(url) => {
-                video.load(&gpu.instance, &gpu.device, url);
+                let proxied = range_proxy(url);
+                video.load(
+                    &gpu.instance,
+                    &gpu.device,
+                    proxied.as_deref().unwrap_or(url),
+                );
                 trailer.audio = resolution
                     .get("audioUrl")
                     .and_then(Value::as_str)
-                    .map(ToOwned::to_owned);
+                    .map(|url| range_proxy(url).unwrap_or_else(|| url.to_owned()));
                 trailer.subtitle =
                     crate::trailer::subtitle_url(resolution, snapshot.pointer("/profile/active"));
+                trailer.client = resolution
+                    .get("clientIndex")
+                    .and_then(Value::as_u64)
+                    .map(|index| index as usize);
                 trailer.loaded = true;
+                trailer.loaded_at = Some(Instant::now());
             }
-            None => trailer.next += 1,
+            None => {
+                trailer.client_tries = 0;
+                trailer.next += 1;
+            }
         }
         return;
     }
@@ -103,20 +155,29 @@ pub(super) fn tick(
     };
     let video_id = match source {
         TrailerSource::Direct(url) => {
-            video.load(&gpu.instance, &gpu.device, &url);
+            let proxied = range_proxy(&url);
+            video.load(
+                &gpu.instance,
+                &gpu.device,
+                proxied.as_deref().unwrap_or(url.as_str()),
+            );
             trailer.loaded = true;
+            trailer.loaded_at = Some(Instant::now());
             return;
         }
         TrailerSource::YouTube(id) => id,
     };
     trailer.requests += 1;
     let request_id = format!("player-trailer-{}", trailer.requests);
-    let action = json!({
+    let mut action = json!({
         "type": "trailerResolveRequested",
         "requestId": request_id,
         "videoId": video_id,
         "maxHeight": 1080,
     });
+    if let Some(index) = trailer.next_client.take() {
+        action["clientIndex"] = json!(index);
+    }
     match session.dispatch(action) {
         Ok(()) => trailer.request = Some(request_id),
         Err(error) => player.error = Some(error),

@@ -1,7 +1,7 @@
 pub(crate) mod actions;
 use crate::headless_engine::contracts::actions::{MarkWatchedAction, SavePlaybackProgressAction};
-use crate::runtime::EffectEnvelope;
 use crate::player::watch_together::{SharedStream, WatchTogetherContent, WatchTogetherMember};
+use crate::runtime::EffectEnvelope;
 use crate::types::{MetaItem, Profile, Stream, Video};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -350,6 +350,8 @@ pub(crate) enum AppAction {
         request_id: String,
         video_id: String,
         max_height: Option<u32>,
+        #[serde(default)]
+        client_index: Option<usize>,
     },
     #[serde(rename = "trailerPrewarmRequested")]
     TrailerPrewarmRequested,

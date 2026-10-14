@@ -15,7 +15,7 @@ pub(crate) fn rotated_index(preferred: usize, attempt: usize) -> usize {
 
 pub(crate) fn client(index: usize) -> Client {
     match index % COUNT {
-        0 => Client {
+        3 => Client {
             id: "5",
             version: "20.10.4",
             user_agent: "com.google.ios.youtube/20.10.4 (iPhone16,2; U; CPU iOS 18_3_2 like Mac OS X;)",

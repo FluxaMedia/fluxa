@@ -74,10 +74,7 @@ pub(crate) fn dispatch_player(
             visitor_data: None,
             player_script_url: None,
         });
-    let client = clients::client(clients::rotated_index(
-        engine.state.trailer.preferred_client,
-        request.attempt,
-    ));
+    let client = clients::client(clients::rotated_index(request.start, request.attempt));
     let mut headers = json!({
         "User-Agent": client.user_agent,
         "Origin": "https://www.youtube.com",

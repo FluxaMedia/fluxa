@@ -490,7 +490,8 @@ impl HeadlessEngine {
                 request_id,
                 video_id,
                 max_height,
-            } => trailer::dispatch_resolve(self, request_id, video_id, max_height),
+                client_index,
+            } => trailer::dispatch_resolve(self, request_id, video_id, max_height, client_index),
             AppAction::TrailerPrewarmRequested => trailer::dispatch_prewarm(self),
             AppAction::PluginRepositoryAddRequested { manifest_url } => {
                 plugins::dispatch_add_repository(self, manifest_url)
@@ -547,7 +548,9 @@ impl HeadlessEngine {
                 position_ms,
                 now_ms,
                 speed_correction_active,
-            } => watch_together::dispatch_sample(self, position_ms, now_ms, speed_correction_active),
+            } => {
+                watch_together::dispatch_sample(self, position_ms, now_ms, speed_correction_active)
+            }
             AppAction::WatchTogetherMessageReceived { message, now_ms } => {
                 watch_together::dispatch_message(self, message, now_ms)
             }

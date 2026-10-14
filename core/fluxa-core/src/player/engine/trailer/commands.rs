@@ -8,22 +8,27 @@ use super::watch_config::parse_watch_config;
 use crate::headless_engine::state::GenerationKey;
 use crate::headless_engine::{EffectResultInput, HeadlessEngine};
 use crate::runtime::EffectEnvelope;
-use serde_json::Value;
+use serde_json::{Value, json};
+
+const WATCH_CONFIG_RETRIES: usize = 2;
 
 pub(crate) fn dispatch_resolve(
     engine: &mut HeadlessEngine,
     request_id: String,
     video_id: String,
     max_height: Option<u32>,
+    client_index: Option<usize>,
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::Trailer);
     engine.state.trailer.resolutions.remove(&request_id);
+    let start = client_index.unwrap_or(engine.state.trailer.preferred_client);
     engine.state.trailer.requests.insert(
         request_id.clone(),
         TrailerRequest {
             video_id,
             max_height,
             player_response: None,
+            start,
             attempt: 0,
         },
     );
@@ -58,8 +63,20 @@ pub(crate) fn complete(
         .map(str::to_owned);
     match effect_type {
         "fetchYoutubeTrailerWatchConfig" => {
-            if result.status.is_ok() {
-                engine.state.trailer.watch_config = Some(parse_watch_config(&result.value));
+            let parsed = result
+                .status
+                .is_ok()
+                .then(|| parse_watch_config(&result.value));
+            let missing_visitor = parsed
+                .as_ref()
+                .is_none_or(|config| config.visitor_data.is_none());
+            if missing_visitor && engine.state.trailer.watch_config_retries < WATCH_CONFIG_RETRIES {
+                engine.state.trailer.watch_config_retries += 1;
+                return vec![watch_config_effect(engine, generation, request_id)];
+            }
+            engine.state.trailer.watch_config_retries = 0;
+            if let Some(config) = parsed {
+                engine.state.trailer.watch_config = Some(config);
             }
             request_id
                 .as_deref()
@@ -128,7 +145,7 @@ fn finish(
     engine: &mut HeadlessEngine,
     generation: u64,
     request_id: &str,
-    resolution: Value,
+    mut resolution: Value,
 ) -> Vec<EffectEnvelope> {
     let Some(request) = engine.state.trailer.requests.get_mut(request_id) else {
         return vec![];
@@ -138,12 +155,12 @@ fn finish(
         request.player_response = None;
         return dispatch_player(engine, generation, request_id);
     }
-    let attempt = request.attempt;
-    if !resolution.is_null() {
-        engine.state.trailer.preferred_client =
-            clients::rotated_index(engine.state.trailer.preferred_client, attempt);
-    }
+    let index = clients::rotated_index(request.start, request.attempt);
     engine.state.trailer.requests.remove(request_id);
+    if let Some(object) = resolution.as_object_mut() {
+        object.insert("clientIndex".to_string(), json!(index));
+        engine.state.trailer.preferred_client = index;
+    }
     engine
         .state
         .trailer
