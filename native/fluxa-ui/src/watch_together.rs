@@ -33,6 +33,9 @@ pub fn waiting_member(members: &[WatchMemberView]) -> Option<&WatchMemberView> {
     members.iter().find(|member| member.buffering)
 }
 
+const SLOTS: usize = 6;
+const AVATAR: f32 = 30.0;
+
 pub fn draw_watch_together(
     context: &egui::Context,
     viewport: Viewport,
@@ -44,31 +47,49 @@ pub fn draw_watch_together(
     let language = model.language.clone();
     let t = |key: &str| localized(key, &language);
     let mut request = None;
-    components::modal(
+    let width = (viewport.width - 64.0).clamp(300.0, 500.0);
+    let close = assets.icon("Close");
+    components::modal_width(
         context,
         screen,
         "fluxa-watch-together",
+        width,
         |ui| {
-            ui.label(
-                RichText::new(t("watch.title"))
-                    .size(metrics.text.subtitle)
-                    .strong()
-                    .color(text_primary()),
+            let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
+            ui.allocate_ui_with_layout(
+                bar,
+                egui::Layout::left_to_right(egui::Align::Center),
+                |ui| {
+                    ui.label(
+                        RichText::new(t("watch.title"))
+                            .size(metrics.text.subtitle)
+                            .strong()
+                            .color(text_primary()),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let closed = components::icon_button(
+                            ui,
+                            close,
+                            metrics.icon_button_size,
+                            ink(tone::BODY),
+                            true,
+                            false,
+                            true,
+                        )
+                        .clicked();
+                        if closed || ui.input(|input| input.key_pressed(egui::Key::Escape)) {
+                            request = Some(WatchTogetherRequest::Close);
+                        }
+                    });
+                },
             );
-            ui.add_space(14.0);
-            let width = ui.available_width();
+            ui.add_space(18.0);
             match model.room_code.clone() {
-                Some(code) => draw_room(ui, model, &code, width, assets, metrics, &t, &mut request),
-                None => draw_entry(ui, model, width, metrics, &t, &mut request),
+                Some(code) => draw_room(ui, model, &code, assets, metrics, &t, &mut request),
+                None => draw_entry(ui, model, metrics, &t, &mut request),
             }
             if let Some(error) = model.error.as_ref() {
                 components::note(ui, &t(error), metrics);
-            }
-            ui.add_space(14.0);
-            if components::secondary_button(ui, &t("common.close"), width).clicked()
-                || ui.input(|input| input.key_pressed(egui::Key::Escape))
-            {
-                request = Some(WatchTogetherRequest::Close);
             }
         },
         metrics,
@@ -79,11 +100,11 @@ pub fn draw_watch_together(
 fn draw_entry(
     ui: &mut egui::Ui,
     model: &mut WatchTogetherModel,
-    width: f32,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WatchTogetherRequest>,
 ) {
+    let width = ui.available_width();
     if model.connecting {
         components::note(ui, &t("watch.connecting"), metrics);
         return;
@@ -91,7 +112,7 @@ fn draw_entry(
     if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
         *request = Some(WatchTogetherRequest::Create);
     }
-    ui.add_space(16.0);
+    ui.add_space(20.0);
     components::note(ui, &t("watch.join_hint"), metrics);
     ui.add_space(8.0);
     let field = components::text_input(
@@ -122,102 +143,183 @@ fn draw_room(
     ui: &mut egui::Ui,
     model: &WatchTogetherModel,
     code: &str,
-    width: f32,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WatchTogetherRequest>,
 ) {
-    ui.horizontal(|ui| {
-        ui.label(
-            RichText::new(code)
-                .size(metrics.text.subtitle)
-                .strong()
-                .color(accent()),
-        );
-        if components::text_button(ui, &t("watch.copy_code"), metrics.text.meta, 170).clicked() {
-            *request = Some(WatchTogetherRequest::CopyCode);
+    let width = ui.available_width();
+    draw_code(ui, code, width, metrics, t, request);
+    ui.add_space(22.0);
+    let gap = 6.0;
+    let slot = (width - gap * (SLOTS as f32 - 1.0)) / SLOTS as f32;
+    let (row, _) = ui.allocate_exact_size(Vec2::new(width, AVATAR * 2.0 + 62.0), Sense::hover());
+    for index in 0..SLOTS {
+        let left = row.left() + index as f32 * (slot + gap);
+        let center = Pos2::new(left + slot * 0.5, row.top() + AVATAR + 6.0);
+        match model.members.get(index) {
+            Some(member) => draw_member(ui, member, center, slot, assets, metrics, t),
+            None => draw_empty(ui, center, metrics),
         }
-    });
+    }
     let ready = model.members.iter().filter(|member| member.ready).count();
-    components::note(
-        ui,
-        &t("watch.ready_count")
+    let summary = match waiting_member(&model.members) {
+        Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
+        None => t("watch.ready_count")
             .replace("{ready}", &ready.to_string())
             .replace("{total}", &model.members.len().to_string()),
-        metrics,
-    );
-    ui.add_space(12.0);
-    for member in &model.members {
-        draw_member(ui, member, width, assets, metrics, t);
-    }
-    if let Some(member) = waiting_member(&model.members) {
-        ui.add_space(8.0);
+    };
+    ui.vertical_centered(|ui| {
         ui.label(
-            RichText::new(t("watch.waiting_for").replace("{name}", &member.name))
-                .size(metrics.text.meta)
-                .color(accent()),
+            RichText::new(summary)
+                .size(metrics.text.subtitle * 0.8)
+                .strong()
+                .color(text_primary()),
         );
-    } else {
-        components::note(ui, &t("watch.hint"), metrics);
-    }
-    ui.add_space(14.0);
+        ui.add_space(4.0);
+        ui.label(
+            RichText::new(t("watch.hint"))
+                .size(metrics.text.label)
+                .color(metrics.text_secondary),
+        );
+    });
+    ui.add_space(18.0);
     if components::secondary_button(ui, &t("watch.leave"), width).clicked() {
         *request = Some(WatchTogetherRequest::Leave);
     }
 }
 
+fn draw_code(
+    ui: &mut egui::Ui,
+    code: &str,
+    width: f32,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+    request: &mut Option<WatchTogetherRequest>,
+) {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 58.0), Sense::click());
+    ui.painter().rect_filled(rect, 14.0, ink(tone::RAISED));
+    let spaced = code.chars().map(String::from).collect::<Vec<_>>().join(" ");
+    ui.painter().text(
+        Pos2::new(rect.left() + 20.0, rect.center().y),
+        Align2::LEFT_CENTER,
+        spaced,
+        FontId::proportional(metrics.text.subtitle * 1.15),
+        text_primary(),
+    );
+    ui.painter().text(
+        Pos2::new(rect.right() - 20.0, rect.center().y),
+        Align2::RIGHT_CENTER,
+        t("watch.copy_code"),
+        FontId::proportional(metrics.text.meta),
+        metrics.text_secondary,
+    );
+    if response.clicked() {
+        *request = Some(WatchTogetherRequest::CopyCode);
+    }
+}
+
+fn clipped(name: &str, limit: usize) -> String {
+    if name.chars().count() <= limit {
+        return name.to_owned();
+    }
+    let head = name.chars().take(limit - 1).collect::<String>();
+    format!("{head}…")
+}
+
 fn draw_member(
     ui: &mut egui::Ui,
     member: &WatchMemberView,
-    width: f32,
+    center: Pos2,
+    slot: f32,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
 ) {
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, 44.0), Sense::hover());
+    let painter = ui.painter();
     components::avatar(
-        ui.painter(),
+        painter,
         assets,
-        Pos2::new(rect.left() + 18.0, rect.center().y),
-        18.0,
+        center,
+        AVATAR,
         &member.name,
         member.avatar.as_deref(),
         metrics,
     );
-    let mut name = member.name.clone();
-    if member.host {
-        name = format!("{name} · {}", t("watch.host"));
+    if member.buffering {
+        let time = ui.input(|input| input.time) as f32;
+        let start = time * 4.0;
+        let points = (0..=18)
+            .map(|step| {
+                let angle = start + step as f32 / 18.0 * 2.2;
+                center + Vec2::angled(angle) * (AVATAR + 5.0)
+            })
+            .collect::<Vec<_>>();
+        painter.add(egui::Shape::line(points, egui::Stroke::new(3.0, accent())));
+        ui.ctx().request_repaint();
+    } else if member.ready {
+        painter.circle_stroke(center, AVATAR + 5.0, egui::Stroke::new(3.0, accent()));
+        let badge = center + Vec2::new(AVATAR * 0.72, AVATAR * 0.72);
+        painter.circle_filled(badge, 9.0, accent());
+        let ink = if crate::settings::accent_needs_dark_foreground(accent()) {
+            Color32::BLACK
+        } else {
+            Color32::WHITE
+        };
+        let tick = [
+            badge + Vec2::new(-3.8, 0.2),
+            badge + Vec2::new(-1.2, 3.0),
+            badge + Vec2::new(4.0, -3.0),
+        ];
+        painter.add(egui::Shape::line(
+            tick.to_vec(),
+            egui::Stroke::new(1.8, ink),
+        ));
+    } else {
+        painter.circle_stroke(
+            center,
+            AVATAR + 5.0,
+            egui::Stroke::new(1.5, metrics.text_muted.gamma_multiply(0.5)),
+        );
     }
-    if member.you {
-        name = format!("{name} · {}", t("watch.you"));
-    }
-    ui.painter().text(
-        Pos2::new(rect.left() + 46.0, rect.center().y),
-        Align2::LEFT_CENTER,
-        name,
+    let limit = ((slot / 7.5) as usize).max(4);
+    painter.text(
+        Pos2::new(center.x, center.y + AVATAR + 18.0),
+        Align2::CENTER_CENTER,
+        clipped(&member.name, limit),
         FontId::proportional(metrics.text.meta),
         text_primary(),
     );
-    let (status, color) = if member.buffering {
-        (t("watch.buffering"), accent())
-    } else if member.ready {
-        (t("watch.ready"), accent())
+    let role = if member.you {
+        Some(t("watch.you"))
+    } else if member.host {
+        Some(t("watch.host"))
     } else {
-        (t("watch.waiting"), metrics.text_muted)
+        None
     };
-    let dot = Pos2::new(rect.right() - 6.0, rect.center().y);
-    if member.ready && !member.buffering {
-        ui.painter().circle_filled(dot, 5.0, color);
-    } else {
-        ui.painter()
-            .circle_stroke(dot, 4.5, egui::Stroke::new(1.5, color));
+    if let Some(role) = role {
+        painter.text(
+            Pos2::new(center.x, center.y + AVATAR + 34.0),
+            Align2::CENTER_CENTER,
+            if member.you && member.host {
+                format!("{} · {}", t("watch.host"), role)
+            } else {
+                role
+            },
+            FontId::proportional(metrics.text.label),
+            metrics.text_muted,
+        );
     }
-    ui.painter().text(
-        Pos2::new(rect.right() - 20.0, rect.center().y),
-        Align2::RIGHT_CENTER,
-        status,
-        FontId::proportional(metrics.text.label),
-        color,
+}
+
+fn draw_empty(ui: &mut egui::Ui, center: Pos2, metrics: UiMetrics) {
+    let painter = ui.painter();
+    painter.circle_filled(center, AVATAR, ink(tone::RAISED).gamma_multiply(0.45));
+    painter.text(
+        center,
+        Align2::CENTER_CENTER,
+        "+",
+        FontId::proportional(AVATAR * 0.8),
+        metrics.text_muted.gamma_multiply(0.6),
     );
 }

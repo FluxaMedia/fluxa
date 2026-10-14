@@ -1657,6 +1657,17 @@ pub(super) fn modal(
     add: impl FnOnce(&mut egui::Ui),
     metrics: UiMetrics,
 ) {
+    modal_width(context, screen, id, 340.0, add, metrics);
+}
+
+pub(super) fn modal_width(
+    context: &egui::Context,
+    screen: Rect,
+    id: &str,
+    width: f32,
+    add: impl FnOnce(&mut egui::Ui),
+    metrics: UiMetrics,
+) {
     context
         .layer_painter(egui::LayerId::new(
             egui::Order::Middle,
@@ -1673,7 +1684,7 @@ pub(super) fn modal(
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(egui::Margin::same(26))
                 .show(ui, |ui| {
-                    ui.set_width(340.0);
+                    ui.set_width(width);
                     add(ui);
                 });
         });
