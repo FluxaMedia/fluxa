@@ -13,6 +13,10 @@ pub fn expanded_poster(context: &egui::Context) -> Option<ExpandedPoster> {
     context.data(|data| data.get_temp(Id::new("fluxa-expanded-poster")))
 }
 
+pub fn previewed_poster(context: &egui::Context) -> Option<ExpandedPoster> {
+    context.data(|data| data.get_temp(Id::new("fluxa-previewed-poster")))
+}
+
 #[derive(Clone, Default)]
 struct ExpandState {
     focus: Option<(u64, f64)>,
@@ -423,8 +427,10 @@ pub(crate) fn draw_home_rows(
         }
         None => data.remove::<ExpandedPoster>(Id::new("fluxa-expanded-poster")),
     });
+    let previewed_id = Id::new("fluxa-previewed-poster");
     let Some((node_id, anchor, card)) = hovered else {
         components::hover_preview_reset(context);
+        context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.data_mut(|data| data.remove::<(u64, f64, Rect)>(preview_id));
         return;
     };
@@ -443,6 +449,7 @@ pub(crate) fn draw_home_rows(
     let remaining = HOVER_PREVIEW_DELAY - (now - since);
     if remaining > 0.0 {
         components::hover_preview_reset(context);
+        context.data_mut(|data| data.remove::<ExpandedPoster>(previewed_id));
         context.request_repaint_after(std::time::Duration::from_secs_f64(remaining));
         return;
     }
@@ -453,10 +460,28 @@ pub(crate) fn draw_home_rows(
     let progress = resume
         .map(|resume| resume.progress)
         .filter(|progress| *progress > 0.0);
+    if let Some(id) = card.id.clone() {
+        context.data_mut(|data| {
+            data.insert_temp(
+                previewed_id,
+                ExpandedPoster {
+                    node: node_id,
+                    id,
+                    raw: card.raw.clone(),
+                },
+            )
+        });
+    }
+    let trailer = home
+        .poster_trailer
+        .as_ref()
+        .filter(|trailer| card.id.as_deref() == Some(trailer.item_id.as_str()))
+        .and_then(|trailer| trailer.texture);
     let (response, action) = components::hover_preview(
         context,
         area,
         card,
+        trailer,
         &meta,
         synopsis,
         &play_label,

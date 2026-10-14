@@ -248,6 +248,7 @@ pub(crate) fn hover_preview(
     context: &egui::Context,
     rect: Rect,
     card: &HomeCard,
+    trailer: Option<egui::TextureId>,
     meta: &str,
     synopsis: std::sync::Arc<egui::Galley>,
     play_label: &str,
@@ -301,6 +302,22 @@ pub(crate) fn hover_preview(
                 Color32::WHITE,
                 assets,
             );
+            if let Some(texture) = trailer {
+                let fade = crate::motion::appear(
+                    context,
+                    Id::new(("fluxa-hover-trailer-fade", texture)),
+                    crate::motion::slow() * 2.0,
+                    crate::motion::Ease::Linear,
+                );
+                rounded_image(
+                    &painter,
+                    texture,
+                    image,
+                    radius,
+                    cover_uv([1920, 1080], image),
+                    Color32::from_white_alpha((255.0 * fade) as u8),
+                );
+            }
             let info =
                 Rect::from_min_max(Pos2::new(rect.left(), rect.top() + image_height), rect.max);
             painter.rect_filled(

@@ -118,7 +118,8 @@ fn wanted(state: &RendererState) -> Option<Wanted> {
         Route::Home => {
             let context = &state.gpu.as_ref()?.egui_context;
             if settings.bool_value("trailerOnExpandedPosters")
-                && let Some(poster) = fluxa_ui::expanded_poster(context)
+                && let Some(poster) = fluxa_ui::previewed_poster(context)
+                    .or_else(|| fluxa_ui::expanded_poster(context))
             {
                 return Some(Wanted {
                     urls: state.trailers.urls_for(&poster.id, &poster.raw),
@@ -351,7 +352,9 @@ fn queue_expanded(state: &mut RendererState) {
     let Some(gpu) = state.gpu.as_ref() else {
         return;
     };
-    let Some(poster) = fluxa_ui::expanded_poster(&gpu.egui_context) else {
+    let Some(poster) = fluxa_ui::previewed_poster(&gpu.egui_context)
+        .or_else(|| fluxa_ui::expanded_poster(&gpu.egui_context))
+    else {
         return;
     };
     let trailers = &mut state.trailers;
