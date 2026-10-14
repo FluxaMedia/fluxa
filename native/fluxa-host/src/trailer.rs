@@ -42,6 +42,12 @@ struct Active {
 }
 
 impl Trailers {
+    pub(crate) fn playing(&self) -> bool {
+        self.active
+            .as_ref()
+            .is_some_and(|active| active.loaded && !active.failed && !active.finished)
+    }
+
     pub(crate) fn inputs(&self) -> Arc<Value> {
         Arc::new(json!({"fetched": self.fetched, "ids": self.fetched_ids}))
     }

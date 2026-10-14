@@ -67,12 +67,16 @@ fn timeout(state: &RendererState) -> Duration {
     Duration::from_secs(u64::from(minutes) * 60)
 }
 
+fn playing(state: &RendererState) -> bool {
+    state.player.is_some() || state.trailers.playing()
+}
+
 fn eligible(state: &RendererState) -> bool {
     state.settings.bool_value("ambientModeEnabled")
         && state.session.is_some()
         && state.gpu.is_some()
         && state.window_focused
-        && state.player.is_none()
+        && !playing(state)
         && state.profiles.is_none()
         && state.welcome.is_none()
 }
@@ -271,6 +275,9 @@ fn drive_image(state: &mut RendererState, now: Instant) {
 
 pub(crate) fn tick(state: &mut RendererState) {
     let now = Instant::now();
+    if playing(state) {
+        state.ambient.last_input = now;
+    }
     let eligible = eligible(state);
     match state.ambient.show.as_mut() {
         Some(show) => {
