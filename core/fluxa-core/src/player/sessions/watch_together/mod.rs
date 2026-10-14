@@ -236,8 +236,20 @@ impl WatchTogetherProtocol {
     }
 
     pub fn content_from(value: &Value) -> Option<WatchTogetherContent> {
+        let id = value.get("contentId")?.as_str()?;
+        let text = |key: &str| value.get(key).and_then(Value::as_str);
+        let oversized = id.is_empty()
+            || id.len() > 128
+            || [text("contentType"), text("videoId")]
+                .into_iter()
+                .flatten()
+                .any(|field| field.len() > 128)
+            || text("title").is_some_and(|title| title.len() > 300);
+        if oversized {
+            return None;
+        }
         Some(WatchTogetherContent {
-            id: value.get("contentId")?.as_str()?.to_string(),
+            id: id.to_string(),
             content_type: value
                 .get("contentType")
                 .and_then(Value::as_str)

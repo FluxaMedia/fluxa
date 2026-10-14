@@ -1,7 +1,7 @@
 use super::fluxa_account::{Credentials, Supabase, client};
 use super::*;
 use futures_util::{SinkExt, StreamExt};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
 use tokio_tungstenite::tungstenite::Message;
@@ -41,6 +41,39 @@ impl WatchTogether {
             sink(action);
         }
     }
+}
+
+type Socket =
+    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
+
+fn frame(topic: &str, event: &str, payload: Value, reference: String) -> String {
+    json!({"topic": topic, "event": event, "payload": payload, "ref": reference}).to_string()
+}
+
+async fn send_join(
+    socket: &mut Socket,
+    topic: &str,
+    credentials: &Credentials,
+    reference: &str,
+) -> Result<(), String> {
+    let join = json!({
+        "topic": topic,
+        "event": "phx_join",
+        "ref": reference,
+        "join_ref": reference,
+        "payload": {
+            "config": {
+                "broadcast": {"self": false, "ack": false},
+                "presence": {"key": credentials.user_id},
+                "private": true,
+            },
+            "access_token": credentials.token,
+        },
+    });
+    socket
+        .send(Message::text(join.to_string()))
+        .await
+        .map_err(|error| error.to_string())
 }
 
 fn now_ms() -> i64 {
@@ -200,7 +233,7 @@ impl EffectExecutor {
         let room = json_response(room.send().await.map_err(|error| error.to_string())?).await?;
         let room_code = room["code"]
             .as_str()
-            .ok_or_else(|| "room response was invalid".to_owned())?
+            .ok_or_else(|| "room not found".to_owned())?
             .to_owned();
         let (host_id, members) =
             fetch_roster(&client, &config, &credentials.token, &room_code).await?;
@@ -283,37 +316,22 @@ impl EffectExecutor {
         let (mut socket, _) = tokio_tungstenite::connect_async(socket_url)
             .await
             .map_err(|error| error.to_string())?;
-        let topic = format!("realtime:watch-together:{room}");
+        let host_topic = format!("realtime:watch-together:{room}:host");
+        let member_prefix = format!("realtime:watch-together:{room}:u:");
+        let own_topic = format!("{member_prefix}{}", credentials.user_id);
         let mut counter = 0u64;
         let mut next_ref = move || {
             counter += 1;
             counter.to_string()
         };
-        let join_ref = next_ref();
-        let frame = |event: &str, payload: Value, reference: String| {
-            json!({"topic": topic, "event": event, "payload": payload, "ref": reference})
-                .to_string()
-        };
-        socket
-            .send(Message::text(
-                json!({
-                    "topic": topic,
-                    "event": "phx_join",
-                    "ref": join_ref,
-                    "join_ref": join_ref,
-                    "payload": {
-                        "config": {
-                            "broadcast": {"self": false, "ack": false},
-                            "presence": {"key": credentials.user_id},
-                            "private": true,
-                        },
-                        "access_token": credentials.token,
-                    },
-                })
-                .to_string(),
-            ))
-            .await
-            .map_err(|error| error.to_string())?;
+        let mut joined: HashMap<String, String> = HashMap::new();
+        let reference = next_ref();
+        send_join(&mut socket, &host_topic, &credentials, &reference).await?;
+        joined.insert(host_topic.clone(), reference);
+        let reference = next_ref();
+        send_join(&mut socket, &own_topic, &credentials, &reference).await?;
+        joined.insert(own_topic.clone(), reference);
+        let mut host_id = String::new();
         let client = client()?;
         let mut heartbeat = tokio::time::interval(HEARTBEAT);
         heartbeat.tick().await;
@@ -331,34 +349,68 @@ impl EffectExecutor {
                     let Ok(event) = serde_json::from_str::<Value>(text.as_str()) else {
                         continue;
                     };
-                    if event["topic"] != topic {
+                    let Some(topic) = event["topic"].as_str() else {
+                        continue;
+                    };
+                    if !joined.contains_key(topic) {
                         continue;
                     }
+                    let topic = topic.to_owned();
                     match event["event"].as_str() {
                         Some("broadcast") if event["payload"]["event"] == "wt" => {
+                            let mut message = event["payload"]["payload"].clone();
+                            let sender = if topic == host_topic {
+                                host_id.clone()
+                            } else {
+                                topic.strip_prefix(member_prefix.as_str()).unwrap_or_default().to_owned()
+                            };
+                            if sender.is_empty() || !message.is_object() {
+                                continue;
+                            }
+                            message["from"] = json!(sender);
                             self.watch.emit(json!({
                                 "type": "watchTogetherMessageReceived",
-                                "message": event["payload"]["payload"],
+                                "message": message,
                                 "nowMs": now_ms(),
                             }));
                         }
-                        Some("phx_reply") if event["ref"].as_str() == Some(join_ref.as_str()) => {
+                        Some("phx_reply") => {
+                            let reference = event["ref"].as_str().unwrap_or_default();
+                            let Some(replied) = joined
+                                .iter()
+                                .find(|(_, join_ref)| join_ref.as_str() == reference)
+                                .map(|(topic, _)| topic.clone())
+                            else {
+                                continue;
+                            };
                             if event["payload"]["status"] != "ok" {
-                                return Err(format!("join rejected: {}", event["payload"]["response"]));
+                                if replied == host_topic || replied == own_topic {
+                                    return Err(format!("join rejected: {}", event["payload"]["response"]));
+                                }
+                                joined.remove(&replied);
+                                continue;
                             }
-                            let track = json!({
-                                "type": "presence",
-                                "event": "TRACK",
-                                "payload": {"user_id": credentials.user_id},
-                            });
-                            socket
-                                .send(Message::text(frame("presence", track, next_ref())))
-                                .await
-                                .map_err(|error| error.to_string())?;
-                            self.publish_roster(&client, &config, &credentials, room).await;
+                            if replied == host_topic {
+                                let track = json!({
+                                    "type": "presence",
+                                    "event": "TRACK",
+                                    "payload": {"user_id": credentials.user_id},
+                                });
+                                socket
+                                    .send(Message::text(frame(&host_topic, "presence", track, next_ref())))
+                                    .await
+                                    .map_err(|error| error.to_string())?;
+                                self.refresh_lanes(
+                                    &mut socket, &client, &config, &credentials, room,
+                                    &member_prefix, &mut joined, &mut host_id, &mut next_ref,
+                                ).await?;
+                            }
                         }
                         Some("presence_diff") => {
-                            self.publish_roster(&client, &config, &credentials, room).await;
+                            self.refresh_lanes(
+                                &mut socket, &client, &config, &credentials, room,
+                                &member_prefix, &mut joined, &mut host_id, &mut next_ref,
+                            ).await?;
                         }
                         Some("phx_error" | "phx_close") => return Err("channel closed".to_owned()),
                         _ => {}
@@ -369,9 +421,13 @@ impl EffectExecutor {
                         let _ = socket.close(None).await;
                         return Ok(());
                     };
+                    let topic = match message["type"].as_str() {
+                        Some("content" | "start" | "state") => &host_topic,
+                        _ => &own_topic,
+                    };
                     let payload = json!({"type": "broadcast", "event": "wt", "payload": message});
                     socket
-                        .send(Message::text(frame("broadcast", payload, next_ref())))
+                        .send(Message::text(frame(topic, "broadcast", payload, next_ref())))
                         .await
                         .map_err(|error| error.to_string())?;
                 }
@@ -386,18 +442,71 @@ impl EffectExecutor {
                     let fresh = self.watch_credentials().await?;
                     if fresh.token != credentials.token {
                         credentials = fresh;
-                        socket
-                            .send(Message::text(frame(
-                                "access_token",
-                                json!({"access_token": credentials.token}),
-                                next_ref(),
-                            )))
-                            .await
-                            .map_err(|error| error.to_string())?;
+                        for topic in joined.keys() {
+                            socket
+                                .send(Message::text(frame(
+                                    topic,
+                                    "access_token",
+                                    json!({"access_token": credentials.token}),
+                                    next_ref(),
+                                )))
+                                .await
+                                .map_err(|error| error.to_string())?;
+                        }
                     }
                 }
             }
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn refresh_lanes(
+        &self,
+        socket: &mut Socket,
+        client: &Client,
+        config: &Supabase,
+        credentials: &Credentials,
+        room: &str,
+        member_prefix: &str,
+        joined: &mut HashMap<String, String>,
+        host_id: &mut String,
+        next_ref: &mut impl FnMut() -> String,
+    ) -> Result<(), String> {
+        let Some(members) = self.publish_roster(client, config, credentials, room).await else {
+            return Ok(());
+        };
+        *host_id = members.0;
+        let wanted: Vec<String> = members
+            .1
+            .iter()
+            .map(|id| format!("{member_prefix}{id}"))
+            .collect();
+        let stale: Vec<String> = joined
+            .keys()
+            .filter(|topic| topic.starts_with(member_prefix) && !wanted.contains(topic))
+            .cloned()
+            .collect();
+        for topic in stale {
+            joined.remove(&topic);
+            socket
+                .send(Message::text(frame(
+                    &topic,
+                    "phx_leave",
+                    json!({}),
+                    next_ref(),
+                )))
+                .await
+                .map_err(|error| error.to_string())?;
+        }
+        for topic in wanted {
+            if joined.contains_key(&topic) {
+                continue;
+            }
+            let reference = next_ref();
+            send_join(socket, &topic, credentials, &reference).await?;
+            joined.insert(topic, reference);
+        }
+        Ok(())
     }
 
     async fn publish_roster(
@@ -406,15 +515,25 @@ impl EffectExecutor {
         config: &Supabase,
         credentials: &Credentials,
         room: &str,
-    ) {
+    ) -> Option<(String, Vec<String>)> {
         match fetch_roster(client, config, &credentials.token, room).await {
-            Ok((host_id, members)) => self.watch.emit(json!({
-                "type": "watchTogetherMembersChanged",
-                "hostId": host_id,
-                "members": members,
-                "nowMs": now_ms(),
-            })),
-            Err(error) => crate::log!("[watch-together] roster refresh failed: {error}"),
+            Ok((host_id, members)) => {
+                let ids = members
+                    .iter()
+                    .filter_map(|member| member["id"].as_str().map(ToOwned::to_owned))
+                    .collect();
+                self.watch.emit(json!({
+                    "type": "watchTogetherMembersChanged",
+                    "hostId": host_id,
+                    "members": members,
+                    "nowMs": now_ms(),
+                }));
+                Some((host_id, ids))
+            }
+            Err(error) => {
+                crate::log!("[watch-together] roster refresh failed: {error}");
+                None
+            }
         }
     }
 }

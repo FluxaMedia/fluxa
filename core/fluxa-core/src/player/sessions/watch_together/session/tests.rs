@@ -267,3 +267,29 @@ fn roster_exposes_ready_and_buffering_per_member() {
         .collect();
     assert_eq!(waiting, vec!["ana".to_string()]);
 }
+
+#[test]
+fn shared_stream_with_a_non_web_url_is_ignored() {
+    let mut guest = session("guest", &["host", "guest"]);
+    let mut message = json!({
+        "type": "content",
+        "from": "host",
+        "contentId": "tt1",
+        "stream": {"url": "file:///etc/passwd"},
+    });
+    let effects = guest.handle(&message, 0);
+    assert!(matches!(effects.as_slice(), [SessionEffect::PickStream(_)]));
+    message["stream"]["url"] = json!("https://cdn.example/video.mkv");
+    let effects = guest.handle(&message, 0);
+    assert!(matches!(
+        effects.as_slice(),
+        [SessionEffect::PlaySharedStream { .. }]
+    ));
+}
+
+#[test]
+fn oversized_content_is_dropped() {
+    let mut guest = session("guest", &["host", "guest"]);
+    let message = json!({"type": "content", "from": "host", "contentId": "x".repeat(500)});
+    assert!(guest.handle(&message, 0).is_empty());
+}

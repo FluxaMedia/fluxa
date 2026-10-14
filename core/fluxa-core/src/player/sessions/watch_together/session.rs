@@ -16,6 +16,19 @@ pub struct SharedStream {
     pub headers: BTreeMap<String, String>,
 }
 
+impl SharedStream {
+    fn is_playable(&self) -> bool {
+        let web = self.url.starts_with("https://") || self.url.starts_with("http://");
+        web && self.url.len() <= 4096
+            && self.title.len() <= 300
+            && self.headers.len() <= 16
+            && self
+                .headers
+                .iter()
+                .all(|(name, value)| name.len() <= 64 && value.len() <= 2048)
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub enum SessionPhase {
@@ -417,7 +430,8 @@ impl WatchTogetherSession {
             .max(0);
         self.shared_stream = message
             .get("stream")
-            .and_then(|value| serde_json::from_value(value.clone()).ok());
+            .and_then(|value| serde_json::from_value::<SharedStream>(value.clone()).ok())
+            .filter(SharedStream::is_playable);
         self.content = Some(content.clone());
         match self.shared_stream.clone() {
             Some(stream) => vec![SessionEffect::PlaySharedStream { content, stream }],
