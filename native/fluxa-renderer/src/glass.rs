@@ -355,11 +355,23 @@ impl GlassPass {
         };
         let mut source = &targets.scene.bind;
         for (index, level) in targets.down.iter().enumerate() {
-            Self::fullscreen(encoder, &self.down, source, &level.view, scaled(index as u32 + 1));
+            Self::fullscreen(
+                encoder,
+                &self.down,
+                source,
+                &level.view,
+                scaled(index as u32 + 1),
+            );
             source = &level.bind;
         }
         for (index, level) in targets.up.iter().enumerate().rev() {
-            Self::fullscreen(encoder, &self.up, source, &level.view, scaled(index as u32 + 1));
+            Self::fullscreen(
+                encoder,
+                &self.up,
+                source,
+                &level.view,
+                scaled(index as u32 + 1),
+            );
             source = &level.bind;
         }
     }

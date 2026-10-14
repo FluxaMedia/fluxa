@@ -50,7 +50,9 @@ pub fn mirror_rect(rect: Rect, width: f32) -> Rect {
 fn mirror_shape(shape: &mut Shape, width: f32) {
     match shape {
         Shape::Noop => {}
-        Shape::Vec(shapes) => shapes.iter_mut().for_each(|shape| mirror_shape(shape, width)),
+        Shape::Vec(shapes) => shapes
+            .iter_mut()
+            .for_each(|shape| mirror_shape(shape, width)),
         Shape::Circle(circle) => circle.center = mirror_pos(circle.center, width),
         Shape::Ellipse(ellipse) => ellipse.center = mirror_pos(ellipse.center, width),
         Shape::LineSegment { points, .. } => points
@@ -173,7 +175,12 @@ mod tests {
         };
         let right = |row: &egui::epaint::text::PlacedRow| row.pos.x + row.row.size.x;
         let first = right(&text.galley.rows[0]);
-        assert!(text.galley.rows.iter().all(|row| (right(row) - first).abs() < 0.01));
+        assert!(
+            text.galley
+                .rows
+                .iter()
+                .all(|row| (right(row) - first).abs() < 0.01)
+        );
     }
 
     #[test]
@@ -238,7 +245,10 @@ mod tests {
             uv: pos2(0.0, 0.0),
             color,
         };
-        mesh.vertices = vec![vertex(0.0, Color32::BLACK), vertex(40.0, Color32::TRANSPARENT)];
+        mesh.vertices = vec![
+            vertex(0.0, Color32::BLACK),
+            vertex(40.0, Color32::TRANSPARENT),
+        ];
         let mut shapes = vec![clipped(Shape::Mesh(Arc::new(mesh)))];
         mirror_shapes(&mut shapes, 100.0);
         let Shape::Mesh(mirrored) = &shapes[0].shape else {
