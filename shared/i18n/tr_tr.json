@@ -3275,5 +3275,11 @@
   "player.unlock_controls": "Kontrollerin kilidini aç",
   "settings.detail_sections_hint": "Bölümleri aç veya kapat ve sıralarını değiştir.",
   "watch.lock": "Odayı kilitle",
-  "watch.unlock": "Oda kilidini aç"
+  "watch.unlock": "Oda kilidini aç",
+  "downloads.bytes_progress": "%s / %s",
+  "downloads.elapsed": "Geçen süre %s",
+  "downloads.remaining": "%s kaldı",
+  "downloads.quit_title": "İndirmeler devam ediyor",
+  "downloads.quit_keep": "Arka planda indirmeye devam et",
+  "downloads.quit_stop": "Çık ve indirmeleri duraklat"
 }

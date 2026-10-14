@@ -3275,5 +3275,11 @@
   "player.unlock_controls": "Unlock controls",
   "settings.detail_sections_hint": "Turn sections on or off and change their order.",
   "watch.lock": "Lock room",
-  "watch.unlock": "Unlock room"
+  "watch.unlock": "Unlock room",
+  "downloads.bytes_progress": "%s of %s",
+  "downloads.elapsed": "Elapsed %s",
+  "downloads.remaining": "%s left",
+  "downloads.quit_title": "Downloads are in progress",
+  "downloads.quit_keep": "Keep downloading in the background",
+  "downloads.quit_stop": "Quit and pause downloads"
 }

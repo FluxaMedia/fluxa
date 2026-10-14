@@ -3264,5 +3264,11 @@
   "player.unlock_controls": "فتح قفل عناصر التحكم",
   "settings.detail_sections_hint": "شغّل الأقسام أو أوقفها وغيّر ترتيبها.",
   "watch.lock": "قفل الغرفة",
-  "watch.unlock": "فتح قفل الغرفة"
+  "watch.unlock": "فتح قفل الغرفة",
+  "downloads.bytes_progress": "%s من %s",
+  "downloads.elapsed": "المدة المنقضية %s",
+  "downloads.remaining": "المتبقي %s",
+  "downloads.quit_title": "التنزيلات قيد التقدم",
+  "downloads.quit_keep": "متابعة التنزيل في الخلفية",
+  "downloads.quit_stop": "إنهاء وإيقاف التنزيلات مؤقتًا"
 }

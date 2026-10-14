@@ -3264,5 +3264,11 @@
   "player.unlock_controls": "ביטול נעילת הבקרים",
   "settings.detail_sections_hint": "הפעלה או כיבוי של מקטעים ושינוי הסדר שלהם.",
   "watch.lock": "נעל חדר",
-  "watch.unlock": "בטל נעילת חדר"
+  "watch.unlock": "בטל נעילת חדר",
+  "downloads.bytes_progress": "%s מתוך %s",
+  "downloads.elapsed": "זמן שחלף %s",
+  "downloads.remaining": "נותרו %s",
+  "downloads.quit_title": "ההורדות בעיצומן",
+  "downloads.quit_keep": "המשך הורדה ברקע",
+  "downloads.quit_stop": "יציאה והשהיית ההורדות"
 }
