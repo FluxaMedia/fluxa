@@ -19,6 +19,8 @@ targetTemplates:
     info:
       path: Generated/${target_name}-Info.plist
       properties:
+        UIBackgroundModes:
+          - audio
         CFBundleURLTypes:
           - CFBundleURLName: FluxaApple
             CFBundleURLSchemes:

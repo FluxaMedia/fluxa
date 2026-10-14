@@ -15,6 +15,9 @@ final class FluxaNativeVideo {
     }
 
     private let nowPlaying = FluxaNowPlaying()
+    private(set) lazy var pip = FluxaPictureInPicture(layer: layer) { [weak self] command, value in
+        self?.onMediaCommand?(command, value)
+    }
 
     private var mpv: OpaquePointer?
     private var audioLanguage = ""
@@ -224,6 +227,7 @@ final class FluxaNativeVideo {
         if matchedRate == 0, double("container-fps") > 0 { matchDisplayRate(double("container-fps")) }
         let paused = flag("pause")
         let buffering = flag("paused-for-cache") || (flag("core-idle") && !paused)
+        pip.status = (paused, double("time-pos"), double("duration"))
         fluxa_renderer_video_status(
             double("time-pos"),
             double("duration"),

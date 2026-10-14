@@ -143,6 +143,11 @@ pub unsafe extern "C" fn fluxa_renderer_back(renderer: *const FluxaRenderer) -> 
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "C" fn fluxa_renderer_pip_state(renderer: *const FluxaRenderer) -> i32 {
+    unsafe { renderer.as_ref() }.map_or(0, FluxaHost::pip_state)
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "C" fn fluxa_renderer_start_session(
     renderer: *const FluxaRenderer,
     data_dir: *const c_char,

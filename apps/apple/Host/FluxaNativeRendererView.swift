@@ -109,6 +109,7 @@ final class FluxaNativeRendererView: UIView, UIKeyInput {
 
     @objc private func tick() {
         video.tick()
+        video.pip.update(state: fluxa_renderer_pip_state(renderer))
         fluxa_renderer_render(renderer)
         accessTicks += 1
         if accessTicks % 15 == 0, UIAccessibility.isVoiceOverRunning || UIAccessibility.isSwitchControlRunning {

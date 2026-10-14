@@ -34,6 +34,7 @@ FluxaRenderer *fluxa_renderer_create(float density, const char *artwork_cache_di
 bool fluxa_renderer_start_session(const FluxaRenderer *renderer, const char *data_dir);
 void fluxa_renderer_push_action(const FluxaRenderer *renderer, const char *json);
 bool fluxa_renderer_back(const FluxaRenderer *renderer);
+int32_t fluxa_renderer_pip_state(const FluxaRenderer *renderer);
 char *fluxa_renderer_poll_video(void);
 void fluxa_renderer_video_status(double position, double duration, bool paused, bool has_frame, float buffering, const char *error);
 void fluxa_renderer_destroy(FluxaRenderer *renderer);
