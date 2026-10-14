@@ -65,7 +65,7 @@ impl Chrome<'_> {
         let amount = crate::motion::toggle(ui.ctx(), id.with("open"), open, crate::motion::fast());
         let width = full * amount;
         if width < 2.0 {
-            return x + full + 8.0;
+            return x;
         }
         let max = if player.boost { 200.0 } else { 100.0 };
         let track = Rect::from_min_size(Pos2::new(x + 4.0, y - 12.0), Vec2::new(width - 8.0, 24.0));
@@ -92,9 +92,35 @@ impl Chrome<'_> {
         let ratio = (shown / max).clamp(0.0, 1.0);
         let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
         self.painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
-        let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
+        let split = if player.boost { 0.5 } else { 1.0 };
+        let base = Rect::from_min_size(
+            bar.min,
+            Vec2::new(bar.width() * ratio.min(split), 4.0),
+        );
         self.painter
-            .rect_filled(filled, radius::BAR, accent().gamma_multiply(amount));
+            .rect_filled(base, radius::BAR, accent().gamma_multiply(amount));
+        let mut knob = accent();
+        if ratio > split {
+            let start = bar.left() + bar.width() * split;
+            let end = bar.left() + bar.width() * ratio;
+            let step = 2.0;
+            let mut left = start;
+            while left < end {
+                let right = (left + step).min(end);
+                let t = ((left - start) / (bar.width() * (1.0 - split))).clamp(0.0, 1.0);
+                self.painter.rect_filled(
+                    Rect::from_min_max(
+                        Pos2::new(left, bar.top()),
+                        Pos2::new(right, bar.bottom()),
+                    ),
+                    0.0,
+                    boost_color(t).gamma_multiply(amount),
+                );
+                left = right;
+            }
+            knob = boost_color(((ratio - split) / (1.0 - split)).clamp(0.0, 1.0));
+        }
+        let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
         if player.boost {
             let mark = bar.left() + bar.width() * 0.5;
             self.painter.line_segment(
@@ -108,7 +134,7 @@ impl Chrome<'_> {
         self.painter.circle_filled(
             Pos2::new(filled.right(), bar.center().y),
             6.0 * amount,
-            accent(),
+            knob,
         );
         draw_text(
             self.painter,
@@ -119,7 +145,7 @@ impl Chrome<'_> {
             ink(alpha),
             None,
         );
-        x + full + 8.0
+        x + width + 8.0
     }
 
     fn secondary(&self) -> Vec<Action> {
@@ -817,4 +843,9 @@ pub(super) fn control_with_id(
         _ => {}
     }
     response
+}
+
+fn boost_color(t: f32) -> Color32 {
+    let mix = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t) as u8;
+    Color32::from_rgb(mix(250, 239), mix(204, 68), mix(21, 68))
 }
