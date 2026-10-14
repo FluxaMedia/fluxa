@@ -143,6 +143,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     stream_badges::poll(state);
     collections::poll(state);
     player::pump(state);
+    watch_together::tick(state);
     player::upload_frame(state);
     timer.mark("player");
     if state.gpu.is_none() {

@@ -123,6 +123,7 @@ mod surface;
 mod sync;
 mod trailer;
 mod updates;
+mod watch_together;
 mod welcome;
 
 use actions::*;
@@ -227,6 +228,7 @@ struct RendererState {
     shortcut_recording: Option<String>,
     collections: collections::State,
     ambient: ambient::State,
+    watch: watch_together::State,
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     updates: updates::State,
@@ -425,6 +427,7 @@ impl FluxaHost {
             shortcut_recording: None,
             collections: Default::default(),
             ambient: Default::default(),
+            watch: Default::default(),
             stream_badges: Default::default(),
             applied_app_icon: None,
             updates: Default::default(),

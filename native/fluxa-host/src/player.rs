@@ -362,6 +362,22 @@ impl PlayerSession {
             .to_owned()
     }
 
+    pub(crate) fn watch_content(&self) -> Option<Value> {
+        if self.local || self.trailer.is_some() {
+            return None;
+        }
+        let id = self.meta.get("id").and_then(Value::as_str)?;
+        let video = ["lastVideoId", "videoId", "video_id"]
+            .iter()
+            .find_map(|key| self.meta.get(*key).and_then(Value::as_str));
+        Some(json!({
+            "id": id.split(':').next().unwrap_or(id),
+            "contentType": self.meta.get("type").and_then(Value::as_str).unwrap_or("movie"),
+            "videoId": video,
+            "title": self.title(),
+        }))
+    }
+
     pub(crate) fn controls_visible(&self) -> bool {
         !self.status.has_frame || self.last_activity.elapsed() < CONTROLS_TIMEOUT
     }
