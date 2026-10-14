@@ -33,6 +33,24 @@ pub fn waiting_member(members: &[WatchMemberView]) -> Option<&WatchMemberView> {
     members.iter().find(|member| member.buffering)
 }
 
+fn glyph(
+    painter: &egui::Painter,
+    assets: &impl HomeAssets,
+    name: &str,
+    center: Pos2,
+    size: f32,
+    tint: Color32,
+) {
+    if let Some(texture) = assets.icon(name) {
+        painter.image(
+            texture,
+            Rect::from_center_size(center, Vec2::splat(size)),
+            full_uv(),
+            tint,
+        );
+    }
+}
+
 const SLOTS: usize = 6;
 const AVATAR: f32 = 30.0;
 
@@ -149,7 +167,7 @@ fn draw_room(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let width = ui.available_width();
-    draw_code(ui, code, width, metrics, t, request);
+    draw_code(ui, code, width, assets, metrics, t, request);
     ui.add_space(22.0);
     let gap = 6.0;
     let slot = (width - gap * (SLOTS as f32 - 1.0)) / SLOTS as f32;
@@ -159,7 +177,7 @@ fn draw_room(
         let center = Pos2::new(left + slot * 0.5, row.top() + AVATAR + 6.0);
         match model.members.get(index) {
             Some(member) => draw_member(ui, member, center, slot, assets, metrics, t),
-            None => draw_empty(ui, center, metrics),
+            None => draw_empty(ui, assets, center, metrics),
         }
     }
     let ready = model.members.iter().filter(|member| member.ready).count();
@@ -193,6 +211,7 @@ fn draw_code(
     ui: &mut egui::Ui,
     code: &str,
     width: f32,
+    assets: &impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WatchTogetherRequest>,
@@ -207,14 +226,15 @@ fn draw_code(
         FontId::proportional(metrics.text.subtitle * 1.15),
         text_primary(),
     );
-    ui.painter().text(
-        Pos2::new(rect.right() - 20.0, rect.center().y),
-        Align2::RIGHT_CENTER,
-        t("watch.copy_code"),
-        FontId::proportional(metrics.text.meta),
+    glyph(
+        ui.painter(),
+        assets,
+        "Copy",
+        Pos2::new(rect.right() - 28.0, rect.center().y),
+        20.0,
         metrics.text_secondary,
     );
-    if response.clicked() {
+    if response.on_hover_text(t("watch.copy_code")).clicked() {
         *request = Some(WatchTogetherRequest::CopyCode);
     }
 }
@@ -261,20 +281,12 @@ fn draw_member(
         painter.circle_stroke(center, AVATAR + 5.0, egui::Stroke::new(3.0, accent()));
         let badge = center + Vec2::new(AVATAR * 0.72, AVATAR * 0.72);
         painter.circle_filled(badge, 9.0, accent());
-        let ink = if crate::settings::accent_needs_dark_foreground(accent()) {
+        let foreground = if crate::settings::accent_needs_dark_foreground(accent()) {
             Color32::BLACK
         } else {
             Color32::WHITE
         };
-        let tick = [
-            badge + Vec2::new(-3.8, 0.2),
-            badge + Vec2::new(-1.2, 3.0),
-            badge + Vec2::new(4.0, -3.0),
-        ];
-        painter.add(egui::Shape::line(
-            tick.to_vec(),
-            egui::Stroke::new(1.8, ink),
-        ));
+        glyph(painter, assets, "Check", badge, 12.0, foreground);
     } else {
         painter.circle_stroke(
             center,
@@ -290,36 +302,36 @@ fn draw_member(
         FontId::proportional(metrics.text.meta),
         text_primary(),
     );
-    let role = if member.you {
-        Some(t("watch.you"))
-    } else if member.host {
-        Some(t("watch.host"))
-    } else {
-        None
-    };
-    if let Some(role) = role {
+    if member.host {
+        glyph(
+            painter,
+            assets,
+            "Crown",
+            center + Vec2::new(0.0, -AVATAR - 12.0),
+            18.0,
+            accent(),
+        );
+    }
+    if member.you {
         painter.text(
             Pos2::new(center.x, center.y + AVATAR + 34.0),
             Align2::CENTER_CENTER,
-            if member.you && member.host {
-                format!("{} · {}", t("watch.host"), role)
-            } else {
-                role
-            },
+            t("watch.you"),
             FontId::proportional(metrics.text.label),
             metrics.text_muted,
         );
     }
 }
 
-fn draw_empty(ui: &mut egui::Ui, center: Pos2, metrics: UiMetrics) {
+fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {
     let painter = ui.painter();
     painter.circle_filled(center, AVATAR, ink(tone::RAISED).gamma_multiply(0.45));
-    painter.text(
+    glyph(
+        painter,
+        assets,
+        "Plus",
         center,
-        Align2::CENTER_CENTER,
-        "+",
-        FontId::proportional(AVATAR * 0.8),
+        AVATAR * 0.7,
         metrics.text_muted.gamma_multiply(0.6),
     );
 }
@@ -451,7 +463,7 @@ fn side_room(
     request: &mut Option<WatchTogetherRequest>,
 ) {
     let width = ui.available_width();
-    draw_code(ui, code, width, metrics, t, request);
+    draw_code(ui, code, width, assets, metrics, t, request);
     ui.add_space(10.0);
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
@@ -512,12 +524,17 @@ fn side_member(
             egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let role = match (member.host, member.you) {
-        (true, true) => Some(format!("{} · {}", t("watch.host"), t("watch.you"))),
-        (true, false) => Some(t("watch.host")),
-        (false, true) => Some(t("watch.you")),
-        _ => None,
-    };
+    let role = member.you.then(|| t("watch.you"));
+    if member.host {
+        glyph(
+            painter,
+            assets,
+            "Crown",
+            Pos2::new(rect.right() - 10.0, rect.center().y),
+            16.0,
+            accent(),
+        );
+    }
     let text_x = center.x + radius + 14.0;
     let name_y = if role.is_some() {
         rect.center().y - 8.0
