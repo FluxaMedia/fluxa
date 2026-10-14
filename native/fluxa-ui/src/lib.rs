@@ -35,12 +35,14 @@ mod sidebar;
 mod style;
 mod watch_together;
 mod welcome;
+mod window_button;
 
 pub use home::*;
 pub use layout::*;
 pub use metrics::*;
 pub use model::*;
 pub use navigation::*;
+pub use window_button::draw_window_fullscreen_button;
 pub use nodes::*;
 use paint::*;
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};

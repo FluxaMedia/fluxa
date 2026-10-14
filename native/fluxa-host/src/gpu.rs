@@ -45,6 +45,7 @@ pub(super) struct Gpu {
     started_at: Instant,
     pub(super) density: f32,
     pub(super) mirror: bool,
+    pub(super) window_fullscreen: bool,
     adapter_name: String,
     pub(super) collect_text: bool,
 }
@@ -610,6 +611,7 @@ impl Gpu {
             started_at: Instant::now(),
             density,
             mirror: false,
+            window_fullscreen: false,
             adapter_name,
             collect_text: false,
         })
@@ -874,6 +876,15 @@ impl Gpu {
                     &mut rendered_layout,
                 );
                 fluxa_ui::draw_top_focus(ui.ctx(), viewport, &rendered_layout, focused);
+            }
+            if player.is_none() && profiles.is_none() && welcome.is_none() {
+                fluxa_ui::draw_window_fullscreen_button(
+                    ui.ctx(),
+                    viewport,
+                    self.window_fullscreen,
+                    &assets,
+                    &mut rendered_layout,
+                );
             }
             if crate::preview::outlines() {
                 fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
