@@ -627,6 +627,27 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_isPlayin
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pipStateNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jint {
+    host(handle).map_or(0, FluxaHost::pip_state)
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setPipNative(
+    _env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+    on: jni::sys::jboolean,
+) {
+    if let Some(host) = host(handle) {
+        host.set_pip(on != 0);
+    }
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_keepAwakeNative(
     _env: JNIEnv<'_>,
     _class: JClass<'_>,

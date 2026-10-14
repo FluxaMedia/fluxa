@@ -1,6 +1,14 @@
 package com.fluxa.app.ui
 
 import android.app.Activity
+import android.app.PendingIntent
+import android.app.PictureInPictureParams
+import android.app.RemoteAction
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.IntentFilter
+import android.graphics.drawable.Icon
+import android.util.Rational
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -17,6 +25,13 @@ class MainActivity : Activity() {
 
     private lateinit var host: NativeVideoHost
     private val gson = Gson()
+    private var pipState = 0
+
+    private val pipToggle = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "mediaCommand", "command" to "togglePause", "value" to 0)))
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +62,15 @@ class MainActivity : Activity() {
         host.renderer.dispatchCoreCommand(
             gson.toJson(mapOf("formFactor" to if (com.fluxa.app.BuildConfig.IS_TV) "tv" else "mobile"))
         )
+        host.renderer.onPipStateChanged = { state ->
+            pipState = state
+            updatePipParams()
+        }
+        if (Build.VERSION.SDK_INT >= 26 && !com.fluxa.app.BuildConfig.IS_TV) {
+            val filter = IntentFilter(PIP_TOGGLE)
+            if (Build.VERSION.SDK_INT >= 33) registerReceiver(pipToggle, filter, Context.RECEIVER_NOT_EXPORTED)
+            else registerReceiver(pipToggle, filter)
+        }
         setContentView(host)
         host.renderer.requestFocus()
 
@@ -54,6 +78,49 @@ class MainActivity : Activity() {
             onBackInvokedDispatcher.registerOnBackInvokedCallback(android.window.OnBackInvokedDispatcher.PRIORITY_DEFAULT, ::back)
         }
         handleIntent(intent)
+    }
+
+    override fun onDestroy() {
+        if (Build.VERSION.SDK_INT >= 26 && !com.fluxa.app.BuildConfig.IS_TV) unregisterReceiver(pipToggle)
+        super.onDestroy()
+    }
+
+    private fun pipParams(): PictureInPictureParams? {
+        if (Build.VERSION.SDK_INT < 26 || com.fluxa.app.BuildConfig.IS_TV) return null
+        val paused = pipState == 2
+        val intent = PendingIntent.getBroadcast(
+            this, 0, Intent(PIP_TOGGLE).setPackage(packageName),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+        )
+        val icon = Icon.createWithResource(
+            this,
+            if (paused) android.R.drawable.ic_media_play else android.R.drawable.ic_media_pause,
+        )
+        val builder = PictureInPictureParams.Builder()
+            .setAspectRatio(Rational(16, 9))
+            .setActions(listOf(RemoteAction(icon, "Play/Pause", "Play/Pause", intent)))
+        if (Build.VERSION.SDK_INT >= 31) {
+            builder.setAutoEnterEnabled(pipState != 0)
+            builder.setSeamlessResizeEnabled(true)
+        }
+        return builder.build()
+    }
+
+    private fun updatePipParams() {
+        val params = pipParams() ?: return
+        setPictureInPictureParams(params)
+    }
+
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (pipState == 0) return
+        val params = pipParams() ?: return
+        enterPictureInPictureMode(params)
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: android.content.res.Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        host.renderer.setPictureInPicture(isInPictureInPictureMode)
     }
 
     override fun onStop() {
@@ -132,3 +199,5 @@ private val searchActions = setOf(
     "com.google.android.gms.actions.SEARCH_AND_PLAY",
     "android.media.action.MEDIA_PLAY_FROM_SEARCH",
 )
+
+private const val PIP_TOGGLE = "com.fluxa.app.PIP_TOGGLE"

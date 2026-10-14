@@ -59,6 +59,8 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     var onPlayerScreenChanged: ((Boolean) -> Unit)? = null
     private var playerScreen = false
     private var keepAwake = false
+    private var pipState = 0
+    var onPipStateChanged: ((Int) -> Unit)? = null
     var onAppIcon: ((String) -> Unit)? = null
     var onOpenUrl: ((String) -> Unit)? = null
     var onInstallApk: ((String) -> Unit)? = null
@@ -103,6 +105,11 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
             if (awake != keepAwake) {
                 keepAwake = awake
                 post { keepScreenOn = awake }
+            }
+            val pip = NativeRenderer.pipStateNative(nativeHandle)
+            if (pip != pipState) {
+                pipState = pip
+                post { onPipStateChanged?.invoke(pip) }
             }
             val videoRequests = NativeRenderer.pollVideoNative()
             if (videoRequests != "[]") {
@@ -692,6 +699,10 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
 
     private var accessibilityFocusedNode = -1
 
+    fun setPictureInPicture(on: Boolean) {
+        if (nativeHandle != 0L) NativeRenderer.setPipNative(nativeHandle, on)
+    }
+
     fun back(): Boolean = nativeHandle != 0L && NativeRenderer.backNative(nativeHandle)
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -960,6 +971,8 @@ private object NativeRenderer {
     @JvmStatic external fun backNative(handle: Long): Boolean
     @JvmStatic external fun isPlayingNative(handle: Long): Boolean
     @JvmStatic external fun keepAwakeNative(handle: Long): Boolean
+    @JvmStatic external fun pipStateNative(handle: Long): Int
+    @JvmStatic external fun setPipNative(handle: Long, on: Boolean)
     @JvmStatic external fun wantsLandscapeNative(handle: Long): Boolean
     @JvmStatic external fun pollVideoNative(): String
     @JvmStatic external fun videoStatusNative(

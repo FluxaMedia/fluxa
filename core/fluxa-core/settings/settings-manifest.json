@@ -697,7 +697,7 @@
     {
       "key": "pictureInPicture",
       "type": "boolean",
-      "default": false,
+      "default": true,
       "scope": "profile",
       "category": "system"
     },

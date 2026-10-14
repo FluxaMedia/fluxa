@@ -88,6 +88,7 @@ pub struct PlayerModel {
     pub trailer: bool,
     pub minimized: bool,
     pub minimizable: bool,
+    pub pip: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -303,6 +304,9 @@ pub fn draw_player(
             assets,
             UiMetrics::for_viewport(viewport),
         ),
+    }
+    if player.pip {
+        return layout;
     }
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);

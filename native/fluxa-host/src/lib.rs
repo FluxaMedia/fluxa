@@ -237,6 +237,7 @@ struct RendererState {
     watch_view: Option<fluxa_ui::WatchTogetherModel>,
     watch_panel: bool,
     window_fullscreen: bool,
+    pip: bool,
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     updates: updates::State,
@@ -455,6 +456,7 @@ impl FluxaHost {
             watch_view: None,
             watch_panel: false,
             window_fullscreen: false,
+            pip: false,
             stream_badges: Default::default(),
             applied_app_icon: None,
             updates: Default::default(),
@@ -689,6 +691,25 @@ impl FluxaHost {
     pub fn keep_awake(&self) -> bool {
         self.peek(|state| state.player.is_some() || state.ambient.visible())
             .unwrap_or(false)
+    }
+
+    pub fn pip_state(&self) -> i32 {
+        self.peek(|state| {
+            let enabled = state
+                .settings
+                .value("pictureInPicture")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(true);
+            match state.player.as_ref() {
+                Some(player) if enabled && player.can_pip() => 1 + player.status.paused as i32,
+                _ => 0,
+            }
+        })
+        .unwrap_or(0)
+    }
+
+    pub fn set_pip(&self, on: bool) {
+        self.peek(|state| state.pip = on);
     }
 
     pub fn set_window_fullscreen(&self, on: bool) {

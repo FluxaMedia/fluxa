@@ -714,6 +714,7 @@ impl PlayerSession {
             trailer: self.trailer.is_some(),
             minimized: self.minimized,
             minimizable: false,
+            pip: false,
             has_episodes: menu::has_episodes(self),
             dim: 1.0 - self.brightness,
             options: fluxa_ui::PlayerOptions::default(),
@@ -1365,6 +1366,10 @@ pub(crate) fn is_mini_node(node: u64) -> bool {
 }
 
 impl PlayerSession {
+    pub(crate) fn can_pip(&self) -> bool {
+        self.status.has_frame && self.trailer.is_none() && self.error.is_none()
+    }
+
     pub(crate) fn can_minimize(&self) -> bool {
         self.status.has_frame
             && self.trailer.is_none()

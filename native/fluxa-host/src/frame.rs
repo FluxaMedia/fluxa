@@ -208,6 +208,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             upscaling: player::upscaling(&state.settings).to_owned(),
             ..player.model()
         };
+        model.pip = state.pip;
         player::apply_options(&mut model, &state.settings);
         model
     });
