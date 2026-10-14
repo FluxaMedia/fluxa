@@ -149,11 +149,7 @@ fn card_bottom(chrome: &Chrome) -> f32 {
 }
 
 fn card_right(chrome: &Chrome) -> f32 {
-    let margin = match chrome.viewport.form_factor {
-        UiFormFactor::Tv => (chrome.rect.width() * 0.05).max(48.0),
-        _ => chrome.margin(),
-    };
-    chrome.rect.right() - margin
+    chrome.rect.right() - chrome.margin()
 }
 
 pub(super) fn pill(

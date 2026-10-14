@@ -12,6 +12,16 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
             VideoCommand::Mpv(vec!["cycle".to_owned(), "sub-visibility".to_owned()]),
         ),
         fluxa_ui::NODE_PLAYER_BOOST => toggle_boost(state),
+        fluxa_ui::NODE_PLAYER_LOCK => {
+            if let Some(player) = state.player.as_mut() {
+                player.locked = !player.locked;
+                if player.locked {
+                    player.hide();
+                } else {
+                    player.touch();
+                }
+            }
+        }
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
         fluxa_ui::NODE_PLAYER_WATCH => crate::watch_together::toggle_panel(state),
         fluxa_ui::NODE_PLAYER_CONTROLS => {
@@ -208,6 +218,9 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
         input,
         KeyInput::Key(Key::Back | Key::Escape) | KeyInput::Gamepad(GamepadButton::East)
     );
+    if state.player.as_ref().is_some_and(|player| player.locked) {
+        return locked_key(state, input);
+    }
     let tv = state.home.form_factor == fluxa_ui::UiFormFactorJson::Tv;
     let recommending = state
         .player
@@ -269,6 +282,32 @@ pub(super) fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOu
     use crate::KeyInput;
     use fluxa_renderer::ui::{GamepadButton, Key};
     let on_seek = state.ui.focused() == Some(fluxa_ui::NODE_PLAYER_SEEK);
+fn locked_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
+    use crate::KeyInput;
+    use fluxa_renderer::ui::{GamepadButton, Key};
+    let Some(player) = state.player.as_mut() else {
+        return KeyOutcome::Focus;
+    };
+    let was_visible = player.controls_visible();
+    player.touch();
+    let navigates = matches!(
+        input,
+        KeyInput::Key(Key::Enter | Key::Left | Key::Right | Key::Up | Key::Down)
+            | KeyInput::Gamepad(
+                GamepadButton::South
+                    | GamepadButton::DPadLeft
+                    | GamepadButton::DPadRight
+                    | GamepadButton::DPadUp
+                    | GamepadButton::DPadDown
+            )
+    );
+    if was_visible && navigates {
+        return KeyOutcome::Focus;
+    }
+    state.ui.set_focus(Some(fluxa_ui::NODE_PLAYER_LOCK));
+    KeyOutcome::Handled
+}
+
     let Some(player) = state.player.as_mut() else {
         return KeyOutcome::Focus;
     };

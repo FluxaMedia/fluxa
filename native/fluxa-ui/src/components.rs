@@ -17,6 +17,7 @@ mod input;
 mod menu;
 mod recent_searches;
 mod streams;
+mod slider;
 
 pub use cards::*;
 pub use dropdown::*;
@@ -26,6 +27,7 @@ pub use menu::*;
 pub use recent_searches::*;
 pub use streams::*;
 
+pub(crate) use slider::*;
 use super::{
     ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,
     UiMetrics, Viewport, accent, artwork_target_size, background, badge_fill, button_height,

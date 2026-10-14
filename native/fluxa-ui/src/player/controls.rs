@@ -20,7 +20,7 @@ pub(super) fn painter_bar(
 type Action = (&'static str, u64);
 
 impl Chrome<'_> {
-    fn actions(&self, mobile_header: bool) -> Vec<Action> {
+    fn actions(&self) -> Vec<Action> {
         let (player, options) = (self.player, &self.player.options);
         let mut actions = Vec::new();
         if options.audio_subtitles {
@@ -35,10 +35,11 @@ impl Chrome<'_> {
         if options.settings && self.viewport.form_factor == UiFormFactor::Desktop {
             actions.push(("Settings", NODE_PLAYER_SETTINGS));
         }
-        if !mobile_header {
+        if self.viewport.form_factor != UiFormFactor::Mobile {
             if options.mark_segment {
                 actions.push(("Flag", NODE_PLAYER_SUBMIT));
             }
+            actions.push(("Lock", NODE_PLAYER_LOCK));
         }
         actions.push(("Info", NODE_PLAYER_INFO));
         actions
@@ -69,70 +70,41 @@ impl Chrome<'_> {
         }
         let max = if player.boost { 200.0 } else { 100.0 };
         let track = Rect::from_min_size(Pos2::new(x + 4.0, y - 12.0), Vec2::new(width - 8.0, 24.0));
-        let response = ui.interact(track, id, Sense::click_and_drag());
-        ui.data_mut(|data| data.insert_temp(id, response.dragged()));
-        if (response.clicked() || response.dragged())
-            && let Some(pointer) = response.interact_pointer_pos()
-        {
-            let ratio = ((pointer.x - track.left()) / track.width()).clamp(0.0, 1.0);
-            layout.player_gesture = Some(PlayerGesture::VolumeSet(ratio * max));
-        }
-        if response.hovered() {
-            let scroll = ui.input(|input| input.smooth_scroll_delta.y);
-            if scroll.abs() > 0.5 {
-                layout.player_gesture = Some(PlayerGesture::Volume(scroll.signum() * 0.05));
-            }
-        }
-        let alpha = (255.0 * amount) as u8;
         let shown = if player.muted {
             0.0
         } else {
             player.volume as f32
         };
         let ratio = (shown / max).clamp(0.0, 1.0);
-        let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
-        self.painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
-        let split = if player.boost { 0.5 } else { 1.0 };
-        let base = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio.min(split), 4.0));
-        self.painter
-            .rect_filled(base, radius::BAR, accent().gamma_multiply(amount));
-        let mut knob = accent();
-        if ratio > split {
-            let start = bar.left() + bar.width() * split;
-            let end = bar.left() + bar.width() * ratio;
-            let step = 2.0;
-            let mut left = start;
-            while left < end {
-                let right = (left + step).min(end);
-                let t = ((left - start) / (bar.width() * (1.0 - split))).clamp(0.0, 1.0);
-                self.painter.rect_filled(
-                    Rect::from_min_max(Pos2::new(left, bar.top()), Pos2::new(right, bar.bottom())),
-                    0.0,
-                    boost_color(t).gamma_multiply(amount),
-                );
-                left = right;
-            }
-            knob = boost_color(((ratio - split) / (1.0 - split)).clamp(0.0, 1.0));
-        }
-        let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, 4.0));
-        if player.boost {
-            let mark = bar.left() + bar.width() * 0.5;
-            self.painter.line_segment(
-                [
-                    Pos2::new(mark, bar.center().y - 5.0),
-                    Pos2::new(mark, bar.center().y + 5.0),
-                ],
-                egui::Stroke::new(stroke::ICON, ink(alpha / 2)),
-            );
-        }
-        self.painter.circle_filled(
-            Pos2::new(filled.right(), bar.center().y),
-            6.0 * amount,
-            knob,
+        let output = crate::components::slider(
+            ui,
+            self.painter,
+            crate::components::Slider {
+                id,
+                track,
+                ratio,
+                fill: accent(),
+                overdrive: player.boost.then_some(0.5),
+                amount,
+            },
         );
+        ui.data_mut(|data| data.insert_temp(id, output.response.dragged()));
+        if let Some(value) = output.value {
+            layout.player_gesture = Some(PlayerGesture::VolumeSet(value * max));
+        }
+        if output.response.hovered() {
+            let scroll = ui.input(|input| input.smooth_scroll_delta.y);
+            if scroll.abs() > 0.5 {
+                layout.player_gesture = Some(PlayerGesture::Volume(scroll.signum() * 0.05));
+            }
+        }
+        let alpha = (255.0 * amount) as u8;
         draw_text(
             self.painter,
-            Pos2::new(filled.right(), bar.center().y - 20.0),
+            Pos2::new(
+                track.left() + track.width() * ratio,
+                track.center().y - 20.0,
+            ),
             Align2::CENTER_CENTER,
             format!("{}%", shown.round() as i32),
             FontId::proportional(12.0),
@@ -180,6 +152,72 @@ impl Chrome<'_> {
             x -= size + size * 0.1;
         }
         x
+    }
+
+    fn locked(&self, ui: &mut egui::Ui, layout: &mut HomeLayout) -> bool {
+        if !self.player.locked {
+            return false;
+        }
+        if self.player.has_video() {
+            self.surface(ui, layout, self.rect);
+            if self.player.controls_visible {
+                scrims(self.painter, self.rect);
+                let y = self.rect.bottom() - 48.0 - self.viewport.safe_bottom;
+                let center = Pos2::new(self.margin() + self.icon() * 0.5, y);
+                self.button(ui, layout, center, self.icon(), "Unlock", NODE_PLAYER_LOCK);
+            }
+        }
+        true
+    }
+
+    fn close_button(&self, ui: &mut egui::Ui, layout: &mut HomeLayout, y: f32) -> Pos2 {
+        let center = Pos2::new(self.margin() + 20.0, y);
+        self.button(
+            ui,
+            layout,
+            center,
+            self.icon(),
+            "ArrowLeft",
+            NODE_PLAYER_CLOSE,
+        );
+        center
+    }
+
+    fn header(
+        &self,
+        ui: &mut egui::Ui,
+        layout: &mut HomeLayout,
+        close: Pos2,
+        icon: f32,
+        sizes: (f32, f32),
+        watch: bool,
+    ) {
+        let mut right = self.row_right(
+            ui,
+            layout,
+            self.rect.right() - self.margin(),
+            close.y,
+            icon,
+            &self.header_actions(),
+        );
+        if watch && self.player.watch_button {
+            right = self.row_right(
+                ui,
+                layout,
+                right,
+                close.y,
+                icon,
+                &[("Users", NODE_PLAYER_WATCH)],
+            );
+        }
+        let left = close.x + 34.0;
+        self.heading(
+            left,
+            close.y,
+            (right - left - 14.0).max(0.0),
+            sizes.0,
+            sizes.1,
+        );
     }
 
     fn heading(&self, left: f32, y: f32, width: f32, title: f32, sub: f32) {
@@ -236,49 +274,20 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
     let (rect, player) = (chrome.rect, chrome.player);
     let margin = chrome.margin();
     let header_y = rect.top() + 36.0;
-    let close_center = Pos2::new(margin + 20.0, header_y);
+    if chrome.locked(ui, layout) {
+        return;
+    }
     if player.has_video() && player.controls_visible {
         scrims(chrome.painter, rect);
     }
-    chrome.button(
-        ui,
-        layout,
-        close_center,
-        chrome.icon(),
-        "ArrowLeft",
-        NODE_PLAYER_CLOSE,
-    );
+    let close = chrome.close_button(ui, layout, header_y);
     if !player.has_video() || !player.controls_visible {
         if player.has_video() {
             chrome.surface(ui, layout, rect);
         }
         return;
     }
-    let mut header_right = chrome.row_right(
-        ui,
-        layout,
-        rect.right() - margin,
-        header_y,
-        chrome.icon(),
-        &chrome.header_actions(),
-    );
-    if player.watch_button {
-        header_right = chrome.row_right(
-            ui,
-            layout,
-            header_right,
-            header_y,
-            chrome.icon(),
-            &[("Users", NODE_PLAYER_WATCH)],
-        );
-    }
-    chrome.heading(
-        close_center.x + 34.0,
-        header_y,
-        (header_right - close_center.x - 48.0).max(0.0),
-        19.0,
-        13.0,
-    );
+    chrome.header(ui, layout, close, chrome.icon(), (19.0, 13.0), true);
     let track = Rect::from_min_size(
         Pos2::new(margin, rect.bottom() - 93.0 - chrome.viewport.safe_bottom),
         Vec2::new((rect.width() - margin * 2.0).max(80.0), 16.0),
@@ -332,7 +341,7 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             &[("Maximize", NODE_PLAYER_FULLSCREEN)],
         );
     }
-    let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions(false));
+    let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions());
     chrome.toggle_remaining(
         ui,
         Rect::from_min_size(Pos2::new(x + 8.0, y - 14.0), Vec2::new(96.0, 28.0)),
@@ -366,7 +375,10 @@ pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         return;
     }
     scrims(chrome.painter, rect);
-    let center = Pos2::new(rect.center().x, rect.bottom() - 64.0 - chrome.viewport.safe_bottom);
+    let center = Pos2::new(
+        rect.center().x,
+        rect.bottom() - 64.0 - chrome.viewport.safe_bottom,
+    );
     let mute = if player.muted {
         "VolumeMuted"
     } else {
@@ -408,47 +420,29 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     let (rect, player) = (chrome.rect, chrome.player);
     let margin = chrome.margin();
     let header_y = rect.top() + 38.0;
-    let close_center = Pos2::new(margin + 20.0, header_y);
     if !player.has_video() {
-        chrome.button(
-            ui,
-            layout,
-            close_center,
-            chrome.icon(),
-            "ArrowLeft",
-            NODE_PLAYER_CLOSE,
-        );
+        chrome.close_button(ui, layout, header_y);
         return;
     }
     chrome.surface(ui, layout, rect);
     if !player.controls_visible {
         return;
     }
+    if player.locked {
+        let center = Pos2::new(margin + 20.0, rect.center().y);
+        chrome.button(
+            ui,
+            layout,
+            center,
+            chrome.icon(),
+            "Unlock",
+            NODE_PLAYER_LOCK,
+        );
+        return;
+    }
     scrims(chrome.painter, rect);
-    chrome.button(
-        ui,
-        layout,
-        close_center,
-        chrome.icon(),
-        "ArrowLeft",
-        NODE_PLAYER_CLOSE,
-    );
-    let right = chrome.row_right(
-        ui,
-        layout,
-        rect.right() - margin,
-        header_y,
-        chrome.icon_small(),
-        &chrome.header_actions(),
-    );
-    let title_x = close_center.x + 34.0;
-    chrome.heading(
-        title_x,
-        header_y,
-        (right - title_x - 8.0).max(0.0),
-        17.0,
-        12.0,
-    );
+    let close = chrome.close_button(ui, layout, header_y);
+    chrome.header(ui, layout, close, chrome.icon_small(), (17.0, 12.0), false);
     let center = rect.center();
     let options = &player.options;
     if options.center_controls {
@@ -490,9 +484,9 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     if !options.center_controls {
         left.extend(chrome.transport());
     }
-    left.extend(chrome.actions(true));
+    left.extend(chrome.actions());
     let after = chrome.row_left(ui, layout, margin - 6.0, y, chrome.icon_small(), &left);
-    let mut right = Vec::new();
+    let mut right = vec![("Lock", NODE_PLAYER_LOCK)];
     if options.settings {
         right.push(("Settings", NODE_PLAYER_SETTINGS));
     }
@@ -525,7 +519,7 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
 
 pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
     let (rect, player) = (chrome.rect, chrome.player);
-    if !player.has_video() || !player.controls_visible {
+    if chrome.locked(ui, layout) || !player.has_video() || !player.controls_visible {
         return;
     }
     scrim_edge(
@@ -542,16 +536,9 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
         false,
         255,
     );
-    let margin = (rect.width() * 0.05).max(48.0);
+    let margin = chrome.margin();
     let header_y = rect.top() + 56.0;
-    chrome.button(
-        ui,
-        layout,
-        Pos2::new(margin + 20.0, header_y),
-        chrome.icon(),
-        "ArrowLeft",
-        NODE_PLAYER_CLOSE,
-    );
+    chrome.close_button(ui, layout, header_y);
     chrome.row_right(
         ui,
         layout,
@@ -598,7 +585,7 @@ pub(super) fn tv_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeL
         218,
     );
     let mut actions = chrome.transport();
-    actions.extend(chrome.actions(false));
+    actions.extend(chrome.actions());
     chrome.row_left(ui, layout, margin - 8.0, y, chrome.icon(), &actions);
 }
 
@@ -894,9 +881,4 @@ pub(super) fn control_with_id(
         _ => {}
     }
     response
-}
-
-fn boost_color(t: f32) -> Color32 {
-    let mix = |a: u8, b: u8| (a as f32 + (b as f32 - a as f32) * t) as u8;
-    Color32::from_rgb(mix(250, 239), mix(204, 68), mix(21, 68))
 }

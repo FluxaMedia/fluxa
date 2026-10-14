@@ -114,6 +114,11 @@ fn player_label(state: &RendererState, id: u64) -> Option<String> {
         fluxa_ui::NODE_PLAYER_WATCH => text("watch.title"),
         fluxa_ui::NODE_PLAYER_SKIP => text("player.skip"),
         fluxa_ui::NODE_PLAYER_CAST => text("player.cast"),
+        fluxa_ui::NODE_PLAYER_LOCK => text(if model.locked {
+            "player.unlock_controls"
+        } else {
+            "player.lock_controls"
+        }),
         fluxa_ui::NODE_PLAYER_INFO => text("player.stats_for_nerds"),
         fluxa_ui::NODE_PLAYER_SETTINGS => text("player.settings"),
         fluxa_ui::NODE_PLAYER_TRACKS => text("player.audio_and_subtitles"),

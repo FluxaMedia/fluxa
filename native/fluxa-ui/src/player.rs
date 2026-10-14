@@ -36,6 +36,7 @@ pub struct PlayerModel {
     pub video: Option<TextureId>,
     pub passthrough: bool,
     pub watch_button: bool,
+    pub locked: bool,
     pub watch: Option<WatchTogetherModel>,
     pub status: Option<(String, String)>,
     pub error: Option<String>,
@@ -142,6 +143,8 @@ const PLAYER_ICONS: &[&str] = &[
     "Users",
     "AudioSubtitles",
     "Gauge",
+    "Lock",
+    "Unlock",
     "Settings",
     "ListVideo",
     "Cast",
@@ -381,6 +384,9 @@ struct Chrome<'a> {
 impl Chrome<'_> {
     fn margin(&self) -> f32 {
         let min = if self.viewport.is_compact() {
+        if self.viewport.form_factor == UiFormFactor::Tv {
+            return (self.rect.width() * 0.05).max(48.0);
+        }
             14.0
         } else {
             22.0
@@ -450,6 +456,16 @@ impl Chrome<'_> {
         };
         let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
         if !mobile {
+        if self.player.locked {
+            if response.clicked() {
+                layout.activated = Some(if self.player.controls_visible {
+                    NODE_PLAYER_HIDE_CONTROLS
+                } else {
+                    NODE_PLAYER_CONTROLS
+                });
+            }
+            return;
+        }
             if response.double_clicked() {
                 layout.activated = Some(NODE_PLAYER_FULLSCREEN);
             } else if response.clicked() {
