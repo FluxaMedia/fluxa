@@ -52,6 +52,10 @@ pub(crate) fn tick(state: &mut RendererState) {
         .get("watchTogether")
         .cloned()
         .unwrap_or(Value::Null);
+    refresh_view(state, &watch);
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
     let room = watch["roomCode"].as_str().map(ToOwned::to_owned);
     if room != state.watch.room {
         state.watch = State {
@@ -228,3 +232,103 @@ fn report(state: &mut RendererState, watch: &Value) {
 }
 
 const HOST_REPORT_SLACK: f64 = 1.0;
+
+pub(crate) fn open_modal(state: &mut RendererState) {
+    if state.watch_view.is_none() && state.session.is_some() {
+        state.watch_view = Some(fluxa_ui::WatchTogetherModel {
+            language: state.settings.language().to_owned(),
+            ..Default::default()
+        });
+    }
+}
+
+pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogetherRequest) {
+    use fluxa_ui::WatchTogetherRequest as Request;
+    match request {
+        Request::Close => state.watch_view = None,
+        Request::Create => {
+            let (name, profile_id, avatar) = identity(state);
+            dispatch(
+                state,
+                json!({
+                    "type": "watchTogetherCreateRequested",
+                    "displayName": name,
+                    "profileId": profile_id,
+                    "avatar": avatar,
+                }),
+            );
+        }
+        Request::Join(code) => {
+            let (name, profile_id, avatar) = identity(state);
+            dispatch(
+                state,
+                json!({
+                    "type": "watchTogetherJoinRequested",
+                    "code": code,
+                    "displayName": name,
+                    "profileId": profile_id,
+                    "avatar": avatar,
+                }),
+            );
+        }
+        Request::Leave => dispatch(state, json!({"type": "watchTogetherLeaveRequested"})),
+        Request::CopyCode => {
+            state.copied = state
+                .watch_view
+                .as_ref()
+                .and_then(|view| view.room_code.clone());
+        }
+    }
+}
+
+fn identity(state: &RendererState) -> (String, Option<String>, Option<String>) {
+    let profile = state
+        .session
+        .as_ref()
+        .map_or(Value::Null, |session| session.active_profile());
+    let text = |key: &str| {
+        profile
+            .get(key)
+            .and_then(Value::as_str)
+            .filter(|value| !value.is_empty())
+            .map(ToOwned::to_owned)
+    };
+    let id = text("id").filter(|id| is_uuid(id));
+    (
+        text("name").unwrap_or_else(|| "Guest".to_owned()),
+        id,
+        text("avatarUrl").filter(|url| url.starts_with("https://")),
+    )
+}
+
+fn is_uuid(value: &str) -> bool {
+    value.len() == 36
+        && value.split('-').map(str::len).eq([8, 4, 4, 4, 12])
+        && value.chars().all(|c| c == '-' || c.is_ascii_hexdigit())
+}
+
+fn refresh_view(state: &mut RendererState, watch: &Value) {
+    if crate::preview::watch_demo() {
+        return;
+    }
+    let Some(view) = state.watch_view.as_mut() else {
+        return;
+    };
+    view.room_code = watch["roomCode"].as_str().map(ToOwned::to_owned);
+    view.connecting = watch["connectionState"] == "CONNECTING";
+    view.error = (watch["connectionState"] == "ERROR").then(|| "watch.error".to_owned());
+    let you = watch["clientId"].as_str();
+    view.members = watch["members"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|member| fluxa_ui::WatchMemberView {
+            name: member["name"].as_str().unwrap_or_default().to_owned(),
+            avatar: member["avatar"].as_str().map(ToOwned::to_owned),
+            ready: member["ready"].as_bool().unwrap_or(false),
+            buffering: member["buffering"].as_bool().unwrap_or(false),
+            host: member["isHost"].as_bool().unwrap_or(false),
+            you: member["id"].as_str() == you,
+        })
+        .collect();
+}

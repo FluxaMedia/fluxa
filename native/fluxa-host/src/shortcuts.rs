@@ -195,6 +195,7 @@ fn perform(state: &mut RendererState, action: &str) {
         "nav_calendar" => open(state, NODE_CALENDAR),
         "nav_settings" => open(state, NODE_PROFILE),
         "focus_search" => focus_search(state),
+        "watch_together" => crate::watch_together::open_modal(state),
         "go_back" => key_down(state, KeyInput::Key(Key::Back)),
         "toggle_window_fullscreen" | "player_fullscreen" => state.fullscreen_toggle = true,
         _ => player_action(state, action),

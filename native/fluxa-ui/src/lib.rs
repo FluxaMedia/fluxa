@@ -33,6 +33,7 @@ mod settings;
 mod shorts;
 mod sidebar;
 mod style;
+mod watch_together;
 mod welcome;
 
 pub use home::*;
@@ -90,6 +91,9 @@ pub use settings::{
     settings_page_for_node, settings_row_by_index, settings_row_label,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
+pub use watch_together::{
+    WatchMemberView, WatchTogetherModel, WatchTogetherRequest, draw_watch_together, waiting_member,
+};
 pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};
 
 pub fn draw_notice(context: &egui::Context, viewport: Viewport, text: &str, opacity: f32) {

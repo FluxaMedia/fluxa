@@ -277,6 +277,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
             detail,
             settings,
             profiles,
+            watch_view,
             picker_background,
             egui_events,
             field_text,
@@ -314,6 +315,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 pre_present.as_ref(),
                 menu.as_ref(),
                 ambient_view.as_ref(),
+                watch_view.as_mut(),
                 &mut timer,
             )
         })
@@ -339,6 +341,9 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 }
                 if let Some(request) = layout.profiles.take() {
                     profiles::handle(state, request);
+                }
+                if let Some(request) = layout.watch_together.take() {
+                    watch_together::handle(state, request);
                 }
                 if let Some(request) = layout.welcome.take() {
                     welcome::handle(state, request);

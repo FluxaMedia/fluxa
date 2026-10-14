@@ -683,6 +683,7 @@ impl Gpu {
         pre_present: Option<&PrePresent>,
         menu: Option<&card_menu::MenuView>,
         ambient: Option<&fluxa_ui::AmbientView>,
+        mut watch_together: Option<&mut fluxa_ui::WatchTogetherModel>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
         let passthrough =
@@ -857,6 +858,10 @@ impl Gpu {
             }
             if let Some(ambient) = ambient {
                 fluxa_ui::draw_ambient(ui.ctx(), viewport, ambient, &mut assets);
+            }
+            if let Some(model) = watch_together.as_deref_mut() {
+                rendered_layout.watch_together =
+                    fluxa_ui::draw_watch_together(ui.ctx(), viewport, model, &mut assets);
             }
             if profiles.is_none() && player.is_none() && route == Route::Home {
                 fluxa_ui::draw_update_prompt(

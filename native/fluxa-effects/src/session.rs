@@ -380,9 +380,11 @@ impl SessionHandle {
         self.executor.request_ok(plan)
     }
 
-    #[cfg(not(target_arch = "wasm32"))]
     pub fn take_watch_commands(&self) -> Vec<Value> {
-        self.executor.take_watch_commands()
+        #[cfg(not(target_arch = "wasm32"))]
+        return self.executor.take_watch_commands();
+        #[cfg(target_arch = "wasm32")]
+        Vec::new()
     }
 
     pub fn executor(&self) -> EffectExecutor {

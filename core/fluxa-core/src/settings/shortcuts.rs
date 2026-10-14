@@ -39,6 +39,11 @@ const ACTIONS: &[Action] = &[
         defaults: &["ctrl+f", "/"],
     },
     Action {
+        id: "watch_together",
+        player: false,
+        defaults: &["w"],
+    },
+    Action {
         id: "go_back",
         player: false,
         defaults: &["alt+left"],

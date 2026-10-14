@@ -14,6 +14,10 @@ pub(crate) fn form_factor(requested: &str) -> String {
     setting("FLUXA_PREVIEW_FORM").unwrap_or_else(|| requested.to_owned())
 }
 
+pub(crate) fn watch_demo() -> bool {
+    setting("FLUXA_PREVIEW_WATCH").is_some()
+}
+
 pub(crate) fn outlines() -> bool {
     setting("FLUXA_PREVIEW_OUTLINE").is_some()
 }
@@ -58,6 +62,29 @@ pub(crate) fn start(state: &mut RendererState) {
                     "forceRefresh": false,
                 }),
             });
+    }
+    if watch_demo() {
+        let member = |name: &str, ready: bool, buffering: bool, host: bool, you: bool| {
+            fluxa_ui::WatchMemberView {
+                name: name.to_owned(),
+                avatar: None,
+                ready,
+                buffering,
+                host,
+                you,
+            }
+        };
+        state.watch_view = Some(fluxa_ui::WatchTogetherModel {
+            language: state.settings.language().to_owned(),
+            room_code: Some("K7M2QX".to_owned()),
+            members: vec![
+                member("Ayşe", true, false, true, true),
+                member("Mert", true, false, false, false),
+                member("Deniz", false, true, false, false),
+                member("Can", false, false, false, false),
+            ],
+            ..Default::default()
+        });
     }
     let Some(target) = setting("FLUXA_PREVIEW") else {
         return;
