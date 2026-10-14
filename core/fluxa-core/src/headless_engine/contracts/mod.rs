@@ -344,7 +344,37 @@ pub(crate) enum AppAction {
         subtitle: Option<Value>,
         profile_id: Option<String>,
         language: Option<String>,
+        #[serde(default)]
+        now_ms: u64,
     },
+    #[serde(rename = "offlineDownloadProgressed")]
+    OfflineDownloadProgressed {
+        id: String,
+        bytes_done: u64,
+        bytes_total: Option<u64>,
+        now_ms: u64,
+    },
+    #[serde(rename = "offlineDownloadCompleted")]
+    OfflineDownloadCompleted {
+        id: String,
+        path: String,
+        bytes_total: Option<u64>,
+        now_ms: u64,
+    },
+    #[serde(rename = "offlineDownloadFailed")]
+    OfflineDownloadFailed { id: String, error: String },
+    #[serde(rename = "offlineDownloadPauseRequested")]
+    OfflineDownloadPauseRequested { id: String },
+    #[serde(rename = "offlineDownloadResumeRequested")]
+    OfflineDownloadResumeRequested {
+        id: String,
+        #[serde(default)]
+        now_ms: u64,
+    },
+    #[serde(rename = "offlineDownloadRemoveRequested")]
+    OfflineDownloadRemoveRequested { id: String },
+    #[serde(rename = "offlineDownloadsRestored")]
+    OfflineDownloadsRestored { items: Vec<Value> },
     #[serde(rename = "trailerResolveRequested")]
     TrailerResolveRequested {
         request_id: String,

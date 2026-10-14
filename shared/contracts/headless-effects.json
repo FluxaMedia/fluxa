@@ -5,6 +5,10 @@
       "value": "clearPlaybackProgress"
     },
     {
+      "variant": "ControlOfflineDownload",
+      "value": "controlOfflineDownload"
+    },
+    {
       "variant": "EnqueueOfflineDownload",
       "value": "enqueueOfflineDownload"
     },

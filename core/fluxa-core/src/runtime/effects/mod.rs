@@ -11,6 +11,7 @@ use sha2::{Digest, Sha256};
 #[serde(rename_all = "camelCase")]
 pub enum EffectKind {
     ClearPlaybackProgress,
+    ControlOfflineDownload,
     EnqueueOfflineDownload,
     EnqueueTraktScrobble,
     ExchangeAuthCode,
@@ -65,6 +66,7 @@ pub enum EffectKind {
 impl EffectKind {
     pub const ALL: &[Self] = &[
         Self::ClearPlaybackProgress,
+        Self::ControlOfflineDownload,
         Self::EnqueueOfflineDownload,
         Self::EnqueueTraktScrobble,
         Self::ExchangeAuthCode,
@@ -118,6 +120,7 @@ impl EffectKind {
     pub fn as_str(self) -> &'static str {
         match self {
             EffectKind::ClearPlaybackProgress => "clearPlaybackProgress",
+            EffectKind::ControlOfflineDownload => "controlOfflineDownload",
             EffectKind::EnqueueOfflineDownload => "enqueueOfflineDownload",
             EffectKind::EnqueueTraktScrobble => "enqueueTraktScrobble",
             EffectKind::ExchangeAuthCode => "exchangeAuthCode",

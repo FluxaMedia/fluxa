@@ -483,9 +483,41 @@ impl HeadlessEngine {
                 subtitle,
                 profile_id,
                 language,
+                now_ms,
             } => offline::dispatch(
-                self, meta, stream, video_id, video, subtitle, profile_id, language,
+                self, meta, stream, video_id, video, subtitle, profile_id, language, now_ms,
             ),
+            AppAction::OfflineDownloadProgressed {
+                id,
+                bytes_done,
+                bytes_total,
+                now_ms,
+            } => {
+                offline::progress(self, &id, bytes_done, bytes_total, now_ms);
+                vec![]
+            }
+            AppAction::OfflineDownloadCompleted {
+                id,
+                path,
+                bytes_total,
+                now_ms,
+            } => {
+                offline::completed(self, &id, path, bytes_total, now_ms);
+                vec![]
+            }
+            AppAction::OfflineDownloadFailed { id, error } => {
+                offline::failed(self, &id, error);
+                vec![]
+            }
+            AppAction::OfflineDownloadPauseRequested { id } => offline::pause(self, &id),
+            AppAction::OfflineDownloadResumeRequested { id, now_ms } => {
+                offline::resume(self, &id, now_ms)
+            }
+            AppAction::OfflineDownloadRemoveRequested { id } => offline::remove(self, &id),
+            AppAction::OfflineDownloadsRestored { items } => {
+                offline::restored(self, items);
+                vec![]
+            }
             AppAction::TrailerResolveRequested {
                 request_id,
                 video_id,

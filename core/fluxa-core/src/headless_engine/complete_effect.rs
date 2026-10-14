@@ -101,6 +101,7 @@ impl HeadlessEngine {
             | EffectKind::UpdateCalendarWidget
             | EffectKind::NotifyReleasedEpisodes
             | EffectKind::ReplaceExternalContinueWatching
+            | EffectKind::ControlOfflineDownload
             | EffectKind::ExecutePlugin => vec![],
         }
     }

@@ -5,6 +5,7 @@ mod discover;
 mod engine;
 mod home;
 mod library;
+mod offline;
 mod plugins;
 mod watch_together;
 mod wire_fixtures;
