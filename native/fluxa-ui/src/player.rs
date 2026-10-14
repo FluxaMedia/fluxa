@@ -269,13 +269,17 @@ pub fn draw_player(
         Some(_) => {
             let width = (rect.width() * 0.24).clamp(260.0, 340.0);
             let (left, right) = rect.split_left_right_at_x(rect.right() - width);
-            (left, Some(right))
+            let surface = UiMetrics::for_viewport(viewport).surface;
+            context
+                .layer_painter(egui::LayerId::background())
+                .rect_filled(left, 0.0, surface);
+            (left.shrink(16.0), Some(right))
         }
         None => (rect, None),
     };
     match player.video {
         Some(texture) if side.is_some() => {
-            painter.rect_filled(rect, 0.0, Color32::BLACK);
+            painter.rect_filled(rect, 12.0, Color32::BLACK);
             painter.image(texture, fit_16_9(rect), full_uv(), Color32::WHITE);
         }
         Some(texture) => {
