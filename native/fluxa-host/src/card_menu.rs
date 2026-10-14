@@ -79,7 +79,7 @@ fn card_for_node(state: &RendererState, node: u64) -> Option<HomeCard> {
 }
 
 pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool) -> bool {
-    if state.player.is_some() || state.profiles.is_some() || state.welcome.is_some() {
+    if state.player_full() || state.profiles.is_some() || state.welcome.is_some() {
         return false;
     }
     let Some(card) = card_for_node(state, node) else {

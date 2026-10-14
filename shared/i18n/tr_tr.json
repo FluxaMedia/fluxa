@@ -1782,6 +1782,8 @@
   "player.recommendations": "Bunları da beğenebilirsiniz",
   "player.recommendations_based_on": "Bunu izlediğiniz için",
   "player.close": "Kapat",
+  "player.minimize": "Oynatıcıyı küçült",
+  "player.expand": "Oynatıcıyı büyüt",
   "player.watch_credits": "Kapanışı İzle",
   "player.mark_segment_title": "Segmentlere Katkıda Bulun",
   "content_warning.nudity": "Cinsellik ve Çıplaklık",

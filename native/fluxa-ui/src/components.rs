@@ -15,6 +15,7 @@ mod dropdown;
 mod filmstrip;
 mod input;
 mod menu;
+mod mini_player;
 mod recent_searches;
 mod streams;
 mod slider;
@@ -24,6 +25,7 @@ pub use dropdown::*;
 pub(crate) use filmstrip::*;
 pub use input::*;
 pub use menu::*;
+pub use mini_player::*;
 pub use recent_searches::*;
 pub use streams::*;
 

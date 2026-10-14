@@ -1778,6 +1778,8 @@
   "player.recommendations": "قد يعجبك أيضًا",
   "player.recommendations_based_on": "لأنك شاهدت",
   "player.close": "إغلاق",
+  "player.minimize": "تصغير المشغل",
+  "player.expand": "تكبير المشغل",
   "player.watch_credits": "مشاهدة الشارات",
   "player.mark_segment_title": "ساهم بالمقاطع",
   "content_warning.nudity": "الجنس والعري",

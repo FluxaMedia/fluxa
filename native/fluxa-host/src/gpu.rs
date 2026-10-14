@@ -688,6 +688,8 @@ impl Gpu {
         mut watch_together: Option<&mut fluxa_ui::WatchTogetherModel>,
         timer: &mut FrameTimer,
     ) -> Result<FrameOutput, String> {
+        let mini = player.filter(|player| player.minimized);
+        let player = player.filter(|player| !player.minimized);
         let passthrough =
             player.is_some_and(|player| player.passthrough && player.recommendations.is_empty());
         self.artwork.poll(&self.egui_context);
@@ -845,6 +847,9 @@ impl Gpu {
                 route as u64
             };
             fluxa_ui::page_transition(ui.ctx(), page, &[egui::Id::new("fluxa-shared-bottom-bar")]);
+            if let Some(mini) = mini {
+                fluxa_ui::draw_mini_player_overlay(ui.ctx(), viewport, mini, &mut rendered_layout);
+            }
             if let Some(menu) = menu {
                 menu_outcome = fluxa_ui::draw_action_menu(
                     ui.ctx(),

@@ -202,6 +202,8 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let player_model = state.player.as_ref().map(|player| {
         let mut model = fluxa_ui::PlayerModel {
             watch_button: state.home.form_factor == UiFormFactorJson::Desktop,
+            minimizable: state.home.form_factor == UiFormFactorJson::Desktop
+                && player.can_minimize(),
             watch: watch_side.then(|| state.watch_view.clone()).flatten(),
             upscaling: player::upscaling(&state.settings).to_owned(),
             ..player.model()
@@ -269,7 +271,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     }
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
-    let watch_modal_hidden = state.player.is_some();
+    let watch_modal_hidden = state.player_full();
     let render_result = {
         let RendererState {
             gpu,
@@ -424,7 +426,7 @@ fn apply_nav_layout(state: &RendererState) {
             .unwrap_or(fallback)
             .to_owned()
     };
-    let hosts_nav = state.player.is_none() && state.profiles.is_none() && state.welcome.is_none();
+    let hosts_nav = !state.player_full() && state.profiles.is_none() && state.welcome.is_none();
     let layout = if hosts_nav && !state.mirrored() {
         setting("navLayout", "topbar")
     } else {

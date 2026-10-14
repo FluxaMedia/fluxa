@@ -2,7 +2,15 @@ use super::*;
 
 pub(crate) fn activate(state: &mut RendererState, node: u64) {
     match node {
-        fluxa_ui::NODE_PLAYER_CLOSE => close(state),
+        fluxa_ui::NODE_PLAYER_CLOSE => {
+            if state.player.as_ref().is_some_and(|player| player.minimized) {
+                close(state);
+            } else {
+                leave(state);
+            }
+        }
+        fluxa_ui::NODE_PLAYER_MINIMIZE => minimize(state),
+        fluxa_ui::NODE_PLAYER_EXPAND => expand(state),
         fluxa_ui::NODE_PLAYER_TOGGLE => command(state, VideoCommand::TogglePause),
         fluxa_ui::NODE_PLAYER_REWIND => seek(state, -1.0),
         fluxa_ui::NODE_PLAYER_FORWARD => seek(state, 1.0),
@@ -249,7 +257,7 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
                 player.hide();
             }
         } else {
-            close(state);
+            leave(state);
         }
         return KeyOutcome::Handled;
     }

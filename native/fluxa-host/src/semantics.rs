@@ -97,6 +97,8 @@ fn player_label(state: &RendererState, id: u64) -> Option<String> {
     let text = |key: &str| fluxa_ui::localized(key, &lang);
     Some(match id {
         fluxa_ui::NODE_PLAYER_CLOSE | fluxa_ui::NODE_PLAYER_PANEL_CLOSE => text("player.close"),
+        fluxa_ui::NODE_PLAYER_MINIMIZE => text("player.minimize"),
+        fluxa_ui::NODE_PLAYER_EXPAND => text("player.expand"),
         fluxa_ui::NODE_PLAYER_TOGGLE => text(if model.paused {
             "player.play"
         } else {

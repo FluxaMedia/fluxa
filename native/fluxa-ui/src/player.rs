@@ -86,6 +86,8 @@ pub struct PlayerModel {
     pub has_previous: bool,
     pub has_episodes: bool,
     pub trailer: bool,
+    pub minimized: bool,
+    pub minimizable: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -153,6 +155,7 @@ const PLAYER_ICONS: &[&str] = &[
     "Sparkles",
     "Check",
     "ArrowRight",
+    "PictureInPicture",
 ];
 
 struct Icons(Vec<(&'static str, TextureId)>);

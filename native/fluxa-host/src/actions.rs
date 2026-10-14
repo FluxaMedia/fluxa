@@ -580,11 +580,12 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             UiAction::Activated(node) | UiAction::PointerReleased(node) => Some(*node),
             _ => None,
         };
-        if state.player.is_some() {
+        let minimized = state.player.as_ref().is_some_and(|player| player.minimized);
+        if state.player.is_some() && (!minimized || node.is_some_and(player::is_mini_node)) {
             if let Some(node) = node {
                 player::activate(state, node);
             } else if matches!(action, UiAction::Back) {
-                player::close(state);
+                player::leave(state);
             }
             continue;
         }

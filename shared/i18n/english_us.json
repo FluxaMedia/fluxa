@@ -1782,6 +1782,8 @@
   "player.recommendations": "You may also like",
   "player.recommendations_based_on": "Because you watched",
   "player.close": "Close",
+  "player.minimize": "Minimize player",
+  "player.expand": "Expand player",
   "player.watch_credits": "Watch Credits",
   "player.mark_segment_title": "Contribute Segments",
   "content_warning.nudity": "Sex & Nudity",

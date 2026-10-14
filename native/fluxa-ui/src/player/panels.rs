@@ -14,55 +14,7 @@ pub(super) fn draw_mini_player(
         rect.min + Vec2::splat(if compact { 16.0 } else { 24.0 }),
         Vec2::new(width, width * 9.0 / 16.0),
     );
-    painter.rect_filled(mini.expand(1.0), radius::control(), ink(tone::RAISED));
-    match player.video {
-        Some(texture) => {
-            components::rounded_image(&painter, texture, mini, 7.0, full_uv(), Color32::WHITE);
-        }
-        None => {
-            painter.rect_filled(mini, radius::control(), Color32::BLACK);
-        }
-    }
-    let hovered = ui.rect_contains_pointer(mini);
-    let shown = crate::motion::toggle(
-        ui.ctx(),
-        Id::new("fluxa-player-mini-controls"),
-        hovered,
-        crate::motion::normal(),
-    );
-    if shown <= 0.0 {
-        let hit = ui.interact(mini, Id::new("fluxa-player-mini"), Sense::click());
-        if hit.clicked() {
-            layout.activated = Some(NODE_PLAYER_RECOMMENDATIONS_CLOSE);
-        }
-        return;
-    }
-    let strip = Rect::from_min_max(Pos2::new(mini.left(), mini.bottom() - 46.0), mini.max);
-    paint_vertical_gradient(
-        painter,
-        strip,
-        Color32::TRANSPARENT,
-        Color32::from_black_alpha((215.0 * shown) as u8),
-    );
-    let y = strip.center().y + 4.0;
-    for (offset, icon, node) in [
-        (
-            -40.0,
-            if player.paused { "play" } else { "pause" },
-            NODE_PLAYER_TOGGLE,
-        ),
-        (0.0, "fullscreen", NODE_PLAYER_RECOMMENDATIONS_CLOSE),
-        (40.0, "close", NODE_PLAYER_CLOSE),
-    ] {
-        let button = control(
-            ui,
-            painter,
-            Rect::from_center_size(Pos2::new(mini.center().x + offset, y), Vec2::splat(32.0)),
-            icon,
-            false,
-        );
-        components::focus_action(layout, node, &button);
-    }
+    components::mini_player(ui, painter, tile, player, layout, NODE_PLAYER_RECOMMENDATIONS_CLOSE);
 }
 
 pub(super) fn draw_seek_preview(

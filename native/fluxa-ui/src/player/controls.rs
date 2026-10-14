@@ -50,6 +50,9 @@ impl Chrome<'_> {
         if self.player.options.cast {
             actions.push(("Cast", NODE_PLAYER_CAST));
         }
+        if self.player.minimizable {
+            actions.push(("PictureInPicture", NODE_PLAYER_MINIMIZE));
+        }
         actions
     }
 
@@ -644,7 +647,7 @@ pub(super) fn icon_control(
     response
 }
 
-pub(super) fn control(
+pub(crate) fn control(
     ui: &mut egui::Ui,
     painter: &egui::Painter,
     rect: Rect,

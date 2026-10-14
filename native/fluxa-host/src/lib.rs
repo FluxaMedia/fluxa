@@ -293,8 +293,12 @@ fn current_presence(state: &RendererState) -> presence::Presence {
 }
 
 impl RendererState {
+    pub(crate) fn player_full(&self) -> bool {
+        self.player.as_ref().is_some_and(|player| !player.minimized)
+    }
+
     fn mirrored(&self) -> bool {
-        self.player.is_none() && fluxa_core::text_direction::is_rtl_language(&self.home.language)
+        !self.player_full() && fluxa_core::text_direction::is_rtl_language(&self.home.language)
     }
 
     fn mirror_x(&self, x: f32) -> f32 {
@@ -858,5 +862,22 @@ mod tests {
         host.key_down(KeyInput::Key(Key::Back));
         assert!(!host.is_playing());
         host.with_state(|state| assert!(state.pending_native_actions.is_empty()));
+    }
+
+    #[test]
+    fn minimized_player_keeps_playing_under_the_screen() {
+        let host = FluxaHost::new(1.0, None);
+        host.with_state(|state| {
+            let mut session = player::PlayerSession::new(json!({}));
+            session.status.has_frame = true;
+            state.player = Some(session);
+            state.home.form_factor = fluxa_ui::UiFormFactorJson::Desktop;
+            state.route = Route::Library;
+            player::leave(state);
+            assert!(state.player.is_some());
+            assert_eq!(input::active_route(state), Route::Library);
+            player::expand(state);
+            assert_eq!(input::active_route(state), Route::Player);
+        });
     }
 }

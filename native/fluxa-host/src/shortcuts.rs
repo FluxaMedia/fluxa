@@ -140,7 +140,7 @@ pub(crate) fn run(state: &mut RendererState, chord: &str, repeat: bool) -> bool 
     if state.card_menu.is_some() {
         return false;
     }
-    let playing = state.player.is_some();
+    let playing = state.player_full();
     let Some(plan) = core_value(
         "shortcutResolve",
         json!({

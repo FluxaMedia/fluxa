@@ -98,7 +98,7 @@ pub(super) fn rebuild_current_ui(state: &mut RendererState) {
         return;
     }
     if state.route != Route::Home
-        || state.player.is_some()
+        || state.player_full()
         || state.profiles.is_some()
         || state.welcome.is_some()
     {

@@ -259,7 +259,7 @@ impl FluxaHost {
             if ambient::input(state) {
                 return true;
             }
-            if state.player.is_none()
+            if !state.player_full()
                 && state.profiles.is_none()
                 && state.welcome.is_none()
                 && state.route == Route::Home

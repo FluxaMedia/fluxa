@@ -232,7 +232,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
         }
         return;
     }
-    if state.profiles.is_some() || state.welcome.is_some() || state.player.is_some() {
+    if state.profiles.is_some() || state.welcome.is_some() || state.player_full() {
         if state
             .player
             .as_ref()
@@ -262,7 +262,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     }
     let viewport = logical_viewport(state);
     if phase == PointerPhase::Down
-        && state.player.is_none()
+        && !state.player_full()
         && state.profiles.is_none()
         && state.welcome.is_none()
         && viewport.is_compact()
@@ -347,7 +347,7 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                             fluxa_ui::folder_row_at_y(viewport, &state.folder, scroll_y, start[1])
                                 .map(HomeScrollTarget::FolderRow);
                     }
-                    if state.player.is_none()
+                    if !state.player_full()
                         && state.route == Route::Detail
                         && total_x.abs() > total_y.abs() * 1.15
                     {
@@ -506,7 +506,7 @@ pub(super) fn hide_pointer(state: &mut RendererState) {
 }
 
 pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
-    if state.player.is_some() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
+    if state.player_full() && matches!(player::key(state, input), player::KeyOutcome::Handled) {
         return;
     }
     if card_menu::key(state, input) {
@@ -521,7 +521,7 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
         hide_pointer(state);
     }
     if state.route == Route::Shorts
-        && state.player.is_none()
+        && !state.player_full()
         && state.profiles.is_none()
         && state.welcome.is_none()
     {
@@ -611,7 +611,7 @@ fn focus_row_start(state: &mut RendererState, previous: Option<u64>) {
 pub(super) fn active_route(state: &RendererState) -> Route {
     if state.profiles.is_some() || state.welcome.is_some() {
         Route::Profiles
-    } else if state.player.is_some() {
+    } else if state.player_full() {
         Route::Player
     } else {
         state.route

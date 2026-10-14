@@ -235,6 +235,7 @@ pub(crate) struct PlayerSession {
     stats: Vec<fluxa_ui::StatsSection>,
     stats_at: Option<Instant>,
     last_stats: Option<PlaybackStats>,
+    pub(crate) minimized: bool,
 }
 
 enum Panel {
@@ -352,6 +353,7 @@ impl PlayerSession {
             stats: Vec::new(),
             stats_at: None,
             last_stats: None,
+            minimized: false,
         }
     }
 
@@ -706,6 +708,8 @@ impl PlayerSession {
             has_next: self.overlay.upcoming().is_some(),
             has_previous: menu::has_previous(self),
             trailer: self.trailer.is_some(),
+            minimized: self.minimized,
+            minimizable: false,
             has_episodes: menu::has_episodes(self),
             dim: 1.0 - self.brightness,
             options: fluxa_ui::PlayerOptions::default(),
@@ -1342,6 +1346,49 @@ pub(crate) fn hover_seek(state: &mut RendererState, time: Option<f64>) {
     }
     player.thumbnail_requested = Some((time, Instant::now()));
     video.request_thumbnail(time);
+}
+
+pub(crate) fn is_mini_node(node: u64) -> bool {
+    matches!(
+        node,
+        fluxa_ui::NODE_PLAYER_TOGGLE | fluxa_ui::NODE_PLAYER_CLOSE | fluxa_ui::NODE_PLAYER_EXPAND
+    )
+}
+
+impl PlayerSession {
+    pub(crate) fn can_minimize(&self) -> bool {
+        self.status.has_frame
+            && self.trailer.is_none()
+            && self.recommendations.is_empty()
+            && self.panel.is_none()
+    }
+}
+
+pub(crate) fn minimize(state: &mut RendererState) {
+    let Some(player) = state.player.as_mut().filter(|player| player.can_minimize()) else {
+        return;
+    };
+    player.minimized = true;
+    player.hide();
+    crate::reset_ui(state);
+}
+
+pub(crate) fn expand(state: &mut RendererState) {
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    player.minimized = false;
+    player.touch();
+    crate::reset_ui(state);
+}
+
+pub(crate) fn leave(state: &mut RendererState) {
+    let desktop = state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop;
+    if desktop && state.player.as_ref().is_some_and(|player| player.can_minimize()) {
+        minimize(state);
+    } else {
+        close(state);
+    }
 }
 
 pub(crate) fn close(state: &mut RendererState) {
