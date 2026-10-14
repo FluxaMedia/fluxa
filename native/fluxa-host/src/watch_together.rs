@@ -70,6 +70,24 @@ pub(crate) fn tick(state: &mut RendererState) {
         apply(state, &command);
     }
     report(state, &watch);
+    announce_waiting(state, &watch);
+}
+
+fn announce_waiting(state: &mut RendererState, watch: &Value) {
+    if watch["phase"] != "playing" {
+        return;
+    }
+    let you = watch["clientId"].as_str();
+    let waiting = watch["members"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .find(|member| member["buffering"] == true && member["id"].as_str() != you)
+        .and_then(|member| member["name"].as_str());
+    if let Some(name) = waiting {
+        let text = fluxa_ui::localized("watch.waiting_for", state.settings.language());
+        state.notice = Some((text.replace("{name}", name), Instant::now()));
+    }
 }
 
 fn apply(state: &mut RendererState, command: &Value) {
