@@ -2,7 +2,7 @@ use super::HeadlessEngine;
 use super::contracts::{AppAction, SourceSelectionMode};
 use super::{
     addons, auth, calendar, detail, discover, home, library, navigation, offline, player, plugins,
-    search, settings, trailer,
+    search, settings, trailer, watch_together,
 };
 use crate::runtime::EffectEnvelope;
 use serde::Serialize;
@@ -506,6 +506,56 @@ impl HeadlessEngine {
                 scraper_id,
                 settings,
             } => plugins::dispatch_update_scraper_settings(self, scraper_id, settings),
+            AppAction::WatchTogetherCreateRequested {
+                display_name,
+                profile_id,
+                avatar,
+            } => watch_together::dispatch_create(self, display_name, profile_id, avatar),
+            AppAction::WatchTogetherJoinRequested {
+                code,
+                display_name,
+                profile_id,
+                avatar,
+            } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar),
+            AppAction::WatchTogetherLeaveRequested => watch_together::dispatch_leave(self),
+            AppAction::WatchTogetherContentSelected {
+                content,
+                stream,
+                start_position_ms,
+            } => watch_together::dispatch_content(self, content, stream, start_position_ms),
+            AppAction::WatchTogetherReadyChanged { ready, now_ms } => {
+                watch_together::dispatch_ready(self, ready, now_ms)
+            }
+            AppAction::WatchTogetherBufferingChanged { buffering, now_ms } => {
+                watch_together::dispatch_buffering(self, buffering, now_ms)
+            }
+            AppAction::WatchTogetherPlaybackReported {
+                position_ms,
+                duration_ms,
+                playing,
+                buffering,
+                now_ms,
+            } => watch_together::dispatch_playback(
+                self,
+                position_ms,
+                duration_ms,
+                playing,
+                buffering,
+                now_ms,
+            ),
+            AppAction::WatchTogetherPositionSampled {
+                position_ms,
+                now_ms,
+                speed_correction_active,
+            } => watch_together::dispatch_sample(self, position_ms, now_ms, speed_correction_active),
+            AppAction::WatchTogetherMessageReceived { message, now_ms } => {
+                watch_together::dispatch_message(self, message, now_ms)
+            }
+            AppAction::WatchTogetherMembersChanged {
+                host_id,
+                members,
+                now_ms,
+            } => watch_together::dispatch_members(self, host_id, members, now_ms),
         }
     }
 }

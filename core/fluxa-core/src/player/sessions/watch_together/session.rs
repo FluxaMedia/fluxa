@@ -114,6 +114,14 @@ impl WatchTogetherSession {
         self.content.as_ref()
     }
 
+    pub fn host_id(&self) -> &str {
+        &self.host_id
+    }
+
+    pub fn client_id(&self) -> &str {
+        &self.client_id
+    }
+
     pub fn is_host(&self) -> bool {
         self.client_id == self.host_id
     }

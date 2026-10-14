@@ -78,6 +78,8 @@ pub struct WatchTogetherState {
     pub role: WatchTogetherRole,
     #[serde(default)]
     pub members: Vec<WatchTogetherMember>,
+    #[serde(default)]
+    pub phase: SessionPhase,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<WatchTogetherContent>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -93,6 +95,7 @@ impl Default for WatchTogetherState {
             host_id: None,
             role: WatchTogetherRole::None,
             members: Vec::new(),
+            phase: SessionPhase::Lobby,
             content: None,
             error_message: None,
         }

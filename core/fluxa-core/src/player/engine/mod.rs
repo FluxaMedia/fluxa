@@ -5,6 +5,7 @@ mod scrobble;
 mod state;
 mod stream_load;
 mod subtitle_sync;
+pub(crate) mod watch_together;
 pub(crate) mod trailer;
 #[cfg(feature = "js-engine")]
 mod youtube_cipher;

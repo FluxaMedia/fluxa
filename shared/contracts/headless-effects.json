@@ -185,6 +185,18 @@
       "value": "writePlaybackProgress"
     },
     {
+      "variant": "WatchTogetherBroadcast",
+      "value": "watchTogetherBroadcast"
+    },
+    {
+      "variant": "WatchTogetherCommand",
+      "value": "watchTogetherCommand"
+    },
+    {
+      "variant": "WatchTogetherRoom",
+      "value": "watchTogetherRoom"
+    },
+    {
       "variant": "WriteSettings",
       "value": "writeSettings"
     }

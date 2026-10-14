@@ -58,6 +58,16 @@
     "pluginRepositoryAddRequested",
     "pluginRepositoryRemoveRequested",
     "pluginScraperToggled",
-    "pluginScraperSettingsUpdated"
+    "pluginScraperSettingsUpdated",
+    "watchTogetherCreateRequested",
+    "watchTogetherJoinRequested",
+    "watchTogetherLeaveRequested",
+    "watchTogetherContentSelected",
+    "watchTogetherReadyChanged",
+    "watchTogetherBufferingChanged",
+    "watchTogetherPlaybackReported",
+    "watchTogetherPositionSampled",
+    "watchTogetherMessageReceived",
+    "watchTogetherMembersChanged"
   ]
 }

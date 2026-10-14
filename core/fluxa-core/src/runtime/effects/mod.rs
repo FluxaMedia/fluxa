@@ -56,6 +56,9 @@ pub enum EffectKind {
     WriteFeedback,
     WriteLibraryCommand,
     WritePlaybackProgress,
+    WatchTogetherBroadcast,
+    WatchTogetherCommand,
+    WatchTogetherRoom,
     WriteSettings,
 }
 
@@ -107,6 +110,9 @@ impl EffectKind {
         Self::WriteFeedback,
         Self::WriteLibraryCommand,
         Self::WritePlaybackProgress,
+        Self::WatchTogetherBroadcast,
+        Self::WatchTogetherCommand,
+        Self::WatchTogetherRoom,
         Self::WriteSettings,
     ];
     pub fn as_str(self) -> &'static str {
@@ -157,6 +163,9 @@ impl EffectKind {
             EffectKind::WriteFeedback => "writeFeedback",
             EffectKind::WriteLibraryCommand => "writeLibraryCommand",
             EffectKind::WritePlaybackProgress => "writePlaybackProgress",
+            EffectKind::WatchTogetherBroadcast => "watchTogetherBroadcast",
+            EffectKind::WatchTogetherCommand => "watchTogetherCommand",
+            EffectKind::WatchTogetherRoom => "watchTogetherRoom",
             EffectKind::WriteSettings => "writeSettings",
         }
     }

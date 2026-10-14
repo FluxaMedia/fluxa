@@ -70,6 +70,14 @@ Scheduling fields are optional and are present for effects with a policy. `dedup
 | `writeSettings` | Persist updated user settings |
 | `updateCalendarWidget` | Refresh the OS home-screen calendar widget |
 
+### Watch together
+
+| type | What to do |
+|---|---|
+| `watchTogetherRoom` | `payload.op` is `create`, `join` or `leave`. Call `create_watch_room` or `join_watch_room` (or `leave_watch_room`), subscribe to or drop the private `watch-together:<code>` channel, and complete with `{room, clientId, hostId, members}` where each member carries `id`, `name`, `avatar`, `color` from `watch_room_members` |
+| `watchTogetherBroadcast` | Send `payload.message` on the room channel; complete with no value |
+| `watchTogetherCommand` | `payload.command` is `pickStream` (open the stream picker for `content`), `playShared` (play `stream` for `content`), `start` (begin playback at `positionMs`), `remote` (apply `playing` and `positionMs`), `seek`, `speed` or `resetSpeed`; complete with no value |
+
 ### Auth / sync
 
 | type | What to do |

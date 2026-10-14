@@ -20,6 +20,7 @@ pub(crate) use crate::library::engine::library;
 pub(crate) use crate::library::engine::offline;
 pub(crate) use crate::player::engine as player;
 pub(crate) use crate::player::engine::trailer;
+pub(crate) use crate::player::engine::watch_together;
 pub(crate) use crate::profile::engine as profile;
 pub(crate) use crate::settings::engine as settings;
 
@@ -47,6 +48,7 @@ pub(crate) struct HeadlessEngine {
     // Runtime-only effect registry. Effect payloads can contain credentials and must never
     // be included in a UI state snapshot or StatePatch.
     pub(crate) pending_effects: Vec<EffectEnvelope>,
+    pub(crate) watch_session: Option<crate::player::watch_together::WatchTogetherSession>,
 }
 
 pub struct Engine(HeadlessEngine);

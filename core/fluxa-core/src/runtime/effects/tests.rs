@@ -49,6 +49,9 @@ fn as_str_and_from_str_roundtrip_for_every_variant() {
         EffectKind::WriteFeedback,
         EffectKind::WriteLibraryCommand,
         EffectKind::WritePlaybackProgress,
+        EffectKind::WatchTogetherBroadcast,
+        EffectKind::WatchTogetherCommand,
+        EffectKind::WatchTogetherRoom,
         EffectKind::WriteSettings,
     ];
     for kind in all {

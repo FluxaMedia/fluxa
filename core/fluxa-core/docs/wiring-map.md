@@ -34,7 +34,7 @@ Each item names the action the shell would dispatch and the effect the shell wou
 
 - **PublicMetaDB** (`catalog::publicmetadb`): a detail-load action that asks for ratings, and a fetch effect for its endpoints.
 - **Intro segments** (`player::segments`): `IntroSegmentsRequested` and `FetchIntroSegments` exist; the remaining parsing and dedupe routes should move behind them.
-- **Watch together** (`player::watch_together`): room create, join and sync actions, and a socket effect. Nothing in the engine models a room yet.
+- **Watch together** (`player::watch_together`): the engine models the room (`watchTogether*` actions, `watchTogetherRoom`, `watchTogetherBroadcast` and `watchTogetherCommand` effects, `watchTogether` state). No shell runs those effects yet: each needs the Supabase Realtime channel, the room RPCs, and the player commands.
 - **Casting** (`player::cast`): DLNA, Chromecast, FCast, Roku and AirPlay message builders. They need a device discovery effect and a cast session action; today they are only reachable as plain Rust functions.
 - **Scrobble** (`player::scrobble`): `ScrobbleRequested` and `EnqueueTraktScrobble` exist; the scrobble body routes are not called by any shell.
 - **Plugins** (`addons::plugins`, `fluxa-plugin-runtime`): `ExecutePlugin` and `FetchPluginManifest` exist; scraper settings and repository management have no action.

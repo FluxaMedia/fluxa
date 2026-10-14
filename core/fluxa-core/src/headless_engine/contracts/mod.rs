@@ -1,6 +1,7 @@
 pub(crate) mod actions;
 use crate::headless_engine::contracts::actions::{MarkWatchedAction, SavePlaybackProgressAction};
 use crate::runtime::EffectEnvelope;
+use crate::player::watch_together::{SharedStream, WatchTogetherContent, WatchTogetherMember};
 use crate::types::{MetaItem, Profile, Stream, Video};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -360,6 +361,53 @@ pub(crate) enum AppAction {
     PluginScraperToggled { scraper_id: String, enabled: bool },
     #[serde(rename = "pluginScraperSettingsUpdated")]
     PluginScraperSettingsUpdated { scraper_id: String, settings: Value },
+    #[serde(rename = "watchTogetherCreateRequested")]
+    WatchTogetherCreateRequested {
+        display_name: String,
+        profile_id: Option<String>,
+        avatar: Option<String>,
+    },
+    #[serde(rename = "watchTogetherJoinRequested")]
+    WatchTogetherJoinRequested {
+        code: String,
+        display_name: String,
+        profile_id: Option<String>,
+        avatar: Option<String>,
+    },
+    #[serde(rename = "watchTogetherLeaveRequested")]
+    WatchTogetherLeaveRequested,
+    #[serde(rename = "watchTogetherContentSelected")]
+    WatchTogetherContentSelected {
+        content: WatchTogetherContent,
+        stream: Option<SharedStream>,
+        start_position_ms: i64,
+    },
+    #[serde(rename = "watchTogetherReadyChanged")]
+    WatchTogetherReadyChanged { ready: bool, now_ms: i64 },
+    #[serde(rename = "watchTogetherBufferingChanged")]
+    WatchTogetherBufferingChanged { buffering: bool, now_ms: i64 },
+    #[serde(rename = "watchTogetherPlaybackReported")]
+    WatchTogetherPlaybackReported {
+        position_ms: i64,
+        duration_ms: i64,
+        playing: bool,
+        buffering: bool,
+        now_ms: i64,
+    },
+    #[serde(rename = "watchTogetherPositionSampled")]
+    WatchTogetherPositionSampled {
+        position_ms: i64,
+        now_ms: i64,
+        speed_correction_active: bool,
+    },
+    #[serde(rename = "watchTogetherMessageReceived")]
+    WatchTogetherMessageReceived { message: Value, now_ms: i64 },
+    #[serde(rename = "watchTogetherMembersChanged")]
+    WatchTogetherMembersChanged {
+        host_id: String,
+        members: Vec<WatchTogetherMember>,
+        now_ms: i64,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -452,6 +500,8 @@ pub(crate) struct StatePatch {
     pub trailer: Option<Arc<super::trailer::TrailerState>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub plugins: Option<Arc<super::plugins::PluginsState>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub watch_together: Option<Arc<crate::player::watch_together::WatchTogetherState>>,
 }
 
 #[cfg(test)]

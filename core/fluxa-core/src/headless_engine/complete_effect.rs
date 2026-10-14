@@ -2,7 +2,7 @@ use super::HeadlessEngine;
 use super::contracts::EffectResultInput;
 use super::{
     addons, auth, calendar, detail, discover, home, library, offline, player, plugins, search,
-    settings, trailer,
+    settings, trailer, watch_together,
 };
 use crate::runtime::{EffectEnvelope, EffectKind};
 
@@ -92,7 +92,13 @@ impl HeadlessEngine {
 
             EffectKind::FetchPluginManifest => plugins::complete(self, generation, &result),
 
-            EffectKind::UpdateCalendarWidget
+            EffectKind::WatchTogetherRoom => {
+                watch_together::complete(self, generation, &result, &effect.payload)
+            }
+
+            EffectKind::WatchTogetherBroadcast
+            | EffectKind::WatchTogetherCommand
+            | EffectKind::UpdateCalendarWidget
             | EffectKind::NotifyReleasedEpisodes
             | EffectKind::ReplaceExternalContinueWatching
             | EffectKind::ExecutePlugin => vec![],

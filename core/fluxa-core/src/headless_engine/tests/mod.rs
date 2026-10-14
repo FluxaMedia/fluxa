@@ -6,4 +6,5 @@ mod engine;
 mod home;
 mod library;
 mod plugins;
+mod watch_together;
 mod wire_fixtures;

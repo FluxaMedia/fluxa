@@ -13,6 +13,7 @@ use super::profile::ProfileState;
 use super::search::SearchState;
 use super::settings::SettingsState;
 use super::trailer::TrailerState;
+use crate::player::watch_together::WatchTogetherState;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
@@ -94,6 +95,7 @@ pub(crate) enum GenerationKey {
     Intro,
     Trailer,
     Plugins,
+    WatchTogether,
 }
 
 #[derive(Clone, Debug, Default, Deserialize, Serialize)]
@@ -119,6 +121,7 @@ pub(crate) struct RuntimeGenerations {
     intro_generation: u64,
     trailer_generation: u64,
     plugins_generation: u64,
+    watch_together_generation: u64,
 }
 
 impl RuntimeGenerations {
@@ -144,6 +147,7 @@ impl RuntimeGenerations {
             GenerationKey::Intro => self.intro_generation,
             GenerationKey::Trailer => self.trailer_generation,
             GenerationKey::Plugins => self.plugins_generation,
+            GenerationKey::WatchTogether => self.watch_together_generation,
         }
     }
 
@@ -169,6 +173,7 @@ impl RuntimeGenerations {
             GenerationKey::Intro => &mut self.intro_generation,
             GenerationKey::Trailer => &mut self.trailer_generation,
             GenerationKey::Plugins => &mut self.plugins_generation,
+            GenerationKey::WatchTogether => &mut self.watch_together_generation,
         };
         *slot = slot.saturating_add(1);
         *slot
@@ -194,6 +199,7 @@ pub(crate) struct EngineState {
     pub(crate) offline: Tracked<OfflineState>,
     pub(crate) trailer: Tracked<TrailerState>,
     pub(crate) plugins: Tracked<PluginsState>,
+    pub(crate) watch_together: Tracked<WatchTogetherState>,
     #[serde(rename = "_runtime")]
     pub(crate) runtime: RuntimeGenerations,
 }
@@ -217,6 +223,7 @@ impl EngineState {
             offline: self.offline.take_if_dirty(),
             trailer: self.trailer.take_if_dirty(),
             plugins: self.plugins.take_if_dirty(),
+            watch_together: self.watch_together.take_if_dirty(),
         }
     }
 }
