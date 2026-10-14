@@ -3245,5 +3245,6 @@
   "watch.join_hint": "أو أدخل رمز صديق للانضمام إلى غرفته.",
   "watch.error": "تعذّر الاتصال بالغرفة",
   "shortcuts.watch_together": "المشاهدة معًا",
-  "shortcuts.player_watch_together": "لوحة المشاهدة معًا"
+  "shortcuts.player_watch_together": "لوحة المشاهدة معًا",
+  "watch.hint_alone": "شارك الرمز مع أصدقائك لبدء المشاهدة معًا."
 }

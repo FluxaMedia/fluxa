@@ -30,7 +30,9 @@ pub enum WatchTogetherRequest {
 }
 
 pub fn waiting_member(members: &[WatchMemberView]) -> Option<&WatchMemberView> {
-    members.iter().find(|member| member.buffering)
+    members
+        .iter()
+        .find(|member| member.buffering && !member.you)
 }
 
 fn glyph(
@@ -80,7 +82,7 @@ pub fn draw_watch_together(
                 |ui| {
                     ui.label(
                         RichText::new(t("watch.title"))
-                            .size(metrics.text.subtitle)
+                            .size(22.0)
                             .strong()
                             .color(text_primary()),
                     );
@@ -376,7 +378,7 @@ pub fn draw_watch_side_panel(
                 |ui| {
                     ui.label(
                         RichText::new(t("watch.title"))
-                            .size(metrics.text.meta)
+                            .size(22.0)
                             .strong()
                             .color(text_primary()),
                     );
@@ -426,7 +428,7 @@ fn side_entry(
     }
     ui.add_space(16.0);
     components::note(ui, &t("watch.join_hint"), metrics);
-    ui.add_space(8.0);
+    ui.add_space(12.0);
     let id = Id::new("fluxa-watch-side-code");
     let mut code = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
     let field = components::text_input(
@@ -443,7 +445,7 @@ fn side_entry(
         .take(6)
         .collect::<String>()
         .to_uppercase();
-    ui.add_space(8.0);
+    ui.add_space(14.0);
     let complete = code.len() == 6;
     let submit =
         complete && field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
@@ -468,20 +470,22 @@ fn side_room(
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
+        None if model.members.len() < 2 => t("watch.hint_alone"),
         None => t("watch.ready_count")
             .replace("{ready}", &ready.to_string())
             .replace("{total}", &model.members.len().to_string()),
     };
     ui.label(
         RichText::new(summary)
-            .size(metrics.text.label)
+            .size(metrics.text.meta)
             .color(metrics.text_secondary),
     );
     ui.add_space(12.0);
     for member in &model.members {
         side_member(ui, member, width, assets, metrics, t);
     }
-    ui.add_space(14.0);
+    let spare = ui.available_height() - button_height() - 4.0;
+    ui.add_space(spare.max(14.0));
     if components::secondary_button(ui, &t("watch.leave"), width).clicked() {
         *request = Some(WatchTogetherRequest::Leave);
     }

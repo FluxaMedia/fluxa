@@ -3256,5 +3256,6 @@
   "watch.join_hint": "Or enter a friend's code to join their room.",
   "watch.error": "Could not connect to the room",
   "shortcuts.watch_together": "Watch Together",
-  "shortcuts.player_watch_together": "Watch Together panel"
+  "shortcuts.player_watch_together": "Watch Together panel",
+  "watch.hint_alone": "Share the code with friends to start watching together."
 }
