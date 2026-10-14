@@ -93,10 +93,7 @@ impl Chrome<'_> {
         let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
         self.painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
         let split = if player.boost { 0.5 } else { 1.0 };
-        let base = Rect::from_min_size(
-            bar.min,
-            Vec2::new(bar.width() * ratio.min(split), 4.0),
-        );
+        let base = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio.min(split), 4.0));
         self.painter
             .rect_filled(base, radius::BAR, accent().gamma_multiply(amount));
         let mut knob = accent();
@@ -109,10 +106,7 @@ impl Chrome<'_> {
                 let right = (left + step).min(end);
                 let t = ((left - start) / (bar.width() * (1.0 - split))).clamp(0.0, 1.0);
                 self.painter.rect_filled(
-                    Rect::from_min_max(
-                        Pos2::new(left, bar.top()),
-                        Pos2::new(right, bar.bottom()),
-                    ),
+                    Rect::from_min_max(Pos2::new(left, bar.top()), Pos2::new(right, bar.bottom())),
                     0.0,
                     boost_color(t).gamma_multiply(amount),
                 );
@@ -350,6 +344,63 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
         13.0,
         (right - x - 24.0).max(0.0),
         218,
+    );
+}
+
+pub(super) fn trailer_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut HomeLayout) {
+    let (rect, player) = (chrome.rect, chrome.player);
+    let margin = chrome.margin();
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(margin + 20.0, rect.top() + 36.0),
+        chrome.icon(),
+        "ArrowLeft",
+        NODE_PLAYER_CLOSE,
+    );
+    if !player.has_video() {
+        return;
+    }
+    chrome.surface(ui, layout, rect);
+    if !player.controls_visible {
+        return;
+    }
+    scrims(chrome.painter, rect);
+    let center = Pos2::new(rect.center().x, rect.bottom() - 64.0 - chrome.viewport.safe_bottom);
+    let mute = if player.muted {
+        "VolumeMuted"
+    } else {
+        "Volume"
+    };
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(center.x - 170.0, center.y),
+        chrome.icon(),
+        mute,
+        NODE_PLAYER_MUTE,
+    );
+    chrome.volume_slider(ui, layout, center.x - 122.0, center.y);
+    let play = if player.paused {
+        "PlayFilled"
+    } else {
+        "PauseFilled"
+    };
+    chrome.button(
+        ui,
+        layout,
+        center,
+        chrome.icon() + 16.0,
+        play,
+        NODE_PLAYER_TOGGLE,
+    );
+    chrome.button(
+        ui,
+        layout,
+        Pos2::new(center.x + 96.0, center.y),
+        chrome.icon(),
+        "AudioSubtitles",
+        NODE_PLAYER_SUBTITLES,
     );
 }
 

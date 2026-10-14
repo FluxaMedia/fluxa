@@ -420,10 +420,10 @@ pub(crate) fn tick(state: &mut RendererState) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-use fluxa_effects::{fetch_text, range_proxy};
+pub(crate) use fluxa_effects::{fetch_text, range_proxy};
 
 #[cfg(target_arch = "wasm32")]
-fn range_proxy(_url: &str) -> Option<String> {
+pub(crate) fn range_proxy(_url: &str) -> Option<String> {
     None
 }
 

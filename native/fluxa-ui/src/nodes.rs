@@ -35,6 +35,7 @@ pub const NODE_PLAYER_BOOST: u64 = 719;
 pub const NODE_PLAYER_PANEL_ROW_BASE: u64 = 8000;
 pub const PLAYER_PANEL_ROW_LIMIT: usize = 128;
 pub const NODE_PLAYER_TRACKS: u64 = 760;
+pub const NODE_PLAYER_SUBTITLES: u64 = 769;
 pub const NODE_PLAYER_SPEED: u64 = 761;
 pub const NODE_PLAYER_EPISODES: u64 = 762;
 pub const NODE_PLAYER_NEXT: u64 = 763;

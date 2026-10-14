@@ -7,6 +7,10 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_REWIND => seek(state, -1.0),
         fluxa_ui::NODE_PLAYER_FORWARD => seek(state, 1.0),
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
+        fluxa_ui::NODE_PLAYER_SUBTITLES => command(
+            state,
+            VideoCommand::Mpv(vec!["cycle".to_owned(), "sub-visibility".to_owned()]),
+        ),
         fluxa_ui::NODE_PLAYER_BOOST => toggle_boost(state),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
         fluxa_ui::NODE_PLAYER_WATCH => crate::watch_together::toggle_panel(state),

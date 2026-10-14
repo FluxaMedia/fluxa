@@ -84,6 +84,7 @@ pub struct PlayerModel {
     pub has_next: bool,
     pub has_previous: bool,
     pub has_episodes: bool,
+    pub trailer: bool,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -322,10 +323,14 @@ pub fn draw_player(
         .fixed_pos(Pos2::ZERO)
         .show(context, |ui| {
             ui.set_min_size(rect.size());
-            match viewport.form_factor {
-                UiFormFactor::Tv => tv_controls(&chrome, ui, &mut layout),
-                UiFormFactor::Mobile => mobile_controls(&chrome, ui, &mut layout),
-                UiFormFactor::Desktop => desktop_controls(&chrome, ui, &mut layout),
+            if player.trailer {
+                trailer_controls(&chrome, ui, &mut layout);
+            } else {
+                match viewport.form_factor {
+                    UiFormFactor::Tv => tv_controls(&chrome, ui, &mut layout),
+                    UiFormFactor::Mobile => mobile_controls(&chrome, ui, &mut layout),
+                    UiFormFactor::Desktop => desktop_controls(&chrome, ui, &mut layout),
+                }
             }
             if player.has_video() {
                 overlay::draw_skip_card(&chrome, ui, &mut layout);
