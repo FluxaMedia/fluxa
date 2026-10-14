@@ -57,6 +57,12 @@ pub struct WatchTogetherMember {
     pub is_host: bool,
     #[serde(default)]
     pub buffering: bool,
+    #[serde(default)]
+    pub ready: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub avatar: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub color: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -285,6 +291,15 @@ impl WatchTogetherProtocol {
                         .get("buffering")
                         .and_then(Value::as_bool)
                         .unwrap_or(false),
+                    ready: false,
+                    avatar: item
+                        .get("avatar")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
+                    color: item
+                        .get("color")
+                        .and_then(Value::as_str)
+                        .map(str::to_string),
                 })
             })
             .collect()
@@ -346,6 +361,10 @@ fn content_fields(content: &WatchTogetherContent) -> Map<String, Value> {
     value.insert("title".to_string(), json!(content.title));
     value
 }
+
+mod session;
+
+pub use session::{SessionEffect, SessionPhase, SharedStream, WatchTogetherSession};
 
 #[cfg(test)]
 mod tests;
