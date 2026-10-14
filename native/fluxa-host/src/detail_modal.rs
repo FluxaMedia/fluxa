@@ -9,6 +9,14 @@ pub(super) fn apply(state: &mut RendererState) {
     else {
         return;
     };
+    if matches!(
+        outcome,
+        DetailModalOutcome::Play | DetailModalOutcome::Episode(_)
+    ) && crate::sync::playback_blocked(state)
+    {
+        crate::sync::show_notice(state, "playback.no_sources");
+        return;
+    }
     match outcome {
         DetailModalOutcome::Close => close(state),
         DetailModalOutcome::OpenPage => state
@@ -20,6 +28,37 @@ pub(super) fn apply(state: &mut RendererState) {
                 .push(NativeAction::ToggleWatchlist {
                     item: state.detail.item.clone(),
                 })
+        }
+        DetailModalOutcome::Episode(index) => {
+            let Some(video) = state
+                .detail
+                .episodes
+                .get(index)
+                .map(|episode| episode.id.clone())
+            else {
+                return;
+            };
+            let item = playback_item(&state.detail.item, None, Some(video));
+            close(state);
+            state
+                .pending_native_actions
+                .push(NativeAction::StartPlayback { item });
+        }
+        DetailModalOutcome::Similar(index) => {
+            let Some(card) = state.detail.similar.get(index) else {
+                return;
+            };
+            let (Some(id), Some(item_type)) = (card.id.clone(), card.item_type.clone()) else {
+                return;
+            };
+            let preview = card.raw.clone();
+            state
+                .pending_native_actions
+                .push(NativeAction::DetailModal {
+                    id,
+                    item_type,
+                    preview,
+                });
         }
         DetailModalOutcome::Play => {
             let id = state.detail.id.clone();
