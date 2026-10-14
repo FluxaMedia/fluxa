@@ -3294,5 +3294,13 @@
   "downloads.remaining": "%s kaldı",
   "downloads.quit_title": "İndirmeler devam ediyor",
   "downloads.quit_keep": "Arka planda indirmeye devam et",
-  "downloads.quit_stop": "Çık ve indirmeleri duraklat"
+  "downloads.quit_stop": "Çık ve indirmeleri duraklat",
+  "downloads.speed_title": "İndirme hızı",
+  "downloads.storage_title": "Depolama",
+  "downloads.free_of": "%s boş / %s",
+  "downloads.change": "Değiştir",
+  "downloads.location_title": "İndirme konumu",
+  "downloads.location_default": "Varsayılan klasör",
+  "downloads.volume_free": "%s boş",
+  "downloads.no_space": "Yeterli depolama alanı yok"
 }

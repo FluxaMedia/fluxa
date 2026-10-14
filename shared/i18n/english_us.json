@@ -3294,5 +3294,13 @@
   "downloads.remaining": "%s left",
   "downloads.quit_title": "Downloads are in progress",
   "downloads.quit_keep": "Keep downloading in the background",
-  "downloads.quit_stop": "Quit and pause downloads"
+  "downloads.quit_stop": "Quit and pause downloads",
+  "downloads.speed_title": "Download speed",
+  "downloads.storage_title": "Storage",
+  "downloads.free_of": "%s free of %s",
+  "downloads.change": "Change",
+  "downloads.location_title": "Download location",
+  "downloads.location_default": "Default folder",
+  "downloads.volume_free": "%s free",
+  "downloads.no_space": "Not enough storage space"
 }

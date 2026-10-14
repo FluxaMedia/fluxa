@@ -514,6 +514,7 @@ impl HeadlessEngine {
                 offline::resume(self, &id, now_ms)
             }
             AppAction::OfflineDownloadRemoveRequested { id } => offline::remove(self, &id),
+            AppAction::OfflineStorageRequested => offline::storage_request(self),
             AppAction::OfflineDownloadsRestored { items } => {
                 offline::restored(self, items);
                 vec![]
@@ -551,6 +552,12 @@ impl HeadlessEngine {
                 avatar,
             } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar),
             AppAction::WatchTogetherLeaveRequested => watch_together::dispatch_leave(self),
+            AppAction::WatchTogetherKickRequested { member_id } => {
+                watch_together::dispatch_kick(self, member_id)
+            }
+            AppAction::WatchTogetherLockChanged { locked } => {
+                watch_together::dispatch_lock(self, locked)
+            }
             AppAction::WatchTogetherContentSelected {
                 content,
                 stream,
@@ -583,21 +590,15 @@ impl HeadlessEngine {
             } => {
                 watch_together::dispatch_sample(self, position_ms, now_ms, speed_correction_active)
             }
-            AppAction::WatchTogetherKickRequested { member_id } => {
-                watch_together::dispatch_kick(self, member_id)
-            }
-            AppAction::WatchTogetherLockChanged { locked } => {
-                watch_together::dispatch_lock(self, locked)
-            }
             AppAction::WatchTogetherMessageReceived { message, now_ms } => {
                 watch_together::dispatch_message(self, message, now_ms)
             }
             AppAction::WatchTogetherMembersChanged {
                 host_id,
                 members,
+                locked,
                 now_ms,
             } => watch_together::dispatch_members(self, host_id, members, locked, now_ms),
         }
     }
 }
-                locked,

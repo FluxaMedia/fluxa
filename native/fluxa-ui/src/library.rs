@@ -66,8 +66,9 @@ pub fn draw_library(
         assets,
         metrics,
     );
-    if library.downloads_open && !library.downloads.is_empty() {
+    if library.downloads_open {
         let top = page.filters_top;
+        let summary_height = components::download_summary_height(page.width, metrics);
         let clip = Rect::from_min_max(
             Pos2::new(0.0, top - metrics.section_gap * 0.5),
             Pos2::new(
@@ -77,52 +78,73 @@ pub fn draw_library(
         );
         components::placed(
             context,
-            Id::new("fluxa-shared-library-downloads"),
+            Id::new("fluxa-shared-library-downloads-summary"),
             Pos2::new(page.margin, top - scroll_y),
             |ui| {
                 ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                let mut y = top - scroll_y;
-                let mut index = 0;
-                for group in &library.downloads {
-                    components::download_group(
-                        ui,
-                        group,
-                        index,
-                        Pos2::new(page.margin, y),
-                        page.width,
-                        &library.language,
-                        metrics,
-                        assets,
-                        &mut layout,
-                    );
-                    y += components::download_group_height(group, page.width, metrics)
-                        + metrics.section_gap;
-                    index += group.rows.len();
-                }
+                components::download_summary(
+                    ui,
+                    &library.downloads_summary,
+                    Pos2::new(page.margin, top - scroll_y),
+                    page.width,
+                    &library.language,
+                    metrics,
+                    &mut layout,
+                );
             },
         );
-        layout
-            .focusable
-            .extend(navigation_focus_rects(viewport, metrics));
-        components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
-        return layout;
-    }
-    if library.downloads_open {
-        let bottom = viewport.height - mobile_scroll_reserve(viewport);
-        components::empty_state(
-            &painter,
-            Rect::from_min_max(
-                Pos2::new(page.margin, page.filters_top),
-                Pos2::new(
-                    page.margin + page.width,
-                    bottom.max(page.filters_top + 200.0),
+        let top = top + summary_height + metrics.section_gap;
+        if library.downloads.is_empty() {
+            let bottom = viewport.height - mobile_scroll_reserve(viewport);
+            components::empty_state(
+                &painter,
+                Rect::from_min_max(
+                    Pos2::new(page.margin, (top - scroll_y).max(page.filters_top)),
+                    Pos2::new(
+                        page.margin + page.width,
+                        bottom.max(top - scroll_y + 200.0),
+                    ),
                 ),
-            ),
-            assets.icon("Downloads"),
-            &localized("library.downloads_empty", &library.language),
-            &localized("library.downloads_hint", &library.language),
-            metrics,
-        );
+                assets.icon("Downloads"),
+                &localized("library.downloads_empty", &library.language),
+                &localized("library.downloads_hint", &library.language),
+                metrics,
+            );
+        } else {
+            let clip = Rect::from_min_max(
+                Pos2::new(0.0, top - scroll_y - metrics.section_gap * 0.5),
+                Pos2::new(
+                    viewport.width,
+                    viewport.height - mobile_scroll_reserve(viewport),
+                ),
+            );
+            components::placed(
+                context,
+                Id::new("fluxa-shared-library-downloads"),
+                Pos2::new(page.margin, top - scroll_y),
+                |ui| {
+                    ui.set_clip_rect(ui.clip_rect().intersect(clip));
+                    let mut y = top - scroll_y;
+                    let mut index = 0;
+                    for group in &library.downloads {
+                        components::download_group(
+                            ui,
+                            group,
+                            index,
+                            Pos2::new(page.margin, y),
+                            page.width,
+                            &library.language,
+                            metrics,
+                            assets,
+                            &mut layout,
+                        );
+                        y += components::download_group_height(group, page.width, metrics)
+                            + metrics.section_gap;
+                        index += group.rows.len();
+                    }
+                },
+            );
+        }
         layout
             .focusable
             .extend(navigation_focus_rects(viewport, metrics));

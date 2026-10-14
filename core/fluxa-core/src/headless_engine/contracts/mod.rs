@@ -373,6 +373,8 @@ pub(crate) enum AppAction {
     },
     #[serde(rename = "offlineDownloadRemoveRequested")]
     OfflineDownloadRemoveRequested { id: String },
+    #[serde(rename = "offlineStorageRequested")]
+    OfflineStorageRequested,
     #[serde(rename = "offlineDownloadsRestored")]
     OfflineDownloadsRestored { items: Vec<Value> },
     #[serde(rename = "trailerResolveRequested")]
@@ -408,6 +410,10 @@ pub(crate) enum AppAction {
     },
     #[serde(rename = "watchTogetherLeaveRequested")]
     WatchTogetherLeaveRequested,
+    #[serde(rename = "watchTogetherKickRequested")]
+    WatchTogetherKickRequested { member_id: String },
+    #[serde(rename = "watchTogetherLockChanged")]
+    WatchTogetherLockChanged { locked: bool },
     #[serde(rename = "watchTogetherContentSelected")]
     WatchTogetherContentSelected {
         content: WatchTogetherContent,
@@ -438,10 +444,8 @@ pub(crate) enum AppAction {
     WatchTogetherMembersChanged {
         host_id: String,
         members: Vec<WatchTogetherMember>,
-    #[serde(rename = "watchTogetherKickRequested")]
-    WatchTogetherKickRequested { member_id: String },
-    #[serde(rename = "watchTogetherLockChanged")]
-    WatchTogetherLockChanged { locked: bool },
+        #[serde(default)]
+        locked: bool,
         now_ms: i64,
     },
 }
@@ -472,8 +476,6 @@ pub(crate) enum EffectStatus {
     Cancelled,
 }
 
-        #[serde(default)]
-        locked: bool,
 impl EffectStatus {
     pub(crate) fn is_ok(self) -> bool {
         matches!(self, EffectStatus::Ok)

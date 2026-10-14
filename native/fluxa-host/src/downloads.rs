@@ -1,8 +1,62 @@
 use super::*;
-use fluxa_ui::{DownloadStatus, NODE_DOWNLOAD_BASE};
+use fluxa_ui::{DownloadStatus, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, localized};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const NODE_SPAN: u64 = 4000;
+const STORAGE_POLL: Duration = Duration::from_secs(5);
+
+pub(crate) fn tick(state: &mut RendererState) {
+    if state.route != Route::Library || !state.library_downloads {
+        state.storage_polled = None;
+        return;
+    }
+    if state
+        .storage_polled
+        .is_some_and(|at| at.elapsed() < STORAGE_POLL)
+    {
+        return;
+    }
+    state.storage_polled = Some(Instant::now());
+    if let Some(session) = state.session.as_ref()
+        && let Err(error) = session.dispatch(json!({"type": "offlineStorageRequested"}))
+    {
+        host_log(format!("storage request failed: {error}"));
+    }
+}
+
+fn open_location_picker(state: &mut RendererState) {
+    let language = state.settings.language().to_owned();
+    let summary = &state.library.downloads_summary;
+    let free = |bytes: u64| localized("downloads.volume_free", &language).replace("%s", &format_bytes(bytes));
+    let mut options = Vec::new();
+    for (index, volume) in summary.volumes.iter().enumerate() {
+        let name = if index == 0 {
+            localized("downloads.location_default", &language)
+        } else {
+            volume.label.clone()
+        };
+        let value = if index == 0 { String::new() } else { volume.path.clone() };
+        options.push((value, format!("{name} · {}", free(volume.free_bytes))));
+    }
+    if options.is_empty() {
+        options.push((String::new(), localized("downloads.location_default", &language)));
+    }
+    let selected = state
+        .settings
+        .value("downloadDir")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    card_menu::open_choice(
+        state,
+        fluxa_ui::ChoiceRequest {
+            key: "downloadDir",
+            title: localized("downloads.location_title", &language),
+            options,
+            selected,
+        },
+    );
+}
 
 fn now_ms() -> u64 {
     SystemTime::now()
@@ -11,6 +65,10 @@ fn now_ms() -> u64 {
 }
 
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
+    if node == NODE_DOWNLOAD_LOCATION {
+        open_location_picker(state);
+        return true;
+    }
     if !(NODE_DOWNLOAD_BASE..NODE_DOWNLOAD_BASE + NODE_SPAN).contains(&node) {
         return false;
     }
@@ -66,9 +124,9 @@ fn any_active(snapshot: &Value) -> bool {
         .pointer("/offline/items")
         .and_then(Value::as_array)
         .is_some_and(|items| {
-            items.iter().any(|item| {
-                matches!(item["status"].as_str(), Some("downloading" | "queued"))
-            })
+            items
+                .iter()
+                .any(|item| matches!(item["status"].as_str(), Some("downloading" | "queued")))
         })
 }
 
@@ -101,7 +159,8 @@ mod tests {
 
     #[test]
     fn a_running_download_asks_before_quitting() {
-        let snapshot = json!({"offline": {"items": [{"status": "completed"}, {"status": "downloading"}]}});
+        let snapshot =
+            json!({"offline": {"items": [{"status": "completed"}, {"status": "downloading"}]}});
         assert!(any_active(&snapshot));
     }
 }

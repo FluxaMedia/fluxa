@@ -179,13 +179,16 @@ pub fn library_scroll_max(viewport: Viewport, library: &LibraryModel, tab: Libra
     let metrics = UiMetrics::for_viewport(viewport);
     let page = PageLayout::new(viewport, metrics, false).with_sections(viewport, metrics);
     if library.downloads_open {
-        let content = library
-            .downloads
-            .iter()
-            .map(|group| {
-                components::download_group_height(group, page.width, metrics) + metrics.section_gap
-            })
-            .sum::<f32>();
+        let content = components::download_summary_height(page.width, metrics)
+            + metrics.section_gap
+            + library
+                .downloads
+                .iter()
+                .map(|group| {
+                    components::download_group_height(group, page.width, metrics)
+                        + metrics.section_gap
+                })
+                .sum::<f32>();
         return (page.filters_top + content - (viewport.height - mobile_scroll_reserve(viewport)))
             .max(0.0);
     }

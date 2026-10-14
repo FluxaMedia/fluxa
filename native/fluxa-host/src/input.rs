@@ -653,6 +653,15 @@ pub(super) fn apply_pointer_results(state: &mut RendererState, route: Route, lay
 
 pub(super) fn apply_choice(state: &mut RendererState, route: Route, key: &str, value: String) {
     match key {
+        "downloadDir" => {
+            state.storage_polled = None;
+            state
+                .pending_native_actions
+                .push(NativeAction::SettingsChange {
+                    key: key.to_owned(),
+                    value: Value::String(value),
+                });
+        }
         "libraryStatus" if route == Route::Library => {
             if let Some(tab) = LibraryTab::ALL
                 .into_iter()

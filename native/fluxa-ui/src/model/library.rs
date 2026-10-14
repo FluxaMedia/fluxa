@@ -91,6 +91,7 @@ pub struct LibraryModel {
     pub liked: Vec<HomeCard>,
     pub personal: std::sync::Arc<PersonalIndex>,
     pub downloads: Vec<DownloadGroup>,
+    pub downloads_summary: DownloadsSummary,
 }
 
 impl LibraryModel {
@@ -205,5 +206,6 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
         on_hold: cards(LibraryTab::OnHold),
         liked: cards(LibraryTab::Liked),
         downloads: downloads_from_snapshot(snapshot),
+        downloads_summary: downloads_summary_from_snapshot(snapshot),
     }
 }

@@ -270,6 +270,10 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::ControlOfflineDownload => {
                 self.control_offline_download(&payload)
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::ReadDownloadStorage => {
+                self.read_download_storage(&payload)
+            }
             fluxa_core::runtime::EffectKind::ReadCalendarMonth => {
                 self.read_calendar_month(&payload).await
             }

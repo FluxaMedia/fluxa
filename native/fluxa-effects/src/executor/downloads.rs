@@ -60,6 +60,36 @@ impl EffectExecutor {
         self.storage.dir().join("downloads")
     }
 
+    fn download_dir(&self, payload: &Value) -> std::path::PathBuf {
+        payload
+            .get("dir")
+            .and_then(Value::as_str)
+            .filter(|dir| !dir.is_empty())
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| self.downloads_dir())
+    }
+
+    pub(super) fn read_download_storage(&self, payload: &Value) -> Result<Value, String> {
+        let default = self.downloads_dir();
+        let current = self.download_dir(payload);
+        let _ = std::fs::create_dir_all(&current);
+        let mut volumes = vec![volume(&default, "default")];
+        for root in mounted_roots() {
+            let root = root.join("Fluxa");
+            if !volumes.iter().any(|known| known["path"] == root.to_string_lossy().as_ref()) {
+                let label = root
+                    .parent()
+                    .and_then(|parent| parent.file_name())
+                    .and_then(|name| name.to_str())
+                    .unwrap_or_default()
+                    .to_owned();
+                volumes.push(volume(&root, &label));
+            }
+        }
+        let label = if current == default { "default" } else { "custom" };
+        Ok(json!({"location": volume(&current, label), "volumes": volumes}))
+    }
+
     pub(super) fn start_offline_download(&self, payload: &Value) -> Result<Value, String> {
         let id = payload
             .get("id")
@@ -74,7 +104,7 @@ impl EffectExecutor {
             .ok_or_else(|| "download payload is missing an http url".to_owned())?
             .to_owned();
         let stream = payload.get("stream").cloned().unwrap_or(Value::Null);
-        let dir = self.downloads_dir();
+        let dir = self.download_dir(payload);
         std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
         let stem = sanitize_key(&id);
         let part = dir.join(format!("{stem}.part"));
@@ -121,7 +151,7 @@ impl EffectExecutor {
         }
         if payload.get("command").and_then(Value::as_str) == Some("remove") {
             let stem = sanitize_key(id);
-            if let Ok(entries) = std::fs::read_dir(self.downloads_dir()) {
+            if let Ok(entries) = std::fs::read_dir(self.download_dir(payload)) {
                 for entry in entries.flatten() {
                     let path = entry.path();
                     if path.file_stem().and_then(|name| name.to_str()) == Some(stem.as_str()) {
@@ -189,12 +219,19 @@ async fn download(
             .map_err(|error| error.to_string())?;
     }
 
+    if let Some(total) = total
+        && let Some(free) = part.parent().and_then(free_bytes)
+        && free < total.saturating_sub(have)
+    {
+        return Err("no_space".to_owned());
+    }
+
     let mut done = have;
     let mut last = std::time::Instant::now() - TICK;
     loop {
         match response.chunk().await.map_err(|error| error.to_string())? {
             Some(chunk) => {
-                file.write_all(&chunk).map_err(|error| error.to_string())?;
+                file.write_all(&chunk).map_err(write_error)?;
                 done += chunk.len() as u64;
             }
             None => break,
@@ -219,4 +256,114 @@ async fn download(
     }
     std::fs::rename(part, target).map_err(|error| error.to_string())?;
     Ok((target.to_string_lossy().into_owned(), Some(done)))
+}
+
+fn write_error(error: std::io::Error) -> String {
+    if error.kind() == std::io::ErrorKind::StorageFull {
+        "no_space".to_owned()
+    } else {
+        error.to_string()
+    }
+}
+
+fn volume(path: &std::path::Path, label: &str) -> Value {
+    let (free, total) = path
+        .ancestors()
+        .find(|ancestor| ancestor.exists())
+        .and_then(space)
+        .unzip();
+    json!({
+        "path": path.to_string_lossy(),
+        "label": label,
+        "freeBytes": free.unwrap_or_default(),
+        "totalBytes": total.unwrap_or_default(),
+    })
+}
+
+fn free_bytes(path: &std::path::Path) -> Option<u64> {
+    space(path).map(|(free, _)| free)
+}
+
+#[cfg(unix)]
+fn space(path: &std::path::Path) -> Option<(u64, u64)> {
+    use std::os::unix::ffi::OsStrExt;
+    let c_path = std::ffi::CString::new(path.as_os_str().as_bytes()).ok()?;
+    let mut stat = std::mem::MaybeUninit::<libc::statvfs>::zeroed();
+    if unsafe { libc::statvfs(c_path.as_ptr(), stat.as_mut_ptr()) } != 0 {
+        return None;
+    }
+    let stat = unsafe { stat.assume_init() };
+    let block = stat.f_frsize as u64;
+    Some((stat.f_bavail as u64 * block, stat.f_blocks as u64 * block))
+}
+
+#[cfg(windows)]
+fn space(path: &std::path::Path) -> Option<(u64, u64)> {
+    use std::os::windows::ffi::OsStrExt;
+    unsafe extern "system" {
+        fn GetDiskFreeSpaceExW(
+            dir: *const u16,
+            available: *mut u64,
+            total: *mut u64,
+            free: *mut u64,
+        ) -> i32;
+    }
+    let wide: Vec<u16> = path.as_os_str().encode_wide().chain(Some(0)).collect();
+    let (mut available, mut total, mut free) = (0u64, 0u64, 0u64);
+    let ok = unsafe { GetDiskFreeSpaceExW(wide.as_ptr(), &mut available, &mut total, &mut free) };
+    (ok != 0).then_some((available, total))
+}
+
+#[cfg(not(any(unix, windows)))]
+fn space(_path: &std::path::Path) -> Option<(u64, u64)> {
+    None
+}
+
+#[cfg(target_os = "linux")]
+fn mounted_roots() -> Vec<std::path::PathBuf> {
+    let mounts = std::fs::read_to_string("/proc/mounts").unwrap_or_default();
+    mounts
+        .lines()
+        .filter_map(|line| line.split_whitespace().nth(1))
+        .map(|path| path.replace("\\040", " "))
+        .filter(|path| {
+            ["/media/", "/mnt/", "/run/media/"]
+                .iter()
+                .any(|prefix| path.starts_with(prefix))
+        })
+        .map(std::path::PathBuf::from)
+        .collect()
+}
+
+#[cfg(target_os = "macos")]
+fn mounted_roots() -> Vec<std::path::PathBuf> {
+    std::fs::read_dir("/Volumes")
+        .map(|entries| entries.flatten().map(|entry| entry.path()).collect())
+        .unwrap_or_default()
+}
+
+#[cfg(windows)]
+fn mounted_roots() -> Vec<std::path::PathBuf> {
+    ('A'..='Z')
+        .map(|letter| std::path::PathBuf::from(format!("{letter}:\\")))
+        .filter(|root| root.exists())
+        .collect()
+}
+
+#[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
+fn mounted_roots() -> Vec<std::path::PathBuf> {
+    Vec::new()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_folders_report_the_space_of_their_nearest_parent() {
+        let missing = std::env::current_dir().unwrap().join("not-created-yet/Fluxa");
+        let info = volume(&missing, "custom");
+        assert!(info["totalBytes"].as_u64().unwrap() > 0);
+        assert!(info["freeBytes"].as_u64().unwrap() <= info["totalBytes"].as_u64().unwrap());
+    }
 }

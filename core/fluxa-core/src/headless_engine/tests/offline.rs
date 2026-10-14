@@ -127,3 +127,57 @@ fn remove_drops_the_item_and_asks_the_shell_to_delete_files() {
     assert_eq!(effects[0].payload["command"], "remove");
     assert!(engine.state.offline.items.is_empty());
 }
+
+#[test]
+fn total_speed_is_sampled_once_per_second_and_drops_when_paused() {
+    let mut engine = HeadlessEngine::new(Default::default());
+    request(&mut engine, 1);
+    request(&mut engine, 2);
+    for (now, done) in [(2000u64, 1_000_000u64), (2400, 1_400_000), (3100, 2_100_000)] {
+        act(
+            &mut engine,
+            json!({"type": "offlineDownloadProgressed", "id": "tt1|tt1:1:1", "bytesDone": done, "nowMs": now}),
+        );
+    }
+    let state = serde_json::to_value(&*engine.state.offline).unwrap();
+    assert_eq!(state["history"].as_array().unwrap().len(), 2);
+    assert_eq!(state["totalSpeedBps"], 1_000_000.0);
+    act(
+        &mut engine,
+        json!({"type": "offlineDownloadPauseRequested", "id": "tt1|tt1:1:1"}),
+    );
+    let state = serde_json::to_value(&*engine.state.offline).unwrap();
+    assert_eq!(state["totalSpeedBps"], 0.0);
+}
+
+#[test]
+fn download_dir_setting_is_captured_per_item_and_sent_on_remove() {
+    let mut engine = HeadlessEngine::new(Default::default());
+    engine.state.settings.values["downloadDir"] = json!("/mnt/media");
+    let effects = request(&mut engine, 1);
+    assert_eq!(effects[0].payload["dir"], "/mnt/media");
+    let effects = act(
+        &mut engine,
+        json!({"type": "offlineDownloadRemoveRequested", "id": "tt1|tt1:1:1"}),
+    );
+    assert_eq!(effects[0].payload["dir"], "/mnt/media");
+}
+
+#[test]
+fn storage_report_exposes_location_and_volumes() {
+    let mut engine = HeadlessEngine::new(Default::default());
+    let effects = act(&mut engine, json!({"type": "offlineStorageRequested"}));
+    assert_eq!(effects[0].kind, EffectKind::ReadDownloadStorage);
+    let result: EffectResultInput = serde_json::from_value(json!({
+        "effectId": effects[0].id, "status": "ok",
+        "value": {
+            "location": {"path": "/d", "label": "Default", "freeBytes": 5, "totalBytes": 10},
+            "volumes": [{"path": "/d", "label": "Default", "freeBytes": 5, "totalBytes": 10}]
+        }
+    }))
+    .unwrap();
+    engine.complete(result);
+    let state = serde_json::to_value(&*engine.state.offline).unwrap();
+    assert_eq!(state["location"]["freeBytes"], 5);
+    assert_eq!(state["volumes"].as_array().unwrap().len(), 1);
+}

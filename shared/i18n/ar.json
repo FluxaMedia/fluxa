@@ -3283,5 +3283,13 @@
   "downloads.remaining": "المتبقي %s",
   "downloads.quit_title": "التنزيلات قيد التقدم",
   "downloads.quit_keep": "متابعة التنزيل في الخلفية",
-  "downloads.quit_stop": "إنهاء وإيقاف التنزيلات مؤقتًا"
+  "downloads.quit_stop": "إنهاء وإيقاف التنزيلات مؤقتًا",
+  "downloads.speed_title": "سرعة التنزيل",
+  "downloads.storage_title": "التخزين",
+  "downloads.free_of": "%s متاح من %s",
+  "downloads.change": "تغيير",
+  "downloads.location_title": "موقع التنزيل",
+  "downloads.location_default": "المجلد الافتراضي",
+  "downloads.volume_free": "%s متاح",
+  "downloads.no_space": "لا توجد مساحة تخزين كافية"
 }

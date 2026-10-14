@@ -69,10 +69,7 @@ impl DownloadGroup {
 }
 
 pub fn downloads_from_snapshot(snapshot: &Value) -> Vec<DownloadGroup> {
-    let Some(items) = snapshot
-        .pointer("/offline/items")
-        .and_then(Value::as_array)
-    else {
+    let Some(items) = snapshot.pointer("/offline/items").and_then(Value::as_array) else {
         return Vec::new();
     };
     let text = |item: &Value, key: &str| {
@@ -137,6 +134,47 @@ pub fn downloads_from_snapshot(snapshot: &Value) -> Vec<DownloadGroup> {
     groups
 }
 
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct StorageInfo {
+    pub path: String,
+    pub label: String,
+    pub free_bytes: u64,
+    pub total_bytes: u64,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct DownloadsSummary {
+    pub speed_bps: f64,
+    pub history: Vec<f32>,
+    pub location: Option<StorageInfo>,
+    pub volumes: Vec<StorageInfo>,
+}
+
+fn storage_info(value: &Value) -> Option<StorageInfo> {
+    Some(StorageInfo {
+        path: value.get("path")?.as_str()?.to_owned(),
+        label: value["label"].as_str().unwrap_or_default().to_owned(),
+        free_bytes: value["freeBytes"].as_u64().unwrap_or(0),
+        total_bytes: value["totalBytes"].as_u64().unwrap_or(0),
+    })
+}
+
+pub fn downloads_summary_from_snapshot(snapshot: &Value) -> DownloadsSummary {
+    let offline = &snapshot["offline"];
+    DownloadsSummary {
+        speed_bps: offline["totalSpeedBps"].as_f64().unwrap_or(0.0),
+        history: offline["history"]
+            .as_array()
+            .map(|samples| samples.iter().filter_map(Value::as_f64).map(|v| v as f32).collect())
+            .unwrap_or_default(),
+        location: storage_info(&offline["location"]),
+        volumes: offline["volumes"]
+            .as_array()
+            .map(|volumes| volumes.iter().filter_map(storage_info).collect())
+            .unwrap_or_default(),
+    }
+}
+
 pub fn format_bytes(bytes: u64) -> String {
     const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
     let mut value = bytes as f64;
@@ -171,9 +209,7 @@ mod tests {
 
     #[test]
     fn episodes_group_under_one_series_in_episode_order() {
-        let item = |id: &str, episode: u32| {
-            json!({"id": id, "metaId": "tt1", "name": "Show", "season": 1, "episode": episode, "status": "downloading", "logo": "l"})
-        };
+        let item = |id: &str, episode: u32| json!({"id": id, "metaId": "tt1", "name": "Show", "season": 1, "episode": episode, "status": "downloading", "logo": "l"});
         let snapshot = json!({"offline": {"items": [item("c", 3), item("a", 1), {"id": "m", "metaId": "tt2", "name": "Film", "status": "completed"}]}});
         let groups = downloads_from_snapshot(&snapshot);
         assert_eq!(groups.len(), 2);
@@ -181,6 +217,20 @@ mod tests {
         assert_eq!(groups[0].rows[0].id, "a");
         assert_eq!(groups[0].rows[1].id, "c");
         assert!(!groups[1].is_series);
+    }
+
+    #[test]
+    fn summary_reads_speed_history_and_location() {
+        let snapshot = json!({"offline": {
+            "totalSpeedBps": 2048.0,
+            "history": [0.0, 1024.0, 2048.0],
+            "location": {"path": "/d", "label": "default", "freeBytes": 5, "totalBytes": 10},
+            "volumes": [{"path": "/d", "label": "default", "freeBytes": 5, "totalBytes": 10}, {"label": "broken"}]
+        }});
+        let summary = downloads_summary_from_snapshot(&snapshot);
+        assert_eq!(summary.history, vec![0.0, 1024.0, 2048.0]);
+        assert_eq!(summary.location.unwrap().free_bytes, 5);
+        assert_eq!(summary.volumes.len(), 1);
     }
 
     #[test]

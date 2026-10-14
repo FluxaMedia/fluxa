@@ -75,6 +75,10 @@ impl HeadlessEngine {
             EffectKind::ReadCalendarMonth => calendar::complete(self, generation, &result, &effect),
 
             EffectKind::EnqueueOfflineDownload => offline::complete(self, generation, &result),
+            EffectKind::ReadDownloadStorage => {
+                offline::storage_reported(self, &result);
+                vec![]
+            }
 
             EffectKind::WriteSettings => settings::complete(self, generation, &result),
 

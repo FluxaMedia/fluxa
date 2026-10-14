@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 const SPEED_SMOOTHING: f64 = 0.3;
+const HISTORY_LEN: usize = 90;
+const HISTORY_STEP_MS: u64 = 1000;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -45,13 +47,28 @@ pub(crate) struct DownloadItem {
     elapsed_ms: u64,
     last_tick_ms: u64,
     path: Option<String>,
+    dir: Option<String>,
     error: Option<String>,
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", default)]
+pub(crate) struct StorageVolume {
+    path: String,
+    label: String,
+    free_bytes: u64,
+    total_bytes: u64,
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase", default)]
 pub(crate) struct OfflineState {
     pub(crate) items: Vec<DownloadItem>,
+    history: Vec<f64>,
+    history_at_ms: u64,
+    total_speed_bps: f64,
+    location: Option<StorageVolume>,
+    volumes: Vec<StorageVolume>,
     last_request: Value,
     last_enqueued: Value,
     error: Value,
@@ -62,6 +79,7 @@ pub(crate) struct OfflineState {
 struct EnqueueOfflineDownloadPayload {
     id: String,
     url: String,
+    dir: Option<String>,
     stream: Value,
     meta: Value,
     video_id: Option<String>,
@@ -108,6 +126,7 @@ fn start_effect(engine: &mut HeadlessEngine, item: &DownloadItem) -> EffectEnvel
     let payload = EnqueueOfflineDownloadPayload {
         id: item.id.clone(),
         url: item.url.clone(),
+        dir: item.dir.clone(),
         stream: item.stream.clone(),
         meta: json!({"id": item.meta_id, "name": item.name}),
         video_id: item.video_id.clone(),
@@ -119,13 +138,64 @@ fn start_effect(engine: &mut HeadlessEngine, item: &DownloadItem) -> EffectEnvel
     engine.effect(EffectKind::EnqueueOfflineDownload, generation, payload)
 }
 
-fn control_effect(engine: &mut HeadlessEngine, id: &str, command: &str) -> EffectEnvelope {
+fn control_effect(
+    engine: &mut HeadlessEngine,
+    id: &str,
+    command: &str,
+    dir: Option<String>,
+) -> EffectEnvelope {
     let generation = engine.bump_generation(GenerationKey::Offline);
     engine.effect(
         EffectKind::ControlOfflineDownload,
         generation,
-        json!({"id": id, "command": command}),
+        json!({"id": id, "command": command, "dir": dir}),
     )
+}
+
+fn refresh_total(engine: &mut HeadlessEngine) {
+    let state = &mut engine.state.offline;
+    state.total_speed_bps = state
+        .items
+        .iter()
+        .filter(|item| item.status == DownloadStatus::Downloading)
+        .map(|item| item.speed_bps)
+        .sum();
+}
+
+fn sample_speed(engine: &mut HeadlessEngine, now_ms: u64) {
+    refresh_total(engine);
+    let state = &mut engine.state.offline;
+    if now_ms.saturating_sub(state.history_at_ms) < HISTORY_STEP_MS {
+        return;
+    }
+    state.history_at_ms = now_ms;
+    let speed = state.total_speed_bps;
+    state.history.push(speed);
+    if state.history.len() > HISTORY_LEN {
+        state.history.remove(0);
+    }
+}
+
+pub(crate) fn storage_request(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
+    let generation = engine.bump_generation(GenerationKey::Offline);
+    let dir = engine.state.settings.values["downloadDir"]
+        .as_str()
+        .filter(|dir| !dir.is_empty())
+        .map(ToOwned::to_owned);
+    vec![engine.effect(
+        EffectKind::ReadDownloadStorage,
+        generation,
+        json!({"dir": dir}),
+    )]
+}
+
+pub(crate) fn storage_reported(engine: &mut HeadlessEngine, result: &EffectResultInput) {
+    if !result.status.is_ok() {
+        return;
+    }
+    let state = &mut engine.state.offline;
+    state.location = serde_json::from_value(result.value["location"].clone()).ok();
+    state.volumes = serde_json::from_value(result.value["volumes"].clone()).unwrap_or_default();
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -161,6 +231,10 @@ pub(crate) fn dispatch(
         }
     }
 
+    let dir = engine.state.settings.values["downloadDir"]
+        .as_str()
+        .filter(|dir| !dir.is_empty())
+        .map(ToOwned::to_owned);
     let video_ref = video.clone().unwrap_or(Value::Null);
     let mut item = DownloadItem {
         id: id.clone(),
@@ -177,6 +251,7 @@ pub(crate) fn dispatch(
         thumbnail: text(&video_ref, &["thumbnail"]),
         stream,
         url,
+        dir,
         profile_id,
         status: DownloadStatus::Downloading,
         last_tick_ms: now_ms,
@@ -227,16 +302,24 @@ pub(crate) fn pause(engine: &mut HeadlessEngine, id: &str) -> Vec<EffectEnvelope
     item.speed_bps = 0.0;
     item.eta_ms = None;
     item.last_tick_ms = 0;
-    vec![control_effect(engine, id, "pause")]
+    let dir = item.dir.clone();
+    refresh_total(engine);
+    vec![control_effect(engine, id, "pause", dir)]
 }
 
 pub(crate) fn remove(engine: &mut HeadlessEngine, id: &str) -> Vec<EffectEnvelope> {
-    let before = engine.state.offline.items.len();
-    engine.state.offline.items.retain(|item| item.id != id);
-    if engine.state.offline.items.len() == before {
+    let Some(position) = engine
+        .state
+        .offline
+        .items
+        .iter()
+        .position(|item| item.id == id)
+    else {
         return vec![];
-    }
-    vec![control_effect(engine, id, "remove")]
+    };
+    let dir = engine.state.offline.items.remove(position).dir;
+    refresh_total(engine);
+    vec![control_effect(engine, id, "remove", dir)]
 }
 
 pub(crate) fn progress(
@@ -279,6 +362,7 @@ pub(crate) fn progress(
             item.eta_ms = None;
         }
     }
+    sample_speed(engine, now_ms);
 }
 
 pub(crate) fn completed(
@@ -304,6 +388,7 @@ pub(crate) fn completed(
     item.last_tick_ms = 0;
     item.path = Some(path);
     item.error = None;
+    refresh_total(engine);
 }
 
 pub(crate) fn failed(engine: &mut HeadlessEngine, id: &str, error: String) {
@@ -318,6 +403,7 @@ pub(crate) fn failed(engine: &mut HeadlessEngine, id: &str, error: String) {
     item.eta_ms = None;
     item.last_tick_ms = 0;
     item.error = Some(error);
+    refresh_total(engine);
 }
 
 pub(crate) fn restored(engine: &mut HeadlessEngine, items: Vec<Value>) {

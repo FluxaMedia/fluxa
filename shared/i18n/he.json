@@ -3283,5 +3283,13 @@
   "downloads.remaining": "נותרו %s",
   "downloads.quit_title": "ההורדות בעיצומן",
   "downloads.quit_keep": "המשך הורדה ברקע",
-  "downloads.quit_stop": "יציאה והשהיית ההורדות"
+  "downloads.quit_stop": "יציאה והשהיית ההורדות",
+  "downloads.speed_title": "מהירות הורדה",
+  "downloads.storage_title": "אחסון",
+  "downloads.free_of": "%s פנוי מתוך %s",
+  "downloads.change": "שינוי",
+  "downloads.location_title": "מיקום ההורדה",
+  "downloads.location_default": "תיקיית ברירת מחדל",
+  "downloads.volume_free": "%s פנוי",
+  "downloads.no_space": "אין מספיק מקום באחסון"
 }

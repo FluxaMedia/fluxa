@@ -113,6 +113,10 @@
       "value": "readDetailLocalState"
     },
     {
+      "variant": "ReadDownloadStorage",
+      "value": "readDownloadStorage"
+    },
+    {
       "variant": "ReadDiscoverCatalogFilters",
       "value": "readDiscoverCatalogFilters"
     },
