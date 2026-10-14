@@ -1,5 +1,12 @@
 use std::path::PathBuf;
 
+const KEYS: [&str; 4] = [
+    "FLUXA_NUVIO_SUPABASE_URL",
+    "FLUXA_NUVIO_SUPABASE_KEY",
+    "FLUXA_SYNC_URL",
+    "FLUXA_SYNC_KEY",
+];
+
 fn main() {
     let manifest = PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").expect("manifest dir"));
     let Some(repository_root) = manifest.parent().and_then(|path| path.parent()) else {
@@ -7,7 +14,7 @@ fn main() {
     };
     let dot_env = repository_root.join(".env");
     println!("cargo:rerun-if-changed={}", dot_env.display());
-    for key in ["FLUXA_NUVIO_SUPABASE_URL", "FLUXA_NUVIO_SUPABASE_KEY"] {
+    for key in KEYS {
         println!("cargo:rerun-if-env-changed={key}");
     }
     let content = std::fs::read_to_string(dot_env).unwrap_or_default();
@@ -20,12 +27,11 @@ fn main() {
             }
             let (key, value) = line.split_once('=')?;
             let key = key.trim();
-            ["FLUXA_NUVIO_SUPABASE_URL", "FLUXA_NUVIO_SUPABASE_KEY"]
-                .contains(&key)
+            KEYS.contains(&key)
                 .then(|| (key, value.trim().trim_matches('"').trim_matches('\'')))
         })
         .collect::<std::collections::HashMap<_, _>>();
-    for key in ["FLUXA_NUVIO_SUPABASE_URL", "FLUXA_NUVIO_SUPABASE_KEY"] {
+    for key in KEYS {
         if let Ok(value) = std::env::var(key) {
             println!("cargo:rustc-env={key}={value}");
         } else if let Some(value) = file_values.get(key) {

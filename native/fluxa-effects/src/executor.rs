@@ -8,6 +8,8 @@ use std::time::Duration;
 pub(crate) mod account;
 mod addons;
 mod catalog;
+#[cfg(not(target_arch = "wasm32"))]
+mod fluxa_account;
 mod home;
 mod http;
 mod library;
@@ -19,6 +21,8 @@ mod streams;
 mod tmdb;
 mod torrent;
 mod trickplay;
+#[cfg(not(target_arch = "wasm32"))]
+mod watch_together;
 mod welcome;
 
 use account::*;
@@ -56,9 +60,13 @@ pub struct EffectExecutor {
     profile_id: Option<std::sync::Arc<str>>,
     cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
     feed: std::sync::Arc<std::sync::Mutex<streams::StreamFeed>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    watch: std::sync::Arc<watch_together::WatchTogether>,
 }
 
 pub use streams::FeedSnapshot;
+#[cfg(not(target_arch = "wasm32"))]
+pub use watch_together::ActionSink;
 
 pub struct EffectCompletion {
     pub effect_id: String,
@@ -77,6 +85,8 @@ impl EffectExecutor {
             profile_id: None,
             cancelled: Default::default(),
             feed: Default::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            watch: Default::default(),
         }
     }
 
@@ -255,6 +265,14 @@ impl EffectExecutor {
             | fluxa_core::runtime::EffectKind::FetchYoutubeTrailerPlayerScript => {
                 youtube_request(&payload).await
             }
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::WatchTogetherRoom => self.watch_room(&payload).await,
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::WatchTogetherBroadcast => {
+                self.watch_broadcast(&payload)
+            }
+            #[cfg(not(target_arch = "wasm32"))]
+            fluxa_core::runtime::EffectKind::WatchTogetherCommand => self.watch_command(&payload),
             _ => Err(format!(
                 "effect {effect_type} has no native implementation yet"
             )),

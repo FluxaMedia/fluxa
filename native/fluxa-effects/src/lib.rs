@@ -31,6 +31,8 @@ mod session;
 pub mod storage;
 
 pub use addon_health::unreachable_addon_hosts;
+#[cfg(not(target_arch = "wasm32"))]
+pub use executor::ActionSink;
 pub use executor::{
     EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers,
     remove_media_server, simkl_plan_lacks_rewatch,

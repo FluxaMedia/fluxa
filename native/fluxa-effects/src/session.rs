@@ -265,6 +265,17 @@ impl SessionHandle {
             .spawn(move || run(session, inbox, shared, pending))
             .map_err(|error| error.to_string())?;
         #[cfg(not(target_arch = "wasm32"))]
+        {
+            let sink = commands.clone();
+            let pending = queued.clone();
+            executor.set_watch_sink(Arc::new(move |action| {
+                pending.fetch_add(1, Ordering::AcqRel);
+                if sink.send(Command::Dispatch(action)).is_err() {
+                    pending.fetch_sub(1, Ordering::AcqRel);
+                }
+            }));
+        }
+        #[cfg(not(target_arch = "wasm32"))]
         let sync = commands.clone();
         #[cfg(not(target_arch = "wasm32"))]
         let nuvio = executor.clone();
@@ -367,6 +378,11 @@ impl SessionHandle {
 
     pub fn request_ok(&self, plan: Value) -> Receiver<bool> {
         self.executor.request_ok(plan)
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn take_watch_commands(&self) -> Vec<Value> {
+        self.executor.take_watch_commands()
     }
 
     pub fn executor(&self) -> EffectExecutor {
