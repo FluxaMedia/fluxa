@@ -9,12 +9,9 @@ pub(crate) use addon_catalog::{
     resolve_feed_option_genre_json, resolve_transport_url_json,
 };
 pub(crate) use discover::discover_source_requests_json;
-pub(crate) use discover::{
-    merge_discover_sources, merge_discover_sources_json,
-};
+pub(crate) use discover::{merge_discover_sources, merge_discover_sources_json};
 pub(crate) use search::{
-    merge_search_sources, merge_search_sources_json,
-    search_result_grouping_json,
+    merge_search_sources, merge_search_sources_json, search_result_grouping_json,
 };
 
 #[cfg(test)]

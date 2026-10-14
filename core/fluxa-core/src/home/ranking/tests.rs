@@ -42,8 +42,6 @@ fn home_metadata_feed_plan_shares_order_and_unknown_selection_fallback() {
     );
 }
 
-
-
 #[test]
 fn home_collection_shelves_filter_hidden_collections_and_resolve_catalog_sources() {
     let profile = json!({

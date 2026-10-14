@@ -20,7 +20,8 @@ pub(crate) fn route_mdblist(method: &str, args_json: &str) -> Outcome {
         }
         "mdblistMediaRatingsPlan" => {
             let args = object(args_json)?;
-            let media_type = services::mdblist::mdblist_content_type(field_str(&args, "contentType")?);
+            let media_type =
+                services::mdblist::mdblist_content_type(field_str(&args, "contentType")?);
             let url = services::mdblist::mdblist_media_info_url(
                 "imdb",
                 media_type,

@@ -1,11 +1,5 @@
 use super::super::*;
 
-
-
-
-
-
-
 #[test]
 fn expire_stale_pending_effects_drops_old_but_not_recent_effects() {
     let mut engine = HeadlessEngine::default();

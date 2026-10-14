@@ -25,10 +25,12 @@ pub(crate) fn route_player_policy(method: &str, args_json: &str) -> Outcome {
             args_json,
         )),
         "trickplayPickSource" => opt_json(crate::player::trickplay::pick_source_json(args_json)),
-        "trickplayServerManifest" => {
-            opt_json(crate::player::trickplay::server_manifest_url_json(args_json))
+        "trickplayServerManifest" => opt_json(crate::player::trickplay::server_manifest_url_json(
+            args_json,
+        )),
+        "trickplayServerSource" => {
+            opt_json(crate::player::trickplay::server_source_json(args_json))
         }
-        "trickplayServerSource" => opt_json(crate::player::trickplay::server_source_json(args_json)),
         "trickplayPlan" => opt_json(crate::player::trickplay::plan_json(args_json)),
         "streamSubtitlesResult" => {
             opt_json(crate::player::playback::policy::stream_subtitles_result_json(args_json))

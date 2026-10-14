@@ -35,7 +35,10 @@ mod tests {
         ]});
         let sorted: Vec<Value> =
             serde_json::from_str(&player_episodes_json(&input.to_string()).unwrap()).unwrap();
-        let ids: Vec<_> = sorted.iter().map(|video| video["id"].as_str().unwrap()).collect();
+        let ids: Vec<_> = sorted
+            .iter()
+            .map(|video| video["id"].as_str().unwrap())
+            .collect();
         assert_eq!(ids, ["a", "b", "c"]);
     }
 }

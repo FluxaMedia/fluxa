@@ -20,9 +20,7 @@ pub(crate) use episode_ratings::{
     publicmetadb_episode_ratings_batch_create_plan, publicmetadb_episode_ratings_batch_delete_plan,
 };
 pub(crate) use helpers::publicmetadb_bearer;
-pub(crate) use skips::{
-    publicmetadb_skips_create_plan, publicmetadb_skips_url,
-};
+pub(crate) use skips::{publicmetadb_skips_create_plan, publicmetadb_skips_url};
 
 #[cfg(test)]
 mod tests;

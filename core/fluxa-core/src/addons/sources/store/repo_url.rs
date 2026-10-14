@@ -1,4 +1,3 @@
-
 pub(crate) fn normalize_plugin_repository_url(raw: &str) -> String {
     let trimmed = raw.trim();
     let Some(scheme_end) = trimmed.find("://") else {

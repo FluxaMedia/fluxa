@@ -11,11 +11,11 @@ use crate::{
 };
 
 mod casting;
+mod filmstrip;
 mod input;
 mod menu;
 mod overlay;
 mod resolve;
-mod filmstrip;
 mod seek_previews;
 mod shuffle;
 mod stats;
@@ -1270,7 +1270,11 @@ impl PlayerSession {
         self.trickplay
             .as_ref()
             .and_then(|trickplay| trickplay.step())
-            .or_else(|| self.seek_previews.as_ref().map(|previews| previews.interval()))
+            .or_else(|| {
+                self.seek_previews
+                    .as_ref()
+                    .map(|previews| previews.interval())
+            })
             .unwrap_or(10.0)
     }
 }

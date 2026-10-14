@@ -3,7 +3,11 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]
-#[serde(tag = "kind", rename_all = "lowercase", rename_all_fields = "camelCase")]
+#[serde(
+    tag = "kind",
+    rename_all = "lowercase",
+    rename_all_fields = "camelCase"
+)]
 pub enum Source {
     Sheets {
         url: String,
@@ -155,19 +159,13 @@ fn server_base(base: &str, video_id: &str) -> Option<String> {
 
 pub fn server_manifest_url_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let base = server_base(
-        args.get("base")?.as_str()?,
-        args.get("videoId")?.as_str()?,
-    )?;
+    let base = server_base(args.get("base")?.as_str()?, args.get("videoId")?.as_str()?)?;
     Some(json!(format!("{base}/manifest.json")).to_string())
 }
 
 pub fn server_source_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let base = server_base(
-        args.get("base")?.as_str()?,
-        args.get("videoId")?.as_str()?,
-    )?;
+    let base = server_base(args.get("base")?.as_str()?, args.get("videoId")?.as_str()?)?;
     let manifest = args.get("manifest")?;
     let number = |key: &str| manifest.get(key).and_then(Value::as_u64).filter(|n| *n > 0);
     Some(
@@ -200,11 +198,20 @@ fn headers_of(stream: &Value) -> Vec<(String, String)> {
 
 pub fn pick_source_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
-    let pattern = args.get("pattern").and_then(Value::as_str).unwrap_or("").trim();
+    let pattern = args
+        .get("pattern")
+        .and_then(Value::as_str)
+        .unwrap_or("")
+        .trim();
     let matcher = if pattern.is_empty() {
         None
     } else {
-        Some(RegexBuilder::new(pattern).case_insensitive(true).build().ok()?)
+        Some(
+            RegexBuilder::new(pattern)
+                .case_insensitive(true)
+                .build()
+                .ok()?,
+        )
     };
     let text = |stream: &Value, key: &str| {
         stream
@@ -288,17 +295,48 @@ mod tests {
     #[test]
     fn tile_walks_rows_then_sheets() {
         let tile = |ms| tile_at(ms, 10_000, 10, 10, 250).unwrap();
-        assert_eq!(tile(0), Tile { sheet: 0, column: 0, row: 0 });
-        assert_eq!(tile(135_000), Tile { sheet: 0, column: 3, row: 1 });
-        assert_eq!(tile(1_000_000), Tile { sheet: 1, column: 0, row: 0 });
-        assert_eq!(tile(99_999_999), Tile { sheet: 2, column: 9, row: 4 });
+        assert_eq!(
+            tile(0),
+            Tile {
+                sheet: 0,
+                column: 0,
+                row: 0
+            }
+        );
+        assert_eq!(
+            tile(135_000),
+            Tile {
+                sheet: 0,
+                column: 3,
+                row: 1
+            }
+        );
+        assert_eq!(
+            tile(1_000_000),
+            Tile {
+                sheet: 1,
+                column: 0,
+                row: 0
+            }
+        );
+        assert_eq!(
+            tile(99_999_999),
+            Tile {
+                sheet: 2,
+                column: 9,
+                row: 4
+            }
+        );
     }
 
     #[test]
     fn stream_without_trickplay_has_no_source() {
         assert!(source_from_stream(&json!({"url": "x"})).is_none());
         let stream = json!({"trickplay": {"kind": "bif", "url": "u"}});
-        assert_eq!(source_from_stream(&stream), Some(Source::Bif { url: "u".into() }));
+        assert_eq!(
+            source_from_stream(&stream),
+            Some(Source::Bif { url: "u".into() })
+        );
     }
 
     #[test]
@@ -334,7 +372,8 @@ mod tests {
     fn server_urls_follow_movie_and_episode_ids() {
         let url = |id: &str| {
             let args = json!({"base": "https://api.example.app/static/trickplay/", "videoId": id});
-            server_manifest_url_json(&args.to_string()).map(|text| serde_json::from_str::<String>(&text).unwrap())
+            server_manifest_url_json(&args.to_string())
+                .map(|text| serde_json::from_str::<String>(&text).unwrap())
         };
         assert_eq!(
             url("tt0111161").unwrap(),
@@ -354,11 +393,13 @@ mod tests {
             "videoId": "tt0903747:1:1",
             "manifest": {"intervalMs": 10000, "count": 350, "width": 320, "height": 180, "columns": 5, "rows": 5},
         });
-        let source: Source = serde_json::from_str(&server_source_json(&args.to_string()).unwrap()).unwrap();
+        let source: Source =
+            serde_json::from_str(&server_source_json(&args.to_string()).unwrap()).unwrap();
         assert_eq!(
             source,
             Source::Sheets {
-                url: "https://api.example.app/static/trickplay/tt0903747/1/1/{sheet}.jpg".to_owned(),
+                url: "https://api.example.app/static/trickplay/tt0903747/1/1/{sheet}.jpg"
+                    .to_owned(),
                 interval: 10000,
                 tile_width: 5,
                 tile_height: 5,

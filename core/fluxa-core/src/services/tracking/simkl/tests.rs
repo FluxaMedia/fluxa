@@ -1,7 +1,6 @@
 use super::*;
 use serde_json::{Value, json};
 
-
 #[test]
 fn simkl_library_items_share_watchlist_metadata_mapping() {
     let items = simkl_library_to_items_json(
@@ -28,8 +27,6 @@ fn simkl_library_items_preserve_string_and_fallback_ids() {
     assert_eq!(items[0]["id"], "simkl:5");
     assert_eq!(items[1]["id"], "tmdb:7");
 }
-
-
 
 #[test]
 fn simkl_anime_seasons_get_distinct_anime_ids() {
@@ -265,5 +262,8 @@ fn provider_ids_from_another_family_never_ride_along_with_a_video_id() {
         body["shows"][0]["ids"].clone()
     };
     assert_eq!(ids("kitsu:46474:5"), json!({"mal": 52991, "kitsu": 46474}));
-    assert_eq!(ids("tt22248376:2:5"), json!({"imdb": "tt22248376", "tvdb": 424536}));
+    assert_eq!(
+        ids("tt22248376:2:5"),
+        json!({"imdb": "tt22248376", "tvdb": 424536})
+    );
 }

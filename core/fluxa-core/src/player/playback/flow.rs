@@ -22,7 +22,7 @@ pub(crate) struct PlayerFlowState {
     #[serde(default)]
     pub(crate) player_error: Option<String>,
     #[serde(default)]
-    pub(crate) preferred_binge_group: Option<String>
+    pub(crate) preferred_binge_group: Option<String>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -39,7 +39,7 @@ pub(crate) enum PlayerFlowAction {
         current_video_id: Option<String>,
         initial_video_id: Option<String>,
         initial_streams: Vec<Value>,
-        initial_stream_index: i32
+        initial_stream_index: i32,
     },
     #[serde(rename = "streamsLoaded")]
     StreamsLoaded {
@@ -50,10 +50,10 @@ pub(crate) enum PlayerFlowAction {
         saved_title: Option<String>,
         source_selection_mode: Option<String>,
         regex_pattern: Option<String>,
-        preferred_binge_group: Option<String>
+        preferred_binge_group: Option<String>,
     },
     #[serde(rename = "streamsFailed")]
-    StreamsFailed { error_code: Option<String> }
+    StreamsFailed { error_code: Option<String> },
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -67,8 +67,8 @@ pub(crate) enum PlayerFlowEffect {
     LoadStreams {
         content_type: String,
         id: String,
-        use_initial_streams: bool
-    }
+        use_initial_streams: bool,
+    },
 }
 
 pub(crate) fn dispatch(
@@ -82,7 +82,7 @@ pub(crate) fn dispatch(
             current_video_id,
             initial_video_id,
             initial_streams,
-            initial_stream_index
+            initial_stream_index,
         } => {
             state.current_video_id = current_video_id.clone();
             state.current_streams.clear();
@@ -97,7 +97,7 @@ pub(crate) fn dispatch(
             vec![PlayerFlowEffect::LoadStreams {
                 content_type,
                 id,
-                use_initial_streams
+                use_initial_streams,
             }]
         }
         PlayerFlowAction::StreamsLoaded {
@@ -108,7 +108,7 @@ pub(crate) fn dispatch(
             saved_title,
             source_selection_mode,
             regex_pattern,
-            preferred_binge_group
+            preferred_binge_group,
         } => {
             if streams.is_empty() {
                 state.current_streams.clear();
@@ -161,9 +161,4 @@ fn playable_url(stream: &Value) -> Option<String> {
 }
 
 #[cfg(test)]
-mod tests {
-    
-
-
-
-}
+mod tests {}

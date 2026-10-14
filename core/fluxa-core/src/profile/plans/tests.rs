@@ -70,7 +70,6 @@ fn token_merge_plan_merges_trakt_tokens_into_profile() {
     assert_eq!(result["mergedProfile"]["traktTokenExpiresAt"], 999);
 }
 
-
 #[test]
 fn settings_migration_flattens_nested_external_accounts() {
     let result: Value = serde_json::from_str(
@@ -105,7 +104,6 @@ fn settings_migration_keeps_nested_library_collections_when_top_level_is_empty()
         "c1"
     );
 }
-
 
 #[test]
 fn settings_migration_preserves_an_explicitly_empty_addon_list() {
@@ -183,8 +181,14 @@ fn qr_login_without_user_object_takes_identity_from_the_token() {
 #[test]
 fn nuvio_auth_errors_map_to_translation_keys() {
     let key = |status, body: &str| nuvio_auth_error_key(&json!({"status": status, "body": body}));
-    assert_eq!(key(400, "Invalid login credentials"), "auth.error.invalid_credentials");
-    assert_eq!(key(400, "email_not_confirmed"), "auth.error.email_not_confirmed");
+    assert_eq!(
+        key(400, "Invalid login credentials"),
+        "auth.error.invalid_credentials"
+    );
+    assert_eq!(
+        key(400, "email_not_confirmed"),
+        "auth.error.email_not_confirmed"
+    );
     assert_eq!(key(429, ""), "auth.error.rate_limited");
     assert_eq!(key(503, ""), "auth.error.server");
     assert_eq!(key(0, ""), "auth.error.network");

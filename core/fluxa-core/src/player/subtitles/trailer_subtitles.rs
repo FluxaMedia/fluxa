@@ -171,7 +171,6 @@ mod tests {
         );
     }
 
-
     #[test]
     fn selects_preferred_human_subtitle() {
         let result = trailer_subtitle_selection_plan_json(r#"{"tracks":[{"languageTag":"en","label":"English","isAuto":true},{"languageTag":"tr-TR","label":"Türkçe","isAuto":false}],"preferred":"tr"}"#).unwrap();
@@ -209,5 +208,4 @@ mod tests {
             "https://youtube.com/timedtext?lang=en&tlang=tr"
         );
     }
-
 }

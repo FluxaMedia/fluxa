@@ -1,7 +1,4 @@
-use super::helpers::{
-    is_imdb_id, tmdb_api_url, tmdb_content_type,
-    tmdb_resolve_id_hint
-};
+use super::helpers::{is_imdb_id, tmdb_api_url, tmdb_content_type, tmdb_resolve_id_hint};
 use serde_json::{Value, json};
 
 fn tmdb_detail_request_urls(
@@ -68,7 +65,7 @@ pub(crate) fn tmdb_detail_request_urls_from_find_json(args_json: &str) -> Option
     let tmdb_id = match tmdb_id {
         Value::Number(value) => value.to_string(),
         Value::String(value) => value.clone(),
-        _ => return None
+        _ => return None,
     };
     serde_json::to_string(&tmdb_detail_request_urls(
         content_type,

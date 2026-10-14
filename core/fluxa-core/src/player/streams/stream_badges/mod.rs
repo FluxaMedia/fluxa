@@ -2,14 +2,14 @@ use regex::Regex;
 use std::sync::LazyLock;
 
 mod rules;
-mod theme;
 #[cfg(test)]
 mod tests;
+mod theme;
 
-pub use theme::Theme;
 pub use rules::{
     BadgeLook, Filter, MAX_PACKS, Pack, Rules, compile, parse_color, parse_pack, valid_pattern,
 };
+pub use theme::Theme;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamBadge {
@@ -140,7 +140,12 @@ pub fn parse(
     if options.built_in
         && let Some(seeders) = SEEDERS.captures(text).and_then(|captures| captures.get(1))
     {
-        push(&mut badges, BadgeKind::Seeders, seeders.as_str(), options.theme);
+        push(
+            &mut badges,
+            BadgeKind::Seeders,
+            seeders.as_str(),
+            options.theme,
+        );
     }
     badges.sort_by_key(|badge| badge.kind as u8);
     for filter in rules.active_filters().filter(|filter| filter.matches(text)) {

@@ -35,9 +35,8 @@ pub(crate) fn playback_close_plan_json(input: &str) -> Option<String> {
         .and_then(Value::as_bool)
         .unwrap_or(true);
     let meaningful = playback_started && time_pos > 30.0 && duration > 0.0;
-    let watched = meaningful
-        && !is_placeholder_duration(duration)
-        && time_pos / duration >= WATCHED_FRACTION;
+    let watched =
+        meaningful && !is_placeholder_duration(duration) && time_pos / duration >= WATCHED_FRACTION;
     let text_field = |source: Option<&Value>, names: &[&str]| {
         names
             .iter()

@@ -20,10 +20,6 @@ fn search_grouping_separates_movies_series_and_other() {
     assert_eq!(groups[2]["type"], "other");
 }
 
-
-
-
-
 #[test]
 fn metadata_feed_options_preserve_custom_stremio_catalog_types() {
     let result: Value = serde_json::from_str(
@@ -90,8 +86,3 @@ fn discover_catalog_options_expose_genre_extra_as_flat_list() {
     assert_eq!(options[1]["requiresGenre"], true);
     assert_eq!(options[1]["defaultGenre"], "2026");
 }
-
-
-
-
-

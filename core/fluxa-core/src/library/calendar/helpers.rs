@@ -1,4 +1,3 @@
-
 pub(super) fn usable_artwork(url: Option<&str>) -> Option<&str> {
     url.filter(|value| {
         let normalized = value.trim().to_ascii_lowercase();

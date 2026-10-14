@@ -148,18 +148,20 @@ pub(crate) fn dispatch_refresh_continue_watching(
     let profile_value = profile.unwrap_or_else(|| engine.state.profile.active.clone());
     let profile_id = active_profile_id(&engine.state, &profile_value);
     let generation = engine.bump_generation(GenerationKey::Home);
-    vec![engine.effect(
-        EffectKind::RefreshContinueWatching,
-        generation,
-        RefreshContinueWatchingPayload {
-            profile_id,
-            profile: profile_value,
-            language: language
-                .or_else(|| Some(engine.state.home.language.clone()).filter(|l| !l.is_empty()))
-                .unwrap_or_else(|| "en".to_string()),
-            source,
-        },
-    )]
+    vec![
+        engine.effect(
+            EffectKind::RefreshContinueWatching,
+            generation,
+            RefreshContinueWatchingPayload {
+                profile_id,
+                profile: profile_value,
+                language: language
+                    .or_else(|| Some(engine.state.home.language.clone()).filter(|l| !l.is_empty()))
+                    .unwrap_or_else(|| "en".to_string()),
+                source,
+            },
+        ),
+    ]
 }
 
 pub(crate) fn remove_from_continue_watching(engine: &mut HeadlessEngine, dropped_id: &str) {

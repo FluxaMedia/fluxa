@@ -1,11 +1,5 @@
 use super::ownership::effective_shared_owner_id;
 
-
-
-
-
-
-
 #[test]
 fn effective_owner_id_falls_back_to_primary_only_when_flag_set() {
     let profiles = r#"[{"id":"p1"},{"id":"p2","usesPrimaryAddons":true},{"id":"p3"}]"#;
@@ -22,7 +16,3 @@ fn effective_owner_id_falls_back_to_primary_only_when_flag_set() {
         Some("p3".to_string())
     );
 }
-
-
-
-

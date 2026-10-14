@@ -1,5 +1,5 @@
-mod routes;
 mod api;
+mod routes;
 mod sync;
 #[cfg(test)]
 mod tests;

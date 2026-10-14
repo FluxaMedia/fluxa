@@ -134,5 +134,4 @@ mod tests {
         assert_eq!(value["streams"][1]["url"], "a");
         assert_eq!(value["availableAddons"], json!(["B", "A"]));
     }
-
 }

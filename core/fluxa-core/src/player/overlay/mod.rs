@@ -319,7 +319,8 @@ mod tests {
         let segments = json!([{
             "type": "intro", "startTime": 100000, "endTime": 200000, "provider": "IntroDB"
         }]);
-        let result = plan(json!({"positionMs": 150000, "durationMs": 1000000, "segments": segments}));
+        let result =
+            plan(json!({"positionMs": 150000, "durationMs": 1000000, "segments": segments}));
         assert_eq!(result["skip"]["provider"], "IntroDB");
         assert_eq!(result["segments"][0]["startFraction"], 0.1);
         assert_eq!(result["segments"][0]["endFraction"], 0.2);

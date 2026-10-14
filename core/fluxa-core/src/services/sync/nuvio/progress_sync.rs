@@ -115,8 +115,12 @@ pub(crate) fn progress_meta_needs_json(args_json: &str) -> Option<String> {
     let mut needs = needs;
     for item in &library {
         let (Some(id), Some(content_type)) = (
-            item.get("content_id").and_then(Value::as_str).map(str::trim),
-            item.get("content_type").and_then(Value::as_str).map(str::trim),
+            item.get("content_id")
+                .and_then(Value::as_str)
+                .map(str::trim),
+            item.get("content_type")
+                .and_then(Value::as_str)
+                .map(str::trim),
         ) else {
             continue;
         };
@@ -124,7 +128,11 @@ pub(crate) fn progress_meta_needs_json(args_json: &str) -> Option<String> {
             .get("genres")
             .and_then(Value::as_array)
             .is_some_and(|genres| !genres.is_empty());
-        if id.is_empty() || content_type.is_empty() || has_genres || !seen.insert((id, content_type)) {
+        if id.is_empty()
+            || content_type.is_empty()
+            || has_genres
+            || !seen.insert((id, content_type))
+        {
             continue;
         }
         needs.push(json!({ "contentId": id, "contentType": content_type, "progressKey": id }));

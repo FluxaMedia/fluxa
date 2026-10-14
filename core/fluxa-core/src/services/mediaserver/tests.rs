@@ -324,7 +324,12 @@ fn jellyfin_trickplay_picks_width_closest_to_320() {
     let streams = parsed["streams"].as_array().unwrap();
     let trickplay = &streams[0]["trickplay"];
     assert_eq!(trickplay["kind"], "sheets");
-    assert!(trickplay["url"].as_str().unwrap().contains("/Trickplay/400/{sheet}.jpg"));
+    assert!(
+        trickplay["url"]
+            .as_str()
+            .unwrap()
+            .contains("/Trickplay/400/{sheet}.jpg")
+    );
     assert_eq!(trickplay["tileWidth"], 5);
     assert!(streams[2]["trickplay"].is_null());
 }

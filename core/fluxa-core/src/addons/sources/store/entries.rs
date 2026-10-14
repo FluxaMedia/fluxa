@@ -1,4 +1,3 @@
-
 trait EmptyTextFallback {
     fn if_empty_then(self, fallback: impl FnOnce() -> String) -> String;
 }

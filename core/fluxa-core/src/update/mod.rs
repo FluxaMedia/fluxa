@@ -65,7 +65,8 @@ pub fn check(
     platform: &str,
 ) -> Result<Option<Release>, UpdateError> {
     verify_signature(manifest, signature_b64, public_key_b64)?;
-    let manifest: Manifest = serde_json::from_slice(manifest).map_err(|_| UpdateError::Malformed)?;
+    let manifest: Manifest =
+        serde_json::from_slice(manifest).map_err(|_| UpdateError::Malformed)?;
     if compare_versions(&manifest.version, current)? != Ordering::Greater {
         return Ok(None);
     }
@@ -83,14 +84,20 @@ pub fn check(
 }
 
 fn secure_url(url: &str) -> bool {
-    url.starts_with("https://") || url.starts_with("http://127.0.0.1:") || url.starts_with("http://localhost:")
+    url.starts_with("https://")
+        || url.starts_with("http://127.0.0.1:")
+        || url.starts_with("http://localhost:")
 }
 
 pub fn sha256_matches(actual_hex: &str, asset: &Asset) -> bool {
     actual_hex.eq_ignore_ascii_case(&asset.sha256)
 }
 
-fn verify_signature(manifest: &[u8], signature_b64: &str, public_key_b64: &str) -> Result<(), UpdateError> {
+fn verify_signature(
+    manifest: &[u8],
+    signature_b64: &str,
+    public_key_b64: &str,
+) -> Result<(), UpdateError> {
     let key_bytes: [u8; 32] = STANDARD
         .decode(public_key_b64.trim())
         .ok()
@@ -109,12 +116,14 @@ fn verify_signature(manifest: &[u8], signature_b64: &str, public_key_b64: &str) 
 pub fn compare_versions(left: &str, right: &str) -> Result<Ordering, UpdateError> {
     let (left_core, left_pre) = split_version(left)?;
     let (right_core, right_pre) = split_version(right)?;
-    Ok(left_core.cmp(&right_core).then_with(|| match (left_pre, right_pre) {
-        (None, None) => Ordering::Equal,
-        (None, Some(_)) => Ordering::Greater,
-        (Some(_), None) => Ordering::Less,
-        (Some(a), Some(b)) => a.cmp(b),
-    }))
+    Ok(left_core
+        .cmp(&right_core)
+        .then_with(|| match (left_pre, right_pre) {
+            (None, None) => Ordering::Equal,
+            (None, Some(_)) => Ordering::Greater,
+            (Some(_), None) => Ordering::Less,
+            (Some(a), Some(b)) => a.cmp(b),
+        }))
 }
 
 fn split_version(version: &str) -> Result<([u64; 3], Option<&str>), UpdateError> {

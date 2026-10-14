@@ -1,7 +1,6 @@
 use super::*;
 use serde_json::{Value, json};
 
-
 #[test]
 fn parse_and_plan_addon_resource_reports_empty_without_crashing() {
     let combined = parse_and_plan_addon_resource_json(
@@ -39,8 +38,6 @@ fn parse_and_plan_addon_resource_returns_canonical_stream_payload() {
     assert_eq!(streams[0]["description"], "Legacy details");
     assert_eq!(streams[0]["addonName"], "Torrentio");
 }
-
-
 
 #[test]
 fn resource_fetch_plan_builds_catalog_page_url_with_genre_extra() {

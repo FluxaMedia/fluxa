@@ -316,7 +316,10 @@ pub(crate) fn dispatch_continue_watching_playback(
                 .is_some_and(|v| !v.is_empty())
         });
 
-    if has_saved_source && !current_video_id.is_empty() && saved_stream_reusable(&item, profile.as_ref()) {
+    if has_saved_source
+        && !current_video_id.is_empty()
+        && saved_stream_reusable(&item, profile.as_ref())
+    {
         engine.state.player.direct_playback_target = Value::Null;
         return dispatch_load_streams(
             engine,

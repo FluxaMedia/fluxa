@@ -61,13 +61,3 @@ fn continue_watching_keeps_resolved_up_next_placeholders() {
     assert_eq!(result[0]["id"], "tt0760437");
     assert_eq!(result[0]["continueWatchingBadge"], "upNext");
 }
-
-
-
-
-
-
-
-
-
-

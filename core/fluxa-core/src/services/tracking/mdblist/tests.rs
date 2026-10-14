@@ -1,10 +1,6 @@
 use super::*;
 use serde_json::{Value, json};
 
-
-
-
-
 #[test]
 fn converts_list_items_response_to_metas() {
     let response = json!({
@@ -22,7 +18,6 @@ fn converts_list_items_response_to_metas() {
     assert_eq!(metas[1]["id"], "tmdb:55");
     assert_eq!(metas[1]["type"], "series");
 }
-
 
 #[test]
 fn builds_sync_and_watchlist_mutation_plans() {
@@ -50,9 +45,6 @@ fn builds_sync_and_watchlist_mutation_plans() {
             .unwrap();
     assert_eq!(rate["body"]["movies"][0]["rating"], 8);
 }
-
-
-
 
 #[test]
 fn chosen_list_replaces_the_watchlist_request() {

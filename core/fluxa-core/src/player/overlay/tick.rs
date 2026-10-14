@@ -114,11 +114,20 @@ mod tests {
         });
         let with = |extra: Value| {
             let mut input = base.clone();
-            input.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+            input
+                .as_object_mut()
+                .unwrap()
+                .extend(extra.as_object().unwrap().clone());
             input
         };
-        assert_eq!(tick(with(json!({"positionMs": 20250})))["saveProgress"], false);
-        assert_eq!(tick(with(json!({"positionMs": 60000})))["saveProgress"], true);
+        assert_eq!(
+            tick(with(json!({"positionMs": 20250})))["saveProgress"],
+            false
+        );
+        assert_eq!(
+            tick(with(json!({"positionMs": 60000})))["saveProgress"],
+            true
+        );
         assert_eq!(
             tick(with(json!({"positionMs": 60000, "lastSavedAtMs": 99000})))["saveProgress"],
             false

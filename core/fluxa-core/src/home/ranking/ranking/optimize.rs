@@ -1,4 +1,3 @@
-
 // Unpinned categories, curated down to their top items and sorted by the
 // caller's preferred order first, personalization score second.
 

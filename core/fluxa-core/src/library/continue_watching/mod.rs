@@ -1,4 +1,3 @@
-
 mod badges;
 mod external;
 mod local;
@@ -12,8 +11,4 @@ pub(crate) use plans::*;
 pub(crate) use status::continue_watching_episode_status_json;
 
 #[cfg(test)]
-mod tests {
-    
-
-
-}
+mod tests {}

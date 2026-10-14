@@ -4,7 +4,6 @@ use serde_json::{Value, json};
 mod enrichment;
 mod full_meta;
 
-
 pub(crate) fn tmdb_item_content_type(
     media_type: &str,
     has_first_air_date: bool,

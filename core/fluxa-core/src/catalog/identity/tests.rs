@@ -1,11 +1,5 @@
 use super::*;
 
-
-
-
-
-
-
 #[test]
 fn shorten_synopsis_joins_paired_em_dash_aside_with_commas() {
     let text = "Fighting crime full-time as Spider-Man in a world that doesn't remember him\u{2014}and the pressure of seeing his old friends move on without him\u{2014}sparks a change in Peter Parker he may not have the power to control. But that transformation might also be the only thing that can stop a shocking new threat to the city and those he loves - a powerful villain no one can even see.";
@@ -45,7 +39,6 @@ fn shorten_synopsis_cuts_long_text_at_comma_not_mid_word() {
     assert!(!result.ends_with(" ."));
 }
 
-
 #[test]
 fn stream_matching_uses_torrent_filename_episode_suffix() {
     let e1 = "[SubsPlease] Sousou no Frieren - 01v2 (1080p) [AAA94036].mkv".to_string();
@@ -53,11 +46,6 @@ fn stream_matching_uses_torrent_filename_episode_suffix() {
     assert!(!stream_matches_episode("tt123:1:2", &[e1]));
     assert!(stream_matches_episode("tt123:1:2", &[e2]));
 }
-
-
-
-
-
 
 #[test]
 fn cinemeta_series_keeps_its_episodes() {
@@ -91,7 +79,6 @@ fn effective_metadata_feed_selection_preserves_explicit_empty_selection() {
         Some(r#"["a"]"#)
     );
 }
-
 
 #[test]
 fn parse_episode_locator_finds_compact_code_with_no_colon_separators() {

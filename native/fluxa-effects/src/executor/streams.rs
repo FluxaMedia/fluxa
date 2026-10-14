@@ -265,7 +265,9 @@ impl EffectExecutor {
             let target = async move {
                 let target = resolver.plugin_target(&lookup).await;
                 if target.is_none() {
-                    crate::log!("[fluxa-native] plugin target unresolved: no TMDB id for this title");
+                    crate::log!(
+                        "[fluxa-native] plugin target unresolved: no TMDB id for this title"
+                    );
                 }
                 target.map(std::sync::Arc::new)
             }

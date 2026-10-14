@@ -19,9 +19,7 @@ fn plugin_repository_can_be_added_from_a_manifest_url() {
         1
     );
     assert_eq!(
-        app.at("/plugins/repositories")
-            .as_array()
-            .map(Vec::len),
+        app.at("/plugins/repositories").as_array().map(Vec::len),
         Some(1)
     );
 }

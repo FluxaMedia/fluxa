@@ -12,7 +12,7 @@ pub(crate) struct StreamSelectionItem {
     playable_url: Option<String>,
     binge_group: Option<String>,
     filename: Option<String>,
-    effective_filename: Option<String>
+    effective_filename: Option<String>,
 }
 impl StreamSelectionItem {
     pub(crate) fn matches_episode(&self, video_id: &str) -> bool {
@@ -77,7 +77,7 @@ fn stream_selection_item_from_value(v: &Value) -> StreamSelectionItem {
         effective_filename: v
             .get("effectiveFilename")
             .and_then(Value::as_str)
-            .map(str::to_string)
+            .map(str::to_string),
     }
 }
 pub(crate) fn index_of_first_playable<F>(

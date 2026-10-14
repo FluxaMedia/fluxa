@@ -1,7 +1,6 @@
 use super::super::*;
 use serde_json::{Value, json};
 
-
 #[test]
 fn merge_continue_watching_sorts_the_combined_result_by_saved_at_descending() {
     let local = json!([

@@ -11,7 +11,11 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
         &json!({"library": library.clone()}).to_string(),
     )?)
     .ok()?;
-    for entry in watchlist.as_array_mut()?.iter_mut().filter_map(Value::as_object_mut) {
+    for entry in watchlist
+        .as_array_mut()?
+        .iter_mut()
+        .filter_map(Value::as_object_mut)
+    {
         let Some(meta) = entry
             .get("id")
             .and_then(Value::as_str)

@@ -337,7 +337,11 @@ fn simkl_alias_ids(entry: &Value, source: &Value) -> Vec<String> {
         else {
             continue;
         };
-        let id = if key == "imdb" { id } else { format!("{key}:{id}") };
+        let id = if key == "imdb" {
+            id
+        } else {
+            format!("{key}:{id}")
+        };
         if !aliases.contains(&id) {
             aliases.push(id);
         }

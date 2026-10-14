@@ -38,9 +38,7 @@ impl EffectExecutor {
             })
             .cloned()
             .unwrap_or_else(|| json!({}));
-        let prefs = self
-            .profile_prefs(&active_id)?
-            .unwrap_or_else(|| json!({}));
+        let prefs = self.profile_prefs(&active_id)?.unwrap_or_else(|| json!({}));
         let mut addons = self
             .addons_for_profile(&profiles, &active_id, &profile)
             .await?;
@@ -252,9 +250,7 @@ impl EffectExecutor {
         {
             let content_type = item.get("type").and_then(Value::as_str).unwrap_or("movie");
             let id = item.get("id").and_then(Value::as_str).unwrap_or_default();
-            let ratings = self
-                .fetch_mdblist_ratings(&profile, content_type, id)
-                .await;
+            let ratings = self.fetch_mdblist_ratings(&profile, content_type, id).await;
             if !ratings.is_null() {
                 item.insert("mdblistRatings".to_owned(), ratings);
             }

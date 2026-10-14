@@ -24,7 +24,10 @@ pub(crate) fn saved_stream_reusable(item: &Value, profile: Option<&Value>) -> bo
     else {
         return true;
     };
-    chrono::Utc::now().signed_duration_since(saved_at).num_hours() < ttl_hours
+    chrono::Utc::now()
+        .signed_duration_since(saved_at)
+        .num_hours()
+        < ttl_hours
 }
 
 pub fn resumes_saved_stream(item: &Value, profile: Option<&Value>) -> bool {

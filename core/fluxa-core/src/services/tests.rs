@@ -1,4 +1,4 @@
-use super::anilist::{anilist_user_id};
+use super::anilist::anilist_user_id;
 use super::*;
 
 fn value(json: Option<String>) -> Value {
@@ -17,15 +17,16 @@ fn trakt_calendar_plan_covers_the_whole_month() {
     assert_eq!(plan[1]["key"], "movies");
 }
 
-
-
 #[test]
 fn deep_links_route_to_oauth_or_detail() {
     let action = |url: &str| deep_link_action_json(&json!({"url": url}).to_string());
     let oauth = value(action("fluxa://oauth/simkl?code=abc"));
     assert_eq!(oauth["type"], "oauthCallback");
     let detail = value(action("app://play?id=tt1&type=series"));
-    assert_eq!((detail["id"].as_str(), detail["itemType"].as_str()), (Some("tt1"), Some("series")));
+    assert_eq!(
+        (detail["id"].as_str(), detail["itemType"].as_str()),
+        (Some("tt1"), Some("series"))
+    );
     assert!(action("app://play?id=tt1&type=").is_none());
     assert!(action("https://example.com/?id=tt1&type=movie").is_none());
 }
@@ -45,24 +46,8 @@ fn oauth_callback_yields_code_and_state() {
     assert!(denied["code"].is_null());
 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 #[test]
 fn anilist_user_id_comes_from_the_token_subject() {
     let token = "h.eyJzdWIiOiI4MDkwNDMxIn0.s";
     assert_eq!(anilist_user_id(token), Some(8090431));
 }
-

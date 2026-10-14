@@ -343,10 +343,7 @@ impl EffectExecutor {
                         .await?
                 }
             },
-            None => self
-                .storage
-                .read_json(&key)?
-                .unwrap_or_else(|| json!({})),
+            None => self.storage.read_json(&key)?.unwrap_or_else(|| json!({})),
         };
         let library = core_value("normalizeLibraryDocument", library)
             .ok_or_else(|| "Fluxa Core could not normalize the library document".to_owned())?;

@@ -2,11 +2,6 @@ use super::magnet::*;
 use super::torrent_files::*;
 use serde_json::json;
 
-
-
-
-
-
 #[test]
 fn build_magnet_dedupes_addon_tracker_and_appends_fallbacks() {
     let magnet = build_magnet(
@@ -28,8 +23,6 @@ fn stream_magnet_link_builds_from_info_hash_and_sources() {
     let link = stream_magnet_link(&stream).unwrap();
     assert!(link.starts_with("magnet:?xt=urn:btih:abcdef1234567890abcdef1234567890abcdef12"));
 }
-
-
 
 #[test]
 fn stream_magnet_link_none_for_direct_http_stream() {

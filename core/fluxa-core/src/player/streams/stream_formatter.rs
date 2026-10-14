@@ -71,7 +71,10 @@ pub const PRESETS: &[Preset] = &[
     },
     Preset {
         id: "tags",
-        rules: &[(r"\b(multi[ .-]?subs?|dual[ .-]?audio|batch|uncensored|proper|repack)\b", "")],
+        rules: &[(
+            r"\b(multi[ .-]?subs?|dual[ .-]?audio|batch|uncensored|proper|repack)\b",
+            "",
+        )],
     },
     Preset {
         id: "tech",
@@ -106,12 +109,20 @@ impl Formatter {
                 return false;
             }
             let mut n = self.rules.len();
-            while self.rules.iter().any(|existing| existing.id == format!("fmt-{n}")) {
+            while self
+                .rules
+                .iter()
+                .any(|existing| existing.id == format!("fmt-{n}"))
+            {
                 n += 1;
             }
             rule.id = format!("fmt-{n}");
         }
-        match self.rules.iter_mut().find(|existing| existing.id == rule.id) {
+        match self
+            .rules
+            .iter_mut()
+            .find(|existing| existing.id == rule.id)
+        {
             Some(existing) => *existing = rule,
             None => self.rules.push(rule),
         }

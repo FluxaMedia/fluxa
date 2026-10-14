@@ -7,7 +7,7 @@ use std::sync::OnceLock;
 #[serde(rename_all = "camelCase")]
 pub(crate) struct Interval {
     pub(crate) start: f64,
-    pub(crate) end: f64
+    pub(crate) end: f64,
 }
 
 #[derive(Deserialize)]
@@ -16,27 +16,27 @@ struct SubtitleCueRequest {
     subtitle_text: String,
     current_time: f64,
     #[serde(default = "default_cue_window")]
-    window_seconds: f64
+    window_seconds: f64,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SubtitleCueListRequest {
-    subtitle_text: String
+    subtitle_text: String,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct SubtitleSyncApplyRequest {
     captured_time: f64,
-    cue_start: f64
+    cue_start: f64,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize, Serialize)]
 pub(crate) struct SubtitleCue {
     pub(crate) start: f64,
     pub(crate) end: f64,
-    pub(crate) text: String
+    pub(crate) text: String,
 }
 
 fn default_cue_window() -> f64 {
@@ -89,7 +89,7 @@ pub(crate) struct Alignment {
     pub(crate) delay_seconds: f64,
     pub(crate) scale: f64,
     pub(crate) confidence: f64,
-    pub(crate) matched: usize
+    pub(crate) matched: usize,
 }
 
 pub(crate) fn speech_intervals_from_energy(frame_seconds: f64, energies: &[f64]) -> Vec<Interval> {
@@ -119,14 +119,14 @@ pub(crate) fn speech_intervals_from_energy(frame_seconds: f64, energies: &[f64])
         }
         match runs.last_mut() {
             Some(last) if index - last.1 <= max_gap => last.1 = index + 1,
-            _ => runs.push((index, index + 1))
+            _ => runs.push((index, index + 1)),
         }
     }
     runs.into_iter()
         .filter(|(start, end)| end - start >= min_frames)
         .map(|(start, end)| Interval {
             start: start as f64 * frame_seconds,
-            end: end as f64 * frame_seconds
+            end: end as f64 * frame_seconds,
         })
         .collect()
 }
@@ -147,7 +147,7 @@ pub(crate) fn retime(cues: &[SubtitleCue], alignment: &Alignment) -> Vec<Subtitl
         .map(|cue| SubtitleCue {
             start: cue.start * alignment.scale + alignment.delay_seconds,
             end: cue.end * alignment.scale + alignment.delay_seconds,
-            text: cue.text.clone()
+            text: cue.text.clone(),
         })
         .collect()
 }
@@ -163,7 +163,7 @@ fn align(subtitle_cues: Vec<Interval>, reference: Vec<Interval>) -> Option<Align
                 .iter()
                 .map(|cue| Interval {
                     start: cue.start * scale,
-                    end: cue.end * scale
+                    end: cue.end * scale,
                 })
                 .collect::<Vec<_>>();
             let (coarse, confidence) = estimate_delay(&scaled, &reference)?;
@@ -234,7 +234,7 @@ fn align_from(
         delay_seconds: (offset * 10.0).round() / 10.0,
         scale,
         confidence,
-        matched: pairs.len()
+        matched: pairs.len(),
     })
 }
 
@@ -301,7 +301,7 @@ fn parse_subtitle_cues(text: &str) -> Vec<Interval> {
         .into_iter()
         .map(|cue| Interval {
             start: cue.start,
-            end: cue.end
+            end: cue.end,
         })
         .collect()
 }
@@ -393,7 +393,7 @@ fn parse_timed_text_cues(text: &str) -> Vec<SubtitleCue> {
             (!cue_text.is_empty()).then_some(SubtitleCue {
                 start,
                 end,
-                text: cue_text
+                text: cue_text,
             })
         })
         .collect()
@@ -436,7 +436,7 @@ pub(crate) fn parse_subtitle_cues_with_text(text: &str) -> Vec<SubtitleCue> {
                         .replace("\\N", " ")
                         .replace("{\\", "{")
                         .trim()
-                        .to_string()
+                        .to_string(),
                 });
             }
             index += 1;
@@ -457,7 +457,7 @@ pub(crate) fn parse_subtitle_cues_with_text(text: &str) -> Vec<SubtitleCue> {
                 cues.push(SubtitleCue {
                     start,
                     end,
-                    text: decode_subtitle_text(&cue_text.join("\n"))
+                    text: decode_subtitle_text(&cue_text.join("\n")),
                 });
             }
             continue;
@@ -533,11 +533,10 @@ fn overlap_score(subtitles: &[Interval], speech: &[Interval], delay: f64) -> f64
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_subtitle_cues_with_text, speech_intervals_from_energy,
-        subtitle_cue_list_json, subtitle_sync_apply_json, subtitle_sync_capture_json
+        parse_subtitle_cues_with_text, speech_intervals_from_energy, subtitle_cue_list_json,
+        subtitle_sync_apply_json, subtitle_sync_capture_json,
     };
     use serde_json::Value;
-
 
     #[test]
     fn energy_envelope_becomes_speech_intervals() {
@@ -561,7 +560,6 @@ mod tests {
     fn flat_envelope_has_no_speech() {
         assert!(speech_intervals_from_energy(0.05, &[0.01; 500]).is_empty());
     }
-
 
     #[test]
     fn shared_parser_handles_short_vtt_and_timed_text() {

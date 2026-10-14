@@ -79,7 +79,12 @@ mod tests {
     #[test]
     fn processing_mode_picks_filter_and_passthrough() {
         let night = plan(json!({"audioProcessingMode": "night"}));
-        assert!(night["audioFilter"].as_str().unwrap().contains("threshold=0.55"));
+        assert!(
+            night["audioFilter"]
+                .as_str()
+                .unwrap()
+                .contains("threshold=0.55")
+        );
         assert_eq!(night["passthrough"], false);
         let unknown = plan(json!({"audioProcessingMode": "bogus"}));
         assert_eq!(unknown["audioFilter"], "");

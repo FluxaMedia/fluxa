@@ -182,10 +182,7 @@ pub(crate) fn draw_loading_screen(
             spinner_center + Vec2::angled(angle) * radius
         })
         .collect();
-    painter.add(egui::Shape::line(
-        arc,
-        egui::Stroke::new(stroke, accent()),
-    ));
+    painter.add(egui::Shape::line(arc, egui::Stroke::new(stroke, accent())));
     context.request_repaint();
 }
 

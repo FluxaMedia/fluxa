@@ -1,8 +1,6 @@
 use super::*;
 use serde_json::{Value, json};
 
-
-
 #[test]
 fn builtin_manifest_declares_no_stream_resource() {
     let manifest: Value = serde_json::from_str(&tmdb_builtin_manifest_json()).unwrap();
@@ -17,10 +15,6 @@ fn builtin_manifest_declares_no_stream_resource() {
     assert!(!resources.contains(&"stream"));
 }
 
-
-
-
-
 #[test]
 fn catalog_url_maps_genre_name_to_id() {
     let url = tmdb_builtin_catalog_url("movie", &json!({"genre": "Horror"}), "KEY", "en");
@@ -33,11 +27,3 @@ fn catalog_url_maps_skip_to_page() {
     let url = tmdb_builtin_catalog_url("movie", &json!({"skip": 40}), "KEY", "en");
     assert!(url.contains("page=3"));
 }
-
-
-
-
-
-
-
-

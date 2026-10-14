@@ -26,7 +26,11 @@ fn watched_at_ms(item: &Value) -> Option<i64> {
         .filter(|at| *at > 0)
 }
 
-pub(crate) fn continue_watching_episode_status(item: &Value, videos: &[Value], now_ms: i64) -> Value {
+pub(crate) fn continue_watching_episode_status(
+    item: &Value,
+    videos: &[Value],
+    now_ms: i64,
+) -> Value {
     let regular: Vec<&Value> = videos.iter().filter(|v| video_key(v).0 > 0).collect();
     let video_id = item.get("lastVideoId").and_then(Value::as_str);
     let current = match (
@@ -73,7 +77,12 @@ pub(crate) fn continue_watching_episode_status_json(args_json: &str) -> Option<S
     let args: Value = serde_json::from_str(args_json).ok()?;
     let videos = args.get("videos")?.as_array()?;
     let now_ms = args.get("nowMs")?.as_i64()?;
-    serde_json::to_string(&continue_watching_episode_status(args.get("item")?, videos, now_ms)).ok()
+    serde_json::to_string(&continue_watching_episode_status(
+        args.get("item")?,
+        videos,
+        now_ms,
+    ))
+    .ok()
 }
 
 #[cfg(test)]

@@ -259,7 +259,8 @@ fn progress_metadata_plan_keeps_series_episode_metadata_but_skips_complete_movie
 
 #[test]
 fn remote_profiles_missing_locally_are_added_with_the_account_session() {
-    let session = json!({"id": "s1", "nuvioUserId": "u1", "nuvioAccessToken": "t", "nuvioProfileIndex": 1});
+    let session =
+        json!({"id": "s1", "nuvioUserId": "u1", "nuvioAccessToken": "t", "nuvioProfileIndex": 1});
     let next = profiles::apply_remote_profiles_json(
         &json!({
             "sessionProfile": session,

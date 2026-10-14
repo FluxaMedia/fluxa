@@ -1,7 +1,4 @@
-use super::helpers::{
-    
-    usable_artwork
-};
+use super::helpers::usable_artwork;
 use serde_json::{Value, json};
 
 pub(crate) fn desktop_calendar_read_plan_json(request_json: &str) -> Option<String> {

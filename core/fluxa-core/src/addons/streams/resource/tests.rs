@@ -1,12 +1,5 @@
-use super::{
-    normalize_addon_subtitles_json 
-    
-};
+use super::normalize_addon_subtitles_json;
 use serde_json::Value;
-
-
-
-
 
 #[test]
 fn subtitle_payload_is_resolved_without_reordering_valid_entries() {

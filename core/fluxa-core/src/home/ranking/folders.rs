@@ -59,12 +59,16 @@ pub(crate) fn build_home_collection_shelves_json(
 
             let resolved = resolve_folder_catalog_sources(folder, addons_json);
             if !resolved.is_empty() {
-                let source_categories = folder_source_categories(&folder_id, &resolved, addons_json);
-                let mut category = hidden_folder_category(&folder_id, &folder_title, folder, resolved);
+                let source_categories =
+                    folder_source_categories(&folder_id, &resolved, addons_json);
+                let mut category =
+                    hidden_folder_category(&folder_id, &folder_title, folder, resolved);
                 if let Some(fields) = category.as_object_mut() {
                     fields.insert(
                         "viewMode".to_owned(),
-                        c.get("viewMode").cloned().unwrap_or_else(|| json!("TABBED_GRID")),
+                        c.get("viewMode")
+                            .cloned()
+                            .unwrap_or_else(|| json!("TABBED_GRID")),
                     );
                     fields.insert(
                         "showAllTab".to_owned(),
@@ -244,20 +248,41 @@ fn folder_source_categories(folder_id: &str, resolved: &[Value], addons_json: &s
                 fields.insert("remoteSource".to_owned(), source.clone());
                 fields.insert(
                     "name".to_owned(),
-                    source.get("title").cloned().unwrap_or_else(|| json!(provider)),
+                    source
+                        .get("title")
+                        .cloned()
+                        .unwrap_or_else(|| json!(provider)),
                 );
-                fields.insert("contentType".to_owned(), source.get("mediaType").cloned().unwrap_or(json!("movie")));
+                fields.insert(
+                    "contentType".to_owned(),
+                    source.get("mediaType").cloned().unwrap_or(json!("movie")),
+                );
                 return category;
             }
-            let transport_url = source.get("transportUrl").and_then(Value::as_str).unwrap_or("");
-            let catalog_id = source.get("catalogId").and_then(Value::as_str).unwrap_or("");
-            let content_type = source.get("type").and_then(Value::as_str).unwrap_or("movie");
+            let transport_url = source
+                .get("transportUrl")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let catalog_id = source
+                .get("catalogId")
+                .and_then(Value::as_str)
+                .unwrap_or("");
+            let content_type = source
+                .get("type")
+                .and_then(Value::as_str)
+                .unwrap_or("movie");
             let name = addons
                 .as_array()
                 .into_iter()
                 .flatten()
-                .filter(|addon| addon.get("transportUrl").and_then(Value::as_str) == Some(transport_url))
-                .filter_map(|addon| addon.pointer("/manifest/catalogs").and_then(Value::as_array))
+                .filter(|addon| {
+                    addon.get("transportUrl").and_then(Value::as_str) == Some(transport_url)
+                })
+                .filter_map(|addon| {
+                    addon
+                        .pointer("/manifest/catalogs")
+                        .and_then(Value::as_array)
+                })
                 .flatten()
                 .find(|catalog| {
                     catalog.get("id").and_then(Value::as_str) == Some(catalog_id)

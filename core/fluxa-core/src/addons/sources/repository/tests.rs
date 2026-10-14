@@ -1,8 +1,5 @@
 use super::*;
 
-
-
-
 #[test]
 fn addon_resource_plan_builds_subtitle_and_catalog_urls() {
     let subtitles = addon_resource_request_plan_json(

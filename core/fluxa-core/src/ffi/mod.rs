@@ -6,13 +6,13 @@ mod methods;
 #[cfg(test)]
 mod tests;
 use crate::services::{
-    mdblist::route_mdblist, mediaserver::routes::route_mediaserver,
-    nuvio::route_nuvio, publicmetadb::route_publicmetadb, simkl::route_simkl, tmdb::route_tmdb,
+    mdblist::route_mdblist, mediaserver::routes::route_mediaserver, nuvio::route_nuvio,
+    publicmetadb::route_publicmetadb, simkl::route_simkl, tmdb::route_tmdb,
     tracking::external_sync::route_external_sync, trakt::route_trakt,
 };
 use crate::{
-    addons::routes::*, catalog::routes::*, library::routes::*,
-    player::routes::*, profile::routes::*, services::provider_routes::*, settings::routes::*,
+    addons::routes::*, catalog::routes::*, library::routes::*, player::routes::*,
+    profile::routes::*, services::provider_routes::*, settings::routes::*,
 };
 
 use crate::player;

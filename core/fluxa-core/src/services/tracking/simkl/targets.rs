@@ -99,7 +99,10 @@ fn same_family_ids(provider_ids: Option<&Value>, target_ids: Value) -> Value {
     let family: Option<&[&str]> = target_ids.as_object().and_then(|ids| {
         if SIMKL_ANIME_ID_KEYS.iter().any(|key| ids.contains_key(*key)) {
             Some(&SIMKL_ANIME_ID_KEYS[..])
-        } else if ["imdb", "tmdb", "tvdb"].iter().any(|key| ids.contains_key(*key)) {
+        } else if ["imdb", "tmdb", "tvdb"]
+            .iter()
+            .any(|key| ids.contains_key(*key))
+        {
             Some(&["imdb", "tmdb", "tvdb"][..])
         } else {
             None

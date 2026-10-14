@@ -32,8 +32,8 @@ pub mod storage;
 
 pub use addon_health::unreachable_addon_hosts;
 pub use executor::{
-    EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers, remove_media_server,
-    simkl_plan_lacks_rewatch,
+    EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers,
+    remove_media_server, simkl_plan_lacks_rewatch,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use fetch_text::fetch_text;

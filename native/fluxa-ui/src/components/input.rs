@@ -84,7 +84,9 @@ fn take_pending_text(ui: &Ui, id: Id, value: &mut String) {
     let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
     state
         .cursor
-        .set_char_range(Some(egui::text::CCursorRange::one(egui::text::CCursor::new(end))));
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(end),
+        )));
     state.store(ui.ctx(), id);
 }
 
@@ -258,9 +260,11 @@ fn focus_on_hit(ui: &Ui, hit: &Response, id: Id, len: usize) {
     }
     ui.memory_mut(|memory| memory.request_focus(id));
     let mut state = egui::TextEdit::load_state(ui.ctx(), id).unwrap_or_default();
-    state.cursor.set_char_range(Some(egui::text::CCursorRange::one(
-        egui::text::CCursor::new(len),
-    )));
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(len),
+        )));
     state.store(ui.ctx(), id);
 }
 

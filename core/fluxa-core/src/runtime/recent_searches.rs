@@ -66,6 +66,9 @@ mod tests {
     fn typing_filters_and_hides_exact_match() {
         let history = list(&["dune", "dune part two", "alien"]);
         assert_eq!(matching(&history, "dune"), vec!["dune part two"]);
-        assert_eq!(matching(&history, ""), vec!["dune", "dune part two", "alien"]);
+        assert_eq!(
+            matching(&history, ""),
+            vec!["dune", "dune part two", "alien"]
+        );
     }
 }

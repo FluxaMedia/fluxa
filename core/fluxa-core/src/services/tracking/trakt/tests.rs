@@ -34,9 +34,6 @@ fn trakt_collection_body_uses_provider_resource_for_content_type() {
     assert!(series.get("movies").is_none());
 }
 
-
-
-
 #[test]
 fn trakt_playback_tmdb_show_keeps_a_resolvable_episode_id() {
     let item = json!({
@@ -49,7 +46,6 @@ fn trakt_playback_tmdb_show_keeps_a_resolvable_episode_id() {
     assert_eq!(result["id"], "tmdb:42");
     assert_eq!(result["lastVideoId"], "tmdb:42:1:2");
 }
-
 
 #[test]
 fn trakt_up_next_items_use_the_source_next_episode() {
@@ -67,11 +63,6 @@ fn trakt_up_next_items_use_the_source_next_episode() {
     assert_eq!(items[0]["lastEpisodeName"], "Episode Three");
     assert_eq!(items[0]["continueWatchingBadge"], "upNext");
 }
-
-
-
-
-
 
 #[test]
 fn trakt_mark_watched_body_groups_episodes_by_show_and_dedupes() {
@@ -111,10 +102,6 @@ fn trakt_mark_watched_body_is_none_for_unrecognized_ids() {
         None
     );
 }
-
-
-
-
 
 #[test]
 fn items_without_imdb_or_tmdb_keep_their_tvdb_id() {

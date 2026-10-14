@@ -29,7 +29,9 @@ pub(crate) fn clear_cache_fields(fields: &mut serde_json::Map<String, Value>) ->
         "nuvioPinLockedUntil",
     ]
     .into_iter()
-    .fold(false, |removed, key| fields.remove(key).is_some() || removed)
+    .fold(false, |removed, key| {
+        fields.remove(key).is_some() || removed
+    })
 }
 
 fn clear_cache(profile: &mut Value) {
@@ -61,9 +63,7 @@ pub(crate) fn offline_check_json(args_json: &str) -> Option<String> {
     let pin = str_field(&args, "pin")?;
     let now = args.get("now").and_then(Value::as_i64).unwrap_or_default();
     let outcome = |name: &str, retry_after: i64, profile: &Value| {
-        Some(
-            json!({"outcome": name, "retryAfter": retry_after, "profile": profile}).to_string(),
-        )
+        Some(json!({"outcome": name, "retryAfter": retry_after, "profile": profile}).to_string())
     };
 
     let locked_until = profile

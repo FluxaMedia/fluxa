@@ -13,7 +13,6 @@ pub(crate) fn should_mark_stopped(has_scrobbled_stop: bool, progress: f32) -> bo
     !has_scrobbled_stop && progress >= SCROBBLE_STOP_PROGRESS_PERCENT
 }
 
-
 pub(crate) fn should_save_periodic_progress(
     is_playing: bool,
     now_ms: i64,
@@ -40,7 +39,4 @@ mod tests {
         assert_eq!(progress_percent(5_000, 10_000), 50.0);
         assert_eq!(progress_percent(20_000, 10_000), 100.0);
     }
-
-
-
 }

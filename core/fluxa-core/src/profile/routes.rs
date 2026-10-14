@@ -13,15 +13,15 @@ pub(crate) fn route_profile_contract(method: &str, args_json: &str) -> Outcome {
         "profileMutationPlan" => {
             opt_json(crate::profile::plans::profile_mutation_plan_json(args_json))
         }
-        "nuvioSessionProfile" => opt_json(crate::profile::plans::nuvio_session_profile_json(
-            args_json,
-        )),
+        "nuvioSessionProfile" => {
+            opt_json(crate::profile::plans::nuvio_session_profile_json(args_json))
+        }
         "nuvioAuthError" => Ok(Value::String(
             crate::profile::plans::nuvio_auth_error_key(&object(args_json)?).to_owned(),
         )),
-        "welcomeRequired" => Ok(json!(crate::profile::plans::welcome_required(
-            &object(args_json)?
-        ))),
+        "welcomeRequired" => Ok(json!(crate::profile::plans::welcome_required(&object(
+            args_json
+        )?))),
         "createProfilePlan" => opt_json(crate::profile::plans::create_profile_plan_json(args_json)),
         // args_json IS the profiles array
         "primaryProfileId" => opt_str(crate::profile::plans::primary_profile_id_json(args_json)),

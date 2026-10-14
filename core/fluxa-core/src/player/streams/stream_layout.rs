@@ -199,7 +199,8 @@ pub fn render(template: &str, fields: &Fields) -> String {
 mod tests {
     use super::*;
 
-    const REMUX: &str = "Movie.2160p.UHD.BluRay.REMUX.HEVC.DV.HDR10.Atmos.TrueHD.7.1-GRP 🇬🇧 Italian";
+    const REMUX: &str =
+        "Movie.2160p.UHD.BluRay.REMUX.HEVC.DV.HDR10.Atmos.TrueHD.7.1-GRP 🇬🇧 Italian";
 
     #[test]
     fn detailed_layout_matches_the_reference_card() {

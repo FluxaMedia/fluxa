@@ -1,7 +1,6 @@
 use super::{
-    build_resource_url, 
-    normalize_addon_descriptor_json, parse_manifest, resolve_manifest_assets_json,
-    supports_resource
+    build_resource_url, normalize_addon_descriptor_json, parse_manifest,
+    resolve_manifest_assets_json, supports_resource,
 };
 use serde_json::{Value, json};
 
@@ -50,7 +49,6 @@ fn resolve_manifest_assets_normalizes_transport_and_relative_assets() {
     );
 }
 
-
 #[test]
 fn manifest_fetch_plan_owns_cache_key_and_candidates() {
     let plan = super::manifest_fetch_plan_json("127.0.0.1:7000")
@@ -73,7 +71,6 @@ fn manifest_fetch_plan_owns_cache_key_and_candidates() {
         Some("http://127.0.0.1:7000/manifest.json")
     );
 }
-
 
 #[test]
 fn parse_manifest_preserves_stremio_manifest_fields() {
@@ -141,7 +138,6 @@ fn parse_manifest_preserves_stremio_manifest_fields() {
         Some(false)
     );
 }
-
 
 #[test]
 fn build_resource_url_appends_extra_path_segment_and_omits_blank_values() {
