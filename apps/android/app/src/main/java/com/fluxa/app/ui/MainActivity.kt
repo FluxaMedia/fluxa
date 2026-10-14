@@ -29,7 +29,7 @@ class MainActivity : Activity() {
 
     private val pipToggle = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            host.renderer.pushAction(gson.toJson(mapOf("type" to "mediaCommand", "command" to "togglePause", "value" to 0)))
+            host.renderer.pushAction(gson.toJson(mapOf("type" to "mediaCommand", "command" to "toggle", "value" to 0)))
         }
     }
 
