@@ -65,6 +65,9 @@ pub(crate) fn complete(
                     {
                         detail::set_is_in_watchlist(engine, value);
                     }
+                    if let Some(value) = engine.state.library.last_write.get("liked").cloned() {
+                        engine.state.library.liked = value;
+                    }
                     if let Some(value) = engine
                         .state
                         .library

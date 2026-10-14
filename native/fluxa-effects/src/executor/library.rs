@@ -369,7 +369,12 @@ impl EffectExecutor {
             Some(provider) => {
                 let mut remote = command.clone();
                 if let Some(id) = command.pointer("/item/id").and_then(Value::as_str) {
-                    remote["remove"] = json!(!in_watchlist(&updated, id));
+                    let liked = command.get("list").and_then(Value::as_str) == Some("liked");
+                    remote["remove"] = json!(if liked {
+                        !in_list(&updated, "liked", id)
+                    } else {
+                        !in_watchlist(&updated, id)
+                    });
                 }
                 self.push_provider_command(provider, &profile, &remote)
                     .await?;
@@ -397,6 +402,7 @@ impl EffectExecutor {
                 "watchlist": updated.get("watchlist").cloned().unwrap_or_else(|| json!([])),
                 "completed": updated.get("completed").cloned().unwrap_or_else(|| json!([])),
                 "dropped": updated.get("dropped").cloned().unwrap_or_else(|| json!([])),
+                "liked": updated.get("liked").cloned().unwrap_or_else(|| json!([])),
             }),
             "markWatched" => {
                 let watched = command
@@ -687,15 +693,19 @@ impl EffectExecutor {
     }
 }
 
-pub(super) fn in_watchlist(library: &Value, id: &str) -> bool {
+pub(super) fn in_list(library: &Value, list: &str, id: &str) -> bool {
     library
-        .get("watchlist")
+        .get(list)
         .and_then(Value::as_array)
         .is_some_and(|items| {
             items
                 .iter()
                 .any(|item| item.get("id").and_then(Value::as_str) == Some(id))
         })
+}
+
+pub(super) fn in_watchlist(library: &Value, id: &str) -> bool {
+    in_list(library, "watchlist", id)
 }
 
 pub(super) fn progress_meta(progress: &Value) -> Value {

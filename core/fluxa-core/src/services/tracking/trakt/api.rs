@@ -169,6 +169,16 @@ pub(crate) fn trakt_toggle_watchlist(
     id: &str,
     remove: bool,
 ) -> Option<Value> {
+    trakt_toggle_collection(args, item, id, remove, "watchlist")
+}
+
+fn trakt_toggle_collection(
+    args: &Value,
+    item: &Value,
+    id: &str,
+    remove: bool,
+    collection: &str,
+) -> Option<Value> {
     let body = trakt_collection_body_json(
         &json!({
             "idsJson": trakt_ids_from_content_id_json(id)?,
@@ -181,7 +191,7 @@ pub(crate) fn trakt_toggle_watchlist(
         "trakt",
         args,
         "POST",
-        format!("{TRAKT_API}/sync/watchlist{suffix}"),
+        format!("{TRAKT_API}/sync/{collection}{suffix}"),
         serde_json::from_str(&body).ok()?,
     ))
 }
@@ -272,6 +282,21 @@ pub(crate) fn trakt_scrobble(args: &Value, action: &str, progress: f64) -> Optio
 }
 
 pub(crate) fn trakt_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
+    if str_field(command, "type") == "toggleLibraryStatus" && str_field(command, "list") == "liked"
+    {
+        let item = command.get("item")?;
+        let remove = command
+            .get("remove")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        return Some(vec![trakt_toggle_collection(
+            args,
+            item,
+            str_field(item, "id"),
+            remove,
+            "favorites",
+        )?]);
+    }
     if str_field(command, "type") != "traktSeasons" {
         return None;
     }

@@ -147,11 +147,42 @@ pub(crate) fn library_command_plan_json(request_json: &str) -> Option<String> {
         }
     } else if command_type == "toggleLibraryStatus" {
         let field = command.get("list")?.as_str()?;
-        if !matches!(field, "completed" | "dropped") {
+        if !matches!(field, "completed" | "dropped" | "liked") {
             return None;
         }
         let mut item = command.get("item")?.clone();
         let id = item.get("id")?.as_str()?.to_string();
+        if field == "liked" {
+            let list = library
+                .get(field)
+                .and_then(Value::as_array)
+                .cloned()
+                .unwrap_or_default();
+            let exists = list
+                .iter()
+                .any(|entry| entry.get("id").and_then(Value::as_str) == Some(&id));
+            let next = if exists {
+                list.into_iter()
+                    .filter(|entry| entry.get("id").and_then(Value::as_str) != Some(&id))
+                    .collect()
+            } else {
+                let mut next = vec![item.clone()];
+                next.extend(list);
+                next
+            };
+            library.insert(field.into(), Value::Array(next));
+            return serde_json::to_string(&json!({
+                "library": Value::Object(library),
+                "statusMutation": Value::Null,
+                "externalAction": json!({
+                    "kind": "status",
+                    "list": field,
+                    "command": if exists { "remove" } else { "add" },
+                    "item": item,
+                }),
+            }))
+            .ok();
+        }
         let list = library
             .get(field)
             .and_then(Value::as_array)
@@ -290,6 +321,25 @@ pub(crate) fn library_command_plan_json(request_json: &str) -> Option<String> {
 mod tests {
     use super::library_command_plan_json;
     use serde_json::Value;
+
+    #[test]
+    fn liked_toggle_keeps_other_lists_and_asks_the_provider_to_add_then_remove() {
+        let plan = |library: &str| {
+            let request = format!(
+                r#"{{"library":{library},"command":{{"type":"toggleLibraryStatus","list":"liked","item":{{"id":"tt:1","type":"movie"}}}}}}"#
+            );
+            library_command_plan_json(&request)
+                .and_then(|json| serde_json::from_str::<Value>(&json).ok())
+                .expect("liked toggle should plan")
+        };
+        let added = plan(r#"{"watchlist":[{"id":"tt:1"}],"liked":[]}"#);
+        assert_eq!(added["library"]["liked"][0]["id"], "tt:1");
+        assert_eq!(added["library"]["watchlist"][0]["id"], "tt:1");
+        assert_eq!(added["externalAction"]["command"], "add");
+        let removed = plan(r#"{"liked":[{"id":"tt:1"}]}"#);
+        assert_eq!(removed["library"]["liked"], serde_json::json!([]));
+        assert_eq!(removed["externalAction"]["command"], "remove");
+    }
 
     #[test]
     fn library_command_plan_uses_host_resolved_watchlist_identity() {
