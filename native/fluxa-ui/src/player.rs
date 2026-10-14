@@ -273,13 +273,13 @@ pub fn draw_player(
             context
                 .layer_painter(egui::LayerId::background())
                 .rect_filled(left, 0.0, surface);
-            (left.shrink(16.0), Some(right))
+            (left.shrink(40.0), Some(right))
         }
         None => (rect, None),
     };
     match player.video {
         Some(texture) if side.is_some() => {
-            painter.rect_filled(rect, 12.0, Color32::BLACK);
+            painter.rect_filled(rect, 18.0, Color32::BLACK);
             painter.image(texture, fit_16_9(rect), full_uv(), Color32::WHITE);
         }
         Some(texture) => {
