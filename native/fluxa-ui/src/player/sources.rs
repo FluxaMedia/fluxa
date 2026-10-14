@@ -114,6 +114,31 @@ pub(super) fn draw_sources(
                 y = response.rect.bottom() + 12.0;
                 let node = NODE_PLAYER_SOURCE_BASE + index as u64;
                 components::focus_action(layout, node, &response);
+                if source.downloadable {
+                    let button = Rect::from_center_size(
+                        Pos2::new(response.rect.right() - 30.0, response.rect.bottom() - 30.0),
+                        Vec2::splat(36.0),
+                    );
+                    let download = ui.interact(button, Id::new(("source-download", slot)), Sense::click());
+                    ui.painter().circle_filled(
+                        button.center(),
+                        18.0,
+                        ink(if download.hovered() { 56 } else { 30 }),
+                    );
+                    if let Some(icon) = assets.icon("Downloads") {
+                        ui.painter().image(
+                            icon,
+                            Rect::from_center_size(button.center(), Vec2::splat(16.0)),
+                            full_uv(),
+                            metrics.text_primary,
+                        );
+                    }
+                    let download_node = NODE_PLAYER_SOURCE_DOWNLOAD_BASE + index as u64;
+                    layout.focusable.push((download_node, button));
+                    if download.clicked() {
+                        layout.activated = Some(download_node);
+                    }
+                }
             }
             let pinned_top = chips_top.max(inset);
             let shift = ((inset + 42.0 - chips_top) / 42.0).clamp(0.0, 1.0) * 50.0;

@@ -434,8 +434,15 @@ impl ApplicationHandler<AccessEvent> for App {
             event_loop.exit();
             return;
         }
+        if host.take_minimize_request() {
+            window.set_minimized(true);
+        }
         let mut wake = host.next_redraw();
         let now = Instant::now();
+        if host.waiting_to_exit() {
+            let check = now + Duration::from_secs(1);
+            wake = Some(wake.map_or(check, |at| at.min(check)));
+        }
         if wake.is_some_and(|at| at <= now) {
             self.redraw_asked.store(true, Ordering::Relaxed);
             window.request_redraw();
@@ -461,10 +468,17 @@ impl ApplicationHandler<AccessEvent> for App {
         }
         match event {
             WindowEvent::CloseRequested => {
-                host.surface_destroyed();
-                event_loop.exit();
+                if host.request_close() {
+                    host.surface_destroyed();
+                    event_loop.exit();
+                }
             }
-            WindowEvent::Focused(focused) => host.set_window_focused(focused),
+            WindowEvent::Focused(focused) => {
+                if focused {
+                    host.window_restored();
+                }
+                host.set_window_focused(focused);
+            }
             WindowEvent::Resized(size) => host.surface_changed(size.width, size.height),
             #[cfg(target_os = "macos")]
             WindowEvent::ScaleFactorChanged { scale_factor, .. } => {

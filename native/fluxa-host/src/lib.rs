@@ -93,6 +93,7 @@ mod card_menu;
 mod cast;
 mod collections;
 mod detail_sections;
+mod downloads;
 mod events;
 mod frame;
 mod gpu;
@@ -226,6 +227,9 @@ struct RendererState {
     shuffle: Option<player::Shuffle>,
     video: Option<Box<dyn VideoBackend>>,
     fullscreen_toggle: bool,
+    quit_requested: bool,
+    minimize_requested: bool,
+    quit_when_idle: bool,
     shortcut_recording: Option<String>,
     collections: collections::State,
     ambient: ambient::State,
@@ -441,6 +445,9 @@ impl FluxaHost {
             shuffle: None,
             video: None,
             fullscreen_toggle: false,
+            quit_requested: false,
+            minimize_requested: false,
+            quit_when_idle: false,
             shortcut_recording: None,
             collections: Default::default(),
             ambient: Default::default(),
@@ -709,8 +716,29 @@ impl FluxaHost {
     }
 
     pub fn take_exit_request(&self) -> bool {
-        self.peek(|state| std::mem::take(&mut state.updates.exit_requested))
+        self.peek(|state| {
+            std::mem::take(&mut state.updates.exit_requested)
+                | std::mem::take(&mut state.quit_requested)
+                | (state.quit_when_idle && !downloads::active(state))
+        })
+        .unwrap_or(false)
+    }
+
+    pub fn request_close(&self) -> bool {
+        self.with_state(downloads::request_close).unwrap_or(true)
+    }
+
+    pub fn take_minimize_request(&self) -> bool {
+        self.peek(|state| std::mem::take(&mut state.minimize_requested))
             .unwrap_or(false)
+    }
+
+    pub fn window_restored(&self) {
+        self.peek(|state| state.quit_when_idle = false);
+    }
+
+    pub fn waiting_to_exit(&self) -> bool {
+        self.peek(|state| state.quit_when_idle).unwrap_or(false)
     }
 
     pub fn take_install_apk(&self) -> Option<String> {

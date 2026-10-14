@@ -107,6 +107,10 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                     .push(crate::NativeAction::StartPlayback { item });
             }
         }
+        node if node >= fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE => download_source(
+            state,
+            (node - fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE) as usize,
+        ),
         node if node >= fluxa_ui::NODE_PLAYER_SOURCE_BASE => {
             if let Some(player) = state.player.as_mut() {
                 player.chosen = Some((node - fluxa_ui::NODE_PLAYER_SOURCE_BASE) as usize);
@@ -410,4 +414,32 @@ pub(crate) fn toggle_stats(state: &mut RendererState) {
         player.stats_visible = !player.stats_visible;
         player.stats_at = None;
     }
+}
+
+fn download_source(state: &mut RendererState, index: usize) {
+    let Some(player) = state.player.as_ref() else {
+        return;
+    };
+    let Some(stream) = player.listed_streams().get(index).cloned() else {
+        return;
+    };
+    let meta = player.meta.clone();
+    let video_id = meta
+        .get("lastVideoId")
+        .and_then(Value::as_str)
+        .filter(|id| !id.is_empty())
+        .or_else(|| meta.get("id").and_then(Value::as_str))
+        .unwrap_or_default()
+        .to_owned();
+    let video = meta
+        .get("videos")
+        .and_then(Value::as_array)
+        .and_then(|videos| {
+            videos
+                .iter()
+                .find(|video| video.get("id").and_then(Value::as_str) == Some(video_id.as_str()))
+        })
+        .cloned();
+    crate::downloads::request(state, meta, stream, video);
+    crate::sync::show_notice(state, "downloads.queued");
 }

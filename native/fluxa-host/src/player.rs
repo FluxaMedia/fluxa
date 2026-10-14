@@ -777,6 +777,10 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         detail: crate::stream_badges::format_text(&detail),
         badges,
         badges_top,
+        downloadable: stream
+            .get("url")
+            .and_then(Value::as_str)
+            .is_some_and(|url| url.starts_with("http")),
     }
 }
 

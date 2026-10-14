@@ -609,6 +609,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 || collections::activate_node(state, node)
                 || ambient::activate_node(state, node)
                 || detail_sections::activate_node(state, node)
+                || downloads::activate_node(state, node)
             {
                 continue;
             }

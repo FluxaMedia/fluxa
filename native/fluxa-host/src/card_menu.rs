@@ -25,6 +25,7 @@ enum Target {
         count: usize,
     },
     Disconnect(String),
+    QuitDownloads,
     Choice(fluxa_ui::ChoiceRequest),
 }
 
@@ -35,6 +36,7 @@ impl Target {
             Target::Setting(row) => row.options.len(),
             Target::Source { count, .. } => *count,
             Target::Disconnect(_) => 1,
+            Target::QuitDownloads => 2,
             Target::Choice(request) => request.options.len(),
         }
     }
@@ -186,6 +188,23 @@ pub(crate) fn open_disconnect(state: &mut RendererState, provider: &str) {
     });
 }
 
+pub(crate) fn open_quit_downloads(state: &mut RendererState) {
+    state.menu_serial += 1;
+    state.card_menu = Some(CardMenu {
+        target: Target::QuitDownloads,
+        selected: state.keyboard_focus_visible.then_some(0),
+        anchor: Pos2::ZERO,
+        serial: state.menu_serial,
+    });
+}
+
+pub(crate) fn quit_downloads_open(state: &RendererState) -> bool {
+    matches!(
+        state.card_menu.as_ref().map(|menu| &menu.target),
+        Some(Target::QuitDownloads)
+    )
+}
+
 pub(super) fn view(state: &RendererState) -> Option<MenuView> {
     let menu = state.card_menu.as_ref()?;
     let language = state.settings.language();
@@ -243,6 +262,26 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                     label: localized("settings.account_disconnect", language),
                     app_icon: None,
                 }],
+                selected: menu.selected,
+                anchor: menu.anchor,
+                serial: menu.serial,
+            });
+        }
+        Target::QuitDownloads => {
+            return Some(MenuView {
+                title: localized("downloads.quit_title", language),
+                items: vec![
+                    ActionMenuItem {
+                        icon: "Downloads",
+                        label: localized("downloads.quit_keep", language),
+                        app_icon: None,
+                    },
+                    ActionMenuItem {
+                        icon: "Close",
+                        label: localized("downloads.quit_stop", language),
+                        app_icon: None,
+                    },
+                ],
                 selected: menu.selected,
                 anchor: menu.anchor,
                 serial: menu.serial,
@@ -333,6 +372,15 @@ fn pick(state: &mut RendererState, index: usize) {
             if let Some((value, _)) = request.options.into_iter().nth(index) {
                 let route = state.route;
                 crate::input::apply_choice(state, route, request.key, value);
+            }
+            return;
+        }
+        Target::QuitDownloads => {
+            if index == 0 {
+                state.quit_when_idle = true;
+                state.minimize_requested = true;
+            } else {
+                state.quit_requested = true;
             }
             return;
         }

@@ -66,6 +66,47 @@ pub fn draw_library(
         assets,
         metrics,
     );
+    if library.downloads_open && !library.downloads.is_empty() {
+        let top = page.filters_top;
+        let clip = Rect::from_min_max(
+            Pos2::new(0.0, top - metrics.section_gap * 0.5),
+            Pos2::new(
+                viewport.width,
+                viewport.height - mobile_scroll_reserve(viewport),
+            ),
+        );
+        components::placed(
+            context,
+            Id::new("fluxa-shared-library-downloads"),
+            Pos2::new(page.margin, top - scroll_y),
+            |ui| {
+                ui.set_clip_rect(ui.clip_rect().intersect(clip));
+                let mut y = top - scroll_y;
+                let mut index = 0;
+                for group in &library.downloads {
+                    components::download_group(
+                        ui,
+                        group,
+                        index,
+                        Pos2::new(page.margin, y),
+                        page.width,
+                        &library.language,
+                        metrics,
+                        assets,
+                        &mut layout,
+                    );
+                    y += components::download_group_height(group, page.width, metrics)
+                        + metrics.section_gap;
+                    index += group.rows.len();
+                }
+            },
+        );
+        layout
+            .focusable
+            .extend(navigation_focus_rects(viewport, metrics));
+        components::focus_ring(&painter, &layout.focusable, focused, viewport, metrics);
+        return layout;
+    }
     if library.downloads_open {
         let bottom = viewport.height - mobile_scroll_reserve(viewport);
         components::empty_state(

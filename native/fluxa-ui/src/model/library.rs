@@ -90,9 +90,14 @@ pub struct LibraryModel {
     pub on_hold: Vec<HomeCard>,
     pub liked: Vec<HomeCard>,
     pub personal: std::sync::Arc<PersonalIndex>,
+    pub downloads: Vec<DownloadGroup>,
 }
 
 impl LibraryModel {
+    pub fn download_rows(&self) -> impl Iterator<Item = &DownloadRow> {
+        self.downloads.iter().flat_map(|group| group.rows.iter())
+    }
+
     pub fn cards(&self, tab: LibraryTab) -> &[HomeCard] {
         if self.view_tab == Some(tab) {
             return &self.view_cards;
@@ -199,5 +204,6 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
         dropped: cards(LibraryTab::Dropped),
         on_hold: cards(LibraryTab::OnHold),
         liked: cards(LibraryTab::Liked),
+        downloads: downloads_from_snapshot(snapshot),
     }
 }

@@ -12,6 +12,7 @@ use crate::flow::Size;
 
 mod cards;
 mod dropdown;
+mod downloads;
 mod filmstrip;
 mod input;
 mod menu;
@@ -23,6 +24,7 @@ mod slider;
 
 pub use cards::*;
 pub use dropdown::*;
+pub use downloads::*;
 pub(crate) use filmstrip::*;
 pub use input::*;
 pub use menu::*;
