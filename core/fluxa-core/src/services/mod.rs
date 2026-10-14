@@ -6,6 +6,7 @@ pub(crate) mod auth;
 pub(crate) mod mediaserver;
 pub(crate) mod metadata;
 pub(crate) mod registry;
+pub(crate) mod similar;
 pub(crate) mod sync;
 pub(crate) mod tracking;
 

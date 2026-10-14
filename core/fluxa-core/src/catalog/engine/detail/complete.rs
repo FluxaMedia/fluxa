@@ -83,33 +83,24 @@ pub(crate) fn complete(
         "fetchDetailSecondary" => {
             if generation == engine.state.runtime.get(GenerationKey::Detail) {
                 if result.status.is_ok() {
-                    engine.state.detail.watched_video_ids = result
-                        .value
-                        .get("watchedVideoIds")
-                        .cloned()
-                        .unwrap_or_else(|| serde_json::json!([]));
-                    engine.state.detail.similar_items = result
-                        .value
-                        .get("similarItems")
-                        .cloned()
-                        .unwrap_or_else(|| serde_json::json!([]));
-                    if value_array_is_empty(&engine.state.detail.trailers) {
-                        engine.state.detail.trailers = result
-                            .value
-                            .get("trailers")
-                            .cloned()
-                            .unwrap_or_else(|| serde_json::json!([]));
+                    let value = &result.value;
+                    if let Some(ids) = value.get("watchedVideoIds") {
+                        engine.state.detail.watched_video_ids = ids.clone();
                     }
-                    engine.state.detail.omdb_ratings = result
-                        .value
-                        .get("omdbRatings")
-                        .cloned()
-                        .unwrap_or(Value::Null);
-                    engine.state.detail.fanart_artwork = result
-                        .value
-                        .get("fanartArtwork")
-                        .cloned()
-                        .unwrap_or(Value::Null);
+                    if let Some(items) = value.get("similarItems") {
+                        engine.state.detail.similar_items = items.clone();
+                    }
+                    if value_array_is_empty(&engine.state.detail.trailers)
+                        && let Some(trailers) = value.get("trailers")
+                    {
+                        engine.state.detail.trailers = trailers.clone();
+                    }
+                    if let Some(ratings) = value.get("omdbRatings") {
+                        engine.state.detail.omdb_ratings = ratings.clone();
+                    }
+                    if let Some(artwork) = value.get("fanartArtwork") {
+                        engine.state.detail.fanart_artwork = artwork.clone();
+                    }
                 } else {
                     engine.state.detail.error = normalize_error(result.error.clone());
                 }

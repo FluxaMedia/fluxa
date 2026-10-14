@@ -239,6 +239,9 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::FetchMetaDetailLookup => {
                 self.fetch_meta_detail(&payload).await
             }
+            fluxa_core::runtime::EffectKind::FetchDetailSecondary => {
+                self.fetch_detail_secondary(&payload).await
+            }
             fluxa_core::runtime::EffectKind::FetchDetailStreams => {
                 self.fetch_detail_streams(&payload).await
             }

@@ -51,6 +51,8 @@ static METHODS: &[(&str, Router)] = &[
     ("cs3PluginFeedKey", route_content_identity),
     ("deepLinkAction", route_provider_library),
     ("desktopCalendarReadPlan", route_calendar),
+    ("detailSimilarItems", route_provider_library),
+    ("detailSimilarPlan", route_provider_library),
     ("detailStreamResultPlan", route_headless_adapter_plan),
     ("discoverCatalogOptions", route_search_plan),
     ("discoverSourceRequests", route_search_plan),

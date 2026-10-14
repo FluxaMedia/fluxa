@@ -218,3 +218,35 @@ fn revoked_trakt_token_fails_the_library_read_without_retrying() {
     );
     assert_ne!(app.at("/library/error"), serde_json::Value::Null);
 }
+
+#[test]
+fn detail_secondary_lists_trakt_related_titles_for_a_trakt_profile() {
+    let scenario = Scenario::start();
+    scenario
+        .world
+        .on("api.trakt.tv", "GET", "/movies/tt1/related", |_| {
+            Reply::json(
+                200,
+                json!([{"title": "Tenet", "year": 2020, "ids": {"imdb": "tt6723592"},
+                        "images": {"poster": ["media.trakt.tv/tenet.jpg"]}}]),
+            )
+        });
+    let app = scenario.app_with_profile(json!({
+        "id": "p1", "name": "Me", "traktAccessToken": "tok", "integrationLibrarySource": "trakt"
+    }));
+    let profile = app.at("/profile/active");
+
+    app.dispatch(json!({
+        "type": "detailSecondaryRequested", "contentType": "movie", "id": "tt1",
+        "language": "en", "profile": profile
+    }));
+
+    let similar = app.at("/detail/similarItems");
+    assert_eq!(
+        similar[0]["id"],
+        "tt6723592",
+        "{:?}",
+        scenario.world.unmatched()
+    );
+    assert_eq!(similar[0]["poster"], "https://media.trakt.tv/tenet.jpg");
+}

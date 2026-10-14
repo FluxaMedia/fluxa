@@ -756,6 +756,7 @@ mod tests {
         assert_eq!(commands[0]["route"], "detail");
         assert_eq!(commands[1]["type"], "detailLoadRequested");
         assert_eq!(commands[1]["language"], "tr");
+        assert_eq!(commands[2]["type"], "detailSecondaryRequested");
     }
 
     #[test]

@@ -1035,6 +1035,13 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
                     _ => Value::Null,
                 },
             }),
+            json!({
+                "type": "detailSecondaryRequested",
+                "id": id,
+                "contentType": item_type,
+                "language": profile_language(profile),
+                "profile": profile,
+            }),
         ],
         NativeAction::ToggleWatchlist { item } => {
             vec![json!({"type": "toggleWatchlistRequested", "item": item, "profile": profile})]

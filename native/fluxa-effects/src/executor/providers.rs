@@ -4,6 +4,8 @@ use reqwest::{Client, Method};
 use serde_json::{Map, Value, json};
 use std::time::Duration;
 
+mod similar;
+
 fn registry_entry(provider: &str) -> Option<Value> {
     core_value("providerRegistry", json!({}))?
         .as_array()?

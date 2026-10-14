@@ -71,16 +71,42 @@ fn a_failing_tmdb_catalog_does_not_break_the_other() {
 }
 
 #[test]
-#[ignore = "effect fetchDetailSecondary has no native implementation yet, so TMDB similar titles and trailers never load"]
-fn detail_secondary_loads_tmdb_similar_titles_and_trailers() {
+fn detail_secondary_loads_tmdb_similar_titles() {
     let scenario = Scenario::start();
+    scenario
+        .world
+        .on("api.themoviedb.org", "GET", "/3/find/tt1", |_| {
+            Reply::json(
+                200,
+                json!({"movie_results": [{"id": 603}], "tv_results": []}),
+            )
+        });
+    scenario
+        .world
+        .on("api.themoviedb.org", "GET", "/3/movie/603/recommendations", |_| {
+            Reply::json(
+                200,
+                json!({"results": [{"id": 604, "title": "Reloaded", "release_date": "2003-05-15", "poster_path": "/r.jpg"}]}),
+            )
+        });
+    scenario
+        .world
+        .on("api.themoviedb.org", "GET", "/3/movie/603/similar", |_| {
+            Reply::json(200, json!({"results": []}))
+        });
     let app = scenario.app_with_profile(json!({"id": "p1", "name": "Me"}));
     app.dispatch(json!({"type": "settingsChanged", "key": "tmdbApiKey", "value": "k123"}));
 
     app.dispatch(json!({
         "type": "detailSecondaryRequested", "contentType": "movie", "id": "tt1",
-        "language": "en", "profile": null, "similarTitlesSource": "tmdb"
+        "language": "en", "profile": {"id": "p1"}, "similarTitlesSource": "tmdb"
     }));
 
-    assert!(!scenario.world.requests_all().is_empty());
+    let similar = app.at("/detail/similarItems");
+    assert_eq!(
+        similar[0]["name"],
+        "Reloaded",
+        "{similar} {:?}",
+        scenario.world.unmatched()
+    );
 }
