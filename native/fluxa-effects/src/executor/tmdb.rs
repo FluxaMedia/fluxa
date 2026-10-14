@@ -267,10 +267,50 @@ pub(super) async fn tmdb_similar(
         .and_then(|value| value.as_array().cloned())
         .unwrap_or_default();
         if !metas.is_empty() {
-            return Some(metas);
+            return Some(tmdb_with_logos(client, metas, api_key, language).await);
         }
     }
     None
+}
+
+async fn tmdb_with_logos(
+    client: &Client,
+    mut metas: Vec<Value>,
+    api_key: &str,
+    language: &str,
+) -> Vec<Value> {
+    let language = language.split('-').next().unwrap_or(language);
+    let logos = futures::future::join_all(metas.iter().map(|meta| async move {
+        let id = meta.get("id")?.as_str()?.strip_prefix("tmdb:")?;
+        let kind = if meta.get("type")?.as_str()? == "movie" {
+            "movie"
+        } else {
+            "tv"
+        };
+        let url = format!(
+            "https://api.themoviedb.org/3/{kind}/{id}/images?api_key={api_key}&include_image_language={language},en,null"
+        );
+        let images = fetch_json(client, &url).await.ok()?;
+        let logos = images.get("logos")?.as_array()?;
+        let pick = logos
+            .iter()
+            .find(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some(language))
+            .or_else(|| {
+                logos
+                    .iter()
+                    .find(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some("en"))
+            })
+            .or_else(|| logos.first())?;
+        let path = pick.get("file_path")?.as_str()?;
+        Some(format!("https://image.tmdb.org/t/p/w500{path}"))
+    }))
+    .await;
+    for (meta, logo) in metas.iter_mut().zip(logos) {
+        if let (Some(meta), Some(logo)) = (meta.as_object_mut(), logo) {
+            meta.insert("logo".to_owned(), Value::String(logo));
+        }
+    }
+    metas
 }
 
 pub(super) async fn tmdb_trailers(

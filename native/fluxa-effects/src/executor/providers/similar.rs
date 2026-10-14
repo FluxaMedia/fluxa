@@ -152,12 +152,24 @@ impl EffectExecutor {
             fetch(args)
         }))
         .await;
+        let metas = futures::future::join_all(recommendations.iter().take(10).map(|card| {
+            let args = step(
+                json!({"step": "meta", "simklId": card["simklId"]}),
+                &credentials,
+            );
+            fetch(args)
+        }))
+        .await;
         recommendations
             .into_iter()
             .zip(resolved)
-            .filter_map(|(mut card, resolved)| {
+            .zip(metas)
+            .filter_map(|((mut card, resolved), meta)| {
                 card["id"] = resolved?.get("id")?.clone();
                 card["type"] = json!(content_type);
+                if let (Some(card), Some(Value::Object(meta))) = (card.as_object_mut(), meta) {
+                    card.extend(meta.into_iter().filter(|(_, value)| !value.is_null()));
+                }
                 Some(card)
             })
             .collect()

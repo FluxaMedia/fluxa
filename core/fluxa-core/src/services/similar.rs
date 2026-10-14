@@ -18,7 +18,7 @@ pub(crate) fn detail_similar_plan_json(args_json: &str) -> Option<String> {
             }
             let kind = if movie { "movies" } else { "shows" };
             get(format!(
-                "{TRAKT_API}/{kind}/{id}/related?extended=images&limit={LIMIT}"
+                "{TRAKT_API}/{kind}/{id}/related?extended=full,images&limit={LIMIT}"
             ))
         }
         ("simkl", "lookup") => {
@@ -35,6 +35,11 @@ pub(crate) fn detail_similar_plan_json(args_json: &str) -> Option<String> {
         ("simkl", "resolve") => {
             let simkl = args.get("simklId")?.as_i64()?;
             get(format!("{SIMKL_API}/search/id?simkl={simkl}"))
+        }
+        ("simkl", "meta") => {
+            let simkl = args.get("simklId")?.as_i64()?;
+            let kind = if movie { "movies" } else { "tv" };
+            get(format!("{SIMKL_API}/{kind}/{simkl}?extended=full"))
         }
         _ => return None,
     };
@@ -88,9 +93,28 @@ pub(crate) fn detail_similar_items_json(args_json: &str) -> Option<String> {
                 .or_else(|| Some(format!("tmdb:{}", ids.get("tmdb")?.as_i64()?)))?;
             json!({"id": id})
         }
+        ("simkl", "meta") => json!({
+            "description": response.get("overview"),
+            "genres": response.get("genres"),
+            "runtime": response.get("runtime").and_then(Value::as_i64).map(|minutes| format!("{minutes}min")),
+            "background": response.get("fanart").and_then(Value::as_str).map(|path| format!("https://simkl.in/fanart/{path}_w.jpg")),
+        }),
         _ => return None,
     };
     serde_json::to_string(&out).ok()
+}
+
+fn title_case(slug: &str) -> String {
+    slug.split('-')
+        .map(|word| {
+            let mut chars = word.chars();
+            chars
+                .next()
+                .map(|first| first.to_uppercase().chain(chars).collect::<String>())
+                .unwrap_or_default()
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 fn trakt_card(item: &Value, kind: &str) -> Option<Value> {
@@ -109,6 +133,13 @@ fn trakt_card(item: &Value, kind: &str) -> Option<Value> {
         "name": item.get("title")?,
         "year": item.get("year"),
         "poster": poster,
+        "background": item.get("images").and_then(|images| super::trakt::trakt_image_url(images, "fanart")),
+        "logo": item.get("images").and_then(|images| super::trakt::trakt_image_url(images, "logo")),
+        "description": item.get("overview").and_then(Value::as_str).filter(|text| !text.is_empty()),
+        "genres": item.get("genres").and_then(Value::as_array).map(|genres| {
+            genres.iter().filter_map(Value::as_str).map(title_case).collect::<Vec<_>>()
+        }),
+        "runtime": item.get("runtime").and_then(Value::as_i64).filter(|minutes| *minutes > 0).map(|minutes| format!("{minutes}min")),
     }))
 }
 
@@ -133,7 +164,7 @@ mod tests {
         .unwrap();
         assert_eq!(
             plan["url"],
-            "https://api.trakt.tv/movies/tt1375666/related?extended=images&limit=16"
+            "https://api.trakt.tv/movies/tt1375666/related?extended=full,images&limit=16"
         );
         assert!(
             run(
