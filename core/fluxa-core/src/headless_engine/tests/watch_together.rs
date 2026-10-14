@@ -147,3 +147,34 @@ fn leaving_clears_the_room_and_asks_the_platform_to_unsubscribe() {
     assert_eq!(effects[0].payload["code"], "ABC234");
     assert!(engine.state.watch_together.room_code.is_none());
 }
+
+#[test]
+fn only_the_host_can_remove_members_or_lock_the_room() {
+    let mut guest = HeadlessEngine::new(Default::default());
+    joined(&mut guest, "ana");
+    let kick = json!({"type": "watchTogetherKickRequested", "memberId": "host"});
+    assert!(act(&mut guest, kick).is_empty());
+    assert!(
+        act(
+            &mut guest,
+            json!({"type": "watchTogetherLockChanged", "locked": true})
+        )
+        .is_empty()
+    );
+    assert!(!guest.state.watch_together.locked);
+
+    let mut host = HeadlessEngine::new(Default::default());
+    joined(&mut host, "host");
+    let effects = act(
+        &mut host,
+        json!({"type": "watchTogetherKickRequested", "memberId": "ana"}),
+    );
+    assert_eq!(effects[0].payload["op"], "kick");
+    assert_eq!(effects[0].payload["memberId"], "ana");
+    let effects = act(
+        &mut host,
+        json!({"type": "watchTogetherLockChanged", "locked": true}),
+    );
+    assert_eq!(effects[0].payload["op"], "lock");
+    assert!(host.state.watch_together.locked);
+}

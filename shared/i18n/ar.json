@@ -3255,5 +3255,10 @@
   "detail.released": "تاريخ الصدور",
   "detail.runtime": "المدة",
   "detail.country": "البلد",
-  "settings.detail_sections_hint": "شغّل الأقسام أو أوقفها وغيّر ترتيبها."
+  "settings.detail_sections_hint": "شغّل الأقسام أو أوقفها وغيّر ترتيبها.",
+  "player.lock_controls": "قفل عناصر التحكم",
+  "player.unlock_controls": "فتح قفل عناصر التحكم",
+  "settings.detail_sections_hint": "شغّل الأقسام أو أوقفها وغيّر ترتيبها.",
+  "watch.lock": "قفل الغرفة",
+  "watch.unlock": "فتح قفل الغرفة"
 }

@@ -21,6 +21,10 @@ struct RoomPayload {
     profile_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     avatar: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    member_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    locked: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -75,6 +79,54 @@ pub(crate) fn dispatch_leave(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope>
             display_name: String::new(),
             profile_id: None,
             avatar: None,
+            member_id: None,
+            locked: None,
+        },
+    )]
+}
+
+pub(crate) fn dispatch_kick(engine: &mut HeadlessEngine, member_id: String) -> Vec<EffectEnvelope> {
+    let Some(session) = engine.watch_session.as_ref() else {
+        return Vec::new();
+    };
+    if !session.is_host() || member_id == session.client_id() {
+        return Vec::new();
+    }
+    admin_effect(engine, "kick", Some(member_id), None)
+}
+
+pub(crate) fn dispatch_lock(engine: &mut HeadlessEngine, locked: bool) -> Vec<EffectEnvelope> {
+    let Some(session) = engine.watch_session.as_ref() else {
+        return Vec::new();
+    };
+    if !session.is_host() {
+        return Vec::new();
+    }
+    engine.state.watch_together.locked = locked;
+    admin_effect(engine, "lock", None, Some(locked))
+}
+
+fn admin_effect(
+    engine: &mut HeadlessEngine,
+    op: &'static str,
+    member_id: Option<String>,
+    locked: Option<bool>,
+) -> Vec<EffectEnvelope> {
+    let Some(code) = engine.watch_session.as_ref().map(|s| s.room().to_string()) else {
+        return Vec::new();
+    };
+    let generation = engine.state.runtime.get(GenerationKey::WatchTogether);
+    vec![engine.effect(
+        EffectKind::WatchTogetherRoom,
+        generation,
+        RoomPayload {
+            op,
+            code: Some(code),
+            display_name: String::new(),
+            profile_id: None,
+            avatar: None,
+            member_id,
+            locked,
         },
     )]
 }
@@ -135,11 +187,16 @@ pub(crate) fn dispatch_members(
     engine: &mut HeadlessEngine,
     host_id: String,
     members: Vec<WatchTogetherMember>,
+    locked: bool,
     now_ms: i64,
 ) -> Vec<EffectEnvelope> {
-    run(engine, |session| {
+    let effects = run(engine, |session| {
         session.members_changed(host_id, members, now_ms)
-    })
+    });
+    if engine.watch_session.is_some() {
+        engine.state.watch_together.locked = locked;
+    }
+    effects
 }
 
 pub(crate) fn dispatch_sample(
@@ -172,7 +229,7 @@ pub(crate) fn complete(
     if generation != engine.state.runtime.get(GenerationKey::WatchTogether) {
         return Vec::new();
     }
-    if payload["op"] == "leave" {
+    if matches!(payload["op"].as_str(), Some("leave" | "kick" | "lock")) {
         return Vec::new();
     }
     if !result.status.is_ok() {
@@ -223,6 +280,8 @@ fn request_room(
                 display_name: String::new(),
                 profile_id: None,
                 avatar: None,
+                member_id: None,
+                locked: None,
             },
         ));
     }
@@ -238,6 +297,8 @@ fn request_room(
             display_name,
             profile_id,
             avatar,
+            member_id: None,
+            locked: None,
         },
     ));
     effects

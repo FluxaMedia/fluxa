@@ -288,6 +288,7 @@ impl WatchTogetherSession {
             Some("state") if from_host => self.on_state(message, now_ms),
             Some("ready") if self.has_member(from) => self.on_ready(from, message, now_ms),
             Some("buffering") if self.has_member(from) => self.on_buffering(from, message, now_ms),
+            Some("hello") if self.is_host() && self.has_member(from) => self.on_hello(now_ms),
             _ => Vec::new(),
         }
     }
@@ -484,6 +485,19 @@ impl WatchTogetherSession {
                 position_ms,
             }]
         }
+    }
+
+    fn on_hello(&mut self, now_ms: i64) -> Vec<SessionEffect> {
+        let mut effects = Vec::new();
+        if let Some(content) = self.content.clone() {
+            effects.push(SessionEffect::Broadcast(
+                self.content_message(&content, self.shared_stream.as_ref()),
+            ));
+        }
+        if self.phase == SessionPhase::Playing {
+            effects.push(self.state_message(now_ms));
+        }
+        effects
     }
 
     fn on_ready(&mut self, from: &str, message: &Value, now_ms: i64) -> Vec<SessionEffect> {

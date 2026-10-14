@@ -408,6 +408,10 @@ pub(crate) enum AppAction {
     WatchTogetherMembersChanged {
         host_id: String,
         members: Vec<WatchTogetherMember>,
+    #[serde(rename = "watchTogetherKickRequested")]
+    WatchTogetherKickRequested { member_id: String },
+    #[serde(rename = "watchTogetherLockChanged")]
+    WatchTogetherLockChanged { locked: bool },
         now_ms: i64,
     },
 }
@@ -438,6 +442,8 @@ pub(crate) enum EffectStatus {
     Cancelled,
 }
 
+        #[serde(default)]
+        locked: bool,
 impl EffectStatus {
     pub(crate) fn is_ok(self) -> bool {
         matches!(self, EffectStatus::Ok)

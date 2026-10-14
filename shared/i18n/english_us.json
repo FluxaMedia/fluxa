@@ -3266,5 +3266,10 @@
   "detail.released": "Released",
   "detail.runtime": "Runtime",
   "detail.country": "Country",
-  "settings.detail_sections_hint": "Turn sections on or off and change their order."
+  "settings.detail_sections_hint": "Turn sections on or off and change their order.",
+  "player.lock_controls": "Lock controls",
+  "player.unlock_controls": "Unlock controls",
+  "settings.detail_sections_hint": "Turn sections on or off and change their order.",
+  "watch.lock": "Lock room",
+  "watch.unlock": "Unlock room"
 }

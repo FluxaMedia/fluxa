@@ -3255,5 +3255,10 @@
   "detail.released": "תאריך יציאה",
   "detail.runtime": "משך",
   "detail.country": "מדינה",
-  "settings.detail_sections_hint": "הפעלה או כיבוי של מקטעים ושינוי הסדר שלהם."
+  "settings.detail_sections_hint": "הפעלה או כיבוי של מקטעים ושינוי הסדר שלהם.",
+  "player.lock_controls": "נעילת הבקרים",
+  "player.unlock_controls": "ביטול נעילת הבקרים",
+  "settings.detail_sections_hint": "הפעלה או כיבוי של מקטעים ושינוי הסדר שלהם.",
+  "watch.lock": "נעל חדר",
+  "watch.unlock": "בטל נעילת חדר"
 }

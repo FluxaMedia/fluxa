@@ -551,6 +551,12 @@ impl HeadlessEngine {
             } => {
                 watch_together::dispatch_sample(self, position_ms, now_ms, speed_correction_active)
             }
+            AppAction::WatchTogetherKickRequested { member_id } => {
+                watch_together::dispatch_kick(self, member_id)
+            }
+            AppAction::WatchTogetherLockChanged { locked } => {
+                watch_together::dispatch_lock(self, locked)
+            }
             AppAction::WatchTogetherMessageReceived { message, now_ms } => {
                 watch_together::dispatch_message(self, message, now_ms)
             }
@@ -558,7 +564,8 @@ impl HeadlessEngine {
                 host_id,
                 members,
                 now_ms,
-            } => watch_together::dispatch_members(self, host_id, members, now_ms),
+            } => watch_together::dispatch_members(self, host_id, members, locked, now_ms),
         }
     }
 }
+                locked,

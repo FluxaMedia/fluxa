@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Debug, Default)]
 pub struct WatchMemberView {
+    pub id: String,
     pub name: String,
     pub avatar: Option<String>,
     pub ready: bool,
@@ -16,6 +17,8 @@ pub struct WatchTogetherModel {
     pub code_input: String,
     pub room_code: Option<String>,
     pub members: Vec<WatchMemberView>,
+    pub host: bool,
+    pub locked: bool,
     pub connecting: bool,
     pub error: Option<String>,
 }
@@ -27,6 +30,8 @@ pub enum WatchTogetherRequest {
     Leave,
     Close,
     CopyCode,
+    Kick(String),
+    SetLocked(bool),
 }
 
 pub fn waiting_member(members: &[WatchMemberView]) -> Option<&WatchMemberView> {
@@ -481,8 +486,14 @@ fn side_room(
             .color(metrics.text_secondary),
     );
     ui.add_space(12.0);
+    if model.host {
+        lock_row(ui, model.locked, width, assets, metrics, t, request);
+        ui.add_space(6.0);
+    }
     for member in &model.members {
-        side_member(ui, member, width, assets, metrics, t);
+        if side_member(ui, member, model.host, width, assets, metrics, t) {
+            *request = Some(WatchTogetherRequest::Kick(member.id.clone()));
+        }
     }
     let spare = ui.available_height() - button_height() - 4.0;
     ui.add_space(spare.max(14.0));
@@ -491,17 +502,67 @@ fn side_room(
     }
 }
 
-fn side_member(
+fn lock_row(
     ui: &mut egui::Ui,
-    member: &WatchMemberView,
+    locked: bool,
     width: f32,
     assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
+    request: &mut Option<WatchTogetherRequest>,
 ) {
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 40.0), Sense::click());
+    let painter = ui.painter();
+    if response.hovered() {
+        painter.rect_filled(rect, 12.0, ink(tone::RAISED));
+    }
+    glyph(
+        painter,
+        assets,
+        if locked { "Lock" } else { "Unlock" },
+        Pos2::new(rect.left() + 20.0, rect.center().y),
+        18.0,
+        if locked {
+            accent()
+        } else {
+            metrics.text_secondary
+        },
+    );
+    painter.text(
+        Pos2::new(rect.left() + 40.0, rect.center().y),
+        Align2::LEFT_CENTER,
+        if locked {
+            t("watch.unlock")
+        } else {
+            t("watch.lock")
+        },
+        FontId::proportional(metrics.text.meta),
+        text_primary(),
+    );
+    if response.clicked() {
+        *request = Some(WatchTogetherRequest::SetLocked(!locked));
+    }
+}
+
+fn side_member(
+    ui: &mut egui::Ui,
+    member: &WatchMemberView,
+    can_remove: bool,
+    width: f32,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+) -> bool {
     let radius = 20.0;
-    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, radius * 2.0 + 12.0), Sense::hover());
+    let (rect, response) =
+        ui.allocate_exact_size(Vec2::new(width, radius * 2.0 + 12.0), Sense::click());
     let center = Pos2::new(rect.left() + radius + 3.0, rect.center().y);
+    let removable = can_remove && !member.you && !member.host;
+    let remove_center = Pos2::new(rect.right() - 14.0, rect.center().y);
+    let remove_hover = removable
+        && ui
+            .input(|input| input.pointer.hover_pos())
+            .is_some_and(|pos| pos.distance(remove_center) < 16.0);
     let painter = ui.painter();
     components::avatar(
         painter,
@@ -561,4 +622,19 @@ fn side_member(
             metrics.text_muted,
         );
     }
+    if removable {
+        glyph(
+            painter,
+            assets,
+            "Close",
+            remove_center,
+            16.0,
+            if remove_hover {
+                text_primary()
+            } else {
+                metrics.text_muted
+            },
+        );
+    }
+    removable && remove_hover && response.clicked()
 }

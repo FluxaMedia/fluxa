@@ -3266,5 +3266,10 @@
   "detail.released": "Yayın Tarihi",
   "detail.runtime": "Süre",
   "detail.country": "Ülke",
-  "settings.detail_sections_hint": "Bölümleri aç veya kapat ve sıralarını değiştir."
+  "settings.detail_sections_hint": "Bölümleri aç veya kapat ve sıralarını değiştir.",
+  "player.lock_controls": "Kontrolleri kilitle",
+  "player.unlock_controls": "Kontrollerin kilidini aç",
+  "settings.detail_sections_hint": "Bölümleri aç veya kapat ve sıralarını değiştir.",
+  "watch.lock": "Odayı kilitle",
+  "watch.unlock": "Oda kilidini aç"
 }

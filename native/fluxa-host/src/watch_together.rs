@@ -303,6 +303,14 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
                 }),
             );
         }
+        Request::Kick(id) => dispatch(
+            state,
+            json!({"type": "watchTogetherKickRequested", "memberId": id}),
+        ),
+        Request::SetLocked(locked) => dispatch(
+            state,
+            json!({"type": "watchTogetherLockChanged", "locked": locked}),
+        ),
         Request::Leave => dispatch(state, json!({"type": "watchTogetherLeaveRequested"})),
         Request::CopyCode => {
             state.copied = state
@@ -350,11 +358,14 @@ fn refresh_view(state: &mut RendererState, watch: &Value) {
     view.connecting = watch["connectionState"] == "CONNECTING";
     view.error = (watch["connectionState"] == "ERROR").then(|| "watch.error".to_owned());
     let you = watch["clientId"].as_str();
+    view.host = watch["role"] == "HOST";
+    view.locked = watch["locked"].as_bool().unwrap_or(false);
     view.members = watch["members"]
         .as_array()
         .into_iter()
         .flatten()
         .map(|member| fluxa_ui::WatchMemberView {
+            id: member["id"].as_str().unwrap_or_default().to_owned(),
             name: member["name"].as_str().unwrap_or_default().to_owned(),
             avatar: member["avatar"].as_str().map(ToOwned::to_owned),
             ready: member["ready"].as_bool().unwrap_or(false),

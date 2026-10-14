@@ -66,6 +66,7 @@ pub(crate) fn start(state: &mut RendererState) {
     if watch_demo() {
         let member = |name: &str, ready: bool, buffering: bool, host: bool, you: bool| {
             fluxa_ui::WatchMemberView {
+                id: name.to_owned(),
                 name: name.to_owned(),
                 avatar: None,
                 ready,
@@ -77,6 +78,7 @@ pub(crate) fn start(state: &mut RendererState) {
         state.watch_view = Some(fluxa_ui::WatchTogetherModel {
             language: state.settings.language().to_owned(),
             room_code: Some("K7M2QX".to_owned()),
+            host: true,
             members: vec![
                 member("Ayşe", true, false, true, true),
                 member("Mert", true, false, false, false),
