@@ -230,6 +230,8 @@ struct RendererState {
     ambient: ambient::State,
     watch: watch_together::State,
     watch_view: Option<fluxa_ui::WatchTogetherModel>,
+    watch_panel: bool,
+    window_fullscreen: bool,
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     updates: updates::State,
@@ -430,6 +432,8 @@ impl FluxaHost {
             ambient: Default::default(),
             watch: Default::default(),
             watch_view: None,
+            watch_panel: false,
+            window_fullscreen: false,
             stream_badges: Default::default(),
             applied_app_icon: None,
             updates: Default::default(),
@@ -664,6 +668,10 @@ impl FluxaHost {
     pub fn keep_awake(&self) -> bool {
         self.peek(|state| state.player.is_some() || state.ambient.visible())
             .unwrap_or(false)
+    }
+
+    pub fn set_window_fullscreen(&self, on: bool) {
+        self.peek(|state| state.window_fullscreen = on);
     }
 
     pub fn take_fullscreen_toggle(&self) -> bool {

@@ -3244,5 +3244,6 @@
   "watch.hint": "שתפו את הקוד עם חברים. ההפעלה מתחילה כשכולם מוכנים.",
   "watch.join_hint": "או הזינו קוד של חבר כדי להצטרף לחדר שלו.",
   "watch.error": "לא ניתן להתחבר לחדר",
-  "shortcuts.watch_together": "צפייה משותפת"
+  "shortcuts.watch_together": "צפייה משותפת",
+  "shortcuts.player_watch_together": "לוח צפייה משותפת"
 }

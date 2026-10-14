@@ -258,6 +258,7 @@ impl App {
         let (Some(host), Some(window)) = (self.host.as_ref(), self.window.as_ref()) else {
             return;
         };
+        host.set_window_fullscreen(window.fullscreen().is_some());
         if host.take_fullscreen_toggle() {
             let fullscreen = window
                 .fullscreen()

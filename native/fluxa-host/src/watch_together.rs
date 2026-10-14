@@ -43,6 +43,7 @@ fn dispatch(state: &RendererState, action: Value) {
 }
 
 pub(crate) fn tick(state: &mut RendererState) {
+    crate::preview::watch_panel_demo(state);
     let Some(session) = state.session.as_ref() else {
         return;
     };
@@ -251,6 +252,16 @@ fn report(state: &mut RendererState, watch: &Value) {
 
 const HOST_REPORT_SLACK: f64 = 1.0;
 
+pub(crate) fn toggle_panel(state: &mut RendererState) {
+    if state.player.is_none() {
+        return;
+    }
+    state.watch_panel = !state.watch_panel;
+    if state.watch_panel {
+        open_modal(state);
+    }
+}
+
 pub(crate) fn open_modal(state: &mut RendererState) {
     if state.watch_view.is_none() && state.session.is_some() {
         state.watch_view = Some(fluxa_ui::WatchTogetherModel {
@@ -263,7 +274,10 @@ pub(crate) fn open_modal(state: &mut RendererState) {
 pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogetherRequest) {
     use fluxa_ui::WatchTogetherRequest as Request;
     match request {
-        Request::Close => state.watch_view = None,
+        Request::Close => {
+            state.watch_view = None;
+            state.watch_panel = false;
+        }
         Request::Create => {
             let (name, profile_id, avatar) = identity(state);
             dispatch(

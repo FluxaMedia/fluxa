@@ -302,6 +302,16 @@ pub(super) fn desktop_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut 
             &[("Maximize", NODE_PLAYER_FULLSCREEN)],
         );
     }
+    if player.watch_button {
+        right = chrome.row_right(
+            ui,
+            layout,
+            right,
+            y,
+            chrome.icon(),
+            &[("Users", NODE_PLAYER_WATCH)],
+        );
+    }
     let right = chrome.row_right(ui, layout, right, y, chrome.icon(), &chrome.actions(false));
     chrome.toggle_remaining(
         ui,

@@ -323,3 +323,221 @@ fn draw_empty(ui: &mut egui::Ui, center: Pos2, metrics: UiMetrics) {
         metrics.text_muted.gamma_multiply(0.6),
     );
 }
+
+pub fn draw_watch_side_panel(
+    context: &egui::Context,
+    rect: Rect,
+    model: &WatchTogetherModel,
+    assets: &mut impl HomeAssets,
+) -> Option<WatchTogetherRequest> {
+    let metrics = UiMetrics::for_viewport(Viewport::new(
+        rect.width().max(1.0) as u32,
+        rect.height().max(1.0) as u32,
+        UiFormFactor::Desktop,
+    ));
+    let language = model.language.clone();
+    let t = |key: &str| localized(key, &language);
+    let mut request = None;
+    let close = assets.icon("Close");
+    egui::Area::new(Id::new("fluxa-watch-side"))
+        .order(egui::Order::Foreground)
+        .fixed_pos(rect.min)
+        .show(context, |ui| {
+            ui.set_min_size(rect.size());
+            ui.set_max_size(rect.size());
+            ui.painter().rect_filled(rect, 0.0, metrics.surface);
+            ui.painter().line_segment(
+                [rect.left_top(), rect.left_bottom()],
+                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+            );
+            let inner = rect.shrink2(Vec2::new(18.0, 18.0));
+            let mut ui = ui.new_child(
+                egui::UiBuilder::new()
+                    .max_rect(inner)
+                    .layout(egui::Layout::top_down(egui::Align::Min)),
+            );
+            let ui = &mut ui;
+            let bar = Vec2::new(ui.available_width(), metrics.icon_button_size);
+            ui.allocate_ui_with_layout(
+                bar,
+                egui::Layout::left_to_right(egui::Align::Center),
+                |ui| {
+                    ui.label(
+                        RichText::new(t("watch.title"))
+                            .size(metrics.text.meta)
+                            .strong()
+                            .color(text_primary()),
+                    );
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        let closed = components::icon_button(
+                            ui,
+                            close,
+                            metrics.icon_button_size,
+                            ink(tone::BODY),
+                            true,
+                            false,
+                            true,
+                        )
+                        .clicked();
+                        if closed {
+                            request = Some(WatchTogetherRequest::Close);
+                        }
+                    });
+                },
+            );
+            ui.add_space(12.0);
+            match model.room_code.as_deref() {
+                Some(code) => side_room(ui, model, code, assets, metrics, &t, &mut request),
+                None => side_entry(ui, model, metrics, &t, &mut request),
+            }
+            if let Some(error) = model.error.as_ref() {
+                components::note(ui, &t(error), metrics);
+            }
+        });
+    request
+}
+
+fn side_entry(
+    ui: &mut egui::Ui,
+    model: &WatchTogetherModel,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+    request: &mut Option<WatchTogetherRequest>,
+) {
+    let width = ui.available_width();
+    if model.connecting {
+        components::note(ui, &t("watch.connecting"), metrics);
+        return;
+    }
+    if components::primary_button(ui, &t("watch.start"), width, true).clicked() {
+        *request = Some(WatchTogetherRequest::Create);
+    }
+    ui.add_space(16.0);
+    components::note(ui, &t("watch.join_hint"), metrics);
+    ui.add_space(8.0);
+    let id = Id::new("fluxa-watch-side-code");
+    let mut code = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
+    let field = components::text_input(
+        ui,
+        &mut code,
+        &t("watch.code_hint"),
+        width,
+        components::InputKind::Text,
+        metrics,
+    );
+    code = code
+        .chars()
+        .filter(|character| character.is_ascii_alphanumeric())
+        .take(6)
+        .collect::<String>()
+        .to_uppercase();
+    ui.add_space(8.0);
+    let complete = code.len() == 6;
+    let submit =
+        complete && field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+    if components::secondary_button(ui, &t("watch.join"), width).clicked() && complete || submit {
+        *request = Some(WatchTogetherRequest::Join(code.clone()));
+    }
+    ui.data_mut(|data| data.insert_temp(id, code));
+}
+
+fn side_room(
+    ui: &mut egui::Ui,
+    model: &WatchTogetherModel,
+    code: &str,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+    request: &mut Option<WatchTogetherRequest>,
+) {
+    let width = ui.available_width();
+    draw_code(ui, code, width, metrics, t, request);
+    ui.add_space(10.0);
+    let ready = model.members.iter().filter(|member| member.ready).count();
+    let summary = match waiting_member(&model.members) {
+        Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
+        None => t("watch.ready_count")
+            .replace("{ready}", &ready.to_string())
+            .replace("{total}", &model.members.len().to_string()),
+    };
+    ui.label(
+        RichText::new(summary)
+            .size(metrics.text.label)
+            .color(metrics.text_secondary),
+    );
+    ui.add_space(12.0);
+    for member in &model.members {
+        side_member(ui, member, width, assets, metrics, t);
+    }
+    ui.add_space(14.0);
+    if components::secondary_button(ui, &t("watch.leave"), width).clicked() {
+        *request = Some(WatchTogetherRequest::Leave);
+    }
+}
+
+fn side_member(
+    ui: &mut egui::Ui,
+    member: &WatchMemberView,
+    width: f32,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+) {
+    let radius = 20.0;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, radius * 2.0 + 12.0), Sense::hover());
+    let center = Pos2::new(rect.left() + radius + 3.0, rect.center().y);
+    let painter = ui.painter();
+    components::avatar(
+        painter,
+        assets,
+        center,
+        radius,
+        &member.name,
+        member.avatar.as_deref(),
+        metrics,
+    );
+    if member.buffering {
+        let start = ui.input(|input| input.time) as f32 * 4.0;
+        let points = (0..=14)
+            .map(|step| center + Vec2::angled(start + step as f32 / 14.0 * 2.2) * (radius + 3.5))
+            .collect::<Vec<_>>();
+        painter.add(egui::Shape::line(points, egui::Stroke::new(2.5, accent())));
+        ui.ctx().request_repaint();
+    } else if member.ready {
+        painter.circle_stroke(center, radius + 3.5, egui::Stroke::new(2.5, accent()));
+    } else {
+        painter.circle_stroke(
+            center,
+            radius + 3.5,
+            egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
+        );
+    }
+    let role = match (member.host, member.you) {
+        (true, true) => Some(format!("{} · {}", t("watch.host"), t("watch.you"))),
+        (true, false) => Some(t("watch.host")),
+        (false, true) => Some(t("watch.you")),
+        _ => None,
+    };
+    let text_x = center.x + radius + 14.0;
+    let name_y = if role.is_some() {
+        rect.center().y - 8.0
+    } else {
+        rect.center().y
+    };
+    painter.text(
+        Pos2::new(text_x, name_y),
+        Align2::LEFT_CENTER,
+        clipped(&member.name, ((width - 70.0) / 8.0) as usize),
+        FontId::proportional(metrics.text.meta),
+        text_primary(),
+    );
+    if let Some(role) = role {
+        painter.text(
+            Pos2::new(text_x, rect.center().y + 9.0),
+            Align2::LEFT_CENTER,
+            role,
+            FontId::proportional(metrics.text.label),
+            metrics.text_muted,
+        );
+    }
+}

@@ -35,6 +35,8 @@ pub struct PlayerModel {
     pub title: String,
     pub video: Option<TextureId>,
     pub passthrough: bool,
+    pub watch_button: bool,
+    pub watch: Option<WatchTogetherModel>,
     pub status: Option<(String, String)>,
     pub error: Option<String>,
     pub position: f64,
@@ -136,6 +138,7 @@ const PLAYER_ICONS: &[&str] = &[
     "Zap",
     "ZapFilled",
     "Maximize",
+    "Users",
     "AudioSubtitles",
     "Gauge",
     "Settings",
@@ -262,7 +265,19 @@ pub fn draw_player(
         return layout;
     }
     let painter = context.layer_painter(egui::LayerId::background());
+    let (rect, side) = match player.watch.as_ref().filter(|_| !player.passthrough) {
+        Some(_) => {
+            let width = (rect.width() * 0.24).clamp(260.0, 340.0);
+            let (left, right) = rect.split_left_right_at_x(rect.right() - width);
+            (left, Some(right))
+        }
+        None => (rect, None),
+    };
     match player.video {
+        Some(texture) if side.is_some() => {
+            painter.rect_filled(rect, 0.0, Color32::BLACK);
+            painter.image(texture, fit_16_9(rect), full_uv(), Color32::WHITE);
+        }
         Some(texture) => {
             painter.rect_filled(rect, 0.0, Color32::BLACK);
             painter.image(texture, rect, full_uv(), Color32::WHITE);
@@ -316,6 +331,9 @@ pub fn draw_player(
                 panel::draw_panel(&chrome, ui, &mut layout, panel, assets);
             }
         });
+    if let (Some(side), Some(model)) = (side, player.watch.as_ref()) {
+        layout.watch_together = draw_watch_side_panel(context, side, model, assets);
+    }
     if player.dim > 0.0 {
         let veil = context.layer_painter(egui::LayerId::new(
             egui::Order::Foreground,
@@ -820,4 +838,14 @@ pub fn torrent_status_lines(status: Option<&serde_json::Value>) -> (String, Stri
         headline.to_owned(),
         format!("{peers} · {percent}% buffer · {downloaded} · {speed}"),
     )
+}
+
+fn fit_16_9(area: Rect) -> Rect {
+    let wide = area.width() / area.height().max(1.0) > 16.0 / 9.0;
+    let size = if wide {
+        Vec2::new(area.height() * 16.0 / 9.0, area.height())
+    } else {
+        Vec2::new(area.width(), area.width() * 9.0 / 16.0)
+    };
+    Rect::from_center_size(area.center(), size)
 }

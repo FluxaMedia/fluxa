@@ -9,6 +9,7 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_MUTE => command(state, VideoCommand::ToggleMute),
         fluxa_ui::NODE_PLAYER_BOOST => toggle_boost(state),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => state.fullscreen_toggle = true,
+        fluxa_ui::NODE_PLAYER_WATCH => crate::watch_together::toggle_panel(state),
         fluxa_ui::NODE_PLAYER_CONTROLS => {
             if let Some(player) = state.player.as_mut() {
                 player.touch();

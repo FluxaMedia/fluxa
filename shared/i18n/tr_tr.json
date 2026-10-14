@@ -3255,5 +3255,6 @@
   "watch.hint": "Kodu arkadaşlarınla paylaş. Herkes hazır olunca oynatma başlar.",
   "watch.join_hint": "Ya da bir arkadaşının kodunu girerek odasına katıl.",
   "watch.error": "Odaya bağlanılamadı",
-  "shortcuts.watch_together": "Birlikte İzle"
+  "shortcuts.watch_together": "Birlikte İzle",
+  "shortcuts.player_watch_together": "Birlikte İzle paneli"
 }

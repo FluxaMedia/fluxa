@@ -195,8 +195,13 @@ pub(super) fn render_frame(state: &mut RendererState) {
         player.anime4k = mode != "off";
         player.upscaling = mode;
     }
+    let watch_side = state.watch_panel
+        && !state.window_fullscreen
+        && state.home.form_factor == UiFormFactorJson::Desktop;
     let player_model = state.player.as_ref().map(|player| {
         let mut model = fluxa_ui::PlayerModel {
+            watch_button: state.home.form_factor == UiFormFactorJson::Desktop,
+            watch: watch_side.then(|| state.watch_view.clone()).flatten(),
             upscaling: player::upscaling(&state.settings).to_owned(),
             ..player.model()
         };
@@ -263,6 +268,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     }
     let mirrored = state.mirrored();
     state.settings.unreachable_addon_hosts = fluxa_effects::unreachable_addon_hosts();
+    let watch_modal_hidden = state.player.is_some();
     let render_result = {
         let RendererState {
             gpu,
@@ -315,7 +321,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
                 pre_present.as_ref(),
                 menu.as_ref(),
                 ambient_view.as_ref(),
-                watch_view.as_mut(),
+                watch_view.as_mut().filter(|_| !watch_modal_hidden),
                 &mut timer,
             )
         })

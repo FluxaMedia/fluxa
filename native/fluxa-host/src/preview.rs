@@ -112,3 +112,17 @@ pub(crate) fn start(state: &mut RendererState) {
         state.settings.page_open = true;
     }
 }
+
+pub(crate) fn watch_panel_demo(state: &mut RendererState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    if setting("FLUXA_PREVIEW_WATCH").as_deref() != Some("panel")
+        || state.session.is_none()
+        || DONE.swap(true, Ordering::Relaxed)
+    {
+        return;
+    }
+    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    crate::player::open_file(state, "about:blank", "Demo");
+    state.watch_panel = true;
+}

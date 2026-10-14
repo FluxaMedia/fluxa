@@ -111,6 +111,7 @@ fn player_label(state: &RendererState, id: u64) -> Option<String> {
             "player.mute"
         }),
         fluxa_ui::NODE_PLAYER_FULLSCREEN => text("player.fullscreen"),
+        fluxa_ui::NODE_PLAYER_WATCH => text("watch.title"),
         fluxa_ui::NODE_PLAYER_SKIP => text("player.skip"),
         fluxa_ui::NODE_PLAYER_CAST => text("player.cast"),
         fluxa_ui::NODE_PLAYER_INFO => text("player.stats_for_nerds"),

@@ -604,6 +604,8 @@ impl PlayerSession {
             title: self.title(),
             video: self.texture.filter(|_| self.status.has_frame),
             passthrough: self.passthrough && self.status.has_frame,
+            watch_button: false,
+            watch: None,
             status,
             error: self.error.clone().or_else(|| self.status.error.clone()),
             position: self.status.position,
