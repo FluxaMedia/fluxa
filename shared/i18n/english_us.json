@@ -3232,8 +3232,6 @@
   "auth.error.server": "The server had a problem, try again shortly",
   "settings.section.ambient_mode": "Ambient Mode",
   "settings.section.ambient_mode.description": "Show artwork from your catalogs while the TV sits idle",
-  "ambient.enabled": "Enabled",
-  "ambient.start_after": "Start After",
   "ambient.minutes": "%s min",
   "ambient.catalogs": "Catalogs (up to 3)",
   "ambient.catalogs_count": "%1 of %2",
@@ -3257,5 +3255,9 @@
   "watch.error": "Could not connect to the room",
   "shortcuts.watch_together": "Watch Together",
   "shortcuts.player_watch_together": "Watch Together panel",
-  "watch.hint_alone": "Share the code with friends to start watching together."
+  "watch.hint_alone": "Share the code with friends to start watching together.",
+  "settings.ambientModeEnabled": "Enabled",
+  "settings.ambientModeTimeoutMinutes": "Start After",
+  "settings.row.ambientModeEnabled.description": "Show artwork when the app sits idle",
+  "settings.row.ambientModeTimeoutMinutes.description": "Idle time before the slideshow starts"
 }

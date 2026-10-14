@@ -3232,8 +3232,6 @@
   "auth.error.server": "Sunucuda bir sorun oluştu, birazdan tekrar dene",
   "settings.section.ambient_mode": "Ortam Modu",
   "settings.section.ambient_mode.description": "TV boştayken kataloglarınızdaki görselleri gösterir",
-  "ambient.enabled": "Etkin",
-  "ambient.start_after": "Başlama Süresi",
   "ambient.minutes": "%s dk",
   "ambient.catalogs": "Kataloglar (en fazla 3)",
   "ambient.catalogs_count": "%1 / %2",
@@ -3257,5 +3255,9 @@
   "watch.error": "Odaya bağlanılamadı",
   "shortcuts.watch_together": "Birlikte İzle",
   "shortcuts.player_watch_together": "Birlikte İzle paneli",
-  "watch.hint_alone": "Birlikte izlemeye başlamak için kodu arkadaşlarınla paylaş."
+  "watch.hint_alone": "Birlikte izlemeye başlamak için kodu arkadaşlarınla paylaş.",
+  "settings.ambientModeEnabled": "Etkin",
+  "settings.ambientModeTimeoutMinutes": "Başlama Süresi",
+  "settings.row.ambientModeEnabled.description": "Uygulama boştayken görselleri göster",
+  "settings.row.ambientModeTimeoutMinutes.description": "Slayt gösterisi başlamadan önceki boşta kalma süresi"
 }

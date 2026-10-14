@@ -3221,8 +3221,6 @@
   "settings.updates.unsupported": "עדכונים אינם זמינים במכשיר זה",
   "settings.section.ambient_mode": "מצב אווירה",
   "settings.section.ambient_mode.description": "הצגת תמונות מהקטלוגים שלך כשהטלוויזיה במצב סרק",
-  "ambient.enabled": "מופעל",
-  "ambient.start_after": "התחלה לאחר",
   "ambient.minutes": "%s דק׳",
   "ambient.catalogs": "קטלוגים (עד 3)",
   "ambient.catalogs_count": "%1 מתוך %2",
@@ -3246,5 +3244,9 @@
   "watch.error": "לא ניתן להתחבר לחדר",
   "shortcuts.watch_together": "צפייה משותפת",
   "shortcuts.player_watch_together": "לוח צפייה משותפת",
-  "watch.hint_alone": "שתפו את הקוד עם חברים כדי להתחיל לצפות יחד."
+  "watch.hint_alone": "שתפו את הקוד עם חברים כדי להתחיל לצפות יחד.",
+  "settings.ambientModeEnabled": "מופעל",
+  "settings.ambientModeTimeoutMinutes": "התחלה לאחר",
+  "settings.row.ambientModeEnabled.description": "הצגת תמונות כשהאפליקציה במצב סרק",
+  "settings.row.ambientModeTimeoutMinutes.description": "זמן סרק לפני תחילת המצגת"
 }

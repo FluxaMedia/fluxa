@@ -73,9 +73,9 @@ pub fn catalog_options(addons: &[Value]) -> Vec<CatalogOption> {
             options.push(CatalogOption {
                 key: catalog_key(transport_url, content_type, id),
                 name: if addon_name.is_empty() {
-                    name.to_owned()
+                    format!("{name} ({content_type})")
                 } else {
-                    format!("{name} · {addon_name}")
+                    format!("{name} ({content_type}) · {addon_name}")
                 },
                 content_type: content_type.to_owned(),
                 transport_url: transport_url.to_owned(),

@@ -580,8 +580,8 @@ fn content_height(
                 + collections::collections_height(settings, settings.language(), metrics.compact)
         }
         "Ambient Mode" => {
-            APPEARANCE_PAGE_HEADER_HEIGHT
-                + ambient::ambient_height(settings, settings.language(), metrics.compact)
+            groups_height(&groups, width, language, rows_metrics)
+                + ambient::ambient_height(settings, language, metrics.compact)
         }
         "Add-ons" => {
             APPEARANCE_PAGE_HEADER_HEIGHT
@@ -758,6 +758,7 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
             _ => format!("{value}h"),
         },
         "holdSpeed" => format!("{value}x"),
+        "ambientModeTimeoutMinutes" => localized("ambient.minutes", language).replace("%s", value),
         "playerBufferCacheMb" => format!("{value} MB"),
         _ => localized_or(&format!("settings.option.{value}"), value, language),
     }
@@ -1705,15 +1706,19 @@ fn draw_settings_extended_section(
             metrics,
             layout,
         ),
-        "Ambient Mode" => ambient::draw_ambient_settings(
-            context,
-            settings,
-            language,
-            rect,
-            rect.top() + metrics.settings_subpage_header_offset,
-            metrics,
-            layout,
-        ),
+        "Ambient Mode" => {
+            let top = group_cards(
+                rect,
+                &visible_groups(settings, viewport),
+                language,
+                described(metrics),
+            )
+            .last()
+            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
+                card.bottom() + APPEARANCE_GROUP_GAP
+            });
+            ambient::draw_ambient_settings(context, settings, language, rect, top, metrics, layout);
+        }
         "Add-ons" => addons::draw_addons(
             context,
             settings,

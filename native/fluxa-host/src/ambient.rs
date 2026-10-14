@@ -3,8 +3,7 @@ use std::sync::mpsc::Receiver;
 use fluxa_core::ambient::{self, Slide};
 use fluxa_ui::{
     AMBIENT_FADE_IN, AMBIENT_FADE_OUT, AMBIENT_MOTIONS, AMBIENT_SLIDE_SECONDS, AmbientView,
-    NODE_SETTINGS_AMBIENT_CATALOG_BASE, NODE_SETTINGS_AMBIENT_ENABLED,
-    NODE_SETTINGS_AMBIENT_SAME_AS_HERO, NODE_SETTINGS_AMBIENT_TIMEOUT, next_ambient_motion,
+    NODE_SETTINGS_AMBIENT_CATALOG_BASE, NODE_SETTINGS_AMBIENT_SAME_AS_HERO, next_ambient_motion,
 };
 use serde_json::{Value, json};
 
@@ -351,23 +350,7 @@ pub(crate) fn sync_settings(state: &mut RendererState) {
 }
 
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
-    if node == NODE_SETTINGS_AMBIENT_ENABLED {
-        let enabled = state.settings.bool_value("ambientModeEnabled");
-        crate::stream_badges::set_setting(state, "ambientModeEnabled", json!(!enabled));
-    } else if node == NODE_SETTINGS_AMBIENT_TIMEOUT {
-        let current =
-            ambient::timeout_minutes(state.settings.str_value("ambientModeTimeoutMinutes"));
-        let position = ambient::TIMEOUT_MINUTES
-            .iter()
-            .position(|minutes| *minutes == current)
-            .unwrap_or(0);
-        let next = ambient::TIMEOUT_MINUTES[(position + 1) % ambient::TIMEOUT_MINUTES.len()];
-        crate::stream_badges::set_setting(
-            state,
-            "ambientModeTimeoutMinutes",
-            json!(next.to_string()),
-        );
-    } else if node == NODE_SETTINGS_AMBIENT_SAME_AS_HERO {
+    if node == NODE_SETTINGS_AMBIENT_SAME_AS_HERO {
         crate::stream_badges::set_setting(state, "ambientModeCatalogs", json!([]));
     } else if let Some(index) = node
         .checked_sub(NODE_SETTINGS_AMBIENT_CATALOG_BASE)

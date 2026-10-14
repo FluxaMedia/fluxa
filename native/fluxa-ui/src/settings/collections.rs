@@ -66,6 +66,11 @@ pub(super) enum Line {
         pills: Vec<(u64, String)>,
     },
     Note(String),
+    Switch {
+        label: String,
+        node: u64,
+        on: bool,
+    },
 }
 
 pub(super) struct Group {
@@ -515,6 +520,46 @@ fn draw_line(
                     None,
                 );
             }
+        }
+        Line::Switch { label, node, on } => {
+            layout.focusable.push((*node, row));
+            let mut clicked = false;
+            components::placed_front(
+                context,
+                Id::new(("fluxa-settings-switch", *node)),
+                row.min,
+                |ui| {
+                    let (_, response) = ui.allocate_exact_size(row.size(), Sense::click());
+                    clicked = response.clicked();
+                },
+            );
+            if clicked {
+                layout.activated = Some(*node);
+            }
+            let track = Rect::from_center_size(
+                row.right_center() - Vec2::new(metrics.settings_toggle_width * 0.5 + 3.0, 0.0),
+                Vec2::new(
+                    metrics.settings_toggle_width,
+                    metrics.settings_toggle_height,
+                ),
+            );
+            components::toggle(
+                context,
+                painter,
+                Id::new(("fluxa-settings-switch-track", *node)),
+                track,
+                *on,
+                metrics,
+            );
+            draw_text(
+                painter,
+                Pos2::new(row.left(), row.center().y),
+                Align2::LEFT_CENTER,
+                label,
+                crate::fonts::regular(size),
+                metrics.text_primary,
+                Some(track.left() - row.left() - 12.0),
+            );
         }
         Line::Note(text) => {
             draw_text(

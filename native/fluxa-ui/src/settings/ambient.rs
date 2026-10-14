@@ -1,4 +1,4 @@
-use super::collections::{Group, Line, draw_groups, groups_height, toggle};
+use super::collections::{Group, Line, draw_groups, groups_height};
 use super::*;
 
 fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
@@ -8,56 +8,29 @@ fn groups(settings: &SettingsModel, language: &str) -> Vec<Group> {
         .iter()
         .filter(|row| row.selected)
         .count();
-    let mut catalogs = vec![
+    let mut lines = vec![
         Line::Note(
             tr("ambient.catalogs_count")
                 .replace("%1", &selected.to_string())
                 .replace("%2", &settings.ambient_limit.to_string()),
         ),
-        toggle(
-            "ambient.same_as_hero",
-            NODE_SETTINGS_AMBIENT_SAME_AS_HERO,
-            selected == 0,
-            language,
-        ),
+        Line::Switch {
+            label: tr("ambient.same_as_hero"),
+            node: NODE_SETTINGS_AMBIENT_SAME_AS_HERO,
+            on: selected == 0,
+        },
     ];
     for (index, row) in settings.ambient_catalogs.iter().enumerate() {
-        catalogs.push(Line::Choice {
+        lines.push(Line::Switch {
             label: row.name.clone(),
-            pills: vec![(
-                NODE_SETTINGS_AMBIENT_CATALOG_BASE + index as u64,
-                tr(if row.selected {
-                    "common.on"
-                } else {
-                    "common.off"
-                }),
-            )],
+            node: NODE_SETTINGS_AMBIENT_CATALOG_BASE + index as u64,
+            on: row.selected,
         });
     }
-    vec![
-        Group {
-            title: tr("settings.section.ambient_mode"),
-            lines: vec![
-                toggle(
-                    "ambient.enabled",
-                    NODE_SETTINGS_AMBIENT_ENABLED,
-                    settings.bool_value("ambientModeEnabled"),
-                    language,
-                ),
-                Line::Choice {
-                    label: tr("ambient.start_after"),
-                    pills: vec![(
-                        NODE_SETTINGS_AMBIENT_TIMEOUT,
-                        tr("ambient.minutes").replace("%s", &settings.ambient_minutes.to_string()),
-                    )],
-                },
-            ],
-        },
-        Group {
-            title: tr("ambient.catalogs"),
-            lines: catalogs,
-        },
-    ]
+    vec![Group {
+        title: tr("ambient.catalogs"),
+        lines,
+    }]
 }
 
 pub(super) fn ambient_height(settings: &SettingsModel, language: &str, compact: bool) -> f32 {

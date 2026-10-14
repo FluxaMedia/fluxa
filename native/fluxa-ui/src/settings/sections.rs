@@ -214,6 +214,19 @@ pub(super) const HOME_SETTINGS: [SettingsRow; 19] = [
         options: &[],
     },
 ];
+pub(super) const AMBIENT_SETTINGS: [SettingsRow; 2] = [
+    SettingsRow {
+        label: "Enabled",
+        key: "ambientModeEnabled",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Start After",
+        key: "ambientModeTimeoutMinutes",
+        options: &["1", "2", "5", "10", "15", "30"],
+    },
+];
+pub(super) const AMBIENT_GROUPS: [(usize, &str); 1] = [(2, "settings.section.ambient_mode")];
 pub(super) const HOME_GROUPS: [(usize, &str); 2] = [
     (9, "settings.group.home"),
     (10, "settings.group.continue_watching"),
@@ -1071,8 +1084,8 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
         title: "Ambient Mode",
         category: "Appearance",
         description: "Show artwork from your catalogs while the TV sits idle",
-        rows: &EMPTY_SETTINGS,
-        groups: &[],
+        rows: &AMBIENT_SETTINGS,
+        groups: &AMBIENT_GROUPS,
     },
     SettingsSection {
         title: "Details",
