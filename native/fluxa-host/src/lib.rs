@@ -260,7 +260,16 @@ fn current_presence(state: &RendererState) -> presence::Presence {
         return presence::Presence::Off;
     }
     if let Some(player) = state.player.as_ref() {
-        return player.presence();
+        let mut presence = player.presence();
+        let party = state
+            .watch_view
+            .as_ref()
+            .filter(|view| view.room_code.is_some() && view.members.len() > 1)
+            .map(|view| (view.members.len() as i32, 6));
+        if let presence::Presence::Playing { party: slot, .. } = &mut presence {
+            *slot = party;
+        }
+        return presence;
     }
     if state.route == Route::Detail && !state.detail.title.is_empty() {
         return presence::Presence::Viewing {

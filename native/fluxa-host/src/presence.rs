@@ -17,6 +17,7 @@ pub(crate) enum Presence {
         position: f64,
         duration: f64,
         poster: Option<String>,
+        party: Option<(i32, i32)>,
     },
 }
 
@@ -28,8 +29,12 @@ impl Presence {
                 detail,
                 paused,
                 duration,
+                party,
                 ..
-            } => format!("play|{title}|{detail:?}|{paused}|{}", *duration as i64),
+            } => format!(
+                "play|{title}|{detail:?}|{paused}|{}|{party:?}",
+                *duration as i64
+            ),
             Presence::Viewing { title, .. } => format!("view|{title}"),
             Presence::Browsing(label) => format!("browse|{label}"),
             Presence::Off => "off".to_owned(),
@@ -142,6 +147,7 @@ fn worker(rx: Receiver<Presence>) {
                 position,
                 duration,
                 poster,
+                party,
             } => {
                 if *paused {
                     let _ = ipc.clear_activity();
@@ -159,6 +165,9 @@ fn worker(rx: Receiver<Presence>) {
                     );
                 if let Some(detail) = detail {
                     act = act.state(detail);
+                }
+                if let Some((size, max)) = party {
+                    act = act.party(activity::Party::new().size([*size, *max]));
                 }
                 if !*paused && *duration > 0.0 {
                     let start = now - *position as i64;

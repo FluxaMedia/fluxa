@@ -471,6 +471,7 @@ impl PlayerSession {
                 .and_then(Value::as_str)
                 .filter(|url| url.starts_with("http"))
                 .map(ToOwned::to_owned),
+            party: None,
         }
     }
 
@@ -702,7 +703,7 @@ impl PlayerSession {
             has_next: self.overlay.upcoming().is_some(),
             has_previous: menu::has_previous(self),
             trailer: self.trailer.is_some(),
-            has_episodes:menu::has_episodes(self),
+            has_episodes: menu::has_episodes(self),
             dim: 1.0 - self.brightness,
             options: fluxa_ui::PlayerOptions::default(),
         }
