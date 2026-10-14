@@ -10,6 +10,11 @@ pub(super) struct NuvioSession {
     pub profile_index: i64,
 }
 
+fn nuvio_refresh_lock() -> &'static futures::lock::Mutex<()> {
+    static LOCK: std::sync::OnceLock<futures::lock::Mutex<()>> = std::sync::OnceLock::new();
+    LOCK.get_or_init(|| futures::lock::Mutex::new(()))
+}
+
 impl NuvioSession {
     pub fn rpc(&self, name: &str) -> reqwest::RequestBuilder {
         self.client
@@ -55,6 +60,8 @@ impl EffectExecutor {
         ) else {
             return Ok(None);
         };
+        let _refreshing = nuvio_refresh_lock().lock().await;
+        let profile = &self.with_stored_nuvio_tokens(profile);
         let Some(mut token) = profile
             .get("nuvioAccessToken")
             .and_then(Value::as_str)
@@ -116,6 +123,45 @@ impl EffectExecutor {
             token,
             profile_index,
         }))
+    }
+
+    fn with_stored_nuvio_tokens(&self, profile: &Value) -> Value {
+        let mut merged = profile.clone();
+        let stored = self
+            .storage
+            .read_json("profiles")
+            .ok()
+            .flatten()
+            .map(|profiles| {
+                find_profile(
+                    &profiles,
+                    profile
+                        .get("id")
+                        .and_then(Value::as_str)
+                        .unwrap_or_default(),
+                )
+            });
+        let expiry = |value: &Value| {
+            let at = value
+                .get("nuvioTokenExpiresAt")
+                .and_then(Value::as_i64)
+                .unwrap_or_default();
+            if at > 100_000_000_000 { at / 1000 } else { at }
+        };
+        if let Some(stored) = stored.filter(|stored| expiry(stored) > expiry(profile))
+            && let Some(fields) = merged.as_object_mut()
+        {
+            for key in [
+                "nuvioAccessToken",
+                "nuvioRefreshToken",
+                "nuvioTokenExpiresAt",
+            ] {
+                if let Some(value) = stored.get(key) {
+                    fields.insert(key.into(), value.clone());
+                }
+            }
+        }
+        merged
     }
 
     fn store_nuvio_tokens(&self, profile: &Value, refreshed: &Value) -> Result<(), String> {
