@@ -827,7 +827,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                         id,
                         item_type,
                         preview,
-                    } if state.route != Route::Detail && !logical_viewport(state).is_tv() => {
+                    } if state.route != Route::Detail
+                        && state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop => {
                         NativeAction::DetailModal {
                             id,
                             item_type,
