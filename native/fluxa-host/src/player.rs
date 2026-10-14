@@ -20,6 +20,7 @@ mod seek_previews;
 mod shuffle;
 mod stats;
 mod submit;
+mod subtitle_sync;
 mod trailer;
 mod trickplay;
 mod upnext;
@@ -53,6 +54,13 @@ pub struct VideoStatus {
     pub chapters: Vec<(f64, String)>,
     pub buffering: Option<f32>,
     pub buffered: f64,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct SpeechEnergy {
+    pub start: f64,
+    pub frame_seconds: f64,
+    pub energies: Vec<f64>,
 }
 
 pub struct Thumbnail {
@@ -135,6 +143,14 @@ pub trait VideoBackend: Send {
     fn tracks(&mut self) -> Vec<VideoTrack> {
         Vec::new()
     }
+    fn analyze_audio(
+        &mut self,
+        _url: &str,
+        _start: f64,
+        _length: f64,
+    ) -> Option<Receiver<Option<SpeechEnergy>>> {
+        None
+    }
     fn thumbnails(&mut self, _plan: &ThumbnailPlan) {}
     fn thumbnail_progress(&mut self) -> Option<ThumbnailProgress> {
         None
@@ -169,6 +185,7 @@ pub(crate) struct PlayerSession {
     pub(crate) locked: bool,
     style: Value,
     style_hidden: bool,
+    sync: subtitle_sync::SyncState,
     torrent_link: Option<String>,
     torrent_since: Option<Instant>,
     torrent_rx: Option<Receiver<Value>>,
@@ -287,6 +304,7 @@ impl PlayerSession {
             locked: false,
             style: Value::Null,
             style_hidden: false,
+            sync: subtitle_sync::SyncState::default(),
             torrent_link: None,
             torrent_since: None,
             torrent_rx: None,
@@ -937,11 +955,12 @@ pub(crate) fn pump(state: &mut RendererState) {
     }
     advance_shuffle(state);
     menu::tick_sleep(state);
+    menu::tick_style(state);
+    subtitle_sync::tick(state);
     let RendererState {
         shuffle,
         player,
         session,
-    menu::tick_style(state);
         video,
         gpu,
         settings,

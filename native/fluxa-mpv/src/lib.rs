@@ -8,8 +8,10 @@ use std::ptr;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+mod analysis;
 mod api;
 use api::MpvApi;
+pub use analysis::{SpeechEnergy, analyze_speech};
 
 type MpvHandle = c_void;
 type MpvRenderContext = c_void;

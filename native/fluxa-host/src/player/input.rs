@@ -226,13 +226,13 @@ pub(crate) enum KeyOutcome {
 pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
     use crate::KeyInput;
     use fluxa_renderer::ui::{GamepadButton, Key};
+    if state.player.as_ref().is_some_and(|player| player.locked) {
+        return locked_key(state, input);
+    }
     let closes = matches!(
         input,
         KeyInput::Key(Key::Back | Key::Escape) | KeyInput::Gamepad(GamepadButton::East)
     );
-    if state.player.as_ref().is_some_and(|player| player.locked) {
-        return locked_key(state, input);
-    }
     let tv = state.home.form_factor == fluxa_ui::UiFormFactorJson::Tv;
     let recommending = state
         .player
@@ -290,10 +290,6 @@ pub(crate) fn key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutco
     KeyOutcome::Handled
 }
 
-pub(super) fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
-    use crate::KeyInput;
-    use fluxa_renderer::ui::{GamepadButton, Key};
-    let on_seek = state.ui.focused() == Some(fluxa_ui::NODE_PLAYER_SEEK);
 fn locked_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
     use crate::KeyInput;
     use fluxa_renderer::ui::{GamepadButton, Key};
@@ -320,6 +316,10 @@ fn locked_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
     KeyOutcome::Handled
 }
 
+pub(super) fn tv_key(state: &mut RendererState, input: crate::KeyInput) -> KeyOutcome {
+    use crate::KeyInput;
+    use fluxa_renderer::ui::{GamepadButton, Key};
+    let on_seek = state.ui.focused() == Some(fluxa_ui::NODE_PLAYER_SEEK);
     let Some(player) = state.player.as_mut() else {
         return KeyOutcome::Focus;
     };

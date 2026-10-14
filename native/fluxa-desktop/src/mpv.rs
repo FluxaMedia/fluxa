@@ -184,6 +184,27 @@ impl VideoBackend for MpvBackend {
         }
     }
 
+    fn analyze_audio(
+        &mut self,
+        url: &str,
+        start: f64,
+        length: f64,
+    ) -> Option<std::sync::mpsc::Receiver<Option<fluxa_host::SpeechEnergy>>> {
+        let analysis = fluxa_mpv::analyze_speech(url, start, length);
+        let (sender, receiver) = std::sync::mpsc::channel();
+        std::thread::spawn(move || {
+            let energy = analysis.recv().ok().flatten().map(|energy| {
+                fluxa_host::SpeechEnergy {
+                    start: energy.start,
+                    frame_seconds: energy.frame_seconds,
+                    energies: energy.energies,
+                }
+            });
+            let _ = sender.send(energy);
+        });
+        Some(receiver)
+    }
+
     fn tracks(&mut self) -> Vec<fluxa_host::VideoTrack> {
         self.player
             .as_ref()

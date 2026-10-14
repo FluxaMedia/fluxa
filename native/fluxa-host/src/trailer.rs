@@ -439,7 +439,7 @@ pub(crate) fn range_proxy(_url: &str) -> Option<String> {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn fetch_text(_url: &str) -> std::sync::mpsc::Receiver<Option<String>> {
+pub(crate) fn fetch_text(_url: &str) -> std::sync::mpsc::Receiver<Option<String>> {
     std::sync::mpsc::channel().1
 }
 

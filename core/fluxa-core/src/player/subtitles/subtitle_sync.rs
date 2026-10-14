@@ -77,6 +77,44 @@ pub(crate) fn subtitle_sync_apply_json(request_json: &str) -> Option<String> {
     )
 }
 
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SubtitleSyncEstimateRequest {
+    subtitle_text: String,
+    #[serde(default)]
+    reference_text: Option<String>,
+    #[serde(default)]
+    frame_seconds: f64,
+    #[serde(default)]
+    energies: Vec<f64>,
+    #[serde(default)]
+    energy_start: f64,
+}
+
+pub(crate) fn subtitle_sync_estimate_json(request_json: &str) -> Option<String> {
+    let request = serde_json::from_str::<SubtitleSyncEstimateRequest>(request_json).ok()?;
+    let reference = match request.reference_text.as_deref() {
+        Some(text) => intervals_from_text(text),
+        None => speech_intervals_from_energy(request.frame_seconds, &request.energies)
+            .into_iter()
+            .map(|interval| Interval {
+                start: interval.start + request.energy_start,
+                end: interval.end + request.energy_start,
+            })
+            .collect(),
+    };
+    let alignment = align_subtitle_text(&request.subtitle_text, reference)?;
+    Some(
+        json!({
+            "delaySeconds": alignment.delay_seconds,
+            "scale": alignment.scale,
+            "confidence": alignment.confidence,
+            "matched": alignment.matched
+        })
+        .to_string(),
+    )
+}
+
 pub(crate) fn delay_for_cue(captured_time: f64, cue_start: f64) -> Option<f64> {
     if !captured_time.is_finite() || !cue_start.is_finite() {
         return None;
@@ -534,7 +572,7 @@ fn overlap_score(subtitles: &[Interval], speech: &[Interval], delay: f64) -> f64
 mod tests {
     use super::{
         parse_subtitle_cues_with_text, speech_intervals_from_energy, subtitle_cue_list_json,
-        subtitle_sync_apply_json, subtitle_sync_capture_json,
+        subtitle_sync_apply_json, subtitle_sync_capture_json, subtitle_sync_estimate_json,
     };
     use serde_json::Value;
 
@@ -604,5 +642,35 @@ mod tests {
                 .expect("cue list");
         let value: Value = serde_json::from_str(&result).expect("valid cue list");
         assert_eq!(value["cues"][0]["start"], 1.0);
+    }
+
+    #[test]
+    fn estimate_finds_the_shift_against_a_reference_subtitle() {
+        let cues = |shift: f64| {
+            (0..40)
+                .map(|n| {
+                    let start = 10.0 + n as f64 * 7.3 + ((n * n) % 7) as f64 * 1.7 + shift;
+                    let stamp = |t: f64| {
+                        format!(
+                            "{:02}:{:02}:{:02},{:03}",
+                            (t / 3600.0) as u32,
+                            (t / 60.0) as u32 % 60,
+                            t as u32 % 60,
+                            ((t.fract()) * 1000.0) as u32
+                        )
+                    };
+                    format!("{}\n{} --> {}\nline {}\n", n + 1, stamp(start), stamp(start + 2.0), n)
+                })
+                .collect::<Vec<_>>()
+                .join("\n")
+        };
+        let request = serde_json::json!({
+            "subtitleText": cues(4.0),
+            "referenceText": cues(0.0),
+        });
+        let result = subtitle_sync_estimate_json(&request.to_string()).expect("estimate");
+        let result: Value = serde_json::from_str(&result).expect("valid estimate");
+        let delay = result["delaySeconds"].as_f64().expect("delay");
+        assert!((delay + 4.0).abs() < 0.2, "delay was {delay}");
     }
 }

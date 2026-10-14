@@ -15,6 +15,8 @@ pub(super) enum Menu {
     Settings,
     Delay(bool),
     Style,
+    Sync,
+    SyncCues,
 }
 
 enum Item {
@@ -35,6 +37,10 @@ enum Item {
     Stats,
     OpenStyle,
     Style(&'static str),
+    OpenSync,
+    Sync(subtitle_sync::Kind),
+    SyncReset,
+    SyncCue(usize),
     Language(bool, String),
     LanguageBack,
 }
@@ -233,6 +239,12 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 false,
                 Item::OpenStyle,
             ));
+            rows.push(row(
+                text("player.subtitle_sync"),
+                None,
+                false,
+                Item::OpenSync,
+            ));
             (String::new(), rows)
         }
         Menu::Speed => {
@@ -369,6 +381,62 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
                 .collect();
             (text("player.subtitle_style"), rows)
         }
+        Menu::Sync => {
+            let mut rows = Vec::new();
+            if let Some((key, arg)) = player.sync.message.as_ref() {
+                let message = match arg {
+                    Some(arg) => text(key).replace("%s", arg),
+                    None => text(key),
+                };
+                let mut status = row(message, None, false, Item::None);
+                status.0.group = true;
+                rows.push(status);
+            }
+            rows.push(row(
+                text("player.sync_manual"),
+                None,
+                false,
+                Item::Sync(subtitle_sync::Kind::Manual),
+            ));
+            rows.push(row(
+                text("player.sync_audio"),
+                None,
+                false,
+                Item::Sync(subtitle_sync::Kind::Audio),
+            ));
+            let references = subtitle_sync::references(player);
+            if !references.is_empty() {
+                rows.push(heading(text("player.sync_match")));
+                rows.extend(references.into_iter().map(|(index, label)| {
+                    row(
+                        label,
+                        None,
+                        false,
+                        Item::Sync(subtitle_sync::Kind::Reference(index)),
+                    )
+                }));
+            }
+            rows.push(row(
+                text("player.sync_reset"),
+                Some(format!("{:+.1}s", player.subtitle_delay)),
+                false,
+                Item::SyncReset,
+            ));
+            (text("player.subtitle_sync"), rows)
+        }
+        Menu::SyncCues => {
+            let mut rows = vec![heading(text("player.sync_pick"))];
+            rows.extend(player.sync.cues.iter().enumerate().map(|(index, (start, line))| {
+                let stamp = format!("{}:{:02}", (*start / 60.0) as u32, *start as u32 % 60);
+                row(
+                    line.replace('\n', " "),
+                    Some(stamp),
+                    false,
+                    Item::SyncCue(index),
+                )
+            }));
+            (text("player.subtitle_sync"), rows)
+        }
         Menu::Delay(subtitles) => {
             let current = if subtitles {
                 player.subtitle_delay
@@ -499,6 +567,13 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
             }
         }
         Item::OpenStyle => player.panel = Some(Panel::Menu(Menu::Style)),
+        Item::OpenSync => {
+            player.sync.message = None;
+            player.panel = Some(Panel::Menu(Menu::Sync));
+        }
+        Item::Sync(kind) => subtitle_sync::begin(state, kind),
+        Item::SyncReset => subtitle_sync::reset(state),
+        Item::SyncCue(index) => subtitle_sync::pick_cue(state, index),
         Item::Style(key) => step_style(state, key),
         Item::Upscaling => super::toggle_upscaling(state),
         Item::UpscalingMode => super::step_upscaling_mode(state, 1),
@@ -561,7 +636,7 @@ pub(super) fn tick_style(state: &mut RendererState) {
     }
 }
 
-fn mpv(state: &mut RendererState, name: &str, value: &str) {
+pub(super) fn mpv(state: &mut RendererState, name: &str, value: &str) {
     command(
         state,
         VideoCommand::Mpv(vec!["set".to_owned(), name.to_owned(), value.to_owned()]),
