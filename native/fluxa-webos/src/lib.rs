@@ -16,6 +16,7 @@ pub mod sdl;
 pub mod remote;
 mod starfish;
 pub mod player;
+pub mod subtitle;
 
 pub use events::{Event, EventKind};
 pub use feed::{FeedReply, feed_payload};

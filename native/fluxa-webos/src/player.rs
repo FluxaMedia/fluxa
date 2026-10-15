@@ -6,6 +6,7 @@ use crate::events::{Event, EventKind};
 use crate::feed::FeedReply;
 use crate::hdr::HdrInfo;
 use crate::load::{AudioStream, VideoStream};
+use crate::subtitle::{Cue, Cues};
 
 const MAX_FEED_AHEAD_NS: i64 = 1_600_000_000;
 
@@ -13,6 +14,21 @@ pub struct Packet {
     pub video: bool,
     pub pts_ns: i64,
     pub data: Vec<u8>,
+    pub cue: Option<Cue>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct TrackInfo {
+    pub id: String,
+    pub subtitle: bool,
+    pub language: Option<String>,
+    pub title: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Track {
+    pub info: TrackInfo,
+    pub selected: bool,
 }
 
 pub struct MediaInfo {
@@ -20,12 +36,18 @@ pub struct MediaInfo {
     pub audio: Option<AudioStream>,
     pub duration_ns: i64,
     pub hdr: Option<HdrInfo>,
+    pub tracks: Vec<TrackInfo>,
+    pub audio_id: Option<String>,
 }
 
 pub trait Demuxer {
     fn open(&mut self, url: &str) -> Result<MediaInfo, String>;
     fn read(&mut self) -> Option<Packet>;
     fn seek(&mut self, pts_ns: i64) -> Result<(), String>;
+    fn select_audio(&mut self, _id: &str) -> Result<AudioStream, String> {
+        Err("audio switching is not supported".into())
+    }
+    fn select_subtitle(&mut self, _id: Option<&str>) {}
 }
 
 pub trait Pipeline {
@@ -48,7 +70,8 @@ pub struct Status {
     pub buffering: bool,
     pub error: Option<String>,
     pub buffered: f64,
-    pub audio: Option<String>,
+    pub tracks: Vec<Track>,
+    pub subtitle: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -67,6 +90,8 @@ pub struct Player<D, P> {
     pending: Option<Packet>,
     position_ns: i64,
     drained: bool,
+    cues: Cues,
+    subtitle_id: Option<String>,
     status: Status,
 }
 
@@ -85,6 +110,8 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             pending: None,
             position_ns: 0,
             drained: false,
+            cues: Cues::default(),
+            subtitle_id: None,
             status: Status { volume: 100.0, ..Status::default() },
         }
     }
@@ -102,6 +129,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             "seekTo" => self.seek_to((seconds(&request["seconds"]) * 1e9) as i64),
             "setVolume" => self.status.volume = seconds(&request["value"]).clamp(0.0, 100.0),
             "toggleMute" => self.status.volume = if self.status.volume > 0.0 { 0.0 } else { 100.0 },
+            "selectTracks" => self.select_tracks(request),
             _ => {}
         }
     }
@@ -118,8 +146,85 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             return self.fail(error);
         }
         self.status.duration = info.duration_ns as f64 / 1e9;
-        self.status.audio = info.audio.as_ref().map(|audio| format!("{:?} {}ch", audio.codec, audio.channels));
+        self.subtitle_id = None;
+        self.cues.clear();
         self.info = Some(info);
+        self.refresh_tracks();
+    }
+
+    fn refresh_tracks(&mut self) {
+        let Some(info) = &self.info else {
+            return;
+        };
+        self.status.tracks = info
+            .tracks
+            .iter()
+            .map(|track| Track {
+                selected: if track.subtitle {
+                    self.subtitle_id.as_ref() == Some(&track.id)
+                } else {
+                    info.audio_id.as_ref() == Some(&track.id)
+                },
+                info: track.clone(),
+            })
+            .collect();
+    }
+
+    fn select_tracks(&mut self, request: &Value) {
+        if self.state != State::Ready {
+            return;
+        }
+        if let Some(id) = request["audio"].as_str() {
+            self.switch_audio(id);
+        }
+        let wanted = match request["subtitle"].as_str() {
+            Some(id) => Some(id.to_owned()),
+            None if request["subtitlesOff"].as_bool() == Some(true) => None,
+            None => return self.refresh_tracks(),
+        };
+        if wanted == self.subtitle_id {
+            return;
+        }
+        self.demuxer.select_subtitle(wanted.as_deref());
+        self.subtitle_id = wanted;
+        self.cues.clear();
+        self.status.subtitle = None;
+        self.refresh_tracks();
+        if self.subtitle_id.is_some() {
+            self.seek_to(self.position_ns);
+        }
+    }
+
+    fn switch_audio(&mut self, id: &str) {
+        let Some(mut info) = self.info.take() else {
+            return;
+        };
+        if info.audio_id.as_deref() == Some(id) {
+            self.info = Some(info);
+            return;
+        }
+        let stream = match self.demuxer.select_audio(id) {
+            Ok(stream) => stream,
+            Err(error) => {
+                self.info = Some(info);
+                return self.fail(error);
+            }
+        };
+        info.audio = Some(stream);
+        info.audio_id = Some(id.to_owned());
+        let position = self.position_ns;
+        self.pipeline.unload();
+        self.pending = None;
+        self.drained = false;
+        self.cues.clear();
+        self.state = State::Opening;
+        self.status.buffering = true;
+        let reloaded = self.demuxer.seek(position).and_then(|_| self.pipeline.load(&info, position));
+        self.info = Some(info);
+        self.refresh_tracks();
+        if let Err(error) = reloaded {
+            self.fail(error);
+        }
     }
 
     fn stop(&mut self) {
@@ -131,6 +236,8 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.pending = None;
         self.position_ns = 0;
         self.drained = false;
+        self.cues.clear();
+        self.subtitle_id = None;
         let volume = self.status.volume;
         self.status = Status { volume, ..Status::default() };
     }
@@ -175,6 +282,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         if self.state == State::Ready {
             self.feed();
         }
+        self.status.subtitle = self.cues.at(self.position_ns);
     }
 
     fn apply(&mut self, event: Event) {
@@ -211,6 +319,10 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
                     }
                 },
             };
+            if let Some(cue) = packet.cue {
+                self.cues.push(cue);
+                continue;
+            }
             if packet.pts_ns - self.position_ns > MAX_FEED_AHEAD_NS {
                 self.pending = Some(packet);
                 return;
@@ -244,6 +356,8 @@ mod tests {
             audio: None,
             duration_ns: 100_000_000_000,
             hdr: None,
+            tracks: Vec::new(),
+            audio_id: None,
         }
     }
 
@@ -262,6 +376,9 @@ mod tests {
         fn seek(&mut self, pts_ns: i64) -> Result<(), String> {
             self.seeks.borrow_mut().push(pts_ns);
             Ok(())
+        }
+        fn select_audio(&mut self, _id: &str) -> Result<AudioStream, String> {
+            Ok(AudioStream { codec: crate::load::AudioCodec::Ac3, channels: 6, sample_rate: 48000, extradata: Vec::new() })
         }
     }
 
@@ -313,7 +430,7 @@ mod tests {
     fn rig(pts: &[i64]) -> Rig {
         let log = Rc::new(RefCell::new(Log::default()));
         let seeks = Rc::new(RefCell::new(Vec::new()));
-        let packets = pts.iter().map(|&pts_ns| Packet { video: true, pts_ns, data: vec![0] }).collect();
+        let packets = pts.iter().map(|&pts_ns| Packet { video: true, pts_ns, data: vec![0], cue: None }).collect();
         let (events, rx) = channel();
         let player = Player::new(Source { packets, seeks: seeks.clone() }, Sink(log.clone()), rx);
         Rig { player, log, seeks, events }
@@ -395,5 +512,28 @@ mod tests {
         rig.player.handle(&json!({"type": "stop"}));
         assert_eq!(rig.log.borrow().calls.last().unwrap(), "unload");
         assert_eq!(rig.player.status().duration, 0.0);
+    }
+
+    #[test]
+    fn switching_audio_reloads_the_pipeline_at_the_current_position() {
+        let mut rig = started(&[]);
+        rig.events.send(event(EventKind::FrameReady, 7_000_000_000)).unwrap();
+        rig.player.tick();
+        rig.player.handle(&json!({"type": "selectTracks", "audio": "a2"}));
+        let calls = rig.log.borrow().calls.clone();
+        assert_eq!(&calls[calls.len() - 2..], ["unload", "load"]);
+        assert_eq!(*rig.seeks.borrow(), vec![7_000_000_000]);
+    }
+
+    #[test]
+    fn cue_text_is_reported_only_while_it_is_on_screen() {
+        let mut rig = started(&[]);
+        rig.player.cues.push(Cue { start_ns: 1_000_000_000, end_ns: 2_000_000_000, text: "hi".into() });
+        rig.events.send(event(EventKind::FrameReady, 1_500_000_000)).unwrap();
+        rig.player.tick();
+        assert_eq!(rig.player.status().subtitle.as_deref(), Some("hi"));
+        rig.events.send(event(EventKind::FrameReady, 2_500_000_000)).unwrap();
+        rig.player.tick();
+        assert_eq!(rig.player.status().subtitle, None);
     }
 }

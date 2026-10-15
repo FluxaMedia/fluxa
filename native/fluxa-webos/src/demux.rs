@@ -2,19 +2,21 @@ use ffmpeg_next::{self as ffmpeg, Rational, codec::Id, ffi, format, media};
 
 use crate::annexb::{Converter, is_annexb};
 use crate::load::{AudioCodec, AudioStream, VideoCodec, VideoStream};
-use crate::player::{Demuxer, MediaInfo, Packet};
+use crate::player::{Demuxer, MediaInfo, Packet, TrackInfo};
+use crate::subtitle::{self, SubtitleFormat};
 
 pub struct FfmpegDemuxer {
     input: Option<format::context::Input>,
     video: Option<usize>,
     audio: Option<usize>,
+    subtitle: Option<(usize, SubtitleFormat)>,
     converter: Option<Converter>,
     aac_raw: bool,
 }
 
 impl Default for FfmpegDemuxer {
     fn default() -> FfmpegDemuxer {
-        FfmpegDemuxer { input: None, video: None, audio: None, converter: None, aac_raw: false }
+        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false }
     }
 }
 
@@ -59,6 +61,38 @@ fn audio_codec(id: Id, profile: i32, raw: bool) -> Option<AudioCodec> {
     })
 }
 
+fn subtitle_format(id: Id) -> Option<SubtitleFormat> {
+    Some(match id {
+        Id::SUBRIP | Id::TEXT | Id::WEBVTT => SubtitleFormat::Text,
+        Id::ASS | Id::SSA => SubtitleFormat::Ass,
+        Id::MOV_TEXT => SubtitleFormat::MovText,
+        _ => return None,
+    })
+}
+
+fn audio_stream(stream: &format::stream::Stream) -> Option<(AudioStream, bool)> {
+    let parameters = stream.parameters();
+    let extra = extradata(&parameters);
+    let (channels, rate, profile) = unsafe {
+        let raw = &*parameters.as_ptr();
+        (raw.ch_layout.nb_channels as u32, raw.sample_rate as u32, raw.profile)
+    };
+    let raw = !extra.is_empty();
+    let codec = audio_codec(parameters.id(), profile, raw)?;
+    Some((AudioStream { codec, channels, sample_rate: rate, extradata: extra }, raw))
+}
+
+fn track_info(stream: &format::stream::Stream, subtitle: bool) -> TrackInfo {
+    let metadata = stream.metadata();
+    let text = |key: &str| metadata.get(key).filter(|value| !value.is_empty()).map(str::to_owned);
+    let prefix = if subtitle { 's' } else { 'a' };
+    TrackInfo { id: format!("{prefix}{}", stream.index()), subtitle, language: text("language"), title: text("title") }
+}
+
+fn stream_index(id: &str) -> Option<usize> {
+    id.get(1..)?.parse().ok()
+}
+
 impl Demuxer for FfmpegDemuxer {
     fn open(&mut self, url: &str) -> Result<MediaInfo, String> {
         ffmpeg::init().map_err(|error| error.to_string())?;
@@ -83,24 +117,35 @@ impl Demuxer for FfmpegDemuxer {
         let video = VideoStream { codec, width, height, fps, dolby_vision: None };
 
         let mut audio = None;
+        let mut audio_id = None;
+        let mut tracks = Vec::new();
         self.audio = None;
-        if let Some(stream) = input.streams().best(media::Type::Audio) {
-            let parameters = stream.parameters();
-            let extra = extradata(&parameters);
-            let (channels, rate, profile) = unsafe {
-                let raw = &*parameters.as_ptr();
-                (raw.ch_layout.nb_channels as u32, raw.sample_rate as u32, raw.profile)
-            };
-            self.aac_raw = !extra.is_empty();
-            if let Some(codec) = audio_codec(parameters.id(), profile, self.aac_raw) {
-                self.audio = Some(stream.index());
-                audio = Some(AudioStream { codec, channels, sample_rate: rate, extradata: extra });
+        self.subtitle = None;
+        let best = input.streams().best(media::Type::Audio).map(|stream| stream.index());
+        for stream in input.streams() {
+            match stream.parameters().medium() {
+                media::Type::Audio => {
+                    let Some((parsed, raw)) = audio_stream(&stream) else {
+                        continue;
+                    };
+                    tracks.push(track_info(&stream, false));
+                    if Some(stream.index()) == best {
+                        self.aac_raw = raw;
+                        self.audio = Some(stream.index());
+                        audio_id = Some(format!("a{}", stream.index()));
+                        audio = Some(parsed);
+                    }
+                }
+                media::Type::Subtitle if subtitle_format(stream.parameters().id()).is_some() => {
+                    tracks.push(track_info(&stream, true));
+                }
+                _ => {}
             }
         }
 
         let duration_ns = to_ns(input.duration().max(0), Rational::new(1, ffi::AV_TIME_BASE as i32));
         self.input = Some(input);
-        Ok(MediaInfo { video, audio, duration_ns, hdr: None })
+        Ok(MediaInfo { video, audio, duration_ns, hdr: None, tracks, audio_id })
     }
 
     fn read(&mut self) -> Option<Packet> {
@@ -109,6 +154,19 @@ impl Demuxer for FfmpegDemuxer {
             let index = stream.index();
             let is_video = self.video.as_ref().is_some_and(|selected| *selected == index);
             let is_audio = self.audio.as_ref().is_some_and(|selected| *selected == index);
+            if let Some((selected, format)) = self.subtitle.filter(|(selected, _)| *selected == index) {
+                let base = stream.time_base();
+                let Some(pts) = packet.pts().or(packet.dts()) else {
+                    continue;
+                };
+                let start = to_ns(pts, base);
+                let cue = packet.data().and_then(|data| subtitle::cue(format, data, start, to_ns(packet.duration(), base)));
+                if let Some(cue) = cue {
+                    return Some(Packet { video: false, pts_ns: start, data: Vec::new(), cue: Some(cue) });
+                }
+                let _ = selected;
+                continue;
+            }
             if !is_video && !is_audio {
                 continue;
             }
@@ -120,9 +178,26 @@ impl Demuxer for FfmpegDemuxer {
                 (Some(converter), true) if !is_annexb(data) => converter.convert(data, packet.is_key()),
                 _ => data.to_vec(),
             };
-            return Some(Packet { video: is_video, pts_ns: to_ns(pts, base), data });
+            return Some(Packet { video: is_video, pts_ns: to_ns(pts, base), data, cue: None });
         }
         None
+    }
+
+    fn select_audio(&mut self, id: &str) -> Result<AudioStream, String> {
+        let input = self.input.as_ref().ok_or("not open")?;
+        let index = stream_index(id).ok_or("bad track id")?;
+        let stream = input.stream(index).ok_or("no such track")?;
+        let (parsed, raw) = audio_stream(&stream).ok_or("unsupported audio codec")?;
+        self.aac_raw = raw;
+        self.audio = Some(index);
+        Ok(parsed)
+    }
+
+    fn select_subtitle(&mut self, id: Option<&str>) {
+        self.subtitle = id.and_then(stream_index).and_then(|index| {
+            let format = subtitle_format(self.input.as_ref()?.stream(index)?.parameters().id())?;
+            Some((index, format))
+        });
     }
 
     fn seek(&mut self, pts_ns: i64) -> Result<(), String> {

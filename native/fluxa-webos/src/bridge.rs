@@ -24,19 +24,20 @@ pub fn pump<D: Demuxer, P: Pipeline>(player: &mut Player<D, P>, bridge: &Arc<Mut
         buffered: status.buffered,
     };
     let tracks = status
-        .audio
+        .tracks
         .iter()
-        .map(|title| VideoTrack {
-            id: "a0".into(),
-            subtitle: false,
-            language: None,
-            title: Some(title.clone()),
-            selected: true,
+        .map(|track| VideoTrack {
+            id: track.info.id.clone(),
+            subtitle: track.info.subtitle,
+            language: track.info.language.clone(),
+            title: track.info.title.clone(),
+            selected: track.selected,
             external: false,
         })
         .collect();
     if let Ok(mut bridge) = bridge.lock() {
         bridge.set_tracks(tracks);
+        bridge.set_subtitle(status.subtitle.clone());
         bridge.set_status(report);
     }
 }
