@@ -3,6 +3,8 @@ pub mod crash;
 pub mod annexb;
 #[cfg(feature = "ffmpeg")]
 pub mod demux;
+#[cfg(feature = "ffmpeg")]
+pub mod transcode;
 #[cfg(feature = "host")]
 pub mod bridge;
 mod base64;

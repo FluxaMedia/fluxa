@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use ffmpeg_next::{self as ffmpeg, Rational, codec::Id, ffi, format, media};
 
 use crate::annexb::{Converter, is_annexb};
@@ -5,6 +7,7 @@ use crate::hdr::{HdrInfo, Mastering, kind_for_transfer};
 use crate::load::{AudioCodec, AudioStream, DolbyVision, VideoCodec, VideoStream};
 use crate::player::{Demuxer, MediaInfo, Packet, TrackInfo};
 use crate::subtitle::{self, SubtitleFormat};
+use crate::transcode::{self, Transcoder};
 
 pub struct FfmpegDemuxer {
     input: Option<format::context::Input>,
@@ -13,11 +16,13 @@ pub struct FfmpegDemuxer {
     subtitle: Option<(usize, SubtitleFormat)>,
     converter: Option<Converter>,
     aac_raw: bool,
+    transcoder: Option<Transcoder>,
+    queue: VecDeque<Packet>,
 }
 
 impl Default for FfmpegDemuxer {
     fn default() -> FfmpegDemuxer {
-        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false }
+        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false, transcoder: None, queue: VecDeque::new() }
     }
 }
 
@@ -166,7 +171,7 @@ fn subtitle_format(id: Id) -> Option<SubtitleFormat> {
     })
 }
 
-fn audio_stream(stream: &format::stream::Stream) -> Option<(AudioStream, bool)> {
+fn audio_stream(stream: &format::stream::Stream) -> Option<(AudioStream, bool, bool)> {
     let parameters = stream.parameters();
     let extra = extradata(&parameters);
     let (channels, rate, profile) = unsafe {
@@ -174,8 +179,15 @@ fn audio_stream(stream: &format::stream::Stream) -> Option<(AudioStream, bool)> 
         (raw.ch_layout.nb_channels as u32, raw.sample_rate as u32, raw.profile)
     };
     let raw = !extra.is_empty();
-    let codec = audio_codec(parameters.id(), profile, raw)?;
-    Some((AudioStream { codec, channels, sample_rate: rate, extradata: extra }, raw))
+    let Some(codec) = audio_codec(parameters.id(), profile, raw) else {
+        if !transcode::supported(parameters.id()) {
+            return None;
+        }
+        let channels = transcode::output_layout(channels as i32).channels() as u32;
+        let stream = AudioStream { codec: AudioCodec::Ac3, channels, sample_rate: transcode::OUT_RATE, extradata: Vec::new() };
+        return Some((stream, false, true));
+    };
+    Some((AudioStream { codec, channels, sample_rate: rate, extradata: extra }, raw, false))
 }
 
 fn track_info(stream: &format::stream::Stream, subtitle: bool) -> TrackInfo {
@@ -218,15 +230,23 @@ impl Demuxer for FfmpegDemuxer {
         let mut tracks = Vec::new();
         self.audio = None;
         self.subtitle = None;
+        self.queue.clear();
         let best = input.streams().best(media::Type::Audio).map(|stream| stream.index());
         for stream in input.streams() {
             match stream.parameters().medium() {
                 media::Type::Audio => {
-                    let Some((parsed, raw)) = audio_stream(&stream) else {
+                    let Some((parsed, raw, convert)) = audio_stream(&stream) else {
                         continue;
                     };
                     tracks.push(track_info(&stream, false));
                     if Some(stream.index()) == best {
+                        self.transcoder = None;
+                        if convert {
+                            match Transcoder::new(&stream.parameters()) {
+                                Ok(transcoder) => self.transcoder = Some(transcoder),
+                                Err(_) => continue,
+                            }
+                        }
                         self.aac_raw = raw;
                         self.audio = Some(stream.index());
                         audio_id = Some(format!("a{}", stream.index()));
@@ -246,6 +266,9 @@ impl Demuxer for FfmpegDemuxer {
     }
 
     fn read(&mut self) -> Option<Packet> {
+        if let Some(packet) = self.queue.pop_front() {
+            return Some(packet);
+        }
         let input = self.input.as_mut()?;
         for (stream, packet) in input.packets() {
             let index = stream.index();
@@ -271,6 +294,17 @@ impl Demuxer for FfmpegDemuxer {
                 continue;
             };
             let base = stream.time_base();
+            if is_audio {
+                if let Some(transcoder) = self.transcoder.as_mut() {
+                    for (pts_ns, data) in transcoder.push(&packet, to_ns(pts, base)) {
+                        self.queue.push_back(Packet { video: false, pts_ns, data, cue: None });
+                    }
+                    match self.queue.pop_front() {
+                        Some(packet) => return Some(packet),
+                        None => continue,
+                    }
+                }
+            }
             let data = match (&self.converter, is_video) {
                 (Some(converter), true) if !is_annexb(data) => converter.convert(data, packet.is_key()),
                 _ => data.to_vec(),
@@ -284,7 +318,9 @@ impl Demuxer for FfmpegDemuxer {
         let input = self.input.as_ref().ok_or("not open")?;
         let index = stream_index(id).ok_or("bad track id")?;
         let stream = input.stream(index).ok_or("no such track")?;
-        let (parsed, raw) = audio_stream(&stream).ok_or("unsupported audio codec")?;
+        let (parsed, raw, convert) = audio_stream(&stream).ok_or("unsupported audio codec")?;
+        self.transcoder = if convert { Some(Transcoder::new(&stream.parameters())?) } else { None };
+        self.queue.clear();
         self.aac_raw = raw;
         self.audio = Some(index);
         Ok(parsed)
@@ -300,7 +336,12 @@ impl Demuxer for FfmpegDemuxer {
     fn seek(&mut self, pts_ns: i64) -> Result<(), String> {
         let input = self.input.as_mut().ok_or("not open")?;
         let target = from_ns(pts_ns, Rational::new(1, ffi::AV_TIME_BASE as i32));
-        input.seek(target, ..target + 1).map_err(|error| error.to_string())
+        input.seek(target, ..target + 1).map_err(|error| error.to_string())?;
+        self.queue.clear();
+        if let Some(transcoder) = &self.transcoder {
+            self.transcoder = Some(transcoder.restart()?);
+        }
+        Ok(())
     }
 }
 

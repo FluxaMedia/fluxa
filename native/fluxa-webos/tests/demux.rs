@@ -110,3 +110,29 @@ fn sdr_stream_has_no_hdr_info() {
     assert!(demuxer.open(path.to_str().unwrap()).unwrap().hdr.is_none());
     let _ = std::fs::remove_file(path);
 }
+
+#[test]
+fn flac_audio_is_transcoded_to_ac3_with_monotonic_timestamps() {
+    let Some(path) = sample("fluxa-webos-f.mkv", &["-c:v", "libx264", "-c:a", "flac", "-shortest"]) else {
+        return;
+    };
+    let mut demuxer = FfmpegDemuxer::default();
+    let info = demuxer.open(path.to_str().unwrap()).unwrap();
+    let audio = info.audio.expect("transcoded audio");
+    assert_eq!(audio.codec, AudioCodec::Ac3);
+    assert_eq!(audio.sample_rate, 48_000);
+
+    let mut last = -1;
+    let mut count = 0;
+    while let Some(packet) = demuxer.read() {
+        if packet.video {
+            continue;
+        }
+        assert_eq!(&packet.data[..2], &[0x0b, 0x77]);
+        assert!(packet.pts_ns > last);
+        last = packet.pts_ns;
+        count += 1;
+    }
+    assert!(count > 40, "only {count} ac3 frames");
+    let _ = std::fs::remove_file(path);
+}
