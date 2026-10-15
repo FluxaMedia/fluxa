@@ -540,7 +540,9 @@ pub(crate) fn apply_desktop_drag_scroll(
     let mut offset = current.clamp(0.0, max_offset);
 
     if pressed {
-        if let Some(pos) = interact_pos.filter(|pos| hit_rect.contains(*pos)) {
+        if let Some(pos) = interact_pos.filter(|pos| {
+            hit_rect.contains(*pos) && !crate::components::over_mini_player(context, *pos)
+        }) {
             state.active = true;
             state.axis = DesktopScrollAxis::Undecided;
             state.last_pos = pos;

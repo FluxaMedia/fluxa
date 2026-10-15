@@ -70,6 +70,15 @@ pub(crate) fn mini_player(
     hit
 }
 
+const MINI_RECT: &str = "fluxa-mini-player-rect";
+
+pub(crate) fn over_mini_player(context: &egui::Context, pos: Pos2) -> bool {
+    let now = context.cumulative_pass_nr();
+    context
+        .data(|data| data.get_temp::<(u64, Rect)>(Id::new(MINI_RECT)))
+        .is_some_and(|(pass, rect)| now.saturating_sub(pass) <= 2 && rect.contains(pos))
+}
+
 #[derive(Clone, Copy)]
 struct MiniState {
     corner: usize,
@@ -102,6 +111,10 @@ pub fn draw_mini_player_overlay(
             corner: 3,
             pos: corners[3],
         });
+    let pass = context.cumulative_pass_nr();
+    context.data_mut(|data| {
+        data.insert_temp(Id::new(MINI_RECT), (pass, Rect::from_min_size(state.pos, size)))
+    });
     egui::Area::new(Id::new("fluxa-mini-player-area"))
         .order(egui::Order::Foreground)
         .fixed_pos(state.pos)
