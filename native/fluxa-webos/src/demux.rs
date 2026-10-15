@@ -3,6 +3,8 @@ use std::collections::VecDeque;
 use ffmpeg_next::{self as ffmpeg, Rational, codec::Id, ffi, format, media};
 
 use crate::annexb::{Converter, is_annexb};
+use crate::diagnostics::note;
+use crate::dovi;
 use crate::hdr::{HdrInfo, Mastering, kind_for_transfer};
 use crate::load::{AudioCodec, AudioStream, DolbyVision, VideoCodec, VideoStream};
 use crate::player::{Demuxer, MediaInfo, Packet, TrackInfo};
@@ -16,13 +18,15 @@ pub struct FfmpegDemuxer {
     subtitle: Option<(usize, SubtitleFormat)>,
     converter: Option<Converter>,
     aac_raw: bool,
+    dovi_convert: bool,
+    dovi_stats: dovi::Stats,
     transcoder: Option<Transcoder>,
     queue: VecDeque<Packet>,
 }
 
 impl Default for FfmpegDemuxer {
     fn default() -> FfmpegDemuxer {
-        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false, transcoder: None, queue: VecDeque::new() }
+        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false, dovi_convert: false, dovi_stats: dovi::Stats::default(), transcoder: None, queue: VecDeque::new() }
     }
 }
 
@@ -222,7 +226,13 @@ impl Demuxer for FfmpegDemuxer {
             _ => None,
         };
         self.video = Some(stream.index());
-        let video = VideoStream { codec, width, height, fps, dolby_vision: dolby_vision(&parameters) };
+        let mut dolby = dolby_vision(&parameters);
+        self.dovi_convert = codec == VideoCodec::H265 && dolby.is_some_and(|dv| dv.profile == 7);
+        self.dovi_stats = dovi::Stats::default();
+        if self.dovi_convert {
+            dolby = Some(DolbyVision { profile: 8, dual_layer: false });
+        }
+        let video = VideoStream { codec, width, height, fps, dolby_vision: dolby };
         let hdr = hdr_info(&parameters);
 
         let mut audio = None;
@@ -308,6 +318,17 @@ impl Demuxer for FfmpegDemuxer {
             let data = match (&self.converter, is_video) {
                 (Some(converter), true) if !is_annexb(data) => converter.convert(data, packet.is_key()),
                 _ => data.to_vec(),
+            };
+            let data = if is_video && self.dovi_convert {
+                let before = self.dovi_stats;
+                let data = dovi::to_profile_81(&data, &mut self.dovi_stats);
+                if self.dovi_stats != before {
+                    note("dovi.converted", self.dovi_stats.converted.to_string());
+                    note("dovi.dropped", self.dovi_stats.dropped.to_string());
+                }
+                data
+            } else {
+                data
             };
             return Some(Packet { video: is_video, pts_ns: to_ns(pts, base), data, cue: None });
         }

@@ -5,6 +5,8 @@ pub mod annexb;
 pub mod demux;
 #[cfg(feature = "ffmpeg")]
 pub mod transcode;
+#[cfg(feature = "ffmpeg")]
+pub mod dovi;
 #[cfg(feature = "host")]
 pub mod bridge;
 mod base64;
