@@ -175,31 +175,48 @@ fn simkl_mark_watched_and_scrobble_hit_their_endpoints() {
     assert_eq!(scrobble[0].json()["progress"], 10.0);
 }
 
+fn stop(app: &super::support::App, meta_type: &str, item_id: &str) {
+    app.dispatch(json!({
+        "type": "scrobbleRequested", "token": "stok", "metaType": meta_type,
+        "itemId": item_id, "progress": 95.0, "actionName": "stop", "profile": null
+    }));
+}
+
+fn allow_rewatch(call: &super::support::Recorded) -> Option<String> {
+    call.query_param("allow_rewatch")
+}
+
 #[test]
 fn scrobble_stop_counts_as_rewatch_only_after_the_rewatch_action() {
     let scenario = Scenario::start();
     simkl::serve(&scenario.world);
     let app = scenario.app_with_profile(simkl_profile());
-    let stop = |app: &super::support::App| {
-        app.dispatch(json!({
-            "type": "scrobbleRequested", "token": "stok", "metaType": "movie",
-            "itemId": "tt1", "progress": 95.0, "actionName": "stop", "profile": null
-        }));
-    };
 
-    stop(&app);
-    app.dispatch(json!({
-        "type": "markWatchedRequested", "seriesId": "tt1", "videoIds": ["tt1"],
-        "watched": true, "rewatch": true, "meta": movie(), "episodes": [], "profile": null
-    }));
-    stop(&app);
-    stop(&app);
+    stop(&app, "movie", "tt1");
+    fluxa_effects::set_simkl_rewatch_intent(app.session.storage(), "p1", "tt1");
+    stop(&app, "movie", "tt1");
+    stop(&app, "movie", "tt1");
 
     let stops = scenario.world.calls(simkl::HOST, "POST", "/scrobble/stop");
     assert_eq!(stops.len(), 3);
-    assert!(stops[0].query_param("allow_rewatch").is_none());
-    assert!(stops[1].query_param("allow_rewatch").as_deref() == Some("yes"));
-    assert!(stops[2].query_param("allow_rewatch").is_none());
+    assert_eq!(allow_rewatch(&stops[0]), None);
+    assert_eq!(allow_rewatch(&stops[1]).as_deref(), Some("yes"));
+    assert_eq!(allow_rewatch(&stops[2]), None);
+}
+
+#[test]
+fn rewatch_intent_on_a_series_covers_its_episodes_only() {
+    let scenario = Scenario::start();
+    simkl::serve(&scenario.world);
+    let app = scenario.app_with_profile(simkl_profile());
+
+    fluxa_effects::set_simkl_rewatch_intent(app.session.storage(), "p1", "tt2");
+    stop(&app, "series", "tt22:1:1");
+    stop(&app, "series", "tt2:1:3");
+
+    let stops = scenario.world.calls(simkl::HOST, "POST", "/scrobble/stop");
+    assert_eq!(allow_rewatch(&stops[0]), None);
+    assert_eq!(allow_rewatch(&stops[1]).as_deref(), Some("yes"));
 }
 
 #[test]

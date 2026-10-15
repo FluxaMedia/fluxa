@@ -142,7 +142,11 @@ fn open_stream(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: boo
         return false;
     }
     let index = (node - fluxa_ui::NODE_PLAYER_SOURCE_BASE) as usize;
-    let Some(stream) = state.player.as_ref().and_then(|player| player.listed_stream(index)) else {
+    let Some(stream) = state
+        .player
+        .as_ref()
+        .and_then(|player| player.listed_stream(index))
+    else {
         return false;
     };
     let entries = crate::stream_menu::entries(&stream);
@@ -475,11 +479,21 @@ fn pick(state: &mut RendererState, index: usize) {
     };
     let id = card.id.clone().unwrap_or_default();
     let item_type = card.item_type.clone().unwrap_or_default();
+    if matches!(entry, Entry::Rewatch)
+        && let Some(session) = state.session.as_ref()
+    {
+        let profile = session.active_profile();
+        fluxa_effects::set_simkl_rewatch_intent(
+            session.storage(),
+            profile.get("id").and_then(Value::as_str).unwrap_or("guest"),
+            &id,
+        );
+    }
     let action = match entry {
-        Entry::Play if card.raw.get("lastVideoId").is_some() => {
+        Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {
             NativeAction::StartPlayback { item: card.raw }
         }
-        Entry::Play => NativeAction::Play { id, item_type },
+        Entry::Play | Entry::Rewatch => NativeAction::Play { id, item_type },
         Entry::Details => NativeAction::Detail {
             id,
             item_type,
@@ -492,16 +506,6 @@ fn pick(state: &mut RendererState, index: usize) {
                 "seriesId": id,
                 "videoIds": [id],
                 "watched": !watched,
-                "meta": card.raw,
-            }),
-        },
-        Entry::Rewatch => NativeAction::CoreCommand {
-            command: json!({
-                "type": "markWatchedRequested",
-                "seriesId": id,
-                "videoIds": [id],
-                "watched": true,
-                "rewatch": true,
                 "meta": card.raw,
             }),
         },

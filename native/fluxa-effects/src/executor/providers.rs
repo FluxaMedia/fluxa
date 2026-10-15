@@ -108,6 +108,47 @@ fn simkl_plan_allows_rewatch(storage: &Storage, profile_id: &str) -> bool {
         .is_some_and(|cached| matches!(str_field(&cached, "type"), "pro" | "vip"))
 }
 
+fn rewatch_intent_key(profile_id: &str) -> String {
+    format!("simkl_rewatch_intent_{}", sanitize_key(profile_id))
+}
+
+pub fn set_simkl_rewatch_intent(storage: &Storage, profile_id: &str, series_id: &str) {
+    let key = rewatch_intent_key(profile_id);
+    let mut intents = storage
+        .read_json(&key)
+        .ok()
+        .flatten()
+        .filter(Value::is_object)
+        .unwrap_or_else(|| json!({}));
+    intents[series_id] = json!(chrono_unix_seconds());
+    let _ = storage.write_json(&key, &intents);
+}
+
+fn rewatch_intent(storage: &Storage, profile_id: &str, item_id: &str) -> Option<String> {
+    let intents = storage
+        .read_json(&rewatch_intent_key(profile_id))
+        .ok()
+        .flatten()?;
+    let now = chrono_unix_seconds();
+    intents.as_object()?.iter().find_map(|(series_id, at)| {
+        let belongs = item_id == series_id
+            || item_id
+                .strip_prefix(series_id.as_str())
+                .is_some_and(|rest| rest.starts_with(':'));
+        (belongs && at.as_i64().unwrap_or(0) + REWATCH_INTENT_TTL > now).then(|| series_id.clone())
+    })
+}
+
+fn clear_rewatch_intent(storage: &Storage, profile_id: &str, series_id: &str) {
+    let key = rewatch_intent_key(profile_id);
+    if let Ok(Some(mut intents)) = storage.read_json(&key)
+        && let Some(map) = intents.as_object_mut()
+    {
+        map.remove(series_id);
+        let _ = storage.write_json(&key, &intents);
+    }
+}
+
 fn find_key<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
     match value {
         Value::Object(map) => map
@@ -610,13 +651,15 @@ impl EffectExecutor {
             .into_iter()
             .flat_map(|sessions| sessions.values())
         {
-            if str_field(session, "status") == "active"
-                && let (Some(imdb), Some(id)) = (
-                    session.get("imdb").and_then(Value::as_str),
-                    session.get("rewatchId").and_then(Value::as_i64),
-                )
-            {
-                self.pin_rewatch_id(profile_id, imdb, id);
+            let Some(imdb) = session.get("imdb").and_then(Value::as_str) else {
+                continue;
+            };
+            match (
+                str_field(session, "status"),
+                session.get("rewatchId").and_then(Value::as_i64),
+            ) {
+                ("active", Some(id)) => self.pin_rewatch_id(profile_id, imdb, id),
+                _ => self.unpin_rewatch_id(profile_id, imdb),
             }
         }
         Ok(applied.get("snapshot").cloned())
@@ -835,9 +878,6 @@ impl EffectExecutor {
                 );
             }
         }
-        if rewatch {
-            self.set_rewatch_intent(str_field(profile, "id"), str_field(&command, "seriesId"));
-        }
         Ok(())
     }
 
@@ -960,50 +1000,6 @@ impl EffectExecutor {
         }
     }
 
-    fn intent_key(profile_id: &str) -> String {
-        format!("simkl_rewatch_intent_{}", sanitize_key(profile_id))
-    }
-
-    fn set_rewatch_intent(&self, profile_id: &str, series_id: &str) {
-        let key = Self::intent_key(profile_id);
-        let mut intents = self
-            .storage
-            .read_json(&key)
-            .ok()
-            .flatten()
-            .filter(Value::is_object)
-            .unwrap_or_else(|| json!({}));
-        intents[series_id] = json!(chrono_unix_seconds());
-        let _ = self.storage.write_json(&key, &intents);
-    }
-
-    fn rewatch_intent(&self, profile_id: &str, item_id: &str) -> Option<String> {
-        let intents = self
-            .storage
-            .read_json(&Self::intent_key(profile_id))
-            .ok()
-            .flatten()?;
-        let now = chrono_unix_seconds();
-        intents.as_object()?.iter().find_map(|(series_id, at)| {
-            let belongs = item_id == series_id
-                || item_id
-                    .strip_prefix(series_id.as_str())
-                    .is_some_and(|rest| rest.starts_with(':'));
-            (belongs && at.as_i64().unwrap_or(0) + REWATCH_INTENT_TTL > now)
-                .then(|| series_id.clone())
-        })
-    }
-
-    fn clear_rewatch_intent(&self, profile_id: &str, series_id: &str) {
-        let key = Self::intent_key(profile_id);
-        if let Ok(Some(mut intents)) = self.storage.read_json(&key)
-            && let Some(map) = intents.as_object_mut()
-        {
-            map.remove(series_id);
-            let _ = self.storage.write_json(&key, &intents);
-        }
-    }
-
     fn rewatch_key(profile_id: &str) -> String {
         format!("simkl_rewatch_{}", sanitize_key(profile_id))
     }
@@ -1070,13 +1066,27 @@ impl EffectExecutor {
         let Some(status) = body.get("rewatch_status").and_then(Value::as_str) else {
             return;
         };
-        if matches!(status, "active" | "completed" | "closed")
-            && let Some(id) = body.get("rewatch_id").and_then(Value::as_i64)
-        {
-            self.pin_rewatch_id(profile_id, series_id, id);
+        match (status, body.get("rewatch_id").and_then(Value::as_i64)) {
+            ("active", Some(id)) => self.pin_rewatch_id(profile_id, series_id, id),
+            ("completed" | "closed", _) => self.unpin_rewatch_id(profile_id, series_id),
+            ("pro_required", _) => {
+                let _ = self.storage.write_json(
+                    &simkl_account_key(profile_id),
+                    &json!({"type": "free", "at": chrono_unix_seconds()}),
+                );
+            }
+            _ => {}
         }
-        if status != "pro_required" {
-            self.clear_rewatch_intent(profile_id, series_id);
+        clear_rewatch_intent(&self.storage, profile_id, series_id);
+    }
+
+    fn unpin_rewatch_id(&self, profile_id: &str, item_id: &str) {
+        let key = Self::rewatch_key(profile_id);
+        if let Ok(Some(mut pinned)) = self.storage.read_json(&key)
+            && let Some(map) = pinned.as_object_mut()
+            && map.remove(item_id).is_some()
+        {
+            let _ = self.storage.write_json(&key, &pinned);
         }
     }
 
@@ -1129,7 +1139,7 @@ impl EffectExecutor {
                 }
             }
             let intent = (provider == "simkl" && str_field(payload, "actionName") == "stop")
-                .then(|| self.rewatch_intent(&profile_id, str_field(payload, "itemId")))
+                .then(|| rewatch_intent(&self.storage, &profile_id, str_field(payload, "itemId")))
                 .flatten();
             args["rewatch"] = json!(intent.is_some());
             let Some(plan) = core_value("providerScrobbleRequest", args) else {
