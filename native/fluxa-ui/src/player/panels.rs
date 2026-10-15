@@ -10,11 +10,18 @@ pub(super) fn draw_mini_player(
     layout: &mut HomeLayout,
 ) {
     let width = if compact { rect.width() * 0.46 } else { 448.0 };
-    let mini = Rect::from_min_size(
+    let tile = Rect::from_min_size(
         rect.min + Vec2::splat(if compact { 16.0 } else { 24.0 }),
         Vec2::new(width, width * 9.0 / 16.0),
     );
-    components::mini_player(ui, painter, tile, player, layout, NODE_PLAYER_RECOMMENDATIONS_CLOSE);
+    components::mini_player(
+        ui,
+        painter,
+        tile,
+        player,
+        layout,
+        NODE_PLAYER_RECOMMENDATIONS_CLOSE,
+    );
 }
 
 pub(super) fn draw_seek_preview(

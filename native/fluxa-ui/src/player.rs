@@ -390,10 +390,10 @@ struct Chrome<'a> {
 
 impl Chrome<'_> {
     fn margin(&self) -> f32 {
-        let min = if self.viewport.is_compact() {
         if self.viewport.form_factor == UiFormFactor::Tv {
             return (self.rect.width() * 0.05).max(48.0);
         }
+        let min = if self.viewport.is_compact() {
             14.0
         } else {
             22.0
@@ -462,7 +462,6 @@ impl Chrome<'_> {
             Sense::click()
         };
         let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
-        if !mobile {
         if self.player.locked {
             if response.clicked() {
                 layout.activated = Some(if self.player.controls_visible {
@@ -473,6 +472,7 @@ impl Chrome<'_> {
             }
             return;
         }
+        if !mobile {
             if response.double_clicked() {
                 layout.activated = Some(NODE_PLAYER_FULLSCREEN);
             } else if response.clicked() {
