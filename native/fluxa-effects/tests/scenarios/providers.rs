@@ -176,6 +176,33 @@ fn simkl_mark_watched_and_scrobble_hit_their_endpoints() {
 }
 
 #[test]
+fn scrobble_stop_counts_as_rewatch_only_after_the_rewatch_action() {
+    let scenario = Scenario::start();
+    simkl::serve(&scenario.world);
+    let app = scenario.app_with_profile(simkl_profile());
+    let stop = |app: &super::support::App| {
+        app.dispatch(json!({
+            "type": "scrobbleRequested", "token": "stok", "metaType": "movie",
+            "itemId": "tt1", "progress": 95.0, "actionName": "stop", "profile": null
+        }));
+    };
+
+    stop(&app);
+    app.dispatch(json!({
+        "type": "markWatchedRequested", "seriesId": "tt1", "videoIds": ["tt1"],
+        "watched": true, "rewatch": true, "meta": movie(), "episodes": [], "profile": null
+    }));
+    stop(&app);
+    stop(&app);
+
+    let stops = scenario.world.calls(simkl::HOST, "POST", "/scrobble/stop");
+    assert_eq!(stops.len(), 3);
+    assert!(stops[0].query_param("allow_rewatch").is_none());
+    assert!(stops[1].query_param("allow_rewatch").as_deref() == Some("yes"));
+    assert!(stops[2].query_param("allow_rewatch").is_none());
+}
+
+#[test]
 fn rate_limited_library_read_is_retried_until_it_succeeds() {
     let scenario = Scenario::start();
     trakt::serve(&scenario.world);

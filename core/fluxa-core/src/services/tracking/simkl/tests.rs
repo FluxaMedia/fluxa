@@ -267,3 +267,21 @@ fn provider_ids_from_another_family_never_ride_along_with_a_video_id() {
         json!({"imdb": "tt22248376", "tvdb": 424536})
     );
 }
+
+#[test]
+fn only_a_flagged_stop_allows_rewatch() {
+    let url = |action: &str, rewatch: bool| {
+        simkl_scrobble(
+            &json!({"clientId": "c", "token": "t", "itemId": "simkl:5", "metaType": "movie", "rewatch": rewatch}),
+            action,
+            90.0,
+        )
+        .unwrap()["url"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    assert!(url("stop", true).contains("allow_rewatch=yes"));
+    assert!(!url("stop", false).contains("allow_rewatch"));
+    assert!(!url("start", true).contains("allow_rewatch"));
+}

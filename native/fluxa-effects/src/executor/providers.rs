@@ -86,6 +86,7 @@ fn http_client() -> Result<Client, String> {
 
 const TRAKT_SEASONS_TTL: i64 = 24 * 60 * 60;
 const SIMKL_ACCOUNT_TTL: i64 = 86_400;
+const REWATCH_INTENT_TTL: i64 = 86_400;
 
 fn simkl_account_key(profile_id: &str) -> String {
     format!("simkl_account_{}", sanitize_key(profile_id))
@@ -97,6 +98,14 @@ pub fn simkl_plan_lacks_rewatch(storage: &Storage, profile_id: &str) -> bool {
         .ok()
         .flatten()
         .is_some_and(|cached| !matches!(str_field(&cached, "type"), "pro" | "vip"))
+}
+
+fn simkl_plan_allows_rewatch(storage: &Storage, profile_id: &str) -> bool {
+    storage
+        .read_json(&simkl_account_key(profile_id))
+        .ok()
+        .flatten()
+        .is_some_and(|cached| matches!(str_field(&cached, "type"), "pro" | "vip"))
 }
 
 fn find_key<'a>(value: &'a Value, key: &str) -> Option<&'a Value> {
@@ -554,6 +563,7 @@ impl EffectExecutor {
 
     async fn simkl_pull(
         &self,
+        profile_id: &str,
         state_key: &str,
         credentials: &Value,
         state: Option<Value>,
@@ -563,6 +573,7 @@ impl EffectExecutor {
             let mut args = credentials.clone();
             args["state"] = state.clone().unwrap_or(Value::Null);
             args["nowSeconds"] = json!(chrono_unix_seconds());
+            args["rewatch"] = json!(simkl_plan_allows_rewatch(&self.storage, profile_id));
             if let Some(activities) = activities {
                 args["activities"] = activities.clone();
             }
@@ -594,6 +605,20 @@ impl EffectExecutor {
         )
         .ok_or_else(|| "Fluxa Core could not build the Simkl library".to_owned())?;
         let _ = self.storage.write_json(state_key, &applied["state"]);
+        for session in applied["state"]["rewatches"]
+            .as_object()
+            .into_iter()
+            .flat_map(|sessions| sessions.values())
+        {
+            if str_field(session, "status") == "active"
+                && let (Some(imdb), Some(id)) = (
+                    session.get("imdb").and_then(Value::as_str),
+                    session.get("rewatchId").and_then(Value::as_i64),
+                )
+            {
+                self.pin_rewatch_id(profile_id, imdb, id);
+            }
+        }
         Ok(applied.get("snapshot").cloned())
     }
 
@@ -755,7 +780,10 @@ impl EffectExecutor {
         let state = cached
             .as_ref()
             .and_then(|_| self.storage.read_json(&state_key).ok().flatten());
-        match self.simkl_pull(&state_key, &credentials, state).await {
+        match self
+            .simkl_pull(profile_id, &state_key, &credentials, state)
+            .await
+        {
             Ok(Some(snapshot)) => {
                 self.store_provider_library("simkl", profile_id, &snapshot);
                 Ok(snapshot)
@@ -806,6 +834,9 @@ impl EffectExecutor {
                     id,
                 );
             }
+        }
+        if rewatch {
+            self.set_rewatch_intent(str_field(profile, "id"), str_field(&command, "seriesId"));
         }
         Ok(())
     }
@@ -929,6 +960,50 @@ impl EffectExecutor {
         }
     }
 
+    fn intent_key(profile_id: &str) -> String {
+        format!("simkl_rewatch_intent_{}", sanitize_key(profile_id))
+    }
+
+    fn set_rewatch_intent(&self, profile_id: &str, series_id: &str) {
+        let key = Self::intent_key(profile_id);
+        let mut intents = self
+            .storage
+            .read_json(&key)
+            .ok()
+            .flatten()
+            .filter(Value::is_object)
+            .unwrap_or_else(|| json!({}));
+        intents[series_id] = json!(chrono_unix_seconds());
+        let _ = self.storage.write_json(&key, &intents);
+    }
+
+    fn rewatch_intent(&self, profile_id: &str, item_id: &str) -> Option<String> {
+        let intents = self
+            .storage
+            .read_json(&Self::intent_key(profile_id))
+            .ok()
+            .flatten()?;
+        let now = chrono_unix_seconds();
+        intents.as_object()?.iter().find_map(|(series_id, at)| {
+            let belongs = item_id == series_id
+                || item_id
+                    .strip_prefix(series_id.as_str())
+                    .is_some_and(|rest| rest.starts_with(':'));
+            (belongs && at.as_i64().unwrap_or(0) + REWATCH_INTENT_TTL > now)
+                .then(|| series_id.clone())
+        })
+    }
+
+    fn clear_rewatch_intent(&self, profile_id: &str, series_id: &str) {
+        let key = Self::intent_key(profile_id);
+        if let Ok(Some(mut intents)) = self.storage.read_json(&key)
+            && let Some(map) = intents.as_object_mut()
+        {
+            map.remove(series_id);
+            let _ = self.storage.write_json(&key, &intents);
+        }
+    }
+
     fn rewatch_key(profile_id: &str) -> String {
         format!("simkl_rewatch_{}", sanitize_key(profile_id))
     }
@@ -991,6 +1066,20 @@ impl EffectExecutor {
         Ok(json!({}))
     }
 
+    fn finish_rewatch_scrobble(&self, profile_id: &str, series_id: &str, body: &Value) {
+        let Some(status) = body.get("rewatch_status").and_then(Value::as_str) else {
+            return;
+        };
+        if matches!(status, "active" | "completed" | "closed")
+            && let Some(id) = body.get("rewatch_id").and_then(Value::as_i64)
+        {
+            self.pin_rewatch_id(profile_id, series_id, id);
+        }
+        if status != "pro_required" {
+            self.clear_rewatch_intent(profile_id, series_id);
+        }
+    }
+
     pub(super) async fn scrobble(&self, payload: &Value) -> Result<Value, String> {
         if self.report_media_server(payload).await {
             return Ok(json!({}));
@@ -1039,10 +1128,21 @@ impl EffectExecutor {
                     args["itemId"] = id.clone();
                 }
             }
+            let intent = (provider == "simkl" && str_field(payload, "actionName") == "stop")
+                .then(|| self.rewatch_intent(&profile_id, str_field(payload, "itemId")))
+                .flatten();
+            args["rewatch"] = json!(intent.is_some());
             let Some(plan) = core_value("providerScrobbleRequest", args) else {
                 continue;
             };
             match send(&client, &plan).await {
+                Ok((status, body)) if (200..300).contains(&status) && intent.is_some() => {
+                    self.finish_rewatch_scrobble(
+                        &profile_id,
+                        intent.as_deref().unwrap_or(""),
+                        &body,
+                    );
+                }
                 Ok((status, _)) if (200..300).contains(&status) || status == 409 => {}
                 Ok((400, body)) if body.to_string().contains("RATE_LIMIT") => {}
                 Ok((status, body)) => {

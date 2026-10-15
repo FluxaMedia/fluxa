@@ -60,5 +60,19 @@ pub fn serve(world: &World) -> FakeSimkl {
         json!({"deleted": {"movies": 1}}),
     );
     world.respond(HOST, "POST", "/scrobble/start", 201, json!({}));
+    world.respond(
+        HOST,
+        "POST",
+        "/scrobble/stop",
+        201,
+        json!({"action": "scrobble", "rewatch_id": 9, "rewatch_status": "active"}),
+    );
+    world.respond(
+        HOST,
+        "POST",
+        "/users/settings",
+        200,
+        json!({"account": {"type": "pro"}}),
+    );
     FakeSimkl { plantowatch }
 }

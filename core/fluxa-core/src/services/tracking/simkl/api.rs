@@ -232,11 +232,15 @@ pub(crate) fn simkl_scrobble(args: &Value, action: &str, progress: f64) -> Optio
         }),
         None => json!({"movie": {"ids": target.ids}, "progress": progress}),
     };
+    let rewatch = action == "stop" && args.get("rewatch").and_then(Value::as_bool) == Some(true);
     Some(request(
         "simkl",
         args,
         "POST",
-        format!("{SIMKL_API}/scrobble/{action}"),
+        format!(
+            "{SIMKL_API}/scrobble/{action}{}",
+            if rewatch { "?allow_rewatch=yes" } else { "" }
+        ),
         body,
     ))
 }

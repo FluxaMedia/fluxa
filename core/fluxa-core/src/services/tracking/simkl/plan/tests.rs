@@ -107,3 +107,39 @@ fn delta_replaces_changed_items_and_drops_removed_ones() {
     assert_eq!(shows[0]["status"], "completed");
     assert_eq!(applied["state"]["activities"]["all"], "t2");
 }
+
+#[test]
+fn rewatch_flag_is_added_to_item_requests_only() {
+    let saved = json!({"all": "t1", "tv_shows": {"all": "t1"}});
+    let now = json!({"all": "t2", "tv_shows": {"all": "t2", "removed_from_list": "t2"}});
+    let planned = plan(json!({"rewatch": true, "state": {"activities": saved}, "activities": now}));
+    let urls: Vec<_> = planned["requests"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|request| request["url"].as_str().unwrap())
+        .collect();
+    assert!(urls[0].contains("date_from=t1&allow_rewatch=yes"));
+    assert!(!urls[1].contains("allow_rewatch"));
+}
+
+#[test]
+fn rewatch_rows_do_not_replace_the_library_entry() {
+    let mut session = entry(7, "completed");
+    session["is_rewatch"] = json!(true);
+    session["rewatch_id"] = json!(55);
+    session["rewatch_status"] = json!("active");
+    session["last_watched_at"] = json!("2026-05-16T20:00:00Z");
+    let applied = apply(json!({
+        "mode": "full",
+        "nowSeconds": 1,
+        "activities": {"all": "a"},
+        "responses": {"items_shows": {"shows": [entry(7, "completed"), session]}},
+    }));
+    assert_eq!(
+        applied["state"]["items"]["shows"].as_array().unwrap().len(),
+        1
+    );
+    assert_eq!(applied["state"]["rewatches"]["7"]["rewatchId"], 55);
+    assert_eq!(applied["state"]["rewatches"]["7"]["imdb"], "tt7");
+}

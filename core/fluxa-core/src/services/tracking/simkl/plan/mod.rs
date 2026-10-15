@@ -10,6 +10,14 @@ const TYPES: [(&str, &str); 3] = [
 const FULL_RESYNC_SECONDS: i64 = 7 * 24 * 60 * 60;
 const STATUSES: [&str; 5] = ["plantowatch", "watching", "completed", "dropped", "hold"];
 
+fn with_rewatch(args: &Value, path: String) -> String {
+    if args.get("rewatch").and_then(Value::as_bool) != Some(true) {
+        return path;
+    }
+    let separator = if path.contains('?') { '&' } else { '?' };
+    format!("{path}{separator}allow_rewatch=yes")
+}
+
 fn keyed(args: &Value, key: &str, path: String) -> Value {
     let mut plan = request(
         "simkl",
@@ -85,7 +93,7 @@ pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
                 keyed(
                     &args,
                     &format!("items_{kind}"),
-                    format!("/sync/all-items/{kind}"),
+                    with_rewatch(&args, format!("/sync/all-items/{kind}")),
                 )
             })
             .collect();
@@ -106,7 +114,11 @@ pub(crate) fn simkl_sync_plan_json(args_json: &str) -> Option<String> {
             Some(since) => format!("/sync/all-items/{kind}?date_from={since}"),
             None => format!("/sync/all-items/{kind}"),
         };
-        requests.push(keyed(&args, &format!("items_{kind}"), path));
+        requests.push(keyed(
+            &args,
+            &format!("items_{kind}"),
+            with_rewatch(&args, path),
+        ));
         if stamp(activities, Some(domain), "removed_from_list")
             != stamp(saved, Some(domain), "removed_from_list")
         {
@@ -146,6 +158,35 @@ fn response_entries(response: &Value, kind: &str) -> Vec<Value> {
         .unwrap_or_default()
 }
 
+fn record_rewatch(rewatches: &mut Map<String, Value>, entry: &Value) {
+    let (Some(id), Some(rewatch_id)) = (
+        entry_id(entry),
+        entry.get("rewatch_id").and_then(Value::as_i64),
+    ) else {
+        return;
+    };
+    let imdb = ["show", "movie", "anime"]
+        .iter()
+        .filter_map(|block| entry.get(block))
+        .find_map(|source| source.pointer("/ids/imdb")?.as_str());
+    let latest = entry.get("last_watched_at").and_then(Value::as_str);
+    let key = id.to_string();
+    let newer = rewatches
+        .get(&key)
+        .is_none_or(|old| old.get("lastWatchedAt").and_then(Value::as_str) <= latest);
+    if newer {
+        rewatches.insert(
+            key,
+            json!({
+                "rewatchId": rewatch_id,
+                "status": entry.get("rewatch_status"),
+                "imdb": imdb,
+                "lastWatchedAt": latest,
+            }),
+        );
+    }
+}
+
 pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
     let args: Value = serde_json::from_str(args_json).ok()?;
     let responses = args.get("responses")?;
@@ -157,6 +198,11 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
     };
     let previous = args.get("state").filter(|_| !full);
     let mut items = Map::new();
+    let mut rewatches = previous
+        .and_then(|state| state.get("rewatches"))
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
     for (kind, _) in TYPES {
         let mut current = previous
             .and_then(|state| state.pointer(&format!("/items/{kind}")))
@@ -165,6 +211,10 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
             .unwrap_or_default();
         if let Some(response) = responses.get(&format!("items_{kind}")) {
             for entry in response_entries(response, kind) {
+                if entry.get("is_rewatch").and_then(Value::as_bool) == Some(true) {
+                    record_rewatch(&mut rewatches, &entry);
+                    continue;
+                }
                 let position = entry_id(&entry)
                     .and_then(|id| current.iter().position(|old| entry_id(old) == Some(id)));
                 match position {
@@ -205,7 +255,7 @@ pub(crate) fn simkl_sync_apply_json(args_json: &str) -> Option<String> {
     )?)
     .ok()?;
     serde_json::to_string(&json!({
-        "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "fullAt": full_at},
+        "state": {"activities": args.get("activities")?, "items": items, "playback": playback, "rewatches": rewatches, "fullAt": full_at},
         "snapshot": snapshot
     }))
     .ok()
