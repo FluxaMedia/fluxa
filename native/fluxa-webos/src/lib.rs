@@ -1,6 +1,8 @@
 #[cfg(feature = "sentry")]
 pub mod crash;
 pub mod annexb;
+#[cfg(feature = "ffmpeg")]
+pub mod demux;
 mod base64;
 pub mod diagnostics;
 mod events;
