@@ -3,6 +3,7 @@ use std::sync::mpsc::Sender;
 
 use libloading::Library;
 
+use crate::diagnostics::trace;
 use crate::events::Event;
 use crate::feed::FeedReply;
 
@@ -54,6 +55,7 @@ pub struct Starfish {
 extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *mut c_void) {
     let sink = unsafe { &*(data as *const Sink) };
     let text = (!text.is_null()).then(|| unsafe { CStr::from_ptr(text) }.to_string_lossy());
+    trace(format!("event {kind} {number} {}", text.as_deref().unwrap_or("")));
     let _ = sink.events.send(Event::from_callback(kind, number, text.as_deref(), sink.webos_major));
 }
 
@@ -100,6 +102,7 @@ impl Starfish {
     }
 
     pub fn load(&self, payload: &str) -> Result<(), Error> {
+        trace(format!("load {payload}"));
         let payload = c_string(payload);
         let data = &*self.sink as *const Sink as *mut c_void;
         unsafe { (self.load)(self.this(), payload.as_ptr(), trampoline, data) }
@@ -138,6 +141,7 @@ impl Starfish {
     }
 
     pub fn set_hdr_info(&self, payload: &str) -> bool {
+        trace(format!("hdr {payload}"));
         let payload = c_string(payload);
         unsafe { (self.set_hdr_info)(self.this(), payload.as_ptr()) }
     }

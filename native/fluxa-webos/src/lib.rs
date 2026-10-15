@@ -1,4 +1,7 @@
+#[cfg(feature = "sentry")]
+pub mod crash;
 mod base64;
+pub mod diagnostics;
 mod events;
 mod feed;
 mod ffi;

@@ -2343,6 +2343,7 @@ name = "fluxa-webos"
 version = "0.1.0"
 dependencies = [
  "libloading 0.8.9",
+ "sentry",
  "serde_json",
 ]
 
