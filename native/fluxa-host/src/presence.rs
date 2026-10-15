@@ -1,5 +1,8 @@
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 use std::sync::OnceLock;
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender};
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
 #[derive(Clone, PartialEq)]
@@ -21,6 +24,7 @@ pub(crate) enum Presence {
     },
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 impl Presence {
     fn key(&self) -> String {
         match self {
@@ -42,6 +46,7 @@ impl Presence {
     }
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 struct Tracker {
     tx: Sender<Presence>,
     last_key: String,
@@ -49,8 +54,10 @@ struct Tracker {
     last_sent: Instant,
 }
 
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 static TRACKER: OnceLock<std::sync::Mutex<Tracker>> = OnceLock::new();
 
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "windows"))]
 pub(crate) fn update(presence: Presence) {
     let tracker = TRACKER.get_or_init(|| {
         let (tx, rx) = mpsc::channel();
@@ -188,6 +195,4 @@ fn worker(rx: Receiver<Presence>) {
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", target_os = "windows")))]
-fn worker(rx: Receiver<Presence>) {
-    while rx.recv().is_ok() {}
-}
+pub(crate) fn update(_presence: Presence) {}

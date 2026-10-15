@@ -17,8 +17,8 @@ pub(crate) struct State {
 }
 
 fn now_ms() -> i64 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
         .map_or(0, |elapsed| elapsed.as_millis() as i64)
 }
 

@@ -2,7 +2,8 @@ use std::io::{ErrorKind, Read, Write};
 use std::net::{IpAddr, TcpStream, ToSocketAddrs, UdpSocket};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, Sender};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use mdns_sd::{ServiceDaemon, ServiceEvent};
 use rustls::client::danger::{HandshakeSignatureValid, ServerCertVerified, ServerCertVerifier};

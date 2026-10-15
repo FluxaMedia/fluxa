@@ -50,8 +50,8 @@ impl Default for State {
 
 impl State {
     fn roll(&mut self) -> u64 {
-        let nanos = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
+        let nanos = web_time::SystemTime::now()
+            .duration_since(web_time::UNIX_EPOCH)
             .map_or(0, |elapsed| elapsed.as_nanos() as u64);
         self.clock = self.clock.rotate_left(17) ^ nanos.wrapping_mul(0x2545_F491_4F6C_DD1D);
         self.clock

@@ -37,8 +37,8 @@ impl EffectExecutor {
         feed.version += 1;
         feed.parts.clear();
         feed.done = false;
-        feed.started_ms = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
+        feed.started_ms = web_time::SystemTime::now()
+            .duration_since(web_time::UNIX_EPOCH)
             .map_or(0, |elapsed| elapsed.as_millis());
         feed.generation
     }

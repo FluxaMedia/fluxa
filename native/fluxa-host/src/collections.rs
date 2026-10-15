@@ -49,8 +49,8 @@ fn say(state: &mut RendererState, key: &str) {
 }
 
 fn clock() -> u128 {
-    std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
+    web_time::SystemTime::now()
+        .duration_since(web_time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_millis())
         .unwrap_or_default()
 }

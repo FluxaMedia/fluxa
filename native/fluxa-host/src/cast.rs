@@ -1,5 +1,6 @@
 use std::sync::mpsc::{Receiver, Sender, channel};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use web_time::Instant;
 
 use fluxa_ui::{PanelRow, PlayerPanel, localized};
 

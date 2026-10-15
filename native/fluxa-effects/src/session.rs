@@ -272,8 +272,17 @@ struct Published {
     outstanding: bool,
 }
 
+#[cfg(target_arch = "wasm32")]
+struct Local {
+    session: Mutex<AppSession>,
+    inbox: Mutex<Receiver<Command>>,
+    completions: Mutex<Receiver<EffectCompletion>>,
+}
+
 pub struct SessionHandle {
     commands: Sender<Command>,
+    #[cfg(target_arch = "wasm32")]
+    local: Local,
     published: Arc<Mutex<Published>>,
     queued: Arc<AtomicUsize>,
     storage: Storage,
@@ -292,23 +301,32 @@ impl SessionHandle {
         }));
         let queued = Arc::new(AtomicUsize::new(0));
         let (commands, inbox) = mpsc::channel();
-        let forward = commands.clone();
-        std::thread::Builder::new()
-            .name("fluxa-session-effects".to_owned())
-            .spawn(move || {
-                for completion in completions {
-                    if forward.send(Command::Completed(completion)).is_err() {
-                        break;
+        #[cfg(target_arch = "wasm32")]
+        let local = Local {
+            session: Mutex::new(session),
+            inbox: Mutex::new(inbox),
+            completions: Mutex::new(completions),
+        };
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let forward = commands.clone();
+            std::thread::Builder::new()
+                .name("fluxa-session-effects".to_owned())
+                .spawn(move || {
+                    for completion in completions {
+                        if forward.send(Command::Completed(completion)).is_err() {
+                            break;
+                        }
                     }
-                }
-            })
-            .map_err(|error| error.to_string())?;
-        let shared = published.clone();
-        let pending = queued.clone();
-        std::thread::Builder::new()
-            .name("fluxa-session".to_owned())
-            .spawn(move || run(session, inbox, shared, pending))
-            .map_err(|error| error.to_string())?;
+                })
+                .map_err(|error| error.to_string())?;
+            let shared = published.clone();
+            let pending = queued.clone();
+            std::thread::Builder::new()
+                .name("fluxa-session".to_owned())
+                .spawn(move || run(session, inbox, shared, pending))
+                .map_err(|error| error.to_string())?;
+        }
         #[cfg(not(target_arch = "wasm32"))]
         {
             let sink = commands.clone();
@@ -338,6 +356,8 @@ impl SessionHandle {
         });
         Ok(Self {
             commands,
+            #[cfg(target_arch = "wasm32")]
+            local,
             published,
             queued,
             storage,
@@ -353,7 +373,37 @@ impl SessionHandle {
         })
     }
 
+    #[cfg(target_arch = "wasm32")]
+    fn pump(&self) {
+        let (Ok(mut session), Ok(inbox), Ok(completions)) = (
+            self.local.session.lock(),
+            self.local.inbox.lock(),
+            self.local.completions.lock(),
+        ) else {
+            return;
+        };
+        let mut dispatched = 0;
+        loop {
+            let command = match completions.try_recv() {
+                Ok(completion) => Command::Completed(completion),
+                Err(_) => match inbox.try_recv() {
+                    Ok(command) => command,
+                    Err(_) => break,
+                },
+            };
+            if !step(&mut session, command, &mut dispatched) {
+                break;
+            }
+        }
+        publish(&session, &self.published);
+        self.queued.fetch_sub(dispatched, Ordering::AcqRel);
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn pump(&self) {}
+
     pub fn snapshot(&self) -> Arc<Value> {
+        self.pump();
         self.published
             .lock()
             .map(|published| published.snapshot.clone())
@@ -361,6 +411,7 @@ impl SessionHandle {
     }
 
     pub fn revision(&self) -> u64 {
+        self.pump();
         self.published
             .lock()
             .map_or(0, |published| published.revision)
@@ -374,10 +425,12 @@ impl SessionHandle {
     }
 
     pub fn has_queued_dispatches(&self) -> bool {
+        self.pump();
         self.queued.load(Ordering::Acquire) > 0
     }
 
     pub fn has_outstanding_effects(&self) -> bool {
+        self.pump();
         self.published
             .lock()
             .is_ok_and(|published| published.outstanding)
@@ -451,6 +504,36 @@ impl Drop for SessionHandle {
     }
 }
 
+fn step(session: &mut AppSession, command: Command, dispatched: &mut usize) -> bool {
+    match command {
+        Command::Dispatch(action) => {
+            *dispatched += 1;
+            if let Err(error) = session.dispatch(action) {
+                crate::log!("[fluxa-session] dispatch failed: {error}");
+            }
+        }
+        Command::Completed(completion) => {
+            session.complete(completion);
+            session.add_next_plugin_repository();
+        }
+        Command::NuvioPlugins(urls) => session.queue_plugin_repositories(urls),
+        Command::Stop => return false,
+    }
+    true
+}
+
+fn publish(session: &AppSession, published: &Mutex<Published>) {
+    if let Ok(mut published) = published.lock() {
+        let revision = session.revision();
+        if revision != published.revision {
+            published.revision = revision;
+            published.snapshot = session.snapshot();
+        }
+        published.outstanding = session.has_outstanding_effects();
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 fn run(
     mut session: AppSession,
     inbox: Receiver<Command>,
@@ -461,30 +544,12 @@ fn run(
         let mut dispatched = 0;
         let mut next = Some(command);
         while let Some(command) = next.take() {
-            match command {
-                Command::Dispatch(action) => {
-                    dispatched += 1;
-                    if let Err(error) = session.dispatch(action) {
-                        crate::log!("[fluxa-session] dispatch failed: {error}");
-                    }
-                }
-                Command::Completed(completion) => {
-                    session.complete(completion);
-                    session.add_next_plugin_repository();
-                }
-                Command::NuvioPlugins(urls) => session.queue_plugin_repositories(urls),
-                Command::Stop => return,
+            if !step(&mut session, command, &mut dispatched) {
+                return;
             }
             next = inbox.try_recv().ok();
         }
-        if let Ok(mut published) = published.lock() {
-            let revision = session.revision();
-            if revision != published.revision {
-                published.revision = revision;
-                published.snapshot = session.snapshot();
-            }
-            published.outstanding = session.has_outstanding_effects();
-        }
+        publish(&session, &published);
         queued.fetch_sub(dispatched, Ordering::AcqRel);
     }
 }
