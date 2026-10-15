@@ -381,8 +381,77 @@ jobs:
           name: webos
           path: out/*.ipk
 
+  webos-native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      WEBOS_TOOLCHAIN: ${{ github.workspace }}/.webos-toolchain
+      WEBOS_SDK: ${{ github.workspace }}/.webos-toolchain/sdk
+      FFMPEG_SRC: ${{ github.workspace }}/.webos-toolchain/ffmpeg-src
+      FFMPEG_OUT: ${{ github.workspace }}/.webos-toolchain/ffmpeg-arm
+      SDK_URL: https://github.com/openlgtv/buildroot-nc4/releases/download/2026.08-webos/arm-webos-linux-gnueabi_sdk-buildroot-x86_64.tar.gz
+      FFMPEG_URL: https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+          targets: armv7-unknown-linux-gnueabi
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: release-webos-native
+
+      - name: Cache toolchain
+        id: toolchain
+        uses: actions/cache@v4
+        with:
+          path: .webos-toolchain
+          key: webos-toolchain-2026.08-ffmpeg-9.0.2-${{ hashFiles('scripts/build-ffmpeg-webos.sh') }}
+
+      - name: Install toolchain
+        if: steps.toolchain.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends clang libclang-dev nasm
+          mkdir -p "$WEBOS_SDK" "$FFMPEG_SRC"
+          curl -fsSL "$SDK_URL" | tar -xz --strip-components=1 -C "$WEBOS_SDK"
+          "$WEBOS_SDK/relocate-sdk.sh"
+          curl -fsSL "$FFMPEG_URL" | tar -xJ --strip-components=1 -C "$FFMPEG_SRC"
+          ./scripts/build-ffmpeg-webos.sh
+
+      - name: Install clang
+        if: steps.toolchain.outputs.cache-hit == 'true'
+        run: sudo apt-get install -y --no-install-recommends clang libclang-dev
+
+      - name: Stamp version
+        run: node scripts/set-version.mjs "$RELEASE_TAG"
+
+      - name: Package ipk
+        env:
+          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
+        run: |
+          ./scripts/package-webos-native.sh "$RELEASE_TAG"
+          mkdir -p out
+          cp dist-web/fluxa-*-webos-native.ipk out/
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: webos-native
+          path: out/*.ipk
+
   publish:
-    needs: [notes, android, desktop, apple, web, webos]
+    needs: [notes, android, desktop, apple, web, webos, webos-native]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
