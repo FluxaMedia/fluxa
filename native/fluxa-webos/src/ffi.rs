@@ -158,6 +158,31 @@ impl Drop for Starfish {
     }
 }
 
+const SYMBOLS: [&str; 10] = [
+    "_ZN17StarfishMediaAPIsC1EPKc",
+    "_ZN17StarfishMediaAPIsD1Ev",
+    "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_",
+    "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_E",
+    "_ZN17StarfishMediaAPIs4FeedB5cxx11EPKc",
+    "_ZN17StarfishMediaAPIs4FeedEPKc",
+    "_ZN17StarfishMediaAPIs4PlayEv",
+    "_ZN17StarfishMediaAPIs5PauseEv",
+    "_ZN17StarfishMediaAPIs10setHdrInfoEPKc",
+    "_ZN17StarfishMediaAPIs10getMediaIDEv",
+];
+
+pub fn probe_symbols() -> Vec<(String, bool)> {
+    let Ok(library) = (unsafe { Library::new(LIBRARY) }) else {
+        return vec![(LIBRARY.to_owned(), false)];
+    };
+    let mut found = vec![(LIBRARY.to_owned(), true)];
+    for name in SYMBOLS {
+        let present = unsafe { library.get::<*const c_void>(format!("{name}\0").as_bytes()) }.is_ok();
+        found.push((name.to_owned(), present));
+    }
+    found
+}
+
 #[cfg(test)]
 mod tests {
     use std::sync::mpsc::channel;
