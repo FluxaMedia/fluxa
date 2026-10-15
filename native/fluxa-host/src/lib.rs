@@ -122,6 +122,7 @@ struct AccessFrame {
 mod shortcuts;
 mod shorts;
 mod stream_badges;
+mod stream_menu;
 mod surface;
 mod sync;
 mod trailer;
@@ -197,6 +198,7 @@ struct RendererState {
     library_type: String,
     library_list: bool,
     library_downloads: bool,
+    library_download_group: Option<String>,
     discover: DiscoverModel,
     folder: FolderModel,
     folder_tab: usize,
@@ -245,6 +247,8 @@ struct RendererState {
     applied_app_icon: Option<String>,
     updates: updates::State,
     open_url: Option<String>,
+    external_play: Option<String>,
+    external_pending: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
     profiles: Option<fluxa_ui::ProfilesModel>,
     welcome: Option<fluxa_ui::WelcomeModel>,
     welcome_flow: Option<welcome::Flow>,
@@ -418,6 +422,7 @@ impl FluxaHost {
             library_type: "all".to_owned(),
             library_list: false,
             library_downloads: false,
+            library_download_group: None,
             discover: DiscoverModel::default(),
             folder: FolderModel::default(),
             folder_tab: 0,
@@ -466,6 +471,8 @@ impl FluxaHost {
             applied_app_icon: None,
             updates: Default::default(),
             open_url: None,
+            external_play: None,
+            external_pending: None,
             profiles: None,
             welcome: None,
             welcome_flow: None,
@@ -724,6 +731,10 @@ impl FluxaHost {
     pub fn take_fullscreen_toggle(&self) -> bool {
         self.peek(|state| std::mem::take(&mut state.fullscreen_toggle))
             .unwrap_or(false)
+    }
+
+    pub fn take_external_play(&self) -> Option<String> {
+        self.peek(|state| state.external_play.take()).flatten()
     }
 
     pub fn take_open_url(&self) -> Option<String> {

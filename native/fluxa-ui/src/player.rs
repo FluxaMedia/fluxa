@@ -186,7 +186,6 @@ pub struct PlayerSource {
     pub detail: String,
     pub badges: Vec<SourceBadge>,
     pub badges_top: bool,
-    pub downloadable: bool,
 }
 
 #[derive(Clone, Debug, Default)]

@@ -26,6 +26,11 @@ enum Target {
     },
     Disconnect(String),
     QuitDownloads,
+    Stream {
+        stream: Value,
+        index: usize,
+        entries: Vec<crate::stream_menu::Entry>,
+    },
     Choice(fluxa_ui::ChoiceRequest),
 }
 
@@ -37,6 +42,7 @@ impl Target {
             Target::Source { count, .. } => *count,
             Target::Disconnect(_) => 1,
             Target::QuitDownloads => 2,
+            Target::Stream { entries, .. } => entries.len(),
             Target::Choice(request) => request.options.len(),
         }
     }
@@ -81,8 +87,11 @@ fn card_for_node(state: &RendererState, node: u64) -> Option<HomeCard> {
 }
 
 pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool) -> bool {
-    if state.player_full() || state.profiles.is_some() || state.welcome.is_some() {
+    if state.profiles.is_some() || state.welcome.is_some() {
         return false;
+    }
+    if state.player_full() {
+        return open_stream(state, node, anchor, keyboard);
     }
     let Some(card) = card_for_node(state, node) else {
         return false;
@@ -120,6 +129,33 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     state.menu_serial += 1;
     state.card_menu = Some(CardMenu {
         target: Target::Card { card, entries },
+        selected: keyboard.then_some(0),
+        anchor,
+        serial: state.menu_serial,
+    });
+    true
+}
+
+fn open_stream(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: bool) -> bool {
+    let range = fluxa_ui::NODE_PLAYER_SOURCE_BASE..fluxa_ui::NODE_PLAYER_SOURCE_BASE + 1000;
+    if !range.contains(&node) {
+        return false;
+    }
+    let index = (node - fluxa_ui::NODE_PLAYER_SOURCE_BASE) as usize;
+    let Some(stream) = state.player.as_ref().and_then(|player| player.listed_stream(index)) else {
+        return false;
+    };
+    let entries = crate::stream_menu::entries(&stream);
+    if entries.is_empty() {
+        return false;
+    }
+    state.menu_serial += 1;
+    state.card_menu = Some(CardMenu {
+        target: Target::Stream {
+            stream,
+            index,
+            entries,
+        },
         selected: keyboard.then_some(0),
         anchor,
         serial: state.menu_serial,
@@ -287,6 +323,27 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                 serial: menu.serial,
             });
         }
+        Target::Stream {
+            stream, entries, ..
+        } => {
+            return Some(MenuView {
+                title: crate::stream_menu::title(stream),
+                items: entries
+                    .iter()
+                    .map(|entry| {
+                        let (icon, label) = crate::stream_menu::item(*entry, language);
+                        ActionMenuItem {
+                            icon,
+                            label,
+                            app_icon: None,
+                        }
+                    })
+                    .collect(),
+                selected: menu.selected,
+                anchor: menu.anchor,
+                serial: menu.serial,
+            });
+        }
         Target::Source { key, title, .. } => {
             let (options, current, _) = fluxa_ui::account_source_state(&state.settings, key);
             return Some(MenuView {
@@ -381,6 +438,16 @@ fn pick(state: &mut RendererState, index: usize) {
                 state.minimize_requested = true;
             } else {
                 state.quit_requested = true;
+            }
+            return;
+        }
+        Target::Stream {
+            stream,
+            index: source,
+            entries,
+        } => {
+            if let Some(entry) = entries.get(index).copied() {
+                crate::stream_menu::run(state, &stream, source, entry);
             }
             return;
         }

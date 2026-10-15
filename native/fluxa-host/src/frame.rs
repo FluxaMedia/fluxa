@@ -145,6 +145,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     player::pump(state);
     watch_together::tick(state);
     downloads::tick(state);
+    stream_menu::tick(state);
     player::upload_frame(state);
     timer.mark("player");
     if state.gpu.is_none() {

@@ -521,6 +521,10 @@ impl PlayerSession {
         self.streams_requested && !self.streams_done
     }
 
+    pub(crate) fn listed_stream(&self, index: usize) -> Option<Value> {
+        self.listed_streams().into_iter().nth(index)
+    }
+
     fn listed_streams(&self) -> Vec<Value> {
         self.stream_parts.values().flatten().cloned().collect()
     }
@@ -796,11 +800,11 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         detail: crate::stream_badges::format_text(&detail),
         badges,
         badges_top,
-        downloadable: stream
-            .get("url")
-            .and_then(Value::as_str)
-            .is_some_and(|url| url.starts_with("http")),
     }
+}
+
+pub(crate) fn download_stream(state: &mut RendererState, index: usize) {
+    input::download_source(state, index);
 }
 
 const STALE_GRACE: Duration = Duration::from_secs(3);

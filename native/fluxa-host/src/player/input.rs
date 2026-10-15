@@ -107,10 +107,6 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
                     .push(crate::NativeAction::StartPlayback { item });
             }
         }
-        node if node >= fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE => download_source(
-            state,
-            (node - fluxa_ui::NODE_PLAYER_SOURCE_DOWNLOAD_BASE) as usize,
-        ),
         node if node >= fluxa_ui::NODE_PLAYER_SOURCE_BASE => {
             if let Some(player) = state.player.as_mut() {
                 player.chosen = Some((node - fluxa_ui::NODE_PLAYER_SOURCE_BASE) as usize);
@@ -416,7 +412,7 @@ pub(crate) fn toggle_stats(state: &mut RendererState) {
     }
 }
 
-fn download_source(state: &mut RendererState, index: usize) {
+pub(super) fn download_source(state: &mut RendererState, index: usize) {
     let Some(player) = state.player.as_ref() else {
         return;
     };
