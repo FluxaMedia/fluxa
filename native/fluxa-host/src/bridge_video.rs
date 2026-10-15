@@ -12,6 +12,7 @@ pub struct VideoBridge {
     requests: Vec<Value>,
     status: VideoStatus,
     tracks: Vec<VideoTrack>,
+    subtitle: Option<String>,
     thumbnail: Option<Thumbnail>,
     thumbnail_progress: Option<ThumbnailProgress>,
 }
@@ -36,6 +37,10 @@ impl VideoBridge {
 
     pub fn set_chapters(&mut self, chapters: Vec<(f64, String)>) {
         self.status.chapters = chapters;
+    }
+
+    pub fn set_subtitle(&mut self, text: Option<String>) {
+        self.subtitle = text;
     }
 
     pub fn set_tracks(&mut self, tracks: Vec<VideoTrack>) {
@@ -107,6 +112,7 @@ impl VideoBackend for BridgeVideo {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
+            bridge.subtitle = None;
             bridge.thumbnail = None;
             bridge.thumbnail_progress = None;
         }
@@ -117,6 +123,7 @@ impl VideoBackend for BridgeVideo {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();
             bridge.tracks.clear();
+            bridge.subtitle = None;
             bridge.thumbnail = None;
             bridge.thumbnail_progress = None;
         }
@@ -173,6 +180,10 @@ impl VideoBackend for BridgeVideo {
             .lock()
             .map(|bridge| bridge.status.clone())
             .unwrap_or_default()
+    }
+
+    fn subtitle(&mut self) -> Option<String> {
+        self.0.lock().ok()?.subtitle.clone()
     }
 
     fn tracks(&mut self) -> Vec<VideoTrack> {

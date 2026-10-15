@@ -35,6 +35,7 @@ pub struct PlayerModel {
     pub title: String,
     pub video: Option<TextureId>,
     pub passthrough: bool,
+    pub subtitle: Option<String>,
     pub watch_button: bool,
     pub locked: bool,
     pub watch: Option<WatchTogetherModel>,
@@ -306,6 +307,10 @@ pub fn draw_player(
     }
     if player.pip {
         return layout;
+    }
+    if let Some(text) = &player.subtitle {
+        let lift = if player.controls_visible { 150.0 } else { 56.0 };
+        paint_subtitle_cue(&painter, rect, text, lift);
     }
     if player.show_pause_info {
         draw_pause_info(context, &painter, rect, player, assets);

@@ -169,6 +169,9 @@ pub trait VideoBackend: Send {
     fn stats(&mut self) -> Option<PlaybackStats> {
         None
     }
+    fn subtitle(&mut self) -> Option<String> {
+        None
+    }
 }
 
 pub(crate) struct PlayerSession {
@@ -217,6 +220,7 @@ pub(crate) struct PlayerSession {
     scrub: Option<(f64, Instant)>,
     scrub_streak: u32,
     passthrough: bool,
+    subtitle: Option<String>,
     dispatched: Option<Value>,
     overlay: Overlay,
     panel: Option<Panel>,
@@ -332,6 +336,7 @@ impl PlayerSession {
             recommendations_rx: None,
             recommendations: Vec::new(),
             passthrough: false,
+            subtitle: None,
             dispatched: None,
             recommendation_index: 0,
             load_progress: 0.0,
@@ -635,6 +640,7 @@ impl PlayerSession {
             title: self.title(),
             video: self.texture.filter(|_| self.status.has_frame),
             passthrough: self.passthrough && self.status.has_frame,
+            subtitle: self.subtitle.clone(),
             watch_button: false,
             locked: self.locked,
             watch: None,
@@ -1033,6 +1039,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     let mut advance = false;
     if let Some(video) = video.as_mut() {
         player.status = video.status();
+        player.subtitle = video.subtitle();
         if player.status.has_frame && !player.tracks_restored {
             player.tracks_restored = true;
             menu::restore_tracks(player, video.as_mut(), settings);
