@@ -58,6 +58,7 @@ pub trait Pipeline {
     fn feed(&mut self, packet: &Packet) -> FeedReply;
     fn end_of_stream(&mut self);
     fn unload(&mut self);
+    fn on_event(&mut self, _event: &Event) {}
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -286,6 +287,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
     }
 
     fn apply(&mut self, event: Event) {
+        self.pipeline.on_event(&event);
         match event.kind {
             EventKind::LoadCompleted => {
                 self.state = State::Ready;

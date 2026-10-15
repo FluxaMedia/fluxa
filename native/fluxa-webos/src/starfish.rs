@@ -1,7 +1,8 @@
 use std::sync::mpsc::Sender;
 
 use crate::diagnostics::trace;
-use crate::events::Event;
+use crate::acb::Acb;
+use crate::events::{Event, EventKind};
 use crate::feed::{FeedReply, feed_payload};
 use crate::ffi::Starfish;
 use crate::hdr::hdr_payload;
@@ -12,12 +13,19 @@ pub struct StarfishPipeline {
     inner: Starfish,
     options: LoadOptions,
     resume_at: Option<i64>,
+    acb: Option<Acb>,
 }
 
 impl StarfishPipeline {
     pub fn open(options: LoadOptions, events: Sender<Event>) -> Result<StarfishPipeline, crate::ffi::Error> {
         let inner = Starfish::open(&options.app_id, options.webos_major, events)?;
-        Ok(StarfishPipeline { inner, options, resume_at: None })
+        let acb = if options.window_id.is_none() {
+            let app = std::env::var("APPID").unwrap_or_else(|_| options.app_id.clone());
+            Acb::open(&app).map_err(|error| trace(format!("acb unavailable: {error:?}"))).ok()
+        } else {
+            None
+        };
+        Ok(StarfishPipeline { inner, options, resume_at: None, acb })
     }
 }
 
@@ -72,5 +80,23 @@ impl Pipeline for StarfishPipeline {
 
     fn unload(&mut self) {
         self.inner.unload();
+    }
+
+    fn on_event(&mut self, event: &Event) {
+        let Some(acb) = &self.acb else {
+            return;
+        };
+        match event.kind {
+            EventKind::VideoInfo => acb.video_data(&event.text),
+            EventKind::LoadCompleted => {
+                if let Some(media) = self.inner.media_id() {
+                    acb.bind(&media);
+                }
+            }
+            EventKind::Playing => acb.playing(1920, 1080),
+            EventKind::Paused => acb.paused(),
+            EventKind::UnloadCompleted => acb.unloaded(),
+            _ => {}
+        }
     }
 }

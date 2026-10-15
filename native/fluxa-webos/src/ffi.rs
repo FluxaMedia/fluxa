@@ -62,11 +62,11 @@ extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *m
     let _ = sink.events.send(Event::from_callback(kind, number, text.as_deref(), sink.webos_major));
 }
 
-unsafe fn symbol<T: Copy>(library: &Library, name: &'static str) -> Result<T, Error> {
+pub(crate) unsafe fn symbol<T: Copy>(library: &Library, name: &'static str) -> Result<T, Error> {
     unsafe { library.get::<T>(name.as_bytes()) }.map(|symbol| *symbol).map_err(|_| Error::Symbol(name))
 }
 
-fn c_string(text: &str) -> CString {
+pub(crate) fn c_string(text: &str) -> CString {
     CString::new(text.replace('\0', "")).unwrap_or_default()
 }
 
