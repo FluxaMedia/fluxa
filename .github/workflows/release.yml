@@ -445,6 +445,13 @@ jobs:
           mkdir -p out
           cp dist-web/fluxa-*-webos-native.ipk out/
 
+      - name: Verify ipk against webOS firmware
+        continue-on-error: true
+        run: |
+          curl -fsSL -o ipk-verify.deb https://github.com/webosbrew/dev-toolbox-cli/releases/download/v20260818-ea38b20/webosbrew-toolbox-ipk-verify_0.9.0-1_amd64.deb
+          sudo dpkg -i ipk-verify.deb
+          ./scripts/verify-webos.sh out/fluxa-*-webos-native.ipk ">=4.0"
+
       - uses: actions/upload-artifact@v4
         with:
           name: webos-native
