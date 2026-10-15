@@ -4,8 +4,17 @@ use crate::{
     NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
 };
 
-const STORAGE_BLOCK: f32 = 96.0;
-const SPEED_BLOCK: f32 = 96.0;
+const STORAGE_BLOCK: f32 = 118.0;
+const SPEED_BLOCK: f32 = 118.0;
+const DOWNLOAD_BLUE: Color32 = Color32::from_rgb(110, 196, 255);
+
+pub fn download_summary_width(width: f32) -> f32 {
+    (width * 0.5).max(420.0).min(width)
+}
+
+pub fn download_sections_width(width: f32, metrics: UiMetrics) -> f32 {
+    width - download_summary_width(width) - metrics.section_gap
+}
 
 pub fn download_summary_height(_width: f32, metrics: UiMetrics) -> f32 {
     padding(metrics) * 3.0 + STORAGE_BLOCK + SPEED_BLOCK
@@ -23,7 +32,7 @@ fn speed_block(
         rect.left_top(),
         Align2::LEFT_TOP,
         localized("downloads.speed_title", language),
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
+        crate::fonts::regular(metrics.screen_card_title_size),
         metrics.text_muted,
         Some(rect.width()),
     );
@@ -32,12 +41,12 @@ fn speed_block(
         rect.right_top(),
         Align2::RIGHT_TOP,
         format!("{}/s", format_bytes(summary.speed_bps as u64)),
-        crate::fonts::medium(metrics.screen_card_title_size),
+        crate::fonts::medium(metrics.screen_card_title_size * 1.3),
         metrics.text_primary,
         Some(rect.width()),
     );
     let graph = Rect::from_min_max(
-        Pos2::new(rect.left(), rect.top() + 30.0),
+        Pos2::new(rect.left(), rect.top() + 40.0),
         rect.right_bottom(),
     );
     painter.line_segment(
@@ -60,7 +69,7 @@ fn speed_block(
     if points.len() >= 2 {
         painter.add(egui::Shape::line(
             points,
-            egui::Stroke::new(2.0, metrics.accent),
+            egui::Stroke::new(2.0, DOWNLOAD_BLUE),
         ));
     }
 }
@@ -93,7 +102,7 @@ fn storage_block(
         rect.left_top(),
         Align2::LEFT_TOP,
         localized("downloads.storage_title", language),
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
+        crate::fonts::regular(metrics.screen_card_title_size),
         metrics.text_muted,
         Some(rect.width() - button_width - metrics.control_gap),
     );
@@ -102,15 +111,15 @@ fn storage_block(
     };
     draw_text(
         &painter,
-        Pos2::new(rect.left(), rect.top() + 26.0),
+        Pos2::new(rect.left(), rect.top() + 32.0),
         Align2::LEFT_TOP,
         &location.path,
-        crate::fonts::medium(metrics.screen_card_subtitle_size),
+        crate::fonts::medium(metrics.screen_card_title_size),
         metrics.text_primary,
         Some(rect.width() - button_width - metrics.control_gap),
     );
     let bar = Rect::from_min_size(
-        Pos2::new(rect.left(), rect.top() + 62.0),
+        Pos2::new(rect.left(), rect.top() + 74.0),
         Vec2::new(rect.width(), 6.0),
     );
     painter.rect_filled(bar, 3.0, metrics.border);
@@ -132,7 +141,7 @@ fn storage_block(
         localized("downloads.free_of", language)
             .replacen("%s", &format_bytes(location.free_bytes), 1)
             .replacen("%s", &format_bytes(location.total_bytes), 1),
-        crate::fonts::regular(metrics.screen_card_subtitle_size),
+        crate::fonts::regular(metrics.screen_card_title_size),
         metrics.text_secondary,
         Some(rect.width()),
     );
@@ -148,7 +157,11 @@ pub fn download_summary(
     layout: &mut HomeLayout,
 ) {
     let height = download_summary_height(width, metrics);
-    let card = Rect::from_min_size(origin, Vec2::new(width, height));
+    let card_width = download_summary_width(width);
+    let card = Rect::from_min_size(
+        Pos2::new(origin.x + width - card_width, origin.y),
+        Vec2::new(card_width, height),
+    );
     let painter = ui.painter().clone();
     painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
     let pad = padding(metrics);
@@ -393,7 +406,7 @@ fn download_row(
             if row.status == DownloadStatus::Failed {
                 metrics.text_muted
             } else {
-                metrics.accent
+                DOWNLOAD_BLUE
             },
         );
     }
@@ -500,7 +513,7 @@ pub fn download_poster(
         painter.rect_filled(
             Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(4.0), 4.0)),
             2.0,
-            metrics.accent,
+            DOWNLOAD_BLUE,
         );
         y = bar.top() - 6.0;
     }
@@ -606,7 +619,7 @@ fn episode_card(
         painter.rect_filled(
             Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(4.0), 4.0)),
             2.0,
-            metrics.accent,
+            DOWNLOAD_BLUE,
         );
     }
     draw_text(

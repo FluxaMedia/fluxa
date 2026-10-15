@@ -164,6 +164,7 @@ pub fn draw_library(
                 },
             );
             let list_top = top + summary_height + metrics.section_gap;
+            let sections_width = components::download_sections_width(page.width, metrics);
             if library.downloads.is_empty() {
                 components::empty_state(
                     &painter,
@@ -180,7 +181,7 @@ pub fn draw_library(
                     metrics,
                 );
             } else {
-                let origin = Pos2::new(page.margin, list_top - scroll_y);
+                let origin = Pos2::new(page.margin, top - scroll_y);
                 components::placed(
                     context,
                     Id::new("fluxa-shared-library-downloads"),
@@ -191,7 +192,7 @@ pub fn draw_library(
                             ui,
                             &library.downloads,
                             origin,
-                            page.width,
+                            sections_width,
                             &library.language,
                             metrics,
                             assets,
