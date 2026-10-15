@@ -7,9 +7,15 @@ license = "MIT"
 [features]
 sentry = ["dep:sentry"]
 ffmpeg = ["dep:ffmpeg-next"]
+host = ["dep:fluxa-host"]
 
 [dependencies]
 libloading = "0.8"
 serde_json = "1.0"
 sentry = { version = "0.49", optional = true, default-features = false, features = ["backtrace", "contexts", "panic", "reqwest", "rustls"] }
 ffmpeg-next = { version = "9.0", optional = true, default-features = false, features = ["format", "codec"] }
+fluxa-host = { path = "../fluxa-host", optional = true }
+
+[[bin]]
+name = "probe"
+required-features = ["ffmpeg"]

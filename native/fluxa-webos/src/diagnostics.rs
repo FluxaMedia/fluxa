@@ -16,7 +16,8 @@ const LIB_PREFIXES: [&str; 12] = [
     "libcurl", "libgst", "libstarfish",
 ];
 const LIB_DIRS: [&str; 3] = ["/usr/lib", "/lib", "/usr/lib/gstreamer-1.0"];
-const ENV_KEYS: [&str; 5] = ["APPID", "WAYLAND_DISPLAY", "XDG_RUNTIME_DIR", "SDL_VIDEODRIVER", "LD_LIBRARY_PATH"];
+const ENV_KEYS: [&str; 3] = ["APPID", "WAYLAND_DISPLAY", "SDL_VIDEODRIVER"];
+const NOISY_NODES: [&str; 7] = ["tty", "vcs", "hidraw", "i2c", "loop", "ram", "ttyS"];
 
 pub fn note(key: impl Into<String>, value: impl Into<String>) {
     if let Ok(mut notes) = NOTES.lock() {
@@ -81,7 +82,13 @@ fn library_inventory() -> Vec<String> {
 
 fn dev_nodes() -> Vec<String> {
     let mut nodes: Vec<String> = fs::read_dir("/dev")
-        .map(|entries| entries.flatten().map(|entry| entry.file_name().to_string_lossy().into_owned()).collect())
+        .map(|entries| {
+            entries
+                .flatten()
+                .map(|entry| entry.file_name().to_string_lossy().into_owned())
+                .filter(|name| !NOISY_NODES.iter().any(|noisy| name.starts_with(noisy)))
+                .collect()
+        })
         .unwrap_or_default();
     nodes.sort();
     nodes
