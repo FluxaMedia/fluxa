@@ -1,5 +1,6 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::fs;
+use std::path::Path;
 use std::sync::Mutex;
 
 use serde_json::Value;
@@ -84,6 +85,17 @@ fn dev_nodes() -> Vec<String> {
         .unwrap_or_default();
     nodes.sort();
     nodes
+}
+
+pub fn already_reported(marker: &Path, release: &str) -> bool {
+    fs::read_to_string(marker).is_ok_and(|saved| saved.trim() == release)
+}
+
+pub fn mark_reported(marker: &Path, release: &str) {
+    if let Some(dir) = marker.parent() {
+        let _ = fs::create_dir_all(dir);
+    }
+    let _ = fs::write(marker, release);
 }
 
 #[derive(Default, Clone)]
@@ -278,6 +290,17 @@ mod tests {
         let report = Report::from_sources(&sources);
         assert_eq!(report.tags["starfish.missing_symbols"], "1");
         assert!(report.extras["starfish.symbols"].contains("- b"));
+    }
+
+    #[test]
+    fn report_marker_is_per_release() {
+        let dir = std::env::temp_dir().join(format!("fluxa-webos-marker-{}", std::process::id()));
+        let marker = dir.join("compat");
+        assert!(!already_reported(&marker, "1.0"));
+        mark_reported(&marker, "1.0");
+        assert!(already_reported(&marker, "1.0"));
+        assert!(!already_reported(&marker, "1.1"));
+        let _ = fs::remove_dir_all(dir);
     }
 
     #[test]

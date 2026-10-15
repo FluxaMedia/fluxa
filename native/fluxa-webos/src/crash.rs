@@ -34,3 +34,18 @@ pub fn install_default(release: &str) -> Option<sentry::ClientInitGuard> {
         .filter(|dsn| !dsn.is_empty())
         .map(|dsn| install(dsn, release))
 }
+
+pub fn report_compatibility(consent: bool, marker: &std::path::Path, release: &str) -> bool {
+    if !consent || crate::diagnostics::already_reported(marker, release) {
+        return false;
+    }
+    let sent = sentry::Hub::current().client().is_some();
+    if sent {
+        sentry::with_scope(
+            |scope| scope.set_tag("report.kind", "compatibility"),
+            || sentry::capture_message("webOS compatibility report", sentry::Level::Info),
+        );
+        crate::diagnostics::mark_reported(marker, release);
+    }
+    sent
+}
