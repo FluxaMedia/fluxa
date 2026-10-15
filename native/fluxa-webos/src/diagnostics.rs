@@ -58,6 +58,10 @@ pub fn trace_dump() -> Vec<String> {
     TRACE.lock().map(|trace| trace.iter().cloned().collect()).unwrap_or_default()
 }
 
+pub fn trace_try_dump() -> Vec<String> {
+    TRACE.try_lock().map(|trace| trace.iter().cloned().collect()).unwrap_or_default()
+}
+
 fn library_inventory() -> Vec<String> {
     let mut libs = Vec::new();
     for dir in LIB_DIRS {

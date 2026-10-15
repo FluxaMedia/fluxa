@@ -47,6 +47,8 @@ pub struct Status {
     pub has_frame: bool,
     pub buffering: bool,
     pub error: Option<String>,
+    pub buffered: f64,
+    pub audio: Option<String>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -116,6 +118,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             return self.fail(error);
         }
         self.status.duration = info.duration_ns as f64 / 1e9;
+        self.status.audio = info.audio.as_ref().map(|audio| format!("{:?} {}ch", audio.codec, audio.channels));
         self.info = Some(info);
     }
 
@@ -215,6 +218,9 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             if self.pipeline.feed(&packet) != FeedReply::Ok {
                 self.pending = Some(packet);
                 return;
+            }
+            if packet.video {
+                self.status.buffered = packet.pts_ns as f64 / 1e9;
             }
         }
     }

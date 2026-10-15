@@ -5,10 +5,11 @@ use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use fluxa_host::{BridgeVideo, FluxaHost, KeyInput, MouseButton, NativeSurface, VideoBridge};
+use fluxa_host::{BridgeVideo, VideoStatus, FluxaHost, KeyInput, MouseButton, NativeSurface, VideoBridge};
 use fluxa_renderer::platform::GraphicsBackend;
 use fluxa_webos::bridge::pump;
 use fluxa_webos::demux::FfmpegDemuxer;
+use fluxa_webos::crash;
 use fluxa_webos::diagnostics::{Report, note, trace};
 use fluxa_webos::player::Player;
 use fluxa_webos::remote::{Remote, map};
@@ -57,6 +58,7 @@ fn key(host: &FluxaHost, remote: Remote) {
 }
 
 fn main() {
+    let _sentry = crash::install_default(env!("CARGO_PKG_VERSION"));
     let report = Report::collect();
     let webos_major = report.webos_major().unwrap_or(5);
     note("fluxa.webos_major", webos_major.to_string());
@@ -78,6 +80,10 @@ fn main() {
     };
 
     let data = data_dir();
+    let _ = std::fs::create_dir_all(&data);
+    let crash_file = data.join("crash.txt");
+    crash::report_previous_crash(&crash_file);
+    crash::install_signal_handlers(&crash_file);
     let host = FluxaHost::new(1.0, Some(data.join("artwork-cache")));
     host.set_form_factor("tv");
     host.set_platform("webos");
@@ -104,6 +110,7 @@ fn main() {
         Ok(pipeline) => Some(Player::new(FfmpegDemuxer::default(), pipeline, rx)),
         Err(error) => {
             trace(format!("starfish unavailable: {error:?}"));
+            crash::capture(&format!("starfish unavailable: {error:?}"));
             eprintln!("starfish: {error:?}");
             None
         }
@@ -142,7 +149,14 @@ fn main() {
         match player.as_mut() {
             Some(player) => pump(player, &bridge),
             None => {
-                let _ = bridge.lock().map(|mut bridge| bridge.take_requests());
+                if let Ok(mut bridge) = bridge.lock() {
+                    if bridge.take_requests().iter().any(|request| request["type"] == "load") {
+                        bridge.set_status(VideoStatus {
+                            error: Some("The TV's media pipeline could not be opened".into()),
+                            ..VideoStatus::default()
+                        });
+                    }
+                }
             }
         }
         if host.render_due() {

@@ -1,6 +1,6 @@
 use std::sync::{Arc, Mutex};
 
-use fluxa_host::{VideoBridge, VideoStatus};
+use fluxa_host::{VideoBridge, VideoStatus, VideoTrack};
 
 use crate::player::{Demuxer, Pipeline, Player};
 
@@ -21,9 +21,22 @@ pub fn pump<D: Demuxer, P: Pipeline>(player: &mut Player<D, P>, bridge: &Arc<Mut
         error: status.error.clone(),
         chapters: Vec::new(),
         buffering: status.buffering.then_some(0.0),
-        buffered: 0.0,
+        buffered: status.buffered,
     };
+    let tracks = status
+        .audio
+        .iter()
+        .map(|title| VideoTrack {
+            id: "a0".into(),
+            subtitle: false,
+            language: None,
+            title: Some(title.clone()),
+            selected: true,
+            external: false,
+        })
+        .collect();
     if let Ok(mut bridge) = bridge.lock() {
+        bridge.set_tracks(tracks);
         bridge.set_status(report);
     }
 }

@@ -2386,6 +2386,7 @@ dependencies = [
  "ffmpeg-next",
  "fluxa-host",
  "fluxa-renderer",
+ "libc",
  "libloading 0.8.9",
  "raw-window-handle",
  "sentry",
