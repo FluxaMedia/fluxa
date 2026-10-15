@@ -104,9 +104,10 @@ pub fn draw_mini_player_overlay(
         });
     egui::Area::new(Id::new("fluxa-mini-player-area"))
         .order(egui::Order::Foreground)
-        .fixed_pos(Pos2::ZERO)
+        .fixed_pos(state.pos)
         .interactable(true)
         .show(context, |ui| {
+            ui.set_min_size(size);
             let painter = ui.painter().clone();
             let tile = Rect::from_min_size(state.pos, size);
             let hit = mini_player(ui, &painter, tile, player, layout, NODE_PLAYER_EXPAND);
