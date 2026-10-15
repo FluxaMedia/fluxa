@@ -12,6 +12,7 @@ mod feed;
 mod ffi;
 mod hdr;
 mod load;
+pub mod sdl;
 pub mod remote;
 mod starfish;
 pub mod player;
