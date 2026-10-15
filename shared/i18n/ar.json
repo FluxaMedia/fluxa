@@ -3291,5 +3291,6 @@
   "downloads.location_title": "موقع التنزيل",
   "downloads.location_default": "المجلد الافتراضي",
   "downloads.volume_free": "%s متاح",
-  "downloads.no_space": "لا توجد مساحة تخزين كافية"
+  "downloads.no_space": "لا توجد مساحة تخزين كافية",
+  "downloads.playlist_stream": "هذا المصدر قائمة تشغيل ولا يمكن تنزيله بعد"
 }

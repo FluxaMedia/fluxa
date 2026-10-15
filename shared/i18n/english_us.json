@@ -3302,5 +3302,6 @@
   "downloads.location_title": "Download location",
   "downloads.location_default": "Default folder",
   "downloads.volume_free": "%s free",
-  "downloads.no_space": "Not enough storage space"
+  "downloads.no_space": "Not enough storage space",
+  "downloads.playlist_stream": "This stream is a live playlist and can't be downloaded yet"
 }

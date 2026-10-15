@@ -3302,5 +3302,6 @@
   "downloads.location_title": "İndirme konumu",
   "downloads.location_default": "Varsayılan klasör",
   "downloads.volume_free": "%s boş",
-  "downloads.no_space": "Yeterli depolama alanı yok"
+  "downloads.no_space": "Yeterli depolama alanı yok",
+  "downloads.playlist_stream": "Bu kaynak bir oynatma listesi, henüz indirilemiyor"
 }

@@ -3291,5 +3291,6 @@
   "downloads.location_title": "מיקום ההורדה",
   "downloads.location_default": "תיקיית ברירת מחדל",
   "downloads.volume_free": "%s פנוי",
-  "downloads.no_space": "אין מספיק מקום באחסון"
+  "downloads.no_space": "אין מספיק מקום באחסון",
+  "downloads.playlist_stream": "המקור הוא רשימת הפעלה ואי אפשר להורידו עדיין"
 }

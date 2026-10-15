@@ -231,6 +231,11 @@ async fn download(
     loop {
         match response.chunk().await.map_err(|error| error.to_string())? {
             Some(chunk) => {
+                if done == 0 && is_playlist(&chunk) {
+                    drop(file);
+                    let _ = std::fs::remove_file(part);
+                    return Err("playlist_stream".to_owned());
+                }
                 file.write_all(&chunk).map_err(write_error)?;
                 done += chunk.len() as u64;
             }
@@ -256,6 +261,10 @@ async fn download(
     }
     std::fs::rename(part, target).map_err(|error| error.to_string())?;
     Ok((target.to_string_lossy().into_owned(), Some(done)))
+}
+
+fn is_playlist(chunk: &[u8]) -> bool {
+    chunk.trim_ascii_start().starts_with(b"#EXTM3U")
 }
 
 fn write_error(error: std::io::Error) -> String {
@@ -358,6 +367,13 @@ fn mounted_roots() -> Vec<std::path::PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn hls_playlists_are_recognised_by_their_first_bytes() {
+        assert!(is_playlist(b"\xef\xbb\xbf#EXTM3U\n".get(3..).unwrap()));
+        assert!(is_playlist(b"  \n#EXTM3U"));
+        assert!(!is_playlist(&[0x1a, 0x45, 0xdf, 0xa3]));
+    }
 
     #[test]
     fn missing_folders_report_the_space_of_their_nearest_parent() {

@@ -240,6 +240,7 @@ fn status_label(row: &DownloadRow, language: &str) -> String {
         DownloadStatus::Queued => localized("downloads.status_queued", language),
         DownloadStatus::Failed => match row.error.as_deref() {
             Some("unsupported_source") => localized("downloads.unsupported_source", language),
+            Some("playlist_stream") => localized("downloads.playlist_stream", language),
             Some("no_space") => localized("downloads.no_space", language),
             _ => localized("downloads.status_failed", language),
         },
