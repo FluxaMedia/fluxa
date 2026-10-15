@@ -7,6 +7,7 @@ license = "MIT"
 [features]
 sentry = ["dep:sentry"]
 ffmpeg = ["dep:ffmpeg-next"]
+ffmpeg-static = ["ffmpeg", "ffmpeg-next/static"]
 host = ["dep:fluxa-host"]
 
 [dependencies]

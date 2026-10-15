@@ -17,5 +17,14 @@ export RUSTFLAGS="-C target-cpu=cortex-a9 ${RUSTFLAGS:-}"
 export TMPDIR="${TMPDIR:-$HOME/.cache/claude-tmp}"
 mkdir -p "$TMPDIR"
 
+ffmpeg="${FFMPEG_OUT:-$HOME/.cache/webos-toolchain/ffmpeg/arm}/install"
+features=()
+if [ -d "$ffmpeg/lib" ]; then
+  export FFMPEG_DIR="$ffmpeg"
+  export WEBOS_SYSROOT="$sdk/arm-webos-linux-gnueabi/sysroot"
+  export BINDGEN_EXTRA_CLANG_ARGS="--target=arm-linux-gnueabi --sysroot=$WEBOS_SYSROOT"
+  features=(--features ffmpeg-static)
+fi
+
 cd "$root/native"
-cargo build -p fluxa-webos --target "$target" --release "$@"
+cargo build -p fluxa-webos --target "$target" --release "${features[@]}" "$@"

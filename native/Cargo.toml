@@ -5,6 +5,7 @@ members = ["fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artw
 [patch.crates-io]
 epaint = { path = "vendor/epaint" }
 librqbit-dualstack-sockets = { path = "vendor/librqbit-dualstack-sockets" }
+ffmpeg-sys-next = { path = "vendor/ffmpeg-sys-next" }
 
 [workspace.package]
 edition = "2024"
