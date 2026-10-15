@@ -3292,5 +3292,11 @@
   "downloads.location_default": "תיקיית ברירת מחדל",
   "downloads.volume_free": "%s פנוי",
   "downloads.no_space": "אין מספיק מקום באחסון",
-  "downloads.playlist_stream": "המקור הוא רשימת הפעלה ואי אפשר להורידו עדיין"
+  "downloads.playlist_stream": "מקור זה הוא רשימת השמעה ואי אפשר להוריד אותו כאן",
+  "downloads.active_count": "%s בהורדה",
+  "downloads.section_active": "בהורדה",
+  "downloads.section_done": "הורדו",
+  "sources.download_stream": "הורד מקור זה",
+  "sources.copy_stream_url": "העתק קישור מקור",
+  "sources.copied": "הועתק ללוח"
 }

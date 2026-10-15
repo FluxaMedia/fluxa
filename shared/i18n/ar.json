@@ -3292,5 +3292,11 @@
   "downloads.location_default": "المجلد الافتراضي",
   "downloads.volume_free": "%s متاح",
   "downloads.no_space": "لا توجد مساحة تخزين كافية",
-  "downloads.playlist_stream": "هذا المصدر قائمة تشغيل ولا يمكن تنزيله بعد"
+  "downloads.playlist_stream": "هذا المصدر قائمة تشغيل ولا يمكن تنزيله هنا",
+  "downloads.active_count": "%s قيد التنزيل",
+  "downloads.section_active": "قيد التنزيل",
+  "downloads.section_done": "تم التنزيل",
+  "sources.download_stream": "تنزيل هذا المصدر",
+  "sources.copy_stream_url": "نسخ رابط المصدر",
+  "sources.copied": "تم النسخ إلى الحافظة"
 }

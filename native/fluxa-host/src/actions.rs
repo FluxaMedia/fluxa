@@ -377,6 +377,7 @@ pub(super) fn refresh_library_view(state: &mut RendererState) {
     state.library.content_type = state.library_type.clone();
     state.library.list_view = state.library_list;
     state.library.downloads_open = state.library_downloads;
+    state.library.downloads_group = state.library_download_group.clone();
     if let Some(snapshot) = state.core_snapshot.as_ref() {
         let library = snapshot
             .get("library")
@@ -637,10 +638,12 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             }
             if node == fluxa_ui::NODE_LIBRARY {
                 state.library_downloads = false;
+                state.library_download_group = None;
                 refresh_library_view(state);
             }
             if node == fluxa_ui::NODE_SIDEBAR_DOWNLOADS {
                 state.library_downloads = true;
+                state.library_download_group = None;
                 refresh_library_view(state);
             }
             if (fluxa_ui::NODE_LIBRARY_SECTION_BASE..fluxa_ui::NODE_LIBRARY_SECTION_BASE + 3)
@@ -648,6 +651,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             {
                 let section = node - fluxa_ui::NODE_LIBRARY_SECTION_BASE;
                 state.library_downloads = section == 2;
+                state.library_download_group = None;
                 refresh_library_view(state);
                 let destination = if section == 1 {
                     Route::Calendar

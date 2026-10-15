@@ -92,9 +92,18 @@ pub struct LibraryModel {
     pub personal: std::sync::Arc<PersonalIndex>,
     pub downloads: Vec<DownloadGroup>,
     pub downloads_summary: DownloadsSummary,
+    pub downloads_group: Option<String>,
 }
 
 impl LibraryModel {
+    pub fn open_download_group(&self) -> Option<(usize, &DownloadGroup)> {
+        let id = self.downloads_group.as_deref()?;
+        self.downloads
+            .iter()
+            .enumerate()
+            .find(|(_, group)| group.id == id)
+    }
+
     pub fn download_rows(&self) -> impl Iterator<Item = &DownloadRow> {
         self.downloads.iter().flat_map(|group| group.rows.iter())
     }
@@ -207,5 +216,6 @@ pub fn library_model_from_core_snapshot(snapshot: &serde_json::Value) -> Library
         liked: cards(LibraryTab::Liked),
         downloads: downloads_from_snapshot(snapshot),
         downloads_summary: downloads_summary_from_snapshot(snapshot),
+        downloads_group: None,
     }
 }

@@ -516,6 +516,9 @@ pub(super) fn key_down(state: &mut RendererState, input: KeyInput) {
     if card_menu::key(state, input) || detail_modal::key(state, input) {
         return;
     }
+    if matches!(input, KeyInput::Key(Key::Back | Key::Escape)) && downloads::close_group(state) {
+        return;
+    }
     if matches!(input, KeyInput::Gamepad(GamepadButton::West)) {
         hide_pointer(state);
         card_menu::open_from_focus(state);

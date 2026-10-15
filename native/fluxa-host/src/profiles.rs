@@ -365,6 +365,7 @@ pub(crate) fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
             state.library_type = "all".to_owned();
             state.library_list = false;
             state.library_downloads = false;
+            state.library_download_group = None;
             state.folder = Default::default();
             state.folder_tab = 0;
             state.calendar = Default::default();

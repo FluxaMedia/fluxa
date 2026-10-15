@@ -21,6 +21,7 @@ pub(crate) struct Request {
     pub library_type: String,
     pub library_list: bool,
     pub library_downloads: bool,
+    pub library_download_group: Option<String>,
     pub hero_trailers: Arc<Value>,
     pub hero_logos: Arc<Value>,
 }
@@ -151,6 +152,7 @@ fn project(
     library.content_type = request.library_type.clone();
     library.list_view = request.library_list;
     library.downloads_open = request.library_downloads;
+    library.downloads_group = request.library_download_group.clone();
     if route == Route::Library {
         let source = snapshot
             .get("library")

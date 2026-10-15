@@ -3303,5 +3303,11 @@
   "downloads.location_default": "Default folder",
   "downloads.volume_free": "%s free",
   "downloads.no_space": "Not enough storage space",
-  "downloads.playlist_stream": "This stream is a live playlist and can't be downloaded yet"
+  "downloads.playlist_stream": "This stream is a playlist and can't be downloaded here",
+  "downloads.active_count": "%s downloading",
+  "downloads.section_active": "Downloading",
+  "downloads.section_done": "Downloaded",
+  "sources.download_stream": "Download this stream",
+  "sources.copy_stream_url": "Copy stream URL",
+  "sources.copied": "Copied to clipboard"
 }

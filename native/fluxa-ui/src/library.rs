@@ -68,82 +68,138 @@ pub fn draw_library(
     );
     if library.downloads_open {
         let top = page.filters_top;
-        let summary_height = components::download_summary_height(page.width, metrics);
+        let bottom = viewport.height - mobile_scroll_reserve(viewport);
         let clip = Rect::from_min_max(
             Pos2::new(0.0, top - metrics.section_gap * 0.5),
-            Pos2::new(
-                viewport.width,
-                viewport.height - mobile_scroll_reserve(viewport),
-            ),
+            Pos2::new(viewport.width, bottom),
         );
-        components::placed(
-            context,
-            Id::new("fluxa-shared-library-downloads-summary"),
-            Pos2::new(page.margin, top - scroll_y),
-            |ui| {
-                ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                components::download_summary(
-                    ui,
-                    &library.downloads_summary,
-                    Pos2::new(page.margin, top - scroll_y),
-                    page.width,
-                    &library.language,
-                    metrics,
-                    &mut layout,
-                );
-            },
-        );
-        let top = top + summary_height + metrics.section_gap;
-        if library.downloads.is_empty() {
-            let bottom = viewport.height - mobile_scroll_reserve(viewport);
-            components::empty_state(
-                &painter,
-                Rect::from_min_max(
-                    Pos2::new(page.margin, (top - scroll_y).max(page.filters_top)),
-                    Pos2::new(
-                        page.margin + page.width,
-                        bottom.max(top - scroll_y + 200.0),
-                    ),
-                ),
-                assets.icon("Downloads"),
-                &localized("library.downloads_empty", &library.language),
-                &localized("library.downloads_hint", &library.language),
-                metrics,
+        let open = library.open_download_group();
+        if let Some((position, group)) = open {
+            let first_index = library.downloads[..position]
+                .iter()
+                .map(|group| group.rows.len())
+                .sum();
+            let header = metrics.icon_button_size;
+            let back = Rect::from_min_size(
+                Pos2::new(page.margin, top - scroll_y),
+                Vec2::splat(header),
             );
-        } else {
-            let clip = Rect::from_min_max(
-                Pos2::new(0.0, top - scroll_y - metrics.section_gap * 0.5),
-                Pos2::new(
-                    viewport.width,
-                    viewport.height - mobile_scroll_reserve(viewport),
-                ),
+            components::placed(
+                context,
+                Id::new("fluxa-shared-library-downloads-header"),
+                back.min,
+                |ui| {
+                    ui.set_clip_rect(ui.clip_rect().intersect(clip));
+                    ui.set_width(page.width);
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().item_spacing.x = metrics.control_gap * 1.5;
+                        let response =
+                            components::back_button(ui, assets.icon("ArrowLeft"), metrics);
+                        if response.clicked() {
+                            layout.activated = Some(NODE_DOWNLOAD_BACK);
+                        }
+                        ui.label(
+                            RichText::new(&group.title)
+                                .size(metrics.screen_title_size)
+                                .strong()
+                                .color(metrics.text_primary),
+                        );
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let response = components::icon_button(
+                                ui,
+                                assets.icon(if library.list_view { "LayoutGrid" } else { "List" }),
+                                metrics.screen_control_height,
+                                text_primary(),
+                                true,
+                                false,
+                                true,
+                            );
+                            components::focus_action(&mut layout, NODE_LIBRARY_VIEW, &response);
+                        });
+                    });
+                },
+            );
+            layout.focusable.push((NODE_DOWNLOAD_BACK, back));
+            let origin = Pos2::new(
+                page.margin,
+                top - scroll_y + header + metrics.section_gap,
             );
             components::placed(
                 context,
                 Id::new("fluxa-shared-library-downloads"),
+                origin,
+                |ui| {
+                    ui.set_clip_rect(ui.clip_rect().intersect(clip));
+                    components::download_group(
+                        ui,
+                        group,
+                        first_index,
+                        origin,
+                        page.width,
+                        library.list_view,
+                        &library.language,
+                        metrics,
+                        assets,
+                        &mut layout,
+                    );
+                },
+            );
+        } else {
+            let summary_height = components::download_summary_height(page.width, metrics);
+            components::placed(
+                context,
+                Id::new("fluxa-shared-library-downloads-summary"),
                 Pos2::new(page.margin, top - scroll_y),
                 |ui| {
                     ui.set_clip_rect(ui.clip_rect().intersect(clip));
-                    let mut y = top - scroll_y;
-                    let mut index = 0;
-                    for group in &library.downloads {
-                        components::download_group(
+                    components::download_summary(
+                        ui,
+                        &library.downloads_summary,
+                        Pos2::new(page.margin, top - scroll_y),
+                        page.width,
+                        &library.language,
+                        metrics,
+                        &mut layout,
+                    );
+                },
+            );
+            let list_top = top + summary_height + metrics.section_gap;
+            if library.downloads.is_empty() {
+                components::empty_state(
+                    &painter,
+                    Rect::from_min_max(
+                        Pos2::new(page.margin, (list_top - scroll_y).max(page.filters_top)),
+                        Pos2::new(
+                            page.margin + page.width,
+                            bottom.max(list_top - scroll_y + 200.0),
+                        ),
+                    ),
+                    assets.icon("Downloads"),
+                    &localized("library.downloads_empty", &library.language),
+                    &localized("library.downloads_hint", &library.language),
+                    metrics,
+                );
+            } else {
+                let origin = Pos2::new(page.margin, list_top - scroll_y);
+                components::placed(
+                    context,
+                    Id::new("fluxa-shared-library-downloads"),
+                    origin,
+                    |ui| {
+                        ui.set_clip_rect(ui.clip_rect().intersect(clip));
+                        components::download_sections(
                             ui,
-                            group,
-                            index,
-                            Pos2::new(page.margin, y),
+                            &library.downloads,
+                            origin,
                             page.width,
                             &library.language,
                             metrics,
                             assets,
                             &mut layout,
                         );
-                        y += components::download_group_height(group, page.width, metrics)
-                            + metrics.section_gap;
-                        index += group.rows.len();
-                    }
-                },
-            );
+                    },
+                );
+            }
         }
         layout
             .focusable

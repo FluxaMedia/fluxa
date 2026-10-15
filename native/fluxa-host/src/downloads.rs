@@ -1,5 +1,5 @@
 use super::*;
-use fluxa_ui::{DownloadStatus, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, localized};
+use fluxa_ui::{DownloadStatus, NODE_DOWNLOAD_BACK, NODE_DOWNLOAD_BASE, NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, localized};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 const NODE_SPAN: u64 = 4000;
@@ -64,7 +64,38 @@ fn now_ms() -> u64 {
         .map_or(0, |elapsed| elapsed.as_millis() as u64)
 }
 
+pub(crate) fn close_group(state: &mut RendererState) -> bool {
+    if state.route != Route::Library
+        || !state.library_downloads
+        || state.library_download_group.is_none()
+    {
+        return false;
+    }
+    state.library_download_group = None;
+    state.screen_scroll_offsets.remove(&Route::Library);
+    refresh_library_view(state);
+    true
+}
+
+fn open_group(state: &mut RendererState, index: usize) {
+    state.library_download_group = state
+        .library
+        .downloads
+        .get(index)
+        .map(|group| group.id.clone());
+    state.screen_scroll_offsets.remove(&Route::Library);
+    refresh_library_view(state);
+}
+
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
+    if node == NODE_DOWNLOAD_BACK {
+        close_group(state);
+        return true;
+    }
+    if node >= NODE_DOWNLOAD_GROUP_BASE && node < NODE_DOWNLOAD_GROUP_BASE + NODE_SPAN {
+        open_group(state, (node - NODE_DOWNLOAD_GROUP_BASE) as usize);
+        return true;
+    }
     if node == NODE_DOWNLOAD_LOCATION {
         open_location_picker(state);
         return true;

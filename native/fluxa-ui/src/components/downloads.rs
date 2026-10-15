@@ -1,19 +1,14 @@
 use super::*;
 use crate::{
     DownloadGroup, DownloadRow, DownloadStatus, DownloadsSummary, NODE_DOWNLOAD_BASE,
-    NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
+    NODE_DOWNLOAD_GROUP_BASE, NODE_DOWNLOAD_LOCATION, format_bytes, format_duration, localized,
 };
 
-const SUMMARY_WIDE: f32 = 720.0;
-const SUMMARY_BLOCK: f32 = 112.0;
+const STORAGE_BLOCK: f32 = 96.0;
+const SPEED_BLOCK: f32 = 96.0;
 
-pub fn download_summary_height(width: f32, metrics: UiMetrics) -> f32 {
-    let pad = padding(metrics);
-    if width >= SUMMARY_WIDE {
-        SUMMARY_BLOCK + pad * 2.0
-    } else {
-        SUMMARY_BLOCK * 2.0 + pad * 3.0
-    }
+pub fn download_summary_height(_width: f32, metrics: UiMetrics) -> f32 {
+    padding(metrics) * 3.0 + STORAGE_BLOCK + SPEED_BLOCK
 }
 
 fn speed_block(
@@ -158,24 +153,16 @@ pub fn download_summary(
     painter.rect_filled(card, metrics.card_radius, metrics.surface_raised);
     let pad = padding(metrics);
     let inner = card.shrink(pad);
-    let (speed, storage) = if width >= SUMMARY_WIDE {
-        let half = (inner.width() - pad * 2.0) * 0.5;
-        (
-            Rect::from_min_size(inner.min, Vec2::new(half, SUMMARY_BLOCK)),
-            Rect::from_min_size(
-                Pos2::new(inner.right() - half, inner.top()),
-                Vec2::new(half, SUMMARY_BLOCK),
-            ),
-        )
-    } else {
-        (
-            Rect::from_min_size(inner.min, Vec2::new(inner.width(), SUMMARY_BLOCK)),
-            Rect::from_min_size(
-                Pos2::new(inner.left(), inner.top() + SUMMARY_BLOCK + pad),
-                Vec2::new(inner.width(), SUMMARY_BLOCK),
-            ),
-        )
-    };
+    let storage = Rect::from_min_size(inner.min, Vec2::new(inner.width(), STORAGE_BLOCK));
+    let speed = Rect::from_min_size(
+        Pos2::new(inner.left(), storage.bottom() + pad),
+        Vec2::new(inner.width(), SPEED_BLOCK),
+    );
+    painter.hline(
+        inner.left()..=inner.right(),
+        storage.bottom() + pad * 0.5,
+        egui::Stroke::new(1.0, metrics.border),
+    );
     speed_block(&painter, speed, summary, language, metrics);
     storage_block(ui, storage, summary, language, metrics, layout);
 }
@@ -196,13 +183,32 @@ fn row_height(metrics: UiMetrics) -> f32 {
     padding(metrics) * 2.0 + 62.0
 }
 
-fn header_height(width: f32) -> f32 {
-    (width * 0.16).clamp(96.0, 150.0)
+fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
+    let gap = metrics.control_gap;
+    let columns = (((width + gap) / (300.0 + gap)).floor() as usize).max(1);
+    (columns, (width - gap * (columns - 1) as f32) / columns as f32)
 }
 
-pub fn download_group_height(group: &DownloadGroup, width: f32, metrics: UiMetrics) -> f32 {
+fn episode_height(card_width: f32, metrics: UiMetrics) -> f32 {
+    card_width * 9.0 / 16.0
+        + metrics.screen_card_title_size
+        + metrics.screen_card_subtitle_size * 2.0
+        + 28.0
+}
+
+pub fn download_group_height(
+    group: &DownloadGroup,
+    width: f32,
+    metrics: UiMetrics,
+    list: bool,
+) -> f32 {
     let gap = metrics.control_gap;
-    header_height(width) + gap + group.rows.len() as f32 * (row_height(metrics) + gap)
+    let count = group.rows.len();
+    if list {
+        return count as f32 * (row_height(metrics) + gap);
+    }
+    let (columns, card) = episode_grid(width, metrics);
+    count.div_ceil(columns) as f32 * (episode_height(card, metrics) + gap * 1.5)
 }
 
 fn round_button(
@@ -414,6 +420,283 @@ fn download_row(
     );
 }
 
+fn banner_summary(group: &DownloadGroup, language: &str) -> String {
+    let active = group.active();
+    if active > 0 {
+        format!(
+            "{} · {}",
+            localized("downloads.active_count", language).replacen("%s", &active.to_string(), 1),
+            format_bytes(group.bytes_done())
+        )
+    } else {
+        localized("downloads.folder_summary", language)
+            .replacen("%s", &group.completed().to_string(), 1)
+            .replacen("%s", &format_bytes(group.bytes_done()), 1)
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn download_poster(
+    ui: &mut Ui,
+    group: &DownloadGroup,
+    index: usize,
+    rect: Rect,
+    language: &str,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+    layout: &mut HomeLayout,
+) {
+    let painter = ui.painter().clone();
+    let card = crate::HomeCard {
+        id: Some(group.id.clone()),
+        title: group.title.clone(),
+        subtitle: banner_summary(group, language),
+        artwork_url: group.poster.clone().or_else(|| group.background.clone()),
+        ..Default::default()
+    };
+    poster_card(&painter, rect, &card, metrics, assets, false);
+    if !painter.clip_rect().intersects(rect) {
+        return;
+    }
+
+    let node = NODE_DOWNLOAD_GROUP_BASE + index as u64;
+    let response = ui.interact(rect, Id::new(("download-poster", node)), Sense::click());
+    layout.focusable.push((node, rect));
+    if response.clicked() {
+        layout.activated = Some(node);
+    }
+    if response.hovered() {
+        painter.rect_filled(rect, metrics.card_radius, ink(14));
+    }
+
+    let pad = padding(metrics);
+    let status = if let Some(fraction) = group.active_fraction() {
+        Some((format!("{:.0}%", fraction * 100.0), Some(fraction)))
+    } else if group.active() > 0 {
+        Some((String::new(), None))
+    } else if group.any(DownloadStatus::Failed) {
+        Some((localized("downloads.status_failed", language), None))
+    } else if group.any(DownloadStatus::Paused) {
+        Some((localized("downloads.status_paused", language), None))
+    } else {
+        None
+    };
+    let Some((headline, fraction)) = status else {
+        return;
+    };
+    let height = (rect.height() * 0.34).max(72.0);
+    let scrim = Rect::from_min_max(
+        Pos2::new(rect.left(), rect.bottom() - height),
+        rect.right_bottom(),
+    );
+    paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, shade(Shade::Scrim));
+    let mut y = rect.bottom() - pad;
+    if let Some(fraction) = fraction {
+        let bar = Rect::from_min_size(
+            Pos2::new(rect.left() + pad, y - 4.0),
+            Vec2::new(rect.width() - pad * 2.0, 4.0),
+        );
+        painter.rect_filled(bar, 2.0, ink(60));
+        painter.rect_filled(
+            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(4.0), 4.0)),
+            2.0,
+            metrics.accent,
+        );
+        y = bar.top() - 6.0;
+    }
+    if group.active() > 0 {
+        let mut timing = localized("downloads.elapsed", language).replacen(
+            "%s",
+            &format_duration(group.elapsed_ms()),
+            1,
+        );
+        if let Some(eta) = group.eta_ms() {
+            timing = format!(
+                "{} · {timing}",
+                localized("downloads.remaining", language).replacen("%s", &format_duration(eta), 1)
+            );
+        }
+        let timing_rect = draw_text(
+            &painter,
+            Pos2::new(rect.left() + pad, y),
+            Align2::LEFT_BOTTOM,
+            timing,
+            crate::fonts::regular(metrics.screen_card_subtitle_size),
+            metrics.text_secondary,
+            Some(rect.width() - pad * 2.0),
+        );
+        y = timing_rect.top() - 2.0;
+        let speed = draw_text(
+            &painter,
+            Pos2::new(rect.right() - pad, y),
+            Align2::RIGHT_BOTTOM,
+            format!("{}/s", format_bytes(group.speed_bps() as u64)),
+            crate::fonts::regular(metrics.screen_card_subtitle_size),
+            metrics.text_secondary,
+            Some(rect.width() * 0.5),
+        );
+        draw_text(
+            &painter,
+            Pos2::new(rect.left() + pad, y),
+            Align2::LEFT_BOTTOM,
+            headline,
+            crate::fonts::medium(metrics.screen_card_title_size + 2.0),
+            metrics.text_primary,
+            Some(rect.width() - speed.width() - pad * 3.0),
+        );
+    } else {
+        draw_text(
+            &painter,
+            Pos2::new(rect.left() + pad, y),
+            Align2::LEFT_BOTTOM,
+            headline,
+            crate::fonts::medium(metrics.screen_card_title_size),
+            metrics.text_primary,
+            Some(rect.width() - pad * 2.0),
+        );
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
+fn episode_card(
+    ui: &mut Ui,
+    rect: Rect,
+    row: &DownloadRow,
+    group: &DownloadGroup,
+    index: usize,
+    language: &str,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+    layout: &mut HomeLayout,
+) {
+    let painter = ui.painter().clone();
+    let radius = metrics.card_radius;
+    let thumb = Rect::from_min_size(rect.min, Vec2::new(rect.width(), rect.width() * 9.0 / 16.0));
+    painter.rect_filled(thumb, radius, metrics.surface_raised);
+    rounded_artwork(
+        &painter,
+        thumb,
+        radius,
+        row.thumbnail
+            .as_deref()
+            .or(group.background.as_deref())
+            .or(group.poster.as_deref()),
+        artwork_target_size(thumb.size(), painter.ctx().pixels_per_point()),
+        ArtworkPriority::Visible,
+        Color32::WHITE,
+        assets,
+    );
+    let scrim = Rect::from_min_max(
+        Pos2::new(thumb.left(), thumb.bottom() - thumb.height() * 0.5),
+        thumb.right_bottom(),
+    );
+    paint_vertical_gradient(&painter, scrim, Color32::TRANSPARENT, shade(Shade::Scrim));
+
+    let pad = padding(metrics);
+    let fraction = match row.status {
+        DownloadStatus::Completed => 1.0,
+        _ => (row.percent / 100.0).clamp(0.0, 1.0),
+    };
+    let bar = Rect::from_min_size(
+        Pos2::new(thumb.left() + pad, thumb.bottom() - pad - 4.0),
+        Vec2::new(thumb.width() - pad * 2.0, 4.0),
+    );
+    painter.rect_filled(bar, 2.0, ink(60));
+    if fraction > 0.0 {
+        painter.rect_filled(
+            Rect::from_min_size(bar.min, Vec2::new((bar.width() * fraction).max(4.0), 4.0)),
+            2.0,
+            metrics.accent,
+        );
+    }
+    draw_text(
+        &painter,
+        Pos2::new(bar.left(), bar.top() - 6.0),
+        Align2::LEFT_BOTTOM,
+        status_label(row, language),
+        crate::fonts::medium(metrics.screen_card_title_size),
+        metrics.text_primary,
+        Some(bar.width()),
+    );
+
+    let button = 34.0;
+    let mut right = thumb.right() - pad;
+    let remove = Rect::from_center_size(
+        Pos2::new(right - button * 0.5, thumb.top() + pad + button * 0.5),
+        Vec2::splat(button),
+    );
+    round_button(
+        ui,
+        remove,
+        Id::new(("download-remove", &row.id)),
+        assets.icon("Delete"),
+        download_remove_node(index),
+        metrics,
+        layout,
+    );
+    right = remove.left() - metrics.control_gap;
+    if row.status != DownloadStatus::Completed {
+        let toggle = Rect::from_center_size(
+            Pos2::new(right - button * 0.5, remove.center().y),
+            Vec2::splat(button),
+        );
+        let icon = match row.status {
+            DownloadStatus::Downloading | DownloadStatus::Queued => "PauseFilled",
+            DownloadStatus::Paused => "PlayFilled",
+            _ => "Refresh",
+        };
+        round_button(
+            ui,
+            toggle,
+            Id::new(("download-toggle", &row.id)),
+            assets.icon(icon),
+            download_toggle_node(index),
+            metrics,
+            layout,
+        );
+    }
+
+    let mut y = thumb.bottom() + 8.0;
+    let mut title_x = rect.left();
+    if row.season.is_some() || row.episode.is_some() {
+        let code = localized("format.season_episode_code", language)
+            .replacen("%s", &row.season.unwrap_or(0).to_string(), 1)
+            .replacen("%s", &row.episode.unwrap_or(0).to_string(), 1);
+        let used = draw_text(
+            &painter,
+            Pos2::new(title_x, y),
+            Align2::LEFT_TOP,
+            &code,
+            crate::fonts::medium(metrics.screen_card_title_size),
+            metrics.text_muted,
+            None,
+        );
+        title_x = used.right() + metrics.control_gap;
+    }
+    let title = draw_text(
+        &painter,
+        Pos2::new(title_x, y),
+        Align2::LEFT_TOP,
+        &row.title,
+        crate::fonts::medium(metrics.screen_card_title_size),
+        metrics.text_primary,
+        Some((rect.right() - title_x).max(1.0)),
+    );
+    y = title.bottom() + 4.0;
+    for line in [bytes_label(row, language), timing_label(row, language)] {
+        let used = draw_text(
+            &painter,
+            Pos2::new(rect.left(), y),
+            Align2::LEFT_TOP,
+            line,
+            crate::fonts::regular(metrics.screen_card_subtitle_size),
+            metrics.text_muted,
+            Some(rect.width()),
+        );
+        y = used.bottom() + 2.0;
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn download_group(
     ui: &mut Ui,
@@ -421,6 +704,7 @@ pub fn download_group(
     first_index: usize,
     origin: Pos2,
     width: f32,
+    list: bool,
     language: &str,
     metrics: UiMetrics,
     assets: &mut impl HomeAssets,
@@ -428,87 +712,111 @@ pub fn download_group(
 ) {
     let visible = ui.painter().clip_rect();
     let gap = metrics.control_gap;
-    let header = Rect::from_min_size(origin, Vec2::new(width, header_height(width)));
-    let total = download_group_height(group, width, metrics);
-    if !visible.intersects(Rect::from_min_size(origin, Vec2::new(width, total))) {
+    if list {
+        let height = row_height(metrics);
+        for (offset, row) in group.rows.iter().enumerate() {
+            let rect = Rect::from_min_size(
+                Pos2::new(origin.x, origin.y + offset as f32 * (height + gap)),
+                Vec2::new(width, height),
+            );
+            if visible.intersects(rect) {
+                download_row(ui, rect, row, first_index + offset, language, metrics, assets, layout);
+            }
+        }
         return;
     }
-
-    let painter = ui.painter().clone();
-    let radius = metrics.card_radius;
-    painter.rect_filled(header, radius, metrics.surface_raised);
-    rounded_artwork(
-        &painter,
-        header,
-        radius,
-        group.background.as_deref().or(group.poster.as_deref()),
-        artwork_target_size(header.size(), painter.ctx().pixels_per_point()),
-        ArtworkPriority::Visible,
-        Color32::WHITE,
-        assets,
-    );
-    painter.rect_filled(header, radius, shade(Shade::Scrim));
-
-    let inset = padding(metrics) * 1.5;
-    let bounds = Vec2::new(header.width() * 0.4, header.height() * 0.5);
-    let logo = title_logo(
-        painter.ctx().pixels_per_point(),
-        group.logo.as_deref(),
-        bounds,
-        ArtworkPriority::Visible,
-        assets,
-    );
-    match logo {
-        Some((texture, size)) => {
-            let rect = Rect::from_min_size(
-                Pos2::new(header.left() + inset, header.center().y - size.y * 0.5),
-                size,
-            );
-            texture_image(&painter, texture, rect, full_uv(), Color32::WHITE);
-        }
-        None => {
-            draw_text(
-                &painter,
-                Pos2::new(header.left() + inset, header.center().y),
-                Align2::LEFT_CENTER,
-                &group.title,
-                crate::fonts::medium(metrics.screen_title_size * 0.8),
-                metrics.text_primary,
-                Some(header.width() * 0.6),
-            );
-        }
-    }
-    if group.is_series {
-        let summary = localized("downloads.folder_summary", language)
-            .replacen("%s", &group.completed().to_string(), 1)
-            .replacen("%s", &format_bytes(group.bytes_done()), 1);
-        draw_text(
-            &painter,
-            Pos2::new(header.right() - inset, header.bottom() - inset),
-            Align2::RIGHT_BOTTOM,
-            summary,
-            crate::fonts::regular(metrics.screen_card_subtitle_size),
-            metrics.text_primary,
-            Some(header.width() * 0.5),
-        );
-    }
-
-    let mut y = header.bottom() + gap;
-    let height = row_height(metrics);
+    let (columns, card) = episode_grid(width, metrics);
+    let height = episode_height(card, metrics);
     for (offset, row) in group.rows.iter().enumerate() {
-        let rect = Rect::from_min_size(Pos2::new(origin.x, y), Vec2::new(width, height));
+        let rect = Rect::from_min_size(
+            Pos2::new(
+                origin.x + (offset % columns) as f32 * (card + gap),
+                origin.y + (offset / columns) as f32 * (height + gap * 1.5),
+            ),
+            Vec2::new(card, height),
+        );
         if visible.intersects(rect) {
-            download_row(
-                ui,
-                rect,
-                row,
-                first_index + offset,
-                language,
-                metrics,
-                assets,
-                layout,
-            );
+            episode_card(ui, rect, row, group, first_index + offset, language, metrics, assets, layout);
         }
-        y += height + gap;
+    }
+}
+
+fn section_heading(painter: &Painter, pos: Pos2, key: &str, count: usize, language: &str, metrics: UiMetrics) {
+    let used = draw_text(
+        painter,
+        pos,
+        Align2::LEFT_TOP,
+        localized(key, language),
+        crate::fonts::medium(metrics.screen_card_title_size + 4.0),
+        metrics.text_primary,
+        None,
+    );
+    draw_text(
+        painter,
+        Pos2::new(used.right() + metrics.control_gap, pos.y + 2.0),
+        Align2::LEFT_TOP,
+        count.to_string(),
+        crate::fonts::regular(metrics.screen_card_title_size),
+        metrics.text_muted,
+        None,
+    );
+}
+
+fn heading_height(metrics: UiMetrics) -> f32 {
+    metrics.screen_card_title_size + 4.0 + metrics.control_gap * 1.5
+}
+
+const SECTIONS: [(&str, bool); 2] = [
+    ("downloads.section_active", false),
+    ("downloads.section_done", true),
+];
+
+fn section_members(groups: &[DownloadGroup], done: bool) -> Vec<usize> {
+    groups
+        .iter()
+        .enumerate()
+        .filter(|(_, group)| (group.completed() == group.rows.len()) == done)
+        .map(|(index, _)| index)
+        .collect()
+}
+
+pub fn download_sections_height(groups: &[DownloadGroup], width: f32, metrics: UiMetrics) -> f32 {
+    let grid = crate::PosterGrid::new(width, metrics);
+    SECTIONS
+        .iter()
+        .map(|(_, done)| section_members(groups, *done).len())
+        .filter(|count| *count > 0)
+        .map(|count| heading_height(metrics) + grid.height(count) + metrics.section_gap)
+        .sum()
+}
+
+#[allow(clippy::too_many_arguments)]
+pub fn download_sections(
+    ui: &mut Ui,
+    groups: &[DownloadGroup],
+    origin: Pos2,
+    width: f32,
+    language: &str,
+    metrics: UiMetrics,
+    assets: &mut impl HomeAssets,
+    layout: &mut HomeLayout,
+) {
+    let grid = crate::PosterGrid::new(width, metrics);
+    let painter = ui.painter().clone();
+    let mut y = origin.y;
+    for (key, done) in SECTIONS {
+        let members = section_members(groups, done);
+        if members.is_empty() {
+            continue;
+        }
+        section_heading(&painter, Pos2::new(origin.x, y), key, members.len(), language, metrics);
+        y += heading_height(metrics);
+        let top = Pos2::new(origin.x, y);
+        for (slot, index) in members.iter().enumerate() {
+            let cell = grid.cell(top, slot);
+            let poster = Rect::from_min_size(cell.min, Vec2::new(grid.card_width, grid.poster_height));
+            download_poster(ui, &groups[*index], *index, poster, language, metrics, assets, layout);
+        }
+        y += grid.height(members.len()) + metrics.section_gap;
     }
 }

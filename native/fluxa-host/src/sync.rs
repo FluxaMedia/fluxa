@@ -23,6 +23,7 @@ pub(super) fn request_projection(state: &mut RendererState) {
         library_type: state.library_type.clone(),
         library_list: state.library_list,
         library_downloads: state.library_downloads,
+        library_download_group: state.library_download_group.clone(),
         hero_trailers: state.trailers.inputs(),
         hero_logos: state.logos.inputs(),
     });

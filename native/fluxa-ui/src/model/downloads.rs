@@ -28,6 +28,7 @@ pub struct DownloadRow {
     pub season: Option<u32>,
     pub episode: Option<u32>,
     pub title: String,
+    pub thumbnail: Option<String>,
     pub status: DownloadStatus,
     pub bytes_done: u64,
     pub bytes_total: Option<u64>,
@@ -40,6 +41,7 @@ pub struct DownloadRow {
 
 #[derive(Clone, Debug, Default)]
 pub struct DownloadGroup {
+    pub id: String,
     pub title: String,
     pub is_series: bool,
     pub logo: Option<String>,
@@ -58,6 +60,49 @@ impl DownloadGroup {
             .iter()
             .filter(|row| row.status == DownloadStatus::Downloading)
             .count()
+    }
+
+    pub fn active_fraction(&self) -> Option<f32> {
+        let active: Vec<_> = self
+            .rows
+            .iter()
+            .filter(|row| row.status == DownloadStatus::Downloading)
+            .collect();
+        let total: u64 = active.iter().filter_map(|row| row.bytes_total).sum();
+        if active.is_empty() || total == 0 {
+            return None;
+        }
+        let done: u64 = active.iter().map(|row| row.bytes_done).sum();
+        Some((done as f32 / total as f32).clamp(0.0, 1.0))
+    }
+
+    pub fn speed_bps(&self) -> f64 {
+        self.rows
+            .iter()
+            .filter(|row| row.status == DownloadStatus::Downloading)
+            .map(|row| row.speed_bps)
+            .sum()
+    }
+
+    pub fn eta_ms(&self) -> Option<u64> {
+        self.rows
+            .iter()
+            .filter(|row| row.status == DownloadStatus::Downloading)
+            .filter_map(|row| row.eta_ms)
+            .max()
+    }
+
+    pub fn elapsed_ms(&self) -> u64 {
+        self.rows
+            .iter()
+            .filter(|row| row.status == DownloadStatus::Downloading)
+            .map(|row| row.elapsed_ms)
+            .max()
+            .unwrap_or(0)
+    }
+
+    pub fn any(&self, status: DownloadStatus) -> bool {
+        self.rows.iter().any(|row| row.status == status)
     }
 
     pub fn completed(&self) -> usize {
@@ -94,6 +139,7 @@ pub fn downloads_from_snapshot(snapshot: &Value) -> Vec<DownloadGroup> {
             season,
             episode,
             title: text(item, "episodeTitle").unwrap_or_else(|| name.clone()),
+            thumbnail: text(item, "thumbnail"),
             status: DownloadStatus::parse(item["status"].as_str().unwrap_or_default()),
             bytes_done: item["bytesDone"].as_u64().unwrap_or(0),
             bytes_total: item["bytesTotal"].as_u64(),
@@ -106,9 +152,11 @@ pub fn downloads_from_snapshot(snapshot: &Value) -> Vec<DownloadGroup> {
         let index = match groups.iter().position(|(id, _)| *id == meta_id) {
             Some(index) => index,
             None => {
+                let meta_id_for_group = meta_id.clone();
                 groups.push((
                     meta_id,
                     DownloadGroup {
+                        id: meta_id_for_group.clone(),
                         title: name,
                         is_series: season.is_some() || episode.is_some(),
                         logo: text(item, "logo"),
