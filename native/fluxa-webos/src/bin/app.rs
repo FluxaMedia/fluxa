@@ -84,6 +84,7 @@ fn main() {
     let crash_file = data.join("crash.txt");
     crash::report_previous_crash(&crash_file);
     crash::install_signal_handlers(&crash_file);
+    crash::report_compatibility(true, &data.join("compat-reported"), env!("CARGO_PKG_VERSION"));
     let host = FluxaHost::new(1.0, Some(data.join("artwork-cache")));
     host.set_form_factor("tv");
     host.set_platform("webos");
