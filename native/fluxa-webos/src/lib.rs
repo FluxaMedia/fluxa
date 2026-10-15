@@ -1,5 +1,6 @@
 #[cfg(feature = "sentry")]
 pub mod crash;
+pub mod annexb;
 mod base64;
 pub mod diagnostics;
 mod events;
