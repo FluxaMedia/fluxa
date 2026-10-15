@@ -136,3 +136,18 @@ fn flac_audio_is_transcoded_to_ac3_with_monotonic_timestamps() {
     assert!(count > 40, "only {count} ac3 frames");
     let _ = std::fs::remove_file(path);
 }
+
+#[test]
+fn hdr_is_dropped_when_the_tv_has_no_hdr() {
+    let args = [
+        "-vf", "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc", "-c:v", "libx264",
+        "-an", "-shortest",
+    ];
+    let Some(path) = sample("fluxa-webos-g.mkv", &args) else {
+        return;
+    };
+    let caps = fluxa_webos::capabilities::Capabilities { hdr: Some(false), dolby_vision: Some(false) };
+    let mut demuxer = FfmpegDemuxer::with_capabilities(caps);
+    assert!(demuxer.open(path.to_str().unwrap()).unwrap().hdr.is_none());
+    let _ = std::fs::remove_file(path);
+}

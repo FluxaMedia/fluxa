@@ -20,6 +20,7 @@ pub mod sdl;
 pub mod remote;
 mod starfish;
 pub mod acb;
+pub mod capabilities;
 pub mod player;
 pub mod subtitle;
 

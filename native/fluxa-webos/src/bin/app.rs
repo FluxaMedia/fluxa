@@ -8,6 +8,7 @@ use std::time::Duration;
 use fluxa_host::{BridgeVideo, VideoStatus, FluxaHost, KeyInput, MouseButton, NativeSurface, VideoBridge};
 use fluxa_renderer::platform::GraphicsBackend;
 use fluxa_webos::bridge::pump;
+use fluxa_webos::capabilities;
 use fluxa_webos::demux::FfmpegDemuxer;
 use fluxa_webos::crash;
 use fluxa_webos::diagnostics::{Report, note, trace};
@@ -99,6 +100,10 @@ fn main() {
     let surface = unsafe { NativeSurface::new(BACKENDS, move || target(display, window)) };
     host.surface_created(surface, width, height);
 
+    let caps = capabilities::query();
+    note("tv.supports_hdr", format!("{:?}", caps.hdr));
+    note("tv.supports_dolby_vision", format!("{:?}", caps.dolby_vision));
+
     let (events, rx) = channel();
     let options = LoadOptions {
         app_id: APP_ID.into(),
@@ -108,7 +113,7 @@ fn main() {
         max_resolution: None,
     };
     let mut player = match StarfishPipeline::open(options, events) {
-        Ok(pipeline) => Some(Player::new(FfmpegDemuxer::default(), pipeline, rx)),
+        Ok(pipeline) => Some(Player::new(FfmpegDemuxer::with_capabilities(caps), pipeline, rx)),
         Err(error) => {
             trace(format!("starfish unavailable: {error:?}"));
             crash::capture(&format!("starfish unavailable: {error:?}"));
