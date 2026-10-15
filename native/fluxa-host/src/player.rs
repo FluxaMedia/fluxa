@@ -1421,7 +1421,12 @@ pub(crate) fn expand(state: &mut RendererState) {
 
 pub(crate) fn leave(state: &mut RendererState) {
     let desktop = state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop;
-    if desktop && state.player.as_ref().is_some_and(|player| player.can_minimize()) {
+    if desktop
+        && state
+            .player
+            .as_ref()
+            .is_some_and(|player| player.can_minimize())
+    {
         minimize(state);
     } else {
         close(state);

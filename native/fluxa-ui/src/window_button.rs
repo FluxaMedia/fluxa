@@ -13,10 +13,7 @@ pub fn draw_window_fullscreen_button(
     if viewport.form_factor != UiFormFactor::Desktop {
         return;
     }
-    let pos = Pos2::new(
-        viewport.width - MARGIN - SIZE,
-        MARGIN + viewport.nav_lead,
-    );
+    let pos = Pos2::new(viewport.width - MARGIN - SIZE, MARGIN + viewport.nav_lead);
     let icon = assets.icon(if fullscreen { "Minimize" } else { "Maximize" });
     egui::Area::new(Id::new("fluxa-window-fullscreen"))
         .fixed_pos(pos)
