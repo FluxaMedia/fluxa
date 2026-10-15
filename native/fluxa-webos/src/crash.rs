@@ -28,3 +28,9 @@ pub fn capture(message: &str) {
         || sentry::capture_message(message, sentry::Level::Error),
     );
 }
+
+pub fn install_default(release: &str) -> Option<sentry::ClientInitGuard> {
+    option_env!("FLUXA_SENTRY_DSN")
+        .filter(|dsn| !dsn.is_empty())
+        .map(|dsn| install(dsn, release))
+}
