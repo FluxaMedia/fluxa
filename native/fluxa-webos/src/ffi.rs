@@ -50,6 +50,9 @@ pub struct Starfish {
     seek: Text,
     set_hdr_info: Text,
     media_id: MediaId,
+    flush: Verb,
+    push_eos: Verb,
+    set_time_to_decode: Text,
 }
 
 extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *mut c_void) {
@@ -83,6 +86,9 @@ impl Starfish {
                 seek: symbol(&library, "_ZN17StarfishMediaAPIs4SeekEPKc\0")?,
                 set_hdr_info: symbol(&library, "_ZN17StarfishMediaAPIs10setHdrInfoEPKc\0")?,
                 media_id: symbol(&library, "_ZN17StarfishMediaAPIs10getMediaIDEv\0")?,
+                flush: symbol(&library, "_ZN17StarfishMediaAPIs5flushEv\0")?,
+                push_eos: symbol(&library, "_ZN17StarfishMediaAPIs7pushEOSEv\0")?,
+                set_time_to_decode: symbol(&library, "_ZN17StarfishMediaAPIs13setTimeToDecodeEPKc\0")?,
                 _library: library,
                 object: Box::new(Aligned([0; OBJECT_SIZE])),
                 sink: Box::new(Sink { events, webos_major }),
@@ -146,6 +152,19 @@ impl Starfish {
         unsafe { (self.set_hdr_info)(self.this(), payload.as_ptr()) }
     }
 
+    pub fn flush(&self) -> bool {
+        unsafe { (self.flush)(self.this()) }
+    }
+
+    pub fn push_eos(&self) -> bool {
+        unsafe { (self.push_eos)(self.this()) }
+    }
+
+    pub fn set_time_to_decode(&self, payload: &str) -> bool {
+        let payload = c_string(payload);
+        unsafe { (self.set_time_to_decode)(self.this(), payload.as_ptr()) }
+    }
+
     pub fn media_id(&self) -> Option<String> {
         let id = unsafe { (self.media_id)(self.this()) };
         (!id.is_null()).then(|| unsafe { CStr::from_ptr(id) }.to_string_lossy().into_owned())
@@ -158,7 +177,7 @@ impl Drop for Starfish {
     }
 }
 
-const SYMBOLS: [&str; 10] = [
+const SYMBOLS: [&str; 13] = [
     "_ZN17StarfishMediaAPIsC1EPKc",
     "_ZN17StarfishMediaAPIsD1Ev",
     "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_",
@@ -169,6 +188,9 @@ const SYMBOLS: [&str; 10] = [
     "_ZN17StarfishMediaAPIs5PauseEv",
     "_ZN17StarfishMediaAPIs10setHdrInfoEPKc",
     "_ZN17StarfishMediaAPIs10getMediaIDEv",
+    "_ZN17StarfishMediaAPIs5flushEv",
+    "_ZN17StarfishMediaAPIs7pushEOSEv",
+    "_ZN17StarfishMediaAPIs13setTimeToDecodeEPKc",
 ];
 
 pub fn probe_symbols() -> Vec<(String, bool)> {
