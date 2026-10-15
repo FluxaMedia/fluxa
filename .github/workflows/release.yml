@@ -448,8 +448,10 @@ jobs:
       - name: Verify ipk against webOS firmware
         continue-on-error: true
         run: |
-          curl -fsSL -o ipk-verify.deb https://github.com/webosbrew/dev-toolbox-cli/releases/download/v20260818-ea38b20/webosbrew-toolbox-ipk-verify_0.9.0-1_amd64.deb
-          sudo dpkg -i ipk-verify.deb
+          base=https://github.com/webosbrew/dev-toolbox-cli/releases/download/v20260818-ea38b20
+          curl -fsSL -o ipk-verify.deb "$base/webosbrew-toolbox-ipk-verify_0.9.0-1_amd64.deb"
+          curl -fsSL -o fw-symbols.deb "$base/webosbrew-toolbox-fw-symbols_0.9.0-1_amd64.deb"
+          sudo dpkg -i fw-symbols.deb ipk-verify.deb
           ./scripts/verify-webos.sh out/fluxa-*-webos-native.ipk ">=4.0"
 
       - uses: actions/upload-artifact@v4
