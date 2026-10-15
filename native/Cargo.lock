@@ -2384,6 +2384,7 @@ dependencies = [
 name = "fluxa-webos"
 version = "0.1.0"
 dependencies = [
+ "cc",
  "ffmpeg-next",
  "fluxa-host",
  "libloading 0.8.9",

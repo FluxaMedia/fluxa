@@ -1,7 +1,4 @@
 use fluxa_webos::diagnostics::Report;
-use fluxa_webos::demux::FfmpegDemuxer;
-use fluxa_webos::player::Demuxer;
-use fluxa_webos::{LoadOptions, load_payload};
 
 fn main() {
     let Some(arg) = std::env::args().nth(1) else {
@@ -18,8 +15,17 @@ fn main() {
         }
         return;
     }
+    open(&arg);
+}
+
+#[cfg(feature = "ffmpeg")]
+fn open(url: &str) {
+    use fluxa_webos::demux::FfmpegDemuxer;
+    use fluxa_webos::player::Demuxer;
+    use fluxa_webos::{LoadOptions, load_payload};
+
     let mut demuxer = FfmpegDemuxer::default();
-    let info = match demuxer.open(&arg) {
+    let info = match demuxer.open(url) {
         Ok(info) => info,
         Err(error) => {
             eprintln!("open failed: {error}");
@@ -35,4 +41,10 @@ fn main() {
     };
     println!("duration {:.3}s", info.duration_ns as f64 / 1e9);
     println!("{}", load_payload(&info.video, info.audio.as_ref(), &options));
+}
+
+#[cfg(not(feature = "ffmpeg"))]
+fn open(_url: &str) {
+    eprintln!("built without the ffmpeg feature");
+    std::process::exit(1);
 }
