@@ -1,0 +1,11 @@
+{
+  "id": "com.fluxa.native",
+  "title": "Fluxa",
+  "main": "fluxa-webos",
+  "icon": "icon.png",
+  "largeIcon": "largeIcon.png",
+  "type": "native",
+  "version": "0.0.0",
+  "vendor": "Fluxa",
+  "requiredPermissions": ["MEDIA_OPERATION"]
+}
