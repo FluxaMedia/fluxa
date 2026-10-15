@@ -1,7 +1,8 @@
 use ffmpeg_next::{self as ffmpeg, Rational, codec::Id, ffi, format, media};
 
 use crate::annexb::{Converter, is_annexb};
-use crate::load::{AudioCodec, AudioStream, VideoCodec, VideoStream};
+use crate::hdr::{HdrInfo, Mastering, kind_for_transfer};
+use crate::load::{AudioCodec, AudioStream, DolbyVision, VideoCodec, VideoStream};
 use crate::player::{Demuxer, MediaInfo, Packet, TrackInfo};
 use crate::subtitle::{self, SubtitleFormat};
 
@@ -36,6 +37,101 @@ fn extradata(parameters: &ffmpeg::codec::Parameters) -> Vec<u8> {
         }
         std::slice::from_raw_parts(raw.extradata, raw.extradata_size as usize).to_vec()
     }
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct DoviRecord {
+    version_major: u8,
+    version_minor: u8,
+    dv_profile: u8,
+    dv_level: u8,
+    rpu_present_flag: u8,
+    el_present_flag: u8,
+    bl_present_flag: u8,
+    bl_signal_compatibility_id: u8,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+struct MasteringRecord {
+    display_primaries: [[ffi::AVRational; 2]; 3],
+    white_point: [ffi::AVRational; 2],
+    min_luminance: ffi::AVRational,
+    max_luminance: ffi::AVRational,
+    has_primaries: i32,
+    has_luminance: i32,
+}
+
+#[repr(C)]
+#[derive(Clone, Copy)]
+#[allow(non_snake_case)]
+struct LightRecord {
+    MaxCLL: u32,
+    MaxFALL: u32,
+}
+
+fn rational(value: ffi::AVRational) -> f64 {
+    if value.den == 0 { 0.0 } else { value.num as f64 / value.den as f64 }
+}
+
+fn side_data<'a>(parameters: &'a ffmpeg::codec::Parameters, kind: ffi::AVPacketSideDataType) -> Option<&'a [u8]> {
+    unsafe {
+        let raw = &*parameters.as_ptr();
+        if raw.coded_side_data.is_null() || raw.nb_coded_side_data <= 0 {
+            return None;
+        }
+        std::slice::from_raw_parts(raw.coded_side_data, raw.nb_coded_side_data as usize)
+            .iter()
+            .find(|entry| entry.type_ == kind && !entry.data.is_null())
+            .map(|entry| std::slice::from_raw_parts(entry.data as *const u8, entry.size))
+    }
+}
+
+fn read<T: Copy>(bytes: &[u8]) -> Option<T> {
+    (bytes.len() >= std::mem::size_of::<T>()).then(|| unsafe { std::ptr::read_unaligned(bytes.as_ptr() as *const T) })
+}
+
+fn dolby_vision(parameters: &ffmpeg::codec::Parameters) -> Option<DolbyVision> {
+    let record: DoviRecord =
+        read(side_data(parameters, ffi::AVPacketSideDataType::AV_PKT_DATA_DOVI_CONF)?)?;
+    Some(DolbyVision { profile: record.dv_profile, dual_layer: record.el_present_flag != 0 })
+}
+
+fn hdr_info(parameters: &ffmpeg::codec::Parameters) -> Option<HdrInfo> {
+    let (transfer, primaries, matrix, full_range) = unsafe {
+        let raw = &*parameters.as_ptr();
+        (
+            raw.color_trc as u32,
+            raw.color_primaries as u32,
+            raw.color_space as u32,
+            raw.color_range == ffi::AVColorRange::AVCOL_RANGE_JPEG,
+        )
+    };
+    let kind = kind_for_transfer(transfer)?;
+    let mastering = side_data(parameters, ffi::AVPacketSideDataType::AV_PKT_DATA_MASTERING_DISPLAY_METADATA)
+        .and_then(read::<MasteringRecord>)
+        .map(|meta| Mastering {
+            primaries: (meta.has_primaries != 0).then(|| {
+                let point = |index: usize| (rational(meta.display_primaries[index][0]), rational(meta.display_primaries[index][1]));
+                [point(0), point(1), point(2)]
+            }),
+            white_point: (meta.has_primaries != 0).then(|| (rational(meta.white_point[0]), rational(meta.white_point[1]))),
+            luminance: (meta.has_luminance != 0).then(|| (rational(meta.min_luminance), rational(meta.max_luminance))),
+        })
+        .unwrap_or_else(Mastering::bt2020_1000_nits);
+    let light = side_data(parameters, ffi::AVPacketSideDataType::AV_PKT_DATA_CONTENT_LIGHT_LEVEL)
+        .and_then(read::<LightRecord>);
+    Some(HdrInfo {
+        kind,
+        mastering: Some(mastering),
+        max_cll: light.map(|light| light.MaxCLL),
+        max_fall: light.map(|light| light.MaxFALL),
+        transfer,
+        primaries,
+        matrix,
+        full_range,
+    })
 }
 
 fn video_codec(id: Id) -> Option<VideoCodec> {
@@ -114,7 +210,8 @@ impl Demuxer for FfmpegDemuxer {
             _ => None,
         };
         self.video = Some(stream.index());
-        let video = VideoStream { codec, width, height, fps, dolby_vision: None };
+        let video = VideoStream { codec, width, height, fps, dolby_vision: dolby_vision(&parameters) };
+        let hdr = hdr_info(&parameters);
 
         let mut audio = None;
         let mut audio_id = None;
@@ -145,7 +242,7 @@ impl Demuxer for FfmpegDemuxer {
 
         let duration_ns = to_ns(input.duration().max(0), Rational::new(1, ffi::AV_TIME_BASE as i32));
         self.input = Some(input);
-        Ok(MediaInfo { video, audio, duration_ns, hdr: None, tracks, audio_id })
+        Ok(MediaInfo { video, audio, duration_ns, hdr, tracks, audio_id })
     }
 
     fn read(&mut self) -> Option<Packet> {

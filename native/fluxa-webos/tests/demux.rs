@@ -82,3 +82,31 @@ fn second_audio_and_srt_subtitle_are_listed_and_selectable() {
     let _ = std::fs::remove_file(path);
     let _ = std::fs::remove_file(srt);
 }
+
+#[test]
+fn pq_tagged_stream_is_reported_as_hdr10() {
+    let args = [
+        "-vf", "setparams=color_primaries=bt2020:color_trc=smpte2084:colorspace=bt2020nc", "-c:v", "libx264",
+        "-an", "-shortest",
+    ];
+    let Some(path) = sample("fluxa-webos-d.mkv", &args) else {
+        return;
+    };
+    let mut demuxer = FfmpegDemuxer::default();
+    let info = demuxer.open(path.to_str().unwrap()).unwrap();
+    let hdr = info.hdr.expect("hdr info");
+    assert_eq!(hdr.kind, fluxa_webos::HdrKind::Hdr10);
+    assert_eq!((hdr.transfer, hdr.primaries, hdr.matrix), (16, 9, 9));
+    assert!(info.video.dolby_vision.is_none());
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn sdr_stream_has_no_hdr_info() {
+    let Some(path) = sample("fluxa-webos-e.mp4", &["-c:v", "libx264", "-an", "-shortest"]) else {
+        return;
+    };
+    let mut demuxer = FfmpegDemuxer::default();
+    assert!(demuxer.open(path.to_str().unwrap()).unwrap().hdr.is_none());
+    let _ = std::fs::remove_file(path);
+}

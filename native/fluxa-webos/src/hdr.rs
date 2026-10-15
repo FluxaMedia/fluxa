@@ -25,6 +25,27 @@ pub struct HdrInfo {
     pub full_range: bool,
 }
 
+const TRANSFER_PQ: u32 = 16;
+const TRANSFER_HLG: u32 = 18;
+
+pub fn kind_for_transfer(transfer: u32) -> Option<HdrKind> {
+    match transfer {
+        TRANSFER_PQ => Some(HdrKind::Hdr10),
+        TRANSFER_HLG => Some(HdrKind::Hlg),
+        _ => None,
+    }
+}
+
+impl Mastering {
+    pub fn bt2020_1000_nits() -> Mastering {
+        Mastering {
+            primaries: Some([(0.708, 0.292), (0.170, 0.797), (0.131, 0.046)]),
+            white_point: Some((0.3127, 0.3290)),
+            luminance: Some((0.0001, 1000.0)),
+        }
+    }
+}
+
 const CHROMATICITY: f64 = 50000.0;
 const LUMINANCE: f64 = 10000.0;
 
@@ -120,5 +141,33 @@ mod tests {
         let json: Value = serde_json::from_str(&hdr_payload(&hdr, 6).unwrap()).unwrap();
         assert_eq!(json["sei"]["displayPrimariesX0"], 7500);
         assert_eq!(json["sei"]["maxDisplayMasteringLuminance"], 10_000_000);
+    }
+}
+
+#[cfg(test)]
+mod classify_tests {
+    use super::*;
+
+    #[test]
+    fn pq_and_hlg_are_recognised_and_sdr_is_not() {
+        assert_eq!(kind_for_transfer(16), Some(HdrKind::Hdr10));
+        assert_eq!(kind_for_transfer(18), Some(HdrKind::Hlg));
+        assert_eq!(kind_for_transfer(1), None);
+    }
+
+    #[test]
+    fn default_mastering_produces_a_payload() {
+        let info = HdrInfo {
+            kind: HdrKind::Hdr10,
+            mastering: Some(Mastering::bt2020_1000_nits()),
+            max_cll: None,
+            max_fall: None,
+            transfer: 16,
+            primaries: 9,
+            matrix: 9,
+            full_range: false,
+        };
+        let payload = hdr_payload(&info, 6).unwrap();
+        assert!(payload.contains("maxDisplayMasteringLuminance"));
     }
 }
