@@ -2339,6 +2339,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluxa-webos"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
 name = "fluxa_core"
 version = "0.1.0"
 dependencies = [
