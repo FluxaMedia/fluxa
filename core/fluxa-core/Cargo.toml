@@ -59,7 +59,7 @@ serde_json = { workspace = true }
 wasm-bindgen = { version = "0.2", optional = true }
 web-time = "1"
 
-[target.'cfg(any(target_os = "android", target_os = "ios", target_os = "tvos"))'.dependencies]
+[target.'cfg(any(target_os = "android", target_os = "ios", target_os = "tvos", target_arch = "arm"))'.dependencies]
 rquickjs = { version = "0.12.1", default-features = false, features = ["std", "chrono", "loader", "dyn-load", "either", "indexmap", "futures", "bindgen"], optional = true }
 
 [dev-dependencies]
