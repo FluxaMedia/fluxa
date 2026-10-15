@@ -35,7 +35,7 @@ pub fn plan(profile: u8, compat: u8, caps: &Capabilities, forced: Option<Mode>) 
             Plan::Rewrite(Mode::Strip)
         }
     };
-    if caps.hdr == Some(false) || forced == Some(Mode::Strip) || caps.dolby_vision == Some(false) {
+    if caps.hdr == Some(false) || forced == Some(Mode::Strip) || caps.dolby_vision != Some(true) {
         return strip();
     }
     if profile == 7 {
@@ -202,8 +202,8 @@ mod tests {
     }
 
     #[test]
-    fn unknown_capabilities_leave_profile_8_alone() {
-        assert_eq!(plan(8, 1, &Capabilities::default(), None), Plan::Pass);
-        assert_eq!(plan(8, 1, &Capabilities::default(), Some(Mode::Strip)), Plan::Rewrite(Mode::Strip));
+    fn unknown_dolby_support_is_treated_as_unsupported() {
+        assert_eq!(plan(8, 1, &Capabilities::default(), None), Plan::Rewrite(Mode::Strip));
+        assert!(matches!(plan(5, 0, &Capabilities::default(), None), Plan::Unsupported(_)));
     }
 }

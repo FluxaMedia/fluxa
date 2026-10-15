@@ -100,7 +100,7 @@ fn main() {
     let surface = unsafe { NativeSurface::new(BACKENDS, move || target(display, window)) };
     host.surface_created(surface, width, height);
 
-    let caps = capabilities::query();
+    let caps = capabilities::query(webos_major);
     note("tv.supports_hdr", format!("{:?}", caps.hdr));
     note("tv.supports_dolby_vision", format!("{:?}", caps.dolby_vision));
 
