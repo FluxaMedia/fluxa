@@ -16,6 +16,7 @@ struct TickInput {
     last_paused: Option<bool>,
     last_position_ms: Option<i64>,
     elapsed_ms: i64,
+    watched_at_percent: Option<serde_json::Value>,
 }
 
 #[derive(Serialize)]
@@ -51,9 +52,12 @@ impl TickInput {
 pub(crate) fn player_tick_plan_json(input: &str) -> Option<String> {
     let input: TickInput = serde_json::from_str(input).ok()?;
     let percent = scrobble::progress_percent(input.position_ms, input.duration_ms);
+    let threshold = scrobble::watched_percent(input.watched_at_percent.as_ref());
     let wanted = if !input.has_frame {
         None
-    } else if input.ended || (input.paused && scrobble::should_mark_stopped(false, percent)) {
+    } else if input.ended
+        || (input.paused && scrobble::should_mark_stopped(false, percent, threshold))
+    {
         Some("stop")
     } else if input.paused {
         Some("pause")
@@ -100,6 +104,27 @@ mod tests {
             "durationMs": 100000, "lastScrobble": "start"
         }));
         assert_eq!(paused["scrobble"], "pause");
+    }
+
+    #[test]
+    fn stop_fires_at_the_configured_watched_percent() {
+        let tick = |threshold: Value| -> Value {
+            serde_json::from_str(
+                &player_tick_plan_json(
+                    &json!({
+                        "hasFrame": true, "paused": true, "positionMs": 70000,
+                        "durationMs": 100000, "lastScrobble": "start",
+                        "watchedAtPercent": threshold
+                    })
+                    .to_string(),
+                )
+                .unwrap(),
+            )
+            .unwrap()
+        };
+        assert_eq!(tick(json!("70"))["scrobble"], "stop");
+        assert_eq!(tick(json!("90"))["scrobble"], "pause");
+        assert_eq!(tick(Value::Null)["scrobble"], "pause");
     }
 
     #[test]

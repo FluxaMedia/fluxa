@@ -1023,6 +1023,8 @@
   "settings.progress_thresholds": "İLERLEME EŞİKLERİ",
   "settings.next_episode_threshold": "Sonraki Bölüm Eşiği",
   "settings.next_episode_threshold_desc": "Oynatma bu noktaya ulaşınca sonraki bölüm kartını gösterir.",
+  "settings.scrobble_watched_percent": "İzlendi olarak işaretleme noktası",
+  "settings.scrobble_watched_percent_desc": "Simkl, Trakt ve MDBList'in bir yapımı izlenmiş saydığı oynatma ilerlemesi.",
   "settings.movie_recommendation_outro_percent": "Film Öneri Outrosu",
   "settings.series_recommendation_outro_percent": "Dizi Öneri Outrosu",
   "settings.recommendation_outro_percent_desc": "Oynatma bu yüzdeye ulaştığında önerileri açar ve playerı küçültür.",

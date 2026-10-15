@@ -473,6 +473,7 @@ fn tick_scrobble(player: &mut PlayerSession, session: &SessionHandle, snapshot: 
             "nowMs": now,
             "lastSavedAtMs": player.overlay.last_saved_at_ms,
             "lastScrobble": player.overlay.last_scrobble,
+            "watchedAtPercent": snapshot.pointer("/profile/active/scrobbleWatchedPercent"),
             "speed": player.speed,
             "lastPaused": player.overlay.last_paused,
             "lastPositionMs": player.overlay.last_position.map(|(position, _)| (position * 1000.0) as i64),

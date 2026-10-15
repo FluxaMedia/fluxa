@@ -1019,6 +1019,8 @@
   "settings.progress_thresholds": "ספי התקדמות",
   "settings.next_episode_threshold": "סף הפרק הבא",
   "settings.next_episode_threshold_desc": "מציג את כרטיס הפרק הבא לאחר שהניגון מגיע לנקודה זו.",
+  "settings.scrobble_watched_percent": "סימון כנצפה ב־",
+  "settings.scrobble_watched_percent_desc": "התקדמות הניגון שבה Simkl,‏ Trakt ו‑MDBList סופרים כותר כנצפה.",
   "settings.movie_recommendation_outro_percent": "סיום עם המלצות לסרטים",
   "settings.series_recommendation_outro_percent": "סיום עם המלצות לסדרות",
   "settings.recommendation_outro_percent_desc": "פותח המלצות ומכווץ את הנגן לאחר אחוז זה.",

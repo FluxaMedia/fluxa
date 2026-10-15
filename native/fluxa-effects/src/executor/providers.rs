@@ -1142,6 +1142,28 @@ impl EffectExecutor {
                 .then(|| rewatch_intent(&self.storage, &profile_id, str_field(payload, "itemId")))
                 .flatten();
             args["rewatch"] = json!(intent.is_some());
+            args["minProgress"] = profile
+                .get("scrobbleWatchedPercent")
+                .and_then(|value| {
+                    value
+                        .as_i64()
+                        .or_else(|| value.as_str()?.trim().parse().ok())
+                })
+                .map_or(Value::Null, |percent| json!(percent));
+            if provider != "simkl" && str_field(payload, "actionName") == "stop" {
+                let progress = payload.get("progress").and_then(Value::as_f64);
+                let threshold = args["minProgress"]
+                    .as_f64()
+                    .unwrap_or(80.0)
+                    .clamp(50.0, 100.0);
+                match progress {
+                    Some(progress) if progress < threshold => args["action"] = json!("pause"),
+                    Some(progress) if progress < 80.0 => {
+                        args["progress"] = json!(80.0)
+                    }
+                    _ => {}
+                }
+            }
             let Some(plan) = core_value("providerScrobbleRequest", args) else {
                 continue;
             };

@@ -674,6 +674,13 @@
       "category": "playback"
     },
     {
+      "key": "scrobbleWatchedPercent",
+      "type": "string",
+      "default": "80",
+      "scope": "profile",
+      "category": "playback"
+    },
+    {
       "key": "notificationsEnabled",
       "type": "boolean",
       "default": true,

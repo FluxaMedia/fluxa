@@ -37,6 +37,60 @@ fn trakt_scrobble_pause_reaches_the_trakt_api() {
 }
 
 #[test]
+fn trakt_stop_below_the_watched_percent_is_sent_as_pause() {
+    let scenario = Scenario::start();
+    for path in ["/scrobble/pause", "/scrobble/stop"] {
+        scenario
+            .world
+            .respond("api.trakt.tv", "POST", path, 201, json!({}));
+    }
+    let mut profile = trakt_profile();
+    profile["scrobbleWatchedPercent"] = json!("90");
+    let app = scenario.app_with_profile(profile);
+    let stop = |progress: f64| {
+        app.dispatch(json!({
+            "type": "scrobbleRequested", "token": "tok", "metaType": "movie",
+            "itemId": "tt1", "progress": progress, "actionName": "stop", "profile": null
+        }));
+    };
+
+    stop(85.0);
+    stop(91.0);
+
+    let pauses = scenario
+        .world
+        .calls("api.trakt.tv", "POST", "/scrobble/pause");
+    let stops = scenario
+        .world
+        .calls("api.trakt.tv", "POST", "/scrobble/stop");
+    assert_eq!(pauses.len(), 1);
+    assert_eq!(pauses[0].json()["progress"], 85.0);
+    assert_eq!(stops.len(), 1);
+    assert_eq!(stops[0].json()["progress"], 91.0);
+}
+
+#[test]
+fn trakt_stop_under_80_is_lifted_when_the_threshold_is_lower() {
+    let scenario = Scenario::start();
+    scenario
+        .world
+        .respond("api.trakt.tv", "POST", "/scrobble/stop", 201, json!({}));
+    let mut profile = trakt_profile();
+    profile["scrobbleWatchedPercent"] = json!("70");
+    let app = scenario.app_with_profile(profile);
+
+    app.dispatch(json!({
+        "type": "scrobbleRequested", "token": "tok", "metaType": "movie",
+        "itemId": "tt1", "progress": 72.0, "actionName": "stop", "profile": null
+    }));
+
+    let stops = scenario
+        .world
+        .calls("api.trakt.tv", "POST", "/scrobble/stop");
+    assert_eq!(stops[0].json()["progress"], 80.0);
+}
+
+#[test]
 fn trakt_scrobble_is_not_retried_when_the_server_fails() {
     let scenario = Scenario::start();
     scenario

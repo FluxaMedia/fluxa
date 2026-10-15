@@ -544,7 +544,7 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
     },
 ];
 pub(super) const PREVIEWS_GROUPS: [(usize, &str); 1] = [(3, "settings.group.seek_previews")];
-pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 33] = [
+pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 34] = [
     SettingsRow {
         label: "Playback destination",
         key: "preferredPlayer",
@@ -559,6 +559,11 @@ pub(super) const PLAYBACK_SETTINGS: [SettingsRow; 33] = [
         label: "Autoplay next episode",
         key: "autoPlayNextEpisode",
         options: &[],
+    },
+    SettingsRow {
+        label: "Mark watched at",
+        key: "scrobbleWatchedPercent",
+        options: &["50", "60", "70", "80", "90", "95", "100"],
     },
     SettingsRow {
         label: "Countdown duration",

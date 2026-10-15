@@ -5,7 +5,6 @@ use crate::headless_engine::contracts::actions::{
 use crate::library::state::{UP_NEXT_DURATION_SECONDS, UP_NEXT_POSITION_SECONDS};
 use serde_json::{Value, json};
 
-const WATCHED_FRACTION: f64 = 0.9;
 const MIN_REAL_DURATION_SECONDS: f64 = 121.0;
 
 fn is_placeholder_duration(duration: f64) -> bool {
@@ -34,9 +33,16 @@ pub(crate) fn playback_close_plan_json(input: &str) -> Option<String> {
         .get("scrobbleTraktPause")
         .and_then(Value::as_bool)
         .unwrap_or(true);
+    let watched_fraction = value
+        .pointer("/prefs/scrobbleWatchedPercent")
+        .map_or(0.9, |percent| {
+            f64::from(crate::player::playback::scrobble::watched_percent(Some(
+                percent,
+            ))) / 100.0
+        });
     let meaningful = playback_started && time_pos > 30.0 && duration > 0.0;
     let watched =
-        meaningful && !is_placeholder_duration(duration) && time_pos / duration >= WATCHED_FRACTION;
+        meaningful && !is_placeholder_duration(duration) && time_pos / duration >= watched_fraction;
     let text_field = |source: Option<&Value>, names: &[&str]| {
         names
             .iter()
@@ -172,6 +178,24 @@ mod tests {
     fn marks_watched_at_ninety_percent() {
         assert!(!plan(5500.0, 6000.0)["markWatchedAction"].is_null());
         assert!(plan(5000.0, 6000.0)["markWatchedAction"].is_null());
+    }
+
+    #[test]
+    fn watched_percent_setting_moves_the_cut_off() {
+        let input = |percent: &str| {
+            json!({
+                "meta": {"id": "tt1", "type": "movie", "name": "A"},
+                "timePos": 5100.0,
+                "duration": 6000.0,
+                "prefs": {"scrobbleWatchedPercent": percent},
+            })
+        };
+        let plan = |percent: &str| -> Value {
+            serde_json::from_str(&playback_close_plan_json(&input(percent).to_string()).unwrap())
+                .unwrap()
+        };
+        assert!(plan("90")["markWatchedAction"].is_null());
+        assert!(!plan("85")["markWatchedAction"].is_null());
     }
 
     #[test]

@@ -285,3 +285,21 @@ fn only_a_flagged_stop_allows_rewatch() {
     assert!(!url("stop", false).contains("allow_rewatch"));
     assert!(!url("start", true).contains("allow_rewatch"));
 }
+
+#[test]
+fn min_progress_rides_start_and_stop_but_not_pause() {
+    let url = |action: &str, rewatch: bool| {
+        simkl_scrobble(
+            &json!({"clientId": "c", "token": "t", "itemId": "simkl:5", "metaType": "movie", "minProgress": 90, "rewatch": rewatch}),
+            action,
+            50.0,
+        )
+        .unwrap()["url"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    assert!(url("start", false).contains("scrobble/start?min_progress=90&"));
+    assert!(!url("pause", false).contains("min_progress"));
+    assert!(url("stop", true).contains("scrobble/stop?allow_rewatch=yes&min_progress=90&"));
+}

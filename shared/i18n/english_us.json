@@ -1023,6 +1023,8 @@
   "settings.progress_thresholds": "PROGRESS THRESHOLDS",
   "settings.next_episode_threshold": "Next episode threshold",
   "settings.next_episode_threshold_desc": "Shows the next episode card after playback reaches this point.",
+  "settings.scrobble_watched_percent": "Mark watched at",
+  "settings.scrobble_watched_percent_desc": "Playback progress at which Simkl, Trakt and MDBList count a title as watched.",
   "settings.movie_recommendation_outro_percent": "Movie recommendation outro",
   "settings.series_recommendation_outro_percent": "Series recommendation outro",
   "settings.recommendation_outro_percent_desc": "Opens recommendations and shrinks the player after this percentage.",

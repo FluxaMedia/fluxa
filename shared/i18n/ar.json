@@ -1019,6 +1019,8 @@
   "settings.progress_thresholds": "عتبات التقدّم",
   "settings.next_episode_threshold": "عتبة الحلقة التالية",
   "settings.next_episode_threshold_desc": "يعرض بطاقة الحلقة التالية بعد وصول التشغيل إلى هذه النقطة.",
+  "settings.scrobble_watched_percent": "وضع علامة مشاهد عند",
+  "settings.scrobble_watched_percent_desc": "نسبة التقدم في التشغيل التي تعدّ عندها Simkl وTrakt وMDBList العمل مشاهدًا.",
   "settings.movie_recommendation_outro_percent": "خاتمة توصيات الأفلام",
   "settings.series_recommendation_outro_percent": "خاتمة توصيات المسلسلات",
   "settings.recommendation_outro_percent_desc": "يفتح التوصيات ويصغّر المشغّل بعد هذه النسبة.",

@@ -233,13 +233,26 @@ pub(crate) fn simkl_scrobble(args: &Value, action: &str, progress: f64) -> Optio
         None => json!({"movie": {"ids": target.ids}, "progress": progress}),
     };
     let rewatch = action == "stop" && args.get("rewatch").and_then(Value::as_bool) == Some(true);
+    let mut query = Vec::new();
+    if rewatch {
+        query.push("allow_rewatch=yes".to_owned());
+    }
+    if action != "pause"
+        && let Some(percent) = args.get("minProgress").and_then(Value::as_i64)
+    {
+        query.push(format!("min_progress={}", percent.clamp(50, 100)));
+    }
     Some(request(
         "simkl",
         args,
         "POST",
         format!(
             "{SIMKL_API}/scrobble/{action}{}",
-            if rewatch { "?allow_rewatch=yes" } else { "" }
+            if query.is_empty() {
+                String::new()
+            } else {
+                format!("?{}", query.join("&"))
+            }
         ),
         body,
     ))

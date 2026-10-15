@@ -757,7 +757,7 @@ pub fn option_label(key: &str, value: &str, language: &str) -> String {
         return localized(named, language);
     }
     match key {
-        "uiScale" | "subtitleSize" => format!("{value}%"),
+        "uiScale" | "subtitleSize" | "scrobbleWatchedPercent" => format!("{value}%"),
         "subtitleTextOpacity" | "subtitleBackgroundOpacity" | "subtitleOutlineOpacity" => {
             format!("{}%", (value.parse::<f64>().unwrap_or(1.0) * 100.0).round())
         }
