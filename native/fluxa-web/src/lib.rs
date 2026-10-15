@@ -1,9 +1,17 @@
 #![cfg(target_arch = "wasm32")]
 
-use std::{cell::RefCell, ffi::c_void, path::PathBuf, ptr::NonNull, rc::Rc};
+use std::{
+    cell::RefCell,
+    ffi::c_void,
+    path::PathBuf,
+    ptr::NonNull,
+    rc::Rc,
+    sync::{Arc, Mutex, OnceLock},
+};
 
 use fluxa_host::{
-    FluxaHost, GamepadButton, Key, KeyInput, MouseButton, NativeSurface, PointerPhase, egui,
+    BridgeVideo, FluxaHost, GamepadButton, Key, KeyInput, MouseButton, NativeSurface, PointerPhase,
+    VideoBridge, VideoStatus, egui,
 };
 use fluxa_renderer::platform::GraphicsBackend;
 use raw_window_handle::{
@@ -16,6 +24,11 @@ struct CanvasHandle(NonNull<c_void>);
 
 unsafe impl Send for CanvasHandle {}
 unsafe impl Sync for CanvasHandle {}
+
+fn video_bridge() -> &'static Arc<Mutex<VideoBridge>> {
+    static BRIDGE: OnceLock<Arc<Mutex<VideoBridge>>> = OnceLock::new();
+    BRIDGE.get_or_init(Default::default)
+}
 
 fn log(message: &str) {
     web_sys::console::log_1(&JsValue::from_str(message));
@@ -79,6 +92,7 @@ impl FluxaWeb {
         let host = FluxaHost::new(window.device_pixel_ratio() as f32, None);
         host.set_form_factor(form_factor);
         host.set_platform(platform);
+        host.set_video_backend(Box::new(BridgeVideo(video_bridge().clone())));
         host.start_session(PathBuf::from("fluxa"))
             .map_err(|error| JsValue::from_str(&error))?;
         let mut web = FluxaWeb {
@@ -146,6 +160,59 @@ impl FluxaWeb {
 
     pub fn set_focused_text(&self, text: &str) {
         self.host.set_focused_text(text);
+    }
+
+    pub fn back(&self) -> bool {
+        self.host.back()
+    }
+
+    pub fn poll_video(&self) -> String {
+        let requests = video_bridge()
+            .lock()
+            .map(|mut bridge| bridge.take_requests())
+            .unwrap_or_default();
+        serde_json::Value::from(requests).to_string()
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub fn video_status(
+        &self,
+        position: f64,
+        duration: f64,
+        paused: bool,
+        volume: f64,
+        has_frame: bool,
+        buffering: f32,
+        buffered: f64,
+        error: Option<String>,
+    ) {
+        let status = VideoStatus {
+            position,
+            duration,
+            paused,
+            muted: volume <= 0.0,
+            volume,
+            has_frame,
+            error: error.filter(|error| !error.is_empty()),
+            chapters: Vec::new(),
+            buffering: (buffering >= 0.0).then_some(buffering),
+            buffered,
+        };
+        if let Ok(mut bridge) = video_bridge().lock() {
+            bridge.set_status(status);
+        }
+    }
+
+    pub fn video_tracks(&self, json: &str) {
+        if let Ok(mut bridge) = video_bridge().lock() {
+            bridge.set_tracks_json(json);
+        }
+    }
+
+    pub fn video_chapters(&self, json: &str) {
+        if let Ok(mut bridge) = video_bridge().lock() {
+            bridge.set_chapters_json(json);
+        }
     }
 
     pub fn media_command(&self, command: &str, value: f64) {

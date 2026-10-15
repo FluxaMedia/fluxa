@@ -41,6 +41,47 @@ impl VideoBridge {
     pub fn set_tracks(&mut self, tracks: Vec<VideoTrack>) {
         self.tracks = tracks;
     }
+
+    pub fn set_tracks_json(&mut self, json: &str) {
+        let Ok(items) = serde_json::from_str::<Vec<Value>>(json) else {
+            return;
+        };
+        let text = |item: &Value, key: &str| {
+            item.get(key)
+                .and_then(Value::as_str)
+                .filter(|value| !value.is_empty())
+                .map(str::to_owned)
+        };
+        let flag = |item: &Value, key: &str| item.get(key).and_then(Value::as_bool).unwrap_or(false);
+        self.tracks = items
+            .iter()
+            .filter_map(|item| {
+                Some(VideoTrack {
+                    id: text(item, "id")?,
+                    subtitle: flag(item, "subtitle"),
+                    language: text(item, "language"),
+                    title: text(item, "title"),
+                    selected: flag(item, "selected"),
+                    external: flag(item, "external"),
+                })
+            })
+            .collect();
+    }
+
+    pub fn set_chapters_json(&mut self, json: &str) {
+        let Ok(items) = serde_json::from_str::<Vec<Value>>(json) else {
+            return;
+        };
+        self.status.chapters = items
+            .iter()
+            .filter_map(|item| {
+                Some((
+                    item.get("startMs")?.as_u64()? as f64 / 1000.0,
+                    item.get("title")?.as_str()?.to_owned(),
+                ))
+            })
+            .collect();
+    }
 }
 
 pub struct BridgeVideo(pub Arc<Mutex<VideoBridge>>);

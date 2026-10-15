@@ -9,10 +9,12 @@
 html, body { margin: 0; height: 100%; background: #070709; overflow: hidden; }
 #a11y { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 #a11y > * { position: absolute; margin: 0; padding: 0; border: 0; opacity: 0; overflow: hidden; pointer-events: none; font-size: 16px; }
-canvas { display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }
+video { position: fixed; inset: 0; width: 100vw; height: 100vh; background: #000; object-fit: contain; }
+canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }
 </style>
 </head>
 <body>
+<video id="video" playsinline preload="auto"></video>
 <canvas id="fluxa" tabindex="0"></canvas>
 <div id="a11y"></div>
 <script type="module" src="main.js"></script>

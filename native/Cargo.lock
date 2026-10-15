@@ -2226,6 +2226,7 @@ dependencies = [
  "url",
  "wasm-bindgen-futures",
  "web-sys",
+ "web-time",
 ]
 
 [[package]]
@@ -2331,6 +2332,7 @@ dependencies = [
  "fluxa-host",
  "fluxa-renderer",
  "raw-window-handle",
+ "serde_json",
  "wasm-bindgen",
  "web-sys",
  "wgpu",

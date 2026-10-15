@@ -1,27 +1,24 @@
 import { mountAccessibility } from "./a11y.js";
 import init, { FluxaWeb } from "./pkg/fluxa_web.js";
+import { createPlayer } from "./player.js";
+import { exitApp, installRemote, isWebos as webos, mediaAdapter, stageReady, startProxy } from "./webos.js";
 
-const webos = /web0s|webos/i.test(navigator.userAgent);
 const formFactor = webos || /smart-tv|smarttv/i.test(navigator.userAgent) ? "tv" : "mobile";
+const query = new URLSearchParams(location.search);
 
-const startWebosProxy = () =>
-  new Promise((resolve) => {
-    if (!webos || !window.webOS?.service) return resolve(null);
-    window.webOS.service.request("luna://com.fluxa.app.proxy", {
-      method: "start",
-      onSuccess: (response) => resolve(`http://127.0.0.1:${response.port}`),
-      onFailure: () => resolve(null),
-    });
-  });
-
-const imageProxy = new URLSearchParams(location.search).get("imageProxy") ?? (await startWebosProxy());
+const proxy = query.get("proxy") ?? query.get("imageProxy") ?? (await startProxy());
 
 const webgpu = Boolean(navigator.gpu && (await navigator.gpu.requestAdapter().catch(() => null)));
 
 await init();
-const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, imageProxy);
+const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, proxy);
 const syncAccessibility = mountAccessibility(app, document.getElementById("fluxa"), document.getElementById("a11y"));
 addEventListener("resize", () => app.resize());
+const player = createPlayer({ app, video: document.getElementById("video"), proxy, adapter: mediaAdapter });
+installRemote(app, () => {
+  if (!app.back() && webos) exitApp();
+});
+stageReady();
 
 const actionHandlers = [];
 window.fluxaOnAction = (handler) => actionHandlers.push(handler);
@@ -32,6 +29,7 @@ const tick = (now) => {
     accessAt = now;
     syncAccessibility();
   }
+  player.poll();
   const actions = app.frame();
   if (actions) {
     for (const action of JSON.parse(actions)) {
