@@ -56,6 +56,31 @@ impl EffectExecutor {
         self.downloads.lock().sink = Some(sink);
     }
 
+    pub fn torrent_http_url(&self, stream: &Value, title: &str) -> Result<String, String> {
+        let link = stream
+            .get("infoHash")
+            .and_then(Value::as_str)
+            .filter(|hash| !hash.is_empty())
+            .map(|hash| match stream.get("fileIdx").and_then(Value::as_i64) {
+                Some(index) => format!("stremio://torrent/{hash}/{index}"),
+                None => format!("stremio://torrent/{hash}"),
+            })
+            .ok_or_else(|| "stream has no torrent source".to_owned())?;
+        let started = self.start_torrent_stream(&json!({
+            "url": link,
+            "stream": stream,
+            "title": title,
+            "fileIdx": stream.get("fileIdx"),
+            "preferredFilename": stream.pointer("/behaviorHints/filename"),
+            "sources": stream.get("sources"),
+        }))?;
+        started
+            .get("url")
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+            .ok_or_else(|| "torrent stream did not return a url".to_owned())
+    }
+
     fn downloads_dir(&self) -> std::path::PathBuf {
         self.storage.dir().join("downloads")
     }
@@ -97,13 +122,21 @@ impl EffectExecutor {
             .filter(|id| !id.is_empty())
             .ok_or_else(|| "download payload is missing id".to_owned())?
             .to_owned();
-        let url = payload
+        let stream = payload.get("stream").cloned().unwrap_or(Value::Null);
+        let source = payload
             .get("url")
             .and_then(Value::as_str)
-            .filter(|url| url.starts_with("http://") || url.starts_with("https://"))
-            .ok_or_else(|| "download payload is missing an http url".to_owned())?
-            .to_owned();
-        let stream = payload.get("stream").cloned().unwrap_or(Value::Null);
+            .filter(|url| !url.is_empty())
+            .ok_or_else(|| "download payload is missing a url".to_owned())?;
+        let url = if source.starts_with("http://") || source.starts_with("https://") {
+            source.to_owned()
+        } else {
+            let name = payload
+                .pointer("/meta/name")
+                .and_then(Value::as_str)
+                .unwrap_or("Fluxa");
+            self.torrent_http_url(&stream, name)?
+        };
         let dir = self.download_dir(payload);
         std::fs::create_dir_all(&dir).map_err(|error| error.to_string())?;
         let stem = sanitize_key(&id);
@@ -234,7 +267,8 @@ async fn download(
                 if done == 0 && is_playlist(&chunk) {
                     drop(file);
                     let _ = std::fs::remove_file(part);
-                    return Err("playlist_stream".to_owned());
+                    return hls(downloads, id, url, stream, &target.with_extension("mkv"))
+                        .await;
                 }
                 file.write_all(&chunk).map_err(write_error)?;
                 done += chunk.len() as u64;
@@ -260,6 +294,71 @@ async fn download(
         return Err("connection_closed".to_owned());
     }
     std::fs::rename(part, target).map_err(|error| error.to_string())?;
+    Ok((target.to_string_lossy().into_owned(), Some(done)))
+}
+
+struct CancelOnDrop(std::sync::Arc<std::sync::atomic::AtomicBool>);
+
+impl Drop for CancelOnDrop {
+    fn drop(&mut self) {
+        self.0.store(true, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+async fn hls(
+    downloads: &Downloads,
+    id: &str,
+    url: &str,
+    stream: &Value,
+    target: &std::path::Path,
+) -> Result<(String, Option<u64>), String> {
+    let headers: Vec<(String, String)> = stream
+        .pointer("/behaviorHints/proxyHeaders/request")
+        .and_then(Value::as_object)
+        .map(|headers| {
+            headers
+                .iter()
+                .filter_map(|(name, value)| Some((name.clone(), value.as_str()?.to_owned())))
+                .collect()
+        })
+        .unwrap_or_default();
+    let cancel = CancelOnDrop(Default::default());
+    let flag = cancel.0.clone();
+    let (sender, mut receiver) = tokio::sync::mpsc::unbounded_channel();
+    let (url, output) = (url.to_owned(), target.to_path_buf());
+    let worker = tokio::task::spawn_blocking(move || {
+        let mut last = std::time::Instant::now() - TICK;
+        fluxa_mpv::remux(&url, &headers, &output, &flag, |progress| {
+            if last.elapsed() >= TICK {
+                last = std::time::Instant::now();
+                let _ = sender.send(progress);
+            }
+        })
+    });
+    while let Some(progress) = receiver.recv().await {
+        let total = progress
+            .duration
+            .filter(|duration| progress.seconds > 1.0 && *duration >= progress.seconds)
+            .map(|duration| (progress.bytes as f64 * duration / progress.seconds) as u64)
+            .filter(|total| *total >= progress.bytes);
+        downloads.emit(json!({
+            "type": "offlineDownloadProgressed",
+            "id": id,
+            "bytesDone": progress.bytes,
+            "bytesTotal": total,
+            "nowMs": now_ms(),
+        }));
+    }
+    let outcome = worker.await.map_err(|error| error.to_string())?;
+    if let Err(error) = outcome {
+        let _ = std::fs::remove_file(target);
+        return Err(if error.contains("libmpv") {
+            "playlist_stream".to_owned()
+        } else {
+            "remux_failed".to_owned()
+        });
+    }
+    let done = std::fs::metadata(target).map(|meta| meta.len()).unwrap_or(0);
     Ok((target.to_string_lossy().into_owned(), Some(done)))
 }
 
@@ -373,6 +472,39 @@ mod tests {
         assert!(is_playlist(b"\xef\xbb\xbf#EXTM3U\n".get(3..).unwrap()));
         assert!(is_playlist(b"  \n#EXTM3U"));
         assert!(!is_playlist(&[0x1a, 0x45, 0xdf, 0xa3]));
+    }
+
+    #[test]
+    fn hls_playlist_is_remuxed_into_one_mkv() {
+        let dir = std::env::current_dir().unwrap().join("hls-test-output");
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let made = std::process::Command::new("ffmpeg")
+            .args(["-v", "error", "-f", "lavfi", "-i", "testsrc=d=3:s=160x90:r=10"])
+            .args(["-f", "lavfi", "-i", "sine=d=3", "-c:v", "mpeg2video", "-c:a", "mp2"])
+            .args(["-f", "hls", "-hls_time", "1", "-hls_playlist_type", "vod"])
+            .arg(dir.join("index.m3u8"))
+            .status();
+        let target = dir.join("out.mkv");
+        let outcome = made.is_ok_and(|status| status.success()).then(|| {
+            crate::executor::runtime().block_on(hls(
+                &Downloads::default(),
+                "id",
+                dir.join("index.m3u8").to_str().unwrap(),
+                &Value::Null,
+                &target,
+            ))
+        });
+        let size = std::fs::metadata(&target).map(|meta| meta.len()).unwrap_or(0);
+        let _ = std::fs::remove_dir_all(&dir);
+        match outcome {
+            Some(Ok((path, total))) => {
+                assert!(path.ends_with("out.mkv"));
+                assert!(size > 0 && total == Some(size));
+            }
+            Some(Err(error)) => assert_eq!(error, "playlist_stream"),
+            None => {}
+        }
     }
 
     #[test]

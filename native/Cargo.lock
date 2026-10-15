@@ -2205,6 +2205,7 @@ dependencies = [
  "bytes",
  "chrono",
  "fluxa-app",
+ "fluxa-mpv",
  "fluxa_core",
  "fluxa_plugin_runtime",
  "fluxa_streaming_engine",

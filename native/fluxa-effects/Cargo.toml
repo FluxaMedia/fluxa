@@ -17,6 +17,7 @@ serde_json = "1.0"
 aes-gcm = "0.11"
 chrono = { version = "0.4.45", default-features = false, features = ["clock"] }
 fluxa_core = { path = "../../core/fluxa-core", default-features = false, features = ["js-engine"] }
+fluxa-mpv = { path = "../fluxa-mpv" }
 libc = "0.2"
 log = "0.4"
 fluxa_plugin_runtime = { path = "../../core/fluxa-core/fluxa-plugin-runtime" }

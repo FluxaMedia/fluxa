@@ -69,7 +69,7 @@ fn non_http_stream_fails_without_an_effect() {
         json!({
             "type": "offlineDownloadRequested",
             "meta": {"id": "tt2", "type": "movie", "name": "Film"},
-            "stream": {"infoHash": "abc"},
+            "stream": {"externalUrl": "https://example.test/watch"},
         }),
     );
     assert!(effects.is_empty());
@@ -180,4 +180,20 @@ fn storage_report_exposes_location_and_volumes() {
     let state = serde_json::to_value(&*engine.state.offline).unwrap();
     assert_eq!(state["location"]["freeBytes"], 5);
     assert_eq!(state["volumes"].as_array().unwrap().len(), 1);
+}
+
+#[test]
+fn torrent_stream_is_enqueued_with_its_torrent_url() {
+    let mut engine = HeadlessEngine::new(Default::default());
+    let effects = act(
+        &mut engine,
+        json!({
+            "type": "offlineDownloadRequested",
+            "meta": {"id": "tt1", "type": "movie", "name": "Film"},
+            "stream": {"infoHash": "abc123", "fileIdx": 2},
+            "nowMs": 1000,
+        }),
+    );
+    assert_eq!(effects[0].kind, EffectKind::EnqueueOfflineDownload);
+    assert_eq!(effects[0].payload["url"], "stremio://torrent/abc123/2");
 }

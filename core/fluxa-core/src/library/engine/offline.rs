@@ -108,8 +108,10 @@ fn number(value: &Value, key: &str) -> Option<u32> {
         .and_then(|number| u32::try_from(number).ok())
 }
 
-fn is_http(url: &str) -> bool {
-    url.starts_with("https://") || url.starts_with("http://")
+fn is_downloadable(url: &str) -> bool {
+    url.starts_with("https://")
+        || url.starts_with("http://")
+        || crate::player::streams::stream_policy::is_torrent_playback_url(url)
 }
 
 fn item_mut<'a>(engine: &'a mut HeadlessEngine, id: &str) -> Option<&'a mut DownloadItem> {
@@ -210,7 +212,9 @@ pub(crate) fn dispatch(
     language: Option<String>,
     now_ms: u64,
 ) -> Vec<EffectEnvelope> {
-    let url = text(&stream, &["url"]).unwrap_or_default();
+    let url = crate::player::streams::stream_policy::stream_playable_url(&stream)
+        .filter(|url| is_downloadable(url))
+        .unwrap_or_default();
     let meta_id = text(&meta, &["id"]).unwrap_or_default();
     let id = format!("{meta_id}|{}", video_id.clone().unwrap_or_default());
 
@@ -258,7 +262,7 @@ pub(crate) fn dispatch(
         ..Default::default()
     };
 
-    if !is_http(&item.url) {
+    if !is_downloadable(&item.url) {
         item.status = DownloadStatus::Failed;
         item.error = Some("unsupported_source".to_owned());
         engine.state.offline.items.push(item);
@@ -277,7 +281,7 @@ pub(crate) fn resume(engine: &mut HeadlessEngine, id: &str, now_ms: u64) -> Vec<
     if !matches!(item.status, DownloadStatus::Paused | DownloadStatus::Failed) {
         return vec![];
     }
-    if !is_http(&item.url) {
+    if !is_downloadable(&item.url) {
         return vec![];
     }
     item.status = DownloadStatus::Downloading;
