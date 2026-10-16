@@ -86,7 +86,7 @@ pub fn enable_thumbnails(client: &fluxa_mpv::MpvClientHandle, url: &str, plan: &
         ("thumbnail-width", Some(THUMBNAIL_WIDTH.to_owned())),
         (
             "thumbnail-interval",
-            Some(plan.interval.max(1.0).to_string()),
+            Some(plan.interval.max(5.0).to_string()),
         ),
         (
             "thumbnail-sweep",

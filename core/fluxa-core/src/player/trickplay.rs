@@ -129,7 +129,7 @@ pub fn plan_json(args_json: &str) -> Option<String> {
         .parse::<f64>()
         .ok()
         .filter(|value| value.is_finite())
-        .map_or(10.0, |value| value.clamp(1.0, 3600.0));
+        .map_or(10.0, |value| value.clamp(5.0, 3600.0));
     let sheet = flag("trickplaySheet", true);
     Some(
         json!({
@@ -423,7 +423,7 @@ mod tests {
             "trickplayMode": "pregenerate", "trickplaySheet": true
         }));
         assert_eq!(custom["source"]["id"], "trickplay");
-        assert_eq!(custom["interval"], 1.0);
+        assert_eq!(custom["interval"], 5.0);
         assert_eq!(custom["pregenerate"], true);
         let no_sheet = plan(json!({"trickplayMode": "pregenerate", "trickplaySheet": false}));
         assert_eq!(no_sheet["pregenerate"], false);

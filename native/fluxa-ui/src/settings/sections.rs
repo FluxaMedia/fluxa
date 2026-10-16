@@ -535,7 +535,7 @@ pub(super) const PREVIEWS_SETTINGS: [SettingsRow; 3] = [
     SettingsRow {
         label: "Frame interval",
         key: "trickplayInterval",
-        options: &["2", "5", "10", "20", "30", "60"],
+        options: &["5", "10", "20", "30", "60"],
     },
     SettingsRow {
         label: "Preview sheet",
