@@ -88,6 +88,7 @@ pub struct WatchTogetherSession {
     held: bool,
     resume_after_hold: bool,
     sequence: i64,
+    mismatch: bool,
 }
 
 impl WatchTogetherSession {
@@ -112,6 +113,7 @@ impl WatchTogetherSession {
             held: false,
             resume_after_hold: false,
             sequence: 0,
+            mismatch: false,
         }
     }
 
@@ -137,6 +139,10 @@ impl WatchTogetherSession {
 
     pub fn is_host(&self) -> bool {
         self.client_id == self.host_id
+    }
+
+    pub fn content_mismatch(&self) -> bool {
+        self.mismatch
     }
 
     pub fn roster(&self) -> Vec<WatchTogetherMember> {
@@ -176,6 +182,7 @@ impl WatchTogetherSession {
             return Vec::new();
         }
         self.phase = SessionPhase::Selecting;
+        self.mismatch = false;
         self.ready.clear();
         self.buffering.clear();
         self.held = false;
@@ -187,10 +194,21 @@ impl WatchTogetherSession {
         vec![SessionEffect::Broadcast(message)]
     }
 
-    pub fn local_ready(&mut self, ready: bool, now_ms: i64) -> Vec<SessionEffect> {
+    pub fn local_ready(
+        &mut self,
+        ready: bool,
+        local: Option<&WatchTogetherContent>,
+        now_ms: i64,
+    ) -> Vec<SessionEffect> {
         if self.phase != SessionPhase::Selecting {
             return Vec::new();
         }
+        self.mismatch = ready
+            && match (self.content.as_ref(), local) {
+                (Some(shared), Some(local)) => !shared.is_same_episode(local),
+                _ => false,
+            };
+        let ready = ready && !self.mismatch;
         let changed = if ready {
             self.ready.insert(self.client_id.clone())
         } else {
@@ -421,6 +439,7 @@ impl WatchTogetherSession {
             return Vec::new();
         };
         self.phase = SessionPhase::Selecting;
+        self.mismatch = false;
         self.ready.clear();
         self.buffering.clear();
         self.playback = None;

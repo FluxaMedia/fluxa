@@ -421,7 +421,12 @@ pub(crate) enum AppAction {
         start_position_ms: i64,
     },
     #[serde(rename = "watchTogetherReadyChanged")]
-    WatchTogetherReadyChanged { ready: bool, now_ms: i64 },
+    WatchTogetherReadyChanged {
+        ready: bool,
+        #[serde(default)]
+        content: Option<WatchTogetherContent>,
+        now_ms: i64,
+    },
     #[serde(rename = "watchTogetherBufferingChanged")]
     WatchTogetherBufferingChanged { buffering: bool, now_ms: i64 },
     #[serde(rename = "watchTogetherPlaybackReported")]

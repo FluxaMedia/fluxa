@@ -13,6 +13,18 @@ pub struct WatchTogetherContent {
 }
 
 impl WatchTogetherContent {
+    fn episode(&self) -> Option<(u32, u32)> {
+        let mut parts = self.video_id.as_deref()?.rsplit(':');
+        let episode = parts.next()?.parse().ok()?;
+        let season = parts.next()?.parse().ok()?;
+        parts.next()?;
+        Some((season, episode))
+    }
+
+    pub fn is_same_episode(&self, other: &Self) -> bool {
+        self.id == other.id && self.episode() == other.episode()
+    }
+
     pub fn matches(&self, other: &Self) -> bool {
         self.id == other.id
             && (self.video_id.is_none()
@@ -84,6 +96,8 @@ pub struct WatchTogetherState {
     pub locked: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<WatchTogetherContent>,
+    #[serde(default)]
+    pub content_mismatch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
 }
@@ -100,6 +114,7 @@ impl Default for WatchTogetherState {
             phase: SessionPhase::Lobby,
             locked: false,
             content: None,
+            content_mismatch: false,
             error_message: None,
         }
     }

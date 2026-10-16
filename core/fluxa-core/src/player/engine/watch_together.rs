@@ -145,9 +145,12 @@ pub(crate) fn dispatch_content(
 pub(crate) fn dispatch_ready(
     engine: &mut HeadlessEngine,
     ready: bool,
+    content: Option<WatchTogetherContent>,
     now_ms: i64,
 ) -> Vec<EffectEnvelope> {
-    run(engine, |session| session.local_ready(ready, now_ms))
+    run(engine, |session| {
+        session.local_ready(ready, content.as_ref(), now_ms)
+    })
 }
 
 pub(crate) fn dispatch_buffering(
@@ -368,6 +371,7 @@ fn sync_state(engine: &mut HeadlessEngine) {
     state.members = session.roster();
     state.phase = session.phase();
     state.content = session.content().cloned();
+    state.content_mismatch = session.content_mismatch();
 }
 
 fn error_message(error: &Value) -> String {

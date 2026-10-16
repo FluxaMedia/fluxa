@@ -563,8 +563,12 @@ impl HeadlessEngine {
                 stream,
                 start_position_ms,
             } => watch_together::dispatch_content(self, content, stream, start_position_ms),
-            AppAction::WatchTogetherReadyChanged { ready, now_ms } => {
-                watch_together::dispatch_ready(self, ready, now_ms)
+            AppAction::WatchTogetherReadyChanged {
+                ready,
+                content,
+                now_ms,
+            } => {
+                watch_together::dispatch_ready(self, ready, content, now_ms)
             }
             AppAction::WatchTogetherBufferingChanged { buffering, now_ms } => {
                 watch_together::dispatch_buffering(self, buffering, now_ms)

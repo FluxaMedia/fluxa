@@ -100,13 +100,13 @@ fn room_starts_only_after_everyone_is_ready() {
     deliver(&mut ana, &sent, 0);
     deliver(&mut bo, &sent, 0);
 
-    let ana_ready = ana.local_ready(true, 10);
+    let ana_ready = ana.local_ready(true, None, 10);
     assert!(deliver(&mut host, &ana_ready, 10).is_empty());
-    let bo_ready = bo.local_ready(true, 20);
+    let bo_ready = bo.local_ready(true, None, 20);
     assert!(deliver(&mut host, &bo_ready, 20).is_empty());
     assert_eq!(host.phase(), SessionPhase::Selecting);
 
-    let host_ready = host.local_ready(true, 30);
+    let host_ready = host.local_ready(true, None, 30);
     assert!(host_ready.contains(&SessionEffect::Start {
         position_ms: 90_000
     }));
@@ -132,8 +132,8 @@ fn guest_leaving_while_selecting_lets_the_rest_start() {
     let mut ana = session("ana", &ids);
     let sent = host.set_content(episode(), None, 0);
     deliver(&mut ana, &sent, 0);
-    host.local_ready(true, 0);
-    let ready = ana.local_ready(true, 0);
+    host.local_ready(true, None, 0);
+    let ready = ana.local_ready(true, None, 0);
     deliver(&mut host, &ready, 0);
     assert_eq!(host.phase(), SessionPhase::Selecting);
 
@@ -160,9 +160,9 @@ fn guest_buffering_pauses_everyone_until_it_clears() {
     let mut ana = session("ana", &ids);
     let sent = host.set_content(episode(), None, 0);
     deliver(&mut ana, &sent, 0);
-    let ready = ana.local_ready(true, 0);
+    let ready = ana.local_ready(true, None, 0);
     deliver(&mut host, &ready, 0);
-    let started = host.local_ready(true, 0);
+    let started = host.local_ready(true, None, 0);
     deliver(&mut ana, &started, 0);
 
     let stall = ana.local_buffering(true, 4_000);
@@ -191,7 +191,7 @@ fn guest_buffering_pauses_everyone_until_it_clears() {
 fn late_joiner_catches_up_to_the_hosts_position() {
     let mut host = session("host", &["host"]);
     host.set_content(episode(), None, 0);
-    host.local_ready(true, 0);
+    host.local_ready(true, None, 0);
     host.host_playback(
         &WatchTogetherPlaybackSnapshot {
             position_ms: 60_000,
@@ -208,7 +208,7 @@ fn late_joiner_catches_up_to_the_hosts_position() {
         deliver(&mut cy, &announce, 2_000),
         vec![SessionEffect::PickStream(episode())]
     );
-    let ready = cy.local_ready(true, 3_000);
+    let ready = cy.local_ready(true, None, 3_000);
     let reply = deliver(&mut host, &ready, 3_000);
     assert_eq!(
         deliver(&mut cy, &reply, 3_000),
@@ -227,7 +227,7 @@ fn guest_correction_follows_the_hosts_clock() {
         &json!({"type": "content", "from": "host", "contentId": "tt123"}),
         0,
     );
-    ana.local_ready(true, 0);
+    ana.local_ready(true, None, 0);
     ana.handle(
         &json!({"type": "start", "from": "host", "positionMs": 10_000}),
         1_000,
@@ -249,13 +249,13 @@ fn roster_exposes_ready_and_buffering_per_member() {
     let mut ana = session("ana", &ids);
     let sent = host.set_content(episode(), None, 0);
     deliver(&mut ana, &sent, 0);
-    let ready = ana.local_ready(true, 0);
+    let ready = ana.local_ready(true, None, 0);
     deliver(&mut host, &ready, 0);
     let roster = host.roster();
     assert!(roster.iter().find(|m| m.id == "ana").unwrap().ready);
     assert!(!roster.iter().find(|m| m.id == "host").unwrap().ready);
 
-    let started = host.local_ready(true, 0);
+    let started = host.local_ready(true, None, 0);
     deliver(&mut ana, &started, 0);
     let stall = ana.local_buffering(true, 100);
     deliver(&mut host, &stall, 100);
@@ -292,4 +292,48 @@ fn oversized_content_is_dropped() {
     let mut guest = session("guest", &["host", "guest"]);
     let message = json!({"type": "content", "from": "host", "contentId": "x".repeat(500)});
     assert!(guest.handle(&message, 0).is_empty());
+}
+
+#[test]
+fn guest_on_another_episode_is_not_marked_ready() {
+    let ids = ["host", "ana"];
+    let mut host = session("host", &ids);
+    let mut ana = session("ana", &ids);
+    let sent = host.set_content(episode(), None, 0);
+    deliver(&mut ana, &sent, 0);
+
+    let other = WatchTogetherContent {
+        video_id: Some("tt123:1:3".to_string()),
+        ..episode()
+    };
+    assert!(ana.local_ready(true, Some(&other), 0).is_empty());
+    assert!(ana.content_mismatch());
+    assert!(!ana.is_ready("ana"));
+
+    let right = ana.local_ready(true, Some(&episode()), 1);
+    assert!(!right.is_empty());
+    assert!(!ana.content_mismatch());
+    assert!(ana.is_ready("ana"));
+}
+
+#[test]
+fn another_show_or_season_is_a_mismatch() {
+    let base = episode();
+    let other_show = WatchTogetherContent {
+        id: "tt999".to_string(),
+        video_id: Some("tt999:1:2".to_string()),
+        ..episode()
+    };
+    let other_season = WatchTogetherContent {
+        video_id: Some("tt123:2:2".to_string()),
+        ..episode()
+    };
+    let no_episode = WatchTogetherContent {
+        video_id: None,
+        ..episode()
+    };
+    assert!(base.is_same_episode(&episode()));
+    assert!(!base.is_same_episode(&other_show));
+    assert!(!base.is_same_episode(&other_season));
+    assert!(!base.is_same_episode(&no_episode));
 }
