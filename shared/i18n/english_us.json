@@ -3260,6 +3260,10 @@
   "watch.join": "Join",
   "watch.code_hint": "Room code",
   "watch.leave": "Leave room",
+  "watch.end": "End room",
+  "watch.host_only": "Only host controls",
+  "watch.error.same_profile": "This profile is already in the room",
+  "watch.ended": "The host ended the room",
   "watch.copy_code": "Copy code",
   "watch.ready_count": "{ready}/{total} ready",
   "watch.ready": "Ready",
@@ -3289,8 +3293,6 @@
   "player.lock_controls": "Lock controls",
   "player.unlock_controls": "Unlock controls",
   "settings.detail_sections_hint": "Turn sections on or off and change their order.",
-  "watch.lock": "Lock room",
-  "watch.unlock": "Unlock room",
   "downloads.bytes_progress": "%s of %s",
   "downloads.elapsed": "Elapsed %s",
   "downloads.remaining": "%s left",
@@ -3326,8 +3328,6 @@
   "watch.host_controls": "Only the host can control playback in this room",
   "watch.ticket.admit": "ADMIT ONE · WATCH PARTY",
   "watch.ticket.room": "ROOM {code}",
-  "watch.ticket.waiting": "Waiting for the host",
-  "watch.ticket.people": "{count} in the room",
   "watch.ticket.prompt": "Enter your host's code to grab a seat",
   "watch.ticket.seat": "YOUR ROOM",
   "watch.ticket.code": "ROOM CODE",
@@ -3343,6 +3343,5 @@
   "settings.watch_party.in_room_help": "Open the room to see who's watching and what they're doing.",
   "settings.watch_party.host_title": "Host a room",
   "settings.watch_party.host_help": "Play something, then open Watch Party in the player.",
-  "settings.watch_party.in_room": "Room {code}",
-  "settings.watch_party.open": "Open"
+  "settings.watch_party.in_room": "Room {code}"
 }

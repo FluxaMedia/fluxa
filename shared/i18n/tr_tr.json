@@ -3260,6 +3260,10 @@
   "watch.join": "Katıl",
   "watch.code_hint": "Oda kodu",
   "watch.leave": "Odadan ayrıl",
+  "watch.end": "Odayı kapat",
+  "watch.host_only": "Yalnızca oda sahibi kontrol eder",
+  "watch.error.same_profile": "Bu profil zaten odada",
+  "watch.ended": "Oda sahibi odayı kapattı",
   "watch.copy_code": "Kodu kopyala",
   "watch.ready_count": "{ready}/{total} hazır",
   "watch.ready": "Hazır",
@@ -3289,8 +3293,6 @@
   "player.lock_controls": "Kontrolleri kilitle",
   "player.unlock_controls": "Kontrollerin kilidini aç",
   "settings.detail_sections_hint": "Bölümleri aç veya kapat ve sıralarını değiştir.",
-  "watch.lock": "Odayı kilitle",
-  "watch.unlock": "Oda kilidini aç",
   "downloads.bytes_progress": "%s / %s",
   "downloads.elapsed": "Geçen süre %s",
   "downloads.remaining": "%s kaldı",
@@ -3326,8 +3328,6 @@
   "watch.host_controls": "Bu odada oynatmayı yalnızca host kontrol edebilir",
   "watch.ticket.admit": "TEK KİŞİLİK · WATCH PARTY",
   "watch.ticket.room": "ODA {code}",
-  "watch.ticket.waiting": "Host bekleniyor",
-  "watch.ticket.people": "Odada {count} kişi",
   "watch.ticket.prompt": "Yerini almak için host'un kodunu gir",
   "watch.ticket.seat": "ODAN",
   "watch.ticket.code": "ODA KODU",
@@ -3343,6 +3343,5 @@
   "settings.watch_party.in_room_help": "Kimin izlediğini ve ne yaptığını görmek için odayı aç.",
   "settings.watch_party.host_title": "Oda kur",
   "settings.watch_party.host_help": "Bir şey oynat, sonra oynatıcıda Watch Party'yi aç.",
-  "settings.watch_party.in_room": "Oda {code}",
-  "settings.watch_party.open": "Aç"
+  "settings.watch_party.in_room": "Oda {code}"
 }

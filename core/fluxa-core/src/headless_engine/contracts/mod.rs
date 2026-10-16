@@ -402,6 +402,8 @@ pub(crate) enum AppAction {
         display_name: String,
         profile_id: Option<String>,
         avatar: Option<String>,
+        #[serde(default)]
+        profile_key: Option<String>,
     },
     #[serde(rename = "watchTogetherJoinRequested")]
     WatchTogetherJoinRequested {
@@ -409,9 +411,13 @@ pub(crate) enum AppAction {
         display_name: String,
         profile_id: Option<String>,
         avatar: Option<String>,
+        #[serde(default)]
+        profile_key: Option<String>,
     },
     #[serde(rename = "watchTogetherLeaveRequested")]
     WatchTogetherLeaveRequested,
+    #[serde(rename = "watchTogetherEndRequested")]
+    WatchTogetherEndRequested,
     #[serde(rename = "watchTogetherKickRequested")]
     WatchTogetherKickRequested { member_id: String },
     #[serde(rename = "watchTogetherLockChanged")]

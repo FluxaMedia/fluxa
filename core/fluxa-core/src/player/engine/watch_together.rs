@@ -25,6 +25,8 @@ struct RoomPayload {
     member_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     locked: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    profile_key: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -42,8 +44,9 @@ pub(crate) fn dispatch_create(
     display_name: String,
     profile_id: Option<String>,
     avatar: Option<String>,
+    profile_key: Option<String>,
 ) -> Vec<EffectEnvelope> {
-    request_room(engine, "create", None, display_name, profile_id, avatar)
+    request_room(engine, "create", None, display_name, profile_id, avatar, profile_key)
 }
 
 pub(crate) fn dispatch_join(
@@ -52,6 +55,7 @@ pub(crate) fn dispatch_join(
     display_name: String,
     profile_id: Option<String>,
     avatar: Option<String>,
+    profile_key: Option<String>,
 ) -> Vec<EffectEnvelope> {
     request_room(
         engine,
@@ -60,6 +64,7 @@ pub(crate) fn dispatch_join(
         display_name,
         profile_id,
         avatar,
+        profile_key,
     )
 }
 
@@ -81,6 +86,7 @@ pub(crate) fn dispatch_leave(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope>
             avatar: None,
             member_id: None,
             locked: None,
+            profile_key: None,
         },
     )]
 }
@@ -130,6 +136,7 @@ fn admin_effect(
             avatar: None,
             member_id,
             locked,
+            profile_key: None,
         },
     )]
 }
@@ -283,7 +290,14 @@ pub(crate) fn complete(
     sync_state(engine);
     engine.state.watch_together.connection_state = WatchTogetherConnectionState::Connected;
     engine.state.watch_together.error_message = None;
-    Vec::new()
+    let profile = payload["profileKey"].as_str().map(ToOwned::to_owned);
+    run(engine, |session| session.set_profile(profile))
+}
+
+pub(crate) fn dispatch_end(engine: &mut HeadlessEngine) -> Vec<EffectEnvelope> {
+    let mut effects = run(engine, |session| session.end());
+    effects.extend(dispatch_leave(engine));
+    effects
 }
 
 fn request_room(
@@ -293,6 +307,7 @@ fn request_room(
     display_name: String,
     profile_id: Option<String>,
     avatar: Option<String>,
+    profile_key: Option<String>,
 ) -> Vec<EffectEnvelope> {
     let generation = engine.bump_generation(GenerationKey::WatchTogether);
     let previous = engine.watch_session.take().map(|s| s.room().to_string());
@@ -309,6 +324,7 @@ fn request_room(
                 avatar: None,
                 member_id: None,
                 locked: None,
+                profile_key: None,
             },
         ));
     }
@@ -326,6 +342,7 @@ fn request_room(
             avatar,
             member_id: None,
             locked: None,
+            profile_key,
         },
     ));
     effects
@@ -342,13 +359,25 @@ fn run(
     let effects = action(session);
     sync_state(engine);
     let generation = engine.state.runtime.get(GenerationKey::WatchTogether);
-    effects
+    let mut reason = None;
+    let mut envelopes: Vec<EffectEnvelope> = effects
         .into_iter()
-        .map(|effect| {
+        .filter_map(|effect| {
+            if let SessionEffect::Leave(why) = effect {
+                reason = Some(why);
+                return None;
+            }
             let (kind, payload) = wire(&room, effect);
-            engine.effect(kind, generation, payload)
+            Some(engine.effect(kind, generation, payload))
         })
-        .collect()
+        .collect();
+    if let Some(reason) = reason {
+        envelopes.extend(dispatch_leave(engine));
+        let state = &mut *engine.state.watch_together;
+        state.connection_state = WatchTogetherConnectionState::Error;
+        state.error_message = Some(reason.to_owned());
+    }
+    envelopes
 }
 
 fn wire(room: &str, effect: SessionEffect) -> (EffectKind, Value) {
@@ -377,6 +406,7 @@ fn wire(room: &str, effect: SessionEffect) -> (EffectKind, Value) {
             EffectKind::WatchTogetherCommand,
             json!({"command": "remote", "playing": playing, "positionMs": position_ms, "rate": rate}),
         ),
+        SessionEffect::Leave(_) => unreachable!(),
     }
 }
 

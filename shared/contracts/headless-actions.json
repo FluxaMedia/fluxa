@@ -70,6 +70,7 @@
     "watchTogetherCreateRequested",
     "watchTogetherJoinRequested",
     "watchTogetherLeaveRequested",
+    "watchTogetherEndRequested",
     "watchTogetherKickRequested",
     "watchTogetherLockChanged",
     "watchTogetherContentSelected",

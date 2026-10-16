@@ -519,3 +519,21 @@ fn chat_drops_blank_flooded_and_stranger_messages() {
     assert_eq!(chat.len(), 50);
     assert_eq!(chat[0].text.chars().count(), 300);
 }
+
+#[test]
+fn second_device_with_same_profile_is_turned_away() {
+    let mut first = session("host", &["host"]);
+    first.set_profile(Some("p1".to_string()));
+    let mut second = session("guest", &["host", "guest"]);
+    let hello = second.set_profile(Some("p1".to_string()));
+    let reply = deliver(&mut first, &hello, 0);
+    assert!(broadcasts(&reply).iter().any(|message| message["type"] == "profile"));
+    assert_eq!(deliver(&mut second, &reply, 0), vec![SessionEffect::Leave("same_profile")]);
+}
+
+#[test]
+fn guests_leave_when_the_host_ends_the_room() {
+    let host = session("host", &["host", "guest"]);
+    let mut guest = session("guest", &["host", "guest"]);
+    assert_eq!(deliver(&mut guest, &host.end(), 0), vec![SessionEffect::Leave("ended")]);
+}

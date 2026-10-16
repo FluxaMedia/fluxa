@@ -55,6 +55,7 @@ pub enum SessionEffect {
         position_ms: i64,
         rate: f64,
     },
+    Leave(&'static str),
 }
 
 const SEEK_EVENT_MS: i64 = 2_000;
@@ -101,6 +102,7 @@ pub struct WatchTogetherSession {
     chat: VecDeque<WatchTogetherChatMessage>,
     chat_id: u64,
     chat_sent_ms: i64,
+    profile: Option<String>,
 }
 
 const CHAT_HISTORY: usize = 50;
@@ -137,6 +139,7 @@ impl WatchTogetherSession {
             chat: VecDeque::new(),
             chat_id: 0,
             chat_sent_ms: i64::MIN,
+            profile: None,
         }
     }
 
@@ -248,6 +251,37 @@ impl WatchTogetherSession {
             name: String::new(),
             text,
         });
+    }
+
+    pub fn set_profile(&mut self, profile: Option<String>) -> Vec<SessionEffect> {
+        self.profile = profile;
+        self.profile_message().into_iter().collect()
+    }
+
+    fn profile_message(&self) -> Option<SessionEffect> {
+        let key = self.profile.as_ref()?;
+        Some(SessionEffect::Broadcast(
+            self.tagged(json!({"type": "profile", "key": key})),
+        ))
+    }
+
+    fn on_profile(&self, from: &str, message: &Value) -> Vec<SessionEffect> {
+        let key = message.get("key").and_then(Value::as_str);
+        if key.is_none() || key != self.profile.as_deref() {
+            return Vec::new();
+        }
+        let position = |id: &str| self.members.iter().position(|member| member.id == id);
+        match (position(from), position(&self.client_id)) {
+            (Some(theirs), Some(mine)) if theirs < mine => vec![SessionEffect::Leave("same_profile")],
+            _ => self.profile_message().into_iter().collect(),
+        }
+    }
+
+    pub fn end(&self) -> Vec<SessionEffect> {
+        if !self.is_host() {
+            return Vec::new();
+        }
+        vec![SessionEffect::Broadcast(self.tagged(json!({"type": "end"})))]
     }
 
     pub fn set_locked(&mut self, locked: bool) {
@@ -461,6 +495,8 @@ impl WatchTogetherSession {
         let from_host = from == self.host_id;
         match WatchTogetherProtocol::message_type(message) {
             Some("content") if from_host => self.on_content(message),
+            Some("end") if from_host => vec![SessionEffect::Leave("ended")],
+            Some("profile") => self.on_profile(from, message),
             Some("start") if from_host => self.on_start(message, now_ms),
             Some("state") if from_host => self.on_state(message, now_ms),
             Some("ready") if self.has_member(from) => self.on_ready(from, message, now_ms),

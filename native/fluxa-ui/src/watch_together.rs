@@ -31,7 +31,6 @@ pub struct WatchTicket {
     pub logo: Option<String>,
     pub backdrop: Option<String>,
     pub episode: Option<String>,
-    pub people: usize,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -52,6 +51,7 @@ pub enum WatchTogetherRequest {
     Create,
     Join(String),
     Leave,
+    End,
     Close,
     CopyCode,
     Kick(String),
@@ -227,8 +227,13 @@ fn draw_room(
         );
     });
     ui.add_space(18.0);
-    if components::secondary_button(ui, &t("watch.leave"), width).clicked() {
-        *request = Some(WatchTogetherRequest::Leave);
+    let (label, action) = if model.host {
+        ("watch.end", WatchTogetherRequest::End)
+    } else {
+        ("watch.leave", WatchTogetherRequest::Leave)
+    };
+    if components::secondary_button(ui, &t(label), width).clicked() {
+        *request = Some(action);
     }
 }
 
@@ -485,7 +490,7 @@ fn side_room(
     );
     ui.add_space(12.0);
     if model.host {
-        lock_row(ui, model.locked, width, assets, metrics, t, request);
+        lock_row(ui, model.locked, width, metrics, t, request);
         ui.add_space(6.0);
     }
     for member in &model.members {
@@ -497,8 +502,13 @@ fn side_room(
     let height = ui.available_height() - 2.0 * button_height() - 104.0;
     side_chat(ui, model, width, height.max(80.0), assets, metrics, t, request);
     ui.add_space(14.0);
-    if components::secondary_button(ui, &t("watch.leave"), width).clicked() {
-        *request = Some(WatchTogetherRequest::Leave);
+    let (label, action) = if model.host {
+        ("watch.end", WatchTogetherRequest::End)
+    } else {
+        ("watch.leave", WatchTogetherRequest::Leave)
+    };
+    if components::secondary_button(ui, &t(label), width).clicked() {
+        *request = Some(action);
     }
 }
 
@@ -637,38 +647,36 @@ fn lock_row(
     ui: &mut egui::Ui,
     locked: bool,
     width: f32,
-    assets: &mut impl HomeAssets,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WatchTogetherRequest>,
 ) {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 40.0), Sense::click());
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 44.0), Sense::click());
     let painter = ui.painter();
     if response.hovered() {
         painter.rect_filled(rect, 12.0, ink(tone::RAISED));
     }
-    glyph(
-        painter,
-        assets,
-        if locked { "Lock" } else { "Unlock" },
-        Pos2::new(rect.left() + 20.0, rect.center().y),
-        18.0,
-        if locked {
-            accent()
-        } else {
-            metrics.text_secondary
-        },
-    );
     painter.text(
-        Pos2::new(rect.left() + 40.0, rect.center().y),
+        Pos2::new(rect.left() + 12.0, rect.center().y),
         Align2::LEFT_CENTER,
-        if locked {
-            t("watch.unlock")
-        } else {
-            t("watch.lock")
-        },
+        t("watch.host_only"),
         FontId::proportional(metrics.text.meta),
         text_primary(),
+    );
+    let track = Rect::from_center_size(
+        Pos2::new(
+            rect.right() - metrics.settings_toggle_width * 0.5 - 8.0,
+            rect.center().y,
+        ),
+        Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height),
+    );
+    components::toggle(
+        ui.ctx(),
+        painter,
+        Id::new("fluxa-watch-host-only"),
+        track,
+        locked,
+        metrics,
     );
     if response.clicked() {
         *request = Some(WatchTogetherRequest::SetLocked(!locked));

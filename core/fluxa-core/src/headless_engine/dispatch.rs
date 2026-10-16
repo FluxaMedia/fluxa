@@ -544,14 +544,17 @@ impl HeadlessEngine {
                 display_name,
                 profile_id,
                 avatar,
-            } => watch_together::dispatch_create(self, display_name, profile_id, avatar),
+                profile_key,
+            } => watch_together::dispatch_create(self, display_name, profile_id, avatar, profile_key),
             AppAction::WatchTogetherJoinRequested {
                 code,
                 display_name,
                 profile_id,
                 avatar,
-            } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar),
+                profile_key,
+            } => watch_together::dispatch_join(self, code, display_name, profile_id, avatar, profile_key),
             AppAction::WatchTogetherLeaveRequested => watch_together::dispatch_leave(self),
+            AppAction::WatchTogetherEndRequested => watch_together::dispatch_end(self),
             AppAction::WatchTogetherKickRequested { member_id } => {
                 watch_together::dispatch_kick(self, member_id)
             }

@@ -3249,6 +3249,10 @@
   "watch.join": "הצטרפות",
   "watch.code_hint": "קוד חדר",
   "watch.leave": "עזיבת החדר",
+  "watch.end": "סיום החדר",
+  "watch.host_only": "רק המארח שולט",
+  "watch.error.same_profile": "הפרופיל הזה כבר נמצא בחדר",
+  "watch.ended": "המארח סיים את החדר",
   "watch.copy_code": "העתקת הקוד",
   "watch.ready_count": "{ready}/{total} מוכנים",
   "watch.ready": "מוכן",
@@ -3278,8 +3282,6 @@
   "player.lock_controls": "נעילת הבקרים",
   "player.unlock_controls": "ביטול נעילת הבקרים",
   "settings.detail_sections_hint": "הפעלה או כיבוי של מקטעים ושינוי הסדר שלהם.",
-  "watch.lock": "נעל חדר",
-  "watch.unlock": "בטל נעילת חדר",
   "downloads.bytes_progress": "%s מתוך %s",
   "downloads.elapsed": "זמן שחלף %s",
   "downloads.remaining": "נותרו %s",
@@ -3315,8 +3317,6 @@
   "watch.host_controls": "בחדר הזה רק המארח שולט בניגון",
   "watch.ticket.admit": "כניסה ליחיד · WATCH PARTY",
   "watch.ticket.room": "חדר {code}",
-  "watch.ticket.waiting": "ממתינים למארח",
-  "watch.ticket.people": "{count} בחדר",
   "watch.ticket.prompt": "הזינו את קוד המארח כדי לתפוס מקום",
   "watch.ticket.seat": "החדר שלך",
   "watch.ticket.code": "קוד חדר",
@@ -3332,6 +3332,5 @@
   "settings.watch_party.in_room_help": "פתחו את החדר כדי לראות מי צופה ומה הוא עושה.",
   "settings.watch_party.host_title": "אירוח חדר",
   "settings.watch_party.host_help": "נגנו משהו ופתחו את Watch Party בנגן.",
-  "settings.watch_party.in_room": "חדר {code}",
-  "settings.watch_party.open": "פתח"
+  "settings.watch_party.in_room": "חדר {code}"
 }

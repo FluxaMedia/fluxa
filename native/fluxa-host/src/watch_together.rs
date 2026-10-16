@@ -212,12 +212,18 @@ fn ticket(watch: &Value) -> fluxa_ui::WatchTicket {
     fluxa_ui::WatchTicket {
         room: text(&watch["roomCode"]),
         connecting: watch["connectionState"] == "CONNECTING",
-        error: (watch["connectionState"] == "ERROR").then(|| "watch.error".to_owned()),
+        error: (watch["connectionState"] == "ERROR").then(|| {
+            match watch["errorMessage"].as_str() {
+                Some("same_profile") => "watch.error.same_profile",
+                Some("ended") => "watch.ended",
+                _ => "watch.error",
+            }
+            .to_owned()
+        }),
         title: text(&content["title"]),
         logo: text(&artwork["logo"]),
         backdrop: text(&artwork["backdrop"]),
         episode,
-        people: watch["members"].as_array().map_or(0, Vec::len),
     }
 }
 
@@ -340,7 +346,7 @@ fn report(state: &mut RendererState, watch: &Value) {
     let status = player.status.clone();
     let speed = player.speed;
     let content = player.watch_content();
-    if is_host && let Some(content) = content.clone() {
+    if is_host && status.has_frame && let Some(content) = content.clone() {
         let key = format!("{}|{}", content["id"], content["videoId"]);
         if state.watch.selected.as_deref() != Some(key.as_str()) {
             state.watch.selected = Some(key);
@@ -445,17 +451,14 @@ fn report(state: &mut RendererState, watch: &Value) {
 
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     match node {
-        fluxa_ui::NODE_SETTINGS_WATCH_PARTY => open_modal(state),
         fluxa_ui::NODE_SETTINGS_WATCH_JOIN => {
             let code = std::mem::take(&mut state.settings.watch_code);
             if code.len() != 6 {
                 state.settings.watch_code = code;
                 return true;
             }
+            let _ = state.ui.set_focus(None);
             handle(state, fluxa_ui::WatchTogetherRequest::Join(code));
-        }
-        fluxa_ui::NODE_SETTINGS_WATCH_LEAVE => {
-            handle(state, fluxa_ui::WatchTogetherRequest::Leave)
         }
         _ => return false,
     }
@@ -497,6 +500,7 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
                     "displayName": name,
                     "profileId": profile_id,
                     "avatar": avatar,
+                    "profileKey": profile_key(&name, avatar.as_deref()),
                 }),
             );
         }
@@ -510,6 +514,7 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
                     "displayName": name,
                     "profileId": profile_id,
                     "avatar": avatar,
+                    "profileKey": profile_key(&name, avatar.as_deref()),
                 }),
             );
         }
@@ -522,6 +527,7 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
             json!({"type": "watchTogetherLockChanged", "locked": locked}),
         ),
         Request::Leave => dispatch(state, json!({"type": "watchTogetherLeaveRequested"})),
+        Request::End => dispatch(state, json!({"type": "watchTogetherEndRequested"})),
         Request::Chat(text) => dispatch(
             state,
             json!({"type": "watchTogetherChatSent", "text": text, "nowMs": now_ms()}),
@@ -533,6 +539,10 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
                 .and_then(|view| view.room_code.clone());
         }
     }
+}
+
+fn profile_key(name: &str, avatar: Option<&str>) -> Option<String> {
+    avatar.map(|avatar| format!("{name}|{avatar}"))
 }
 
 fn identity(state: &RendererState) -> (String, Option<String>, Option<String>) {

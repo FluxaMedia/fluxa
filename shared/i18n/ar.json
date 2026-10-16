@@ -3249,6 +3249,10 @@
   "watch.join": "انضمام",
   "watch.code_hint": "رمز الغرفة",
   "watch.leave": "مغادرة الغرفة",
+  "watch.end": "إنهاء الغرفة",
+  "watch.host_only": "التحكم للمضيف فقط",
+  "watch.error.same_profile": "هذا الملف الشخصي موجود بالفعل في الغرفة",
+  "watch.ended": "أنهى المضيف الغرفة",
   "watch.copy_code": "نسخ الرمز",
   "watch.ready_count": "{ready}/{total} جاهز",
   "watch.ready": "جاهز",
@@ -3278,8 +3282,6 @@
   "player.lock_controls": "قفل عناصر التحكم",
   "player.unlock_controls": "فتح قفل عناصر التحكم",
   "settings.detail_sections_hint": "شغّل الأقسام أو أوقفها وغيّر ترتيبها.",
-  "watch.lock": "قفل الغرفة",
-  "watch.unlock": "فتح قفل الغرفة",
   "downloads.bytes_progress": "%s من %s",
   "downloads.elapsed": "المدة المنقضية %s",
   "downloads.remaining": "المتبقي %s",
@@ -3315,8 +3317,6 @@
   "watch.host_controls": "في هذه الغرفة يتحكم المضيف وحده بالتشغيل",
   "watch.ticket.admit": "دخول فرد واحد · WATCH PARTY",
   "watch.ticket.room": "الغرفة {code}",
-  "watch.ticket.waiting": "في انتظار المضيف",
-  "watch.ticket.people": "{count} في الغرفة",
   "watch.ticket.prompt": "أدخل رمز المضيف لتحجز مقعدك",
   "watch.ticket.seat": "غرفتك",
   "watch.ticket.code": "رمز الغرفة",
@@ -3332,6 +3332,5 @@
   "settings.watch_party.in_room_help": "افتح الغرفة لترى من يشاهد وماذا يفعل.",
   "settings.watch_party.host_title": "استضافة غرفة",
   "settings.watch_party.host_help": "شغّل شيئًا، ثم افتح Watch Party في المشغّل.",
-  "settings.watch_party.in_room": "الغرفة {code}",
-  "settings.watch_party.open": "فتح"
+  "settings.watch_party.in_room": "الغرفة {code}"
 }
