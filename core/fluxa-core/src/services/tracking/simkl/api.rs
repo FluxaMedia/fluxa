@@ -259,7 +259,7 @@ pub(crate) fn simkl_scrobble(args: &Value, action: &str, progress: f64) -> Optio
 }
 
 pub(crate) fn simkl_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
-    if str_field(command, "type") != "simklAccount" {
+    if !matches!(str_field(command, "type"), "simklAccount" | "profile") {
         return None;
     }
     Some(vec![request(

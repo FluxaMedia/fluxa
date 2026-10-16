@@ -12,6 +12,7 @@ pub(crate) mod tracking;
 
 pub(crate) use metadata::{publicmetadb, tmdb};
 pub(crate) use sync::nuvio;
+pub(crate) use tracking::profile::provider_profile_json;
 pub(crate) use tracking::{anilist, mdblist, simkl, trakt};
 
 use trakt::*;

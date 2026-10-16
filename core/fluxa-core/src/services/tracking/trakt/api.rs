@@ -297,6 +297,15 @@ pub(crate) fn trakt_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
             "favorites",
         )?]);
     }
+    if str_field(command, "type") == "profile" {
+        return Some(vec![request(
+            "trakt",
+            args,
+            "GET",
+            format!("{TRAKT_API}/users/settings"),
+            Value::Null,
+        )]);
+    }
     if str_field(command, "type") != "traktSeasons" {
         return None;
     }

@@ -128,6 +128,7 @@ static METHODS: &[(&str, Router)] = &[
     ("providerCalendarPlan", route_provider_library),
     ("providerLibraryRequests", route_provider_library),
     ("providerLibrarySnapshot", route_provider_library),
+    ("providerProfile", route_provider_library),
     ("providerRegistry", route_provider_library),
     ("providerScrobbleRequest", route_provider_library),
     ("providerWriteRequests", route_provider_library),

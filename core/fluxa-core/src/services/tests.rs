@@ -51,3 +51,68 @@ fn anilist_user_id_comes_from_the_token_subject() {
     let token = "h.eyJzdWIiOiI4MDkwNDMxIn0.s";
     assert_eq!(anilist_user_id(token), Some(8090431));
 }
+
+#[test]
+fn profile_requests_hit_each_providers_user_endpoint() {
+    let plan = |provider: &str| {
+        let args = json!({
+            "provider": provider,
+            "token": "t",
+            "clientId": "c",
+            "command": {"type": "profile"},
+        });
+        value(provider_write_requests_json(&args.to_string()))[0].clone()
+    };
+    assert_eq!(plan("trakt")["url"], "https://api.trakt.tv/users/settings");
+    assert!(
+        plan("simkl")["url"]
+            .as_str()
+            .unwrap()
+            .starts_with("https://api.simkl.com/users/settings")
+    );
+    assert_eq!(plan("mdblist")["url"], "https://api.mdblist.com/user");
+    let anilist = plan("anilist");
+    assert_eq!(anilist["url"], "https://graphql.anilist.co");
+    assert!(
+        anilist["body"]["query"]
+            .as_str()
+            .unwrap()
+            .contains("Viewer")
+    );
+}
+
+#[test]
+fn profile_reads_handle_and_avatar_per_provider() {
+    let parse = |provider: &str, body: Value| {
+        value(provider_profile_json(
+            &json!({"provider": provider, "status": 200, "body": body}).to_string(),
+        ))
+    };
+    let trakt = parse(
+        "trakt",
+        json!({"user": {"username": "khooly", "name": "Kh", "images": {"avatar": {"full": "https://a/x.png"}}}}),
+    );
+    assert_eq!(
+        (trakt["name"].as_str(), trakt["avatarUrl"].as_str()),
+        (Some("khooly"), Some("https://a/x.png"))
+    );
+    let anilist = parse(
+        "anilist",
+        json!({"data": {"Viewer": {"name": "khooly", "avatar": {"large": "https://a/y.png"}}}}),
+    );
+    assert_eq!(anilist["avatarUrl"], "https://a/y.png");
+    assert_eq!(
+        parse("mdblist", json!({"username": "khooly"}))["avatarUrl"],
+        Value::Null
+    );
+}
+
+#[test]
+fn profile_without_a_name_or_after_a_failed_request_is_none() {
+    let args = |status: u64, body: Value| {
+        json!({"provider": "simkl", "status": status, "body": body}).to_string()
+    };
+    assert!(provider_profile_json(&args(200, json!({"user": {"name": "  "}}))).is_none());
+    assert!(provider_profile_json(&args(401, json!({"user": {"name": "khooly"}}))).is_none());
+    assert!(provider_profile_json(&json!({"provider": "plex", "body": {}}).to_string()).is_none());
+}

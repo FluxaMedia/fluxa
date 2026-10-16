@@ -27,6 +27,7 @@ pub(crate) fn route_provider_library(method: &str, args_json: &str) -> Outcome {
         "providerWriteRequests" => {
             opt_json(crate::services::provider_write_requests_json(args_json))
         }
+        "providerProfile" => opt_json(crate::services::provider_profile_json(args_json)),
         "providerScrobbleRequest" => {
             opt_json(crate::services::provider_scrobble_request_json(args_json))
         }

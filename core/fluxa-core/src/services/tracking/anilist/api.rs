@@ -5,6 +5,21 @@ pub(crate) const ANILIST_REDIRECT_URI: &str = "fluxa://oauth/anilist";
 pub(crate) const ANILIST_SAVE_MUTATION: &str = "mutation($mediaId:Int,$status:MediaListStatus,$progress:Int){SaveMediaListEntry(mediaId:$mediaId,status:$status,progress:$progress){id}}";
 pub(crate) const ANILIST_LIST_QUERY: &str = "query($userId:Int,$chunk:Int){MediaListCollection(userId:$userId,type:ANIME,forceSingleCompletedList:true,chunk:$chunk,perChunk:500){hasNextChunk lists{isCustomList entries{status progress updatedAt media{id idMal format episodes seasonYear genres title{english romaji native} coverImage{extraLarge large} bannerImage}}}}}";
 
+pub(crate) const ANILIST_VIEWER_QUERY: &str = "query{Viewer{name avatar{large}}}";
+
+pub(crate) fn anilist_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
+    if str_field(command, "type") != "profile" {
+        return None;
+    }
+    Some(vec![request(
+        "anilist",
+        args,
+        "POST",
+        ANILIST_GRAPHQL.to_owned(),
+        json!({"query": ANILIST_VIEWER_QUERY}),
+    )])
+}
+
 pub(crate) fn anilist_user_id(token: &str) -> Option<i64> {
     use base64::Engine;
     let payload = token.split('.').nth(1)?;

@@ -346,6 +346,19 @@ pub(crate) fn mdblist_token_state(status: u16, body: &Value) -> &'static str {
     }
 }
 
+pub(crate) fn mdblist_write(args: &Value, command: &Value) -> Option<Vec<Value>> {
+    if str_field(command, "type") != "profile" {
+        return None;
+    }
+    Some(vec![request(
+        "mdblist",
+        args,
+        "GET",
+        super::user::mdblist_user_url(),
+        Value::Null,
+    )])
+}
+
 pub(crate) fn mdblist_headers(_client_id: &str) -> Vec<(&'static str, String)> {
     vec![("User-Agent", USER_AGENT.to_string())]
 }
