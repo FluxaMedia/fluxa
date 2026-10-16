@@ -226,6 +226,7 @@
   "settings.account_empty": "لا يوجد ملف شخصي نشط في Fluxa Core",
   "settings.connected": "متصل",
   "settings.not_connected": "غير متصل",
+  "settings.session_expired": "انتهت صلاحية الجلسة",
   "settings.account_connect": "اتصال",
   "settings.account_disconnect": "قطع الاتصال",
   "settings.account_sign_in_failed": "فشل تسجيل الدخول. حاول مرة أخرى.",

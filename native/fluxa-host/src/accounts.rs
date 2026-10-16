@@ -152,6 +152,60 @@ pub(crate) fn poll_mdblist_lists(state: &mut RendererState) {
     }
 }
 
+#[derive(Default)]
+pub(crate) struct TrackerProfiles {
+    key: String,
+    names: Vec<(String, String)>,
+    rx: Option<std::sync::mpsc::Receiver<Vec<Value>>>,
+}
+
+pub(crate) fn poll_tracker_profiles(state: &mut RendererState) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let profile = session.active_profile();
+    let tokens = [
+        "traktAccessToken",
+        "simklAccessToken",
+        "anilistAccessToken",
+        "mdblistAccessToken",
+    ]
+    .iter()
+    .map(|key| {
+        profile
+            .get(*key)
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+    })
+    .collect::<Vec<_>>();
+    let key = if tokens.iter().all(|token| token.is_empty()) {
+        String::new()
+    } else {
+        format!("{}|{}", profile_id(session), tokens.join("|"))
+    };
+    let fetch = &mut state.tracker_profiles;
+    if fetch.key != key {
+        fetch.key = key.clone();
+        fetch.names.clear();
+        fetch.rx = (!key.is_empty()).then(|| session.executor().fetch_tracker_profiles(profile));
+    }
+    if let Some(found) = fetch.rx.as_ref().and_then(|rx| rx.try_recv().ok()) {
+        fetch.rx = None;
+        fetch.names = found
+            .iter()
+            .filter_map(|entry| {
+                Some((
+                    entry.get("provider")?.as_str()?.to_owned(),
+                    entry.get("name")?.as_str()?.to_owned(),
+                ))
+            })
+            .collect();
+    }
+    if state.settings.tracker_names != state.tracker_profiles.names {
+        state.settings.tracker_names = state.tracker_profiles.names.clone();
+    }
+}
+
 pub(crate) fn refresh_servers(state: &mut RendererState) {
     state.settings.media_servers = state
         .session

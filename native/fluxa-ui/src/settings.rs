@@ -928,6 +928,18 @@ fn pill_button(
     label: &str,
     size: f32,
 ) {
+    pill_button_styled(context, layout, id, rect, label, size, false);
+}
+
+fn pill_button_styled(
+    context: &egui::Context,
+    layout: &mut HomeLayout,
+    id: u64,
+    rect: Rect,
+    label: &str,
+    size: f32,
+    primary: bool,
+) {
     components::placed_front(
         context,
         Id::new(("fluxa-settings-pill", id)),
@@ -940,7 +952,7 @@ fn pill_button(
                 Some(rect.width()),
                 rect.height(),
                 size,
-                false,
+                primary,
                 None,
             );
             components::focus_action(layout, id, &response);

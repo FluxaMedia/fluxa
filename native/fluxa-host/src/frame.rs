@@ -139,6 +139,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     accounts::poll(state);
     if state.route == Route::Settings {
         accounts::poll_mdblist_lists(state);
+        accounts::poll_tracker_profiles(state);
     }
     stream_badges::poll(state);
     collections::poll(state);

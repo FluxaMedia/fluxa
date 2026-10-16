@@ -42,10 +42,9 @@ pub(super) fn account_height(metrics: UiMetrics) -> f32 {
 }
 
 fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
-    if metrics.compact {
-        metrics.settings_row_height += 8.0;
-        metrics.settings_row_spacing += 8.0;
-    }
+    let extra = if metrics.compact { 8.0 } else { 20.0 };
+    metrics.settings_row_height += extra;
+    metrics.settings_row_spacing += extra;
     metrics
 }
 
@@ -376,6 +375,7 @@ pub(super) fn draw_account(
         metrics.settings_row_label_size_desktop
     };
     let connected = |key: &str| account_connected(settings, key);
+    let pill_size = (label_size - 3.0).max(13.0);
 
     let mut top = rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT;
     let card = account_group(
@@ -441,7 +441,7 @@ pub(super) fn draw_account(
     let switch_width = painter
         .layout_no_wrap(
             switch_label.clone(),
-            FontId::proportional(label_size),
+            FontId::proportional(pill_size),
             text_primary(),
         )
         .size()
@@ -449,7 +449,7 @@ pub(super) fn draw_account(
         + 32.0;
     let switch_rect = Rect::from_center_size(
         Pos2::new(card.right() - 20.0 - switch_width * 0.5, card.center().y),
-        Vec2::new(switch_width, 36.0),
+        Vec2::new(switch_width, 32.0),
     );
     if !compact {
         pill_button(
@@ -458,7 +458,7 @@ pub(super) fn draw_account(
             NODE_SETTINGS_SWITCH_PROFILE,
             switch_rect,
             &switch_label,
-            label_size,
+            pill_size,
         );
         name_right = switch_rect.left() - 12.0;
     }
@@ -486,7 +486,7 @@ pub(super) fn draw_account(
         &localized("settings.group.account_services", language),
         metrics,
     );
-    let logo_height = if metrics.compact { 36.0 } else { 22.0 };
+    let logo_height = if metrics.compact { 36.0 } else { 30.0 };
     for (index, (label, key)) in ACCOUNT_SERVICES.iter().enumerate() {
         let row = account_row(card, index, service_rows(metrics));
         if index > 0 {
@@ -517,14 +517,25 @@ pub(super) fn draw_account(
                 prompt.code,
                 prompt.url
             ),
-            None => localized(
-                if on {
-                    "settings.connected"
-                } else {
-                    "settings.not_connected"
-                },
-                language,
-            ),
+            None => match settings
+                .tracker_names
+                .iter()
+                .find(|(name, _)| *name == provider)
+                .filter(|_| on)
+            {
+                Some((_, name)) if name.is_empty() => {
+                    localized("settings.session_expired", language)
+                }
+                Some((_, name)) => name.clone(),
+                None => localized(
+                    if on {
+                        "settings.connected"
+                    } else {
+                        "settings.not_connected"
+                    },
+                    language,
+                ),
+            },
         };
         if sheet {
             let slot = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider);
@@ -592,16 +603,7 @@ pub(super) fn draw_account(
             }
             continue;
         }
-        draw_text(
-            &painter,
-            row.left_center() + Vec2::new(label_left, 0.0),
-            Align2::LEFT_CENTER,
-            *label,
-            FontId::proportional(label_size),
-            metrics.text_primary,
-            None,
-        );
-        let mut status_right = 8.0;
+        let mut text_right = row.right() - 4.0;
         if let Some(slot) = ACCOUNT_PROVIDERS.iter().position(|name| *name == provider) {
             let action = localized(
                 if on {
@@ -614,7 +616,7 @@ pub(super) fn draw_account(
             let width = painter
                 .layout_no_wrap(
                     action.clone(),
-                    FontId::proportional(label_size),
+                    FontId::proportional(pill_size),
                     text_primary(),
                 )
                 .size()
@@ -622,25 +624,42 @@ pub(super) fn draw_account(
                 + 32.0;
             let button = Rect::from_center_size(
                 Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
-                Vec2::new(width, 32.0_f32.min(row.height() - 4.0)),
+                Vec2::new(width, 30.0_f32.min(row.height() - 4.0)),
             );
-            pill_button(
+            pill_button_styled(
                 context,
                 layout,
                 NODE_SETTINGS_ACCOUNT_BASE + slot as u64,
                 button,
                 &action,
-                label_size,
+                pill_size,
+                !on,
             );
-            status_right += width + 12.0;
+            text_right = button.left() - 16.0;
         }
+        let name_font = crate::fonts::regular(label_size + 1.0);
+        let status_font = crate::fonts::regular(metrics.screen_card_subtitle_size);
         draw_text(
             &painter,
-            row.right_center() - Vec2::new(status_right, 0.0),
-            Align2::RIGHT_CENTER,
-            status,
-            crate::fonts::regular(metrics.screen_card_subtitle_size),
-            ink(if on { 200 } else { 110 }),
+            row.left_center() + Vec2::new(label_left, -2.0),
+            Align2::LEFT_BOTTOM,
+            *label,
+            name_font,
+            metrics.text_primary,
+            None,
+        );
+        draw_text(
+            &painter,
+            row.left_center() + Vec2::new(label_left, 3.0),
+            Align2::LEFT_TOP,
+            truncate_to_width(
+                &painter,
+                &status,
+                &status_font,
+                text_right - row.left() - label_left,
+            ),
+            status_font,
+            metrics.text_secondary,
             None,
         );
     }

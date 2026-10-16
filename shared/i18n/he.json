@@ -226,6 +226,7 @@
   "settings.account_empty": "אין פרופיל פעיל ב-Fluxa Core",
   "settings.connected": "מחובר",
   "settings.not_connected": "לא מחובר",
+  "settings.session_expired": "פג תוקף ההתחברות",
   "settings.account_connect": "התחברות",
   "settings.account_disconnect": "התנתקות",
   "settings.account_sign_in_failed": "ההתחברות נכשלה. נסה שוב.",

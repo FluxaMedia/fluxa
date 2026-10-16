@@ -86,6 +86,20 @@ fn http_client() -> Result<Client, String> {
 
 const TRAKT_SEASONS_TTL: i64 = 24 * 60 * 60;
 const SIMKL_ACCOUNT_TTL: i64 = 86_400;
+const TRACKER_PROFILE_TTL: i64 = 86_400;
+const TRACKER_PROFILE_PROVIDERS: [&str; 4] = ["trakt", "simkl", "anilist", "mdblist"];
+
+fn tracker_profile_key(provider: &str, profile_id: &str) -> String {
+    format!("tracker_profile_{provider}_{}", sanitize_key(profile_id))
+}
+
+fn token_fingerprint(credentials: &Value) -> String {
+    use std::hash::{Hash, Hasher};
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    str_field(credentials, "token").hash(&mut hasher);
+    str_field(credentials, "apiKey").hash(&mut hasher);
+    format!("{:x}", hasher.finish())
+}
 const REWATCH_INTENT_TTL: i64 = 86_400;
 
 fn simkl_account_key(profile_id: &str) -> String {
@@ -272,6 +286,81 @@ impl EffectExecutor {
                 .and_then(|lists| lists.as_array().cloned())
                 .unwrap_or_default()
         })
+    }
+
+    pub fn fetch_tracker_profiles(&self, profile: Value) -> std::sync::mpsc::Receiver<Vec<Value>> {
+        let executor = self.clone();
+        super::detached(async move {
+            let profile_id = str_field(&profile, "id").to_owned();
+            let now = chrono_unix_seconds();
+            let mut found = Vec::new();
+            for provider in TRACKER_PROFILE_PROVIDERS {
+                let profile = executor
+                    .refreshed_profile(provider, profile.clone(), false)
+                    .await
+                    .unwrap_or_else(|_| profile.clone());
+                let Some(credentials) = executor.provider_credentials(provider, &profile) else {
+                    continue;
+                };
+                let key = tracker_profile_key(provider, &profile_id);
+                let fingerprint = token_fingerprint(&credentials);
+                let cached = executor
+                    .storage
+                    .read_json(&key)
+                    .ok()
+                    .flatten()
+                    .filter(|cached| {
+                        str_field(cached, "fingerprint") == fingerprint
+                            && cached.get("at").and_then(Value::as_i64).unwrap_or(0)
+                                + TRACKER_PROFILE_TTL
+                                > now
+                    });
+                let profile = match cached {
+                    Some(cached) => cached,
+                    None => {
+                        let Some(fetched) =
+                            executor.fetch_tracker_profile(provider, &credentials).await
+                        else {
+                            continue;
+                        };
+                        if fetched["expired"] == true {
+                            found.push(json!({"provider": provider, "name": ""}));
+                            continue;
+                        }
+                        let record = json!({
+                            "at": now,
+                            "fingerprint": fingerprint,
+                            "name": fetched["name"],
+                            "avatarUrl": fetched["avatarUrl"],
+                        });
+                        let _ = executor.storage.write_json(&key, &record);
+                        record
+                    }
+                };
+                found.push(json!({
+                    "provider": provider,
+                    "name": profile["name"],
+                    "avatarUrl": profile["avatarUrl"],
+                }));
+            }
+            found
+        })
+    }
+
+    async fn fetch_tracker_profile(&self, provider: &str, credentials: &Value) -> Option<Value> {
+        let mut args = credentials.clone();
+        args["command"] = json!({"type": "profile"});
+        let plan = core_value("providerWriteRequests", args)?.get(0).cloned()?;
+        let client = http_client().ok()?;
+        let (status, body) = send(&client, &plan).await.ok()?;
+        if status == 401 {
+            return Some(json!({"expired": true}));
+        }
+        core_value(
+            "providerProfile",
+            json!({"provider": provider, "status": status, "body": body}),
+        )
+        .filter(|profile| profile.get("name").is_some())
     }
 
     fn provider_credentials(&self, provider: &str, profile: &Value) -> Option<Value> {
