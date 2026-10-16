@@ -61,6 +61,7 @@ pub use components::{
     ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, FocusedField, Glass, InputKind,
     NODE_DISCOVER_RECENT_BASE, SubtitleLook, action_menu_layout, caret_rect, discover_recent,
     draw_action_menu, draw_mini_player_overlay, focused_field, input_kind, is_text_node,
+    set_native_field,
     set_input_caret, set_liquid_glass, set_pending_field_text,
 };
 pub use motion::page_transition;

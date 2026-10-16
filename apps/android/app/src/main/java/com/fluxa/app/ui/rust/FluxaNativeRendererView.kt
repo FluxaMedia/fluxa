@@ -176,6 +176,18 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
         onCoreCommand?.invoke(json)
     }
 
+    var nativeTextFields = false
+
+    fun textFieldJson(): String? = nativeHandle.takeIf { it != 0L }?.let { NativeRenderer.textFieldNative(it) }
+
+    fun setFieldText(field: Long, text: String) {
+        if (nativeHandle != 0L) NativeRenderer.setFieldTextNative(nativeHandle, field, text)
+    }
+
+    fun pressEnter() {
+        if (nativeHandle != 0L) NativeRenderer.keyDownNative(nativeHandle, KeyEvent.KEYCODE_ENTER, 0)
+    }
+
     fun pushAction(json: String) {
         val handle = nativeHandle
         if (handle == 0L) pendingActions += json else NativeRenderer.pushActionNative(handle, json)
@@ -744,6 +756,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     private val inputFocusChanged = Runnable { post { reconcileInput(0) } }
 
     private fun reconcileInput(settle: Int) {
+        if (nativeTextFields) return
         val input = inputMethod ?: return
         val field = if (NativeRenderer.textInputFocusedNative(nativeHandle)) {
             NativeRenderer.focusedFieldIdNative(nativeHandle)
@@ -847,7 +860,7 @@ class FluxaNativeRendererView(context: Context) : SurfaceView(context), SurfaceH
     }
 
     override fun onCheckIsTextEditor(): Boolean =
-        nativeHandle != 0L && NativeRenderer.textInputFocusedNative(nativeHandle)
+        !nativeTextFields && nativeHandle != 0L && NativeRenderer.textInputFocusedNative(nativeHandle)
 
     override fun onCreateInputConnection(outAttrs: EditorInfo): InputConnection {
         refreshAccessibility()
@@ -1007,6 +1020,7 @@ private object NativeRenderer {
     @JvmStatic external fun focusedTextNative(handle: Long): String
     @JvmStatic external fun setFieldTextNative(handle: Long, field: Long, text: String)
     @JvmStatic external fun focusedFieldIdNative(handle: Long): Long
+    @JvmStatic external fun textFieldNative(handle: Long): String?
 
     fun isNavigationKey(keyCode: Int): Boolean = when (keyCode) {
         KeyEvent.KEYCODE_DPAD_UP,

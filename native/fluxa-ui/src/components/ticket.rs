@@ -9,7 +9,7 @@ pub(crate) enum TicketAction {
 
 pub(crate) struct TicketOutput {
     pub action: Option<TicketAction>,
-    pub code: Option<Response>,
+    pub code: Option<CodeInput>,
 }
 
 const RADIUS: f32 = 22.0;
@@ -195,7 +195,7 @@ pub(crate) fn watch_ticket(
             if input.submitted {
                 output.action = Some(TicketAction::Join);
             }
-            output.code = Some(input.response);
+            output.code = Some(input);
         }
         Some(room) => {
             let narrow = width < 480.0;

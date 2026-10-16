@@ -858,6 +858,15 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedF
 }
 
 #[unsafe(no_mangle)]
+pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textFieldNative(
+    env: JNIEnv<'_>,
+    _class: JClass<'_>,
+    handle: jlong,
+) -> jni::sys::jstring {
+    java_string(&env, host(handle).and_then(FluxaHost::text_field_json))
+}
+
+#[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_blurTextInputNative(
     _env: JNIEnv<'_>,
     _class: JClass<'_>,

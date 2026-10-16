@@ -1489,9 +1489,9 @@ fn draw_watch_party(
     let ticket = &settings.watch_ticket;
     components::placed_front(context, Id::new("fluxa-watch-ticket"), origin, |ui| {
         let output = components::watch_ticket(ui, ticket, &mut code, width, language, assets, metrics);
-        if let Some(response) = output.code {
-            layout.focusable.push((NODE_SETTINGS_WATCH_CODE, response.rect));
-            if response.changed() {
+        if let Some(input) = output.code {
+            layout.focusable.push((NODE_SETTINGS_WATCH_CODE, input.rect));
+            if input.response.changed() {
                 layout.text_input = Some(code.clone());
                 layout.text_input_node = Some(NODE_SETTINGS_WATCH_CODE);
             }

@@ -73,6 +73,10 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         val match = LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
         addView(videoSurface, match)
         addView(renderer, LayoutParams(match))
+        if (!BuildConfig.IS_TV) {
+            renderer.nativeTextFields = true
+            addView(NativeTextField(context, renderer), LayoutParams(0, 0))
+        }
         renderer.onVideoRequest = ::onVideoRequest
     }
 
