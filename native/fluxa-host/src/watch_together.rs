@@ -380,7 +380,7 @@ fn report(state: &mut RendererState, watch: &Value) {
         }
         return;
     }
-    let buffering = status.buffering.is_some();
+    let buffering = status.stalled;
     if buffering != state.watch.buffering_sent {
         state.watch.buffering_sent = buffering;
         dispatch(

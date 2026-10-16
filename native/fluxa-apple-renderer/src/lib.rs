@@ -120,6 +120,7 @@ pub unsafe extern "C" fn fluxa_renderer_video_status(
         error: unsafe { text(error) },
         chapters: Vec::new(),
         buffering: (buffering >= 0.0).then_some(buffering),
+        stalled: buffering >= 0.0,
         buffered: 0.0,
     };
     if let Ok(mut bridge) = video_bridge().lock() {

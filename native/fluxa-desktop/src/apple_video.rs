@@ -282,6 +282,7 @@ impl VideoBackend for AppleBackend {
             error: self.error.clone(),
             chapters: player.chapters.list().to_vec(),
             buffering: buffering(&position),
+            stalled: position.paused_for_cache.as_deref() == Some("yes"),
             buffered: number(position.demuxer_cache_duration.as_deref()).unwrap_or(0.0),
         }
     }

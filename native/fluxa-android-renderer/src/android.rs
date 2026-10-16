@@ -264,6 +264,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
         error,
         chapters: Vec::new(),
         buffering: (buffering >= 0.0).then_some(buffering),
+        stalled: buffering >= 0.0,
         buffered: 0.0,
     };
     if let Ok(mut bridge) = video_bridge().lock() {

@@ -53,6 +53,7 @@ pub struct VideoStatus {
     pub error: Option<String>,
     pub chapters: Vec<(f64, String)>,
     pub buffering: Option<f32>,
+    pub stalled: bool,
     pub buffered: f64,
 }
 
