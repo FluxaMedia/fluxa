@@ -1140,7 +1140,7 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 25] = [
     },
     SettingsSection {
         title: "Watch Party",
-        category: "Playback",
+        category: "Watch Party",
         description: "Create or join a room to watch together",
         rows: &EMPTY_SETTINGS,
         groups: &[],
