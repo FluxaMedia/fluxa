@@ -9,6 +9,7 @@ mod tokens;
 pub use overlay::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
 pub use panel::{PanelRow, PlayerPanel};
 pub use stats::StatsSection;
+pub use tokens::subtitle_lift;
 
 mod controls;
 mod loading;

@@ -188,6 +188,7 @@ pub(crate) struct PlayerSession {
     pub(crate) locked: bool,
     style: Value,
     style_hidden: bool,
+    sub_pos: Option<String>,
     sync: subtitle_sync::SyncState,
     torrent_link: Option<String>,
     torrent_since: Option<Instant>,
@@ -308,6 +309,7 @@ impl PlayerSession {
             locked: false,
             style: Value::Null,
             style_hidden: false,
+            sub_pos: None,
             sync: subtitle_sync::SyncState::default(),
             torrent_link: None,
             torrent_since: None,
@@ -974,6 +976,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     advance_shuffle(state);
     menu::tick_sleep(state);
     menu::tick_style(state);
+    menu::tick_subtitle_lift(state);
     subtitle_sync::tick(state);
     let RendererState {
         shuffle,

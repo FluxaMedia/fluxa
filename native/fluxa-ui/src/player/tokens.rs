@@ -92,3 +92,8 @@ impl PlayerTokens {
         }
     }
 }
+
+pub fn subtitle_lift(form_factor: UiFormFactor) -> f32 {
+    let tokens = PlayerTokens::for_form_factor(form_factor);
+    tokens.card_lift_visible - tokens.card_lift_hidden
+}

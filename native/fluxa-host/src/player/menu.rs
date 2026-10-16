@@ -636,6 +636,34 @@ pub(super) fn tick_style(state: &mut RendererState) {
     }
 }
 
+pub(super) fn tick_subtitle_lift(state: &mut RendererState) {
+    let viewport = crate::input::logical_viewport(state);
+    let Some(player) = state.player.as_mut().filter(|player| player.loaded_url.is_some()) else {
+        return;
+    };
+    let plan = core_value(
+        "subtitleLiftPlan",
+        json!({
+            "subtitlePosition": state.settings.values.get("subtitlePosition"),
+            "controlsVisible": player.controls_visible(),
+            "lift": fluxa_ui::subtitle_lift(viewport.form_factor),
+            "height": viewport.height,
+        }),
+    );
+    let Some(value) = plan
+        .as_ref()
+        .and_then(|plan| plan[0][1].as_str())
+        .map(ToOwned::to_owned)
+    else {
+        return;
+    };
+    if player.sub_pos.as_deref() == Some(&value) {
+        return;
+    }
+    player.sub_pos = Some(value.clone());
+    mpv(state, "sub-pos", &value);
+}
+
 pub(super) fn mpv(state: &mut RendererState, name: &str, value: &str) {
     command(
         state,

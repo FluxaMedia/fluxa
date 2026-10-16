@@ -18,7 +18,7 @@ pub(crate) use audio_tracks::select_audio_track_json;
 pub(crate) use episodes::player_episodes_json;
 pub(crate) use playback_close::{playback_close_plan_json, playback_preferences_plan_json};
 pub(crate) use shuffle::shuffle_episode_pick_json;
-pub(crate) use subtitle_style::subtitle_style_plan_json;
+pub(crate) use subtitle_style::{subtitle_lift_plan_json, subtitle_style_plan_json};
 pub(crate) use video_config::video_config_plan_json;
 
 pub(crate) fn stream_subtitles_result_json(stream_json: &str) -> Option<String> {

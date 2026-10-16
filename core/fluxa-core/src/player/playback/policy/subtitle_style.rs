@@ -11,7 +11,6 @@ pub(crate) fn subtitle_style_plan_json(input: &str) -> Option<String> {
     let background_alpha = unit(&settings, "subtitleBackgroundOpacity", 0.5);
     let outline_alpha = unit(&settings, "subtitleOutlineOpacity", 1.0);
     let size = number(&settings, "subtitleSize", 100.0).clamp(25.0, 300.0);
-    let position = number(&settings, "subtitlePosition", 100.0).clamp(0.0, 100.0);
     let outline_size = number(&settings, "subtitleOutlineSize", 3.0).clamp(0.0, 10.0);
     let flag = |key: &str| settings.get(key).and_then(Value::as_bool).unwrap_or(false);
     let style = if background_alpha > 0.0 {
@@ -26,7 +25,6 @@ pub(crate) fn subtitle_style_plan_json(input: &str) -> Option<String> {
     };
     let options = json!([
         ["sub-scale", format!("{:.2}", size / 100.0)],
-        ["sub-pos", format!("{position:.0}")],
         ["sub-color", argb(text, text_alpha)],
         ["sub-back-color", argb(background, background_alpha)],
         ["sub-border-color", argb(outline, outline_alpha)],
@@ -40,6 +38,23 @@ pub(crate) fn subtitle_style_plan_json(input: &str) -> Option<String> {
         ["sub-ass-override", override_mode],
     ]);
     serde_json::to_string(&options).ok()
+}
+
+pub(crate) fn subtitle_lift_plan_json(input: &str) -> Option<String> {
+    let input: Value = serde_json::from_str(input).ok()?;
+    let position = number(&input, "subtitlePosition", 100.0).clamp(0.0, 100.0);
+    let height = number(&input, "height", 0.0);
+    let lift = number(&input, "lift", 0.0).max(0.0);
+    let raised = input
+        .get("controlsVisible")
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+    let offset = if raised && height > 0.0 {
+        lift / height * 100.0
+    } else {
+        0.0
+    };
+    serde_json::to_string(&json!([["sub-pos", format!("{:.1}", (position - offset).max(0.0))]])).ok()
 }
 
 fn yes_no(value: bool) -> &'static str {
@@ -112,5 +127,44 @@ mod tests {
         let plan = options(json!({"subtitleBackgroundOpacity": "0.0", "subtitleSize": "150"}));
         assert_eq!(get(&plan, "sub-border-style"), "outline-and-shadow");
         assert_eq!(get(&plan, "sub-scale"), "1.50");
+    }
+
+    fn lifted(input: Value) -> String {
+        let plan = subtitle_lift_plan_json(&input.to_string()).unwrap();
+        let options: Vec<(String, String)> = serde_json::from_str(&plan).unwrap();
+        options[0].1.clone()
+    }
+
+    #[test]
+    fn visible_controls_raise_subtitles_by_a_share_of_the_height() {
+        let raised = lifted(json!({
+            "subtitlePosition": "100",
+            "controlsVisible": true,
+            "lift": 90.0,
+            "height": 900.0,
+        }));
+        assert_eq!(raised, "90.0");
+    }
+
+    #[test]
+    fn hidden_controls_keep_the_saved_position() {
+        let resting = lifted(json!({
+            "subtitlePosition": "95",
+            "controlsVisible": false,
+            "lift": 90.0,
+            "height": 900.0,
+        }));
+        assert_eq!(resting, "95.0");
+    }
+
+    #[test]
+    fn lift_never_pushes_below_the_top() {
+        let top = lifted(json!({
+            "subtitlePosition": "5",
+            "controlsVisible": true,
+            "lift": 500.0,
+            "height": 600.0,
+        }));
+        assert_eq!(top, "0.0");
     }
 }

@@ -77,7 +77,7 @@ pub use library::draw_library;
 pub use player::{
     ChapterSpan, NextEpisodeCard, PanelRow, PlayerModel, PlayerOptions, PlayerPanel, PlayerSource,
     PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
-    content_warning_duration, draw_player, format_time, torrent_status_lines,
+    content_warning_duration, draw_player, format_time, subtitle_lift, torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,
