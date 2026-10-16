@@ -241,7 +241,7 @@ pub(crate) struct PlayerSession {
     media_sent: Option<(Instant, String, f64)>,
     brightness: f32,
     speed_held: bool,
-    speed: f64,
+    pub(crate) speed: f64,
     tracks: Vec<VideoTrack>,
     track_lang: Option<(bool, String)>,
     aspect: usize,
@@ -401,11 +401,19 @@ impl PlayerSession {
         let video = ["lastVideoId", "videoId", "video_id"]
             .iter()
             .find_map(|key| self.meta.get(*key).and_then(Value::as_str));
+        let artwork = json!({
+            "backdrop": self.meta.get("background").and_then(Value::as_str),
+            "logo": self.model_logo_from_meta().or(self.snapshot_logo.as_deref()),
+            "episodeTitle": self.episode_title,
+            "season": self.season_episode.map(|(season, _)| season),
+            "episode": self.season_episode.map(|(_, episode)| episode),
+        });
         Some(json!({
             "id": id.split(':').next().unwrap_or(id),
             "contentType": self.meta.get("type").and_then(Value::as_str).unwrap_or("movie"),
             "videoId": video,
             "title": self.title(),
+            "artwork": artwork,
         }))
     }
 
@@ -1537,6 +1545,9 @@ pub(crate) fn seek(state: &mut RendererState, direction: f64) {
 }
 
 pub(crate) fn command(state: &mut RendererState, command: VideoCommand) {
+    if !crate::watch_together::intercept(state, &command) {
+        return;
+    }
     if let Some(player) = state.player.as_mut() {
         player.touch();
         match &command {

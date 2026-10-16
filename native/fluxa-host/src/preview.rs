@@ -63,27 +63,39 @@ pub(crate) fn start(state: &mut RendererState) {
                 }),
             });
     }
-    if watch_demo() {
-        let member = |name: &str, ready: bool, buffering: bool, host: bool, you: bool| {
-            fluxa_ui::WatchMemberView {
-                id: name.to_owned(),
-                name: name.to_owned(),
-                avatar: None,
-                ready,
-                buffering,
-                host,
-                you,
-            }
+    if setting("FLUXA_PREVIEW_WATCH").as_deref() == Some("ticket") {
+        state.settings.watch_ticket = fluxa_ui::WatchTicket {
+            room: Some("K7M2QX".to_owned()),
+            title: Some("Breaking Bad".to_owned()),
+            backdrop: Some(
+                "https://image.tmdb.org/t/p/w1280/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg".to_owned(),
+            ),
+            episode: Some("S1 · E2 · Cat's in the Bag...".to_owned()),
+            people: 3,
+            ..Default::default()
+        };
+        state.settings.watch_room = Some("K7M2QX".to_owned());
+    }
+    if watch_demo() && setting("FLUXA_PREVIEW_WATCH").as_deref() != Some("ticket") {
+        let member = |name: &str, status: &str, host: bool, you: bool| fluxa_ui::WatchMemberView {
+            id: name.to_owned(),
+            name: name.to_owned(),
+            avatar: None,
+            ready: status != "picking",
+            buffering: status == "buffering",
+            status: status.to_owned(),
+            host,
+            you,
         };
         state.watch_view = Some(fluxa_ui::WatchTogetherModel {
             language: state.settings.language().to_owned(),
             room_code: Some("K7M2QX".to_owned()),
             host: true,
             members: vec![
-                member("Ayşe", true, false, true, true),
-                member("Mert", true, false, false, false),
-                member("Deniz", false, true, false, false),
-                member("Can", false, false, false, false),
+                member("Ayşe", "watching", true, true),
+                member("Mert", "paused", false, false),
+                member("Deniz", "buffering", false, false),
+                member("Can", "picking", false, false),
             ],
             ..Default::default()
         });

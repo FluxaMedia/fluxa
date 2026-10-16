@@ -316,6 +316,121 @@ pub(crate) fn text_input(
     )
 }
 
+pub(crate) struct CodeInput {
+    pub response: Response,
+    pub submitted: bool,
+}
+
+pub(crate) fn code_input(
+    ui: &mut Ui,
+    value: &mut String,
+    length: usize,
+    width: f32,
+    metrics: UiMetrics,
+) -> CodeInput {
+    let height = 60.0;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+    let id = ui.id().with("fluxa-code-input");
+    take_pending_text(ui, id, value);
+    let hit = field_hit(ui, rect, id);
+    let output = put_edit(
+        ui,
+        rect,
+        id,
+        egui::TextEdit::singleline(value)
+            .frame(egui::Frame::NONE)
+            .char_limit(length)
+            .font(crate::fonts::regular(metrics.text.body))
+            .text_color(Color32::TRANSPARENT)
+            .margin(Vec2::ZERO),
+    );
+    *value = value
+        .chars()
+        .filter(char::is_ascii_alphanumeric)
+        .take(length)
+        .collect::<String>()
+        .to_uppercase();
+    let count = value.chars().count();
+    focus_on_hit(ui, &hit, id, count);
+    record_native_focus(ui, &output, InputKind::Text, value, "code");
+    let response = output.response.response.clone();
+    let focused = response.has_focus();
+    let complete = count == length;
+
+    let radius = height * 0.5;
+    let painter = ui.painter();
+    painter.rect_filled(rect, radius, metrics.surface_raised);
+    let border = if focused {
+        egui::Stroke::new(1.5, crate::accent())
+    } else {
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
+    };
+    painter.rect_stroke(rect, radius, border, egui::StrokeKind::Inside);
+
+    let button = Rect::from_center_size(
+        Pos2::new(rect.right() - height * 0.5, rect.center().y),
+        Vec2::splat(height - 12.0),
+    );
+    let go = ui.interact(button, id.with("go"), Sense::click());
+    let (fill, ink) = if complete {
+        (Color32::WHITE, Color32::BLACK)
+    } else {
+        (metrics.border, metrics.text_muted)
+    };
+    let painter = ui.painter();
+    painter.circle_filled(button.center(), button.width() * 0.5, fill);
+    let arm = button.width() * 0.2;
+    let center = button.center();
+    let arrow = egui::Stroke::new(2.2, ink);
+    painter.line_segment([center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)], arrow);
+    painter.line_segment([center + Vec2::new(arm, 0.0), center + Vec2::new(0.0, -arm)], arrow);
+    painter.line_segment([center + Vec2::new(arm, 0.0), center + Vec2::new(0.0, arm)], arrow);
+
+    let font = crate::fonts::bold(26.0);
+    let slot = 28.0;
+    let split = 22.0;
+    let left = rect.left() + 26.0;
+    let half = length / 2;
+    let x_of = |index: usize| left + index as f32 * slot + if index >= half { split } else { 0.0 };
+    for index in 0..length {
+        let center = Pos2::new(x_of(index) + slot * 0.5, rect.center().y);
+        match value.chars().nth(index) {
+            Some(character) => {
+                painter.text(
+                    center,
+                    Align2::CENTER_CENTER,
+                    character,
+                    font.clone(),
+                    metrics.text_primary,
+                );
+            }
+            None if focused && index == count => {
+                let blink = (ui.input(|input| input.time) * 2.0) as i64 % 2 == 0;
+                if blink {
+                    let caret = Rect::from_center_size(center, Vec2::new(2.0, 26.0));
+                    painter.rect_filled(caret, 1.0, crate::accent());
+                }
+            }
+            None => {
+                painter.circle_filled(center, 3.5, metrics.text_muted.gamma_multiply(0.6));
+            }
+        }
+    }
+    let dash = Pos2::new(x_of(half) - split * 0.5, rect.center().y);
+    painter.line_segment(
+        [dash - Vec2::new(5.0, 0.0), dash + Vec2::new(5.0, 0.0)],
+        egui::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),
+    );
+    if focused {
+        ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
+    }
+    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+    CodeInput {
+        submitted: complete && (go.clicked() || entered),
+        response,
+    }
+}
+
 fn text_edit(
     ui: &mut Ui,
     value: &mut String,

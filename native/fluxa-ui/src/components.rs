@@ -22,6 +22,7 @@ mod recent_searches;
 mod slider;
 mod streams;
 mod subtitle_preview;
+mod ticket;
 
 pub use cards::*;
 pub use detail_modal::*;
@@ -33,6 +34,7 @@ pub use menu::*;
 pub use mini_player::*;
 pub use recent_searches::*;
 pub(crate) use slider::*;
+pub(crate) use ticket::*;
 pub use streams::*;
 pub use subtitle_preview::SubtitleLook;
 pub(crate) use subtitle_preview::subtitle_sample;

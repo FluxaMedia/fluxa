@@ -732,6 +732,14 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
         fluxa_ui::NODE_SETTINGS_ADDON_URL => state.settings.addon_url = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_SEARCH => state.settings.search = value.to_owned(),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => state.settings.plugin_url = value.to_owned(),
+        fluxa_ui::NODE_SETTINGS_WATCH_CODE => {
+            state.settings.watch_code = value
+                .chars()
+                .filter(char::is_ascii_alphanumeric)
+                .take(6)
+                .collect::<String>()
+                .to_uppercase();
+        }
         node => {
             if let Some(index) = fluxa_ui::poster_field(node) {
                 state.settings.poster_fields[index] = value.to_owned();

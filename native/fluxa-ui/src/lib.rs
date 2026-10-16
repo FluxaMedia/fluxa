@@ -97,7 +97,7 @@ pub use settings::{
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};
 pub use watch_together::{
-    WatchMemberView, WatchTogetherModel, WatchTogetherRequest, draw_watch_side_panel,
+    WatchMemberView, WatchTicket, WatchTogetherModel, WatchTogetherRequest, draw_watch_side_panel,
     draw_watch_together, waiting_member,
 };
 pub use welcome::{WelcomeModel, WelcomeQr, WelcomeRequest, draw_welcome};

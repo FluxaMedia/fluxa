@@ -41,6 +41,8 @@ pub struct SettingsModel {
     pub collection_status: Option<String>,
     pub update: UpdateView,
     pub watch_room: Option<String>,
+    pub watch_code: String,
+    pub watch_ticket: crate::WatchTicket,
     pub ambient_catalogs: Vec<AmbientCatalogRow>,
     pub ambient_minutes: u32,
     pub ambient_limit: usize,
@@ -286,8 +288,8 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         ambient_limit: 3,
         detail_sections: Vec::new(),
         mdblist_lists: Vec::new(),
-        media_servers: Vec::new(),
         tracker_names: Vec::new(),
+        media_servers: Vec::new(),
         server_fields: Default::default(),
         server_kind: 0,
         shortcuts: Vec::new(),
@@ -309,5 +311,7 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         collection_status: None,
         update: UpdateView::default(),
         watch_room: None,
+        watch_code: String::new(),
+        watch_ticket: Default::default(),
     }
 }

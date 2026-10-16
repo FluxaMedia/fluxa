@@ -7,8 +7,21 @@ pub struct WatchMemberView {
     pub avatar: Option<String>,
     pub ready: bool,
     pub buffering: bool,
+    pub status: String,
     pub host: bool,
     pub you: bool,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct WatchTicket {
+    pub room: Option<String>,
+    pub connecting: bool,
+    pub error: Option<String>,
+    pub title: Option<String>,
+    pub logo: Option<String>,
+    pub backdrop: Option<String>,
+    pub episode: Option<String>,
+    pub people: usize,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -32,6 +45,18 @@ pub enum WatchTogetherRequest {
     CopyCode,
     Kick(String),
     SetLocked(bool),
+}
+
+fn status_text(member: &WatchMemberView, t: &dyn Fn(&str) -> String) -> String {
+    t(&format!("watch.status.{}", member.status))
+}
+
+fn status_color(member: &WatchMemberView, metrics: UiMetrics) -> Color32 {
+    match member.status.as_str() {
+        "buffering" | "picking" => accent(),
+        "watching" => text_primary(),
+        _ => metrics.text_muted,
+    }
 }
 
 pub fn waiting_member(members: &[WatchMemberView]) -> Option<&WatchMemberView> {
@@ -140,26 +165,7 @@ fn draw_entry(
     ui.add_space(20.0);
     components::note(ui, &t("watch.join_hint"), metrics);
     ui.add_space(8.0);
-    let field = components::text_input(
-        ui,
-        &mut model.code_input,
-        &t("watch.code_hint"),
-        width,
-        components::InputKind::Text,
-        metrics,
-    );
-    model.code_input = model
-        .code_input
-        .chars()
-        .filter(|character| character.is_ascii_alphanumeric())
-        .take(6)
-        .collect::<String>()
-        .to_uppercase();
-    ui.add_space(8.0);
-    let complete = model.code_input.len() == 6;
-    let submit =
-        complete && field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
-    if components::secondary_button(ui, &t("watch.join"), width).clicked() && complete || submit {
+    if components::code_input(ui, &mut model.code_input, 6, width, metrics).submitted {
         *request = Some(WatchTogetherRequest::Join(model.code_input.clone()));
     }
 }
@@ -319,15 +325,13 @@ fn draw_member(
             accent(),
         );
     }
-    if member.you {
-        painter.text(
-            Pos2::new(center.x, center.y + AVATAR + 34.0),
-            Align2::CENTER_CENTER,
-            t("watch.you"),
-            FontId::proportional(metrics.text.label),
-            metrics.text_muted,
-        );
-    }
+    painter.text(
+        Pos2::new(center.x, center.y + AVATAR + 34.0),
+        Align2::CENTER_CENTER,
+        status_text(member, t),
+        FontId::proportional(metrics.text.label),
+        status_color(member, metrics),
+    );
 }
 
 fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics: UiMetrics) {
@@ -436,25 +440,7 @@ fn side_entry(
     ui.add_space(12.0);
     let id = Id::new("fluxa-watch-side-code");
     let mut code = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
-    let field = components::text_input(
-        ui,
-        &mut code,
-        &t("watch.code_hint"),
-        width,
-        components::InputKind::Text,
-        metrics,
-    );
-    code = code
-        .chars()
-        .filter(|character| character.is_ascii_alphanumeric())
-        .take(6)
-        .collect::<String>()
-        .to_uppercase();
-    ui.add_space(14.0);
-    let complete = code.len() == 6;
-    let submit =
-        complete && field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
-    if components::secondary_button(ui, &t("watch.join"), width).clicked() && complete || submit {
+    if components::code_input(ui, &mut code, 6, width, metrics).submitted {
         *request = Some(WatchTogetherRequest::Join(code.clone()));
     }
     ui.data_mut(|data| data.insert_temp(id, code));
@@ -589,7 +575,11 @@ fn side_member(
             egui::Stroke::new(1.2, metrics.text_muted.gamma_multiply(0.5)),
         );
     }
-    let role = member.you.then(|| t("watch.you"));
+    let role = if member.you {
+        format!("{} · {}", t("watch.you"), status_text(member, t))
+    } else {
+        status_text(member, t)
+    };
     if member.host {
         glyph(
             painter,
@@ -601,27 +591,20 @@ fn side_member(
         );
     }
     let text_x = center.x + radius + 14.0;
-    let name_y = if role.is_some() {
-        rect.center().y - 8.0
-    } else {
-        rect.center().y
-    };
     painter.text(
-        Pos2::new(text_x, name_y),
+        Pos2::new(text_x, rect.center().y - 8.0),
         Align2::LEFT_CENTER,
         clipped(&member.name, ((width - 70.0) / 8.0) as usize),
         FontId::proportional(metrics.text.meta),
         text_primary(),
     );
-    if let Some(role) = role {
-        painter.text(
-            Pos2::new(text_x, rect.center().y + 9.0),
-            Align2::LEFT_CENTER,
-            role,
-            FontId::proportional(metrics.text.label),
-            metrics.text_muted,
-        );
-    }
+    painter.text(
+        Pos2::new(text_x, rect.center().y + 9.0),
+        Align2::LEFT_CENTER,
+        role,
+        FontId::proportional(metrics.text.label),
+        status_color(member, metrics),
+    );
     if removable {
         glyph(
             painter,
