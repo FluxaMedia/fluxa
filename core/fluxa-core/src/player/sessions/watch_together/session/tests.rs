@@ -489,3 +489,33 @@ fn roster_reports_what_each_member_is_doing() {
     deliver(&mut host, &stall, 600);
     assert_eq!(status(&host, "ana"), Status::Buffering);
 }
+
+#[test]
+fn chat_reaches_everyone_with_the_senders_name() {
+    let ids = ["host", "guest"];
+    let mut host = session("host", &ids);
+    let mut guest = session("guest", &ids);
+    let sent = guest.local_chat("  hello\u{7}  ", 1_000);
+    deliver(&mut host, &sent, 1_000);
+    let chat = host.chat();
+    assert_eq!(chat.len(), 1);
+    assert_eq!((chat[0].name.as_str(), chat[0].text.as_str()), ("guest", "hello"));
+    assert_eq!(guest.chat(), chat);
+}
+
+#[test]
+fn chat_drops_blank_flooded_and_stranger_messages() {
+    let ids = ["host", "guest"];
+    let mut host = session("host", &ids);
+    assert!(host.local_chat("   ", 0).is_empty());
+    assert!(!host.local_chat("one", 0).is_empty());
+    assert!(host.local_chat("two", 100).is_empty());
+    host.handle(&json!({"type": "chat", "from": "stranger", "text": "hi"}), 0);
+    assert_eq!(host.chat().len(), 1);
+    for at in 1..=60 {
+        host.local_chat(&"x".repeat(400), at * 1_000);
+    }
+    let chat = host.chat();
+    assert_eq!(chat.len(), 50);
+    assert_eq!(chat[0].text.chars().count(), 300);
+}

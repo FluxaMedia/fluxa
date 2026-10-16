@@ -592,6 +592,9 @@ impl HeadlessEngine {
             AppAction::WatchTogetherControlRequested { kind, now_ms } => {
                 watch_together::dispatch_control(self, kind, now_ms)
             }
+            AppAction::WatchTogetherChatSent { text, now_ms } => {
+                watch_together::dispatch_chat(self, text, now_ms)
+            }
             AppAction::WatchTogetherPositionSampled {
                 position_ms,
                 now_ms,

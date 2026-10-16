@@ -164,6 +164,16 @@ pub struct WatchTogetherEvent {
     pub kind: WatchTogetherEventKind,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchTogetherChatMessage {
+    pub id: u64,
+    pub by: String,
+    #[serde(default)]
+    pub name: String,
+    pub text: String,
+}
+
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchTogetherState {
@@ -187,6 +197,8 @@ pub struct WatchTogetherState {
     pub content_mismatch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_event: Option<WatchTogetherEvent>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub chat: Vec<WatchTogetherChatMessage>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
 }
@@ -205,6 +217,7 @@ impl Default for WatchTogetherState {
             content: None,
             content_mismatch: false,
             last_event: None,
+            chat: Vec::new(),
             error_message: None,
         }
     }

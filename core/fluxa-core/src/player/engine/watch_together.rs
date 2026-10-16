@@ -191,6 +191,14 @@ pub(crate) fn dispatch_control(
     run(engine, |session| session.local_control(kind, now_ms))
 }
 
+pub(crate) fn dispatch_chat(
+    engine: &mut HeadlessEngine,
+    text: String,
+    now_ms: i64,
+) -> Vec<EffectEnvelope> {
+    run(engine, |session| session.local_chat(&text, now_ms))
+}
+
 pub(crate) fn dispatch_message(
     engine: &mut HeadlessEngine,
     message: Value,
@@ -390,6 +398,7 @@ fn sync_state(engine: &mut HeadlessEngine) {
     state.content = session.content().cloned();
     state.content_mismatch = session.content_mismatch();
     state.last_event = session.last_event();
+    state.chat = session.chat();
 }
 
 fn error_message(error: &Value) -> String {

@@ -447,6 +447,8 @@ pub(crate) enum AppAction {
         kind: WatchTogetherEventKind,
         now_ms: i64,
     },
+    #[serde(rename = "watchTogetherChatSent")]
+    WatchTogetherChatSent { text: String, now_ms: i64 },
     #[serde(rename = "watchTogetherPositionSampled")]
     WatchTogetherPositionSampled {
         position_ms: i64,

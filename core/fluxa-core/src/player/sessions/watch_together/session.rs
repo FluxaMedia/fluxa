@@ -1,11 +1,11 @@
 use super::{
-    WatchTogetherContent, WatchTogetherCorrection, WatchTogetherDriftPolicy, WatchTogetherEvent,
+    WatchTogetherChatMessage, WatchTogetherContent, WatchTogetherCorrection, WatchTogetherDriftPolicy, WatchTogetherEvent,
     WatchTogetherEventKind, WatchTogetherMember, WatchTogetherMemberStatus,
     WatchTogetherPlaybackSnapshot, WatchTogetherProtocol,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
@@ -98,7 +98,14 @@ pub struct WatchTogetherSession {
     locked: bool,
     event: Option<WatchTogetherEvent>,
     event_id: u64,
+    chat: VecDeque<WatchTogetherChatMessage>,
+    chat_id: u64,
+    chat_sent_ms: i64,
 }
+
+const CHAT_HISTORY: usize = 50;
+const CHAT_LENGTH: usize = 300;
+const CHAT_INTERVAL_MS: i64 = 400;
 
 impl WatchTogetherSession {
     pub fn new(
@@ -127,6 +134,9 @@ impl WatchTogetherSession {
             locked: false,
             event: None,
             event_id: 0,
+            chat: VecDeque::new(),
+            chat_id: 0,
+            chat_sent_ms: i64::MIN,
         }
     }
 
@@ -193,6 +203,51 @@ impl WatchTogetherSession {
             .map(|member| member.name.clone())
             .unwrap_or_default();
         Some(event)
+    }
+
+    pub fn chat(&self) -> Vec<WatchTogetherChatMessage> {
+        self.chat
+            .iter()
+            .map(|message| WatchTogetherChatMessage {
+                name: self.name_of(&message.by),
+                ..message.clone()
+            })
+            .collect()
+    }
+
+    fn name_of(&self, id: &str) -> String {
+        self.members
+            .iter()
+            .find(|member| member.id == id)
+            .map(|member| member.name.clone())
+            .unwrap_or_default()
+    }
+
+    pub fn local_chat(&mut self, text: &str, now_ms: i64) -> Vec<SessionEffect> {
+        let Some(text) = chat_text(text) else {
+            return Vec::new();
+        };
+        if now_ms.saturating_sub(self.chat_sent_ms) < CHAT_INTERVAL_MS {
+            return Vec::new();
+        }
+        self.chat_sent_ms = now_ms;
+        self.push_chat(self.client_id.clone(), text.clone());
+        vec![SessionEffect::Broadcast(
+            self.tagged(json!({"type": "chat", "text": text})),
+        )]
+    }
+
+    fn push_chat(&mut self, by: String, text: String) {
+        self.chat_id += 1;
+        if self.chat.len() == CHAT_HISTORY {
+            self.chat.pop_front();
+        }
+        self.chat.push_back(WatchTogetherChatMessage {
+            id: self.chat_id,
+            by,
+            name: String::new(),
+            text,
+        });
     }
 
     pub fn set_locked(&mut self, locked: bool) {
@@ -411,6 +466,12 @@ impl WatchTogetherSession {
             Some("ready") if self.has_member(from) => self.on_ready(from, message, now_ms),
             Some("buffering") if self.has_member(from) => self.on_buffering(from, message, now_ms),
             Some("hello") if self.is_host() && self.has_member(from) => self.on_hello(now_ms),
+            Some("chat") if self.has_member(from) => {
+                if let Some(text) = message.get("text").and_then(Value::as_str).and_then(chat_text) {
+                    self.push_chat(from.to_owned(), text);
+                }
+                Vec::new()
+            }
             Some("control") if self.is_host() && self.has_member(from) => {
                 self.on_control(from, message, now_ms)
             }
@@ -724,6 +785,16 @@ impl WatchTogetherSession {
         }
         self.settle_hold(now_ms)
     }
+}
+
+fn chat_text(text: &str) -> Option<String> {
+    let text: String = text
+        .trim()
+        .chars()
+        .filter(|c| !c.is_control())
+        .take(CHAT_LENGTH)
+        .collect();
+    (!text.is_empty()).then_some(text)
 }
 
 fn apply_control(playback: HostPlayback, kind: WatchTogetherEventKind, now_ms: i64) -> HostPlayback {
