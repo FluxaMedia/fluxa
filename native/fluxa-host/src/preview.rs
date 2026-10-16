@@ -97,6 +97,23 @@ pub(crate) fn start(state: &mut RendererState) {
                 member("Deniz", "buffering", false, false),
                 member("Can", "picking", false, false),
             ],
+            chat: [
+                ("Mert", "Bu sahne efsane 🔥🔥", false),
+                ("Mert", "Jesse'nin yüzüne bak 😂", false),
+                ("Ayşe", "Bekle buffer bitsin, Deniz takıldı", true),
+                ("Deniz", "Tamam geldim 👍 🇹🇷 👨‍👩‍👧", false),
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(id, (name, text, you))| fluxa_ui::WatchChatView {
+                id: id as u64,
+                by: name.to_owned(),
+                avatar: None,
+                name: name.to_owned(),
+                text: text.to_owned(),
+                you,
+            })
+            .collect(),
             ..Default::default()
         });
     }

@@ -316,6 +316,99 @@ pub(crate) fn text_input(
     )
 }
 
+pub(crate) struct MessageInput {
+    pub response: Response,
+    pub submitted: bool,
+}
+
+pub(crate) fn message_input(
+    ui: &mut Ui,
+    value: &mut String,
+    hint: &str,
+    width: f32,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+) -> MessageInput {
+    let height = 48.0;
+    let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+    let id = ui.id().with(("fluxa-message-input", hint));
+    take_pending_text(ui, id, value);
+    let button = Rect::from_center_size(
+        Pos2::new(rect.right() - height * 0.5, rect.center().y),
+        Vec2::splat(height - 12.0),
+    );
+    let font = crate::fonts::regular(metrics.text.body);
+    let row = ui.fonts_mut(|fonts| fonts.row_height(&font));
+    let text_rect = Rect::from_min_max(
+        Pos2::new(rect.left() + 18.0, rect.center().y - row * 0.5),
+        Pos2::new(button.left() - 10.0, rect.center().y + row * 0.5),
+    );
+    let painter = ui.painter();
+    painter.rect_filled(rect, height * 0.5, metrics.surface_raised);
+    let hit = field_hit(ui, rect, id);
+    let len = value.chars().count();
+    let color = metrics.text_primary;
+    let mut layouter = |ui: &Ui, text: &dyn egui::TextBuffer, _wrap: f32| {
+        let job = crate::emoji::job(text.as_str(), font.clone(), color, f32::INFINITY);
+        ui.fonts_mut(|fonts| fonts.layout_job(job))
+    };
+    let output = put_edit(
+        ui,
+        text_rect,
+        id,
+        egui::TextEdit::singleline(value)
+            .frame(egui::Frame::NONE)
+            .font(font.clone())
+            .vertical_align(egui::Align::Center)
+            .hint_text(RichText::new(hint).color(metrics.text_muted))
+            .text_color(color)
+            .layouter(&mut layouter)
+            .margin(Vec2::ZERO),
+    );
+    focus_on_hit(ui, &hit, id, len);
+    record_native_focus(ui, &output, InputKind::Text, value, hint);
+    let response = output.response.response.clone();
+    crate::emoji::overlay(
+        &ui.painter().with_clip_rect(text_rect),
+        output.galley_pos,
+        &output.galley,
+        assets,
+    );
+    paint_caret(ui, rect, text_rect, value, font);
+    let border = if response.has_focus() {
+        egui::Stroke::new(1.5, crate::accent())
+    } else {
+        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
+    };
+    let painter = ui.painter();
+    painter.rect_stroke(rect, height * 0.5, border, egui::StrokeKind::Inside);
+
+    let ready = !value.trim().is_empty();
+    let send = ui.interact(button, id.with("send"), Sense::click());
+    let (fill, ink) = if ready {
+        (Color32::WHITE, Color32::BLACK)
+    } else {
+        (metrics.border, metrics.text_muted)
+    };
+    let painter = ui.painter();
+    painter.circle_filled(button.center(), button.width() * 0.5, fill);
+    let arm = button.width() * 0.2;
+    let center = button.center();
+    let arrow = egui::Stroke::new(2.2, ink);
+    painter.line_segment([center + Vec2::new(0.0, arm), center - Vec2::new(0.0, arm)], arrow);
+    painter.line_segment([center - Vec2::new(0.0, arm), center + Vec2::new(-arm, 0.0)], arrow);
+    painter.line_segment([center - Vec2::new(0.0, arm), center + Vec2::new(arm, 0.0)], arrow);
+    let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+    if entered || send.clicked() {
+        response.request_focus();
+    }
+    ui.advance_cursor_after_rect(rect);
+    MessageInput {
+        submitted: ready && (entered || send.clicked()),
+        response,
+    }
+}
+
 pub(crate) struct CodeInput {
     pub response: Response,
     pub submitted: bool,

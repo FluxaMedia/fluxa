@@ -20,6 +20,7 @@ pub(crate) struct State {
     selected: Option<String>,
     settle_until: Option<Instant>,
     event_seen: u64,
+    chat_seen: u64,
 }
 
 fn now_ms() -> i64 {
@@ -139,6 +140,27 @@ pub(crate) fn tick(state: &mut RendererState) {
     announce_waiting(state, &watch);
     announce_mismatch(state, &watch);
     announce_event(state, &watch);
+    announce_chat(state, &watch);
+}
+
+fn announce_chat(state: &mut RendererState, watch: &Value) {
+    let Some(last) = watch["chat"].as_array().and_then(|chat| chat.last()) else {
+        return;
+    };
+    let id = last["id"].as_u64().unwrap_or_default();
+    if id <= state.watch.chat_seen {
+        return;
+    }
+    state.watch.chat_seen = id;
+    if state.watch_panel || last["by"].as_str() == watch["clientId"].as_str() {
+        return;
+    }
+    let text = format!(
+        "{}: {}",
+        last["name"].as_str().unwrap_or_default(),
+        last["text"].as_str().unwrap_or_default()
+    );
+    state.notice = Some((text, Instant::now()));
 }
 
 fn announce_event(state: &mut RendererState, watch: &Value) {
@@ -500,6 +522,10 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
             json!({"type": "watchTogetherLockChanged", "locked": locked}),
         ),
         Request::Leave => dispatch(state, json!({"type": "watchTogetherLeaveRequested"})),
+        Request::Chat(text) => dispatch(
+            state,
+            json!({"type": "watchTogetherChatSent", "text": text, "nowMs": now_ms()}),
+        ),
         Request::CopyCode => {
             state.copied = state
                 .watch_view
@@ -561,6 +587,23 @@ fn refresh_view(state: &mut RendererState, watch: &Value) {
             status: member["status"].as_str().unwrap_or("waiting").to_owned(),
             host: member["isHost"].as_bool().unwrap_or(false),
             you: member["id"].as_str() == you,
+        })
+        .collect();
+    view.chat = watch["chat"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|message| fluxa_ui::WatchChatView {
+            id: message["id"].as_u64().unwrap_or_default(),
+            by: message["by"].as_str().unwrap_or_default().to_owned(),
+            avatar: view
+                .members
+                .iter()
+                .find(|member| message["by"].as_str() == Some(member.id.as_str()))
+                .and_then(|member| member.avatar.clone()),
+            name: message["name"].as_str().unwrap_or_default().to_owned(),
+            text: message["text"].as_str().unwrap_or_default().to_owned(),
+            you: message["by"].as_str() == you,
         })
         .collect();
 }

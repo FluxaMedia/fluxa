@@ -13,6 +13,16 @@ pub struct WatchMemberView {
 }
 
 #[derive(Clone, Debug, Default)]
+pub struct WatchChatView {
+    pub id: u64,
+    pub by: String,
+    pub name: String,
+    pub avatar: Option<String>,
+    pub text: String,
+    pub you: bool,
+}
+
+#[derive(Clone, Debug, Default)]
 pub struct WatchTicket {
     pub room: Option<String>,
     pub connecting: bool,
@@ -30,6 +40,7 @@ pub struct WatchTogetherModel {
     pub code_input: String,
     pub room_code: Option<String>,
     pub members: Vec<WatchMemberView>,
+    pub chat: Vec<WatchChatView>,
     pub host: bool,
     pub locked: bool,
     pub connecting: bool,
@@ -45,6 +56,7 @@ pub enum WatchTogetherRequest {
     CopyCode,
     Kick(String),
     SetLocked(bool),
+    Chat(String),
 }
 
 fn status_text(member: &WatchMemberView, t: &dyn Fn(&str) -> String) -> String {
@@ -481,10 +493,143 @@ fn side_room(
             *request = Some(WatchTogetherRequest::Kick(member.id.clone()));
         }
     }
-    let spare = ui.available_height() - button_height() - 4.0;
-    ui.add_space(spare.max(14.0));
+    ui.add_space(14.0);
+    let height = ui.available_height() - 2.0 * button_height() - 104.0;
+    side_chat(ui, model, width, height.max(80.0), assets, metrics, t, request);
+    ui.add_space(14.0);
     if components::secondary_button(ui, &t("watch.leave"), width).clicked() {
         *request = Some(WatchTogetherRequest::Leave);
+    }
+}
+
+fn side_chat(
+    ui: &mut egui::Ui,
+    model: &WatchTogetherModel,
+    width: f32,
+    height: f32,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+    request: &mut Option<WatchTogetherRequest>,
+) {
+    ui.label(
+        RichText::new(t("watch.chat.title"))
+            .size(metrics.text.meta)
+            .strong()
+            .color(metrics.text_secondary),
+    );
+    ui.add_space(6.0);
+    egui::ScrollArea::vertical()
+        .id_salt("fluxa-watch-chat")
+        .max_height(height)
+        .min_scrolled_height(height)
+        .stick_to_bottom(true)
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            ui.set_width(width);
+            if model.chat.is_empty() {
+                ui.label(
+                    RichText::new(t("watch.chat.empty"))
+                        .size(metrics.text.meta)
+                        .color(metrics.text_muted),
+                );
+            }
+            let mut previous: Option<&str> = None;
+            for message in &model.chat {
+                let first = previous != Some(message.by.as_str());
+                previous = Some(message.by.as_str());
+                chat_message(ui, message, first, width, assets, metrics, t);
+            }
+        });
+    ui.add_space(8.0);
+    let id = Id::new("fluxa-watch-chat-draft");
+    let mut draft = ui.data_mut(|data| data.get_temp::<String>(id).unwrap_or_default());
+    ui.horizontal(|ui| {
+        for emoji in ["😂", "😮", "😍", "😭", "🔥", "👍"] {
+            let galley = ui.painter().layout_job(crate::emoji::job(
+                emoji,
+                FontId::proportional(20.0),
+                text_primary(),
+                f32::INFINITY,
+            ));
+            let (rect, response) = ui.allocate_exact_size(Vec2::splat(34.0), Sense::click());
+            if response.hovered() {
+                ui.painter().rect_filled(rect, 17.0, ink(tone::RAISED));
+            }
+            let pos = rect.center() - galley.size() * 0.5;
+            crate::emoji::paint(ui.painter(), pos, galley, assets);
+            if response.clicked() {
+                *request = Some(WatchTogetherRequest::Chat(emoji.to_owned()));
+            }
+        }
+    });
+    ui.add_space(6.0);
+    if components::message_input(ui, &mut draft, &t("watch.chat.hint"), width, assets, metrics)
+        .submitted
+    {
+        *request = Some(WatchTogetherRequest::Chat(std::mem::take(&mut draft)));
+    }
+    ui.data_mut(|data| data.insert_temp(id, draft));
+}
+
+fn chat_message(
+    ui: &mut egui::Ui,
+    message: &WatchChatView,
+    first: bool,
+    width: f32,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+) {
+    let size = 30.0;
+    let gap = 10.0;
+    let galley = ui.painter().layout_job(crate::emoji::job(
+        &message.text,
+        FontId::proportional(metrics.text.body),
+        text_primary(),
+        width - size - gap,
+    ));
+    if first {
+        ui.add_space(6.0);
+        let name = if message.you {
+            t("watch.you")
+        } else {
+            message.name.clone()
+        };
+        let label = ui.painter().layout_no_wrap(
+            name,
+            FontId::proportional(metrics.text.label),
+            if message.you { accent() } else { metrics.text_secondary },
+        );
+        let height = (label.size().y + 2.0 + galley.size().y).max(size);
+        let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
+        components::avatar(
+            ui.painter(),
+            assets,
+            Pos2::new(rect.left() + size * 0.5, rect.top() + size * 0.5),
+            size * 0.5,
+            &message.name,
+            message.avatar.as_deref(),
+            metrics,
+        );
+        let left = rect.left() + size + gap;
+        let label_height = label.size().y;
+        ui.painter().galley(Pos2::new(left, rect.top()), label, text_primary());
+        crate::emoji::paint(
+            ui.painter(),
+            Pos2::new(left, rect.top() + label_height + 2.0),
+            galley,
+            assets,
+        );
+    } else {
+        let (rect, _) =
+            ui.allocate_exact_size(Vec2::new(width, galley.size().y + 2.0), Sense::hover());
+        crate::emoji::paint(
+            ui.painter(),
+            Pos2::new(rect.left() + size + gap, rect.top() + 2.0),
+            galley,
+            assets,
+        );
     }
 }
 

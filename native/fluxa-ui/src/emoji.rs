@@ -69,6 +69,11 @@ pub(crate) fn paint(
     galley: Arc<Galley>,
     assets: &mut impl HomeAssets,
 ) {
+    painter.galley(pos, galley.clone(), text_primary());
+    overlay(painter, pos, &galley, assets);
+}
+
+pub(crate) fn overlay(painter: &Painter, pos: Pos2, galley: &Galley, assets: &mut impl HomeAssets) {
     let mut clusters = Vec::new();
     for placed in &galley.rows {
         let glyphs = &placed.row.glyphs;
@@ -107,7 +112,6 @@ pub(crate) fn paint(
             i = j;
         }
     }
-    painter.galley(pos, galley, text_primary());
     let native = assets.has_native_emoji();
     for (chars, rect) in clusters {
         let url = format!("{TWEMOJI}/{}.png", code(&chars));
