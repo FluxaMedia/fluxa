@@ -3,7 +3,7 @@ use crate::headless_engine::state::GenerationKey;
 use crate::headless_engine::{EffectResultInput, HeadlessEngine};
 use crate::player::watch_together::{
     SessionEffect, SharedStream, WatchTogetherConnectionState, WatchTogetherContent,
-    WatchTogetherCorrection, WatchTogetherMember, WatchTogetherPlaybackSnapshot, WatchTogetherRole,
+    WatchTogetherCorrection, WatchTogetherEventKind, WatchTogetherMember, WatchTogetherPlaybackSnapshot, WatchTogetherRole,
     WatchTogetherSession, WatchTogetherState,
 };
 use crate::runtime::{EffectEnvelope, EffectKind};
@@ -103,6 +103,9 @@ pub(crate) fn dispatch_lock(engine: &mut HeadlessEngine, locked: bool) -> Vec<Ef
         return Vec::new();
     }
     engine.state.watch_together.locked = locked;
+    if let Some(session) = engine.watch_session.as_mut() {
+        session.set_locked(locked);
+    }
     admin_effect(engine, "lock", None, Some(locked))
 }
 
@@ -167,6 +170,7 @@ pub(crate) fn dispatch_playback(
     duration_ms: i64,
     playing: bool,
     buffering: bool,
+    rate: f64,
     now_ms: i64,
 ) -> Vec<EffectEnvelope> {
     let snapshot = WatchTogetherPlaybackSnapshot {
@@ -174,8 +178,17 @@ pub(crate) fn dispatch_playback(
         duration_ms,
         is_playing: playing,
         is_buffering: buffering,
+        rate: rate.clamp(0.25, 4.0),
     };
     run(engine, |session| session.host_playback(&snapshot, now_ms))
+}
+
+pub(crate) fn dispatch_control(
+    engine: &mut HeadlessEngine,
+    kind: WatchTogetherEventKind,
+    now_ms: i64,
+) -> Vec<EffectEnvelope> {
+    run(engine, |session| session.local_control(kind, now_ms))
 }
 
 pub(crate) fn dispatch_message(
@@ -193,6 +206,9 @@ pub(crate) fn dispatch_members(
     locked: bool,
     now_ms: i64,
 ) -> Vec<EffectEnvelope> {
+    if let Some(session) = engine.watch_session.as_mut() {
+        session.set_locked(locked);
+    }
     let effects = run(engine, |session| {
         session.members_changed(host_id, members, now_ms)
     });
@@ -348,9 +364,10 @@ fn wire(room: &str, effect: SessionEffect) -> (EffectKind, Value) {
         SessionEffect::Remote {
             playing,
             position_ms,
+            rate,
         } => (
             EffectKind::WatchTogetherCommand,
-            json!({"command": "remote", "playing": playing, "positionMs": position_ms}),
+            json!({"command": "remote", "playing": playing, "positionMs": position_ms, "rate": rate}),
         ),
     }
 }
@@ -372,6 +389,7 @@ fn sync_state(engine: &mut HeadlessEngine) {
     state.phase = session.phase();
     state.content = session.content().cloned();
     state.content_mismatch = session.content_mismatch();
+    state.last_event = session.last_event();
 }
 
 fn error_message(error: &Value) -> String {

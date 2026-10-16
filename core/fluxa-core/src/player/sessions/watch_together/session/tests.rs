@@ -10,6 +10,7 @@ fn member(id: &str) -> WatchTogetherMember {
         ready: false,
         avatar: None,
         color: None,
+        status: WatchTogetherMemberStatus::Waiting,
     }
 }
 
@@ -32,6 +33,7 @@ fn episode() -> WatchTogetherContent {
         content_type: "series".to_string(),
         video_id: Some("tt123:1:2".to_string()),
         title: "Episode 2".to_string(),
+        artwork: None,
     }
 }
 
@@ -169,13 +171,15 @@ fn guest_buffering_pauses_everyone_until_it_clears() {
     let paused = deliver(&mut host, &stall, 4_000);
     assert!(paused.contains(&SessionEffect::Remote {
         playing: false,
-        position_ms: 4_000
+        position_ms: 4_000,
+        rate: 1.0
     }));
     assert_eq!(
         deliver(&mut ana, &paused, 4_000),
         vec![SessionEffect::Remote {
             playing: false,
-            position_ms: 4_000
+            position_ms: 4_000,
+            rate: 1.0
         }]
     );
 
@@ -183,7 +187,8 @@ fn guest_buffering_pauses_everyone_until_it_clears() {
     let resumed = deliver(&mut host, &recover, 6_000);
     assert!(resumed.contains(&SessionEffect::Remote {
         playing: true,
-        position_ms: 4_000
+        position_ms: 4_000,
+        rate: 1.0
     }));
 }
 
@@ -198,6 +203,7 @@ fn late_joiner_catches_up_to_the_hosts_position() {
             duration_ms: 3_000_000,
             is_playing: true,
             is_buffering: false,
+            rate: 1.0,
         },
         1_000,
     );
@@ -336,4 +342,150 @@ fn another_show_or_season_is_a_mismatch() {
     assert!(!base.is_same_episode(&other_show));
     assert!(!base.is_same_episode(&other_season));
     assert!(!base.is_same_episode(&no_episode));
+}
+
+fn snapshot(position_ms: i64, is_playing: bool, rate: f64) -> WatchTogetherPlaybackSnapshot {
+    WatchTogetherPlaybackSnapshot {
+        position_ms,
+        duration_ms: 3_000_000,
+        is_playing,
+        is_buffering: false,
+        rate,
+    }
+}
+
+fn started(ids: &[&str]) -> (WatchTogetherSession, WatchTogetherSession) {
+    let mut host = session("host", ids);
+    let mut ana = session("ana", ids);
+    let sent = host.set_content(episode(), None, 0);
+    deliver(&mut ana, &sent, 0);
+    let ready = ana.local_ready(true, None, 0);
+    deliver(&mut host, &ready, 0);
+    let start = host.local_ready(true, None, 0);
+    deliver(&mut ana, &start, 0);
+    host.host_playback(&snapshot(0, true, 1.0), 0);
+    (host, ana)
+}
+
+#[test]
+fn someone_joining_does_not_restart_guests_already_watching() {
+    let (mut host, mut ana) = started(&["host", "ana"]);
+    let announce = host.members_changed("host".to_string(), members(&["host", "ana", "cy"]), 5_000);
+    assert!(deliver(&mut ana, &announce, 5_000).is_empty());
+    assert_eq!(ana.phase(), SessionPhase::Playing);
+
+    let mut cy = session("cy", &["host", "ana", "cy"]);
+    assert_eq!(
+        deliver(&mut cy, &announce, 5_000),
+        vec![SessionEffect::PickStream(episode())]
+    );
+}
+
+#[test]
+fn party_resumes_after_buffering_even_though_the_host_was_paused_by_it() {
+    let (mut host, mut ana) = started(&["host", "ana"]);
+    let stall = ana.local_buffering(true, 4_000);
+    deliver(&mut host, &stall, 4_000);
+    assert!(host.host_playback(&snapshot(4_000, false, 1.0), 4_100).is_empty());
+
+    let recover = ana.local_buffering(false, 6_000);
+    let resumed = deliver(&mut host, &recover, 6_000);
+    assert!(resumed.contains(&SessionEffect::Remote {
+        playing: true,
+        position_ms: 4_000,
+        rate: 1.0
+    }));
+}
+
+#[test]
+fn guest_pause_reaches_the_host_and_everyone_sees_who_did_it() {
+    let ids = ["host", "ana", "bo"];
+    let mut host = session("host", &ids);
+    let mut ana = session("ana", &ids);
+    let mut bo = session("bo", &ids);
+    let sent = host.set_content(episode(), None, 0);
+    for guest in [&mut ana, &mut bo] {
+        deliver(guest, &sent, 0);
+        let ready = guest.local_ready(true, None, 0);
+        deliver(&mut host, &ready, 0);
+    }
+    let start = host.local_ready(true, None, 0);
+    deliver(&mut ana, &start, 0);
+    deliver(&mut bo, &start, 0);
+    host.host_playback(&snapshot(0, true, 1.0), 0);
+
+    let pause = ana.local_control(WatchTogetherEventKind::Paused, 3_000);
+    let reply = deliver(&mut host, &pause, 3_000);
+    assert!(reply.contains(&SessionEffect::Remote {
+        playing: false,
+        position_ms: 3_000,
+        rate: 1.0
+    }));
+    assert_eq!(host.last_event().unwrap().name, "ana");
+
+    assert_eq!(
+        deliver(&mut bo, &reply, 3_000),
+        vec![SessionEffect::Remote {
+            playing: false,
+            position_ms: 3_000,
+            rate: 1.0
+        }]
+    );
+    let seen = bo.last_event().unwrap();
+    assert_eq!(seen.kind, WatchTogetherEventKind::Paused);
+    assert_eq!(seen.name, "ana");
+    assert!(deliver(&mut ana, &reply, 3_000).len() == 1);
+    assert!(ana.last_event().is_none());
+}
+
+#[test]
+fn locked_room_ignores_guest_controls() {
+    let (mut host, mut ana) = started(&["host", "ana"]);
+    host.set_locked(true);
+    let seek = ana.local_control(WatchTogetherEventKind::Seeked { position_ms: 60_000 }, 1_000);
+    assert!(deliver(&mut host, &seek, 1_000).is_empty());
+    ana.set_locked(true);
+    assert!(ana.local_control(WatchTogetherEventKind::Paused, 1_000).is_empty());
+}
+
+#[test]
+fn host_speed_change_is_shared_and_drift_uses_it() {
+    let (mut host, mut ana) = started(&["host", "ana"]);
+    let sent = host.host_playback(&snapshot(1_000, true, 1.5), 1_000);
+    assert_eq!(
+        deliver(&mut ana, &sent, 1_000),
+        vec![SessionEffect::Remote {
+            playing: true,
+            position_ms: 1_000,
+            rate: 1.5
+        }]
+    );
+    assert_eq!(
+        ana.last_event().unwrap().kind,
+        WatchTogetherEventKind::Speed { rate: 1.5 }
+    );
+    assert_eq!(
+        ana.correction(4_000, 3_000, false),
+        WatchTogetherCorrection::None
+    );
+}
+
+#[test]
+fn roster_reports_what_each_member_is_doing() {
+    use WatchTogetherMemberStatus as Status;
+    let ids = ["host", "ana"];
+    let mut host = session("host", &ids);
+    let status = |session: &WatchTogetherSession, id: &str| {
+        session.roster().into_iter().find(|m| m.id == id).unwrap().status
+    };
+    assert_eq!(status(&host, "ana"), Status::Waiting);
+    host.set_content(episode(), None, 0);
+    assert_eq!(status(&host, "ana"), Status::Picking);
+    let (mut host, mut ana) = started(&ids);
+    assert_eq!(status(&host, "ana"), Status::Watching);
+    host.host_playback(&snapshot(500, false, 1.0), 500);
+    assert_eq!(status(&host, "ana"), Status::Paused);
+    let stall = ana.local_buffering(true, 600);
+    deliver(&mut host, &stall, 600);
+    assert_eq!(status(&host, "ana"), Status::Buffering);
 }

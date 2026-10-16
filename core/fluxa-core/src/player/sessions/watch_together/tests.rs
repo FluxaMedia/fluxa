@@ -6,6 +6,7 @@ fn content() -> WatchTogetherContent {
         content_type: "series".to_string(),
         video_id: Some("tt123:1:2".to_string()),
         title: "Episode 2".to_string(),
+        artwork: None,
     }
 }
 
@@ -32,6 +33,7 @@ fn playback_state_round_trips_content_and_snapshot() {
         duration_ms: 30_000,
         is_playing: true,
         is_buffering: false,
+        rate: 1.0,
     };
     let value = WatchTogetherProtocol::playback_state(&snapshot, Some(&content()));
     assert_eq!(WatchTogetherProtocol::message_type(&value), Some("state"));
@@ -67,6 +69,7 @@ fn relayed_sync_and_peer_state_decode_the_same() {
         duration_ms: 30_000,
         is_playing: true,
         is_buffering: false,
+        rate: 1.0,
     };
     let peer = WatchTogetherProtocol::playback_state(&snapshot, Some(&content()));
     let relayed = json!({
@@ -127,4 +130,26 @@ fn content_matching_preserves_episode_identity() {
         video_id: Some("tt123:1:3".to_string()),
         ..content()
     }));
+}
+
+#[test]
+fn ticket_artwork_travels_with_the_content_and_drops_unsafe_urls() {
+    let shared = WatchTogetherContent {
+        artwork: Some(WatchTogetherArtwork {
+            backdrop: Some("https://img.example/b.jpg".to_string()),
+            logo: Some("http://img.example/l.png".to_string()),
+            episode_title: Some("Pilot".to_string()),
+            season: Some(1),
+            episode: Some(2),
+        }),
+        ..content()
+    };
+    let decoded = WatchTogetherProtocol::content_from(&WatchTogetherProtocol::content(&shared))
+        .unwrap()
+        .artwork
+        .unwrap();
+    assert_eq!(decoded.backdrop.as_deref(), Some("https://img.example/b.jpg"));
+    assert_eq!(decoded.logo, None);
+    assert_eq!(decoded.episode_title.as_deref(), Some("Pilot"));
+    assert_eq!((decoded.season, decoded.episode), (Some(1), Some(2)));
 }

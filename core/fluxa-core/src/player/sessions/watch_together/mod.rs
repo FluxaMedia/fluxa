@@ -10,6 +10,53 @@ pub struct WatchTogetherContent {
     pub video_id: Option<String>,
     #[serde(default)]
     pub title: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub artwork: Option<WatchTogetherArtwork>,
+}
+
+#[derive(Clone, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchTogetherArtwork {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backdrop: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub episode_title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub season: Option<u32>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub episode: Option<u32>,
+}
+
+impl WatchTogetherArtwork {
+    fn from_wire(value: &Value) -> Option<Self> {
+        let image = |key: &str| {
+            value
+                .get(key)
+                .and_then(Value::as_str)
+                .filter(|url| url.starts_with("https://") && url.len() <= 2048)
+                .map(str::to_string)
+        };
+        let number = |key: &str| {
+            value
+                .get(key)
+                .and_then(Value::as_u64)
+                .and_then(|number| u32::try_from(number).ok())
+        };
+        let artwork = Self {
+            backdrop: image("backdrop"),
+            logo: image("logo"),
+            episode_title: value
+                .get("episodeTitle")
+                .and_then(Value::as_str)
+                .filter(|title| title.len() <= 300)
+                .map(str::to_string),
+            season: number("season"),
+            episode: number("episode"),
+        };
+        (artwork != Self::default()).then_some(artwork)
+    }
 }
 
 impl WatchTogetherContent {
@@ -33,7 +80,7 @@ impl WatchTogetherContent {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchTogetherPlaybackSnapshot {
     pub position_ms: i64,
@@ -41,6 +88,12 @@ pub struct WatchTogetherPlaybackSnapshot {
     pub is_playing: bool,
     #[serde(default)]
     pub is_buffering: bool,
+    #[serde(default = "normal_rate")]
+    pub rate: f64,
+}
+
+fn normal_rate() -> f64 {
+    1.0
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -75,9 +128,43 @@ pub struct WatchTogetherMember {
     pub avatar: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub color: Option<String>,
+    #[serde(default)]
+    pub status: WatchTogetherMemberStatus,
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum WatchTogetherMemberStatus {
+    #[default]
+    Waiting,
+    Picking,
+    Ready,
+    Watching,
+    Paused,
+    Buffering,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase", rename_all_fields = "camelCase", tag = "kind")]
+pub enum WatchTogetherEventKind {
+    Paused,
+    Resumed,
+    Seeked { position_ms: i64 },
+    Speed { rate: f64 },
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct WatchTogetherEvent {
+    pub id: u64,
+    pub by: String,
+    #[serde(default)]
+    pub name: String,
+    #[serde(flatten)]
+    pub kind: WatchTogetherEventKind,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "camelCase")]
 pub struct WatchTogetherState {
     pub connection_state: WatchTogetherConnectionState,
@@ -99,6 +186,8 @@ pub struct WatchTogetherState {
     #[serde(default)]
     pub content_mismatch: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_event: Option<WatchTogetherEvent>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub error_message: Option<String>,
 }
 
@@ -115,6 +204,7 @@ impl Default for WatchTogetherState {
             locked: false,
             content: None,
             content_mismatch: false,
+            last_event: None,
             error_message: None,
         }
     }
@@ -282,6 +372,7 @@ impl WatchTogetherProtocol {
                 .and_then(Value::as_str)
                 .unwrap_or_default()
                 .to_string(),
+            artwork: value.get("artwork").and_then(WatchTogetherArtwork::from_wire),
         })
     }
 
@@ -325,6 +416,7 @@ impl WatchTogetherProtocol {
                         .and_then(Value::as_bool)
                         .unwrap_or(false),
                     ready: false,
+                    status: WatchTogetherMemberStatus::Waiting,
                     avatar: item
                         .get("avatar")
                         .and_then(Value::as_str)
@@ -392,6 +484,9 @@ fn content_fields(content: &WatchTogetherContent) -> Map<String, Value> {
         value.insert("videoId".to_string(), json!(video_id));
     }
     value.insert("title".to_string(), json!(content.title));
+    if let Some(artwork) = &content.artwork {
+        value.insert("artwork".to_string(), json!(artwork));
+    }
     value
 }
 

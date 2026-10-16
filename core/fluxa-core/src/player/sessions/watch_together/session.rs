@@ -1,5 +1,6 @@
 use super::{
-    WatchTogetherContent, WatchTogetherCorrection, WatchTogetherDriftPolicy, WatchTogetherMember,
+    WatchTogetherContent, WatchTogetherCorrection, WatchTogetherDriftPolicy, WatchTogetherEvent,
+    WatchTogetherEventKind, WatchTogetherMember, WatchTogetherMemberStatus,
     WatchTogetherPlaybackSnapshot, WatchTogetherProtocol,
 };
 use serde::{Deserialize, Serialize};
@@ -52,20 +53,24 @@ pub enum SessionEffect {
     Remote {
         playing: bool,
         position_ms: i64,
+        rate: f64,
     },
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+const SEEK_EVENT_MS: i64 = 2_000;
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 struct HostPlayback {
     position_ms: i64,
     playing: bool,
+    rate: f64,
     at_ms: i64,
 }
 
 impl HostPlayback {
     fn position_at(&self, now_ms: i64) -> i64 {
         if self.playing {
-            self.position_ms + (now_ms - self.at_ms).max(0)
+            self.position_ms + ((now_ms - self.at_ms).max(0) as f64 * self.rate) as i64
         } else {
             self.position_ms
         }
@@ -89,6 +94,10 @@ pub struct WatchTogetherSession {
     resume_after_hold: bool,
     sequence: i64,
     mismatch: bool,
+    selection: u64,
+    locked: bool,
+    event: Option<WatchTogetherEvent>,
+    event_id: u64,
 }
 
 impl WatchTogetherSession {
@@ -114,6 +123,10 @@ impl WatchTogetherSession {
             resume_after_hold: false,
             sequence: 0,
             mismatch: false,
+            selection: 0,
+            locked: false,
+            event: None,
+            event_id: 0,
         }
     }
 
@@ -152,9 +165,38 @@ impl WatchTogetherSession {
                 is_host: member.id == self.host_id,
                 ready: self.ready.contains(&member.id),
                 buffering: self.buffering.contains(&member.id),
+                status: self.status(&member.id),
                 ..member.clone()
             })
             .collect()
+    }
+
+    fn status(&self, id: &str) -> WatchTogetherMemberStatus {
+        use WatchTogetherMemberStatus as Status;
+        let ready = self.ready.contains(id);
+        match self.phase {
+            SessionPhase::Lobby => Status::Waiting,
+            SessionPhase::Selecting if ready => Status::Ready,
+            _ if !ready => Status::Picking,
+            _ if self.buffering.contains(id) => Status::Buffering,
+            _ if self.playback.is_some_and(|playback| playback.playing) => Status::Watching,
+            _ => Status::Paused,
+        }
+    }
+
+    pub fn last_event(&self) -> Option<WatchTogetherEvent> {
+        let mut event = self.event.clone()?;
+        event.name = self
+            .members
+            .iter()
+            .find(|member| member.id == event.by)
+            .map(|member| member.name.clone())
+            .unwrap_or_default();
+        Some(event)
+    }
+
+    pub fn set_locked(&mut self, locked: bool) {
+        self.locked = locked;
     }
 
     pub fn ready_count(&self) -> usize {
@@ -187,6 +229,7 @@ impl WatchTogetherSession {
         self.buffering.clear();
         self.held = false;
         self.playback = None;
+        self.selection += 1;
         self.start_position_ms = start_position_ms.max(0);
         let message = self.content_message(&content, shared_stream.as_ref());
         self.content = Some(content);
@@ -253,13 +296,74 @@ impl WatchTogetherSession {
         if !self.is_host() || self.phase != SessionPhase::Playing {
             return Vec::new();
         }
+        let position_ms = snapshot.position_ms.max(0);
+        if self.held {
+            self.playback = Some(HostPlayback {
+                position_ms,
+                playing: false,
+                rate: snapshot.rate,
+                at_ms: now_ms,
+            });
+            if !snapshot.is_playing {
+                return Vec::new();
+            }
+            self.resume_after_hold = true;
+            return vec![SessionEffect::Remote {
+                playing: false,
+                position_ms,
+                rate: snapshot.rate,
+            }];
+        }
+        let kind = self.playback.and_then(|previous| {
+            if previous.playing != snapshot.is_playing {
+                Some(if snapshot.is_playing {
+                    WatchTogetherEventKind::Resumed
+                } else {
+                    WatchTogetherEventKind::Paused
+                })
+            } else if (previous.position_at(now_ms) - position_ms).abs() > SEEK_EVENT_MS {
+                Some(WatchTogetherEventKind::Seeked { position_ms })
+            } else if (previous.rate - snapshot.rate).abs() > 0.01 {
+                Some(WatchTogetherEventKind::Speed {
+                    rate: snapshot.rate,
+                })
+            } else {
+                None
+            }
+        });
         self.resume_after_hold = snapshot.is_playing;
         self.playback = Some(HostPlayback {
-            position_ms: snapshot.position_ms.max(0),
-            playing: snapshot.is_playing && !self.held,
+            position_ms,
+            playing: snapshot.is_playing,
+            rate: snapshot.rate,
             at_ms: now_ms,
         });
-        vec![self.state_message(now_ms)]
+        let event = kind.map(|kind| self.record(self.client_id.clone(), kind));
+        vec![self.state_with(now_ms, event)]
+    }
+
+    pub fn local_control(&mut self, kind: WatchTogetherEventKind, now_ms: i64) -> Vec<SessionEffect> {
+        if self.is_host() || self.locked || self.phase != SessionPhase::Playing {
+            return Vec::new();
+        }
+        if let Some(playback) = self.playback {
+            self.playback = Some(apply_control(playback, kind, now_ms));
+        }
+        let mut message = json!({"type": "control"});
+        write_kind(&mut message, kind);
+        vec![SessionEffect::Broadcast(self.tagged(message))]
+    }
+
+    fn record(&mut self, by: String, kind: WatchTogetherEventKind) -> WatchTogetherEvent {
+        self.event_id += 1;
+        let event = WatchTogetherEvent {
+            id: self.event_id,
+            by,
+            name: String::new(),
+            kind,
+        };
+        self.event = Some(event.clone());
+        event
     }
 
     pub fn members_changed(
@@ -307,6 +411,9 @@ impl WatchTogetherSession {
             Some("ready") if self.has_member(from) => self.on_ready(from, message, now_ms),
             Some("buffering") if self.has_member(from) => self.on_buffering(from, message, now_ms),
             Some("hello") if self.is_host() && self.has_member(from) => self.on_hello(now_ms),
+            Some("control") if self.is_host() && self.has_member(from) => {
+                self.on_control(from, message, now_ms)
+            }
             _ => Vec::new(),
         }
     }
@@ -344,6 +451,7 @@ impl WatchTogetherSession {
     ) -> Value {
         let mut message = WatchTogetherProtocol::content(content);
         message["startPositionMs"] = json!(self.start_position_ms);
+        message["selection"] = json!(self.selection);
         if let Some(stream) = shared_stream {
             message["stream"] = json!(stream);
         }
@@ -351,18 +459,28 @@ impl WatchTogetherSession {
     }
 
     fn state_message(&mut self, now_ms: i64) -> SessionEffect {
+        self.state_with(now_ms, None)
+    }
+
+    fn state_with(&mut self, now_ms: i64, event: Option<WatchTogetherEvent>) -> SessionEffect {
         self.sequence += 1;
         let playback = self.playback.unwrap_or(HostPlayback {
             position_ms: self.start_position_ms,
             playing: false,
+            rate: 1.0,
             at_ms: now_ms,
         });
-        SessionEffect::Broadcast(self.tagged(json!({
+        let mut message = json!({
             "type": "state",
             "sequence": self.sequence,
             "positionMs": playback.position_at(now_ms),
             "playing": playback.playing,
-        })))
+            "rate": playback.rate,
+        });
+        if let Some(event) = event {
+            message["event"] = json!(event);
+        }
+        SessionEffect::Broadcast(self.tagged(message))
     }
 
     fn try_start(&mut self, now_ms: i64) -> Vec<SessionEffect> {
@@ -379,6 +497,7 @@ impl WatchTogetherSession {
         self.playback = Some(HostPlayback {
             position_ms: self.start_position_ms,
             playing: true,
+            rate: 1.0,
             at_ms: now_ms,
         });
         vec![
@@ -400,11 +519,13 @@ impl WatchTogetherSession {
             return Vec::new();
         };
         let position_ms = playback.position_at(now_ms);
+        let rate = playback.rate;
         if !self.buffering.is_empty() && !self.held {
             self.held = true;
             self.playback = Some(HostPlayback {
                 position_ms,
                 playing: false,
+                rate,
                 at_ms: now_ms,
             });
             return vec![
@@ -412,6 +533,7 @@ impl WatchTogetherSession {
                 SessionEffect::Remote {
                     playing: false,
                     position_ms,
+                    rate,
                 },
             ];
         }
@@ -421,6 +543,7 @@ impl WatchTogetherSession {
             self.playback = Some(HostPlayback {
                 position_ms,
                 playing,
+                rate,
                 at_ms: now_ms,
             });
             return vec![
@@ -428,6 +551,7 @@ impl WatchTogetherSession {
                 SessionEffect::Remote {
                     playing,
                     position_ms,
+                    rate,
                 },
             ];
         }
@@ -438,6 +562,14 @@ impl WatchTogetherSession {
         let Some(content) = WatchTogetherProtocol::content_from(message) else {
             return Vec::new();
         };
+        let selection = message
+            .get("selection")
+            .and_then(Value::as_u64)
+            .unwrap_or(0);
+        if selection != 0 && selection == self.selection && self.phase != SessionPhase::Lobby {
+            return Vec::new();
+        }
+        self.selection = selection;
         self.phase = SessionPhase::Selecting;
         self.mismatch = false;
         self.ready.clear();
@@ -468,6 +600,7 @@ impl WatchTogetherSession {
         self.playback = Some(HostPlayback {
             position_ms,
             playing: true,
+            rate: 1.0,
             at_ms: now_ms,
         });
         vec![SessionEffect::Start { position_ms }]
@@ -490,10 +623,27 @@ impl WatchTogetherSession {
             SessionPhase::Playing => false,
             _ => return Vec::new(),
         };
+        let rate = message
+            .get("rate")
+            .and_then(Value::as_f64)
+            .filter(|rate| (0.25..=4.0).contains(rate))
+            .unwrap_or(1.0);
+        if let Some(event) = message
+            .get("event")
+            .and_then(|value| serde_json::from_value::<WatchTogetherEvent>(value.clone()).ok())
+            .filter(|event| event.by != self.client_id)
+        {
+            self.event_id += 1;
+            self.event = Some(WatchTogetherEvent {
+                id: self.event_id,
+                ..event
+            });
+        }
         self.phase = SessionPhase::Playing;
         self.playback = Some(HostPlayback {
             position_ms,
             playing,
+            rate,
             at_ms: now_ms,
         });
         if joining {
@@ -502,6 +652,7 @@ impl WatchTogetherSession {
             vec![SessionEffect::Remote {
                 playing,
                 position_ms,
+                rate,
             }]
         }
     }
@@ -539,6 +690,28 @@ impl WatchTogetherSession {
         }
     }
 
+    fn on_control(&mut self, from: &str, message: &Value, now_ms: i64) -> Vec<SessionEffect> {
+        if self.locked || self.phase != SessionPhase::Playing {
+            return Vec::new();
+        }
+        let (Some(kind), Some(playback)) = (read_kind(message), self.playback) else {
+            return Vec::new();
+        };
+        let mut playback = apply_control(playback, kind, now_ms);
+        self.resume_after_hold = playback.playing;
+        playback.playing &= !self.held;
+        self.playback = Some(playback);
+        let event = self.record(from.to_string(), kind);
+        vec![
+            self.state_with(now_ms, Some(event)),
+            SessionEffect::Remote {
+                playing: playback.playing,
+                position_ms: playback.position_ms,
+                rate: playback.rate,
+            },
+        ]
+    }
+
     fn on_buffering(&mut self, from: &str, message: &Value, now_ms: i64) -> Vec<SessionEffect> {
         let buffering = message
             .get("buffering")
@@ -550,6 +723,49 @@ impl WatchTogetherSession {
             self.buffering.remove(from);
         }
         self.settle_hold(now_ms)
+    }
+}
+
+fn apply_control(playback: HostPlayback, kind: WatchTogetherEventKind, now_ms: i64) -> HostPlayback {
+    let position_ms = playback.position_at(now_ms);
+    let next = HostPlayback {
+        position_ms,
+        at_ms: now_ms,
+        ..playback
+    };
+    match kind {
+        WatchTogetherEventKind::Paused => HostPlayback {
+            playing: false,
+            ..next
+        },
+        WatchTogetherEventKind::Resumed => HostPlayback {
+            playing: true,
+            ..next
+        },
+        WatchTogetherEventKind::Seeked { position_ms } => HostPlayback {
+            position_ms: position_ms.max(0),
+            ..next
+        },
+        WatchTogetherEventKind::Speed { rate } => HostPlayback {
+            rate: rate.clamp(0.25, 4.0),
+            ..next
+        },
+    }
+}
+
+fn write_kind(message: &mut Value, kind: WatchTogetherEventKind) {
+    if let Value::Object(fields) = json!(kind) {
+        for (key, value) in fields {
+            message[key] = value;
+        }
+    }
+}
+
+fn read_kind(message: &Value) -> Option<WatchTogetherEventKind> {
+    let kind = serde_json::from_value::<WatchTogetherEventKind>(message.clone()).ok()?;
+    match kind {
+        WatchTogetherEventKind::Speed { rate } if !(0.25..=4.0).contains(&rate) => None,
+        kind => Some(kind),
     }
 }
 

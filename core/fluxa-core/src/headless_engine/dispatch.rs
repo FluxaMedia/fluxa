@@ -578,6 +578,7 @@ impl HeadlessEngine {
                 duration_ms,
                 playing,
                 buffering,
+                rate,
                 now_ms,
             } => watch_together::dispatch_playback(
                 self,
@@ -585,8 +586,12 @@ impl HeadlessEngine {
                 duration_ms,
                 playing,
                 buffering,
+                rate.unwrap_or(1.0),
                 now_ms,
             ),
+            AppAction::WatchTogetherControlRequested { kind, now_ms } => {
+                watch_together::dispatch_control(self, kind, now_ms)
+            }
             AppAction::WatchTogetherPositionSampled {
                 position_ms,
                 now_ms,

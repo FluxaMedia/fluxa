@@ -178,3 +178,34 @@ fn only_the_host_can_remove_members_or_lock_the_room() {
     assert_eq!(effects[0].payload["op"], "lock");
     assert!(host.state.watch_together.locked);
 }
+
+#[test]
+fn guest_seek_is_sent_to_the_room_as_a_control() {
+    let mut engine = HeadlessEngine::new(Default::default());
+    joined(&mut engine, "ana");
+    act(
+        &mut engine,
+        json!({"type": "watchTogetherMessageReceived", "nowMs": 0, "message": {
+            "type": "content", "from": "host", "contentId": "tt1", "contentType": "movie"
+        }}),
+    );
+    act(
+        &mut engine,
+        json!({"type": "watchTogetherReadyChanged", "ready": true, "nowMs": 0}),
+    );
+    act(
+        &mut engine,
+        json!({"type": "watchTogetherMessageReceived", "nowMs": 0, "message": {
+            "type": "start", "from": "host", "positionMs": 0
+        }}),
+    );
+    let effects = act(
+        &mut engine,
+        json!({"type": "watchTogetherControlRequested", "kind": "seeked", "positionMs": 90000, "nowMs": 10}),
+    );
+    let message = &effects[0].payload["message"];
+    assert_eq!(message["type"], "control");
+    assert_eq!(message["kind"], "seeked");
+    assert_eq!(message["positionMs"], 90000);
+    assert_eq!(message["from"], "ana");
+}

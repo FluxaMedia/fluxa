@@ -76,6 +76,7 @@
     "watchTogetherReadyChanged",
     "watchTogetherBufferingChanged",
     "watchTogetherPlaybackReported",
+    "watchTogetherControlRequested",
     "watchTogetherPositionSampled",
     "watchTogetherMessageReceived",
     "watchTogetherMembersChanged"

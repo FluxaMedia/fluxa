@@ -1,6 +1,8 @@
 pub(crate) mod actions;
 use crate::headless_engine::contracts::actions::{MarkWatchedAction, SavePlaybackProgressAction};
-use crate::player::watch_together::{SharedStream, WatchTogetherContent, WatchTogetherMember};
+use crate::player::watch_together::{
+    SharedStream, WatchTogetherContent, WatchTogetherEventKind, WatchTogetherMember,
+};
 use crate::runtime::EffectEnvelope;
 use crate::types::{MetaItem, Profile, Stream, Video};
 use serde::{Deserialize, Serialize};
@@ -435,6 +437,14 @@ pub(crate) enum AppAction {
         duration_ms: i64,
         playing: bool,
         buffering: bool,
+        #[serde(default)]
+        rate: Option<f64>,
+        now_ms: i64,
+    },
+    #[serde(rename = "watchTogetherControlRequested")]
+    WatchTogetherControlRequested {
+        #[serde(flatten)]
+        kind: WatchTogetherEventKind,
         now_ms: i64,
     },
     #[serde(rename = "watchTogetherPositionSampled")]
