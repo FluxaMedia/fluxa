@@ -528,6 +528,12 @@ fn content_height(
                 + APPEARANCE_GROUP_GAP
         }
         "Skip Segments" => APPEARANCE_PAGE_HEADER_HEIGHT + field_group_height(3),
+        "Watch Party" => {
+            APPEARANCE_PAGE_HEADER_HEIGHT
+                + APPEARANCE_GROUP_HEADING_HEIGHT
+                + settings_group_card_height(1, metrics)
+                + APPEARANCE_GROUP_GAP
+        }
         "Summary" => {
             APPEARANCE_PAGE_HEADER_HEIGHT + summary_height(&settings.playback_summary, metrics)
         }
@@ -1445,6 +1451,71 @@ fn draw_about(
     }
 }
 
+fn draw_watch_party(
+    context: &egui::Context,
+    painter: &egui::Painter,
+    settings: &SettingsModel,
+    language: &str,
+    rect: Rect,
+    compact: bool,
+    metrics: UiMetrics,
+    layout: &mut HomeLayout,
+) {
+    let top = if compact {
+        8.0 + rect.top()
+    } else {
+        rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT
+    };
+    let card = account_group(
+        painter,
+        rect,
+        top,
+        settings_group_card_height(1, metrics),
+        &localized("settings.watch_party.group", language),
+        metrics,
+    );
+    let label_size = if compact {
+        metrics.screen_body_size
+    } else {
+        metrics.settings_row_label_size_desktop
+    };
+    let row = account_row(card, 0, metrics);
+    let status = match settings.watch_room.as_deref() {
+        Some(code) => localized("settings.watch_party.in_room", language).replace("{code}", code),
+        None => localized("settings.watch_party.idle", language),
+    };
+    let button_width = painter
+        .layout_no_wrap(
+            localized("settings.watch_party.open", language),
+            FontId::proportional(label_size),
+            Color32::WHITE,
+        )
+        .size()
+        .x
+        + 32.0;
+    draw_text(
+        painter,
+        row.left_center() + Vec2::new(4.0, 0.0),
+        Align2::LEFT_CENTER,
+        status,
+        FontId::proportional(label_size),
+        metrics.text_primary,
+        Some((row.width() - button_width - 24.0).max(40.0)),
+    );
+    let button = Rect::from_center_size(
+        Pos2::new(row.right() - 4.0 - button_width * 0.5, row.center().y),
+        Vec2::new(button_width, 36.0_f32.min(row.height() - 4.0)),
+    );
+    pill_button(
+        context,
+        layout,
+        NODE_SETTINGS_WATCH_PARTY,
+        button,
+        &localized("settings.watch_party.open", language),
+        label_size,
+    );
+}
+
 fn summary_height(sections: &[crate::StatsSection], metrics: UiMetrics) -> f32 {
     let groups = sections.len().max(1);
     let rows: f32 = if sections.is_empty() {
@@ -1592,6 +1663,16 @@ fn draw_settings_extended_section(
         "Summary" => {
             draw_summary(&painter, settings, language, rect, metrics);
         }
+        "Watch Party" => draw_watch_party(
+            context,
+            &painter,
+            settings,
+            language,
+            rect,
+            viewport.is_compact(),
+            metrics,
+            layout,
+        ),
         "Licenses" => about::draw_credits(
             &painter,
             assets,

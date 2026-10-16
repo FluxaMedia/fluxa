@@ -3300,5 +3300,12 @@
   "downloads.section_done": "تم التنزيل",
   "sources.download_stream": "تنزيل هذا المصدر",
   "sources.copy_stream_url": "نسخ رابط المصدر",
-  "sources.copied": "تم النسخ إلى الحافظة"
+  "sources.copied": "تم النسخ إلى الحافظة",
+  "watch.content_mismatch": "المضيف يشاهد {title}. افتح الحلقة نفسها للانضمام.",
+  "settings.section.watch_party": "المشاهدة معًا",
+  "settings.section.watch_party.description": "أنشئ غرفة أو انضم للمشاهدة معًا",
+  "settings.watch_party.group": "الغرفة",
+  "settings.watch_party.idle": "لست في غرفة",
+  "settings.watch_party.in_room": "الغرفة {code}",
+  "settings.watch_party.open": "فتح"
 }

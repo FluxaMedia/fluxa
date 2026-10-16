@@ -1032,7 +1032,7 @@ pub(super) const PLAYER_GROUPS: [(usize, &str); 3] = [
     (3, "settings.group.player_touch"),
 ];
 pub(super) const EMPTY_SETTINGS: [SettingsRow; 0] = [];
-pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
+pub const SETTINGS_SECTIONS: [SettingsSection; 25] = [
     SettingsSection {
         title: "Account",
         category: "Account",
@@ -1135,6 +1135,13 @@ pub const SETTINGS_SECTIONS: [SettingsSection; 24] = [
         title: "Summary",
         category: "Playback",
         description: "Details of your last playback",
+        rows: &EMPTY_SETTINGS,
+        groups: &[],
+    },
+    SettingsSection {
+        title: "Watch Party",
+        category: "Playback",
+        description: "Create or join a room to watch together",
         rows: &EMPTY_SETTINGS,
         groups: &[],
     },

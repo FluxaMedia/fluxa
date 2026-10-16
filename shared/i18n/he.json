@@ -3300,5 +3300,12 @@
   "downloads.section_done": "הורדו",
   "sources.download_stream": "הורד מקור זה",
   "sources.copy_stream_url": "העתק קישור מקור",
-  "sources.copied": "הועתק ללוח"
+  "sources.copied": "הועתק ללוח",
+  "watch.content_mismatch": "המארח צופה ב-{title}. פתחו את אותו פרק כדי להצטרף.",
+  "settings.section.watch_party": "צפייה משותפת",
+  "settings.section.watch_party.description": "פתחו חדר או הצטרפו לצפייה משותפת",
+  "settings.watch_party.group": "חדר",
+  "settings.watch_party.idle": "לא בחדר",
+  "settings.watch_party.in_room": "חדר {code}",
+  "settings.watch_party.open": "פתח"
 }

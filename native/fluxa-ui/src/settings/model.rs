@@ -39,6 +39,7 @@ pub struct SettingsModel {
     pub collection_edit: Option<CollectionEdit>,
     pub collection_status: Option<String>,
     pub update: UpdateView,
+    pub watch_room: Option<String>,
     pub ambient_catalogs: Vec<AmbientCatalogRow>,
     pub ambient_minutes: u32,
     pub ambient_limit: usize,
@@ -305,5 +306,6 @@ pub fn settings_model_from_core_snapshot(snapshot: &serde_json::Value) -> Settin
         collection_edit: None,
         collection_status: None,
         update: UpdateView::default(),
+        watch_room: None,
     }
 }

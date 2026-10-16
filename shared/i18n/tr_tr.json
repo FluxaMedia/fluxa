@@ -3311,5 +3311,12 @@
   "downloads.section_done": "İndirilenler",
   "sources.download_stream": "Bu kaynağı indir",
   "sources.copy_stream_url": "Kaynak bağlantısını kopyala",
-  "sources.copied": "Panoya kopyalandı"
+  "sources.copied": "Panoya kopyalandı",
+  "watch.content_mismatch": "Host {title} izliyor. Katılmak için aynı bölümü aç.",
+  "settings.section.watch_party": "Watch Party",
+  "settings.section.watch_party.description": "Birlikte izlemek için oda kur veya katıl",
+  "settings.watch_party.group": "Oda",
+  "settings.watch_party.idle": "Bir odada değilsin",
+  "settings.watch_party.in_room": "Oda {code}",
+  "settings.watch_party.open": "Aç"
 }

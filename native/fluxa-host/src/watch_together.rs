@@ -10,6 +10,8 @@ pub(crate) struct State {
     room: Option<String>,
     opened: Option<String>,
     ready_sent: bool,
+    ready_key: Option<String>,
+    shared: bool,
     buffering_sent: bool,
     last_report: Option<(Instant, bool, f64)>,
     last_sample: Option<Instant>,
@@ -58,6 +60,7 @@ pub(crate) fn tick(state: &mut RendererState) {
         return;
     };
     let room = watch["roomCode"].as_str().map(ToOwned::to_owned);
+    state.settings.watch_room = room.clone();
     if room != state.watch.room {
         state.watch = State {
             room: room.clone(),
@@ -72,6 +75,16 @@ pub(crate) fn tick(state: &mut RendererState) {
     }
     report(state, &watch);
     announce_waiting(state, &watch);
+    announce_mismatch(state, &watch);
+}
+
+fn announce_mismatch(state: &mut RendererState, watch: &Value) {
+    if watch["contentMismatch"] != true {
+        return;
+    }
+    let title = watch["content"]["title"].as_str().unwrap_or_default();
+    let text = fluxa_ui::localized("watch.content_mismatch", state.settings.language());
+    state.notice = Some((text.replace("{title}", title), Instant::now()));
 }
 
 fn announce_waiting(state: &mut RendererState, watch: &Value) {
@@ -115,6 +128,7 @@ fn apply(state: &mut RendererState, command: &Value) {
             let content = command["content"].clone();
             state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
             state.watch.ready_sent = false;
+            state.watch.shared = true;
             player::close(state);
             let resolve = player::open_file(state, url, title);
             dispatch(state, resolve);
@@ -153,6 +167,7 @@ fn apply(state: &mut RendererState, command: &Value) {
 fn open(state: &mut RendererState, content: &Value, action: NativeAction) {
     state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
     state.watch.ready_sent = false;
+    state.watch.shared = false;
     player::close(state);
     state.pending_native_actions.push(action);
 }
@@ -174,7 +189,7 @@ fn report(state: &mut RendererState, watch: &Value) {
     let content = player.watch_content();
     if is_host
         && !playing
-        && let Some(content) = content
+        && let Some(content) = content.clone()
         && state.watch.opened.as_deref() != content["id"].as_str()
     {
         state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
@@ -188,12 +203,21 @@ fn report(state: &mut RendererState, watch: &Value) {
     }
     let now = now_ms();
     if !playing {
-        if status.has_frame && !state.watch.ready_sent {
+        let checked = !is_host && !state.watch.shared;
+        let local = content.clone().filter(|_| checked);
+        if checked && local.is_none() {
+            return;
+        }
+        let key = local
+            .as_ref()
+            .map(|local| format!("{}|{}", local["id"], local["videoId"]));
+        if status.has_frame && (!state.watch.ready_sent || state.watch.ready_key != key) {
             state.watch.ready_sent = true;
+            state.watch.ready_key = key;
             set_paused(state, true);
             dispatch(
                 state,
-                json!({"type": "watchTogetherReadyChanged", "ready": true, "nowMs": now}),
+                json!({"type": "watchTogetherReadyChanged", "ready": true, "content": local, "nowMs": now}),
             );
         } else if state.watch.ready_sent && !status.paused {
             set_paused(state, true);
@@ -251,6 +275,14 @@ fn report(state: &mut RendererState, watch: &Value) {
 }
 
 const HOST_REPORT_SLACK: f64 = 1.0;
+
+pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
+    if node != fluxa_ui::NODE_SETTINGS_WATCH_PARTY {
+        return false;
+    }
+    open_modal(state);
+    true
+}
 
 pub(crate) fn toggle_panel(state: &mut RendererState) {
     if state.player.is_none() {

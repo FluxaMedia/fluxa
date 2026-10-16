@@ -3311,5 +3311,12 @@
   "downloads.section_done": "Downloaded",
   "sources.download_stream": "Download this stream",
   "sources.copy_stream_url": "Copy stream URL",
-  "sources.copied": "Copied to clipboard"
+  "sources.copied": "Copied to clipboard",
+  "watch.content_mismatch": "The host is watching {title}. Open the same episode to join.",
+  "settings.section.watch_party": "Watch Party",
+  "settings.section.watch_party.description": "Create or join a room to watch together",
+  "settings.watch_party.group": "Room",
+  "settings.watch_party.idle": "Not in a room",
+  "settings.watch_party.in_room": "Room {code}",
+  "settings.watch_party.open": "Open"
 }
