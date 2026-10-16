@@ -130,6 +130,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_SETTINGS_ADDON_URL => fluxa_ui::localized("settings.addon_url", "en"),
         fluxa_ui::NODE_SETTINGS_SEARCH => fluxa_ui::localized("settings.search_placeholder", "en"),
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL => fluxa_ui::localized("settings.plugin_url", "en"),
+        fluxa_ui::NODE_SETTINGS_WATCH_CODE => fluxa_ui::localized("watch.ticket.code", "en"),
         fluxa_ui::NODE_SETTINGS_SERVER_ADDRESS => {
             fluxa_ui::localized("settings.server_address", "en")
         }
@@ -416,6 +417,7 @@ pub(super) fn rebuild_ui_from_layout(
                     || id == fluxa_ui::NODE_SETTINGS_ADDON_URL
                     || id == fluxa_ui::NODE_SETTINGS_SEARCH
                     || id == fluxa_ui::NODE_SETTINGS_PLUGIN_URL
+                    || id == fluxa_ui::NODE_SETTINGS_WATCH_CODE
                     || fluxa_ui::poster_field(id).is_some()
                     || fluxa_ui::server_input(id).is_some()
                     || fluxa_ui::badge_input(id).is_some()

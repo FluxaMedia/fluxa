@@ -484,6 +484,9 @@ pub(super) fn edit_text(
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
             &mut state.settings.plugin_url
         }
+        fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
+            &mut state.settings.watch_code
+        }
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             &mut state.settings.server_fields[fluxa_ui::server_input(node).unwrap_or_default()]
         }
@@ -508,6 +511,15 @@ pub(super) fn edit_text(
         fluxa_ui::NODE_LIBRARY_SEARCH => refresh_library_view(state),
         fluxa_ui::NODE_DISCOVER_SEARCH => request_discover_search(state),
         fluxa_ui::NODE_SIDEBAR_SEARCH => search_from_sidebar(state),
+        fluxa_ui::NODE_SETTINGS_WATCH_CODE => {
+            let code = &mut state.settings.watch_code;
+            *code = code
+                .chars()
+                .filter(char::is_ascii_alphanumeric)
+                .take(6)
+                .collect::<String>()
+                .to_uppercase();
+        }
         _ => {}
     }
     true
@@ -529,6 +541,9 @@ pub(super) fn node_text(state: &RendererState, node: u64) -> Option<String> {
         }
         fluxa_ui::NODE_SETTINGS_PLUGIN_URL if route == Route::Settings => {
             state.settings.plugin_url.clone()
+        }
+        fluxa_ui::NODE_SETTINGS_WATCH_CODE if route == Route::Settings => {
+            state.settings.watch_code.clone()
         }
         _ if route == Route::Settings && fluxa_ui::server_input(node).is_some() => {
             state.settings.server_fields[fluxa_ui::server_input(node)?].clone()

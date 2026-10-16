@@ -1553,6 +1553,7 @@ pub fn is_text_node(node: u64) -> bool {
             | super::NODE_SETTINGS_SEARCH
             | super::NODE_SETTINGS_ADDON_URL
             | super::NODE_SETTINGS_PLUGIN_URL
+            | super::NODE_SETTINGS_WATCH_CODE
     ) || super::poster_field(node).is_some()
         || super::server_input(node).is_some()
         || super::badge_input(node).is_some()
