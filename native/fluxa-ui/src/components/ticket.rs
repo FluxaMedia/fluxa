@@ -1,10 +1,9 @@
 use super::*;
 use crate::{WatchTicket, localized};
 
+#[derive(Clone, Copy)]
 pub(crate) enum TicketAction {
     Join,
-    Open,
-    Leave,
 }
 
 pub(crate) struct TicketOutput {
@@ -121,10 +120,7 @@ pub(crate) fn watch_ticket(
     }
     let (headline, subline) = match (&ticket.room, &ticket.title) {
         (Some(_), Some(title)) => (title.clone(), ticket.episode.clone()),
-        (Some(_), None) => (
-            t("watch.ticket.waiting"),
-            Some(t("watch.ticket.people").replace("{count}", &ticket.people.to_string())),
-        ),
+        (Some(_), None) => (t("watch.title"), None),
         (None, _) => (t("watch.title"), Some(t("watch.ticket.prompt"))),
     };
     let mut baseline = inner.bottom();
@@ -211,28 +207,6 @@ pub(crate) fn watch_ticket(
                 crate::fonts::bold(if narrow { 22.0 } else { 28.0 }),
                 Color32::WHITE,
             );
-            let height = if narrow { 36.0 } else { 40.0 };
-            let mut right = row.right();
-            for (key, action, kind) in [
-                ("watch.leave", TicketAction::Leave, ButtonKind::Secondary),
-                ("settings.watch_party.open", TicketAction::Open, ButtonKind::Primary),
-            ] {
-                let label = t(key);
-                let width = painter
-                    .layout_no_wrap(label.clone(), crate::fonts::bold(15.0), Color32::WHITE)
-                    .size()
-                    .x
-                    + if narrow { 24.0 } else { 36.0 };
-                let place = Rect::from_min_size(
-                    Pos2::new(right - width, row.center().y - height * 0.5),
-                    Vec2::new(width, height),
-                );
-                right = place.left() - 8.0;
-                let mut child = ui.new_child(egui::UiBuilder::new().max_rect(place));
-                if button(&mut child, &label, width, height, kind, metrics).clicked() {
-                    output.action = Some(action);
-                }
-            }
         }
     }
     output

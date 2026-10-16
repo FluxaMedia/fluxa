@@ -137,9 +137,9 @@ internal class NativeTextField(
     private fun hide() {
         if (field == 0L) return
         field = 0L
-        if (hasFocus()) keyboard()?.hideSoftInputFromWindow(windowToken, 0)
         clearFocus()
         visibility = GONE
+        keyboard()?.hideSoftInputFromWindow(windowToken, 0)
     }
 
     private fun keyboard() = context.getSystemService(Context.INPUT_METHOD_SERVICE) as? InputMethodManager

@@ -1491,6 +1491,7 @@ fn draw_watch_party(
         let output = components::watch_ticket(ui, ticket, &mut code, width, language, assets, metrics);
         if let Some(input) = output.code {
             layout.focusable.push((NODE_SETTINGS_WATCH_CODE, input.rect));
+            layout.focusable.push((NODE_SETTINGS_WATCH_JOIN, input.button));
             if input.response.changed() {
                 layout.text_input = Some(code.clone());
                 layout.text_input_node = Some(NODE_SETTINGS_WATCH_CODE);
@@ -1498,8 +1499,6 @@ fn draw_watch_party(
         }
         layout.activated = match output.action {
             Some(components::TicketAction::Join) => Some(NODE_SETTINGS_WATCH_JOIN),
-            Some(components::TicketAction::Open) => Some(NODE_SETTINGS_WATCH_PARTY),
-            Some(components::TicketAction::Leave) => Some(NODE_SETTINGS_WATCH_LEAVE),
             None => layout.activated,
         };
     });

@@ -71,7 +71,6 @@ pub(crate) fn start(state: &mut RendererState) {
                 "https://image.tmdb.org/t/p/w1280/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg".to_owned(),
             ),
             episode: Some("S1 · E2 · Cat's in the Bag...".to_owned()),
-            people: 3,
             ..Default::default()
         };
         state.settings.watch_room = Some("K7M2QX".to_owned());

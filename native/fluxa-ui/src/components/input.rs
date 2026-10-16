@@ -451,6 +451,7 @@ pub(crate) fn message_input(
 pub(crate) struct CodeInput {
     pub response: Response,
     pub rect: Rect,
+    pub button: Rect,
     pub submitted: bool,
 }
 
@@ -567,6 +568,7 @@ pub(crate) fn code_input(
     let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
     CodeInput {
         rect: field,
+        button,
         submitted: complete && (go.clicked() || entered),
         response,
     }

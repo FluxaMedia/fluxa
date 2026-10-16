@@ -404,12 +404,17 @@ impl PlayerSession {
         let video = ["lastVideoId", "videoId", "video_id"]
             .iter()
             .find_map(|key| self.meta.get(*key).and_then(Value::as_str));
+        let season_episode = self.season_episode.or_else(|| {
+            let mut parts = video?.rsplit(':');
+            let episode = parts.next()?.parse().ok()?;
+            Some((parts.next()?.parse().ok()?, episode))
+        });
         let artwork = json!({
             "backdrop": self.meta.get("background").and_then(Value::as_str),
             "logo": self.model_logo_from_meta().or(self.snapshot_logo.as_deref()),
             "episodeTitle": self.episode_title,
-            "season": self.season_episode.map(|(season, _)| season),
-            "episode": self.season_episode.map(|(_, episode)| episode),
+            "season": season_episode.map(|(season, _)| season),
+            "episode": season_episode.map(|(_, episode)| episode),
         });
         Some(json!({
             "id": id.split(':').next().unwrap_or(id),
