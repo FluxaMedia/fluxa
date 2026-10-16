@@ -503,8 +503,12 @@ pub(super) fn draw_account(
             );
             label_left += size.x + if metrics.compact { 16.0 } else { 12.0 };
         }
-        let on = connected(key);
         let provider = label.to_lowercase();
+        let on = connected(key)
+            && !settings
+                .tracker_names
+                .iter()
+                .any(|(name, handle)| *name == provider && handle.is_empty());
         let prompt = settings
             .account_auth
             .as_ref()
@@ -523,9 +527,6 @@ pub(super) fn draw_account(
                 .find(|(name, _)| *name == provider)
                 .filter(|_| on)
             {
-                Some((_, name)) if name.is_empty() => {
-                    localized("settings.session_expired", language)
-                }
                 Some((_, name)) => name.clone(),
                 None => localized(
                     if on {

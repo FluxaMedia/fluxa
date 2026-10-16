@@ -65,7 +65,12 @@ pub(crate) fn toggle(state: &mut RendererState, provider: &str) {
     let connected = profile
         .get(&token)
         .and_then(Value::as_str)
-        .is_some_and(|value| !value.is_empty());
+        .is_some_and(|value| !value.is_empty())
+        && !state
+            .settings
+            .tracker_names
+            .iter()
+            .any(|(name, handle)| name == provider && handle.is_empty());
     if !connected {
         state.settings.account_auth = None;
         let generation = generation(&auth_state(state));

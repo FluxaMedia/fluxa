@@ -230,7 +230,6 @@
   "settings.account_empty": "Fluxa Core'da etkin profil yok",
   "settings.connected": "Bağlı",
   "settings.not_connected": "Bağlı değil",
-  "settings.session_expired": "Oturum süresi doldu",
   "settings.account_connect": "Bağlan",
   "settings.account_disconnect": "Bağlantıyı kes",
   "settings.account_sign_in_failed": "Oturum açılamadı. Tekrar deneyin.",

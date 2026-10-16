@@ -230,7 +230,6 @@
   "settings.account_empty": "No active profile in Fluxa Core",
   "settings.connected": "Connected",
   "settings.not_connected": "Not connected",
-  "settings.session_expired": "Session expired",
   "settings.account_connect": "Connect",
   "settings.account_disconnect": "Disconnect",
   "settings.account_sign_in_failed": "Sign-in failed. Try again.",
