@@ -387,6 +387,9 @@ pub(crate) fn save_profile(storage: &Storage, profile: &Value) {
 
 pub(crate) fn load_profile(session: &SessionHandle) -> Result<(), String> {
     let profile = session.active_profile();
+    session.dispatch(
+        json!({"type": "addonsRefreshRequested", "profile": profile, "forceRefresh": true}),
+    )?;
     session.dispatch(json!({
         "type": "homeLoadRequested",
         "profile": profile,
