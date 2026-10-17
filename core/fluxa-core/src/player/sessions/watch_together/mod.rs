@@ -285,6 +285,7 @@ impl WatchTogetherDriftPolicy {
     pub const NORMAL_SPEED: f32 = 1.0;
     pub const SOFT_DRIFT_MS: i64 = 250;
     pub const HARD_SEEK_DRIFT_MS: i64 = 750;
+    pub const PLAYING_SEEK_DRIFT_MS: i64 = 8_000;
 
     pub fn correction(
         local_position_ms: i64,
@@ -294,10 +295,15 @@ impl WatchTogetherDriftPolicy {
     ) -> WatchTogetherCorrection {
         let drift = expected_position_ms - local_position_ms;
         let magnitude = drift.abs();
-        if magnitude > Self::HARD_SEEK_DRIFT_MS {
+        let seek_limit = if host_playing {
+            Self::PLAYING_SEEK_DRIFT_MS
+        } else {
+            Self::HARD_SEEK_DRIFT_MS
+        };
+        if magnitude > seek_limit {
             WatchTogetherCorrection::Seek(expected_position_ms.max(0))
         } else if host_playing && magnitude > Self::SOFT_DRIFT_MS {
-            let value = (Self::NORMAL_SPEED + (drift as f32 / 5_000.0)).clamp(0.97, 1.03);
+            let value = (Self::NORMAL_SPEED + (drift as f32 / 4_000.0)).clamp(0.85, 1.25);
             WatchTogetherCorrection::Speed(value)
         } else if speed_correction_active {
             WatchTogetherCorrection::ResetSpeed

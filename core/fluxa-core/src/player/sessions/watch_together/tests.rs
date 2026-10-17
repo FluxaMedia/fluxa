@@ -50,10 +50,18 @@ fn drift_policy_is_shared_across_platforms() {
     );
     assert_eq!(
         WatchTogetherDriftPolicy::correction(1_000, 1_600, true, false),
-        WatchTogetherCorrection::Speed(1.03)
+        WatchTogetherCorrection::Speed(1.15)
     );
     assert_eq!(
-        WatchTogetherDriftPolicy::correction(1_000, 2_500, true, true),
+        WatchTogetherDriftPolicy::correction(1_000, 5_000, true, true),
+        WatchTogetherCorrection::Speed(1.25)
+    );
+    assert_eq!(
+        WatchTogetherDriftPolicy::correction(1_000, 20_000, true, true),
+        WatchTogetherCorrection::Seek(20_000)
+    );
+    assert_eq!(
+        WatchTogetherDriftPolicy::correction(1_000, 2_500, false, false),
         WatchTogetherCorrection::Seek(2_500)
     );
     assert_eq!(

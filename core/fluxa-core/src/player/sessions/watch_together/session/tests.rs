@@ -239,7 +239,7 @@ fn guest_correction_follows_the_hosts_clock() {
         1_000,
     );
     assert_eq!(
-        ana.correction(10_000, 3_000, false),
+        ana.correction(2_000, 3_000, false),
         WatchTogetherCorrection::Seek(12_000)
     );
     assert_eq!(

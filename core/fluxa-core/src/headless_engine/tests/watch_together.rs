@@ -111,7 +111,7 @@ fn drift_sample_turns_into_a_seek_command() {
     );
     let effects = act(
         &mut engine,
-        json!({"type": "watchTogetherPositionSampled", "positionMs": 10000, "nowMs": 3000, "speedCorrectionActive": false}),
+        json!({"type": "watchTogetherPositionSampled", "positionMs": 2000, "nowMs": 3000, "speedCorrectionActive": false}),
     );
     assert_eq!(effects[0].payload["command"], "seek");
     assert_eq!(effects[0].payload["positionMs"], 12000);
