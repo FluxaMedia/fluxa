@@ -191,6 +191,8 @@ pub struct WatchTogetherState {
     pub phase: SessionPhase,
     #[serde(default)]
     pub locked: bool,
+    #[serde(default)]
+    pub max_members: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content: Option<WatchTogetherContent>,
     #[serde(default)]
@@ -214,6 +216,7 @@ impl Default for WatchTogetherState {
             members: Vec::new(),
             phase: SessionPhase::Lobby,
             locked: false,
+            max_members: 0,
             content: None,
             content_mismatch: false,
             last_event: None,

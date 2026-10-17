@@ -469,6 +469,8 @@ pub(crate) enum AppAction {
         members: Vec<WatchTogetherMember>,
         #[serde(default)]
         locked: bool,
+        #[serde(default)]
+        max_members: u32,
         now_ms: i64,
     },
 }

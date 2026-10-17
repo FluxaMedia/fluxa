@@ -157,13 +157,13 @@ async fn fetch_roster(
     config: &Supabase,
     token: &str,
     code: &str,
-) -> Result<(String, bool, Vec<Value>), String> {
+) -> Result<(String, bool, u64, Vec<Value>), String> {
     let room = json_response(
         rest(
             client,
             config,
             token,
-            &format!("watch_rooms?code=eq.{code}&select=host_id,locked"),
+            &format!("watch_rooms?code=eq.{code}&select=host_id,locked,max_members"),
         )
         .send()
         .await
@@ -176,6 +176,7 @@ async fn fetch_roster(
         .ok_or_else(|| "room not found".to_owned())?
         .to_owned();
     let locked = room[0]["locked"].as_bool().unwrap_or(false);
+    let max_members = room[0]["max_members"].as_u64().unwrap_or(0);
     let rows = json_response(
         rest(
             client,
@@ -205,7 +206,7 @@ async fn fetch_roster(
                 .collect()
         })
         .unwrap_or_default();
-    Ok((host_id, locked, members))
+    Ok((host_id, locked, max_members, members))
 }
 
 impl EffectExecutor {
@@ -295,7 +296,7 @@ impl EffectExecutor {
             .as_str()
             .ok_or_else(|| "room not found".to_owned())?
             .to_owned();
-        let (host_id, _, members) =
+        let (host_id, _, max_members, members) =
             fetch_roster(&client, &config, &credentials.token, &room_code).await?;
         self.open_connection(room_code.clone());
         Ok(json!({
@@ -303,6 +304,7 @@ impl EffectExecutor {
             "clientId": credentials.user_id,
             "hostId": host_id,
             "members": members,
+            "maxMembers": max_members,
         }))
     }
 
@@ -616,7 +618,7 @@ impl EffectExecutor {
         room: &str,
     ) -> Option<(String, Vec<String>)> {
         match fetch_roster(client, config, &credentials.token, room).await {
-            Ok((host_id, locked, members)) => {
+            Ok((host_id, locked, max_members, members)) => {
                 let ids = members
                     .iter()
                     .filter_map(|member| member["id"].as_str().map(ToOwned::to_owned))
@@ -626,6 +628,7 @@ impl EffectExecutor {
                     "hostId": host_id,
                     "members": members,
                     "locked": locked,
+                    "maxMembers": max_members,
                     "nowMs": now_ms(),
                 }));
                 Some((host_id, ids))

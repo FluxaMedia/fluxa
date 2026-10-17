@@ -612,8 +612,9 @@ impl HeadlessEngine {
                 host_id,
                 members,
                 locked,
+                max_members,
                 now_ms,
-            } => watch_together::dispatch_members(self, host_id, members, locked, now_ms),
+            } => watch_together::dispatch_members(self, host_id, members, locked, max_members, now_ms),
         }
     }
 }

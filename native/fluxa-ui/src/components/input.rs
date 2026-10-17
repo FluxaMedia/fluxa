@@ -566,10 +566,12 @@ pub(crate) fn code_input(
         ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
     }
     let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
+    let was_complete = ui.data_mut(|data| data.get_temp::<bool>(id.with("complete")).unwrap_or(false));
+    ui.data_mut(|data| data.insert_temp(id.with("complete"), complete));
     CodeInput {
         rect: field,
         button,
-        submitted: complete && (go.clicked() || entered),
+        submitted: complete && (go.clicked() || entered || !was_complete),
         response,
     }
 }

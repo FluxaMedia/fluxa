@@ -118,6 +118,17 @@ pub(crate) fn watch_ticket(
             soft,
         );
     }
+    if let (Some(_), Some(host)) = (ticket.room.as_ref(), ticket.host.as_ref()) {
+        let center = Pos2::new(inner.left() + 12.0, inner.top() + 38.0);
+        avatar(&painter, assets, center, 12.0, &host.name, host.avatar.as_deref(), metrics);
+        painter.text(
+            Pos2::new(center.x + 20.0, center.y),
+            Align2::LEFT_CENTER,
+            t("watch.ticket.hosted_by").replace("{name}", &host.name),
+            crate::fonts::bold(13.0),
+            Color32::from_white_alpha(230),
+        );
+    }
     let (headline, subline) = match (&ticket.room, &ticket.title) {
         (Some(_), Some(title)) => (title.clone(), ticket.episode.clone()),
         (Some(_), None) => (t("watch.title"), None),
@@ -207,6 +218,23 @@ pub(crate) fn watch_ticket(
                 crate::fonts::bold(if narrow { 22.0 } else { 28.0 }),
                 Color32::WHITE,
             );
+            let seats = seat_count(ticket.members.len(), ticket.max_members);
+            if seats > 0 {
+                let radius = if narrow { 13.0 } else { 16.0 };
+                let span = seat_row_width(seats, radius);
+                let start = Pos2::new(inner.right() - span, row.center().y);
+                seat_row(&painter, assets, &ticket.members, seats, start, radius, metrics);
+                let total = ticket.max_members.max(ticket.members.len() as u32);
+                painter.text(
+                    Pos2::new(inner.right(), inner.top()),
+                    Align2::RIGHT_TOP,
+                    t("watch.seats")
+                        .replace("{taken}", &ticket.members.len().to_string())
+                        .replace("{total}", &total.to_string()),
+                    crate::fonts::bold(11.0),
+                    soft,
+                );
+            }
         }
     }
     output

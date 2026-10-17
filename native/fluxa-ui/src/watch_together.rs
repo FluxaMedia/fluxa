@@ -31,6 +31,9 @@ pub struct WatchTicket {
     pub logo: Option<String>,
     pub backdrop: Option<String>,
     pub episode: Option<String>,
+    pub host: Option<WatchMemberView>,
+    pub members: Vec<WatchMemberView>,
+    pub max_members: u32,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -42,6 +45,7 @@ pub struct WatchTogetherModel {
     pub chat: Vec<WatchChatView>,
     pub host: bool,
     pub locked: bool,
+    pub max_members: u32,
     pub connecting: bool,
     pub error: Option<String>,
 }
@@ -474,7 +478,9 @@ fn side_room(
 ) {
     let width = ui.available_width();
     draw_code(ui, code, width, assets, metrics, t, request);
-    ui.add_space(10.0);
+    ui.add_space(12.0);
+    side_seats(ui, model, width, assets, metrics, t);
+    ui.add_space(8.0);
     let ready = model.members.iter().filter(|member| member.ready).count();
     let summary = match waiting_member(&model.members) {
         Some(member) => t("watch.waiting_for").replace("{name}", &member.name),
@@ -499,7 +505,7 @@ fn side_room(
         }
     }
     ui.add_space(14.0);
-    let height = ui.available_height() - 2.0 * button_height() - 104.0;
+    let height = ui.available_height() - 2.0 * button_height() - 140.0;
     side_chat(ui, model, width, height.max(80.0), assets, metrics, t, request);
     ui.add_space(14.0);
     let (label, action) = if model.host {
@@ -643,6 +649,43 @@ fn chat_message(
     }
 }
 
+fn side_seats(
+    ui: &mut egui::Ui,
+    model: &WatchTogetherModel,
+    width: f32,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+    t: &dyn Fn(&str) -> String,
+) {
+    let seats = components::seat_count(model.members.len(), model.max_members);
+    if seats == 0 {
+        return;
+    }
+    let total = model.max_members.max(model.members.len() as u32);
+    let radius = 10.0;
+    let (row, _) = ui.allocate_exact_size(Vec2::new(width, radius * 2.0 + 6.0), Sense::hover());
+    let painter = ui.painter().clone();
+    painter.text(
+        Pos2::new(row.left() + 2.0, row.center().y),
+        Align2::LEFT_CENTER,
+        t("watch.seats")
+            .replace("{taken}", &model.members.len().to_string())
+            .replace("{total}", &total.to_string()),
+        FontId::proportional(metrics.text.meta),
+        text_primary(),
+    );
+    let span = components::seat_row_width(seats, radius);
+    components::seat_row(
+        &painter,
+        assets,
+        &model.members,
+        seats,
+        Pos2::new(row.right() - span - 3.0, row.center().y),
+        radius,
+        metrics,
+    );
+}
+
 fn lock_row(
     ui: &mut egui::Ui,
     locked: bool,
@@ -651,22 +694,34 @@ fn lock_row(
     t: &dyn Fn(&str) -> String,
     request: &mut Option<WatchTogetherRequest>,
 ) {
-    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 44.0), Sense::click());
+    let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 66.0), Sense::click());
     let painter = ui.painter();
     if response.hovered() {
         painter.rect_filled(rect, 12.0, ink(tone::RAISED));
     }
     painter.text(
-        Pos2::new(rect.left() + 12.0, rect.center().y),
+        Pos2::new(rect.left() + 12.0, rect.top() + 22.0),
         Align2::LEFT_CENTER,
         t("watch.host_only"),
         FontId::proportional(metrics.text.meta),
         text_primary(),
     );
+    let description = if locked {
+        t("watch.host_only_desc")
+    } else {
+        t("watch.guest_controls_desc")
+    };
+    let galley = painter.layout(
+        description,
+        FontId::proportional(metrics.text.label),
+        metrics.text_muted,
+        width - 24.0 - metrics.settings_toggle_width - 16.0,
+    );
+    painter.galley(Pos2::new(rect.left() + 12.0, rect.top() + 38.0), galley, metrics.text_muted);
     let track = Rect::from_center_size(
         Pos2::new(
             rect.right() - metrics.settings_toggle_width * 0.5 - 8.0,
-            rect.center().y,
+            rect.top() + 22.0,
         ),
         Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height),
     );

@@ -37,6 +37,8 @@ struct RoomJoined {
     host_id: String,
     #[serde(default)]
     members: Vec<WatchTogetherMember>,
+    #[serde(default)]
+    max_members: u32,
 }
 
 pub(crate) fn dispatch_create(
@@ -219,6 +221,7 @@ pub(crate) fn dispatch_members(
     host_id: String,
     members: Vec<WatchTogetherMember>,
     locked: bool,
+    max_members: u32,
     now_ms: i64,
 ) -> Vec<EffectEnvelope> {
     if let Some(session) = engine.watch_session.as_mut() {
@@ -229,6 +232,9 @@ pub(crate) fn dispatch_members(
     });
     if engine.watch_session.is_some() {
         engine.state.watch_together.locked = locked;
+        if max_members > 0 {
+            engine.state.watch_together.max_members = max_members;
+        }
     }
     effects
 }
@@ -288,6 +294,7 @@ pub(crate) fn complete(
     );
     engine.watch_session = Some(session);
     sync_state(engine);
+    engine.state.watch_together.max_members = joined.max_members;
     engine.state.watch_together.connection_state = WatchTogetherConnectionState::Connected;
     engine.state.watch_together.error_message = None;
     let profile = payload["profileKey"].as_str().map(ToOwned::to_owned);

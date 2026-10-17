@@ -71,6 +71,23 @@ pub(crate) fn start(state: &mut RendererState) {
                 "https://image.tmdb.org/t/p/w1280/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg".to_owned(),
             ),
             episode: Some("S1 · E2 · Cat's in the Bag...".to_owned()),
+            host: Some(fluxa_ui::WatchMemberView {
+                name: "Ayşe".to_owned(),
+                host: true,
+                ..Default::default()
+            }),
+            members: vec![
+                fluxa_ui::WatchMemberView {
+                    name: "Ayşe".to_owned(),
+                    host: true,
+                    ..Default::default()
+                },
+                fluxa_ui::WatchMemberView {
+                    name: "Mert".to_owned(),
+                    ..Default::default()
+                },
+            ],
+            max_members: 4,
             ..Default::default()
         };
         state.settings.watch_room = Some("K7M2QX".to_owned());
@@ -89,6 +106,7 @@ pub(crate) fn start(state: &mut RendererState) {
         state.watch_view = Some(fluxa_ui::WatchTogetherModel {
             language: state.settings.language().to_owned(),
             room_code: Some("K7M2QX".to_owned()),
+            max_members: 6,
             host: true,
             members: vec![
                 member("Ayşe", "watching", true, true),

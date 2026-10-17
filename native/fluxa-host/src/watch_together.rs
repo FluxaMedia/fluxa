@@ -210,7 +210,12 @@ fn ticket(watch: &Value) -> fluxa_ui::WatchTicket {
         _ => None,
     };
     fluxa_ui::WatchTicket {
+    let members = member_views(watch);
+    let host = members.iter().find(|member| member.host).cloned();
         room: text(&watch["roomCode"]),
+        host,
+        members,
+        max_members: watch["maxMembers"].as_u64().unwrap_or_default() as u32,
         connecting: watch["connectionState"] == "CONNECTING",
         error: (watch["connectionState"] == "ERROR").then(|| {
             match watch["errorMessage"].as_str() {
@@ -571,16 +576,7 @@ fn is_uuid(value: &str) -> bool {
         && value.chars().all(|c| c == '-' || c.is_ascii_hexdigit())
 }
 
-fn refresh_view(state: &mut RendererState, watch: &Value) {
-    if crate::preview::watch_demo() {
-        return;
-    }
-    let Some(view) = state.watch_view.as_mut() else {
-        return;
-    };
-    view.room_code = watch["roomCode"].as_str().map(ToOwned::to_owned);
-    view.connecting = watch["connectionState"] == "CONNECTING";
-    view.error = (watch["connectionState"] == "ERROR").then(|| "watch.error".to_owned());
+fn member_views(watch: &Value) -> Vec<fluxa_ui::WatchMemberView> {
     let you = watch["clientId"].as_str();
     view.host = watch["role"] == "HOST";
     view.locked = watch["locked"].as_bool().unwrap_or(false);
@@ -615,5 +611,22 @@ fn refresh_view(state: &mut RendererState, watch: &Value) {
             text: message["text"].as_str().unwrap_or_default().to_owned(),
             you: message["by"].as_str() == you,
         })
-        .collect();
+        .collect()
+}
+
+fn refresh_view(state: &mut RendererState, watch: &Value) {
+    if crate::preview::watch_demo() {
+        return;
+    }
+    let Some(view) = state.watch_view.as_mut() else {
+        return;
+    };
+    view.room_code = watch["roomCode"].as_str().map(ToOwned::to_owned);
+    view.connecting = watch["connectionState"] == "CONNECTING";
+    view.error = (watch["connectionState"] == "ERROR").then(|| "watch.error".to_owned());
+    let you = watch["clientId"].as_str();
+    view.host = watch["role"] == "HOST";
+    view.locked = watch["locked"].as_bool().unwrap_or(false);
+    view.max_members = watch["maxMembers"].as_u64().unwrap_or_default() as u32;
+    view.members = member_views(watch);
 }
