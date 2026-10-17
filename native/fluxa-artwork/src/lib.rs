@@ -100,7 +100,7 @@ const MIN_ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(33);
 #[cfg(target_arch = "wasm32")]
 const MIN_ANIMATION_FRAME_INTERVAL: Duration = Duration::from_millis(80);
 const ANIMATION_CACHE_MAGIC: &[u8] = b"FXAN2";
-const FAILED_REQUEST_RETRY_DELAY: Duration = Duration::from_secs(5);
+const FAILED_REQUEST_RETRY_DELAY: Duration = Duration::from_secs(60);
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Priority {
