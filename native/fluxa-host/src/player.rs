@@ -396,6 +396,14 @@ impl PlayerSession {
             .to_owned()
     }
 
+    pub(crate) fn start_offset_ms(&self) -> i64 {
+        self.meta
+            .get("timeOffset")
+            .and_then(Value::as_f64)
+            .filter(|offset| *offset > 5.0)
+            .map_or(0, |offset| (offset * 1000.0) as i64)
+    }
+
     pub(crate) fn watch_content(&self) -> Option<Value> {
         if self.local || self.trailer.is_some() {
             return None;

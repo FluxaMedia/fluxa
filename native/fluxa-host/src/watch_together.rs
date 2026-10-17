@@ -21,6 +21,7 @@ pub(crate) struct State {
     settle_until: Option<Instant>,
     event_seen: u64,
     chat_seen: u64,
+    host_paused: Option<bool>,
 }
 
 fn now_ms() -> i64 {
@@ -134,7 +135,7 @@ pub(crate) fn tick(state: &mut RendererState) {
         return;
     }
     for command in commands {
-        apply(state, &command);
+        apply(state, &command, watch["role"] == "HOST");
     }
     report(state, &watch);
     announce_waiting(state, &watch);
@@ -209,13 +210,13 @@ fn ticket(watch: &Value) -> fluxa_ui::WatchTicket {
         }),
         _ => None,
     };
-    fluxa_ui::WatchTicket {
     let members = member_views(watch);
     let host = members.iter().find(|member| member.host).cloned();
-        room: text(&watch["roomCode"]),
+    fluxa_ui::WatchTicket {
         host,
         members,
         max_members: watch["maxMembers"].as_u64().unwrap_or_default() as u32,
+        room: text(&watch["roomCode"]),
         connecting: watch["connectionState"] == "CONNECTING",
         error: (watch["connectionState"] == "ERROR").then(|| {
             match watch["errorMessage"].as_str() {
@@ -258,7 +259,7 @@ fn announce_waiting(state: &mut RendererState, watch: &Value) {
     }
 }
 
-fn apply(state: &mut RendererState, command: &Value) {
+fn apply(state: &mut RendererState, command: &Value, host: bool) {
     match command["command"].as_str() {
         Some("pickStream") => {
             let content = &command["content"];
@@ -289,8 +290,11 @@ fn apply(state: &mut RendererState, command: &Value) {
         }
         Some("start") => {
             let position = command["positionMs"].as_f64().unwrap_or_default() / 1000.0;
-            seek_to(state, position);
-            set_paused(state, false);
+            if !host {
+                seek_to(state, position);
+            }
+            let stay_paused = host && state.watch.host_paused.take().unwrap_or(false);
+            set_paused(state, stay_paused);
         }
         Some("remote") => {
             let position = command["positionMs"].as_f64().unwrap_or_default() / 1000.0;
@@ -351,7 +355,10 @@ fn report(state: &mut RendererState, watch: &Value) {
     let status = player.status.clone();
     let speed = player.speed;
     let content = player.watch_content();
-    if is_host && status.has_frame && let Some(content) = content.clone() {
+    let announceable = |content: &Value| {
+        content["contentType"] == "movie" || content["videoId"].as_str().is_some()
+    };
+    if is_host && let Some(content) = content.clone().filter(announceable) {
         let key = format!("{}|{}", content["id"], content["videoId"]);
         if state.watch.selected.as_deref() != Some(key.as_str()) {
             state.watch.selected = Some(key);
@@ -360,7 +367,11 @@ fn report(state: &mut RendererState, watch: &Value) {
             state.watch.last_report = None;
             dispatch(
                 state,
-                json!({"type": "watchTogetherContentSelected", "content": content, "startPositionMs": 0}),
+                json!({
+                    "type": "watchTogetherContentSelected",
+                    "content": content,
+                    "startPositionMs": player.start_offset_ms(),
+                }),
             );
             return;
         }
@@ -381,6 +392,9 @@ fn report(state: &mut RendererState, watch: &Value) {
         if status.has_frame && (!state.watch.ready_sent || state.watch.ready_key != key) {
             state.watch.ready_sent = true;
             state.watch.ready_key = key;
+            if is_host && state.watch.host_paused.is_none() {
+                state.watch.host_paused = Some(status.paused);
+            }
             set_paused(state, true);
             dispatch(
                 state,
@@ -578,9 +592,7 @@ fn is_uuid(value: &str) -> bool {
 
 fn member_views(watch: &Value) -> Vec<fluxa_ui::WatchMemberView> {
     let you = watch["clientId"].as_str();
-    view.host = watch["role"] == "HOST";
-    view.locked = watch["locked"].as_bool().unwrap_or(false);
-    view.members = watch["members"]
+    watch["members"]
         .as_array()
         .into_iter()
         .flatten()
@@ -593,23 +605,6 @@ fn member_views(watch: &Value) -> Vec<fluxa_ui::WatchMemberView> {
             status: member["status"].as_str().unwrap_or("waiting").to_owned(),
             host: member["isHost"].as_bool().unwrap_or(false),
             you: member["id"].as_str() == you,
-        })
-        .collect();
-    view.chat = watch["chat"]
-        .as_array()
-        .into_iter()
-        .flatten()
-        .map(|message| fluxa_ui::WatchChatView {
-            id: message["id"].as_u64().unwrap_or_default(),
-            by: message["by"].as_str().unwrap_or_default().to_owned(),
-            avatar: view
-                .members
-                .iter()
-                .find(|member| message["by"].as_str() == Some(member.id.as_str()))
-                .and_then(|member| member.avatar.clone()),
-            name: message["name"].as_str().unwrap_or_default().to_owned(),
-            text: message["text"].as_str().unwrap_or_default().to_owned(),
-            you: message["by"].as_str() == you,
         })
         .collect()
 }
@@ -629,4 +624,21 @@ fn refresh_view(state: &mut RendererState, watch: &Value) {
     view.locked = watch["locked"].as_bool().unwrap_or(false);
     view.max_members = watch["maxMembers"].as_u64().unwrap_or_default() as u32;
     view.members = member_views(watch);
+    view.chat = watch["chat"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|message| fluxa_ui::WatchChatView {
+            id: message["id"].as_u64().unwrap_or_default(),
+            by: message["by"].as_str().unwrap_or_default().to_owned(),
+            avatar: view
+                .members
+                .iter()
+                .find(|member| message["by"].as_str() == Some(member.id.as_str()))
+                .and_then(|member| member.avatar.clone()),
+            name: message["name"].as_str().unwrap_or_default().to_owned(),
+            text: message["text"].as_str().unwrap_or_default().to_owned(),
+            you: message["by"].as_str() == you,
+        })
+        .collect();
 }
