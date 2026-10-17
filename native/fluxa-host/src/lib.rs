@@ -88,6 +88,7 @@ mod accounts;
 mod actions;
 mod ambient;
 mod artwork;
+pub mod dom_images;
 mod bridge_video;
 mod card_menu;
 mod cast;
@@ -615,6 +616,10 @@ impl FluxaHost {
             rebuild_current_ui(state);
             semantics::tree(state)
         })
+    }
+
+    pub fn take_dom_images_json(&self) -> Option<String> {
+        dom_images::take()
     }
 
     pub fn accessibility_json(&self) -> Option<String> {

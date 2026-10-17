@@ -209,7 +209,21 @@ pub(super) fn rounded_artwork(
     }
     let Some(texture) = assets.texture_for(url, target_size, priority) else {
         if url.is_some() {
-            loading_rect(painter, rect, radius);
+            if assets.artwork_failed(url, target_size) {
+                if let Some(url) = url.filter(|_| assets.dom_images()) {
+                    painter.add(egui::Shape::Callback(egui::PaintCallback {
+                        rect,
+                        callback: std::sync::Arc::new(ImageHole {
+                            url: url.to_owned(),
+                            radius,
+                        }),
+                    }));
+                } else {
+                    painter.rect_filled(rect, radius, ink(tone::FAINT));
+                }
+            } else {
+                loading_rect(painter, rect, radius);
+            }
         }
         return false;
     };
@@ -1569,6 +1583,12 @@ pub fn set_liquid_glass(enabled: bool) {
 
 pub(crate) fn liquid_glass() -> bool {
     LIQUID_GLASS.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+#[derive(Clone, Debug)]
+pub struct ImageHole {
+    pub url: String,
+    pub radius: f32,
 }
 
 #[derive(Clone, Copy, Debug)]

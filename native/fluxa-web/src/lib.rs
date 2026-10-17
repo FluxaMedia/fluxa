@@ -80,6 +80,7 @@ impl FluxaWeb {
         image_proxy: Option<String>,
     ) -> Result<FluxaWeb, JsValue> {
         fluxa_host::set_logger(log);
+        fluxa_host::dom_images::set_enabled(true);
         if let Some(proxy) = image_proxy.filter(|proxy| !proxy.is_empty()) {
             fluxa_artwork::set_fetch_proxy(&proxy);
         }
@@ -136,6 +137,10 @@ impl FluxaWeb {
         self.host
             .take_actions_json()
             .filter(|actions| actions != "[]")
+    }
+
+    pub fn take_dom_images(&self) -> Option<String> {
+        self.host.take_dom_images_json()
     }
 
     pub fn accessibility_json(&self) -> Option<String> {
@@ -197,6 +202,7 @@ impl FluxaWeb {
             chapters: Vec::new(),
             buffering: (buffering >= 0.0).then_some(buffering),
             buffered,
+            stalled: buffering >= 0.0,
         };
         if let Ok(mut bridge) = video_bridge().lock() {
             bridge.set_status(status);

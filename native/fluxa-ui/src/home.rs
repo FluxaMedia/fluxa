@@ -51,6 +51,12 @@ pub trait HomeAssets {
     fn texture_size(&self, _url: Option<&str>) -> Option<[u32; 2]> {
         None
     }
+    fn dom_images(&self) -> bool {
+        false
+    }
+    fn artwork_failed(&self, _url: Option<&str>, _target_size: [u32; 2]) -> bool {
+        false
+    }
     fn has_native_emoji(&self) -> bool {
         false
     }

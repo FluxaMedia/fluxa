@@ -45,6 +45,9 @@ pub fn fingerprint(
                     TextureId::User(id) => textures.write_u64(id << 1 | 1),
                 }
             }
+            Primitive::Callback(callback) if crate::hole::is_hole(callback) => {
+                rect(&mut geometry, callback.rect);
+            }
             Primitive::Callback(callback) => {
                 let style = glass_of(callback)?;
                 rect(&mut geometry, callback.rect);
@@ -71,8 +74,10 @@ pub struct EguiWgpuBackend {
 
 impl EguiWgpuBackend {
     pub fn new(device: &wgpu::Device, format: wgpu::TextureFormat) -> Self {
+        let mut renderer = Renderer::new(device, format, RendererOptions::default());
+        crate::hole::install(device, format, &mut renderer.callback_resources);
         Self {
-            renderer: Renderer::new(device, format, RendererOptions::default()),
+            renderer,
             glass: GlassPass::new(device, format),
         }
     }

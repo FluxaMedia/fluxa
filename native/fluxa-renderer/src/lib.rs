@@ -13,6 +13,7 @@ use wgpu::util::DeviceExt;
 
 pub mod egui_wgpu_backend;
 pub mod glass;
+pub mod hole;
 pub mod mirror;
 pub mod platform;
 pub mod queue_gate;

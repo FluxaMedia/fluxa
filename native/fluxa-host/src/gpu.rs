@@ -251,6 +251,12 @@ impl HomeAssets for HostAssets<'_> {
     fn texture_size(&self, url: Option<&str>) -> Option<[u32; 2]> {
         self.artwork.size(url)
     }
+    fn dom_images(&self) -> bool {
+        crate::dom_images::enabled()
+    }
+    fn artwork_failed(&self, url: Option<&str>, target_size: [u32; 2]) -> bool {
+        url.is_some_and(|url| self.artwork.failed(url, target_size))
+    }
     fn cached_texture(&self, url: Option<&str>) -> Option<egui::TextureId> {
         self.artwork.cached_texture(url)
     }
@@ -909,6 +915,9 @@ impl Gpu {
         }
         if self.mirror {
             fluxa_renderer::mirror::mirror_shapes(&mut output.shapes, logical_size[0] as f32);
+        }
+        if crate::dom_images::enabled() {
+            crate::dom_images::lift(&mut output.shapes);
         }
         let text_runs = if self.collect_text {
             collect_text_runs(

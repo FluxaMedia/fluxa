@@ -1,4 +1,5 @@
 import { mountAccessibility } from "./a11y.js";
+import { mountArtwork } from "./artwork.js";
 import init, { FluxaWeb } from "./pkg/fluxa_web.js";
 import { createPlayer } from "./player.js";
 import { exitApp, installRemote, isWebos as webos, mediaAdapter, stageReady, startProxy } from "./webos.js";
@@ -14,6 +15,7 @@ const main = async () => {
   await init();
   const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, proxy);
   const syncAccessibility = mountAccessibility(app, document.getElementById("fluxa"), document.getElementById("a11y"));
+  const syncArtwork = mountArtwork(app, document.getElementById("artwork"));
   addEventListener("resize", () => app.resize());
   const player = createPlayer({ app, video: document.getElementById("video"), proxy, adapter: mediaAdapter });
   installRemote(app, () => {
@@ -32,6 +34,7 @@ const main = async () => {
     }
     player.poll();
     const actions = app.frame();
+    syncArtwork();
     if (actions) {
       for (const action of JSON.parse(actions)) {
         for (const handler of actionHandlers) handler(action);
