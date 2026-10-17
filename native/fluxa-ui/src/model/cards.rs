@@ -146,6 +146,11 @@ pub(crate) fn continue_detail(
                 .replace("%s", &compact_duration((duration - offset) as i64))
         };
     }
+    let is_episode = item.get("lastVideoId").is_some_and(|id| id.is_string())
+        || item.get("lastEpisodeNumber").is_some_and(|number| number.is_number());
+    if detail.is_empty() && is_episode && offset.unwrap_or(0.0) <= 0.0 {
+        detail = localized("auto.up_next", language);
+    }
     let episodes = match item.get("newEpisodes").and_then(serde_json::Value::as_i64) {
         Some(count) if count > 0 => format!("+{count}"),
         _ => String::new(),
