@@ -21,7 +21,14 @@ pub(super) fn draw_sources(
         Color32::WHITE,
         assets,
     );
-    paint_vertical_gradient(&painter, rect, shade(Shade::Faint), shade(Shade::Strong));
+    paint_vertical_gradient(&painter, rect, shade(Shade::Veil), shade(Shade::Strong));
+    if rect.width() >= 900.0 {
+        let info_side = Rect::from_min_max(
+            rect.left_top(),
+            Pos2::new(rect.left() + rect.width() * 0.5, rect.bottom()),
+        );
+        paint_horizontal_gradient(&painter, info_side, shade(Shade::Strong), Color32::TRANSPARENT);
+    }
     let metrics = metrics_for_assets(viewport, assets);
     let margin = metrics.overlay_margin;
     let wide = rect.width() >= 900.0;
