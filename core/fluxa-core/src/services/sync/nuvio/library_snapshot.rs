@@ -31,7 +31,7 @@ pub(crate) fn provider_library_snapshot_json(args_json: &str) -> Option<String> 
         }
     }
     let watching: Value = serde_json::from_str(&resolve_continue_watching_json(
-        &json!({"progress": progress, "addonMetas": {}}).to_string(),
+        &json!({"progress": progress, "addonMetas": metas}).to_string(),
     )?)
     .ok()?;
     let library_by_id: std::collections::HashMap<&str, &Value> = library
