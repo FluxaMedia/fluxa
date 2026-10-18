@@ -6,6 +6,7 @@ use crate::annexb::{Converter, is_annexb};
 use crate::capabilities::Capabilities;
 use crate::diagnostics::note;
 use crate::dovi;
+use crate::hdr10plus;
 use crate::hdr::{HdrInfo, HdrKind, Mastering, kind_for_transfer};
 use crate::load::{AudioCodec, AudioStream, DolbyVision, VideoCodec, VideoStream};
 use crate::player::{Demuxer, MediaInfo, Packet, TrackInfo};
@@ -20,6 +21,7 @@ pub struct FfmpegDemuxer {
     converter: Option<Converter>,
     aac_raw: bool,
     dovi_mode: Option<dovi::Mode>,
+    hevc: bool,
     capabilities: Capabilities,
     dovi_stats: dovi::Stats,
     transcoder: Option<Transcoder>,
@@ -34,7 +36,7 @@ impl FfmpegDemuxer {
 
 impl Default for FfmpegDemuxer {
     fn default() -> FfmpegDemuxer {
-        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false, dovi_mode: None, capabilities: Capabilities::default(), dovi_stats: dovi::Stats::default(), transcoder: None, queue: VecDeque::new() }
+        FfmpegDemuxer { input: None, video: None, audio: None, subtitle: None, converter: None, aac_raw: false, dovi_mode: None, hevc: false, capabilities: Capabilities::default(), dovi_stats: dovi::Stats::default(), transcoder: None, queue: VecDeque::new() }
     }
 }
 
@@ -180,16 +182,24 @@ fn video_codec(id: Id) -> Option<VideoCodec> {
     })
 }
 
-fn audio_codec(id: Id, profile: i32, raw: bool) -> Option<AudioCodec> {
+fn audio_codec(id: Id, profile: i32, raw: bool, dts: bool) -> Option<AudioCodec> {
     Some(match id {
         Id::AAC => AudioCodec::Aac { profile: profile.clamp(0, 255) as u8, raw },
         Id::AC3 => AudioCodec::Ac3,
         Id::EAC3 => AudioCodec::Eac3 { atmos: profile == ffi::AV_PROFILE_EAC3_DDP_ATMOS },
         Id::OPUS => AudioCodec::Opus,
         Id::MP3 => AudioCodec::Mp3,
-        Id::DTS => AudioCodec::Dts,
+        Id::DTS if dts => match profile {
+            ffi::AV_PROFILE_DTS_ES => AudioCodec::DtsEs,
+            ffi::AV_PROFILE_DTS_HD_MA_X | ffi::AV_PROFILE_DTS_HD_MA_X_IMAX => AudioCodec::DtsX,
+            _ => AudioCodec::Dts,
+        },
         _ => return None,
     })
+}
+
+fn eac3_output(capabilities: &Capabilities) -> bool {
+    capabilities.eac3_out && transcode::eac3_available()
 }
 
 fn subtitle_format(id: Id) -> Option<SubtitleFormat> {
@@ -201,7 +211,7 @@ fn subtitle_format(id: Id) -> Option<SubtitleFormat> {
     })
 }
 
-fn audio_stream(stream: &format::stream::Stream) -> Option<(AudioStream, bool, bool)> {
+fn audio_stream(stream: &format::stream::Stream, capabilities: &Capabilities) -> Option<(AudioStream, bool, bool)> {
     let parameters = stream.parameters();
     let extra = extradata(&parameters);
     let (channels, rate, profile) = unsafe {
@@ -209,12 +219,13 @@ fn audio_stream(stream: &format::stream::Stream) -> Option<(AudioStream, bool, b
         (raw.ch_layout.nb_channels as u32, raw.sample_rate as u32, raw.profile)
     };
     let raw = !extra.is_empty();
-    let Some(codec) = audio_codec(parameters.id(), profile, raw) else {
+    let Some(codec) = audio_codec(parameters.id(), profile, raw, capabilities.dts == Some(true)) else {
         if !transcode::supported(parameters.id()) {
             return None;
         }
         let channels = transcode::output_layout(channels as i32).channels() as u32;
-        let stream = AudioStream { codec: AudioCodec::Ac3, channels, sample_rate: transcode::OUT_RATE, extradata: Vec::new() };
+        let codec = if eac3_output(capabilities) { AudioCodec::Eac3 { atmos: false } } else { AudioCodec::Ac3 };
+        let stream = AudioStream { codec, channels, sample_rate: transcode::output_rate(rate), extradata: Vec::new() };
         return Some((stream, false, true));
     };
     Some((AudioStream { codec, channels, sample_rate: rate, extradata: extra }, raw, false))
@@ -245,6 +256,9 @@ impl Demuxer for FfmpegDemuxer {
         };
         let rate = stream.avg_frame_rate();
         let fps = (rate.numerator() > 0 && rate.denominator() > 0).then(|| (rate.numerator() as u32, rate.denominator() as u32));
+        if codec == VideoCodec::H264 && unsafe { (*parameters.as_ptr()).profile } == ffi::AV_PROFILE_H264_HIGH_10 {
+            return Err("10-bit H.264 cannot be decoded by this TV".into());
+        }
         let extra = extradata(&parameters);
         self.converter = match codec {
             VideoCodec::H264 => Converter::avcc(&extra),
@@ -252,6 +266,7 @@ impl Demuxer for FfmpegDemuxer {
             _ => None,
         };
         self.video = Some(stream.index());
+        self.hevc = codec == VideoCodec::H265;
         let mut dolby = None;
         let mut hdr = hdr_info(&parameters);
         self.dovi_mode = None;
@@ -287,14 +302,14 @@ impl Demuxer for FfmpegDemuxer {
         for stream in input.streams() {
             match stream.parameters().medium() {
                 media::Type::Audio => {
-                    let Some((parsed, raw, convert)) = audio_stream(&stream) else {
+                    let Some((parsed, raw, convert)) = audio_stream(&stream, &self.capabilities) else {
                         continue;
                     };
                     tracks.push(track_info(&stream, false));
                     if Some(stream.index()) == best {
                         self.transcoder = None;
                         if convert {
-                            match Transcoder::new(&stream.parameters()) {
+                            match Transcoder::new(&stream.parameters(), eac3_output(&self.capabilities)) {
                                 Ok(transcoder) => self.transcoder = Some(transcoder),
                                 Err(_) => continue,
                             }
@@ -346,6 +361,9 @@ impl Demuxer for FfmpegDemuxer {
                 continue;
             };
             let base = stream.time_base();
+            if to_ns(pts, base) < 0 {
+                continue;
+            }
             if is_audio {
                 if let Some(transcoder) = self.transcoder.as_mut() {
                     for (pts_ns, data) in transcoder.push(&packet, to_ns(pts, base)) {
@@ -360,6 +378,10 @@ impl Demuxer for FfmpegDemuxer {
             let data = match (&self.converter, is_video) {
                 (Some(converter), true) if !is_annexb(data) => converter.convert(data, packet.is_key()),
                 _ => data.to_vec(),
+            };
+            let data = match (is_video && self.hevc, hdr10plus::strip(&data)) {
+                (true, Some(stripped)) => stripped,
+                _ => data,
             };
             let data = if let (true, Some(mode)) = (is_video, self.dovi_mode) {
                 let before = self.dovi_stats;
@@ -381,8 +403,8 @@ impl Demuxer for FfmpegDemuxer {
         let input = self.input.as_ref().ok_or("not open")?;
         let index = stream_index(id).ok_or("bad track id")?;
         let stream = input.stream(index).ok_or("no such track")?;
-        let (parsed, raw, convert) = audio_stream(&stream).ok_or("unsupported audio codec")?;
-        self.transcoder = if convert { Some(Transcoder::new(&stream.parameters())?) } else { None };
+        let (parsed, raw, convert) = audio_stream(&stream, &self.capabilities).ok_or("unsupported audio codec")?;
+        self.transcoder = if convert { Some(Transcoder::new(&stream.parameters(), eac3_output(&self.capabilities))?) } else { None };
         self.queue.clear();
         self.aac_raw = raw;
         self.audio = Some(index);

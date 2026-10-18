@@ -14,6 +14,7 @@ use fluxa_webos::crash;
 use fluxa_webos::diagnostics::{Report, note, trace};
 use fluxa_webos::player::Player;
 use fluxa_webos::remote::{Remote, map};
+use fluxa_webos::screensaver;
 use fluxa_webos::sdl::{Event, Sdl};
 use fluxa_webos::{LoadOptions, StarfishPipeline};
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle};
@@ -61,8 +62,7 @@ fn key(host: &FluxaHost, remote: Remote) {
 fn main() {
     let _sentry = crash::install_default(env!("CARGO_PKG_VERSION"));
     let report = Report::collect();
-    let webos_major = report.webos_major().unwrap_or(5);
-    note("fluxa.webos_major", webos_major.to_string());
+    let os_major = report.webos_major();
 
     let sdl = match Sdl::open("Fluxa", 1920, 1080, true) {
         Ok(sdl) => sdl,
@@ -100,7 +100,14 @@ fn main() {
     let surface = unsafe { NativeSurface::new(BACKENDS, move || target(display, window)) };
     host.surface_created(surface, width, height);
 
-    let caps = capabilities::query(webos_major);
+    let mut caps = capabilities::query(os_major.unwrap_or(5));
+    let webos_major = os_major.or(caps.platform_code).unwrap_or(5);
+    if webos_major < 4 {
+        caps.dolby_vision = Some(false);
+    }
+    note("fluxa.webos_major", webos_major.to_string());
+    note("tv.supports_dts", format!("{:?}", caps.dts));
+    note("tv.earc_eac3", caps.eac3_out.to_string());
     note("tv.supports_hdr", format!("{:?}", caps.hdr));
     note("tv.supports_dolby_vision", format!("{:?}", caps.dolby_vision));
 
@@ -122,6 +129,7 @@ fn main() {
         }
     };
 
+    let mut inhibitor = None;
     'run: loop {
         while let Some(event) = sdl.poll(if host.render_due() { 0 } else { 8 }) {
             match event {
@@ -164,6 +172,15 @@ fn main() {
                     }
                 }
             }
+        }
+        let playing = player.as_ref().is_some_and(|player| {
+            let status = player.status();
+            status.duration > 0.0 && !status.paused
+        });
+        if !playing {
+            inhibitor = None;
+        } else if inhibitor.is_none() {
+            inhibitor = screensaver::inhibit(APP_ID);
         }
         if host.render_due() {
             host.render();

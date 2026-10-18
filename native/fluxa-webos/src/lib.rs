@@ -12,6 +12,7 @@ pub mod bridge;
 mod base64;
 pub mod diagnostics;
 mod events;
+pub mod hdr10plus;
 mod feed;
 mod ffi;
 mod hdr;
@@ -21,6 +22,8 @@ pub mod remote;
 mod starfish;
 pub mod acb;
 pub mod capabilities;
+pub mod luna;
+pub mod screensaver;
 pub mod player;
 pub mod subtitle;
 

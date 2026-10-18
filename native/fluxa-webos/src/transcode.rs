@@ -5,11 +5,22 @@ use ffmpeg_next::{
     frame, software,
 };
 
-pub const OUT_RATE: u32 = 48_000;
 const FRAME_SAMPLES: usize = 1536;
 
 pub fn supported(id: Id) -> bool {
     ffmpeg::decoder::find(id).is_some() && ffmpeg::encoder::find(Id::AC3).is_some()
+}
+
+pub fn eac3_available() -> bool {
+    ffmpeg::encoder::find(Id::EAC3).is_some()
+}
+
+pub fn output_rate(source: u32) -> u32 {
+    match source {
+        11_025 | 22_050 | 44_100 | 88_200 | 176_400 | 352_800 => 44_100,
+        32_000 => 32_000,
+        _ => 48_000,
+    }
 }
 
 pub fn output_layout(channels: i32) -> ChannelLayout {
@@ -22,6 +33,8 @@ pub fn output_layout(channels: i32) -> ChannelLayout {
 
 pub struct Transcoder {
     parameters: Parameters,
+    eac3: bool,
+    rate: u32,
     decoder: ffmpeg::codec::decoder::Audio,
     encoder: ffmpeg::codec::encoder::audio::Encoder,
     resampler: Option<software::resampling::Context>,
@@ -37,7 +50,7 @@ fn error(error: ffmpeg::Error) -> String {
 }
 
 impl Transcoder {
-    pub fn new(parameters: &Parameters) -> Result<Transcoder, String> {
+    pub fn new(parameters: &Parameters, eac3: bool) -> Result<Transcoder, String> {
         let decoder = Context::from_parameters(parameters.clone())
             .map_err(error)?
             .decoder()
@@ -45,16 +58,19 @@ impl Transcoder {
             .map_err(error)?;
         let channels = decoder.channels() as i32;
         let layout = output_layout(channels);
-        let codec = ffmpeg::encoder::find(Id::AC3).ok_or("no AC3 encoder")?;
+        let rate = output_rate(decoder.rate());
+        let codec = ffmpeg::encoder::find(if eac3 { Id::EAC3 } else { Id::AC3 }).ok_or("no AC3 encoder")?;
         let mut encoder = Context::new_with_codec(codec).encoder().audio().map_err(error)?;
-        encoder.set_rate(OUT_RATE as i32);
+        encoder.set_rate(rate as i32);
         encoder.set_channel_layout(layout);
         encoder.set_format(Sample::F32(Type::Planar));
         encoder.set_bit_rate(if layout.channels() > 2 { 640_000 } else { 192_000 });
-        encoder.set_time_base(Rational::new(1, OUT_RATE as i32));
+        encoder.set_time_base(Rational::new(1, rate as i32));
         let encoder = encoder.open_as(codec).map_err(error)?;
         Ok(Transcoder {
             parameters: parameters.clone(),
+            eac3,
+            rate,
             decoder,
             encoder,
             resampler: None,
@@ -70,8 +86,12 @@ impl Transcoder {
         self.layout.channels() as u32
     }
 
+    pub fn rate(&self) -> u32 {
+        self.rate
+    }
+
     pub fn restart(&self) -> Result<Transcoder, String> {
-        Transcoder::new(&self.parameters)
+        Transcoder::new(&self.parameters, self.eac3)
     }
 
     pub fn push(&mut self, packet: &ffmpeg::Packet, pts_ns: i64) -> Vec<(i64, Vec<u8>)> {
@@ -103,7 +123,7 @@ impl Transcoder {
                 decoded.rate(),
                 Sample::F32(Type::Planar),
                 self.layout,
-                OUT_RATE,
+                self.rate,
             )
             .ok();
         }
@@ -122,7 +142,7 @@ impl Transcoder {
     fn encode_ready(&mut self, out: &mut Vec<(i64, Vec<u8>)>) {
         while self.pending.first().is_some_and(|channel| channel.len() >= FRAME_SAMPLES) {
             let mut input = frame::Audio::new(Sample::F32(Type::Planar), FRAME_SAMPLES, self.layout);
-            input.set_rate(OUT_RATE);
+            input.set_rate(self.rate);
             input.set_pts(Some(self.frames_out * FRAME_SAMPLES as i64));
             for (channel, pending) in self.pending.iter_mut().enumerate() {
                 input.plane_mut::<f32>(channel).copy_from_slice(&pending[..FRAME_SAMPLES]);
@@ -137,11 +157,25 @@ impl Transcoder {
             while self.encoder.receive_packet(&mut encoded).is_ok() {
                 let samples = self.packets_out * FRAME_SAMPLES as i64;
                 self.packets_out += 1;
-                let pts_ns = start + (samples as i128 * 1_000_000_000 / OUT_RATE as i128) as i64;
+                let pts_ns = start + (samples as i128 * 1_000_000_000 / self.rate as i128) as i64;
                 if let Some(data) = encoded.data() {
                     out.push((pts_ns, data.to_vec()));
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sample_rates_stay_in_their_family() {
+        assert_eq!(output_rate(44_100), 44_100);
+        assert_eq!(output_rate(22_050), 44_100);
+        assert_eq!(output_rate(32_000), 32_000);
+        assert_eq!(output_rate(96_000), 48_000);
+        assert_eq!(output_rate(24_000), 48_000);
     }
 }

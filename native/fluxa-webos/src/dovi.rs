@@ -1,5 +1,6 @@
 use dolby_vision::rpu::{ConversionMode, dovi_rpu::DoviRpu};
 
+use crate::annexb::split;
 use crate::capabilities::Capabilities;
 
 const NAL_RPU: u8 = 62;
@@ -50,20 +51,6 @@ pub struct Stats {
     pub dropped: u32,
 }
 
-fn start_codes(data: &[u8]) -> Vec<(usize, usize)> {
-    let mut found = Vec::new();
-    let mut i = 0;
-    while i + 3 <= data.len() {
-        if data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 {
-            found.push((i, i + 3));
-            i += 3;
-        } else {
-            i += 1;
-        }
-    }
-    found
-}
-
 fn nal_type(nal: &[u8]) -> Option<u8> {
     nal.first().map(|byte| (byte >> 1) & 0x3f)
 }
@@ -78,19 +65,12 @@ fn convert(nal: &[u8]) -> Result<Vec<u8>, ()> {
 }
 
 pub fn rewrite(data: &[u8], mode: Mode, stats: &mut Stats) -> Vec<u8> {
-    let starts = start_codes(data);
-    if starts.is_empty() {
+    let nals = split(data);
+    if nals.is_empty() {
         return data.to_vec();
     }
     let mut out = Vec::with_capacity(data.len());
-    for (index, &(code_start, payload)) in starts.iter().enumerate() {
-        let end = starts.get(index + 1).map_or(data.len(), |next| {
-            let mut end = next.0;
-            while end > payload && data[end - 1] == 0 {
-                end -= 1;
-            }
-            end
-        });
+    for (code_start, payload, end) in nals {
         let nal = &data[payload..end];
         let prefix = &data[code_start..payload];
         match nal_type(nal) {
@@ -183,21 +163,21 @@ mod tests {
 
     #[test]
     fn dolby_tv_keeps_profile_8_and_converts_7() {
-        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(true) };
+        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(true), ..Capabilities::default() };
         assert_eq!(plan(8, 1, &caps, None), Plan::Pass);
         assert_eq!(plan(7, 6, &caps, None), Plan::Rewrite(Mode::To81));
     }
 
     #[test]
     fn tv_without_dolby_strips_to_the_base_layer() {
-        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(false) };
+        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(false), ..Capabilities::default() };
         assert_eq!(plan(8, 1, &caps, None), Plan::Rewrite(Mode::Strip));
         assert_eq!(plan(7, 6, &caps, None), Plan::Rewrite(Mode::Strip));
     }
 
     #[test]
     fn profile_5_has_no_usable_base_layer() {
-        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(false) };
+        let caps = Capabilities { hdr: Some(true), dolby_vision: Some(false), ..Capabilities::default() };
         assert!(matches!(plan(5, 0, &caps, None), Plan::Unsupported(_)));
     }
 

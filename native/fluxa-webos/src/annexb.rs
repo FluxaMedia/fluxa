@@ -75,6 +75,33 @@ impl Converter {
     }
 }
 
+pub fn split(data: &[u8]) -> Vec<(usize, usize, usize)> {
+    let mut starts = Vec::new();
+    let mut i = 0;
+    while i + 3 <= data.len() {
+        if data[i] == 0 && data[i + 1] == 0 && data[i + 2] == 1 {
+            starts.push((i, i + 3));
+            i += 3;
+        } else {
+            i += 1;
+        }
+    }
+    starts
+        .iter()
+        .enumerate()
+        .map(|(index, &(code_start, payload))| {
+            let end = starts.get(index + 1).map_or(data.len(), |next| {
+                let mut end = next.0;
+                while end > payload && data[end - 1] == 0 {
+                    end -= 1;
+                }
+                end
+            });
+            (code_start, payload, end)
+        })
+        .collect()
+}
+
 pub fn is_annexb(packet: &[u8]) -> bool {
     packet.starts_with(&[0, 0, 1]) || packet.starts_with(&START)
 }
