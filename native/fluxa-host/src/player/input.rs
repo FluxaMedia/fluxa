@@ -68,6 +68,8 @@ pub(crate) fn activate(state: &mut RendererState, node: u64) {
         fluxa_ui::NODE_PLAYER_SPEED => open_menu(state, menu::Menu::Speed),
         fluxa_ui::NODE_PLAYER_EPISODES => open_menu(state, menu::Menu::Episodes),
         fluxa_ui::NODE_PLAYER_SETTINGS => open_menu(state, menu::Menu::Settings),
+        fluxa_ui::NODE_PLAYER_CHAPTERS => open_menu(state, menu::Menu::Chapters),
+        fluxa_ui::NODE_PLAYER_ANIME4K => toggle_upscaling(state),
         fluxa_ui::NODE_PLAYER_NEXT => start_next(state, true),
         fluxa_ui::NODE_PLAYER_PREVIOUS => menu::previous(state),
         fluxa_ui::NODE_PLAYER_PANEL_CLOSE => {
@@ -375,6 +377,7 @@ fn set_volume(state: &mut RendererState, volume: f64) {
         return;
     };
     player.status.volume = volume;
+    player.set_volume_pin(volume);
     player.toast("volume", volume);
     if let Some(video) = state.video.as_mut() {
         video.command(VideoCommand::Mpv(vec![

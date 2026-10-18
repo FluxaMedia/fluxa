@@ -106,6 +106,7 @@ fn dispatch(state: &RendererState, action: Value) {
 
 pub(crate) fn tick(state: &mut RendererState) {
     crate::preview::watch_panel_demo(state);
+    crate::preview::player_demo(state);
     let Some(session) = state.session.as_ref() else {
         return;
     };

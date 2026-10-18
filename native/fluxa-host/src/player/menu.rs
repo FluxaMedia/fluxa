@@ -1,5 +1,5 @@
 use super::*;
-use fluxa_ui::{PanelRow, PlayerPanel, localized};
+use fluxa_ui::{PanelRow, PanelStep, PlayerPanel, localized};
 
 const SPEEDS: [f64; 7] = [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0];
 const ASPECTS: [&str; 5] = ["-1", "16:9", "4:3", "21:9", "1:1"];
@@ -12,6 +12,7 @@ pub(super) enum Menu {
     Tracks,
     Speed,
     Episodes,
+    Chapters,
     Settings,
     Delay(bool),
     Style,
@@ -25,6 +26,7 @@ enum Item {
     Subtitle(Option<String>),
     Speed(f64),
     Episode(String),
+    Seek(f64),
     Aspect,
     AudioDelay(f64),
     SubtitleDelay(f64),
@@ -37,6 +39,8 @@ enum Item {
     Stats,
     OpenStyle,
     Style(&'static str),
+    StyleStep(&'static str, i32),
+    StyleSet(&'static str, &'static str),
     OpenSync,
     Sync(subtitle_sync::Kind),
     SyncReset,
@@ -129,6 +133,203 @@ fn track_row(
     )
 }
 
+fn section(label: String) -> (PanelRow, Item) {
+    (
+        PanelRow {
+            label,
+            group: true,
+            ..Default::default()
+        },
+        Item::None,
+    )
+}
+
+fn style_rows(player: &PlayerSession) -> Vec<(PanelRow, Item)> {
+    let language = player.language.as_str();
+    let text = |key: &str| localized(key, language);
+    let lookup = |key: &str| {
+        player
+            .style
+            .get(key)
+            .and_then(Value::as_str)
+            .map(ToOwned::to_owned)
+    };
+    let value_of = |key: &'static str| {
+        let options = style_options(key);
+        let current =
+            lookup(key).unwrap_or_else(|| options.first().copied().unwrap_or("").to_owned());
+        fluxa_ui::option_label(key, &current, language)
+    };
+    let numeric = |label: String, key: &'static str| {
+        stepper(
+            label,
+            value_of(key),
+            Item::StyleStep(key, -1),
+            Item::StyleStep(key, 1),
+        )
+    };
+    let swatches = |label: String, key: &'static str| {
+        let options = style_options(key);
+        let current =
+            lookup(key).unwrap_or_else(|| options.first().copied().unwrap_or("").to_owned());
+        let mut rows = vec![(
+            PanelRow {
+                label,
+                step: Some(PanelStep::Swatches(options.len())),
+                ..Default::default()
+            },
+            Item::None,
+        )];
+        rows.extend(options.iter().map(|option| {
+            (
+                PanelRow {
+                    value: Some((*option).to_owned()),
+                    selected: *option == current,
+                    step: Some(PanelStep::Swatch),
+                    ..Default::default()
+                },
+                Item::StyleSet(key, option),
+            )
+        }));
+        rows
+    };
+    let switch = |label: String, key: &'static str| {
+        let mut entry = row(label, None, false, Item::Style(key));
+        entry.0.switch = Some(
+            player
+                .style
+                .get(key)
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
+        );
+        entry
+    };
+    let choices = |key: &'static str| {
+        let options = style_options(key);
+        let current =
+            lookup(key).unwrap_or_else(|| options.first().copied().unwrap_or("").to_owned());
+        let mut rows = vec![(
+            PanelRow {
+                step: Some(PanelStep::Choices(options.len())),
+                ..Default::default()
+            },
+            Item::None,
+        )];
+        rows.extend(options.iter().map(|option| {
+            (
+                PanelRow {
+                    label: fluxa_ui::option_label(key, option, language),
+                    selected: *option == current,
+                    step: Some(PanelStep::Choice),
+                    ..Default::default()
+                },
+                Item::StyleSet(key, option),
+            )
+        }));
+        rows
+    };
+    let mut rows = vec![section(text("player.style_text"))];
+    rows.extend(numeric(text("player.style_size"), "subtitleSize"));
+    rows.extend(swatches(text("player.style_color"), "subtitleColor"));
+    rows.extend(numeric(text("player.style_opacity"), "subtitleTextOpacity"));
+    rows.push(switch(text("player.style_bold"), "subtitleBold"));
+    rows.push(section(text("player.style_border")));
+    rows.extend(swatches(text("player.style_color"), "subtitleOutlineColor"));
+    rows.extend(numeric(
+        text("player.style_thickness"),
+        "subtitleOutlineSize",
+    ));
+    rows.extend(numeric(
+        text("player.style_opacity"),
+        "subtitleOutlineOpacity",
+    ));
+    rows.push(section(text("player.style_background")));
+    rows.extend(swatches(
+        text("player.style_color"),
+        "subtitleBackgroundColor",
+    ));
+    rows.extend(numeric(
+        text("player.style_opacity"),
+        "subtitleBackgroundOpacity",
+    ));
+    rows.push(section(text("player.style_shadow")));
+    rows.push(switch(text("player.style_shadow"), "subtitleShadow"));
+    rows.push(section(text("player.style_position")));
+    rows.extend(choices("subtitlePosition"));
+    rows.push(section(text("player.style_sync")));
+    rows.extend(stepper(
+        text("player.style_delay"),
+        format!("{:+.1}s", player.subtitle_delay),
+        Item::SubtitleDelay(-DELAY_STEP),
+        Item::SubtitleDelay(DELAY_STEP),
+    ));
+    rows
+}
+
+fn language_badge(code: Option<&str>) -> Option<String> {
+    let code = code?.to_ascii_lowercase();
+    let short = match code.as_str() {
+        "tur" => "tr",
+        "eng" => "en",
+        "jpn" => "ja",
+        "fre" | "fra" => "fr",
+        "ger" | "deu" => "de",
+        "spa" => "es",
+        "ita" => "it",
+        "por" => "pt",
+        "rus" => "ru",
+        "kor" => "ko",
+        "chi" | "zho" => "zh",
+        "ara" => "ar",
+        "heb" => "he",
+        other if other.len() == 2 => other,
+        other => other.get(..2)?,
+    };
+    Some(short.to_ascii_uppercase())
+}
+
+fn flat_tracks(
+    rows: &mut Vec<(PanelRow, Item)>,
+    tracks: Vec<&VideoTrack>,
+    language: &str,
+    subtitles: bool,
+) {
+    for (index, track) in tracks.into_iter().enumerate() {
+        let (mut panel, item) = track_row(track, index, language, subtitles);
+        panel.badge = language_badge(track.language.as_deref());
+        rows.push((panel, item));
+    }
+}
+
+fn stepper(label: String, value: String, minus: Item, plus: Item) -> Vec<(PanelRow, Item)> {
+    let part = |label: String, step: PanelStep, item: Item| {
+        (
+            PanelRow {
+                label,
+                step: Some(step),
+                ..Default::default()
+            },
+            item,
+        )
+    };
+    vec![
+        part(label, PanelStep::Value, Item::None).with_value(value),
+        part(String::new(), PanelStep::Minus, minus),
+        part(String::new(), PanelStep::Plus, plus),
+    ]
+}
+
+trait WithValue {
+    fn with_value(self, value: String) -> Self;
+}
+
+impl WithValue for (PanelRow, Item) {
+    fn with_value(mut self, value: String) -> Self {
+        self.0.value = Some(value);
+        self
+    }
+}
+
 fn language_groups<'a>(
     tracks: Vec<&'a VideoTrack>,
     language: &str,
@@ -216,6 +417,37 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
             rows.extend(members);
             (String::new(), rows)
         }
+        Menu::Tracks if player.compact => {
+            let mut rows = vec![heading(text("player.audio"))];
+            flat_tracks(
+                &mut rows,
+                player.tracks.iter().filter(|t| !t.subtitle).collect(),
+                language,
+                false,
+            );
+            rows.extend(stepper(
+                text("player.audio_delay"),
+                format!("{:.1}s", player.audio_delay),
+                Item::AudioDelay(-DELAY_STEP),
+                Item::AudioDelay(DELAY_STEP),
+            ));
+            rows.push(heading(text("player.subtitles")));
+            let subtitles: Vec<&VideoTrack> = player.tracks.iter().filter(|t| t.subtitle).collect();
+            let mut off = row(
+                text("player.off"),
+                None,
+                !subtitles.iter().any(|track| track.selected),
+                Item::Subtitle(None),
+            );
+            off.0.badge = Some("–".to_owned());
+            rows.push(off);
+            flat_tracks(&mut rows, subtitles, language, true);
+            let mut style = row(text("player.subtitle_style"), None, false, Item::OpenStyle);
+            style.0.icon = Some("Settings".to_owned());
+            style.0.chevron = true;
+            rows.push(style);
+            (String::new(), rows)
+        }
         Menu::Tracks => {
             let mut rows = vec![heading(text("player.audio"))];
             grouped(
@@ -251,20 +483,54 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
             let rows = SPEEDS
                 .iter()
                 .map(|speed| {
-                    let label = if *speed == 1.0 {
+                    let label = if *speed == 1.0 && !player.compact {
                         text("player.speed_standard")
                     } else {
                         format!("{speed}x")
                     };
+                    let value =
+                        (*speed == 1.0 && player.compact).then(|| text("player.speed_standard"));
                     row(
                         label,
-                        None,
+                        value,
                         (player.speed - speed).abs() < 0.01,
                         Item::Speed(*speed),
                     )
                 })
                 .collect();
-            (text("player.speed"), rows)
+            let title = if player.compact {
+                "player.speed_title"
+            } else {
+                "player.speed"
+            };
+            (text(title), rows)
+        }
+        Menu::Chapters => {
+            let chapters = &player.status.chapters;
+            let position = player.status.position;
+            let duration = player.status.duration;
+            let current = chapters.iter().rposition(|(start, _)| *start <= position);
+            let rows = chapters
+                .iter()
+                .enumerate()
+                .map(|(index, (start, name))| {
+                    let end = chapters.get(index + 1).map_or(duration, |next| next.0);
+                    let (mut panel, item) = row(
+                        name.clone(),
+                        None,
+                        current == Some(index),
+                        Item::Seek(*start),
+                    );
+                    panel.detail = Some(format!(
+                        "{} – {}",
+                        fluxa_ui::format_time(*start),
+                        fluxa_ui::format_time(end)
+                    ));
+                    panel.frame = Some(*start);
+                    (panel, item)
+                })
+                .collect();
+            (text("player.chapters"), rows)
         }
         Menu::Episodes => {
             let rows = episodes(player)
@@ -359,6 +625,7 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
             ]);
             (text("player.settings"), rows)
         }
+        Menu::Style if player.compact => (text("player.subtitle_style"), style_rows(player)),
         Menu::Style => {
             let rows = fluxa_ui::subtitle_style_rows(language)
                 .into_iter()
@@ -426,15 +693,22 @@ fn items(player: &PlayerSession, menu: Menu) -> (String, Vec<(PanelRow, Item)>) 
         }
         Menu::SyncCues => {
             let mut rows = vec![heading(text("player.sync_pick"))];
-            rows.extend(player.sync.cues.iter().enumerate().map(|(index, (start, line))| {
-                let stamp = format!("{}:{:02}", (*start / 60.0) as u32, *start as u32 % 60);
-                row(
-                    line.replace('\n', " "),
-                    Some(stamp),
-                    false,
-                    Item::SyncCue(index),
-                )
-            }));
+            rows.extend(
+                player
+                    .sync
+                    .cues
+                    .iter()
+                    .enumerate()
+                    .map(|(index, (start, line))| {
+                        let stamp = format!("{}:{:02}", (*start / 60.0) as u32, *start as u32 % 60);
+                        row(
+                            line.replace('\n', " "),
+                            Some(stamp),
+                            false,
+                            Item::SyncCue(index),
+                        )
+                    }),
+            );
             (text("player.subtitle_sync"), rows)
         }
         Menu::Delay(subtitles) => {
@@ -481,6 +755,7 @@ pub(super) fn model(player: &PlayerSession, menu: Menu) -> PlayerPanel {
         message: None,
         rows: rows.into_iter().map(|(row, _)| row).collect(),
         list: true,
+        chips: player.compact && menu == Menu::Speed,
         look: (menu == Menu::Style).then(|| fluxa_ui::SubtitleLook::from_values(&player.style)),
     }
 }
@@ -541,6 +816,10 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
             command(state, VideoCommand::SetSpeed(speed));
         }
         Item::Episode(id) => start_episode(state, &id),
+        Item::Seek(time) => {
+            player.panel = None;
+            command(state, VideoCommand::SeekTo(time));
+        }
         Item::Aspect => {
             player.aspect = (player.aspect + 1) % ASPECTS.len();
             let value = ASPECTS[player.aspect];
@@ -575,6 +854,8 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
         Item::SyncReset => subtitle_sync::reset(state),
         Item::SyncCue(index) => subtitle_sync::pick_cue(state, index),
         Item::Style(key) => step_style(state, key),
+        Item::StyleStep(key, direction) => shift_style(state, key, direction),
+        Item::StyleSet(key, option) => set_style(state, key, json!(option)),
         Item::Upscaling => super::toggle_upscaling(state),
         Item::UpscalingMode => super::step_upscaling_mode(state, 1),
         Item::Fit => super::step_fit(state, 1, true),
@@ -588,11 +869,15 @@ pub(super) fn activate_row(state: &mut RendererState, menu: Menu, index: usize) 
     }
 }
 
-fn step_style(state: &mut RendererState, key: &'static str) {
-    let options = fluxa_ui::subtitle_style_rows("en")
+fn style_options(key: &str) -> &'static [&'static str] {
+    fluxa_ui::subtitle_style_rows("en")
         .into_iter()
         .find_map(|(name, _, options)| (name == key).then_some(options))
-        .unwrap_or_default();
+        .unwrap_or_default()
+}
+
+fn step_style(state: &mut RendererState, key: &'static str) {
+    let options = style_options(key);
     let current = state.settings.values.get(key).cloned();
     let value = if options.is_empty() {
         json!(!current.and_then(|value| value.as_bool()).unwrap_or(false))
@@ -604,6 +889,25 @@ fn step_style(state: &mut RendererState, key: &'static str) {
             .map_or(0, |at| (at + 1) % options.len());
         json!(options[at])
     };
+    set_style(state, key, value);
+}
+
+fn shift_style(state: &mut RendererState, key: &'static str, direction: i32) {
+    let options = style_options(key);
+    let at = state
+        .settings
+        .values
+        .get(key)
+        .and_then(Value::as_str)
+        .and_then(|current| options.iter().position(|option| *option == current))
+        .unwrap_or(0) as i32;
+    let next = (at + direction).clamp(0, options.len() as i32 - 1);
+    if let Some(option) = options.get(next as usize) {
+        set_style(state, key, json!(option));
+    }
+}
+
+fn set_style(state: &mut RendererState, key: &'static str, value: Value) {
     if let Some(values) = state.settings.values.as_object_mut() {
         values.insert(key.to_owned(), value.clone());
     }
@@ -638,7 +942,11 @@ pub(super) fn tick_style(state: &mut RendererState) {
 
 pub(super) fn tick_subtitle_lift(state: &mut RendererState) {
     let viewport = crate::input::logical_viewport(state);
-    let Some(player) = state.player.as_mut().filter(|player| player.loaded_url.is_some()) else {
+    let Some(player) = state
+        .player
+        .as_mut()
+        .filter(|player| player.loaded_url.is_some())
+    else {
         return;
     };
     let plan = core_value(

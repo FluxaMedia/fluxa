@@ -20,6 +20,48 @@ pub(crate) fn gallery() -> Option<String> {
     Some(scene.trim_start_matches('/').to_owned())
 }
 
+pub(crate) fn player_scene() -> Option<String> {
+    let target = setting("FLUXA_PREVIEW")?;
+    let scene = target.strip_prefix("player")?;
+    Some(scene.trim_start_matches('/').to_owned())
+}
+
+pub(crate) fn player_demo(state: &mut RendererState) {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    static DONE: AtomicBool = AtomicBool::new(false);
+    let Some(scene) = player_scene() else {
+        return;
+    };
+    if state.session.is_none() || DONE.swap(true, Ordering::Relaxed) {
+        return;
+    }
+    crate::welcome::handle(state, fluxa_ui::WelcomeRequest::Offline);
+    crate::player::open_file(state, "about:blank", "Demo");
+    crate::player::preview_scene(state, &scene);
+}
+
+pub(crate) fn decorate_player(model: &mut fluxa_ui::PlayerModel) {
+    if player_scene().is_none() {
+        return;
+    }
+    model.passthrough = true;
+    model.controls_visible = true;
+    model.paused = true;
+    model.duration = 2712.0;
+    model.position = 754.0;
+    model.title = "Fenerin Ötesi".to_owned();
+    model.season_episode = Some((1, 3));
+    model.episode_title = Some("Alçak Basınç".to_owned());
+    model.chapters = vec![
+        (0.0, "Açılış".to_owned()),
+        (95.0, "Fener Bekçisi".to_owned()),
+        (610.0, "Fırtına".to_owned()),
+    ];
+    model.has_next = true;
+    model.has_previous = true;
+    model.has_episodes = true;
+}
+
 pub(crate) fn watch_demo() -> bool {
     setting("FLUXA_PREVIEW_WATCH").is_some()
 }

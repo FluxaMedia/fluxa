@@ -197,6 +197,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     let fit = player::video_fit(&state.settings);
     if let Some(player) = state.player.as_mut() {
         player.fit = fit;
+        player.compact = state.home.form_factor == UiFormFactorJson::Mobile;
         player.anime4k = mode != "off";
         player.upscaling = mode;
     }
@@ -214,6 +215,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
         };
         model.pip = state.pip;
         player::apply_options(&mut model, &state.settings);
+        crate::preview::decorate_player(&mut model);
         model
     });
     let library_tab = state.library_tab;

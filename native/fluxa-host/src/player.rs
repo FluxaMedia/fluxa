@@ -256,6 +256,8 @@ pub(crate) struct PlayerSession {
     pub(crate) anime4k: bool,
     pub(crate) upscaling: String,
     pub(crate) fit: &'static str,
+    pub(crate) compact: bool,
+    volume_pin: Option<f64>,
     pub(crate) stats_visible: bool,
     stats: Vec<fluxa_ui::StatsSection>,
     stats_at: Option<Instant>,
@@ -379,6 +381,8 @@ impl PlayerSession {
             anime4k: false,
             upscaling: String::new(),
             fit: "fit",
+            compact: false,
+            volume_pin: None,
             stats_visible: false,
             stats: Vec::new(),
             stats_at: None,
@@ -506,6 +510,11 @@ impl PlayerSession {
             text,
             level: plan["level"].as_f64().map(|level| level as f32),
             opacity,
+            gauge: match plan["key"].as_str()? {
+                "player.toast.brightness" => Some(fluxa_ui::ToastGauge::Brightness),
+                "player.toast.volume" => Some(fluxa_ui::ToastGauge::Volume),
+                _ => None,
+            },
         })
     }
 
@@ -856,6 +865,47 @@ pub(crate) fn direct_playback_command(item: &Value, profile: &Value) -> Value {
     })
 }
 
+pub(crate) fn preview_scene(state: &mut RendererState, scene: &str) {
+    let track = |id: &str, subtitle: bool, language: &str, title: &str, selected: bool| VideoTrack {
+        id: id.to_owned(),
+        subtitle,
+        language: Some(language.to_owned()),
+        title: Some(title.to_owned()),
+        selected,
+        external: false,
+    };
+    let style = state.settings.values.clone();
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    player.tracks = vec![
+        track("a1", false, "jpn", "Japonca 5.1", true),
+        track("a2", false, "eng", "İngilizce 5.1", false),
+        track("a3", false, "tur", "Türkçe 2.0", false),
+        track("s1", true, "tur", "Türkçe", true),
+        track("s2", true, "eng", "İngilizce", false),
+        track("s3", true, "jpn", "Japonca", false),
+    ];
+    player.style = style;
+    player.status.chapters = vec![
+        (0.0, "Açılış".to_owned()),
+        (95.0, "Fener Bekçisi".to_owned()),
+        (610.0, "Fırtına".to_owned()),
+        (1380.0, "Kayıp Defter".to_owned()),
+        (2400.0, "Jenerik".to_owned()),
+    ];
+    player.status.duration = 2712.0;
+    player.status.position = 754.0;
+    player.panel = match scene {
+        "chapters" => Some(Panel::Menu(menu::Menu::Chapters)),
+        "tracks" => Some(Panel::Menu(menu::Menu::Tracks)),
+        "speed" => Some(Panel::Menu(menu::Menu::Speed)),
+        "episodes" => Some(Panel::Menu(menu::Menu::Episodes)),
+        "style" => Some(Panel::Menu(menu::Menu::Style)),
+        _ => None,
+    };
+}
+
 pub(crate) fn open_file(state: &mut RendererState, uri: &str, title: &str) -> Value {
     let mut player = PlayerSession::new(json!({"name": title, "type": "movie"}));
     player.local = true;
@@ -1064,6 +1114,7 @@ pub(crate) fn pump(state: &mut RendererState) {
     let mut advance = false;
     if let Some(video) = video.as_mut() {
         player.status = video.status();
+        player.pin_volume();
         player.subtitle = video.subtitle();
         if player.status.has_frame && !player.tracks_restored {
             player.tracks_restored = true;
@@ -1358,6 +1409,16 @@ fn load_resolved(
 }
 
 impl PlayerSession {
+    pub(crate) fn set_volume_pin(&mut self, volume: f64) {
+        self.volume_pin = Some(volume);
+    }
+
+    fn pin_volume(&mut self) {
+        if let Some(volume) = self.volume_pin {
+            self.status.volume = volume;
+        }
+    }
+
     fn filmstrip_step(&self) -> f64 {
         self.trickplay
             .as_ref()
@@ -1623,7 +1684,7 @@ pub(crate) fn upscaling(settings: &SettingsModel) -> &str {
     }
 }
 
-const FITS: [&str; 3] = ["fit", "fill", "stretch"];
+const FITS: [&str; 4] = ["fit", "fill", "stretch", "original"];
 
 pub(crate) fn video_fit(settings: &SettingsModel) -> &'static str {
     FITS.into_iter()
@@ -1748,6 +1809,14 @@ fn set_upscaling(state: &mut RendererState, next: &str) {
     }
     let chain = shader_chain(&state.settings);
     command(state, VideoCommand::Shaders(chain));
+    if let Some(player) = state.player.as_mut()
+        && let Some(plan) = core_value(
+            "playerToastPlan",
+            json!({"kind": "anime4k", "value": if next == "off" { 0.0 } else { 1.0 }}),
+        )
+    {
+        player.toast = Some((plan, Instant::now()));
+    }
 }
 
 pub(crate) fn upload_frame(state: &mut RendererState) {
