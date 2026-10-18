@@ -2,7 +2,7 @@
 name = "fluxa-host"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 description = "Platform-neutral host for the Fluxa renderer: screen state, input, artwork, frame loop and core session."
 
 [dependencies]

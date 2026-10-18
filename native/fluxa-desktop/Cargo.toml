@@ -2,7 +2,7 @@
 name = "fluxa-desktop"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 description = "Native desktop shell for Fluxa's Rust renderer migration."
 
 [dependencies]

@@ -2,7 +2,7 @@
 name = "fluxa-renderer"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 description = "WGPU scene and egui painter backend for Fluxa UI surfaces."
 
 [features]

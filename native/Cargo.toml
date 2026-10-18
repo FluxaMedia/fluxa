@@ -9,7 +9,7 @@ ffmpeg-sys-next = { path = "vendor/ffmpeg-sys-next" }
 
 [workspace.package]
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [profile.release]
 lto = "thin"

@@ -2,7 +2,7 @@
 name = "fluxa-ui"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 description = "Shared responsive Fluxa UI model, layout and egui drawing primitives."
 
 [dependencies]

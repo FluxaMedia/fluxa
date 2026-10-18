@@ -2,7 +2,7 @@
 name = "fluxa-updater"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [dependencies]
 flate2 = "1.1"

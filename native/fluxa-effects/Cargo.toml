@@ -2,7 +2,7 @@
 name = "fluxa-effects"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 
 [features]
 default = ["desktop"]

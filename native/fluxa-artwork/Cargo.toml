@@ -2,7 +2,7 @@
 name = "fluxa-artwork"
 version = "0.1.0"
 edition = "2024"
-license = "MIT"
+license = "GPL-3.0-only"
 description = "Provider-independent asynchronous artwork fetch, decode, and raster cache for Fluxa."
 
 [dependencies]
