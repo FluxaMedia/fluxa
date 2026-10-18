@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::sync::mpsc::Receiver;
 use std::time::{Duration, Instant};
 
@@ -14,6 +15,7 @@ const MAX_FEED_AHEAD_NS: i64 = 1_600_000_000;
 const UNLOAD_WAIT: Duration = Duration::from_secs(1);
 const LOAD_TIMEOUT: Duration = Duration::from_secs(15);
 const MAX_SEEK_FAILURES: u32 = 3;
+const MAX_QUEUE_AHEAD_NS: i64 = 4_000_000_000;
 
 pub struct Packet {
     pub video: bool,
@@ -102,9 +104,11 @@ pub struct Player<D, P> {
     events: Receiver<Event>,
     state: State,
     info: Option<MediaInfo>,
-    pending: Option<Packet>,
+    video_lane: VecDeque<Packet>,
+    audio_lane: VecDeque<Packet>,
     position_ns: i64,
     drained: bool,
+    eos_sent: bool,
     opening_since: Option<Instant>,
     seek_failures: u32,
     cues: Cues,
@@ -124,9 +128,11 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             events,
             state: State::Idle,
             info: None,
-            pending: None,
+            video_lane: VecDeque::new(),
+            audio_lane: VecDeque::new(),
             position_ns: 0,
             drained: false,
+            eos_sent: false,
             opening_since: None,
             seek_failures: 0,
             cues: Cues::default(),
@@ -246,8 +252,9 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             return self.seek_to(position);
         }
         self.unload_pipeline();
-        self.pending = None;
+        self.clear_lanes();
         self.drained = false;
+        self.eos_sent = false;
         self.cues.clear();
         self.state = State::Opening;
         self.opening_since = Some(Instant::now());
@@ -268,9 +275,10 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.opening_since = None;
         self.seek_failures = 0;
         self.info = None;
-        self.pending = None;
+        self.clear_lanes();
         self.position_ns = 0;
         self.drained = false;
+        self.eos_sent = false;
         self.cues.clear();
         self.subtitle_id = None;
         let volume = self.status.volume;
@@ -329,8 +337,9 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             return;
         }
         self.seek_failures = 0;
-        self.pending = None;
+        self.clear_lanes();
         self.drained = false;
+        self.eos_sent = false;
         self.position_ns = target;
         self.status.position = target as f64 / 1e9;
         self.status.buffering = true;
@@ -379,42 +388,70 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         }
     }
 
-    fn feed(&mut self) {
-        loop {
-            let packet = match self.pending.take() {
-                Some(packet) => packet,
-                None if self.drained => return,
-                None => match self.demuxer.read() {
-                    Some(packet) => packet,
-                    None => {
-                        self.drained = true;
-                        self.pipeline.end_of_stream();
-                        return;
-                    }
-                },
+    fn clear_lanes(&mut self) {
+        self.video_lane.clear();
+        self.audio_lane.clear();
+    }
+
+    fn lane_end_ns(lane: &VecDeque<Packet>) -> i64 {
+        lane.back().map_or(0, |packet| packet.pts_ns)
+    }
+
+    fn read_ahead(&mut self) {
+        while !self.drained
+            && Self::lane_end_ns(&self.video_lane).max(Self::lane_end_ns(&self.audio_lane)) - self.position_ns <= MAX_QUEUE_AHEAD_NS
+        {
+            let Some(packet) = self.demuxer.read() else {
+                self.drained = true;
+                return;
             };
             if let Some(cue) = packet.cue {
                 self.cues.push(cue);
-                continue;
+            } else if packet.video {
+                self.video_lane.push_back(packet);
+            } else {
+                self.audio_lane.push_back(packet);
             }
+        }
+    }
+
+    fn feed_lane(&mut self, video: bool) -> bool {
+        let mut fed = false;
+        loop {
+            let lane = if video { &mut self.video_lane } else { &mut self.audio_lane };
+            let Some(packet) = lane.front() else {
+                return fed;
+            };
             if packet.pts_ns - self.position_ns > MAX_FEED_AHEAD_NS {
-                self.pending = Some(packet);
-                return;
+                return fed;
             }
-            match self.pipeline.feed(&packet) {
+            let reply = self.pipeline.feed(packet);
+            let lane = if video { &mut self.video_lane } else { &mut self.audio_lane };
+            match reply {
+                FeedReply::BufferFull => return fed,
+                FeedReply::Failed => trace("feed failed, packet dropped"),
                 FeedReply::Ok => {}
-                FeedReply::BufferFull => {
-                    self.pending = Some(packet);
-                    return;
-                }
-                FeedReply::Failed => {
-                    trace("feed failed, packet dropped");
-                    continue;
-                }
             }
-            if packet.video {
+            let packet = lane.pop_front();
+            fed = true;
+            if let (true, Some(packet), FeedReply::Ok) = (video, packet, reply) {
                 self.status.buffered = packet.pts_ns as f64 / 1e9;
             }
+        }
+    }
+
+    fn feed(&mut self) {
+        loop {
+            self.read_ahead();
+            let video = self.feed_lane(true);
+            let audio = self.feed_lane(false);
+            if !video && !audio {
+                break;
+            }
+        }
+        if self.drained && !self.eos_sent && self.video_lane.is_empty() && self.audio_lane.is_empty() {
+            self.eos_sent = true;
+            self.pipeline.end_of_stream();
         }
     }
 }
@@ -467,6 +504,7 @@ mod tests {
     struct Log {
         calls: Vec<String>,
         full: bool,
+        video_full: bool,
         failing_pts: Option<i64>,
         hot_audio_switch: bool,
     }
@@ -489,7 +527,7 @@ mod tests {
         }
         fn feed(&mut self, packet: &Packet) -> FeedReply {
             let mut log = self.0.borrow_mut();
-            if log.full {
+            if log.full || (log.video_full && packet.video) {
                 return FeedReply::BufferFull;
             }
             if log.failing_pts == Some(packet.pts_ns) {
@@ -543,6 +581,22 @@ mod tests {
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
         rig
+    }
+
+    #[test]
+    fn a_full_video_buffer_does_not_hold_back_audio() {
+        let mut rig = rig(&[]);
+        rig.player.demuxer.packets = VecDeque::from([
+            Packet { video: true, pts_ns: 0, data: vec![0], cue: None },
+            Packet { video: false, pts_ns: 0, data: vec![0], cue: None },
+            Packet { video: false, pts_ns: 20_000_000, data: vec![0], cue: None },
+        ]);
+        rig.player.handle(&json!({"type": "load", "url": "u"}));
+        rig.log.borrow_mut().video_full = true;
+        rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
+        rig.player.tick();
+        assert_eq!(rig.log.borrow().calls.iter().filter(|call| call.starts_with("feed")).count(), 2);
+        assert!(!rig.log.borrow().calls.contains(&"eos".to_owned()));
     }
 
     #[test]
