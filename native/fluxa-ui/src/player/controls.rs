@@ -487,35 +487,23 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     if !options.center_controls {
         left.extend(chrome.transport());
     }
-    left.push(("Info", NODE_PLAYER_INFO));
     let after = chrome.row_left(ui, layout, margin - 6.0, y, chrome.icon_small(), &left);
-    let mut side = vec![("Lock", NODE_PLAYER_LOCK)];
-    side.extend(
-        chrome
-            .actions()
-            .into_iter()
-            .filter(|(_, node)| *node != NODE_PLAYER_INFO),
-    );
+    let mut right = chrome.actions();
+    let info = right.pop();
     if options.settings {
-        side.push(("Settings", NODE_PLAYER_SETTINGS));
+        right.push(("Settings", NODE_PLAYER_SETTINGS));
     }
-    side.extend(chrome.secondary());
-    let span_top = header_y + 30.0;
-    let span_bottom = track.top() - 6.0;
-    let step = (chrome.icon_small() + 8.0).min((span_bottom - span_top) / side.len() as f32);
-    let first = (span_top + span_bottom) * 0.5 - step * (side.len() as f32 - 1.0) * 0.5;
-    let column = rect.right() - margin - chrome.icon_small() * 0.5 + 6.0;
-    for (index, (icon, node)) in side.iter().enumerate() {
-        chrome.button(
-            ui,
-            layout,
-            Pos2::new(column, first + step * index as f32),
-            chrome.icon_small(),
-            icon,
-            *node,
-        );
-    }
-    let right_edge = rect.right() - margin;
+    right.extend(chrome.secondary());
+    right.push(("Lock", NODE_PLAYER_LOCK));
+    right.extend(info);
+    let right_edge = chrome.row_right(
+        ui,
+        layout,
+        rect.right() - margin + 6.0,
+        y,
+        chrome.icon_small(),
+        &right,
+    );
     let time_width = (right_edge - after - 12.0).max(0.0);
     chrome.toggle_remaining(
         ui,
