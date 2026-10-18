@@ -1,11 +1,13 @@
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
+use std::mem::ManuallyDrop;
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 
 use libloading::Library;
 
 use crate::diagnostics::trace;
-use crate::events::Event;
+use crate::events::{Event, EventKind};
 use crate::feed::FeedReply;
 
 const LIBRARY: &str = "libplayerAPIs.so.1";
@@ -82,6 +84,8 @@ struct Aligned<const N: usize>([u8; N]);
 struct Sink {
     events: Sender<Event>,
     webos_major: u32,
+    live: AtomicBool,
+    unloaded: AtomicBool,
 }
 
 #[derive(Debug)]
@@ -92,8 +96,8 @@ pub enum Error {
 }
 
 pub struct Starfish {
-    object: Box<Aligned<OBJECT_SIZE>>,
-    sink: Box<Sink>,
+    object: ManuallyDrop<Box<Aligned<OBJECT_SIZE>>>,
+    sink: &'static Sink,
     ctor: Ctor,
     dtor: Dtor,
     load: Load,
@@ -118,7 +122,13 @@ extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *m
     let sink = unsafe { &*(data as *const Sink) };
     let text = (!text.is_null()).then(|| unsafe { CStr::from_ptr(text) }.to_string_lossy());
     trace(format!("event {kind} {number} {}", text.as_deref().unwrap_or("")));
-    let _ = sink.events.send(Event::from_callback(kind, number, text.as_deref(), sink.webos_major));
+    let event = Event::from_callback(kind, number, text.as_deref(), sink.webos_major);
+    if event.kind == EventKind::UnloadCompleted {
+        sink.unloaded.store(true, Ordering::Release);
+    }
+    if sink.live.load(Ordering::Acquire) {
+        let _ = sink.events.send(event);
+    }
 }
 
 pub(crate) unsafe fn symbol<T: Copy>(library: &Library, name: &'static str) -> Result<T, Error> {
@@ -130,7 +140,7 @@ pub(crate) fn c_string(text: &str) -> CString {
 }
 
 impl Starfish {
-    pub fn open(app_id: &str, webos_major: u32, events: Sender<Event>) -> Result<Starfish, Error> {
+    pub fn open(webos_major: u32, events: Sender<Event>) -> Result<Starfish, Error> {
         let library = library()?;
         let mut starfish = unsafe {
             Starfish {
@@ -152,12 +162,16 @@ impl Starfish {
                 set_time_to_decode: optional(library, TIME_TO_DECODE),
                 set_play_rate: optional(library, PLAY_RATE),
                 change_audio_codec: optional(library, CHANGE_CODEC),
-                object: Box::new(Aligned([0; OBJECT_SIZE])),
-                sink: Box::new(Sink { events, webos_major }),
+                object: ManuallyDrop::new(Box::new(Aligned([0; OBJECT_SIZE]))),
+                sink: Box::leak(Box::new(Sink {
+                    events,
+                    webos_major,
+                    live: AtomicBool::new(true),
+                    unloaded: AtomicBool::new(false),
+                })),
             }
         };
-        let uid = c_string(app_id);
-        unsafe { (starfish.ctor)(starfish.object.0.as_mut_ptr().cast(), uid.as_ptr()) };
+        unsafe { (starfish.ctor)(starfish.object.0.as_mut_ptr().cast(), std::ptr::null()) };
         Ok(starfish)
     }
 
@@ -172,7 +186,7 @@ impl Starfish {
     pub fn load(&self, payload: &str) -> Result<(), Error> {
         trace(format!("load {payload}"));
         let payload = c_string(payload);
-        let data = &*self.sink as *const Sink as *mut c_void;
+        let data = self.sink as *const Sink as *mut c_void;
         unsafe { (self.load)(self.this(), payload.as_ptr(), trampoline, data) }
             .then_some(())
             .ok_or(Error::Rejected("Load"))
@@ -260,7 +274,13 @@ impl Starfish {
 
 impl Drop for Starfish {
     fn drop(&mut self) {
-        unsafe { (self.dtor)(self.this()) };
+        self.sink.live.store(false, Ordering::Release);
+        if self.sink.unloaded.load(Ordering::Acquire) {
+            unsafe {
+                (self.dtor)(self.this());
+                ManuallyDrop::drop(&mut self.object);
+            }
+        }
     }
 }
 
@@ -312,7 +332,7 @@ mod tests {
     #[test]
     fn missing_library_is_an_error_not_a_panic() {
         let (tx, _rx) = channel();
-        assert!(matches!(Starfish::open("app", 5, tx), Err(Error::Library(_))));
+        assert!(matches!(Starfish::open(5, tx), Err(Error::Library(_))));
     }
 
     #[test]

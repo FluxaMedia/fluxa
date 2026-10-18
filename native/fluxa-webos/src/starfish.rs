@@ -6,11 +6,14 @@ use crate::events::{Event, EventKind};
 use crate::feed::{FeedReply, feed_payload};
 use crate::ffi::Starfish;
 use crate::hdr::{hdr_payload, merge_into_video_data};
-use crate::load::{LoadOptions, audio_change, load_payload};
+use crate::load::{AudioCodec, LoadOptions, audio_change, load_payload};
 use crate::player::{MediaInfo, Packet, Pipeline};
 
 pub struct StarfishPipeline {
     inner: Starfish,
+    events: Sender<Event>,
+    used: bool,
+    atmos: bool,
     options: LoadOptions,
     seek_pending: bool,
     acb_hdr: Option<String>,
@@ -19,14 +22,14 @@ pub struct StarfishPipeline {
 
 impl StarfishPipeline {
     pub fn open(options: LoadOptions, events: Sender<Event>) -> Result<StarfishPipeline, crate::ffi::Error> {
-        let inner = Starfish::open(&options.app_id, options.webos_major, events)?;
+        let inner = Starfish::open(options.webos_major, events.clone())?;
         let acb = if options.window_id.is_none() {
             let app = std::env::var("APPID").unwrap_or_else(|_| options.app_id.clone());
             Acb::open(&app).map_err(|error| trace(format!("acb unavailable: {error:?}"))).ok()
         } else {
             None
         };
-        Ok(StarfishPipeline { inner, options, seek_pending: false, acb_hdr: None, acb })
+        Ok(StarfishPipeline { inner, events, used: false, atmos: false, options, seek_pending: false, acb_hdr: None, acb })
     }
 }
 
@@ -50,6 +53,11 @@ impl Pipeline for StarfishPipeline {
         if let Some(reason) = crate::jail::refusal() {
             return Err(reason);
         }
+        if self.used {
+            self.inner = Starfish::open(self.options.webos_major, self.events.clone()).map_err(|error| format!("{error:?}"))?;
+        }
+        self.used = true;
+        self.atmos = matches!(info.audio.as_ref().map(|audio| audio.codec), Some(AudioCodec::Eac3 { atmos: true }));
         let mut options = self.options.clone();
         options.start_pts_ns = start_ns;
         let payload = load_payload(&info.video, info.audio.as_ref(), &options);
@@ -130,10 +138,12 @@ impl Pipeline for StarfishPipeline {
                 Some(hdr) => acb.video_data(&merge_into_video_data(&event.text, hdr)),
                 None => acb.video_data(&event.text),
             },
-            EventKind::AudioInfo => acb.audio_data(&event.text),
             EventKind::LoadCompleted => {
                 if let Some(media) = self.inner.media_id() {
                     acb.bind(&media);
+                    if self.atmos {
+                        acb.audio_data(&atmos_descriptor(&media));
+                    }
                 }
             }
             EventKind::Playing => acb.playing(1920, 1080),
@@ -141,5 +151,21 @@ impl Pipeline for StarfishPipeline {
             EventKind::UnloadCompleted => acb.unloaded(),
             _ => {}
         }
+    }
+}
+
+fn atmos_descriptor(media_id: &str) -> String {
+    serde_json::json!({ "audio": { "immersive": "ATMOS" }, "context": media_id }).to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn atmos_descriptor_carries_the_media_id_as_context() {
+        let json: serde_json::Value = serde_json::from_str(&atmos_descriptor("abc")).unwrap();
+        assert_eq!(json["audio"]["immersive"], "ATMOS");
+        assert_eq!(json["context"], "abc");
     }
 }
