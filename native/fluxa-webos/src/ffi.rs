@@ -167,7 +167,7 @@ impl Starfish {
                 load: symbol(library, LOAD)?,
                 feed: symbol(library, FEED).or_else(|_| symbol(library, FEED_COW))?,
                 feed_cow: optional::<*const c_void>(library, FEED).is_none(),
-                feed_reply_dtor: unsafe { cow_string_dtor() },
+                feed_reply_dtor: cow_string_dtor(),
                 play: symbol(library, PLAY)?,
                 pause: symbol(library, PAUSE)?,
                 unload: symbol(library, UNLOAD)?,

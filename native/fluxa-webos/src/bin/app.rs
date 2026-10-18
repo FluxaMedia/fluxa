@@ -2,6 +2,7 @@ use std::ffi::c_void;
 use std::path::PathBuf;
 use std::ptr::NonNull;
 use std::sync::mpsc::channel;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -66,6 +67,43 @@ fn key(host: &FluxaHost, remote: Remote) {
     }
 }
 
+fn run_player(
+    caps: capabilities::Capabilities,
+    options: LoadOptions,
+    bridge: Arc<Mutex<VideoBridge>>,
+    playing: Arc<AtomicBool>,
+    stop: Arc<AtomicBool>,
+) {
+    let (events, rx) = channel();
+    let mut player = match StarfishPipeline::open(options, events) {
+        Ok(pipeline) => Player::new(FfmpegDemuxer::with_capabilities(caps), pipeline, rx),
+        Err(error) => {
+            trace(format!("starfish unavailable: {error:?}"));
+            crash::capture(&format!("starfish unavailable: {error:?}"));
+            eprintln!("starfish: {error:?}");
+            while !stop.load(Ordering::Relaxed) {
+                if let Ok(mut bridge) = bridge.lock() {
+                    if bridge.take_requests().iter().any(|request| request["type"] == "load") {
+                        bridge.set_status(VideoStatus {
+                            error: Some("The TV's media pipeline could not be opened".into()),
+                            ..VideoStatus::default()
+                        });
+                    }
+                }
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            return;
+        }
+    };
+    while !stop.load(Ordering::Relaxed) {
+        pump(&mut player, &bridge);
+        let status = player.status();
+        playing.store(status.duration > 0.0 && !status.paused, Ordering::Relaxed);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    player.handle(&serde_json::json!({ "type": "stop" }));
+}
+
 fn main() {
     let _sentry = crash::install_default(env!("CARGO_PKG_VERSION"));
     let report = Report::collect();
@@ -118,7 +156,6 @@ fn main() {
     note("tv.supports_hdr", format!("{:?}", caps.hdr));
     note("tv.supports_dolby_vision", format!("{:?}", caps.dolby_vision));
 
-    let (events, rx) = channel();
     let options = LoadOptions {
         app_id: APP_ID.into(),
         webos_major,
@@ -126,14 +163,14 @@ fn main() {
         window_id: sdl.exported_window(),
         max_resolution: None,
     };
-    let mut player = match StarfishPipeline::open(options, events) {
-        Ok(pipeline) => Some(Player::new(FfmpegDemuxer::with_capabilities(caps), pipeline, rx)),
-        Err(error) => {
-            trace(format!("starfish unavailable: {error:?}"));
-            crash::capture(&format!("starfish unavailable: {error:?}"));
-            eprintln!("starfish: {error:?}");
-            None
-        }
+    let playing = Arc::new(AtomicBool::new(false));
+    let stop = Arc::new(AtomicBool::new(false));
+    let player = {
+        let (bridge, playing, stop) = (bridge.clone(), playing.clone(), stop.clone());
+        std::thread::Builder::new()
+            .name("player".into())
+            .spawn(move || run_player(caps, options, bridge, playing, stop))
+            .expect("player thread")
     };
 
     let mut inhibitor = None;
@@ -177,19 +214,6 @@ fn main() {
                 Event::Wheel(delta) => host.scroll(delta * 40.0),
             }
         }
-        match player.as_mut() {
-            Some(player) => pump(player, &bridge),
-            None => {
-                if let Ok(mut bridge) = bridge.lock() {
-                    if bridge.take_requests().iter().any(|request| request["type"] == "load") {
-                        bridge.set_status(VideoStatus {
-                            error: Some("The TV's media pipeline could not be opened".into()),
-                            ..VideoStatus::default()
-                        });
-                    }
-                }
-            }
-        }
         if lifecycle.as_ref().is_some_and(|lifecycle| lifecycle.relaunched()) {
             grace.restored();
             sdl.raise();
@@ -197,11 +221,7 @@ fn main() {
         if grace.expired(Instant::now()) {
             host.media_command("stop", 0.0);
         }
-        let playing = player.as_ref().is_some_and(|player| {
-            let status = player.status();
-            status.duration > 0.0 && !status.paused
-        });
-        if !playing {
+        if !playing.load(Ordering::Relaxed) {
             inhibitor = None;
         } else if inhibitor.is_none() {
             inhibitor = screensaver::inhibit(APP_ID);
@@ -214,5 +234,7 @@ fn main() {
         }
         std::thread::sleep(Duration::from_millis(1));
     }
+    stop.store(true, Ordering::Relaxed);
+    let _ = player.join();
     host.surface_destroyed();
 }
