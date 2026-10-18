@@ -1,4 +1,5 @@
 use std::ffi::{CStr, CString, c_char, c_int, c_void};
+use std::sync::OnceLock;
 use std::sync::mpsc::Sender;
 
 use libloading::Library;
@@ -21,9 +22,32 @@ type Text = unsafe extern "C" fn(*mut c_void, *const c_char) -> bool;
 type MediaId = unsafe extern "C" fn(*mut c_void) -> *const c_char;
 type ChangeCodec = unsafe extern "C" fn(*mut c_void, *const CxxString, *const CxxString) -> bool;
 
-const PLAY_RATE_SYMBOLS: [&str; 1] = ["_ZN17StarfishMediaAPIs11SetPlayRateEPKc\0"];
-const CHANGE_CODEC_SYMBOLS: [&str; 1] =
-    ["_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES8_\0"];
+const CTOR: &str = "_ZN17StarfishMediaAPIsC1EPKc";
+const DTOR: &str = "_ZN17StarfishMediaAPIsD1Ev";
+const LOAD: &str = "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_";
+const FEED: &str = "_ZN17StarfishMediaAPIs4FeedB5cxx11EPKc";
+const PLAY: &str = "_ZN17StarfishMediaAPIs4PlayEv";
+const PAUSE: &str = "_ZN17StarfishMediaAPIs5PauseEv";
+const UNLOAD: &str = "_ZN17StarfishMediaAPIs6UnloadEv";
+const NOTIFY_FOREGROUND: &str = "_ZN17StarfishMediaAPIs16notifyForegroundEv";
+const SEEK: &str = "_ZN17StarfishMediaAPIs4SeekEPKc";
+const HDR_INFO: &str = "_ZN17StarfishMediaAPIs10setHdrInfoEPKc";
+const MEDIA_ID: &str = "_ZN17StarfishMediaAPIs10getMediaIDEv";
+const FLUSH: &str = "_ZN17StarfishMediaAPIs5flushEv";
+const PUSH_EOS: &str = "_ZN17StarfishMediaAPIs7pushEOSEv";
+const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
+const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
+const CHANGE_CODEC: &str =
+    "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES7_";
+
+static LIBRARY_HANDLE: OnceLock<Result<Library, String>> = OnceLock::new();
+
+fn library() -> Result<&'static Library, Error> {
+    LIBRARY_HANDLE
+        .get_or_init(|| unsafe { Library::new(LIBRARY) }.map_err(|err| err.to_string()))
+        .as_ref()
+        .map_err(|err| Error::Library(err.clone()))
+}
 
 #[repr(C)]
 struct CxxString {
@@ -46,8 +70,8 @@ fn borrowed_string(text: &str) -> BorrowedString {
     BorrowedString { raw: CxxString { data: bytes.as_ptr(), len: text.len(), union }, _bytes: bytes }
 }
 
-fn optional<T: Copy>(library: &Library, names: &[&'static str]) -> Option<T> {
-    names.iter().find_map(|name| unsafe { symbol::<T>(library, name) }.ok())
+fn optional<T: Copy>(library: &Library, name: &'static str) -> Option<T> {
+    unsafe { symbol::<T>(library, name) }.ok()
 }
 
 #[repr(C, align(16))]
@@ -66,7 +90,6 @@ pub enum Error {
 }
 
 pub struct Starfish {
-    _library: Library,
     object: Box<Aligned<OBJECT_SIZE>>,
     sink: Box<Sink>,
     ctor: Ctor,
@@ -78,11 +101,11 @@ pub struct Starfish {
     unload: Verb,
     notify_foreground: Verb,
     seek: Text,
-    set_hdr_info: Text,
+    set_hdr_info: Option<Text>,
     media_id: MediaId,
     flush: Verb,
     push_eos: Verb,
-    set_time_to_decode: Text,
+    set_time_to_decode: Option<Text>,
     set_play_rate: Option<Text>,
     change_audio_codec: Option<ChangeCodec>,
 }
@@ -104,26 +127,25 @@ pub(crate) fn c_string(text: &str) -> CString {
 
 impl Starfish {
     pub fn open(app_id: &str, webos_major: u32, events: Sender<Event>) -> Result<Starfish, Error> {
-        let library = unsafe { Library::new(LIBRARY) }.map_err(|err| Error::Library(err.to_string()))?;
+        let library = library()?;
         let mut starfish = unsafe {
             Starfish {
-                ctor: symbol(&library, "_ZN17StarfishMediaAPIsC1EPKc\0")?,
-                dtor: symbol(&library, "_ZN17StarfishMediaAPIsD1Ev\0")?,
-                load: symbol(&library, "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_\0")?,
-                feed: symbol(&library, "_ZN17StarfishMediaAPIs4FeedB5cxx11EPKc\0")?,
-                play: symbol(&library, "_ZN17StarfishMediaAPIs4PlayEv\0")?,
-                pause: symbol(&library, "_ZN17StarfishMediaAPIs5PauseEv\0")?,
-                unload: symbol(&library, "_ZN17StarfishMediaAPIs6UnloadEv\0")?,
-                notify_foreground: symbol(&library, "_ZN17StarfishMediaAPIs16notifyForegroundEv\0")?,
-                seek: symbol(&library, "_ZN17StarfishMediaAPIs4SeekEPKc\0")?,
-                set_hdr_info: symbol(&library, "_ZN17StarfishMediaAPIs10setHdrInfoEPKc\0")?,
-                media_id: symbol(&library, "_ZN17StarfishMediaAPIs10getMediaIDEv\0")?,
-                flush: symbol(&library, "_ZN17StarfishMediaAPIs5flushEv\0")?,
-                push_eos: symbol(&library, "_ZN17StarfishMediaAPIs7pushEOSEv\0")?,
-                set_time_to_decode: symbol(&library, "_ZN17StarfishMediaAPIs13setTimeToDecodeEPKc\0")?,
-                set_play_rate: optional(&library, &PLAY_RATE_SYMBOLS),
-                change_audio_codec: optional(&library, &CHANGE_CODEC_SYMBOLS),
-                _library: library,
+                ctor: symbol(library, CTOR)?,
+                dtor: symbol(library, DTOR)?,
+                load: symbol(library, LOAD)?,
+                feed: symbol(library, FEED)?,
+                play: symbol(library, PLAY)?,
+                pause: symbol(library, PAUSE)?,
+                unload: symbol(library, UNLOAD)?,
+                notify_foreground: symbol(library, NOTIFY_FOREGROUND)?,
+                seek: symbol(library, SEEK)?,
+                set_hdr_info: optional(library, HDR_INFO),
+                media_id: symbol(library, MEDIA_ID)?,
+                flush: symbol(library, FLUSH)?,
+                push_eos: symbol(library, PUSH_EOS)?,
+                set_time_to_decode: optional(library, TIME_TO_DECODE),
+                set_play_rate: optional(library, PLAY_RATE),
+                change_audio_codec: optional(library, CHANGE_CODEC),
                 object: Box::new(Aligned([0; OBJECT_SIZE])),
                 sink: Box::new(Sink { events, webos_major }),
             }
@@ -182,8 +204,11 @@ impl Starfish {
 
     pub fn set_hdr_info(&self, payload: &str) -> bool {
         trace(format!("hdr {payload}"));
+        let Some(set) = self.set_hdr_info else {
+            return false;
+        };
         let payload = c_string(payload);
-        unsafe { (self.set_hdr_info)(self.this(), payload.as_ptr()) }
+        unsafe { set(self.this(), payload.as_ptr()) }
     }
 
     pub fn flush(&self) -> bool {
@@ -195,8 +220,11 @@ impl Starfish {
     }
 
     pub fn set_time_to_decode(&self, payload: &str) -> bool {
+        let Some(set) = self.set_time_to_decode else {
+            return false;
+        };
         let payload = c_string(payload);
-        unsafe { (self.set_time_to_decode)(self.this(), payload.as_ptr()) }
+        unsafe { set(self.this(), payload.as_ptr()) }
     }
 
     pub fn set_play_rate(&self, payload: &str) -> Option<bool> {
@@ -223,32 +251,36 @@ impl Drop for Starfish {
     }
 }
 
-const SYMBOLS: [&str; 15] = [
-    "_ZN17StarfishMediaAPIsC1EPKc",
-    "_ZN17StarfishMediaAPIsD1Ev",
-    "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_",
+const SYMBOLS: [&str; 16] = [
+    CTOR,
+    DTOR,
+    LOAD,
     "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_E",
-    "_ZN17StarfishMediaAPIs4FeedB5cxx11EPKc",
+    FEED,
     "_ZN17StarfishMediaAPIs4FeedEPKc",
-    "_ZN17StarfishMediaAPIs4PlayEv",
-    "_ZN17StarfishMediaAPIs5PauseEv",
-    "_ZN17StarfishMediaAPIs10setHdrInfoEPKc",
-    "_ZN17StarfishMediaAPIs10getMediaIDEv",
-    "_ZN17StarfishMediaAPIs5flushEv",
-    "_ZN17StarfishMediaAPIs7pushEOSEv",
-    "_ZN17StarfishMediaAPIs13setTimeToDecodeEPKc",
-    "_ZN17StarfishMediaAPIs11SetPlayRateEPKc",
-    "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES8_",
+    PLAY,
+    PAUSE,
+    UNLOAD,
+    NOTIFY_FOREGROUND,
+    SEEK,
+    HDR_INFO,
+    MEDIA_ID,
+    FLUSH,
+    PUSH_EOS,
+    TIME_TO_DECODE,
 ];
 
+const EXTRA_SYMBOLS: [&str; 2] = [PLAY_RATE, CHANGE_CODEC];
+
 pub fn probe_symbols() -> Vec<(String, bool)> {
-    let Ok(library) = (unsafe { Library::new(LIBRARY) }) else {
-        return vec![(LIBRARY.to_owned(), false)];
+    let library = match library() {
+        Ok(library) => library,
+        Err(_) => return vec![(LIBRARY.to_owned(), false)],
     };
     let mut found = vec![(LIBRARY.to_owned(), true)];
-    for name in SYMBOLS {
-        let present = unsafe { library.get::<*const c_void>(format!("{name}\0").as_bytes()) }.is_ok();
-        found.push((name.to_owned(), present));
+    for name in SYMBOLS.iter().chain(EXTRA_SYMBOLS.iter()) {
+        let present = unsafe { library.get::<*const c_void>(name.as_bytes()) }.is_ok();
+        found.push(((*name).to_owned(), present));
     }
     found
 }
@@ -271,6 +303,14 @@ mod tests {
         assert_eq!(text.raw.len, 3);
         assert_eq!(unsafe { *text.raw.data.add(3) }, 0);
         assert_eq!(&text.raw.union[..std::mem::size_of::<usize>()], 3usize.to_ne_bytes());
+    }
+
+    #[test]
+    fn bound_names_exist_in_firmware_dumps() {
+        let known = include_str!("../tests/fixtures/starfish-symbols.txt");
+        for name in SYMBOLS.iter().chain(EXTRA_SYMBOLS.iter()) {
+            assert!(known.lines().any(|line| line == *name), "{name} is in no firmware dump");
+        }
     }
 
     #[test]

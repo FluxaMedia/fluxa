@@ -76,6 +76,7 @@ impl Sdl {
             .find_map(|name| unsafe { Library::new(name) }.ok())
             .ok_or("libSDL2 not found")?;
         unsafe {
+            std::env::set_var("SDL_WEBOS_ACCESS_POLICY_KEYS_BACK", "true");
             let init: unsafe extern "C" fn(u32) -> c_int = *library.get(b"SDL_Init\0").map_err(|e| e.to_string())?;
             if init(INIT_VIDEO) != 0 {
                 return Err(error(&library));
