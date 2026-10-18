@@ -366,7 +366,15 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             EventKind::Playing => self.status.paused = false,
             EventKind::Paused => self.status.paused = true,
             EventKind::SeekDone => self.status.buffering = false,
-            EventKind::Error => self.fail(event.text),
+            EventKind::EndOfStream => {
+                if let Some(info) = &self.info {
+                    self.position_ns = info.duration_ns;
+                    self.status.position = info.duration_ns as f64 / 1e9;
+                }
+                self.status.buffering = false;
+            }
+            EventKind::Error if self.state == State::Opening => self.fail(event.text),
+            EventKind::Error => trace(format!("pipeline error ignored: {}", event.text)),
             _ => {}
         }
     }
@@ -598,11 +606,29 @@ mod tests {
     }
 
     #[test]
-    fn pipeline_error_event_surfaces_in_status() {
-        let mut rig = started(&[]);
+    fn pipeline_error_while_opening_surfaces_in_status() {
+        let mut rig = rig(&[]);
+        rig.player.handle(&json!({"type": "load", "url": "u"}));
         rig.events.send(Event { kind: EventKind::Error, number: 0, text: "decoder died".into() }).unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().error.as_deref(), Some("decoder died"));
+    }
+
+    #[test]
+    fn pipeline_error_during_playback_is_only_logged() {
+        let mut rig = started(&[]);
+        rig.events.send(Event { kind: EventKind::Error, number: 0, text: "hiccup".into() }).unwrap();
+        rig.player.tick();
+        assert_eq!(rig.player.status().error, None);
+    }
+
+    #[test]
+    fn end_of_stream_moves_the_position_to_the_end() {
+        let mut rig = started(&[]);
+        rig.events.send(event(EventKind::FrameReady, 99_000_000_000)).unwrap();
+        rig.events.send(event(EventKind::EndOfStream, 0)).unwrap();
+        rig.player.tick();
+        assert_eq!(rig.player.status().position, 100.0);
     }
 
     #[test]
