@@ -54,7 +54,7 @@ impl PlayerTokens {
                 title: 15.0,
                 pad: 14.0,
                 menu_width: 320.0,
-                list_row: 44.0,
+                list_row: 40.0,
                 list_text: 15.0,
                 list_pad: 14.0,
                 list_width: 250.0,

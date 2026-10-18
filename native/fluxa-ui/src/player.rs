@@ -7,7 +7,7 @@ mod stats;
 mod tokens;
 
 pub use overlay::{ChapterSpan, NextEpisodeCard, SegmentSpan, SkipCard, SkipKind};
-pub use panel::{PanelRow, PlayerPanel};
+pub use panel::{PanelRow, PanelStep, PlayerPanel};
 pub use stats::StatsSection;
 pub use tokens::subtitle_lift;
 
@@ -27,6 +27,13 @@ pub struct PlayerToast {
     pub text: String,
     pub level: Option<f32>,
     pub opacity: f32,
+    pub gauge: Option<ToastGauge>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ToastGauge {
+    Brightness,
+    Volume,
 }
 
 const FINE_SEEK_LIFT: f32 = 44.0;
@@ -142,6 +149,9 @@ const PLAYER_ICONS: &[&str] = &[
     "SkipBack",
     "Volume",
     "VolumeMuted",
+    "Sun",
+    "Rewind10",
+    "Forward10",
     "Zap",
     "ZapFilled",
     "Maximize",
@@ -353,11 +363,29 @@ pub fn draw_player(
                 overlay::draw_skip_card(&chrome, ui, &mut layout);
                 overlay::draw_next_episode_card(&chrome, ui, &mut layout, next_thumbnail);
             }
+            let presence = motion::presence(
+                context,
+                Id::new("fluxa-player-panel-in"),
+                player.panel.is_some(),
+                motion::normal(),
+            );
+            let last = Id::new("fluxa-player-panel-last");
             if let Some(panel) = player.panel.as_ref() {
-                panel::draw_panel(&chrome, ui, &mut layout, panel, assets);
+                context.data_mut(|data| data.insert_temp(last, panel.clone()));
+                panel::draw_panel(&chrome, ui, &mut layout, panel, assets, presence);
+            } else if presence > 0.001
+                && let Some(panel) = context.data(|data| data.get_temp::<PlayerPanel>(last))
+            {
+                let activated = layout.activated;
+                panel::draw_panel(&chrome, ui, &mut layout, &panel, assets, presence);
+                layout.activated = activated;
             }
         });
-    if let (Some(side), Some(model)) = (side, player.watch.as_ref()) {
+    if let Some(model) = player.watch.as_ref() {
+        let side = side.unwrap_or_else(|| {
+            let width = (rect.width() * 0.45).clamp(280.0, 340.0);
+            Rect::from_min_max(Pos2::new(rect.right() - width, rect.top()), rect.max)
+        });
         layout.watch_together = draw_watch_side_panel(context, side, model, assets);
     }
     if player.dim > 0.0 {
@@ -372,14 +400,19 @@ pub fn draw_player(
         );
     }
     if let Some(toast) = player.toast.as_ref() {
-        components::toast(
-            context,
-            viewport,
-            Pos2::new(rect.center().x, rect.top() + chrome.toast_top()),
-            &toast.text,
-            toast.level,
-            toast.opacity,
-        );
+        match toast.gauge.zip(toast.level) {
+            Some((gauge, level)) if viewport.form_factor == UiFormFactor::Mobile => {
+                chrome.gauge(gauge, level, toast.opacity);
+            }
+            _ => components::toast(
+                context,
+                viewport,
+                Pos2::new(rect.center().x, rect.top() + chrome.toast_top()),
+                &toast.text,
+                toast.level,
+                toast.opacity,
+            ),
+        }
     }
     draw_focus_ring(context, viewport, &layout, focused);
     layout
@@ -443,6 +476,46 @@ impl Chrome<'_> {
             },
         );
         components::focus_action(layout, node, &response);
+    }
+
+    fn gauge(&self, gauge: ToastGauge, level: f32, opacity: f32) {
+        let alpha = (opacity.clamp(0.0, 1.0) * 255.0) as u8;
+        let height = self.rect.height() * 0.34;
+        let width = 6.0;
+        let (icon, left_side) = match gauge {
+            ToastGauge::Brightness => ("Sun", true),
+            ToastGauge::Volume => ("Volume", false),
+        };
+        let edge = self.margin() + 4.0;
+        let bar_x = if left_side {
+            self.rect.left() + edge
+        } else {
+            self.rect.right() - edge - width
+        };
+        let track = Rect::from_min_size(
+            Pos2::new(bar_x, self.rect.center().y - height * 0.5),
+            Vec2::new(width, height),
+        );
+        self.painter
+            .rect_filled(track, width * 0.5, Color32::from_white_alpha(alpha / 3));
+        let filled = height * level.clamp(0.0, 1.0);
+        let fill = Rect::from_min_max(Pos2::new(track.left(), track.bottom() - filled), track.max);
+        self.painter
+            .rect_filled(fill, width * 0.5, Color32::from_white_alpha(alpha));
+        if let Some(texture) = self.icons.get(icon) {
+            let size = 28.0;
+            let x = if left_side {
+                track.right() + 14.0 + size * 0.5
+            } else {
+                track.left() - 14.0 - size * 0.5
+            };
+            self.painter.image(
+                texture,
+                Rect::from_center_size(Pos2::new(x, self.rect.center().y), Vec2::splat(size)),
+                full_uv(),
+                Color32::from_white_alpha(alpha),
+            );
+        }
     }
 
     fn text(&self, pos: Pos2, align: Align2, text: &str, size: f32, max_width: f32, alpha: u8) {
@@ -671,6 +744,7 @@ impl Chrome<'_> {
             );
         }
         let active = seek.hovered()
+            || self.viewport.form_factor == UiFormFactor::Mobile
             || seek.dragged()
             || player.scrub.is_some()
             || self.focused == Some(NODE_PLAYER_SEEK);

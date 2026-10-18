@@ -256,6 +256,44 @@ impl Chrome<'_> {
         }
     }
 
+    fn mobile_heading(&self, left: f32, y: f32, width: f32) {
+        let player = self.player;
+        if !player.options.title {
+            return;
+        }
+        let episode = player
+            .episode_title
+            .as_deref()
+            .filter(|text| !text.is_empty());
+        let numbered = match (player.season_episode, episode) {
+            (Some((season, number)), Some(name)) => Some(format!("S{season}:E{number} \"{name}\"")),
+            (None, Some(name)) => Some(name.to_owned()),
+            _ => None,
+        };
+        let (title_y, sub_y) = match numbered {
+            Some(_) => (y - 9.0, y + 10.0),
+            None => (y, y),
+        };
+        self.text(
+            Pos2::new(left, title_y),
+            Align2::LEFT_CENTER,
+            &player.title,
+            16.0,
+            width,
+            255,
+        );
+        if let Some(line) = numbered {
+            self.text(
+                Pos2::new(left, sub_y),
+                Align2::LEFT_CENTER,
+                &line,
+                12.0,
+                width,
+                190,
+            );
+        }
+    }
+
     fn transport(&self) -> Vec<Action> {
         let player = self.player;
         let mut actions = vec![(
@@ -431,12 +469,12 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     if !player.controls_visible {
         return;
     }
+    let side = Pos2::new(rect.right() - margin - chrome.icon() * 0.5, rect.center().y);
     if player.locked {
-        let center = Pos2::new(margin + 20.0, rect.center().y);
         chrome.button(
             ui,
             layout,
-            center,
+            side + Vec2::new(0.0, chrome.icon() * 0.7),
             chrome.icon(),
             "Unlock",
             NODE_PLAYER_LOCK,
@@ -445,80 +483,157 @@ pub(super) fn mobile_controls(chrome: &Chrome, ui: &mut egui::Ui, layout: &mut H
     }
     scrims(chrome.painter, rect);
     let close = chrome.close_button(ui, layout, header_y);
-    chrome.header(ui, layout, close, chrome.icon_small(), (17.0, 12.0), true);
+    let icon = chrome.icon_small();
+    let right = chrome.row_right(
+        ui,
+        layout,
+        rect.right() - margin,
+        close.y,
+        icon,
+        &chrome.header_actions(),
+    );
+    let right = if player.watch_button {
+        chrome.row_right(
+            ui,
+            layout,
+            right,
+            close.y,
+            icon,
+            &[("Users", NODE_PLAYER_WATCH)],
+        )
+    } else {
+        right
+    };
+    let left = close.x + 34.0;
+    chrome.mobile_heading(left, close.y, (right - left - 14.0).max(0.0));
     let center = rect.center();
     let options = &player.options;
+    let gap = (rect.width() * 0.2).min(120.0);
     if options.center_controls {
-        let gap = (rect.width() * 0.22).min(130.0);
-        let play = if player.paused {
-            "PlayFilled"
-        } else {
-            "PauseFilled"
-        };
-        chrome.button(ui, layout, center, 76.0, play, NODE_PLAYER_TOGGLE);
-        if options.next_episode && player.has_previous {
-            chrome.button(
-                ui,
-                layout,
-                center - Vec2::new(gap, 0.0),
-                52.0,
-                "SkipBack",
-                NODE_PLAYER_PREVIOUS,
-            );
-        }
-        if options.next_episode && player.has_next {
-            chrome.button(
-                ui,
-                layout,
-                center + Vec2::new(gap, 0.0),
-                52.0,
-                "SkipForward",
-                NODE_PLAYER_NEXT,
+        chrome.button(
+            ui,
+            layout,
+            center,
+            76.0,
+            if player.paused {
+                "PlayFilled"
+            } else {
+                "PauseFilled"
+            },
+            NODE_PLAYER_TOGGLE,
+        );
+        for (icon, node, direction) in [
+            ("Rewind10", NODE_PLAYER_REWIND, -1.0),
+            ("Forward10", NODE_PLAYER_FORWARD, 1.0),
+        ] {
+            let at = center + Vec2::new(gap * direction, 0.0);
+            chrome.button(ui, layout, at, 60.0, icon, node);
+            draw_text(
+                chrome.painter,
+                at + Vec2::new(0.0, 2.0),
+                Align2::CENTER_CENTER,
+                "10",
+                FontId::proportional(14.0),
+                ink(235),
+                None,
             );
         }
     }
-    let y = rect.bottom() - 30.0 - chrome.viewport.safe_bottom;
+    let row_y = rect.bottom() - 26.0 - chrome.viewport.safe_bottom;
+    let seek_y = row_y - 38.0;
     let track = Rect::from_min_size(
-        Pos2::new(margin, y - 62.0),
+        Pos2::new(margin, seek_y - 10.0),
         Vec2::new((rect.width() - margin * 2.0).max(80.0), 20.0),
     );
     let position = chrome.seek_bar(ui, layout, track, 3.0);
-    let mut left = Vec::new();
-    if !options.center_controls {
-        left.extend(chrome.transport());
+    let mut actions = Vec::new();
+    if options.episodes && player.has_episodes {
+        actions.push(("ListVideo", NODE_PLAYER_EPISODES));
     }
-    let after = chrome.row_left(ui, layout, margin - 6.0, y, chrome.icon_small(), &left);
-    let mut right = chrome.actions();
-    let info = right.pop();
-    if options.settings {
-        right.push(("Settings", NODE_PLAYER_SETTINGS));
+    if options.next_episode && player.has_next {
+        actions.push(("SkipForward", NODE_PLAYER_NEXT));
     }
-    right.extend(chrome.secondary());
-    right.push(("Lock", NODE_PLAYER_LOCK));
-    right.extend(info);
+    if options.speed {
+        actions.push(("Gauge", NODE_PLAYER_SPEED));
+    }
+    if options.audio_subtitles {
+        actions.push(("AudioSubtitles", NODE_PLAYER_TRACKS));
+    }
     let right_edge = chrome.row_right(
         ui,
         layout,
         rect.right() - margin + 6.0,
-        y,
+        row_y,
         chrome.icon_small(),
-        &right,
+        &actions,
     );
-    let time_width = (right_edge - after - 12.0).max(0.0);
-    chrome.toggle_remaining(
-        ui,
-        Rect::from_min_size(
-            Pos2::new(after + 4.0, y - 16.0),
-            Vec2::new(time_width, 32.0),
-        ),
+    let times = format!(
+        "{} / {}",
+        format_time(position),
+        format_time(player.duration)
     );
+    let font = FontId::proportional(13.0);
+    let times_width = chrome
+        .painter
+        .layout_no_wrap(times.clone(), font, ink(218))
+        .size()
+        .x;
     chrome.text(
-        Pos2::new(after + 8.0, y),
+        Pos2::new(margin + 2.0, row_y),
         Align2::LEFT_CENTER,
-        &chrome.times(ui, position),
+        &times,
         13.0,
-        time_width,
+        times_width + 4.0,
         218,
+    );
+    if let Some(chapter) = player.chapter_at(position) {
+        let left = margin + times_width + 14.0;
+        let width = (right_edge - left - 8.0).max(0.0);
+        let hit = Rect::from_min_size(
+            Pos2::new(left - 6.0, row_y - 16.0),
+            Vec2::new(width + 6.0, 32.0),
+        );
+        let response = ui.interact(
+            hit,
+            Id::new(("fluxa-player-button", NODE_PLAYER_CHAPTERS)),
+            Sense::click(),
+        );
+        components::focus_action(layout, NODE_PLAYER_CHAPTERS, &response);
+        chrome.text(
+            Pos2::new(left, row_y),
+            Align2::LEFT_CENTER,
+            chapter,
+            13.0,
+            width,
+            if response.is_pointer_button_down_on() {
+                255
+            } else {
+                190
+            },
+        );
+    }
+    let on = !player.upscaling.is_empty() && player.upscaling != "off";
+    let anime = side - Vec2::new(0.0, chrome.icon() * 0.7);
+    if on {
+        chrome
+            .painter
+            .circle_filled(anime, chrome.icon() * 0.5, Color32::from_white_alpha(46));
+    }
+    chrome.button(
+        ui,
+        layout,
+        anime,
+        chrome.icon(),
+        "Sparkles",
+        NODE_PLAYER_ANIME4K,
+    );
+    chrome.button(
+        ui,
+        layout,
+        side + Vec2::new(0.0, chrome.icon() * 0.7),
+        chrome.icon(),
+        "Lock",
+        NODE_PLAYER_LOCK,
     );
 }
 
