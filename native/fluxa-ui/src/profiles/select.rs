@@ -12,7 +12,7 @@ pub(super) fn draw_select(
     let count = model.profiles.len() + 1;
     let gap = metrics.profile_gap;
     let (radius, cell) = if viewport.is_compact() {
-        let cell_width = ((viewport.width - Space::Md.px(&metrics) * 2.0 - gap) / 2.0)
+        let cell_width = ((viewport.width - Space::S16.px(&metrics) * 2.0 - gap) / 2.0)
             .min(metrics.profile_cell_width);
         let radius = cell_width * 0.325;
         (radius, Vec2::new(cell_width, radius * 2.0 + 72.0))
@@ -38,7 +38,7 @@ pub(super) fn draw_select(
     let width = ui.available_width();
     let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, 72.0), Sense::hover());
     components::brand_lockup(ui.painter(), brand_rect.center(), 72.0, 255, assets);
-    ui.add_space(Space::Lg.px(&metrics));
+    ui.add_space(Space::S24.px(&metrics));
 
     let title = ui.painter().layout_no_wrap(
         t("profiles.who_watching"),
@@ -250,7 +250,7 @@ pub(super) fn draw_select(
             }
         }
     }
-    ui.add_space(Space::Xxl.px(&metrics));
+    ui.add_space(Space::S48.px(&metrics));
 }
 
 fn grid_cells(
@@ -261,27 +261,18 @@ fn grid_cells(
     per_row: usize,
     padded_rows: bool,
 ) -> Vec<Rect> {
-    let rows = count.div_ceil(per_row);
-    let row_rects = Flex::column()
-        .gap(gap)
-        .children((0..rows).map(|_| Child::new(Vec2::new(grid.width(), cell.y))))
-        .solve(grid);
-    row_rects
-        .iter()
-        .enumerate()
-        .flat_map(|(row, row_rect)| {
-            let slots = if padded_rows {
-                per_row
-            } else {
-                (count - row * per_row).min(per_row)
-            };
-            Flex::row()
-                .gap(gap)
-                .justify(Justify::Center)
-                .children((0..slots).map(|_| Child::new(cell)))
-                .solve(*row_rect)
-        })
-        .collect()
+    let rows = (0..count.div_ceil(per_row)).map(|row| {
+        let slots = if padded_rows {
+            per_row
+        } else {
+            (count - row * per_row).min(per_row)
+        };
+        crate::flex::row((0..slots).map(|column| leaf(cell).id(row * per_row + column)))
+            .gap(gap)
+            .justify(Justify::Center)
+    });
+    let placed = column(rows).gap(gap).align(Align::Stretch).solve(grid);
+    placed.tagged().into_iter().map(|(_, rect)| rect).collect()
 }
 
 #[cfg(test)]
