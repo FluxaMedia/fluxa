@@ -108,7 +108,11 @@ Where the three references agree, or the dumps settle it, the decision is made. 
 
 Done and committed: items 1 to 7 of section 1.
 
-Implemented since (all unverified on a TV): seek through `flush(const char*)` with fallback; unload waits up to 1 s for `UNLOADCOMPLETED`; a packet the TV rejects is dropped; three refused demuxer seeks before playback fails; `Load` refused on k5lp/k3lp without `/dev/rtkmem`; 15 s load timeout; audio info to ACB; pause on minimise and stop after 120 s; colour keys 486 to 489 mapped (no action bound); held arrows throttled to 10 per second and other held keys ignored; the packaging script checks the executable bit and the appinfo `main`.
+Seek correction after reading plx `docs/webos5-port.md` and `src/starfish.c`: plx decompiled the 4.5 libraries and found that `flush()` is itself a seek to 0, so `flush()` plus `setTimeToDecode` without a segment event stalls the sink after about 48 s. The public `Seek(ms)` flushes and re-anchors the segment itself, exists on every firmware 1.2 to 11.2 and is what LG's own Chromium MSE player uses in this mode. Fluxa now calls `Seek` on the first video packet after the demuxer seek (millisecond floor of that packet's PTS, audio before it dropped) and falls back to `flush()` plus `setTimeToDecode` only if `Seek` refuses. `flush(const char*)` is no longer used: nothing shows it re-anchors the segment. Kodi's `sendSegmentEvent` and plx's webOS 4 private offsets are not used because the layout changes from webOS 6.
+
+Also from plx: webOS 3.x `Feed` (copy-on-write string) is now bound, with the reply released through `_ZNSsD1Ev`, and the Starfish object buffer is 64 KB like plx (the real size is unknown).
+
+Implemented since (all unverified on a TV): seek as above; unload waits up to 1 s for `UNLOADCOMPLETED`; a packet the TV rejects is dropped; three refused demuxer seeks before playback fails; `Load` refused on k5lp/k3lp without `/dev/rtkmem`; 15 s load timeout; audio info to ACB; pause on minimise and stop after 120 s; colour keys 486 to 489 mapped (no action bound); held arrows throttled to 10 per second and other held keys ignored; the packaging script checks the executable bit and the appinfo `main`.
 
 Original list, kept for reference:
 

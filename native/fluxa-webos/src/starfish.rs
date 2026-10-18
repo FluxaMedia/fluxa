@@ -12,7 +12,7 @@ use crate::player::{MediaInfo, Packet, Pipeline};
 pub struct StarfishPipeline {
     inner: Starfish,
     options: LoadOptions,
-    resume_at: Option<i64>,
+    seek_pending: bool,
     acb_hdr: Option<String>,
     acb: Option<Acb>,
 }
@@ -26,16 +26,22 @@ impl StarfishPipeline {
         } else {
             None
         };
-        Ok(StarfishPipeline { inner, options, resume_at: None, acb_hdr: None, acb })
+        Ok(StarfishPipeline { inner, options, seek_pending: false, acb_hdr: None, acb })
     }
 }
 
 impl StarfishPipeline {
-    fn flush_plain(&mut self, pts_ns: i64) {
+    fn seek_to(&mut self, pts_ns: i64) {
+        if self.inner.seek_ms((pts_ns.max(0) / 1_000_000) as u64) {
+            return;
+        }
+        trace("Seek refused, flushing");
         if !self.inner.flush() {
             trace("flush rejected");
         }
-        self.resume_at = Some(pts_ns);
+        if !self.inner.set_time_to_decode(&format!("{{\"position\":{pts_ns}}}")) {
+            trace("setTimeToDecode rejected");
+        }
     }
 }
 
@@ -68,25 +74,17 @@ impl Pipeline for StarfishPipeline {
         self.inner.pause();
     }
 
-    fn flush(&mut self, pts_ns: i64) {
-        match self.inner.flush_to(pts_ns) {
-            Some(true) => self.resume_at = None,
-            Some(false) => {
-                trace("flush to position rejected");
-                self.flush_plain(pts_ns);
-            }
-            None => self.flush_plain(pts_ns),
-        }
+    fn flush(&mut self, _pts_ns: i64) {
+        self.seek_pending = true;
     }
 
     fn feed(&mut self, packet: &Packet) -> FeedReply {
-        if packet.video {
-            if self.resume_at.take().is_some() {
-                let payload = format!("{{\"position\":{}}}", packet.pts_ns);
-                if !self.inner.set_time_to_decode(&payload) {
-                    trace("setTimeToDecode rejected");
-                }
+        if self.seek_pending {
+            if !packet.video {
+                return FeedReply::Ok;
             }
+            self.seek_pending = false;
+            self.seek_to(packet.pts_ns);
         }
         let payload = feed_payload(packet.data.as_ptr() as usize, packet.data.len(), packet.pts_ns, packet.video);
         self.inner.feed(&payload)

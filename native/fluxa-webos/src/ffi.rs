@@ -9,7 +9,7 @@ use crate::events::Event;
 use crate::feed::FeedReply;
 
 const LIBRARY: &str = "libplayerAPIs.so.1";
-const OBJECT_SIZE: usize = 8192;
+const OBJECT_SIZE: usize = 65536;
 const STRING_SIZE: usize = 64;
 
 type Callback = extern "C" fn(c_int, i64, *const c_char, *mut c_void);
@@ -26,6 +26,8 @@ const CTOR: &str = "_ZN17StarfishMediaAPIsC1EPKc";
 const DTOR: &str = "_ZN17StarfishMediaAPIsD1Ev";
 const LOAD: &str = "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_";
 const FEED: &str = "_ZN17StarfishMediaAPIs4FeedB5cxx11EPKc";
+const FEED_COW: &str = "_ZN17StarfishMediaAPIs4FeedEPKc";
+const COW_STRING_DTOR: &str = "_ZNSsD1Ev";
 const PLAY: &str = "_ZN17StarfishMediaAPIs4PlayEv";
 const PAUSE: &str = "_ZN17StarfishMediaAPIs5PauseEv";
 const UNLOAD: &str = "_ZN17StarfishMediaAPIs6UnloadEv";
@@ -34,7 +36,6 @@ const SEEK: &str = "_ZN17StarfishMediaAPIs4SeekEPKc";
 const HDR_INFO: &str = "_ZN17StarfishMediaAPIs10setHdrInfoEPKc";
 const MEDIA_ID: &str = "_ZN17StarfishMediaAPIs10getMediaIDEv";
 const FLUSH: &str = "_ZN17StarfishMediaAPIs5flushEv";
-const FLUSH_AT: &str = "_ZN17StarfishMediaAPIs5flushEPKc";
 const PUSH_EOS: &str = "_ZN17StarfishMediaAPIs7pushEOSEv";
 const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
 const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
@@ -97,6 +98,8 @@ pub struct Starfish {
     dtor: Dtor,
     load: Load,
     feed: Feed,
+    feed_cow: bool,
+    feed_reply_dtor: Option<Dtor>,
     play: Verb,
     pause: Verb,
     unload: Verb,
@@ -105,7 +108,6 @@ pub struct Starfish {
     set_hdr_info: Option<Text>,
     media_id: MediaId,
     flush: Verb,
-    flush_at: Option<Text>,
     push_eos: Verb,
     set_time_to_decode: Option<Text>,
     set_play_rate: Option<Text>,
@@ -135,7 +137,9 @@ impl Starfish {
                 ctor: symbol(library, CTOR)?,
                 dtor: symbol(library, DTOR)?,
                 load: symbol(library, LOAD)?,
-                feed: symbol(library, FEED)?,
+                feed: symbol(library, FEED).or_else(|_| symbol(library, FEED_COW))?,
+                feed_cow: optional::<*const c_void>(library, FEED).is_none(),
+                feed_reply_dtor: unsafe { cow_string_dtor() },
                 play: symbol(library, PLAY)?,
                 pause: symbol(library, PAUSE)?,
                 unload: symbol(library, UNLOAD)?,
@@ -144,7 +148,6 @@ impl Starfish {
                 set_hdr_info: optional(library, HDR_INFO),
                 media_id: symbol(library, MEDIA_ID)?,
                 flush: symbol(library, FLUSH)?,
-                flush_at: optional(library, FLUSH_AT),
                 push_eos: symbol(library, PUSH_EOS)?,
                 set_time_to_decode: optional(library, TIME_TO_DECODE),
                 set_play_rate: optional(library, PLAY_RATE),
@@ -179,12 +182,19 @@ impl Starfish {
         let payload = c_string(payload);
         let mut reply = Aligned::<STRING_SIZE>([0; STRING_SIZE]);
         unsafe {
-            (self.feed)(reply.0.as_mut_ptr().cast(), self.this(), payload.as_ptr());
+            let reply_slot: *mut c_void = reply.0.as_mut_ptr().cast();
+            (self.feed)(reply_slot, self.this(), payload.as_ptr());
             let data = *(reply.0.as_ptr() as *const *const c_char);
             if data.is_null() {
                 return FeedReply::Failed;
             }
-            FeedReply::parse(&CStr::from_ptr(data).to_string_lossy())
+            let reply = FeedReply::parse(&CStr::from_ptr(data).to_string_lossy());
+            if self.feed_cow {
+                if let Some(release) = self.feed_reply_dtor {
+                    release(reply_slot);
+                }
+            }
+            reply
         }
     }
 
@@ -216,12 +226,6 @@ impl Starfish {
 
     pub fn flush(&self) -> bool {
         unsafe { (self.flush)(self.this()) }
-    }
-
-    pub fn flush_to(&self, pts_ns: i64) -> Option<bool> {
-        let flush = self.flush_at?;
-        let payload = c_string(&format!("{{\"ptsToDecode\":{pts_ns}}}"));
-        Some(unsafe { flush(self.this(), payload.as_ptr()) })
     }
 
     pub fn push_eos(&self) -> bool {
@@ -260,6 +264,11 @@ impl Drop for Starfish {
     }
 }
 
+unsafe fn cow_string_dtor() -> Option<Dtor> {
+    let global = libloading::os::unix::Library::this();
+    unsafe { global.get::<Dtor>(COW_STRING_DTOR.as_bytes()) }.ok().map(|symbol| *symbol)
+}
+
 const SYMBOLS: [&str; 16] = [
     CTOR,
     DTOR,
@@ -279,7 +288,7 @@ const SYMBOLS: [&str; 16] = [
     TIME_TO_DECODE,
 ];
 
-const EXTRA_SYMBOLS: [&str; 3] = [PLAY_RATE, CHANGE_CODEC, FLUSH_AT];
+const EXTRA_SYMBOLS: [&str; 2] = [PLAY_RATE, CHANGE_CODEC];
 
 pub fn probe_symbols() -> Vec<(String, bool)> {
     let library = match library() {
