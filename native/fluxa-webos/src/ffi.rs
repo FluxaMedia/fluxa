@@ -43,6 +43,10 @@ const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
 const SEGMENT_EVENT: &str = "_ZN13mediapipeline14CustomPipeline16sendSegmentEventEv";
 const PLAYER_OFFSET: usize = 0x4c;
 const PIPELINE_OFFSET: usize = 0x04;
+const MAX_RESOLUTION: &str =
+    "_ZN3smp4util21getMaxVideoResolutionENSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS7_S7_";
+const MAX_RESOLUTION_REF: &str =
+    "_ZN3smp4util21getMaxVideoResolutionERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEEPiS9_S9_";
 const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
 const CHANGE_CODEC: &str =
     "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES7_";
@@ -133,6 +137,16 @@ extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *m
     if sink.live.load(Ordering::Acquire) {
         let _ = sink.events.send(event);
     }
+}
+
+pub fn max_video_resolution(codec: &str, webos_major: u32) -> Option<(u32, u32, u32)> {
+    type Query = unsafe extern "C" fn(*const CxxString, *mut i32, *mut i32, *mut i32) -> bool;
+    let name = if webos_major >= 11 { MAX_RESOLUTION_REF } else { MAX_RESOLUTION };
+    let query: Query = optional(library().ok()?, name)?;
+    let codec = borrowed_string(codec);
+    let (mut width, mut height, mut frame_rate) = (0, 0, 0);
+    let found = unsafe { query(&codec.raw, &mut width, &mut height, &mut frame_rate) };
+    (found && width > 0 && height > 0).then_some((width as u32, height as u32, frame_rate.max(0) as u32))
 }
 
 pub(crate) unsafe fn symbol<T: Copy>(library: &Library, name: &'static str) -> Result<T, Error> {

@@ -58,6 +58,9 @@ impl Pipeline for StarfishPipeline {
         self.atmos = matches!(info.audio.as_ref().map(|audio| audio.codec), Some(AudioCodec::Eac3 { atmos: true }));
         let mut options = self.options.clone();
         options.start_pts_ns = start_ns;
+        if options.max_resolution.is_none() {
+            options.max_resolution = crate::ffi::max_video_resolution(info.video.codec.name(), options.webos_major);
+        }
         let payload = load_payload(&info.video, info.audio.as_ref(), &options);
         self.inner.notify_foreground();
         self.inner.load(&payload).map_err(|error| format!("{error:?}"))?;
