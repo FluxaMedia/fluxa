@@ -196,3 +196,164 @@ pub(crate) fn press_scale(painter: &egui::Painter, rect: egui::Rect, draw: impl 
         list.transform_range(start, end, scale);
     });
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Effect {
+    None,
+    Fade,
+    SlideUp,
+    SlideDown,
+    SlideLeft,
+    SlideRight,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Transition {
+    pub enter: Effect,
+    pub exit: Effect,
+}
+
+impl Transition {
+    pub const fn same(effect: Effect) -> Self {
+        Self {
+            enter: effect,
+            exit: effect,
+        }
+    }
+
+    pub const fn new(enter: Effect, exit: Effect) -> Self {
+        Self { enter, exit }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Frame {
+    pub shown: f32,
+    pub closing: bool,
+    pub offset: Vec2,
+    pub alpha: f32,
+}
+
+impl Frame {
+    fn new(shown: f32, closing: bool, effect: Effect, extent: Vec2) -> Self {
+        let hidden = 1.0 - shown;
+        let (offset, alpha) = match effect {
+            Effect::None => (Vec2::ZERO, 1.0),
+            Effect::Fade => (Vec2::ZERO, shown),
+            Effect::SlideUp => (Vec2::new(0.0, hidden * extent.y), 1.0),
+            Effect::SlideDown => (Vec2::new(0.0, -hidden * extent.y), 1.0),
+            Effect::SlideLeft => (Vec2::new(hidden * extent.x, 0.0), 1.0),
+            Effect::SlideRight => (Vec2::new(-hidden * extent.x, 0.0), 1.0),
+        };
+        Self {
+            shown,
+            closing,
+            offset,
+            alpha,
+        }
+    }
+}
+
+pub(crate) fn mount(
+    context: &egui::Context,
+    id: Id,
+    open: bool,
+    transition: Transition,
+    extent: Vec2,
+) -> Option<Frame> {
+    let live = context.data(|data| data.get_temp::<Tween>(id)).is_some();
+    if !live {
+        if !open {
+            return None;
+        }
+        let tween = Tween {
+            from: 0.0,
+            to: 1.0,
+            t: 0.0,
+            frame: context.cumulative_frame_nr(),
+        };
+        context.data_mut(|data| data.insert_temp(id, tween));
+    }
+    let shown = ease(
+        context,
+        id,
+        if open { 1.0 } else { 0.0 },
+        normal(),
+        Ease::Out,
+    );
+    if !open && shown <= 0.001 {
+        reset(context, id);
+        return None;
+    }
+    let effect = if open {
+        transition.enter
+    } else {
+        transition.exit
+    };
+    Some(Frame::new(shown, !open, effect, extent))
+}
+
+#[cfg(test)]
+mod mount_tests {
+    use super::*;
+
+    fn frame(context: &egui::Context, tick: usize, run: impl FnOnce(&egui::Context)) {
+        let input = egui::RawInput {
+            time: Some(tick as f64 / 60.0),
+            predicted_dt: 1.0 / 60.0,
+            ..Default::default()
+        };
+        let mut run = Some(run);
+        let _ = context.run(input, |context| (run.take().unwrap())(context));
+    }
+
+    #[test]
+    fn panel_stays_mounted_until_the_exit_finishes() {
+        let context = egui::Context::default();
+        let id = Id::new("panel");
+        let transition = Transition::same(Effect::SlideUp);
+        let extent = Vec2::new(300.0, 200.0);
+        let mut tick = 0;
+        let mut shown = Vec::new();
+        for open in std::iter::repeat_n(true, 40).chain(std::iter::repeat_n(false, 60)) {
+            tick += 1;
+            frame(&context, tick, |context| {
+                shown.push((open, mount(context, id, open, transition, extent)));
+            });
+        }
+        let (_, first) = shown[0];
+        assert!(first.unwrap().shown < 0.2);
+        assert!(shown[39].1.unwrap().shown > 0.99);
+        let closing = shown[41].1.expect("still drawn right after close");
+        assert!(closing.closing && closing.offset.y > 0.0);
+        assert!(shown.last().unwrap().1.is_none());
+    }
+
+    #[test]
+    fn closed_panel_never_mounts() {
+        let context = egui::Context::default();
+        frame(&context, 1, |context| {
+            assert!(
+                mount(
+                    context,
+                    Id::new("never"),
+                    false,
+                    Transition::same(Effect::Fade),
+                    Vec2::ZERO
+                )
+                .is_none()
+            );
+        });
+    }
+
+    #[test]
+    fn exit_can_differ_from_enter() {
+        let transition = Transition::new(Effect::SlideLeft, Effect::Fade);
+        let enter = Frame::new(0.5, false, transition.enter, Vec2::new(100.0, 0.0));
+        let exit = Frame::new(0.5, true, transition.exit, Vec2::new(100.0, 0.0));
+        assert_eq!(enter.offset.x, 50.0);
+        assert_eq!(enter.alpha, 1.0);
+        assert_eq!(exit.offset.x, 0.0);
+        assert_eq!(exit.alpha, 0.5);
+    }
+}
