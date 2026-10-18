@@ -72,6 +72,8 @@ class MpvVideo(
             val height = double("video-out-params/dh")
             return if (width > 0 && height > 0) width / height else 0.0
         }
+    val size: Pair<Int, Int>
+        get() = double("video-out-params/dw").toInt() to double("video-out-params/dh").toInt()
     val displayModeHint: DisplayModeHint?
         get() {
             val width = double("display-mode-hint/width").toInt()

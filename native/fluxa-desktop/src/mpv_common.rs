@@ -38,6 +38,7 @@ pub fn set_fit(client: &fluxa_mpv::MpvClientHandle, mode: &str) -> Result<(), St
     let (keepaspect, panscan) = match mode {
         "fill" => ("yes", "1"),
         "stretch" => ("no", "0"),
+        "original" => ("yes", "0"),
         _ => ("yes", "0"),
     };
     client.command(&["set", "keepaspect", keepaspect])?;

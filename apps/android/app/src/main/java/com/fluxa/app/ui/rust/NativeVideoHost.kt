@@ -25,6 +25,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
     private var shaders = emptyList<String>()
     private var fit = "fit"
     private var videoAspect = 0.0
+    private var videoSize = 0 to 0
     private var audioFilter = ""
     private var passthrough = false
     private var videoOptions = emptyMap<String, String>()
@@ -53,6 +54,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
             if (BuildConfig.IS_TV) applyDisplayMode(player.displayModeHint)
             player.aspect.takeIf { it != videoAspect }?.let {
                 videoAspect = it
+                videoSize = player.size
                 layoutVideo()
             }
             player.thumbnailProgress?.let { (done, count) -> renderer.reportVideoThumbnailProgress(done, count) }
@@ -128,6 +130,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         val aspect = videoAspect.takeIf { it > 0 && fit != "stretch" }
         val (w, h) = when {
             aspect == null -> width to height
+            fit == "original" && videoSize.first > 0 -> videoSize.first to videoSize.second
             fit == "fill" -> {
                 val w = maxOf(width.toDouble(), height * aspect)
                 w.toInt() to (w / aspect).toInt()
@@ -205,6 +208,7 @@ class NativeVideoHost(context: Context) : FrameLayout(context) {
         lastTracks = ""
         tick = 0
         videoAspect = 0.0
+        videoSize = 0 to 0
         onPlayingChanged?.invoke(true)
         player.load(url, audioLanguage, subtitleLanguage)
         videoSurface.video = player
