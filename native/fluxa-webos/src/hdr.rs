@@ -74,11 +74,11 @@ pub fn hdr_payload(info: &HdrInfo, webos_major: u32) -> Option<String> {
     if let Some(fall) = info.max_fall {
         sei.insert("maxPicAverageLightLevel".into(), json!(fall));
     }
-    if sei.is_empty() {
+    let legacy = webos_major < 5;
+    if sei.is_empty() && !legacy {
         return None;
     }
 
-    let legacy = webos_major < 5;
     let mut out = Map::new();
     out.insert(
         "hdrType".into(),
@@ -87,7 +87,9 @@ pub fn hdr_payload(info: &HdrInfo, webos_major: u32) -> Option<String> {
             HdrKind::Hlg => "HLG",
         }),
     );
-    out.insert(if legacy { "mediaSei" } else { "sei" }.into(), Value::Object(sei));
+    if !sei.is_empty() {
+        out.insert(if legacy { "mediaSei" } else { "sei" }.into(), Value::Object(sei));
+    }
     out.insert(
         if legacy { "mediaVui" } else { "vui" }.into(),
         json!({
@@ -133,6 +135,14 @@ mod tests {
     #[test]
     fn empty_sei_sends_nothing() {
         assert!(hdr_payload(&info(None), 6).is_none());
+    }
+
+    #[test]
+    fn legacy_firmware_still_gets_the_hdr_type_without_sei() {
+        let old: Value = serde_json::from_str(&hdr_payload(&info(None), 4).unwrap()).unwrap();
+        assert_eq!(old["hdrType"], "HDR10");
+        assert!(old.get("mediaSei").is_none());
+        assert_eq!(old["mediaVui"]["transferCharacteristics"], 16);
     }
 
     #[test]

@@ -125,7 +125,7 @@ fn base_layer_hdr(compat: u8) -> Option<HdrInfo> {
     };
     Some(HdrInfo {
         kind,
-        mastering: Some(Mastering::bt2020_1000_nits()),
+        mastering: None,
         max_cll: None,
         max_fall: None,
         transfer,
@@ -156,7 +156,7 @@ fn hdr_info(parameters: &ffmpeg::codec::Parameters) -> Option<HdrInfo> {
             white_point: (meta.has_primaries != 0).then(|| (rational(meta.white_point[0]), rational(meta.white_point[1]))),
             luminance: (meta.has_luminance != 0).then(|| (rational(meta.min_luminance), rational(meta.max_luminance))),
         })
-        .unwrap_or_else(Mastering::bt2020_1000_nits);
+        .unwrap_or(Mastering { primaries: None, white_point: None, luminance: None });
     let light = side_data(parameters, ffi::AVPacketSideDataType::AV_PKT_DATA_CONTENT_LIGHT_LEVEL)
         .and_then(read::<LightRecord>);
     Some(HdrInfo {

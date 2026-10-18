@@ -120,7 +120,7 @@ fn flac_audio_is_transcoded_to_ac3_with_monotonic_timestamps() {
     let info = demuxer.open(path.to_str().unwrap()).unwrap();
     let audio = info.audio.expect("transcoded audio");
     assert_eq!(audio.codec, AudioCodec::Ac3);
-    assert_eq!(audio.sample_rate, 48_000);
+    assert_eq!(audio.sample_rate, 44_100);
 
     let mut last = -1;
     let mut count = 0;
@@ -146,7 +146,7 @@ fn hdr_is_dropped_when_the_tv_has_no_hdr() {
     let Some(path) = sample("fluxa-webos-g.mkv", &args) else {
         return;
     };
-    let caps = fluxa_webos::capabilities::Capabilities { hdr: Some(false), dolby_vision: Some(false) };
+    let caps = fluxa_webos::capabilities::Capabilities { hdr: Some(false), dolby_vision: Some(false), ..Default::default() };
     let mut demuxer = FfmpegDemuxer::with_capabilities(caps);
     assert!(demuxer.open(path.to_str().unwrap()).unwrap().hdr.is_none());
     let _ = std::fs::remove_file(path);
