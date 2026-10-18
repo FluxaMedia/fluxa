@@ -14,6 +14,7 @@ mod components;
 mod detail;
 mod discover;
 mod emoji;
+mod flex;
 mod flow;
 mod folder;
 pub mod fonts;
@@ -40,6 +41,7 @@ mod window_button;
 pub use components::{
     DetailModalOutcome, draw_detail_modal, set_detail_modal_open, take_detail_modal_outcome,
 };
+use flex::*;
 pub use home::*;
 pub use layout::*;
 pub use metrics::*;

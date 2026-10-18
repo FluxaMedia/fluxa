@@ -10,13 +10,17 @@ pub(super) fn draw_select(
     request: &mut Option<ProfilesRequest>,
 ) {
     let count = model.profiles.len() + 1;
-    let (radius, cell, gap) = if viewport.is_compact() {
-        let gap = 28.0;
-        let cell_width = ((viewport.width - 32.0 - gap) / 2.0).min(180.0);
+    let gap = metrics.profile_gap;
+    let (radius, cell) = if viewport.is_compact() {
+        let cell_width = ((viewport.width - Space::Md.px(&metrics) * 2.0 - gap) / 2.0)
+            .min(metrics.profile_cell_width);
         let radius = cell_width * 0.325;
-        (radius, Vec2::new(cell_width, radius * 2.0 + 72.0), gap)
+        (radius, Vec2::new(cell_width, radius * 2.0 + 72.0))
     } else {
-        (65.0, Vec2::new(150.0, 222.0), 40.0)
+        (
+            metrics.profile_avatar_radius,
+            Vec2::new(metrics.profile_cell_width, 222.0),
+        )
     };
     let side = metrics.profile_side_margin;
     let per_row =
@@ -34,7 +38,7 @@ pub(super) fn draw_select(
     let width = ui.available_width();
     let (brand_rect, _) = ui.allocate_exact_size(Vec2::new(width, 72.0), Sense::hover());
     components::brand_lockup(ui.painter(), brand_rect.center(), 72.0, 255, assets);
-    ui.add_space(24.0);
+    ui.add_space(Space::Lg.px(&metrics));
 
     let title = ui.painter().layout_no_wrap(
         t("profiles.who_watching"),
@@ -72,19 +76,9 @@ pub(super) fn draw_select(
 
     let (grid_rect, _) = ui.allocate_exact_size(Vec2::new(width, grid_height), Sense::hover());
     let profiles = model.profiles.clone();
+    let cells = grid_cells(grid_rect, cell, gap, count, per_row, viewport.is_compact());
     for index in 0..count {
-        let row = index / per_row;
-        let column = index % per_row;
-        let in_row = if viewport.is_compact() {
-            per_row
-        } else {
-            (count - row * per_row).min(per_row)
-        };
-        let row_width = in_row as f32 * cell.x + (in_row - 1) as f32 * gap;
-        let origin = Pos2::new(
-            grid_rect.center().x - row_width * 0.5 + column as f32 * (cell.x + gap),
-            grid_rect.top() + row as f32 * (cell.y + gap),
-        );
+        let origin = cells[index].min;
         let avatar_center = Pos2::new(origin.x + cell.x * 0.5, origin.y + radius);
         let hit = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0)).union(
             Rect::from_min_size(
@@ -256,5 +250,62 @@ pub(super) fn draw_select(
             }
         }
     }
-    ui.add_space(48.0);
+    ui.add_space(Space::Xxl.px(&metrics));
+}
+
+fn grid_cells(
+    grid: Rect,
+    cell: Vec2,
+    gap: f32,
+    count: usize,
+    per_row: usize,
+    padded_rows: bool,
+) -> Vec<Rect> {
+    let rows = count.div_ceil(per_row);
+    let row_rects = Flex::column()
+        .gap(gap)
+        .children((0..rows).map(|_| Child::new(Vec2::new(grid.width(), cell.y))))
+        .solve(grid);
+    row_rects
+        .iter()
+        .enumerate()
+        .flat_map(|(row, row_rect)| {
+            let slots = if padded_rows {
+                per_row
+            } else {
+                (count - row * per_row).min(per_row)
+            };
+            Flex::row()
+                .gap(gap)
+                .justify(Justify::Center)
+                .children((0..slots).map(|_| Child::new(cell)))
+                .solve(*row_rect)
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn grid() -> Rect {
+        Rect::from_min_size(Pos2::new(0.0, 100.0), Vec2::new(1000.0, 500.0))
+    }
+
+    #[test]
+    fn short_last_row_is_centered_on_desktop() {
+        let cells = grid_cells(grid(), Vec2::new(150.0, 222.0), 40.0, 7, 4, false);
+        assert_eq!(cells.len(), 7);
+        assert_eq!(cells[0].left(), (1000.0 - (4.0 * 150.0 + 3.0 * 40.0)) * 0.5);
+        assert_eq!(cells[4].left(), (1000.0 - (3.0 * 150.0 + 2.0 * 40.0)) * 0.5);
+        assert_eq!(cells[4].top(), 100.0 + 222.0 + 40.0);
+    }
+
+    #[test]
+    fn short_last_row_stays_on_the_grid_columns_on_mobile() {
+        let cells = grid_cells(grid(), Vec2::new(180.0, 202.0), 28.0, 3, 2, true);
+        assert_eq!(cells[2].left(), cells[0].left());
+        assert_eq!(cells[1].left(), cells[0].right() + 28.0);
+        assert_eq!(cells[2].top(), cells[0].bottom() + 28.0);
+    }
 }
