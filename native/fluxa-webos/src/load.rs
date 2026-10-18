@@ -71,8 +71,34 @@ pub struct LoadOptions {
 const MAX_SRC_BUFFER_AUDIO: u64 = 2 * 1024 * 1024;
 const MAX_SRC_BUFFER_VIDEO: u64 = 8 * 1024 * 1024;
 
+const AAC_RATES: [u32; 16] = [96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050, 16000, 12000, 11025, 8000, 7350, 0, 0, 0];
+
+fn aac_sample_rate(extradata: &[u8]) -> u32 {
+    if extradata.len() < 2 {
+        return 0;
+    }
+    let aot = (extradata[0] >> 3) & 0x1f;
+    let index = (((extradata[0] & 0x07) << 1) | (extradata[1] >> 7)) as usize;
+    let mut rate = AAC_RATES[index];
+    if matches!(aot, 2 | 5 | 29) && extradata.len() >= 5 {
+        let extension = (extradata[2] >> 3) & 0x1f;
+        if extension == 5 || extension == 29 {
+            let index = (((extradata[2] & 0x07) << 1) | (extradata[3] >> 7)) as usize;
+            rate = AAC_RATES[index];
+        }
+    }
+    rate
+}
+
 fn audio_info(audio: &AudioStream, contents: &mut Value) -> &'static str {
-    let freq = audio.sample_rate as f64 / 1000.0;
+    let mut sample_rate = audio.sample_rate;
+    if matches!(audio.codec, AudioCodec::Aac { .. }) {
+        let parsed = aac_sample_rate(&audio.extradata);
+        if parsed > 0 {
+            sample_rate = parsed;
+        }
+    }
+    let freq = sample_rate as f64 / 1000.0;
     let info = |channels: u32| json!({ "channels": channels, "frequency": freq });
     match audio.codec {
         AudioCodec::Aac { profile, raw } => {
@@ -200,6 +226,13 @@ pub fn load_payload(video: &VideoStream, audio: Option<&AudioStream>, options: &
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn aac_rate_comes_from_the_audio_specific_config() {
+        assert_eq!(super::aac_sample_rate(&[0x12, 0x10]), 44100);
+        assert_eq!(super::aac_sample_rate(&[0x11, 0x90]), 48000);
+        assert_eq!(super::aac_sample_rate(&[0x12]), 0);
+    }
+
     use serde_json::Value;
 
     use super::*;
