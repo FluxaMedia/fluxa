@@ -104,6 +104,7 @@ pub(crate) enum Justify {
     Center,
     End,
     SpaceBetween,
+    SpaceAround,
 }
 
 #[derive(Clone, Debug)]
@@ -530,6 +531,10 @@ impl Node {
             Justify::End => (free, self.gap),
             Justify::SpaceBetween if count > 1 => (0.0, self.gap + free / (count - 1) as f32),
             Justify::SpaceBetween => (0.0, self.gap),
+            Justify::SpaceAround => {
+                let share = free / count as f32;
+                (share * 0.5, self.gap + share)
+            }
         };
 
         let mut slots = Vec::with_capacity(count);
@@ -658,6 +663,16 @@ mod tests {
         );
         assert_eq!(out[0].width(), 100.0);
         assert_eq!(out[1].width(), 30.0);
+    }
+
+    #[test]
+    fn space_around_gives_edges_half_a_share() {
+        let out = rects(
+            row([boxed(20.0, 10.0), boxed(20.0, 10.0)]).justify(Justify::SpaceAround),
+            bounds(100.0, 10.0),
+        );
+        assert_eq!(out[0].left(), 15.0);
+        assert_eq!(out[1].left(), 65.0);
     }
 
     #[test]

@@ -207,15 +207,17 @@ pub(crate) fn labeled_button(
     selected: bool,
     metrics: UiMetrics,
 ) -> Response {
-    let font = FontId::proportional(metrics.text.label);
-    let icon_size = metrics.navigation_icon.max(24.0);
-    let label_node = text(ui.painter(), label, &font).id(1);
-    let tree = column([leaf(Vec2::splat(icon_size)).id(0), label_node])
-        .gap(Space::S4.px(&metrics))
-        .align(Align::Center)
-        .padding(Insets::xy(Space::S12.px(&metrics), Space::S8.px(&metrics)))
-        .min_width(metrics.icon_button_size)
-        .min_height(metrics.icon_button_size);
+    let font = FontId::proportional(metrics.labeled_button_text);
+    let icon_size = metrics.labeled_button_icon;
+    let tree = row([
+        leaf(Vec2::splat(icon_size)).id(0),
+        text(ui.painter(), label, &font).id(1),
+    ])
+    .gap(Space::S8.px(&metrics))
+    .align(Align::Center)
+    .justify(Justify::SpaceAround)
+    .padding(Insets::xy(Space::S6.px(&metrics), Space::S8.px(&metrics)))
+    .min_height(metrics.icon_button_size);
     let size = tree.outer_size();
     let (rect, response) = ui.allocate_exact_size(size, Sense::click());
     let placed = tree.solve(rect);
@@ -227,7 +229,7 @@ pub(crate) fn labeled_button(
         } else {
             (tone::FAINT as f32 + hover * 20.0) as u8
         };
-        painter.rect_filled(rect, radius::control(), ink(tint));
+        painter.rect_filled(rect, rect.height() * 0.5, ink(tint));
         let color = ink(if selected || response.hovered() {
             tone::FULL
         } else {
@@ -239,9 +241,9 @@ pub(crate) fn labeled_button(
         if let Some(slot) = placed.find(1) {
             draw_text(
                 painter,
-                slot.center(),
-                Align2::CENTER_CENTER,
-                truncate_to_width(painter, label, &font, slot.width().max(size.x)),
+                slot.left_center(),
+                Align2::LEFT_CENTER,
+                label,
                 font.clone(),
                 color,
                 None,

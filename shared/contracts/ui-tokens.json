@@ -80,6 +80,7 @@
           "settingsAddonActionWidth": 148,
           "screenControlHeight": 36,
           "screenControlRadius": 9,
+          "labeledButtonIconSize": 22,
           "space2": 2,
           "space4": 4,
           "space6": 6,
@@ -157,6 +158,7 @@
         "cardRowSpacingLarge": 20
       },
         "sp": {
+          "labeledButtonTextSize": 12,
           "screenTitleSizeMobile": 32,
           "screenTitleSize": 34,
           "screenTitleSizeTv": 42,
