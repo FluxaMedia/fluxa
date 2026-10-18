@@ -5,7 +5,7 @@ use crate::acb::Acb;
 use crate::events::{Event, EventKind};
 use crate::feed::{FeedReply, feed_payload};
 use crate::ffi::Starfish;
-use crate::hdr::hdr_payload;
+use crate::hdr::{hdr_payload, merge_into_video_data};
 use crate::load::{LoadOptions, audio_change, load_payload};
 use crate::player::{MediaInfo, Packet, Pipeline};
 
@@ -13,6 +13,7 @@ pub struct StarfishPipeline {
     inner: Starfish,
     options: LoadOptions,
     resume_at: Option<i64>,
+    acb_hdr: Option<String>,
     acb: Option<Acb>,
 }
 
@@ -25,7 +26,7 @@ impl StarfishPipeline {
         } else {
             None
         };
-        Ok(StarfishPipeline { inner, options, resume_at: None, acb })
+        Ok(StarfishPipeline { inner, options, resume_at: None, acb_hdr: None, acb })
     }
 }
 
@@ -36,8 +37,11 @@ impl Pipeline for StarfishPipeline {
         let payload = load_payload(&info.video, info.audio.as_ref(), &options);
         self.inner.notify_foreground();
         self.inner.load(&payload).map_err(|error| format!("{error:?}"))?;
+        self.acb_hdr = None;
         if let Some(hdr) = info.hdr.as_ref().and_then(|hdr| hdr_payload(hdr, options.webos_major)) {
-            if !self.inner.set_hdr_info(&hdr) {
+            if self.acb.is_some() {
+                self.acb_hdr = Some(hdr);
+            } else if !self.inner.set_hdr_info(&hdr) {
                 trace("setHdrInfo rejected");
             }
         }
@@ -104,7 +108,10 @@ impl Pipeline for StarfishPipeline {
             return;
         };
         match event.kind {
-            EventKind::VideoInfo => acb.video_data(&event.text),
+            EventKind::VideoInfo => match &self.acb_hdr {
+                Some(hdr) => acb.video_data(&merge_into_video_data(&event.text, hdr)),
+                None => acb.video_data(&event.text),
+            },
             EventKind::LoadCompleted => {
                 if let Some(media) = self.inner.media_id() {
                     acb.bind(&media);

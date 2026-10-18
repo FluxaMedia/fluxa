@@ -100,6 +100,19 @@ pub fn hdr_payload(info: &HdrInfo, webos_major: u32) -> Option<String> {
     Some(Value::Object(out).to_string())
 }
 
+pub fn merge_into_video_data(video_data: &str, hdr: &str) -> String {
+    let (Ok(mut data), Ok(Value::Object(hdr))) =
+        (serde_json::from_str::<Value>(video_data), serde_json::from_str::<Value>(hdr))
+    else {
+        return video_data.to_owned();
+    };
+    let Some(video) = data.get_mut("video").and_then(Value::as_object_mut) else {
+        return video_data.to_owned();
+    };
+    video.extend(hdr);
+    data.to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -128,6 +141,24 @@ mod tests {
         assert!(old.get("mediaSei").is_some() && old.get("mediaVui").is_some());
         let new: Value = serde_json::from_str(&hdr_payload(&info(Some(1000)), 5).unwrap()).unwrap();
         assert!(new.get("sei").is_some() && new.get("vui").is_some());
+    }
+
+    #[test]
+    fn hdr_keys_land_inside_the_video_object() {
+        let hdr = hdr_payload(&info(Some(1000)), 4).unwrap();
+        let merged: Value =
+            serde_json::from_str(&merge_into_video_data(r#"{"context":"m","video":{"hdrType":"none","width":3840}}"#, &hdr))
+                .unwrap();
+        assert_eq!(merged["video"]["hdrType"], "HDR10");
+        assert_eq!(merged["video"]["width"], 3840);
+        assert!(merged["video"]["mediaSei"].is_object());
+        assert_eq!(merged["context"], "m");
+    }
+
+    #[test]
+    fn unparsable_video_data_is_left_alone() {
+        assert_eq!(merge_into_video_data("nope", "{}"), "nope");
+        assert_eq!(merge_into_video_data(r#"{"a":1}"#, "{}"), r#"{"a":1}"#);
     }
 
     #[test]
