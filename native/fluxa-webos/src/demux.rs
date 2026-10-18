@@ -375,8 +375,11 @@ impl Demuxer for FfmpegDemuxer {
                     }
                 }
             }
-            let data = match (&self.converter, is_video) {
-                (Some(converter), true) if !is_annexb(data) => converter.convert(data, packet.is_key()),
+            let data = match (self.converter.as_mut(), is_video) {
+                (Some(converter), true) if !is_annexb(data) => match converter.convert(data) {
+                    Some(converted) => converted,
+                    None => continue,
+                },
                 _ => data.to_vec(),
             };
             let data = match (is_video && self.hevc, hdr10plus::strip(&data)) {
@@ -423,6 +426,9 @@ impl Demuxer for FfmpegDemuxer {
         let target = from_ns(pts_ns, Rational::new(1, ffi::AV_TIME_BASE as i32));
         input.seek(target, ..target + 1).map_err(|error| error.to_string())?;
         self.queue.clear();
+        if let Some(converter) = self.converter.as_mut() {
+            converter.reset();
+        }
         if let Some(transcoder) = &self.transcoder {
             self.transcoder = Some(transcoder.restart()?);
         }

@@ -3,6 +3,10 @@ const START: [u8; 4] = [0, 0, 0, 1];
 pub struct Converter {
     length_size: usize,
     parameter_sets: Vec<u8>,
+    hevc: bool,
+    started: bool,
+    first_idr: bool,
+    sets_seen: bool,
 }
 
 fn push_nal(out: &mut Vec<u8>, nal: &[u8]) {
@@ -35,7 +39,7 @@ impl Converter {
             push_nal(&mut sets, extradata.get(at + 2..at + 2 + len)?);
             at += 2 + len;
         }
-        Some(Converter { length_size: (extradata[4] & 3) as usize + 1, parameter_sets: sets })
+        Some(Converter::new((extradata[4] & 3) as usize + 1, sets, false))
     }
 
     pub fn hvcc(extradata: &[u8]) -> Option<Converter> {
@@ -53,25 +57,88 @@ impl Converter {
                 at += 2 + len;
             }
         }
-        Some(Converter { length_size: (extradata[21] & 3) as usize + 1, parameter_sets: sets })
+        Some(Converter::new((extradata[21] & 3) as usize + 1, sets, true))
     }
 
-    pub fn convert(&self, packet: &[u8], keyframe: bool) -> Vec<u8> {
-        let mut out = Vec::with_capacity(packet.len() + self.parameter_sets.len() + 16);
-        if keyframe {
-            out.extend_from_slice(&self.parameter_sets);
+    fn new(length_size: usize, parameter_sets: Vec<u8>, hevc: bool) -> Converter {
+        Converter { length_size, parameter_sets, hevc, started: true, first_idr: true, sets_seen: false }
+    }
+
+    pub fn reset(&mut self) {
+        self.started = false;
+    }
+
+    fn is_sps(&self, unit: u8) -> bool {
+        unit == if self.hevc { 33 } else { 7 }
+    }
+
+    fn is_pps(&self, unit: u8) -> bool {
+        unit == if self.hevc { 34 } else { 8 }
+    }
+
+    fn is_idr(&self, unit: u8) -> bool {
+        if self.hevc { matches!(unit, 19 | 20 | 21) } else { unit == 5 }
+    }
+
+    fn is_slice(&self, unit: u8) -> bool {
+        if self.hevc { matches!(unit, 0..=9 | 16..=18 | 21) } else { unit == 1 }
+    }
+
+    fn recovery_point(nal: &[u8]) -> bool {
+        let mut at = 1;
+        while at < nal.len() && nal[at] != 0x80 {
+            let mut kind = 0usize;
+            while let Some(&byte) = nal.get(at) {
+                at += 1;
+                kind += byte as usize;
+                if byte != 0xff {
+                    break;
+                }
+            }
+            let mut size = 0usize;
+            while let Some(&byte) = nal.get(at) {
+                at += 1;
+                size += byte as usize;
+                if byte != 0xff {
+                    break;
+                }
+            }
+            if kind == 6 {
+                return true;
+            }
+            at += size;
         }
+        false
+    }
+
+    pub fn convert(&mut self, packet: &[u8]) -> Option<Vec<u8>> {
+        let mut out = Vec::with_capacity(packet.len() + self.parameter_sets.len() + 16);
         let mut at = 0;
         while at + self.length_size <= packet.len() {
             let len = packet[at..at + self.length_size].iter().fold(0usize, |acc, byte| acc << 8 | *byte as usize);
             at += self.length_size;
-            let Some(nal) = packet.get(at..at + len) else {
+            let Some(nal) = packet.get(at..at + len).filter(|nal| !nal.is_empty()) else {
                 break;
             };
-            push_nal(&mut out, nal);
             at += len;
+            let unit = if self.hevc { (nal[0] >> 1) & 0x3f } else { nal[0] & 0x1f };
+            if self.first_idr && (self.is_sps(unit) || self.is_pps(unit)) {
+                self.sets_seen = true;
+            }
+            let sei = unit == if self.hevc { 39 } else { 6 };
+            if !self.started && (self.is_sps(unit) || self.is_idr(unit) || (sei && !self.hevc && Self::recovery_point(nal))) {
+                self.started = true;
+            }
+            if self.first_idr && self.is_idr(unit) && !self.sets_seen {
+                out.extend_from_slice(&self.parameter_sets);
+                self.first_idr = false;
+            } else if !self.first_idr && self.is_slice(unit) {
+                self.first_idr = true;
+                self.sets_seen = false;
+            }
+            push_nal(&mut out, nal);
         }
-        out
+        self.started.then_some(out)
     }
 }
 
@@ -116,25 +183,25 @@ mod tests {
 
     #[test]
     fn avcc_parameter_sets_precede_keyframes_only() {
-        let converter = Converter::avcc(&avcc()).unwrap();
+        let mut converter = Converter::avcc(&avcc()).unwrap();
         let packet = [0, 0, 0, 2, 0x65, 0x11];
-        let key = converter.convert(&packet, true);
+        let key = converter.convert(&packet).unwrap();
         assert_eq!(key, [0, 0, 0, 1, 0x67, 0xaa, 0, 0, 0, 1, 0x68, 0xbb, 0, 0, 0, 1, 0x65, 0x11]);
-        assert_eq!(converter.convert(&packet, false), [0, 0, 0, 1, 0x65, 0x11]);
+        assert_eq!(converter.convert(&[0, 0, 0, 2, 0x41, 0x11]).unwrap(), [0, 0, 0, 1, 0x41, 0x11]);
     }
 
     #[test]
     fn two_byte_length_prefix_is_honoured() {
         let mut extra = avcc();
         extra[4] = 0xfd;
-        let converter = Converter::avcc(&extra).unwrap();
-        assert_eq!(converter.convert(&[0, 1, 0x41, 0, 2, 0x01, 0x02], false), [0, 0, 0, 1, 0x41, 0, 0, 0, 1, 1, 2]);
+        let mut converter = Converter::avcc(&extra).unwrap();
+        assert_eq!(converter.convert(&[0, 1, 0x41, 0, 2, 0x01, 0x02]).unwrap(), [0, 0, 0, 1, 0x41, 0, 0, 0, 1, 1, 2]);
     }
 
     #[test]
     fn truncated_nal_is_dropped_not_panicked() {
-        let converter = Converter::avcc(&avcc()).unwrap();
-        assert_eq!(converter.convert(&[0, 0, 0, 9, 1, 2], false), Vec::<u8>::new());
+        let mut converter = Converter::avcc(&avcc()).unwrap();
+        assert_eq!(converter.convert(&[0, 0, 0, 9, 1, 2]).unwrap(), Vec::<u8>::new());
     }
 
     #[test]
@@ -144,8 +211,24 @@ mod tests {
         extra[21] = 0x03;
         extra[22] = 1;
         extra.extend_from_slice(&[32, 0, 1, 0, 2, 0x40, 0x01]);
-        let converter = Converter::hvcc(&extra).unwrap();
-        assert_eq!(converter.convert(&[0, 0, 0, 1, 0x26], true), [0, 0, 0, 1, 0x40, 0x01, 0, 0, 0, 1, 0x26]);
+        let mut converter = Converter::hvcc(&extra).unwrap();
+        assert_eq!(converter.convert(&[0, 0, 0, 1, 0x26]).unwrap(), [0, 0, 0, 1, 0x40, 0x01, 0, 0, 0, 1, 0x26]);
+    }
+
+    #[test]
+    fn packets_before_a_start_point_are_held_back_after_reset() {
+        let mut converter = Converter::avcc(&avcc()).unwrap();
+        converter.reset();
+        assert_eq!(converter.convert(&[0, 0, 0, 2, 0x41, 0x11]), None);
+        assert!(converter.convert(&[0, 0, 0, 2, 0x65, 0x11]).is_some());
+        assert!(converter.convert(&[0, 0, 0, 2, 0x41, 0x11]).is_some());
+    }
+
+    #[test]
+    fn parameter_sets_in_the_packet_are_not_repeated() {
+        let mut converter = Converter::avcc(&avcc()).unwrap();
+        let packet = [0, 0, 0, 2, 0x67, 0xaa, 0, 0, 0, 2, 0x65, 0x11];
+        assert_eq!(converter.convert(&packet).unwrap(), [0, 0, 0, 1, 0x67, 0xaa, 0, 0, 0, 1, 0x65, 0x11]);
     }
 
     #[test]
