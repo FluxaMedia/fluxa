@@ -34,6 +34,7 @@ const SEEK: &str = "_ZN17StarfishMediaAPIs4SeekEPKc";
 const HDR_INFO: &str = "_ZN17StarfishMediaAPIs10setHdrInfoEPKc";
 const MEDIA_ID: &str = "_ZN17StarfishMediaAPIs10getMediaIDEv";
 const FLUSH: &str = "_ZN17StarfishMediaAPIs5flushEv";
+const FLUSH_AT: &str = "_ZN17StarfishMediaAPIs5flushEPKc";
 const PUSH_EOS: &str = "_ZN17StarfishMediaAPIs7pushEOSEv";
 const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
 const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
@@ -104,6 +105,7 @@ pub struct Starfish {
     set_hdr_info: Option<Text>,
     media_id: MediaId,
     flush: Verb,
+    flush_at: Option<Text>,
     push_eos: Verb,
     set_time_to_decode: Option<Text>,
     set_play_rate: Option<Text>,
@@ -142,6 +144,7 @@ impl Starfish {
                 set_hdr_info: optional(library, HDR_INFO),
                 media_id: symbol(library, MEDIA_ID)?,
                 flush: symbol(library, FLUSH)?,
+                flush_at: optional(library, FLUSH_AT),
                 push_eos: symbol(library, PUSH_EOS)?,
                 set_time_to_decode: optional(library, TIME_TO_DECODE),
                 set_play_rate: optional(library, PLAY_RATE),
@@ -215,6 +218,12 @@ impl Starfish {
         unsafe { (self.flush)(self.this()) }
     }
 
+    pub fn flush_to(&self, pts_ns: i64) -> Option<bool> {
+        let flush = self.flush_at?;
+        let payload = c_string(&format!("{{\"ptsToDecode\":{pts_ns}}}"));
+        Some(unsafe { flush(self.this(), payload.as_ptr()) })
+    }
+
     pub fn push_eos(&self) -> bool {
         unsafe { (self.push_eos)(self.this()) }
     }
@@ -270,7 +279,7 @@ const SYMBOLS: [&str; 16] = [
     TIME_TO_DECODE,
 ];
 
-const EXTRA_SYMBOLS: [&str; 2] = [PLAY_RATE, CHANGE_CODEC];
+const EXTRA_SYMBOLS: [&str; 3] = [PLAY_RATE, CHANGE_CODEC, FLUSH_AT];
 
 pub fn probe_symbols() -> Vec<(String, bool)> {
     let library = match library() {

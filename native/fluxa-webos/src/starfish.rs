@@ -30,6 +30,15 @@ impl StarfishPipeline {
     }
 }
 
+impl StarfishPipeline {
+    fn flush_plain(&mut self, pts_ns: i64) {
+        if !self.inner.flush() {
+            trace("flush rejected");
+        }
+        self.resume_at = Some(pts_ns);
+    }
+}
+
 impl Pipeline for StarfishPipeline {
     fn load(&mut self, info: &MediaInfo, start_ns: i64) -> Result<(), String> {
         let mut options = self.options.clone();
@@ -57,10 +66,14 @@ impl Pipeline for StarfishPipeline {
     }
 
     fn flush(&mut self, pts_ns: i64) {
-        if !self.inner.flush() {
-            trace("flush rejected");
+        match self.inner.flush_to(pts_ns) {
+            Some(true) => self.resume_at = None,
+            Some(false) => {
+                trace("flush to position rejected");
+                self.flush_plain(pts_ns);
+            }
+            None => self.flush_plain(pts_ns),
         }
-        self.resume_at = Some(pts_ns);
     }
 
     fn feed(&mut self, packet: &Packet) -> FeedReply {
