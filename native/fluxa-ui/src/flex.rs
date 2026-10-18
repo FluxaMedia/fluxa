@@ -357,7 +357,7 @@ impl Node {
         )
     }
 
-    fn outer_size(&self) -> Vec2 {
+    pub fn outer_size(&self) -> Vec2 {
         self.border_size() + Vec2::new(self.margin.width(), self.margin.height())
     }
 
