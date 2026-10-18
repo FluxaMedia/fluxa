@@ -661,7 +661,13 @@ pub(super) fn tick_subtitle_lift(state: &mut RendererState) {
         return;
     }
     player.sub_pos = Some(value.clone());
-    mpv(state, "sub-pos", &value);
+    if let Some(video) = state.video.as_mut() {
+        video.command(VideoCommand::Mpv(vec![
+            "set".to_owned(),
+            "sub-pos".to_owned(),
+            value,
+        ]));
+    }
 }
 
 pub(super) fn mpv(state: &mut RendererState, name: &str, value: &str) {
