@@ -57,19 +57,67 @@ Verdict: adopt, adapt, skip, verify on TV.
 | Packaging | Executable-bit check on the binary (issue 225), two ipks, Homebrew Channel manifest with sha256 | n/a | CI allow lists, `webosbrew.manifest.json` | `verify-webos.sh` | Adapt: executable-bit check, manifest |
 | UI render budget | Home at 1080p on a 4K panel, upload budget per frame | n/a | Lookahead of posters, per-class upload budget, warm textures | Not reviewed | Later, own plan |
 
-## 3. Not reviewed
+## 3. Kodi, read in full
 
-- Kodi: the base Wayland window classes, renderer synchronisation, audio engine. Only the media pipeline, platform config, window class and README were read.
+Files read: `MediaPipelineWebOS.cpp/.h`, `VideoPlayer*WebOS`, `RendererStarfish`, `VideoBufferStarfish`, `WebOSTVPlatformConfig`, `WinSystemWaylandWebOS`, `ShellSurfaceWebOSShell`, `SeatWebOS`, `OSScreenSaverWebOS`, `LunaPowerManagement`, `settings/webos.xml`, `README.webOS.md`.
+
+Pipeline life cycle (the part Kodi has had years to get right):
+
+1. `Load` with callback. On `LOADCOMPLETED`: ACB `setSinkType(MAIN)`, `setMediaId`, `setState(FOREGROUND, LOADED)`, then `Play()`, mark the first video packet as "flushed", start the video and audio threads. Nothing is fed before `LOADCOMPLETED`.
+2. `PAUSED`, `PLAYING` and `UNLOADCOMPLETED` are mirrored into ACB `setState`. Fluxa does the same.
+3. `UNLOADCOMPLETED` stops and joins both feed threads before the pipeline is freed. Fluxa unloads without waiting.
+4. `AUDIO_INFO` and `VIDEO_INFO` events are forwarded to ACB `setMediaAudioData` and `setMediaVideoData` (the payload text unchanged). Fluxa forwards the video one only.
+5. Feed rule: after a flush the first packet triggers `setTimeToDecode {position}` and `sendSegmentEvent`; if `setTimeToDecode` fails on webOS < 11 it patches `ptsToDecode` through `CustomPipeline::setContentInfo`. `FRAMEREADY` sets "started".
+6. Feed throttle: stop feeding once the fed PTS is 1600 ms ahead of the played PTS. `Ok` advances, `BufferFull` retries the same packet after 10 ms, anything else is logged and the packet is dropped. Video PTS is shifted back by the renderer delay.
+7. End of stream: `VIDEO_DRAIN` message becomes `pushEOS`.
+8. Dropped frames are counted from `DROPPED_FRAME` events; `INT_ERROR` and `STR_ERROR` are only logged (no recovery path).
+
+Window and input (Wayland, so only the lessons carry over to SDL):
+
+| Kodi does | Fluxa (SDL) |
+| --- | --- |
+| Shell surface properties `appId`, `displayAffinity` (`DISPLAY_ID`), `_WEBOS_ACCESS_POLICY_KEYS_BACK` and `_GUIDE` set to `true` | Back set through the SDL hint (done). Guide has no SDL hint in the SDK. Verify whether SDL exposes the other two |
+| `registerApp`, `relaunch` event raises the window to fullscreen | Done |
+| Minimised (state bits empty) is intercepted and playback stopped, the state is not passed on because it shows an odd animation | Stops playback. Verify the window is not resized by the same event |
+| `set_cursor` on the seat is a no-op because it breaks pointer input | SDL cursor is never set. Verify we never call `SDL_ShowCursor` or a custom cursor |
+| Seat key-repeat info ignored (webOS 7 sends 40 cps after 400 ms) | Not handled (see key repeat row in section 2) |
+| Reports a 1080p GUI on 4K and 720p on HD, video limit set separately to 4K or 1080p | Same rule |
+| HDR display flag from `tv.model.supportHDR` | Config value read for DV only. Verify HDR flag source |
+| Screen saver subscribed only while playback inhibits it | Done |
+
+Not read: the generic Wayland classes (registry, connection, xkb keymap, window decorator, output, presentation sync). They are Kodi's own windowing stack and Fluxa uses SDL, so they have no counterpart. The audio engine hand-over (`RequestAudioDevice`) was read in the pipeline file only.
+
+## 4. Combined comparison
+
+Where the three references agree, or the dumps settle it, the decision is made. Where they disagree the decision waits for a TV.
+
+| Topic | Kodi | Nuvio | plx | Decision |
+| --- | --- | --- | --- | --- |
+| Feed starts only after `LOADCOMPLETED` | yes | n/a | yes, and no verb while `Load` is in flight | Agreed. Check Fluxa for any verb that can run before `LOADCOMPLETED` |
+| Seek | `flush()`, `setTimeToDecode`, `sendSegmentEvent` | `flush({"ptsToDecode"})`, replay Play or Pause | `Seek(ms)` or `sendSegmentEvent` | Disagree. Try `flush(const char*)` first, fall back to Kodi's order. TV needed |
+| Throttle | 1600 ms ahead for audio and video, retry after 10 ms | buffer kept until reply | two lanes, byte caps | Adopt Kodi's time cap, per lane. The byte caps from plx as a second guard |
+| Unload | joins feed threads on `UNLOADCOMPLETED` | waits for unload | waits for `UNLOADCOMPLETED` before destruct | Agreed. Fluxa must wait |
+| ACB data events | forwards audio and video info | video, audio optional | both | Forward audio info too, only when `setMediaAudioData` exists |
+| HDR | `setHdrInfo`, skips empty SEI | ACB payload patch | ACB payload on webOS 4 | Done |
+| Error events | logged only | fallback paths | event log with firmware context | Keep logging, add the firmware context line from plx |
+| Lifecycle | relaunch raises, minimise stops | grace 120 s | matrix of cases | Needs product decision on the grace period |
+| Back / Guide | surface properties | hint | hint, root Back goes Home | Done for Back. Root Back behaviour is plx's |
+| Codec gating | `Supports()` falls back to software decode | URI mode lets TV decide | probe at start | Fluxa has no software decoder. Keep the up-front rejection, report the reason |
+
+## 5. Order from here
+
+Done and committed: items 1 to 7 of section 1.
+
+1. Seek: `flush(const char*)` with `ptsToDecode`, keep `setTimeToDecode` as the second step, behind one function so the TV result decides which stays.
+2. Pipeline life cycle: no feed before `LOADCOMPLETED`, wait for `UNLOADCOMPLETED` before free, per-lane time throttle, forward audio info to ACB.
+3. Failure policy: three refused seeks then keep playing, `Load` timeout with a clear error, the Realtek probe.
+4. TV run: build the ipk, run `probe`, play H.264/AC3, HEVC HDR10, DV profile 8 and 5, DTS, seek, audio switch, pause, Back. Nothing past step 3 is tuned until this has happened.
+5. After the TV run: lifecycle grace period, key repeat, colour keys, crash marker, packaging checks, subtitles, old-ABI `Feed` for webOS 3.
+
+A C++ shim stays an option, not a need: Nuvio ships one for DTS because it needs the old string ABI, and Kodi's `sendSegmentEvent` is a private C++ call. Neither is needed until a TV shows the public calls are not enough.
+
+## 6. Not reviewed
+
 - plx-native: the 345 KB `parity-gaps.md`, `adaptive-playback.md`, distribution and Store submission notes, the Rust UI.
 - Nuvio: the non-webOS ports, the server code, the Android and Tizen sources.
-
-## 4. Proposed order
-
-1. Fix items 1 to 4 and 7 in `ffi.rs` (symbol names, optional `setHdrInfo`, library lifetime). Add a test that checks every bound name against a stored list of the dump symbols.
-2. Set the Back hint (item 6).
-3. HDR on webOS 4 through the ACB payload (item 5).
-4. Seek through `flush(const char*)` with `ptsToDecode`, still unverified on TV. This answers the `sendSegmentEvent` question without a C++ shim.
-5. Take it to a TV: build the ipk, run `probe`, play H.264/AC3, HEVC HDR10, DV profile 8 and 5, DTS, seek, audio switch, pause, Back.
-6. Only after a TV run: feed lanes, lifecycle grace period, the Realtek probe, subtitles.
-
-A C++ shim stays an option, not a need: Nuvio ships one for DTS because it needs the old string ABI, and the same may be needed for webOS 3.
+- Kodi: the generic Wayland windowing classes and the audio engine, see section 3.
