@@ -6,7 +6,7 @@ use crate::events::{Event, EventKind};
 use crate::feed::{FeedReply, feed_payload};
 use crate::ffi::Starfish;
 use crate::hdr::hdr_payload;
-use crate::load::{LoadOptions, load_payload};
+use crate::load::{LoadOptions, audio_change, load_payload};
 use crate::player::{MediaInfo, Packet, Pipeline};
 
 pub struct StarfishPipeline {
@@ -80,6 +80,23 @@ impl Pipeline for StarfishPipeline {
 
     fn unload(&mut self) {
         self.inner.unload();
+    }
+
+    fn set_rate(&mut self, rate: f64) -> bool {
+        let payload = format!("{{\"audioOutput\":{},\"playRate\":{rate}}}", rate.abs() <= 2.0);
+        self.inner.set_play_rate(&payload).unwrap_or(false)
+    }
+
+    fn change_audio(&mut self, info: &MediaInfo) -> bool {
+        let Some(audio) = info.audio.as_ref().filter(|_| self.options.webos_major >= 6) else {
+            return false;
+        };
+        let (codec, options) = audio_change(audio);
+        let changed = self.inner.change_audio_codec(codec, &options).unwrap_or(false);
+        if !changed {
+            trace("changeAudioCodec unavailable or rejected");
+        }
+        changed
     }
 
     fn on_event(&mut self, event: &Event) {

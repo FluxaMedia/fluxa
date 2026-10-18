@@ -58,6 +58,12 @@ pub trait Pipeline {
     fn feed(&mut self, packet: &Packet) -> FeedReply;
     fn end_of_stream(&mut self);
     fn unload(&mut self);
+    fn set_rate(&mut self, _rate: f64) -> bool {
+        false
+    }
+    fn change_audio(&mut self, _info: &MediaInfo) -> bool {
+        false
+    }
     fn on_event(&mut self, _event: &Event) {}
 }
 
@@ -128,10 +134,17 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             "togglePause" => self.toggle_pause(),
             "seek" => self.seek_to(self.position_ns + (seconds(&request["seconds"]) * 1e9) as i64),
             "seekTo" => self.seek_to((seconds(&request["seconds"]) * 1e9) as i64),
+            "setSpeed" => self.set_speed(seconds(&request["value"])),
             "setVolume" => self.status.volume = seconds(&request["value"]).clamp(0.0, 100.0),
             "toggleMute" => self.status.volume = if self.status.volume > 0.0 { 0.0 } else { 100.0 },
             "selectTracks" => self.select_tracks(request),
             _ => {}
+        }
+    }
+
+    fn set_speed(&mut self, rate: f64) {
+        if self.state == State::Ready && rate != 0.0 {
+            self.pipeline.set_rate(rate);
         }
     }
 
@@ -214,6 +227,11 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         info.audio = Some(stream);
         info.audio_id = Some(id.to_owned());
         let position = self.position_ns;
+        if self.pipeline.change_audio(&info) {
+            self.info = Some(info);
+            self.refresh_tracks();
+            return self.seek_to(position);
+        }
         self.pipeline.unload();
         self.pending = None;
         self.drained = false;
@@ -388,6 +406,7 @@ mod tests {
     struct Log {
         calls: Vec<String>,
         full: bool,
+        hot_audio_switch: bool,
     }
 
     struct Sink(Rc<RefCell<Log>>);
@@ -416,6 +435,17 @@ mod tests {
         }
         fn end_of_stream(&mut self) {
             self.0.borrow_mut().calls.push("eos".into());
+        }
+        fn set_rate(&mut self, rate: f64) -> bool {
+            self.0.borrow_mut().calls.push(format!("rate {rate}"));
+            true
+        }
+        fn change_audio(&mut self, _info: &MediaInfo) -> bool {
+            let mut log = self.0.borrow_mut();
+            if log.hot_audio_switch {
+                log.calls.push("change_audio".into());
+            }
+            log.hot_audio_switch
         }
         fn unload(&mut self) {
             self.0.borrow_mut().calls.push("unload".into());
@@ -525,6 +555,30 @@ mod tests {
         let calls = rig.log.borrow().calls.clone();
         assert_eq!(&calls[calls.len() - 2..], ["unload", "load"]);
         assert_eq!(*rig.seeks.borrow(), vec![7_000_000_000]);
+    }
+
+    #[test]
+    fn hot_audio_switch_flushes_instead_of_reloading() {
+        let mut rig = started(&[]);
+        rig.log.borrow_mut().hot_audio_switch = true;
+        rig.events.send(event(EventKind::FrameReady, 7_000_000_000)).unwrap();
+        rig.player.tick();
+        rig.player.handle(&json!({"type": "selectTracks", "audio": "a2"}));
+        let calls = rig.log.borrow().calls.clone();
+        assert_eq!(&calls[calls.len() - 2..], ["change_audio", "flush 7000000000"]);
+        assert!(!calls.contains(&"unload".to_owned()));
+    }
+
+    #[test]
+    fn speed_requests_reach_the_pipeline_once_loaded() {
+        let mut rig = rig(&[]);
+        rig.player.handle(&json!({"type": "setSpeed", "value": 4.0}));
+        assert!(rig.log.borrow().calls.is_empty());
+        rig.player.handle(&json!({"type": "load", "url": "u"}));
+        rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
+        rig.player.tick();
+        rig.player.handle(&json!({"type": "setSpeed", "value": 4.0}));
+        assert_eq!(rig.log.borrow().calls.last().unwrap(), "rate 4");
     }
 
     #[test]

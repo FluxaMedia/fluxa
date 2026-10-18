@@ -19,6 +19,36 @@ type Feed = unsafe extern "C" fn(*mut c_void, *mut c_void, *const c_char);
 type Verb = unsafe extern "C" fn(*mut c_void) -> bool;
 type Text = unsafe extern "C" fn(*mut c_void, *const c_char) -> bool;
 type MediaId = unsafe extern "C" fn(*mut c_void) -> *const c_char;
+type ChangeCodec = unsafe extern "C" fn(*mut c_void, *const CxxString, *const CxxString) -> bool;
+
+const PLAY_RATE_SYMBOLS: [&str; 1] = ["_ZN17StarfishMediaAPIs11SetPlayRateEPKc\0"];
+const CHANGE_CODEC_SYMBOLS: [&str; 1] =
+    ["_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES8_\0"];
+
+#[repr(C)]
+struct CxxString {
+    data: *const u8,
+    len: usize,
+    union: [u8; 16],
+}
+
+struct BorrowedString {
+    raw: CxxString,
+    _bytes: Vec<u8>,
+}
+
+fn borrowed_string(text: &str) -> BorrowedString {
+    let mut bytes = text.as_bytes().to_vec();
+    bytes.push(0);
+    let mut union = [0u8; 16];
+    let capacity = text.len().to_ne_bytes();
+    union[..capacity.len()].copy_from_slice(&capacity);
+    BorrowedString { raw: CxxString { data: bytes.as_ptr(), len: text.len(), union }, _bytes: bytes }
+}
+
+fn optional<T: Copy>(library: &Library, names: &[&'static str]) -> Option<T> {
+    names.iter().find_map(|name| unsafe { symbol::<T>(library, name) }.ok())
+}
 
 #[repr(C, align(16))]
 struct Aligned<const N: usize>([u8; N]);
@@ -53,6 +83,8 @@ pub struct Starfish {
     flush: Verb,
     push_eos: Verb,
     set_time_to_decode: Text,
+    set_play_rate: Option<Text>,
+    change_audio_codec: Option<ChangeCodec>,
 }
 
 extern "C" fn trampoline(kind: c_int, number: i64, text: *const c_char, data: *mut c_void) {
@@ -89,6 +121,8 @@ impl Starfish {
                 flush: symbol(&library, "_ZN17StarfishMediaAPIs5flushEv\0")?,
                 push_eos: symbol(&library, "_ZN17StarfishMediaAPIs7pushEOSEv\0")?,
                 set_time_to_decode: symbol(&library, "_ZN17StarfishMediaAPIs13setTimeToDecodeEPKc\0")?,
+                set_play_rate: optional(&library, &PLAY_RATE_SYMBOLS),
+                change_audio_codec: optional(&library, &CHANGE_CODEC_SYMBOLS),
                 _library: library,
                 object: Box::new(Aligned([0; OBJECT_SIZE])),
                 sink: Box::new(Sink { events, webos_major }),
@@ -165,6 +199,18 @@ impl Starfish {
         unsafe { (self.set_time_to_decode)(self.this(), payload.as_ptr()) }
     }
 
+    pub fn set_play_rate(&self, payload: &str) -> Option<bool> {
+        let set = self.set_play_rate?;
+        let payload = c_string(payload);
+        Some(unsafe { set(self.this(), payload.as_ptr()) })
+    }
+
+    pub fn change_audio_codec(&self, codec: &str, options: &str) -> Option<bool> {
+        let change = self.change_audio_codec?;
+        let (codec, options) = (borrowed_string(codec), borrowed_string(options));
+        Some(unsafe { change(self.this(), &codec.raw, &options.raw) })
+    }
+
     pub fn media_id(&self) -> Option<String> {
         let id = unsafe { (self.media_id)(self.this()) };
         (!id.is_null()).then(|| unsafe { CStr::from_ptr(id) }.to_string_lossy().into_owned())
@@ -177,7 +223,7 @@ impl Drop for Starfish {
     }
 }
 
-const SYMBOLS: [&str; 13] = [
+const SYMBOLS: [&str; 15] = [
     "_ZN17StarfishMediaAPIsC1EPKc",
     "_ZN17StarfishMediaAPIsD1Ev",
     "_ZN17StarfishMediaAPIs4LoadEPKcPFvixS1_PvES2_",
@@ -191,6 +237,8 @@ const SYMBOLS: [&str; 13] = [
     "_ZN17StarfishMediaAPIs5flushEv",
     "_ZN17StarfishMediaAPIs7pushEOSEv",
     "_ZN17StarfishMediaAPIs13setTimeToDecodeEPKc",
+    "_ZN17StarfishMediaAPIs11SetPlayRateEPKc",
+    "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES8_",
 ];
 
 pub fn probe_symbols() -> Vec<(String, bool)> {
@@ -215,6 +263,14 @@ mod tests {
     fn missing_library_is_an_error_not_a_panic() {
         let (tx, _rx) = channel();
         assert!(matches!(Starfish::open("app", 5, tx), Err(Error::Library(_))));
+    }
+
+    #[test]
+    fn borrowed_string_is_nul_terminated_and_records_capacity() {
+        let text = borrowed_string("abc");
+        assert_eq!(text.raw.len, 3);
+        assert_eq!(unsafe { *text.raw.data.add(3) }, 0);
+        assert_eq!(&text.raw.union[..std::mem::size_of::<usize>()], 3usize.to_ne_bytes());
     }
 
     #[test]

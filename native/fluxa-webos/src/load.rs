@@ -116,6 +116,15 @@ fn audio_info(audio: &AudioStream, contents: &mut Value) -> &'static str {
     }
 }
 
+pub fn audio_change(audio: &AudioStream) -> (&'static str, String) {
+    let mut info = json!({});
+    let name = audio_info(audio, &mut info);
+    if let Some(info) = info.as_object_mut() {
+        info.remove("immersive");
+    }
+    (name, info.to_string())
+}
+
 pub fn load_payload(video: &VideoStream, audio: Option<&AudioStream>, options: &LoadOptions) -> String {
     let mut contents = json!({
         "codec": { "video": video.codec.name() },
@@ -250,6 +259,21 @@ mod tests {
         let dv = &json["args"][0]["option"]["externalStreamingInfo"]["contents"]["DolbyHdrInfo"];
         assert_eq!(dv["profileId"], 8);
         assert_eq!(dv["trackType"], "single");
+    }
+
+    #[test]
+    fn audio_change_carries_only_the_codec_info() {
+        let audio = AudioStream {
+            codec: AudioCodec::Eac3 { atmos: true },
+            channels: 6,
+            sample_rate: 48000,
+            extradata: vec![],
+        };
+        let (name, info) = audio_change(&audio);
+        let info = parse(&info);
+        assert_eq!(name, "AC3 PLUS");
+        assert_eq!(info["ac3PlusInfo"]["channels"], 8);
+        assert!(info.get("immersive").is_none());
     }
 
     #[test]
