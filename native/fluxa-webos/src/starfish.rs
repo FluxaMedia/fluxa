@@ -35,15 +35,13 @@ impl StarfishPipeline {
 
 impl StarfishPipeline {
     fn seek_to(&mut self, pts_ns: i64) {
-        if self.inner.seek_ms((pts_ns.max(0) / 1_000_000) as u64) {
+        let position = format!("{{\"position\":{}}}", pts_ns.max(0));
+        if self.inner.set_time_to_decode(&position) && self.inner.send_segment_event() {
             return;
         }
-        trace("Seek refused, flushing");
-        if !self.inner.flush() {
-            trace("flush rejected");
-        }
-        if !self.inner.set_time_to_decode(&format!("{{\"position\":{pts_ns}}}")) {
-            trace("setTimeToDecode rejected");
+        trace("segment seek unavailable, using Seek");
+        if !self.inner.seek_ms((pts_ns.max(0) / 1_000_000) as u64) {
+            trace("Seek refused");
         }
     }
 }
@@ -83,6 +81,9 @@ impl Pipeline for StarfishPipeline {
     }
 
     fn flush(&mut self, _pts_ns: i64) {
+        if !self.inner.flush() {
+            trace("flush rejected");
+        }
         self.seek_pending = true;
     }
 

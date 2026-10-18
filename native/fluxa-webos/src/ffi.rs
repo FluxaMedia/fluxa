@@ -40,6 +40,9 @@ const MEDIA_ID: &str = "_ZN17StarfishMediaAPIs10getMediaIDEv";
 const FLUSH: &str = "_ZN17StarfishMediaAPIs5flushEv";
 const PUSH_EOS: &str = "_ZN17StarfishMediaAPIs7pushEOSEv";
 const TIME_TO_DECODE: &str = "_ZN17StarfishMediaAPIs15setTimeToDecodeEPKc";
+const SEGMENT_EVENT: &str = "_ZN13mediapipeline14CustomPipeline16sendSegmentEventEv";
+const PLAYER_OFFSET: usize = 0x4c;
+const PIPELINE_OFFSET: usize = 0x04;
 const PLAY_RATE: &str = "_ZN17StarfishMediaAPIs11SetPlayRateEPKc";
 const CHANGE_CODEC: &str =
     "_ZN17StarfishMediaAPIs16changeAudioCodecERKNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEES7_";
@@ -115,6 +118,7 @@ pub struct Starfish {
     push_eos: Verb,
     set_time_to_decode: Option<Text>,
     set_play_rate: Option<Text>,
+    send_segment_event: Option<unsafe extern "C" fn(*mut c_void)>,
     change_audio_codec: Option<ChangeCodec>,
 }
 
@@ -161,6 +165,7 @@ impl Starfish {
                 push_eos: symbol(library, PUSH_EOS)?,
                 set_time_to_decode: optional(library, TIME_TO_DECODE),
                 set_play_rate: optional(library, PLAY_RATE),
+                send_segment_event: optional(library, SEGMENT_EVENT),
                 change_audio_codec: optional(library, CHANGE_CODEC),
                 object: ManuallyDrop::new(Box::new(Aligned([0; OBJECT_SIZE]))),
                 sink: Box::leak(Box::new(Sink {
@@ -252,6 +257,24 @@ impl Starfish {
         };
         let payload = c_string(payload);
         unsafe { set(self.this(), payload.as_ptr()) }
+    }
+
+    pub fn send_segment_event(&self) -> bool {
+        let Some(send) = self.send_segment_event else {
+            return false;
+        };
+        unsafe {
+            let player = *(self.this().cast::<u8>().add(PLAYER_OFFSET) as *const *mut c_void);
+            if player.is_null() {
+                return false;
+            }
+            let pipeline = *(player.cast::<u8>().add(PIPELINE_OFFSET) as *const *mut c_void);
+            if pipeline.is_null() {
+                return false;
+            }
+            send(pipeline);
+        }
+        true
     }
 
     pub fn set_play_rate(&self, payload: &str) -> Option<bool> {

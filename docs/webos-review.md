@@ -2,6 +2,8 @@
 
 Three working webOS implementations compared with `native/fluxa-webos`.
 
+Rule: Kodi is the baseline because of its years of users. Where Kodi and another reference disagree, follow Kodi unless it cannot be done safely from Rust; plx and Nuvio fill the gaps Kodi leaves (webOS 3 and 4 behaviour, ACB details, packaging, crash handling).
+
 | Reference | What it is | How it plays video | License | Evidence |
 | --- | --- | --- | --- | --- |
 | [nuvio-native-legacy](https://github.com/iqui27/nuvio-native-legacy) 2.0.7 | C99, SDL2, GLES2 | TV media service `com.webos.media` with a URL (the TV fetches and demuxes). Starfish buffer feed only for DTS and Dolby Vision in MKV, through a C++ adapter | GPL-3.0 | One owned TV (C9, webOS 4), user reports for 3.x and 5+, logs uploaded by users |
@@ -107,6 +109,8 @@ Where the three references agree, or the dumps settle it, the decision is made. 
 ## 5. Order from here
 
 Done and committed: items 1 to 7 of section 1.
+
+Seek, final (Kodi first): after the demuxer seek Fluxa calls `flush()`, then on the first video packet `setTimeToDecode {position}` followed by `CustomPipeline::sendSegmentEvent`, reached through the pipeline pointer at object+0x4c then +0x4 (plx decompiled the offsets; Kodi reads the same member through LG headers and runs on webOS 5 to 11, which is evidence the layout holds). `sendSegmentEvent`, `setContentInfo` and `loadSpi_getInfo` are exported by libpf on every TV firmware dump from W16N to W23. If `setTimeToDecode` is refused (plx: it only succeeds in the paused state on 4.5) or the pipeline pointer is null, Fluxa falls back to the public `Seek(ms)` described below. Kodi\'s `setContentInfo` fallback for webOS below 11 is not ported: it needs a 312-byte private struct, and Kodi itself found it stalls webOS 11.
 
 Seek correction after reading plx `docs/webos5-port.md` and `src/starfish.c`: plx decompiled the 4.5 libraries and found that `flush()` is itself a seek to 0, so `flush()` plus `setTimeToDecode` without a segment event stalls the sink after about 48 s. The public `Seek(ms)` flushes and re-anchors the segment itself, exists on every firmware 1.2 to 11.2 and is what LG's own Chromium MSE player uses in this mode. Fluxa now calls `Seek` on the first video packet after the demuxer seek (millisecond floor of that packet's PTS, audio before it dropped) and falls back to `flush()` plus `setTimeToDecode` only if `Seek` refuses. `flush(const char*)` is no longer used: nothing shows it re-anchors the segment. Kodi's `sendSegmentEvent` and plx's webOS 4 private offsets are not used because the layout changes from webOS 6.
 
