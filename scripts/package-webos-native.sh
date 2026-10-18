@@ -46,6 +46,10 @@ rm -f "$ipk"
 echo 2.0 > "$work/debian-binary"
 tar --owner=0 --group=0 -C "$work/control" -czf "$work/control.tar.gz" .
 tar --owner=0 --group=0 -C "$work/data" -czf "$work/data.tar.gz" .
+main=$(node -p "require('$app/appinfo.json').main")
+[ "$main" = fluxa-webos ] || { echo "appinfo main is '$main', expected fluxa-webos" >&2; exit 1; }
+tar -tvzf "$work/data.tar.gz" | grep -E '^-rwx.* \./usr/palm/applications/'"$id"'/fluxa-webos$' >/dev/null ||
+  { echo "fluxa-webos is not executable inside the ipk" >&2; exit 1; }
 (cd "$work" && ar r "$ipk" debian-binary control.tar.gz data.tar.gz) 2>/dev/null
 rm -rf "$work"
 echo "packaged -> $ipk"

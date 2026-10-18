@@ -108,6 +108,10 @@ Where the three references agree, or the dumps settle it, the decision is made. 
 
 Done and committed: items 1 to 7 of section 1.
 
+Implemented since (all unverified on a TV): seek through `flush(const char*)` with fallback; unload waits up to 1 s for `UNLOADCOMPLETED`; a packet the TV rejects is dropped; three refused demuxer seeks before playback fails; `Load` refused on k5lp/k3lp without `/dev/rtkmem`; 15 s load timeout; audio info to ACB; pause on minimise and stop after 120 s; colour keys 486 to 489 mapped (no action bound); held arrows throttled to 10 per second and other held keys ignored; the packaging script checks the executable bit and the appinfo `main`.
+
+Original list, kept for reference:
+
 1. Seek: `flush(const char*)` with `ptsToDecode`, keep `setTimeToDecode` as the second step, behind one function so the TV result decides which stays.
 2. Pipeline life cycle: no feed before `LOADCOMPLETED`, wait for `UNLOADCOMPLETED` before free, per-lane time throttle, forward audio info to ACB.
 3. Failure policy: three refused seeks then keep playing, `Load` timeout with a clear error, the Realtek probe.
