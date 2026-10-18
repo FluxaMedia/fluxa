@@ -109,6 +109,8 @@ pub struct Player<D, P> {
     position_ns: i64,
     drained: bool,
     eos_sent: bool,
+    started: bool,
+    flushed: bool,
     opening_since: Option<Instant>,
     seek_failures: u32,
     cues: Cues,
@@ -133,6 +135,8 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             position_ns: 0,
             drained: false,
             eos_sent: false,
+            started: false,
+            flushed: true,
             opening_since: None,
             seek_failures: 0,
             cues: Cues::default(),
@@ -362,11 +366,13 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.pipeline.on_event(&event);
         match event.kind {
             EventKind::LoadCompleted => {
+                self.flushed = true;
                 self.state = State::Ready;
                 self.opening_since = None;
                 self.pipeline.play();
             }
             EventKind::FrameReady => {
+                self.started |= !self.flushed;
                 self.position_ns = event.number;
                 self.status.position = event.number as f64 / 1e9;
                 self.status.has_frame = true;
@@ -389,6 +395,8 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
     }
 
     fn clear_lanes(&mut self) {
+        self.started = false;
+        self.flushed = true;
         self.video_lane.clear();
         self.audio_lane.clear();
     }
@@ -422,10 +430,14 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             let Some(packet) = lane.front() else {
                 return fed;
             };
-            if packet.pts_ns - self.position_ns > MAX_FEED_AHEAD_NS {
+            if self.started && packet.pts_ns - self.position_ns > MAX_FEED_AHEAD_NS {
                 return fed;
             }
+            let is_video = packet.video;
             let reply = self.pipeline.feed(packet);
+            if is_video && reply == FeedReply::Ok {
+                self.flushed = false;
+            }
             let lane = if video { &mut self.video_lane } else { &mut self.audio_lane };
             match reply {
                 FeedReply::BufferFull => return fed,
@@ -617,8 +629,19 @@ mod tests {
 
     #[test]
     fn feeding_stops_when_too_far_ahead_of_playback() {
-        let rig = started(&[0, 5_000_000_000]);
+        let mut rig = started(&[0]);
+        rig.events.send(event(EventKind::FrameReady, 0)).unwrap();
+        rig.player.drained = false;
+        rig.log.borrow_mut().calls.retain(|call| call != "eos");
+        rig.player.demuxer.packets.push_back(Packet { video: true, pts_ns: 5_000_000_000, data: vec![0], cue: None });
+        rig.player.tick();
         assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0"]);
+    }
+
+    #[test]
+    fn feeding_is_unlimited_until_the_first_frame() {
+        let rig = started(&[0, 5_000_000_000]);
+        assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0", "feed 5000000000", "eos"]);
     }
 
     #[test]
