@@ -70,7 +70,6 @@ pub enum EpisodeLayout {
     Cards,
     List,
     Grid,
-    Numbers,
 }
 
 impl EpisodeLayout {
@@ -79,7 +78,6 @@ impl EpisodeLayout {
             Some("cards") => Some(Self::Cards),
             Some("list") => Some(Self::List),
             Some("grid") => Some(Self::Grid),
-            Some("numbers") => Some(Self::Numbers),
             _ => None,
         }
     }
@@ -202,11 +200,12 @@ impl DetailModel {
     }
 
     pub fn episode_layout_for(&self, compact: bool) -> EpisodeLayout {
-        self.episode_layout.unwrap_or(if compact {
-            EpisodeLayout::List
-        } else {
-            EpisodeLayout::Cards
-        })
+        match self.episode_layout {
+            Some(EpisodeLayout::Grid) if compact => EpisodeLayout::List,
+            Some(layout) => layout,
+            None if compact => EpisodeLayout::List,
+            None => EpisodeLayout::Cards,
+        }
     }
 
     pub fn seasons(&self) -> Vec<i64> {

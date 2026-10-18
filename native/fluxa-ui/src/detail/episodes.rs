@@ -2,11 +2,7 @@ use super::*;
 
 const GAP: f32 = 16.0;
 const LIST_GAP: f32 = 8.0;
-const GRID_MIN: f32 = 220.0;
-const CHIP: f32 = 44.0;
-const CHIP_GAP: f32 = 8.0;
-const NUMBERS_THUMB: f32 = 260.0;
-const PANEL_PAD: f32 = 14.0;
+const GRID_MIN: f32 = 260.0;
 
 fn text_height(show_overview: bool, rows: usize) -> f32 {
     if show_overview {
@@ -40,23 +36,6 @@ fn grid_cell(avail: f32, compact: bool, show_overview: bool) -> Vec2 {
     Vec2::new(width, width * 9.0 / 16.0 + 8.0 + text)
 }
 
-fn chips_per_row(avail: f32) -> usize {
-    (((avail + CHIP_GAP) / (CHIP + CHIP_GAP)) as usize).max(1)
-}
-
-fn numbers_chips_height(avail: f32, count: usize) -> f32 {
-    let rows = count.div_ceil(chips_per_row(avail));
-    rows as f32 * (CHIP + CHIP_GAP)
-}
-
-fn numbers_panel_height(avail: f32, compact: bool) -> f32 {
-    if compact {
-        (avail - PANEL_PAD * 2.0) * 9.0 / 16.0 + PANEL_PAD * 2.0 + 12.0 + text_height(true, 4)
-    } else {
-        NUMBERS_THUMB * 9.0 / 16.0 + PANEL_PAD * 2.0
-    }
-}
-
 pub(super) fn available_width(viewport: Viewport, margin: f32) -> f32 {
     viewport.width - margin * 2.0
 }
@@ -79,9 +58,6 @@ pub(super) fn episodes_height(viewport: Viewport, detail: &DetailModel, margin: 
             let gap = if compact { 8.0 } else { GAP };
             let rows = count.div_ceil(grid_columns(avail, compact));
             rows as f32 * (cell.y + gap)
-        }
-        EpisodeLayout::Numbers => {
-            numbers_chips_height(avail, count) + 8.0 + numbers_panel_height(avail, compact)
         }
     }
 }
@@ -190,7 +166,6 @@ pub(super) fn draw_episodes(
                 );
             }
         }
-        EpisodeLayout::Numbers => draw_numbers(ui, cx, assets, layout, origin, avail),
         EpisodeLayout::Cards => {}
     }
 }
@@ -208,9 +183,7 @@ pub(super) fn prefetch(
     let width = match detail.episode_layout_for(compact) {
         EpisodeLayout::List => list_thumb_width(compact),
         EpisodeLayout::Grid => grid_cell(avail, compact, detail.show_episode_descriptions).x,
-        EpisodeLayout::Numbers if compact => avail - PANEL_PAD * 2.0,
-        EpisodeLayout::Numbers => NUMBERS_THUMB,
-        EpisodeLayout::Cards => return,
+        EpisodeLayout::Cards => EPISODE_WIDTH,
     };
     let target = artwork_target_size(Vec2::new(width, width * 9.0 / 16.0), pixels_per_point);
     for (_, episode) in episodes {
@@ -243,105 +216,4 @@ fn episode_hit(
         layout.activated = Some(node);
     }
     response
-}
-
-fn draw_numbers(
-    ui: &mut egui::Ui,
-    cx: &EpisodeContext,
-    assets: &mut impl HomeAssets,
-    layout: &mut HomeLayout,
-    origin: Pos2,
-    avail: f32,
-) {
-    let compact = cx.viewport.is_compact();
-    let selection_id = Id::new(("fluxa-detail-number", &cx.detail.id, cx.season));
-    let selected = ui
-        .ctx()
-        .data(|data| data.get_temp::<usize>(selection_id))
-        .filter(|slot| *slot < cx.episodes.len())
-        .unwrap_or(0);
-    let per_row = chips_per_row(avail);
-    for (slot, (_, episode)) in cx.episodes.iter().enumerate() {
-        let pos = Pos2::new(
-            origin.x + (slot % per_row) as f32 * (CHIP + CHIP_GAP),
-            origin.y + (slot / per_row) as f32 * (CHIP + CHIP_GAP),
-        );
-        let rect = Rect::from_min_size(pos, Vec2::splat(CHIP));
-        if !ui.is_rect_visible(rect) {
-            continue;
-        }
-        let mut chip = ui.new_child(egui::UiBuilder::new().max_rect(rect));
-        let response = components::button_with_text_size(
-            &mut chip,
-            &episode.number.to_string(),
-            CHIP,
-            CHIP,
-            if slot == selected {
-                components::ButtonKind::Selected
-            } else {
-                components::ButtonKind::Secondary
-            },
-            15.0,
-            cx.metrics,
-        );
-        if response.clicked() {
-            ui.ctx()
-                .data_mut(|data| data.insert_temp(selection_id, slot));
-        }
-    }
-    let Some((index, episode)) = cx.episodes.get(selected) else {
-        return;
-    };
-    let top = origin.y + numbers_chips_height(avail, cx.episodes.len()) + 8.0;
-    let panel = Rect::from_min_size(
-        Pos2::new(origin.x, top),
-        Vec2::new(avail, numbers_panel_height(avail, compact)),
-    );
-    let response = episode_hit(ui, cx, layout, *index, panel);
-    ui.painter().rect(
-        panel,
-        12.0,
-        ink(tone::FAINT),
-        egui::Stroke::new(stroke::HAIRLINE, ink(tone::SOFT)),
-        egui::StrokeKind::Inside,
-    );
-    let thumb_width = if compact {
-        avail - PANEL_PAD * 2.0
-    } else {
-        NUMBERS_THUMB
-    };
-    let thumb = Rect::from_min_size(
-        panel.min + Vec2::splat(PANEL_PAD),
-        Vec2::new(thumb_width, thumb_width * 9.0 / 16.0),
-    );
-    let view = cx.detail.episode_view(episode);
-    components::episode_artwork(
-        ui.painter(),
-        assets,
-        thumb,
-        episode,
-        view.hide_still,
-        response.hovered(),
-        false,
-        cx.metrics,
-    );
-    let (text_origin, text_width) = if compact {
-        (
-            Pos2::new(thumb.left(), thumb.bottom() + 12.0),
-            thumb.width(),
-        )
-    } else {
-        (
-            Pos2::new(thumb.right() + 16.0, panel.top() + PANEL_PAD),
-            panel.right() - thumb.right() - 16.0 - PANEL_PAD,
-        )
-    };
-    components::episode_text(
-        ui.painter(),
-        text_origin,
-        text_width,
-        episode.number,
-        view.title,
-        view.overview.map(|text| (text, 4)),
-    );
 }

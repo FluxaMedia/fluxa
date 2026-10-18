@@ -1744,7 +1744,8 @@ fn episode_layout_defaults_follow_form_factor_and_setting() {
     assert_eq!(detail.episode_layout_for(true), EpisodeLayout::List);
     assert_eq!(detail.episode_layout_for(false), EpisodeLayout::Cards);
     detail.episode_layout = EpisodeLayout::from_setting(Some("grid"));
-    assert_eq!(detail.episode_layout_for(true), EpisodeLayout::Grid);
+    assert_eq!(detail.episode_layout_for(true), EpisodeLayout::List);
+    assert_eq!(detail.episode_layout_for(false), EpisodeLayout::Grid);
     assert_eq!(EpisodeLayout::from_setting(Some("auto")), None);
 }
 

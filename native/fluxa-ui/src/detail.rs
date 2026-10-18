@@ -23,6 +23,10 @@ fn season_row(detail: &DetailModel) -> f32 {
     }
 }
 
+fn episodes_offset(detail: &DetailModel) -> f32 {
+    SECTION_TITLE + season_row(detail) + SECTION_GAP + SECTION_TITLE
+}
+
 fn similar_size(metrics: UiMetrics) -> (Vec2, f32) {
     let poster = Vec2::new(metrics.poster_card_width, metrics.poster_card_height);
     let text = metrics.control_gap * 2.0
@@ -57,8 +61,10 @@ fn section_height(
     margin: f32,
 ) -> Option<f32> {
     let body = match section {
-        DetailSection::Episodes => (!detail.episodes.is_empty())
-            .then(|| season_row(detail) + episodes::episodes_height(viewport, detail, margin))?,
+        DetailSection::Episodes => (!detail.episodes.is_empty()).then(|| {
+            episodes_offset(detail) - SECTION_TITLE
+                + episodes::episodes_height(viewport, detail, margin)
+        })?,
         DetailSection::Trailers => (!detail.trailer_cards.is_empty())
             .then(|| trailer_size(viewport.is_compact()).y + TRAILER_TEXT)?,
         DetailSection::ShowInfo => {
@@ -122,7 +128,7 @@ pub fn detail_row_at_y(viewport: Viewport, detail: &DetailModel, y: f32) -> Opti
     if let Some(top) = geometry.top(DetailSection::Episodes) {
         let seasons = top + SECTION_TITLE;
         rows.push((0, seasons, seasons + season_row(detail)));
-        let episodes = seasons + season_row(detail);
+        let episodes = top + episodes_offset(detail);
         rows.push((
             1,
             episodes,
@@ -605,7 +611,8 @@ pub fn draw_detail(
             }
             ui.add_space(Space::S24.px(&metrics));
             ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&metrics), Space::S8.px(&metrics));
+                ui.spacing_mut().item_spacing =
+                    Vec2::new(Space::S8.px(&metrics), Space::S8.px(&metrics));
                 for fact in &detail.facts {
                     ui.label(
                         RichText::new(fact)
@@ -921,6 +928,15 @@ pub fn draw_detail(
         section_title(
             &painter,
             Pos2::new(margin, top),
+            &t("auto.seasons"),
+            title_size,
+        );
+        section_title(
+            &painter,
+            Pos2::new(
+                margin,
+                top + SECTION_TITLE + season_row(detail) + SECTION_GAP,
+            ),
             &t("auto.episodes"),
             title_size,
         );
@@ -1029,7 +1045,7 @@ pub fn draw_detail(
             },
         );
         let thumb = Vec2::new(EPISODE_WIDTH, EPISODE_WIDTH * 9.0 / 16.0);
-        let episodes_pos = Pos2::new(margin, top + SECTION_TITLE + season_row(detail));
+        let episodes_pos = Pos2::new(margin, top + episodes_offset(detail));
         if detail.episode_layout_for(compact) == EpisodeLayout::Cards {
             components::placed(
                 context,
@@ -1345,7 +1361,12 @@ fn prefetch_artwork(
 ) {
     let target = |size: Vec2| artwork_target_size(size, pixels_per_point);
     if detail.shows(DetailSection::Episodes) {
-        for (_, url) in &detail.season_posters {
+        let season_posters = detail
+            .season_posters
+            .iter()
+            .map(|(_, url)| url.as_str())
+            .chain(detail.poster_url.as_deref());
+        for url in season_posters {
             assets.prefetch_for(Some(url), target(SEASON_TILE), ArtworkPriority::Prefetch);
         }
         episodes::prefetch(detail, episodes, viewport, margin, pixels_per_point, assets);

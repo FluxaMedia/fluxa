@@ -280,7 +280,7 @@ pub(super) const DETAILS_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Episode card layout",
         key: "episodeCardsLayout",
-        options: &["auto", "cards", "list", "grid", "numbers"],
+        options: &["auto", "cards", "list", "grid"],
     },
     SettingsRow {
         label: "Blur unwatched episodes",
