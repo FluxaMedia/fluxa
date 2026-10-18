@@ -201,6 +201,7 @@ pub struct SourceBadge {
 }
 
 const GESTURE_EDGE: f32 = 0.28;
+const TOUCH_SLOP: f32 = 14.0;
 const WARNING_BAR: f32 = 0.3;
 const WARNING_STAGGER: f32 = 0.08;
 const WARNING_FADE: f32 = 0.25;
@@ -510,13 +511,24 @@ impl Chrome<'_> {
         }
         ui.data_mut(|data| data.insert_temp(held_id, holding));
         layout.player_speed_hold = holding;
-        if response.dragged() && self.player.options.gestures && !holding {
+        let travel_id = Id::new("fluxa-player-travel");
+        let mut travel: Vec2 = if response.drag_started() {
+            Vec2::ZERO
+        } else {
+            ui.data(|data| data.get_temp(travel_id)).unwrap_or_default()
+        };
+        if response.dragged() {
+            travel += response.drag_delta();
+            ui.data_mut(|data| data.insert_temp(travel_id, travel));
+        }
+        let swiping = travel.length() > TOUCH_SLOP;
+        if response.dragged() && swiping && self.player.options.gestures && !holding {
             let origin = ui
                 .input(|input| input.pointer.press_origin())
                 .or_else(|| response.interact_pointer_pos());
             let delta = response.drag_delta();
             if let Some(origin) = origin
-                && delta.y.abs() > delta.x.abs()
+                && travel.y.abs() > travel.x.abs()
             {
                 let fraction = -delta.y / (area.height() * 0.8);
                 let edge = area.width() * GESTURE_EDGE;
@@ -529,6 +541,14 @@ impl Chrome<'_> {
             return;
         }
         if held {
+            return;
+        }
+        if response.drag_stopped() && !swiping && !response.double_clicked() {
+            layout.activated = Some(if self.player.controls_visible {
+                NODE_PLAYER_HIDE_CONTROLS
+            } else {
+                NODE_PLAYER_CONTROLS
+            });
             return;
         }
         if response.double_clicked()
