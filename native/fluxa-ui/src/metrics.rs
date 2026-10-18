@@ -159,16 +159,6 @@ pub struct TypeScale {
     pub label: f32,
 }
 
-pub mod space {
-    pub const XS: f32 = 4.0;
-    pub const SM: f32 = 8.0;
-    pub const MD: f32 = 12.0;
-    pub const LG: f32 = 16.0;
-    pub const XL: f32 = 24.0;
-    pub const XXL: f32 = 32.0;
-    pub const XXXL: f32 = 48.0;
-}
-
 const CONTINUE_CARD_SCALE: f32 = 1.05;
 
 static TEXT_PRIMARY: AtomicU32 = AtomicU32::new(u32::MAX);

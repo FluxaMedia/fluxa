@@ -390,7 +390,7 @@ pub fn draw_detail(
                             .halign(egui::Align::Center),
                         );
                     }
-                    ui.add_space(space::MD);
+                    ui.add_space(Space::S12.px(&metrics));
                     let facts = detail
                         .facts
                         .iter()
@@ -414,7 +414,7 @@ pub fn draw_detail(
                         .halign(egui::Align::Center),
                     );
                     for line in &detail.info_lines {
-                        ui.add_space(space::XS);
+                        ui.add_space(Space::S4.px(&metrics));
                         ui.add(
                             egui::Label::new(
                                 RichText::new(line)
@@ -424,7 +424,7 @@ pub fn draw_detail(
                             .halign(egui::Align::Center),
                         );
                     }
-                    ui.add_space(space::LG);
+                    ui.add_space(Space::S16.px(&metrics));
                     let resume = detail.resume.as_ref();
                     let label = crate::play_label(
                         language,
@@ -464,7 +464,7 @@ pub fn draw_detail(
                             });
                         }
                     }
-                    ui.add_space(space::LG);
+                    ui.add_space(Space::S16.px(&metrics));
                     ui.horizontal(|ui| {
                         ui.spacing_mut().item_spacing = Vec2::ZERO;
                         let mut actions = vec![
@@ -538,7 +538,7 @@ pub fn draw_detail(
                         }
                     });
                 });
-                ui.add_space(space::LG);
+                ui.add_space(Space::S16.px(&metrics));
                 let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
                 let expanded = context
                     .data(|data| data.get_temp::<bool>(expanded_id))
@@ -571,7 +571,7 @@ pub fn draw_detail(
                     context.data_mut(|data| data.insert_temp(expanded_id, !expanded));
                 }
                 if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref()) {
-                    ui.add_space(space::SM);
+                    ui.add_space(Space::S8.px(&metrics));
                     ui.label(
                         RichText::new(error)
                             .size(metrics.text.meta)
@@ -581,7 +581,7 @@ pub fn draw_detail(
                 return;
             }
             ui.set_max_width(content_width);
-            ui.spacing_mut().item_spacing = Vec2::new(space::SM, 0.0);
+            ui.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&metrics), 0.0);
             let logo = components::title_logo(
                 ppp,
                 detail.logo_url.as_deref(),
@@ -603,9 +603,9 @@ pub fn draw_detail(
                     .color(text_primary()),
                 );
             }
-            ui.add_space(space::XL);
+            ui.add_space(Space::S24.px(&metrics));
             ui.horizontal_wrapped(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(space::SM, space::SM);
+                ui.spacing_mut().item_spacing = Vec2::new(Space::S8.px(&metrics), Space::S8.px(&metrics));
                 for fact in &detail.facts {
                     ui.label(
                         RichText::new(fact)
@@ -637,11 +637,11 @@ pub fn draw_detail(
                             .strong()
                             .color(text_primary()),
                     );
-                    ui.add_space(space::XS);
+                    ui.add_space(Space::S4.px(&metrics));
                 }
             });
             if !detail.genres.is_empty() {
-                ui.add_space(space::SM);
+                ui.add_space(Space::S8.px(&metrics));
                 ui.label(
                     RichText::new(detail.genres.join("  ·  "))
                         .size(metrics.text.meta)
@@ -649,16 +649,16 @@ pub fn draw_detail(
                 );
             }
             for line in &detail.info_lines {
-                ui.add_space(space::XS);
+                ui.add_space(Space::S4.px(&metrics));
                 ui.label(
                     RichText::new(line)
                         .size(metrics.text.meta)
                         .color(metrics.text_muted),
                 );
             }
-            ui.add_space(space::XL);
+            ui.add_space(Space::S24.px(&metrics));
             ui.horizontal(|ui| {
-                ui.spacing_mut().item_spacing = Vec2::new(space::MD, 0.0);
+                ui.spacing_mut().item_spacing = Vec2::new(Space::S12.px(&metrics), 0.0);
                 let resume = detail.resume.as_ref();
                 let play_label = crate::play_label(
                     language,
@@ -790,7 +790,7 @@ pub fn draw_detail(
                 }
             });
             if !detail.description.is_empty() {
-                ui.add_space(space::XL);
+                ui.add_space(Space::S24.px(&metrics));
                 let expanded_id = Id::new(("fluxa-detail-synopsis", &detail.id));
                 let expanded =
                     context.data(|data| data.get_temp::<bool>(expanded_id).unwrap_or(false));
@@ -823,7 +823,7 @@ pub fn draw_detail(
                 }
             }
             if detail.is_loading_streams {
-                ui.add_space(space::MD);
+                ui.add_space(Space::S12.px(&metrics));
                 ui.label(
                     RichText::new(t("common.loading"))
                         .size(metrics.text.meta)
@@ -831,7 +831,7 @@ pub fn draw_detail(
                 );
             } else if let Some(error) = detail.streams_error.as_deref().or(detail.error.as_deref())
             {
-                ui.add_space(space::MD);
+                ui.add_space(Space::S12.px(&metrics));
                 ui.label(
                     RichText::new(error)
                         .size(metrics.text.meta)

@@ -1806,7 +1806,7 @@ pub(super) fn screen_bar(
         back = back_button(ui, assets.icon("ArrowLeft"), metrics)
             .on_hover_text(back_label)
             .clicked();
-        ui.add_space(crate::space::XS);
+        ui.add_space(crate::Space::S4.px(&metrics));
         ui.label(
             RichText::new(title)
                 .size(metrics.text.title)
