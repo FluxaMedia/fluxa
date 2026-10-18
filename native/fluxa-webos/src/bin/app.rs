@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::ptr::NonNull;
 use std::sync::mpsc::channel;
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use fluxa_host::{BridgeVideo, VideoStatus, FluxaHost, KeyInput, MouseButton, NativeSurface, VideoBridge};
 use fluxa_renderer::platform::GraphicsBackend;
@@ -13,7 +13,7 @@ use fluxa_webos::demux::FfmpegDemuxer;
 use fluxa_webos::crash;
 use fluxa_webos::diagnostics::{Report, note, trace};
 use fluxa_webos::player::Player;
-use fluxa_webos::remote::{Remote, map};
+use fluxa_webos::remote::{Remote, RepeatFilter, map};
 use fluxa_webos::{lifecycle, screensaver};
 use fluxa_webos::sdl::{Event, Sdl};
 use fluxa_webos::{LoadOptions, StarfishPipeline};
@@ -55,7 +55,14 @@ fn key(host: &FluxaHost, remote: Remote) {
         Remote::FastForward => media("fastForward"),
         Remote::Rewind => media("rewind"),
         Remote::Stop => media("stop"),
-        Remote::PageUp | Remote::Exit | Remote::PageDown | Remote::PointerHidden => {}
+        Remote::PageUp
+        | Remote::Exit
+        | Remote::PageDown
+        | Remote::PointerHidden
+        | Remote::Red
+        | Remote::Green
+        | Remote::Yellow
+        | Remote::Blue => {}
     }
 }
 
@@ -131,6 +138,8 @@ fn main() {
 
     let mut inhibitor = None;
     let lifecycle = lifecycle::watch();
+    let mut grace = lifecycle::Grace::default();
+    let mut repeats = RepeatFilter::default();
     'run: loop {
         while let Some(event) = sdl.poll(if host.render_due() { 0 } else { 8 }) {
             match event {
@@ -140,9 +149,15 @@ fn main() {
                     }
                 }
                 Event::Resized(width, height) => host.surface_changed(width, height),
-                Event::Minimized => host.media_command("stop", 0.0),
+                Event::Minimized => {
+                    host.media_command("pause", 0.0);
+                    grace.minimized(Instant::now());
+                }
+                Event::Restored => grace.restored(),
                 Event::Key(raw) => {
-                    if let Some(remote) = map(&raw).filter(|_| raw.pressed) {
+                    if let Some(remote) =
+                        map(&raw).filter(|remote| raw.pressed && repeats.accept(*remote, raw.repeat, Instant::now()))
+                    {
                         if remote == Remote::Exit {
                             break 'run;
                         }
@@ -176,7 +191,11 @@ fn main() {
             }
         }
         if lifecycle.as_ref().is_some_and(|lifecycle| lifecycle.relaunched()) {
+            grace.restored();
             sdl.raise();
+        }
+        if grace.expired(Instant::now()) {
+            host.media_command("stop", 0.0);
         }
         let playing = player.as_ref().is_some_and(|player| {
             let status = player.status();

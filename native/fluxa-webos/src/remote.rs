@@ -1,6 +1,9 @@
+use std::time::{Duration, Instant};
+
 const KEYDOWN: u32 = 0x300;
 const KEYUP: u32 = 0x301;
 const SCANCODE_MASK: u32 = 1 << 30;
+const DIRECTION_REPEAT: Duration = Duration::from_millis(100);
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct RawKey {
@@ -29,6 +32,10 @@ pub enum Remote {
     PageUp,
     PageDown,
     PointerHidden,
+    Red,
+    Green,
+    Yellow,
+    Blue,
 }
 
 fn word(raw: &[u8], at: usize) -> Option<u32> {
@@ -62,6 +69,10 @@ pub fn map(key: &RawKey) -> Option<Remote> {
         300 => return Some(Remote::PageUp),
         301 => return Some(Remote::PageDown),
         484 => return Some(Remote::PointerHidden),
+        486 => return Some(Remote::Red),
+        487 => return Some(Remote::Green),
+        488 => return Some(Remote::Yellow),
+        489 => return Some(Remote::Blue),
         _ => {}
     }
     Some(match key.sym {
@@ -77,6 +88,26 @@ pub fn map(key: &RawKey) -> Option<Remote> {
         8 => Remote::Backspace,
         _ => return None,
     })
+}
+
+#[derive(Default)]
+pub struct RepeatFilter {
+    last: Option<Instant>,
+}
+
+impl RepeatFilter {
+    pub fn accept(&mut self, remote: Remote, repeat: bool, now: Instant) -> bool {
+        if !repeat {
+            self.last = Some(now);
+            return true;
+        }
+        let direction = matches!(remote, Remote::Up | Remote::Down | Remote::Left | Remote::Right);
+        let due = self.last.is_none_or(|last| now.duration_since(last) >= DIRECTION_REPEAT);
+        if direction && due {
+            self.last = Some(now);
+        }
+        direction && due
+    }
 }
 
 #[cfg(test)]
@@ -129,5 +160,22 @@ mod tests {
     fn non_key_events_and_short_buffers_are_ignored() {
         assert!(decode(&event(0x400, 1, 0, 0)).is_none());
         assert!(decode(&[0; 8]).is_none());
+    }
+
+    #[test]
+    fn colour_keys_use_the_measured_codes() {
+        let key = |wcode| decode(&event(KEYDOWN, 1, wcode, 0)).unwrap();
+        assert_eq!(map(&key(486)), Some(Remote::Red));
+        assert_eq!(map(&key(489)), Some(Remote::Blue));
+    }
+
+    #[test]
+    fn held_ok_never_repeats_and_held_arrows_are_throttled() {
+        let start = Instant::now();
+        let mut filter = RepeatFilter::default();
+        assert!(filter.accept(Remote::Right, false, start));
+        assert!(!filter.accept(Remote::Right, true, start + Duration::from_millis(25)));
+        assert!(filter.accept(Remote::Right, true, start + Duration::from_millis(100)));
+        assert!(!filter.accept(Remote::Ok, true, start + Duration::from_millis(500)));
     }
 }

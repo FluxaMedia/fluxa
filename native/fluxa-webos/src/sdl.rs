@@ -17,6 +17,7 @@ pub enum Event {
     Quit,
     Resized(u32, u32),
     Minimized,
+    Restored,
     Key(RawKey),
     Text(String),
     MouseMoved(f32, f32),
@@ -48,6 +49,7 @@ pub fn parse(raw: &[u8]) -> Option<Event> {
         0x200 => match raw.get(12).copied()? {
             6 | 5 => Event::Resized(word(raw, 16).max(1) as u32, word(raw, 20).max(1) as u32),
             7 => Event::Minimized,
+            9 => Event::Restored,
             14 => Event::Quit,
             _ => return None,
         },
