@@ -36,6 +36,7 @@
     "addonsRefreshRequested",
     "addonResourceRequested",
     "searchRequested",
+    "searchPageRequested",
     "discoverRequested",
     "discoverCatalogFiltersRequested",
     "discoverPageRequested",

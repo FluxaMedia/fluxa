@@ -81,7 +81,7 @@ pub fn discover_model_from_core_snapshot(snapshot: &serde_json::Value) -> Discov
             .get("error")
             .and_then(serde_json::Value::as_str)
             .map(ToOwned::to_owned);
-        model.next_page = None;
+        model.next_page = search_next_page(search);
         model.generation = search
             .get("generation")
             .and_then(serde_json::Value::as_u64)
@@ -90,6 +90,26 @@ pub fn discover_model_from_core_snapshot(snapshot: &serde_json::Value) -> Discov
         model.query = query;
     }
     model
+}
+
+fn search_next_page(search: &serde_json::Value) -> Option<serde_json::Value> {
+    let flag = |key| search.get(key).and_then(serde_json::Value::as_bool);
+    if flag("hasMore") != Some(true)
+        || flag("isLoading") == Some(true)
+        || flag("isLoadingMore") == Some(true)
+    {
+        return None;
+    }
+    let loaded: u64 = search
+        .get("sources")
+        .and_then(serde_json::Value::as_array)?
+        .iter()
+        .filter_map(|source| source.get("loaded").and_then(serde_json::Value::as_u64))
+        .sum();
+    Some(serde_json::json!({
+        "type": "searchPageRequested",
+        "skip": loaded,
+    }))
 }
 
 pub(crate) fn discover_catalog_model(snapshot: &serde_json::Value) -> DiscoverModel {

@@ -80,6 +80,41 @@ fn search_queries_every_searchable_catalog() {
 }
 
 #[test]
+fn search_loads_the_next_page_and_appends_it() {
+    let scenario = Scenario::start();
+    browsable_addon(&scenario);
+    scenario.world.respond(
+        ADDON,
+        "GET",
+        "/catalog/movie/top/search=one&skip=1.json",
+        200,
+        metas(&[("tt2", "Movie Two")]),
+    );
+    scenario.world.respond(
+        ADDON,
+        "GET",
+        "/catalog/movie/top/search=one&skip=2.json",
+        200,
+        json!({"metas": []}),
+    );
+    let app = scenario.app();
+    app.dispatch(json!({"type": "addonInstallRequested", "transportUrl": TRANSPORT}));
+    app.dispatch(
+        json!({"type": "searchRequested", "query": "one", "profile": null, "language": "en"}),
+    );
+    assert_eq!(app.at("/search/hasMore"), true);
+
+    app.dispatch(json!({"type": "searchPageRequested"}));
+    assert_eq!(app.at("/search/results/0/name"), "Movie One");
+    assert_eq!(app.at("/search/results/1/name"), "Movie Two");
+    assert_eq!(app.at("/search/isLoadingMore"), false);
+
+    app.dispatch(json!({"type": "searchPageRequested"}));
+    assert_eq!(app.at("/search/hasMore"), false);
+    assert_eq!(app.at("/search/results/2"), Value::Null);
+}
+
+#[test]
 fn discover_loads_the_first_page_then_the_next() {
     let scenario = Scenario::start();
     browsable_addon(&scenario);

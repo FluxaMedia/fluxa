@@ -37,6 +37,8 @@ struct ResourceFetchPlanRequest {
     genre: Option<String>,
     #[serde(default)]
     skip: Option<i64>,
+    #[serde(default)]
+    skips: Map<String, Value>,
 }
 
 pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
@@ -102,15 +104,27 @@ pub(crate) fn resource_fetch_plan_json(request_json: &str) -> Option<String> {
                     let Some(id) = catalog.get("id").and_then(Value::as_str) else {
                         continue;
                     };
+                    let category_id = format!("{}:{}:{}", transport_url, content_type, id);
+                    let mut extra = json!({"search": query});
+                    let mut skip = 0;
+                    if !request.skips.is_empty() {
+                        let Some(next) = request.skips.get(&category_id).and_then(Value::as_i64)
+                        else {
+                            continue;
+                        };
+                        skip = next;
+                        extra["skip"] = json!(next);
+                    }
                     requests.push(json!({
-                        "url": build_resource_url(transport_url, "catalog", content_type, id, Some(&json!({"search": query}).to_string())),
+                        "url": build_resource_url(transport_url, "catalog", content_type, id, Some(&extra.to_string())),
                         "kind": "search",
                         "addonName": addon_display_name(addon),
                         "transportUrl": transport_url,
                         "catalogId": id,
                         "catalogType": content_type,
-                        "categoryId": format!("{}:{}:{}", transport_url, content_type, id),
-                        "categoryName": search_category_name(addon, &catalog, content_type)
+                        "categoryId": category_id,
+                        "categoryName": search_category_name(addon, &catalog, content_type),
+                        "skip": skip
                     }));
                 }
             }

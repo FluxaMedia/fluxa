@@ -109,10 +109,11 @@ impl EffectExecutor {
             }}));
         }
 
+        let skips = payload.get("skips").cloned().unwrap_or_else(|| json!({}));
         let addons = self.account_addons().await?;
         let plan = core_value(
             "resourceFetchPlan",
-            json!({"kind": "search", "query": query, "addons": addons}),
+            json!({"kind": "search", "query": query, "addons": addons, "skips": skips}),
         )
         .ok_or_else(|| "Fluxa Core could not plan search resources".to_owned())?;
         let requests = plan
@@ -137,11 +138,15 @@ impl EffectExecutor {
                     .get("catalogType")
                     .and_then(Value::as_str)
                     .unwrap_or_default();
+                let skip = request.get("skip").and_then(Value::as_i64).unwrap_or(0);
                 let items = if transport_url.starts_with("tmdb://builtin")
                     || url.starts_with("tmdb://builtin")
                 {
                     match self
-                        .fetch_builtin_tmdb_items(catalog_type, &json!({"search": query}))
+                        .fetch_builtin_tmdb_items(
+                            catalog_type,
+                            &json!({"search": query, "skip": skip}),
+                        )
                         .await
                     {
                         Ok(items) => items,
@@ -173,8 +178,13 @@ impl EffectExecutor {
                         };
                     annotate_catalog_items(&items, transport_url, catalog_type).ok()?
                 };
+                let loaded = items.len();
                 if items.is_empty() {
-                    return None;
+                    return Some(json!({
+                        "id": request.get("categoryId").cloned().unwrap_or_else(|| json!(url)),
+                        "items": [],
+                        "loaded": 0
+                    }));
                 }
                 let source_name = request
                     .get("categoryName")
@@ -188,7 +198,8 @@ impl EffectExecutor {
                     "type": request.get("catalogType"),
                     "items": items,
                     "addonName": request.get("addonName"),
-                    "catalogId": request.get("catalogId")
+                    "catalogId": request.get("catalogId"),
+                    "loaded": loaded
                 }))
             }
         });
@@ -198,6 +209,13 @@ impl EffectExecutor {
             .flatten()
             .collect();
 
+        let page_sources: Vec<Value> = sources
+            .iter()
+            .map(|source| {
+                let loaded = source.get("loaded").and_then(Value::as_u64).unwrap_or(0);
+                json!({"id": source.get("id"), "loaded": loaded, "hasMore": loaded > 0})
+            })
+            .collect();
         let merged = core_value("mergeSearchSources", Value::Array(sources))
             .ok_or_else(|| "Fluxa Core could not merge search results".to_owned())?;
         let results = merged.get("results").cloned().unwrap_or_else(|| json!([]));
@@ -209,7 +227,8 @@ impl EffectExecutor {
         Ok(json!({
             "results": results,
             "categories": merged.get("categories").cloned().unwrap_or_else(|| json!([])),
-            "grouping": grouping
+            "grouping": grouping,
+            "sources": page_sources
         }))
     }
 

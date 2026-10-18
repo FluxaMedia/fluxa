@@ -345,6 +345,9 @@ impl HeadlessEngine {
                 profile,
                 language,
             } => search::dispatch(self, query, profile, language),
+            AppAction::SearchPageRequested { profile, language } => {
+                search::dispatch_page(self, profile, language)
+            }
             AppAction::DiscoverRequested {
                 content_type,
                 filters,

@@ -236,6 +236,11 @@ pub(crate) enum AppAction {
         profile: Option<Value>,
         language: Option<String>,
     },
+    #[serde(rename = "searchPageRequested")]
+    SearchPageRequested {
+        profile: Option<Value>,
+        language: Option<String>,
+    },
     #[serde(rename = "discoverRequested")]
     DiscoverRequested {
         content_type: String,
