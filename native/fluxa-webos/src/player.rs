@@ -1,7 +1,9 @@
 use std::sync::mpsc::Receiver;
+use std::time::{Duration, Instant};
 
 use serde_json::Value;
 
+use crate::diagnostics::trace;
 use crate::events::{Event, EventKind};
 use crate::feed::FeedReply;
 use crate::hdr::HdrInfo;
@@ -9,6 +11,9 @@ use crate::load::{AudioStream, VideoStream};
 use crate::subtitle::{Cue, Cues};
 
 const MAX_FEED_AHEAD_NS: i64 = 1_600_000_000;
+const UNLOAD_WAIT: Duration = Duration::from_secs(1);
+const LOAD_TIMEOUT: Duration = Duration::from_secs(15);
+const MAX_SEEK_FAILURES: u32 = 3;
 
 pub struct Packet {
     pub video: bool,
@@ -58,6 +63,9 @@ pub trait Pipeline {
     fn feed(&mut self, packet: &Packet) -> FeedReply;
     fn end_of_stream(&mut self);
     fn unload(&mut self);
+    fn awaits_unload(&self) -> bool {
+        false
+    }
     fn set_rate(&mut self, _rate: f64) -> bool {
         false
     }
@@ -97,6 +105,8 @@ pub struct Player<D, P> {
     pending: Option<Packet>,
     position_ns: i64,
     drained: bool,
+    opening_since: Option<Instant>,
+    seek_failures: u32,
     cues: Cues,
     subtitle_id: Option<String>,
     status: Status,
@@ -117,6 +127,8 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             pending: None,
             position_ns: 0,
             drained: false,
+            opening_since: None,
+            seek_failures: 0,
             cues: Cues::default(),
             subtitle_id: None,
             status: Status { volume: 100.0, ..Status::default() },
@@ -151,6 +163,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
     fn load(&mut self, url: &str) {
         self.stop();
         self.state = State::Opening;
+        self.opening_since = Some(Instant::now());
         self.status.buffering = true;
         let info = match self.demuxer.open(url) {
             Ok(info) => info,
@@ -232,11 +245,12 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             self.refresh_tracks();
             return self.seek_to(position);
         }
-        self.pipeline.unload();
+        self.unload_pipeline();
         self.pending = None;
         self.drained = false;
         self.cues.clear();
         self.state = State::Opening;
+        self.opening_since = Some(Instant::now());
         self.status.buffering = true;
         let reloaded = self.demuxer.seek(position).and_then(|_| self.pipeline.load(&info, position));
         self.info = Some(info);
@@ -248,9 +262,11 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
 
     fn stop(&mut self) {
         if self.state != State::Idle {
-            self.pipeline.unload();
+            self.unload_pipeline();
         }
         self.state = State::Idle;
+        self.opening_since = None;
+        self.seek_failures = 0;
         self.info = None;
         self.pending = None;
         self.position_ns = 0;
@@ -261,8 +277,29 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.status = Status { volume, ..Status::default() };
     }
 
+    fn unload_pipeline(&mut self) {
+        self.pipeline.unload();
+        if !self.pipeline.awaits_unload() {
+            return;
+        }
+        let deadline = Instant::now() + UNLOAD_WAIT;
+        while let Some(left) = deadline.checked_duration_since(Instant::now()) {
+            match self.events.recv_timeout(left) {
+                Ok(event) => {
+                    let done = event.kind == EventKind::UnloadCompleted;
+                    self.pipeline.on_event(&event);
+                    if done {
+                        return;
+                    }
+                }
+                Err(_) => return,
+            }
+        }
+    }
+
     fn fail(&mut self, error: String) {
         self.state = State::Idle;
+        self.opening_since = None;
         self.status.buffering = false;
         self.status.error = Some(error);
     }
@@ -284,8 +321,14 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         };
         let target = target_ns.clamp(0, info.duration_ns.max(0));
         if let Err(error) = self.demuxer.seek(target) {
-            return self.fail(error);
+            self.seek_failures += 1;
+            trace(format!("seek refused ({}): {error}", self.seek_failures));
+            if self.seek_failures >= MAX_SEEK_FAILURES {
+                return self.fail(error);
+            }
+            return;
         }
+        self.seek_failures = 0;
         self.pending = None;
         self.drained = false;
         self.position_ns = target;
@@ -300,6 +343,8 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         }
         if self.state == State::Ready {
             self.feed();
+        } else if self.opening_since.is_some_and(|since| since.elapsed() > LOAD_TIMEOUT) {
+            self.fail("the TV pipeline did not finish loading".into());
         }
         self.status.subtitle = self.cues.at(self.position_ns);
     }
@@ -309,6 +354,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         match event.kind {
             EventKind::LoadCompleted => {
                 self.state = State::Ready;
+                self.opening_since = None;
                 self.pipeline.play();
             }
             EventKind::FrameReady => {
@@ -347,9 +393,16 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
                 self.pending = Some(packet);
                 return;
             }
-            if self.pipeline.feed(&packet) != FeedReply::Ok {
-                self.pending = Some(packet);
-                return;
+            match self.pipeline.feed(&packet) {
+                FeedReply::Ok => {}
+                FeedReply::BufferFull => {
+                    self.pending = Some(packet);
+                    return;
+                }
+                FeedReply::Failed => {
+                    trace("feed failed, packet dropped");
+                    continue;
+                }
             }
             if packet.video {
                 self.status.buffered = packet.pts_ns as f64 / 1e9;
@@ -406,6 +459,7 @@ mod tests {
     struct Log {
         calls: Vec<String>,
         full: bool,
+        failing_pts: Option<i64>,
         hot_audio_switch: bool,
     }
 
@@ -429,6 +483,9 @@ mod tests {
             let mut log = self.0.borrow_mut();
             if log.full {
                 return FeedReply::BufferFull;
+            }
+            if log.failing_pts == Some(packet.pts_ns) {
+                return FeedReply::Failed;
             }
             log.calls.push(format!("feed {}", packet.pts_ns));
             FeedReply::Ok
@@ -478,6 +535,16 @@ mod tests {
         rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
         rig.player.tick();
         rig
+    }
+
+    #[test]
+    fn a_packet_the_tv_rejects_is_dropped_and_feeding_goes_on() {
+        let mut rig = rig(&[0, 40_000_000, 80_000_000]);
+        rig.log.borrow_mut().failing_pts = Some(40_000_000);
+        rig.player.handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
+        rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
+        rig.player.tick();
+        assert_eq!(rig.log.borrow().calls, ["load", "play", "feed 0", "feed 80000000", "eos"]);
     }
 
     #[test]

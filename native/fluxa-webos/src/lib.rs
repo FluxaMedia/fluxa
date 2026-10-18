@@ -16,6 +16,7 @@ pub mod hdr10plus;
 mod feed;
 mod ffi;
 mod hdr;
+mod jail;
 mod load;
 pub mod sdl;
 pub mod remote;

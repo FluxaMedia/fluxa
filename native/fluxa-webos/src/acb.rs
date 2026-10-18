@@ -34,6 +34,7 @@ pub struct Acb {
     set_media_id: SetText,
     set_sink: SetSink,
     set_video: SetData,
+    set_audio: Option<SetData>,
     set_state: SetState,
     set_window: SetWindow,
     finalize: Finalize,
@@ -60,6 +61,7 @@ impl Acb {
                 set_media_id: symbol(&library, "AcbAPI_setMediaId\0")?,
                 set_sink: symbol(&library, "AcbAPI_setSinkType\0")?,
                 set_video: symbol(&library, "AcbAPI_setMediaVideoData\0")?,
+                set_audio: symbol(&library, "AcbAPI_setMediaAudioData\0").ok(),
                 set_state: symbol(&library, "AcbAPI_setState\0")?,
                 set_window: symbol(&library, "AcbAPI_setDisplayWindow\0")?,
                 finalize: symbol(&library, "AcbAPI_finalize\0")?,
@@ -91,6 +93,17 @@ impl Acb {
         let mut task = 0;
         if unsafe { (self.set_video)(self.id, payload.as_ptr(), &mut task) } == 0 {
             trace("acb setMediaVideoData rejected");
+        }
+    }
+
+    pub fn audio_data(&self, payload: &str) {
+        let Some(set) = self.set_audio else {
+            return;
+        };
+        let payload = c_string(payload);
+        let mut task = 0;
+        if unsafe { set(self.id, payload.as_ptr(), &mut task) } == 0 {
+            trace("acb setMediaAudioData rejected");
         }
     }
 

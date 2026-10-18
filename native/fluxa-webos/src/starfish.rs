@@ -41,6 +41,9 @@ impl StarfishPipeline {
 
 impl Pipeline for StarfishPipeline {
     fn load(&mut self, info: &MediaInfo, start_ns: i64) -> Result<(), String> {
+        if let Some(reason) = crate::jail::refusal() {
+            return Err(reason);
+        }
         let mut options = self.options.clone();
         options.start_pts_ns = start_ns;
         let payload = load_payload(&info.video, info.audio.as_ref(), &options);
@@ -99,6 +102,10 @@ impl Pipeline for StarfishPipeline {
         self.inner.unload();
     }
 
+    fn awaits_unload(&self) -> bool {
+        true
+    }
+
     fn set_rate(&mut self, rate: f64) -> bool {
         let payload = format!("{{\"audioOutput\":{},\"playRate\":{rate}}}", rate.abs() <= 2.0);
         self.inner.set_play_rate(&payload).unwrap_or(false)
@@ -125,6 +132,7 @@ impl Pipeline for StarfishPipeline {
                 Some(hdr) => acb.video_data(&merge_into_video_data(&event.text, hdr)),
                 None => acb.video_data(&event.text),
             },
+            EventKind::AudioInfo => acb.audio_data(&event.text),
             EventKind::LoadCompleted => {
                 if let Some(media) = self.inner.media_id() {
                     acb.bind(&media);
