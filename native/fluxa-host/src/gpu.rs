@@ -804,7 +804,9 @@ impl Gpu {
                 .with_platform(home.platform)
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
-            if let Some(welcome) = welcome.as_deref_mut() {
+            if let Some(scene) = crate::preview::gallery() {
+                fluxa_ui::draw_gallery(ui.ctx(), viewport, &scene, &mut assets);
+            } else if let Some(welcome) = welcome.as_deref_mut() {
                 rendered_layout = fluxa_ui::draw_welcome(ui.ctx(), viewport, welcome, &mut assets);
             } else if let Some(profiles) = profiles.as_deref_mut() {
                 rendered_layout =

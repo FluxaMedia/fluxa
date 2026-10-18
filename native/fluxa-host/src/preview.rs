@@ -14,6 +14,12 @@ pub(crate) fn form_factor(requested: &str) -> String {
     setting("FLUXA_PREVIEW_FORM").unwrap_or_else(|| requested.to_owned())
 }
 
+pub(crate) fn gallery() -> Option<String> {
+    let target = setting("FLUXA_PREVIEW")?;
+    let scene = target.strip_prefix("gallery")?;
+    Some(scene.trim_start_matches('/').to_owned())
+}
+
 pub(crate) fn watch_demo() -> bool {
     setting("FLUXA_PREVIEW_WATCH").is_some()
 }
