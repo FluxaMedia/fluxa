@@ -14,7 +14,7 @@ use fluxa_webos::crash;
 use fluxa_webos::diagnostics::{Report, note, trace};
 use fluxa_webos::player::Player;
 use fluxa_webos::remote::{Remote, map};
-use fluxa_webos::screensaver;
+use fluxa_webos::{lifecycle, screensaver};
 use fluxa_webos::sdl::{Event, Sdl};
 use fluxa_webos::{LoadOptions, StarfishPipeline};
 use raw_window_handle::{RawDisplayHandle, RawWindowHandle, WaylandDisplayHandle, WaylandWindowHandle};
@@ -130,6 +130,7 @@ fn main() {
     };
 
     let mut inhibitor = None;
+    let lifecycle = lifecycle::watch();
     'run: loop {
         while let Some(event) = sdl.poll(if host.render_due() { 0 } else { 8 }) {
             match event {
@@ -139,6 +140,7 @@ fn main() {
                     }
                 }
                 Event::Resized(width, height) => host.surface_changed(width, height),
+                Event::Minimized => host.media_command("stop", 0.0),
                 Event::Key(raw) => {
                     if let Some(remote) = map(&raw).filter(|_| raw.pressed) {
                         if remote == Remote::Exit {
@@ -172,6 +174,9 @@ fn main() {
                     }
                 }
             }
+        }
+        if lifecycle.as_ref().is_some_and(|lifecycle| lifecycle.relaunched()) {
+            sdl.raise();
         }
         let playing = player.as_ref().is_some_and(|player| {
             let status = player.status();

@@ -16,6 +16,7 @@ const EVENT_SIZE: usize = 128;
 pub enum Event {
     Quit,
     Resized(u32, u32),
+    Minimized,
     Key(RawKey),
     Text(String),
     MouseMoved(f32, f32),
@@ -46,6 +47,7 @@ pub fn parse(raw: &[u8]) -> Option<Event> {
         0x100 => Event::Quit,
         0x200 => match raw.get(12).copied()? {
             6 | 5 => Event::Resized(word(raw, 16).max(1) as u32, word(raw, 20).max(1) as u32),
+            7 => Event::Minimized,
             14 => Event::Quit,
             _ => return None,
         },
@@ -140,6 +142,16 @@ impl Sdl {
         }
     }
 
+    pub fn raise(&self) {
+        unsafe {
+            for name in [&b"SDL_RestoreWindow\0"[..], b"SDL_RaiseWindow\0"] {
+                if let Ok(call) = self.library.get::<unsafe extern "C" fn(*mut c_void)>(name) {
+                    call(self.window);
+                }
+            }
+        }
+    }
+
     pub fn exported_window(&self) -> Option<String> {
         unsafe {
             let get: unsafe extern "C" fn(*mut c_void) -> *const c_char =
@@ -189,6 +201,11 @@ mod tests {
             raw[20..24].copy_from_slice(&720i32.to_ne_bytes());
         });
         assert_eq!(parse(&event), Some(Event::Resized(1280, 720)));
+    }
+
+    #[test]
+    fn minimizing_the_window_is_reported() {
+        assert_eq!(parse(&raw(0x200, |raw| raw[12] = 7)), Some(Event::Minimized));
     }
 
     #[test]

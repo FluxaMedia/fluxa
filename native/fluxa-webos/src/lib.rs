@@ -22,6 +22,7 @@ pub mod remote;
 mod starfish;
 pub mod acb;
 pub mod capabilities;
+pub mod lifecycle;
 pub mod luna;
 pub mod screensaver;
 pub mod player;

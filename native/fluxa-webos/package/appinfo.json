@@ -7,5 +7,10 @@
   "type": "native",
   "version": "0.0.0",
   "vendor": "Fluxa",
-  "requiredPermissions": ["MEDIA_OPERATION"]
+  "requiredPermissions": [
+    "MEDIA_OPERATION"
+  ],
+  "handlesRelaunch": true,
+  "nativeLifeCycleInterfaceVersion": 2,
+  "requiredMemory": 500
 }
