@@ -89,6 +89,10 @@ Window and input (Wayland, so only the lessons carry over to SDL):
 
 Not read: the generic Wayland classes (registry, connection, xkb keymap, window decorator, output, presentation sync). They are Kodi's own windowing stack and Fluxa uses SDL, so they have no counterpart. The audio engine hand-over (`RequestAudioDevice`) was read in the pipeline file only.
 
+Line-by-line pass over Kodi `Load`, `SetupAudio`, `SetHDR`, `FeedVideoData`, `FeedAudioData` against `load.rs`, `hdr.rs`, `starfish.rs`, `player.rs` found and fixed: the `adaptiveStreaming` limits were never sent (Kodi asks `smp::util::getMaxVideoResolution`; webOS 11 uses a `const&` signature whose mangled name is a guess); invented BT.2020 1000 nit mastering data (Kodi sends nothing when there is no SEI; webOS 4 still gets `hdrType` and VUI through ACB); and the first video packet after `LOADCOMPLETED` now gets `setTimeToDecode` plus the segment event like Kodi\'s first flushed packet. Matches Kodi already: buffering constants (0, 0, 0, 0 and 2 MB audio, 8 MB video source levels), codec names and per-codec info, DolbyHdrInfo, transmission, seekMode, droppedFrame flag, `needAudio`, stream quality flags, the 1.6 s feed cap, negative PTS dropped.
+
+Still not diffed line by line: Kodi\'s audio transcode chain (`ProcessAudio`) against `transcode.rs`, the AAC sample-rate parse from extradata, the bitstream converter (`CanStartDecode`, DoVi handling) against `annexb.rs` and `dovi.rs`.
+
 ## 4. Combined comparison
 
 Where the three references agree, or the dumps settle it, the decision is made. Where they disagree the decision waits for a TV.

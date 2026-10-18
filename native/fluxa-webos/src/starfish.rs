@@ -16,6 +16,7 @@ pub struct StarfishPipeline {
     atmos: bool,
     options: LoadOptions,
     seek_pending: bool,
+    first_segment: bool,
     acb_hdr: Option<String>,
     acb: Option<Acb>,
 }
@@ -29,14 +30,19 @@ impl StarfishPipeline {
         } else {
             None
         };
-        Ok(StarfishPipeline { inner, events, used: false, atmos: false, options, seek_pending: false, acb_hdr: None, acb })
+        Ok(StarfishPipeline { inner, events, used: false, atmos: false, options, seek_pending: false, first_segment: false, acb_hdr: None, acb })
     }
 }
 
 impl StarfishPipeline {
     fn seek_to(&mut self, pts_ns: i64) {
+        let first = std::mem::take(&mut self.first_segment);
         let position = format!("{{\"position\":{}}}", pts_ns.max(0));
         if self.inner.set_time_to_decode(&position) && self.inner.send_segment_event() {
+            return;
+        }
+        if first {
+            trace("segment event unavailable at start");
             return;
         }
         trace("segment seek unavailable, using Seek");
@@ -88,6 +94,7 @@ impl Pipeline for StarfishPipeline {
             trace("flush rejected");
         }
         self.seek_pending = true;
+        self.first_segment = false;
     }
 
     fn feed(&mut self, packet: &Packet) -> FeedReply {
@@ -134,6 +141,10 @@ impl Pipeline for StarfishPipeline {
     }
 
     fn on_event(&mut self, event: &Event) {
+        if event.kind == EventKind::LoadCompleted {
+            self.seek_pending = true;
+            self.first_segment = true;
+        }
         let Some(acb) = &self.acb else {
             return;
         };
