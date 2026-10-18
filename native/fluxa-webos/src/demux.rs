@@ -245,7 +245,13 @@ fn stream_index(id: &str) -> Option<usize> {
 impl Demuxer for FfmpegDemuxer {
     fn open(&mut self, url: &str) -> Result<MediaInfo, String> {
         ffmpeg::init().map_err(|error| error.to_string())?;
-        let input = format::input(&url).map_err(|error| error.to_string())?;
+        let mut options = ffmpeg::Dictionary::new();
+        options.set("rw_timeout", "15000000");
+        options.set("reconnect", "1");
+        options.set("reconnect_streamed", "1");
+        options.set("reconnect_delay_max", "5");
+        options.set("multiple_requests", "1");
+        let input = format::input_with_dictionary(&url, options).map_err(|error| error.to_string())?;
 
         let stream = input.streams().best(media::Type::Video).ok_or("no video stream")?;
         let parameters = stream.parameters();
