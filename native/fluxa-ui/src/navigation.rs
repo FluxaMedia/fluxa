@@ -195,7 +195,14 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             ),
                         );
                         let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
-                        if let Some(texture) = assets.cached_texture(profile_avatar_url) {
+                        if crate::components::dom_avatar(
+                            ui.painter(),
+                            assets,
+                            center,
+                            NAV_AVATAR_RADIUS,
+                            profile_avatar_url,
+                        ) {
+                        } else if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
                         } else {
                             ui.painter().circle_filled(
@@ -528,11 +535,21 @@ pub(crate) fn draw_mobile_navigation_bar(
                     } else {
                         rect.center()
                     };
-                    let avatar = (node == NODE_PROFILE)
+                    let dom_avatar = node == NODE_PROFILE
+                        && crate::components::dom_avatar(
+                            ui.painter(),
+                            assets,
+                            center,
+                            13.0,
+                            profile_avatar_url,
+                        );
+                    let avatar = (node == NODE_PROFILE && !dom_avatar)
                         .then(|| assets.cached_texture(profile_avatar_url))
                         .flatten();
-                    if let Some(avatar) = avatar {
-                        paint_circle_texture(ui.painter(), avatar, center, 13.0);
+                    if dom_avatar || avatar.is_some() {
+                        if let Some(avatar) = avatar {
+                            paint_circle_texture(ui.painter(), avatar, center, 13.0);
+                        }
                         if active {
                             ui.painter().circle_stroke(
                                 center,

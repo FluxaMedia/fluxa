@@ -15,7 +15,7 @@ const main = async () => {
   await init();
   const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, proxy);
   const syncAccessibility = mountAccessibility(app, document.getElementById("fluxa"), document.getElementById("a11y"));
-  const syncArtwork = mountArtwork(app, document.getElementById("artwork"));
+  const syncArtwork = mountArtwork(app, document.getElementById("artwork"), document.getElementById("artwork-top"));
   addEventListener("resize", () => app.resize());
   const player = createPlayer({ app, video: document.getElementById("video"), proxy, adapter: mediaAdapter });
   installRemote(app, () => {

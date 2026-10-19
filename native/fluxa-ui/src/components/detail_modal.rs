@@ -230,10 +230,11 @@ pub fn draw_detail_modal(
                             0.0,
                             metrics.surface,
                         );
+                        let detail_logo = Vec2::new(width * 0.4, image_height * 0.3);
                         let logo = title_logo(
                             context.pixels_per_point(),
                             detail.logo_url.as_deref(),
-                            Vec2::new(width * 0.4, image_height * 0.3),
+                            detail_logo,
                             ArtworkPriority::Visible,
                             assets,
                         );
@@ -248,6 +249,22 @@ pub fn draw_detail_modal(
                                 full_uv(),
                                 Color32::WHITE,
                             ),
+                            None if failed_dom_image(
+                                &painter,
+                                assets,
+                                Rect::from_min_size(
+                                    Pos2::new(
+                                        image.left() + PAD,
+                                        image.bottom() - detail_logo.y - 8.0,
+                                    ),
+                                    detail_logo,
+                                ),
+                                0.0,
+                                detail.logo_url.as_deref(),
+                                artwork_target_size(detail_logo, context.pixels_per_point()),
+                                ImageFit::Contain,
+                                [0.0, 1.0],
+                            ) => {}
                             None => {
                                 let size = metrics.screen_card_title_size + 10.0;
                                 paint_elided_text(

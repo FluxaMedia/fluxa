@@ -379,8 +379,16 @@ pub fn draw_detail(
                         ArtworkPriority::Hero,
                         assets,
                     );
+                    let logo_bounds = Vec2::new(content_width.min(260.0), 96.0);
                     if let Some((texture, logo_size)) = logo {
                         ui.add(egui::Image::new((texture, logo_size)));
+                    } else if components::failed_logo_slot(
+                        ui,
+                        assets,
+                        detail.logo_url.as_deref(),
+                        logo_bounds,
+                        [0.5, 0.5],
+                    ) {
                     } else {
                         ui.add(
                             egui::Label::new(
@@ -595,8 +603,16 @@ pub fn draw_detail(
                 ArtworkPriority::Hero,
                 assets,
             );
+            let logo_bounds = Vec2::new(content_width.min(440.0), 150.0);
             if let Some((texture, logo_size)) = logo {
                 ui.add(egui::Image::new((texture, logo_size)));
+            } else if components::failed_logo_slot(
+                ui,
+                assets,
+                detail.logo_url.as_deref(),
+                logo_bounds,
+                [0.0, 0.5],
+            ) {
             } else {
                 ui.label(
                     RichText::new(if detail.is_loading && detail.title.is_empty() {

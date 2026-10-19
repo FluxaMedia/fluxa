@@ -402,7 +402,9 @@ pub(super) fn draw_account(
         .get("avatarUrl")
         .and_then(serde_json::Value::as_str)
         .filter(|url| !url.starts_with("data:"));
-    match assets.cached_texture(avatar_url) {
+    let dom_avatar = components::dom_avatar(&painter, assets, avatar.center(), 26.0, avatar_url);
+    match assets.cached_texture(avatar_url).filter(|_| !dom_avatar) {
+        _ if dom_avatar => {}
         Some(texture) => {
             components::rounded_image(
                 &painter,

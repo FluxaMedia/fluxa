@@ -670,7 +670,19 @@ fn draw_card(
     let logo = Rect::from_min_size(inner.min, Vec2::splat(LOGO));
     painter.rect_filled(logo, radius::control(), ink(tone::faint()));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
-    if let Some(texture) = texture {
+    if texture.is_none()
+        && crate::components::failed_dom_image(
+            painter,
+            assets,
+            logo,
+            radius::control(),
+            card.logo,
+            [96, 96],
+            crate::ImageFit::Contain,
+            [0.5, 0.5],
+        )
+    {
+    } else if let Some(texture) = texture {
         let size = context
             .tex_manager()
             .read()

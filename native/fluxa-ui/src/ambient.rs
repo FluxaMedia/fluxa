@@ -167,6 +167,19 @@ pub fn draw_ambient(
             crate::full_uv(),
             Color32::WHITE.gamma_multiply(title_alpha),
         );
+    } else if crate::components::failed_dom_image(
+        &painter,
+        assets,
+        Rect::from_min_size(
+            Pos2::new(margin, title_bottom - logo_bounds.y + title_rise),
+            logo_bounds,
+        ),
+        0.0,
+        view.logo.as_deref(),
+        artwork_target_size(logo_bounds, context.pixels_per_point()),
+        crate::ImageFit::Contain,
+        [0.0, 1.0],
+    ) {
     } else if !view.title.is_empty() {
         draw_text(
             &painter,

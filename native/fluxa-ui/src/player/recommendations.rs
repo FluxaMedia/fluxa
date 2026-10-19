@@ -139,6 +139,19 @@ pub(super) fn draw_recommendations(
                         Color32::from_white_alpha(text_alpha),
                     );
                 }
+                None if components::failed_dom_image(
+                    &painter,
+                    assets,
+                    Rect::from_min_size(
+                        Pos2::new(panel_left + slide, cursor - logo_box.y),
+                        logo_box,
+                    ),
+                    0.0,
+                    logo,
+                    artwork_target_size(logo_box, context.pixels_per_point()),
+                    crate::ImageFit::Contain,
+                    [0.0, 1.0],
+                ) => {}
                 None => {
                     let font = FontId::proportional(if compact { 28.0 } else { 40.0 });
                     draw_text(

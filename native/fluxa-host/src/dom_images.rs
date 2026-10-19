@@ -22,6 +22,8 @@ struct DomImage<'a> {
     rect: [f32; 4],
     clip: [f32; 4],
     radius: f32,
+    contain: bool,
+    anchor: [f32; 2],
 }
 
 pub fn set_enabled(enabled: bool) {
@@ -50,16 +52,22 @@ pub(crate) fn lift(shapes: &mut [ClippedShape]) {
             continue;
         };
         let (rect, clip) = (callback.rect, clipped.clip_rect);
-        images.push((hole.url.clone(), rect, clip, hole.radius));
-        clipped.shape = egui::Shape::Callback(fluxa_renderer::hole::shape(rect, hole.radius));
+        images.push((hole.url.clone(), rect, clip, hole.clone()));
+        clipped.shape = if hole.fit == fluxa_ui::ImageFit::Contain {
+            egui::Shape::Noop
+        } else {
+            egui::Shape::Callback(fluxa_renderer::hole::shape(rect, hole.radius))
+        };
     }
     let list: Vec<DomImage> = images
         .iter()
-        .map(|(url, rect, clip, radius)| DomImage {
+        .map(|(url, rect, clip, hole)| DomImage {
             url,
             rect: [rect.min.x, rect.min.y, rect.width(), rect.height()],
             clip: [clip.min.x, clip.min.y, clip.width(), clip.height()],
-            radius: *radius,
+            radius: hole.radius,
+            contain: hole.fit == fluxa_ui::ImageFit::Contain,
+            anchor: hole.anchor,
         })
         .collect();
     let Ok(json) = serde_json::to_string(&list) else {

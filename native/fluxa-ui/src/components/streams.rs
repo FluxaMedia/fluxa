@@ -72,19 +72,31 @@ pub(crate) fn paint_badge_chip(
         })
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;
-    if let Some(texture) = badge
+    let side = galley.size().y;
+    let icon = Rect::from_min_size(
+        Pos2::new(
+            chip.left() + chip.height() * 0.35,
+            chip.center().y - side * 0.5,
+        ),
+        Vec2::splat(side),
+    );
+    let badge_texture = badge
         .image
         .as_deref()
-        .and_then(|url| assets.texture(Some(url)))
-    {
-        let side = galley.size().y;
-        let icon = Rect::from_min_size(
-            Pos2::new(
-                chip.left() + chip.height() * 0.35,
-                chip.center().y - side * 0.5,
-            ),
-            Vec2::splat(side),
+        .and_then(|url| assets.texture(Some(url)));
+    if badge_texture.is_none() {
+        crate::components::failed_dom_image(
+            painter,
+            assets,
+            icon,
+            0.0,
+            badge.image.as_deref(),
+            [u32::MAX; 2],
+            crate::ImageFit::Contain,
+            [0.5, 0.5],
         );
+    }
+    if let Some(texture) = badge_texture {
         painter.image(
             texture,
             icon,

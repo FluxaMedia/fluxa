@@ -39,16 +39,24 @@ pub(crate) fn watch_ticket(
     let stub = Rect::from_min_max(Pos2::new(rect.left(), tear), rect.max);
     let painter = ui.painter().clone();
 
+    let target = artwork_target_size(rect.size(), ui.ctx().pixels_per_point());
     let backdrop = ticket.backdrop.as_deref().and_then(|url| {
-        let texture = assets.texture_for(
-            Some(url),
-            artwork_target_size(rect.size(), ui.ctx().pixels_per_point()),
-            ArtworkPriority::Visible,
-        )?;
+        let texture = assets.texture_for(Some(url), target, ArtworkPriority::Visible)?;
         Some((texture, assets.texture_size(Some(url))?))
     });
-    match backdrop {
-        Some((texture, size)) => {
+    let dom_backdrop = backdrop.is_none()
+        && crate::components::failed_dom_image(
+            &painter,
+            assets,
+            rect,
+            RADIUS,
+            ticket.backdrop.as_deref(),
+            target,
+            crate::ImageFit::Cover,
+            [0.5, 0.5],
+        );
+    if backdrop.is_some() || dom_backdrop {
+        if let Some((texture, size)) = backdrop {
             rounded_image(
                 &painter,
                 texture,
@@ -57,37 +65,36 @@ pub(crate) fn watch_ticket(
                 cover_uv(size, rect),
                 Color32::WHITE,
             );
-            painter.rect_filled(rect, RADIUS, Color32::from_black_alpha(90));
-            paint_vertical_gradient(
-                &painter,
-                Rect::from_min_max(Pos2::new(stage.left(), stage.center().y), stage.max),
-                Color32::TRANSPARENT,
-                Color32::from_black_alpha(210),
-            );
-            painter.rect_filled(
-                stub,
-                egui::CornerRadius {
-                    nw: 0,
-                    ne: 0,
-                    sw: RADIUS as u8,
-                    se: RADIUS as u8,
-                },
-                Color32::from_black_alpha(232),
-            );
         }
-        None => {
-            painter.rect_filled(rect, RADIUS, metrics.surface_raised);
-            painter.rect_filled(
-                stub,
-                egui::CornerRadius {
-                    nw: 0,
-                    ne: 0,
-                    sw: RADIUS as u8,
-                    se: RADIUS as u8,
-                },
-                metrics.surface,
-            );
-        }
+        painter.rect_filled(rect, RADIUS, Color32::from_black_alpha(90));
+        paint_vertical_gradient(
+            &painter,
+            Rect::from_min_max(Pos2::new(stage.left(), stage.center().y), stage.max),
+            Color32::TRANSPARENT,
+            Color32::from_black_alpha(210),
+        );
+        painter.rect_filled(
+            stub,
+            egui::CornerRadius {
+                nw: 0,
+                ne: 0,
+                sw: RADIUS as u8,
+                se: RADIUS as u8,
+            },
+            Color32::from_black_alpha(232),
+        );
+    } else {
+        painter.rect_filled(rect, RADIUS, metrics.surface_raised);
+        painter.rect_filled(
+            stub,
+            egui::CornerRadius {
+                nw: 0,
+                ne: 0,
+                sw: RADIUS as u8,
+                se: RADIUS as u8,
+            },
+            metrics.surface,
+        );
     }
     painter.rect_stroke(
         rect,

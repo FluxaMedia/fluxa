@@ -1,5 +1,5 @@
-export function mountArtwork(app, layer) {
-  const pool = [];
+export function mountArtwork(app, below, above) {
+  const pools = { below: [], above: [] };
 
   const place = (img, item) => {
     const [x, y, w, h] = item.rect;
@@ -10,6 +10,9 @@ export function mountArtwork(app, layer) {
     style.width = `${w}px`;
     style.height = `${h}px`;
     style.borderRadius = `${item.radius}px`;
+    style.objectFit = item.contain ? "contain" : "cover";
+    style.objectPosition = `${item.anchor[0] * 100}% ${item.anchor[1] * 100}%`;
+    style.background = item.contain ? "transparent" : "";
     const top = Math.max(cy - y, 0);
     const left = Math.max(cx - x, 0);
     const right = Math.max(x + w - (cx + cw), 0);
@@ -17,10 +20,7 @@ export function mountArtwork(app, layer) {
     style.clipPath = `inset(${top}px ${right}px ${bottom}px ${left}px round ${item.radius}px)`;
   };
 
-  return () => {
-    const json = app.take_dom_images();
-    if (json === undefined || json === null) return;
-    const items = JSON.parse(json);
+  const sync = (pool, layer, items) => {
     while (pool.length < items.length) {
       const img = document.createElement("img");
       img.alt = "";
@@ -44,5 +44,13 @@ export function mountArtwork(app, layer) {
       }
       place(img, item);
     });
+  };
+
+  return () => {
+    const json = app.take_dom_images();
+    if (json === undefined || json === null) return;
+    const items = JSON.parse(json);
+    sync(pools.below, below, items.filter((item) => !item.contain));
+    sync(pools.above, above, items.filter((item) => item.contain));
   };
 }

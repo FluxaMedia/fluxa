@@ -336,6 +336,18 @@ pub(crate) fn draw_home_with_options(
                 Color32::from_white_alpha((210.0 * (1.0 - t)) as u8),
             );
         }
+        if hero_texture.is_none() {
+            crate::components::failed_dom_image(
+                &painter,
+                assets,
+                hero_visual_rect,
+                0.0,
+                hero.background_url.as_deref(),
+                full_target,
+                crate::ImageFit::Cover,
+                [0.5, 0.5],
+            );
+        }
         if let Some(hero_texture) = hero_texture {
             let zoom = if fade.from.is_some() {
                 1.0 + 0.035 * (1.0 - t)
@@ -612,6 +624,27 @@ pub(crate) fn draw_home_with_options(
                             );
                             ui.painter()
                                 .image(texture, logo_rect, full_uv(), Color32::WHITE);
+                        } else {
+                            components::failed_dom_image(
+                                ui.painter(),
+                                assets,
+                                Rect::from_min_size(
+                                    Pos2::new(
+                                        if style.centered {
+                                            title_rect.center().x - max_logo_size.x * 0.5
+                                        } else {
+                                            title_rect.left()
+                                        },
+                                        title_rect.center().y - max_logo_size.y * 0.5,
+                                    ),
+                                    max_logo_size,
+                                ),
+                                0.0,
+                                hero.logo_url.as_deref(),
+                                artwork_target_size(max_logo_size, context.pixels_per_point()),
+                                crate::ImageFit::Contain,
+                                [if style.centered { 0.5 } else { 0.0 }, 0.5],
+                            );
                         }
                     } else {
                         crate::flex::paint_text(

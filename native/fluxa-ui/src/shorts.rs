@@ -283,15 +283,27 @@ fn draw_page(
     assets: &mut impl HomeAssets,
 ) {
     let clipped = painter.with_clip_rect(rect);
+    let target = artwork_target_size(rect.size(), context.pixels_per_point());
     if let Some(texture) = assets.texture_for(
         hero.background_url.as_deref(),
-        artwork_target_size(rect.size(), context.pixels_per_point()),
+        target,
         ArtworkPriority::Hero,
     ) {
         let size = assets
             .texture_size(hero.background_url.as_deref())
             .unwrap_or([1920, 1080]);
         clipped.image(texture, rect, cover_uv(size, rect), ink(tone::subtle()));
+    } else {
+        crate::components::failed_dom_image(
+            &clipped,
+            assets,
+            rect,
+            0.0,
+            hero.background_url.as_deref(),
+            target,
+            crate::ImageFit::Cover,
+            [0.5, 0.5],
+        );
     }
     if let Some(texture) = trailer
         .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
@@ -381,6 +393,16 @@ fn draw_page(
                 Rect::from_min_size(Pos2::new(rect.left() + pad, y + logo_height - size.y), size);
             clipped.image(texture, logo_rect, full_uv(), Color32::WHITE);
         }
+        None if crate::components::failed_dom_image(
+            &clipped,
+            assets,
+            Rect::from_min_size(Pos2::new(rect.left() + pad, y), bounds),
+            0.0,
+            hero.logo_url.as_deref(),
+            artwork_target_size(bounds, context.pixels_per_point()),
+            crate::ImageFit::Contain,
+            [0.0, 1.0],
+        ) => {}
         None => {
             draw_text(
                 &clipped,

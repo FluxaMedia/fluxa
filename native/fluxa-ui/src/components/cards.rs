@@ -120,6 +120,19 @@ pub(crate) fn expanded_poster_card(
                 full_uv(),
                 Color32::from_white_alpha(alpha),
             ),
+            None if failed_dom_image(
+                painter,
+                assets,
+                Rect::from_min_size(
+                    Pos2::new(rect.left() + pad, rect.bottom() - pad - logo_bounds.y),
+                    logo_bounds,
+                ),
+                0.0,
+                card.logo_url.as_deref(),
+                artwork_target_size(logo_bounds, painter.ctx().pixels_per_point()),
+                ImageFit::Contain,
+                [0.0, 1.0],
+            ) => {}
             None => {
                 let size = metrics.screen_card_title_size + 4.0;
                 paint_elided_text(
@@ -345,10 +358,11 @@ pub(crate) fn hover_preview(
 
             let left = rect.left() + PREVIEW_PAD;
             let text_width = rect.width() - PREVIEW_PAD * 2.0;
+            let preview_logo = Vec2::new(rect.width() * 0.5, image_height * 0.32);
             let logo = title_logo(
                 context.pixels_per_point(),
                 card.logo_url.as_deref(),
-                Vec2::new(rect.width() * 0.5, image_height * 0.32),
+                preview_logo,
                 ArtworkPriority::Visible,
                 assets,
             );
@@ -360,6 +374,19 @@ pub(crate) fn hover_preview(
                     full_uv(),
                     Color32::WHITE,
                 ),
+                None if failed_dom_image(
+                    &painter,
+                    assets,
+                    Rect::from_min_size(
+                        Pos2::new(left, info.top() - 12.0 - preview_logo.y),
+                        preview_logo,
+                    ),
+                    0.0,
+                    card.logo_url.as_deref(),
+                    artwork_target_size(preview_logo, context.pixels_per_point()),
+                    ImageFit::Contain,
+                    [0.0, 1.0],
+                ) => {}
                 None => paint_elided_text(
                     &painter,
                     Pos2::new(left, info.top() - 14.0 - title_size),
@@ -624,13 +651,24 @@ fn poster_card_body(
 }
 
 fn landscape_logo(painter: &Painter, rect: Rect, card: &HomeCard, assets: &mut impl HomeAssets) {
+    let bounds = Vec2::new(rect.width() * 0.5, rect.height() * 0.3);
     let Some((texture, logo_size)) = title_logo(
         painter.ctx().pixels_per_point(),
         card.logo_url.as_deref(),
-        Vec2::new(rect.width() * 0.5, rect.height() * 0.3),
+        bounds,
         ArtworkPriority::Visible,
         assets,
     ) else {
+        failed_dom_image(
+            painter,
+            assets,
+            Rect::from_center_size(rect.center(), bounds),
+            0.0,
+            card.logo_url.as_deref(),
+            artwork_target_size(bounds, painter.ctx().pixels_per_point()),
+            ImageFit::Contain,
+            [0.5, 0.5],
+        );
         return;
     };
     let center = egui::Pos2::new(rect.center().x, rect.top() + rect.height() * 0.5);

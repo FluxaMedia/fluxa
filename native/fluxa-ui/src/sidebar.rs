@@ -456,7 +456,14 @@ pub(crate) fn draw_sidebar(
                             Color32::TRANSPARENT
                         };
                         ui.painter().rect_filled(rect, radius.min(18.0), card);
-                        if let Some(texture) = assets.cached_texture(profile_avatar_url) {
+                        if crate::components::dom_avatar(
+                            ui.painter(),
+                            assets,
+                            center,
+                            NAV_AVATAR_RADIUS,
+                            profile_avatar_url,
+                        ) {
+                        } else if let Some(texture) = assets.cached_texture(profile_avatar_url) {
                             paint_circle_texture(ui.painter(), texture, center, NAV_AVATAR_RADIUS);
                         } else {
                             ui.painter().circle_filled(
