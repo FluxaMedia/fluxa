@@ -13,6 +13,9 @@ scenes=(
   "phone-sheet mobile gallery/sheet 390 844"
   "desktop-drawer desktop gallery/drawer 1280 800"
   "tv-focus tv gallery/focus 1920 1080"
+  "phone-player-tracks mobile player/tracks 844 390"
+  "desktop-player-chapters desktop player/chapters 1280 720"
+  "tv-player-speed tv player/speed 1920 1080"
 )
 
 failed=0
