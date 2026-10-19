@@ -13,6 +13,7 @@ mod calendar;
 mod components;
 mod detail;
 mod discover;
+mod draw;
 mod emoji;
 mod flex;
 mod flow;
@@ -42,6 +43,7 @@ mod window_button;
 pub use components::{
     DetailModalOutcome, draw_detail_modal, set_detail_modal_open, take_detail_modal_outcome,
 };
+use draw::*;
 use flex::*;
 pub use home::*;
 pub use layout::*;
