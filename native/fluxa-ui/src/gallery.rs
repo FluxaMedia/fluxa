@@ -1,15 +1,58 @@
 use super::*;
 use crate::components::{
-    DrawerSide, bottom_sheet, labeled_button, primary_button, secondary_button, side_drawer,
+    DrawerSide, ListRow, Trailing, bottom_sheet, chip, labeled_button, list_row, primary_button,
+    secondary_button, segmented, side_drawer, stepper, swatch, switch,
 };
 use crate::flex::{Insets, Justify, column, leaf, row, text};
 
-#[derive(Clone, Default)]
+#[derive(Clone)]
 struct State {
     sheet: bool,
     drawer: bool,
-    selected: usize,
+    labeled: usize,
+    chip: usize,
+    segment: usize,
+    steps: i32,
+    switches: [bool; 2],
+    swatch: usize,
+    focused: Option<u64>,
     started: bool,
+}
+
+impl Default for State {
+    fn default() -> Self {
+        Self {
+            sheet: false,
+            drawer: false,
+            labeled: 0,
+            chip: 1,
+            segment: 1,
+            steps: 3,
+            switches: [true, false],
+            swatch: 2,
+            focused: None,
+            started: false,
+        }
+    }
+}
+
+const SWATCHES: [Color32; 6] = [
+    Color32::from_rgb(255, 255, 255),
+    Color32::from_rgb(255, 214, 10),
+    Color32::from_rgb(255, 107, 107),
+    Color32::from_rgb(10, 132, 255),
+    Color32::from_rgb(48, 209, 88),
+    Color32::from_rgb(191, 90, 242),
+];
+
+fn heading(ui: &mut egui::Ui, text: &str, metrics: &UiMetrics) {
+    ui.add_space(Space::S8.px(metrics));
+    ui.label(
+        RichText::new(text)
+            .size(metrics.text.subtitle)
+            .strong()
+            .color(metrics.text_muted),
+    );
 }
 
 pub fn draw_gallery(
@@ -31,45 +74,125 @@ pub fn draw_gallery(
         state.started = true;
         state.sheet = scene == "sheet";
         state.drawer = scene == "drawer";
+        state.focused = (scene == "focus").then_some(11);
     }
     let icons = ["Settings", "Plus", "Lock", "Edit"].map(|name| assets.icon(name));
     let labels = ["Audio", "Subtitles", "Speed", "A very long label"];
+    let safe = viewport.safe_area();
+    let gap = Space::S12.px(&metrics);
+    crate::begin_focus_frame(context, state.focused);
     egui::Area::new(Id::new("fluxa-gallery-body"))
-        .fixed_pos(Pos2::ZERO)
+        .fixed_pos(Pos2::new(safe.left + Space::S24.px(&metrics), safe.top))
         .show(context, |ui| {
-            ui.set_min_size(screen.size());
-            ui.add_space(Space::S48.px(&metrics));
-            ui.horizontal(|ui| {
-                ui.add_space(Space::S24.px(&metrics));
-                ui.vertical(|ui| {
-                    ui.spacing_mut().item_spacing = Vec2::splat(Space::S12.px(&metrics));
-                    ui.label(
-                        RichText::new("LabeledButton")
-                            .size(metrics.text.title)
-                            .strong()
-                            .color(text_primary()),
-                    );
+            let size = Vec2::new(
+                viewport.width - safe.left - safe.right - Space::S24.px(&metrics) * 2.0,
+                viewport.height - safe.top - safe.bottom,
+            );
+            ui.set_max_size(size);
+            egui::ScrollArea::vertical()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.set_width(size.x);
+                    ui.spacing_mut().item_spacing = Vec2::splat(gap);
+                    ui.add_space(Space::S24.px(&metrics));
+                    heading(ui, "LabeledButton", &metrics);
                     ui.horizontal_wrapped(|ui| {
                         for (index, label) in labels.iter().enumerate() {
-                            if labeled_button(
+                            let response = labeled_button(
                                 ui,
                                 icons[index],
                                 label,
-                                state.selected == index,
+                                state.labeled == index,
                                 metrics,
                             )
-                            .clicked()
-                            {
-                                state.selected = index;
+                            .focus_node(ui, 10 + index as u64, &metrics);
+                            if response.clicked() {
+                                state.labeled = index;
                             }
                         }
                     });
-                    ui.label(
-                        RichText::new("Overlays")
-                            .size(metrics.text.title)
-                            .strong()
-                            .color(text_primary()),
+                    heading(ui, "Chip", &metrics);
+                    ui.horizontal_wrapped(|ui| {
+                        for (index, label) in ["All", "Movies", "Series", "Anime", "Live"]
+                            .iter()
+                            .enumerate()
+                        {
+                            if chip(ui, label, state.chip == index, metrics).clicked() {
+                                state.chip = index;
+                            }
+                        }
+                    });
+                    heading(ui, "Segmented", &metrics);
+                    if let Some(next) = segmented(
+                        ui,
+                        Id::new("gallery-segmented"),
+                        &["Off", "Auto", "On"],
+                        state.segment,
+                        metrics,
+                    ) {
+                        state.segment = next;
+                    }
+                    heading(ui, "Stepper", &metrics);
+                    let label = format!("{}", state.steps);
+                    if let Some(delta) = stepper(
+                        ui,
+                        Id::new("gallery-stepper"),
+                        &label,
+                        state.steps > 0,
+                        state.steps < 9,
+                        metrics,
+                    ) {
+                        state.steps += delta;
+                    }
+                    heading(ui, "Switch and ListRow", &metrics);
+                    for (index, title) in ["Autoplay next", "Skip intros"].iter().enumerate() {
+                        let response = list_row(
+                            ui,
+                            ListRow {
+                                icon: icons[index],
+                                title,
+                                subtitle: Some("Starts the next episode without asking"),
+                                trailing: Trailing::Switch(state.switches[index]),
+                            },
+                            metrics,
+                        );
+                        if response.clicked() {
+                            state.switches[index] = !state.switches[index];
+                        }
+                    }
+                    list_row(
+                        ui,
+                        ListRow {
+                            icon: icons[0],
+                            title: "Subtitle language",
+                            subtitle: None,
+                            trailing: Trailing::Value("Türkçe"),
+                        },
+                        metrics,
                     );
+                    list_row(
+                        ui,
+                        ListRow {
+                            icon: None,
+                            title: "A row title long enough to be cut off before it reaches the trailing chevron",
+                            subtitle: None,
+                            trailing: Trailing::Chevron,
+                        },
+                        metrics,
+                    );
+                    ui.horizontal(|ui| {
+                        switch(ui, Id::new("gallery-switch-a"), true, metrics);
+                        switch(ui, Id::new("gallery-switch-b"), false, metrics);
+                    });
+                    heading(ui, "Swatch", &metrics);
+                    ui.horizontal_wrapped(|ui| {
+                        for (index, color) in SWATCHES.iter().enumerate() {
+                            if swatch(ui, *color, state.swatch == index, metrics).clicked() {
+                                state.swatch = index;
+                            }
+                        }
+                    });
+                    heading(ui, "Overlays", &metrics);
                     ui.horizontal(|ui| {
                         if primary_button(ui, "Bottom sheet", 160.0, true).clicked() {
                             state.sheet = true;
@@ -78,16 +201,11 @@ pub fn draw_gallery(
                             state.drawer = true;
                         }
                     });
-                    ui.label(
-                        RichText::new("Layout tree")
-                            .size(metrics.text.title)
-                            .strong()
-                            .color(text_primary()),
-                    );
+                    heading(ui, "Layout tree", &metrics);
                     let (rect, _) = ui.allocate_exact_size(Vec2::new(360.0, 120.0), Sense::hover());
                     paint_layout_sample(ui.painter(), rect, metrics);
+                    ui.add_space(Space::S48.px(&metrics) + viewport.safe_bottom);
                 });
-            });
         });
     if bottom_sheet(
         context,
@@ -130,6 +248,7 @@ pub fn draw_gallery(
     ) {
         state.drawer = false;
     }
+    let _ = crate::take_focus_targets(context);
     context.data_mut(|data| data.insert_temp(state_id, state));
 }
 
@@ -162,14 +281,13 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
     let placed = tree.solve(rect);
     for (id, slot) in placed.tagged() {
         if id == 1 {
-            draw_text(
+            crate::flex::paint_text(
                 painter,
-                slot.left_center(),
-                Align2::LEFT_CENTER,
+                slot,
                 "Title row",
-                font.clone(),
+                &font,
                 text_primary(),
-                None,
+                Align2::LEFT_CENTER,
             );
         } else {
             painter.rect_filled(slot, radius::chip(), ink(tone::RAISED));

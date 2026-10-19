@@ -220,6 +220,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
         .id(0),
         column(lines)
             .grow(1.0)
+            .align(Align::Stretch)
             .min_width(0.0)
             .gap(Space::S2.px(&metrics)),
         leaf(trailing_size).id(3),

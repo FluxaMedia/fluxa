@@ -5,6 +5,7 @@
   "scripts": {
     "check:structure": "node scripts/check-monorepo.mjs",
     "generate:contracts": "node scripts/generate-headless-contracts.mjs",
+    "check:screens": "bash scripts/check-screens.sh",
     "check:contracts": "node scripts/generate-headless-contracts.mjs --check",
     "check:i18n": "node scripts/check-i18n.mjs",
     "check": "npm run check:structure && npm run check:contracts && npm run check:i18n && npm run check:native && npm run check:core",
