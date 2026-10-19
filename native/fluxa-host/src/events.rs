@@ -415,7 +415,13 @@ impl FluxaHost {
 
     pub fn focused_text(&self) -> Option<String> {
         self.peek(|state| match &state.access.field {
-            Some(field) => Some(field.text.clone()),
+            Some(field) => Some(
+                state
+                    .field_text
+                    .as_ref()
+                    .filter(|(id, _)| *id == field.id)
+                    .map_or_else(|| field.text.clone(), |(_, text)| text.clone()),
+            ),
             None => actions::focused_text(state),
         })
         .flatten()
