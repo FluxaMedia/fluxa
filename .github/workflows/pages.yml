@@ -49,10 +49,9 @@ jobs:
           workspaces: native
           key: pages
 
-      - name: Install wasm-bindgen and binaryen
+      - name: Install wasm-bindgen
         run: |
           cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
-          sudo apt-get install -y binaryen
 
       - name: Build site
         run: ./scripts/build-web.sh dist-web/site

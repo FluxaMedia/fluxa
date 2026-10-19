@@ -14,10 +14,6 @@ export RUSTFLAGS="${RUSTFLAGS:-} --cfg getrandom_backend=\"wasm_js\""
 cargo build --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown "${cargo_flags[@]}"
 wasm-bindgen --target web --out-dir "$www/pkg" "native/target/wasm32-unknown-unknown/$profile/fluxa_web.wasm"
 
-if command -v wasm-opt >/dev/null 2>&1 && [ "$profile" = release ]; then
-  wasm-opt -O2 -o "$www/pkg/fluxa_web_bg.wasm" "$www/pkg/fluxa_web_bg.wasm"
-fi
-
 rm -rf "$out"
 mkdir -p "$out"
 cp -r "$www"/. "$out"/
