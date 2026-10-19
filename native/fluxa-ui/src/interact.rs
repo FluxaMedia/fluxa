@@ -5,6 +5,23 @@ struct FocusFrame {
     focused: Option<u64>,
     targets: Vec<(u64, Rect)>,
     activated: Option<u64>,
+    neighbors: Vec<(u64, Dir, u64)>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Dir {
+    Up,
+    Down,
+    Left,
+    Right,
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct Neighbors {
+    pub up: Option<u64>,
+    pub down: Option<u64>,
+    pub left: Option<u64>,
+    pub right: Option<u64>,
 }
 
 fn frame_id() -> Id {
@@ -30,6 +47,7 @@ pub fn take_focus_targets(context: &egui::Context) -> (Vec<(u64, Rect)>, Option<
             frame_id(),
             FocusFrame {
                 focused: frame.focused,
+                neighbors: frame.neighbors.clone(),
                 ..Default::default()
             },
         );
@@ -37,8 +55,18 @@ pub fn take_focus_targets(context: &egui::Context) -> (Vec<(u64, Rect)>, Option<
     })
 }
 
+pub fn take_focus_neighbors(context: &egui::Context) -> Vec<(u64, Dir, u64)> {
+    context.data_mut(|data| {
+        let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
+        let neighbors = std::mem::take(&mut frame.neighbors);
+        data.insert_temp(frame_id(), frame);
+        neighbors
+    })
+}
+
 pub(crate) trait FocusNode {
     fn focus_node(self, ui: &egui::Ui, node: u64, metrics: &UiMetrics) -> Self;
+    fn focus_neighbors(self, ui: &egui::Ui, node: u64, neighbors: Neighbors) -> Self;
 }
 
 impl FocusNode for egui::Response {
@@ -56,6 +84,24 @@ impl FocusNode for egui::Response {
         if focused {
             paint_focus_ring(ui.painter(), self.rect, metrics);
         }
+        self
+    }
+
+    fn focus_neighbors(self, ui: &egui::Ui, node: u64, neighbors: Neighbors) -> Self {
+        ui.ctx().data_mut(|data| {
+            let mut frame = data.get_temp::<FocusFrame>(frame_id()).unwrap_or_default();
+            for (dir, target) in [
+                (Dir::Up, neighbors.up),
+                (Dir::Down, neighbors.down),
+                (Dir::Left, neighbors.left),
+                (Dir::Right, neighbors.right),
+            ] {
+                if let Some(target) = target {
+                    frame.neighbors.push((node, dir, target));
+                }
+            }
+            data.insert_temp(frame_id(), frame);
+        });
         self
     }
 }
@@ -131,6 +177,30 @@ mod tests {
         let mut seen = None;
         let _ = context.run(input, |context| seen = pinch(context));
         seen
+    }
+
+    #[test]
+    fn neighbors_declared_by_a_component_are_collected() {
+        let context = egui::Context::default();
+        begin_focus_frame(&context, None);
+        let input = egui::RawInput {
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(200.0, 100.0))),
+            ..Default::default()
+        };
+        let _ = context.run(input, |context| {
+            egui::CentralPanel::default().show(context, |ui| {
+                let response = ui.allocate_response(Vec2::splat(20.0), egui::Sense::click());
+                response.focus_neighbors(
+                    ui,
+                    5,
+                    Neighbors {
+                        right: Some(9),
+                        ..Default::default()
+                    },
+                );
+            });
+        });
+        assert_eq!(take_focus_neighbors(&context), vec![(5, Dir::Right, 9)]);
     }
 
     #[test]

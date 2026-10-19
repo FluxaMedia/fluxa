@@ -467,6 +467,15 @@ pub(super) fn rebuild_ui_from_layout(
             node.order = 10_001;
         }
     }
+    for &(from, dir, to) in &layout.neighbors {
+        let direction = match dir {
+            fluxa_ui::Dir::Up => fluxa_renderer::ui::NavigationDirection::Up,
+            fluxa_ui::Dir::Down => fluxa_renderer::ui::NavigationDirection::Down,
+            fluxa_ui::Dir::Left => fluxa_renderer::ui::NavigationDirection::Left,
+            fluxa_ui::Dir::Right => fluxa_renderer::ui::NavigationDirection::Right,
+        };
+        ui.set_neighbor(from, direction, to);
+    }
     let fallback = match state.route {
         Route::Library => state
             .library

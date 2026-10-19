@@ -66,7 +66,7 @@ impl UiNode {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum NavigationDirection {
     Up,
     Down,
@@ -165,6 +165,7 @@ pub struct UiTree {
     next_id: NodeId,
     nodes: HashMap<NodeId, UiNode>,
     focused: Option<NodeId>,
+    neighbors: HashMap<(NodeId, NavigationDirection), NodeId>,
 }
 
 impl Default for UiTree {
@@ -177,11 +178,16 @@ impl Default for UiTree {
             next_id: 2,
             nodes,
             focused: None,
+            neighbors: HashMap::new(),
         }
     }
 }
 
 impl UiTree {
+    pub fn set_neighbor(&mut self, from: NodeId, direction: NavigationDirection, to: NodeId) {
+        self.neighbors.insert((from, direction), to);
+    }
+
     pub fn root(&self) -> NodeId {
         self.root
     }
@@ -398,6 +404,13 @@ impl UiTree {
         allow: impl Fn(NodeId) -> bool,
     ) -> Option<UiAction> {
         let current_id = self.focused?;
+        if let Some(&target) = self.neighbors.get(&(current_id, direction))
+            && target != current_id
+            && self.is_focusable(target)
+            && allow(target)
+        {
+            return self.set_focus(Some(target));
+        }
         let focused = self.node(current_id)?.bounds;
         let mut best: Option<(Rect, NodeId)> = None;
         for node in self.focusable_nodes() {
@@ -539,6 +552,22 @@ impl Rect {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn neighbor_override_beats_nearest_node() {
+        let mut tree = UiTree::default();
+        let root = tree.root();
+        for (id, x) in [(10, 0.0), (11, 60.0), (12, 120.0)] {
+            tree.add(
+                root,
+                UiNode::new(id, UiNodeKind::Button, Rect::new(x, 0.0, 40.0, 40.0)).focusable(),
+            );
+        }
+        tree.set_neighbor(10, NavigationDirection::Right, 12);
+        tree.set_focus(Some(10));
+        tree.dispatch(UiEvent::KeyDown(Key::Right));
+        assert_eq!(tree.focused(), Some(12));
+    }
 
     #[test]
     fn dpad_moves_to_the_nearest_directional_node() {

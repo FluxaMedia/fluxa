@@ -48,7 +48,9 @@ use draw::*;
 use interact::FocusNode;
 use flex::*;
 pub use home::*;
-pub use interact::{Pinch, begin_focus_frame, pinch, take_focus_targets};
+pub use interact::{
+    Dir, Neighbors, Pinch, begin_focus_frame, pinch, take_focus_neighbors, take_focus_targets,
+};
 pub use layout::*;
 pub use metrics::*;
 pub use model::*;

@@ -19,6 +19,7 @@ pub enum PlayerGesture {
 pub struct HomeLayout {
     pub choices: Vec<(u64, ChoiceRequest)>,
     pub focusable: Vec<(u64, Rect)>,
+    pub neighbors: Vec<(u64, crate::Dir, u64)>,
     pub activated: Option<u64>,
     pub text_input: Option<String>,
     pub text_input_node: Option<u64>,

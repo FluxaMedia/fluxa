@@ -903,6 +903,9 @@ impl Gpu {
             }
             let (bound, activated) = fluxa_ui::take_focus_targets(ui.ctx());
             rendered_layout.focusable.extend(bound);
+            rendered_layout
+                .neighbors
+                .extend(fluxa_ui::take_focus_neighbors(ui.ctx()));
             rendered_layout.activated = rendered_layout.activated.or(activated);
             if crate::preview::outlines() {
                 fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
