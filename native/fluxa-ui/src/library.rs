@@ -80,10 +80,8 @@ pub fn draw_library(
                 .map(|group| group.rows.len())
                 .sum();
             let header = metrics.icon_button_size;
-            let back = Rect::from_min_size(
-                Pos2::new(page.margin, top - scroll_y),
-                Vec2::splat(header),
-            );
+            let back =
+                Rect::from_min_size(Pos2::new(page.margin, top - scroll_y), Vec2::splat(header));
             components::placed(
                 context,
                 Id::new("fluxa-shared-library-downloads-header"),
@@ -107,7 +105,11 @@ pub fn draw_library(
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let response = components::icon_button(
                                 ui,
-                                assets.icon(if library.list_view { "LayoutGrid" } else { "List" }),
+                                assets.icon(if library.list_view {
+                                    "LayoutGrid"
+                                } else {
+                                    "List"
+                                }),
                                 metrics.screen_control_height,
                                 text_primary(),
                                 true,
@@ -120,10 +122,7 @@ pub fn draw_library(
                 },
             );
             layout.focusable.push((NODE_DOWNLOAD_BACK, back));
-            let origin = Pos2::new(
-                page.margin,
-                top - scroll_y + header + metrics.section_gap,
-            );
+            let origin = Pos2::new(page.margin, top - scroll_y + header + metrics.section_gap);
             components::placed(
                 context,
                 Id::new("fluxa-shared-library-downloads"),

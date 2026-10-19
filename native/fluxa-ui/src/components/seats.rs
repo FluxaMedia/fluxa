@@ -36,7 +36,10 @@ pub(crate) fn seat_row(
                 painter.circle_stroke(
                     center,
                     radius + 2.0,
-                    egui::Stroke::new(1.5, Color32::from_white_alpha(if member.host { 200 } else { 70 })),
+                    egui::Stroke::new(
+                        1.5,
+                        Color32::from_white_alpha(if member.host { 200 } else { 70 }),
+                    ),
                 );
             }
             None => {

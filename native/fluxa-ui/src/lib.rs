@@ -17,9 +17,9 @@ mod draw;
 mod emoji;
 mod flex;
 mod flow;
-mod gallery;
 mod folder;
 pub mod fonts;
+mod gallery;
 mod home;
 mod interact;
 mod layout;
@@ -82,13 +82,14 @@ pub use poster_overlay::{
 
 pub use detail::{detail_row_at_y, detail_row_scroll_max, detail_scroll_max, draw_detail};
 pub use discover::draw_discover;
-pub use gallery::draw_gallery;
 pub use folder::{draw_folder, folder_row_at_y, folder_row_scroll_max, folder_scroll_max};
+pub use gallery::draw_gallery;
 pub use library::draw_library;
 pub use player::{
-    ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel, PlayerSource,
-    PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection, ToastGauge,
-    content_warning_duration, draw_player, format_time, subtitle_lift, torrent_status_lines,
+    ChapterSpan, NextEpisodeCard, PanelRow, PanelStep, PlayerModel, PlayerOptions, PlayerPanel,
+    PlayerSource, PlayerToast, SegmentSpan, SkipCard, SkipKind, SourceBadge, StatsSection,
+    ToastGauge, content_warning_duration, draw_player, format_time, subtitle_lift,
+    torrent_status_lines,
 };
 pub use profiles::{
     PinFailure, PinPrompt, PinPurpose, ProfileAvatar, ProfileAvatarPack, ProfileDraft,

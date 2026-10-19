@@ -49,7 +49,14 @@ pub(crate) fn watch_ticket(
     });
     match backdrop {
         Some((texture, size)) => {
-            rounded_image(&painter, texture, rect, RADIUS, cover_uv(size, rect), Color32::WHITE);
+            rounded_image(
+                &painter,
+                texture,
+                rect,
+                RADIUS,
+                cover_uv(size, rect),
+                Color32::WHITE,
+            );
             painter.rect_filled(rect, RADIUS, Color32::from_black_alpha(90));
             paint_vertical_gradient(
                 &painter,
@@ -94,7 +101,10 @@ pub(crate) fn watch_ticket(
     let mut x = rect.left() + NOTCH + 10.0;
     while x < rect.right() - NOTCH - 10.0 {
         painter.line_segment(
-            [Pos2::new(x, tear), Pos2::new((x + 7.0).min(rect.right() - NOTCH - 10.0), tear)],
+            [
+                Pos2::new(x, tear),
+                Pos2::new((x + 7.0).min(rect.right() - NOTCH - 10.0), tear),
+            ],
             egui::Stroke::new(1.5, Color32::from_white_alpha(110)),
         );
         x += 13.0;
@@ -120,7 +130,15 @@ pub(crate) fn watch_ticket(
     }
     if let (Some(_), Some(host)) = (ticket.room.as_ref(), ticket.host.as_ref()) {
         let center = Pos2::new(inner.left() + 12.0, inner.top() + 38.0);
-        avatar(&painter, assets, center, 12.0, &host.name, host.avatar.as_deref(), metrics);
+        avatar(
+            &painter,
+            assets,
+            center,
+            12.0,
+            &host.name,
+            host.avatar.as_deref(),
+            metrics,
+        );
         painter.text(
             Pos2::new(center.x + 20.0, center.y),
             Align2::LEFT_CENTER,
@@ -145,15 +163,19 @@ pub(crate) fn watch_ticket(
         );
         baseline -= 24.0;
     }
-    let logo = ticket.room.as_ref().and(ticket.logo.as_deref()).and_then(|url| {
-        title_logo(
-            ui.ctx().pixels_per_point(),
-            Some(url),
-            Vec2::new(inner.width() * 0.55, 70.0),
-            ArtworkPriority::Visible,
-            assets,
-        )
-    });
+    let logo = ticket
+        .room
+        .as_ref()
+        .and(ticket.logo.as_deref())
+        .and_then(|url| {
+            title_logo(
+                ui.ctx().pixels_per_point(),
+                Some(url),
+                Vec2::new(inner.width() * 0.55, 70.0),
+                ArtworkPriority::Visible,
+                assets,
+            )
+        });
     match logo {
         Some((texture, size)) => {
             let place = Rect::from_min_size(Pos2::new(inner.left(), baseline - size.y), size);
@@ -163,7 +185,12 @@ pub(crate) fn watch_ticket(
             painter.text(
                 Pos2::new(inner.left(), baseline),
                 Align2::LEFT_BOTTOM,
-                truncate_to_width(&painter, &headline, &crate::fonts::bold(28.0), inner.width()),
+                truncate_to_width(
+                    &painter,
+                    &headline,
+                    &crate::fonts::bold(28.0),
+                    inner.width(),
+                ),
                 crate::fonts::bold(28.0),
                 Color32::WHITE,
             );
@@ -223,7 +250,15 @@ pub(crate) fn watch_ticket(
                 let radius = if narrow { 13.0 } else { 16.0 };
                 let span = seat_row_width(seats, radius);
                 let start = Pos2::new(inner.right() - span, row.center().y);
-                seat_row(&painter, assets, &ticket.members, seats, start, radius, metrics);
+                seat_row(
+                    &painter,
+                    assets,
+                    &ticket.members,
+                    seats,
+                    start,
+                    radius,
+                    metrics,
+                );
                 let total = ticket.max_members.max(ticket.members.len() as u32);
                 painter.text(
                     Pos2::new(inner.right(), inner.top()),

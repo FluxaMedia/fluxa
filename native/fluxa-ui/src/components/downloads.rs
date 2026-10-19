@@ -53,7 +53,11 @@ fn speed_block(
         [graph.left_bottom(), graph.right_bottom()],
         egui::Stroke::new(1.0, metrics.border),
     );
-    let peak = summary.history.iter().copied().fold(1_048_576.0_f32, f32::max);
+    let peak = summary
+        .history
+        .iter()
+        .copied()
+        .fold(1_048_576.0_f32, f32::max);
     let steps = summary.history.len().saturating_sub(1).max(1) as f32;
     let points: Vec<Pos2> = summary
         .history
@@ -92,7 +96,16 @@ fn storage_block(
     );
     let response = ui
         .scope_builder(egui::UiBuilder::new().max_rect(button), |ui| {
-            pill_button(ui, None, &change, Some(button_width), 36.0, 14.0, false, None)
+            pill_button(
+                ui,
+                None,
+                &change,
+                Some(button_width),
+                36.0,
+                14.0,
+                false,
+                None,
+            )
         })
         .inner;
     focus_action(layout, NODE_DOWNLOAD_LOCATION, &response);
@@ -199,7 +212,10 @@ fn row_height(metrics: UiMetrics) -> f32 {
 fn episode_grid(width: f32, metrics: UiMetrics) -> (usize, f32) {
     let gap = metrics.control_gap;
     let columns = (((width + gap) / (300.0 + gap)).floor() as usize).max(1);
-    (columns, (width - gap * (columns - 1) as f32) / columns as f32)
+    (
+        columns,
+        (width - gap * (columns - 1) as f32) / columns as f32,
+    )
 }
 
 fn episode_height(card_width: f32, metrics: UiMetrics) -> f32 {
@@ -733,7 +749,16 @@ pub fn download_group(
                 Vec2::new(width, height),
             );
             if visible.intersects(rect) {
-                download_row(ui, rect, row, first_index + offset, language, metrics, assets, layout);
+                download_row(
+                    ui,
+                    rect,
+                    row,
+                    first_index + offset,
+                    language,
+                    metrics,
+                    assets,
+                    layout,
+                );
             }
         }
         return;
@@ -749,12 +774,29 @@ pub fn download_group(
             Vec2::new(card, height),
         );
         if visible.intersects(rect) {
-            episode_card(ui, rect, row, group, first_index + offset, language, metrics, assets, layout);
+            episode_card(
+                ui,
+                rect,
+                row,
+                group,
+                first_index + offset,
+                language,
+                metrics,
+                assets,
+                layout,
+            );
         }
     }
 }
 
-fn section_heading(painter: &Painter, pos: Pos2, key: &str, count: usize, language: &str, metrics: UiMetrics) {
+fn section_heading(
+    painter: &Painter,
+    pos: Pos2,
+    key: &str,
+    count: usize,
+    language: &str,
+    metrics: UiMetrics,
+) {
     let used = draw_text(
         painter,
         pos,
@@ -822,13 +864,30 @@ pub fn download_sections(
         if members.is_empty() {
             continue;
         }
-        section_heading(&painter, Pos2::new(origin.x, y), key, members.len(), language, metrics);
+        section_heading(
+            &painter,
+            Pos2::new(origin.x, y),
+            key,
+            members.len(),
+            language,
+            metrics,
+        );
         y += heading_height(metrics);
         let top = Pos2::new(origin.x, y);
         for (slot, index) in members.iter().enumerate() {
             let cell = grid.cell(top, slot);
-            let poster = Rect::from_min_size(cell.min, Vec2::new(grid.card_width, grid.poster_height));
-            download_poster(ui, &groups[*index], *index, poster, language, metrics, assets, layout);
+            let poster =
+                Rect::from_min_size(cell.min, Vec2::new(grid.card_width, grid.poster_height));
+            download_poster(
+                ui,
+                &groups[*index],
+                *index,
+                poster,
+                language,
+                metrics,
+                assets,
+                layout,
+            );
         }
         y += grid.height(members.len()) + metrics.section_gap;
     }

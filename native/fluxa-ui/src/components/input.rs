@@ -238,7 +238,11 @@ pub(crate) fn search_field(
     let native = native_covers(text_rect);
     let output = put_edit(
         ui,
-        row_rect(ui, text_rect, crate::fonts::regular(metrics.screen_body_size + 1.0)),
+        row_rect(
+            ui,
+            text_rect,
+            crate::fonts::regular(metrics.screen_body_size + 1.0),
+        ),
         id,
         egui::TextEdit::singleline(query)
             .frame(egui::Frame::NONE)
@@ -403,7 +407,15 @@ pub(crate) fn message_input(
             .margin(Vec2::ZERO),
     );
     focus_on_hit(ui, &hit, id, len);
-    record_native_focus(ui, &output, text_rect, metrics.text.body, InputKind::Text, value, hint);
+    record_native_focus(
+        ui,
+        &output,
+        text_rect,
+        metrics.text.body,
+        InputKind::Text,
+        value,
+        hint,
+    );
     let response = output.response.response.clone();
     if !native {
         crate::emoji::overlay(
@@ -434,9 +446,18 @@ pub(crate) fn message_input(
     let arm = button.width() * 0.2;
     let center = button.center();
     let arrow = egui::Stroke::new(2.2, ink);
-    painter.line_segment([center + Vec2::new(0.0, arm), center - Vec2::new(0.0, arm)], arrow);
-    painter.line_segment([center - Vec2::new(0.0, arm), center + Vec2::new(-arm, 0.0)], arrow);
-    painter.line_segment([center - Vec2::new(0.0, arm), center + Vec2::new(arm, 0.0)], arrow);
+    painter.line_segment(
+        [center + Vec2::new(0.0, arm), center - Vec2::new(0.0, arm)],
+        arrow,
+    );
+    painter.line_segment(
+        [center - Vec2::new(0.0, arm), center + Vec2::new(-arm, 0.0)],
+        arrow,
+    );
+    painter.line_segment(
+        [center - Vec2::new(0.0, arm), center + Vec2::new(arm, 0.0)],
+        arrow,
+    );
     let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
     if entered || send.clicked() {
         response.request_focus();
@@ -521,9 +542,18 @@ pub(crate) fn code_input(
     let arm = button.width() * 0.2;
     let center = button.center();
     let arrow = egui::Stroke::new(2.2, ink);
-    painter.line_segment([center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)], arrow);
-    painter.line_segment([center + Vec2::new(arm, 0.0), center + Vec2::new(0.0, -arm)], arrow);
-    painter.line_segment([center + Vec2::new(arm, 0.0), center + Vec2::new(0.0, arm)], arrow);
+    painter.line_segment(
+        [center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)],
+        arrow,
+    );
+    painter.line_segment(
+        [center + Vec2::new(arm, 0.0), center + Vec2::new(0.0, -arm)],
+        arrow,
+    );
+    painter.line_segment(
+        [center + Vec2::new(arm, 0.0), center + Vec2::new(0.0, arm)],
+        arrow,
+    );
 
     let font = crate::fonts::bold(26.0);
     let slot = 28.0;
@@ -563,10 +593,12 @@ pub(crate) fn code_input(
         );
     }
     if focused {
-        ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
+        ui.ctx()
+            .request_repaint_after(std::time::Duration::from_millis(500));
     }
     let entered = response.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
-    let was_complete = ui.data_mut(|data| data.get_temp::<bool>(id.with("complete")).unwrap_or(false));
+    let was_complete =
+        ui.data_mut(|data| data.get_temp::<bool>(id.with("complete")).unwrap_or(false));
     ui.data_mut(|data| data.insert_temp(id.with("complete"), complete));
     CodeInput {
         rect: field,

@@ -213,7 +213,13 @@ pub fn downloads_summary_from_snapshot(snapshot: &Value) -> DownloadsSummary {
         speed_bps: offline["totalSpeedBps"].as_f64().unwrap_or(0.0),
         history: offline["history"]
             .as_array()
-            .map(|samples| samples.iter().filter_map(Value::as_f64).map(|v| v as f32).collect())
+            .map(|samples| {
+                samples
+                    .iter()
+                    .filter_map(Value::as_f64)
+                    .map(|v| v as f32)
+                    .collect()
+            })
             .unwrap_or_default(),
         location: storage_info(&offline["location"]),
         volumes: offline["volumes"]

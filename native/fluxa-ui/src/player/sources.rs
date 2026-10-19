@@ -27,7 +27,12 @@ pub(super) fn draw_sources(
             rect.left_top(),
             Pos2::new(rect.left() + rect.width() * 0.5, rect.bottom()),
         );
-        paint_horizontal_gradient(&painter, info_side, shade(Shade::Strong), Color32::TRANSPARENT);
+        paint_horizontal_gradient(
+            &painter,
+            info_side,
+            shade(Shade::Strong),
+            Color32::TRANSPARENT,
+        );
     }
     let metrics = metrics_for_assets(viewport, assets);
     let margin = metrics.overlay_margin;

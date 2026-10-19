@@ -1,7 +1,5 @@
 use super::*;
-use crate::nodes::{
-    NODE_PLAYER_CLOSE, NODE_PLAYER_EXPAND, NODE_PLAYER_TOGGLE,
-};
+use crate::nodes::{NODE_PLAYER_CLOSE, NODE_PLAYER_EXPAND, NODE_PLAYER_TOGGLE};
 use crate::paint::paint_vertical_gradient;
 use crate::player::{PlayerModel, control};
 use crate::{HomeLayout, Viewport};
@@ -14,14 +12,29 @@ pub(crate) fn mini_player(
     layout: &mut HomeLayout,
     expand: u64,
 ) -> Response {
-    painter.rect_filled(tile.expand(1.0), crate::style::radius::control(), crate::ink(crate::style::tone::raised()));
+    painter.rect_filled(
+        tile.expand(1.0),
+        crate::style::radius::control(),
+        crate::ink(crate::style::tone::raised()),
+    );
     match player.video {
-        Some(texture) => rounded_image(painter, texture, tile, 7.0, crate::paint::full_uv(), Color32::WHITE),
+        Some(texture) => rounded_image(
+            painter,
+            texture,
+            tile,
+            7.0,
+            crate::paint::full_uv(),
+            Color32::WHITE,
+        ),
         None => {
             painter.rect_filled(tile, crate::style::radius::control(), Color32::BLACK);
         }
     }
-    let hit = ui.interact(tile, Id::new(("fluxa-mini-player", expand)), Sense::click_and_drag());
+    let hit = ui.interact(
+        tile,
+        Id::new(("fluxa-mini-player", expand)),
+        Sense::click_and_drag(),
+    );
     let hovered = hit.hovered() || ui.rect_contains_pointer(tile);
     let shown = crate::motion::toggle(
         ui.ctx(),
@@ -44,7 +57,11 @@ pub(crate) fn mini_player(
     );
     let y = strip.center().y + 4.0;
     for (offset, icon, node) in [
-        (-40.0, if player.paused { "play" } else { "pause" }, NODE_PLAYER_TOGGLE),
+        (
+            -40.0,
+            if player.paused { "play" } else { "pause" },
+            NODE_PLAYER_TOGGLE,
+        ),
         (0.0, "fullscreen", expand),
         (40.0, "close", NODE_PLAYER_CLOSE),
     ] {
@@ -113,7 +130,10 @@ pub fn draw_mini_player_overlay(
         });
     let pass = context.cumulative_pass_nr();
     context.data_mut(|data| {
-        data.insert_temp(Id::new(MINI_RECT), (pass, Rect::from_min_size(state.pos, size)))
+        data.insert_temp(
+            Id::new(MINI_RECT),
+            (pass, Rect::from_min_size(state.pos, size)),
+        )
     });
     egui::Area::new(Id::new("fluxa-mini-player-area"))
         .order(egui::Order::Foreground)

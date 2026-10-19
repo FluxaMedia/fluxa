@@ -39,10 +39,10 @@ pub(crate) use overlay::*;
 pub use recent_searches::*;
 pub(crate) use seats::*;
 pub(crate) use slider::*;
-pub(crate) use ticket::*;
 pub use streams::*;
 pub use subtitle_preview::SubtitleLook;
 pub(crate) use subtitle_preview::subtitle_sample;
+pub(crate) use ticket::*;
 
 use super::{
     ArtworkPriority, DetailEpisode, DetailTrailer, HomeAssets, HomeCard, HomeLayout, Shade,

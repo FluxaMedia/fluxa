@@ -1488,10 +1488,15 @@ fn draw_watch_party(
     let mut code = settings.watch_code.clone();
     let ticket = &settings.watch_ticket;
     components::placed_front(context, Id::new("fluxa-watch-ticket"), origin, |ui| {
-        let output = components::watch_ticket(ui, ticket, &mut code, width, language, assets, metrics);
+        let output =
+            components::watch_ticket(ui, ticket, &mut code, width, language, assets, metrics);
         if let Some(input) = output.code {
-            layout.focusable.push((NODE_SETTINGS_WATCH_CODE, input.rect));
-            layout.focusable.push((NODE_SETTINGS_WATCH_JOIN, input.button));
+            layout
+                .focusable
+                .push((NODE_SETTINGS_WATCH_CODE, input.rect));
+            layout
+                .focusable
+                .push((NODE_SETTINGS_WATCH_JOIN, input.button));
             if input.response.changed() {
                 layout.text_input = Some(code.clone());
                 layout.text_input_node = Some(NODE_SETTINGS_WATCH_CODE);
@@ -1502,7 +1507,10 @@ fn draw_watch_party(
             None => layout.activated,
         };
     });
-    let hint = Pos2::new(rect.left() + 4.0, origin.y + components::ticket_height(width) + 18.0);
+    let hint = Pos2::new(
+        rect.left() + 4.0,
+        origin.y + components::ticket_height(width) + 18.0,
+    );
     draw_text(
         &context.layer_painter(egui::LayerId::background()),
         hint,

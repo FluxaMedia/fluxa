@@ -506,7 +506,16 @@ fn side_room(
     }
     ui.add_space(14.0);
     let height = ui.available_height() - 2.0 * button_height() - 140.0;
-    side_chat(ui, model, width, height.max(80.0), assets, metrics, t, request);
+    side_chat(
+        ui,
+        model,
+        width,
+        height.max(80.0),
+        assets,
+        metrics,
+        t,
+        request,
+    );
     ui.add_space(14.0);
     let (label, action) = if model.host {
         ("watch.end", WatchTogetherRequest::End)
@@ -580,8 +589,15 @@ fn side_chat(
         }
     });
     ui.add_space(6.0);
-    if components::message_input(ui, &mut draft, &t("watch.chat.hint"), width, assets, metrics)
-        .submitted
+    if components::message_input(
+        ui,
+        &mut draft,
+        &t("watch.chat.hint"),
+        width,
+        assets,
+        metrics,
+    )
+    .submitted
     {
         *request = Some(WatchTogetherRequest::Chat(std::mem::take(&mut draft)));
     }
@@ -615,7 +631,11 @@ fn chat_message(
         let label = ui.painter().layout_no_wrap(
             name,
             FontId::proportional(metrics.text.label),
-            if message.you { accent() } else { metrics.text_secondary },
+            if message.you {
+                accent()
+            } else {
+                metrics.text_secondary
+            },
         );
         let height = (label.size().y + 2.0 + galley.size().y).max(size);
         let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
@@ -630,7 +650,8 @@ fn chat_message(
         );
         let left = rect.left() + size + gap;
         let label_height = label.size().y;
-        ui.painter().galley(Pos2::new(left, rect.top()), label, text_primary());
+        ui.painter()
+            .galley(Pos2::new(left, rect.top()), label, text_primary());
         crate::emoji::paint(
             ui.painter(),
             Pos2::new(left, rect.top() + label_height + 2.0),
@@ -717,13 +738,20 @@ fn lock_row(
         metrics.text_muted,
         width - 24.0 - metrics.settings_toggle_width - 16.0,
     );
-    painter.galley(Pos2::new(rect.left() + 12.0, rect.top() + 38.0), galley, metrics.text_muted);
+    painter.galley(
+        Pos2::new(rect.left() + 12.0, rect.top() + 38.0),
+        galley,
+        metrics.text_muted,
+    );
     let track = Rect::from_center_size(
         Pos2::new(
             rect.right() - metrics.settings_toggle_width * 0.5 - 8.0,
             rect.top() + 22.0,
         ),
-        Vec2::new(metrics.settings_toggle_width, metrics.settings_toggle_height),
+        Vec2::new(
+            metrics.settings_toggle_width,
+            metrics.settings_toggle_height,
+        ),
     );
     components::toggle(
         ui.ctx(),

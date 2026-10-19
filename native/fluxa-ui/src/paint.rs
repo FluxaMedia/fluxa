@@ -414,7 +414,10 @@ pub(crate) fn paint_subtitle_cue(painter: &egui::Painter, rect: Rect, text: &str
         Color32::WHITE,
         rect.width() * 0.8,
     );
-    let pos = Pos2::new(rect.center().x - galley.size().x / 2.0, rect.bottom() - lift - galley.size().y);
+    let pos = Pos2::new(
+        rect.center().x - galley.size().x / 2.0,
+        rect.bottom() - lift - galley.size().y,
+    );
     let shadow = painter.layout(
         text.to_owned(),
         FontId::proportional(size),
@@ -422,7 +425,11 @@ pub(crate) fn paint_subtitle_cue(painter: &egui::Painter, rect: Rect, text: &str
         rect.width() * 0.8,
     );
     for offset in [(-2.0, 0.0), (2.0, 0.0), (0.0, -2.0), (0.0, 2.0), (0.0, 3.0)] {
-        painter.galley(pos + Vec2::new(offset.0, offset.1), shadow.clone(), Color32::BLACK);
+        painter.galley(
+            pos + Vec2::new(offset.0, offset.1),
+            shadow.clone(),
+            Color32::BLACK,
+        );
     }
     painter.galley(pos, galley, Color32::WHITE);
 }
