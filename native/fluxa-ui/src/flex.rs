@@ -178,6 +178,13 @@ impl Placed {
         self.children.iter().find_map(|child| child.find(id))
     }
 
+    pub fn bottom(&self) -> f32 {
+        self.children
+            .iter()
+            .map(|child| child.rect.bottom().max(child.bottom()))
+            .fold(self.rect.top(), f32::max)
+    }
+
     pub fn tagged(&self) -> Vec<(usize, Rect)> {
         let mut out = Vec::new();
         self.collect(&mut out);
@@ -570,6 +577,43 @@ impl Node {
     }
 }
 
+pub(crate) fn content_height(node: &Node, width: f32) -> f32 {
+    let tall = Rect::from_min_size(Pos2::ZERO, Vec2::new(width, 1.0e6));
+    node.solve(tall).bottom() + node.padding.bottom + node.margin.bottom
+}
+
+pub(crate) fn scroll_view(
+    ui: &mut egui::Ui,
+    id: Id,
+    size: Vec2,
+    node: &Node,
+    paint: impl FnOnce(&mut egui::Ui, &Placed),
+) {
+    let height = content_height(node, size.x).max(size.y);
+    egui::ScrollArea::vertical()
+        .id_salt(id)
+        .max_height(size.y)
+        .max_width(size.x)
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            let (rect, _) = ui.allocate_exact_size(Vec2::new(size.x, height), Sense::hover());
+            paint(ui, &node.solve(rect));
+        });
+}
+
+pub(crate) fn paint_text(
+    painter: &egui::Painter,
+    slot: Rect,
+    text: &str,
+    font: &FontId,
+    color: Color32,
+    align: Align2,
+) {
+    let fitted = crate::truncate_to_width(painter, text, font, slot.width());
+    let anchor = align.pos_in_rect(&slot);
+    draw_text(painter, anchor, align, fitted, font.clone(), color, None);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -584,6 +628,16 @@ mod tests {
 
     fn rects(node: Node, bounds: Rect) -> Vec<Rect> {
         node.solve(bounds).children.iter().map(|c| c.rect).collect()
+    }
+
+    #[test]
+    fn content_height_counts_wrapped_lines_and_padding() {
+        let chips = (0..6).map(|_| boxed(40.0, 20.0));
+        let tree = column([row(chips).wrap().gap(10.0)]).padding(Insets::all(8.0));
+        assert_eq!(
+            content_height(&tree, 116.0),
+            8.0 + 20.0 * 3.0 + 10.0 * 2.0 + 8.0
+        );
     }
 
     #[test]

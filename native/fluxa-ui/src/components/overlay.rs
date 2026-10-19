@@ -239,15 +239,7 @@ pub(crate) fn labeled_button(
             painter.image(texture, slot, full_uv(), color);
         }
         if let Some(slot) = placed.find(1) {
-            draw_text(
-                painter,
-                slot.left_center(),
-                Align2::LEFT_CENTER,
-                label,
-                font.clone(),
-                color,
-                None,
-            );
+            crate::flex::paint_text(painter, slot, label, &font, color, Align2::LEFT_CENTER);
         }
     });
     response

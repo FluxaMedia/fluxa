@@ -81,6 +81,9 @@ pub struct Viewport {
     pub platform: UiPlatform,
     /// Bottom safe-drawing inset reported by the platform host, in logical dp.
     pub safe_bottom: f32,
+    pub safe_top: f32,
+    pub safe_left: f32,
+    pub safe_right: f32,
     /// Vertical content offset supplied by the platform input adapter.
     /// Headers and navigation remain fixed while the screen body scrolls.
     pub scroll_y: f32,
@@ -97,7 +100,10 @@ impl Viewport {
             height: height as f32,
             form_factor,
             platform: UiPlatform::default(),
-            safe_bottom: Self::min_safe_bottom(form_factor),
+            safe_bottom: Self::min_safe(form_factor).bottom,
+            safe_top: Self::min_safe(form_factor).top,
+            safe_left: Self::min_safe(form_factor).left,
+            safe_right: Self::min_safe(form_factor).right,
             scroll_y: 0.0,
             nav_lead: 0.0,
         }
@@ -108,16 +114,40 @@ impl Viewport {
         self
     }
 
-    fn min_safe_bottom(form_factor: UiFormFactor) -> f32 {
+    fn min_safe(form_factor: UiFormFactor) -> crate::flex::Insets {
         if form_factor == UiFormFactor::Tv {
-            27.0
+            crate::flex::Insets::xy(48.0, 27.0)
         } else {
-            0.0
+            crate::flex::Insets::default()
+        }
+    }
+
+    pub fn with_safe_area(mut self, top: f32, left: f32, right: f32) -> Self {
+        let floor = Self::min_safe(self.form_factor);
+        let clean = |value: f32, floor: f32| {
+            if value.is_finite() {
+                value.max(floor)
+            } else {
+                floor
+            }
+        };
+        self.safe_top = clean(top, floor.top);
+        self.safe_left = clean(left, floor.left);
+        self.safe_right = clean(right, floor.right);
+        self
+    }
+
+    pub(crate) fn safe_area(&self) -> crate::flex::Insets {
+        crate::flex::Insets {
+            left: self.safe_left,
+            top: self.safe_top,
+            right: self.safe_right,
+            bottom: self.safe_bottom,
         }
     }
 
     pub fn with_safe_bottom(mut self, inset: f32) -> Self {
-        let floor = Self::min_safe_bottom(self.form_factor);
+        let floor = Self::min_safe(self.form_factor).bottom;
         self.safe_bottom = if inset.is_finite() {
             inset.max(floor)
         } else {
