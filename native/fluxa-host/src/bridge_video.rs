@@ -119,6 +119,13 @@ impl VideoBackend for BridgeVideo {
         self.send(json!({"type": "load", "url": url}));
     }
 
+    fn load_preview(&mut self, _instance: &wgpu::Instance, _device: &wgpu::Device, url: &str) {
+        if let Ok(mut bridge) = self.0.lock() {
+            bridge.status = VideoStatus::default();
+        }
+        self.send(json!({"type": "loadPreview", "url": url}));
+    }
+
     fn stop(&mut self) {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();

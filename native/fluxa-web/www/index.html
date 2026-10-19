@@ -12,6 +12,7 @@ html, body { margin: 0; height: 100%; background: #070709; overflow: hidden; }
 video { position: fixed; inset: 0; width: 100vw; height: 100vh; background: #000; object-fit: contain; }
 #artwork, #artwork-top { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
 #artwork-top { z-index: 1; }
+#artwork > video { position: absolute; inset: auto; width: auto; height: auto; z-index: 1; display: none; object-fit: cover; background: transparent; }
 #artwork > img, #artwork-top > img { position: absolute; object-fit: cover; background: #1b1b20; display: none; }
 canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }
 </style>

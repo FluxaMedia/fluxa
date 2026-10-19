@@ -2,7 +2,7 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use egui::epaint::ClippedShape;
-use fluxa_ui::ImageHole;
+use fluxa_ui::{ImageHole, VideoHole};
 use serde::Serialize;
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
@@ -24,6 +24,7 @@ struct DomImage<'a> {
     radius: f32,
     contain: bool,
     anchor: [f32; 2],
+    video: bool,
 }
 
 pub fn set_enabled(enabled: bool) {
@@ -48,11 +49,22 @@ pub(crate) fn lift(shapes: &mut [ClippedShape]) {
         let egui::Shape::Callback(callback) = &clipped.shape else {
             continue;
         };
+        let (rect, clip) = (callback.rect, clipped.clip_rect);
+        if callback.callback.is::<VideoHole>() {
+            let hole = ImageHole {
+                url: String::new(),
+                radius: 0.0,
+                fit: fluxa_ui::ImageFit::Cover,
+                anchor: [0.5, 0.5],
+            };
+            clipped.shape = egui::Shape::Callback(fluxa_renderer::hole::shape(rect, 0.0));
+            images.push((String::new(), rect, clip, hole, true));
+            continue;
+        }
         let Some(hole) = callback.callback.downcast_ref::<ImageHole>() else {
             continue;
         };
-        let (rect, clip) = (callback.rect, clipped.clip_rect);
-        images.push((hole.url.clone(), rect, clip, hole.clone()));
+        images.push((hole.url.clone(), rect, clip, hole.clone(), false));
         clipped.shape = if hole.fit == fluxa_ui::ImageFit::Contain {
             egui::Shape::Noop
         } else {
@@ -61,13 +73,14 @@ pub(crate) fn lift(shapes: &mut [ClippedShape]) {
     }
     let list: Vec<DomImage> = images
         .iter()
-        .map(|(url, rect, clip, hole)| DomImage {
+        .map(|(url, rect, clip, hole, video)| DomImage {
             url,
             rect: [rect.min.x, rect.min.y, rect.width(), rect.height()],
             clip: [clip.min.x, clip.min.y, clip.width(), clip.height()],
             radius: hole.radius,
             contain: hole.fit == fluxa_ui::ImageFit::Contain,
             anchor: hole.anchor,
+            video: *video,
         })
         .collect();
     let Ok(json) = serde_json::to_string(&list) else {

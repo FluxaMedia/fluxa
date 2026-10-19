@@ -1633,6 +1633,18 @@ pub struct ImageHole {
     pub anchor: [f32; 2],
 }
 
+pub const DOM_TRAILER: egui::TextureId = egui::TextureId::User(u64::MAX);
+
+#[derive(Clone, Debug)]
+pub struct VideoHole;
+
+pub(crate) fn dom_video(painter: &Painter, rect: Rect) {
+    painter.add(egui::Shape::Callback(egui::PaintCallback {
+        rect,
+        callback: std::sync::Arc::new(VideoHole),
+    }));
+}
+
 pub(crate) fn dom_image(painter: &Painter, rect: Rect, radius: f32, url: &str) {
     dom_image_fit(painter, rect, radius, url, ImageFit::Cover, [0.5, 0.5]);
 }

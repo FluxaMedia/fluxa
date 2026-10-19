@@ -1,7 +1,8 @@
 import { mountAccessibility } from "./a11y.js";
-import { mountArtwork } from "./artwork.js";
+import { mountArtwork, place } from "./artwork.js";
 import init, { FluxaWeb } from "./pkg/fluxa_web.js";
 import { createPlayer } from "./player.js";
+import { createTrailer } from "./trailer.js";
 import { exitApp, installRemote, isWebos as webos, mediaAdapter, stageReady, startProxy } from "./webos.js";
 
 const formFactor = webos || /smart-tv|smarttv/i.test(navigator.userAgent) ? "tv" : "mobile";
@@ -15,9 +16,11 @@ const main = async () => {
   await init();
   const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, proxy);
   const syncAccessibility = mountAccessibility(app, document.getElementById("fluxa"), document.getElementById("a11y"));
-  const syncArtwork = mountArtwork(app, document.getElementById("artwork"), document.getElementById("artwork-top"));
+  const artwork = document.getElementById("artwork");
+  const trailer = createTrailer({ app, layer: artwork, place });
+  const syncArtwork = mountArtwork(app, artwork, document.getElementById("artwork-top"), trailer);
   addEventListener("resize", () => app.resize());
-  const player = createPlayer({ app, video: document.getElementById("video"), proxy, adapter: mediaAdapter });
+  const player = createPlayer({ app, video: document.getElementById("video"), proxy, adapter: mediaAdapter, trailer });
   installRemote(app, () => {
     if (!app.back() && webos) exitApp();
   });

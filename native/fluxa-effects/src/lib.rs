@@ -35,7 +35,7 @@ pub use addon_health::unreachable_addon_hosts;
 pub use executor::ActionSink;
 pub use executor::{
     EffectCompletion, EffectExecutor, NUVIO_OFFLINE, core_value, media_servers,
-    remove_media_server, set_simkl_rewatch_intent, simkl_plan_lacks_rewatch,
+    remove_media_server, set_simkl_rewatch_intent, set_youtube_proxy, simkl_plan_lacks_rewatch,
 };
 #[cfg(not(target_arch = "wasm32"))]
 pub use fetch_text::fetch_text;

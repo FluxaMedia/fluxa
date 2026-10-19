@@ -68,7 +68,8 @@ pub use ambient::{
 };
 pub use calendar::draw_calendar;
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, FocusedField, Glass, ImageFit, ImageHole, InputKind,
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass, ImageFit, ImageHole, InputKind,
+    VideoHole,
     NODE_DISCOVER_RECENT_BASE, SubtitleLook, action_menu_layout, caret_rect, discover_recent,
     draw_action_menu, draw_action_menu_closing, draw_mini_player_overlay, focused_field, input_kind, is_text_node,
     set_input_caret, set_liquid_glass, set_native_field, set_pending_field_text,

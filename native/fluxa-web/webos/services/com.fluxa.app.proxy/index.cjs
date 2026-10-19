@@ -32,7 +32,7 @@ function isHls(contentType, targetUrl) {
     /\.m3u8(\?|$)/i.test(targetUrl);
 }
 
-function proxyRequest(targetUrl, headers, req, res, hops) {
+function proxyRequest(targetUrl, headers, req, res, hops, body) {
   hops = hops || 0;
   var parsed;
   try { parsed = new URL(targetUrl); } catch (e) {
@@ -44,14 +44,14 @@ function proxyRequest(targetUrl, headers, req, res, hops) {
     hostname: parsed.hostname,
     port: parsed.port || (parsed.protocol === 'https:' ? 443 : 80),
     path: parsed.pathname + parsed.search,
-    method: req.method === 'HEAD' ? 'HEAD' : 'GET',
-    headers: Object.assign({}, headers, req.headers.range ? { Range: req.headers.range } : {}),
+    method: req.method === 'HEAD' || req.method === 'POST' ? req.method : 'GET',
+    headers: Object.assign({}, headers, req.headers.range ? { Range: req.headers.range } : {}, body ? { 'Content-Type': 'application/json', 'Content-Length': body.length } : {}),
   };
 
   var upstream = driver.request(options, function (upRes) {
     if ([301, 302, 303, 307, 308].indexOf(upRes.statusCode) !== -1 && upRes.headers.location && hops < 5) {
       upRes.resume();
-      proxyRequest(resolveUrl(targetUrl, upRes.headers.location), headers, req, res, hops + 1);
+      proxyRequest(resolveUrl(targetUrl, upRes.headers.location), headers, req, res, hops + 1, body);
       return;
     }
     var ct = upRes.headers['content-type'] || '';
@@ -83,7 +83,7 @@ function proxyRequest(targetUrl, headers, req, res, hops) {
     if (!res.headersSent) { res.writeHead(502); res.end(err.message); }
   });
   upstream.setTimeout(30000, function () { upstream.destroy(); });
-  upstream.end();
+  upstream.end(body);
 }
 
 var server = http.createServer(function (req, res) {
@@ -92,7 +92,7 @@ var server = http.createServer(function (req, res) {
   if (req.method === 'OPTIONS') {
     res.writeHead(200, {
       'Access-Control-Allow-Origin': '*',
-      'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+      'Access-Control-Allow-Methods': 'GET, HEAD, POST, OPTIONS',
       'Access-Control-Allow-Headers': '*',
     });
     res.end();
@@ -117,6 +117,12 @@ var server = http.createServer(function (req, res) {
       res.writeHead(400); res.end('Missing or invalid url param'); return;
     }
 
+    if (req.method === 'POST') {
+      var chunks = [];
+      req.on('data', function (chunk) { chunks.push(chunk); });
+      req.on('end', function () { proxyRequest(targetUrl, headers, req, res, 0, Buffer.concat(chunks)); });
+      return;
+    }
     proxyRequest(targetUrl, headers, req, res);
     return;
   }

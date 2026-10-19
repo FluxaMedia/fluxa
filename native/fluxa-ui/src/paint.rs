@@ -338,6 +338,10 @@ pub(crate) fn paint_trailer(
         crate::motion::slow() * 2.0,
         crate::motion::Ease::Linear,
     );
+    if texture == crate::DOM_TRAILER {
+        crate::components::dom_video(&painter.with_clip_rect(rect), rect);
+        return;
+    }
     painter.with_clip_rect(rect).image(
         texture,
         rect,

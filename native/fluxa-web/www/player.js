@@ -11,7 +11,7 @@ const srtToVtt = (text) =>
     .replace(/^﻿/, "")
     .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
 
-export const createPlayer = ({ app, video, proxy, adapter }) => {
+export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
   let hls = null;
   let hlsModule = null;
   let url = null;
@@ -240,8 +240,15 @@ export const createPlayer = ({ app, video, proxy, adapter }) => {
       config = request;
       preferred = { audio: request.audioLanguage || "", subtitle: request.subtitleLanguage || "" };
     },
-    load: (request) => load(request.url),
-    stop,
+    load: (request) => {
+      trailer?.stop();
+      load(request.url);
+    },
+    loadPreview: (request) => trailer?.load(request.url),
+    stop: () => {
+      trailer?.stop();
+      stop();
+    },
     togglePause: () => (video.paused ? video.play().catch(() => {}) : video.pause()),
     seek: (request) => {
       video.currentTime = Math.max(0, video.currentTime + request.seconds);

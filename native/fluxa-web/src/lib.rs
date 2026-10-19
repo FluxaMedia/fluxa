@@ -83,6 +83,7 @@ impl FluxaWeb {
         fluxa_host::dom_images::set_enabled(true);
         if let Some(proxy) = image_proxy.filter(|proxy| !proxy.is_empty()) {
             fluxa_artwork::set_fetch_proxy(&proxy);
+            fluxa_host::set_youtube_proxy(&proxy);
         }
         let window = web_sys::window().ok_or("window is not available")?;
         let canvas: HtmlCanvasElement = window

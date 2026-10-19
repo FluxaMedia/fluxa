@@ -349,6 +349,12 @@ pub(super) async fn tmdb_trailers(
     core_value("tmdbBulkVideosToTrailers", results.clone())
 }
 
+static YOUTUBE_PROXY: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+
+pub fn set_youtube_proxy(base_url: &str) {
+    let _ = YOUTUBE_PROXY.set(base_url.trim_end_matches('/').to_owned());
+}
+
 pub(super) async fn youtube_request(payload: &Value) -> Result<Value, String> {
     let url = payload
         .get("url")
@@ -358,18 +364,41 @@ pub(super) async fn youtube_request(payload: &Value) -> Result<Value, String> {
         .native_timeout(Duration::from_secs(15))
         .build()
         .map_err(|error| error.to_string())?;
-    let mut request = match payload.get("method").and_then(Value::as_str) {
-        Some("POST") => client.post(url),
-        _ => client.get(url),
+    let headers = payload.get("headers").and_then(Value::as_object);
+    let proxy = if cfg!(target_arch = "wasm32") {
+        YOUTUBE_PROXY.get()
+    } else {
+        None
     };
-    for (name, value) in payload
-        .get("headers")
-        .and_then(Value::as_object)
-        .into_iter()
-        .flatten()
-    {
-        if let Some(value) = value.as_str() {
-            request = request.header(name.as_str(), value);
+    let target = match proxy {
+        Some(base) => reqwest::Url::parse_with_params(
+            &format!("{base}/proxy"),
+            [
+                ("url", url),
+                (
+                    "h",
+                    &headers
+                        .map(|headers| Value::Object(headers.clone()).to_string())
+                        .unwrap_or_default(),
+                ),
+            ],
+        )
+        .map_err(|error| error.to_string())?
+        .to_string(),
+        None if cfg!(target_arch = "wasm32") => {
+            return Err("youtube requests need a proxy in the browser".to_owned());
+        }
+        None => url.to_owned(),
+    };
+    let mut request = match payload.get("method").and_then(Value::as_str) {
+        Some("POST") => client.post(target),
+        _ => client.get(target),
+    };
+    if proxy.is_none() {
+        for (name, value) in headers.into_iter().flatten() {
+            if let Some(value) = value.as_str() {
+                request = request.header(name.as_str(), value);
+            }
         }
     }
     if let Some(body) = payload.get("body").filter(|body| !body.is_null()) {

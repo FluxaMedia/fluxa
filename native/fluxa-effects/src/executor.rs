@@ -33,6 +33,7 @@ use catalog::*;
 pub use mediaserver::{media_servers, remove_media_server};
 pub use providers::{set_simkl_rewatch_intent, simkl_plan_lacks_rewatch};
 use tmdb::*;
+pub use tmdb::set_youtube_proxy;
 use torrent::*;
 pub use welcome::OFFLINE as NUVIO_OFFLINE;
 

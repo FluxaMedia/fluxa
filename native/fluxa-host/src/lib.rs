@@ -59,6 +59,10 @@ pub fn set_logger(logger: fn(&str)) {
     fluxa_effects::set_logger(logger);
 }
 
+pub fn set_youtube_proxy(base_url: &str) {
+    fluxa_effects::set_youtube_proxy(base_url);
+}
+
 fn host_log(message: impl AsRef<str>) {
     match LOGGER.get() {
         Some(logger) => logger(message.as_ref()),
