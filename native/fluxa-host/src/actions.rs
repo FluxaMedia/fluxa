@@ -922,7 +922,9 @@ pub(super) fn pull_session_snapshot(state: &mut RendererState) {
         return;
     }
     state.session_revision = Some(revision);
-    if let Some(old) = state.core_snapshot.replace(session.snapshot()) {
+    let live = session.snapshot();
+    let snapshot = crate::preview::fixture_snapshot(&live).unwrap_or(live);
+    if let Some(old) = state.core_snapshot.replace(snapshot) {
         retire(old);
     }
     state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);

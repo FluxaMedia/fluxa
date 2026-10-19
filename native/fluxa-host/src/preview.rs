@@ -14,6 +14,23 @@ pub(crate) fn form_factor(requested: &str) -> String {
     setting("FLUXA_PREVIEW_FORM").unwrap_or_else(|| requested.to_owned())
 }
 
+pub(crate) fn fixture_snapshot(live: &serde_json::Value) -> Option<std::sync::Arc<serde_json::Value>> {
+    static SNAPSHOT: std::sync::OnceLock<Option<serde_json::Value>> = std::sync::OnceLock::new();
+    let fixture = SNAPSHOT
+        .get_or_init(|| {
+            setting("FLUXA_PREVIEW_FIXTURE")?;
+            let seed = serde_json::from_str(include_str!("../../fixtures/native-ui-fixture.json"))
+                .ok()?;
+            Some(fluxa_core::Engine::new(seed).ok()?.snapshot())
+        })
+        .as_ref()?;
+    let mut merged = fixture.clone();
+    if let Some(navigation) = live.get("navigation") {
+        merged["navigation"] = navigation.clone();
+    }
+    Some(std::sync::Arc::new(merged))
+}
+
 pub(crate) fn gallery() -> Option<String> {
     let target = setting("FLUXA_PREVIEW")?;
     let scene = target.strip_prefix("gallery")?;
