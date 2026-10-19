@@ -1,5 +1,5 @@
 use super::*;
-use crate::flex::{Align, Insets, Justify, Weight, column, fill, leaf, paint_text, row, text};
+use crate::flex::{Align, Insets, Weight, column, fill, leaf, paint_text, row, text};
 use crate::{IconSize, Radius, Space};
 
 fn pill_fill(selected: bool, hover: f32, metrics: &UiMetrics) -> Color32 {

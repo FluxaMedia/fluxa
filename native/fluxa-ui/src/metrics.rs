@@ -115,6 +115,8 @@ pub struct UiMetrics {
     pub drawer_max_width: f32,
     pub sheet_handle: Vec2,
     pub scrim_alpha: u8,
+    pub shade: [u8; 5],
+    pub overlay_panel_alpha: u8,
     pub shadow_alpha: u8,
     pub shadow_blur: u8,
     pub shadow_offset: i8,
@@ -208,6 +210,7 @@ fn publish_palette(metrics: &UiMetrics) {
     BUTTON_HEIGHT.store(metrics.button_height.to_bits(), Ordering::Relaxed);
     ICON_BUTTON.store(metrics.icon_button_size.to_bits(), Ordering::Relaxed);
     crate::motion::set_curve(metrics.motion_curve);
+    crate::style::set_shades(metrics.shade, metrics.overlay_panel_alpha);
     for (cell, value) in MOTION.iter().zip([
         metrics.motion_fast,
         metrics.motion_normal,
@@ -542,6 +545,14 @@ impl UiMetrics {
                 common_dp("sheetHandleHeight", 4.0),
             ),
             scrim_alpha: common_dp("scrimAlpha", 180.0) as u8,
+            shade: [
+                common_dp("shadeFaint", 90.0) as u8,
+                common_dp("shadeVeil", 150.0) as u8,
+                common_dp("shadeScrim", 180.0) as u8,
+                common_dp("shadeStrong", 215.0) as u8,
+                common_dp("shadeOpaque", 240.0) as u8,
+            ],
+            overlay_panel_alpha: common_dp("overlayPanelAlpha", 242.0) as u8,
             shadow_alpha: common_dp("shadowAlpha", 120.0) as u8,
             shadow_blur: common_dp("shadowBlur", 32.0) as u8,
             shadow_offset: common_dp("shadowOffset", 8.0) as i8,

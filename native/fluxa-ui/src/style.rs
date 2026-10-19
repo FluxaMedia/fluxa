@@ -1,4 +1,21 @@
 use super::*;
+use std::sync::atomic::{AtomicU8, Ordering};
+
+static SHADES: [AtomicU8; 5] = [
+    AtomicU8::new(90),
+    AtomicU8::new(150),
+    AtomicU8::new(180),
+    AtomicU8::new(215),
+    AtomicU8::new(240),
+];
+static PANEL_ALPHA: AtomicU8 = AtomicU8::new(242);
+
+pub(crate) fn set_shades(shades: [u8; 5], panel: u8) {
+    for (cell, value) in SHADES.iter().zip(shades) {
+        cell.store(value, Ordering::Relaxed);
+    }
+    PANEL_ALPHA.store(panel, Ordering::Relaxed);
+}
 
 pub(crate) mod radius {
     pub const BAR: f32 = 2.0;
@@ -45,13 +62,7 @@ pub(crate) enum Shade {
 }
 
 pub(crate) fn shade(level: Shade) -> Color32 {
-    Color32::from_black_alpha(match level {
-        Shade::Faint => 90,
-        Shade::Veil => 150,
-        Shade::Scrim => 180,
-        Shade::Strong => 215,
-        Shade::Opaque => 240,
-    })
+    Color32::from_black_alpha(SHADES[level as usize].load(Ordering::Relaxed))
 }
 
 pub(crate) fn badge_fill() -> Color32 {
@@ -60,5 +71,5 @@ pub(crate) fn badge_fill() -> Color32 {
 
 pub(crate) fn overlay_panel() -> Color32 {
     let [r, g, b, _] = surface_color().to_array();
-    Color32::from_rgba_unmultiplied(r, g, b, 242)
+    Color32::from_rgba_unmultiplied(r, g, b, PANEL_ALPHA.load(Ordering::Relaxed))
 }
