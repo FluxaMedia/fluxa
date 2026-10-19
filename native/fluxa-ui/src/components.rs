@@ -566,12 +566,14 @@ pub(super) fn icon_button_sized(
         color
     };
     if let Some(icon) = icon {
-        ui.painter().image(
-            icon,
-            Rect::from_center_size(rect.center(), Vec2::splat(size.y * 0.44)),
-            full_uv(),
-            tint,
-        );
+        let placed = crate::flex::stack(
+            Align2::CENTER_CENTER,
+            [crate::flex::leaf(Vec2::splat(size.y * crate::style::glyph_ratio())).id(0)],
+        )
+        .solve(rect);
+        if let Some(glyph) = placed.find(0) {
+            ui.painter().image(icon, glyph, full_uv(), tint);
+        }
     }
     response
 }

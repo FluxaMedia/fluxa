@@ -33,7 +33,10 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
     };
     let alpha = (255.0 * amount) as u8;
     let ratio = ratio.clamp(0.0, 1.0);
-    let bar = Rect::from_center_size(track.center(), Vec2::new(track.width(), 4.0));
+    let bar = Rect::from_center_size(
+        track.center(),
+        Vec2::new(track.width(), crate::style::slider_track()),
+    );
     painter.rect_filled(bar, radius::BAR, ink(alpha / 3));
     let filled = Rect::from_min_size(bar.min, Vec2::new(bar.width() * ratio, bar.height()));
     let split = overdrive.unwrap_or(1.0);
@@ -62,15 +65,15 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
         let mark = bar.left() + bar.width() * split;
         painter.line_segment(
             [
-                Pos2::new(mark, bar.center().y - 5.0),
-                Pos2::new(mark, bar.center().y + 5.0),
+                Pos2::new(mark, bar.center().y - crate::style::slider_mark()),
+                Pos2::new(mark, bar.center().y + crate::style::slider_mark()),
             ],
             egui::Stroke::new(stroke::icon(), ink(alpha / 2)),
         );
     }
     painter.circle_filled(
         Pos2::new(filled.right(), bar.center().y),
-        6.0 * amount,
+        crate::style::slider_knob() * amount,
         knob,
     );
     SliderOutput { response, value }

@@ -118,6 +118,7 @@ pub struct UiMetrics {
     pub shade: [u8; 5],
     pub tone: [u8; 10],
     pub stroke: [f32; 3],
+    pub control_sizes: [f32; 4],
     pub overlay_panel_alpha: u8,
     pub shadow_alpha: u8,
     pub shadow_blur: u8,
@@ -214,6 +215,7 @@ fn publish_palette(metrics: &UiMetrics) {
     crate::motion::set_curve(metrics.motion_curve);
     crate::style::set_shades(metrics.shade, metrics.overlay_panel_alpha);
     crate::style::set_tones(metrics.tone, metrics.stroke);
+    crate::style::set_control_sizes(metrics.control_sizes);
     for (cell, value) in MOTION.iter().zip([
         metrics.motion_fast,
         metrics.motion_normal,
@@ -549,6 +551,12 @@ impl UiMetrics {
             ),
             scrim_alpha: common_dp("scrimAlpha", 180.0) as u8,
             tone: [common_dp("toneFaint", 10.0) as u8, common_dp("toneSoft", 20.0) as u8, common_dp("toneRaised", 30.0) as u8, common_dp("toneStrong", 50.0) as u8, common_dp("toneDim", 90.0) as u8, common_dp("toneMuted", 130.0) as u8, common_dp("toneSubtle", 170.0) as u8, common_dp("toneBody", 210.0) as u8, common_dp("toneText", 235.0) as u8, common_dp("toneFull", 255.0) as u8],
+            control_sizes: [
+                number(&["common", "number", "iconButtonGlyphRatio"], 0.44),
+                common_dp("sliderTrackHeight", 4.0),
+                common_dp("sliderKnobRadius", 6.0),
+                common_dp("sliderMarkHalf", 5.0),
+            ],
             stroke: [
                 common_dp("strokeHairline", 1.0),
                 common_dp("strokeIcon", 1.6),

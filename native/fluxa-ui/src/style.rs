@@ -1,5 +1,5 @@
 use super::*;
-use std::sync::atomic::{AtomicU8, Ordering};
+use std::sync::atomic::{AtomicU8, AtomicU32, Ordering};
 
 static SHADES: [AtomicU8; 5] = [
     AtomicU8::new(90),
@@ -9,6 +9,39 @@ static SHADES: [AtomicU8; 5] = [
     AtomicU8::new(240),
 ];
 static PANEL_ALPHA: AtomicU8 = AtomicU8::new(242);
+
+static CONTROL_SIZES: [AtomicU32; 4] = [
+    AtomicU32::new(0.44f32.to_bits()),
+    AtomicU32::new(4.0f32.to_bits()),
+    AtomicU32::new(6.0f32.to_bits()),
+    AtomicU32::new(5.0f32.to_bits()),
+];
+
+pub(crate) fn set_control_sizes(sizes: [f32; 4]) {
+    for (cell, value) in CONTROL_SIZES.iter().zip(sizes) {
+        cell.store(value.to_bits(), Ordering::Relaxed);
+    }
+}
+
+fn control_size(index: usize) -> f32 {
+    f32::from_bits(CONTROL_SIZES[index].load(Ordering::Relaxed))
+}
+
+pub(crate) fn glyph_ratio() -> f32 {
+    control_size(0)
+}
+
+pub(crate) fn slider_track() -> f32 {
+    control_size(1)
+}
+
+pub(crate) fn slider_knob() -> f32 {
+    control_size(2)
+}
+
+pub(crate) fn slider_mark() -> f32 {
+    control_size(3)
+}
 
 pub(crate) fn set_tones(tones: [u8; 10], strokes: [f32; 3]) {
     for (cell, value) in tone::VALUES.iter().zip(tones) {
