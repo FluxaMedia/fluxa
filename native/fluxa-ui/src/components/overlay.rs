@@ -1,10 +1,7 @@
 use super::*;
 use crate::flex::{Align, Insets, Justify, column, leaf, row, text};
 use crate::motion::{Effect, Transition, mount};
-use crate::{Space, Viewport};
-
-const SHEET_MAX_WIDTH: f32 = 560.0;
-const DRAWER_MAX_WIDTH: f32 = 420.0;
+use crate::{Radius, Space, Viewport};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum DrawerSide {
@@ -12,7 +9,13 @@ pub(crate) enum DrawerSide {
     Right,
 }
 
-fn scrim(context: &egui::Context, id: &str, screen: Rect, frame: &crate::motion::Frame) -> bool {
+fn scrim(
+    context: &egui::Context,
+    id: &str,
+    screen: Rect,
+    scrim_alpha: u8,
+    frame: &crate::motion::Frame,
+) -> bool {
     let mut tapped = false;
     egui::Area::new(Id::new((id, "scrim")))
         .order(egui::Order::Middle)
@@ -20,7 +23,7 @@ fn scrim(context: &egui::Context, id: &str, screen: Rect, frame: &crate::motion:
         .interactable(!frame.closing)
         .show(context, |ui| {
             let response = ui.allocate_rect(screen, Sense::click());
-            let alpha = (180.0 * frame.shown) as u8;
+            let alpha = (scrim_alpha as f32 * frame.shown) as u8;
             ui.painter()
                 .rect_filled(screen, 0.0, Color32::from_black_alpha(alpha));
             tapped = response.clicked();
@@ -58,12 +61,12 @@ pub(crate) fn bottom_sheet(
     ) else {
         return false;
     };
-    let mut dismissed = scrim(context, id, screen, &frame);
-    let radius = metrics.dialog_radius.round() as u8;
+    let mut dismissed = scrim(context, id, screen, metrics.scrim_alpha, &frame);
+    let radius = Radius::Sheet.corner(&metrics);
     let width = if viewport.is_compact() {
         viewport.width
     } else {
-        viewport.width.min(SHEET_MAX_WIDTH)
+        viewport.width.min(metrics.sheet_max_width)
     };
     let pad = Space::S16.px(&metrics);
     egui::Area::new(Id::new(id))
@@ -82,10 +85,10 @@ pub(crate) fn bottom_sheet(
                     se: 0,
                 })
                 .shadow(egui::Shadow {
-                    offset: [0, -8],
-                    blur: 32,
+                    offset: [0, -metrics.shadow_offset],
+                    blur: metrics.shadow_blur,
                     spread: 0,
-                    color: Color32::from_black_alpha(120),
+                    color: Color32::from_black_alpha(metrics.shadow_alpha),
                 })
                 .inner_margin(egui::Margin {
                     left: pad as i8,
@@ -100,12 +103,13 @@ pub(crate) fn bottom_sheet(
                         Vec2::new(ui.available_width(), Space::S20.px(&metrics)),
                         Sense::hover(),
                     );
-                    let handle = row([leaf(Vec2::new(36.0, 4.0)).id(0)])
+                    let handle = row([leaf(metrics.sheet_handle).id(0)])
                         .align(Align::Center)
                         .justify(Justify::Center)
                         .solve(bar);
                     if let Some(rect) = handle.find(0) {
-                        ui.painter().rect_filled(rect, 2.0, ink(tone::STRONG));
+                        ui.painter()
+                            .rect_filled(rect, rect.height() * 0.5, ink(tone::STRONG));
                     }
                     add(ui);
                 });
@@ -127,7 +131,7 @@ pub(crate) fn side_drawer(
     add: impl FnOnce(&mut Ui),
 ) -> bool {
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-    let width = (viewport.width * 0.86).min(DRAWER_MAX_WIDTH);
+    let width = (viewport.width * 0.86).min(metrics.drawer_max_width);
     let effect = match side {
         DrawerSide::Right => Effect::SlideLeft,
         DrawerSide::Left => Effect::SlideRight,
@@ -141,8 +145,8 @@ pub(crate) fn side_drawer(
     ) else {
         return false;
     };
-    let mut dismissed = scrim(context, id, screen, &frame);
-    let radius = metrics.dialog_radius.round() as u8;
+    let mut dismissed = scrim(context, id, screen, metrics.scrim_alpha, &frame);
+    let radius = Radius::Sheet.corner(&metrics);
     let (anchor, corners, shadow_x) = match side {
         DrawerSide::Right => (
             Align2::RIGHT_TOP,
@@ -152,7 +156,7 @@ pub(crate) fn side_drawer(
                 ne: 0,
                 se: 0,
             },
-            -8,
+            -metrics.shadow_offset,
         ),
         DrawerSide::Left => (
             Align2::LEFT_TOP,
@@ -162,7 +166,7 @@ pub(crate) fn side_drawer(
                 nw: 0,
                 sw: 0,
             },
-            8,
+            metrics.shadow_offset,
         ),
     };
     let pad = Space::S20.px(&metrics);
@@ -178,9 +182,9 @@ pub(crate) fn side_drawer(
                 .corner_radius(corners)
                 .shadow(egui::Shadow {
                     offset: [shadow_x, 0],
-                    blur: 32,
+                    blur: metrics.shadow_blur,
                     spread: 0,
-                    color: Color32::from_black_alpha(120),
+                    color: Color32::from_black_alpha(metrics.shadow_alpha),
                 })
                 .inner_margin(egui::Margin {
                     left: pad as i8,

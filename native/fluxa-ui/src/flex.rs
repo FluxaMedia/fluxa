@@ -24,6 +24,56 @@ impl Space {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Radius {
+    Xs,
+    Sm,
+    Md,
+    Lg,
+    Sheet,
+}
+
+impl Radius {
+    pub fn px(self, metrics: &UiMetrics) -> f32 {
+        metrics.radius[self as usize]
+    }
+
+    pub fn corner(self, metrics: &UiMetrics) -> u8 {
+        self.px(metrics).round().clamp(0.0, 255.0) as u8
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum IconSize {
+    Sm,
+    Md,
+    Lg,
+    Xl,
+}
+
+impl IconSize {
+    pub fn px(self, metrics: &UiMetrics) -> f32 {
+        metrics.icon[self as usize]
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Weight {
+    Regular,
+    Medium,
+    Bold,
+}
+
+impl Weight {
+    pub fn font(self, size: f32) -> FontId {
+        match self {
+            Weight::Regular => crate::fonts::regular(size),
+            Weight::Medium => crate::fonts::medium(size),
+            Weight::Bold => crate::fonts::bold(size),
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub(crate) struct Insets {
     pub left: f32,
