@@ -546,8 +546,18 @@ fn poster_card_body(
         }
         None => has_static_artwork,
     };
-    let motion_texture = if motion_active
-        && (has_static_artwork || card.artwork_url.is_none())
+    let motion_wanted = motion_active && (has_static_artwork || card.artwork_url.is_none());
+    let dom_motion = if motion_wanted
+        && assets.dom_images()
+        && let Some(url) = card.motion_url.as_deref()
+    {
+        dom_image(painter, rect, metrics.card_radius, url);
+        true
+    } else {
+        false
+    };
+    let motion_texture = if motion_wanted
+        && !dom_motion
         && let Some(url) = card.motion_url.as_deref()
     {
         assets.animated_texture_for(
