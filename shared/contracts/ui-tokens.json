@@ -231,7 +231,11 @@
       "number": {
         "posterHeightRatio": 1.5,
         "horizontalCardHeightRatio": 0.56,
-        "cardFocusedScale": 1.12
+        "cardFocusedScale": 1.12,
+        "motionCurveX1": 0.2,
+        "motionCurveY1": 0,
+        "motionCurveX2": 0,
+        "motionCurveY2": 1
       },
       "alpha": {
         "emptyCardBackground": 0.05,

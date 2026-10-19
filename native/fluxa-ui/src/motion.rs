@@ -2,6 +2,40 @@ use egui::{Id, LayerId, Vec2, emath::TSTransform, epaint::shape_transform::adjus
 
 const PAGE_SECONDS: f32 = 0.26;
 
+static CURVE: [std::sync::atomic::AtomicU32; 4] = [
+    std::sync::atomic::AtomicU32::new(0x3E4C_CCCD),
+    std::sync::atomic::AtomicU32::new(0),
+    std::sync::atomic::AtomicU32::new(0),
+    std::sync::atomic::AtomicU32::new(0x3F80_0000),
+];
+
+pub(crate) fn set_curve(points: [f32; 4]) {
+    for (cell, value) in CURVE.iter().zip(points) {
+        cell.store(value.to_bits(), std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn curve() -> [f32; 4] {
+    std::array::from_fn(|i| f32::from_bits(CURVE[i].load(std::sync::atomic::Ordering::Relaxed)))
+}
+
+fn bezier(t: f32) -> f32 {
+    let [x1, y1, x2, y2] = curve();
+    let at = |a: f32, b: f32, u: f32| {
+        3.0 * a * u * (1.0 - u).powi(2) + 3.0 * b * u.powi(2) * (1.0 - u) + u.powi(3)
+    };
+    let (mut low, mut high) = (0.0_f32, 1.0_f32);
+    for _ in 0..24 {
+        let mid = (low + high) * 0.5;
+        if at(x1, x2, mid) < t {
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+    at(y1, y2, (low + high) * 0.5)
+}
+
 pub(crate) fn fast() -> f32 {
     crate::metrics::motion_seconds(0)
 }
@@ -18,6 +52,7 @@ pub(crate) fn slow() -> f32 {
 pub(crate) enum Ease {
     Linear,
     Out,
+    Token,
 }
 
 #[derive(Clone, Copy)]
@@ -33,6 +68,7 @@ impl Tween {
         let t = match ease {
             Ease::Linear => self.t,
             Ease::Out => egui::emath::easing::cubic_out(self.t),
+            Ease::Token => bezier(self.t),
         };
         self.from + (self.to - self.from) * t
     }
@@ -95,7 +131,7 @@ pub(crate) fn hover(context: &egui::Context, response: &egui::Response) -> f32 {
         response.id.with("hover"),
         target,
         fast(),
-        Ease::Out,
+        Ease::Token,
     )
 }
 
@@ -115,7 +151,7 @@ pub(crate) fn presence(context: &egui::Context, id: Id, shown: bool, seconds: f3
         id,
         if shown { 1.0 } else { 0.0 },
         seconds,
-        Ease::Out,
+        Ease::Token,
     )
 }
 
@@ -279,7 +315,7 @@ pub(crate) fn mount(
         id,
         if open { 1.0 } else { 0.0 },
         normal(),
-        Ease::Out,
+        Ease::Token,
     );
     if !open && shown <= 0.001 {
         reset(context, id);
@@ -327,6 +363,14 @@ mod mount_tests {
         let closing = shown[41].1.expect("still drawn right after close");
         assert!(closing.closing && closing.offset.y > 0.0);
         assert!(shown.last().unwrap().1.is_none());
+    }
+
+    #[test]
+    fn token_curve_runs_from_zero_to_one_and_decelerates() {
+        super::set_curve([0.2, 0.0, 0.0, 1.0]);
+        assert!(super::bezier(0.0).abs() < 0.01);
+        assert!((super::bezier(1.0) - 1.0).abs() < 0.01);
+        assert!(super::bezier(0.5) > 0.5);
     }
 
     #[test]

@@ -21,6 +21,7 @@ pub struct UiMetrics {
     pub motion_fast: f32,
     pub motion_normal: f32,
     pub motion_slow: f32,
+    pub motion_curve: [f32; 4],
     pub navigation: Color32,
     pub text_primary: Color32,
     pub text_secondary: Color32,
@@ -206,6 +207,7 @@ fn publish_palette(metrics: &UiMetrics) {
     CONTROL_RADIUS.store(metrics.screen_control_radius.to_bits(), Ordering::Relaxed);
     BUTTON_HEIGHT.store(metrics.button_height.to_bits(), Ordering::Relaxed);
     ICON_BUTTON.store(metrics.icon_button_size.to_bits(), Ordering::Relaxed);
+    crate::motion::set_curve(metrics.motion_curve);
     for (cell, value) in MOTION.iter().zip([
         metrics.motion_fast,
         metrics.motion_normal,
@@ -449,6 +451,12 @@ impl UiMetrics {
             motion_fast: seconds(dark.motion.enabled, dark.motion.fast_ms),
             motion_normal: seconds(dark.motion.enabled, dark.motion.normal_ms),
             motion_slow: seconds(dark.motion.enabled, dark.motion.slow_ms),
+            motion_curve: [
+                number(&["common", "number", "motionCurveX1"], 0.2),
+                number(&["common", "number", "motionCurveY1"], 0.0),
+                number(&["common", "number", "motionCurveX2"], 0.0),
+                number(&["common", "number", "motionCurveY2"], 1.0),
+            ],
             card_progress_height: common_dp("cardProgressBarHeight", 4.0),
             filmstrip_min_frames: platform_dp("seekFilmstripMinFrames", 6.0),
             filmstrip_frame_width: platform_dp("seekFilmstripFrameWidth", 150.0),
