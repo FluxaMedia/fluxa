@@ -338,49 +338,6 @@ jobs:
           name: web
           path: out/*.zip
 
-  webos:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: native
-          key: release-webos
-
-      - name: Stamp version
-        run: node scripts/set-version.mjs "$RELEASE_TAG"
-
-      - name: Install wasm-bindgen and webOS CLI
-        run: |
-          cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
-          npm install -g @webos-tools/cli
-
-      - name: Package ipk
-        run: |
-          ./scripts/package-webos.sh "$RELEASE_TAG"
-          mkdir -p out
-          cp dist-web/fluxa-*-webos.ipk out/
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: webos
-          path: out/*.ipk
-
   webos-native:
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -460,7 +417,7 @@ jobs:
           path: out/*.ipk
 
   publish:
-    needs: [notes, android, desktop, apple, web, webos, webos-native]
+    needs: [notes, android, desktop, apple, web, webos-native]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
