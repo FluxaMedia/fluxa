@@ -14,6 +14,15 @@ export function mountAccessibility(app, canvas, mirror) {
   let signature = "";
   let composing = false;
   let focusedId = null;
+  let lastApp = null;
+  let lastField = null;
+  let sent = [];
+
+  const send = (element) => {
+    sent.push(element.value);
+    if (sent.length > 64) sent.shift();
+    app.set_focused_text(element.value);
+  };
 
   const create = (node) => {
     const text = TEXT_ROLES[node.role];
@@ -31,9 +40,9 @@ export function mountAccessibility(app, canvas, mirror) {
       element.addEventListener("compositionstart", () => (composing = true));
       element.addEventListener("compositionend", () => {
         composing = false;
-        app.set_focused_text(element.value);
+        send(element);
       });
-      element.addEventListener("input", () => app.set_focused_text(element.value));
+      element.addEventListener("input", () => send(element));
     } else if (STATIC_TAGS[node.role]) {
       element.tabIndex = -1;
     } else {
@@ -89,7 +98,16 @@ export function mountAccessibility(app, canvas, mirror) {
     }
     if (document.activeElement !== element) element.focus({ preventScroll: true });
     const text = app.focused_text() ?? "";
-    if (!composing && element.value !== text) element.value = text;
+    if (node.id !== lastField) {
+      lastField = node.id;
+      lastApp = null;
+      sent = [];
+    }
+    if (text !== lastApp) {
+      lastApp = text;
+      if (!composing && element.value !== text && !sent.includes(text)) element.value = text;
+      if (element.value === text) sent = [];
+    }
     if (!composing && tree.selection && document.activeElement === element) {
       const [start, end] = tree.selection;
       if (element.selectionStart !== start || element.selectionEnd !== end) element.setSelectionRange(start, end);
