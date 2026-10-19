@@ -954,6 +954,16 @@ fn decode_target(bytes: &[u8], target_size: [u32; 2]) -> Result<RgbaImage, Strin
     Ok(resize_rgba_preserving_alpha(image, target_size))
 }
 
+pub fn decode_animation_atlas(
+    bytes: &[u8],
+    target_size: [u32; 2],
+) -> Result<Option<AnimatedAtlas>, String> {
+    match decode_animated_target(bytes, target_size)? {
+        Some(frames) => pack_animation_atlas(frames, animation_atlas_side()),
+        None => Ok(None),
+    }
+}
+
 fn decode_animated_target(
     bytes: &[u8],
     target_size: [u32; 2],

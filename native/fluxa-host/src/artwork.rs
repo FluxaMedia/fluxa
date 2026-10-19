@@ -7,6 +7,7 @@ pub(super) const MAX_ARTWORK_SIDE: u32 = 1536;
 const MAX_CONVERTING: usize = 3;
 const MAX_ARTWORK_TEXTURES: usize = 128;
 const MAX_DECODED_BYTES: usize = 96 * 1024 * 1024;
+const MAX_IDLE_ANIMATION_BYTES: usize = 96 * 1024 * 1024;
 const LOW_MEMORY_ARTWORK_TEXTURES: usize = 48;
 const LOW_MEMORY_DECODED_BYTES: usize = 32 * 1024 * 1024;
 const LOW_MEMORY_TOTAL_KB: u64 = 3 * 1024 * 1024;
@@ -308,6 +309,17 @@ impl ArtworkLoader {
                 self.animations.remove(&oldest);
                 self.animation_checked.remove(&oldest);
             }
+            self.evict_idle_animations();
+            let (static_bytes, animation_bytes) = self.resident_bytes();
+            if animation_requested {
+                host_log(format!(
+                    "Artwork resident: static {:.1}MB in {} textures, animations {:.1}MB in {}",
+                    static_bytes as f64 / 1048576.0,
+                    self.textures.len() - self.animations.len(),
+                    animation_bytes as f64 / 1048576.0,
+                    self.animations.len(),
+                ));
+            }
             context.request_repaint();
         }
         let now = Instant::now();
@@ -334,6 +346,51 @@ impl ArtworkLoader {
         }
         if let Some(wait) = next_frame_in {
             context.request_repaint_after(wait.max(Duration::from_millis(1)));
+        }
+    }
+
+    pub(super) fn resident_bytes(&self) -> (usize, usize) {
+        let mut totals = (0, 0);
+        for (key, texture) in &self.textures {
+            let [width, height] = texture.size();
+            let bytes = width * height * 4;
+            if self.animations.contains_key(key) {
+                totals.1 += bytes;
+            } else {
+                totals.0 += bytes;
+            }
+        }
+        totals
+    }
+
+    fn evict_idle_animations(&mut self) {
+        let budget = if fluxa_artwork::low_memory() {
+            MAX_IDLE_ANIMATION_BYTES / 4
+        } else {
+            MAX_IDLE_ANIMATION_BYTES
+        };
+        while self.resident_bytes().1 > budget {
+            let frame = self.frame;
+            let Some(oldest) = self
+                .animations
+                .keys()
+                .filter(|key| {
+                    !self.active_animations.contains(*key)
+                        && self
+                            .texture_frame
+                            .get(*key)
+                            .is_none_or(|used| used + 1 < frame)
+                })
+                .min_by_key(|key| self.texture_last_used.get(*key).copied().unwrap_or(0))
+                .cloned()
+            else {
+                break;
+            };
+            self.textures.remove(&oldest);
+            self.texture_last_used.remove(&oldest);
+            self.texture_frame.remove(&oldest);
+            self.animations.remove(&oldest);
+            self.animation_checked.remove(&oldest);
         }
     }
 
