@@ -11,6 +11,7 @@ use std::hash::{Hash, Hasher};
 use crate::flow::Size;
 
 mod cards;
+mod controls;
 mod detail_modal;
 mod downloads;
 mod dropdown;
@@ -27,6 +28,7 @@ mod subtitle_preview;
 mod ticket;
 
 pub use cards::*;
+pub(crate) use controls::*;
 pub use detail_modal::*;
 pub use downloads::*;
 pub use dropdown::*;
