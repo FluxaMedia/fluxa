@@ -327,7 +327,6 @@ impl SessionHandle {
                 .spawn(move || run(session, inbox, shared, pending))
                 .map_err(|error| error.to_string())?;
         }
-        #[cfg(not(target_arch = "wasm32"))]
         {
             let sink = commands.clone();
             let pending = queued.clone();
@@ -338,6 +337,7 @@ impl SessionHandle {
                 }
             });
             executor.set_watch_sink(forward.clone());
+            #[cfg(not(target_arch = "wasm32"))]
             executor.set_download_sink(forward);
         }
         #[cfg(not(target_arch = "wasm32"))]
@@ -481,10 +481,7 @@ impl SessionHandle {
     }
 
     pub fn take_watch_commands(&self) -> Vec<Value> {
-        #[cfg(not(target_arch = "wasm32"))]
-        return self.executor.take_watch_commands();
-        #[cfg(target_arch = "wasm32")]
-        Vec::new()
+        self.executor.take_watch_commands()
     }
 
     pub fn executor(&self) -> EffectExecutor {

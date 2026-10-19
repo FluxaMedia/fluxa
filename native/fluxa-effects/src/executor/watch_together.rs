@@ -1,10 +1,12 @@
 use super::fluxa_account::{Credentials, Supabase, client};
 use super::*;
-use futures_util::{SinkExt, StreamExt};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::{Arc, Mutex};
 use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender, unbounded_channel};
-use tokio_tungstenite::tungstenite::Message;
+use web_time::Instant;
+
+mod socket;
+use socket::{Socket, Task, Ticker};
 
 pub type ActionSink = Arc<dyn Fn(Value) + Send + Sync>;
 
@@ -14,14 +16,14 @@ const FLOOD_WINDOW: Duration = Duration::from_secs(2);
 const FLOOD_LIMIT: u32 = 40;
 
 struct Flood {
-    since: std::time::Instant,
+    since: Instant,
     count: u32,
 }
 
 impl Default for Flood {
     fn default() -> Self {
         Self {
-            since: std::time::Instant::now(),
+            since: Instant::now(),
             count: 0,
         }
     }
@@ -30,7 +32,7 @@ impl Default for Flood {
 impl Flood {
     fn exceeded(&mut self) -> bool {
         if self.since.elapsed() > FLOOD_WINDOW {
-            self.since = std::time::Instant::now();
+            self.since = Instant::now();
             self.count = 0;
         }
         self.count += 1;
@@ -53,7 +55,7 @@ struct Inner {
 struct Connection {
     room: String,
     outbound: UnboundedSender<Value>,
-    task: tokio::task::JoinHandle<()>,
+    task: Task,
 }
 
 impl WatchTogether {
@@ -70,9 +72,6 @@ impl WatchTogether {
         }
     }
 }
-
-type Socket =
-    tokio_tungstenite::WebSocketStream<tokio_tungstenite::MaybeTlsStream<tokio::net::TcpStream>>;
 
 struct Lanes {
     host_prefix: String,
@@ -115,9 +114,8 @@ async fn send_join(
         },
     });
     socket
-        .send(Message::text(join.to_string()))
+        .send(join.to_string())
         .await
-        .map_err(|error| error.to_string())
 }
 
 fn now_ms() -> i64 {
@@ -344,7 +342,7 @@ impl EffectExecutor {
         let (outbound, inbox) = unbounded_channel();
         let executor = self.clone();
         let task_room = room.clone();
-        let task = runtime().spawn(async move {
+        let task = socket::spawn(async move {
             executor.keep_connected(task_room, inbox).await;
         });
         let previous = self.watch.lock().connection.replace(Connection {
@@ -360,7 +358,7 @@ impl EffectExecutor {
     async fn keep_connected(&self, room: String, mut inbox: UnboundedReceiver<Value>) {
         let mut delay = Duration::from_secs(1);
         loop {
-            let started = std::time::Instant::now();
+            let started = Instant::now();
             match self.realtime_session(&room, &mut inbox).await {
                 Ok(()) => return,
                 Err(error) => crate::log!("[watch-together] connection lost: {error}"),
@@ -368,7 +366,7 @@ impl EffectExecutor {
             if started.elapsed() > Duration::from_secs(60) {
                 delay = Duration::from_secs(1);
             }
-            tokio::time::sleep(delay).await;
+            socket::sleep(delay).await;
             delay = (delay * 2).min(Duration::from_secs(30));
         }
     }
@@ -385,10 +383,7 @@ impl EffectExecutor {
             config.base.replacen("http", "ws", 1),
             config.key
         );
-        let _ = rustls::crypto::ring::default_provider().install_default();
-        let (mut socket, _) = tokio_tungstenite::connect_async(socket_url)
-            .await
-            .map_err(|error| error.to_string())?;
+        let mut socket = Socket::connect(&socket_url).await?;
         let mut lanes = Lanes {
             host_prefix: format!("realtime:watch-together:{room}:h:"),
             member_prefix: format!("realtime:watch-together:{room}:u:"),
@@ -407,20 +402,12 @@ impl EffectExecutor {
         let mut flooding: HashMap<String, Flood> = HashMap::new();
         let mut kicked: HashSet<String> = HashSet::new();
         let client = client()?;
-        let mut heartbeat = tokio::time::interval(HEARTBEAT);
-        heartbeat.tick().await;
+        let mut heartbeat = Ticker::new(HEARTBEAT).await;
         loop {
             tokio::select! {
-                incoming = socket.next() => {
-                    let Some(incoming) = incoming else {
-                        return Err("socket closed".to_owned());
-                    };
-                    let text = match incoming.map_err(|error| error.to_string())? {
-                        Message::Text(text) => text,
-                        Message::Close(_) => return Err("socket closed".to_owned()),
-                        _ => continue,
-                    };
-                    let Ok(event) = serde_json::from_str::<Value>(text.as_str()) else {
+                incoming = socket.recv() => {
+                    let text = incoming?;
+                    let Ok(event) = serde_json::from_str::<Value>(&text) else {
                         continue;
                     };
                     let Some(topic) = event["topic"].as_str() else {
@@ -475,9 +462,8 @@ impl EffectExecutor {
                             {
                                 let hello = json!({"type": "broadcast", "event": "wt", "payload": {"type": "hello"}});
                                 socket
-                                    .send(Message::text(frame(&own_topic, "broadcast", hello, next_ref())))
-                                    .await
-                                    .map_err(|error| error.to_string())?;
+                                    .send(frame(&own_topic, "broadcast", hello, next_ref()))
+                                    .await?;
                             }
                             if topic == own_topic {
                                 let track = json!({
@@ -486,9 +472,8 @@ impl EffectExecutor {
                                     "payload": {"user_id": credentials.user_id},
                                 });
                                 socket
-                                    .send(Message::text(frame(&own_topic, "presence", track, next_ref())))
-                                    .await
-                                    .map_err(|error| error.to_string())?;
+                                    .send(frame(&own_topic, "presence", track, next_ref()))
+                                    .await?;
                                 self.refresh_lanes(
                                     &mut socket, &client, &config, &credentials, room,
                                     &mut lanes, &mut next_ref,
@@ -507,7 +492,7 @@ impl EffectExecutor {
                 }
                 outgoing = inbox.recv() => {
                     let Some(message) = outgoing else {
-                        let _ = socket.close(None).await;
+                        socket.close().await;
                         return Ok(());
                     };
                     let topic = match message["type"].as_str() {
@@ -521,31 +506,28 @@ impl EffectExecutor {
                     }
                     let payload = json!({"type": "broadcast", "event": "wt", "payload": message});
                     socket
-                        .send(Message::text(frame(&topic, "broadcast", payload, next_ref())))
-                        .await
-                        .map_err(|error| error.to_string())?;
+                        .send(frame(&topic, "broadcast", payload, next_ref()))
+                        .await?;
                 }
                 _ = heartbeat.tick() => {
                     socket
-                        .send(Message::text(
+                        .send(
                             json!({"topic": "phoenix", "event": "heartbeat", "payload": {}, "ref": next_ref()})
                                 .to_string(),
-                        ))
-                        .await
-                        .map_err(|error| error.to_string())?;
+                        )
+                        .await?;
                     let fresh = self.watch_credentials().await?;
                     if fresh.token != credentials.token {
                         credentials = fresh;
                         for topic in lanes.joined.keys() {
                             socket
-                                .send(Message::text(frame(
+                                .send(frame(
                                     topic,
                                     "access_token",
                                     json!({"access_token": credentials.token}),
                                     next_ref(),
-                                )))
-                                .await
-                                .map_err(|error| error.to_string())?;
+                                ))
+                                .await?;
                         }
                     }
                     self.refresh_lanes(
@@ -588,14 +570,13 @@ impl EffectExecutor {
         for topic in stale {
             lanes.joined.remove(&topic);
             socket
-                .send(Message::text(frame(
+                .send(frame(
                     &topic,
                     "phx_leave",
                     json!({}),
                     next_ref(),
-                )))
-                .await
-                .map_err(|error| error.to_string())?;
+                ))
+                .await?;
         }
         for topic in wanted {
             if lanes.joined.contains_key(&topic)
