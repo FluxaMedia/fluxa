@@ -16,13 +16,20 @@ scenes=(
   "phone-player-tracks mobile player/tracks 844 390"
   "desktop-player-chapters desktop player/chapters 1280 720"
   "tv-player-speed tv player/speed 1920 1080"
+  "desktop-home desktop home 1280 800"
+  "phone-home mobile home 390 844"
+  "tv-home tv home 1920 1080"
+  "desktop-library desktop library 1280 800"
+  "phone-discover mobile discover 390 844"
+  "desktop-settings desktop settings/0 1280 800"
+  "phone-detail mobile detail/movie/fixture-featured 390 844"
 )
 
 failed=0
 for scene in "${scenes[@]}"; do
   read -r name form route width height <<<"$scene"
   out="$work/$name.png"
-  FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
+  FLUXA_PREVIEW_FIXTURE=1 FLUXA_PREVIEW_FORM=$form FLUXA_PREVIEW_WAIT=${FLUXA_PREVIEW_WAIT:-9} \
     bash "$root/scripts/preview-desktop.sh" "$out" "$route" "$width" "$height" >/dev/null 2>&1
   if [ "$update" = "--update" ]; then
     cp "$out" "$baselines/$name.png"
