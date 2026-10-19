@@ -54,6 +54,9 @@ jobs:
           cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
 
       - name: Build site
+        env:
+          FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+          FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
         run: ./scripts/build-web.sh dist-web/site
 
       - uses: actions/configure-pages@v5
