@@ -1,0 +1,14 @@
+[package]
+name = "fluxa-trickplay-gen"
+version = "0.1.0"
+edition = "2024"
+license = "GPL-3.0-only"
+description = "Keyframe-only trickplay sheet generation from HLS, MP4, and Matroska streams."
+
+[dependencies]
+image = { version = "0.25.10", default-features = false, features = ["jpeg"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls-webpki-roots"] }
+tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "macros", "process", "io-util"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["test-util"] }
