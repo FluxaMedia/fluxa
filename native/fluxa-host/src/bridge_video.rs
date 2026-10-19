@@ -126,6 +126,10 @@ impl VideoBackend for BridgeVideo {
         self.send(json!({"type": "loadPreview", "url": url}));
     }
 
+    fn place_preview(&mut self, rect: Option<[f32; 4]>) {
+        self.send(json!({"type": "previewWindow", "rect": rect}));
+    }
+
     fn stop(&mut self) {
         if let Ok(mut bridge) = self.0.lock() {
             bridge.status = VideoStatus::default();

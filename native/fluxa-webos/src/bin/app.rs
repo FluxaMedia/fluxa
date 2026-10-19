@@ -70,20 +70,24 @@ fn key(host: &FluxaHost, remote: Remote) {
 fn run_player(
     caps: capabilities::Capabilities,
     options: LoadOptions,
+    screen: (u32, u32),
     bridge: Arc<Mutex<VideoBridge>>,
     playing: Arc<AtomicBool>,
     stop: Arc<AtomicBool>,
 ) {
     let (events, rx) = channel();
     let mut player = match StarfishPipeline::open(options, events) {
-        Ok(pipeline) => Player::new(FfmpegDemuxer::with_capabilities(caps), pipeline, rx),
+        Ok(mut pipeline) => {
+            pipeline.set_screen(screen.0, screen.1);
+            Player::new(FfmpegDemuxer::with_capabilities(caps), pipeline, rx)
+        }
         Err(error) => {
             trace(format!("starfish unavailable: {error:?}"));
             crash::capture(&format!("starfish unavailable: {error:?}"));
             eprintln!("starfish: {error:?}");
             while !stop.load(Ordering::Relaxed) {
                 if let Ok(mut bridge) = bridge.lock() {
-                    if bridge.take_requests().iter().any(|request| request["type"] == "load") {
+                    if bridge.take_requests().iter().any(|request| request["type"] == "load" || request["type"] == "loadPreview") {
                         bridge.set_status(VideoStatus {
                             error: Some("The TV's media pipeline could not be opened".into()),
                             ..VideoStatus::default()
@@ -134,6 +138,7 @@ fn main() {
     let host = FluxaHost::new(1.0, Some(data.join("artwork-cache")));
     host.set_form_factor("tv");
     host.set_platform("webos");
+    fluxa_host::dom_images::set_plane(true);
     let bridge = Arc::new(Mutex::new(VideoBridge::default()));
     host.set_video_backend(Box::new(BridgeVideo(bridge.clone())));
     if let Err(error) = host.start_session(data) {
@@ -169,7 +174,7 @@ fn main() {
         let (bridge, playing, stop) = (bridge.clone(), playing.clone(), stop.clone());
         std::thread::Builder::new()
             .name("player".into())
-            .spawn(move || run_player(caps, options, bridge, playing, stop))
+            .spawn(move || run_player(caps, options, (width, height), bridge, playing, stop))
             .expect("player thread")
     };
 

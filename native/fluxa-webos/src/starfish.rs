@@ -2,6 +2,7 @@ use std::sync::mpsc::Sender;
 
 use crate::diagnostics::trace;
 use crate::acb::Acb;
+use crate::exported::ExportedWindow;
 use crate::events::{Event, EventKind};
 use crate::feed::{FeedReply, feed_payload};
 use crate::ffi::Starfish;
@@ -19,6 +20,11 @@ pub struct StarfishPipeline {
     first_segment: bool,
     acb_hdr: Option<String>,
     acb: Option<Acb>,
+    exported: Option<ExportedWindow>,
+    screen: (i32, i32),
+    frame: (i32, i32),
+    dst: Option<[i32; 4]>,
+    loaded: bool,
 }
 
 impl StarfishPipeline {
@@ -30,7 +36,39 @@ impl StarfishPipeline {
         } else {
             None
         };
-        Ok(StarfishPipeline { inner, events, used: false, atmos: false, options, seek_pending: false, first_segment: false, acb_hdr: None, acb })
+        let exported = options.window_id.as_deref().and_then(ExportedWindow::open);
+        Ok(StarfishPipeline {
+            inner,
+            events,
+            used: false,
+            atmos: false,
+            options,
+            seek_pending: false,
+            first_segment: false,
+            acb_hdr: None,
+            acb,
+            exported,
+            screen: (1920, 1080),
+            frame: (0, 0),
+            dst: None,
+            loaded: false,
+        })
+    }
+
+    pub fn set_screen(&mut self, width: u32, height: u32) {
+        self.screen = (width as i32, height as i32);
+    }
+
+    fn apply_placement(&self) {
+        if !self.loaded || self.frame.0 <= 0 {
+            return;
+        }
+        let dst = self.dst.unwrap_or([0, 0, self.screen.0, self.screen.1]);
+        if let Some(exported) = &self.exported {
+            exported.place(self.frame, dst);
+        } else if let (Some(acb), Some(_)) = (&self.acb, self.dst) {
+            acb.place(self.frame, dst);
+        }
     }
 }
 
@@ -61,6 +99,8 @@ impl Pipeline for StarfishPipeline {
             self.inner = Starfish::open(self.options.webos_major, self.events.clone()).map_err(|error| format!("{error:?}"))?;
         }
         self.used = true;
+        self.loaded = false;
+        self.frame = (info.video.width as i32, info.video.height as i32);
         self.atmos = matches!(info.audio.as_ref().map(|audio| audio.codec), Some(AudioCodec::Eac3 { atmos: true }));
         let mut options = self.options.clone();
         options.start_pts_ns = start_ns;
@@ -116,7 +156,14 @@ impl Pipeline for StarfishPipeline {
     }
 
     fn unload(&mut self) {
+        self.loaded = false;
         self.inner.unload();
+    }
+
+    fn place(&mut self, frame: (i32, i32), dst: Option<[i32; 4]>) {
+        self.frame = frame;
+        self.dst = dst;
+        self.apply_placement();
     }
 
     fn awaits_unload(&self) -> bool {
@@ -154,6 +201,8 @@ impl Pipeline for StarfishPipeline {
                 None => acb.video_data(&event.text),
             },
             EventKind::LoadCompleted => {
+                self.loaded = true;
+                self.apply_placement();
                 if let Some(media) = self.inner.media_id() {
                     acb.bind(&media);
                     if self.atmos {
@@ -161,7 +210,13 @@ impl Pipeline for StarfishPipeline {
                     }
                 }
             }
-            EventKind::Playing => acb.playing(1920, 1080),
+            EventKind::Playing => match self.dst {
+                Some(dst) => {
+                    acb.place(self.frame, dst);
+                    acb.start();
+                }
+                None => acb.playing(1920, 1080),
+            },
             EventKind::Paused => acb.paused(),
             EventKind::UnloadCompleted => acb.unloaded(),
             _ => {}

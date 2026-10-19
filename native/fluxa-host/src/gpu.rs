@@ -934,6 +934,8 @@ impl Gpu {
         }
         if crate::dom_images::enabled() {
             crate::dom_images::lift(&mut output.shapes);
+        } else if crate::dom_images::plane() {
+            crate::dom_images::lift_plane(&mut output.shapes, output.pixels_per_point);
         }
         let text_runs = if self.collect_text {
             collect_text_runs(

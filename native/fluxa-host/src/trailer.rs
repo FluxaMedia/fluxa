@@ -397,6 +397,11 @@ fn queue_expanded(state: &mut RendererState) {
 }
 
 pub(crate) fn tick(state: &mut RendererState) {
+    if let Some(rect) = crate::dom_images::take_hole()
+        && let Some(video) = state.video.as_mut()
+    {
+        video.place_preview(rect);
+    }
     queue_shorts(state);
     queue_expanded(state);
     queue_focus_hero(state);
@@ -591,7 +596,7 @@ fn play(state: &mut RendererState) {
         .iter()
         .find(|cue| cue.start <= status.position && status.position < cue.end)
         .map(|cue| cue.text.clone());
-    if crate::dom_images::enabled() {
+    if crate::dom_images::enabled() || crate::dom_images::plane() {
         active.texture = status.has_frame.then_some(fluxa_ui::DOM_TRAILER);
     } else if let Some(view) = video.render(&gpu.device) {
         if let Some(old) = active.texture.take() {

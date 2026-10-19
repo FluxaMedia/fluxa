@@ -22,6 +22,9 @@ type SetSink = unsafe extern "C" fn(c_long, c_int) -> bool;
 type SetData = unsafe extern "C" fn(c_long, *const c_char, *mut c_long) -> c_int;
 type SetState = unsafe extern "C" fn(c_long, c_int, c_int, *mut c_long) -> c_int;
 type SetWindow = unsafe extern "C" fn(c_long, c_long, c_long, c_long, c_long, bool, *mut c_long) -> c_int;
+type SetCustomWindow = unsafe extern "C" fn(
+    c_long, c_long, c_long, c_long, c_long, c_long, c_long, c_long, c_long, bool, *mut c_long,
+) -> c_int;
 type Finalize = unsafe extern "C" fn(c_long) -> c_int;
 type Destroy = unsafe extern "C" fn(c_long);
 
@@ -37,6 +40,7 @@ pub struct Acb {
     set_audio: Option<SetData>,
     set_state: SetState,
     set_window: SetWindow,
+    set_custom_window: Option<SetCustomWindow>,
     finalize: Finalize,
     destroy: Destroy,
     _library: Library,
@@ -64,6 +68,7 @@ impl Acb {
                 set_audio: symbol(&library, "AcbAPI_setMediaAudioData\0").ok(),
                 set_state: symbol(&library, "AcbAPI_setState\0")?,
                 set_window: symbol(&library, "AcbAPI_setDisplayWindow\0")?,
+                set_custom_window: symbol(&library, "AcbAPI_setCustomDisplayWindow\0").ok(),
                 finalize: symbol(&library, "AcbAPI_finalize\0")?,
                 destroy: symbol(&library, "AcbAPI_destroy\0")?,
                 _library: library,
@@ -110,6 +115,22 @@ impl Acb {
     pub fn playing(&self, width: c_long, height: c_long) {
         let mut task = 0;
         unsafe { (self.set_window)(self.id, 0, 0, width, height, true, &mut task) };
+        self.state(PLAYSTATE_PLAYING);
+    }
+
+    pub fn place(&self, frame: (i32, i32), dst: [i32; 4]) {
+        let Some(set) = self.set_custom_window else {
+            return;
+        };
+        let mut task = 0;
+        let [x, y, w, h] = dst.map(c_long::from);
+        let (fw, fh) = (c_long::from(frame.0), c_long::from(frame.1));
+        if unsafe { set(self.id, 0, 0, fw, fh, x, y, w, h, false, &mut task) } == 0 {
+            trace("acb setCustomDisplayWindow rejected");
+        }
+    }
+
+    pub fn start(&self) {
         self.state(PLAYSTATE_PLAYING);
     }
 

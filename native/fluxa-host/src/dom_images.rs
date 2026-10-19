@@ -6,6 +6,16 @@ use fluxa_ui::{ImageHole, VideoHole};
 use serde::Serialize;
 
 static ENABLED: AtomicBool = AtomicBool::new(false);
+static PLANE: AtomicBool = AtomicBool::new(false);
+static HOLE: Mutex<PlaneHole> = Mutex::new(PlaneHole {
+    rect: None,
+    dirty: false,
+});
+
+struct PlaneHole {
+    rect: Option<[f32; 4]>,
+    dirty: bool,
+}
 static LATEST: Mutex<Published> = Mutex::new(Published {
     json: String::new(),
     dirty: false,
@@ -33,6 +43,45 @@ pub fn set_enabled(enabled: bool) {
 
 pub fn enabled() -> bool {
     ENABLED.load(Ordering::Relaxed)
+}
+
+pub fn set_plane(plane: bool) {
+    PLANE.store(plane, Ordering::Relaxed);
+}
+
+pub fn plane() -> bool {
+    PLANE.load(Ordering::Relaxed)
+}
+
+pub(crate) fn take_hole() -> Option<Option<[f32; 4]>> {
+    let mut hole = HOLE.lock().ok()?;
+    std::mem::take(&mut hole.dirty).then_some(hole.rect)
+}
+
+pub(crate) fn lift_plane(shapes: &mut [ClippedShape], scale: f32) {
+    let mut found = None;
+    for clipped in shapes.iter_mut() {
+        let egui::Shape::Callback(callback) = &clipped.shape else {
+            continue;
+        };
+        if !callback.callback.is::<VideoHole>() {
+            continue;
+        }
+        let rect = callback.rect;
+        clipped.shape = egui::Shape::Callback(fluxa_renderer::hole::shape(rect, 0.0));
+        found = Some([
+            rect.min.x * scale,
+            rect.min.y * scale,
+            rect.width() * scale,
+            rect.height() * scale,
+        ]);
+    }
+    if let Ok(mut hole) = HOLE.lock()
+        && hole.rect != found
+    {
+        hole.rect = found;
+        hole.dirty = true;
+    }
 }
 
 pub fn take() -> Option<String> {

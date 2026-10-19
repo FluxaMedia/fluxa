@@ -136,6 +136,7 @@ pub trait VideoBackend: Send {
     fn load_preview(&mut self, instance: &wgpu::Instance, device: &wgpu::Device, url: &str) {
         self.load(instance, device, url);
     }
+    fn place_preview(&mut self, _rect: Option<[f32; 4]>) {}
     fn stop(&mut self);
     fn media_session(&mut self, _plan: &Value) {}
     fn command(&mut self, command: VideoCommand);

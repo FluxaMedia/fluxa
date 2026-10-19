@@ -75,6 +75,7 @@ pub trait Pipeline {
         false
     }
     fn on_event(&mut self, _event: &Event) {}
+    fn place(&mut self, _frame: (i32, i32), _dst: Option<[i32; 4]>) {}
 }
 
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -116,7 +117,12 @@ pub struct Player<D, P> {
     cues: Cues,
     subtitle_id: Option<String>,
     status: Status,
+    preview: bool,
+    placed: bool,
+    window: Option<[i32; 4]>,
 }
+
+const HIDDEN_WINDOW: [i32; 4] = [0, 0, 2, 2];
 
 fn seconds(value: &Value) -> f64 {
     value.as_f64().unwrap_or(0.0)
@@ -142,6 +148,9 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
             cues: Cues::default(),
             subtitle_id: None,
             status: Status { volume: 100.0, ..Status::default() },
+            preview: false,
+            placed: false,
+            window: None,
         }
     }
 
@@ -151,7 +160,9 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
 
     pub fn handle(&mut self, request: &Value) {
         match request["type"].as_str().unwrap_or_default() {
-            "load" => self.load(request["url"].as_str().unwrap_or_default()),
+            "load" => self.load(request["url"].as_str().unwrap_or_default(), false),
+            "loadPreview" => self.load(request["url"].as_str().unwrap_or_default(), true),
+            "previewWindow" => self.set_window(&request["rect"]),
             "stop" => self.stop(),
             "togglePause" => self.toggle_pause(),
             "seek" => self.seek_to(self.position_ns + (seconds(&request["seconds"]) * 1e9) as i64),
@@ -170,15 +181,43 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         }
     }
 
-    fn load(&mut self, url: &str) {
+    fn set_window(&mut self, rect: &Value) {
+        self.window = rect.as_array().and_then(|rect| {
+            let mut values = rect.iter().map(|value| value.as_f64().unwrap_or(0.0).round() as i32);
+            Some([values.next()?, values.next()?, values.next()?, values.next()?])
+        });
+        if self.preview {
+            self.place();
+        }
+    }
+
+    fn place(&mut self) {
+        let Some(info) = &self.info else {
+            return;
+        };
+        if !self.preview && !self.placed {
+            return;
+        }
+        self.placed = self.preview;
+        let frame = (info.video.width as i32, info.video.height as i32);
+        let window = self.preview.then(|| self.window.unwrap_or(HIDDEN_WINDOW));
+        self.pipeline.place(frame, window);
+    }
+
+    fn load(&mut self, url: &str, preview: bool) {
         self.stop();
+        self.preview = preview;
         self.state = State::Opening;
         self.opening_since = Some(Instant::now());
         self.status.buffering = true;
-        let info = match self.demuxer.open(url) {
+        let mut info = match self.demuxer.open(url) {
             Ok(info) => info,
             Err(error) => return self.fail(error),
         };
+        if preview {
+            info.audio = None;
+            info.audio_id = None;
+        }
         if let Err(error) = self.pipeline.load(&info, 0) {
             return self.fail(error);
         }
@@ -186,6 +225,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
         self.subtitle_id = None;
         self.cues.clear();
         self.info = Some(info);
+        self.place();
         self.refresh_tracks();
     }
 
@@ -417,7 +457,7 @@ impl<D: Demuxer, P: Pipeline> Player<D, P> {
                 self.cues.push(cue);
             } else if packet.video {
                 self.video_lane.push_back(packet);
-            } else {
+            } else if !self.preview {
                 self.audio_lane.push_back(packet);
             }
         }
@@ -564,6 +604,9 @@ mod tests {
         }
         fn unload(&mut self) {
             self.0.borrow_mut().calls.push("unload".into());
+        }
+        fn place(&mut self, frame: (i32, i32), dst: Option<[i32; 4]>) {
+            self.0.borrow_mut().calls.push(format!("place {frame:?} {dst:?}"));
         }
     }
 
@@ -761,5 +804,40 @@ mod tests {
         rig.events.send(event(EventKind::FrameReady, 2_500_000_000)).unwrap();
         rig.player.tick();
         assert_eq!(rig.player.status().subtitle, None);
+    }
+
+    #[test]
+    fn preview_waits_hidden_until_the_host_reports_its_window() {
+        let mut rig = rig(&[]);
+        rig.player.handle(&json!({"type": "loadPreview", "url": "http://x/t.mp4"}));
+        rig.player.handle(&json!({"type": "previewWindow", "rect": [40.0, 80.0, 640.0, 360.0]}));
+        let calls = rig.log.borrow().calls.clone();
+        assert_eq!(
+            calls,
+            ["load", "place (1920, 1080) Some([0, 0, 2, 2])", "place (1920, 1080) Some([40, 80, 640, 360])"]
+        );
+    }
+
+    #[test]
+    fn full_playback_after_a_preview_goes_back_to_the_whole_screen() {
+        let mut rig = rig(&[]);
+        rig.player.handle(&json!({"type": "loadPreview", "url": "http://x/t.mp4"}));
+        rig.player.handle(&json!({"type": "load", "url": "http://x/a.mkv"}));
+        let calls = rig.log.borrow().calls.clone();
+        assert_eq!(calls.last().map(String::as_str), Some("place (1920, 1080) None"));
+    }
+
+    #[test]
+    fn preview_does_not_feed_audio() {
+        let mut rig = rig(&[]);
+        rig.player.demuxer.packets = VecDeque::from([
+            Packet { video: true, pts_ns: 0, data: vec![0], cue: None },
+            Packet { video: false, pts_ns: 0, data: vec![0], cue: None },
+        ]);
+        rig.player.handle(&json!({"type": "loadPreview", "url": "u"}));
+        rig.events.send(event(EventKind::LoadCompleted, 0)).unwrap();
+        rig.player.tick();
+        let fed = rig.log.borrow().calls.iter().filter(|call| call.starts_with("feed")).count();
+        assert_eq!(fed, 1);
     }
 }

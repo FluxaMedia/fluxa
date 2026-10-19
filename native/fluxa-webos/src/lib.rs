@@ -12,6 +12,7 @@ pub mod bridge;
 mod base64;
 pub mod diagnostics;
 mod events;
+mod exported;
 pub mod hdr10plus;
 mod feed;
 mod ffi;
