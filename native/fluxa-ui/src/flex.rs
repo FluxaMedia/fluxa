@@ -199,6 +199,10 @@ pub(crate) fn leaf(size: Vec2) -> Node {
     Node::new(Kind::Leaf(size))
 }
 
+pub(crate) fn slot(width: f32) -> Node {
+    leaf(Vec2::ZERO).width(width)
+}
+
 pub(crate) fn fill() -> Node {
     leaf(Vec2::ZERO).grow(1.0)
 }

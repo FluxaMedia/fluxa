@@ -8,7 +8,6 @@
 use egui::{Align2, Color32, FontId, Id, Painter, Pos2, Rect, Response, RichText, Sense, Ui, Vec2};
 use std::hash::{Hash, Hasher};
 
-use crate::flow::Size;
 
 mod cards;
 mod controls;
@@ -90,17 +89,19 @@ pub(super) fn toast(
         egui::Stroke::new(stroke::hairline(), metrics.ink((20.0 * opacity) as u8)),
         egui::StrokeKind::Inside,
     );
-    let [label, meter] = crate::flow::row(
-        rect.shrink2(Vec2::new(pad, 0.0)),
-        14.0,
-        [
-            Size::Fixed(text_width),
-            Size::Fixed(level.map_or(0.0, |_| bar)),
-        ],
-    );
+    let mut cells = vec![crate::flex::slot(text_width).id(0)];
+    if level.is_some() {
+        cells.push(crate::flex::slot(bar).id(1));
+    }
+    let placed = crate::flex::row(cells)
+        .gap(14.0)
+        .align(crate::flex::Align::Stretch)
+        .solve(rect.shrink2(Vec2::new(pad, 0.0)));
+    let label = placed.find(0).unwrap_or(rect);
+    let meter = placed.find(1);
     let text_pos = Pos2::new(label.left(), rect.center().y - galley.size().y * 0.5);
     painter.galley(text_pos, galley, metrics.text_primary);
-    if let Some(level) = level {
+    if let (Some(level), Some(meter)) = (level, meter) {
         let track = Rect::from_center_size(meter.center(), Vec2::new(bar, 5.0));
         painter.rect_filled(track, radius::BAR, metrics.ink((60.0 * opacity) as u8));
         let filled = Rect::from_min_size(track.min, Vec2::new(bar * level.clamp(0.0, 1.0), 5.0));
@@ -120,11 +121,16 @@ pub(super) fn calendar_release_row(
     ui.painter()
         .rect_filled(rect, metrics.card_radius, metrics.surface_raised);
     let gap = metrics.control_gap;
-    let [thumb, text, _] = crate::flow::row(
-        rect,
-        gap,
-        [Size::Fixed(height * 0.7), Size::Fill, Size::Fixed(gap)],
-    );
+    let placed = crate::flex::row([
+        crate::flex::slot(height * 0.7).id(0),
+        crate::flex::fill().id(1),
+        crate::flex::slot(gap).id(2),
+    ])
+    .gap(gap)
+    .align(crate::flex::Align::Stretch)
+    .solve(rect);
+    let thumb = placed.find(0).unwrap_or(rect);
+    let text = placed.find(1).unwrap_or(rect);
     artwork_image(
         ui.painter(),
         thumb,
@@ -621,22 +627,29 @@ pub(super) fn banner(
                 Pos2::new(rect.left() + 16.0, rect.top()),
                 Pos2::new(rect.right() - 8.0, rect.bottom()),
             );
-            let [title, trailing, action, close] = crate::flow::row(
-                inner,
-                10.0,
-                [
-                    Size::Fill,
-                    crate::flow::text(&painter, content.trailing, label.clone()),
-                    Size::Fixed(content.action.map_or(0.0, |(_, text)| {
-                        crate::paint::text_width(&painter, text, FontId::proportional(size)) + 36.0
-                    })),
-                    Size::Fixed(if content.close.is_some() {
-                        control
-                    } else {
-                        0.0
-                    }),
-                ],
-            );
+            let mut cells = vec![crate::flex::fill().id(0)];
+            let trailing_width =
+                crate::paint::text_width(&painter, content.trailing, label.clone());
+            if trailing_width > 0.0 {
+                cells.push(crate::flex::slot(trailing_width).id(1));
+            }
+            if let Some((_, text)) = content.action {
+                let width = crate::paint::text_width(&painter, text, FontId::proportional(size));
+                cells.push(crate::flex::slot(width + 36.0).id(2));
+            }
+            if content.close.is_some() {
+                cells.push(crate::flex::slot(control).id(3));
+            }
+            let placed = crate::flex::row(cells)
+                .gap(10.0)
+                .align(crate::flex::Align::Stretch)
+                .solve(inner);
+            let title = placed.find(0).unwrap_or(inner);
+            let trailing = placed
+                .find(1)
+                .unwrap_or_else(|| Rect::from_min_max(inner.right_top(), inner.right_bottom()));
+            let action = placed.find(2).unwrap_or(Rect::NOTHING);
+            let close = placed.find(3).unwrap_or(Rect::NOTHING);
             if let Some((node, _)) = content.close {
                 close_slot = Rect::from_center_size(close.center(), Vec2::splat(control));
                 outcome.close_clicked = tap(
@@ -839,11 +852,20 @@ pub(super) fn sticky_bar(
             );
             let count = bar.actions.len();
             let trailing = button * count as f32 + 8.0 * count.saturating_sub(1) as f32;
-            let [back_rect, title, actions] = crate::flow::row(
-                line,
-                12.0,
-                [Size::Fixed(button), Size::Fill, Size::Fixed(trailing)],
-            );
+            let mut cells = vec![
+                crate::flex::slot(button).id(0),
+                crate::flex::fill().id(1),
+            ];
+            if count > 0 {
+                cells.push(crate::flex::slot(trailing).id(2));
+            }
+            let placed = crate::flex::row(cells)
+                .gap(12.0)
+                .align(crate::flex::Align::Stretch)
+                .solve(line);
+            let back_rect = placed.find(0).unwrap_or(line);
+            let title = placed.find(1).unwrap_or(line);
+            let actions = placed.find(2).unwrap_or(Rect::NOTHING);
             let back = ui
                 .scope_builder(egui::UiBuilder::new().max_rect(back_rect), |ui| {
                     back_button(ui, bar.back_icon, metrics)
@@ -853,7 +875,16 @@ pub(super) fn sticky_bar(
             if back.clicked() {
                 output.clicked = Some(bar.back_node);
             }
-            let slots = crate::flow::row_of(actions, 8.0, &vec![Size::Fixed(button); count]);
+            let slots = crate::flex::row(
+                (0..count).map(|index| crate::flex::slot(button).id(index)),
+            )
+            .gap(8.0)
+            .align(crate::flex::Align::Stretch)
+            .solve(actions)
+            .children
+            .into_iter()
+            .map(|slot| slot.rect)
+            .collect::<Vec<_>>();
             for (action, rect) in bar.actions.iter().zip(slots) {
                 let response = ui
                     .scope_builder(egui::UiBuilder::new().max_rect(rect), |ui| {

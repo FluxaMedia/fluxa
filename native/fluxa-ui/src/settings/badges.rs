@@ -114,7 +114,15 @@ pub(super) fn pills_right(
         .collect();
     let height = 32.0_f32.min(row.height() - 4.0);
     let area = Rect::from_min_max(row.min, Pos2::new(row.right() - 4.0, row.bottom()));
-    let slots = crate::flow::line(area, 8.0, &widths, crate::flow::Align::End);
+    let slots = crate::flex::row(widths.iter().map(|width| crate::flex::slot(*width)))
+        .gap(8.0)
+        .align(crate::flex::Align::Stretch)
+        .justify(crate::flex::Justify::End)
+        .solve(area)
+        .children
+        .into_iter()
+        .map(|slot| slot.rect)
+        .collect::<Vec<_>>();
     for ((id, label), slot) in pills.iter().zip(&slots) {
         let button = Rect::from_center_size(slot.center(), Vec2::new(slot.width(), height));
         pill_button(context, layout, *id, button, label, size);

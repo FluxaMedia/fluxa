@@ -615,7 +615,13 @@ pub fn navigation_focus_rects(viewport: Viewport, metrics: UiMetrics) -> Vec<(u6
         let x = (viewport.width - bar_width).max(12.0) * 0.5 + NAV_BAR_PADDING;
         let y = NAV_BAR_TOP + viewport.nav_lead + NAV_BAR_PADDING;
         let bar = Rect::from_min_size(Pos2::new(x, y), Vec2::new(bar_width, NAV_ITEM_HEIGHT));
-        let slots = crate::flow::line(bar, NAV_ITEM_GAP, &widths, crate::flow::Align::Start);
+        let slots = crate::flex::row(widths.iter().map(|width| crate::flex::slot(*width)))
+            .gap(NAV_ITEM_GAP)
+            .align(crate::flex::Align::Stretch)
+            .solve(bar)
+            .children
+            .into_iter()
+            .map(|slot| slot.rect);
         nodes.zip(slots).collect()
     }
 }
