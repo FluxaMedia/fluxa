@@ -614,15 +614,13 @@ pub(crate) fn draw_home_with_options(
                                 .image(texture, logo_rect, full_uv(), Color32::WHITE);
                         }
                     } else {
-                        let title = truncate_text(&hero.title, style.title_chars);
-                        draw_text(
+                        crate::flex::paint_text(
                             ui.painter(),
-                            title_rect.min,
-                            title_anchor,
-                            title,
-                            crate::fonts::bold(style.title_size),
+                            title_rect,
+                            &hero.title,
+                            &crate::fonts::bold(style.title_size),
                             text_primary(),
-                            None,
+                            title_anchor,
                         );
                     }
                     if titled {
