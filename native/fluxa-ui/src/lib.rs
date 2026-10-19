@@ -21,6 +21,7 @@ mod gallery;
 mod folder;
 pub mod fonts;
 mod home;
+mod interact;
 mod layout;
 mod library;
 mod metrics;
@@ -44,8 +45,10 @@ pub use components::{
     DetailModalOutcome, draw_detail_modal, set_detail_modal_open, take_detail_modal_outcome,
 };
 use draw::*;
+use interact::FocusNode;
 use flex::*;
 pub use home::*;
+pub use interact::{Pinch, begin_focus_frame, pinch, take_focus_targets};
 pub use layout::*;
 pub use metrics::*;
 pub use model::*;

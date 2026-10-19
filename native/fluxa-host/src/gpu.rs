@@ -804,6 +804,7 @@ impl Gpu {
                 .with_platform(home.platform)
                 .with_safe_bottom(safe_bottom)
                 .with_scroll_y(scroll_y);
+            fluxa_ui::begin_focus_frame(ui.ctx(), focused);
             if let Some(scene) = crate::preview::gallery() {
                 fluxa_ui::draw_gallery(ui.ctx(), viewport, &scene, &mut assets);
             } else if let Some(welcome) = welcome.as_deref_mut() {
@@ -900,6 +901,9 @@ impl Gpu {
                     &mut rendered_layout,
                 );
             }
+            let (bound, activated) = fluxa_ui::take_focus_targets(ui.ctx());
+            rendered_layout.focusable.extend(bound);
+            rendered_layout.activated = rendered_layout.activated.or(activated);
             if crate::preview::outlines() {
                 fluxa_ui::draw_target_outlines(ui.ctx(), &rendered_layout);
             }
