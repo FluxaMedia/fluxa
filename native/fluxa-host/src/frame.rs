@@ -202,11 +202,10 @@ pub(super) fn render_frame(state: &mut RendererState) {
         player.upscaling = mode;
     }
     let watch_side = state.watch_panel
-        && !state.window_fullscreen
-        && state.home.form_factor != UiFormFactorJson::Tv;
+        && (!state.window_fullscreen || state.home.form_factor == UiFormFactorJson::Tv);
     let player_model = state.player.as_ref().map(|player| {
         let mut model = fluxa_ui::PlayerModel {
-            watch_button: state.home.form_factor != UiFormFactorJson::Tv,
+            watch_button: true,
             minimizable: state.home.form_factor == UiFormFactorJson::Desktop
                 && player.can_minimize(),
             watch: watch_side.then(|| state.watch_view.clone()).flatten(),

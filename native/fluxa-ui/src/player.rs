@@ -288,7 +288,11 @@ pub fn draw_player(
     let painter = context.layer_painter(egui::LayerId::background());
     let (rect, side) = match player.watch.as_ref().filter(|_| !player.passthrough) {
         Some(_) => {
-            let width = (rect.width() * 0.24).clamp(260.0, 340.0);
+            let width = if viewport.form_factor == UiFormFactor::Tv {
+                (rect.width() * 0.32).clamp(380.0, 560.0)
+            } else {
+                (rect.width() * 0.24).clamp(260.0, 340.0)
+            };
             let (left, right) = rect.split_left_right_at_x(rect.right() - width);
             let surface = UiMetrics::for_viewport(viewport).surface;
             context
@@ -386,7 +390,7 @@ pub fn draw_player(
             let width = (rect.width() * 0.45).clamp(280.0, 340.0);
             Rect::from_min_max(Pos2::new(rect.right() - width, rect.top()), rect.max)
         });
-        layout.watch_together = draw_watch_side_panel(context, side, model, assets);
+        layout.watch_together = draw_watch_side_panel(context, side, viewport.form_factor, model, assets);
     }
     if player.dim > 0.0 {
         let veil = context.layer_painter(egui::LayerId::new(

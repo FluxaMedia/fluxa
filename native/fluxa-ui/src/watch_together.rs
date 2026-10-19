@@ -371,13 +371,14 @@ fn draw_empty(ui: &mut egui::Ui, assets: &impl HomeAssets, center: Pos2, metrics
 pub fn draw_watch_side_panel(
     context: &egui::Context,
     rect: Rect,
+    form_factor: UiFormFactor,
     model: &WatchTogetherModel,
     assets: &mut impl HomeAssets,
 ) -> Option<WatchTogetherRequest> {
     let metrics = UiMetrics::for_viewport(Viewport::new(
         rect.width().max(1.0) as u32,
         rect.height().max(1.0) as u32,
-        UiFormFactor::Desktop,
+        form_factor,
     ));
     let language = model.language.clone();
     let t = |key: &str| localized(key, &language);
