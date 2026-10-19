@@ -66,7 +66,7 @@ pub fn set_pending_field_text(context: &egui::Context, pending: Option<(u64, Str
     });
 }
 
-fn take_pending_text(ui: &Ui, id: Id, value: &mut String) {
+fn take_pending_text(ui: &Ui, id: Id, value: &mut String) -> bool {
     let pending = ui.ctx().data_mut(|data| {
         let key = Id::new(PENDING_TEXT);
         match data.get_temp::<(u64, String)>(key) {
@@ -78,7 +78,7 @@ fn take_pending_text(ui: &Ui, id: Id, value: &mut String) {
         }
     });
     let Some(text) = pending else {
-        return;
+        return false;
     };
     let end = text.chars().count();
     *value = text;
@@ -89,6 +89,7 @@ fn take_pending_text(ui: &Ui, id: Id, value: &mut String) {
             egui::text::CCursor::new(end),
         )));
     state.store(ui.ctx(), id);
+    true
 }
 
 pub fn set_input_caret(context: &egui::Context, rect: Option<Rect>) {
@@ -232,7 +233,7 @@ pub(crate) fn search_field(
         Vec2::new(rect.width() - radius * 1.6 - 16.0, rect.height()),
     );
     let id = ui.id().with(("fluxa-input", hint));
-    take_pending_text(ui, id, query);
+    let pending = take_pending_text(ui, id, query);
     let hit = field_hit(ui, rect, id);
     let len = query.chars().count();
     let native = native_covers(text_rect);
@@ -262,7 +263,10 @@ pub(crate) fn search_field(
         query,
         hint,
     );
-    let response = output.response.response.clone();
+    let mut response = output.response.response.clone();
+    if pending {
+        response.mark_changed();
+    }
     if !native {
         paint_caret(
             ui,
@@ -623,7 +627,7 @@ fn text_edit(
         .rect_filled(rect, radius, metrics.surface_raised);
     let text_rect = rect.shrink2(Vec2::new(14.0, 0.0));
     let id = ui.id().with(("fluxa-input", hint));
-    take_pending_text(ui, id, value);
+    let pending = take_pending_text(ui, id, value);
     let hit = field_hit(ui, rect, id);
     let len = value.chars().count();
     let edit = if kind == InputKind::Multiline {
@@ -651,7 +655,10 @@ fn text_edit(
     );
     focus_on_hit(ui, &hit, id, len);
     record_native_focus(ui, &output, text_rect, font_size, kind, value, hint);
-    let response = output.response.response.clone();
+    let mut response = output.response.response.clone();
+    if pending {
+        response.mark_changed();
+    }
     let masked = if kind.secret() {
         "\u{2022}".repeat(value.chars().count())
     } else {
