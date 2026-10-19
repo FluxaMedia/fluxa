@@ -222,9 +222,9 @@ pub(super) fn rounded_artwork(
             if assets.artwork_failed(url, target_size) {
                 if let Some(url) = url.filter(|_| assets.dom_images()) {
                     dom_image(painter, rect, radius, url);
-                } else {
-                    painter.rect_filled(rect, radius, ink(tone::faint()));
+                    return true;
                 }
+                painter.rect_filled(rect, radius, ink(tone::faint()));
             } else {
                 loading_rect(painter, rect, radius);
             }
