@@ -88,21 +88,41 @@ pub fn draw_detail_modal(
     detail: &DetailModel,
     assets: &mut impl HomeAssets,
 ) {
-    if !context
-        .data(|data| data.get_temp::<bool>(open_id()))
-        .unwrap_or(false)
-    {
+    let open = detail_modal_is_open(context);
+    let visible_id = Id::new("fluxa-detail-modal-visible");
+    let exit_id = Id::new("fluxa-detail-modal-exit");
+    let visible = context
+        .data(|data| data.get_temp::<bool>(visible_id))
+        .unwrap_or(false);
+    if !open && !visible {
         return;
     }
     let metrics = metrics_for_assets(viewport, assets);
     let language = detail.language.as_str();
     let t = |key: &str| localized(key, language);
-    let appear = crate::motion::appear(
-        context,
-        Id::new("fluxa-detail-modal-appear"),
-        crate::motion::normal(),
-        crate::motion::Ease::Out,
-    );
+    let appear = if open {
+        crate::motion::reset(context, exit_id);
+        context.data_mut(|data| data.insert_temp(visible_id, true));
+        crate::motion::appear(
+            context,
+            Id::new("fluxa-detail-modal-appear"),
+            crate::motion::normal(),
+            crate::motion::Ease::Out,
+        )
+    } else {
+        let eased = crate::motion::disappear(
+            context,
+            exit_id,
+            crate::motion::normal(),
+            crate::motion::Ease::Token,
+        );
+        if eased <= 0.001 {
+            crate::motion::reset(context, exit_id);
+            context.data_mut(|data| data.insert_temp(visible_id, false));
+            return;
+        }
+        eased
+    };
     let screen = Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
     let width = (viewport.width - PANEL_MARGIN * 2.0).min(PANEL_MAX_WIDTH);
     let height = (viewport.height - PANEL_MARGIN * 2.0).min(PANEL_MAX_HEIGHT);
@@ -694,7 +714,7 @@ pub fn draw_detail_modal(
     if let Some(number) = chosen_season {
         context.data_mut(|data| data.insert_temp(season_id, number));
     }
-    if let Some(outcome) = outcome {
+    if let Some(outcome) = outcome.filter(|_| open) {
         context.data_mut(|data| data.insert_temp(outcome_id(), outcome));
     }
 }

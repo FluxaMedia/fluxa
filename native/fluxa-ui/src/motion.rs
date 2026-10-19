@@ -114,6 +114,19 @@ pub(crate) fn appear(context: &egui::Context, id: Id, seconds: f32, curve: Ease)
     ease(context, id, 1.0, seconds, curve)
 }
 
+pub(crate) fn disappear(context: &egui::Context, id: Id, seconds: f32, curve: Ease) -> f32 {
+    if context.data(|data| data.get_temp::<Tween>(id)).is_none() {
+        let tween = Tween {
+            from: 1.0,
+            to: 0.0,
+            t: 0.0,
+            frame: context.cumulative_frame_nr(),
+        };
+        context.data_mut(|data| data.insert_temp(id, tween));
+    }
+    ease(context, id, 0.0, seconds, curve)
+}
+
 pub(crate) fn reset(context: &egui::Context, id: Id) {
     context.data_mut(|data| data.remove::<Tween>(id));
 }

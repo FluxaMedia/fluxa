@@ -1,5 +1,6 @@
 use super::*;
 
+#[derive(Clone)]
 pub struct ActionMenuItem {
     pub icon: &'static str,
     pub label: String,
@@ -149,6 +150,19 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
     }
 }
 
+#[derive(Clone)]
+struct MenuSnapshot {
+    title: String,
+    items: Vec<ActionMenuItem>,
+    selected: Option<usize>,
+    anchor: Pos2,
+    serial: u64,
+}
+
+fn snapshot_id() -> Id {
+    Id::new("fluxa-action-menu-snapshot")
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn draw_action_menu(
     context: &egui::Context,
@@ -161,22 +175,85 @@ pub fn draw_action_menu(
     anchor: Pos2,
     serial: u64,
 ) -> Option<ActionMenuOutcome> {
-    let layout = action_menu_layout(viewport, items.len(), anchor);
-    let style = ActionMenuStyle::for_viewport(viewport);
-    let sheet = style == ActionMenuStyle::Sheet;
-    let tv = style == ActionMenuStyle::Panel;
     if context.data(|data| data.get_temp::<u64>(Id::new("fluxa-action-menu-serial")))
         != Some(serial)
     {
         context.data_mut(|data| data.insert_temp(Id::new("fluxa-action-menu-serial"), serial));
         crate::motion::reset(context, Id::new(("fluxa-action-menu", serial)));
     }
+    crate::motion::reset(context, Id::new("fluxa-action-menu-exit"));
+    context.data_mut(|data| {
+        data.insert_temp(
+            snapshot_id(),
+            MenuSnapshot {
+                title: title.to_owned(),
+                items: items.to_vec(),
+                selected,
+                anchor,
+                serial,
+            },
+        )
+    });
     let eased = crate::motion::appear(
         context,
         Id::new(("fluxa-action-menu", serial)),
         crate::motion::normal(),
         crate::motion::Ease::Out,
     );
+    draw_menu(
+        context, viewport, metrics, assets, title, items, selected, anchor, eased,
+    )
+}
+
+pub fn draw_action_menu_closing(
+    context: &egui::Context,
+    viewport: Viewport,
+    metrics: UiMetrics,
+    assets: &impl HomeAssets,
+) {
+    let Some(menu) = context.data(|data| data.get_temp::<MenuSnapshot>(snapshot_id())) else {
+        return;
+    };
+    let eased = crate::motion::disappear(
+        context,
+        Id::new("fluxa-action-menu-exit"),
+        crate::motion::normal(),
+        crate::motion::Ease::Token,
+    );
+    if eased <= 0.001 {
+        context.data_mut(|data| data.remove::<MenuSnapshot>(snapshot_id()));
+        crate::motion::reset(context, Id::new("fluxa-action-menu-exit"));
+        return;
+    }
+    draw_menu(
+        context,
+        viewport,
+        metrics,
+        assets,
+        &menu.title,
+        &menu.items,
+        menu.selected,
+        menu.anchor,
+        eased,
+    );
+}
+
+#[allow(clippy::too_many_arguments)]
+fn draw_menu(
+    context: &egui::Context,
+    viewport: Viewport,
+    metrics: UiMetrics,
+    assets: &impl HomeAssets,
+    title: &str,
+    items: &[ActionMenuItem],
+    selected: Option<usize>,
+    anchor: Pos2,
+    eased: f32,
+) -> Option<ActionMenuOutcome> {
+    let layout = action_menu_layout(viewport, items.len(), anchor);
+    let style = ActionMenuStyle::for_viewport(viewport);
+    let sheet = style == ActionMenuStyle::Sheet;
+    let tv = style == ActionMenuStyle::Panel;
     let offset = if sheet {
         Vec2::new(0.0, (1.0 - eased) * layout.panel.height())
     } else {
@@ -189,7 +266,10 @@ pub fn draw_action_menu(
         .show(context, |ui| {
             let screen =
                 Rect::from_min_size(Pos2::ZERO, Vec2::new(viewport.width, viewport.height));
-            let painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
+            let mut painter = ui.painter().clone().with_clip_rect(Rect::EVERYTHING);
+            if !sheet {
+                painter.set_opacity(eased);
+            }
             let backdrop = ui.interact(
                 screen,
                 Id::new("fluxa-action-menu-backdrop"),

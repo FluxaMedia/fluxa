@@ -1851,3 +1851,46 @@ fn arabic_and_hebrew_load_their_own_files() {
     assert_eq!(localized("nav.library", "he"), "ספרייה");
     assert_eq!(localized("nav.library", "iw"), "ספרייה");
 }
+
+#[test]
+fn action_menu_fades_out_after_the_host_stops_drawing_it() {
+    let context = egui::Context::default();
+    let viewport = Viewport::new(1280, 800, UiFormFactor::Desktop);
+    let metrics = UiMetrics::for_viewport(viewport);
+    let assets = EmptyHomeAssets;
+    let items = [ActionMenuItem {
+        icon: "Play",
+        label: "Play".to_owned(),
+        app_icon: None,
+    }];
+    let mut shapes = Vec::new();
+    for tick in 0..90 {
+        let input = egui::RawInput {
+            time: Some(tick as f64 / 60.0),
+            predicted_dt: 1.0 / 60.0,
+            screen_rect: Some(Rect::from_min_size(Pos2::ZERO, Vec2::new(1280.0, 800.0))),
+            ..Default::default()
+        };
+        let output = context.run(input, |context| {
+            if tick < 30 {
+                draw_action_menu(
+                    context,
+                    viewport,
+                    metrics,
+                    &assets,
+                    "Menu",
+                    &items,
+                    None,
+                    Pos2::new(400.0, 300.0),
+                    1,
+                );
+            } else {
+                draw_action_menu_closing(context, viewport, metrics, &assets);
+            }
+        });
+        shapes.push(output.shapes.len());
+    }
+    assert!(shapes[10] > 0);
+    assert!(shapes[40] > 0);
+    assert_eq!(shapes[89], 0);
+}

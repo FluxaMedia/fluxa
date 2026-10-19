@@ -872,6 +872,13 @@ impl Gpu {
                     menu.anchor,
                     menu.serial,
                 );
+            } else {
+                fluxa_ui::draw_action_menu_closing(
+                    ui.ctx(),
+                    viewport,
+                    fluxa_ui::metrics_for_assets(viewport, &assets),
+                    &assets,
+                );
             }
             if let Some(ambient) = ambient {
                 fluxa_ui::draw_ambient(ui.ctx(), viewport, ambient, &mut assets);
