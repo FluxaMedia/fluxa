@@ -524,7 +524,7 @@ pub(crate) fn draw_home_with_options(
         };
         let synopsis_size = style.synopsis_size;
         let synopsis_width = style.synopsis_width();
-        let synopsis_color = ink(tone::TEXT);
+        let synopsis_color = ink(tone::text());
         let synopsis_galley = if !style.shows_synopsis || hero.description.is_empty() {
             None
         } else {

@@ -291,7 +291,7 @@ fn draw_page(
         let size = assets
             .texture_size(hero.background_url.as_deref())
             .unwrap_or([1920, 1080]);
-        clipped.image(texture, rect, cover_uv(size, rect), ink(tone::SUBTLE));
+        clipped.image(texture, rect, cover_uv(size, rect), ink(tone::subtle()));
     }
     if let Some(texture) = trailer
         .filter(|trailer| hero.item_id.as_deref() == Some(trailer.item_id.as_str()))
@@ -334,7 +334,7 @@ fn draw_page(
         let mut job = egui::text::LayoutJob::simple(
             hero.description.clone(),
             crate::fonts::regular(14.0 * scale),
-            ink(tone::TEXT),
+            ink(tone::text()),
             width,
         );
         job.wrap.max_rows = 3;

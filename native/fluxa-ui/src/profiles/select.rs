@@ -97,14 +97,14 @@ pub(super) fn draw_select(
                 avatar_center,
                 r,
                 ink(if response.hovered() { 26 } else { 10 }),
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
             );
             if let Some(icon) = assets.icon("Plus") {
                 ui.painter().image(
                     icon,
                     Rect::from_center_size(avatar_center, Vec2::splat(36.0)),
                     full_uv(),
-                    ink(tone::MUTED),
+                    ink(tone::muted()),
                 );
             }
             draw_text(
@@ -147,14 +147,14 @@ pub(super) fn draw_select(
                 badge,
                 17.0,
                 background().gamma_multiply(0.92),
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::raised())),
             );
             if let Some(icon) = assets.icon("Lock") {
                 ui.painter().image(
                     icon,
                     Rect::from_center_size(badge, Vec2::splat(16.0)),
                     full_uv(),
-                    ink(tone::BODY),
+                    ink(tone::body()),
                 );
             }
         }
@@ -183,7 +183,7 @@ pub(super) fn draw_select(
                 galley.size() + Vec2::new(14.0, 6.0),
             );
             ui.painter()
-                .rect_filled(badge, radius::chip(), ink(tone::SOFT));
+                .rect_filled(badge, radius::chip(), ink(tone::soft()));
             ui.painter()
                 .galley(badge.center() - galley.size() * 0.5, galley, text_primary());
             actions_y += 20.0;
@@ -206,7 +206,7 @@ pub(super) fn draw_select(
                 .on_hover_text(label);
             if action.hovered() {
                 ui.painter()
-                    .rect_filled(rect, radius::control(), ink(tone::SOFT));
+                    .rect_filled(rect, radius::control(), ink(tone::soft()));
             }
             let color = ink(if action.hovered() { 255 } else { alpha });
             if let Some(texture) = assets.icon(icon) {

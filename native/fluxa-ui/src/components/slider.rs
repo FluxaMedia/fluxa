@@ -65,7 +65,7 @@ pub(crate) fn slider(ui: &mut Ui, painter: &Painter, slider: Slider) -> SliderOu
                 Pos2::new(mark, bar.center().y - 5.0),
                 Pos2::new(mark, bar.center().y + 5.0),
             ],
-            egui::Stroke::new(stroke::ICON, ink(alpha / 2)),
+            egui::Stroke::new(stroke::icon(), ink(alpha / 2)),
         );
     }
     painter.circle_filled(

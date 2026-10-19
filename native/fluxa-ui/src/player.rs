@@ -717,7 +717,7 @@ impl Chrome<'_> {
                 self.painter,
                 track,
                 thickness,
-                ink(tone::DIM),
+                ink(tone::dim()),
                 track.width(),
             );
             return position;

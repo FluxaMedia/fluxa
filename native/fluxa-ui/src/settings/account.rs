@@ -65,7 +65,7 @@ pub(super) fn account_group(
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     card
@@ -89,7 +89,7 @@ pub(super) fn account_divider(painter: &egui::Painter, row: Rect, metrics: UiMet
     let y = row.top() - (metrics.settings_row_spacing - metrics.settings_row_height) * 0.5;
     painter.line_segment(
         [Pos2::new(row.left(), y), Pos2::new(row.right(), y)],
-        egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+        egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
     );
 }
 
@@ -301,7 +301,7 @@ fn source_row(
                 metrics.text_secondary,
                 None,
             );
-            let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
+            let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
             painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
             painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
         }
@@ -417,7 +417,7 @@ pub(super) fn draw_account(
             components::loading_circle(&painter, avatar.center(), 26.0);
         }
         None => {
-            painter.circle_filled(avatar.center(), 26.0, ink(tone::SOFT));
+            painter.circle_filled(avatar.center(), 26.0, ink(tone::soft()));
             let initials = name
                 .split_whitespace()
                 .take(2)
@@ -598,7 +598,7 @@ pub(super) fn draw_account(
                 );
             }
             if slot.is_some() {
-                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
+                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }

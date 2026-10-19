@@ -733,7 +733,7 @@ pub(super) fn draw_focus_ring(
             .rect_stroke(
                 rect.expand(3.0),
                 radius,
-                egui::Stroke::new(stroke::EMPHASIS, text_primary()),
+                egui::Stroke::new(stroke::emphasis(), text_primary()),
                 egui::StrokeKind::Outside,
             );
     }
@@ -796,7 +796,7 @@ pub(super) fn control_with_id(
             rect,
             rect.width() * 0.5,
             if prominent {
-                ink(tone::RAISED)
+                ink(tone::raised())
             } else {
                 shade(Shade::Faint)
             },
@@ -805,11 +805,11 @@ pub(super) fn control_with_id(
     let color = if response.hovered() {
         text_primary()
     } else {
-        ink(tone::TEXT)
+        ink(tone::text())
     };
     let c = rect.center();
     let s = (rect.width() / 48.0).max(1.0);
-    let stroke = egui::Stroke::new(stroke::EMPHASIS, color);
+    let stroke = egui::Stroke::new(stroke::emphasis(), color);
     match icon {
         "play" => {
             painter.add(egui::Shape::convex_polygon(
@@ -883,7 +883,7 @@ pub(super) fn control_with_id(
                 egui::Stroke::NONE,
             ));
             if icon == "mute" {
-                let thin = egui::Stroke::new(stroke::ICON, color);
+                let thin = egui::Stroke::new(stroke::icon(), color);
                 painter.line_segment(
                     [c + s * Vec2::new(5.0, -5.0), c + s * Vec2::new(11.0, 5.0)],
                     thin,
@@ -900,7 +900,7 @@ pub(super) fn control_with_id(
                             c + s * Vec2::new(angle.cos() * 10.0, angle.sin() * 10.0)
                         })
                         .collect(),
-                    egui::Stroke::new(stroke::ICON, color),
+                    egui::Stroke::new(stroke::icon(), color),
                 ));
             }
         }

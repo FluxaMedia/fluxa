@@ -117,7 +117,7 @@ pub(super) fn form_details(
                     RichText::new(t("profiles.primary_badge").to_uppercase())
                         .size(metrics.text.label)
                         .color(metrics.text_secondary)
-                        .background_color(ink(tone::SOFT)),
+                        .background_color(ink(tone::soft())),
                 );
             }
             if model.draft.avatar_url.is_some()
@@ -249,7 +249,7 @@ pub(super) fn form_images(
                     ui,
                     assets.icon("Refresh"),
                     24.0,
-                    ink(tone::SUBTLE),
+                    ink(tone::subtle()),
                     false,
                     false,
                     !model.busy,
@@ -316,7 +316,7 @@ pub(super) fn form_images(
                                 center,
                                 tile * 0.5 + 2.0,
                                 egui::Stroke::new(
-                                    stroke::EMPHASIS,
+                                    stroke::emphasis(),
                                     ink(if selected { 255 } else { 90 }),
                                 ),
                             );

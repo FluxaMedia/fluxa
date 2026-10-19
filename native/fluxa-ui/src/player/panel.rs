@@ -87,7 +87,7 @@ pub(super) fn draw_panel(
     veil.rect_stroke(
         card,
         tokens.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
+        egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = card.shrink(pad);
@@ -106,7 +106,7 @@ pub(super) fn draw_panel(
             Align2::LEFT_TOP,
             truncate_to_width(&veil, message, &FontId::proportional(text), inner.width()),
             FontId::proportional(text),
-            ink(tone::SUBTLE),
+            ink(tone::subtle()),
         );
         y += message_height;
     }
@@ -325,7 +325,7 @@ fn draw_list(
     veil.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
+        egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
     if sheet {
@@ -335,7 +335,7 @@ fn draw_list(
                 Vec2::new(36.0, 4.0),
             ),
             2.0,
-            ink(tone::STRONG),
+            ink(tone::strong()),
         );
     }
     let mut top = card.top() + pad + handle_h;
@@ -363,7 +363,7 @@ fn draw_list(
                 Align2::LEFT_CENTER,
                 label,
                 FontId::proportional(text * if sheet { 0.78 } else { 0.85 }),
-                ink(tone::MUTED),
+                ink(tone::muted()),
             );
         }
         let rows_top = top + head_h;
@@ -374,7 +374,7 @@ fn draw_list(
                     Pos2::new(x, top + 4.0),
                     Pos2::new(x, rows_top + visible as f32 * row_h),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, tokens.border),
+                egui::Stroke::new(stroke::hairline(), tokens.border),
             );
         }
         let state_id = Id::new(("fluxa-player-panel-offset", column));
@@ -440,7 +440,7 @@ fn draw_list(
                             row.label.clone()
                         },
                         FontId::proportional(text * 0.8),
-                        ink(tone::MUTED),
+                        ink(tone::muted()),
                     );
                 }
                 continue;
@@ -458,9 +458,9 @@ fn draw_list(
             let fill = if on {
                 text_primary()
             } else if row.selected {
-                ink(tone::SOFT)
+                ink(tone::soft())
             } else if response.hovered() {
-                ink(tone::FAINT)
+                ink(tone::faint())
             } else {
                 Color32::TRANSPARENT
             };
@@ -476,7 +476,7 @@ fn draw_list(
                     rect.min + Vec2::new(8.0, 8.0),
                     Vec2::new((row_h - 16.0) * 16.0 / 9.0, row_h - 16.0),
                 );
-                veil.rect_filled(art, radius::control(), crate::ink(tone::FAINT));
+                veil.rect_filled(art, radius::control(), crate::ink(tone::faint()));
                 if let Some(time) = row.frame {
                     let frame = chrome
                         .player
@@ -553,7 +553,7 @@ fn draw_list(
                     veil.circle_stroke(
                         hit.center(),
                         side * 0.5,
-                        egui::Stroke::new(stroke::HAIRLINE, Color32::from_white_alpha(60)),
+                        egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(60)),
                     );
                     if swatch.selected {
                         veil.circle_stroke(
@@ -606,7 +606,7 @@ fn draw_list(
                     let (fill, color) = if choice.selected {
                         (text_primary(), Color32::BLACK)
                     } else {
-                        (crate::ink(tone::FAINT), ink)
+                        (crate::ink(tone::faint()), ink)
                     };
                     veil.rect_filled(hit, 15.0, fill);
                     veil.text(
@@ -652,9 +652,9 @@ fn draw_list(
                         hit.center(),
                         button * 0.5,
                         crate::ink(if step.is_pointer_button_down_on() {
-                            tone::STRONG
+                            tone::strong()
                         } else {
-                            tone::SOFT
+                            tone::soft()
                         }),
                     );
                     veil.text(
@@ -699,7 +699,7 @@ fn draw_list(
                 veil.rect_stroke(
                     pill,
                     4.0,
-                    egui::Stroke::new(stroke::HAIRLINE, ink.gamma_multiply(0.5)),
+                    egui::Stroke::new(stroke::hairline(), ink.gamma_multiply(0.5)),
                     egui::StrokeKind::Inside,
                 );
                 veil.text(
@@ -896,7 +896,7 @@ fn draw_chips(
     veil.rect_stroke(
         card,
         radius,
-        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
+        egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
     veil.rect_filled(
@@ -905,7 +905,7 @@ fn draw_chips(
             Vec2::new(36.0, 4.0),
         ),
         2.0,
-        ink(tone::STRONG),
+        ink(tone::strong()),
     );
     let left = card.left() + pad;
     let mut top = card.top() + 12.0 + pad;
@@ -948,7 +948,7 @@ fn draw_chips(
         let (fill, ink_color) = if item.selected || on {
             (text_primary(), Color32::BLACK)
         } else {
-            (ink(tone::FAINT), ink(235))
+            (ink(tone::faint()), ink(235))
         };
         veil.rect_filled(rect, rect.height() * 0.5, fill);
         veil.text(

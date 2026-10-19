@@ -150,7 +150,7 @@ pub(super) fn draw_credits(
         if index > 0 {
             painter.line_segment(
                 [Pos2::new(left, y), Pos2::new(right, y)],
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
         let name_rect = Rect::from_min_size(Pos2::new(left, y + ROW_PADDING), name.size());

@@ -614,11 +614,11 @@ fn draw_line(
                 let color = if target.is_some() {
                     metrics.text_primary
                 } else {
-                    metrics.ink(tone::FAINT)
+                    metrics.ink(tone::faint())
                 };
                 let center = button.center();
                 let lift = if is_up { -3.0 } else { 3.0 };
-                let stroke = egui::Stroke::new(stroke::ICON, color);
+                let stroke = egui::Stroke::new(stroke::icon(), color);
                 painter.line_segment(
                     [
                         center + Vec2::new(-6.0, -lift),

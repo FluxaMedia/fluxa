@@ -275,7 +275,7 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
     painter.rect_stroke(
         rect,
         radius::control(),
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     let placed = tree.solve(rect);
@@ -290,7 +290,7 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
                 Align2::LEFT_CENTER,
             );
         } else {
-            painter.rect_filled(slot, radius::chip(), ink(tone::RAISED));
+            painter.rect_filled(slot, radius::chip(), ink(tone::raised()));
         }
     }
 }

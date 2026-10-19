@@ -116,6 +116,8 @@ pub struct UiMetrics {
     pub sheet_handle: Vec2,
     pub scrim_alpha: u8,
     pub shade: [u8; 5],
+    pub tone: [u8; 10],
+    pub stroke: [f32; 3],
     pub overlay_panel_alpha: u8,
     pub shadow_alpha: u8,
     pub shadow_blur: u8,
@@ -211,6 +213,7 @@ fn publish_palette(metrics: &UiMetrics) {
     ICON_BUTTON.store(metrics.icon_button_size.to_bits(), Ordering::Relaxed);
     crate::motion::set_curve(metrics.motion_curve);
     crate::style::set_shades(metrics.shade, metrics.overlay_panel_alpha);
+    crate::style::set_tones(metrics.tone, metrics.stroke);
     for (cell, value) in MOTION.iter().zip([
         metrics.motion_fast,
         metrics.motion_normal,
@@ -545,6 +548,12 @@ impl UiMetrics {
                 common_dp("sheetHandleHeight", 4.0),
             ),
             scrim_alpha: common_dp("scrimAlpha", 180.0) as u8,
+            tone: [common_dp("toneFaint", 10.0) as u8, common_dp("toneSoft", 20.0) as u8, common_dp("toneRaised", 30.0) as u8, common_dp("toneStrong", 50.0) as u8, common_dp("toneDim", 90.0) as u8, common_dp("toneMuted", 130.0) as u8, common_dp("toneSubtle", 170.0) as u8, common_dp("toneBody", 210.0) as u8, common_dp("toneText", 235.0) as u8, common_dp("toneFull", 255.0) as u8],
+            stroke: [
+                common_dp("strokeHairline", 1.0),
+                common_dp("strokeIcon", 1.6),
+                common_dp("strokeEmphasis", 2.0),
+            ],
             shade: [
                 common_dp("shadeFaint", 90.0) as u8,
                 common_dp("shadeVeil", 150.0) as u8,

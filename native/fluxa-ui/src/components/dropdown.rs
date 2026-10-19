@@ -143,7 +143,7 @@ fn dropdown_inner(
 
 fn paint_chevron(painter: &Painter, center: Pos2, open: f32, color: Color32) {
     let flip = 1.0 - 2.0 * open;
-    let stroke = egui::Stroke::new(stroke::ICON, color);
+    let stroke = egui::Stroke::new(stroke::icon(), color);
     let tip = center + Vec2::new(0.0, 2.5 * flip);
     painter.line_segment([center + Vec2::new(-4.5, -2.0 * flip), tip], stroke);
     painter.line_segment([tip, center + Vec2::new(4.5, -2.0 * flip)], stroke);
@@ -173,27 +173,27 @@ pub(crate) fn choice_field(
     let turn = crate::motion::toggle(ui.ctx(), id.with("chevron"), open, crate::motion::fast());
     let radius = (rect.height() * 0.5).min(12.0);
     let fill = if !enabled {
-        metrics.ink(tone::FAINT)
+        metrics.ink(tone::faint())
     } else if open {
-        metrics.ink(tone::SOFT)
+        metrics.ink(tone::soft())
     } else if response.hovered() {
-        metrics.ink(tone::SOFT)
+        metrics.ink(tone::soft())
     } else {
-        metrics.ink(tone::FAINT)
+        metrics.ink(tone::faint())
     };
     let painter = ui.painter();
     painter.rect(
         rect,
         radius,
         fill,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.ink(if open { 70 } else { 26 })),
+        egui::Stroke::new(stroke::hairline(), metrics.ink(if open { 70 } else { 26 })),
         egui::StrokeKind::Inside,
     );
     let font = FontId::proportional(text_size);
     let text_color = if enabled {
         metrics.text_primary
     } else {
-        metrics.ink(tone::MUTED)
+        metrics.ink(tone::muted())
     };
     draw_text(
         painter,
@@ -231,7 +231,7 @@ pub(crate) fn choice_field(
                 } else {
                     metrics.surface_raised
                 })
-                .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
+                .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
                 .corner_radius(metrics.dialog_radius)
                 .inner_margin(egui::Margin::same(5))
                 .shadow(egui::epaint::Shadow {
@@ -275,13 +275,13 @@ pub(crate) fn choice_field(
                             if active {
                                 metrics.text_primary
                             } else {
-                                metrics.ink(tone::BODY)
+                                metrics.ink(tone::body())
                             },
                             None,
                         );
                         if active {
                             let c = row.right_center() - Vec2::new(18.0, 0.0);
-                            let stroke = egui::Stroke::new(stroke::ICON, metrics.text_primary);
+                            let stroke = egui::Stroke::new(stroke::icon(), metrics.text_primary);
                             ui.painter().line_segment(
                                 [c + Vec2::new(-5.0, 0.0), c + Vec2::new(-1.5, 3.5)],
                                 stroke,

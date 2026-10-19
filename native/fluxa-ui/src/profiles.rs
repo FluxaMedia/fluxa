@@ -96,7 +96,7 @@ pub fn draw_profiles(
             .show(context, |ui| {
                 egui::Frame::NONE
                     .fill(metrics.surface_raised)
-                    .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
+                    .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
                     .corner_radius(radius::control())
                     .inner_margin(egui::Margin::symmetric(16, 12))
                     .show(ui, |ui| {
@@ -114,7 +114,7 @@ pub fn draw_profiles(
                                 ui,
                                 assets.icon("Close"),
                                 22.0,
-                                ink(tone::SUBTLE),
+                                ink(tone::subtle()),
                                 false,
                                 false,
                                 true,

@@ -85,7 +85,7 @@ pub(crate) fn watch_ticket(
     painter.rect_stroke(
         rect,
         RADIUS,
-        egui::Stroke::new(stroke::HAIRLINE, Color32::from_white_alpha(28)),
+        egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(28)),
         egui::StrokeKind::Inside,
     );
     for x in [rect.left(), rect.right()] {

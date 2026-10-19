@@ -357,7 +357,7 @@ pub(super) fn paint(
             Pos2::new(corner.x, corner.y + (mark - size * 1.6) * 0.5),
             Vec2::new(galley.size().x + size * 0.7, size * 1.6),
         );
-        components::overlay_chip(&painter, badge, Some(ink(tone::SUBTLE)));
+        components::overlay_chip(&painter, badge, Some(ink(tone::subtle())));
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         corner.x += badge.width() + 3.0;
     }
@@ -525,7 +525,7 @@ pub(super) fn paint(
             ),
         };
         let badge = anchor.anchor_size(Pos2::new(x, y), size);
-        components::overlay_chip(&painter, badge, Some(ink(tone::RAISED)));
+        components::overlay_chip(&painter, badge, Some(ink(tone::raised())));
         let height = galley.size().y;
         draw_logo(
             &painter,
@@ -553,7 +553,7 @@ fn quality_badges(painter: &Painter, right: f32, mut y: f32, size: f32, quality:
             Pos2::new(right - galley.size().x - size * 0.8, y),
             Vec2::new(galley.size().x + size * 0.8, size * 1.5),
         );
-        components::overlay_chip(&painter, badge, Some(ink(tone::STRONG)));
+        components::overlay_chip(&painter, badge, Some(ink(tone::strong())));
         painter.galley(badge.center() - galley.size() * 0.5, galley, text_primary());
         y += badge.height() + 3.0;
     }

@@ -362,7 +362,7 @@ pub fn draw_library(
     painter.hline(
         page.margin..=page.margin + page.width,
         page.content_top - metrics.section_gap * 0.75,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
     );
 
     let grid = PosterGrid::new(page.width, metrics);

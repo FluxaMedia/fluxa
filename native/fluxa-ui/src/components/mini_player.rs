@@ -14,7 +14,7 @@ pub(crate) fn mini_player(
     layout: &mut HomeLayout,
     expand: u64,
 ) -> Response {
-    painter.rect_filled(tile.expand(1.0), crate::style::radius::control(), crate::ink(crate::style::tone::RAISED));
+    painter.rect_filled(tile.expand(1.0), crate::style::radius::control(), crate::ink(crate::style::tone::raised()));
     match player.video {
         Some(texture) => rounded_image(painter, texture, tile, 7.0, crate::paint::full_uv(), Color32::WHITE),
         None => {

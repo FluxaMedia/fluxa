@@ -53,7 +53,7 @@ pub(crate) fn surface_frame(
 ) -> egui::Frame {
     let frame = egui::Frame::NONE
         .fill(metrics.surface_raised)
-        .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
+        .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
         .corner_radius(corners(radius.corner(metrics), edge));
     match cast {
         Some(cast) => frame.shadow(shadow(metrics, cast)),

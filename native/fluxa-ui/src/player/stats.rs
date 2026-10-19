@@ -36,7 +36,7 @@ pub(super) fn draw_stats(chrome: &Chrome) {
     chrome.painter.rect_stroke(
         panel,
         tokens.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
+        egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.stats_pad);
@@ -80,7 +80,7 @@ pub(super) fn draw_stats(chrome: &Chrome) {
                     let font = FontId::proportional(metrics.stats_text);
                     let to_width = chrome
                         .painter
-                        .layout_no_wrap(to.to_owned(), font.clone(), ink(tone::TEXT))
+                        .layout_no_wrap(to.to_owned(), font.clone(), ink(tone::text()))
                         .size()
                         .x
                         .min(max * 0.5);
@@ -101,7 +101,7 @@ pub(super) fn draw_stats(chrome: &Chrome) {
                                 Vec2::splat(arrow),
                             ),
                             Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0)),
-                            ink(tone::TEXT),
+                            ink(tone::text()),
                         );
                     }
                     chrome.text(

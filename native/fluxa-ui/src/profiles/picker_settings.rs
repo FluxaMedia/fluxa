@@ -75,7 +75,7 @@ pub(super) fn draw_picker_settings(
                     ui,
                     assets.icon("ImagePlus"),
                     metrics.icon_button_size,
-                    ink(tone::BODY),
+                    ink(tone::body()),
                     true,
                     false,
                     true,
@@ -90,7 +90,7 @@ pub(super) fn draw_picker_settings(
                         ui,
                         assets.icon("Delete"),
                         metrics.icon_button_size,
-                        ink(tone::BODY),
+                        ink(tone::body()),
                         true,
                         false,
                         true,
@@ -169,7 +169,7 @@ pub(super) fn draw_picker_settings(
                     if compact {
                         Color32::TRANSPARENT
                     } else {
-                        ink(tone::FAINT)
+                        ink(tone::faint())
                     },
                     10.0,
                     egui::Margin::symmetric(14, 12),
@@ -254,7 +254,7 @@ pub(super) fn draw_picker_settings(
                                         ui,
                                         assets.icon("Refresh"),
                                         32.0,
-                                        ink(tone::SUBTLE),
+                                        ink(tone::subtle()),
                                         false,
                                         false,
                                         !model.busy,

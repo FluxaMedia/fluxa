@@ -215,7 +215,7 @@ fn draw_page_cards(
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     let title_size = if viewport.is_tv() {
@@ -236,7 +236,7 @@ fn draw_page_cards(
                     Pos2::new(row.left() + 20.0, row.top()),
                     Pos2::new(row.right(), row.top()),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
         let title = section_label(SETTINGS_SECTIONS[page].title, language);
@@ -250,7 +250,7 @@ fn draw_page_cards(
                 let (rect, response) = ui.allocate_exact_size(row.size(), Sense::click());
                 if response.hovered() || response.is_pointer_button_down_on() {
                     ui.painter()
-                        .rect_filled(rect, metrics.card_radius, ink(tone::FAINT));
+                        .rect_filled(rect, metrics.card_radius, ink(tone::faint()));
                 }
                 let text_width = (rect.width() - 72.0).max(1.0);
                 let title_font = crate::fonts::regular(title_size);
@@ -275,7 +275,7 @@ fn draw_page_cards(
                     Some(text_width),
                 );
                 let tip = rect.right_center() - Vec2::new(22.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
+                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
@@ -656,7 +656,7 @@ fn settings_panel_line(
         painter.rect_stroke(
             chip,
             metrics.screen_control_radius,
-            egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+            egui::Stroke::new(stroke::hairline(), metrics.border),
             egui::StrokeKind::Inside,
         );
         draw_text(
@@ -673,7 +673,7 @@ fn settings_panel_line(
                 Pos2::new(row_left, y + metrics.settings_extended_line_spacing - 1.0),
                 Pos2::new(row_right, y + metrics.settings_extended_line_spacing - 1.0),
             ],
-            egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+            egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
         );
     } else {
         draw_text(
@@ -1157,7 +1157,7 @@ fn draw_field_group(
                     Pos2::new(area.left() + metrics.settings_row_inset, area.top()),
                     Pos2::new(area.right() - metrics.settings_row_inset, area.top()),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
         draw_field(context, settings, index, area, metrics, compact, layout);
@@ -1974,7 +1974,7 @@ fn draw_compact_settings_list(
         painter.rect_stroke(
             card,
             metrics.card_radius,
-            egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+            egui::Stroke::new(stroke::hairline(), metrics.border),
             egui::StrokeKind::Inside,
         );
     };
@@ -1997,7 +1997,7 @@ fn draw_compact_settings_list(
                     Pos2::new(rect.left() + COMPACT_TEXT_LEFT, rect.top()),
                     Pos2::new(rect.right() - 16.0, rect.top()),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
         let mut clicked = false;
@@ -2009,7 +2009,7 @@ fn draw_compact_settings_list(
                 let (row, response) = ui.allocate_exact_size(rect.size(), Sense::click());
                 if response.is_pointer_button_down_on() {
                     ui.painter()
-                        .rect_filled(row, metrics.card_radius, ink(tone::FAINT));
+                        .rect_filled(row, metrics.card_radius, ink(tone::faint()));
                 }
                 let tile = Rect::from_center_size(
                     row.left_center() + Vec2::new(16.0 + COMPACT_ICON_TILE * 0.5, 0.0),
@@ -2041,7 +2041,7 @@ fn draw_compact_settings_list(
                     Some(text_width),
                 );
                 let tip = row.right_center() - Vec2::new(20.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
+                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
                 ui.painter()
                     .line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 ui.painter()
@@ -2321,14 +2321,14 @@ fn draw_settings_page(
             painter.rect_filled(nav_panel, 0.0, surface_color());
             painter.line_segment(
                 [nav_panel.right_top(), nav_panel.right_bottom()],
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
             );
         } else {
             painter.rect_filled(nav_panel, metrics.card_radius, metrics.surface);
             painter.rect_stroke(
                 nav_panel,
                 metrics.card_radius,
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
                 egui::StrokeKind::Inside,
             );
         }
@@ -2377,7 +2377,7 @@ fn draw_settings_page(
                         ui.painter().rect_filled(
                             item_rect,
                             metrics.screen_control_radius,
-                            ink(tone::FAINT),
+                            ink(tone::faint()),
                         );
                         ui.painter().rect_filled(
                             Rect::from_min_max(
@@ -2396,7 +2396,7 @@ fn draw_settings_page(
                         if active {
                             text_primary()
                         } else {
-                            ink(tone::SUBTLE)
+                            ink(tone::subtle())
                         },
                     );
                     draw_text(
@@ -2408,7 +2408,7 @@ fn draw_settings_page(
                         if active {
                             text_primary()
                         } else {
-                            ink(tone::SUBTLE)
+                            ink(tone::subtle())
                         },
                         None,
                     );
@@ -2484,7 +2484,7 @@ fn draw_settings_page(
         painter.rect_stroke(
             *card,
             metrics.card_radius,
-            egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+            egui::Stroke::new(stroke::hairline(), metrics.border),
             egui::StrokeKind::Inside,
         );
     }
@@ -2587,7 +2587,7 @@ fn draw_settings_page(
                     Pos2::new(row_rect.left(), y),
                     Pos2::new(row_rect.right(), y),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
         let is_toggle = setting.options.is_empty();
@@ -2748,7 +2748,7 @@ fn draw_settings_page(
                 ),
                 subtitle_font,
                 if value_below || is_app_icon || is_swatches {
-                    ink(tone::SUBTLE)
+                    ink(tone::subtle())
                 } else {
                     ink(if compact { 100 } else { 120 })
                 },
@@ -2788,7 +2788,7 @@ fn draw_settings_page(
                                 ui.allocate_exact_size(Vec2::splat(size), Sense::click());
                             let glass = *option == "glass";
                             let color = if glass {
-                                ink(tone::DIM)
+                                ink(tone::dim())
                             } else {
                                 Color32::from_hex(option).unwrap_or(text_primary())
                             };
@@ -2810,25 +2810,25 @@ fn draw_settings_page(
                                 ui.painter().circle_stroke(
                                     center,
                                     radius,
-                                    egui::Stroke::new(stroke::ICON, ink(tone::BODY)),
+                                    egui::Stroke::new(stroke::icon(), ink(tone::body())),
                                 );
                                 ui.painter().circle_filled(
                                     center - Vec2::splat(radius * 0.38),
                                     radius * 0.26,
-                                    ink(tone::SUBTLE),
+                                    ink(tone::subtle()),
                                 );
                             }
                             if active {
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(stroke::EMPHASIS, text_primary()),
+                                    egui::Stroke::new(stroke::emphasis(), text_primary()),
                                 );
                             } else if response.hovered() {
                                 ui.painter().circle_stroke(
                                     center,
                                     size * 0.5,
-                                    egui::Stroke::new(stroke::HAIRLINE, ink(tone::DIM)),
+                                    egui::Stroke::new(stroke::hairline(), ink(tone::dim())),
                                 );
                             }
                             let name = match *option {
@@ -2859,7 +2859,7 @@ fn draw_settings_page(
         } else if sheet_row {
             if !value_below && !is_app_icon {
                 let tip = row_rect.right_center() - Vec2::new(6.0, 0.0);
-                let stroke = egui::Stroke::new(stroke::ICON, ink(tone::MUTED));
+                let stroke = egui::Stroke::new(stroke::icon(), ink(tone::muted()));
                 painter.line_segment([tip + Vec2::new(-5.0, -6.0), tip], stroke);
                 painter.line_segment([tip + Vec2::new(-5.0, 6.0), tip], stroke);
             }

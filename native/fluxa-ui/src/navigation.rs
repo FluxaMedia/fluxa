@@ -99,7 +99,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                 } else {
                     fill
                 })
-                .stroke(egui::Stroke::new(stroke::HAIRLINE, metrics.border))
+                .stroke(egui::Stroke::new(stroke::hairline(), metrics.border))
                 .corner_radius(NAV_ITEM_HEIGHT * 0.5 + NAV_BAR_PADDING)
                 .inner_margin(egui::Margin::same(NAV_BAR_PADDING as i8))
                 .show(ui, |ui| {
@@ -118,7 +118,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             );
                             slots[position] = rect;
                             let fill = if response.hovered() && !active {
-                                ink(tone::FAINT)
+                                ink(tone::faint())
                             } else {
                                 Color32::TRANSPARENT
                             };
@@ -126,7 +126,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             let color = if active || response.hovered() {
                                 text_primary()
                             } else {
-                                ink(tone::SUBTLE)
+                                ink(tone::subtle())
                             };
                             let galley =
                                 ui.painter()
@@ -165,7 +165,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                         let profile_active = active_route == 4;
                         if !profile_active && response.hovered() {
                             ui.painter()
-                                .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::FAINT));
+                                .rect_filled(rect, NAV_ITEM_HEIGHT * 0.5, ink(tone::faint()));
                         }
                         let target = slots[nav_slot(active_route)];
                         let x = crate::motion::ease(
@@ -191,7 +191,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                                     Vec2::new(width + stretch, NAV_ITEM_HEIGHT),
                                 ),
                                 NAV_ITEM_HEIGHT * 0.5,
-                                ink(tone::SOFT),
+                                ink(tone::soft()),
                             ),
                         );
                         let center = rect.left_center() + Vec2::new(8.0 + NAV_AVATAR_RADIUS, 0.0);
@@ -201,14 +201,14 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             ui.painter().circle_filled(
                                 center,
                                 NAV_AVATAR_RADIUS,
-                                ink(tone::RAISED),
+                                ink(tone::raised()),
                             );
                             if let Some(icon) = assets.icon("Account") {
                                 ui.painter().image(
                                     icon,
                                     Rect::from_center_size(center, Vec2::splat(16.0)),
                                     full_uv(),
-                                    ink(tone::BODY),
+                                    ink(tone::body()),
                                 );
                             }
                         }
@@ -227,7 +227,7 @@ pub(crate) fn draw_navigation_bar_with_profile(
                             if profile_active || response.hovered() {
                                 text_primary()
                             } else {
-                                ink(tone::BODY)
+                                ink(tone::body())
                             },
                             None,
                         );
@@ -347,7 +347,7 @@ fn nav_accent(assets: &impl HomeAssets) -> (Color32, Color32) {
             let [r, g, b, _] = accent.to_array();
             (accent, Color32::from_rgba_unmultiplied(r, g, b, 46))
         }
-        _ => (text_primary(), ink(tone::SOFT)),
+        _ => (text_primary(), ink(tone::soft())),
     }
 }
 
@@ -464,7 +464,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                 painter.rect_stroke(
                     bar,
                     bar.height() * 0.5,
-                    egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                    egui::Stroke::new(stroke::hairline(), metrics.border),
                     egui::StrokeKind::Inside,
                 );
             } else {
@@ -522,7 +522,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                     let active = index == highlighted;
                     let (rect, response) =
                         ui.allocate_exact_size(Vec2::new(slot_width, bar.height()), Sense::click());
-                    let color = if active { accent } else { ink(tone::MUTED) };
+                    let color = if active { accent } else { ink(tone::muted()) };
                     let center = if labels {
                         rect.center() - Vec2::new(0.0, 9.0)
                     } else {
@@ -537,7 +537,7 @@ pub(crate) fn draw_mobile_navigation_bar(
                             ui.painter().circle_stroke(
                                 center,
                                 15.0,
-                                egui::Stroke::new(stroke::ICON, accent),
+                                egui::Stroke::new(stroke::icon(), accent),
                             );
                         }
                     } else if let Some(icon) = assets.icon(icon) {

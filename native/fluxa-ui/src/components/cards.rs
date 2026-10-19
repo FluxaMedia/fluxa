@@ -219,7 +219,7 @@ pub(crate) fn hover_preview_rect(
     let rows = (((screen.height() - margin * 2.0 - fixed) / line).floor() as usize).max(1);
     let mut job = egui::text::LayoutJob::single_section(
         synopsis.to_owned(),
-        egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(tone::SUBTLE)),
+        egui::TextFormat::simple(crate::fonts::regular(body), metrics.ink(tone::subtle())),
     );
     job.wrap.max_width = width - PREVIEW_PAD * 2.0;
     job.wrap.max_rows = rows;
@@ -339,7 +339,7 @@ pub(crate) fn hover_preview(
             painter.rect_stroke(
                 rect,
                 radius,
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
                 egui::StrokeKind::Inside,
             );
 
@@ -385,7 +385,7 @@ pub(crate) fn hover_preview(
                     &meta_line,
                     crate::fonts::regular(body_size),
                     text_width,
-                    metrics.ink(tone::BODY),
+                    metrics.ink(tone::body()),
                 );
             }
             y += body_size + 12.0;
@@ -452,7 +452,7 @@ pub(crate) fn library_row(
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     let inset = metrics.control_gap;
@@ -482,14 +482,14 @@ pub(crate) fn library_row(
         &card.subtitle,
         crate::fonts::regular(metrics.screen_card_subtitle_size),
         text_width,
-        metrics.ink(tone::SUBTLE),
+        metrics.ink(tone::subtle()),
     );
     if card.progress > 0.0 {
         let bar = Rect::from_min_size(
             egui::Pos2::new(text_x, thumb.bottom() - metrics.card_progress_height),
             Vec2::new(text_width.min(220.0), metrics.card_progress_height),
         );
-        painter.rect_filled(bar, radius::BAR, metrics.ink(tone::RAISED));
+        painter.rect_filled(bar, radius::BAR, metrics.ink(tone::raised()));
         painter.rect_filled(
             Rect::from_min_size(
                 bar.min,
@@ -526,7 +526,7 @@ fn poster_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        ink(tone::TEXT),
+        ink(tone::text()),
         assets,
     );
     let has_static_artwork = match crate::poster_overlay::custom_url(painter.ctx(), card) {
@@ -540,7 +540,7 @@ fn poster_card_body(
                     painter.ctx().pixels_per_point(),
                 ),
                 ArtworkPriority::Visible,
-                ink(tone::TEXT),
+                ink(tone::text()),
                 assets,
             ) || has_static_artwork
         }
@@ -609,7 +609,7 @@ fn poster_card_body(
         &card.subtitle,
         subtitle_font,
         rect.width(),
-        metrics.ink(tone::SUBTLE),
+        metrics.ink(tone::subtle()),
     );
 }
 
@@ -700,7 +700,7 @@ fn continue_card_body(
             painter.ctx().pixels_per_point(),
         ),
         ArtworkPriority::Visible,
-        ink(tone::TEXT),
+        ink(tone::text()),
         assets,
     );
 
@@ -754,7 +754,7 @@ fn continue_card_body(
             Align2::LEFT_TOP,
             &card.subtitle,
             subtitle_font.clone(),
-            metrics.ink(tone::BODY),
+            metrics.ink(tone::body()),
             Some(content_width),
         );
     }
@@ -787,7 +787,7 @@ fn continue_card_body(
             Vec2::new(content_width, metrics.card_progress_height),
         ),
         2.0,
-        metrics.ink(tone::STRONG),
+        metrics.ink(tone::strong()),
     );
     painter.rect_filled(
         Rect::from_min_size(

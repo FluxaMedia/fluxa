@@ -26,9 +26,9 @@ pub enum SkipKind {
 impl SkipKind {
     fn tint(self) -> Color32 {
         match self {
-            SkipKind::Intro => ink(tone::BODY),
-            SkipKind::Recap => ink(tone::SUBTLE),
-            SkipKind::Outro => ink(tone::DIM),
+            SkipKind::Intro => ink(tone::body()),
+            SkipKind::Recap => ink(tone::subtle()),
+            SkipKind::Outro => ink(tone::dim()),
         }
     }
 
@@ -79,7 +79,7 @@ pub(super) fn segmented_track(
             0.0
         };
         let width = (right - left - trailing).max(1.0);
-        painter_bar_at(painter, track, left, width, thickness, ink(tone::DIM));
+        painter_bar_at(painter, track, left, width, thickness, ink(tone::dim()));
         let ahead = (buffered - left + track.left()).clamp(0.0, width);
         if ahead > 0.0 {
             painter_bar_at(
@@ -226,7 +226,7 @@ pub(super) fn draw_next_episode_card(
     chrome.painter.rect_stroke(
         panel,
         tokens.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, tokens.border),
+        egui::Stroke::new(stroke::hairline(), tokens.border),
         egui::StrokeKind::Inside,
     );
     let inner = panel.shrink(metrics.pad);

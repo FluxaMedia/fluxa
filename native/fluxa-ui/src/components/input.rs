@@ -151,7 +151,7 @@ fn paint_caret(ui: &Ui, field: Rect, text_rect: Rect, text: &str, font: FontId) 
             egui::Pos2::new(x, text_rect.center().y - half),
             egui::Pos2::new(x, text_rect.center().y + half),
         ],
-        egui::Stroke::new(stroke::ICON, text_primary()),
+        egui::Stroke::new(stroke::icon(), text_primary()),
     );
 }
 
@@ -212,17 +212,17 @@ pub(crate) fn search_field(
     let radius = height * 0.5;
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     ui.painter()
-        .rect_filled(rect, radius, metrics.ink(tone::FAINT));
-    let icon_color = metrics.ink(tone::MUTED);
+        .rect_filled(rect, radius, metrics.ink(tone::faint()));
+    let icon_color = metrics.ink(tone::muted());
     let icon = egui::Pos2::new(rect.left() + radius, rect.center().y);
     ui.painter().circle_stroke(
         icon - Vec2::splat(1.5),
         6.0,
-        egui::Stroke::new(stroke::ICON, icon_color),
+        egui::Stroke::new(stroke::icon(), icon_color),
     );
     ui.painter().line_segment(
         [icon + Vec2::splat(3.0), icon + Vec2::splat(7.0)],
-        egui::Stroke::new(stroke::ICON, icon_color),
+        egui::Stroke::new(stroke::icon(), icon_color),
     );
     let text_rect = Rect::from_center_size(
         egui::Pos2::new(
@@ -269,9 +269,9 @@ pub(crate) fn search_field(
         );
     }
     let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::HAIRLINE, crate::accent())
+        egui::Stroke::new(stroke::hairline(), crate::accent())
     } else {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
+        egui::Stroke::new(stroke::hairline(), metrics.border)
     };
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);
@@ -417,7 +417,7 @@ pub(crate) fn message_input(
     let border = if response.has_focus() {
         egui::Stroke::new(1.5, crate::accent())
     } else {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
+        egui::Stroke::new(stroke::hairline(), metrics.border)
     };
     let painter = ui.painter();
     painter.rect_stroke(rect, height * 0.5, border, egui::StrokeKind::Inside);
@@ -502,7 +502,7 @@ pub(crate) fn code_input(
     let border = if focused {
         egui::Stroke::new(1.5, crate::accent())
     } else {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
+        egui::Stroke::new(stroke::hairline(), metrics.border)
     };
     painter.rect_stroke(rect, radius, border, egui::StrokeKind::Inside);
 
@@ -635,9 +635,9 @@ fn text_edit(
         );
     }
     let stroke = if response.has_focus() {
-        egui::Stroke::new(stroke::HAIRLINE, crate::accent())
+        egui::Stroke::new(stroke::hairline(), crate::accent())
     } else {
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border)
+        egui::Stroke::new(stroke::hairline(), metrics.border)
     };
     ui.painter()
         .rect_stroke(rect, radius, stroke, egui::StrokeKind::Inside);

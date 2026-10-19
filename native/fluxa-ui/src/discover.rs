@@ -377,7 +377,7 @@ pub fn draw_discover(
     painter.hline(
         margin..=margin + page.width,
         page.content_top - metrics.section_gap * 0.75,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
     );
     let results_clip = Rect::from_min_max(
         Pos2::new(margin, results_view_top),

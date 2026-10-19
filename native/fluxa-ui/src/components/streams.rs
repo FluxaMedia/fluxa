@@ -47,28 +47,28 @@ pub(crate) fn paint_badge_chip(
 ) {
     let rounding = chip.height() * 0.5;
     let text = if badge.outline {
-        let color = badge.border.or(badge.fill).unwrap_or(ink(tone::DIM));
+        let color = badge.border.or(badge.fill).unwrap_or(ink(tone::dim()));
         painter.rect_stroke(
             chip,
             rounding,
-            egui::Stroke::new(stroke::HAIRLINE, color),
+            egui::Stroke::new(stroke::hairline(), color),
             egui::StrokeKind::Inside,
         );
         badge.text.or(badge.fill).unwrap_or(text_primary())
     } else {
-        let fill = badge.fill.unwrap_or(ink(tone::SOFT));
+        let fill = badge.fill.unwrap_or(ink(tone::soft()));
         painter.rect_filled(chip, rounding, fill);
         if let Some(border) = badge.border {
             painter.rect_stroke(
                 chip,
                 rounding,
-                egui::Stroke::new(stroke::HAIRLINE, border),
+                egui::Stroke::new(stroke::hairline(), border),
                 egui::StrokeKind::Inside,
             );
         }
         badge.text.unwrap_or(match badge.fill {
             Some(fill) => readable_on(fill),
-            None => ink(tone::TEXT),
+            None => ink(tone::text()),
         })
     };
     let mut left = chip.left() + (chip.width() - galley.size().x) * 0.5;
@@ -193,7 +193,7 @@ pub(crate) fn stream_row(
     painter.rect_stroke(
         rect,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     let mut origin = rect.min + Vec2::splat(STREAM_ROW_PAD);

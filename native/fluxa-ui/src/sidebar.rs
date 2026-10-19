@@ -275,7 +275,7 @@ pub(crate) fn draw_sidebar(
             }
             ui.painter().line_segment(
                 [panel.right_top(), panel.right_bottom()],
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
             );
             ui.interact(panel, Id::new("fluxa-side-bar-panel"), Sense::click());
 
@@ -295,7 +295,7 @@ pub(crate) fn draw_sidebar(
                 let rect =
                     Rect::from_center_size(Pos2::new(slot.rect.center().x, y), slot.rect.size());
                 ui.painter()
-                    .add(glass_shape(rect, rect.height() * 0.5, ink(tone::SOFT)));
+                    .add(glass_shape(rect, rect.height() * 0.5, ink(tone::soft())));
                 let bar = Rect::from_center_size(
                     Pos2::new(origin + 2.0, y),
                     Vec2::new(4.0, rect.height() * 0.5),
@@ -370,12 +370,12 @@ pub(crate) fn draw_sidebar(
                     }
                     Kind::Search => {
                         let fill = if hover {
-                            ink(tone::SOFT)
+                            ink(tone::soft())
                         } else {
-                            ink(tone::FAINT)
+                            ink(tone::faint())
                         };
                         ui.painter().rect_filled(rect, radius, fill);
-                        icon_at(ui, assets, "Search", center, icon_size, ink(tone::SUBTLE));
+                        icon_at(ui, assets, "Search", center, icon_size, ink(tone::subtle()));
                         if label_alpha > 0.02 {
                             draw_text(
                                 ui.painter(),
@@ -388,7 +388,7 @@ pub(crate) fn draw_sidebar(
                                     rect.right() - 12.0 - label_left,
                                 ),
                                 font.clone(),
-                                ink(tone::MUTED).gamma_multiply(label_alpha),
+                                ink(tone::muted()).gamma_multiply(label_alpha),
                                 None,
                             );
                         }
@@ -401,7 +401,7 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_BOTTOM,
                                 text.clone(),
                                 small.clone(),
-                                ink(tone::MUTED).gamma_multiply(label_alpha),
+                                ink(tone::muted()).gamma_multiply(label_alpha),
                                 None,
                             );
                         }
@@ -413,8 +413,8 @@ pub(crate) fn draw_sidebar(
                                     Pos2::new(icon_x + 10.0, rect.bottom() - 8.0),
                                 ],
                                 egui::Stroke::new(
-                                    stroke::HAIRLINE,
-                                    ink(tone::FAINT).gamma_multiply(rule),
+                                    stroke::hairline(),
+                                    ink(tone::faint()).gamma_multiply(rule),
                                 ),
                             );
                         }
@@ -422,12 +422,12 @@ pub(crate) fn draw_sidebar(
                     Kind::Link { icon, label, route } => {
                         let is_active = *route == active_route;
                         if hover && !is_active {
-                            ui.painter().rect_filled(rect, radius, ink(tone::FAINT));
+                            ui.painter().rect_filled(rect, radius, ink(tone::faint()));
                         }
                         let color = if is_active || hover {
                             text_primary()
                         } else {
-                            ink(tone::SUBTLE)
+                            ink(tone::subtle())
                         };
                         icon_at(ui, assets, icon, center, icon_size, color);
                         if label_alpha > 0.02 {
@@ -449,9 +449,9 @@ pub(crate) fn draw_sidebar(
                     }
                     Kind::Profile => {
                         let card = if active_route == ROUTE_SETTINGS {
-                            ink(tone::SOFT)
+                            ink(tone::soft())
                         } else if hover {
-                            ink(tone::FAINT)
+                            ink(tone::faint())
                         } else {
                             Color32::TRANSPARENT
                         };
@@ -462,9 +462,9 @@ pub(crate) fn draw_sidebar(
                             ui.painter().circle_filled(
                                 center,
                                 NAV_AVATAR_RADIUS,
-                                ink(tone::RAISED),
+                                ink(tone::raised()),
                             );
-                            icon_at(ui, assets, "Account", center, 16.0, ink(tone::BODY));
+                            icon_at(ui, assets, "Account", center, 16.0, ink(tone::body()));
                         }
                         if label_alpha > 0.02 {
                             let text_width = rect.right() - 40.0 - label_left;
@@ -483,7 +483,7 @@ pub(crate) fn draw_sidebar(
                                 Align2::LEFT_CENTER,
                                 nav_text("nav.settings"),
                                 small.clone(),
-                                ink(tone::MUTED).gamma_multiply(label_alpha),
+                                ink(tone::muted()).gamma_multiply(label_alpha),
                                 None,
                             );
                             icon_at(
@@ -492,7 +492,7 @@ pub(crate) fn draw_sidebar(
                                 "ChevronRight",
                                 Pos2::new(rect.right() - 20.0, rect.center().y),
                                 16.0,
-                                ink(tone::MUTED).gamma_multiply(label_alpha),
+                                ink(tone::muted()).gamma_multiply(label_alpha),
                             );
                         }
                     }

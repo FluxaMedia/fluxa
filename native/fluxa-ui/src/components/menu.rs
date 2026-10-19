@@ -204,7 +204,7 @@ pub fn draw_action_menu(
             }
             let panel = layout.panel.translate(offset);
             let fill = metrics.surface;
-            let border = egui::Stroke::new(stroke::HAIRLINE, metrics.border);
+            let border = egui::Stroke::new(stroke::hairline(), metrics.border);
             let sheet_radius = metrics.dialog_radius + 4.0;
             if sheet && liquid_glass() {
                 glass(
@@ -219,7 +219,7 @@ pub fn draw_action_menu(
                         Vec2::new(36.0, 4.0),
                     ),
                     2.0,
-                    metrics.ink(tone::STRONG),
+                    metrics.ink(tone::strong()),
                 );
             } else if liquid_glass() && tv {
                 glass(&painter, panel, metrics.card_radius, fill);
@@ -242,7 +242,7 @@ pub fn draw_action_menu(
                         Vec2::new(36.0, 4.0),
                     ),
                     2.0,
-                    metrics.ink(tone::STRONG),
+                    metrics.ink(tone::strong()),
                 );
             } else {
                 painter.rect_filled(
@@ -277,7 +277,7 @@ pub fn draw_action_menu(
                 painter.hline(
                     panel.x_range().shrink(style.rule_shrink()),
                     header.bottom() - 0.5,
-                    egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                    egui::Stroke::new(stroke::hairline(), metrics.border),
                 );
             }
             let label_size = if style.large_rows() {
@@ -297,7 +297,7 @@ pub fn draw_action_menu(
                 let (bg, ink) = if tv && focused {
                     (metrics.text_primary, metrics.background)
                 } else if focused || response.hovered() {
-                    (metrics.ink(tone::SOFT), metrics.text_primary)
+                    (metrics.ink(tone::soft()), metrics.text_primary)
                 } else {
                     (Color32::TRANSPARENT, metrics.text_primary)
                 };

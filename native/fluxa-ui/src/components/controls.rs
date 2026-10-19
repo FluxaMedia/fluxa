@@ -4,17 +4,17 @@ use crate::{IconSize, Radius, Space};
 
 fn pill_fill(selected: bool, hover: f32, metrics: &UiMetrics) -> Color32 {
     if selected {
-        metrics.ink(tone::STRONG)
+        metrics.ink(tone::strong())
     } else {
-        metrics.ink((tone::FAINT as f32 + hover * 20.0) as u8)
+        metrics.ink((tone::faint() as f32 + hover * 20.0) as u8)
     }
 }
 
 fn label_color(selected: bool, hovered: bool, metrics: &UiMetrics) -> Color32 {
     metrics.ink(if selected || hovered {
-        tone::FULL
+        tone::full()
     } else {
-        tone::BODY
+        tone::body()
     })
 }
 
@@ -63,7 +63,7 @@ pub(crate) fn segmented(
         .align(Align::Stretch);
     let placed = tree.solve(rect);
     let painter = ui.painter();
-    painter.rect_filled(rect, rect.height() * 0.5, metrics.ink(tone::FAINT));
+    painter.rect_filled(rect, rect.height() * 0.5, metrics.ink(tone::faint()));
     let position = crate::motion::ease(
         ui.ctx(),
         id.with("indicator"),
@@ -80,7 +80,7 @@ pub(crate) fn segmented(
     painter.rect_filled(
         indicator,
         indicator.height() * 0.5,
-        metrics.ink(tone::STRONG),
+        metrics.ink(tone::strong()),
     );
     let mut chosen = None;
     for (index, label) in labels.iter().enumerate() {
@@ -128,15 +128,15 @@ pub(crate) fn stepper(
         let slot = placed.find(slot_id).unwrap_or(rect);
         let response = ui.interact(slot, id.with(slot_id), Sense::click());
         let alpha = match (enabled, response.hovered()) {
-            (false, _) => tone::FAINT,
-            (true, true) => tone::STRONG,
-            (true, false) => tone::SOFT,
+            (false, _) => tone::faint(),
+            (true, true) => tone::strong(),
+            (true, false) => tone::soft(),
         };
         let painter = ui.painter();
         painter.rect_filled(slot, slot.height() * 0.5, metrics.ink(alpha));
         let arm = IconSize::Sm.px(&metrics) * 0.4;
-        let color = metrics.ink(if enabled { tone::FULL } else { tone::MUTED });
-        let line = egui::Stroke::new(stroke::EMPHASIS, color);
+        let color = metrics.ink(if enabled { tone::full() } else { tone::muted() });
+        let line = egui::Stroke::new(stroke::emphasis(), color);
         let center = slot.center();
         painter.line_segment(
             [center - Vec2::new(arm, 0.0), center + Vec2::new(arm, 0.0)],
@@ -237,10 +237,10 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
     painter.rect_filled(
         rect,
         Radius::Md.px(&metrics),
-        metrics.ink((tone::FAINT as f32 * hover) as u8),
+        metrics.ink((tone::faint() as f32 * hover) as u8),
     );
     if let (Some(texture), Some(slot)) = (row_data.icon, placed.find(0)) {
-        painter.image(texture, slot, full_uv(), metrics.ink(tone::BODY));
+        painter.image(texture, slot, full_uv(), metrics.ink(tone::body()));
     }
     if let Some(slot) = placed.find(1) {
         paint_text(
@@ -305,7 +305,7 @@ pub(crate) fn list_row(ui: &mut Ui, row_data: ListRow, metrics: UiMetrics) -> Re
 fn paint_chevron(painter: &Painter, rect: Rect, metrics: &UiMetrics) {
     let arm = rect.width() * 0.25;
     let center = rect.center();
-    let stroke = egui::Stroke::new(stroke::ICON, metrics.ink(tone::MUTED));
+    let stroke = egui::Stroke::new(stroke::icon(), metrics.ink(tone::muted()));
     painter.line_segment(
         [
             center + Vec2::new(-arm * 0.5, -arm),
@@ -334,13 +334,13 @@ pub(crate) fn swatch(ui: &mut Ui, color: Color32, selected: bool, metrics: UiMet
         painter.circle_stroke(
             rect.center(),
             radius,
-            egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+            egui::Stroke::new(stroke::hairline(), metrics.border),
         );
         if selected {
             painter.circle_stroke(
                 rect.center(),
                 outer * 0.5 - 1.0,
-                egui::Stroke::new(stroke::EMPHASIS, metrics.text_primary),
+                egui::Stroke::new(stroke::emphasis(), metrics.text_primary),
             );
         }
     });

@@ -86,7 +86,7 @@ pub(super) fn draw_loading(
         url,
         target,
         ArtworkPriority::Visible,
-        ink(tone::DIM),
+        ink(tone::dim()),
         assets,
     );
     paint_vertical_gradient(

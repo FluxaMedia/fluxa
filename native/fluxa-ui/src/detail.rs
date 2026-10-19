@@ -1319,7 +1319,7 @@ pub fn draw_detail(
                 painter.hline(
                     margin..=margin + width,
                     y - INFO_ROW * 0.5,
-                    egui::Stroke::new(stroke::HAIRLINE, metrics.ink(tone::FAINT)),
+                    egui::Stroke::new(stroke::hairline(), metrics.ink(tone::faint())),
                 );
             }
             draw_text(

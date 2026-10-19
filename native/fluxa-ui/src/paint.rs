@@ -173,7 +173,7 @@ pub(crate) fn draw_loading_screen(
     painter.circle_stroke(
         spinner_center,
         radius,
-        egui::Stroke::new(stroke, ink(tone::STRONG)),
+        egui::Stroke::new(stroke, ink(tone::strong())),
     );
     let start = time * std::f32::consts::TAU / 0.8;
     let arc: Vec<Pos2> = (0..=24)

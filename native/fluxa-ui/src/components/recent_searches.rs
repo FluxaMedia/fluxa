@@ -16,7 +16,7 @@ pub(crate) fn recent_searches_open(focused: Option<u64>, entries: &[String]) -> 
 }
 
 fn paint_clock(painter: &Painter, center: Pos2, color: Color32) {
-    let stroke = egui::Stroke::new(stroke::ICON, color);
+    let stroke = egui::Stroke::new(stroke::icon(), color);
     painter.circle_stroke(center, 7.0, stroke);
     painter.line_segment([center, center + Vec2::new(0.0, -4.0)], stroke);
     painter.line_segment([center, center + Vec2::new(3.0, 1.5)], stroke);
@@ -54,7 +54,7 @@ pub(crate) fn recent_searches(
             painter.rect_stroke(
                 panel,
                 metrics.dialog_radius,
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
                 egui::StrokeKind::Inside,
             );
             let font = FontId::proportional(metrics.nav_label_size + 1.0);
@@ -64,7 +64,7 @@ pub(crate) fn recent_searches(
                 Align2::LEFT_CENTER,
                 heading.to_owned(),
                 FontId::proportional(metrics.nav_label_size),
-                metrics.ink(tone::MUTED),
+                metrics.ink(tone::muted()),
                 None,
             );
             for (index, entry) in entries.iter().take(shown).enumerate() {
@@ -90,7 +90,7 @@ pub(crate) fn recent_searches(
                 paint_clock(
                     ui.painter(),
                     rect.left_center() + Vec2::new(18.0, 0.0),
-                    metrics.ink(tone::MUTED),
+                    metrics.ink(tone::muted()),
                 );
                 draw_text(
                     ui.painter(),

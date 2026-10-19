@@ -94,7 +94,7 @@ pub(crate) fn bottom_sheet(
                         .solve(bar);
                     if let Some(rect) = handle.find(0) {
                         ui.painter()
-                            .rect_filled(rect, rect.height() * 0.5, ink(tone::STRONG));
+                            .rect_filled(rect, rect.height() * 0.5, ink(tone::strong()));
                     }
                     add(ui);
                 });
@@ -186,15 +186,15 @@ pub(crate) fn labeled_button(
     crate::motion::press_scale(ui.painter(), rect, || {
         let painter = ui.painter();
         let tint = if selected {
-            tone::STRONG
+            tone::strong()
         } else {
-            (tone::FAINT as f32 + hover * 20.0) as u8
+            (tone::faint() as f32 + hover * 20.0) as u8
         };
         painter.rect_filled(rect, rect.height() * 0.5, ink(tint));
         let color = ink(if selected || response.hovered() {
-            tone::FULL
+            tone::full()
         } else {
-            tone::BODY
+            tone::body()
         });
         if let (Some(texture), Some(slot)) = (icon, placed.find(0)) {
             painter.image(texture, slot, full_uv(), color);

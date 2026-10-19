@@ -111,7 +111,7 @@ pub fn draw_detail_modal(
     let text_width = (width - PAD * 3.0) * 0.62;
     let mut job = egui::text::LayoutJob::single_section(
         detail.description.clone(),
-        egui::TextFormat::simple(crate::fonts::regular(body_size), metrics.ink(tone::SUBTLE)),
+        egui::TextFormat::simple(crate::fonts::regular(body_size), metrics.ink(tone::subtle())),
     );
     job.wrap.max_width = text_width;
     job.wrap.max_rows = 8;
@@ -327,7 +327,7 @@ pub fn draw_detail_modal(
                                 &detail.meta_line,
                                 crate::fonts::regular(body_size),
                                 text_width,
-                                metrics.ink(tone::BODY),
+                                metrics.ink(tone::body()),
                             );
                         }
                         painter.galley(
@@ -346,7 +346,7 @@ pub fn draw_detail_modal(
                                 name,
                                 crate::fonts::regular(body_size),
                                 label_width,
-                                metrics.ink(tone::SUBTLE),
+                                metrics.ink(tone::subtle()),
                             );
                             paint_elided_text(
                                 &painter,
@@ -470,7 +470,7 @@ pub fn draw_detail_modal(
                                         episode.overview.clone(),
                                         egui::TextFormat::simple(
                                             crate::fonts::regular(body_size - 1.0),
-                                            metrics.ink(tone::SUBTLE),
+                                            metrics.ink(tone::subtle()),
                                         ),
                                     );
                                     job.wrap.max_width = text_room;
@@ -492,7 +492,7 @@ pub fn draw_detail_modal(
                                             Vec2::splat(18.0),
                                         ),
                                         full_uv(),
-                                        metrics.ink(tone::SUBTLE),
+                                        metrics.ink(tone::subtle()),
                                     );
                                 }
                                 if response.clicked() {
@@ -551,7 +551,7 @@ pub fn draw_detail_modal(
                                             role,
                                             crate::fonts::regular(body_size - 3.0),
                                             rect.width(),
-                                            metrics.ink(tone::SUBTLE),
+                                            metrics.ink(tone::subtle()),
                                         );
                                     }
                                 }
@@ -608,7 +608,7 @@ pub fn draw_detail_modal(
             painter.rect_stroke(
                 panel,
                 radius,
-                egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+                egui::Stroke::new(stroke::hairline(), metrics.border),
                 egui::StrokeKind::Inside,
             );
         });

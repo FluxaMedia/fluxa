@@ -449,7 +449,7 @@ pub(super) fn draw_addons(
             rect,
             y + 4.0,
             &localized("settings.addon_empty", language),
-            ink(tone::MUTED),
+            ink(tone::muted()),
             3,
             metrics,
         );
@@ -501,7 +501,7 @@ pub(super) fn draw_plugins(
         rect,
         y - APPEARANCE_GROUP_GAP + 10.0,
         &localized("settings.plugin_risk", language),
-        ink(tone::MUTED),
+        ink(tone::muted()),
         4,
         metrics,
     );
@@ -528,7 +528,7 @@ pub(super) fn draw_plugins(
             rect,
             y + 4.0,
             &localized("settings.plugin_empty", language),
-            ink(tone::MUTED),
+            ink(tone::muted()),
             3,
             metrics,
         );
@@ -561,7 +561,7 @@ pub(super) fn draw_plugins(
     painter.rect_stroke(
         group,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     for (index, scraper) in scrapers.iter().enumerate() {
@@ -575,7 +575,7 @@ pub(super) fn draw_plugins(
                     row.left_top() + Vec2::new(16.0, 0.0),
                     row.right_top() - Vec2::new(16.0, 0.0),
                 ],
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::FAINT)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::faint())),
             );
         }
         let node = NODE_SETTINGS_PLUGIN_SCRAPER_BASE + index as u64;
@@ -663,12 +663,12 @@ fn draw_card(
     painter.rect_stroke(
         frame,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     let inner = frame.shrink(CARD_PADDING);
     let logo = Rect::from_min_size(inner.min, Vec2::splat(LOGO));
-    painter.rect_filled(logo, radius::control(), ink(tone::FAINT));
+    painter.rect_filled(logo, radius::control(), ink(tone::faint()));
     let texture = assets.texture_for(card.logo, [96, 96], ArtworkPriority::Visible);
     if let Some(texture) = texture {
         let size = context
@@ -693,7 +693,7 @@ fn draw_card(
             icon,
             Rect::from_center_size(logo.center(), Vec2::splat(24.0)),
             full_uv(),
-            ink(tone::BODY),
+            ink(tone::body()),
         );
     } else {
         draw_text(
@@ -768,7 +768,7 @@ fn draw_card(
         let font = crate::fonts::regular(metrics.text.meta);
         let mut x = inner.left();
         for chip in &card.chips {
-            let galley = painter.layout_no_wrap(chip.clone(), font.clone(), ink(tone::BODY));
+            let galley = painter.layout_no_wrap(chip.clone(), font.clone(), ink(tone::body()));
             let width = galley.size().x + 20.0;
             if x + width > inner.right() {
                 break;
@@ -777,7 +777,7 @@ fn draw_card(
             painter.rect_stroke(
                 chip_rect,
                 radius::control(),
-                egui::Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
+                egui::Stroke::new(stroke::hairline(), ink(tone::raised())),
                 egui::StrokeKind::Inside,
             );
             painter.galley(
@@ -817,7 +817,7 @@ fn draw_card(
                     ui,
                     texture,
                     ACTION,
-                    ink(tone::BODY),
+                    ink(tone::body()),
                     false,
                     false,
                     enabled,
@@ -887,7 +887,7 @@ fn server_notice(settings: &SettingsModel, language: &str) -> Option<(String, Co
             prompt.code,
             prompt.url
         ),
-        ink(tone::BODY),
+        ink(tone::body()),
     ))
 }
 
@@ -975,7 +975,7 @@ pub(super) fn draw_servers(
     painter.rect_stroke(
         card,
         metrics.card_radius,
-        egui::Stroke::new(stroke::HAIRLINE, metrics.border),
+        egui::Stroke::new(stroke::hairline(), metrics.border),
         egui::StrokeKind::Inside,
     );
     if settings.server_kind == PLEX_KIND {
@@ -1053,7 +1053,7 @@ pub(super) fn draw_servers(
             rect,
             y + 4.0,
             &localized("settings.server_empty", language),
-            ink(tone::MUTED),
+            ink(tone::muted()),
             3,
             metrics,
         );

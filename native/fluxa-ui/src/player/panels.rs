@@ -72,7 +72,7 @@ pub(super) fn draw_seek_preview(
             Pos2::new(x - width * 0.5, bottom - width * 9.0 / 16.0),
             Pos2::new(x + width * 0.5, bottom),
         );
-        painter.rect_filled(frame.expand(1.0), radius::chip(), ink(tone::RAISED));
+        painter.rect_filled(frame.expand(1.0), radius::chip(), ink(tone::raised()));
         painter.image(texture, frame, full_uv(), Color32::WHITE);
     }
 }
@@ -95,7 +95,7 @@ pub(super) fn draw_pause_info(
     let left = rect.left() + if compact { 28.0 } else { 64.0 };
     let width = (rect.width() * if compact { 0.5 } else { 0.42 }).clamp(240.0, 620.0);
     let mut blocks: Vec<(f32, Box<dyn Fn(&egui::Painter, f32)>)> = Vec::new();
-    let muted = ink(tone::BODY);
+    let muted = ink(tone::body());
 
     let label = localized("player.youre_watching", &player.language);
     blocks.push((

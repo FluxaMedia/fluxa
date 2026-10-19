@@ -104,7 +104,7 @@ pub(super) fn draw_episodes(
                 );
                 if response.hovered() {
                     ui.painter()
-                        .rect_filled(rect, radius::control(), ink(tone::FAINT));
+                        .rect_filled(rect, radius::control(), ink(tone::faint()));
                 }
                 let view = cx.detail.episode_view(episode);
                 components::episode_artwork(

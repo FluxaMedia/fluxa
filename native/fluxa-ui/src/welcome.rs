@@ -242,7 +242,7 @@ fn divider(ui: &mut egui::Ui, width: f32, label: &str, metrics: UiMetrics) {
         metrics.text_muted,
     );
     let half = galley.size().x * 0.5 + 12.0;
-    let line = egui::Stroke::new(stroke::HAIRLINE, metrics.border);
+    let line = egui::Stroke::new(stroke::hairline(), metrics.border);
     painter.hline(rect.left()..=rect.center().x - half, rect.center().y, line);
     painter.hline(rect.center().x + half..=rect.right(), rect.center().y, line);
     painter.galley(
@@ -365,7 +365,7 @@ fn step(ui: &mut egui::Ui, number: usize, text: &str, metrics: UiMetrics) {
         let badge = metrics.text.subtitle * 1.6;
         let (rect, _) = ui.allocate_exact_size(Vec2::splat(badge), Sense::hover());
         ui.painter()
-            .circle_filled(rect.center(), badge * 0.5, ink(tone::SOFT));
+            .circle_filled(rect.center(), badge * 0.5, ink(tone::soft()));
         draw_text(
             ui.painter(),
             rect.center(),

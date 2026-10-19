@@ -87,7 +87,7 @@ pub(super) fn score_bar(
         return;
     };
     let pill = bar_height * 0.5;
-    painter.rect_filled(track, pill, ink(tone::STRONG));
+    painter.rect_filled(track, pill, ink(tone::strong()));
     let fill = Rect::from_min_size(
         track.min,
         Vec2::new(track.width() * score / 10.0, bar_height),
@@ -110,7 +110,7 @@ pub(super) fn score_bar(
             Pos2::new(fill.left() + pill, fill.top() + 1.0),
             Pos2::new(fill.right(), fill.top() + 1.0),
         ],
-        Stroke::new(stroke::HAIRLINE, ink(tone::STRONG)),
+        Stroke::new(stroke::hairline(), ink(tone::strong())),
     );
 }
 
@@ -198,7 +198,7 @@ pub(super) fn score_frosted(
     );
     painter.line_segment(
         [bar.left_top(), bar.right_top()],
-        Stroke::new(stroke::HAIRLINE, ink(tone::RAISED)),
+        Stroke::new(stroke::hairline(), ink(tone::raised())),
     );
     let size = height * 0.45;
     let pad = rect.width() * 0.05;
