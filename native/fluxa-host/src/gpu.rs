@@ -422,6 +422,17 @@ impl Gpu {
             .await
             {
                 Ok(gpu) => {
+                    #[cfg(not(target_arch = "wasm32"))]
+                    if !errors.is_empty() {
+                        fluxa_crash::capture(
+                            "GPU backend fell back",
+                            &[
+                                ("gpu.used", backend.label()),
+                                ("gpu.adapter", &gpu.adapter_name),
+                                ("gpu.failed", &errors.join("; ")),
+                            ],
+                        );
+                    }
                     host_log(format!(
                         "GPU ready: {} ({})",
                         gpu.adapter_name,

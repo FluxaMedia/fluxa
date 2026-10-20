@@ -64,6 +64,8 @@ pub fn set_youtube_proxy(base_url: &str) {
 }
 
 fn host_log(message: impl AsRef<str>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    fluxa_crash::log(message.as_ref());
     match LOGGER.get() {
         Some(logger) => logger(message.as_ref()),
         None => eprintln!("[fluxa-host] {}", message.as_ref()),
