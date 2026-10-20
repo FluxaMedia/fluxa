@@ -465,6 +465,22 @@ jobs:
             --out release/latest.json \
             "${assets[@]}"
 
+      - name: Build SideStore source
+        run: |
+          ipa="$(ls release/fluxa-*-ios-unsigned.ipa)"
+          unzip -p "$ipa" 'Payload/*.app/Info.plist' > ios-info.plist
+          read -r bundle_id build min_os < <(python3 -c 'import plistlib; p = plistlib.load(open("ios-info.plist", "rb")); print(p["CFBundleIdentifier"], p["CFBundleVersion"], p["MinimumOSVersion"])')
+          node scripts/sidestore-source.mjs \
+            --version "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --ipa "$ipa" \
+            --bundle-id "$bundle_id" \
+            --build "$build" \
+            --min-os "$min_os" \
+            --notes artifacts/notes/notes.md \
+            --out release/sidestore.json
+          rm ios-info.plist
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:

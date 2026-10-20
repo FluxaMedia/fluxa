@@ -14,6 +14,7 @@ Push a tag like `v0.2.0`. `.github/workflows/release.yml` builds everything and 
 | iOS / tvOS | `fluxa-<v>-{ios,tvos}-unsigned.ipa` (sideload only) |
 | Web | `fluxa-<v>-web.zip` |
 | Updates | `SHA256SUMS`, `latest.json`, `latest.json.sig` |
+| SideStore | `sidestore.json` |
 
 The `.zip` / `.tar.gz` / `.AppImage` / `.apk` files are also the payloads the in-app updater downloads.
 
@@ -28,3 +29,7 @@ The `.zip` / `.tar.gz` / `.AppImage` / `.apk` files are also the payloads the in
 - Settings → Updates shows the state; "Restart to update" swaps the files and relaunches (Android hands the APK to the system installer).
 - `.deb` and `.rpm` installs update through `pkexec dpkg -i` / `rpm -U` (a polkit prompt). Installs in a read-only location such as Program Files cannot self-update and say so.
 - `automaticUpdates` in General controls the background check.
+
+## SideStore
+
+Every release publishes `sidestore.json`, an AltStore-style source pointing at the unsigned iOS ipa. Add `https://github.com/FluxaMedia/fluxa/releases/latest/download/sidestore.json` as a source in SideStore. The source lists only the newest version. tvOS is not supported by SideStore.
