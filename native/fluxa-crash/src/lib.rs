@@ -48,6 +48,10 @@ pub fn configure(enabled: bool, data_dir: &Path, variant: &str) {
     *client = Some(guard);
 }
 
+pub fn capture(message: &str) {
+    sentry::capture_message(message, sentry::Level::Error);
+}
+
 pub fn flush() {
     if let Some(client) = sentry::Hub::current().client() {
         client.flush(Some(Duration::from_secs(2)));

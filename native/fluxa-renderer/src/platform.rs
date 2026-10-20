@@ -7,6 +7,7 @@ use crate::Rect;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GraphicsBackend {
     Vulkan,
+    Dx12,
     Gles,
     Metal,
     WebGpu,
@@ -16,6 +17,7 @@ impl GraphicsBackend {
     pub const fn label(self) -> &'static str {
         match self {
             Self::Vulkan => "Vulkan",
+            Self::Dx12 => "DX12",
             Self::Gles => "GLES",
             Self::Metal => "Metal",
             Self::WebGpu => "WebGPU",
@@ -123,6 +125,7 @@ impl SurfaceController {
 pub fn backends_for(preference: GraphicsBackend) -> wgpu::Backends {
     match preference {
         GraphicsBackend::Vulkan => wgpu::Backends::VULKAN,
+        GraphicsBackend::Dx12 => wgpu::Backends::DX12,
         GraphicsBackend::Gles => wgpu::Backends::GL,
         GraphicsBackend::Metal => wgpu::Backends::METAL,
         GraphicsBackend::WebGpu => wgpu::Backends::BROWSER_WEBGPU,
