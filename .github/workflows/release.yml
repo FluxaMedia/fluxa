@@ -93,10 +93,12 @@ jobs:
           FLUXA_RELEASE_STORE_PASSWORD: ${{ secrets.FLUXA_RELEASE_STORE_PASSWORD }}
           FLUXA_RELEASE_KEY_ALIAS: ${{ secrets.FLUXA_RELEASE_KEY_ALIAS }}
           FLUXA_RELEASE_KEY_PASSWORD: ${{ secrets.FLUXA_RELEASE_KEY_PASSWORD }}
-          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+          FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+          FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+          FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
           FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
         run: ./gradlew :app:assembleMobileRelease :app:assembleTvRelease --no-daemon
 
@@ -125,10 +127,12 @@ jobs:
     name: desktop (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     env:
-      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+      FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
       FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
@@ -201,10 +205,12 @@ jobs:
     name: apple (${{ matrix.name }})
     runs-on: macos-latest
     env:
-      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+      FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
       FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
