@@ -97,6 +97,7 @@ mod bridge_video;
 mod card_menu;
 mod cast;
 mod collections;
+mod crash;
 mod detail_modal;
 mod detail_sections;
 mod downloads;
@@ -251,6 +252,7 @@ struct RendererState {
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     updates: updates::State,
+    crash: crash::State,
     open_url: Option<String>,
     external_play: Option<String>,
     external_pending: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
@@ -476,6 +478,7 @@ impl FluxaHost {
             stream_badges: Default::default(),
             applied_app_icon: None,
             updates: Default::default(),
+            crash: Default::default(),
             open_url: None,
             external_play: None,
             external_pending: None,
@@ -656,6 +659,7 @@ impl FluxaHost {
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
             updates::start(state, &data_dir);
+            crash::start(state, &data_dir);
             preview::start(state);
             state.session = Some(session);
             state.picker_background = background;
@@ -787,6 +791,18 @@ impl FluxaHost {
 
     pub fn waiting_to_exit(&self) -> bool {
         self.peek(|state| state.quit_when_idle).unwrap_or(false)
+    }
+
+    pub fn crash_reports_enabled(&self) -> bool {
+        self.peek(|state| {
+            state
+                .settings
+                .values
+                .get("crashReports")
+                .and_then(Value::as_bool)
+                .unwrap_or(true)
+        })
+        .unwrap_or(true)
     }
 
     pub fn take_install_apk(&self) -> Option<String> {

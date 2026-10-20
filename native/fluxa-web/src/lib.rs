@@ -144,6 +144,10 @@ impl FluxaWeb {
         self.host.take_dom_images_json()
     }
 
+    pub fn crash_reports_enabled(&self) -> bool {
+        self.host.crash_reports_enabled()
+    }
+
     pub fn accessibility_json(&self) -> Option<String> {
         self.host.accessibility_json()
     }

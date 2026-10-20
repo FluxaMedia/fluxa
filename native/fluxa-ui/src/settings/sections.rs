@@ -37,12 +37,22 @@ pub(super) const ACCOUNT_SETTINGS: [SettingsRow; 4] = [
     },
 ];
 pub(super) const ACCOUNT_GROUPS: [(usize, &str); 1] = [(4, "settings.group.preferences")];
-pub(super) const ABOUT_SETTINGS: [SettingsRow; 1] = [SettingsRow {
-    label: "Update checks",
-    key: "automaticUpdates",
-    options: &[],
-}];
-pub(super) const ABOUT_GROUPS: [(usize, &str); 1] = [(1, "settings.group.updates")];
+pub(super) const ABOUT_SETTINGS: [SettingsRow; 2] = [
+    SettingsRow {
+        label: "Update checks",
+        key: "automaticUpdates",
+        options: &[],
+    },
+    SettingsRow {
+        label: "Crash reports",
+        key: "crashReports",
+        options: &[],
+    },
+];
+pub(super) const ABOUT_GROUPS: [(usize, &str); 2] = [
+    (1, "settings.group.updates"),
+    (1, "settings.group.privacy"),
+];
 pub(super) const APPEARANCE_SETTINGS: [SettingsRow; 12] = [
     SettingsRow {
         label: "Accent color",

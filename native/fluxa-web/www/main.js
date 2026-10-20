@@ -1,12 +1,14 @@
 import { mountAccessibility } from "./a11y.js";
 import { mountArtwork, place } from "./artwork.js";
 import init, { FluxaWeb } from "./pkg/fluxa_web.js";
+import { createCrashReporter } from "./crash.js";
 import { createPlayer } from "./player.js";
 import { createTrailer } from "./trailer.js";
 import { exitApp, installRemote, isWebos as webos, mediaAdapter, stageReady, startProxy } from "./webos.js";
 
 const formFactor = webos || /smart-tv|smarttv/i.test(navigator.userAgent) ? "tv" : "mobile";
 const query = new URLSearchParams(location.search);
+const crash = createCrashReporter();
 
 const main = async () => {
   const proxy = query.get("proxy") ?? query.get("imageProxy") ?? (await startProxy());
@@ -35,6 +37,7 @@ const main = async () => {
       accessAt = now;
       syncAccessibility();
     }
+    crash.setEnabled(app.crash_reports_enabled());
     player.poll();
     const actions = app.frame();
     syncArtwork();
