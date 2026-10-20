@@ -56,6 +56,7 @@ pub(super) fn draw_select(
         Pos2::new(title_right + 38.0, title_rect.center().y),
         Vec2::splat(metrics.icon_button_size),
     );
+    let blocked = model.pin_prompt.is_some() || model.confirm_delete.is_some();
     let gear = ui
         .interact(gear_rect, Id::new("fluxa-profiles-gear"), Sense::click())
         .on_hover_text(t("profiles.picker_settings"));
@@ -67,27 +68,37 @@ pub(super) fn draw_select(
             Color32::from_white_alpha(if gear.hovered() { 255 } else { 180 }),
         );
     }
-    if gear.clicked() {
-        model.background_input = model.picker.background_url.clone().unwrap_or_default();
-        model.mode = ProfilesMode::Settings;
-        ui.ctx().request_repaint();
-    }
     ui.add_space(52.0);
 
     let (grid_rect, _) = ui.allocate_exact_size(Vec2::new(width, grid_height), Sense::hover());
     let profiles = model.profiles.clone();
     let cells = grid_cells(grid_rect, cell, gap, count, per_row, viewport.is_compact());
+    let node = |index: usize| NODE_PROFILES_CELL_BASE + index as u64;
+    let neighbors = |index: usize| {
+        let target = |dir| grid_step(index, count, per_row, dir).map(node);
+        Neighbors {
+            up: target(Dir::Up).or((index < per_row).then_some(NODE_PROFILES_GEAR)),
+            down: target(Dir::Down),
+            left: target(Dir::Left),
+            right: target(Dir::Right),
+        }
+    };
     for index in 0..count {
         let origin = cells[index].min;
         let avatar_center = Pos2::new(origin.x + cell.x * 0.5, origin.y + radius);
-        let hit = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0)).union(
-            Rect::from_min_size(
-                Pos2::new(origin.x, avatar_center.y + radius),
-                Vec2::new(cell.x, 40.0),
-            ),
-        );
+        let avatar_rect = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0));
+        let hit = avatar_rect.union(Rect::from_min_size(
+            Pos2::new(origin.x, avatar_center.y + radius),
+            Vec2::new(cell.x, 40.0),
+        ));
         let Some(profile) = profiles.get(index) else {
             let response = ui.interact(hit, Id::new("fluxa-profiles-add"), Sense::click());
+            if !blocked {
+                response
+                    .clone()
+                    .focus_circle(ui, node(index), avatar_rect, &metrics)
+                    .focus_neighbors(ui, node(index), neighbors(index));
+            }
             let r = if response.hovered() {
                 radius * 1.04
             } else {
@@ -116,12 +127,15 @@ pub(super) fn draw_select(
                 metrics.text_muted,
                 None,
             );
-            if response.clicked() {
-                model.open_form(None);
-            }
             continue;
         };
         let response = ui.interact(hit, Id::new(("fluxa-profile", &profile.id)), Sense::click());
+        if !blocked {
+            response
+                .clone()
+                .focus_circle(ui, node(index), avatar_rect, &metrics)
+                .focus_neighbors(ui, node(index), neighbors(index));
+        }
         let card_hovered = ui.rect_contains_pointer(Rect::from_min_size(origin, cell));
         let r = if response.hovered() {
             radius * 1.04
@@ -237,20 +251,35 @@ pub(super) fn draw_select(
                 }
             }
         }
-        if response.clicked() {
-            if profile.locked {
-                model.pin_prompt = Some(PinPrompt {
-                    profile_id: profile.id.clone(),
-                    purpose: PinPurpose::Enter,
-                    pin: String::new(),
-                    error: None,
-                });
-            } else {
-                *request = Some(ProfilesRequest::Select(profile.id.clone()));
-            }
-        }
+    }
+    if !blocked {
+        gear.focus_node(ui, NODE_PROFILES_GEAR, &metrics)
+            .focus_neighbors(
+                ui,
+                NODE_PROFILES_GEAR,
+                Neighbors {
+                    down: Some(node(0)),
+                    ..Neighbors::default()
+                },
+            );
     }
     ui.add_space(Space::S48.px(&metrics));
+}
+
+pub(super) fn grid_step(index: usize, count: usize, per_row: usize, dir: Dir) -> Option<usize> {
+    let row = index / per_row;
+    let column = index % per_row;
+    let row_start = row * per_row;
+    let row_len = (count - row_start).min(per_row);
+    match dir {
+        Dir::Left => Some(row_start + (column + row_len - 1) % row_len),
+        Dir::Right => Some(row_start + (column + 1) % row_len),
+        Dir::Up => row.checked_sub(1).map(|up| up * per_row + column),
+        Dir::Down => {
+            let next = row_start + per_row;
+            (next < count).then(|| (next + column).min(count - 1))
+        }
+    }
 }
 
 fn grid_cells(
@@ -290,6 +319,29 @@ mod tests {
         assert_eq!(cells[0].left(), (1000.0 - (4.0 * 150.0 + 3.0 * 40.0)) * 0.5);
         assert_eq!(cells[4].left(), (1000.0 - (3.0 * 150.0 + 2.0 * 40.0)) * 0.5);
         assert_eq!(cells[4].top(), 100.0 + 222.0 + 40.0);
+    }
+
+    #[test]
+    fn left_and_right_wrap_within_the_row() {
+        assert_eq!(grid_step(0, 7, 4, Dir::Left), Some(3));
+        assert_eq!(grid_step(3, 7, 4, Dir::Right), Some(0));
+        assert_eq!(grid_step(6, 7, 4, Dir::Right), Some(4));
+        assert_eq!(grid_step(4, 7, 4, Dir::Left), Some(6));
+    }
+
+    #[test]
+    fn vertical_moves_clamp_to_the_short_row() {
+        assert_eq!(grid_step(3, 7, 4, Dir::Down), Some(6));
+        assert_eq!(grid_step(1, 7, 4, Dir::Down), Some(5));
+        assert_eq!(grid_step(5, 7, 4, Dir::Up), Some(1));
+        assert_eq!(grid_step(1, 7, 4, Dir::Up), None);
+        assert_eq!(grid_step(5, 7, 4, Dir::Down), None);
+    }
+
+    #[test]
+    fn single_cell_row_stays_put() {
+        assert_eq!(grid_step(0, 1, 1, Dir::Left), Some(0));
+        assert_eq!(grid_step(0, 1, 1, Dir::Right), Some(0));
     }
 
     #[test]

@@ -94,7 +94,6 @@ mod accounts;
 mod actions;
 mod ambient;
 mod artwork;
-pub mod dom_images;
 mod bridge_video;
 mod card_menu;
 mod cast;
@@ -102,6 +101,7 @@ mod collections;
 mod crash;
 mod detail_modal;
 mod detail_sections;
+pub mod dom_images;
 mod downloads;
 mod events;
 mod frame;
@@ -152,8 +152,8 @@ use sync::*;
 pub type PrePresent = Box<dyn Fn() + Send>;
 
 pub use player::{
-    DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, TrackSelection,
-    SpeechEnergy, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
+    DeviceOpener, PlaybackStats, SpeechEnergy, Thumbnail, ThumbnailPlan, ThumbnailProgress,
+    TrackSelection, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
 };
 pub use semantics::{AccessNode, AccessTree, Role};
 
@@ -656,7 +656,9 @@ impl FluxaHost {
     }
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
-        let session = SessionHandle::open(Storage::open(data_dir.clone())?)?;
+        let storage = Storage::open(data_dir.clone())?;
+        preview::seed_profiles(&storage);
+        let session = SessionHandle::open(storage)?;
         profiles::load_profile(&session)?;
         let pick = profiles::should_pick_on_start(session.storage());
         let greet = welcome::required(session.storage());
