@@ -14,6 +14,32 @@ pub(crate) fn appimage_path() -> Option<PathBuf> {
     None
 }
 
+pub(crate) fn system_package() -> Option<&'static str> {
+    #[cfg(target_os = "linux")]
+    {
+        if appimage_path().is_some() {
+            return None;
+        }
+        let exe = std::env::current_exe().ok()?;
+        let owns = |tool: &str, flag: &str| {
+            Command::new(tool)
+                .arg(flag)
+                .arg(&exe)
+                .output()
+                .is_ok_and(|output| output.status.success())
+        };
+        if owns("dpkg", "-S") {
+            Some("deb")
+        } else if owns("rpm", "-qf") {
+            Some("rpm")
+        } else {
+            None
+        }
+    }
+    #[cfg(not(target_os = "linux"))]
+    None
+}
+
 #[cfg(target_os = "android")]
 pub(crate) fn check_writable() -> Result<(), String> {
     Ok(())
@@ -21,6 +47,9 @@ pub(crate) fn check_writable() -> Result<(), String> {
 
 #[cfg(not(target_os = "android"))]
 pub(crate) fn check_writable() -> Result<(), String> {
+    if system_package().is_some() {
+        return Ok(());
+    }
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
     let target = match appimage_path() {
         Some(path) => path,
@@ -50,6 +79,11 @@ pub(crate) fn extract(archive: &Path, dest: &Path) -> Result<(), String> {
             .map_err(|error| error.to_string())
     } else if name.ends_with(".AppImage") {
         fs::copy(archive, dest.join("Fluxa.AppImage"))
+            .map(|_| ())
+            .map_err(|error| error.to_string())
+    } else if name.ends_with(".deb") || name.ends_with(".rpm") {
+        let ext = if name.ends_with(".deb") { "deb" } else { "rpm" };
+        fs::copy(archive, dest.join(format!("update.{ext}")))
             .map(|_| ())
             .map_err(|error| error.to_string())
     } else if name.ends_with(".tar.gz") {
@@ -115,9 +149,32 @@ pub(crate) fn apply(staged: &Path) -> Result<Applied, String> {
         return Ok(Applied::Restart);
     }
     let exe = std::env::current_exe().map_err(|error| error.to_string())?;
-    replace(&root, &exe)?;
+    if let Some(kind) = system_package() {
+        install_package(&root, kind)?;
+    } else {
+        replace(&root, &exe)?;
+    }
     relaunch(&exe)?;
     Ok(Applied::Restart)
+}
+
+#[cfg(not(target_os = "android"))]
+fn install_package(file: &Path, kind: &str) -> Result<(), String> {
+    let (tool, flag) = if kind == "deb" {
+        ("dpkg", "-i")
+    } else {
+        ("rpm", "-U")
+    };
+    let status = Command::new("pkexec")
+        .arg(tool)
+        .arg(flag)
+        .arg(file)
+        .status()
+        .map_err(|_| "pkexec is not available, install the downloaded package manually".to_owned())?;
+    status
+        .success()
+        .then_some(())
+        .ok_or_else(|| "the package install was cancelled or failed".to_owned())
 }
 
 #[cfg(not(target_os = "android"))]
@@ -291,6 +348,22 @@ mod tests {
         assert!(installed.join("lib/libmpv.so").exists());
         remove_old_files(&installed, 3);
         assert!(!installed.join("fluxa-desktop.old").exists());
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn deb_and_rpm_are_staged_under_a_fixed_name() {
+        let dir = scratch("packages");
+        for ext in ["deb", "rpm"] {
+            let archive = dir.join(format!("fluxa-0.2.1.{ext}"));
+            fs::write(&archive, "pkg").unwrap();
+            let staged = dir.join(format!("staged-{ext}"));
+            extract(&archive, &staged).unwrap();
+            assert_eq!(
+                single_child(&staged).unwrap().file_name().unwrap().to_string_lossy(),
+                format!("update.{ext}")
+            );
+        }
         let _ = fs::remove_dir_all(&dir);
     }
 
