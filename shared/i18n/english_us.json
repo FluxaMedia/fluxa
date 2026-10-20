@@ -886,6 +886,8 @@
   "player.torrent_status.downloading": "Downloading",
   "player.torrent_status.ready": "Ready",
   "toast.trakt_connected": "Trakt.tv connected",
+  "toast.addon_installed": "{name} successfully installed",
+  "toast.addon_install_failed": "Could not install add-on: {reason}",
   "toast.trakt_connect_failed": "Could not connect Trakt.tv",
   "toast.trakt_device_code_expired": "Trakt.tv code expired. Please try again.",
   "toast.mal_connected": "MAL connected",

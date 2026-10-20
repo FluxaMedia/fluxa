@@ -882,6 +882,8 @@
   "player.torrent_status.downloading": "جارٍ التنزيل",
   "player.torrent_status.ready": "جاهز",
   "toast.trakt_connected": "تم ربط Trakt.tv",
+  "toast.addon_installed": "تم تثبيت {name} بنجاح",
+  "toast.addon_install_failed": "تعذر تثبيت الإضافة: {reason}",
   "toast.trakt_connect_failed": "تعذّر ربط Trakt.tv",
   "toast.trakt_device_code_expired": "انتهت صلاحية رمز Trakt.tv. حاول مرة أخرى.",
   "toast.mal_connected": "تم ربط MAL",

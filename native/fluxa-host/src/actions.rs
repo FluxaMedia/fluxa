@@ -781,6 +781,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && let Some(action_json) = settings_action_json(node, &state.settings)
             {
                 if node == fluxa_ui::NODE_SETTINGS_ADDON_INSTALL {
+                    state.addon_install = Some(state.settings.addon_url.trim().to_owned());
                     state.settings.addon_url.clear();
                 } else if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
                     state.settings.plugin_url.clear();

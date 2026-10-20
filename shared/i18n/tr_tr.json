@@ -886,6 +886,8 @@
   "player.torrent_status.downloading": "İndiriliyor",
   "player.torrent_status.ready": "Hazır",
   "toast.trakt_connected": "Trakt.tv bağlandı",
+  "toast.addon_installed": "{name} başarıyla yüklendi",
+  "toast.addon_install_failed": "Eklenti yüklenemedi: {reason}",
   "toast.trakt_connect_failed": "Trakt.tv bağlanamadı",
   "toast.trakt_device_code_expired": "Trakt.tv kodunun süresi doldu. Tekrar deneyin.",
   "toast.mal_connected": "MAL bağlandı",

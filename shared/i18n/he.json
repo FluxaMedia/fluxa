@@ -882,6 +882,8 @@
   "player.torrent_status.downloading": "מוריד",
   "player.torrent_status.ready": "מוכן",
   "toast.trakt_connected": "Trakt.tv מחובר",
+  "toast.addon_installed": "{name} הותקן בהצלחה",
+  "toast.addon_install_failed": "לא ניתן היה להתקין את התוסף: {reason}",
   "toast.trakt_connect_failed": "לא ניתן לחבר את Trakt.tv",
   "toast.trakt_device_code_expired": "תוקף הקוד של Trakt.tv פג. נסה שוב.",
   "toast.mal_connected": "MAL מחובר",

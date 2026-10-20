@@ -12,6 +12,7 @@ pub(super) fn request_projection(state: &mut RendererState) {
         return;
     }
     state.last_snapshot_revision = Some(revision);
+    settle_addon_install(state, &snapshot);
     state.stream_providers = has_stream_providers(&snapshot);
     state.projector.submit(projection::Request {
         revision,
@@ -57,6 +58,47 @@ pub(super) fn playback_blocked(state: &RendererState) -> bool {
 pub(super) fn show_notice(state: &mut RendererState, key: &str) {
     let language = state.settings.language().to_owned();
     state.notice = Some((localized(key, &language), Instant::now()));
+}
+
+fn settle_addon_install(state: &mut RendererState, snapshot: &Value) {
+    let Some(url) = state.addon_install.clone() else {
+        return;
+    };
+    if !snapshot
+        .pointer("/addons/installing")
+        .is_none_or(Value::is_null)
+    {
+        return;
+    }
+    state.addon_install = None;
+    let language = state.settings.language().to_owned();
+    let text = match snapshot.pointer("/addons/error").filter(|e| !e.is_null()) {
+        Some(error) => {
+            let reason = error
+                .get("message")
+                .or_else(|| error.get("code"))
+                .and_then(Value::as_str)
+                .unwrap_or("generic");
+            localized("toast.addon_install_failed", &language).replace("{reason}", reason)
+        }
+        None => {
+            let name = snapshot
+                .pointer("/addons/installed")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .find(|addon| fluxa_ui::addon_transport_url(addon) == Some(url.as_str()))
+                .and_then(|addon| {
+                    addon
+                        .pointer("/manifest/name")
+                        .or_else(|| addon.get("name"))
+                        .and_then(Value::as_str)
+                })
+                .unwrap_or(&url);
+            localized("toast.addon_installed", &language).replace("{name}", name)
+        }
+    };
+    state.notice = Some((text, Instant::now()));
 }
 
 pub(super) fn apply_notice(state: &mut RendererState) {
