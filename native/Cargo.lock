@@ -2284,6 +2284,7 @@ dependencies = [
  "image",
  "log",
  "objc2 0.5.2",
+ "raw-window-metal",
  "rustybuzz",
  "sentry",
  "serde_json",

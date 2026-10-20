@@ -37,10 +37,34 @@ const BACKENDS: &[GraphicsBackend] = &[
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
-struct HandleTarget(wgpu::SurfaceTargetUnsafe);
+#[cfg(target_os = "macos")]
+struct MetalLayer(*mut std::ffi::c_void);
 
-unsafe impl Send for HandleTarget {}
-unsafe impl Sync for HandleTarget {}
+#[cfg(target_os = "macos")]
+impl MetalLayer {
+    fn get(&self) -> *mut std::ffi::c_void {
+        self.0
+    }
+}
+
+#[cfg(target_os = "macos")]
+unsafe impl Send for MetalLayer {}
+#[cfg(target_os = "macos")]
+unsafe impl Sync for MetalLayer {}
+
+#[cfg(target_os = "macos")]
+fn metal_layer(window: &Window) -> Result<*mut std::ffi::c_void, String> {
+    use winit::raw_window_handle::{HasWindowHandle, RawWindowHandle};
+    let RawWindowHandle::AppKit(handle) = window
+        .window_handle()
+        .map_err(|error| error.to_string())?
+        .as_raw()
+    else {
+        return Err("window is not an AppKit window".to_owned());
+    };
+    let layer = unsafe { raw_window_metal::Layer::from_ns_view(handle.ns_view) };
+    Ok(layer.into_raw().as_ptr())
+}
 
 const LINE_HEIGHT: f32 = 40.0;
 const STICK_DEADZONE: f32 = 0.2;
@@ -403,25 +427,24 @@ impl ApplicationHandler<AccessEvent> for App {
         }
         let size = window.inner_size();
         let target = window.clone();
-        let handles = unsafe {
-            wgpu::SurfaceTargetUnsafe::from_display_and_window(&*target, &*target)
-                .map_err(|error| error.to_string())
-        }
-        .map(HandleTarget);
+        #[cfg(target_os = "macos")]
+        let surface = {
+            let layer = metal_layer(&window).map(MetalLayer);
+            unsafe {
+                NativeSurface::new(BACKENDS, move || {
+                    let _keep_alive = &target;
+                    match &layer {
+                        Ok(layer) => Ok(wgpu::SurfaceTargetUnsafe::CoreAnimationLayer(layer.get())),
+                        Err(error) => Err(error.clone()),
+                    }
+                })
+            }
+        };
+        #[cfg(not(target_os = "macos"))]
         let surface = unsafe {
             NativeSurface::new(BACKENDS, move || {
-                let _keep_alive = &target;
-                match &handles {
-                    Ok(HandleTarget(wgpu::SurfaceTargetUnsafe::RawHandle {
-                        raw_display_handle,
-                        raw_window_handle,
-                    })) => Ok(wgpu::SurfaceTargetUnsafe::RawHandle {
-                        raw_display_handle: *raw_display_handle,
-                        raw_window_handle: *raw_window_handle,
-                    }),
-                    Ok(_) => Err("unsupported surface target".to_owned()),
-                    Err(error) => Err(error.clone()),
-                }
+                wgpu::SurfaceTargetUnsafe::from_display_and_window(&*target, &*target)
+                    .map_err(|error| error.to_string())
             })
         };
         host.surface_created(surface, size.width, size.height);
