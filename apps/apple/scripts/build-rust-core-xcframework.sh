@@ -36,13 +36,18 @@ build() {
 }
 
 targets=(aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios aarch64-apple-tvos aarch64-apple-tvos-sim)
+[[ -z "${FLUXA_APPLE_TARGETS:-}" ]] || read -ra targets <<<"$FLUXA_APPLE_TARGETS"
 for target in "${targets[@]}"; do
     build "$target"
 done
 
 lib() { echo "$native_dir/target/$1/$profile/libfluxa_apple_renderer.a"; }
+has() { [[ " ${targets[*]} " == *" $1 "* ]]; }
 mkdir -p "$output_dir"
-lipo -create "$(lib aarch64-apple-ios-sim)" "$(lib x86_64-apple-ios)" -output "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
-cp "$(lib aarch64-apple-ios)" "$output_dir/libfluxa_apple_renderer-ios.a"
-cp "$(lib aarch64-apple-tvos)" "$output_dir/libfluxa_apple_renderer-tvos.a"
-cp "$(lib aarch64-apple-tvos-sim)" "$output_dir/libfluxa_apple_renderer-tvos-simulator.a"
+if has aarch64-apple-ios-sim && has x86_64-apple-ios; then
+    lipo -create "$(lib aarch64-apple-ios-sim)" "$(lib x86_64-apple-ios)" -output "$output_dir/libfluxa_apple_renderer-ios-simulator.a"
+fi
+has aarch64-apple-ios && cp "$(lib aarch64-apple-ios)" "$output_dir/libfluxa_apple_renderer-ios.a"
+has aarch64-apple-tvos && cp "$(lib aarch64-apple-tvos)" "$output_dir/libfluxa_apple_renderer-tvos.a"
+has aarch64-apple-tvos-sim && cp "$(lib aarch64-apple-tvos-sim)" "$output_dir/libfluxa_apple_renderer-tvos-simulator.a"
+exit 0

@@ -223,10 +223,12 @@ jobs:
             scheme: FluxaIos
             sdk: iphoneos
             destination: generic/platform=iOS
+            rust_target: aarch64-apple-ios
           - name: tvos
             scheme: FluxaTvos
             sdk: appletvos
             destination: generic/platform=tvOS
+            rust_target: aarch64-apple-tvos
     steps:
       - uses: actions/checkout@v7
         with:
@@ -240,7 +242,7 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable
-          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+          targets: aarch64-apple-ios
 
       - name: Set up nightly Rust for tvOS
         uses: dtolnay/rust-toolchain@master
@@ -260,6 +262,7 @@ jobs:
       - name: Build Rust renderer
         env:
           CONFIGURATION: Release
+          FLUXA_APPLE_TARGETS: ${{ matrix.rust_target }}
         run: apps/apple/scripts/build-rust-core-xcframework.sh
 
       - name: Fetch libmpv
