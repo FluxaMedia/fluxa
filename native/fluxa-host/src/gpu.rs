@@ -393,6 +393,9 @@ fn upload_mipmapped(
     renderer.register_mipmapped_texture(device, &view)
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+const BACKEND_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
 impl Gpu {
     pub(super) async fn create(
         surface: NativeSurface,
@@ -408,12 +411,12 @@ impl Gpu {
         let mut errors = Vec::new();
         for &backend in surface.backends {
             host_log(format!("Trying {} backend", backend.label()));
-            match Self::create_for_backend(
+            match Self::attempt(
                 &surface,
                 size,
                 density,
                 artwork_cache_dir.clone(),
-                backends_for(backend),
+                backend,
                 opener.clone(),
             )
             .await
@@ -433,6 +436,47 @@ impl Gpu {
             }
         }
         Err(format!("no GPU backend succeeded ({})", errors.join("; ")))
+    }
+
+    async fn attempt(
+        surface: &NativeSurface,
+        size: [u32; 2],
+        density: f32,
+        artwork_cache_dir: Option<PathBuf>,
+        backend: GraphicsBackend,
+        opener: Option<DeviceOpener>,
+    ) -> Result<Self, String> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            Self::create_for_backend(
+                surface,
+                size,
+                density,
+                artwork_cache_dir,
+                backends_for(backend),
+                opener,
+            )
+            .await
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let (sender, receiver) = std::sync::mpsc::channel();
+            let surface = surface.clone();
+            std::thread::spawn(move || {
+                let result = pollster::block_on(Self::create_for_backend(
+                    &surface,
+                    size,
+                    density,
+                    artwork_cache_dir,
+                    backends_for(backend),
+                    opener,
+                ));
+                let _ = sender.send(result);
+            });
+            receiver
+                .recv_timeout(BACKEND_TIMEOUT)
+                .unwrap_or_else(|_| Err(format!("no answer after {}s", BACKEND_TIMEOUT.as_secs())))
+        }
     }
 
     async fn create_for_backend(
