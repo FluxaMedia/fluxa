@@ -70,7 +70,13 @@ pub(super) fn random_hex() -> Option<String> {
 
 #[cfg(target_arch = "wasm32")]
 pub(super) fn random_hex() -> Option<String> {
-    None
+    let mut bytes = [0u8; 32];
+    web_sys::window()?
+        .crypto()
+        .ok()?
+        .get_random_values_with_u8_array(&mut bytes)
+        .ok()?;
+    Some(bytes.iter().map(|byte| format!("{byte:02x}")).collect())
 }
 
 fn str_field<'a>(value: &'a Value, key: &str) -> &'a str {
