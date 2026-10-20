@@ -1,6 +1,8 @@
 name: Desktop macOS test build
 
 on:
+  push:
+    branches: [fix/macos-window-handle]
   workflow_dispatch:
 
 env:
