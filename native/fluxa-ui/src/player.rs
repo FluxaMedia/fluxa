@@ -546,6 +546,9 @@ impl Chrome<'_> {
             Sense::click()
         };
         let response = ui.interact(area, Id::new("fluxa-player-surface"), sense);
+        if !self.player.controls_visible && response.hovered() {
+            ui.ctx().set_cursor_icon(egui::CursorIcon::None);
+        }
         if self.player.locked {
             if response.clicked() {
                 layout.activated = Some(if self.player.controls_visible {
