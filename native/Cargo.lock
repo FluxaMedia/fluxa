@@ -2257,6 +2257,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluxa-crash"
+version = "0.2.0"
+dependencies = [
+ "libc",
+ "rustls",
+ "sentry",
+]
+
+[[package]]
 name = "fluxa-desktop"
 version = "0.1.0"
 dependencies = [
@@ -2327,6 +2336,7 @@ dependencies = [
  "discord-rich-presence",
  "egui",
  "fluxa-artwork",
+ "fluxa-crash",
  "fluxa-effects",
  "fluxa-renderer",
  "fluxa-theme",

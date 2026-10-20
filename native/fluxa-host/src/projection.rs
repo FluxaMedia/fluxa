@@ -3,7 +3,7 @@ use std::sync::Arc;
 use fluxa_ui::{
     CalendarModel, DetailModel, DiscoverModel, FolderModel, HomeModel, LibraryModel, LibraryTab,
     SettingsModel, UiFormFactorJson, detail_model_from_core_snapshot,
-    discover_model_from_core_snapshot, home_model_from_core_snapshot,
+    discover_model_from_core_snapshot, home_model_with_hero,
     library_model_from_core_snapshot, refresh_discover_model_from_core_snapshot,
     settings_model_from_core_snapshot,
 };
@@ -118,30 +118,12 @@ fn project(
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
-    let home = match hero_plan {
-        Some(hero_plan) if snapshot.get("home").is_some_and(Value::is_object) => {
-            let mut home_snapshot = json!({});
-            if let (Some(target), Some(source)) =
-                (home_snapshot.as_object_mut(), snapshot.as_object())
-            {
-                for key in ["billboard", "library", "profile", "settings"] {
-                    if let Some(value) = source.get(key) {
-                        target.insert(key.to_owned(), value.clone());
-                    }
-                }
-                let mut home = snapshot["home"].clone();
-                if let Some(billboard) = hero_plan.get("billboard") {
-                    home["billboard"] = billboard.clone();
-                }
-                if let Some(slides) = hero_plan.get("slides") {
-                    home["heroSlides"] = slides.clone();
-                }
-                target.insert("home".to_owned(), home);
-            }
-            home_model_from_core_snapshot(&home_snapshot, request.form_factor)
-        }
-        _ => home_model_from_core_snapshot(snapshot, request.form_factor),
-    };
+    let home = home_model_with_hero(
+        snapshot,
+        request.form_factor,
+        hero_plan.as_ref().and_then(|plan| plan.get("billboard")),
+        hero_plan.as_ref().and_then(|plan| plan.get("slides")),
+    );
     let route = snapshot
         .pointer("/navigation/route")
         .and_then(Value::as_str)

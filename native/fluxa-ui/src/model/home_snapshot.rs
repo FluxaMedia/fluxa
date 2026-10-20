@@ -72,9 +72,18 @@ pub fn home_model_from_core_snapshot(
     snapshot: &serde_json::Value,
     form_factor: UiFormFactorJson,
 ) -> HomeModel {
+    home_model_with_hero(snapshot, form_factor, None, None)
+}
+
+pub fn home_model_with_hero(
+    snapshot: &serde_json::Value,
+    form_factor: UiFormFactorJson,
+    billboard_override: Option<&serde_json::Value>,
+    slides_override: Option<&serde_json::Value>,
+) -> HomeModel {
     let home = snapshot.get("home").unwrap_or(&serde_json::Value::Null);
-    let billboard = home
-        .get("billboard")
+    let billboard = billboard_override
+        .or_else(|| home.get("billboard"))
         .filter(|value| !value.is_null())
         .or_else(|| snapshot.pointer("/billboard/movie"))
         .unwrap_or(&serde_json::Value::Null);
@@ -188,7 +197,8 @@ pub fn home_model_from_core_snapshot(
     let mut slide_keys = Vec::new();
     let mut hero_slides = Vec::new();
     for item in std::iter::once(billboard).chain(
-        home.get("heroSlides")
+        slides_override
+            .or_else(|| home.get("heroSlides"))
             .or_else(|| home.get("slides"))
             .and_then(serde_json::Value::as_array)
             .into_iter()

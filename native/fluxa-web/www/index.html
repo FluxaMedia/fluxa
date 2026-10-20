@@ -7,21 +7,25 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
 html, body { margin: 0; height: 100%; background: #070709; overflow: hidden; }
-#a11y { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+#a11y { position: fixed; top: 0; left: 0; right: 0; bottom: 0; pointer-events: none; overflow: hidden; }
 #a11y > * { position: absolute; margin: 0; padding: 0; border: 0; opacity: 0; overflow: hidden; pointer-events: none; font-size: 16px; }
-video { position: fixed; inset: 0; width: 100vw; height: 100vh; background: #000; object-fit: contain; }
-#artwork, #artwork-top { position: fixed; inset: 0; overflow: hidden; pointer-events: none; }
+video { position: fixed; top: 0; left: 0; right: 0; bottom: 0; width: 100vw; height: 100vh; background: #000; object-fit: contain; }
+#artwork, #artwork-top { position: fixed; top: 0; left: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }
 #artwork-top { z-index: 1; }
-#artwork > video { position: absolute; inset: auto; width: auto; height: auto; z-index: 1; display: none; object-fit: cover; background: transparent; }
+#artwork > video { position: absolute; top: auto; left: auto; right: auto; bottom: auto; width: auto; height: auto; z-index: 1; display: none; object-fit: cover; background: transparent; }
 #artwork > img, #artwork-top > img { position: absolute; object-fit: cover; background: #1b1b20; display: none; }
-canvas { position: fixed; inset: 0; display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }
+#avplayer { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; display: none; }
+#avsub { position: fixed; left: 10vw; right: 10vw; bottom: 8vh; z-index: 2; display: none; text-align: center; color: #fff; font: 600 3.2vh/1.3 sans-serif; text-shadow: 0 0 6px #000, 0 0 3px #000; white-space: pre-line; pointer-events: none; }
+canvas { position: fixed; top: 0; left: 0; right: 0; bottom: 0; display: block; width: 100vw; height: 100vh; touch-action: none; outline: none; }
 </style>
 </head>
 <body>
 <video id="video" playsinline preload="auto"></video>
+<object id="avplayer" type="application/avplayer"></object>
 <div id="artwork"></div>
 <canvas id="fluxa" tabindex="0"></canvas>
 <div id="artwork-top"></div>
+<div id="avsub"></div>
 <div id="a11y"></div>
 <script type="module" src="main.js"></script>
 </body>

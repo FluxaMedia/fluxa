@@ -45,7 +45,11 @@ impl FluxaHost {
             }
             match result {
                 Ok(gpu) => state.gpu = Some(gpu),
-                Err(error) => host_log(format!("GPU surface init failed: {error}")),
+                Err(error) => {
+                    host_log(format!("GPU surface init failed: {error}"));
+                    #[cfg(not(target_arch = "wasm32"))]
+                    fluxa_crash::capture("GPU init failed on every backend", &[("gpu.error", &error)]);
+                }
             }
         };
         #[cfg(target_arch = "wasm32")]

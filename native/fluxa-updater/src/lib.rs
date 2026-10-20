@@ -185,6 +185,9 @@ fn platform(variant: &str) -> String {
         let mut key = update::platform_key(std::env::consts::OS, std::env::consts::ARCH);
         if install::appimage_path().is_some() {
             key.push_str("-appimage");
+        } else if let Some(kind) = install::system_package() {
+            key.push('-');
+            key.push_str(kind);
         }
         key
     }

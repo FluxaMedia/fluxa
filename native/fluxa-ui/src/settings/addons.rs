@@ -292,12 +292,14 @@ pub(super) fn plugins_height(settings: &SettingsModel, metrics: UiMetrics, langu
 
 type FormInput<'a> = (u64, &'a str, String);
 type FormButton = (u64, String, components::ButtonKind);
+type FormIcon = (u64, Option<egui::TextureId>);
 
 fn draw_form(
     context: &egui::Context,
     card: Rect,
     inputs: &[FormInput],
     buttons: &[FormButton],
+    icon: Option<FormIcon>,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) {
@@ -343,6 +345,25 @@ fn draw_form(
             },
         );
     }
+    if let Some((node, texture)) = icon {
+        let side = metrics.settings_extended_action_height;
+        let button = Rect::from_min_size(
+            Pos2::new(inner.left() + buttons.len() as f32 * (width + gap), y),
+            Vec2::splat(side),
+        );
+        layout.focusable.push((node, button));
+        components::placed_front(
+            context,
+            Id::new(("fluxa-settings-form", node)),
+            button.min,
+            |ui| {
+                let color = metrics.text_primary;
+                if components::icon_button(ui, texture, side, color, true, false, true).clicked() {
+                    layout.activated = Some(node);
+                }
+            },
+        );
+    }
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -353,12 +374,13 @@ fn draw_header(
     title: &str,
     input: FormInput,
     buttons: &[FormButton],
+    icon: Option<FormIcon>,
     metrics: UiMetrics,
     layout: &mut HomeLayout,
 ) -> f32 {
     let painter = context.layer_painter(egui::LayerId::background());
     let card = account_group(&painter, rect, top, form_height(1, metrics), title, metrics);
-    draw_form(context, card, &[input], buttons, metrics, layout);
+    draw_form(context, card, &[input], buttons, icon, metrics, layout);
     card.bottom() + APPEARANCE_GROUP_GAP
 }
 
@@ -413,18 +435,12 @@ pub(super) fn draw_addons(
             &settings.addon_url,
             "https://".to_owned(),
         ),
-        &[
-            (
-                NODE_SETTINGS_ADDON_INSTALL,
-                localized("settings.addon_install", language),
-                components::ButtonKind::Primary,
-            ),
-            (
-                NODE_SETTINGS_ADDON_REFRESH,
-                localized("settings.addon_refresh", language),
-                components::ButtonKind::Secondary,
-            ),
-        ],
+        &[(
+            NODE_SETTINGS_ADDON_INSTALL,
+            localized("settings.addon_install", language),
+            components::ButtonKind::Primary,
+        )],
+        Some((NODE_SETTINGS_ADDON_REFRESH, assets.icon("Refresh"))),
         metrics,
         layout,
     );
@@ -493,6 +509,7 @@ pub(super) fn draw_plugins(
             localized("settings.plugin_add", language),
             components::ButtonKind::Primary,
         )],
+        None,
         metrics,
         layout,
     );
@@ -1009,6 +1026,7 @@ pub(super) fn draw_servers(
                 localized("auth.sign_in", language),
                 components::ButtonKind::Primary,
             )],
+            None,
             metrics,
             layout,
         );
@@ -1038,6 +1056,7 @@ pub(super) fn draw_servers(
                 localized("settings.account_connect", language),
                 components::ButtonKind::Primary,
             )],
+            None,
             metrics,
             layout,
         );

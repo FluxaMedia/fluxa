@@ -619,7 +619,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 show_notice(state, "playback.no_sources");
                 continue;
             }
-            if shortcuts::activate_node(state, node)
+            if profiles::activate_node(state, node)
+                || shortcuts::activate_node(state, node)
                 || updates::activate_node(state, node)
                 || stream_badges::activate_node(state, node)
                 || collections::activate_node(state, node)
@@ -781,6 +782,7 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 && let Some(action_json) = settings_action_json(node, &state.settings)
             {
                 if node == fluxa_ui::NODE_SETTINGS_ADDON_INSTALL {
+                    state.addon_install = Some(state.settings.addon_url.trim().to_owned());
                     state.settings.addon_url.clear();
                 } else if node == fluxa_ui::NODE_SETTINGS_PLUGIN_INSTALL {
                     state.settings.plugin_url.clear();
@@ -848,7 +850,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                         item_type,
                         preview,
                     } if state.route != Route::Detail
-                        && state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop => {
+                        && state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop =>
+                    {
                         NativeAction::DetailModal {
                             id,
                             item_type,
@@ -869,7 +872,9 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             }
         }
         if matches!(action, UiAction::Back) {
-            if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
+            if state.profiles.is_some() {
+                profiles::back(state);
+            } else if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
                 state.calendar.selected_day = None;
                 reset_ui(state);
             } else if state.route == Route::Settings
@@ -924,11 +929,32 @@ pub(super) fn pull_session_snapshot(state: &mut RendererState) {
     state.session_revision = Some(revision);
     let live = session.snapshot();
     let snapshot = crate::preview::fixture_snapshot(&live).unwrap_or(live);
+    let unchanged = state
+        .core_snapshot
+        .as_deref()
+        .is_some_and(|old| !projection_inputs_changed(old, &snapshot));
     if let Some(old) = state.core_snapshot.replace(snapshot) {
         retire(old);
     }
+    if unchanged {
+        return;
+    }
     state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
     sync_home_from_core_snapshot(state);
+}
+
+const UNPROJECTED_SLICES: [&str; 5] = ["trailer", "lookup", "auth", "watchTogether", "_runtime"];
+
+fn projection_inputs_changed(old: &Value, new: &Value) -> bool {
+    let (Some(old), Some(new)) = (old.as_object(), new.as_object()) else {
+        return true;
+    };
+    let relevant = |key: &&String| !UNPROJECTED_SLICES.contains(&key.as_str());
+    old.keys().filter(relevant).count() != new.keys().filter(relevant).count()
+        || new
+            .iter()
+            .filter(|(key, _)| relevant(key))
+            .any(|(key, value)| old.get(key) != Some(value))
 }
 
 pub(super) fn discover_command(
@@ -1354,4 +1380,24 @@ pub(super) fn home_refresh_due(state: &RendererState) -> bool {
         && state.route == Route::Home
         && state.player.is_none()
         && state.home_refreshed_at.elapsed() >= HOME_REFRESH_INTERVAL
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trailer_resolution_does_not_reproject() {
+        let old = json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {}}});
+        let new = json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {"a": 1}}});
+        assert!(!projection_inputs_changed(&old, &new));
+    }
+
+    #[test]
+    fn new_catalog_page_reprojects() {
+        let old = json!({"home": {"categories": [1]}, "trailer": {}});
+        let new = json!({"home": {"categories": [1, 2]}, "trailer": {}});
+        assert!(projection_inputs_changed(&old, &new));
+        assert!(projection_inputs_changed(&old, &json!({"trailer": {}})));
+    }
 }

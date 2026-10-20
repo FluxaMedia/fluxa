@@ -93,6 +93,13 @@
       "category": "system"
     },
     {
+      "key": "crashReports",
+      "type": "boolean",
+      "default": true,
+      "scope": "profile",
+      "category": "system"
+    },
+    {
       "key": "autoPlayCountdownSecs",
       "type": "string",
       "default": "7",

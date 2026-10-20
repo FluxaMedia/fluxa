@@ -1,3 +1,5 @@
+import { createAvplay, hasAvplay } from "./avplay.js";
+
 const HLS_MODULE = "https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.mjs";
 const STATUS_INTERVAL = 250;
 const TRACK_INTERVAL = 1000;
@@ -11,12 +13,11 @@ const srtToVtt = (text) =>
     .replace(/^﻿/, "")
     .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
 
-export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
+export const createPlayer = ({ app, video, proxy, trailer }) => {
   let hls = null;
   let hlsModule = null;
   let url = null;
   let triedProxy = false;
-  let config = {};
   let fit = "fit";
   let error = null;
   let waiting = false;
@@ -185,7 +186,6 @@ export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
     lastTracks = "";
     triedProxy = false;
     applyFit();
-    await adapter?.beforeLoad?.(video, source, config);
     await start(source);
     video.play().catch(() => {});
     timer = setInterval(report, STATUS_INTERVAL);
@@ -237,7 +237,6 @@ export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
 
   const handlers = {
     configure: (request) => {
-      config = request;
       preferred = { audio: request.audioLanguage || "", subtitle: request.subtitleLanguage || "" };
     },
     load: (request) => {
@@ -306,6 +305,26 @@ export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
         navigator.mediaSession.setActionHandler(name, handler);
       } catch {}
     }
+  }
+
+  const av = hasAvplay() ? createAvplay({ app, fallback: load, onStop: () => {} }) : null;
+  const routed = ["togglePause", "seek", "seekTo", "setSpeed", "fit", "selectTracks", "mpv"];
+  if (av) {
+    const video = { ...handlers };
+    for (const name of routed) handlers[name] = (request) => (av.isActive() ? av.handlers : video)[name]?.(request);
+    handlers.load = (request) => {
+      trailer?.stop();
+      destroy();
+      av.handlers.load(request);
+    };
+    handlers.stop = (request) => {
+      av.handlers.stop(request);
+      video.stop(request);
+    };
+    handlers.configure = (request) => {
+      video.configure(request);
+      av.handlers.configure(request);
+    };
   }
 
   return {

@@ -93,10 +93,13 @@ jobs:
           FLUXA_RELEASE_STORE_PASSWORD: ${{ secrets.FLUXA_RELEASE_STORE_PASSWORD }}
           FLUXA_RELEASE_KEY_ALIAS: ${{ secrets.FLUXA_RELEASE_KEY_ALIAS }}
           FLUXA_RELEASE_KEY_PASSWORD: ${{ secrets.FLUXA_RELEASE_KEY_PASSWORD }}
-          TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-          TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-          SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-          ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+          FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+          FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+          FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+          FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+          FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
+          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
         run: ./gradlew :app:assembleMobileRelease :app:assembleTvRelease --no-daemon
 
       - name: Remove release keystore
@@ -124,12 +127,15 @@ jobs:
     name: desktop (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     env:
-      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+      FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -199,12 +205,15 @@ jobs:
     name: apple (${{ matrix.name }})
     runs-on: macos-latest
     env:
-      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.TRAKT_CLIENT_ID }}
-      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
-      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
-      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+      FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -323,10 +332,12 @@ jobs:
       - name: Build wasm bundle
         env:
           RUSTFLAGS: --cfg getrandom_backend="wasm_js"
+          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
         run: |
           cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
           cargo build --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown --release
           wasm-bindgen --target web --out-dir native/fluxa-web/www/pkg native/target/wasm32-unknown-unknown/release/fluxa_web.wasm
+          sed -i "s#__FLUXA_SENTRY_DSN__#$FLUXA_SENTRY_DSN#; s#__FLUXA_VERSION__#${RELEASE_TAG#v}#" native/fluxa-web/www/crash.js
 
       - name: Zip site
         run: |
@@ -448,6 +459,8 @@ jobs:
             name="$(basename "$file")"
             case "$name" in
               *-linux-x86_64.AppImage) key="linux-x86_64-appimage" ;;
+              *-linux-amd64.deb) key="linux-x86_64-deb" ;;
+              *-linux-x86_64.rpm) key="linux-x86_64-rpm" ;;
               *-linux-*.tar.gz) key="linux-$(echo "$name" | sed -E 's/.*-linux-([^.]*)\.tar\.gz/\1/')" ;;
               *-windows-*.zip) key="windows-$(echo "$name" | sed -E 's/.*-windows-([^.]*)\.zip/\1/')" ;;
               *-macos-*.zip) key="macos-$(echo "$name" | sed -E 's/.*-macos-([^.]*)\.zip/\1/')" ;;
@@ -463,6 +476,22 @@ jobs:
             --out release/latest.json \
             "${assets[@]}"
 
+      - name: Build SideStore source
+        run: |
+          ipa="$(ls release/fluxa-*-ios-unsigned.ipa)"
+          unzip -p "$ipa" 'Payload/*.app/Info.plist' > ios-info.plist
+          read -r bundle_id build min_os < <(python3 -c 'import plistlib; p = plistlib.load(open("ios-info.plist", "rb")); print(p["CFBundleIdentifier"], p["CFBundleVersion"], p["MinimumOSVersion"])')
+          node scripts/sidestore-source.mjs \
+            --version "$RELEASE_TAG" \
+            --repo "${{ github.repository }}" \
+            --ipa "$ipa" \
+            --bundle-id "$bundle_id" \
+            --build "$build" \
+            --min-os "$min_os" \
+            --notes artifacts/notes/notes.md \
+            --out sidestore.json
+          rm ios-info.plist
+
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
@@ -470,3 +499,21 @@ jobs:
           name: "Fluxa ${{ env.RELEASE_TAG }}"
           body_path: artifacts/notes/notes.md
           files: release/*
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: default-branch
+
+      - name: Commit SideStore source
+        continue-on-error: true
+        run: |
+          cp sidestore.json default-branch/sidestore.json
+          cd default-branch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sidestore.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(release): update the SideStore source for $RELEASE_TAG"
+          git pull --rebase
+          git push

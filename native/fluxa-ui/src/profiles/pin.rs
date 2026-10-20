@@ -78,15 +78,17 @@ pub(super) fn draw_pin_prompt(
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 8.0;
                 let half = (width - 8.0) * 0.5;
-                if components::secondary_button(ui, &t("common.cancel"), half).clicked()
-                    || ui.input(|input| input.key_pressed(egui::Key::Escape))
-                {
+                components::secondary_button(ui, &t("common.cancel"), half).focus_node(
+                    ui,
+                    NODE_PROFILES_PIN_CANCEL,
+                    &metrics,
+                );
+                if ui.input(|input| input.key_pressed(egui::Key::Escape)) {
                     cancel = true;
                 }
-                if components::primary_button(ui, &t("profiles.unlock"), half, pin.len() == 4)
-                    .clicked()
-                    || submit
-                {
+                components::primary_button(ui, &t("profiles.unlock"), half, pin.len() == 4)
+                    .focus_node(ui, NODE_PROFILES_PIN_UNLOCK, &metrics);
+                if submit {
                     *request = Some(ProfilesRequest::SubmitPin);
                 }
             });

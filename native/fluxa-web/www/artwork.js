@@ -26,7 +26,10 @@ export function mountArtwork(app, below, above, trailer) {
       img.alt = "";
       img.decoding = "async";
       img.referrerPolicy = "no-referrer";
-      img.onerror = () => (img.style.visibility = "hidden");
+      img.onerror = () => {
+        img.style.visibility = "hidden";
+        console.warn(`[fluxa] dom image failed: ${img.dataset.src}`);
+      };
       img.onload = () => (img.style.visibility = "visible");
       layer.append(img);
       pool.push(img);

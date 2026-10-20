@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artwork", "fluxa-desktop", "fluxa-android-renderer", "fluxa-host", "fluxa-effects", "fluxa-mpv", "fluxa-web", "fluxa-apple-renderer", "fluxa-updater", "fluxa-trickplay-gen", "fluxa-webos"]
+members = ["fluxa-crash", "fluxa-renderer", "fluxa-theme", "fluxa-ui", "fluxa-app", "fluxa-artwork", "fluxa-desktop", "fluxa-android-renderer", "fluxa-host", "fluxa-effects", "fluxa-mpv", "fluxa-web", "fluxa-apple-renderer", "fluxa-updater", "fluxa-trickplay-gen", "fluxa-webos"]
 
 [patch.crates-io]
 epaint = { path = "vendor/epaint" }

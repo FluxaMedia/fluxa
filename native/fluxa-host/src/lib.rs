@@ -64,6 +64,8 @@ pub fn set_youtube_proxy(base_url: &str) {
 }
 
 fn host_log(message: impl AsRef<str>) {
+    #[cfg(not(target_arch = "wasm32"))]
+    fluxa_crash::log(message.as_ref());
     match LOGGER.get() {
         Some(logger) => logger(message.as_ref()),
         None => eprintln!("[fluxa-host] {}", message.as_ref()),
@@ -92,13 +94,14 @@ mod accounts;
 mod actions;
 mod ambient;
 mod artwork;
-pub mod dom_images;
 mod bridge_video;
 mod card_menu;
 mod cast;
 mod collections;
+mod crash;
 mod detail_modal;
 mod detail_sections;
+pub mod dom_images;
 mod downloads;
 mod events;
 mod frame;
@@ -149,8 +152,8 @@ use sync::*;
 pub type PrePresent = Box<dyn Fn() + Send>;
 
 pub use player::{
-    DeviceOpener, PlaybackStats, Thumbnail, ThumbnailPlan, ThumbnailProgress, TrackSelection,
-    SpeechEnergy, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
+    DeviceOpener, PlaybackStats, SpeechEnergy, Thumbnail, ThumbnailPlan, ThumbnailProgress,
+    TrackSelection, VideoBackend, VideoCommand, VideoStatus, VideoTrack,
 };
 pub use semantics::{AccessNode, AccessTree, Role};
 
@@ -216,6 +219,7 @@ struct RendererState {
     last_snapshot_revision: Option<u64>,
     stream_providers: bool,
     notice: Option<(String, Instant)>,
+    addon_install: Option<String>,
     session: Option<SessionHandle>,
     session_revision: Option<u64>,
     egui_events: Vec<egui::Event>,
@@ -251,6 +255,7 @@ struct RendererState {
     stream_badges: stream_badges::State,
     applied_app_icon: Option<String>,
     updates: updates::State,
+    crash: crash::State,
     open_url: Option<String>,
     external_play: Option<String>,
     external_pending: Option<std::sync::mpsc::Receiver<Result<String, String>>>,
@@ -441,6 +446,7 @@ impl FluxaHost {
             last_snapshot_revision: None,
             stream_providers: true,
             notice: None,
+            addon_install: None,
             session: None,
             session_revision: None,
             egui_events: Vec::new(),
@@ -476,6 +482,7 @@ impl FluxaHost {
             stream_badges: Default::default(),
             applied_app_icon: None,
             updates: Default::default(),
+            crash: Default::default(),
             open_url: None,
             external_play: None,
             external_pending: None,
@@ -649,13 +656,16 @@ impl FluxaHost {
     }
 
     pub fn start_session(&self, data_dir: PathBuf) -> Result<(), String> {
-        let session = SessionHandle::open(Storage::open(data_dir.clone())?)?;
+        let storage = Storage::open(data_dir.clone())?;
+        preview::seed_profiles(&storage);
+        let session = SessionHandle::open(storage)?;
         profiles::load_profile(&session)?;
         let pick = profiles::should_pick_on_start(session.storage());
         let greet = welcome::required(session.storage());
         let background = profiles::picker_settings(session.storage()).background_url;
         self.with_state(|state| {
             updates::start(state, &data_dir);
+            crash::start(state, &data_dir);
             preview::start(state);
             state.session = Some(session);
             state.picker_background = background;
@@ -787,6 +797,18 @@ impl FluxaHost {
 
     pub fn waiting_to_exit(&self) -> bool {
         self.peek(|state| state.quit_when_idle).unwrap_or(false)
+    }
+
+    pub fn crash_reports_enabled(&self) -> bool {
+        self.peek(|state| {
+            state
+                .settings
+                .values
+                .get("crashReports")
+                .and_then(Value::as_bool)
+                .unwrap_or(true)
+        })
+        .unwrap_or(true)
     }
 
     pub fn take_install_apk(&self) -> Option<String> {

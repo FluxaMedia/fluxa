@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<widget xmlns="http://www.w3.org/ns/widgets" xmlns:tizen="http://tizen.org/ns/widgets" id="https://fluxa.media/app" version="__VERSION__" viewmodes="maximized">
+  <tizen:application id="FluxaWeb01.Fluxa" package="FluxaWeb01" required_version="6.0"/>
+  <content src="index.html"/>
+  <feature name="http://tizen.org/feature/screen.size.all"/>
+  <icon src="icon.png"/>
+  <name>Fluxa</name>
+  <tizen:profile name="tv"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/network.public"/>
+  <tizen:privilege name="http://tizen.org/privilege/tv.inputdevice"/>
+  <tizen:privilege name="http://developer.samsung.com/privilege/avplay"/>
+  <tizen:setting screen-orientation="landscape" context-menu="disable" background-support="disable" encryption="disable" install-location="auto" hwkey-event="enable"/>
+  <access origin="*" subdomains="true"/>
+  <tizen:content-security-policy>default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' blob:;</tizen:content-security-policy>
+</widget>

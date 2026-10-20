@@ -134,6 +134,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     timer.mark("actions");
     pull_session_snapshot(state);
     updates::poll(state);
+    crash::poll(state);
     timer.mark("snapshot");
     profiles::poll(state);
     accounts::poll(state);

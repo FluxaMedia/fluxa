@@ -1,30 +1,29 @@
 import { mountAccessibility } from "./a11y.js";
 import { mountArtwork, place } from "./artwork.js";
 import init, { FluxaWeb } from "./pkg/fluxa_web.js";
+import { createCrashReporter } from "./crash.js";
 import { createPlayer } from "./player.js";
 import { createTrailer } from "./trailer.js";
-import { exitApp, installRemote, isWebos as webos, mediaAdapter, stageReady, startProxy } from "./webos.js";
+import { installRemote } from "./remote.js";
 
-const formFactor = webos || /smart-tv|smarttv/i.test(navigator.userAgent) ? "tv" : "mobile";
+const formFactor = /smart-tv|smarttv/i.test(navigator.userAgent) ? "tv" : "mobile";
 const query = new URLSearchParams(location.search);
+const crash = createCrashReporter();
 
 const main = async () => {
-  const proxy = query.get("proxy") ?? query.get("imageProxy") ?? (await startProxy());
+  const proxy = query.get("proxy") ?? query.get("imageProxy");
 
   const webgpu = Boolean(navigator.gpu && (await navigator.gpu.requestAdapter().catch(() => null)));
 
   await init();
-  const app = new FluxaWeb("fluxa", formFactor, webos ? "webos" : "web", webgpu, proxy);
+  const app = new FluxaWeb("fluxa", formFactor, "web", webgpu, proxy);
   const syncAccessibility = mountAccessibility(app, document.getElementById("fluxa"), document.getElementById("a11y"));
   const artwork = document.getElementById("artwork");
   const trailer = createTrailer({ app, layer: artwork, place });
   const syncArtwork = mountArtwork(app, artwork, document.getElementById("artwork-top"), trailer);
   addEventListener("resize", () => app.resize());
-  const player = createPlayer({ app, video: document.getElementById("video"), proxy, adapter: mediaAdapter, trailer });
-  installRemote(app, () => {
-    if (!app.back() && webos) exitApp();
-  });
-  stageReady();
+  const player = createPlayer({ app, video: document.getElementById("video"), proxy, trailer });
+  installRemote(app, () => app.back());
 
   const actionHandlers = [];
   window.fluxaOnAction = (handler) => actionHandlers.push(handler);
@@ -35,6 +34,7 @@ const main = async () => {
       accessAt = now;
       syncAccessibility();
     }
+    crash.setEnabled(app.crash_reports_enabled());
     player.poll();
     const actions = app.frame();
     syncArtwork();

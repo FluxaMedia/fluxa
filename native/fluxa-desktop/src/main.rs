@@ -28,7 +28,13 @@ mod mpv_common;
 
 #[cfg(target_os = "macos")]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Metal];
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "windows")]
+const BACKENDS: &[GraphicsBackend] = &[
+    GraphicsBackend::Vulkan,
+    GraphicsBackend::Dx12,
+    GraphicsBackend::Gles,
+];
+#[cfg(not(any(target_os = "macos", target_os = "windows")))]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
 #[cfg(target_os = "macos")]
