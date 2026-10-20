@@ -11,12 +11,11 @@ const srtToVtt = (text) =>
     .replace(/^﻿/, "")
     .replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
 
-export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
+export const createPlayer = ({ app, video, proxy, trailer }) => {
   let hls = null;
   let hlsModule = null;
   let url = null;
   let triedProxy = false;
-  let config = {};
   let fit = "fit";
   let error = null;
   let waiting = false;
@@ -185,7 +184,6 @@ export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
     lastTracks = "";
     triedProxy = false;
     applyFit();
-    await adapter?.beforeLoad?.(video, source, config);
     await start(source);
     video.play().catch(() => {});
     timer = setInterval(report, STATUS_INTERVAL);
@@ -237,7 +235,6 @@ export const createPlayer = ({ app, video, proxy, adapter, trailer }) => {
 
   const handlers = {
     configure: (request) => {
-      config = request;
       preferred = { audio: request.audioLanguage || "", subtitle: request.subtitleLanguage || "" };
     },
     load: (request) => {

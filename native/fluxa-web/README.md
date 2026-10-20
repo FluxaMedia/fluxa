@@ -1,25 +1,18 @@
 # fluxa-web
 
-The renderer compiled to wasm for the browser and for webOS TVs. `www/` is the static shell; `webos/` holds the webOS app metadata, icons and the Luna proxy service.
+The renderer compiled to wasm for the browser and for Samsung Tizen TVs. `www/` is the static shell; `tizen/` holds the widget config and the polyfills for the TV's older web engine.
 
 ```bash
 scripts/build-web.sh dist-web/site      # static site, ready for GitHub Pages
-scripts/package-webos.sh                # dist-web/fluxa-<version>-webos.ipk
+scripts/package-tizen.sh                # dist-web/fluxa-<version>-tizen.wgt
 ```
 
-Pushes to master that touch `native`, `core` or `shared` deploy the site through `.github/workflows/pages.yml`. Release tags also attach the ipk.
+Pushes to master that touch `native`, `core` or `shared` deploy the site through `.github/workflows/pages.yml`.
 
 Query parameters:
 
-- `proxy=<base url>` routes artwork, HLS manifests and subtitles through a server exposing `/proxy?url=`. On webOS the bundled Luna service provides this.
+- `proxy=<base url>` routes artwork, HLS manifests and subtitles through a server exposing `/proxy?url=`.
 
-Playback uses the page's `<video>` element behind the transparent canvas. HLS goes through the browser or TV pipeline when it can and through hls.js otherwise. On webOS the app declares container, HDR and audio passthrough to the media pipeline with `setMediaOption` before loading, so decoding stays on the TV's hardware decoders.
+Playback uses the page's `<video>` element behind the transparent canvas. HLS goes through the browser or TV pipeline when it can and through hls.js otherwise.
 
-webOS needs Chromium 87 or newer (webOS 22+).
-
-Install on a TV in developer mode:
-
-```bash
-ares-install --device <name> dist-web/fluxa-<version>-webos.ipk
-ares-launch --device <name> com.fluxa.app
-```
+The Tizen package targets Chromium 76 (Tizen 6.0): wasm is built with `target-cpu=mvp` and `-Z build-std`, the JS is bundled into one classic script and the wasm is loaded with XHR because the widget runs from `file://`. The widget is unsigned; install it with Apps2Samsung, which signs it for the TV.

@@ -26,7 +26,7 @@ sed -i 's#await init();#await init({ module_or_path: await loadWasm("./pkg/fluxa
 sed -i "s#__FLUXA_SENTRY_DSN__#${FLUXA_SENTRY_DSN:-}#; s#__FLUXA_VERSION__#$version#" "$app/crash.js"
 node_modules/.bin/esbuild "$app/main.js" --bundle --format=iife --target=chrome76 --outfile="$app/bundle.js"
 cat "$tizen/polyfill.js" "$app/bundle.js" > "$app/app.js"
-rm -f "$app/bundle.js" "$app"/{main,a11y,artwork,player,trailer,webos,crash}.js "$app/pkg/fluxa_web.js" "$app/pkg"/*.d.ts "$app/pkg/package.json"
+rm -f "$app/bundle.js" "$app"/{main,a11y,artwork,player,trailer,remote,crash}.js "$app/pkg/fluxa_web.js" "$app/pkg"/*.d.ts "$app/pkg/package.json"
 sed -i 's#<script type="module" src="main.js"></script>#<script src="app.js"></script>#' "$app/index.html"
 
 rsvg-convert -w 512 -h 512 shared/brand/fluxa-mark.svg -o "$app/icon.png"
