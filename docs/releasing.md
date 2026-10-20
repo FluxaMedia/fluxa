@@ -20,6 +20,7 @@ The `.zip` / `.tar.gz` / `.AppImage` / `.apk` files are also the payloads the in
 ## Secrets
 
 - `FLUXA_UPDATE_PRIVATE_KEY`: ed25519 key that signs `latest.json`. The public half is `shared/update-public-key.txt` and is compiled into the app. Generate a new pair with `node scripts/update-manifest.mjs keygen`; rotating it strands installed apps, which then need a manual reinstall.
+- `FLUXA_SENTRY_DSN`: Sentry DSN compiled into the desktop, Android, iOS/tvOS, webOS and web builds. Empty means crash reporting stays off. Users can turn it off in Settings → About → Crash reports.
 - Android keystore and provider keys are the existing `FLUXA_RELEASE_*`, `TRAKT_*`, `SIMKL_*`, `ANILIST_*`, `FLUXA_NUVIO_*` secrets.
 
 ## In-app updates

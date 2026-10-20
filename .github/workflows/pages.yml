@@ -57,6 +57,8 @@ jobs:
         env:
           FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
           FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
+          FLUXA_VERSION: web-${{ github.sha }}
         run: ./scripts/build-web.sh dist-web/site
 
       - uses: actions/configure-pages@v5

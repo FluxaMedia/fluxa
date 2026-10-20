@@ -97,6 +97,7 @@ jobs:
           TRAKT_CLIENT_SECRET: ${{ secrets.TRAKT_CLIENT_SECRET }}
           SIMKL_CLIENT_ID: ${{ secrets.SIMKL_CLIENT_ID }}
           ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
+          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
         run: ./gradlew :app:assembleMobileRelease :app:assembleTvRelease --no-daemon
 
       - name: Remove release keystore
@@ -130,6 +131,7 @@ jobs:
       FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -205,6 +207,7 @@ jobs:
       FLUXA_ANILIST_CLIENT_ID: ${{ secrets.ANILIST_CLIENT_ID }}
       FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
       FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
     timeout-minutes: 90
     strategy:
       fail-fast: false
@@ -323,10 +326,12 @@ jobs:
       - name: Build wasm bundle
         env:
           RUSTFLAGS: --cfg getrandom_backend="wasm_js"
+          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
         run: |
           cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
           cargo build --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown --release
           wasm-bindgen --target web --out-dir native/fluxa-web/www/pkg native/target/wasm32-unknown-unknown/release/fluxa_web.wasm
+          sed -i "s#__FLUXA_SENTRY_DSN__#$FLUXA_SENTRY_DSN#; s#__FLUXA_VERSION__#${RELEASE_TAG#v}#" native/fluxa-web/www/crash.js
 
       - name: Zip site
         run: |
