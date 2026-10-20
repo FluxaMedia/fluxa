@@ -35,3 +35,4 @@ zbus = "5"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.5"
+raw-window-metal = "1.1"
