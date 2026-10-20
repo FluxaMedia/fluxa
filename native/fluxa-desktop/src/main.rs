@@ -31,6 +31,11 @@ const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend:
 #[cfg(not(target_os = "macos"))]
 const BACKENDS: &[GraphicsBackend] = &[GraphicsBackend::Vulkan, GraphicsBackend::Gles];
 
+struct HandleTarget(wgpu::SurfaceTargetUnsafe);
+
+unsafe impl Send for HandleTarget {}
+unsafe impl Sync for HandleTarget {}
+
 const LINE_HEIGHT: f32 = 40.0;
 const STICK_DEADZONE: f32 = 0.2;
 const STICK_SCROLL: f32 = 40.0;
@@ -392,10 +397,25 @@ impl ApplicationHandler<AccessEvent> for App {
         }
         let size = window.inner_size();
         let target = window.clone();
+        let handles = unsafe {
+            wgpu::SurfaceTargetUnsafe::from_display_and_window(&*target, &*target)
+                .map_err(|error| error.to_string())
+        }
+        .map(HandleTarget);
         let surface = unsafe {
             NativeSurface::new(BACKENDS, move || {
-                wgpu::SurfaceTargetUnsafe::from_display_and_window(&*target, &*target)
-                    .map_err(|error| error.to_string())
+                let _keep_alive = &target;
+                match &handles {
+                    Ok(HandleTarget(wgpu::SurfaceTargetUnsafe::RawHandle {
+                        raw_display_handle,
+                        raw_window_handle,
+                    })) => Ok(wgpu::SurfaceTargetUnsafe::RawHandle {
+                        raw_display_handle: *raw_display_handle,
+                        raw_window_handle: *raw_window_handle,
+                    }),
+                    Ok(_) => Err("unsupported surface target".to_owned()),
+                    Err(error) => Err(error.clone()),
+                }
             })
         };
         host.surface_created(surface, size.width, size.height);
