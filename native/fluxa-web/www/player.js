@@ -1,3 +1,5 @@
+import { createAvplay, hasAvplay } from "./avplay.js";
+
 const HLS_MODULE = "https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.mjs";
 const STATUS_INTERVAL = 250;
 const TRACK_INTERVAL = 1000;
@@ -303,6 +305,26 @@ export const createPlayer = ({ app, video, proxy, trailer }) => {
         navigator.mediaSession.setActionHandler(name, handler);
       } catch {}
     }
+  }
+
+  const av = hasAvplay() ? createAvplay({ app, fallback: load, onStop: () => {} }) : null;
+  const routed = ["togglePause", "seek", "seekTo", "setSpeed", "fit", "selectTracks", "mpv"];
+  if (av) {
+    const video = { ...handlers };
+    for (const name of routed) handlers[name] = (request) => (av.isActive() ? av.handlers : video)[name]?.(request);
+    handlers.load = (request) => {
+      trailer?.stop();
+      destroy();
+      av.handlers.load(request);
+    };
+    handlers.stop = (request) => {
+      av.handlers.stop(request);
+      video.stop(request);
+    };
+    handlers.configure = (request) => {
+      video.configure(request);
+      av.handlers.configure(request);
+    };
   }
 
   return {
