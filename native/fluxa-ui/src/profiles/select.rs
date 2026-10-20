@@ -86,18 +86,17 @@ pub(super) fn draw_select(
     for index in 0..count {
         let origin = cells[index].min;
         let avatar_center = Pos2::new(origin.x + cell.x * 0.5, origin.y + radius);
-        let hit = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0)).union(
-            Rect::from_min_size(
-                Pos2::new(origin.x, avatar_center.y + radius),
-                Vec2::new(cell.x, 40.0),
-            ),
-        );
+        let avatar_rect = Rect::from_center_size(avatar_center, Vec2::splat(radius * 2.0));
+        let hit = avatar_rect.union(Rect::from_min_size(
+            Pos2::new(origin.x, avatar_center.y + radius),
+            Vec2::new(cell.x, 40.0),
+        ));
         let Some(profile) = profiles.get(index) else {
             let response = ui.interact(hit, Id::new("fluxa-profiles-add"), Sense::click());
             if !blocked {
                 response
                     .clone()
-                    .focus_node(ui, node(index), &metrics)
+                    .focus_circle(ui, node(index), avatar_rect, &metrics)
                     .focus_neighbors(ui, node(index), neighbors(index));
             }
             let r = if response.hovered() {
@@ -134,7 +133,7 @@ pub(super) fn draw_select(
         if !blocked {
             response
                 .clone()
-                .focus_node(ui, node(index), &metrics)
+                .focus_circle(ui, node(index), avatar_rect, &metrics)
                 .focus_neighbors(ui, node(index), neighbors(index));
         }
         let card_hovered = ui.rect_contains_pointer(Rect::from_min_size(origin, cell));
