@@ -478,7 +478,7 @@ jobs:
             --build "$build" \
             --min-os "$min_os" \
             --notes artifacts/notes/notes.md \
-            --out release/sidestore.json
+            --out sidestore.json
           rm ios-info.plist
 
       - name: Create release
@@ -488,3 +488,21 @@ jobs:
           name: "Fluxa ${{ env.RELEASE_TAG }}"
           body_path: artifacts/notes/notes.md
           files: release/*
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          path: default-branch
+
+      - name: Commit SideStore source
+        continue-on-error: true
+        run: |
+          cp sidestore.json default-branch/sidestore.json
+          cd default-branch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add sidestore.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(release): update the SideStore source for $RELEASE_TAG"
+          git pull --rebase
+          git push

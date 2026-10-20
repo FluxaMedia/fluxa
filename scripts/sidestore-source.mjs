@@ -41,7 +41,7 @@ const source = {
   description: "Fluxa builds for SideStore.",
   iconURL: `https://raw.githubusercontent.com/${repo}/${tag}/packaging/icons/fluxa.png`,
   website: `https://github.com/${repo}`,
-  sourceURL: `${base}/latest/download/sidestore.json`,
+  sourceURL: `https://raw.githubusercontent.com/${repo}/HEAD/sidestore.json`,
   apps: [
     {
       name: "Fluxa",

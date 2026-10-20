@@ -14,7 +14,6 @@ Push a tag like `v0.2.0`. `.github/workflows/release.yml` builds everything and 
 | iOS / tvOS | `fluxa-<v>-{ios,tvos}-unsigned.ipa` (sideload only) |
 | Web | `fluxa-<v>-web.zip` |
 | Updates | `SHA256SUMS`, `latest.json`, `latest.json.sig` |
-| SideStore | `sidestore.json` |
 
 The `.zip` / `.tar.gz` / `.AppImage` / `.apk` files are also the payloads the in-app updater downloads.
 
@@ -32,4 +31,4 @@ The `.zip` / `.tar.gz` / `.AppImage` / `.apk` files are also the payloads the in
 
 ## SideStore
 
-Every release publishes `sidestore.json`, an AltStore-style source pointing at the unsigned iOS ipa. Add `https://github.com/FluxaMedia/fluxa/releases/latest/download/sidestore.json` as a source in SideStore. The source lists only the newest version. tvOS is not supported by SideStore.
+After each release the workflow commits `sidestore.json` to the default branch, an AltStore-style source pointing at the unsigned iOS ipa. Add `https://raw.githubusercontent.com/FluxaMedia/fluxa/HEAD/sidestore.json` as a source in SideStore. The source lists only the newest version. tvOS is not supported by SideStore.
