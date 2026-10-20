@@ -619,7 +619,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                 show_notice(state, "playback.no_sources");
                 continue;
             }
-            if shortcuts::activate_node(state, node)
+            if profiles::activate_node(state, node)
+                || shortcuts::activate_node(state, node)
                 || updates::activate_node(state, node)
                 || stream_badges::activate_node(state, node)
                 || collections::activate_node(state, node)
@@ -848,7 +849,8 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
                         item_type,
                         preview,
                     } if state.route != Route::Detail
-                        && state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop => {
+                        && state.home.form_factor == fluxa_ui::UiFormFactorJson::Desktop =>
+                    {
                         NativeAction::DetailModal {
                             id,
                             item_type,
@@ -869,7 +871,9 @@ pub(super) fn remember_actions(state: &mut RendererState, actions: Vec<UiAction>
             }
         }
         if matches!(action, UiAction::Back) {
-            if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
+            if state.profiles.is_some() {
+                profiles::back(state);
+            } else if state.route == Route::Calendar && state.calendar.selected_day.is_some() {
                 state.calendar.selected_day = None;
                 reset_ui(state);
             } else if state.route == Route::Settings

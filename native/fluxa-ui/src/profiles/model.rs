@@ -112,6 +112,52 @@ impl ProfilesModel {
         self.profiles.iter().find(|profile| profile.id == id)
     }
 
+    pub fn activate(&mut self, node: u64) -> Option<ProfilesRequest> {
+        if self.pin_prompt.is_some() {
+            match node {
+                NODE_PROFILES_PIN_CANCEL => self.pin_prompt = None,
+                NODE_PROFILES_PIN_UNLOCK
+                    if self
+                        .pin_prompt
+                        .as_ref()
+                        .is_some_and(|prompt| prompt.pin.len() == 4) =>
+                {
+                    return Some(ProfilesRequest::SubmitPin);
+                }
+                _ => {}
+            }
+            return None;
+        }
+        if self.mode != ProfilesMode::Select || self.confirm_delete.is_some() {
+            return None;
+        }
+        if node == NODE_PROFILES_GEAR {
+            self.background_input = self.picker.background_url.clone().unwrap_or_default();
+            self.mode = ProfilesMode::Settings;
+            return None;
+        }
+        let index = node.checked_sub(NODE_PROFILES_CELL_BASE)? as usize;
+        match self.profiles.get(index) {
+            Some(profile) => Some(ProfilesRequest::Select(profile.id.clone())),
+            None if index == self.profiles.len() => {
+                self.open_form(None);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn back(&mut self) -> bool {
+        if self.pin_prompt.take().is_some() || self.confirm_delete.take().is_some() {
+            return true;
+        }
+        if self.mode != ProfilesMode::Select {
+            self.mode = ProfilesMode::Select;
+            return true;
+        }
+        false
+    }
+
     pub fn open_form(&mut self, profile: Option<&ProfileEntry>) {
         self.draft = match profile {
             Some(profile) => ProfileDraft {

@@ -103,6 +103,20 @@ pub(crate) fn open(state: &mut RendererState) {
     state.profiles = Some(model);
 }
 
+pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
+    let Some(model) = state.profiles.as_mut() else {
+        return false;
+    };
+    if let Some(request) = model.activate(node) {
+        handle(state, request);
+    }
+    true
+}
+
+pub(crate) fn back(state: &mut RendererState) -> bool {
+    state.profiles.as_mut().is_some_and(|model| model.back())
+}
+
 pub(crate) fn handle(state: &mut RendererState, request: ProfilesRequest) {
     let Some(session) = state.session.as_ref() else {
         return;

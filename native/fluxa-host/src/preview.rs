@@ -14,13 +14,15 @@ pub(crate) fn form_factor(requested: &str) -> String {
     setting("FLUXA_PREVIEW_FORM").unwrap_or_else(|| requested.to_owned())
 }
 
-pub(crate) fn fixture_snapshot(live: &serde_json::Value) -> Option<std::sync::Arc<serde_json::Value>> {
+pub(crate) fn fixture_snapshot(
+    live: &serde_json::Value,
+) -> Option<std::sync::Arc<serde_json::Value>> {
     static SNAPSHOT: std::sync::OnceLock<Option<serde_json::Value>> = std::sync::OnceLock::new();
     let fixture = SNAPSHOT
         .get_or_init(|| {
             setting("FLUXA_PREVIEW_FIXTURE")?;
-            let seed = serde_json::from_str(include_str!("../../fixtures/native-ui-fixture.json"))
-                .ok()?;
+            let seed =
+                serde_json::from_str(include_str!("../../fixtures/native-ui-fixture.json")).ok()?;
             Some(fluxa_core::Engine::new(seed).ok()?.snapshot())
         })
         .as_ref()?;
@@ -35,6 +37,27 @@ pub(crate) fn gallery() -> Option<String> {
     let target = setting("FLUXA_PREVIEW")?;
     let scene = target.strip_prefix("gallery")?;
     Some(scene.trim_start_matches('/').to_owned())
+}
+
+pub(crate) fn seed_profiles(storage: &fluxa_effects::Storage) {
+    if setting("FLUXA_PREVIEW").as_deref() != Some("profiles") {
+        return;
+    }
+    let names = ["Ayşe", "Mehmet", "Kids", "Guest", "Deniz"];
+    let profiles = names
+        .iter()
+        .enumerate()
+        .map(|(index, name)| {
+            serde_json::json!({
+                "id": format!("preview-{index}"),
+                "name": name,
+                "pinHash": if index == 1 { "x" } else { "" },
+            })
+        })
+        .collect::<Vec<_>>();
+    crate::profiles::write(storage, "profiles", &serde_json::Value::Array(profiles));
+    crate::profiles::write(storage, "active_profile_id", &serde_json::json!(""));
+    crate::profiles::write(storage, "welcome_offline", &serde_json::json!(true));
 }
 
 pub(crate) fn player_scene() -> Option<String> {
