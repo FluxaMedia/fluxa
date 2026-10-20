@@ -50,10 +50,12 @@ targets:
     templates: [FluxaHost]
     platform: iOS
     settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.fluxa.ios
       ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
       ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS: YES
   FluxaTvos:
     templates: [FluxaHost]
     platform: tvOS
     settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.fluxa.tvos
       ASSETCATALOG_COMPILER_APPICON_NAME: TvAppIcon
