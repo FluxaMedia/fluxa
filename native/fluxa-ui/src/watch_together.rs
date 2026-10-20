@@ -45,6 +45,7 @@ pub struct WatchTogetherModel {
     pub chat: Vec<WatchChatView>,
     pub host: bool,
     pub locked: bool,
+    pub share_stream: bool,
     pub max_members: u32,
     pub connecting: bool,
     pub error: Option<String>,
@@ -60,6 +61,7 @@ pub enum WatchTogetherRequest {
     CopyCode,
     Kick(String),
     SetLocked(bool),
+    SetShareStream(bool),
     Chat(String),
 }
 
@@ -497,7 +499,39 @@ fn side_room(
     );
     ui.add_space(12.0);
     if model.host {
-        lock_row(ui, model.locked, width, metrics, t, request);
+        let (title, description) = if model.locked {
+            ("watch.host_only", "watch.host_only_desc")
+        } else {
+            ("watch.host_only", "watch.guest_controls_desc")
+        };
+        if toggle_row(
+            ui,
+            "fluxa-watch-host-only",
+            (title, description),
+            model.locked,
+            width,
+            metrics,
+            t,
+        ) {
+            *request = Some(WatchTogetherRequest::SetLocked(!model.locked));
+        }
+        ui.add_space(6.0);
+        let (title, description) = if model.share_stream {
+            ("watch.share_stream", "watch.share_stream_desc")
+        } else {
+            ("watch.share_stream", "watch.own_stream_desc")
+        };
+        if toggle_row(
+            ui,
+            "fluxa-watch-share-stream",
+            (title, description),
+            model.share_stream,
+            width,
+            metrics,
+            t,
+        ) {
+            *request = Some(WatchTogetherRequest::SetShareStream(!model.share_stream));
+        }
         ui.add_space(6.0);
     }
     for member in &model.members {
@@ -708,14 +742,15 @@ fn side_seats(
     );
 }
 
-fn lock_row(
+fn toggle_row(
     ui: &mut egui::Ui,
-    locked: bool,
+    id: &str,
+    labels: (&str, &str),
+    on: bool,
     width: f32,
     metrics: UiMetrics,
     t: &dyn Fn(&str) -> String,
-    request: &mut Option<WatchTogetherRequest>,
-) {
+) -> bool {
     let (rect, response) = ui.allocate_exact_size(Vec2::new(width, 66.0), Sense::click());
     let painter = ui.painter();
     if response.hovered() {
@@ -724,17 +759,12 @@ fn lock_row(
     painter.text(
         Pos2::new(rect.left() + 12.0, rect.top() + 22.0),
         Align2::LEFT_CENTER,
-        t("watch.host_only"),
+        t(labels.0),
         FontId::proportional(metrics.text.meta),
         text_primary(),
     );
-    let description = if locked {
-        t("watch.host_only_desc")
-    } else {
-        t("watch.guest_controls_desc")
-    };
     let galley = painter.layout(
-        description,
+        t(labels.1),
         FontId::proportional(metrics.text.label),
         metrics.text_muted,
         width - 24.0 - metrics.settings_toggle_width - 16.0,
@@ -754,17 +784,8 @@ fn lock_row(
             metrics.settings_toggle_height,
         ),
     );
-    components::toggle(
-        ui.ctx(),
-        painter,
-        Id::new("fluxa-watch-host-only"),
-        track,
-        locked,
-        metrics,
-    );
-    if response.clicked() {
-        *request = Some(WatchTogetherRequest::SetLocked(!locked));
-    }
+    components::toggle(ui.ctx(), painter, Id::new(id), track, on, metrics);
+    response.clicked()
 }
 
 fn side_member(

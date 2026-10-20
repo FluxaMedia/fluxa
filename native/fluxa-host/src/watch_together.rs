@@ -3,7 +3,8 @@ use crate::player::VideoCommand;
 
 const HOST_REPORT: Duration = Duration::from_secs(10);
 const SAMPLE: Duration = Duration::from_millis(500);
-const POSITION_JUMP: f64 = 2.0;const SETTLE: Duration = Duration::from_millis(1500);
+const POSITION_JUMP: f64 = 2.0;
+const SETTLE: Duration = Duration::from_millis(1500);
 
 #[derive(Default)]
 pub(crate) struct State {
@@ -22,6 +23,7 @@ pub(crate) struct State {
     event_seen: u64,
     chat_seen: u64,
     host_paused: Option<bool>,
+    keep_stream: bool,
 }
 
 fn now_ms() -> i64 {
@@ -61,7 +63,11 @@ pub(crate) fn intercept(state: &mut RendererState, command: &VideoCommand) -> bo
     let Some(session) = state.session.as_ref() else {
         return true;
     };
-    let watch = session.snapshot().get("watchTogether").cloned().unwrap_or(Value::Null);
+    let watch = session
+        .snapshot()
+        .get("watchTogether")
+        .cloned()
+        .unwrap_or(Value::Null);
     if watch["phase"] != "playing" || watch["role"] != "GUEST" {
         return true;
     }
@@ -129,6 +135,7 @@ pub(crate) fn tick(state: &mut RendererState) {
         }
         state.watch = State {
             room: room.clone(),
+            keep_stream: state.watch.keep_stream,
             ..State::default()
         };
     }
@@ -340,6 +347,40 @@ fn open(state: &mut RendererState, content: &Value, action: NativeAction) {
     state.pending_native_actions.push(action);
 }
 
+fn resolving(state: &RendererState) -> bool {
+    !state.watch.keep_stream
+        && state.session.as_ref().is_some_and(|session| {
+            session
+                .snapshot()
+                .pointer("/player/resolvedUrl")
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty)
+        })
+}
+
+fn shared_stream(state: &RendererState, content: &Value) -> Option<Value> {
+    let snapshot = state.session.as_ref()?.snapshot();
+    let url = snapshot.pointer("/player/resolvedUrl")?.as_str()?;
+    let host = url.split("://").nth(1)?.split(['/', ':']).next()?;
+    if !url.starts_with("http") || matches!(host, "localhost" | "127.0.0.1" | "[::1]" | "0.0.0.0") {
+        return None;
+    }
+    let index = snapshot.pointer("/player/currentStreamIndex")?.as_u64()? as usize;
+    let headers = snapshot
+        .pointer("/player/currentStreams")?
+        .get(index)?
+        .pointer("/behaviorHints/proxyHeaders/request")
+        .and_then(Value::as_object)
+        .map(|headers| {
+            headers
+                .iter()
+                .filter_map(|(name, value)| Some((name.clone(), json!(value.as_str()?))))
+                .collect::<serde_json::Map<_, _>>()
+        })
+        .unwrap_or_default();
+    Some(json!({"url": url, "title": content["title"], "headers": headers}))
+}
+
 fn report(state: &mut RendererState, watch: &Value) {
     let playing = watch["phase"] == "playing";
     let is_host = watch["role"] == "HOST";
@@ -359,19 +400,37 @@ fn report(state: &mut RendererState, watch: &Value) {
     let announceable = |content: &Value| {
         content["contentType"] == "movie" || content["videoId"].as_str().is_some()
     };
-    if is_host && let Some(content) = content.clone().filter(announceable) {
-        let key = format!("{}|{}", content["id"], content["videoId"]);
+    if is_host
+        && !resolving(state)
+        && let Some(content) = content.clone().filter(announceable)
+    {
+        let stream = (!state.watch.keep_stream)
+            .then(|| shared_stream(state, &content))
+            .flatten();
+        let key = format!(
+            "{}|{}|{}",
+            content["id"],
+            content["videoId"],
+            stream
+                .as_ref()
+                .map_or("", |stream| stream["url"].as_str().unwrap_or_default())
+        );
         if state.watch.selected.as_deref() != Some(key.as_str()) {
             state.watch.selected = Some(key);
             state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
             state.watch.ready_sent = false;
             state.watch.last_report = None;
+            let start = state
+                .player
+                .as_ref()
+                .map_or(0, |player| player.start_offset_ms());
             dispatch(
                 state,
                 json!({
                     "type": "watchTogetherContentSelected",
                     "content": content,
-                    "startPositionMs": player.start_offset_ms(),
+                    "stream": stream,
+                    "startPositionMs": start,
                 }),
             );
             return;
@@ -468,7 +527,6 @@ fn report(state: &mut RendererState, watch: &Value) {
     }
 }
 
-
 pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     match node {
         fluxa_ui::NODE_SETTINGS_WATCH_JOIN => {
@@ -546,6 +604,9 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
             state,
             json!({"type": "watchTogetherLockChanged", "locked": locked}),
         ),
+        Request::SetShareStream(share) => {
+            state.watch.keep_stream = !share;
+        }
         Request::Leave => dispatch(state, json!({"type": "watchTogetherLeaveRequested"})),
         Request::End => dispatch(state, json!({"type": "watchTogetherEndRequested"})),
         Request::Chat(text) => dispatch(
@@ -611,6 +672,7 @@ fn member_views(watch: &Value) -> Vec<fluxa_ui::WatchMemberView> {
 }
 
 fn refresh_view(state: &mut RendererState, watch: &Value) {
+    let keep_stream = state.watch.keep_stream;
     if crate::preview::watch_demo() {
         return;
     }
@@ -623,6 +685,7 @@ fn refresh_view(state: &mut RendererState, watch: &Value) {
     let you = watch["clientId"].as_str();
     view.host = watch["role"] == "HOST";
     view.locked = watch["locked"].as_bool().unwrap_or(false);
+    view.share_stream = !keep_stream;
     view.max_members = watch["maxMembers"].as_u64().unwrap_or_default() as u32;
     view.members = member_views(watch);
     view.chat = watch["chat"]
