@@ -1,0 +1,54 @@
+name: Desktop macOS test build
+
+on:
+  workflow_dispatch:
+
+env:
+  RUST_VERSION: "1.94.0"
+
+permissions:
+  contents: read
+
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+      FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
+      FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+      FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: desktop-macos-test
+
+      - run: brew install librsvg
+
+      - name: Fetch libmpv
+        run: native/fluxa-mpv/fetch-libmpv.sh
+
+      - name: Package
+        run: scripts/package-desktop.sh "0.0.0-${GITHUB_SHA::7}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fluxa-macos-arm64-${{ github.sha }}
+          path: dist/fluxa-*.dmg
+          retention-days: 7
