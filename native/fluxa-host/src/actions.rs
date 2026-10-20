@@ -924,11 +924,32 @@ pub(super) fn pull_session_snapshot(state: &mut RendererState) {
     state.session_revision = Some(revision);
     let live = session.snapshot();
     let snapshot = crate::preview::fixture_snapshot(&live).unwrap_or(live);
+    let unchanged = state
+        .core_snapshot
+        .as_deref()
+        .is_some_and(|old| !projection_inputs_changed(old, &snapshot));
     if let Some(old) = state.core_snapshot.replace(snapshot) {
         retire(old);
     }
+    if unchanged {
+        return;
+    }
     state.core_snapshot_revision = state.core_snapshot_revision.wrapping_add(1);
     sync_home_from_core_snapshot(state);
+}
+
+const UNPROJECTED_SLICES: [&str; 5] = ["trailer", "lookup", "auth", "watchTogether", "_runtime"];
+
+fn projection_inputs_changed(old: &Value, new: &Value) -> bool {
+    let (Some(old), Some(new)) = (old.as_object(), new.as_object()) else {
+        return true;
+    };
+    let relevant = |key: &&String| !UNPROJECTED_SLICES.contains(&key.as_str());
+    old.keys().filter(relevant).count() != new.keys().filter(relevant).count()
+        || new
+            .iter()
+            .filter(|(key, _)| relevant(key))
+            .any(|(key, value)| old.get(key) != Some(value))
 }
 
 pub(super) fn discover_command(
@@ -1354,4 +1375,24 @@ pub(super) fn home_refresh_due(state: &RendererState) -> bool {
         && state.route == Route::Home
         && state.player.is_none()
         && state.home_refreshed_at.elapsed() >= HOME_REFRESH_INTERVAL
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn trailer_resolution_does_not_reproject() {
+        let old = json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {}}});
+        let new = json!({"home": {"categories": [1, 2]}, "trailer": {"resolutions": {"a": 1}}});
+        assert!(!projection_inputs_changed(&old, &new));
+    }
+
+    #[test]
+    fn new_catalog_page_reprojects() {
+        let old = json!({"home": {"categories": [1]}, "trailer": {}});
+        let new = json!({"home": {"categories": [1, 2]}, "trailer": {}});
+        assert!(projection_inputs_changed(&old, &new));
+        assert!(projection_inputs_changed(&old, &json!({"trailer": {}})));
+    }
 }
