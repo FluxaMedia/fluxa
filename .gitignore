@@ -12,6 +12,7 @@ native/fluxa-mpv/lib/
 
 # Monorepo-wide generated and local state
 **/target/
+**/target-*/
 **/build/
 **/.gradle/
 **/.kotlin/
