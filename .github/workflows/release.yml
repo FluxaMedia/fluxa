@@ -319,53 +319,6 @@ jobs:
           name: apple-${{ matrix.name }}
           path: out/*.ipa
 
-  web:
-    runs-on: ubuntu-latest
-    timeout-minutes: 45
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ env.RELEASE_TAG }}
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22"
-
-      - name: Set up Rust
-        uses: dtolnay/rust-toolchain@master
-        with:
-          toolchain: ${{ env.RUST_VERSION }}
-          targets: wasm32-unknown-unknown
-
-      - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: native
-          key: release-web
-
-      - name: Stamp version
-        run: node scripts/set-version.mjs "$RELEASE_TAG"
-
-      - name: Build wasm bundle
-        env:
-          RUSTFLAGS: --cfg getrandom_backend="wasm_js"
-          FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
-        run: |
-          cargo install wasm-bindgen-cli --locked --version "$(cargo metadata --manifest-path native/Cargo.toml --format-version 1 | node -e 'const m=JSON.parse(require("fs").readFileSync(0,"utf8"));console.log(m.packages.find(p=>p.name==="wasm-bindgen").version)')"
-          cargo build --manifest-path native/Cargo.toml -p fluxa-web --target wasm32-unknown-unknown --release
-          wasm-bindgen --target web --out-dir native/fluxa-web/www/pkg native/target/wasm32-unknown-unknown/release/fluxa_web.wasm
-          sed -i "s#__FLUXA_SENTRY_DSN__#$FLUXA_SENTRY_DSN#; s#__FLUXA_VERSION__#${RELEASE_TAG#v}#" native/fluxa-web/www/crash.js
-
-      - name: Zip site
-        run: |
-          mkdir -p out
-          (cd native/fluxa-web/www && zip -qr "$GITHUB_WORKSPACE/out/fluxa-${RELEASE_TAG#v}-web.zip" . -x 'pkg/.gitignore')
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: web
-          path: out/*.zip
-
   webos-native:
     runs-on: ubuntu-latest
     timeout-minutes: 90
@@ -445,7 +398,7 @@ jobs:
           path: out/*.ipk
 
   publish:
-    needs: [notes, android, desktop, apple, web, webos-native]
+    needs: [notes, android, desktop, apple, webos-native]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7

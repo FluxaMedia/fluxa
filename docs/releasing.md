@@ -12,10 +12,11 @@ Push a tag like `v0.2.0`. `.github/workflows/release.yml` builds everything and 
 | webOS | `fluxa-<v>-webos-native.ipk` |
 | Android / Android TV | per-ABI `fluxa-<v>-android-{mobile,tv}-<abi>.apk` |
 | iOS / tvOS | `fluxa-<v>-{ios,tvos}-unsigned.ipa` (sideload only) |
-| Web | `fluxa-<v>-web.zip` |
 | Updates | `SHA256SUMS`, `latest.json`, `latest.json.sig` |
 
 The `.zip` / `.tar.gz` / `.AppImage` / `.apk` files are also the payloads the in-app updater downloads.
+
+The web build is not attached to the release. `.github/workflows/pages.yml` runs on the same `v*` tag and deploys it to GitHub Pages.
 
 ## Secrets
 
