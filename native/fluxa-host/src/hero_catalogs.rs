@@ -1,6 +1,6 @@
 use serde_json::{Value, json};
 
-use crate::{RendererState, Route};
+use crate::{RendererState, Route, core_value};
 
 const DEFAULT_FEEDS: usize = 2;
 
@@ -18,7 +18,12 @@ fn selected(state: &RendererState) -> Vec<String> {
 }
 
 fn feeds(state: &RendererState) -> Vec<(String, String)> {
-    let options = fluxa_core::ambient::catalog_options(&state.settings.addons);
+    let options = core_value(
+        "buildMetadataFeedOptions",
+        Value::Array(state.settings.addons.clone()),
+    )
+    .and_then(|value| value.as_array().cloned())
+    .unwrap_or_default();
     state
         .home
         .rows
@@ -31,8 +36,9 @@ fn feeds(state: &RendererState) -> Vec<(String, String)> {
             let id = row.id.clone()?;
             let name = options
                 .iter()
-                .find(|option| option.key == id)
-                .map_or_else(|| row.title.clone(), |option| option.name.clone());
+                .find(|option| option.get("key").and_then(Value::as_str) == Some(id.as_str()))
+                .and_then(|option| option.get("label").and_then(Value::as_str))
+                .map_or_else(|| row.title.clone(), ToOwned::to_owned);
             Some((id, name))
         })
         .take(fluxa_ui::HERO_CATALOG_MAX)
