@@ -82,6 +82,29 @@ fn horizontal_row(ui: &mut egui::Ui, id: impl std::hash::Hash, add: impl FnOnce(
         });
 }
 
+fn first_episode(detail: &DetailModel) -> Option<(i64, i64, Option<&str>)> {
+    let season = detail.current_season();
+    detail
+        .episodes
+        .iter()
+        .filter(|episode| episode.season == season)
+        .min_by_key(|episode| episode.number)
+        .map(|episode| (episode.season, episode.number, Some(episode.title.as_str())))
+}
+
+fn meta_with_seasons(detail: &DetailModel, language: &str) -> String {
+    let count = detail.seasons().into_iter().filter(|season| *season > 0).count();
+    if !detail.is_series() || count == 0 {
+        return detail.meta_line.clone();
+    }
+    let label = localized(if count == 1 { "auto.season" } else { "auto.seasons" }, language);
+    let seasons = format!("{count} {label}");
+    match detail.meta_line.split_once(" · ") {
+        Some((kind, rest)) => format!("{kind} · {seasons} · {rest}"),
+        None => format!("{} · {seasons}", detail.meta_line),
+    }
+}
+
 pub fn draw_detail_modal(
     context: &egui::Context,
     viewport: Viewport,
@@ -128,10 +151,15 @@ pub fn draw_detail_modal(
     let height = (viewport.height - PANEL_MARGIN * 2.0).min(PANEL_MAX_HEIGHT);
     let image_height = (width * 9.0 / 16.0).min(height * 0.55);
     let body_size = (metrics.screen_card_subtitle_size + 3.0).max(15.0);
+    let synopsis_size = body_size + 2.0;
+    let meta_line = meta_with_seasons(detail, &detail.language);
     let text_width = (width - PAD * 3.0) * 0.62;
     let mut job = egui::text::LayoutJob::single_section(
         detail.description.clone(),
-        egui::TextFormat::simple(crate::fonts::regular(body_size), metrics.ink(tone::subtle())),
+        egui::TextFormat::simple(
+            crate::fonts::regular(synopsis_size),
+            metrics.ink(tone::subtle()),
+        ),
     );
     job.wrap.max_width = text_width;
     job.wrap.max_rows = 8;
@@ -297,7 +325,11 @@ pub fn draw_detail_modal(
                             Pos2::new(row.left() + PAD, row_y),
                             Pos2::new(watchlist.left() - gap, row_y + BUTTON_HEIGHT),
                         );
-                        let label = crate::play_label(language, detail.resume.as_ref(), None);
+                        let label = crate::play_label(
+                            language,
+                            detail.resume.as_ref(),
+                            first_episode(detail).filter(|_| detail.is_series()),
+                        );
                         let play = ui
                             .scope_builder(egui::UiBuilder::new().max_rect(play_rect), |ui| {
                                 play_button(
@@ -357,11 +389,11 @@ pub fn draw_detail_modal(
                             Sense::hover(),
                         );
                         let left = block.left() + PAD;
-                        if !detail.meta_line.is_empty() {
+                        if !meta_line.is_empty() {
                             paint_elided_text(
                                 &painter,
                                 Pos2::new(left, block.top()),
-                                &detail.meta_line,
+                                &meta_line,
                                 crate::fonts::regular(body_size),
                                 text_width,
                                 metrics.ink(tone::body()),
