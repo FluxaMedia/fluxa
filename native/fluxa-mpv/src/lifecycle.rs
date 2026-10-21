@@ -2,7 +2,6 @@ use super::*;
 
 #[allow(dead_code)]
 enum Embed {
-    X11(u64),
     AppleLayer(usize, String),
 }
 
@@ -92,20 +91,6 @@ impl MpvClientHandle {
                 if !shaders.is_empty() {
                     client.set_option("vo-apple-native-shaders", &shaders)?;
                 }
-            } else if let Some(Embed::X11(window_id)) = embed {
-                // XWayland/X11 native embedding: let mpv own its Vulkan
-                // swapchain for the real X11 window instead of routing every
-                // frame through Fluxa's experimental render bridge.
-                client.set_option("vo", "gpu-next")?;
-                let x11_opengl = std::env::var_os("FLUXA_NATIVE_AUTOTEST_X11_OPENGL").is_some();
-                client.set_option("gpu-api", if x11_opengl { "opengl" } else { "vulkan" })?;
-                // Let mpv select the X11 Vulkan context from the actual
-                // display connection. Some bundled libmpv builds reject an
-                // explicit `x11vk` value even though the context is listed
-                // as available, while `auto` selects it correctly for an X11
-                // `wid` under XWayland.
-                client.set_option("gpu-context", if x11_opengl { "x11" } else { "auto" })?;
-                client.set_option("wid", &window_id.to_string())?;
             } else {
                 client.set_option("vo", "libmpv")?;
             }
@@ -246,14 +231,6 @@ impl MpvClientHandle {
 
     pub fn new_with_scripts(scripts: Vec<PathBuf>) -> Result<(Self, MpvRenderState), String> {
         Self::new_internal(false, &scripts, None, false)
-    }
-
-    #[cfg(target_os = "linux")]
-    pub fn new_with_scripts_x11_wid(
-        scripts: Vec<PathBuf>,
-        window_id: u64,
-    ) -> Result<(Self, MpvRenderState), String> {
-        Self::new_internal(false, &scripts, Some(Embed::X11(window_id)), false)
     }
 
     #[cfg(target_os = "macos")]

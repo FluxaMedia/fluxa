@@ -862,8 +862,6 @@ fn gamepad_button(button: Button) -> Option<GamepadButton> {
 }
 
 fn main() -> Result<(), winit::error::EventLoopError> {
-    // SAFETY: set before the event loop or any mpv handle exists.
-    unsafe { std::env::set_var("MPV_LIBMPV_RENDER_BACKEND", "gpu-next") };
     fluxa_mpv::set_error_reporter(|error| {
         log::error!("native mpv: {}", error.message);
         sentry::with_scope(
