@@ -69,6 +69,7 @@ pub(crate) fn log_out(state: &mut RendererState) {
         })
         .collect::<Vec<_>>();
     profiles::write(&storage, "profiles", &Value::Array(local));
+    profiles::hide_local_profiles(&storage, false);
     profiles::write(&storage, "profile_picker_settings", &Value::Null);
     profiles::write(&storage, "active_profile_id", &json!(""));
     profiles::write(&storage, OFFLINE_KEY, &json!(false));
@@ -293,7 +294,8 @@ fn finish(state: &mut RendererState, profile: &Value) {
     };
     state.welcome = None;
     state.welcome_flow = None;
-    if profiles::stored_profiles(&storage).len() > 1 {
+    profiles::hide_local_profiles(&storage, true);
+    if profiles::visible_profiles(&storage).len() > 1 {
         profiles::open(state);
     } else {
         profiles::activate(state, &storage, id);

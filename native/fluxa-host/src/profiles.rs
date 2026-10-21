@@ -67,8 +67,36 @@ fn entry(profile: &Value) -> ProfileEntry {
     }
 }
 
+const HIDDEN_FLAG: &str = "hiddenByAccount";
+
+pub(crate) fn visible_profiles(storage: &Storage) -> Vec<Value> {
+    stored_profiles(storage)
+        .into_iter()
+        .filter(|profile| !flag(profile, HIDDEN_FLAG))
+        .collect()
+}
+
+pub(crate) fn hide_local_profiles(storage: &Storage, hidden: bool) {
+    let mut profiles = stored_profiles(storage);
+    for profile in &mut profiles {
+        let signed = profile
+            .get("nuvioAccessToken")
+            .and_then(Value::as_str)
+            .is_some_and(|token| !token.is_empty());
+        let Some(fields) = profile.as_object_mut() else {
+            continue;
+        };
+        if hidden && !signed {
+            fields.insert(HIDDEN_FLAG.to_owned(), json!(true));
+        } else if !hidden {
+            fields.remove(HIDDEN_FLAG);
+        }
+    }
+    write(storage, "profiles", &Value::Array(profiles));
+}
+
 fn load_model(storage: &Storage, language: String) -> ProfilesModel {
-    let profiles = stored_profiles(storage);
+    let profiles = visible_profiles(storage);
     let primary_id = core_value("primaryProfileId", Value::Array(profiles.clone()))
         .and_then(|value| value.as_str().map(ToOwned::to_owned));
     let picker = picker_settings(storage);
@@ -83,7 +111,7 @@ fn load_model(storage: &Storage, language: String) -> ProfilesModel {
 }
 
 pub(crate) fn should_pick_on_start(storage: &Storage) -> bool {
-    let profiles = stored_profiles(storage);
+    let profiles = visible_profiles(storage);
     let active = read(storage, "active_profile_id")
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
         .unwrap_or_default();
