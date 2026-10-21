@@ -2307,6 +2307,7 @@ fn draw_settings_page(
         } else {
             metrics.settings_nav_item_gap_desktop
         };
+        let nav_scroll = if desktop { 0.0 } else { scroll_y };
         let nav_x = if desktop { 0.0 } else { margin };
         let nav_inset = if desktop { 16.0 } else { metrics.control_gap };
         let panel_width = if desktop {
@@ -2318,10 +2319,10 @@ fn draw_settings_page(
             Rect::from_min_size(Pos2::ZERO, Vec2::new(panel_width, viewport.height))
         } else {
             Rect::from_min_size(
-                Pos2::new(margin, section_top - scroll_y),
+                Pos2::new(margin, section_top - nav_scroll),
                 Vec2::new(
                     nav_width,
-                    (viewport.height - section_top + scroll_y - margin).max(nav_item_height),
+                    (viewport.height - section_top + nav_scroll - margin).max(nav_item_height),
                 ),
             )
         };
@@ -2343,7 +2344,7 @@ fn draw_settings_page(
         if desktop {
             draw_text(
                 &painter,
-                Pos2::new(nav_x + nav_inset + 2.0, section_top - scroll_y + 18.0),
+                Pos2::new(nav_x + nav_inset + 2.0, section_top - nav_scroll + 18.0),
                 Align2::LEFT_TOP,
                 localized("nav.settings", language),
                 crate::fonts::bold(metrics.settings_section_title_size_desktop + 2.0),
@@ -2355,7 +2356,7 @@ fn draw_settings_page(
         search_field(
             &mut layout,
             Rect::from_min_size(
-                Pos2::new(nav_x + nav_inset, section_top + search_top - scroll_y),
+                Pos2::new(nav_x + nav_inset, section_top + search_top - nav_scroll),
                 Vec2::new(panel_width - nav_inset * 2.0, search_height),
             ),
         );
@@ -2368,7 +2369,7 @@ fn draw_settings_page(
                 Pos2::new(
                     nav_x + nav_inset,
                     section_top + nav_top_inset + slot as f32 * (nav_item_height + nav_item_gap)
-                        - scroll_y,
+                        - nav_scroll,
                 ),
                 Vec2::new(panel_width - nav_inset * 2.0, nav_item_height),
             );
