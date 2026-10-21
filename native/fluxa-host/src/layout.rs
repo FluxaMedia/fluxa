@@ -218,6 +218,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
         fluxa_ui::NODE_CALENDAR_NEXT => "Next month".to_owned(),
         fluxa_ui::NODE_DETAIL_BACK | fluxa_ui::NODE_SETTINGS_BACK => "Back".to_owned(),
         fluxa_ui::NODE_SETTINGS_SWITCH_PROFILE => "Switch profiles".to_owned(),
+        fluxa_ui::NODE_SETTINGS_LOG_OUT => "Log out".to_owned(),
         fluxa_ui::NODE_DETAIL_PLAY => "Play".to_owned(),
         fluxa_ui::NODE_DETAIL_WATCHLIST => {
             if state.detail.in_watchlist {

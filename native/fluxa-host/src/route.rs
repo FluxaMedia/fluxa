@@ -110,6 +110,7 @@ pub(super) enum NativeAction {
     AccountToggle {
         provider: String,
     },
+    LogOut,
     MediaServer {
         node: u64,
     },

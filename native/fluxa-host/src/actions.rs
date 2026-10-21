@@ -106,6 +106,9 @@ pub(super) fn native_action_for_node(
                 destination: Route::Profiles,
             });
         }
+        if node == fluxa_ui::NODE_SETTINGS_LOG_OUT {
+            return Some(NativeAction::LogOut);
+        }
         if let Some(provider) = node
             .checked_sub(fluxa_ui::NODE_SETTINGS_ACCOUNT_BASE)
             .and_then(|slot| fluxa_ui::ACCOUNT_PROVIDERS.get(slot as usize))
@@ -1129,6 +1132,7 @@ pub(super) fn session_commands(action: &NativeAction, profile: &Value) -> Option
         NativeAction::PlayTrailer { .. }
         | NativeAction::SettingsSection { .. }
         | NativeAction::AccountToggle { .. }
+        | NativeAction::LogOut
         | NativeAction::MediaServer { .. }
         | NativeAction::MediaCommand { .. }
         | NativeAction::OpenFile { .. }
@@ -1163,6 +1167,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     let profile = session.active_profile();
     let mut unhandled = Vec::new();
     let mut open_profiles = false;
+    let mut log_out = false;
     let mut toggles = Vec::new();
     let mut servers = Vec::new();
     let mut callbacks = Vec::new();
@@ -1202,6 +1207,10 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
         }
         if let NativeAction::AccountToggle { provider } = action {
             toggles.push(provider);
+            continue;
+        }
+        if matches!(action, NativeAction::LogOut) {
+            log_out = true;
             continue;
         }
         if let NativeAction::MediaServer { node } = action {
@@ -1332,6 +1341,10 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
     if open_profiles {
         reset_ui(state);
         profiles::open(state);
+    }
+    if log_out {
+        reset_ui(state);
+        welcome::log_out(state);
     }
 }
 

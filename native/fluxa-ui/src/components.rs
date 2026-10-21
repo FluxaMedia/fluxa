@@ -1590,6 +1590,7 @@ fn is_pill_node(node: u64) -> bool {
             | NODE_SHORTS_INFO
             | NODE_SETTINGS_BACK
             | NODE_SETTINGS_SWITCH_PROFILE
+            | NODE_SETTINGS_LOG_OUT
             | NODE_FOLDER_BACK
     )
 }

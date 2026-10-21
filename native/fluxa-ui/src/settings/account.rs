@@ -35,10 +35,11 @@ pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
     APPEARANCE_PAGE_HEADER_HEIGHT
-        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
+        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 4.0
         + ACCOUNT_PROFILE_CARD_HEIGHT
         + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
         + settings_group_card_height(SYNC_SOURCES, metrics)
+        + settings_group_card_height(1, metrics)
 }
 
 fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
@@ -529,7 +530,7 @@ pub(super) fn draw_account(
                 .find(|(name, _)| *name == provider)
                 .filter(|_| on)
             {
-                Some((_, name)) => name.clone(),
+                Some((_, name)) => localized("settings.connected_as", language).replace("%s", name),
                 None => localized(
                     if on {
                         "settings.connected"
@@ -693,4 +694,59 @@ pub(super) fn draw_account(
             layout,
         );
     }
+
+    top = card.bottom() + APPEARANCE_GROUP_GAP;
+    let card = account_group(
+        &painter,
+        rect,
+        top,
+        settings_group_card_height(1, metrics),
+        &localized("settings.group.account_session", language),
+        metrics,
+    );
+    let row = account_row(card, 0, metrics);
+    let log_out = localized("auto.log_out", language);
+    if sheet {
+        layout.focusable.push((NODE_SETTINGS_LOG_OUT, row));
+        draw_text(
+            &painter,
+            row.left_center() + Vec2::new(4.0, 0.0),
+            Align2::LEFT_CENTER,
+            log_out,
+            crate::fonts::regular(label_size),
+            metrics.text_primary,
+            None,
+        );
+        return;
+    }
+    let width = painter
+        .layout_no_wrap(
+            log_out.clone(),
+            FontId::proportional(pill_size),
+            text_primary(),
+        )
+        .size()
+        .x
+        + 32.0;
+    let button = Rect::from_center_size(
+        Pos2::new(row.right() - 4.0 - width * 0.5, row.center().y),
+        Vec2::new(width, 30.0_f32.min(row.height() - 4.0)),
+    );
+    pill_button(
+        context,
+        layout,
+        NODE_SETTINGS_LOG_OUT,
+        button,
+        &log_out,
+        pill_size,
+    );
+    draw_text(
+        &painter,
+        row.left_center() + Vec2::new(4.0, 0.0),
+        Align2::LEFT_CENTER,
+        localized("auto.sign_out_from_the_active_profile_on_this_dev", language),
+        crate::fonts::regular(label_size),
+        metrics.text_primary,
+        None,
+    );
 }
