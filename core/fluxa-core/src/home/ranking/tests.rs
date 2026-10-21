@@ -360,3 +360,38 @@ fn hero_slides_alternate_between_selected_feeds() {
     assert_eq!(ids.len(), 16);
     assert_eq!(ids[..6], ["a1", "b1", "a2", "b2", "a3", "b3"]);
 }
+
+#[test]
+fn hero_slides_move_to_the_next_window_each_page() {
+    let item =
+        |id: &str| json!({"id": id, "type": "movie", "background": "https://image.example/bg.jpg"});
+    let plan = |page: u64| -> Vec<String> {
+        let plan: Value = serde_json::from_str(
+            &home_hero_plan_json(
+                &json!({
+                    "categories": [{
+                        "id": "a",
+                        "type": "movie",
+                        "items": (1..=50).map(|n| item(&format!("a{n}"))).collect::<Vec<_>>(),
+                    }],
+                    "prefs": {"heroFeedToggles": ["a"]},
+                    "heroPage": page,
+                })
+                .to_string(),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        plan["slides"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|slide| slide["id"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    assert_eq!(plan(0)[0], "a1");
+    assert_eq!(plan(1)[0], "a21");
+    assert_eq!(plan(2)[0], "a41");
+    assert_eq!(plan(3)[0], "a11");
+    assert_eq!(plan(1).len(), 20);
+}

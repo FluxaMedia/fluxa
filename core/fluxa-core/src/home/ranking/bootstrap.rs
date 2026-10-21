@@ -176,7 +176,7 @@ pub fn home_hero_plan(request: &Value) -> Value {
             .iter()
             .filter_map(move |category| items_of(category).get(index))
     });
-    let slides = billboard
+    let pool = billboard
         .into_iter()
         .chain(interleaved)
         .filter(|item| {
@@ -188,7 +188,21 @@ pub fn home_hero_plan(request: &Value) -> Value {
                         .unwrap_or(""),
                 )
         })
-        .take(if hero_toggles.is_empty() { 8 } else { 20 });
+        .collect::<Vec<_>>();
+    let window = if hero_toggles.is_empty() { 8 } else { 20 };
+    let page = request
+        .get("heroPage")
+        .and_then(Value::as_u64)
+        .unwrap_or_default() as usize;
+    let slides = if pool.len() <= window {
+        pool
+    } else {
+        let start = page.wrapping_mul(window) % pool.len();
+        (0..window)
+            .map(|offset| pool[(start + offset) % pool.len()])
+            .collect()
+    };
+    let billboard = slides.first().copied().or(billboard);
     let fetched_trailers = request.get("fetchedTrailers").and_then(Value::as_object);
     let fetched_logos = request.get("fetchedLogos").and_then(Value::as_object);
     let shorten = prefs
@@ -240,7 +254,7 @@ pub fn home_hero_plan(request: &Value) -> Value {
         item
     };
     let billboard = billboard.map(&prepare);
-    let slides = slides.map(&prepare).collect::<Vec<_>>();
+    let slides = slides.into_iter().map(&prepare).collect::<Vec<_>>();
     let autoplay = prefs
         .get("homeHeroAutoplayTrailer")
         .and_then(Value::as_bool)

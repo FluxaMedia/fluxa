@@ -170,6 +170,12 @@ pub(super) fn render_frame(state: &mut RendererState) {
     sync_home_from_core_snapshot(state);
     apply_notice(state);
     shorts::tick(state);
+    if let Some(gpu) = state.gpu.as_ref()
+        && fluxa_ui::take_hero_wrap(&gpu.egui_context)
+    {
+        state.hero_page += 1;
+        state.last_snapshot_revision = None;
+    }
     input::tick_discover_search(state);
     ambient::tick(state);
     ambient::sync_settings(state);

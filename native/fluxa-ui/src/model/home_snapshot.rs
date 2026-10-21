@@ -462,6 +462,12 @@ pub(crate) fn hero_shift(context: &egui::Context, home: &HomeModel, delta: isize
     context.request_repaint();
 }
 
+const HERO_WRAPPED: &str = "fluxa-hero-wrapped";
+
+pub fn take_hero_wrap(context: &egui::Context) -> bool {
+    context.data_mut(|data| data.remove_temp::<bool>(Id::new(HERO_WRAPPED)).is_some())
+}
+
 pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usize {
     let count = home.hero_slides.len();
     if count <= 1 {
@@ -486,6 +492,9 @@ pub(crate) fn home_hero_index(context: &egui::Context, home: &HomeModel) -> usiz
     }
     if now >= state.next_at {
         state.index = (state.index + 1) % count;
+        if state.index == 0 {
+            context.data_mut(|data| data.insert_temp(Id::new(HERO_WRAPPED), true));
+        }
         state.generation = state.generation.wrapping_add(1);
         state.next_at = now + 6.5;
     }

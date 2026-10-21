@@ -24,6 +24,7 @@ pub(crate) struct Request {
     pub library_download_group: Option<String>,
     pub hero_trailers: Arc<Value>,
     pub hero_logos: Arc<Value>,
+    pub hero_page: u64,
 }
 
 pub(crate) struct Projection {
@@ -44,8 +45,10 @@ pub(crate) struct Projection {
 struct HeroCache(Option<(Value, Option<Value>)>);
 
 impl HeroCache {
-    fn plan(&mut self, snapshot: &Value, trailers: &Value, logos: &Value) -> Option<Value> {
+    fn plan(&mut self, snapshot: &Value, trailers: &Value, logos: &Value, page: u64) -> Option<Value> {
+        let page = Value::from(page);
         let inputs = [
+            ("heroPage", Some(&page)),
             ("categories", snapshot.pointer("/home/categories")),
             ("billboard", snapshot.pointer("/home/billboard")),
             ("prefs", snapshot.pointer("/settings/values")),
@@ -105,7 +108,12 @@ fn project(
     discover_cache: &mut DiscoverCache,
 ) -> Projection {
     let snapshot = &request.snapshot;
-    let hero_plan = hero_cache.plan(snapshot, &request.hero_trailers, &request.hero_logos);
+    let hero_plan = hero_cache.plan(
+        snapshot,
+        &request.hero_trailers,
+        &request.hero_logos,
+        request.hero_page,
+    );
     let trailer_targets = hero_plan
         .as_ref()
         .and_then(|plan| plan.get("trailerTargets"))

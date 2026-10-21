@@ -27,6 +27,7 @@ pub(super) fn request_projection(state: &mut RendererState) {
         library_download_group: state.library_download_group.clone(),
         hero_trailers: state.trailers.inputs(),
         hero_logos: state.logos.inputs(),
+        hero_page: state.hero_page,
     });
 }
 
