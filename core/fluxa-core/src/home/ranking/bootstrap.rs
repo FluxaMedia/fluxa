@@ -166,9 +166,19 @@ pub fn home_hero_plan(request: &Value) -> Value {
         .first()
         .and_then(|category| items_of(category).first());
     let mut seen = HashSet::new();
+    let longest = categories
+        .iter()
+        .map(|category| items_of(category).len())
+        .max()
+        .unwrap_or(0);
+    let interleaved = (0..longest).flat_map(|index| {
+        categories
+            .iter()
+            .filter_map(move |category| items_of(category).get(index))
+    });
     let slides = billboard
         .into_iter()
-        .chain(categories.iter().flat_map(|category| items_of(category)))
+        .chain(interleaved)
         .filter(|item| {
             (non_empty(item, "background") || non_empty(item, "poster"))
                 && seen.insert(
@@ -178,7 +188,7 @@ pub fn home_hero_plan(request: &Value) -> Value {
                         .unwrap_or(""),
                 )
         })
-        .take(8);
+        .take(if hero_toggles.is_empty() { 8 } else { 20 });
     let fetched_trailers = request.get("fetchedTrailers").and_then(Value::as_object);
     let fetched_logos = request.get("fetchedLogos").and_then(Value::as_object);
     let shorten = prefs

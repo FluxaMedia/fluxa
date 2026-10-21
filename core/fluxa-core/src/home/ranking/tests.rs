@@ -328,3 +328,35 @@ fn hero_plan_recovers_when_saved_feed_keys_are_stale() {
 
     assert_eq!(plan["billboard"]["id"], "tt123");
 }
+
+#[test]
+fn hero_slides_alternate_between_selected_feeds() {
+    let item =
+        |id: &str| json!({"id": id, "type": "movie", "background": "https://image.example/bg.jpg"});
+    let feed = |id: &str| {
+        json!({
+            "id": id,
+            "type": "movie",
+            "items": (1..=8).map(|n| item(&format!("{id}{n}"))).collect::<Vec<_>>(),
+        })
+    };
+    let plan: Value = serde_json::from_str(
+        &home_hero_plan_json(
+            &json!({
+                "categories": [feed("a"), feed("b")],
+                "prefs": {"heroFeedToggles": ["a", "b"]},
+            })
+            .to_string(),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let ids = plan["slides"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|slide| slide["id"].as_str().unwrap())
+        .collect::<Vec<_>>();
+    assert_eq!(ids.len(), 16);
+    assert_eq!(ids[..6], ["a1", "b1", "a2", "b2", "a3", "b3"]);
+}
