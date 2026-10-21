@@ -1,0 +1,42 @@
+{
+  "name": "Fluxa",
+  "identifier": "io.github.fluxamedia.fluxa",
+  "subtitle": "Your media, in one place.",
+  "description": "Fluxa builds for SideStore.",
+  "iconURL": "https://raw.githubusercontent.com/FluxaMedia/fluxa/v0.2.1/packaging/icons/fluxa.png",
+  "website": "https://github.com/FluxaMedia/fluxa",
+  "sourceURL": "https://raw.githubusercontent.com/FluxaMedia/fluxa/HEAD/sidestore.json",
+  "apps": [
+    {
+      "name": "Fluxa",
+      "bundleIdentifier": "com.fluxa.ios",
+      "developerName": "Fluxa",
+      "subtitle": "Your media, in one place.",
+      "localizedDescription": "Your media, in one place.",
+      "iconURL": "https://raw.githubusercontent.com/FluxaMedia/fluxa/v0.2.1/packaging/icons/fluxa.png",
+      "tintColor": "#FFFFFF",
+      "screenshotURLs": [],
+      "version": "0.2.1",
+      "versionDate": "2026-10-21T00:21:17.568Z",
+      "versionDescription": "## What's Changed\n\n- fix(apple): set the iOS and tvOS bundle identifiers (`9e5ca41a`)\n- feat(watch-party): let the host choose whether to share their stream (`ff9c9d7a`)\n- fix(player): hide the mouse cursor while the controls are hidden (`96ff5b51`)\n- fix(desktop): create the macOS Metal layer on the main thread (`6f980809`)\n- fix(desktop): read macOS window handles on the main thread (`727a9175`)",
+      "downloadURL": "https://github.com/FluxaMedia/fluxa/releases/download/v0.2.1/fluxa-0.2.1-ios-unsigned.ipa",
+      "size": 50062355,
+      "versions": [
+        {
+          "version": "0.2.1",
+          "buildVersion": "9",
+          "date": "2026-10-21T00:21:17.568Z",
+          "downloadURL": "https://github.com/FluxaMedia/fluxa/releases/download/v0.2.1/fluxa-0.2.1-ios-unsigned.ipa",
+          "size": 50062355,
+          "localizedDescription": "## What's Changed\n\n- fix(apple): set the iOS and tvOS bundle identifiers (`9e5ca41a`)\n- feat(watch-party): let the host choose whether to share their stream (`ff9c9d7a`)\n- fix(player): hide the mouse cursor while the controls are hidden (`96ff5b51`)\n- fix(desktop): create the macOS Metal layer on the main thread (`6f980809`)\n- fix(desktop): read macOS window handles on the main thread (`727a9175`)",
+          "minOSVersion": "18.5"
+        }
+      ],
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {}
+      }
+    }
+  ],
+  "news": []
+}
