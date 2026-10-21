@@ -89,6 +89,13 @@ impl Peer {
     }
 }
 
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as i64
+}
+
 fn members(count: usize) -> impl Fn(&Value) -> bool {
     move |state| state["members"].as_array().is_some_and(|m| m.len() == count)
 }
@@ -106,7 +113,18 @@ fn room_with_guest() -> (Peer, Peer, String) {
     guest.wait("guest room", |s| s["roomCode"].is_string());
     host.wait("host sees guest", members(2));
     guest.wait("guest sees host", members(2));
+    linked(&host, &guest);
+    linked(&guest, &host);
     (host, guest, code)
+}
+
+fn linked(from: &Peer, to: &Peer) {
+    let deadline = Instant::now() + Duration::from_secs(15);
+    while to.watch()["chat"].as_array().is_none_or(|chat| chat.is_empty()) {
+        assert!(Instant::now() < deadline, "peers never connected");
+        from.send(json!({"type": "watchTogetherChatSent", "text": "ping", "nowMs": now_ms()}));
+        std::thread::sleep(Duration::from_millis(100));
+    }
 }
 
 fn start_movie(host: &Peer, guest: &Peer) {
@@ -174,10 +192,18 @@ fn guest_pause_is_seen_by_the_host() {
 #[test]
 fn chat_reaches_the_other_side() {
     let (host, guest, _) = room_with_guest();
-    host.send(json!({"type": "watchTogetherChatSent", "text": "ready?", "nowMs": 1}));
-    let state = guest.wait("chat", |s| s["chat"].as_array().is_some_and(|c| !c.is_empty()));
-    assert_eq!(state["chat"][0]["text"], "ready?");
-    assert_eq!(state["chat"][0]["name"], "Host");
+    std::thread::sleep(Duration::from_millis(500));
+    host.send(json!({"type": "watchTogetherChatSent", "text": "ready?", "nowMs": now_ms()}));
+    let state = guest.wait("chat", |s| {
+        s["chat"].as_array().is_some_and(|c| c.iter().any(|m| m["text"] == "ready?"))
+    });
+    let message = state["chat"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|m| m["text"] == "ready?")
+        .unwrap();
+    assert_eq!(message["name"], "Host");
 }
 
 #[test]
