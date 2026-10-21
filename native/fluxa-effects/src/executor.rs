@@ -168,7 +168,7 @@ impl EffectExecutor {
             .ok_or_else(|| "effect is missing type".to_owned())?;
         let payload = effect.get("payload").cloned().unwrap_or_else(|| json!({}));
         let effect_kind = fluxa_core::runtime::EffectKind::from_str(effect_type)
-            .ok_or_else(|| format!("unknown Core effect type: {effect_type}"))?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         match effect_kind {
             fluxa_core::runtime::EffectKind::ReadHomeBootstrap => {
                 self.read_home_bootstrap(&payload).await
@@ -226,7 +226,7 @@ impl EffectExecutor {
             fluxa_core::runtime::EffectKind::FetchSubtitles => {
                 let stream = payload.get("stream").cloned().unwrap_or_else(|| json!({}));
                 core_value("streamSubtitlesResult", stream)
-                    .ok_or_else(|| "Fluxa Core could not resolve stream subtitles".to_owned())
+                    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
             }
             fluxa_core::runtime::EffectKind::FetchMetaDetail => {
                 let profile = payload.get("profile").cloned().unwrap_or(Value::Null);

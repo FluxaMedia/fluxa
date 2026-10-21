@@ -115,7 +115,7 @@ impl EffectExecutor {
                 .get("initialStreams")
                 .and_then(Value::as_array)
                 .filter(|streams| !streams.is_empty())
-                .ok_or_else(|| "Core requested initial streams but supplied none".to_owned())?;
+                .ok_or_else(|| "No sources are available right now.".to_owned())?;
             return Ok(Value::Array(streams.clone()));
         }
 
@@ -176,7 +176,7 @@ impl EffectExecutor {
         progress: Option<Progress>,
     ) -> Result<Vec<Value>, String> {
         let policy = core_value("resourceFetchExecutionPolicy", request.clone())
-            .ok_or_else(|| "Fluxa Core could not create a stream fetch plan".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let requests = policy
             .get("requests")
             .and_then(Value::as_array)
@@ -321,7 +321,7 @@ impl EffectExecutor {
             "providerAvailabilityPlan",
             json!({"addons": addons.clone(), "pluginNames": []}),
         )
-        .ok_or_else(|| "Fluxa Core could not resolve stream provider availability".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let mut attempts = Vec::new();
         for request_id in request_ids {
             let mut request = json!({
@@ -351,7 +351,7 @@ impl EffectExecutor {
                     .unwrap_or(false)
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not build the detail stream result".to_owned())
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
     }
 }
 
@@ -384,7 +384,7 @@ pub(super) fn stream_request_ids(
             .collect::<Vec<_>>()
     })
     .filter(|values| !values.is_empty())
-    .ok_or_else(|| "Fluxa Core could not resolve stream request IDs".to_owned())
+    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
 }
 
 #[cfg(target_arch = "wasm32")]

@@ -266,7 +266,7 @@ impl EffectExecutor {
                 .read_provider_library(source, profile_id, &profile)
                 .await?;
             return core_value("normalizeLibraryDocument", snapshot)
-                .ok_or_else(|| "Fluxa Core could not normalize the library document".to_owned());
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned());
         }
         let stored_library = self
             .storage
@@ -276,14 +276,14 @@ impl EffectExecutor {
             .get("continueWatching")
             .is_none_or(Value::is_null);
         let mut library = core_value("normalizeLibraryDocument", stored_library)
-            .ok_or_else(|| "Fluxa Core could not normalize the library document".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         if should_derive_continue_watching {
             let progress = library
                 .get("progress")
                 .cloned()
                 .unwrap_or_else(|| json!({}));
             let continue_watching = core_value("buildContinueWatchingFromProgress", progress)
-                .ok_or_else(|| "Fluxa Core could not build continue watching items".to_owned())?;
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
             if let Some(object) = library.as_object_mut() {
                 object.insert("continueWatching".to_owned(), continue_watching);
             }
@@ -346,7 +346,7 @@ impl EffectExecutor {
             None => self.storage.read_json(&key)?.unwrap_or_else(|| json!({})),
         };
         let library = core_value("normalizeLibraryDocument", library)
-            .ok_or_else(|| "Fluxa Core could not normalize the library document".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let plan = core_value(
             "libraryCommandPlan",
             json!({
@@ -355,12 +355,12 @@ impl EffectExecutor {
                 "nowIso": chrono::Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Millis, true),
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not plan the library command".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let updated = plan
             .get("library")
             .filter(|value| value.is_object())
             .cloned()
-            .ok_or_else(|| "Fluxa Core returned an invalid library command plan".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         match provider {
             None if nuvio => {
                 self.push_nuvio_write(&profile, plan.get("externalAction").unwrap_or(&Value::Null))
@@ -455,7 +455,7 @@ impl EffectExecutor {
                 "nowMs": chrono::Utc::now().timestamp_millis(),
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not plan the progress write".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         if let Some(external) = plan
             .get("externalProgress")
             .filter(|value| value.is_object())
@@ -560,7 +560,7 @@ impl EffectExecutor {
             "providerAvailabilityPlan",
             json!({"addons": addons.clone(), "pluginNames": []}),
         )
-        .ok_or_else(|| "Fluxa Core could not resolve stream providers".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let feedback = library
             .get("feedback")
             .and_then(Value::as_object)
@@ -634,7 +634,7 @@ impl EffectExecutor {
             json!({"library": library, "progress": progress, "watched": watched, "metas": metas}),
         )
         .map(Some)
-        .ok_or_else(|| "Fluxa Core could not build the Nuvio library snapshot".to_owned())
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
     }
 }
 

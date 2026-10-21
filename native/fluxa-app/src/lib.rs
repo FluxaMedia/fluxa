@@ -67,7 +67,7 @@ impl FluxaRuntime {
         let discover = Arc::make_mut(&mut self.snapshot)
             .get_mut("discover")
             .and_then(Value::as_object_mut)
-            .ok_or_else(|| "Discover state is missing from the Core snapshot".to_owned())?;
+            .ok_or_else(|| "Discover is not available right now.".to_owned())?;
         let Value::Object(mut delta) = page.delta else {
             return Err("Discover page delta is not an object".to_owned());
         };

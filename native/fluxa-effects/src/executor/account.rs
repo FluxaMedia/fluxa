@@ -327,7 +327,7 @@ impl EffectExecutor {
                 "nuvioAddonSnapshotPlan",
                 json!({"rows": rows, "snapshot": snapshot, "manifests": manifests}),
             )
-            .ok_or_else(|| "Fluxa Core could not plan the Nuvio add-on snapshot".to_owned())
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
         };
         let mut result = plan(&Value::Null)?;
         let fetch = result
@@ -563,7 +563,7 @@ impl EffectExecutor {
             "nuvioApplyDeltaSync"
         };
         core_value(method, request)
-            .ok_or_else(|| format!("Fluxa Core could not apply the Nuvio {resource} delta"))
+            .ok_or_else(|| format!("Something went wrong. Please try again."))
     }
 
     pub(super) async fn nuvio_rows(

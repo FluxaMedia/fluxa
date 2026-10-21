@@ -58,21 +58,21 @@ impl EffectExecutor {
     pub(super) async fn run_discover(&self, payload: &Value) -> Result<Value, String> {
         let requests = core_value("discoverSourceRequests", payload.clone())
             .and_then(|value| value.as_array().cloned())
-            .ok_or_else(|| "Fluxa Core could not plan Discover requests".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let mut sources = Vec::with_capacity(requests.len());
         for request in requests {
             let transport_url = request
                 .get("transportUrl")
                 .and_then(Value::as_str)
-                .ok_or_else(|| "Core Discover request is missing transportUrl".to_owned())?;
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
             let request_type = request
                 .get("type")
                 .and_then(Value::as_str)
-                .ok_or_else(|| "Core Discover request is missing type".to_owned())?;
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
             let catalog_id = request
                 .get("catalogId")
                 .and_then(Value::as_str)
-                .ok_or_else(|| "Core Discover request is missing catalogId".to_owned())?;
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
             let extra = request.get("extra").cloned().unwrap_or_else(|| json!({}));
             // Match Android: a failing media type must not discard successful sibling results.
             let items = self
@@ -94,7 +94,7 @@ impl EffectExecutor {
             }));
         }
         core_value("mergeDiscoverSources", json!({"sources": sources}))
-            .ok_or_else(|| "Fluxa Core could not merge Discover sources".to_owned())
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
     }
 
     pub(super) async fn run_search(&self, payload: &Value) -> Result<Value, String> {
@@ -115,7 +115,7 @@ impl EffectExecutor {
             "resourceFetchPlan",
             json!({"kind": "search", "query": query, "addons": addons, "skips": skips}),
         )
-        .ok_or_else(|| "Fluxa Core could not plan search resources".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let requests = plan
             .get("requests")
             .and_then(Value::as_array)
@@ -217,7 +217,7 @@ impl EffectExecutor {
             })
             .collect();
         let merged = core_value("mergeSearchSources", Value::Array(sources))
-            .ok_or_else(|| "Fluxa Core could not merge search results".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let results = merged.get("results").cloned().unwrap_or_else(|| json!([]));
         let grouping = core_value(
             "searchResultGrouping",
@@ -389,7 +389,7 @@ impl EffectExecutor {
             "remoteCollectionResponsePlan",
             json!({"plan": plan, "data": data}),
         )
-        .ok_or_else(|| "Fluxa Core could not read the remote collection response".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let content_type = plan
             .get("requestedType")
             .and_then(Value::as_str)
@@ -463,7 +463,7 @@ impl EffectExecutor {
             }),
         )
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
-        .ok_or_else(|| "Fluxa Core could not build the catalog page URL".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
@@ -501,7 +501,7 @@ impl EffectExecutor {
             json!({"contentType": content_type, "extra": extra, "apiKey": api_key, "language": language}),
         )
         .and_then(|value| value.as_str().map(ToOwned::to_owned))
-        .ok_or_else(|| "Fluxa Core could not build the TMDB catalog URL".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let client = Client::builder()
             .user_agent("Fluxa/1.0")
             .native_timeout(Duration::from_secs(20))
@@ -542,7 +542,7 @@ pub(super) fn parse_catalog_items(
             "season": null,
         }),
     )
-    .ok_or_else(|| "Core could not parse the catalog response".to_owned())?;
+    .ok_or_else(|| "This catalog could not be loaded.".to_owned())?;
     match result.get("kind").and_then(Value::as_str) {
         Some("success") => {}
         Some("empty") => return Ok(Vec::new()),
@@ -551,15 +551,7 @@ pub(super) fn parse_catalog_items(
                 .get("error")
                 .and_then(Value::as_str)
                 .map(ToOwned::to_owned)
-                .unwrap_or_else(|| {
-                    format!(
-                        "Core returned {} for {url}",
-                        result
-                            .get("kind")
-                            .and_then(Value::as_str)
-                            .unwrap_or("an invalid response")
-                    )
-                }));
+                .unwrap_or_else(|| "This catalog could not be loaded.".to_owned()));
         }
     }
     Ok(result
@@ -583,5 +575,5 @@ pub(super) fn annotate_catalog_items(
         }),
     )
     .and_then(|value| value.as_array().cloned())
-    .ok_or_else(|| "Fluxa Core could not annotate catalog source metadata".to_owned())
+    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
 }

@@ -98,7 +98,7 @@ impl EffectExecutor {
                 "addons": addons
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not plan the meta detail request".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let requests = plan
             .get("requests")
             .and_then(Value::as_array)
@@ -156,7 +156,7 @@ impl EffectExecutor {
             .filter(|url| !url.trim().is_empty())
             .ok_or_else(|| "manifest request is missing transportUrl".to_owned())?;
         let plan = core_value("manifestFetchPlan", json!({"url": transport_url}))
-            .ok_or_else(|| "Fluxa Core could not plan manifest requests".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let candidates = plan
             .get("candidateUrls")
             .and_then(Value::as_array)
@@ -190,7 +190,7 @@ impl EffectExecutor {
             };
             return core_value("resolveManifestAssets", descriptor.clone())
                 .or(Some(descriptor))
-                .ok_or_else(|| "Fluxa Core could not resolve manifest assets".to_owned());
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned());
         }
         Err("addon manifest could not be fetched or parsed".to_owned())
     }
@@ -246,7 +246,7 @@ impl EffectExecutor {
                 "extraRaw": extra_raw,
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not plan addon resource URLs".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let urls = request_plan
             .get("urls")
             .and_then(Value::as_array)
@@ -305,7 +305,7 @@ pub(super) fn normalize_enabled_addons(addons: Value) -> Result<Value, String> {
         "filterEnabledAddons",
         json!({"addons": addons, "disabledKeys": []}),
     )
-    .ok_or_else(|| "Fluxa Core could not filter enabled add-ons".to_owned())?;
+    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
     if let Some(items) = addons.as_array_mut() {
         for item in items {
             if item

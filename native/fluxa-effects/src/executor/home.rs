@@ -72,7 +72,7 @@ impl EffectExecutor {
             }),
         )
         .and_then(|value| value.as_array().cloned())
-        .ok_or_else(|| "Fluxa Core could not resolve selected home metadata feeds".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let metadata_feeds = visible_feeds.clone();
         crate::log!(
             "[fluxa-native] home bootstrap: addons={} feeds={} visible_feeds={}",

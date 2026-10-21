@@ -411,7 +411,7 @@ impl EffectExecutor {
             json!({"provider": provider, "profile": profile, "authResult": auth}),
         )
         .and_then(|plan| plan.get("mergedProfile").cloned())
-        .ok_or_else(|| "Fluxa Core could not merge the provider token".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         self.save_profile(&merged);
         Ok(merged)
     }
@@ -444,7 +444,7 @@ impl EffectExecutor {
                 "nowSeconds": chrono_unix_seconds(),
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not read the sign-in response".to_owned())
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
     }
 
     pub(super) async fn run_auth_flow(&self, payload: &Value) -> Result<Value, String> {
@@ -590,7 +590,7 @@ impl EffectExecutor {
         }
         let requests = core_value("providerLibraryRequests", credentials)
             .and_then(|requests| requests.as_array().cloned())
-            .ok_or_else(|| "Fluxa Core could not plan the library requests".to_owned())?;
+            .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let responses = if provider == "trakt" {
             match self.read_trakt_library(&requests).await {
                 Ok(responses) => responses,
@@ -638,7 +638,7 @@ impl EffectExecutor {
             "providerLibrarySnapshot",
             json!({"provider": provider, "responses": responses, "nowSeconds": chrono_unix_seconds()}),
         )
-        .ok_or_else(|| "Fluxa Core could not build the provider library".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         self.store_provider_library(provider, profile_id, &snapshot);
         Ok(snapshot)
     }
@@ -714,7 +714,7 @@ impl EffectExecutor {
                 args["activities"] = activities.clone();
             }
             core_value("simklSyncPlan", args)
-                .ok_or_else(|| "Fluxa Core could not plan the Simkl sync".to_owned())
+                .ok_or_else(|| "Something went wrong. Please try again.".to_owned())
         };
         let first = plan_for(None)?;
         let request = first["requests"][0].clone();
@@ -739,7 +739,7 @@ impl EffectExecutor {
                 "responses": responses,
             }),
         )
-        .ok_or_else(|| "Fluxa Core could not build the Simkl library".to_owned())?;
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
         let _ = self.storage.write_json(state_key, &applied["state"]);
         for session in applied["state"]["rewatches"]
             .as_object()
@@ -1074,7 +1074,7 @@ impl EffectExecutor {
                 let request = core_value("providerWriteRequests", args)
                     .and_then(|requests| requests.get(0).cloned())
                     .ok_or_else(|| {
-                        "Fluxa Core could not plan the Simkl account request".to_owned()
+                        "Something went wrong. Please try again.".to_owned()
                     })?;
                 let body = Self::simkl_get(&http_client()?, &request).await?;
                 let plan = body
