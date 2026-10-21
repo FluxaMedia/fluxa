@@ -666,7 +666,7 @@ fn draw_formatter(
         &localized("settings.group.formatter", language),
         metrics,
     );
-    for (slot, index) in (FORM_FIELDS..BADGE_INPUT_COUNT).enumerate() {
+    for (slot, index) in (FORM_FIELDS..LAYOUT_FIELDS).enumerate() {
         let row = Rect::from_min_size(
             card.left_top() + Vec2::new(metrics.settings_row_inset, 6.0 + slot as f32 * FORM_ROW),
             Vec2::new(card.width() - metrics.settings_row_inset * 2.0, FORM_ROW),

@@ -333,6 +333,12 @@ fn sync_config(state: &mut RendererState) {
             config.options = options;
             config.cache.clear();
         }
+        let stale = state.settings.formatter_presets.is_empty();
+        let known = stale.then(|| (config.rules.clone(), config.formatter.clone()));
+        drop(guard);
+        if let Some((rules, formatter)) = known {
+            populate(state, &rules, &formatter);
+        }
         return;
     }
     let rules = Rules::from_value(raw);
@@ -352,6 +358,10 @@ fn sync_config(state: &mut RendererState) {
         formatted: HashMap::new(),
     });
     drop(guard);
+    populate(state, &rules, &formatter);
+}
+
+fn populate(state: &mut RendererState, rules: &Rules, formatter: &Formatter) {
     let language = state.settings.language().to_owned();
     state.settings.formatter_presets = PRESETS
         .iter()
