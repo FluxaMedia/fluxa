@@ -34,12 +34,19 @@ const SYNC_SOURCES: usize = 2;
 pub(super) const MDBLIST_LIST_SOURCE: usize = 2;
 
 pub(super) fn account_height(metrics: UiMetrics) -> f32 {
+    let session = if metrics.compact {
+        APPEARANCE_GROUP_HEADING_HEIGHT
+            + APPEARANCE_GROUP_GAP
+            + settings_group_card_height(1, metrics)
+    } else {
+        0.0
+    };
     APPEARANCE_PAGE_HEADER_HEIGHT
-        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 4.0
+        + (APPEARANCE_GROUP_HEADING_HEIGHT + APPEARANCE_GROUP_GAP) * 3.0
         + ACCOUNT_PROFILE_CARD_HEIGHT
         + settings_group_card_height(ACCOUNT_SERVICES.len(), service_rows(metrics))
         + settings_group_card_height(SYNC_SOURCES, metrics)
-        + settings_group_card_height(1, metrics)
+        + session
 }
 
 fn service_rows(mut metrics: UiMetrics) -> UiMetrics {
@@ -463,7 +470,32 @@ pub(super) fn draw_account(
             &switch_label,
             pill_size,
         );
-        name_right = switch_rect.left() - 12.0;
+        let log_out = localized("auto.log_out", language);
+        let log_out_width = painter
+            .layout_no_wrap(
+                log_out.clone(),
+                FontId::proportional(pill_size),
+                text_primary(),
+            )
+            .size()
+            .x
+            + 32.0;
+        let log_out_rect = Rect::from_center_size(
+            Pos2::new(
+                switch_rect.left() - 8.0 - log_out_width * 0.5,
+                card.center().y,
+            ),
+            Vec2::new(log_out_width, 32.0),
+        );
+        pill_button(
+            context,
+            layout,
+            NODE_SETTINGS_LOG_OUT,
+            log_out_rect,
+            &log_out,
+            pill_size,
+        );
+        name_right = log_out_rect.left() - 12.0;
     }
     let mut name_job = egui::text::LayoutJob::simple_singleline(
         name,
@@ -695,6 +727,9 @@ pub(super) fn draw_account(
         );
     }
 
+    if !compact {
+        return;
+    }
     top = card.bottom() + APPEARANCE_GROUP_GAP;
     let card = account_group(
         &painter,
