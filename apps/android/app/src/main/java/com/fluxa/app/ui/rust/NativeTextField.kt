@@ -108,6 +108,8 @@ internal class NativeTextField(
         setTextSize(TypedValue.COMPLEX_UNIT_PX, (if (size > 0f) size else 16f) * resources.displayMetrics.density)
         typeface = if (code) Typeface.DEFAULT_BOLD else Typeface.DEFAULT
         letterSpacing = if (code) 0.45f else 0f
+        setTextColor(if (code) Color.TRANSPARENT else Color.WHITE)
+        isCursorVisible = !code
         filters = if (code) arrayOf(InputFilter.AllCaps(), InputFilter.LengthFilter(CODE_LENGTH)) else emptyArray()
         isSingleLine = kind != "multiline"
         inputType = when (kind) {
