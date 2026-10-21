@@ -823,7 +823,7 @@
     {
       "key": "streamBadgesEnabled",
       "type": "boolean",
-      "default": true,
+      "default": false,
       "scope": "profile",
       "category": "playback"
     },
