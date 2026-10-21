@@ -326,7 +326,7 @@ pub(super) const STREAM_BADGES_SETTINGS: [SettingsRow; 7] = [
     SettingsRow {
         label: "Badge theme",
         key: "streamBadgeTheme",
-        options: &["vivid", "classic", "soft", "neon", "gold", "sunset"],
+        options: &["vivid", "classic", "soft", "neon", "gold", "sunset", "cinema"],
     },
     SettingsRow {
         label: "Badge placement",

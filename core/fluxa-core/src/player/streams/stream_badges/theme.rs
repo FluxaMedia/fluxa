@@ -9,6 +9,7 @@ pub enum Theme {
     Neon,
     Gold,
     Sunset,
+    Cinema,
 }
 
 impl Theme {
@@ -19,6 +20,7 @@ impl Theme {
             "neon" => Self::Neon,
             "gold" => Self::Gold,
             "sunset" => Self::Sunset,
+            "cinema" => Self::Cinema,
             _ => Self::Vivid,
         }
     }
@@ -73,6 +75,11 @@ impl Theme {
                 border: Some(0xF2C14E99),
                 ..outline(0xF2C14EFF)
             },
+            Self::Cinema if index == 0 => BadgeLook {
+                text: Some(0x0B0B0CFF),
+                ..filled(0xF2F2F2FF)
+            },
+            Self::Cinema => outline(0xE6E6E6FF),
             Self::Sunset => filled(
                 [
                     0xE5484DFF, 0xF76B15FF, 0xF5A524FF, 0xD6409FFF, 0xB4415BFF, 0x5B3A4AFF,
