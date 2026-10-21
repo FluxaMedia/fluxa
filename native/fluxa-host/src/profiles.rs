@@ -348,7 +348,7 @@ fn save(model: &mut ProfilesModel, storage: &Storage) -> Option<PinChange> {
     })
 }
 
-fn new_profile_id() -> String {
+pub(crate) fn new_profile_id() -> String {
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|elapsed| elapsed.as_nanos())

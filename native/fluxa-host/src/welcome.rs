@@ -2,7 +2,7 @@ use std::sync::mpsc::{Receiver, TryRecvError};
 use std::time::Duration;
 
 use fluxa_effects::Storage;
-use fluxa_ui::{UiFormFactorJson, WelcomeModel, WelcomeQr, WelcomeRequest};
+use fluxa_ui::{UiFormFactorJson, WelcomeModel, WelcomeQr, WelcomeRequest, localized};
 use serde_json::{Value, json};
 use web_time::Instant;
 
@@ -54,15 +54,57 @@ pub(crate) fn open(state: &mut RendererState) {
     state.welcome_flow = Some(Flow::default());
 }
 
+pub(crate) fn log_out(state: &mut RendererState) {
+    let Some(session) = state.session.as_ref() else {
+        return;
+    };
+    let storage = session.storage().clone();
+    let local = profiles::stored_profiles(&storage)
+        .into_iter()
+        .filter(|profile| {
+            profile
+                .get("nuvioAccessToken")
+                .and_then(Value::as_str)
+                .is_none_or(str::is_empty)
+        })
+        .collect::<Vec<_>>();
+    profiles::write(&storage, "profiles", &Value::Array(local));
+    profiles::write(&storage, "active_profile_id", &json!(""));
+    profiles::write(&storage, OFFLINE_KEY, &json!(false));
+    state.profiles = None;
+    open(state);
+}
+
 pub(crate) fn handle(state: &mut RendererState, request: WelcomeRequest) {
     let Some(session) = state.session.as_ref() else {
         return;
     };
     match request {
         WelcomeRequest::Offline => {
-            profiles::write(session.storage(), OFFLINE_KEY, &json!(true));
+            let storage = session.storage().clone();
+            let language = profile_language(&session.active_profile());
+            profiles::write(&storage, OFFLINE_KEY, &json!(true));
             state.welcome = None;
             state.welcome_flow = None;
+            let stored = profiles::stored_profiles(&storage);
+            match stored.as_slice() {
+                [] => {
+                    let id = profiles::new_profile_id();
+                    let name = localized("auth.default_profile_name", &language);
+                    let profile = core_value(
+                        "createProfilePlan",
+                        json!({"id": id, "name": name, "color": "#3F7CFF"}),
+                    )
+                    .unwrap_or_else(|| json!({"id": id, "name": name}));
+                    profiles::save_profile(&storage, &profile);
+                    profiles::activate(state, &storage, &id);
+                }
+                [only] => {
+                    let id = only.get("id").and_then(Value::as_str).unwrap_or_default();
+                    profiles::activate(state, &storage, id);
+                }
+                _ => profiles::open(state),
+            }
         }
         WelcomeRequest::SignIn => {
             let (Some(model), Some(flow)) = (state.welcome.as_mut(), state.welcome_flow.as_mut())
