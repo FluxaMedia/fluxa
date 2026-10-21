@@ -322,7 +322,7 @@ pub(crate) fn draw_sidebar(
                 let center = Pos2::new(icon_x, rect.center().y);
                 match &slot.kind {
                     Kind::Brand => {
-                        let mark = Rect::from_center_size(center, Vec2::splat(30.0));
+                        let mark = Rect::from_center_size(center, Vec2::splat(40.0));
                         if let Some(texture) = assets.brand_mark() {
                             ui.painter().image(texture, mark, full_uv(), Color32::WHITE);
                         }
