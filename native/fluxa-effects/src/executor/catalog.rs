@@ -5,6 +5,14 @@ impl EffectExecutor {
         &self,
         payload: &Value,
     ) -> Result<Value, String> {
+        self.read_installed_addons(payload, false).await
+    }
+
+    pub(super) async fn read_installed_addons(
+        &self,
+        payload: &Value,
+        keep_disabled: bool,
+    ) -> Result<Value, String> {
         let effect_profile = payload
             .get("profile")
             .filter(|value| value.is_object())
@@ -46,9 +54,9 @@ impl EffectExecutor {
             .get("addons")
             .filter(|value| local && value.as_array().is_some_and(|items| !items.is_empty()))
         {
-            Some(addons) => normalize_enabled_addons(addons.clone())?,
+            Some(addons) => normalize_addons(addons.clone(), keep_disabled)?,
             None => {
-                self.addons_for_profile(&profiles, &active_id, &profile)
+                self.profile_addons(&profiles, &active_id, &profile, keep_disabled)
                     .await?
             }
         };

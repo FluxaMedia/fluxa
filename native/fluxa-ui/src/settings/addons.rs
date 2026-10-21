@@ -9,12 +9,16 @@ const CARD_GAP: f32 = 12.0;
 const SCRAPER_ROW: f32 = 64.0;
 
 pub fn addon_action_node(index: usize, action: u64) -> u64 {
-    NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 4 + action
+    NODE_SETTINGS_ADDON_ACTION_BASE + index as u64 * 5 + action
 }
 
 pub fn addon_action(node: u64) -> Option<(usize, u64)> {
     let offset = node.checked_sub(NODE_SETTINGS_ADDON_ACTION_BASE)?;
-    (offset < 4 * 200).then(|| ((offset / 4) as usize, offset % 4))
+    (offset < 5 * 200).then(|| ((offset / 5) as usize, offset % 5))
+}
+
+pub fn addon_enabled(addon: &serde_json::Value) -> bool {
+    addon.get("enabled").and_then(serde_json::Value::as_bool) != Some(false)
 }
 
 pub fn addon_transport_url(addon: &serde_json::Value) -> Option<&str> {
@@ -72,9 +76,22 @@ fn addon_chips(addon: &serde_json::Value, language: &str) -> Vec<String> {
             .map(ToOwned::to_owned)
             .collect::<Vec<_>>()
     };
+    let catalogs = manifest
+        .get("catalogs")
+        .and_then(serde_json::Value::as_array)
+        .map_or(0, Vec::len);
     let mut out: Vec<String> = Vec::new();
     for (prefix, values) in [("resource", list("resources")), ("type", list("types"))] {
         for value in values {
+            if prefix == "resource" && value == "catalog" {
+                if catalogs > 0 {
+                    out.push(
+                        localized("settings.addon_catalog_count", language)
+                            .replace("%s", &catalogs.to_string()),
+                    );
+                }
+                continue;
+            }
             let label = localized_or(
                 &format!("settings.addon_{prefix}.{value}"),
                 &capitalize(&value),
@@ -97,6 +114,7 @@ struct Card<'a> {
     logo: Option<&'a str>,
     icon: Option<&'static str>,
     chips: Vec<String>,
+    toggle: Option<(u64, bool)>,
     leading: Vec<(u64, &'static str, bool)>,
     trailing: Vec<(u64, &'static str, bool)>,
 }
@@ -150,6 +168,7 @@ fn addon_card<'a>(
         } else {
             Vec::new()
         },
+        toggle: Some((addon_action_node(index, 4), addon_enabled(addon))).filter(|_| url.is_some()),
         leading: vec![
             (addon_action_node(index, 0), "ChevronUp", index > 0),
             (
@@ -182,6 +201,7 @@ fn repository_card<'a>(repo: &'a serde_json::Value, index: usize, language: &str
         chips: vec![
             localized("settings.plugin_scraper_count", language).replace("%s", &count.to_string()),
         ],
+        toggle: None,
         leading: Vec::new(),
         trailing: vec![
             (
@@ -736,7 +756,12 @@ fn draw_card(
         );
     }
     let text_left = logo.right() + 14.0;
-    let text_width = inner.right() - text_left;
+    let toggle_reserve = if card.toggle.is_some() {
+        metrics.settings_toggle_width + 12.0
+    } else {
+        0.0
+    };
+    let text_width = inner.right() - text_left - toggle_reserve;
     let title_font = crate::fonts::regular(metrics.text.subtitle);
     let title = truncate_to_width(painter, card.title, &title_font, text_width * 0.75);
     let galley = painter.layout_no_wrap(title, title_font, Color32::WHITE);
@@ -752,6 +777,35 @@ fn draw_card(
             crate::fonts::regular(metrics.text.meta),
             metrics.text_muted,
             None,
+        );
+    }
+    if let Some((node, enabled)) = card.toggle {
+        let track = Rect::from_min_size(
+            Pos2::new(inner.right() - metrics.settings_toggle_width, inner.top()),
+            Vec2::new(
+                metrics.settings_toggle_width,
+                metrics.settings_toggle_height,
+            ),
+        );
+        let hit = track.expand2(Vec2::new(6.0, 6.0));
+        layout.focusable.push((node, hit));
+        components::toggle(
+            context,
+            painter,
+            Id::new(("fluxa-addon-toggle", node)),
+            track,
+            enabled,
+            metrics,
+        );
+        components::placed_front(
+            context,
+            Id::new(("fluxa-addon-toggle-hit", node)),
+            hit.min,
+            |ui| {
+                if ui.allocate_rect(hit, Sense::click()).clicked() {
+                    layout.activated = Some(node);
+                }
+            },
         );
     }
     let subtitle_font = crate::fonts::regular(metrics.text.body);
@@ -893,6 +947,7 @@ fn server_card<'a>(server: &'a serde_json::Value, index: usize, language: &str) 
             capitalize(kind),
             localized("settings.server_libraries", language).replace("%s", &libraries.to_string()),
         ],
+        toggle: None,
         leading: Vec::new(),
         trailing: vec![(NODE_SETTINGS_SERVER_BASE + index as u64, "Delete", true)],
     }

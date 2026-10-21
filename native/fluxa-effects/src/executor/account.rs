@@ -217,6 +217,17 @@ impl EffectExecutor {
         active_id: &str,
         profile: &Value,
     ) -> Result<Value, String> {
+        self.profile_addons(profiles, active_id, profile, false)
+            .await
+    }
+
+    pub(super) async fn profile_addons(
+        &self,
+        profiles: &Value,
+        active_id: &str,
+        profile: &Value,
+        keep_disabled: bool,
+    ) -> Result<Value, String> {
         let source = account_source(profile, "addons");
         let addons = match source.get("backend").and_then(Value::as_str) {
             Some("nuvio") => self.nuvio_addons(profile, &source).await?,
@@ -226,7 +237,7 @@ impl EffectExecutor {
         if let Some(list) = addons.as_array_mut() {
             list.extend(super::mediaserver::addons(&self.storage, active_id));
         }
-        normalize_enabled_addons(addons)
+        normalize_addons(addons, keep_disabled)
     }
 
     fn local_addons(&self, profiles: &Value, active_id: &str) -> Result<Value, String> {

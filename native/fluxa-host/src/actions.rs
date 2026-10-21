@@ -426,6 +426,11 @@ pub(super) fn settings_action_json(node: u64, settings: &SettingsModel) -> Optio
             0 => json!({"type":"addonMoveRequested", "transportUrl":url, "offset":-1}),
             1 => json!({"type":"addonMoveRequested", "transportUrl":url, "offset":1}),
             2 => json!({"type":"addonInstallRequested", "transportUrl":url, "forceRefresh":true}),
+            4 => json!({
+                "type":"addonToggleRequested",
+                "transportUrl":url,
+                "enabled":!fluxa_ui::addon_enabled(settings.addons.get(index)?),
+            }),
             _ => json!({"type":"addonRemoveRequested", "transportUrl":url}),
         });
     }

@@ -33,6 +33,7 @@
     "addonInstallRequested",
     "addonRemoveRequested",
     "addonMoveRequested",
+    "addonToggleRequested",
     "addonsRefreshRequested",
     "addonResourceRequested",
     "searchRequested",

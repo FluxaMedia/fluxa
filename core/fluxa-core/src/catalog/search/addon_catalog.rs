@@ -142,6 +142,9 @@ pub(crate) fn build_metadata_feed_options_json(addons_json: &str) -> Option<Stri
     let addons = serde_json::from_str::<Vec<Value>>(addons_json).ok()?;
     let mut feeds = Vec::new();
     for addon in addons {
+        if addon.get("enabled").and_then(Value::as_bool) == Some(false) {
+            continue;
+        }
         let Some(manifest) = manifest_value(&addon) else {
             continue;
         };
@@ -217,6 +220,9 @@ pub(crate) fn discover_catalog_options_json(
         .unwrap_or(lower_selected_type);
     let mut options = Vec::new();
     for addon in addons {
+        if addon.get("enabled").and_then(Value::as_bool) == Some(false) {
+            continue;
+        }
         let Some(manifest) = manifest_value(&addon) else {
             continue;
         };

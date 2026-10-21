@@ -301,11 +301,19 @@ impl EffectExecutor {
 }
 
 pub(super) fn normalize_enabled_addons(addons: Value) -> Result<Value, String> {
-    let mut addons = core_value(
-        "filterEnabledAddons",
-        json!({"addons": addons, "disabledKeys": []}),
-    )
-    .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?;
+    normalize_addons(addons, false)
+}
+
+pub(super) fn normalize_addons(addons: Value, keep_disabled: bool) -> Result<Value, String> {
+    let mut addons = if keep_disabled {
+        addons
+    } else {
+        core_value(
+            "filterEnabledAddons",
+            json!({"addons": addons, "disabledKeys": []}),
+        )
+        .ok_or_else(|| "Something went wrong. Please try again.".to_owned())?
+    };
     if let Some(items) = addons.as_array_mut() {
         for item in items {
             if item

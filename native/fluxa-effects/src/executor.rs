@@ -221,7 +221,7 @@ impl EffectExecutor {
                 self.fetch_addon_resource(&payload).await
             }
             fluxa_core::runtime::EffectKind::RefreshInstalledAddons => {
-                self.read_discover_catalog_filters(&payload).await
+                self.read_installed_addons(&payload, true).await
             }
             fluxa_core::runtime::EffectKind::FetchSubtitles => {
                 let stream = payload.get("stream").cloned().unwrap_or_else(|| json!({}));

@@ -329,6 +329,10 @@ impl HeadlessEngine {
                 transport_url,
                 offset,
             } => addons::dispatch_move(self, &transport_url, offset),
+            AppAction::AddonToggleRequested {
+                transport_url,
+                enabled,
+            } => addons::dispatch_toggle(self, &transport_url, enabled),
             AppAction::AddonsRefreshRequested {
                 profile,
                 force_refresh,

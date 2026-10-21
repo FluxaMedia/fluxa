@@ -129,6 +129,36 @@ pub(crate) fn dispatch_move(
     home::reload(engine)
 }
 
+pub(crate) fn dispatch_toggle(
+    engine: &mut HeadlessEngine,
+    transport_url: &str,
+    enabled: bool,
+) -> Vec<EffectEnvelope> {
+    let Some(addon) = engine
+        .state
+        .addons
+        .installed
+        .as_array_mut()
+        .and_then(|items| {
+            items
+                .iter_mut()
+                .find(|addon| addon_url(addon) == Some(transport_url))
+        })
+    else {
+        return vec![];
+    };
+    addon["enabled"] = Value::Bool(enabled);
+    let addons = engine.state.addons.installed.clone();
+    home::set_user_addons(engine, addons);
+    home::reload(engine)
+}
+
+fn keep_enabled(previous: &Value, fresh: &mut Value) {
+    if let Some(enabled) = previous.get("enabled") {
+        fresh["enabled"] = enabled.clone();
+    }
+}
+
 pub(crate) fn dispatch_resource(
     engine: &mut HeadlessEngine,
     transport_url: String,
@@ -173,7 +203,11 @@ pub(crate) fn complete(
                                 .find(|addon| url.is_some() && addon_url(addon) == url.as_deref())
                         });
                     match existing {
-                        Some(existing) => *existing = manifest,
+                        Some(existing) => {
+                            let mut manifest = manifest;
+                            keep_enabled(existing, &mut manifest);
+                            *existing = manifest;
+                        }
                         None => {
                             let id = url
                                 .as_deref()
@@ -202,6 +236,19 @@ pub(crate) fn complete(
                         .get("addons")
                         .cloned()
                         .unwrap_or_else(|| result.value.clone());
+                    let mut addons = addons;
+                    if let (Some(fresh), Some(previous)) =
+                        (addons.as_array_mut(), engine.state.addons.installed.as_array())
+                    {
+                        for addon in fresh {
+                            if let Some(old) = previous
+                                .iter()
+                                .find(|old| addon_url(old) == addon_url(addon))
+                            {
+                                keep_enabled(old, addon);
+                            }
+                        }
+                    }
                     home::set_user_addons(engine, addons.clone());
                     engine.state.addons.installed = addons;
                     engine.state.addons.error = Value::Null;

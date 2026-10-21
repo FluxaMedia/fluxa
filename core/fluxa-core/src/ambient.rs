@@ -35,6 +35,9 @@ pub fn catalog_key(transport_url: &str, content_type: &str, catalog_id: &str) ->
 pub fn catalog_options(addons: &[Value]) -> Vec<CatalogOption> {
     let mut options = Vec::new();
     for addon in addons {
+        if addon.get("enabled").and_then(Value::as_bool) == Some(false) {
+            continue;
+        }
         let manifest = addon
             .get("manifest")
             .filter(|manifest| manifest.is_object())

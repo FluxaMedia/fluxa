@@ -401,6 +401,8 @@
   "common.retry": "Retry",
   "common.help": "Get Help",
   "common.back": "Go Back",
+  "settings.addon_catalog_count": "%s catalogs",
+  "settings.addon_enabled": "Enable add-on",
   "common.picture_in_picture": "Picture in picture",
   "common.external_player": "Open in external player",
   "common.previous_month": "Previous month",

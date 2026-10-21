@@ -12,7 +12,7 @@ mod detail_sections;
 mod model;
 mod sections;
 pub use account::*;
-pub use addons::{addon_action, addon_transport_url, server_index, server_input};
+pub use addons::{addon_action, addon_enabled, addon_transport_url, server_index, server_input};
 pub use badges::{badge_input, badge_input_label};
 pub use collections::{collection_input, collection_input_label, collection_view_modes};
 pub use model::*;

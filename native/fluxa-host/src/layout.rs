@@ -167,6 +167,7 @@ pub(super) fn label_for_node(state: &RendererState, node: u64) -> String {
                 0 => "settings.addon_move_up",
                 1 => "settings.addon_move_down",
                 2 => "settings.addon_refresh_one",
+                4 => "settings.addon_enabled",
                 _ => "settings.addon_remove",
             };
             fluxa_ui::localized(key, "en")

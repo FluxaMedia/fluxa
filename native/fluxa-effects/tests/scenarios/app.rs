@@ -189,6 +189,27 @@ fn removing_an_addon_drops_its_rows_from_home() {
 }
 
 #[test]
+fn disabled_addon_leaves_home_but_stays_installed_through_a_refresh() {
+    let scenario = Scenario::start();
+    browsable_addon(&scenario);
+    second_addon(&scenario);
+    let app = scenario.app();
+    for url in [TRANSPORT, "https://addon2.test/manifest.json"] {
+        app.dispatch(json!({"type": "addonInstallRequested", "transportUrl": url}));
+    }
+
+    app.dispatch(json!({"type": "addonToggleRequested", "transportUrl": TRANSPORT, "enabled": false}));
+    app.dispatch(json!({"type": "homeLoadRequested", "force": true}));
+    app.dispatch(json!({"type": "addonsRefreshRequested", "forceRefresh": true}));
+
+    let categories = app.at("/home/categories");
+    assert_eq!(categories.as_array().map(Vec::len), Some(1), "{categories}");
+    let installed = app.at("/addons/installed");
+    assert_eq!(installed.as_array().map(Vec::len), Some(2), "{installed}");
+    assert_eq!(installed[0]["enabled"], false);
+}
+
+#[test]
 #[ignore = "an empty home reload falls back to the cached bootstrap, so the last removed addon's rows stay"]
 fn removing_the_last_addon_empties_home() {
     let scenario = Scenario::start();

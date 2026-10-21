@@ -401,6 +401,8 @@
   "common.retry": "Tekrar Dene",
   "common.help": "Yardım Al",
   "common.back": "Geri Dön",
+  "settings.addon_catalog_count": "%s katalog",
+  "settings.addon_enabled": "Eklentiyi etkinleştir",
   "common.picture_in_picture": "Görüntü içinde görüntü",
   "common.external_player": "Harici oynatıcıda aç",
   "common.previous_month": "Önceki ay",
