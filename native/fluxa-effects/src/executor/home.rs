@@ -86,8 +86,10 @@ impl EffectExecutor {
             .native_timeout(Duration::from_secs(20))
             .build()
             .map_err(|error| error.to_string())?;
-        let mut categories = Vec::new();
-        for feed in visible_feeds {
+        let fetches = visible_feeds.into_iter().map(|feed| {
+            let client = &client;
+            let prefs = &prefs;
+            async move {
             let content_type = feed.get("type").and_then(Value::as_str).unwrap_or("movie");
             let catalog_id = feed.get("id").and_then(Value::as_str).unwrap_or_default();
             let transport_url = feed
@@ -97,14 +99,14 @@ impl EffectExecutor {
             let extra = json!({});
             let data = if transport_url == "tmdb://builtin" {
                 let Some(api_key) = prefs.get("tmdbApiKey").and_then(Value::as_str) else {
-                    continue;
+                    return Ok(None);
                 };
                 let url = core_value(
                     "tmdbBuiltinCatalogUrl",
                     json!({"contentType": content_type, "extra": extra, "apiKey": api_key, "language": language}),
                 )
                 .and_then(|value| value.as_str().map(ToOwned::to_owned));
-                let Some(url) = url else { continue };
+                let Some(url) = url else { return Ok(None) };
                 let response = match fetch_json(&client, &url).await {
                     Ok(response) => response,
                     Err(error) => {
@@ -112,7 +114,7 @@ impl EffectExecutor {
                             "[fluxa-native] TMDB catalog request failed for {}: {error}",
                             url_without_query(&url)
                         );
-                        continue;
+                        return Ok(None);
                     }
                 };
                 let results = response
@@ -136,23 +138,23 @@ impl EffectExecutor {
                     }),
                 )
                 .and_then(|value| value.as_str().map(ToOwned::to_owned)) else {
-                    continue;
+                    return Ok(None);
                 };
-                let (status_code, body) = match fetch_text(&client, &url).await {
+                let (status_code, body) = match fetch_catalog_text(client, &url).await {
                     Ok(response) => response,
                     Err(error) => {
                         crate::log!(
                             "[fluxa-native] catalog request failed for {}: {error}",
                             url_without_query(&url)
                         );
-                        continue;
+                        return Ok(None);
                     }
                 };
                 match parse_catalog_items(&url, status_code, body.as_deref(), "discover") {
                     Ok(items) => Value::Array(items),
                     Err(error) => {
                         crate::log!("[fluxa-native] catalog response rejected by Core: {error}");
-                        continue;
+                        return Ok(None);
                     }
                 }
             };
@@ -162,7 +164,7 @@ impl EffectExecutor {
                 content_type,
             )?;
             if items.is_empty() {
-                continue;
+                return Ok(None);
             }
             let label = feed
                 .get("label")
@@ -172,7 +174,7 @@ impl EffectExecutor {
                 .get("homeTitle")
                 .and_then(Value::as_str)
                 .unwrap_or(label);
-            categories.push(json!({
+            Ok::<Option<Value>, String>(Some(json!({
                 "id": feed.get("key"),
                 "name": home_title,
                 "semanticName": home_title,
@@ -182,8 +184,28 @@ impl EffectExecutor {
                 "transportUrl": transport_url,
                 "catalogId": catalog_id,
                 "canLoadMore": true
-            }));
-        }
+            })))
+            }
+        });
+        let nuvio_items = async {
+            let session = self.nuvio_session(&profile).await.ok().flatten()?;
+            self.nuvio_home_catalog_items(&session, &profile).await
+        };
+        let (categories, nuvio_items, continue_watching) = futures::join!(
+            futures::future::join_all(fetches),
+            nuvio_items,
+            self.continue_watching_for_source(&active_id, &profile, &prefs, None)
+        );
+        let categories: Vec<Value> = categories
+            .into_iter()
+            .collect::<Result<Vec<_>, String>>()?
+            .into_iter()
+            .flatten()
+            .collect();
+        let continue_watching = continue_watching.unwrap_or_else(|error| {
+            crate::log!("[fluxa-native] home continue watching failed: {error}");
+            json!([])
+        });
         crate::log!(
             "[fluxa-native] home bootstrap: populated_catalog_shelves={}",
             categories.len()
@@ -222,8 +244,7 @@ impl EffectExecutor {
                 .cloned()
                 .unwrap_or_default(),
         );
-        if let Ok(Some(session)) = self.nuvio_session(&profile).await
-            && let Some(items) = self.nuvio_home_catalog_items(&session, &profile).await
+        if let Some(items) = nuvio_items
             && let Some(Value::Array(ordered)) = core_value(
                 "nuvioHomeLayout",
                 json!({"categories": all_categories, "addons": addons, "items": items}),
@@ -231,9 +252,6 @@ impl EffectExecutor {
         {
             all_categories = ordered;
         }
-        let continue_watching = self
-            .continue_watching_for_source(&active_id, &profile, &prefs, None)
-            .await?;
         let billboard = all_categories
             .iter()
             .filter(|category| category.get("type").and_then(Value::as_str) != Some("collection"))
@@ -267,6 +285,9 @@ impl EffectExecutor {
             "metadataFeeds": metadata_feeds,
             "billboard": billboard
         });
+        if all_categories.is_empty() && !metadata_feeds.is_empty() {
+            return Ok(bootstrap);
+        }
         self.storage.write_json(&cache_key, &bootstrap)?;
         Ok(bootstrap)
     }
@@ -371,4 +392,14 @@ impl EffectExecutor {
                 .is_ok()
         })
     }
+}
+
+async fn fetch_catalog_text(client: &Client, url: &str) -> Result<(i32, Option<String>), String> {
+    let first = fetch_text(client, url).await;
+    if matches!(&first, Ok((status, _)) if *status < 500) {
+        return first;
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    tokio::time::sleep(Duration::from_millis(700)).await;
+    fetch_text(client, url).await
 }
