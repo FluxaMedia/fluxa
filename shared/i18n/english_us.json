@@ -3371,5 +3371,10 @@
   "settings.watch_party.in_room_help": "Open the room to see who's watching and what they're doing.",
   "settings.watch_party.host_title": "Host a room",
   "settings.watch_party.host_help": "Play something, then open Watch Party in the player.",
-  "settings.watch_party.in_room": "Room {code}"
+  "settings.watch_party.in_room": "Room {code}",
+  "profiles.choose_icon": "Choose a profile icon",
+  "profiles.choose_icon_desc": "Pick from a pack, upload a file or use an image URL.",
+  "profiles.image_url": "Image URL",
+  "profiles.image_url_placeholder": "https://example.com/avatar.png",
+  "profiles.use_image_url": "Use image"
 }

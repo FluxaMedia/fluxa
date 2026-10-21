@@ -39,6 +39,7 @@ pub enum ProfilesMode {
     #[default]
     Select,
     Form,
+    Avatars,
     Settings,
 }
 
@@ -87,6 +88,7 @@ pub struct ProfilesModel {
     pub picker: ProfilePickerSettings,
     pub background_input: String,
     pub repository_input: String,
+    pub avatar_input: String,
     pub busy: bool,
     pub notice: Option<String>,
     pub language: String,
@@ -151,11 +153,17 @@ impl ProfilesModel {
         if self.pin_prompt.take().is_some() || self.confirm_delete.take().is_some() {
             return true;
         }
-        if self.mode != ProfilesMode::Select {
-            self.mode = ProfilesMode::Select;
-            return true;
+        match self.mode {
+            ProfilesMode::Select => false,
+            ProfilesMode::Avatars => {
+                self.mode = ProfilesMode::Form;
+                true
+            }
+            _ => {
+                self.mode = ProfilesMode::Select;
+                true
+            }
         }
-        false
     }
 
     pub fn open_form(&mut self, profile: Option<&ProfileEntry>) {

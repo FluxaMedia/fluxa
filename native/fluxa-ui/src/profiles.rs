@@ -1,11 +1,13 @@
 use super::*;
 
+mod avatars;
 mod form;
 mod model;
 mod picker_settings;
 mod pin;
 mod select;
 
+use avatars::*;
 use form::*;
 pub use model::*;
 use picker_settings::*;
@@ -41,6 +43,9 @@ pub fn draw_profiles(
                     }
                     ProfilesMode::Form => {
                         draw_form(ui, viewport, model, assets, metrics, &t, &mut request)
+                    }
+                    ProfilesMode::Avatars => {
+                        draw_avatars(ui, viewport, model, assets, metrics, &t, &mut request)
                     }
                     ProfilesMode::Settings => {
                         draw_picker_settings(ui, viewport, model, assets, metrics, &t, &mut request)
@@ -193,6 +198,6 @@ fn profile_header(
         components::close_button(ui, assets, &t("common.close"), metrics)
     };
     if leave {
-        model.mode = ProfilesMode::Select;
+        model.back();
     }
 }
