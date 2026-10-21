@@ -720,6 +720,12 @@ pub fn set_error_reporter(reporter: impl Fn(PlaybackError) + Send + Sync + 'stat
     let _ = ERROR_REPORTER.set(Box::new(reporter));
 }
 
+static USER_CONFIG_DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+
+pub fn set_user_config_dir(dir: PathBuf) {
+    let _ = USER_CONFIG_DIR.set(dir);
+}
+
 fn report_playback_error(error: PlaybackError) {
     match ERROR_REPORTER.get() {
         Some(reporter) => reporter(error),

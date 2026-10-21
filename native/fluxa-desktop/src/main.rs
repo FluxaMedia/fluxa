@@ -392,6 +392,14 @@ impl ApplicationHandler<AccessEvent> for App {
                 Err(error) => eprintln!("[fluxa-desktop] theme.css: {error:?}"),
             }
         }
+        if let Some(directory) = data_dir.as_ref().map(|directory| directory.join("mpv")) {
+            let ready = ["scripts", "script-opts"]
+                .iter()
+                .all(|name| std::fs::create_dir_all(directory.join(name)).is_ok());
+            if ready {
+                fluxa_mpv::set_user_config_dir(directory);
+            }
+        }
         let host = FluxaHost::new(
             window.scale_factor() as f32,
             data_dir

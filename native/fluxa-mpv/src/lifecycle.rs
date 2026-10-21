@@ -74,7 +74,14 @@ impl MpvClientHandle {
             client.set_option("screenshot-jpeg-quality", "65")?;
         } else {
             client.set_option("terminal", "no")?;
-            client.set_option("config", "no")?;
+            match USER_CONFIG_DIR.get() {
+                Some(dir) => {
+                    client.set_option("config-dir", &dir.to_string_lossy())?;
+                    client.set_option("config", "yes")?;
+                    client.set_option("load-scripts", "yes")?;
+                }
+                None => client.set_option("config", "no")?,
+            }
             if disable_ytdl {
                 client.set_option("ytdl", "no")?;
             }
