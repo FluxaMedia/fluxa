@@ -193,6 +193,36 @@ fn hero_ratings(value: &serde_json::Value) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("  "))
 }
 
+fn series_counts(value: &serde_json::Value, language: &str) -> (Option<String>, Option<String>) {
+    let videos = value
+        .get("videos")
+        .and_then(serde_json::Value::as_array)
+        .map(Vec::as_slice)
+        .unwrap_or_default();
+    let mut seasons = std::collections::BTreeSet::new();
+    let mut episodes = 0;
+    for video in videos {
+        let season = video
+            .get("season")
+            .and_then(serde_json::Value::as_i64)
+            .unwrap_or(0);
+        if season > 0 {
+            seasons.insert(season);
+            episodes += 1;
+        }
+    }
+    let counted = |count: usize, one: &str, many: &str| {
+        (count > 0).then(|| {
+            let key = if count == 1 { one } else { many };
+            format!("{count} {}", localized(key, language))
+        })
+    };
+    (
+        counted(seasons.len(), "auto.season", "auto.seasons"),
+        counted(episodes, "auto.episode", "auto.episodes"),
+    )
+}
+
 pub(crate) fn hero_meta_line(value: &serde_json::Value, language: &str) -> String {
     let series = matches!(
         value_string(value, "type").as_deref(),
@@ -225,7 +255,12 @@ pub(crate) fn hero_meta_line(value: &serde_json::Value, language: &str) -> Strin
         })
         .filter(|genres| !genres.is_empty());
     let ratings = hero_ratings(value);
-    [series, year, runtime, genres, ratings]
+    let (seasons, episodes) = if series.is_some() {
+        series_counts(value, language)
+    } else {
+        (None, None)
+    };
+    [series, seasons, episodes, year, runtime, genres, ratings]
         .into_iter()
         .flatten()
         .filter(|part| !part.is_empty())

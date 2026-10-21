@@ -1846,6 +1846,22 @@ fn hero_meta_line_ends_with_imdb_and_tomato_scores() {
 }
 
 #[test]
+fn series_meta_line_counts_seasons_and_episodes_without_specials() {
+    let item = serde_json::json!({
+        "type": "series",
+        "year": 2025,
+        "videos": [
+            {"season": 0, "number": 1},
+            {"season": 1, "number": 1},
+            {"season": 1, "number": 2},
+            {"season": 2, "number": 1}
+        ]
+    });
+    let line = crate::hero_meta_line(&item, "en");
+    assert!(line.starts_with("Series · 2 Seasons · 3 Episodes · 2025"), "{line}");
+}
+
+#[test]
 fn arabic_and_hebrew_load_their_own_files() {
     assert_eq!(localized("nav.library", "ar"), "المكتبة");
     assert_eq!(localized("nav.library", "he"), "ספרייה");
