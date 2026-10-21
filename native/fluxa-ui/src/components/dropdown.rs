@@ -34,7 +34,7 @@ fn dropdown_popup_width(
                 .x
         })
         .fold(0.0_f32, f32::max);
-    (widest_label + metrics.control_gap * 3.0 + 24.0)
+    (widest_label + 64.0)
         .max(minimum)
         .min(600.0)
 }
