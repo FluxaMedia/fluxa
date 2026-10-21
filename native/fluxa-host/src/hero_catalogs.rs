@@ -2,6 +2,8 @@ use serde_json::{Value, json};
 
 use crate::{RendererState, Route};
 
+const DEFAULT_FEEDS: usize = 2;
+
 fn selected(state: &RendererState) -> Vec<String> {
     state
         .settings
@@ -16,6 +18,7 @@ fn selected(state: &RendererState) -> Vec<String> {
 }
 
 fn feeds(state: &RendererState) -> Vec<(String, String)> {
+    let options = fluxa_core::ambient::catalog_options(&state.settings.addons);
     state
         .home
         .rows
@@ -24,8 +27,27 @@ fn feeds(state: &RendererState) -> Vec<(String, String)> {
             matches!(row.kind, fluxa_ui::HomeRowKind::Poster)
                 && row.id.as_deref() != Some("continue_watching")
         })
-        .filter_map(|row| Some((row.id.clone()?, row.title.clone())))
+        .filter_map(|row| {
+            let id = row.id.clone()?;
+            let name = options
+                .iter()
+                .find(|option| option.key == id)
+                .map_or_else(|| row.title.clone(), |option| option.name.clone());
+            Some((id, name))
+        })
         .take(fluxa_ui::HERO_CATALOG_MAX)
+        .collect()
+}
+
+fn effective(state: &RendererState) -> Vec<String> {
+    let chosen = selected(state);
+    if !chosen.is_empty() {
+        return chosen;
+    }
+    feeds(state)
+        .into_iter()
+        .take(DEFAULT_FEEDS)
+        .map(|(id, _)| id)
         .collect()
 }
 
@@ -33,7 +55,7 @@ pub(crate) fn sync_settings(state: &mut RendererState) {
     if state.route != Route::Settings {
         return;
     }
-    let chosen = selected(state);
+    let chosen = effective(state);
     state.settings.hero_catalogs = feeds(state)
         .into_iter()
         .map(|(id, name)| fluxa_ui::AmbientCatalogRow {
@@ -54,7 +76,7 @@ pub(crate) fn activate_node(state: &mut RendererState, node: u64) -> bool {
     let Some((id, _)) = feeds(state).into_iter().nth(index) else {
         return true;
     };
-    let mut chosen = selected(state);
+    let mut chosen = effective(state);
     match chosen.iter().position(|existing| *existing == id) {
         Some(position) => {
             chosen.remove(position);
