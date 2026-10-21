@@ -47,7 +47,8 @@ pub(crate) fn draw_home_rows(
     let pointer = (viewport.form_factor == UiFormFactor::Desktop
         && !components::detail_modal_is_open(context))
     .then(|| context.input(|input| input.pointer.hover_pos()))
-    .flatten();
+    .flatten()
+    .filter(|pos| !components::over_mini_player(context, *pos));
     let mut hovered: Option<(u64, Rect, &HomeCard)> = None;
     let now = context.input(|input| input.time);
     let expand_id = Id::new("fluxa-expand-state");
