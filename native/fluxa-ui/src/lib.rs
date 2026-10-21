@@ -33,6 +33,7 @@ mod paint;
 mod player;
 mod poster_overlay;
 mod profiles;
+mod scroll_physics;
 mod settings;
 mod shorts;
 mod sidebar;
@@ -48,6 +49,7 @@ use draw::*;
 use interact::FocusNode;
 use flex::*;
 pub use home::*;
+pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scroll_drag};
 pub use interact::{
     Dir, Neighbors, Pinch, begin_focus_frame, pinch, take_focus_neighbors, take_focus_targets,
 };

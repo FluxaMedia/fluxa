@@ -5,7 +5,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
     let busy = state.gpu.is_none()
         || state.player.is_some()
         || state.touch_start.is_some()
-        || state.scroll_velocity != 0.0
+        || state.scroll_motion.is_active()
         || state.pack_job.is_some()
         || state.pin_job.is_some()
         || state.pin_change_job.is_some()

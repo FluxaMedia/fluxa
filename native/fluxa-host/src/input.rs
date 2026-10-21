@@ -4,91 +4,157 @@ pub(super) fn advance_home_inertia(state: &mut RendererState) {
     let now = Instant::now();
     let elapsed = now
         .duration_since(state.scroll_animation_at)
-        .as_secs_f32()
-        .clamp(0.0, 0.05);
+        .min(Duration::from_millis(50));
     state.scroll_animation_at = now;
-    if state.touch_start.is_some() || elapsed == 0.0 || state.scroll_velocity.abs() < 14.0 {
-        if state.scroll_velocity.abs() < 14.0 {
-            state.scroll_velocity = 0.0;
-            state.active_scroll = None;
-        }
+    if state.touch_start.is_some() || elapsed.is_zero() {
         return;
     }
-    let viewport = Viewport::new(
-        (state.size[0] as f32 / state.scale()).round().max(1.0) as u32,
-        (state.size[1] as f32 / state.scale()).round().max(1.0) as u32,
-        state.home.form_factor.into(),
-    )
-    .with_platform(state.home.platform)
-    .with_safe_bottom(state.safe_bottom);
-    let movement = state.scroll_velocity * elapsed;
-    match state.active_scroll {
-        Some(HomeScrollTarget::Vertical) => {
-            let max_offset = fluxa_ui::home_scroll_max(viewport, &state.home);
-            let next = (state.home.scroll_offset + movement).clamp(0.0, max_offset);
-            if (next - state.home.scroll_offset).abs() < 0.01 {
-                state.scroll_velocity = 0.0;
-            } else {
-                state.home.scroll_offset = next;
-            }
-        }
-        Some(HomeScrollTarget::Horizontal(row_index)) => {
-            if state.home.row_scroll_offsets.len() <= row_index {
-                state.home.row_scroll_offsets.resize(row_index + 1, 0.0);
-            }
-            let max_offset = fluxa_ui::home_row_scroll_max(viewport, &state.home, row_index);
-            let offset = &mut state.home.row_scroll_offsets[row_index];
-            let next = (*offset + movement).clamp(0.0, max_offset);
-            if (next - *offset).abs() < 0.01 {
-                state.scroll_velocity = 0.0;
-            } else {
-                *offset = next;
-            }
-            request_home_row_load_more(state, row_index, viewport);
-        }
-        Some(HomeScrollTarget::ScreenVertical) => {
-            let max_offset = screen_scroll_max(state, viewport);
-            let offset = state
+    let Some(target) = state.active_scroll else {
+        state.scroll_motion.stop();
+        return;
+    };
+    if let Some(value) = state.scroll_motion.step(elapsed) {
+        let viewport = logical_viewport(state);
+        scroll_write(state, target, value, viewport);
+    }
+    if !state.scroll_motion.is_active() {
+        state.active_scroll = None;
+    }
+}
+
+fn scroll_axis(target: HomeScrollTarget) -> usize {
+    match target {
+        HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical => 1,
+        _ => 0,
+    }
+}
+
+fn scroll_extent(target: HomeScrollTarget, viewport: Viewport) -> f32 {
+    if scroll_axis(target) == 1 {
+        viewport.height
+    } else {
+        viewport.width
+    }
+}
+
+fn scroll_read(state: &RendererState, target: HomeScrollTarget, viewport: Viewport) -> (f32, f32) {
+    match target {
+        HomeScrollTarget::Vertical => (
+            state.home.scroll_offset,
+            fluxa_ui::home_scroll_max(viewport, &state.home),
+        ),
+        HomeScrollTarget::Horizontal(row) => (
+            state
+                .home
+                .row_scroll_offsets
+                .get(row)
+                .copied()
+                .unwrap_or(0.0),
+            fluxa_ui::home_row_scroll_max(viewport, &state.home, row),
+        ),
+        HomeScrollTarget::ScreenVertical => (
+            state
                 .screen_scroll_offsets
-                .entry(active_route(state))
-                .or_default();
-            let next = (*offset + movement).clamp(0.0, max_offset);
-            if (next - *offset).abs() < 0.01 {
-                state.scroll_velocity = 0.0;
-            } else {
-                *offset = next;
+                .get(&active_route(state))
+                .copied()
+                .unwrap_or(0.0),
+            screen_scroll_max(state, viewport),
+        ),
+        HomeScrollTarget::FolderRow(row) => (
+            state
+                .folder
+                .row_scroll_offsets
+                .get(row)
+                .copied()
+                .unwrap_or(0.0),
+            fluxa_ui::folder_row_scroll_max(viewport, &state.folder, row),
+        ),
+        HomeScrollTarget::DetailRow(row) => (
+            state
+                .detail
+                .row_scroll_offsets
+                .get(row)
+                .copied()
+                .unwrap_or(0.0),
+            fluxa_ui::detail_row_scroll_max(row),
+        ),
+    }
+}
+
+fn scroll_write(
+    state: &mut RendererState,
+    target: HomeScrollTarget,
+    value: f32,
+    viewport: Viewport,
+) {
+    match target {
+        HomeScrollTarget::Vertical => state.home.scroll_offset = value,
+        HomeScrollTarget::Horizontal(row) => {
+            if state.home.row_scroll_offsets.len() <= row {
+                state.home.row_scroll_offsets.resize(row + 1, 0.0);
             }
+            state.home.row_scroll_offsets[row] = value;
+            request_home_row_load_more(state, row, viewport);
         }
-        Some(HomeScrollTarget::FolderRow(row)) => {
-            let max_offset = fluxa_ui::folder_row_scroll_max(viewport, &state.folder, row);
+        HomeScrollTarget::ScreenVertical => {
+            let route = active_route(state);
+            state.screen_scroll_offsets.insert(route, value);
+        }
+        HomeScrollTarget::FolderRow(row) => {
             let offsets = &mut state.folder.row_scroll_offsets;
             if offsets.len() <= row {
                 offsets.resize(row + 1, 0.0);
             }
-            let next = (offsets[row] + movement).clamp(0.0, max_offset);
-            if (next - offsets[row]).abs() < 0.01 {
-                state.scroll_velocity = 0.0;
-            } else {
-                offsets[row] = next;
+            offsets[row] = value;
+        }
+        HomeScrollTarget::DetailRow(row) => {
+            if let Some(offset) = state.detail.row_scroll_offsets.get_mut(row) {
+                *offset = value;
             }
         }
-        Some(HomeScrollTarget::DetailRow(row)) => {
-            let offset = &mut state.detail.row_scroll_offsets[row];
-            let next = (*offset + movement).clamp(0.0, fluxa_ui::detail_row_scroll_max(row));
-            if (next - *offset).abs() < 0.01 {
-                state.scroll_velocity = 0.0;
-            } else {
-                *offset = next;
-            }
-        }
-        None => state.scroll_velocity = 0.0,
     }
-    // Exponential friction produces a predictable inertial tail independent
-    // of the render loop's exact frame cadence.
-    // Android's native scroller carries substantially more momentum than a
-    // web-style smooth-scroll tail. Keep a long, quick decay so a firm flick
-    // can traverse multiple viewports before coming to rest.
-    state.scroll_velocity *= (-1.6 * elapsed).exp();
+}
+
+fn track_touch(state: &mut RendererState, now: Instant, position: [f32; 2]) {
+    let seconds = now.duration_since(state.touch_epoch).as_secs_f32();
+    state.touch_tracker.add(seconds, position);
+}
+
+fn scroll_feel(state: &RendererState) -> fluxa_ui::ScrollFeel {
+    fluxa_ui::ScrollFeel::for_platform(state.home.platform)
+}
+
+fn scroll_drag(state: &mut RendererState, target: HomeScrollTarget, delta: f32) {
+    let viewport = logical_viewport(state);
+    let (offset, max) = scroll_read(state, target, viewport);
+    let next = fluxa_ui::scroll_drag(
+        scroll_feel(state),
+        offset,
+        delta,
+        max,
+        scroll_extent(target, viewport),
+    );
+    scroll_write(state, target, next, viewport);
+}
+
+fn scroll_release(state: &mut RendererState, position: [f32; 2]) {
+    let now = Instant::now();
+    track_touch(state, now, position);
+    let Some(target) = state.active_scroll else {
+        return;
+    };
+    let viewport = logical_viewport(state);
+    let (offset, max) = scroll_read(state, target, viewport);
+    let velocity = -state.touch_tracker.fling_velocity(scroll_axis(target));
+    let feel = scroll_feel(state);
+    let density = state.density;
+    state
+        .scroll_motion
+        .release(feel, offset, velocity, max, density);
+    state.scroll_animation_at = now;
+    if !state.scroll_motion.is_active() {
+        state.active_scroll = None;
+    }
 }
 
 pub(super) fn request_home_row_load_more(
@@ -311,22 +377,27 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
     if phase == PointerPhase::Down {
         state.keyboard_focus_visible = false;
         let now = Instant::now();
+        let caught = state.scroll_motion.is_active() && state.active_scroll.is_some();
         state.touch_start = Some(position);
         state.touch_down_at = Some(now);
         state.touch_last = Some(position);
         state.touch_last_at = Some(now);
-        state.touch_velocity_samples.clear();
-        state.touch_velocity_samples.push_back((now, position));
-        state.touch_scrolled = false;
-        state.active_scroll = None;
-        state.scroll_velocity = 0.0;
+        state.touch_epoch = now;
+        state.touch_tracker.clear();
+        track_touch(state, now, position);
+        state.touch_scrolled = caught;
+        state.scroll_motion.stop();
         state.scroll_animation_at = now;
+        if caught {
+            return;
+        }
+        state.active_scroll = None;
     } else if phase == PointerPhase::Move {
         let now = Instant::now();
         if let (Some(start), Some(last)) = (state.touch_start, state.touch_last) {
             let total_x = start[0] - position[0];
             let total_y = start[1] - position[1];
-            if total_x.hypot(total_y) > 8.0 {
+            if total_x.hypot(total_y) > scroll_feel(state).touch_slop() {
                 state.touch_scrolled = true;
             }
             if state.active_scroll.is_none() && state.touch_scrolled {
@@ -373,116 +444,29 @@ pub(super) fn pointer_event(state: &mut RendererState, phase: PointerPhase, posi
                     }
                 }
             }
-            let sample_seconds = state
-                .touch_last_at
-                .map(|last_at| now.duration_since(last_at).as_secs_f32())
-                .unwrap_or(1.0 / 60.0)
-                .clamp(1.0 / 240.0, 0.08);
-            let delta = match state.active_scroll {
-                Some(HomeScrollTarget::Vertical) => last[1] - position[1],
-                Some(
-                    HomeScrollTarget::Horizontal(_)
-                    | HomeScrollTarget::DetailRow(_)
-                    | HomeScrollTarget::FolderRow(_),
-                ) => last[0] - position[0],
-                Some(HomeScrollTarget::ScreenVertical) => last[1] - position[1],
-                None => 0.0,
-            };
-            if delta.abs() > 0.25 {
-                let viewport = logical_viewport(state);
-                match state.active_scroll {
-                    Some(HomeScrollTarget::Vertical) => {
-                        let max_offset = fluxa_ui::home_scroll_max(viewport, &state.home);
-                        state.home.scroll_offset =
-                            (state.home.scroll_offset + delta).clamp(0.0, max_offset);
-                    }
-                    Some(HomeScrollTarget::Horizontal(row_index)) => {
-                        if state.home.row_scroll_offsets.len() <= row_index {
-                            state.home.row_scroll_offsets.resize(row_index + 1, 0.0);
-                        }
-                        let max_offset =
-                            fluxa_ui::home_row_scroll_max(viewport, &state.home, row_index);
-                        let offset = &mut state.home.row_scroll_offsets[row_index];
-                        *offset = (*offset + delta).clamp(0.0, max_offset);
-                    }
-                    Some(HomeScrollTarget::ScreenVertical) => {
-                        update_screen_scroll(state, delta, viewport);
-                    }
-                    Some(HomeScrollTarget::FolderRow(row)) => {
-                        let max_offset =
-                            fluxa_ui::folder_row_scroll_max(viewport, &state.folder, row);
-                        let offsets = &mut state.folder.row_scroll_offsets;
-                        if offsets.len() <= row {
-                            offsets.resize(row + 1, 0.0);
-                        }
-                        offsets[row] = (offsets[row] + delta).clamp(0.0, max_offset);
-                    }
-                    Some(HomeScrollTarget::DetailRow(row)) => {
-                        let offset = &mut state.detail.row_scroll_offsets[row];
-                        *offset =
-                            (*offset + delta).clamp(0.0, fluxa_ui::detail_row_scroll_max(row));
-                    }
-                    None => {}
+            if let Some(target) = state.active_scroll {
+                let axis = scroll_axis(target);
+                let delta = last[axis] - position[axis];
+                if delta != 0.0 {
+                    scroll_drag(state, target, delta);
                 }
-                if let Some(HomeScrollTarget::Horizontal(row_index)) = state.active_scroll {
-                    request_home_row_load_more(state, row_index, viewport);
-                }
-                state.touch_velocity_samples.push_back((now, position));
-                while state
-                    .touch_velocity_samples
-                    .front()
-                    .is_some_and(|(sample_at, _)| {
-                        now.duration_since(*sample_at).as_secs_f32() > 0.12
-                    })
-                    && state.touch_velocity_samples.len() > 2
-                {
-                    state.touch_velocity_samples.pop_front();
-                }
-                let velocity = state
-                    .touch_velocity_samples
-                    .front()
-                    .zip(state.touch_velocity_samples.back())
-                    .map(|((first_at, first), (last_at, last))| {
-                        let seconds = last_at.duration_since(*first_at).as_secs_f32();
-                        if seconds > 0.001 {
-                            match state.active_scroll {
-                                Some(
-                                    HomeScrollTarget::Horizontal(_)
-                                    | HomeScrollTarget::DetailRow(_)
-                                    | HomeScrollTarget::FolderRow(_),
-                                ) => (first[0] - last[0]) / seconds,
-                                Some(
-                                    HomeScrollTarget::Vertical | HomeScrollTarget::ScreenVertical,
-                                ) => (first[1] - last[1]) / seconds,
-                                None => 0.0,
-                            }
-                        } else {
-                            delta / sample_seconds
-                        }
-                    })
-                    .unwrap_or(delta / sample_seconds);
-                // Keep the recent-window velocity (Compose VelocityTracker
-                // style) so a firm fling remains materially faster than a
-                // slow drag even when the last MotionEvent is noisy.
-                // Recent-window pointer velocity underestimates the release
-                // velocity on touchscreens because MOVE events are sampled
-                // sparsely. Calibrate toward Android OverScroller's spline
-                // distance while retaining a hard bound for noisy events.
-                state.scroll_velocity = (velocity * 2.5).clamp(-14_000.0, 14_000.0);
-                state.scroll_animation_at = now;
             }
+            track_touch(state, now, position);
         }
         state.touch_last = Some(position);
         state.touch_last_at = Some(now);
     }
     if phase == PointerPhase::Up {
         let was_scroll = state.touch_scrolled;
+        if was_scroll {
+            scroll_release(state, position);
+        }
         state.touch_down_at = None;
         state.touch_start = None;
         state.touch_last = None;
         state.touch_last_at = None;
         state.touch_scrolled = false;
-        state.touch_velocity_samples.clear();
+        state.touch_tracker.clear();
         if was_scroll {
             return;
         }
@@ -799,42 +783,47 @@ fn drag_sources(state: &mut RendererState, phase: PointerPhase, position: [f32; 
     let now = Instant::now();
     match phase {
         PointerPhase::Down => {
+            let caught = state.scroll_motion.is_active();
             state.touch_start = Some(position);
             state.touch_last = Some(position);
             state.touch_last_at = Some(now);
-            state.touch_scrolled = false;
-            state.active_scroll = None;
-            state.scroll_velocity = 0.0;
+            state.touch_scrolled = caught;
+            state.touch_epoch = now;
+            state.touch_tracker.clear();
+            track_touch(state, now, position);
+            state.scroll_motion.stop();
+            state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
             state.scroll_animation_at = now;
         }
         PointerPhase::Move => {
             let (Some(start), Some(last)) = (state.touch_start, state.touch_last) else {
                 return;
             };
-            if (start[0] - position[0]).hypot(start[1] - position[1]) > 8.0 {
+            let moved = (start[0] - position[0]).hypot(start[1] - position[1]);
+            if moved > scroll_feel(state).touch_slop() {
                 state.touch_scrolled = true;
             }
             if !state.touch_scrolled {
                 return;
             }
-            let delta = last[1] - position[1];
-            let seconds = state
-                .touch_last_at
-                .map_or(1.0 / 60.0, |at| now.duration_since(at).as_secs_f32())
-                .clamp(1.0 / 240.0, 0.08);
-            let viewport = logical_viewport(state);
-            update_screen_scroll(state, delta, viewport);
-            state.active_scroll = Some(HomeScrollTarget::ScreenVertical);
-            state.scroll_velocity = (delta / seconds * 2.0).clamp(-14_000.0, 14_000.0);
-            state.scroll_animation_at = now;
+            scroll_drag(
+                state,
+                HomeScrollTarget::ScreenVertical,
+                last[1] - position[1],
+            );
+            track_touch(state, now, position);
             state.touch_last = Some(position);
             state.touch_last_at = Some(now);
         }
         PointerPhase::Up => {
+            if state.touch_scrolled {
+                scroll_release(state, position);
+            }
             state.touch_start = None;
             state.touch_last = None;
             state.touch_last_at = None;
             state.touch_scrolled = false;
+            state.touch_tracker.clear();
         }
     }
 }

@@ -149,7 +149,7 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
         .settle(projection.revision, state.core_snapshot_revision);
     if projection.route != state.route {
         state.active_scroll = None;
-        state.scroll_velocity = 0.0;
+        state.scroll_motion.stop();
     }
     state.route = projection.route;
     let scroll_offset = state.home.scroll_offset;
