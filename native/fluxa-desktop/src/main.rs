@@ -340,6 +340,17 @@ impl App {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
+struct SurfaceHandles {
+    display: winit::raw_window_handle::RawDisplayHandle,
+    window: winit::raw_window_handle::RawWindowHandle,
+}
+
+#[cfg(not(target_os = "macos"))]
+unsafe impl Send for SurfaceHandles {}
+#[cfg(not(target_os = "macos"))]
+unsafe impl Sync for SurfaceHandles {}
+
 impl ApplicationHandler<AccessEvent> for App {
     fn resumed(&mut self, event_loop: &ActiveEventLoop) {
         if self.window.is_some() {
@@ -441,11 +452,31 @@ impl ApplicationHandler<AccessEvent> for App {
             }
         };
         #[cfg(not(target_os = "macos"))]
-        let surface = unsafe {
-            NativeSurface::new(BACKENDS, move || {
-                wgpu::SurfaceTargetUnsafe::from_display_and_window(&*target, &*target)
-                    .map_err(|error| error.to_string())
-            })
+        let surface = {
+            use winit::raw_window_handle::{HasDisplayHandle, HasWindowHandle};
+            let handles = match (window.display_handle(), window.window_handle()) {
+                (Ok(display), Ok(handle)) => Ok(SurfaceHandles {
+                    display: display.as_raw(),
+                    window: handle.as_raw(),
+                }),
+                (display, handle) => Err(format!(
+                    "window handles unavailable: {:?} {:?}",
+                    display.err(),
+                    handle.err()
+                )),
+            };
+            unsafe {
+                NativeSurface::new(BACKENDS, move || {
+                    let _keep_alive = &target;
+                    match &handles {
+                        Ok(handles) => Ok(wgpu::SurfaceTargetUnsafe::RawHandle {
+                            raw_display_handle: Some(handles.display),
+                            raw_window_handle: handles.window,
+                        }),
+                        Err(error) => Err(error.clone()),
+                    }
+                })
+            }
         };
         host.surface_created(surface, size.width, size.height);
         self.redraw_asked.store(true, Ordering::Relaxed);
