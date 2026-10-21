@@ -39,6 +39,10 @@ fn feeds(state: &RendererState) -> Vec<(String, String)> {
                 .find(|option| option.get("key").and_then(Value::as_str) == Some(id.as_str()))
                 .and_then(|option| option.get("label").and_then(Value::as_str))
                 .map_or_else(|| row.title.clone(), ToOwned::to_owned);
+            let name = match row.type_label.as_deref().filter(|label| !label.is_empty()) {
+                Some(label) => format!("{name} · {label}"),
+                None => name,
+            };
             Some((id, name))
         })
         .take(fluxa_ui::HERO_CATALOG_MAX)
