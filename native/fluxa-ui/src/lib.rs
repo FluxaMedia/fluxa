@@ -14,6 +14,7 @@ mod components;
 mod detail;
 mod discover;
 mod draw;
+mod effects;
 mod emoji;
 mod flex;
 mod flow;

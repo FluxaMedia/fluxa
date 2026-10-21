@@ -2,9 +2,10 @@ use super::*;
 use crate::WatchMemberView;
 
 const GAP: f32 = 8.0;
+const MAX_SEATS: usize = 6;
 
 pub(crate) fn seat_count(members: usize, capacity: u32) -> usize {
-    (capacity as usize).max(members).min(8)
+    (capacity as usize).max(members).min(MAX_SEATS)
 }
 
 pub(crate) fn seat_row_width(seats: usize, radius: f32) -> f32 {

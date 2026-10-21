@@ -66,6 +66,10 @@ pub fn draw_gallery(
     context
         .layer_painter(egui::LayerId::background())
         .rect_filled(screen, 0.0, background());
+    if let Some(variant) = scene.strip_prefix("ticket") {
+        draw_ticket_scene(context, viewport, variant, assets, metrics);
+        return;
+    }
     let state_id = Id::new("fluxa-gallery");
     let mut state = context
         .data(|data| data.get_temp::<State>(state_id))
@@ -293,4 +297,54 @@ fn paint_layout_sample(painter: &egui::Painter, rect: Rect, metrics: UiMetrics) 
             painter.rect_filled(slot, radius::chip(), ink(tone::raised()));
         }
     }
+}
+
+fn draw_ticket_scene(
+    context: &egui::Context,
+    viewport: Viewport,
+    variant: &str,
+    assets: &mut impl HomeAssets,
+    metrics: UiMetrics,
+) {
+    let member = |name: &str, host: bool, you: bool| crate::WatchMemberView {
+        id: name.to_owned(),
+        name: name.to_owned(),
+        host,
+        you,
+        ..Default::default()
+    };
+    let joined = variant.contains("joined")
+        || (variant.contains("tear") && context.input(|input| input.time) > 1.0);
+    if variant.contains("tear") {
+        context.request_repaint();
+    }
+    let ticket = crate::WatchTicket {
+        room: joined.then(|| "K7Q4M2".to_owned()),
+        title: joined.then(|| "Dune: Part Two".to_owned()),
+        backdrop: variant
+            .contains("poster")
+            .then(|| "fixture-backdrop".to_owned()),
+        host: joined.then(|| member("Elif", true, false)),
+        members: if joined {
+            vec![
+                member("Elif", true, false),
+                member("Mert", false, false),
+                member("Zeynep", false, false),
+                member("You", false, true),
+            ]
+        } else {
+            Vec::new()
+        },
+        max_members: 6,
+        ..Default::default()
+    };
+    let width = (viewport.width - 48.0).min(560.0);
+    let origin = Pos2::new(
+        (viewport.width - width) * 0.5,
+        (viewport.height - crate::components::ticket_height(width)) * 0.5,
+    );
+    let mut code = if joined { String::new() } else { "K7Q".to_owned() };
+    crate::components::placed_front(context, Id::new("fluxa-gallery-ticket"), origin, |ui| {
+        crate::components::watch_ticket(ui, &ticket, &mut code, width, "en", assets, metrics);
+    });
 }

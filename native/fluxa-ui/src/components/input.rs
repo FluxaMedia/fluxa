@@ -480,6 +480,12 @@ pub(crate) struct CodeInput {
     pub submitted: bool,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum CodeLook {
+    Pill,
+    Boxes,
+}
+
 pub(crate) fn code_input(
     ui: &mut Ui,
     value: &mut String,
@@ -487,16 +493,28 @@ pub(crate) fn code_input(
     width: f32,
     metrics: UiMetrics,
 ) -> CodeInput {
+    code_input_styled(ui, value, length, width, metrics, CodeLook::Pill)
+}
+
+pub(crate) fn code_input_styled(
+    ui: &mut Ui,
+    value: &mut String,
+    length: usize,
+    width: f32,
+    metrics: UiMetrics,
+    look: CodeLook,
+) -> CodeInput {
     let height = 60.0;
+    let boxes = look == CodeLook::Boxes;
+    let pad = if boxes { 0.0 } else { 26.0 };
     let (rect, _) = ui.allocate_exact_size(Vec2::new(width, height), Sense::hover());
     let id = ui.id().with("fluxa-code-input");
     take_pending_text(ui, id, value);
     let field = Rect::from_min_max(
-        Pos2::new(rect.left() + 26.0, rect.top()),
+        Pos2::new(rect.left() + pad, rect.top()),
         Pos2::new(rect.right() - height, rect.bottom()),
     );
     let hit = field_hit(ui, rect, id);
-    let native = native_covers(field);
     let output = put_edit(
         ui,
         row_rect(ui, field, crate::fonts::regular(metrics.text.body)),
@@ -516,20 +534,22 @@ pub(crate) fn code_input(
         .to_uppercase();
     let count = value.chars().count();
     focus_on_hit(ui, &hit, id, count);
-    record_native_focus(ui, &output, field, 26.0, InputKind::Text, value, "code");
+    record_native_focus(ui, &output, field, if boxes { 22.0 } else { 26.0 }, InputKind::Text, value, "code");
     let response = output.response.response.clone();
     let focused = response.has_focus();
     let complete = count == length;
 
     let radius = height * 0.5;
     let painter = ui.painter();
-    painter.rect_filled(rect, radius, metrics.surface_raised);
-    let border = if focused {
-        egui::Stroke::new(1.5, crate::accent())
-    } else {
-        egui::Stroke::new(stroke::hairline(), metrics.border)
-    };
-    painter.rect_stroke(rect, radius, border, egui::StrokeKind::Inside);
+    if !boxes {
+        painter.rect_filled(rect, radius, metrics.surface_raised);
+        let border = if focused {
+            egui::Stroke::new(1.5, crate::accent())
+        } else {
+            egui::Stroke::new(stroke::hairline(), metrics.border)
+        };
+        painter.rect_stroke(rect, radius, border, egui::StrokeKind::Inside);
+    }
 
     let button = Rect::from_center_size(
         Pos2::new(rect.right() - height * 0.5, rect.center().y),
@@ -559,14 +579,38 @@ pub(crate) fn code_input(
         arrow,
     );
 
-    let font = crate::fonts::bold(26.0);
-    let slot = 28.0;
-    let split = 22.0;
-    let left = rect.left() + 26.0;
+    let font = crate::fonts::bold(if boxes { 22.0 } else { 26.0 });
+    let split = if boxes { 20.0 } else { 22.0 };
+    let slot = if boxes {
+        ((width - height - split - 4.0) / length as f32).clamp(30.0, 48.0)
+    } else {
+        28.0
+    };
+    let left = rect.left() + pad;
     let half = length / 2;
     let x_of = |index: usize| left + index as f32 * slot + if index >= half { split } else { 0.0 };
-    for index in (0..length).filter(|_| !native) {
+    for index in 0..length {
         let center = Pos2::new(x_of(index) + slot * 0.5, rect.center().y);
+        if boxes {
+            let cell_width = slot - 6.0;
+            let cell = Rect::from_center_size(center, Vec2::new(cell_width, (cell_width * 1.2).clamp(42.0, 52.0)));
+            let current = focused && index == count;
+            painter.rect_filled(cell, 12.0, Color32::from_white_alpha(13));
+            let edge = if current {
+                egui::Stroke::new(1.5, Color32::from_white_alpha(170))
+            } else {
+                egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(26))
+            };
+            painter.rect_stroke(cell, 12.0, edge, egui::StrokeKind::Inside);
+            if current {
+                painter.rect_stroke(
+                    cell.expand(2.5),
+                    14.0,
+                    egui::Stroke::new(2.0, Color32::from_white_alpha(22)),
+                    egui::StrokeKind::Outside,
+                );
+            }
+        }
         match value.chars().nth(index) {
             Some(character) => {
                 painter.text(
@@ -585,17 +629,15 @@ pub(crate) fn code_input(
                 }
             }
             None => {
-                painter.circle_filled(center, 3.5, metrics.text_muted.gamma_multiply(0.6));
+                painter.circle_filled(center, 3.0, metrics.text_muted.gamma_multiply(0.6));
             }
         }
     }
-    let dash = Pos2::new(x_of(half) - split * 0.5, rect.center().y);
-    if !native {
-        painter.line_segment(
-            [dash - Vec2::new(5.0, 0.0), dash + Vec2::new(5.0, 0.0)],
-            egui::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),
-        );
-    }
+    let dash = Pos2::new(x_of(half) - split * 0.5 + if boxes { 4.0 } else { 0.0 }, rect.center().y);
+    painter.line_segment(
+        [dash - Vec2::new(5.0, 0.0), dash + Vec2::new(5.0, 0.0)],
+        egui::Stroke::new(2.0, metrics.text_muted.gamma_multiply(0.7)),
+    );
     if focused {
         ui.ctx()
             .request_repaint_after(std::time::Duration::from_millis(500));
