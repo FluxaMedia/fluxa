@@ -272,6 +272,8 @@ pub struct HomeHero {
     pub trailers: Vec<String>,
     #[serde(skip)]
     pub raw: serde_json::Value,
+    #[serde(skip)]
+    pub badges: Vec<crate::SourceBadge>,
 }
 
 #[derive(Clone, Debug)]

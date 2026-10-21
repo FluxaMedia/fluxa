@@ -408,6 +408,7 @@ pub(crate) fn core_home_hero(item: &serde_json::Value, language: &str) -> HomeHe
         item_type: value_string(item, "type"),
         trailers: trailer_urls(item),
         raw: item.clone(),
+        badges: Vec::new(),
     }
 }
 

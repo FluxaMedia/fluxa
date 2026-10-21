@@ -109,6 +109,35 @@ impl EffectExecutor {
         }))
     }
 
+    pub fn fetch_hero_stream(
+        &self,
+        id: String,
+        content_type: String,
+    ) -> std::sync::mpsc::Receiver<Option<Value>> {
+        let (sender, receiver) = std::sync::mpsc::channel();
+        let executor = self.clone();
+        let task = async move {
+            let series = matches!(content_type.as_str(), "series" | "tv" | "show");
+            let id = if series && !id.contains(':') {
+                format!("{id}:1:1")
+            } else {
+                id
+            };
+            let streams = executor
+                .load_streams(&json!({"contentType": content_type, "id": id}))
+                .await
+                .ok()
+                .and_then(|streams| streams.as_array().cloned())
+                .unwrap_or_default();
+            let _ = sender.send(streams.into_iter().next());
+        };
+        #[cfg(target_arch = "wasm32")]
+        wasm_bindgen_futures::spawn_local(task);
+        #[cfg(not(target_arch = "wasm32"))]
+        super::runtime().spawn(task);
+        receiver
+    }
+
     pub(super) async fn load_streams(&self, payload: &Value) -> Result<Value, String> {
         if payload.get("useInitialStreams").and_then(Value::as_bool) == Some(true) {
             let streams = payload

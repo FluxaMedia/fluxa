@@ -93,6 +93,7 @@ impl NativeSurface {
 mod accounts;
 mod actions;
 mod ambient;
+mod hero_badges;
 mod hero_catalogs;
 mod artwork;
 mod bridge_video;
@@ -180,6 +181,7 @@ struct RendererState {
     discover_background_skip: Option<i64>,
     search_due: Option<Instant>,
     hero_page: u64,
+    heroes: hero_badges::HeroBadges,
     touch_start: Option<[f32; 2]>,
     touch_last: Option<[f32; 2]>,
     touch_last_at: Option<Instant>,
@@ -409,6 +411,7 @@ impl FluxaHost {
             discover_background_skip: None,
             search_due: None,
             hero_page: 0,
+            heroes: hero_badges::HeroBadges::default(),
             touch_start: None,
             touch_last: None,
             touch_last_at: None,

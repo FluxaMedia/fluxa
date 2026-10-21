@@ -173,6 +173,7 @@ pub(crate) fn draw_home_with_options(
         item_type: home.item_type.clone(),
         trailers: Vec::new(),
         raw: serde_json::Value::Null,
+        badges: Vec::new(),
     };
     let pinned = home_hero_pinned(viewport, home);
     context.data_mut(|data| data.insert_temp(Id::new("fluxa-hero-pinned"), pinned));
@@ -666,7 +667,7 @@ pub(crate) fn draw_home_with_options(
                                 Sense::hover(),
                             )
                             .0;
-                        draw_text(
+                        let text_rect = draw_text(
                             ui.painter(),
                             if style.centered {
                                 metadata_rect.center_top()
@@ -683,6 +684,31 @@ pub(crate) fn draw_home_with_options(
                             metrics.text_secondary.gamma_multiply(text_fade),
                             None,
                         );
+                        if text_fade > 0.05 {
+                            let mut chip_painter = ui.painter().clone();
+                            chip_painter.multiply_opacity(text_fade);
+                            let font_size = style.metadata_size * 0.78;
+                            let mut left = text_rect.right() + 12.0;
+                            for badge in &hero.badges {
+                                let (galley, size) =
+                                    components::badge_chip_layout(&chip_painter, badge, font_size);
+                                if left + size.x > metadata_rect.right() {
+                                    break;
+                                }
+                                let chip = Rect::from_min_size(
+                                    Pos2::new(left, text_rect.center().y - size.y * 0.5),
+                                    size,
+                                );
+                                components::paint_badge_chip(
+                                    &chip_painter,
+                                    chip,
+                                    galley,
+                                    badge,
+                                    assets,
+                                );
+                                left = chip.right() + 6.0;
+                            }
+                        }
                     }
                     ui.add_space(metadata_gap);
                     if let Some(galley) = synopsis_galley.as_ref() {
@@ -903,6 +929,7 @@ fn focus_hero(context: &egui::Context, home: &HomeModel, focused: Option<u64>) -
         item_type: card.item_type.clone(),
         trailers: trailer_urls(&card.raw),
         raw: card.raw.clone(),
+        badges: Vec::new(),
     };
     context.data_mut(|data| data.insert_temp(memo_id, FocusHeroMemo(hero.clone())));
     Some(hero)

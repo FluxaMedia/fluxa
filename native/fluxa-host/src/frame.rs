@@ -180,6 +180,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     ambient::tick(state);
     ambient::sync_settings(state);
     hero_catalogs::sync_settings(state);
+    hero_badges::tick(state);
     detail_sections::sync_settings(state);
     trailer::tick(state);
     layout::sync_expanded(state);
