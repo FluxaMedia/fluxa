@@ -431,9 +431,9 @@ jobs:
               *-linux-x86_64.AppImage) key="linux-x86_64-appimage" ;;
               *-linux-amd64.deb) key="linux-x86_64-deb" ;;
               *-linux-x86_64.rpm) key="linux-x86_64-rpm" ;;
-              *-linux-*.tar.gz) key="linux-$(echo "$name" | sed -E 's/.*-linux-([^.]*)\.tar\.gz/\1/')" ;;
-              *-windows-*.zip) key="windows-$(echo "$name" | sed -E 's/.*-windows-([^.]*)\.zip/\1/')" ;;
-              *-macos-*.zip) key="macos-$(echo "$name" | sed -E 's/.*-macos-([^.]*)\.zip/\1/')" ;;
+              *-linux-*-portable.tar.gz) key="linux-$(echo "$name" | sed -E 's/.*-linux-([^.]*)-portable\.tar\.gz/\1/')" ;;
+              *-windows-*-portable.zip) key="windows-$(echo "$name" | sed -E 's/.*-windows-([^.]*)-portable\.zip/\1/')" ;;
+              *-macos-*-portable.zip) key="macos-$(echo "$name" | sed -E 's/.*-macos-([^.]*)-portable\.zip/\1/')" ;;
               *-android-*.apk) key="$(echo "$name" | sed -E 's/.*-(android-[a-z]+-[^.]*)\.apk/\1/')" ;;
               *) continue ;;
             esac

@@ -6,9 +6,9 @@ Push a tag like `v0.2.0`. `.github/workflows/release.yml` builds everything and 
 
 | Platform | Files |
 | --- | --- |
-| Windows | `fluxa-<v>-windows-x86_64-setup.exe`, `.msi`, `.zip` |
-| macOS (arm64) | `.dmg`, `.zip` |
-| Linux (x86_64) | `.AppImage`, `.deb`, `.rpm`, `.tar.gz` |
+| Windows | `fluxa-<v>-windows-x86_64-setup.exe`, `.msi`, `-portable.zip` |
+| macOS (arm64) | `.dmg`, `-portable.zip` |
+| Linux (x86_64) | `.AppImage`, `.deb`, `.rpm`, `-portable.tar.gz` |
 | webOS | `fluxa-<v>-webos-native.ipk` |
 | Android / Android TV | per-ABI `fluxa-<v>-android-{mobile,tv}-<abi>.apk` |
 | iOS / tvOS | `fluxa-<v>-{ios,tvos}-unsigned.ipa` (sideload only) |

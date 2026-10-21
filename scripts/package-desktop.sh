@@ -17,6 +17,7 @@ case "$(uname -s)" in
 esac
 arch="$(uname -m | sed 's/aarch64/arm64/; s/amd64/x86_64/')"
 name="fluxa-$version-$os-$arch"
+portable="$name-portable"
 
 rm -rf "$dist"
 mkdir -p "$stage"
@@ -35,7 +36,7 @@ package_linux() {
     mkdir -p "$app/lib"
     install -m 755 "$bin" "$app/fluxa-desktop"
     bundled_libs -exec cp -a {} "$app/lib/" \;
-    tar -C "$stage" -czf "$dist/$name.tar.gz" fluxa
+    tar -C "$stage" -czf "$dist/$portable.tar.gz" fluxa
     if [[ "$arch" == x86_64 ]]; then
         "$root/scripts/package-linux-installers.sh" "$app" "$version" "$dist"
     fi
@@ -46,7 +47,7 @@ package_windows() {
     mkdir -p "$app"
     cp "$bin" "$app/fluxa-desktop.exe"
     cp "$mpv_lib"/*.dll "$app/"
-    (cd "$stage" && 7z a -tzip "$dist/$name.zip" Fluxa >/dev/null)
+    (cd "$stage" && 7z a -tzip "$dist/$portable.zip" Fluxa >/dev/null)
     local win_app win_dist
     win_app="$(cygpath -w "$app")"
     win_dist="$(cygpath -w "$dist")"
@@ -84,7 +85,7 @@ package_macos() {
 </plist>
 PLIST
     codesign --force --deep --sign - "$app"
-    ditto -c -k --keepParent "$app" "$dist/$name.zip"
+    ditto -c -k --keepParent "$app" "$dist/$portable.zip"
     ln -s /Applications "$stage/Applications"
     hdiutil create -volname Fluxa -srcfolder "$stage" -ov -format UDZO "$dist/$name.dmg" >/dev/null
 }
