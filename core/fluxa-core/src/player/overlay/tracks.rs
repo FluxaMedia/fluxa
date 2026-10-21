@@ -359,4 +359,55 @@ mod tests {
         }));
         assert_eq!(result["subtitleId"], "s2");
     }
+
+    #[test]
+    fn preferred_audio_wins_over_secondary_when_both_exist() {
+        let result = plan(json!({
+            "audioTracks": [
+                {"id": "1", "language": "eng"},
+                {"id": "2", "language": "jpn"}
+            ],
+            "prefs": {"preferredAudioLanguage": "en", "secondaryAudioLanguage": "ja"}
+        }));
+        assert_eq!(result["audioId"], "1");
+    }
+
+    #[test]
+    fn preferred_subtitle_wins_over_secondary_when_both_exist() {
+        let result = plan(json!({
+            "subtitleTracks": [
+                {"id": "s1", "label": "English", "language": "en"},
+                {"id": "s2", "label": "Turkish", "language": "tr"}
+            ],
+            "prefs": {
+                "preferredSubtitleLanguage": "tr",
+                "secondarySubtitleLanguage": "en"
+            }
+        }));
+        assert_eq!(result["subtitleId"], "s2");
+    }
+
+    #[test]
+    fn secondary_subtitle_used_when_preferred_missing() {
+        let result = plan(json!({
+            "subtitleTracks": [
+                {"id": "s1", "label": "English", "language": "en"},
+                {"id": "s2", "label": "German", "language": "de"}
+            ],
+            "prefs": {
+                "preferredSubtitleLanguage": "tr",
+                "secondarySubtitleLanguage": "de"
+            }
+        }));
+        assert_eq!(result["subtitleId"], "s2");
+    }
+
+    #[test]
+    fn no_audio_pick_when_neither_language_exists() {
+        let result = plan(json!({
+            "audioTracks": [{"id": "1", "language": "eng"}],
+            "prefs": {"preferredAudioLanguage": "fr", "secondaryAudioLanguage": "ja"}
+        }));
+        assert!(result["audioId"].is_null());
+    }
 }
