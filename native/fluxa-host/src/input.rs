@@ -723,7 +723,7 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
         }
         fluxa_ui::NODE_DISCOVER_SEARCH if state.discover.query != value => {
             state.discover.query = value.to_owned();
-            request_discover_search(state);
+            schedule_discover_search(state);
         }
         fluxa_ui::NODE_SIDEBAR_SEARCH if state.discover.query != value => {
             state.discover.query = value.to_owned();
@@ -757,8 +757,21 @@ pub(super) fn set_text_value(state: &mut RendererState, node: u64, value: &str) 
     }
 }
 
+const SEARCH_DEBOUNCE: Duration = Duration::from_millis(350);
+
+pub(super) fn schedule_discover_search(state: &mut RendererState) {
+    state.search_due = Some(Instant::now() + SEARCH_DEBOUNCE);
+}
+
+pub(super) fn tick_discover_search(state: &mut RendererState) {
+    if state.search_due.is_some_and(|due| due <= Instant::now()) {
+        state.search_due = None;
+        request_discover_search(state);
+    }
+}
+
 pub(super) fn search_from_sidebar(state: &mut RendererState) {
-    request_discover_search(state);
+    schedule_discover_search(state);
     if state.route != Route::Discover {
         state.pending_native_actions.push(NativeAction::Navigate {
             destination: Route::Discover,

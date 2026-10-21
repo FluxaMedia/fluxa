@@ -57,6 +57,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         && state.route == Route::Home
         && state.player.is_none())
     .then(|| state.home_refreshed_at + HOME_REFRESH_INTERVAL);
+    let search = state.search_due;
     let trailer = trailer::next_redraw(state, now);
     let ambient = ambient::next_redraw(state);
     let caret = state
@@ -71,6 +72,7 @@ pub(super) fn next_redraw(state: &mut RendererState) -> Option<Instant> {
         animation,
         effects,
         trailer,
+        search,
         caret,
         home_refresh,
         ambient,
@@ -168,6 +170,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     sync_home_from_core_snapshot(state);
     apply_notice(state);
     shorts::tick(state);
+    input::tick_discover_search(state);
     ambient::tick(state);
     ambient::sync_settings(state);
     detail_sections::sync_settings(state);

@@ -512,7 +512,7 @@ pub(super) fn edit_text(
     }
     match node {
         fluxa_ui::NODE_LIBRARY_SEARCH => refresh_library_view(state),
-        fluxa_ui::NODE_DISCOVER_SEARCH => request_discover_search(state),
+        fluxa_ui::NODE_DISCOVER_SEARCH => schedule_discover_search(state),
         fluxa_ui::NODE_SIDEBAR_SEARCH => search_from_sidebar(state),
         fluxa_ui::NODE_SETTINGS_WATCH_CODE => {
             let code = &mut state.settings.watch_code;
