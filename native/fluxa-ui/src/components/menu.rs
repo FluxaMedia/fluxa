@@ -14,7 +14,9 @@ pub enum ActionMenuOutcome {
 
 pub struct ActionMenuLayout {
     pub panel: Rect,
+    pub body: Rect,
     pub rows: Vec<Rect>,
+    pub max_scroll: f32,
     header: Option<Rect>,
 }
 
@@ -65,7 +67,24 @@ impl ActionMenuStyle {
     }
 }
 
-pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> ActionMenuLayout {
+fn scroll_fit(
+    content: f32,
+    fixed: f32,
+    cap: f32,
+    min_visible: f32,
+    scroll: f32,
+) -> (f32, f32, f32) {
+    let visible = content.min((cap - fixed).max(min_visible));
+    let max_scroll = (content - visible).max(0.0);
+    (visible, max_scroll, scroll.clamp(0.0, max_scroll))
+}
+
+pub fn action_menu_layout(
+    viewport: Viewport,
+    count: usize,
+    anchor: Pos2,
+    scroll: f32,
+) -> ActionMenuLayout {
     let count = count as f32;
     let style = ActionMenuStyle::for_viewport(viewport);
     if style == ActionMenuStyle::Sheet {
@@ -73,7 +92,15 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
         let columns = if count > 8.0 { 2 } else { 1 };
         let lines = (count / columns as f32).ceil();
         let column_width = (viewport.width - 16.0) / columns as f32;
-        let height = 20.0 + header + row * lines + viewport.safe_bottom + 12.0;
+        let fixed = 20.0 + header + viewport.safe_bottom + 12.0;
+        let (visible, max_scroll, scroll) = scroll_fit(
+            row * lines,
+            fixed,
+            viewport.height * 0.75,
+            row * 3.0,
+            scroll,
+        );
+        let height = fixed + visible;
         let panel = Rect::from_min_size(
             Pos2::new(0.0, viewport.height - height),
             Vec2::new(viewport.width, height),
@@ -81,6 +108,11 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
         let top = panel.top() + 20.0 + header;
         ActionMenuLayout {
             panel,
+            body: Rect::from_min_size(
+                Pos2::new(panel.left(), top),
+                Vec2::new(panel.width(), visible),
+            ),
+            max_scroll,
             header: Some(Rect::from_min_size(
                 Pos2::new(panel.left(), panel.top() + 20.0),
                 Vec2::new(panel.width(), header),
@@ -89,7 +121,10 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
                 .map(|index| {
                     let (line, column) = (index / columns, index % columns);
                     Rect::from_min_size(
-                        Pos2::new(8.0 + column_width * column as f32, top + row * line as f32),
+                        Pos2::new(
+                            8.0 + column_width * column as f32,
+                            top + row * line as f32 - scroll,
+                        ),
                         Vec2::new(column_width, row),
                     )
                 })
@@ -97,13 +132,27 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
         }
     } else if style == ActionMenuStyle::Panel {
         let (header, row, pad, width) = (72.0, 60.0, 16.0, 520.0);
-        let height = header + row * count + pad * 2.0;
+        let fixed = header + pad * 2.0;
+        let (visible, max_scroll, scroll) = scroll_fit(
+            row * count,
+            fixed,
+            viewport.height * 0.85,
+            row * 3.0,
+            scroll,
+        );
+        let height = fixed + visible;
         let panel = Rect::from_center_size(
             Pos2::new(viewport.width * 0.5, viewport.height * 0.5),
             Vec2::new(width, height),
         );
+        let top = panel.top() + pad + header;
         ActionMenuLayout {
             panel,
+            body: Rect::from_min_size(
+                Pos2::new(panel.left() + pad, top),
+                Vec2::new(width - pad * 2.0, visible),
+            ),
+            max_scroll,
             header: Some(Rect::from_min_size(
                 Pos2::new(panel.left() + pad, panel.top() + pad),
                 Vec2::new(width - pad * 2.0, header),
@@ -111,10 +160,7 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
             rows: (0..count as usize)
                 .map(|index| {
                     Rect::from_min_size(
-                        Pos2::new(
-                            panel.left() + pad,
-                            panel.top() + pad + header + row * index as f32,
-                        ),
+                        Pos2::new(panel.left() + pad, top + row * index as f32 - scroll),
                         Vec2::new(width - pad * 2.0, row),
                     )
                 })
@@ -122,7 +168,14 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
         }
     } else {
         let (row, pad, width) = (40.0, 6.0, 240.0);
-        let height = row * count + pad * 2.0;
+        let (visible, max_scroll, scroll) = scroll_fit(
+            row * count,
+            pad * 2.0,
+            viewport.height - 16.0,
+            row * 3.0,
+            scroll,
+        );
+        let height = visible + pad * 2.0;
         let x = if anchor.x + width > viewport.width - 8.0 {
             anchor.x - width
         } else {
@@ -137,11 +190,19 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
             Rect::from_min_size(Pos2::new(x.max(8.0), y.max(8.0)), Vec2::new(width, height));
         ActionMenuLayout {
             panel,
+            body: Rect::from_min_size(
+                Pos2::new(panel.left() + pad, panel.top() + pad),
+                Vec2::new(width - pad * 2.0, visible),
+            ),
+            max_scroll,
             header: None,
             rows: (0..count as usize)
                 .map(|index| {
                     Rect::from_min_size(
-                        Pos2::new(panel.left() + pad, panel.top() + pad + row * index as f32),
+                        Pos2::new(
+                            panel.left() + pad,
+                            panel.top() + pad + row * index as f32 - scroll,
+                        ),
                         Vec2::new(width - pad * 2.0, row),
                     )
                 })
@@ -150,12 +211,36 @@ pub fn action_menu_layout(viewport: Viewport, count: usize, anchor: Pos2) -> Act
     }
 }
 
+pub fn action_menu_scroll_to(
+    viewport: Viewport,
+    count: usize,
+    anchor: Pos2,
+    index: usize,
+    scroll: f32,
+) -> f32 {
+    let layout = action_menu_layout(viewport, count, anchor, 0.0);
+    let Some(row) = layout.rows.get(index) else {
+        return scroll;
+    };
+    let from_top = row.top() - layout.body.top();
+    let (lo, hi) = (from_top + row.height() - layout.body.height(), from_top);
+    scroll.clamp(lo.min(hi), hi).clamp(0.0, layout.max_scroll)
+}
+
+pub fn action_menu_hit(layout: &ActionMenuLayout, position: Pos2) -> Option<usize> {
+    if !layout.body.contains(position) {
+        return None;
+    }
+    layout.rows.iter().position(|row| row.contains(position))
+}
+
 #[derive(Clone)]
 struct MenuSnapshot {
     title: String,
     items: Vec<ActionMenuItem>,
     selected: Option<usize>,
     anchor: Pos2,
+    scroll: f32,
     serial: u64,
 }
 
@@ -173,6 +258,7 @@ pub fn draw_action_menu(
     items: &[ActionMenuItem],
     selected: Option<usize>,
     anchor: Pos2,
+    scroll: f32,
     serial: u64,
 ) -> Option<ActionMenuOutcome> {
     if context.data(|data| data.get_temp::<u64>(Id::new("fluxa-action-menu-serial")))
@@ -190,6 +276,7 @@ pub fn draw_action_menu(
                 items: items.to_vec(),
                 selected,
                 anchor,
+                scroll,
                 serial,
             },
         )
@@ -201,7 +288,7 @@ pub fn draw_action_menu(
         crate::motion::Ease::Out,
     );
     draw_menu(
-        context, viewport, metrics, assets, title, items, selected, anchor, eased,
+        context, viewport, metrics, assets, title, items, selected, anchor, scroll, eased,
     )
 }
 
@@ -234,6 +321,7 @@ pub fn draw_action_menu_closing(
         &menu.items,
         menu.selected,
         menu.anchor,
+        menu.scroll,
         eased,
     );
 }
@@ -248,9 +336,10 @@ fn draw_menu(
     items: &[ActionMenuItem],
     selected: Option<usize>,
     anchor: Pos2,
+    scroll: f32,
     eased: f32,
 ) -> Option<ActionMenuOutcome> {
-    let layout = action_menu_layout(viewport, items.len(), anchor);
+    let layout = action_menu_layout(viewport, items.len(), anchor, scroll);
     let style = ActionMenuStyle::for_viewport(viewport);
     let sheet = style == ActionMenuStyle::Sheet;
     let tv = style == ActionMenuStyle::Panel;
@@ -366,10 +455,16 @@ fn draw_menu(
                 metrics.text.body
             };
             let icon_size = style.icon_size();
+            let body = layout.body.translate(offset);
+            let outer = painter.clone();
+            let painter = painter.with_clip_rect(body);
             for (index, (item, row)) in items.iter().zip(&layout.rows).enumerate() {
                 let row = row.translate(offset);
+                if !row.intersects(body) {
+                    continue;
+                }
                 let response = ui.interact(
-                    row,
+                    row.intersect(body),
                     Id::new(("fluxa-action-menu-row", index)),
                     Sense::click(),
                 );
@@ -428,6 +523,17 @@ fn draw_menu(
                 if response.clicked() {
                     outcome = Some(ActionMenuOutcome::Pick(index));
                 }
+            }
+            if layout.max_scroll > 0.0 {
+                let track = body.height();
+                let thumb = (track * track / (track + layout.max_scroll)).max(24.0);
+                let top =
+                    body.top() + (track - thumb) * (scroll / layout.max_scroll).clamp(0.0, 1.0);
+                outer.rect_filled(
+                    Rect::from_min_size(Pos2::new(panel.right() - 6.0, top), Vec2::new(3.0, thumb)),
+                    1.5,
+                    metrics.ink(tone::soft()),
+                );
             }
             if outcome.is_none()
                 && (backdrop.clicked() || backdrop.secondary_clicked())

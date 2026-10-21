@@ -52,6 +52,8 @@ pub(super) struct CardMenu {
     target: Target,
     selected: Option<usize>,
     anchor: Pos2,
+    scroll: f32,
+    drag: Option<(f32, f32)>,
     serial: u64,
 }
 
@@ -60,6 +62,7 @@ pub(super) struct MenuView {
     pub(super) items: Vec<ActionMenuItem>,
     pub(super) selected: Option<usize>,
     pub(super) anchor: Pos2,
+    pub(super) scroll: f32,
     pub(super) serial: u64,
 }
 
@@ -131,6 +134,8 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
         target: Target::Card { card, entries },
         selected: keyboard.then_some(0),
         anchor,
+        scroll: 0.0,
+        drag: None,
         serial: state.menu_serial,
     });
     true
@@ -162,9 +167,23 @@ fn open_stream(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: boo
         },
         selected: keyboard.then_some(0),
         anchor,
+        scroll: 0.0,
+        drag: None,
         serial: state.menu_serial,
     });
     true
+}
+
+fn initial_scroll(state: &RendererState, count: usize, current: Option<usize>) -> f32 {
+    current.map_or(0.0, |index| {
+        let viewport = logical_viewport(state);
+        let layout = fluxa_ui::action_menu_layout(viewport, count, Pos2::ZERO, 0.0);
+        let centered = layout
+            .rows
+            .get(index)
+            .map_or(0.0, |row| row.center().y - layout.body.center().y);
+        centered.clamp(0.0, layout.max_scroll)
+    })
 }
 
 pub(super) fn open_setting(state: &mut RendererState, row: &'static fluxa_ui::SettingsRow) {
@@ -178,6 +197,8 @@ pub(super) fn open_setting(state: &mut RendererState, row: &'static fluxa_ui::Se
         target: Target::Setting(row),
         selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
         anchor: Pos2::ZERO,
+        scroll: initial_scroll(state, row.options.len(), current),
+        drag: None,
         serial: state.menu_serial,
     });
 }
@@ -192,6 +213,7 @@ pub(super) fn open_source(state: &mut RendererState, index: usize) {
     }
     let current = options.iter().position(|(value, _)| *value == current);
     state.menu_serial += 1;
+    let scroll = initial_scroll(state, options.len(), current);
     state.card_menu = Some(CardMenu {
         target: Target::Source {
             key,
@@ -200,6 +222,8 @@ pub(super) fn open_source(state: &mut RendererState, index: usize) {
         },
         selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
         anchor: Pos2::ZERO,
+        scroll,
+        drag: None,
         serial: state.menu_serial,
     });
 }
@@ -210,10 +234,13 @@ pub(super) fn open_choice(state: &mut RendererState, request: fluxa_ui::ChoiceRe
         .iter()
         .position(|(value, _)| *value == request.selected);
     state.menu_serial += 1;
+    let scroll = initial_scroll(state, request.options.len(), current);
     state.card_menu = Some(CardMenu {
         target: Target::Choice(request),
         selected: state.keyboard_focus_visible.then(|| current.unwrap_or(0)),
         anchor: Pos2::ZERO,
+        scroll,
+        drag: None,
         serial: state.menu_serial,
     });
 }
@@ -224,6 +251,8 @@ pub(crate) fn open_disconnect(state: &mut RendererState, provider: &str) {
         target: Target::Disconnect(provider.to_owned()),
         selected: state.keyboard_focus_visible.then_some(0),
         anchor: Pos2::ZERO,
+        scroll: 0.0,
+        drag: None,
         serial: state.menu_serial,
     });
 }
@@ -234,6 +263,8 @@ pub(crate) fn open_quit_downloads(state: &mut RendererState) {
         target: Target::QuitDownloads,
         selected: state.keyboard_focus_visible.then_some(0),
         anchor: Pos2::ZERO,
+        scroll: 0.0,
+        drag: None,
         serial: state.menu_serial,
     });
 }
@@ -269,6 +300,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                     .collect(),
                 selected: menu.selected,
                 anchor: menu.anchor,
+                scroll: menu.scroll,
                 serial: menu.serial,
             });
         }
@@ -290,6 +322,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                     .collect(),
                 selected: menu.selected,
                 anchor: menu.anchor,
+                scroll: menu.scroll,
                 serial: menu.serial,
             });
         }
@@ -304,6 +337,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                 }],
                 selected: menu.selected,
                 anchor: menu.anchor,
+                scroll: menu.scroll,
                 serial: menu.serial,
             });
         }
@@ -324,6 +358,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                 ],
                 selected: menu.selected,
                 anchor: menu.anchor,
+                scroll: menu.scroll,
                 serial: menu.serial,
             });
         }
@@ -345,6 +380,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                     .collect(),
                 selected: menu.selected,
                 anchor: menu.anchor,
+                scroll: menu.scroll,
                 serial: menu.serial,
             });
         }
@@ -362,6 +398,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                     .collect(),
                 selected: menu.selected,
                 anchor: menu.anchor,
+                scroll: menu.scroll,
                 serial: menu.serial,
             });
         }
@@ -393,6 +430,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
         items,
         selected: menu.selected,
         anchor: menu.anchor,
+        scroll: menu.scroll,
         serial: menu.serial,
     })
 }
@@ -517,6 +555,7 @@ fn pick(state: &mut RendererState, index: usize) {
 }
 
 pub(super) fn key(state: &mut RendererState, input: KeyInput) -> bool {
+    let viewport = logical_viewport(state);
     let Some(menu) = state.card_menu.as_mut() else {
         return false;
     };
@@ -544,6 +583,22 @@ pub(super) fn key(state: &mut RendererState, input: KeyInput) -> bool {
         }
         _ => {}
     }
+    if let Some(menu) = state.card_menu.as_mut()
+        && let Some(index) = menu.selected
+    {
+        menu.scroll =
+            fluxa_ui::action_menu_scroll_to(viewport, count, menu.anchor, index, menu.scroll);
+    }
+    true
+}
+
+pub(super) fn scroll_by(state: &mut RendererState, delta: f32) -> bool {
+    let viewport = logical_viewport(state);
+    let Some(menu) = state.card_menu.as_mut() else {
+        return false;
+    };
+    let layout = fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, 0.0);
+    menu.scroll = (menu.scroll + delta).clamp(0.0, layout.max_scroll);
     true
 }
 
@@ -577,22 +632,54 @@ pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: 
     if state.card_menu.is_none() {
         return false;
     }
-    if phase != PointerPhase::Up {
-        return true;
+    let viewport = logical_viewport(state);
+    let point = Pos2::new(position[0], position[1]);
+    match phase {
+        PointerPhase::Down => {
+            if let Some(menu) = state.card_menu.as_mut() {
+                let layout =
+                    fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, 0.0);
+                menu.drag = layout
+                    .body
+                    .contains(point)
+                    .then_some((point.y, 0.0))
+                    .filter(|_| layout.max_scroll > 0.0);
+            }
+            return true;
+        }
+        PointerPhase::Move => {
+            let delta = state.card_menu.as_mut().and_then(|menu| {
+                let (last, travelled) = menu.drag?;
+                menu.drag = Some((point.y, travelled + (last - point.y).abs()));
+                Some(last - point.y)
+            });
+            if let Some(delta) = delta {
+                scroll_by(state, delta);
+            }
+            return true;
+        }
+        PointerPhase::Up => {}
     }
+    let dragged = state
+        .card_menu
+        .as_mut()
+        .and_then(|menu| menu.drag.take())
+        .is_some_and(|(_, travelled)| travelled > 8.0);
     if state.touch_menu_opened {
         state.touch_menu_opened = false;
         return true;
     }
-    let viewport = logical_viewport(state);
+    if dragged {
+        return true;
+    }
     let Some(menu) = state.card_menu.as_ref() else {
         return true;
     };
-    let layout = fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor);
-    let position = Pos2::new(position[0], position[1]);
-    match layout.rows.iter().position(|row| row.contains(position)) {
+    let layout =
+        fluxa_ui::action_menu_layout(viewport, menu.target.len(), menu.anchor, menu.scroll);
+    match fluxa_ui::action_menu_hit(&layout, point) {
         Some(index) => pick(state, index),
-        None if !layout.panel.contains(position) => state.card_menu = None,
+        None if !layout.panel.contains(point) => state.card_menu = None,
         None => {}
     }
     true

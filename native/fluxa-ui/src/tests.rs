@@ -1858,7 +1858,10 @@ fn series_meta_line_counts_seasons_and_episodes_without_specials() {
         ]
     });
     let line = crate::hero_meta_line(&item, "en");
-    assert!(line.starts_with("Series · 2 Seasons · 3 Episodes · 2025"), "{line}");
+    assert!(
+        line.starts_with("Series · 2 Seasons · 3 Episodes · 2025"),
+        "{line}"
+    );
 }
 
 #[test]
@@ -1898,6 +1901,7 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
                     &items,
                     None,
                     Pos2::new(400.0, 300.0),
+                    0.0,
                     1,
                 );
             } else {
@@ -1909,4 +1913,32 @@ fn action_menu_fades_out_after_the_host_stops_drawing_it() {
     assert!(shapes[10] > 0);
     assert!(shapes[40] > 0);
     assert_eq!(shapes[89], 0);
+}
+
+#[test]
+fn long_action_menu_caps_height_and_reaches_last_row() {
+    for (width, height, form) in [
+        (390, 844, UiFormFactor::Mobile),
+        (1920, 1080, UiFormFactor::Tv),
+        (1280, 800, UiFormFactor::Desktop),
+    ] {
+        let viewport = Viewport::new(width, height, form);
+        let anchor = Pos2::new(100.0, 100.0);
+        let top = action_menu_layout(viewport, 75, anchor, 0.0);
+        assert!(top.panel.height() < height as f32);
+        assert!(top.max_scroll > 0.0);
+        let scroll = action_menu_scroll_to(viewport, 75, anchor, 74, 0.0);
+        let end = action_menu_layout(viewport, 75, anchor, scroll);
+        assert!(end.body.contains(end.rows[74].center()));
+        assert_eq!(action_menu_hit(&end, end.rows[74].center()), Some(74));
+        assert_eq!(action_menu_hit(&end, end.rows[0].center()), None);
+    }
+}
+
+#[test]
+fn short_action_menu_does_not_scroll() {
+    let viewport = Viewport::new(390, 844, UiFormFactor::Mobile);
+    let layout = action_menu_layout(viewport, 4, Pos2::ZERO, 50.0);
+    assert_eq!(layout.max_scroll, 0.0);
+    assert_eq!(action_menu_hit(&layout, layout.rows[0].center()), Some(0));
 }

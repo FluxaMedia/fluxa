@@ -46,10 +46,9 @@ pub use components::{
     DetailModalOutcome, draw_detail_modal, set_detail_modal_open, take_detail_modal_outcome,
 };
 use draw::*;
-use interact::FocusNode;
 use flex::*;
 pub use home::*;
-pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scroll_drag};
+use interact::FocusNode;
 pub use interact::{
     Dir, Neighbors, Pinch, begin_focus_frame, pinch, take_focus_neighbors, take_focus_targets,
 };
@@ -59,6 +58,7 @@ pub use model::*;
 pub use navigation::*;
 pub use nodes::*;
 use paint::*;
+pub use scroll_physics::{ScrollFeel, ScrollMotion, VelocityTracker, drag as scroll_drag};
 pub use sidebar::{set_nav_focus, set_nav_search, set_nav_sidebar, take_nav_search};
 use style::*;
 pub use window_button::draw_window_fullscreen_button;
@@ -70,11 +70,12 @@ pub use ambient::{
 };
 pub use calendar::draw_calendar;
 pub use components::{
-    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass, ImageFit, ImageHole, InputKind,
-    VideoHole,
-    NODE_DISCOVER_RECENT_BASE, SubtitleLook, action_menu_layout, caret_rect, discover_recent,
-    draw_action_menu, draw_action_menu_closing, draw_mini_player_overlay, focused_field, input_kind, is_text_node,
-    set_input_caret, set_liquid_glass, set_native_field, set_pending_field_text,
+    ActionMenuItem, ActionMenuLayout, ActionMenuOutcome, DOM_TRAILER, FocusedField, Glass,
+    ImageFit, ImageHole, InputKind, NODE_DISCOVER_RECENT_BASE, SubtitleLook, VideoHole,
+    action_menu_hit, action_menu_layout, action_menu_scroll_to, caret_rect, discover_recent,
+    draw_action_menu, draw_action_menu_closing, draw_mini_player_overlay, focused_field,
+    input_kind, is_text_node, set_input_caret, set_liquid_glass, set_native_field,
+    set_pending_field_text,
 };
 pub use motion::page_transition;
 pub use poster_overlay::{
@@ -105,9 +106,9 @@ pub use settings::{
     CollectionEdit, CollectionListRow, DetailSectionRow, FolderEdit, FormatterPresetRow,
     FormatterRow, POSTER_FIELDS, SETTINGS_SECTIONS, SettingsModel, SettingsRow, SettingsSection,
     ShortcutRow, UpdateState, UpdateView, accent_swatches, account_source, account_source_state,
-    addon_action, addon_transport_url, addons_page, badge_input, badge_input_label, category_pages,
-    collection_input, collection_input_label, collection_view_modes, draw_settings, option_label,
-    poster_field, server_index, server_input, settings_model_from_core_snapshot,
+    addon_action, addon_enabled, addon_transport_url, addons_page, badge_input, badge_input_label,
+    category_pages, collection_input, collection_input_label, collection_view_modes, draw_settings,
+    option_label, poster_field, server_index, server_input, settings_model_from_core_snapshot,
     settings_page_for_node, settings_row_by_index, settings_row_label, subtitle_style_rows,
 };
 pub use shorts::{ShortsModel, draw_shorts, shorts_feed};

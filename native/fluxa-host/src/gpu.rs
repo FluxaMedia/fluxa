@@ -925,6 +925,7 @@ impl Gpu {
                     &menu.items,
                     menu.selected,
                     menu.anchor,
+                    menu.scroll,
                     menu.serial,
                 );
             } else {

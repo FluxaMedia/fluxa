@@ -247,6 +247,18 @@ pub(crate) fn start(state: &mut RendererState) {
         state.settings.section_open = true;
         state.settings.page_open = true;
     }
+    if let Some(key) = setting("FLUXA_PREVIEW_MENU")
+        && let Some(row) = (0..)
+            .map_while(fluxa_ui::settings_row_by_index)
+            .find(|row| row.key == key)
+    {
+        crate::card_menu::open_setting(state, row);
+        if let Some(delta) =
+            setting("FLUXA_PREVIEW_MENU_SCROLL").and_then(|value| value.parse().ok())
+        {
+            crate::card_menu::scroll_by(state, delta);
+        }
+    }
 }
 
 pub(crate) fn watch_panel_demo(state: &mut RendererState) {

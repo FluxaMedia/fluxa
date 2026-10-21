@@ -3,7 +3,7 @@ use super::*;
 impl FluxaHost {
     pub fn scroll(&self, delta_y: f32) {
         self.with_state(|state| {
-            if ambient::input(state) || state.detail_modal {
+            if ambient::input(state) || state.detail_modal || card_menu::scroll_by(state, delta_y) {
                 return;
             }
             let viewport = logical_viewport(state);
@@ -97,6 +97,9 @@ impl FluxaHost {
             } else {
                 (delta_x, delta_y)
             };
+            if card_menu::scroll_by(state, delta_y) {
+                return;
+            }
             state.egui_events.push(egui::Event::MouseWheel {
                 unit: egui::MouseWheelUnit::Point,
                 delta: Vec2::new(-delta_x, -delta_y),
@@ -336,7 +339,10 @@ impl FluxaHost {
                     ),
                     None => {
                         let id = state.ui.focused()?;
-                        let node = state.ui.node(id).filter(|node| node.kind == UiNodeKind::Input)?;
+                        let node = state
+                            .ui
+                            .node(id)
+                            .filter(|node| node.kind == UiNodeKind::Input)?;
                         let bounds = node.bounds;
                         let rect = egui::Rect::from_min_size(
                             egui::pos2(bounds.x, bounds.y),
@@ -356,9 +362,8 @@ impl FluxaHost {
                 let kind = match kind {
                     _ if code => "code",
                     fluxa_ui::InputKind::Search => "search",
-                    fluxa_ui::InputKind::Password | fluxa_ui::InputKind::Number { secret: true } => {
-                        "password"
-                    }
+                    fluxa_ui::InputKind::Password
+                    | fluxa_ui::InputKind::Number { secret: true } => "password",
                     fluxa_ui::InputKind::Url => "url",
                     fluxa_ui::InputKind::Number { secret: false } => "number",
                     fluxa_ui::InputKind::Multiline => "multiline",
