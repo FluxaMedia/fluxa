@@ -69,6 +69,7 @@ pub(crate) fn log_out(state: &mut RendererState) {
         })
         .collect::<Vec<_>>();
     profiles::write(&storage, "profiles", &Value::Array(local));
+    profiles::write(&storage, "profile_picker_settings", &Value::Null);
     profiles::write(&storage, "active_profile_id", &json!(""));
     profiles::write(&storage, OFFLINE_KEY, &json!(false));
     state.profiles = None;
