@@ -3373,8 +3373,7 @@
   "settings.watch_party.host_help": "Bir şey oynat, sonra oynatıcıda Watch Party'yi aç.",
   "settings.watch_party.in_room": "Oda {code}",
   "profiles.choose_icon": "Profil simgesi seç",
-  "profiles.choose_icon_desc": "Bir paketten seç, dosya yükle veya görsel bağlantısı kullan.",
+  "profiles.choose_icon_desc": "Profil görsel paketlerinden birini seç.",
   "profiles.image_url": "Görsel bağlantısı",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png",
-  "profiles.use_image_url": "Görseli kullan"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png"
 }

@@ -3362,8 +3362,7 @@
   "settings.watch_party.host_help": "شغّل شيئًا، ثم افتح Watch Party في المشغّل.",
   "settings.watch_party.in_room": "الغرفة {code}",
   "profiles.choose_icon": "اختر أيقونة الملف الشخصي",
-  "profiles.choose_icon_desc": "اختر من حزمة أو ارفع ملفًا أو استخدم رابط صورة.",
+  "profiles.choose_icon_desc": "اختر من حزم صور الملف الشخصي.",
   "profiles.image_url": "رابط الصورة",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png",
-  "profiles.use_image_url": "استخدم الصورة"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png"
 }

@@ -3362,8 +3362,7 @@
   "settings.watch_party.host_help": "נגנו משהו ופתחו את Watch Party בנגן.",
   "settings.watch_party.in_room": "חדר {code}",
   "profiles.choose_icon": "בחר סמל פרופיל",
-  "profiles.choose_icon_desc": "בחר מחבילה, העלה קובץ או השתמש בקישור לתמונה.",
+  "profiles.choose_icon_desc": "בחר מחבילות תמונות הפרופיל שלך.",
   "profiles.image_url": "קישור לתמונה",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png",
-  "profiles.use_image_url": "השתמש בתמונה"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png"
 }

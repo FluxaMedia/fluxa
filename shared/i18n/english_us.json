@@ -3373,8 +3373,7 @@
   "settings.watch_party.host_help": "Play something, then open Watch Party in the player.",
   "settings.watch_party.in_room": "Room {code}",
   "profiles.choose_icon": "Choose a profile icon",
-  "profiles.choose_icon_desc": "Pick from a pack, upload a file or use an image URL.",
+  "profiles.choose_icon_desc": "Pick one of your profile image packs.",
   "profiles.image_url": "Image URL",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png",
-  "profiles.use_image_url": "Use image"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png"
 }

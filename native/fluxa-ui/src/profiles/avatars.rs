@@ -34,54 +34,6 @@ pub(super) fn draw_avatars(
                 metrics,
             );
         }
-        components::section(ui, compact, metrics, |ui| {
-            ui.set_width(if compact { width } else { width - 44.0 });
-            let inner = ui.available_width();
-            if components::secondary_button(ui, &t("profiles.choose_image"), inner).clicked() {
-                model.mode = ProfilesMode::Form;
-                *request = Some(ProfilesRequest::PickAvatarImage);
-            }
-            ui.add_space(12.0);
-            components::field_label(ui, &t("profiles.image_url"), metrics);
-            let url = model.avatar_input.trim().to_owned();
-            let usable = url.starts_with("http://") || url.starts_with("https://");
-            let button_width = 110.0;
-            let mut submit = false;
-            let row = |ui: &mut egui::Ui| {
-                ui.spacing_mut().item_spacing = Vec2::splat(10.0);
-                let field_width = if compact {
-                    inner
-                } else {
-                    inner - button_width - 10.0
-                };
-                let field = components::text_input(
-                    ui,
-                    &mut model.avatar_input,
-                    &t("profiles.image_url_placeholder"),
-                    field_width,
-                    components::InputKind::Url,
-                    metrics,
-                );
-                submit |= field.lost_focus() && ui.input(|input| input.key_pressed(egui::Key::Enter));
-                submit |= components::primary_button(
-                    ui,
-                    &t("profiles.use_image_url"),
-                    if compact { inner } else { button_width },
-                    usable,
-                )
-                .clicked();
-            };
-            if compact {
-                ui.horizontal_wrapped(row);
-            } else {
-                ui.horizontal(row);
-            }
-            if submit && usable {
-                model.draft.avatar_url = Some(url);
-                model.mode = ProfilesMode::Form;
-            }
-        });
-        ui.add_space(16.0);
         if model.picker.avatar_packs.is_empty() {
             ui.label(
                 RichText::new(t("profiles.no_avatar_packs"))

@@ -78,12 +78,6 @@ pub(super) fn form_details(
                 );
             }
             if response.on_hover_text(t("profiles.choose_icon")).clicked() {
-                model.avatar_input = model
-                    .draft
-                    .avatar_url
-                    .clone()
-                    .filter(|url| url.starts_with("http"))
-                    .unwrap_or_default();
                 model.mode = ProfilesMode::Avatars;
             }
             ui.add_space(16.0);
@@ -141,6 +135,10 @@ pub(super) fn form_details(
                 .clone()
                 .filter(|url| url.starts_with("http"))
                 .unwrap_or_default();
+        }
+        ui.add_space(8.0);
+        if components::secondary_button(ui, &t("profiles.choose_image"), field_width).clicked() {
+            *request = Some(ProfilesRequest::PickAvatarImage);
         }
         ui.add_space(14.0);
         components::field_label(ui, &t("profiles.pin_lock"), metrics);
