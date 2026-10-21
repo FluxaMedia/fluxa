@@ -3,6 +3,7 @@ use fluxa_ui::localized;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum Entry {
+    PlayOnTv,
     Download,
     CopyUrl,
     CopyMagnet,
@@ -58,10 +59,12 @@ fn magnet(stream: &Value) -> Option<String> {
 pub(crate) fn entries(stream: &Value) -> Vec<Entry> {
     let mut entries = Vec::new();
     if http_url(stream).is_some() {
+        entries.push(Entry::PlayOnTv);
         entries.push(Entry::Download);
         entries.push(Entry::CopyUrl);
         entries.push(Entry::External);
     } else if magnet(stream).is_some() {
+        entries.push(Entry::PlayOnTv);
         entries.push(Entry::Download);
         entries.push(Entry::CopyMagnet);
         entries.push(Entry::External);
@@ -71,6 +74,7 @@ pub(crate) fn entries(stream: &Value) -> Vec<Entry> {
 
 pub(crate) fn item(entry: Entry, language: &str) -> (&'static str, String) {
     let (icon, key) = match entry {
+        Entry::PlayOnTv => ("Cast", "sources.play_on_tv"),
         Entry::Download => ("Downloads", "sources.download_stream"),
         Entry::CopyUrl => ("Copy", "sources.copy_stream_url"),
         Entry::CopyMagnet => ("Copy", "sources.copy_magnet_link"),
@@ -92,6 +96,7 @@ pub(crate) fn title(stream: &Value) -> String {
 
 pub(crate) fn run(state: &mut RendererState, stream: &Value, index: usize, entry: Entry) {
     match entry {
+        Entry::PlayOnTv => {}
         Entry::Download => crate::player::download_stream(state, index),
         Entry::CopyUrl => {
             state.copied = http_url(stream).map(ToOwned::to_owned);
@@ -126,7 +131,64 @@ fn resolve_torrent(state: &mut RendererState, stream: &Value) {
     state.external_pending = Some(receiver);
 }
 
+pub(crate) fn cast_to(state: &mut RendererState, stream: &Value, device: crate::cast::Device) {
+    let title = title(stream);
+    if let Some(url) = http_url(stream) {
+        crate::player::cast_to(state, device, url, &title);
+        return;
+    }
+    resolve_for_cast(state, stream, device, title);
+}
+
+#[cfg(target_arch = "wasm32")]
+fn resolve_for_cast(state: &mut RendererState, _: &Value, _: crate::cast::Device, _: String) {
+    crate::sync::show_notice(state, "sources.play_on_tv_failed");
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn resolve_for_cast(
+    state: &mut RendererState,
+    stream: &Value,
+    device: crate::cast::Device,
+    title: String,
+) {
+    let Some(executor) = state.session.as_ref().map(|session| session.executor()) else {
+        return;
+    };
+    let (sender, receiver) = std::sync::mpsc::channel();
+    let stream = stream.clone();
+    let name = title.clone();
+    std::thread::spawn(move || {
+        let _ = sender.send(executor.torrent_http_url(&stream, &name));
+    });
+    state.cast_pending = Some((receiver, device, title));
+    crate::sync::show_notice(state, "sources.play_on_tv_preparing");
+}
+
+fn tick_cast(state: &mut RendererState) {
+    let Some((receiver, ..)) = state.cast_pending.as_ref() else {
+        return;
+    };
+    match receiver.try_recv() {
+        Ok(result) => {
+            let Some((_, device, title)) = state.cast_pending.take() else {
+                return;
+            };
+            match result {
+                Ok(url) => crate::player::cast_to(state, device, &url, &title),
+                Err(error) => {
+                    host_log(format!("torrent cast failed: {error}"));
+                    crate::sync::show_notice(state, "sources.play_on_tv_failed");
+                }
+            }
+        }
+        Err(std::sync::mpsc::TryRecvError::Empty) => {}
+        Err(std::sync::mpsc::TryRecvError::Disconnected) => state.cast_pending = None,
+    }
+}
+
 pub(crate) fn tick(state: &mut RendererState) {
+    tick_cast(state);
     let Some(receiver) = state.external_pending.as_ref() else {
         return;
     };
@@ -194,11 +256,16 @@ mod tests {
     use serde_json::json;
 
     #[test]
-    fn torrent_streams_offer_download_magnet_and_external_player() {
+    fn torrent_streams_offer_tv_download_magnet_and_external_player() {
         let stream = json!({"infoHash": "abc123", "title": "Show S01E01\nextra", "sources": ["tracker:udp://t.example:80", "dht:abc"]});
         assert_eq!(
             entries(&stream),
-            vec![Entry::Download, Entry::CopyMagnet, Entry::External]
+            vec![
+                Entry::PlayOnTv,
+                Entry::Download,
+                Entry::CopyMagnet,
+                Entry::External
+            ]
         );
         assert_eq!(
             magnet(&stream).unwrap(),
@@ -207,11 +274,16 @@ mod tests {
     }
 
     #[test]
-    fn http_streams_offer_download_copy_and_external_player() {
+    fn http_streams_offer_tv_download_copy_and_external_player() {
         let stream = json!({"url": "https://cdn.test/a.mkv"});
         assert_eq!(
             entries(&stream),
-            vec![Entry::Download, Entry::CopyUrl, Entry::External]
+            vec![
+                Entry::PlayOnTv,
+                Entry::Download,
+                Entry::CopyUrl,
+                Entry::External
+            ]
         );
         assert!(entries(&json!({"externalUrl": "x"})).is_empty());
     }

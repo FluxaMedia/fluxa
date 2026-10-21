@@ -45,6 +45,28 @@ pub(crate) enum Protocol {
 }
 
 impl Protocol {
+    fn key(self) -> &'static str {
+        match self {
+            Protocol::Dlna => "dlna",
+            Protocol::Chromecast => "chromecast",
+            Protocol::Fcast => "fcast",
+            Protocol::Roku => "roku",
+            Protocol::Airplay => "airplay",
+        }
+    }
+
+    fn from_key(key: &str) -> Option<Self> {
+        [
+            Protocol::Dlna,
+            Protocol::Chromecast,
+            Protocol::Fcast,
+            Protocol::Roku,
+            Protocol::Airplay,
+        ]
+        .into_iter()
+        .find(|protocol| protocol.key() == key)
+    }
+
     fn label(self) -> &'static str {
         match self {
             Protocol::Dlna => "DLNA",
@@ -64,6 +86,37 @@ pub(crate) struct Device {
     pub(crate) host: String,
     pub(crate) port: u16,
     pub(crate) control_url: Option<String>,
+}
+
+const MY_TV: &str = "my_tv";
+
+impl Device {
+    pub(crate) fn save(&self, storage: &fluxa_effects::Storage) {
+        let _ = storage.write_json(
+            MY_TV,
+            &serde_json::json!({
+                "id": self.id,
+                "name": self.name,
+                "protocol": self.protocol.key(),
+                "host": self.host,
+                "port": self.port,
+                "controlUrl": self.control_url,
+            }),
+        );
+    }
+
+    pub(crate) fn saved(storage: &fluxa_effects::Storage) -> Option<Self> {
+        let value = storage.read_json(MY_TV).ok().flatten()?;
+        let text = |key: &str| value.get(key).and_then(serde_json::Value::as_str);
+        Some(Self {
+            id: text("id")?.to_owned(),
+            name: text("name")?.to_owned(),
+            protocol: Protocol::from_key(text("protocol")?)?,
+            host: text("host")?.to_owned(),
+            port: u16::try_from(value.get("port")?.as_u64()?).ok()?,
+            control_url: text("controlUrl").map(ToOwned::to_owned),
+        })
+    }
 }
 
 pub(crate) enum Cmd {
@@ -119,7 +172,18 @@ impl Cast {
         net::discover(tx);
     }
 
-    fn scanning(&self) -> bool {
+    pub(crate) fn listing(&self) -> Vec<(String, &'static str)> {
+        self.devices
+            .iter()
+            .map(|device| (device.name.clone(), device.protocol.label()))
+            .collect()
+    }
+
+    pub(crate) fn device_count(&self) -> usize {
+        self.devices.len()
+    }
+
+    pub(crate) fn scanning(&self) -> bool {
         self.scan_until.is_some_and(|until| until > Instant::now())
     }
 

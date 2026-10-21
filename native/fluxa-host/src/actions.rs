@@ -1291,6 +1291,7 @@ pub(super) fn route_actions_to_session(state: &mut RendererState) {
             let mut player =
                 player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
             player.pick_manually(state.core_snapshot.as_deref());
+            player.cast_target = state.cast_next.take();
             player.stale = session.snapshot().get("player").cloned();
             if let Some(video) = state.video.as_mut() {
                 video.stop();
@@ -1369,6 +1370,7 @@ pub(super) fn start_playback_without_session(state: &mut RendererState) {
         let mut player =
             player::PlayerSession::new(item.clone()).with_logo_hint(known_logo(state, item));
         player.pick_manually(state.core_snapshot.as_deref());
+        player.cast_target = state.cast_next.take();
         player.stale = state
             .core_snapshot
             .as_ref()

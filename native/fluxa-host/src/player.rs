@@ -186,6 +186,7 @@ pub(crate) struct PlayerSession {
     local: bool,
     started: bool,
     loaded_url: Option<String>,
+    pub(crate) cast_target: Option<crate::cast::Device>,
     pub(crate) texture: Option<egui::TextureId>,
     last_activity: Instant,
     pub(crate) locked: bool,
@@ -228,7 +229,7 @@ pub(crate) struct PlayerSession {
     dispatched: Option<Value>,
     overlay: Overlay,
     panel: Option<Panel>,
-    cast: crate::cast::Cast,
+    pub(crate) cast: crate::cast::Cast,
     trailer: Option<trailer::TrailerPlay>,
     sources: Option<Vec<Value>>,
     opened_ms: u128,
@@ -309,6 +310,7 @@ impl PlayerSession {
             local: false,
             started: false,
             loaded_url: None,
+            cast_target: None,
             texture: None,
             last_activity: Instant::now(),
             locked: false,
@@ -842,6 +844,15 @@ fn source_row(stream: &Value) -> fluxa_ui::PlayerSource {
         badges,
         badges_top,
     }
+}
+
+pub(crate) fn cast_to(
+    state: &mut RendererState,
+    device: crate::cast::Device,
+    url: &str,
+    title: &str,
+) {
+    casting::cast_to(state, device, url, title);
 }
 
 pub(crate) fn download_stream(state: &mut RendererState, index: usize) {
@@ -1380,6 +1391,13 @@ fn load_resolved(
             .and_then(Value::as_str)
             .filter(|url| !url.is_empty())
     {
+        if let Some(device) = player.cast_target.take() {
+            let resume = player.resume_at.take().unwrap_or(0.0);
+            player.cast.start(device, url, &player.title(), resume);
+            player.loaded_url = Some(url.to_owned());
+            player.panel = Some(Panel::Cast);
+            return;
+        }
         match (video.as_mut(), gpu.as_ref()) {
             (Some(video), Some(gpu)) => {
                 let trickplay = trickplay::from_snapshot(snapshot);

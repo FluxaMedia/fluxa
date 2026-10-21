@@ -6,11 +6,17 @@ const LONG_PRESS: Duration = Duration::from_millis(450);
 #[derive(Clone, Copy, PartialEq)]
 enum Entry {
     Play,
+    PlayOnTv,
     Details,
     Watchlist { saved: bool },
     Watched { watched: bool },
     Rewatch,
     ClearProgress,
+}
+
+pub(super) enum Then {
+    Stream(Value),
+    Card(HomeCard),
 }
 
 enum Target {
@@ -32,6 +38,10 @@ enum Target {
         entries: Vec<crate::stream_menu::Entry>,
     },
     Choice(fluxa_ui::ChoiceRequest),
+    CastDevices {
+        then: Then,
+        count: usize,
+    },
 }
 
 impl Target {
@@ -44,6 +54,7 @@ impl Target {
             Target::QuitDownloads => 2,
             Target::Stream { entries, .. } => entries.len(),
             Target::Choice(request) => request.options.len(),
+            Target::CastDevices { count, .. } => (*count).max(1),
         }
     }
 }
@@ -101,7 +112,11 @@ pub(super) fn open(state: &mut RendererState, node: u64, anchor: Pos2, keyboard:
     };
     let id = card.id.clone().unwrap_or_default();
     let personal = state.library.personal.get(&id);
-    let mut entries = vec![Entry::Play, Entry::Details];
+    let mut entries = vec![Entry::Play];
+    if cfg!(not(target_arch = "wasm32")) {
+        entries.push(Entry::PlayOnTv);
+    }
+    entries.push(Entry::Details);
     entries.push(Entry::Watchlist {
         saved: personal.is_some_and(|personal| personal.saved),
     });
@@ -172,6 +187,50 @@ fn open_stream(state: &mut RendererState, node: u64, anchor: Pos2, keyboard: boo
         serial: state.menu_serial,
     });
     true
+}
+
+pub(super) fn play_on_tv(state: &mut RendererState, then: Then, anchor: Pos2, keyboard: bool) {
+    let saved = state
+        .session
+        .as_ref()
+        .and_then(|session| cast::Device::saved(session.storage()));
+    if let Some(device) = saved {
+        start_cast(state, then, device);
+        return;
+    }
+    state.cast_scan.scan();
+    state.menu_serial += 1;
+    state.card_menu = Some(CardMenu {
+        target: Target::CastDevices { then, count: 0 },
+        selected: keyboard.then_some(0),
+        anchor,
+        scroll: 0.0,
+        drag: None,
+        serial: state.menu_serial,
+    });
+}
+
+fn start_cast(state: &mut RendererState, then: Then, device: cast::Device) {
+    match then {
+        Then::Stream(stream) => crate::stream_menu::cast_to(state, &stream, device),
+        Then::Card(card) => {
+            state.cast_next = Some(device);
+            state
+                .pending_native_actions
+                .push(play_action(card.raw.clone(), card));
+            crate::sync::show_notice(state, "sources.play_on_tv_preparing");
+        }
+    }
+}
+
+fn play_action(raw: Value, card: HomeCard) -> NativeAction {
+    let id = card.id.unwrap_or_default();
+    let item_type = card.item_type.unwrap_or_default();
+    if raw.get("lastVideoId").is_some() {
+        NativeAction::StartPlayback { item: raw }
+    } else {
+        NativeAction::Play { id, item_type }
+    }
 }
 
 fn initial_scroll(state: &RendererState, count: usize, current: Option<usize>) -> f32 {
@@ -384,6 +443,42 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
                 serial: menu.serial,
             });
         }
+        Target::CastDevices { then, .. } => {
+            let mut items: Vec<ActionMenuItem> = state
+                .cast_scan
+                .listing()
+                .into_iter()
+                .map(|(name, protocol)| ActionMenuItem {
+                    icon: "Cast",
+                    label: format!("{name} · {protocol}"),
+                    app_icon: None,
+                })
+                .collect();
+            if items.is_empty() {
+                let key = if state.cast_scan.scanning() {
+                    "player.cast_searching"
+                } else {
+                    "player.cast_no_devices"
+                };
+                items.push(ActionMenuItem {
+                    icon: "",
+                    label: localized(key, language),
+                    app_icon: None,
+                });
+            }
+            let title = match then {
+                Then::Stream(stream) => crate::stream_menu::title(stream),
+                Then::Card(card) => card.title.clone(),
+            };
+            return Some(MenuView {
+                title,
+                items,
+                selected: menu.selected,
+                anchor: menu.anchor,
+                scroll: menu.scroll,
+                serial: menu.serial,
+            });
+        }
         Target::Source { key, title, .. } => {
             let (options, current, _) = fluxa_ui::account_source_state(&state.settings, key);
             return Some(MenuView {
@@ -410,6 +505,7 @@ pub(super) fn view(state: &RendererState) -> Option<MenuView> {
             let (icon, key) = match entry {
                 Entry::Play if resume => ("PlayFilled", "menu.resume"),
                 Entry::Play => ("PlayFilled", "menu.play"),
+                Entry::PlayOnTv => ("Cast", "sources.play_on_tv"),
                 Entry::Details => ("Info", "menu.details"),
                 Entry::Watchlist { saved: true } => ("Check", "menu.remove_watchlist"),
                 Entry::Watchlist { saved: false } => ("Plus", "menu.add_watchlist"),
@@ -488,8 +584,26 @@ fn pick(state: &mut RendererState, index: usize) {
             index: source,
             entries,
         } => {
-            if let Some(entry) = entries.get(index).copied() {
-                crate::stream_menu::run(state, &stream, source, entry);
+            match entries.get(index).copied() {
+                Some(crate::stream_menu::Entry::PlayOnTv) => {
+                    play_on_tv(
+                        state,
+                        Then::Stream(stream),
+                        menu.anchor,
+                        menu.selected.is_some(),
+                    );
+                }
+                Some(entry) => crate::stream_menu::run(state, &stream, source, entry),
+                None => {}
+            }
+            return;
+        }
+        Target::CastDevices { then, .. } => {
+            if let Some(device) = state.cast_scan.device(index) {
+                if let Some(session) = state.session.as_ref() {
+                    device.save(session.storage());
+                }
+                start_cast(state, then, device);
             }
             return;
         }
@@ -527,7 +641,17 @@ fn pick(state: &mut RendererState, index: usize) {
             &id,
         );
     }
+    if entry == Entry::PlayOnTv {
+        play_on_tv(
+            state,
+            Then::Card(card),
+            menu.anchor,
+            menu.selected.is_some(),
+        );
+        return;
+    }
     let action = match entry {
+        Entry::PlayOnTv => return,
         Entry::Play | Entry::Rewatch if card.raw.get("lastVideoId").is_some() => {
             NativeAction::StartPlayback { item: card.raw }
         }
@@ -686,6 +810,12 @@ pub(super) fn pointer(state: &mut RendererState, phase: PointerPhase, position: 
 }
 
 pub(super) fn tick(state: &mut RendererState) {
+    state.cast_scan.poll();
+    if let Some(menu) = state.card_menu.as_mut()
+        && let Target::CastDevices { count, .. } = &mut menu.target
+    {
+        *count = state.cast_scan.device_count();
+    }
     let (Some(start), Some(down_at)) = (state.touch_start, state.touch_down_at) else {
         return;
     };

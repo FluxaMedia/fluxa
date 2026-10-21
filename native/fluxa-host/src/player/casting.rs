@@ -1,6 +1,6 @@
 use super::{Panel, PlayerSession};
 use crate::RendererState;
-use crate::cast::Row;
+use crate::cast::{Device, Row};
 
 pub(super) fn open(player: &mut PlayerSession) {
     player.cast.scan();
@@ -28,4 +28,16 @@ pub(super) fn activate_row(state: &mut RendererState, index: usize) {
     if !paused {
         super::command(state, super::VideoCommand::TogglePause);
     }
+}
+
+pub(crate) fn cast_to(state: &mut RendererState, device: Device, url: &str, title: &str) {
+    let Some(player) = state.player.as_mut() else {
+        return;
+    };
+    let paused = player.status.paused;
+    player.cast.start(device, url, title, 0.0);
+    if !paused {
+        super::command(state, super::VideoCommand::TogglePause);
+    }
+    crate::sync::show_notice(state, "sources.play_on_tv_started");
 }
