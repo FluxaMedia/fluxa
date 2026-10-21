@@ -122,6 +122,27 @@ pub(super) fn form_details(
             components::note(ui, &t("profiles.duplicate_name"), metrics);
         }
         ui.add_space(14.0);
+        components::field_label(ui, &t("profiles.image_url"), metrics);
+        let url_field = components::text_input(
+            ui,
+            &mut model.avatar_input,
+            &t("profiles.image_url_placeholder"),
+            field_width,
+            components::InputKind::Url,
+            metrics,
+        );
+        if url_field.changed() {
+            let url = model.avatar_input.trim();
+            model.draft.avatar_url = (!url.is_empty()).then(|| url.to_owned());
+        } else if !url_field.has_focus() {
+            model.avatar_input = model
+                .draft
+                .avatar_url
+                .clone()
+                .filter(|url| url.starts_with("http"))
+                .unwrap_or_default();
+        }
+        ui.add_space(14.0);
         components::field_label(ui, &t("profiles.pin_lock"), metrics);
         let hint = if model.draft.has_pin && !model.draft.remove_pin {
             t("profiles.pin_set_placeholder")
