@@ -17,6 +17,7 @@ pub(crate) fn mini_player(
         crate::style::radius::control(),
         crate::ink(crate::style::tone::raised()),
     );
+    painter.rect_filled(tile, crate::style::radius::control(), Color32::BLACK);
     match player.video {
         Some(texture) => rounded_image(
             painter,
@@ -26,9 +27,7 @@ pub(crate) fn mini_player(
             crate::paint::full_uv(),
             Color32::WHITE,
         ),
-        None => {
-            painter.rect_filled(tile, crate::style::radius::control(), Color32::BLACK);
-        }
+        None => {}
     }
     let hit = ui.interact(
         tile,
