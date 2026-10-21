@@ -1,5 +1,13 @@
 use super::*;
 
+fn field_row(ui: &mut egui::Ui, compact: bool, add: impl FnOnce(&mut egui::Ui)) {
+    if compact {
+        ui.horizontal_wrapped(add);
+    } else {
+        ui.horizontal(add);
+    }
+}
+
 pub(super) fn draw_picker_settings(
     ui: &mut egui::Ui,
     viewport: Viewport,
@@ -53,7 +61,7 @@ pub(super) fn draw_picker_settings(
                 );
                 ui.add_space(12.0);
             }
-            ui.horizontal_wrapped(|ui| {
+            field_row(ui, compact, |ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(10.0);
                 let field_width = if compact {
                     ui.available_width()
@@ -119,7 +127,7 @@ pub(super) fn draw_picker_settings(
                     .color(metrics.text_muted),
             );
             ui.add_space(16.0);
-            ui.horizontal_wrapped(|ui| {
+            field_row(ui, compact, |ui| {
                 ui.spacing_mut().item_spacing = Vec2::splat(10.0);
                 let field_width = if compact {
                     ui.available_width()
