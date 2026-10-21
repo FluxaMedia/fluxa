@@ -26,7 +26,6 @@ pub(super) fn request_projection(state: &mut RendererState) {
         library_downloads: state.library_downloads,
         library_download_group: state.library_download_group.clone(),
         hero_trailers: state.trailers.inputs(),
-        hero_logos: state.logos.inputs(),
         hero_page: state.hero_page,
     });
 }
@@ -208,8 +207,6 @@ pub(super) fn apply_projection(state: &mut RendererState, projection: projection
     }
     state.detail.resume = state.home.resume_for(&state.detail.id).cloned();
     state.trailers.set_targets(projection.trailer_targets);
-    state.logos.set_targets(projection.logo_targets);
-    state.home.apply_logos(state.logos.fetched());
     let settings_section = state.settings.active_section;
     let section_open = state.settings.section_open;
     let page_open = state.settings.page_open;

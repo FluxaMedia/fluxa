@@ -182,7 +182,6 @@ pub(super) fn render_frame(state: &mut RendererState) {
     hero_catalogs::sync_settings(state);
     detail_sections::sync_settings(state);
     trailer::tick(state);
-    logos::tick(state);
     layout::sync_expanded(state);
     poster_data::tick(state);
     timer.mark("sync");

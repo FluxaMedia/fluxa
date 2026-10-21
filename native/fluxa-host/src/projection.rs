@@ -23,7 +23,6 @@ pub(crate) struct Request {
     pub library_downloads: bool,
     pub library_download_group: Option<String>,
     pub hero_trailers: Arc<Value>,
-    pub hero_logos: Arc<Value>,
     pub hero_page: u64,
 }
 
@@ -38,14 +37,13 @@ pub(crate) struct Projection {
     pub detail: DetailModel,
     pub settings: SettingsModel,
     pub trailer_targets: Vec<Value>,
-    pub logo_targets: Vec<Value>,
 }
 
 #[derive(Default)]
 struct HeroCache(Option<(Value, Option<Value>)>);
 
 impl HeroCache {
-    fn plan(&mut self, snapshot: &Value, trailers: &Value, logos: &Value, page: u64) -> Option<Value> {
+    fn plan(&mut self, snapshot: &Value, trailers: &Value, page: u64) -> Option<Value> {
         let page = Value::from(page);
         let inputs = [
             ("heroPage", Some(&page)),
@@ -54,8 +52,6 @@ impl HeroCache {
             ("prefs", snapshot.pointer("/settings/values")),
             ("fetchedTrailers", trailers.get("fetched")),
             ("fetchedIds", trailers.get("ids")),
-            ("fetchedLogos", logos.get("fetched")),
-            ("fetchedLogoIds", logos.get("ids")),
         ];
         if let Some((cached, plan)) = &self.0
             && inputs
@@ -111,18 +107,11 @@ fn project(
     let hero_plan = hero_cache.plan(
         snapshot,
         &request.hero_trailers,
-        &request.hero_logos,
         request.hero_page,
     );
     let trailer_targets = hero_plan
         .as_ref()
         .and_then(|plan| plan.get("trailerTargets"))
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let logo_targets = hero_plan
-        .as_ref()
-        .and_then(|plan| plan.get("logoTargets"))
         .and_then(Value::as_array)
         .cloned()
         .unwrap_or_default();
@@ -183,7 +172,6 @@ fn project(
         detail: detail_model(snapshot),
         settings: settings_model_from_core_snapshot(snapshot),
         trailer_targets,
-        logo_targets,
     }
 }
 

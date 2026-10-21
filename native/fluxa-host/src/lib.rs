@@ -110,7 +110,6 @@ mod gpu;
 mod input;
 mod launcher;
 mod layout;
-mod logos;
 mod player;
 mod poster_data;
 mod presence;
@@ -277,7 +276,6 @@ struct RendererState {
     image_picker: Option<ImagePicker>,
     pre_present: Option<PrePresent>,
     trailers: trailer::Trailers,
-    logos: logos::Logos,
     shorts: fluxa_ui::ShortsModel,
     poster_data: poster_data::PosterData,
 }
@@ -507,7 +505,6 @@ impl FluxaHost {
             image_picker: None,
             pre_present: None,
             trailers: trailer::Trailers::default(),
-            logos: logos::Logos::default(),
             shorts: Default::default(),
             poster_data: poster_data::PosterData::default(),
         })))
