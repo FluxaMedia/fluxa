@@ -1,0 +1,75 @@
+name: Windows build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to stamp into the build (numeric, for example 0.2.2)
+        required: true
+        default: 0.2.2
+
+env:
+  RUST_VERSION: "1.94.0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      FLUXA_TRAKT_CLIENT_ID: ${{ secrets.FLUXA_TRAKT_CLIENT_ID }}
+      FLUXA_TRAKT_CLIENT_SECRET: ${{ secrets.FLUXA_TRAKT_CLIENT_SECRET }}
+      FLUXA_SIMKL_CLIENT_ID: ${{ secrets.FLUXA_SIMKL_CLIENT_ID }}
+      FLUXA_SIMKL_CLIENT_SECRET: ${{ secrets.FLUXA_SIMKL_CLIENT_SECRET }}
+      FLUXA_ANILIST_CLIENT_ID: ${{ secrets.FLUXA_ANILIST_CLIENT_ID }}
+      FLUXA_ANILIST_CLIENT_SECRET: ${{ secrets.FLUXA_ANILIST_CLIENT_SECRET }}
+      FLUXA_NUVIO_SUPABASE_URL: ${{ secrets.FLUXA_NUVIO_SUPABASE_URL }}
+      FLUXA_NUVIO_SUPABASE_KEY: ${{ secrets.FLUXA_NUVIO_SUPABASE_KEY }}
+      FLUXA_SENTRY_DSN: ${{ secrets.FLUXA_SENTRY_DSN }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.RUST_VERSION }}
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: native
+          key: release-windows-x86_64
+
+      - name: Install Windows packaging tools
+        shell: bash
+        run: |
+          choco install innosetup -y --no-progress
+          dotnet tool install --global wix --version 5.0.2
+
+      - name: Stamp version
+        shell: bash
+        run: node scripts/set-version.mjs "${{ inputs.version }}"
+
+      - name: Fetch libmpv
+        shell: bash
+        run: native/fluxa-mpv/fetch-libmpv.sh
+
+      - name: Package
+        shell: bash
+        run: scripts/package-desktop.sh "${{ inputs.version }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: fluxa-windows-${{ inputs.version }}
+          path: dist/fluxa-*
+          retention-days: 14
