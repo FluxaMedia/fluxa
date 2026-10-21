@@ -1,3 +1,4 @@
+use crate::player::streams::stream_policy::iso_639_1_of;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -53,8 +54,9 @@ pub(crate) fn select_audio_track_json(request_json: &str) -> Option<String> {
 
     let language_matches = |track: &AudioTrackCandidate| {
         let language = track.language.as_deref().unwrap_or_default().to_lowercase();
-        !preferred.is_empty()
-            && (language == preferred || language.split('-').next() == preferred.split('-').next())
+        let base =
+            |value: &str| iso_639_1_of(value.split(['-', '_']).next().unwrap_or("")).to_string();
+        !preferred.is_empty() && (language == preferred || base(&language) == base(&preferred))
     };
     let pool: Vec<AudioTrackCandidate> = if candidates.iter().any(language_matches) {
         candidates.into_iter().filter(language_matches).collect()

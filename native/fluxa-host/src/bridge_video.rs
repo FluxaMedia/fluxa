@@ -57,7 +57,8 @@ impl VideoBridge {
                 .filter(|value| !value.is_empty())
                 .map(str::to_owned)
         };
-        let flag = |item: &Value, key: &str| item.get(key).and_then(Value::as_bool).unwrap_or(false);
+        let flag =
+            |item: &Value, key: &str| item.get(key).and_then(Value::as_bool).unwrap_or(false);
         self.tracks = items
             .iter()
             .filter_map(|item| {
@@ -68,6 +69,7 @@ impl VideoBridge {
                     title: text(item, "title"),
                     selected: flag(item, "selected"),
                     external: flag(item, "external"),
+                    forced: flag(item, "forced"),
                 })
             })
             .collect();

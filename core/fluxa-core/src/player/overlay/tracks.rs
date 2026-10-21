@@ -1,6 +1,7 @@
 use crate::player::streams::stream_policy::{
-    SubtitleSelectionTrack, find_preferred_subtitle_index_in_tracks, iso_639_1_of,
-    normalize_language_preference, resolve_preferred_audio_language,
+    SubtitleSelectionTrack, find_preferred_subtitle_index_in_tracks, is_forced_subtitle,
+    iso_639_1_of, normalize_language_preference, resolve_content_language,
+    resolve_preferred_audio_language,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -39,6 +40,9 @@ struct TrackInput {
     last_audio_language: Option<String>,
     last_subtitle_language: Option<String>,
     original_language: Option<String>,
+    language: Option<String>,
+    country: Option<String>,
+    device_languages: Vec<String>,
 }
 
 #[derive(Serialize)]
@@ -58,16 +62,8 @@ pub(crate) fn player_track_plan_json(input: &str) -> Option<String> {
     let subtitles_off = input.last_subtitle_language.as_deref() == Some("__off__")
         || (input.last_subtitle_language.is_none() && prefs.auto_enable_subtitles == Some(false));
     let subtitle_index = (!subtitles_off)
-        .then(|| {
-            find_preferred_subtitle_index_in_tracks(
-                &input.subtitle_tracks,
-                input.last_subtitle_language.as_deref(),
-                prefs.preferred_subtitle_language.as_deref(),
-                prefs.secondary_subtitle_language.as_deref(),
-            )
-        })
-        .filter(|index| *index >= 0)
-        .map(|index| index as usize);
+        .then(|| pick_subtitle(&input))
+        .flatten();
     let track_id = |index: usize| input.subtitle_tracks.get(index)?.id.clone();
     let secondary_index = subtitle_index.and_then(|primary| {
         let wanted = prefs.secondary_subtitle_language.as_deref()?;
@@ -93,6 +89,73 @@ pub(crate) fn player_track_plan_json(input: &str) -> Option<String> {
     .ok()
 }
 
+fn device_languages(input: &TrackInput) -> Vec<String> {
+    input
+        .device_languages
+        .iter()
+        .map(|language| canonical_language(language))
+        .filter(|language| !language.is_empty())
+        .collect()
+}
+
+fn pick_subtitle(input: &TrackInput) -> Option<usize> {
+    let tracks = &input.subtitle_tracks;
+    let prefs = &input.prefs;
+    let secondary = prefs.secondary_subtitle_language.as_deref();
+    let find = |primary: Option<&str>| {
+        let index =
+            find_preferred_subtitle_index_in_tracks(tracks, None, primary, secondary);
+        (index >= 0).then_some(index as usize)
+    };
+    let last = input
+        .last_subtitle_language
+        .as_deref()
+        .filter(|value| !value.is_empty() && *value != "__off__");
+    if last.is_some() {
+        let index = find_preferred_subtitle_index_in_tracks(
+            tracks,
+            last,
+            prefs.preferred_subtitle_language.as_deref(),
+            secondary,
+        );
+        return (index >= 0).then_some(index as usize);
+    }
+    match prefs.preferred_subtitle_language.as_deref() {
+        Some("forced") => {
+            let forced: Vec<usize> = (0..tracks.len())
+                .filter(|index| is_forced_subtitle(&tracks[*index]))
+                .collect();
+            let device = device_languages(input);
+            forced
+                .iter()
+                .copied()
+                .find(|index| {
+                    let language = tracks[*index]
+                        .language
+                        .as_deref()
+                        .map(canonical_language)
+                        .unwrap_or_default();
+                    device.contains(&language)
+                })
+                .or_else(|| forced.first().copied())
+                .or_else(|| find(None))
+        }
+        Some("device") => device_languages(input)
+            .iter()
+            .find_map(|language| {
+                let index = find_preferred_subtitle_index_in_tracks(
+                    tracks,
+                    None,
+                    Some(language),
+                    None,
+                );
+                (index >= 0).then_some(index as usize)
+            })
+            .or_else(|| find(None)),
+        preferred => find(preferred),
+    }
+}
+
 fn pick_audio(input: &TrackInput) -> Option<String> {
     let tracks: Vec<AudioTrackIn> = input
         .audio_tracks
@@ -102,19 +165,36 @@ fn pick_audio(input: &TrackInput) -> Option<String> {
     if tracks.is_empty() {
         return None;
     }
-    let primary = resolve_preferred_audio_language(
-        input.last_audio_language.as_deref(),
-        input.prefs.preferred_audio_language.as_deref(),
-        input.original_language.as_deref(),
+    let remembered = input
+        .last_audio_language
+        .as_deref()
+        .filter(|value| !value.trim().is_empty());
+    let original = resolve_content_language(
+        input.original_language.as_deref().or(input.language.as_deref()),
+        input.country.as_deref(),
     );
+    let primary = match (remembered, input.prefs.preferred_audio_language.as_deref()) {
+        (Some(last), _) => vec![canonical_language(last)],
+        (None, Some("default")) => Vec::new(),
+        (None, Some("device")) => device_languages(input),
+        (None, Some("original")) => original
+            .map(|language| vec![language])
+            .unwrap_or_else(|| device_languages(input)),
+        (None, preferred) => vec![canonical_language(&resolve_preferred_audio_language(
+            None,
+            preferred,
+            original.as_deref(),
+        ))],
+    };
     let secondary = input
         .prefs
         .secondary_audio_language
         .as_deref()
         .map(canonical_language)
         .unwrap_or_default();
-    [canonical_language(&primary), secondary]
+    primary
         .into_iter()
+        .chain([secondary])
         .filter(|language: &String| !language.is_empty() && language != "none")
         .find(|language| {
             tracks
@@ -197,5 +277,86 @@ mod tests {
         .unwrap();
         assert_eq!(result["disableSubtitles"], true);
         assert!(result["subtitleId"].is_null());
+    }
+
+    fn plan(input: Value) -> Value {
+        serde_json::from_str(&player_track_plan_json(&input.to_string()).unwrap()).unwrap()
+    }
+
+    #[test]
+    fn original_audio_uses_content_language_then_country_then_device() {
+        let tracks = json!([{"id": "1", "language": "eng"}, {"id": "2", "language": "kor"}]);
+        let by_language = plan(json!({
+            "audioTracks": tracks,
+            "prefs": {"preferredAudioLanguage": "original"},
+            "originalLanguage": "ko",
+            "deviceLanguages": ["en-US"]
+        }));
+        assert_eq!(by_language["audioId"], "2");
+        let by_country = plan(json!({
+            "audioTracks": tracks,
+            "prefs": {"preferredAudioLanguage": "original"},
+            "country": "South Korea"
+        }));
+        assert_eq!(by_country["audioId"], "2");
+        let unknown = plan(json!({
+            "audioTracks": tracks,
+            "prefs": {"preferredAudioLanguage": "original"},
+            "deviceLanguages": ["en-US"]
+        }));
+        assert_eq!(unknown["audioId"], "1");
+    }
+
+    #[test]
+    fn default_audio_leaves_file_default_unless_secondary_is_set() {
+        let tracks = json!([{"id": "1", "language": "eng"}, {"id": "2", "language": "jpn"}]);
+        let plain = plan(json!({
+            "audioTracks": tracks,
+            "prefs": {"preferredAudioLanguage": "default"}
+        }));
+        assert!(plain["audioId"].is_null());
+        let with_secondary = plan(json!({
+            "audioTracks": tracks,
+            "prefs": {"preferredAudioLanguage": "default", "secondaryAudioLanguage": "ja"}
+        }));
+        assert_eq!(with_secondary["audioId"], "2");
+    }
+
+    #[test]
+    fn forced_subtitles_pick_flagged_or_labelled_track() {
+        let flagged = plan(json!({
+            "subtitleTracks": [
+                {"id": "s1", "label": "English", "language": "en"},
+                {"id": "s2", "label": "English", "language": "en", "forced": true}
+            ],
+            "prefs": {"preferredSubtitleLanguage": "forced"}
+        }));
+        assert_eq!(flagged["subtitleId"], "s2");
+        let labelled = plan(json!({
+            "subtitleTracks": [
+                {"id": "s1", "label": "English", "language": "en"},
+                {"id": "s2", "label": "Spanish [Forced]", "language": "es"}
+            ],
+            "prefs": {"preferredSubtitleLanguage": "forced"}
+        }));
+        assert_eq!(labelled["subtitleId"], "s2");
+        let none_forced = plan(json!({
+            "subtitleTracks": [{"id": "s1", "label": "English", "language": "en"}],
+            "prefs": {"preferredSubtitleLanguage": "forced"}
+        }));
+        assert_eq!(none_forced["disableSubtitles"], true);
+    }
+
+    #[test]
+    fn device_subtitles_follow_device_language_order() {
+        let result = plan(json!({
+            "subtitleTracks": [
+                {"id": "s1", "label": "English", "language": "en"},
+                {"id": "s2", "label": "Turkish", "language": "tr"}
+            ],
+            "prefs": {"preferredSubtitleLanguage": "device"},
+            "deviceLanguages": ["tr-TR", "en-US"]
+        }));
+        assert_eq!(result["subtitleId"], "s2");
     }
 }

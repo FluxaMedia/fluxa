@@ -977,7 +977,7 @@
     {
       "key": "preferredAudioLanguage",
       "type": "string",
-      "default": "none",
+      "default": "default",
       "scope": "profile",
       "category": "subtitles"
     },

@@ -74,3 +74,25 @@ fn resolve_torrent_file_index_prefers_requested_then_filename_then_largest_video
         (None, None)
     );
 }
+
+#[test]
+fn iso_639_2_tags_resolve_to_two_letter_codes() {
+    assert_eq!(super::iso_639_1_of("fra"), "fr");
+    assert_eq!(super::iso_639_1_of("chi"), "zh");
+    assert_eq!(super::iso_639_1_of("xx"), "xx");
+}
+
+#[test]
+fn subtitle_label_matches_language_name_but_not_substring_of_a_word() {
+    let track = |label: &str| super::SubtitleSelectionTrack {
+        id: None,
+        label: label.to_string(),
+        language: None,
+        forced: false,
+    };
+    let tracks = [track("Look at that"), track("Thai - SDH")];
+    assert_eq!(
+        super::find_preferred_subtitle_index_in_tracks(&tracks, None, Some("th"), None),
+        1
+    );
+}

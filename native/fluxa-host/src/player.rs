@@ -94,6 +94,7 @@ pub struct VideoTrack {
     pub title: Option<String>,
     pub selected: bool,
     pub external: bool,
+    pub forced: bool,
 }
 
 #[derive(Clone, Debug, Default)]
@@ -867,14 +868,16 @@ pub(crate) fn direct_playback_command(item: &Value, profile: &Value) -> Value {
 }
 
 pub(crate) fn preview_scene(state: &mut RendererState, scene: &str) {
-    let track = |id: &str, subtitle: bool, language: &str, title: &str, selected: bool| VideoTrack {
-        id: id.to_owned(),
-        subtitle,
-        language: Some(language.to_owned()),
-        title: Some(title.to_owned()),
-        selected,
-        external: false,
-    };
+    let track =
+        |id: &str, subtitle: bool, language: &str, title: &str, selected: bool| VideoTrack {
+            id: id.to_owned(),
+            subtitle,
+            language: Some(language.to_owned()),
+            title: Some(title.to_owned()),
+            selected,
+            external: false,
+            forced: false,
+        };
     let style = state.settings.values.clone();
     let Some(player) = state.player.as_mut() else {
         return;

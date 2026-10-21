@@ -475,6 +475,7 @@ pub struct PlayerTrackOption {
     pub lang: Option<String>,
     pub source: Option<String>,
     pub external: bool,
+    pub forced: bool,
     pub format: Option<String>,
 }
 

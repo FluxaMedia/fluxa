@@ -361,6 +361,21 @@ fn step_lookup(overlay: &mut Overlay, session: &SessionHandle) {
     }
 }
 
+fn device_languages(profile: &Value) -> Vec<String> {
+    let mut languages: Vec<String> = ["LANGUAGE", "LC_ALL", "LC_MESSAGES", "LANG"]
+        .iter()
+        .filter_map(|name| std::env::var(name).ok())
+        .flat_map(|value| value.split(':').map(str::to_owned).collect::<Vec<_>>())
+        .map(|value| value.split('.').next().unwrap_or("").replace('_', "-"))
+        .filter(|value| !value.is_empty() && value != "C" && value != "POSIX")
+        .collect();
+    if let Some(app) = profile.get("language").and_then(Value::as_str) {
+        languages.push(app.to_owned());
+    }
+    languages.dedup();
+    languages
+}
+
 fn apply_tracks(player: &mut PlayerSession, video: &mut dyn VideoBackend, profile: &Value) {
     let tracks = video.tracks();
     if !tracks.iter().any(|track| !track.subtitle) {
@@ -382,6 +397,7 @@ fn apply_tracks(player: &mut PlayerSession, video: &mut dyn VideoBackend, profil
                 "id": track.id,
                 "label": track.title.clone().unwrap_or_default(),
                 "language": track.language,
+                "forced": track.forced,
             })
         })
         .collect();
@@ -402,6 +418,9 @@ fn apply_tracks(player: &mut PlayerSession, video: &mut dyn VideoBackend, profil
             "lastAudioLanguage": meta.get("lastAudioLanguage"),
             "lastSubtitleLanguage": meta.get("lastSubtitleLanguage"),
             "originalLanguage": meta.get("originalLanguage"),
+            "language": meta.get("language"),
+            "country": meta.get("country"),
+            "deviceLanguages": device_languages(profile),
         }),
     ) else {
         return;

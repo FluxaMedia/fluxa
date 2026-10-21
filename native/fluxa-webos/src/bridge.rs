@@ -34,6 +34,7 @@ pub fn pump<D: Demuxer, P: Pipeline>(player: &mut Player<D, P>, bridge: &Arc<Mut
             title: track.info.title.clone(),
             selected: track.selected,
             external: false,
+            forced: false,
         })
         .collect();
     if let Ok(mut bridge) = bridge.lock() {

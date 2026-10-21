@@ -553,6 +553,9 @@ impl MpvClientHandle {
             let selected = self
                 .get_flag_property(&format!("track-list/{index}/selected"))
                 .unwrap_or(false);
+            let forced = self
+                .get_flag_property(&format!("track-list/{index}/forced"))
+                .unwrap_or(false);
             let fallback = if track_type == "audio" {
                 format!("Audio {}", tracks.len() + 1)
             } else {
@@ -588,6 +591,7 @@ impl MpvClientHandle {
                 lang,
                 source,
                 external,
+                forced,
                 format,
             });
         }
