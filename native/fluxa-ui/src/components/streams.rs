@@ -45,7 +45,17 @@ pub(crate) fn paint_badge_chip(
     badge: &crate::SourceBadge,
     assets: &mut impl HomeAssets,
 ) {
-    let rounding = chip.height() * 0.5;
+    paint_badge_chip_rounded(painter, chip, galley, badge, assets, chip.height() * 0.5);
+}
+
+pub(crate) fn paint_badge_chip_rounded(
+    painter: &egui::Painter,
+    chip: Rect,
+    galley: std::sync::Arc<egui::Galley>,
+    badge: &crate::SourceBadge,
+    assets: &mut impl HomeAssets,
+    rounding: f32,
+) {
     let text = if badge.outline {
         let color = badge.border.or(badge.fill).unwrap_or(ink(tone::dim()));
         painter.rect_stroke(

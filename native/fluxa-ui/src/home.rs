@@ -687,9 +687,9 @@ pub(crate) fn draw_home_with_options(
                         if text_fade > 0.05 {
                             let mut chip_painter = ui.painter().clone();
                             chip_painter.multiply_opacity(text_fade);
-                            let font_size = style.metadata_size * 0.78;
+                            let font_size = style.metadata_size * 0.85;
                             let mut left = text_rect.right() + 12.0;
-                            for badge in &hero.badges {
+                            for badge in hero.badges.iter().filter(|badge| badge.essential) {
                                 let (galley, size) =
                                     components::badge_chip_layout(&chip_painter, badge, font_size);
                                 if left + size.x > metadata_rect.right() {
@@ -699,12 +699,13 @@ pub(crate) fn draw_home_with_options(
                                     Pos2::new(left, text_rect.center().y - size.y * 0.5),
                                     size,
                                 );
-                                components::paint_badge_chip(
+                                components::paint_badge_chip_rounded(
                                     &chip_painter,
                                     chip,
                                     galley,
                                     badge,
                                     assets,
+                                    3.0,
                                 );
                                 left = chip.right() + 6.0;
                             }

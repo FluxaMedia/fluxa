@@ -231,6 +231,10 @@ fn convert(badge: engine::StreamBadge) -> SourceBadge {
         border: badge.look.border.map(color),
         outline: badge.look.outline,
         image: badge.image_url,
+        essential: matches!(
+            badge.kind,
+            BadgeKind::Resolution | BadgeKind::Hdr | BadgeKind::Audio
+        ),
         label: badge.label,
     }
 }
@@ -414,6 +418,7 @@ fn preview(state: &RendererState) -> SourceBadge {
         border: parse(&fields[5]),
         outline: state.settings.badge_outline,
         image: Some(fields[6].trim().to_owned()).filter(|url| !url.is_empty()),
+        essential: false,
     }
 }
 

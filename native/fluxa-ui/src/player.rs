@@ -208,6 +208,7 @@ pub struct SourceBadge {
     pub border: Option<Color32>,
     pub outline: bool,
     pub image: Option<String>,
+    pub essential: bool,
 }
 
 const GESTURE_EDGE: f32 = 0.28;
