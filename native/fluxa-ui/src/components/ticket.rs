@@ -89,6 +89,35 @@ fn half(rect: Rect, tear: f32, top: bool) -> Outline {
     }
 }
 
+fn paper(rect: Rect) -> impl Fn(Pos2) -> Color32 {
+    layers(vec![
+        Box::new(linear(
+            rect.left_top(),
+            rect.right_bottom(),
+            vec![
+                (0.0, Color32::from_rgb(46, 40, 38)),
+                (1.0, Color32::from_rgb(24, 22, 24)),
+            ],
+        )),
+        Box::new(linear(
+            rect.left_top(),
+            rect.left_bottom(),
+            vec![
+                (0.0, Color32::from_white_alpha(14)),
+                (0.3, Color32::TRANSPARENT),
+            ],
+        )),
+    ])
+}
+
+fn blend(under: Color32, over: Color32) -> Color32 {
+    let a = over.a() as f32 / 255.0;
+    let mix = |u: u8, o: u8| (u as f32 * (1.0 - a) + o as f32 * a) as u8;
+    let alpha = (under.a() as f32 + over.a() as f32 * (1.0 - under.a() as f32 / 255.0)) as u8;
+    let unmult = |u: u8, o: u8| if alpha == 0 { 0 } else { mix(u, o) };
+    Color32::from_rgba_unmultiplied(unmult(under.r(), over.r()), unmult(under.g(), over.g()), unmult(under.b(), over.b()), alpha)
+}
+
 fn notch_shade(tear: f32, left: f32, right: f32) -> Vec<Box<dyn Fn(Pos2) -> Color32>> {
     [left, right]
         .into_iter()
@@ -221,29 +250,10 @@ pub(crate) fn watch_ticket(
 
     let top_shape = half(stage, tear, true);
     let bottom_shape = half(stub, tear, false);
-    let (stage_w, stage_h) = (stage.width(), stage.height());
+    let stage_h = stage.height();
 
     if !dom_backdrop {
-        let base = layers(vec![
-            Box::new(linear(
-                stage.left_top(),
-                stage.right_bottom(),
-                vec![
-                    (0.0, Color32::from_rgb(38, 36, 42)),
-                    (1.0, Color32::from_rgb(23, 22, 26)),
-                ],
-            )),
-            Box::new(radial(
-                stage.right_top(),
-                Vec2::new(stage_w * 0.7, stage_h * 1.2),
-                vec![(0.0, warm(0.42)), (0.62, Color32::TRANSPARENT)],
-            )),
-            Box::new(radial(
-                stage.left_bottom(),
-                Vec2::new(stage_w * 0.6, stage_h * 0.9),
-                vec![(0.0, warm(0.14)), (0.7, Color32::TRANSPARENT)],
-            )),
-        ]);
+        let base = paper(rect);
         top_shape.fill(&painter, top_place, 18.0, &base);
     }
     if let Some((texture, size)) = backdrop {
@@ -264,23 +274,23 @@ pub(crate) fn watch_ticket(
         );
     }
     if poster {
-        let darken = layers(vec![
-            Box::new(linear(
-                stage.left_top(),
-                stage.left_bottom(),
-                vec![
-                    (0.0, black(0.35 * poster_alpha)),
-                    (0.35, Color32::TRANSPARENT),
-                    (0.38, Color32::TRANSPARENT),
-                    (1.0, black(0.82 * poster_alpha)),
-                ],
-            )),
-            Box::new(radial(
-                stage.right_top(),
-                Vec2::new(stage_w * 0.6, stage_h),
-                vec![(0.0, warm(0.18 * poster_alpha)), (1.0, Color32::TRANSPARENT)],
-            )),
-        ]);
+        let ground = paper(rect);
+        let top_dim = layers(vec![Box::new(linear(
+            stage.left_top(),
+            stage.left_bottom(),
+            vec![
+                (0.0, black(0.35 * poster_alpha)),
+                (0.35, Color32::TRANSPARENT),
+            ],
+        ))]);
+        let darken = move |p: Pos2| {
+            let fade = (((p.y - stage.top()) / stage_h - 0.38) / 0.62).clamp(0.0, 1.0);
+            let fade = fade * fade * (3.0 - 2.0 * fade) * 0.97 * poster_alpha;
+            let base = ground(p);
+            let cover = Color32::from_rgba_unmultiplied(base.r(), base.g(), base.b(), (fade * 255.0) as u8);
+            let top = top_dim(p);
+            blend(top, cover)
+        };
         top_shape.fill(&painter, top_place, 18.0, &darken);
     }
     let shade_top = layers(notch_shade(tear, stage.left(), stage.right()));
@@ -292,12 +302,7 @@ pub(crate) fn watch_ticket(
         egui::Stroke::new(stroke::hairline(), Color32::from_white_alpha(30)),
     );
 
-    let stub_fill = if poster {
-        black(0.88)
-    } else {
-        metrics.surface
-    };
-    bottom_shape.fill(&painter, stub_place, 24.0, &|_| stub_fill);
+    bottom_shape.fill(&painter, stub_place, 24.0, &paper(rect));
     let shade_bottom = layers(notch_shade(tear, stub.left(), stub.right()));
     bottom_shape.fill(&painter, stub_place, 12.0, &shade_bottom);
     bottom_shape.stroke(
