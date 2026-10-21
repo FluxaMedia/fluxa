@@ -73,6 +73,7 @@ pub(crate) fn log_out(state: &mut RendererState) {
     profiles::write(&storage, "active_profile_id", &json!(""));
     profiles::write(&storage, OFFLINE_KEY, &json!(false));
     state.profiles = None;
+    profiles::clear_typed_settings(state);
     open(state);
 }
 

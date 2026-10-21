@@ -356,8 +356,19 @@ pub(crate) fn new_profile_id() -> String {
     format!("{nanos:x}-{:x}", std::process::id())
 }
 
+pub(crate) fn clear_typed_settings(state: &mut RendererState) {
+    let settings = &mut state.settings;
+    settings.poster_fields = Default::default();
+    settings.server_fields = Default::default();
+    settings.badge_fields = Default::default();
+    settings.collection_fields = Default::default();
+    settings.addon_url.clear();
+    settings.plugin_url.clear();
+}
+
 pub(crate) fn activate(state: &mut RendererState, storage: &Storage, id: &str) {
     write(storage, "active_profile_id", &json!(id));
+    clear_typed_settings(state);
     match SessionHandle::open(storage.clone()) {
         Ok(session) => {
             if let Err(error) = load_profile(&session) {
