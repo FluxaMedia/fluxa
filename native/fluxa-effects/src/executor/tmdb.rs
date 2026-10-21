@@ -85,6 +85,8 @@ impl EffectExecutor {
     pub fn fetch_logos(
         &self,
         items: Vec<Value>,
+        api_key: String,
+        language: String,
     ) -> std::sync::mpsc::Receiver<Vec<(String, String)>> {
         let (sender, receiver) = std::sync::mpsc::channel();
         let executor = self.clone();
@@ -97,6 +99,19 @@ impl EffectExecutor {
                 ) else {
                     continue;
                 };
+                if let Some(tmdb_id) = id.strip_prefix("tmdb:") {
+                    let logo = match Client::builder()
+                        .native_timeout(Duration::from_secs(10))
+                        .build()
+                    {
+                        Ok(client) if !api_key.trim().is_empty() => {
+                            tmdb_logo(&client, content_type, tmdb_id, &api_key, &language).await
+                        }
+                        _ => None,
+                    };
+                    found.push((id.to_owned(), logo.unwrap_or_default()));
+                    continue;
+                }
                 let base = id.split(':').next().unwrap_or(id);
                 let payload = json!({"contentType": content_type, "id": base});
                 let logo = executor
@@ -273,36 +288,42 @@ pub(super) async fn tmdb_similar(
     None
 }
 
+async fn tmdb_logo(
+    client: &Client,
+    content_type: &str,
+    id: &str,
+    api_key: &str,
+    language: &str,
+) -> Option<String> {
+    let language = language.split('-').next().unwrap_or(language);
+    let kind = if content_type == "movie" { "movie" } else { "tv" };
+    let url = format!(
+        "https://api.themoviedb.org/3/{kind}/{id}/images?api_key={api_key}&include_image_language={language},en,null"
+    );
+    let images = fetch_json(client, &url).await.ok()?;
+    let logos = images.get("logos")?.as_array()?;
+    let pick = logos
+        .iter()
+        .find(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some(language))
+        .or_else(|| {
+            logos
+                .iter()
+                .find(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some("en"))
+        })
+        .or_else(|| logos.first())?;
+    let path = pick.get("file_path")?.as_str()?;
+    Some(format!("https://image.tmdb.org/t/p/w500{path}"))
+}
+
 async fn tmdb_with_logos(
     client: &Client,
     mut metas: Vec<Value>,
     api_key: &str,
     language: &str,
 ) -> Vec<Value> {
-    let language = language.split('-').next().unwrap_or(language);
     let logos = futures::future::join_all(metas.iter().map(|meta| async move {
         let id = meta.get("id")?.as_str()?.strip_prefix("tmdb:")?;
-        let kind = if meta.get("type")?.as_str()? == "movie" {
-            "movie"
-        } else {
-            "tv"
-        };
-        let url = format!(
-            "https://api.themoviedb.org/3/{kind}/{id}/images?api_key={api_key}&include_image_language={language},en,null"
-        );
-        let images = fetch_json(client, &url).await.ok()?;
-        let logos = images.get("logos")?.as_array()?;
-        let pick = logos
-            .iter()
-            .find(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some(language))
-            .or_else(|| {
-                logos
-                    .iter()
-                    .find(|logo| logo.get("iso_639_1").and_then(Value::as_str) == Some("en"))
-            })
-            .or_else(|| logos.first())?;
-        let path = pick.get("file_path")?.as_str()?;
-        Some(format!("https://image.tmdb.org/t/p/w500{path}"))
+        tmdb_logo(client, meta.get("type")?.as_str()?, id, api_key, language).await
     }))
     .await;
     for (meta, logo) in metas.iter_mut().zip(logos) {

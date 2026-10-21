@@ -107,5 +107,18 @@ pub(crate) fn tick(state: &mut RendererState) {
             state.logos.requested.insert(id.to_owned());
         }
     }
-    state.logos.fetching = Some(session.executor().fetch_logos(targets));
+    let api_key = state
+        .settings
+        .values
+        .get("tmdbApiKey")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_owned();
+    let language = crate::profile_language(
+        session
+            .snapshot()
+            .pointer("/profile/active")
+            .unwrap_or(&Value::Null),
+    );
+    state.logos.fetching = Some(session.executor().fetch_logos(targets, api_key, language));
 }
