@@ -161,7 +161,7 @@ pub fn home_hero_plan(request: &Value) -> Value {
                 .unwrap_or(usize::MAX)
         });
     }
-    categories.truncate(2);
+    categories.truncate(if hero_toggles.is_empty() { 2 } else { 4 });
     let billboard = categories
         .first()
         .and_then(|category| items_of(category).first());

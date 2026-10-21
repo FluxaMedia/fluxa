@@ -3364,5 +3364,6 @@
   "profiles.choose_icon": "اختر أيقونة الملف الشخصي",
   "profiles.choose_icon_desc": "اختر من حزم صور الملف الشخصي.",
   "profiles.image_url": "رابط الصورة",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png",
+  "settings.hero_catalogs_default_note": "عند عدم تحديد أي شيء، يعتمد العرض الرئيسي على أول صفين في الرئيسية."
 }

@@ -173,6 +173,7 @@ pub(super) fn render_frame(state: &mut RendererState) {
     input::tick_discover_search(state);
     ambient::tick(state);
     ambient::sync_settings(state);
+    hero_catalogs::sync_settings(state);
     detail_sections::sync_settings(state);
     trailer::tick(state);
     logos::tick(state);

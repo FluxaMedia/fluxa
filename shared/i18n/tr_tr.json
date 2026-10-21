@@ -3375,5 +3375,6 @@
   "profiles.choose_icon": "Profil simgesi seç",
   "profiles.choose_icon_desc": "Profil görsel paketlerinden birini seç.",
   "profiles.image_url": "Görsel bağlantısı",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png",
+  "settings.hero_catalogs_default_note": "Hiçbiri seçili değilse hero'yu Home'daki ilk iki satır besler."
 }

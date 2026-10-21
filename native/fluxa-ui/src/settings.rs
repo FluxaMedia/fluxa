@@ -5,6 +5,7 @@ mod about;
 mod account;
 mod addons;
 mod ambient;
+mod hero;
 mod badges;
 mod collections;
 mod detail_sections;
@@ -595,6 +596,10 @@ fn content_height(
         "Ambient Mode" => {
             groups_height(&groups, width, language, rows_metrics)
                 + ambient::ambient_height(settings, language, metrics.compact)
+        }
+        "Home" => {
+            groups_height(&groups, width, language, rows_metrics)
+                + hero::hero_height(settings, language, metrics.compact)
         }
         "Details" => {
             groups_height(&groups, width, language, rows_metrics)
@@ -1863,6 +1868,19 @@ fn draw_settings_extended_section(
             metrics,
             layout,
         ),
+        "Home" => {
+            let top = group_cards(
+                rect,
+                &visible_groups(settings, viewport),
+                language,
+                described(metrics),
+            )
+            .last()
+            .map_or(rect.top() + APPEARANCE_PAGE_HEADER_HEIGHT, |card| {
+                card.bottom() + APPEARANCE_GROUP_GAP
+            });
+            hero::draw_hero_settings(context, settings, language, rect, top, metrics, layout);
+        }
         "Ambient Mode" => {
             let top = group_cards(
                 rect,

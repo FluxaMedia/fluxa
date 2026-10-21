@@ -3364,5 +3364,6 @@
   "profiles.choose_icon": "בחר סמל פרופיל",
   "profiles.choose_icon_desc": "בחר מחבילות תמונות הפרופיל שלך.",
   "profiles.image_url": "קישור לתמונה",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png",
+  "settings.hero_catalogs_default_note": "כשאין בחירה, שתי השורות הראשונות במסך הבית מזינות את ההירו."
 }

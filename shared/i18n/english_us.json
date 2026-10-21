@@ -3375,5 +3375,6 @@
   "profiles.choose_icon": "Choose a profile icon",
   "profiles.choose_icon_desc": "Pick one of your profile image packs.",
   "profiles.image_url": "Image URL",
-  "profiles.image_url_placeholder": "https://example.com/avatar.png"
+  "profiles.image_url_placeholder": "https://example.com/avatar.png",
+  "settings.hero_catalogs_default_note": "When nothing is selected, the first two Home rows feed the hero."
 }
