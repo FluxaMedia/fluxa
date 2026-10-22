@@ -71,7 +71,7 @@ class FluxaAndroidRustPlugin : Plugin<Project> {
         )
 
         extensions.configure<BaseAppModuleExtension> {
-            sourceSets.getByName("main").jniLibs.srcDir(outputDir)
+            sourceSets.getByName("main").jniLibs.srcDir(outputDir.get().asFile)
         }
 
         fun configureToolchain(task: Exec, target: RustTarget) {

@@ -33,7 +33,7 @@ val isReleaseBuild = gradle.startParameter.taskNames.any { it.contains("release"
 
 android {
     namespace = "com.fluxa.app"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "com.fluxa.app"
@@ -143,7 +143,7 @@ android {
 
     sourceSets {
         getByName("main") {
-            jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs"))
+            jniLibs.srcDir(layout.buildDirectory.dir("generated/rustJniLibs").get().asFile)
             jniLibs.srcDir("libmpv/jni")
             assets.srcDir("../../../native/fluxa-mpv/shaders")
         }

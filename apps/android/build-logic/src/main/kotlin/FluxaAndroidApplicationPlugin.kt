@@ -12,7 +12,7 @@ class FluxaAndroidApplicationPlugin : Plugin<Project> {
         pluginManager.apply("org.jetbrains.kotlin.android")
 
         extensions.configure<BaseAppModuleExtension> {
-            compileSdk = 36
+            compileSdk = 37
             defaultConfig {
                 minSdk = 24
                 targetSdk = 35
