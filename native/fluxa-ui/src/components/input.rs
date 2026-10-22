@@ -329,6 +329,8 @@ fn put_edit(
         |ui| {
             if native {
                 ui.visuals_mut().text_cursor.stroke = egui::Stroke::NONE;
+                ui.visuals_mut().selection.bg_fill = Color32::TRANSPARENT;
+                ui.visuals_mut().selection.stroke = egui::Stroke::NONE;
             }
             edit.id(id).show(ui)
         },
