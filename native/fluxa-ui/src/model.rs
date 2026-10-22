@@ -470,6 +470,15 @@ pub fn resume_episode(card: &HomeCard) -> Option<(i64, i64)> {
     ))
 }
 
+pub(crate) fn first_episode(meta: &serde_json::Value) -> Option<(i64, i64, String)> {
+    let episodes = detail::detail_episodes(meta, &serde_json::Value::Null);
+    let first = episodes
+        .iter()
+        .find(|episode| episode.season > 0)
+        .or(episodes.first())?;
+    Some((first.season, first.number, first.title.clone()))
+}
+
 pub fn play_label(
     language: &str,
     resume: Option<&HomeCard>,

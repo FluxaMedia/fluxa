@@ -382,6 +382,18 @@ pub(crate) fn draw_home_with_options(
             );
         }
         paint_hero_scrim(&painter, hero_visual_rect, compact, metrics.background);
+        paint_ambient_fade(
+            &painter,
+            Rect::from_min_max(
+                Pos2::new(
+                    hero_visual_rect.left(),
+                    hero_visual_rect.bottom() - hero_fade_height,
+                ),
+                hero_visual_rect.right_bottom(),
+            ),
+            screen,
+            assets,
+        );
         if let Some(text) = home
             .trailer
             .as_ref()
@@ -738,7 +750,15 @@ pub(crate) fn draw_home_with_options(
                             let series =
                                 matches!(hero.item_type.as_deref(), Some("series" | "tv" | "show"));
                             let label = home.playback_unavailable.clone().unwrap_or_else(|| {
-                                play_label(&home.language, resume, series.then_some((1, 1, None)))
+                                let first = series
+                                    .then(|| first_episode(&hero.raw))
+                                    .flatten()
+                                    .unwrap_or((1, 1, String::new()));
+                                play_label(
+                                    &home.language,
+                                    resume,
+                                    series.then_some((first.0, first.1, Some(first.2.as_str()))),
+                                )
                             });
                             let text_size = metrics.nav_label_size + 2.0;
                             let measure = |ui: &egui::Ui, text: &str| {

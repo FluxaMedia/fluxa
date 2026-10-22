@@ -223,6 +223,35 @@ pub(crate) fn paint_hero_scrim(
     );
 }
 
+pub(crate) fn paint_ambient_fade(
+    painter: &egui::Painter,
+    rect: Rect,
+    screen: Rect,
+    assets: &impl HomeAssets,
+) {
+    let uv_at = |pos: Pos2| {
+        Pos2::new(
+            ((pos.x - screen.left()) / screen.width()).clamp(0.0, 1.0),
+            ((pos.y - screen.top()) / screen.height()).clamp(0.0, 1.0),
+        )
+    };
+    let mut mesh = egui::epaint::Mesh::with_texture(assets.background());
+    for (pos, alpha) in [
+        (rect.left_top(), 0),
+        (rect.right_top(), 0),
+        (rect.right_bottom(), 255),
+        (rect.left_bottom(), 255),
+    ] {
+        mesh.vertices.push(egui::epaint::Vertex {
+            pos,
+            uv: uv_at(pos),
+            color: Color32::from_white_alpha(alpha),
+        });
+    }
+    mesh.indices.extend([0, 1, 2, 0, 2, 3]);
+    painter.add(egui::Shape::mesh(mesh));
+}
+
 pub(crate) fn text_width(painter: &egui::Painter, text: &str, font: FontId) -> f32 {
     if text.is_empty() {
         return 0.0;

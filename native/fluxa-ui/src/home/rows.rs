@@ -458,7 +458,15 @@ pub(crate) fn draw_home_rows(
     let meta = hero_meta_line(&card.raw, &home.language);
     let resume = card.id.as_deref().and_then(|id| home.resume_for(id));
     let series = matches!(card.item_type.as_deref(), Some("series" | "tv" | "show"));
-    let play_label = play_label(&home.language, resume, series.then_some((1, 1, None)));
+    let first = series
+        .then(|| first_episode(&card.raw))
+        .flatten()
+        .unwrap_or((1, 1, String::new()));
+    let play_label = play_label(
+        &home.language,
+        resume,
+        series.then_some((first.0, first.1, Some(first.2.as_str()))),
+    );
     let progress = resume
         .map(|resume| resume.progress)
         .filter(|progress| *progress > 0.0);
