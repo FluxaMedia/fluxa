@@ -1,7 +1,7 @@
 use super::*;
 use crate::player::VideoCommand;
 
-const HOST_REPORT: Duration = Duration::from_secs(10);
+const TICK: Duration = Duration::from_millis(250);
 const SAMPLE: Duration = Duration::from_millis(500);
 const POSITION_JUMP: f64 = 2.0;
 const SETTLE: Duration = Duration::from_millis(1500);
@@ -9,20 +9,17 @@ const SETTLE: Duration = Duration::from_millis(1500);
 #[derive(Default)]
 pub(crate) struct State {
     room: Option<String>,
-    opened: Option<String>,
-    ready_sent: bool,
-    ready_key: Option<String>,
+    status_sent: Option<(&'static str, Option<String>)>,
+    published: bool,
     shared: bool,
-    buffering_sent: bool,
-    last_report: Option<(Instant, bool, f64, f64)>,
     last_sample: Option<Instant>,
+    last_tick: Option<Instant>,
     correcting: bool,
     rate: Option<f64>,
     selected: Option<String>,
     settle_until: Option<Instant>,
     event_seen: u64,
     chat_seen: u64,
-    host_paused: Option<bool>,
     keep_stream: bool,
 }
 
@@ -59,6 +56,32 @@ fn base_rate(state: &RendererState) -> f64 {
     state.watch.rate.unwrap_or(1.0)
 }
 
+fn same_content(a: &Value, b: &Value) -> bool {
+    a["id"] == b["id"]
+        && (a["videoId"].is_null() || b["videoId"].is_null() || a["videoId"] == b["videoId"])
+}
+
+fn party_key(content: &Value) -> String {
+    let artwork = &content["artwork"];
+    let number = |value: &Value| value.as_u64().map(|n| n.to_string()).unwrap_or_default();
+    format!(
+        "{}|{}|{}|{}",
+        content["contentType"].as_str().unwrap_or_default().to_lowercase(),
+        content["id"].as_str().unwrap_or_default(),
+        number(&artwork["season"]),
+        number(&artwork["episode"]),
+    )
+}
+
+fn in_sync(state: &RendererState, watch: &Value) -> bool {
+    state.watch.shared
+        || state
+            .player
+            .as_ref()
+            .and_then(|player| player.watch_content())
+            .is_some_and(|content| same_content(&watch["content"], &content))
+}
+
 pub(crate) fn intercept(state: &mut RendererState, command: &VideoCommand) -> bool {
     let Some(session) = state.session.as_ref() else {
         return true;
@@ -68,7 +91,7 @@ pub(crate) fn intercept(state: &mut RendererState, command: &VideoCommand) -> bo
         .get("watchTogether")
         .cloned()
         .unwrap_or(Value::Null);
-    if watch["phase"] != "playing" || watch["role"] != "GUEST" {
+    if watch["roomCode"].is_null() || !in_sync(state, &watch) {
         return true;
     }
     let Some(status) = state.player.as_ref().map(|player| player.status.clone()) else {
@@ -87,7 +110,7 @@ pub(crate) fn intercept(state: &mut RendererState, command: &VideoCommand) -> bo
         VideoCommand::SetSpeed(rate) => json!({"kind": "speed", "rate": rate}),
         _ => return true,
     };
-    if watch["locked"] == true {
+    if watch["locked"] == true && watch["role"] != "HOST" {
         let text = fluxa_ui::localized("watch.host_controls", state.settings.language());
         state.notice = Some((text, Instant::now()));
         return false;
@@ -143,7 +166,14 @@ pub(crate) fn tick(state: &mut RendererState) {
         return;
     }
     for command in commands {
-        apply(state, &command, watch["role"] == "HOST");
+        apply(state, &command);
+    }
+    if state.watch.last_tick.is_none_or(|at| at.elapsed() >= TICK) {
+        state.watch.last_tick = Some(Instant::now());
+        dispatch(
+            state,
+            json!({"type": "watchTogetherTicked", "nowMs": now_ms()}),
+        );
     }
     report(state, &watch);
     announce_waiting(state, &watch);
@@ -267,7 +297,7 @@ fn announce_waiting(state: &mut RendererState, watch: &Value) {
     }
 }
 
-fn apply(state: &mut RendererState, command: &Value, host: bool) {
+fn apply(state: &mut RendererState, command: &Value) {
     match command["command"].as_str() {
         Some("pickStream") => {
             let content = &command["content"];
@@ -280,7 +310,7 @@ fn apply(state: &mut RendererState, command: &Value, host: bool) {
             if let Some(video) = content["videoId"].as_str() {
                 item["lastVideoId"] = video.into();
             }
-            open(state, content, NativeAction::StartPlayback { item });
+            open(state, NativeAction::StartPlayback { item });
         }
         Some("playShared") => {
             let url = command["stream"]["url"].as_str().unwrap_or_default();
@@ -288,21 +318,11 @@ fn apply(state: &mut RendererState, command: &Value, host: bool) {
             if url.is_empty() {
                 return;
             }
-            let content = command["content"].clone();
-            state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
-            state.watch.ready_sent = false;
+            state.watch.status_sent = None;
             state.watch.shared = true;
             player::close(state);
             let resolve = player::open_file(state, url, title);
             dispatch(state, resolve);
-        }
-        Some("start") => {
-            let position = command["positionMs"].as_f64().unwrap_or_default() / 1000.0;
-            if !host {
-                seek_to(state, position);
-            }
-            let stay_paused = host && state.watch.host_paused.take().unwrap_or(false);
-            set_paused(state, stay_paused);
         }
         Some("remote") => {
             let position = command["positionMs"].as_f64().unwrap_or_default() / 1000.0;
@@ -339,9 +359,8 @@ fn apply(state: &mut RendererState, command: &Value, host: bool) {
     }
 }
 
-fn open(state: &mut RendererState, content: &Value, action: NativeAction) {
-    state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
-    state.watch.ready_sent = false;
+fn open(state: &mut RendererState, action: NativeAction) {
+    state.watch.status_sent = None;
     state.watch.shared = false;
     player::close(state);
     state.pending_native_actions.push(action);
@@ -381,21 +400,34 @@ fn shared_stream(state: &RendererState, content: &Value) -> Option<Value> {
     Some(json!({"url": url, "title": content["title"], "headers": headers}))
 }
 
+fn set_status(
+    state: &mut RendererState,
+    name: &'static str,
+    media_key: Option<String>,
+) {
+    let next = (name, media_key.clone());
+    if state.watch.status_sent.as_ref() == Some(&next) {
+        return;
+    }
+    state.watch.status_sent = Some(next);
+    dispatch(
+        state,
+        json!({
+            "type": "watchTogetherStatusChanged",
+            "status": name,
+            "mediaKey": media_key,
+            "nowMs": now_ms(),
+        }),
+    );
+}
+
 fn report(state: &mut RendererState, watch: &Value) {
-    let playing = watch["phase"] == "playing";
     let is_host = watch["role"] == "HOST";
     let Some(player) = state.player.as_ref() else {
-        if state.watch.ready_sent {
-            state.watch.ready_sent = false;
-            dispatch(
-                state,
-                json!({"type": "watchTogetherReadyChanged", "ready": false, "nowMs": now_ms()}),
-            );
-        }
+        set_status(state, "browsing", None);
         return;
     };
     let status = player.status.clone();
-    let speed = player.speed;
     let content = player.watch_content();
     let announceable = |content: &Value| {
         content["contentType"] == "movie" || content["videoId"].as_str().is_some()
@@ -417,109 +449,70 @@ fn report(state: &mut RendererState, watch: &Value) {
         );
         if state.watch.selected.as_deref() != Some(key.as_str()) {
             state.watch.selected = Some(key);
-            state.watch.opened = content["id"].as_str().map(ToOwned::to_owned);
-            state.watch.ready_sent = false;
-            state.watch.last_report = None;
-            let start = state
-                .player
-                .as_ref()
-                .map_or(0, |player| player.start_offset_ms());
-            dispatch(
-                state,
-                json!({
-                    "type": "watchTogetherContentSelected",
-                    "content": content,
-                    "stream": stream,
-                    "startPositionMs": start,
-                }),
-            );
-            return;
+            if stream.is_some() || !same_content(&watch["content"], &content) {
+                state.watch.published = true;
+                let start = state
+                    .player
+                    .as_ref()
+                    .map_or(0, |player| player.start_offset_ms());
+                dispatch(
+                    state,
+                    json!({
+                        "type": "watchTogetherContentSelected",
+                        "content": content,
+                        "stream": stream,
+                        "startPositionMs": start,
+                        "nowMs": now_ms(),
+                    }),
+                );
+                return;
+            }
         }
     }
-    if state.watch.opened.is_none() {
+    let synced = in_sync(state, watch);
+    let key = Some(party_key(&watch["content"])).filter(|_| synced);
+    if !synced {
+        set_status(state, "browsing", None);
         return;
     }
-    let now = now_ms();
-    if !playing {
-        let checked = !is_host && !state.watch.shared;
-        let local = content.clone().filter(|_| checked);
-        if checked && local.is_none() {
-            return;
-        }
-        let key = local
-            .as_ref()
-            .map(|local| format!("{}|{}", local["id"], local["videoId"]));
-        if status.has_frame && (!state.watch.ready_sent || state.watch.ready_key != key) {
-            state.watch.ready_sent = true;
-            state.watch.ready_key = key;
-            if is_host && state.watch.host_paused.is_none() {
-                state.watch.host_paused = Some(status.paused);
-            }
-            set_paused(state, true);
-            dispatch(
-                state,
-                json!({"type": "watchTogetherReadyChanged", "ready": true, "content": local, "nowMs": now}),
-            );
-        } else if state.watch.ready_sent && !status.paused {
-            set_paused(state, true);
-        }
+    if !status.has_frame {
+        set_status(state, "loading", key);
         return;
     }
     let buffering = status.stalled;
-    if buffering != state.watch.buffering_sent {
-        state.watch.buffering_sent = buffering;
+    set_status(state, if buffering { "buffering" } else { "ready" }, key);
+    let now = now_ms();
+    if is_host && !state.watch.published {
+        state.watch.published = true;
+        let speed = state.player.as_ref().map_or(1.0, |player| player.speed);
         dispatch(
             state,
-            json!({"type": "watchTogetherBufferingChanged", "buffering": buffering, "nowMs": now}),
+            json!({
+                "type": "watchTogetherPlaybackPublished",
+                "positionMs": (status.position * 1000.0) as i64,
+                "playing": !status.paused,
+                "rate": speed,
+                "nowMs": now,
+            }),
         );
     }
-    let position_ms = (status.position * 1000.0) as i64;
-    if is_host {
-        let due = match state.watch.last_report {
-            None => true,
-            Some((at, paused, position, rate)) => {
-                let expected = if paused {
-                    position
-                } else {
-                    position + at.elapsed().as_secs_f64() * rate
-                };
-                at.elapsed() >= HOST_REPORT
-                    || paused != status.paused
-                    || (rate - speed).abs() > 0.01
-                    || (status.position - expected).abs() > POSITION_JUMP
-            }
-        };
-        if due {
-            state.watch.last_report = Some((Instant::now(), status.paused, status.position, speed));
-            dispatch(
-                state,
-                json!({
-                    "type": "watchTogetherPlaybackReported",
-                    "positionMs": position_ms,
-                    "durationMs": (status.duration * 1000.0) as i64,
-                    "playing": !status.paused,
-                    "buffering": buffering,
-                    "rate": speed,
-                    "nowMs": now,
-                }),
-            );
-        }
-    } else if state
-        .watch
-        .last_sample
-        .is_none_or(|at| at.elapsed() >= SAMPLE)
+    if !buffering
+        && state
+            .watch
+            .last_sample
+            .is_none_or(|at| at.elapsed() >= SAMPLE)
         && state
             .watch
             .settle_until
             .is_none_or(|until| Instant::now() >= until)
-        && !buffering
     {
         state.watch.last_sample = Some(Instant::now());
         dispatch(
             state,
             json!({
                 "type": "watchTogetherPositionSampled",
-                "positionMs": position_ms,
+                "positionMs": (status.position * 1000.0) as i64,
+                "durationMs": (status.duration * 1000.0) as i64,
                 "nowMs": now,
                 "speedCorrectionActive": state.watch.correcting,
             }),
@@ -570,11 +563,16 @@ pub(crate) fn handle(state: &mut RendererState, request: fluxa_ui::WatchTogether
             state.watch_panel = false;
         }
         Request::Create => {
+            let Some(content) = state.player.as_ref().and_then(|player| player.watch_content())
+            else {
+                return;
+            };
             let (name, profile_id, avatar) = identity(state);
             dispatch(
                 state,
                 json!({
                     "type": "watchTogetherCreateRequested",
+                    "content": content,
                     "displayName": name,
                     "profileId": profile_id,
                     "avatar": avatar,

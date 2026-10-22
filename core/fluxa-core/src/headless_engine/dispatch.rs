@@ -588,6 +588,12 @@ impl HeadlessEngine {
                 behind_ms,
                 now_ms,
             } => watch_together::dispatch_status(self, status, media_key, behind_ms, now_ms),
+            AppAction::WatchTogetherPlaybackPublished {
+                position_ms,
+                playing,
+                rate,
+                now_ms,
+            } => watch_together::dispatch_publish(self, position_ms, playing, rate.unwrap_or(1.0), now_ms),
             AppAction::WatchTogetherControlRequested { kind, now_ms } => {
                 watch_together::dispatch_control(self, kind, now_ms)
             }

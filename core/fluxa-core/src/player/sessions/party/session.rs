@@ -508,7 +508,7 @@ impl PartySession {
     }
 
     pub fn publish_media(&mut self, media: PartyMedia, position_ms: i64, t: Time) -> Vec<PartyEffect> {
-        if media == self.party.media || !self.party.is_host() {
+        if media.key() == self.party.media.key() || !self.party.is_host() {
             return Vec::new();
         }
         let same_content = media.key() == self.party.media.key();

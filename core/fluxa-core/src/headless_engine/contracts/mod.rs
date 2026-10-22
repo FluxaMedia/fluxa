@@ -448,6 +448,14 @@ pub(crate) enum AppAction {
         behind_ms: Option<i64>,
         now_ms: i64,
     },
+    #[serde(rename = "watchTogetherPlaybackPublished")]
+    WatchTogetherPlaybackPublished {
+        position_ms: i64,
+        playing: bool,
+        #[serde(default)]
+        rate: Option<f64>,
+        now_ms: i64,
+    },
     #[serde(rename = "watchTogetherControlRequested")]
     WatchTogetherControlRequested {
         #[serde(flatten)]

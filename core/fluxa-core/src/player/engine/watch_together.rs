@@ -322,6 +322,19 @@ pub(crate) fn dispatch_control(
     })
 }
 
+pub(crate) fn dispatch_publish(
+    engine: &mut HeadlessEngine,
+    position_ms: i64,
+    playing: bool,
+    rate: f64,
+    now_ms: i64,
+) -> Vec<EffectEnvelope> {
+    run(engine, now_ms, |session| {
+        let now = session.now_ms(t(now_ms));
+        session.publish(!playing, position_ms, rate as f32, false, now, t(now_ms))
+    })
+}
+
 pub(crate) fn dispatch_chat(
     engine: &mut HeadlessEngine,
     text: String,
