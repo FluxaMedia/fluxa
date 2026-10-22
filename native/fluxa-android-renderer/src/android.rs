@@ -10,8 +10,8 @@ use fluxa_host::{
 };
 use fluxa_renderer::platform::ANDROID_BACKEND_ORDER;
 use jni::{
-    JNIEnv, JavaVM,
-    objects::{GlobalRef, JByteArray, JClass, JIntArray, JObject, JString, JValue},
+    Env, EnvUnowned, JavaVM, Outcome, jni_str,
+    objects::{Global, JByteArray, JClass, JIntArray, JObject, JString, JValue},
     sys::{jboolean, jdouble, jfloat, jint, jlong},
 };
 use raw_window_handle::{AndroidDisplayHandle, AndroidNdkWindowHandle, RawWindowHandle};
@@ -56,16 +56,23 @@ fn host(handle: jlong) -> Option<&'static FluxaHost> {
     (handle != 0).then(|| unsafe { &*(handle as *const FluxaHost) })
 }
 
-fn string(env: &mut JNIEnv<'_>, value: &JString<'_>) -> Option<String> {
-    env.get_string(value)
-        .ok()
-        .map(|value| value.to_string_lossy().into_owned())
+fn attached<T>(
+    env: &mut EnvUnowned<'_>,
+    run: impl FnOnce(&mut Env<'_>) -> jni::errors::Result<T>,
+) -> Option<T> {
+    match env.with_env(run).into_outcome() {
+        Outcome::Ok(value) => Some(value),
+        _ => None,
+    }
 }
 
-fn java_string(env: &JNIEnv<'_>, value: Option<String>) -> jni::sys::jstring {
+fn string(env: &mut EnvUnowned<'_>, value: &JString<'_>) -> Option<String> {
+    attached(env, |env| value.try_to_string(env))
+}
+
+fn java_string(env: &mut EnvUnowned<'_>, value: Option<String>) -> jni::sys::jstring {
     value
-        .and_then(|value| env.new_string(value).ok())
-        .map(|value| value.into_raw())
+        .and_then(|value| attached(env, |env| JString::from_str(env, value).map(|s| s.as_raw())))
         .unwrap_or(std::ptr::null_mut())
 }
 
@@ -98,33 +105,38 @@ fn android_key(key_code: jint, shift: bool) -> Option<KeyInput> {
     Some(KeyInput::Key(key))
 }
 
-static EMOJI: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+static EMOJI: OnceLock<Global<JClass<'static>>> = OnceLock::new();
 
 fn rasterize_emoji(text: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
-    let (vm, class) = EMOJI.get()?;
-    let mut env = vm.attach_current_thread().ok()?;
-    let text = env.new_string(text).ok()?;
-    let result = env
-        .call_static_method(
-            <&JClass>::from(class.as_obj()),
-            "render",
-            "(Ljava/lang/String;I)[I",
-            &[JValue::Object(&text), JValue::Int(size as i32)],
-        )
-        .and_then(|value| value.l());
-    let array = match result {
-        Ok(array) if !array.is_null() => JIntArray::from(array),
-        _ => {
-            let _ = env.exception_clear();
-            return None;
-        }
-    };
-    let len = env.get_array_length(&array).ok()? as usize;
-    if len < 2 {
+    let class = EMOJI.get()?;
+    let pixels = JavaVM::singleton()
+        .ok()?
+        .attach_current_thread(|env| -> jni::errors::Result<Option<Vec<i32>>> {
+            let text = JString::from_str(env, text)?;
+            let result = env
+                .call_static_method(
+                    class,
+                    jni_str!("render"),
+                    jni::jni_sig!("(Ljava/lang/String;I)[I"),
+                    &[JValue::Object(&text), JValue::Int(size as i32)],
+                )
+                .and_then(|value| value.l());
+            let array = match result {
+                Ok(array) if !array.is_null() => env.cast_local::<JIntArray>(array)?,
+                _ => {
+                    env.exception_clear();
+                    return Ok(None);
+                }
+            };
+            let len = env.get_array_length(&array)? as usize;
+            let mut pixels = vec![0i32; len];
+            env.get_int_array_region(&array, 0, &mut pixels)?;
+            Ok(Some(pixels))
+        })
+        .ok()??;
+    if pixels.len() < 2 {
         return None;
     }
-    let mut pixels = vec![0i32; len];
-    env.get_int_array_region(&array, 0, &mut pixels).ok()?;
     let (width, height) = (pixels[0] as u32, pixels[1] as u32);
     let rgba = pixels[2..]
         .iter()
@@ -136,49 +148,56 @@ fn rasterize_emoji(text: &str, size: u32) -> Option<(u32, u32, Vec<u8>)> {
     Some((width, height, rgba))
 }
 
-static INPUT_FOCUS: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+static INPUT_FOCUS: OnceLock<Global<JClass<'static>>> = OnceLock::new();
 
 fn input_focus_changed() {
-    let Some((vm, class)) = INPUT_FOCUS.get() else {
+    let Some(class) = INPUT_FOCUS.get() else {
         return;
     };
-    let Ok(mut env) = vm.attach_current_thread() else {
+    let Ok(vm) = JavaVM::singleton() else {
         return;
     };
-    if env
-        .call_static_method(<&JClass>::from(class.as_obj()), "changed", "()V", &[])
-        .is_err()
-    {
-        let _ = env.exception_clear();
-    }
+    let _ = vm.attach_current_thread(|env| -> jni::errors::Result<()> {
+        if env
+            .call_static_method(class, jni_str!("changed"), jni::jni_sig!("()V"), &[])
+            .is_err()
+        {
+            env.exception_clear();
+        }
+        Ok(())
+    });
 }
 
-static ARTWORK: OnceLock<(JavaVM, GlobalRef)> = OnceLock::new();
+static ARTWORK: OnceLock<Global<JClass<'static>>> = OnceLock::new();
 
 fn decode_artwork(bytes: &[u8], target: [u32; 2]) -> Option<(u32, u32, Vec<u8>)> {
-    let (vm, class) = ARTWORK.get()?;
-    let mut env = vm.attach_current_thread().ok()?;
-    let input = env.byte_array_from_slice(bytes).ok()?;
-    let result = env
-        .call_static_method(
-            <&JClass>::from(class.as_obj()),
-            "decode",
-            "([BII)[B",
-            &[
-                JValue::Object(&input),
-                JValue::Int(target[0] as i32),
-                JValue::Int(target[1] as i32),
-            ],
-        )
-        .and_then(|value| value.l());
-    let array = match result {
-        Ok(array) if !array.is_null() => JByteArray::from(array),
-        _ => {
-            let _ = env.exception_clear();
-            return None;
-        }
-    };
-    let mut raw = env.convert_byte_array(&array).ok()?;
+    let class = ARTWORK.get()?;
+    let mut raw = JavaVM::singleton()
+        .ok()?
+        .attach_current_thread(|env| -> jni::errors::Result<Option<Vec<u8>>> {
+            let input = env.byte_array_from_slice(bytes)?;
+            let result = env
+                .call_static_method(
+                    class,
+                    jni_str!("decode"),
+                    jni::jni_sig!("([BII)[B"),
+                    &[
+                        JValue::Object(&input),
+                        JValue::Int(target[0] as i32),
+                        JValue::Int(target[1] as i32),
+                    ],
+                )
+                .and_then(|value| value.l());
+            let array = match result {
+                Ok(array) if !array.is_null() => env.cast_local::<JByteArray>(array)?,
+                _ => {
+                    env.exception_clear();
+                    return Ok(None);
+                }
+            };
+            env.convert_byte_array(&array).map(Some)
+        })
+        .ok()??;
     if raw.len() < 8 {
         return None;
     }
@@ -190,35 +209,36 @@ fn decode_artwork(bytes: &[u8], target: [u32; 2]) -> Option<(u32, u32, Vec<u8>)>
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     density: jfloat,
     artwork_cache_dir: JString<'_>,
 ) -> jlong {
     fluxa_host::set_logger(android_log);
-    if let (Ok(vm), Ok(class)) = (
-        env.get_java_vm(),
-        env.find_class("com/fluxa/app/ui/rust/EmojiRasterizer"),
-    ) && let Ok(class) = env.new_global_ref(class)
-    {
-        let _ = EMOJI.set((vm, class));
-        fluxa_host::set_emoji_rasterizer(rasterize_emoji);
-    }
-    if let (Ok(vm), Ok(class)) = (
-        env.get_java_vm(),
-        env.find_class("com/fluxa/app/ui/rust/ArtworkDecoder"),
-    ) && let Ok(class) = env.new_global_ref(class)
-    {
-        let _ = ARTWORK.set((vm, class));
-        fluxa_host::set_artwork_decoder(decode_artwork);
-    }
-    if let (Ok(vm), Ok(class)) = (
-        env.get_java_vm(),
-        env.find_class("com/fluxa/app/ui/rust/NativeInputFocus"),
-    ) && let Ok(class) = env.new_global_ref(class)
-    {
-        let _ = INPUT_FOCUS.set((vm, class));
-        fluxa_host::set_input_focus_listener(input_focus_changed);
+    let classes = attached(&mut env, |env| {
+        let mut global = |name: &jni::strings::JNIStr| {
+            env.find_class(name)
+                .and_then(|class| env.new_global_ref(class))
+        };
+        Ok((
+            global(jni_str!("com/fluxa/app/ui/rust/EmojiRasterizer")),
+            global(jni_str!("com/fluxa/app/ui/rust/ArtworkDecoder")),
+            global(jni_str!("com/fluxa/app/ui/rust/NativeInputFocus")),
+        ))
+    });
+    if let Some((emoji, artwork, input_focus)) = classes {
+        if let Ok(class) = emoji {
+            let _ = EMOJI.set(class);
+            fluxa_host::set_emoji_rasterizer(rasterize_emoji);
+        }
+        if let Ok(class) = artwork {
+            let _ = ARTWORK.set(class);
+            fluxa_host::set_artwork_decoder(decode_artwork);
+        }
+        if let Ok(class) = input_focus {
+            let _ = INPUT_FOCUS.set(class);
+            fluxa_host::set_input_focus_listener(input_focus_changed);
+        }
     }
     let artwork_cache_dir = string(&mut env, &artwork_cache_dir).map(PathBuf::from);
     let host = FluxaHost::new(density, artwork_cache_dir);
@@ -229,19 +249,22 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_createNa
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pollVideoNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
 ) -> jni::sys::jstring {
     let requests = video_bridge()
         .lock()
         .map(|mut bridge| bridge.take_requests())
         .unwrap_or_default();
-    java_string(&env, Some(serde_json::Value::from(requests).to_string()))
+    java_string(
+        &mut env,
+        Some(serde_json::Value::from(requests).to_string()),
+    )
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoStatusNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     position: jdouble,
     duration: jdouble,
@@ -257,10 +280,10 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
     let status = VideoStatus {
         position,
         duration,
-        paused: paused != 0,
-        muted: muted != 0,
-        volume: if muted != 0 { 0.0 } else { 100.0 },
-        has_frame: has_frame != 0,
+        paused: paused,
+        muted: muted,
+        volume: if muted { 0.0 } else { 100.0 },
+        has_frame: has_frame,
         error,
         chapters: Vec::new(),
         buffering: (buffering >= 0.0).then_some(buffering),
@@ -274,7 +297,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoSta
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoTracksNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     json: JString<'_>,
 ) {
@@ -316,7 +339,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoTra
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoChaptersNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     json: JString<'_>,
 ) {
@@ -342,11 +365,11 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoCha
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThumbnailNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     data: JByteArray<'_>,
 ) {
-    let Ok(bytes) = env.convert_byte_array(&data) else {
+    let Some(bytes) = attached(&mut env, |env| env.convert_byte_array(&data)) else {
         return;
     };
     let Some((head, rgba)) = bytes.split_at_checked(12) else {
@@ -375,7 +398,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThu
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThumbnailProgressNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     done: jint,
     count: jint,
@@ -390,26 +413,26 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_videoThu
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_startSessionNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     data_dir: JString<'_>,
 ) -> jni::sys::jboolean {
     let (Some(host), Some(dir)) = (host(handle), string(&mut env, &data_dir)) else {
-        return 0;
+        return false;
     };
     match host.start_session(PathBuf::from(dir)) {
-        Ok(()) => 1,
+        Ok(()) => true,
         Err(error) => {
             android_log(&format!("core session failed to start: {error}"));
-            0
+            false
         }
     }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_destroyNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) {
@@ -420,7 +443,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_destroyN
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeBottomInsetNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     inset_dp: jfloat,
@@ -432,7 +455,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeB
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeTopInsetNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     inset_dp: jfloat,
@@ -444,19 +467,19 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setSafeT
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setWindowFocusedNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     focused: jboolean,
 ) {
     if let Some(host) = host(handle) {
-        host.set_window_focused(focused != 0);
+        host.set_window_focused(focused);
     }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFormFactorNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     form_factor: JString<'_>,
@@ -468,7 +491,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFormF
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setHomeStateNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     json: JString<'_>,
@@ -480,7 +503,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setHomeS
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setCoreSnapshotNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     snapshot_json: JString<'_>,
@@ -492,79 +515,91 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setCoreS
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_snapshotNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::snapshot_json))
+    java_string(&mut env, host(handle).and_then(FluxaHost::snapshot_json))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_accessibilityTreeNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::accessibility_json))
+    java_string(
+        &mut env,
+        host(handle).and_then(FluxaHost::accessibility_json),
+    )
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pollActionsNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::take_actions_json))
+    java_string(
+        &mut env,
+        host(handle).and_then(FluxaHost::take_actions_json),
+    )
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeOpenUrlNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::take_open_url))
+    java_string(&mut env, host(handle).and_then(FluxaHost::take_open_url))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeExternalPlayNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::take_external_play))
+    java_string(
+        &mut env,
+        host(handle).and_then(FluxaHost::take_external_play),
+    )
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeInstallApkNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::take_install_apk))
+    java_string(&mut env, host(handle).and_then(FluxaHost::take_install_apk))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_launcherFeedNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::launcher_feed_json))
+    java_string(
+        &mut env,
+        host(handle).and_then(FluxaHost::launcher_feed_json),
+    )
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_takeAppIconNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::take_app_icon))
+    java_string(&mut env, host(handle).and_then(FluxaHost::take_app_icon))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_scrollNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     delta_y: f32,
@@ -576,7 +611,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_scrollNa
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pointerEventNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     action: jint,
@@ -596,20 +631,20 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pointerE
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_keyDownNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     key_code: jint,
-    shift: jint,
+    shift: jboolean,
 ) {
-    if let (Some(host), Some(input)) = (host(handle), android_key(key_code, shift != 0)) {
+    if let (Some(host), Some(input)) = (host(handle), android_key(key_code, shift)) {
         host.key_down(input);
     }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedNodeNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jlong {
@@ -621,25 +656,25 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedN
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textInputFocusedNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jboolean {
-    host(handle).is_some_and(FluxaHost::text_input_focused) as jboolean
+    host(handle).is_some_and(FluxaHost::text_input_focused)
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_isPlayingNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jboolean {
-    host(handle).is_some_and(|host| host.is_playing()) as jni::sys::jboolean
+    host(handle).is_some_and(|host| host.is_playing())
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pipStateNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jint {
@@ -648,37 +683,37 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pipState
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setPipNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     on: jni::sys::jboolean,
 ) {
     if let Some(host) = host(handle) {
-        host.set_pip(on != 0);
+        host.set_pip(on);
     }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_keepAwakeNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jboolean {
-    host(handle).is_some_and(|host| host.keep_awake()) as jni::sys::jboolean
+    host(handle).is_some_and(|host| host.keep_awake())
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_wantsLandscapeNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jboolean {
-    host(handle).is_some_and(|host| host.wants_landscape()) as jni::sys::jboolean
+    host(handle).is_some_and(|host| host.wants_landscape())
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusNodeNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     node: jlong,
@@ -690,7 +725,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusNod
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_activateNodeNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     node: jlong,
@@ -702,7 +737,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_activate
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textInputNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     text: JString<'_>,
@@ -714,7 +749,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textInpu
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceCreatedNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     surface: JObject<'_>,
@@ -722,8 +757,10 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceC
     height: jint,
 ) {
     let Some(host) = host(handle) else { return };
-    let pointer =
-        unsafe { ANativeWindow_fromSurface(env.get_native_interface(), surface.as_raw()) };
+    let pointer = attached(&mut env, |env| Ok(env.get_raw()))
+        .map_or(std::ptr::null_mut(), |raw| unsafe {
+            ANativeWindow_fromSurface(raw, surface.as_raw())
+        });
     let Some(window) = NonNull::new(pointer).map(NativeWindowRef) else {
         android_log("ANativeWindow_fromSurface returned null");
         return;
@@ -744,7 +781,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceC
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceChangedNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     width: jint,
@@ -757,7 +794,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceC
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceDestroyedNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) {
@@ -768,7 +805,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_surfaceD
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_renderNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) {
@@ -779,26 +816,26 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_renderNa
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_importLegacyNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     data_dir: JString<'_>,
     legacy: JString<'_>,
 ) -> jni::sys::jboolean {
     let (Some(dir), Some(legacy)) = (string(&mut env, &data_dir), string(&mut env, &legacy)) else {
-        return 0;
+        return false;
     };
     match fluxa_host::import_legacy(PathBuf::from(dir), &legacy) {
-        Ok(imported) => imported as jni::sys::jboolean,
+        Ok(imported) => imported,
         Err(error) => {
             android_log(&format!("legacy import failed: {error}"));
-            0
+            false
         }
     }
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pushActionNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     action: JString<'_>,
@@ -813,32 +850,30 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_pushActi
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_backNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jboolean {
-    host(handle).is_some_and(|host| host.back()) as jni::sys::jboolean
+    host(handle).is_some_and(|host| host.back())
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedTextNative<
     'local,
 >(
-    env: JNIEnv<'local>,
+    mut env: EnvUnowned<'local>,
     _class: JClass<'local>,
     handle: jlong,
 ) -> jni::sys::jstring {
     let text = host(handle)
         .and_then(FluxaHost::focused_text)
         .unwrap_or_default();
-    env.new_string(text)
-        .map(|value| value.into_raw())
-        .unwrap_or(std::ptr::null_mut())
+    java_string(&mut env, Some(text))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setFieldTextNative(
-    mut env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
     field: jlong,
@@ -851,7 +886,7 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_setField
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedFieldIdNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jlong {
@@ -860,16 +895,16 @@ pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_focusedF
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_textFieldNative(
-    env: JNIEnv<'_>,
+    mut env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) -> jni::sys::jstring {
-    java_string(&env, host(handle).and_then(FluxaHost::text_field_json))
+    java_string(&mut env, host(handle).and_then(FluxaHost::text_field_json))
 }
 
 #[unsafe(no_mangle)]
 pub unsafe extern "system" fn Java_com_fluxa_app_ui_rust_NativeRenderer_blurTextInputNative(
-    _env: JNIEnv<'_>,
+    _env: EnvUnowned<'_>,
     _class: JClass<'_>,
     handle: jlong,
 ) {

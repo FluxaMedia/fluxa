@@ -4,7 +4,7 @@ use std::time::Instant;
 
 use fluxa_host::FluxaHost;
 use serde_json::Value as Json;
-use zbus::blocking::{Connection, connection};
+use zbus::{Connection, connection};
 use zbus::interface;
 use zbus::zvariant::{ObjectPath, OwnedValue, Value};
 
@@ -242,11 +242,13 @@ pub fn start(host: FluxaHost) {
         host,
         state: state.clone(),
     };
-    let built = connection::Builder::session()
-        .and_then(|builder| builder.name("org.mpris.MediaPlayer2.fluxa"))
-        .and_then(|builder| builder.serve_at(PATH, Root))
-        .and_then(|builder| builder.serve_at(PATH, player))
-        .and_then(|builder| builder.build());
+    let built = pollster::block_on(
+        connection::Builder::session()
+            .name("org.mpris.MediaPlayer2.fluxa")
+            .serve_at(PATH, Root)
+            .serve_at(PATH, player)
+            .build(),
+    );
     match built {
         Ok(connection) => {
             let _ = MPRIS.set(Mpris { connection, state });
@@ -293,9 +295,13 @@ pub fn publish(plan: &Json) {
     };
     changed(mpris);
     if jumped {
-        let _ = mpris
-            .connection
-            .emit_signal(None::<&str>, PATH, PLAYER, "Seeked", &(position_us,));
+        let _ = pollster::block_on(mpris.connection.emit_signal(
+            None::<&str>,
+            PATH,
+            PLAYER,
+            "Seeked",
+            &(position_us,),
+        ));
     }
 }
 
@@ -338,11 +344,11 @@ fn changed(mpris: &Mpris) {
     props.insert("CanGoNext", Value::Bool(can_next));
     props.insert("CanSeek", Value::Bool(can_seek));
     props.insert("Metadata", Value::from(metadata));
-    let _ = mpris.connection.emit_signal(
+    let _ = pollster::block_on(mpris.connection.emit_signal(
         None::<&str>,
         PATH,
         "org.freedesktop.DBus.Properties",
         "PropertiesChanged",
         &(PLAYER, props, Vec::<&str>::new()),
-    );
+    ));
 }

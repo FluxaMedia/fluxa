@@ -31,7 +31,8 @@ image = { version = "0.25.10", default-features = false, features = ["png"] }
 rustybuzz = "0.20"
 
 [target.'cfg(target_os = "linux")'.dependencies]
-zbus = "5"
+zbus = "6"
+pollster = "1"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6"
