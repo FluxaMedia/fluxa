@@ -207,6 +207,7 @@ async fn download(
 ) -> Result<(String, Option<u64>), String> {
     let mut have = std::fs::metadata(part).map(|meta| meta.len()).unwrap_or(0);
     let mut request = Client::builder()
+        .bundled_roots()
         .connect_timeout(Duration::from_secs(20))
         .build()
         .map_err(|error| error.to_string())?
@@ -214,7 +215,6 @@ async fn download(
     if let Some(headers) = stream
         .pointer("/behaviorHints/proxyHeaders/request")
         .and_then(Value::as_object)
-        .bundled_roots()
     {
         for (name, value) in headers {
             if let Some(value) = value.as_str() {

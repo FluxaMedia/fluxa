@@ -389,11 +389,11 @@ pub(super) async fn youtube_request(payload: &Value) -> Result<Value, String> {
         .and_then(Value::as_str)
         .ok_or_else(|| "missing trailer request URL".to_owned())?;
     let client = Client::builder()
+        .bundled_roots()
         .native_timeout(Duration::from_secs(15))
         .build()
         .map_err(|error| error.to_string())?;
     let headers = payload.get("headers").and_then(Value::as_object);
-        .bundled_roots()
     let proxy = if cfg!(target_arch = "wasm32") {
         YOUTUBE_PROXY.get()
     } else {
