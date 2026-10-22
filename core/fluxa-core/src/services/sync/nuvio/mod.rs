@@ -10,6 +10,7 @@ mod home_layout;
 mod library_snapshot;
 mod profiles;
 mod progress_sync;
+mod settings_sync;
 mod write_requests;
 
 pub(crate) use addon_priority::addon_snapshot_plan_json;
@@ -23,6 +24,7 @@ pub(crate) use profiles::{
     apply_remote_profiles_json, avatar_catalog_pack_json, effective_profile_scopes_json,
 };
 pub(crate) use progress_sync::progress_meta_needs_json;
+pub(crate) use settings_sync::{credential_plan_json, settings_blob_json, settings_changes_json};
 pub(crate) use write_requests::write_requests_json;
 
 #[cfg(test)]

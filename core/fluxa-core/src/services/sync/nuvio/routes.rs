@@ -25,6 +25,9 @@ pub(crate) fn route_nuvio(method: &str, args_json: &str) -> Outcome {
         "nuvioHomeLayout" => opt_json(services::nuvio::home_layout_json(args_json)),
         "nuvioMapCollections" => opt_json(services::nuvio::map_collections_json(args_json)),
         "nuvioAddonSnapshotPlan" => opt_json(services::nuvio::addon_snapshot_plan_json(args_json)),
+        "nuvioSettingsBlob" => opt_json(services::nuvio::settings_blob_json(args_json)),
+        "nuvioSettingsChanges" => opt_json(services::nuvio::settings_changes_json(args_json)),
+        "nuvioCredentialPlan" => opt_json(services::nuvio::credential_plan_json(args_json)),
         _ => Err(unknown_method()),
     }
 }
