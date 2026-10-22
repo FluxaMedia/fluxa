@@ -12,7 +12,7 @@ host = ["dep:fluxa-host"]
 app = ["host", "ffmpeg", "sentry", "dep:wgpu", "dep:raw-window-handle", "dep:fluxa-renderer"]
 
 [dependencies]
-libloading = "0.8"
+libloading = "0.9"
 libc = { version = "0.2", optional = true }
 dolby_vision = { version = "3", default-features = false, optional = true }
 serde_json = "1.0"

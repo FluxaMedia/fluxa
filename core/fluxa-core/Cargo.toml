@@ -47,7 +47,7 @@ wasm = ["dep:wasm-bindgen", "chrono/wasmbind"]
 fuzzing = []
 
 [dependencies]
-base64 = "0.22"
+base64 = "0.23"
 chrono = { version = "0.4.45", features = ["serde"] }
 regex = "1"
 rquickjs = { version = "0.12.1", default-features = false, features = ["std", "chrono", "loader", "dyn-load", "either", "indexmap", "futures"], optional = true }

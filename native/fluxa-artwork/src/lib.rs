@@ -230,6 +230,11 @@ impl ArtworkFetcher {
         let decode_concurrency = worker_threads.clamp(2, 6);
         #[cfg(not(target_arch = "wasm32"))]
         let client = reqwest::Client::builder()
+            .tls_certs_only(
+                webpki_root_certs::TLS_SERVER_ROOT_CERTS
+                    .iter()
+                    .filter_map(|der| reqwest::Certificate::from_der(der).ok()),
+            )
             .user_agent("Fluxa/1.0")
             .connect_timeout(Duration::from_secs(5))
             .timeout(Duration::from_secs(20))

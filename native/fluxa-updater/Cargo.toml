@@ -8,13 +8,13 @@ license = "GPL-3.0-only"
 flate2 = "1.1"
 fluxa_core = { path = "../../core/fluxa-core", default-features = false }
 log = "0.4"
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls-native-roots"] }
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "rustls"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.11.0"
 tar = { version = "0.4", default-features = false }
-zip = { version = "4", default-features = false, features = ["deflate-flate2"] }
+zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 
 [dev-dependencies]
 ed25519-dalek = { version = "3", default-features = false, features = ["alloc"] }
-base64 = "0.22"
+base64 = "0.23"
