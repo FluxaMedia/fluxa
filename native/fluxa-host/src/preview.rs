@@ -43,7 +43,7 @@ pub(crate) fn seed_profiles(storage: &fluxa_effects::Storage) {
     if setting("FLUXA_PREVIEW").as_deref() != Some("profiles") {
         return;
     }
-    let names = ["Ayşe", "Mehmet", "Kids", "Guest", "Deniz"];
+    let names = ["Anna", "Mike", "Kids", "Guest", "Daniel"];
     let profiles = names
         .iter()
         .enumerate()
@@ -160,18 +160,18 @@ pub(crate) fn start(state: &mut RendererState) {
             ),
             episode: Some("S1 · E2 · Cat's in the Bag...".to_owned()),
             host: Some(fluxa_ui::WatchMemberView {
-                name: "Ayşe".to_owned(),
+                name: "Anna".to_owned(),
                 host: true,
                 ..Default::default()
             }),
             members: vec![
                 fluxa_ui::WatchMemberView {
-                    name: "Ayşe".to_owned(),
+                    name: "Anna".to_owned(),
                     host: true,
                     ..Default::default()
                 },
                 fluxa_ui::WatchMemberView {
-                    name: "Mert".to_owned(),
+                    name: "Marcus".to_owned(),
                     ..Default::default()
                 },
             ],
@@ -197,16 +197,16 @@ pub(crate) fn start(state: &mut RendererState) {
             max_members: 6,
             host: true,
             members: vec![
-                member("Ayşe", "watching", true, true),
-                member("Mert", "paused", false, false),
-                member("Deniz", "buffering", false, false),
+                member("Anna", "watching", true, true),
+                member("Marcus", "paused", false, false),
+                member("Daniel", "buffering", false, false),
                 member("Can", "picking", false, false),
             ],
             chat: [
-                ("Mert", "Bu sahne efsane 🔥🔥", false),
-                ("Mert", "Jesse'nin yüzüne bak 😂", false),
-                ("Ayşe", "Bekle buffer bitsin, Deniz takıldı", true),
-                ("Deniz", "Tamam geldim 👍 🇹🇷 👨‍👩‍👧", false),
+                ("Marcus", "This scene is legendary 🔥🔥", false),
+                ("Marcus", "Look at Jesse's face 😂", false),
+                ("Anna", "Wait for the buffer to finish, Daniel is lagging", true),
+                ("Daniel", "Tamam geldim 👍 🇹🇷 👨‍👩‍👧", false),
             ]
             .into_iter()
             .enumerate()

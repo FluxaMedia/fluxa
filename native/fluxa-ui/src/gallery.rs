@@ -325,12 +325,12 @@ fn draw_ticket_scene(
         backdrop: variant
             .contains("poster")
             .then(|| "fixture-backdrop".to_owned()),
-        host: joined.then(|| member("Elif", true, false)),
+        host: joined.then(|| member("Emma", true, false)),
         members: if joined {
             vec![
-                member("Elif", true, false),
-                member("Mert", false, false),
-                member("Zeynep", false, false),
+                member("Emma", true, false),
+                member("Marcus", false, false),
+                member("Zoe", false, false),
                 member("You", false, true),
             ]
         } else {

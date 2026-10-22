@@ -267,7 +267,7 @@ fn remote_profiles_missing_locally_are_added_with_the_account_session() {
             "profiles": [session],
             "nuvioProfiles": [
                 {"profile_index": 1, "name": "Ali"},
-                {"profile_index": 2, "name": "Ayşe", "pin_enabled": true},
+                {"profile_index": 2, "name": "Anna", "pin_enabled": true},
             ],
         })
         .to_string(),
@@ -276,7 +276,7 @@ fn remote_profiles_missing_locally_are_added_with_the_account_session() {
     let next: Vec<Value> = serde_json::from_str(&next).unwrap();
     assert_eq!(next.len(), 2);
     assert_eq!(next[1]["id"], "s1-2");
-    assert_eq!(next[1]["name"], "Ayşe");
+    assert_eq!(next[1]["name"], "Anna");
     assert_eq!(next[1]["nuvioAccessToken"], "t");
     assert_eq!(next[1]["nuvioProfileIndex"], 2);
     assert_eq!(next[1]["nuvioPinEnabled"], true);
